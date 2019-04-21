@@ -1,0 +1,22 @@
+language: go
+
+go: 
+ - 1.x
+
+matrix:
+  include:
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:webkit-team/ppa -y
+        - sudo apt-get update
+        - sudo apt-get install libwebkit2gtk-4.0-dev -y
+    - os: osx
+      osx_image: xcode8.3
+
+script:
+  - cd examples/minimal && mkdir -p build && cd build && cmake .. && make && ls -l && cd ../../..
+  - cd examples/timer-cxx && mkdir -p build && cd build && cmake .. && make && ls -l && cd ../../..
+  - cd examples/minimal-go && go build && ls -l && cd ../..
+  - cd examples/todo-go && go build && ls -l && cd ../..
+  - cd examples/page-load-go && go build && ls -l && cd ../..
+  - cd examples/window-go && go build && ls -l && cd ../..
