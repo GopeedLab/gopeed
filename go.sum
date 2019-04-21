@@ -1,0 +1,4 @@
+github.com/karalabe/xgo v0.0.0-20190301120235-2d6d1848fb02 h1:nI4Q7WQDcng8eRmi8bRP1SXlJIYLkgdgR7ZhJuzPbhs=
+github.com/karalabe/xgo v0.0.0-20190301120235-2d6d1848fb02/go.mod h1:iYGcTYIPUvEWhFo6aKUuLchs+AV4ssYdyuBbQJZGcBk=
+github.com/zserge/webview v0.0.0-20190123072648-16c93bcaeaeb h1:zVjnyZIM7UtkG3dNckiudIm+TUHkZqi5xlVQPd3J6/c=
+github.com/zserge/webview v0.0.0-20190123072648-16c93bcaeaeb/go.mod h1:a1CV8KR4Dd1eP2g+mEijGOp+HKczwdKHWyx0aPHKvo4=
