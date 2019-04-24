@@ -1,7 +1,7 @@
 package down
 
 type Response struct {
-	Name    string
-	size    int64
-	Partial bool
+	Name  string
+	Size  int64
+	Range bool
 }

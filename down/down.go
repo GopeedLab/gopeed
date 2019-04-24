@@ -4,38 +4,39 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 )
 
-// Resolve 解析下载请求
+// Resolve return the file response to be downloaded
 func Resolve(request *Request) (*Response, error) {
+	// Build request
 	httpRequest, err := http.NewRequest(strings.ToUpper(request.Method), request.URL, nil)
 	if err != nil {
 		return nil, err
 	}
-	/* for k, v := range request.Header {
+	for k, v := range request.Header {
 		httpRequest.Header.Add(k, v)
-	} */
-	httpClient := &http.Client{}
+	}
+	// Use "Range" header to resolve
+	httpRequest.Header.Add("Range", "bytes=0-0")
+	// Cookie handle
+	jar, _ := cookiejar.New(nil)
+	httpClient := &http.Client{Jar: jar}
 	response, err := httpClient.Do(httpRequest)
 	if err != nil {
 		return nil, err
 	}
 	if response.StatusCode != 200 && response.StatusCode != 206 {
-		fmt.Println(response.Header)
-		body, _ := ioutil.ReadAll(response.Body)
-		fmt.Println(string(body))
 		return nil, fmt.Errorf("Response status error:%d", response.StatusCode)
 	}
-
 	ret := &Response{}
-
-	//解析文件名
+	// Get file name by "Content-Disposition"
 	contentDisposition := response.Header.Get("Content-Disposition")
 	if contentDisposition != "" {
 		_, params, _ := mime.ParseMediaType(contentDisposition)
@@ -44,17 +45,49 @@ func Resolve(request *Request) (*Response, error) {
 			ret.Name = filename
 		}
 	}
+	// Get file name by URL
 	if ret.Name == "" {
-
+		parse, err := url.Parse(request.URL)
+		if err == nil {
+			// e.g. /files/test.txt => test.txt
+			ret.Name = subLastSlash(parse.Path)
+		}
 	}
-	//解析文件大小
-	contentLength := response.Header.Get("Content-Length")
-	if contentLength != "" {
-		ret.size, _ = strconv.ParseInt(contentLength, 10, 64)
+	// Unknow file name
+	if ret.Name == "" {
+		ret.Name = "unknow"
 	}
-	//判断是否支持分段下载
-	ret.Partial = ret.size > 0 && response.StatusCode == 206
+	// Is support range
+	ret.Range = response.StatusCode == 206
+	// Get file size
+	if ret.Range {
+		contentRange := response.Header.Get("Content-Range")
+		if contentRange != "" {
+			// e.g. bytes 0-1000/1001 => 1001
+			total := subLastSlash(contentRange)
+			if total != "" && total != "*" {
+				parse, err := strconv.ParseInt(total, 10, 64)
+				if err != nil {
+					return nil, err
+				}
+				ret.Size = parse
+			}
+		}
+	} else {
+		contentLength := response.Header.Get("Content-Length")
+		if contentLength != "" {
+			ret.Size, _ = strconv.ParseInt(contentLength, 10, 64)
+		}
+	}
 	return ret, nil
+}
+
+func subLastSlash(str string) string {
+	index := strings.LastIndex(str, "/")
+	if index != -1 {
+		return str[index+1:]
+	}
+	return ""
 }
 
 // Down 下载
