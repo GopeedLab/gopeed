@@ -1,2 +1,2 @@
-## go-download
+## gee-download
 A fast download client,support HTTP&P2P.

@@ -1,11 +1,15 @@
 package down
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
-	"net/url"
+	"io"
+	"log"
+	"os"
 	"reflect"
-	"strings"
 	"testing"
+	"time"
 )
 
 func TestDown(t *testing.T) {
@@ -17,19 +21,18 @@ func TestDown(t *testing.T) {
 		args args
 	}{
 		{
-			"readme",
+			"proxyee-down.ico",
 			args{
 				&Request{
 					"get",
-					"https://raw.githubusercontent.com/proxyee-down-org/proxyee-down/master/README.md",
+					"https://raw.githubusercontent.com/proxyee-down-org/proxyee-down/master/front/public/favicon.ico",
 					map[string]string{
+						"Host":            "github.com",
+						"User-Agent":      "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36",
 						"Accept":          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-						"Host":            "raw.githubusercontent.com",
+						"Referer":         "http://github.com/proxyee-down-org/proxyee-down/releases",
 						"Accept-Encoding": "gzip, deflate, br",
 						"Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-						"Cache-Control":   "no-cache",
-						"Connection":      "keep-alive",
-						"User-Agent":      "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36",
 					},
 					nil,
 				},
@@ -39,7 +42,17 @@ func TestDown(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			Down(tt.args.request)
+			os.Remove("favicon.ico")
+			err := Down(tt.args.request)
+			if err != nil {
+				t.Errorf("error down= %v", err)
+				return
+			}
+			downMd5 := fileMd5("favicon.ico")
+			if "8de7a6a2e786861013d61b77b2394012" != downMd5 {
+				t.Errorf("error md5= %v", downMd5)
+				return
+			}
 		})
 	}
 }
@@ -56,11 +69,11 @@ func TestResolve(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			"proxyee-down",
+			"proxyee-down.ico",
 			args{
 				&Request{
 					"get",
-					"http://github.com/proxyee-down-org/proxyee-down/releases/download/3.4/proxyee-down-main.jar",
+					"https://raw.githubusercontent.com/proxyee-down-org/proxyee-down/master/front/public/favicon.ico",
 					map[string]string{
 						"Host":            "github.com",
 						"User-Agent":      "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36",
@@ -72,7 +85,7 @@ func TestResolve(t *testing.T) {
 					nil,
 				},
 			},
-			&Response{"proxyee-down-main.jar", 30159703, true},
+			&Response{"favicon.ico", 116093, true},
 			false,
 		},
 	}
@@ -91,12 +104,47 @@ func TestResolve(t *testing.T) {
 }
 
 func TestTemp(t *testing.T) {
-	parse, _ := url.Parse("http://www.baidu.com/asda/text.txt?a=11&b=333")
-	arr := strings.Split(parse.Path, "/")
-	for i := range arr {
-		fmt.Println(arr[i])
+	f, err := os.Create("e:/data/test.data")
+	if err != nil {
+		log.Fatal(err)
 	}
-	// var begin, end, total int64
-	//fmt.Sscanf("bytes 0-1000/1001", "%s %d-%d/%d", _, &begin, &end, &total)
-	//fmt.Printf("%d-%d/%d", begin, end, total)
+	s := time.Now().UnixNano()
+	if err := f.Truncate(1024 * 1024 * 1024 * 1); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
+	s = time.Now().UnixNano()
+	f.Write([]byte{1})
+	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
+	s = time.Now().UnixNano()
+	f.Seek(1024*1024*512, 0)
+	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
+	s = time.Now().UnixNano()
+	f.Write([]byte{2})
+	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
+	s = time.Now().UnixNano()
+	f.Write([]byte{3})
+	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
+	s = time.Now().UnixNano()
+}
+
+func fileMd5(filePath string) string {
+	file, _ := os.Open(filePath)
+
+	//Tell the program to call the following function when the current function returns
+	defer file.Close()
+
+	//Open a new hash interface to write to
+	hash := md5.New()
+
+	//Copy the file in the hash interface and check for any error
+	if _, err := io.Copy(hash, file); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
+func TestMd5(t *testing.T) {
+	//8de7a6a2e786861013d61b77b2394012
+	fmt.Println(fileMd5("d:/favicon.ico"))
 }

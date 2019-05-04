@@ -1,7 +1,6 @@
 package down
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"mime"
@@ -11,27 +10,23 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Resolve return the file response to be downloaded
 func Resolve(request *Request) (*Response, error) {
-	// Build request
-	httpRequest, err := http.NewRequest(strings.ToUpper(request.Method), request.URL, nil)
+	httpRequest, err := BuildHTTPRequest(request)
 	if err != nil {
 		return nil, err
 	}
-	for k, v := range request.Header {
-		httpRequest.Header.Add(k, v)
-	}
 	// Use "Range" header to resolve
 	httpRequest.Header.Add("Range", "bytes=0-0")
-	// Cookie handle
-	jar, _ := cookiejar.New(nil)
-	httpClient := &http.Client{Jar: jar}
+	httpClient := BuildHTTPClient()
 	response, err := httpClient.Do(httpRequest)
 	if err != nil {
 		return nil, err
 	}
+	defer response.Body.Close()
 	if response.StatusCode != 200 && response.StatusCode != 206 {
 		return nil, fmt.Errorf("Response status error:%d", response.StatusCode)
 	}
@@ -47,7 +42,7 @@ func Resolve(request *Request) (*Response, error) {
 	}
 	// Get file name by URL
 	if ret.Name == "" {
-		parse, err := url.Parse(request.URL)
+		parse, err := url.Parse(httpRequest.URL.String())
 		if err == nil {
 			// e.g. /files/test.txt => test.txt
 			ret.Name = subLastSlash(parse.Path)
@@ -82,6 +77,45 @@ func Resolve(request *Request) (*Response, error) {
 	return ret, nil
 }
 
+// Down
+func Down(request *Request) error {
+	response, err := Resolve(request)
+	if err != nil {
+		return err
+	}
+	// allocate file
+	file, err := os.Create(response.Name)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	if err := file.Truncate(response.Size); err != nil {
+		return err
+	}
+	// support range
+	if response.Range {
+		cons := 16
+		chunkSize := response.Size / int64(cons)
+		var (
+			waitGroup = &sync.WaitGroup{}
+			fileLock  = &sync.Mutex{}
+		)
+		waitGroup.Add(cons)
+		for i := 0; i < cons; i++ {
+			start := int64(i) * chunkSize
+			end := start + chunkSize
+			if i == cons-1 {
+				end = response.Size
+			}
+			go downChunk(request, file, start, end-1, waitGroup, fileLock)
+		}
+		waitGroup.Wait()
+	} else {
+		downChunk(request, file, 0, response.Size, nil, nil)
+	}
+	return nil
+}
+
 func subLastSlash(str string) string {
 	index := strings.LastIndex(str, "/")
 	if index != -1 {
@@ -90,38 +124,61 @@ func subLastSlash(str string) string {
 	return ""
 }
 
-// Down 下载
-func Down(request *Request) {
-	httpRequest, err := http.NewRequest(request.Method, request.URL, bytes.NewReader(request.content))
+func BuildHTTPRequest(request *Request) (*http.Request, error) {
+	// Build request
+	httpRequest, err := http.NewRequest(strings.ToUpper(request.Method), request.URL, nil)
 	if err != nil {
-		fmt.Println("create http request error")
-		return
+		return nil, err
 	}
 	for k, v := range request.Header {
 		httpRequest.Header.Add(k, v)
 	}
-	httpClient := &http.Client{}
-	response, err := httpClient.Do(httpRequest)
+	return httpRequest, nil
+}
+
+func BuildHTTPClient() *http.Client {
+	// Cookie handle
+	jar, _ := cookiejar.New(nil)
+
+	return &http.Client{Jar: jar}
+}
+
+func downChunk(request *Request, file *os.File, start int64, end int64, waitGroup *sync.WaitGroup, fileLock *sync.Mutex) {
+	defer func() {
+		if waitGroup != nil {
+			waitGroup.Done()
+		}
+	}()
+	httpRequest, _ := BuildHTTPRequest(request)
+	httpRequest.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", start, end))
+	fmt.Printf("down %d-%d\n", start, end)
+	httpClient := BuildHTTPClient()
+	httpResponse, err := httpClient.Do(httpRequest)
 	if err != nil {
-		fmt.Printf("do http request error:%s\n", err)
+		fmt.Println(err)
 		return
 	}
-	if response.StatusCode >= 200 && response.StatusCode < 300 {
-		_, params, _ := mime.ParseMediaType(response.Header.Get("Content-Disposition"))
-		filename := params["filename"]
-		if len(filename) > 0 {
-			fmt.Printf("filename:%s\n", filename)
+	defer httpResponse.Body.Close()
+	buf := make([]byte, 8192)
+	writeIndex := int64(start)
+	for {
+		len, err := httpResponse.Body.Read(buf)
+		if len > 0 {
+			fileLock.Lock()
+			writeSize, err := file.WriteAt(buf[0:len], writeIndex)
+			fileLock.Unlock()
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			writeIndex += int64(writeSize)
+		}
+		if err != nil {
+			if err != io.EOF {
+				fmt.Println(err)
+				return
+			}
+			break
 		}
 	}
-
-	fmt.Printf("response status:%d %s\n", response.StatusCode, response.Status)
-	fmt.Printf("response heads:%v\n", response.Header)
-	file, err := os.Create("test.txt")
-	if err != nil {
-		fmt.Println("create file error")
-		return
-	}
-	defer file.Close()
-	fmt.Println("file close")
-	io.Copy(file, response.Body)
 }
