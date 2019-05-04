@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"gee-download/down"
+	"gopeed/down"
 )
 
 func main() {
-	httpRequest, _ := down.BuildHTTPRequest(&down.Request{
+	request := &down.Request{
 		Method: "get",
 		URL:    "http://github.com/proxyee-down-org/proxyee-down/releases/download/3.4/proxyee-down-main.jar",
 		Header: map[string]string{
@@ -17,8 +17,8 @@ func main() {
 			"Accept-Encoding": "gzip, deflate, br",
 			"Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
 		},
-	})
-	got, _ := down.Resolve(*httpRequest)
+	}
+	got, _ := down.Resolve(request)
 	fmt.Println(got)
 	// webview.Open("Minimal webview example", "https://www.baidu.com", 800, 600, true)
 }
