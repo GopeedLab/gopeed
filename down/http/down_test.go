@@ -1,4 +1,4 @@
-package down
+package http
 
 import (
 	"crypto/md5"
@@ -131,20 +131,19 @@ func TestTemp(t *testing.T) {
 func fileMd5(filePath string) string {
 	file, _ := os.Open(filePath)
 
-	//Tell the program to call the following function when the current function returns
+	// Tell the program to call the following function when the current function returns
 	defer file.Close()
 
-	//Open a new hash interface to write to
+	// Open a new hash interface to write to
 	hash := md5.New()
 
-	//Copy the file in the hash interface and check for any error
+	// Copy the file in the hash interface and check for any error
 	if _, err := io.Copy(hash, file); err != nil {
 		return ""
 	}
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func TestMd5(t *testing.T) {
-	//8de7a6a2e786861013d61b77b2394012
-	fmt.Println(fileMd5("d:/favicon.ico"))
+func TestTemp2(t *testing.T) {
+	fmt.Println("123456789"[2:3])
 }

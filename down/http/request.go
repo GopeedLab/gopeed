@@ -1,4 +1,4 @@
-package down
+package http
 
 type Request struct {
 	Method  string

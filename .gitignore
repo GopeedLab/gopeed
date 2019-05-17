@@ -12,3 +12,5 @@
 *.out
 
 debug
+
+.idea/

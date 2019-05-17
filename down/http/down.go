@@ -1,4 +1,4 @@
-package down
+package http
 
 import (
 	"fmt"
@@ -12,6 +12,11 @@ import (
 	"strings"
 	"sync"
 )
+
+type Download interface {
+	Resolve(request *http.Request) (*http.Response, error)
+	Down(request *http.Request) error
+}
 
 // Resolve return the file response to be downloaded
 func Resolve(request *Request) (*Response, error) {
@@ -144,11 +149,9 @@ func BuildHTTPClient() *http.Client {
 }
 
 func downChunk(request *Request, file *os.File, start int64, end int64, waitGroup *sync.WaitGroup, fileLock *sync.Mutex) {
-	defer func() {
-		if waitGroup != nil {
-			waitGroup.Done()
-		}
-	}()
+	if waitGroup != nil {
+		defer waitGroup.Done()
+	}
 	httpRequest, _ := BuildHTTPRequest(request)
 	httpRequest.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", start, end))
 	fmt.Printf("down %d-%d\n", start, end)
