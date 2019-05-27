@@ -33,7 +33,7 @@ func Resolve(request *Request) (*Response, error) {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 && response.StatusCode != 206 {
-		return nil, fmt.Errorf("Response status error:%d", response.StatusCode)
+		return nil, fmt.Errorf("response status error:%d", response.StatusCode)
 	}
 	ret := &Response{}
 	// Get file name by "Content-Disposition"
@@ -165,10 +165,10 @@ func downChunk(request *Request, file *os.File, start int64, end int64, waitGrou
 	buf := make([]byte, 8192)
 	writeIndex := int64(start)
 	for {
-		len, err := httpResponse.Body.Read(buf)
-		if len > 0 {
+		n, err := httpResponse.Body.Read(buf)
+		if n > 0 {
 			fileLock.Lock()
-			writeSize, err := file.WriteAt(buf[0:len], writeIndex)
+			writeSize, err := file.WriteAt(buf[0:n], writeIndex)
 			fileLock.Unlock()
 			if err != nil {
 				fmt.Println(err)

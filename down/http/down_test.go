@@ -104,28 +104,24 @@ func TestResolve(t *testing.T) {
 }
 
 func TestTemp(t *testing.T) {
-	f, err := os.Create("e:/data/test.data")
+	f, err := os.Create("e:/testbt/test.data")
 	if err != nil {
 		log.Fatal(err)
 	}
-	s := time.Now().UnixNano()
-	if err := f.Truncate(1024 * 1024 * 1024 * 1); err != nil {
+	if err := f.Truncate(1024 * 1024 * 512); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
+	bts := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	s := time.Now().UnixNano()
+	f.Write(bts)
+	fmt.Printf("write from 0 use: %d\n", time.Now().UnixNano()-s)
 	s = time.Now().UnixNano()
-	f.Write([]byte{1})
-	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
+	f.Seek(1024*1024*128, 0)
+	f.Write(bts)
+	fmt.Printf("write from 128M use %d\n", time.Now().UnixNano()-s)
 	s = time.Now().UnixNano()
-	f.Seek(1024*1024*512, 0)
-	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
-	s = time.Now().UnixNano()
-	f.Write([]byte{2})
-	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
-	s = time.Now().UnixNano()
-	f.Write([]byte{3})
-	fmt.Printf("use %d\n", time.Now().UnixNano()-s)
-	s = time.Now().UnixNano()
+	f.Write(bts)
+	fmt.Printf("write from 128M+9b use %d\n", time.Now().UnixNano()-s)
 }
 
 func fileMd5(filePath string) string {

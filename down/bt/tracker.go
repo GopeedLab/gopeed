@@ -32,7 +32,7 @@ const (
 	8       32-bit integer  action          0 // connect
 	12      32-bit integer  transaction_id
 	16
-	Detail see https://www.libtorrent.org/udp_tracker_protocol.html#connecting
+	Per https://www.libtorrent.org/udp_tracker_protocol.html#connecting
 */
 type UdpConnectRequest struct {
 	ProtocolId    uint64
@@ -93,7 +93,7 @@ func NewUdpConnectResponse(buf []byte) *UdpConnectResponse {
 	92      32-bit integer  num_want        -1 // default
 	96      16-bit integer  port
 	98
-	Detail see https://www.libtorrent.org/udp_tracker_protocol.html#announcing
+	Per https://www.libtorrent.org/udp_tracker_protocol.html#announcing
 */
 type UdpAnnounceRequest struct {
 	ConnectionId  uint64
@@ -147,6 +147,7 @@ func (req *UdpAnnounceRequest) encode() []byte {
 	20 + 6 * n  32-bit integer  IP address
 	24 + 6 * n  16-bit integer  TCP port
 	20 + 6 * N
+	Per https://www.libtorrent.org/udp_tracker_protocol.html#announcing
 */
 type UdpAnnounceResponse struct {
 	Action        uint32
@@ -154,8 +155,7 @@ type UdpAnnounceResponse struct {
 	Interval      uint32
 	Leechers      uint32
 	Seeders       uint32
-	IP            []uint32
-	Port          []uint16
+	Peers         []Peer
 }
 
 func NewUdpAnnounceResponse(buf []byte) *UdpAnnounceResponse {
@@ -167,48 +167,33 @@ func NewUdpAnnounceResponse(buf []byte) *UdpAnnounceResponse {
 		Seeders:       binary.BigEndian.Uint32(buf[16:20]),
 	}
 	count := (len(buf) - 20) / 6
-	response.IP = make([]uint32, count, count)
-	response.Port = make([]uint16, count, count)
+	response.Peers = make([]Peer, count, count)
 	for i := 0; i < count; i++ {
-		begin := 20 + 6*i
-		response.IP[i] = binary.BigEndian.Uint32(buf[begin : begin+4])
-		response.Port[i] = binary.BigEndian.Uint16(buf[begin+4 : begin+6])
+		ipBegin := 20 + 6*i
+		portBegin := ipBegin + 4
+		response.Peers[i] = Peer{
+			IP:   binary.BigEndian.Uint32(buf[ipBegin:portBegin]),
+			Port: binary.BigEndian.Uint16(buf[portBegin : portBegin+2]),
+		}
 	}
 	return response
 }
 
-type UdpTrackerContent struct {
-	URL              *url.URL
-	MetaInfo         *MetaInfo
-	Conn             *net.UDPConn
-	ConnectRequest   *UdpConnectRequest
-	ConnectResponse  *UdpConnectResponse
-	AnnounceRequest  *UdpAnnounceRequest
-	AnnounceResponse *UdpAnnounceResponse
-}
-
-func NewUdpTrackerContent(url *url.URL, metaInfo *MetaInfo) *UdpTrackerContent {
-	return &UdpTrackerContent{
-		URL:      url,
-		MetaInfo: metaInfo,
-	}
-}
-
-func (content *UdpTrackerContent) connect() error {
-	host, portStr, err := net.SplitHostPort(content.URL.Host)
+func dial(trackerUrl *url.URL) (*net.UDPConn, error) {
+	host, portStr, err := net.SplitHostPort(trackerUrl.Host)
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return nil, err
 	}
 	port, err := strconv.ParseInt(portStr, 10, 32)
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return nil, err
 	}
-	ip, err := lookupIP(host, content.URL.Scheme)
+	ip, err := lookupIP(host, trackerUrl.Scheme)
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return nil, err
 	}
 
 	srcAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
@@ -216,87 +201,99 @@ func (content *UdpTrackerContent) connect() error {
 		IP:   ip,
 		Port: int(port),
 	}
-	conn, err := net.DialUDP(content.URL.Scheme, srcAddr, dstAddr)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	// Connect
-	request := NewUdpConnectRequest()
-	var response *UdpConnectResponse
-	for n := 0; n < udpConnectRetries; n++ {
-		buf := request.Encode()
-		conn.Write(buf)
-		// 15 * 2 ^ n seconds
-		timeout := udpConnectTimeout * math.Pow(2, float64(n))
-		conn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(timeout)))
-		len, err := conn.Read(buf)
-		if len == 16 && err == nil {
-			response = NewUdpConnectResponse(buf)
-			break
-		}
-	}
-	if response == nil {
-		conn.Close()
-		return errors.New("UDP tracker connect error")
-	}
-	if response.Action != udpActionConnect || request.TransactionId != response.TransactionId {
-		conn.Close()
-		return errors.New("UDP tracker connect response error")
-	}
-	content.Conn = conn
-	content.ConnectRequest = request
-	content.ConnectResponse = response
-	return nil
+	return net.DialUDP(trackerUrl.Scheme, srcAddr, dstAddr)
 }
 
-func (content *UdpTrackerContent) announce() error {
-	request := NewUdpAnnounceRequest(content.ConnectResponse.ConnectionId)
-	request.InfoHash = content.MetaInfo.InfoHash
-	peerID, err := genPeerID()
+func connect(conn *net.UDPConn, timeout int64) (response *UdpConnectResponse, err error) {
+	request := NewUdpConnectRequest()
+	buf := request.Encode()
+	conn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(timeout)))
+	conn.Write(buf)
+	len, err := conn.Read(buf)
+	if err != nil {
+		return
+	}
+	if len != 16 {
+		err = NewTrackerError(ErrResponse, errors.New("invalid response"))
+		return
+	}
+	response = NewUdpConnectResponse(buf)
+	return
+}
+
+func announce(conn *net.UDPConn, timeout int64, connectionId uint64, metaInfo *MetaInfo) (response *UdpAnnounceResponse, err error) {
+	request := NewUdpAnnounceRequest(connectionId)
+	request.InfoHash = metaInfo.InfoHash
+	peerID, err := GenPeerID()
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return
 	}
 	request.PeerID = peerID
 	request.Downloaded = 0
 	request.Uploaded = 0
-	request.Left = content.MetaInfo.GetTotalSize() - request.Downloaded
+	request.Left = metaInfo.GetTotalSize() - request.Downloaded
 	request.Event = 0
 	request.IP = 0
 	request.Key = 0
 	request.NumWant = 50
 	request.Port = 6882
 	encode := request.encode()
-	content.Conn.Write(encode)
+	conn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(timeout)))
+	conn.Write(encode)
 	buf := make([]byte, 512)
-	len, err := content.Conn.Read(buf)
+	len, err := conn.Read(buf)
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return
 	}
-	response := NewUdpAnnounceResponse(buf[:len])
-	fmt.Println(response)
-	return nil
+	response = NewUdpAnnounceResponse(buf[:len])
+	return
 }
 
-func DoTracker(announce string, metaInfo *MetaInfo) {
+func (metaInfo *MetaInfo) Tracker() (peers []Peer, err error) {
+	if len(metaInfo.AnnounceList) > 0 {
+		for _, announceArr := range metaInfo.AnnounceList {
+			if len(announceArr) > 0 {
+				for _, announce := range announceArr {
+					peers, err = doTracker(announce, metaInfo)
+					if err == nil {
+						return
+					}
+				}
+			}
+		}
+	} else {
+		peers, err = doTracker(metaInfo.Announce, metaInfo)
+		if err == nil {
+			return
+		}
+	}
+	return
+}
+
+func doTracker(announce string, metaInfo *MetaInfo) (peers []Peer, err error) {
 	if announce != "" {
 		url, _ := url.Parse(announce)
 		switch url.Scheme {
 		case "http", "https":
 			// TODO UDP test
 			break
-			httpTracker(url, metaInfo)
+			return httpTracker(url, metaInfo)
 		case "udp", "udp4", "udp6":
-			udpTracker(url, metaInfo)
+			return udpTracker(url, metaInfo)
+		default:
+			return nil, errors.New("unsupported protocol")
 		}
 	}
+	return nil, errors.New("empty announce")
 }
 
-func genPeerID() ([20]byte, error) {
-	peerId := [20]byte{'G', 'P', '0', '0', '1'}
-	_, err := rand.Read(peerId[5:])
+// 生成Peer ID，规则为前三位固定字母(-GP)+SemVer(xyz),后面随机生成
+// 参考：https://wiki.theory.org/index.php/BitTorrentSpecification#peer_id
+func GenPeerID() ([20]byte, error) {
+	peerId := [20]byte{'-', 'G', 'P', '0', '0', '1'}
+	_, err := rand.Read(peerId[6:])
 	if err != nil {
 		return peerId, err
 	}
@@ -304,13 +301,12 @@ func genPeerID() ([20]byte, error) {
 }
 
 // http://bittorrent.org/beps/bep_0003.html#trackers
-func httpTracker(url *url.URL, metaInfo *MetaInfo) {
+func httpTracker(url *url.URL, metaInfo *MetaInfo) (peers []Peer, err error) {
 	query := url.Query()
 	query.Add("info_hash", string(metaInfo.InfoHash[:]))
 	// Generate peer ID
-	peerID, err := genPeerID()
+	peerID, err := GenPeerID()
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 	query.Add("peer_id", string(peerID[:]))
@@ -321,39 +317,76 @@ func httpTracker(url *url.URL, metaInfo *MetaInfo) {
 	url.RawQuery = query.Encode()
 	request, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 	var httpClient = &http.Client{
 		Timeout: time.Second * time.Duration(15),
 	}
 	request.Header.Set("User-Agent", "gopeed/0.0.1")
-	fmt.Println("request:" + url.String())
 	response, err := httpClient.Do(request)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
 	defer response.Body.Close()
 	resp, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		if err != io.EOF {
-			fmt.Println(err)
 			return
 		}
 	}
-	fmt.Println(string(resp))
+	// TODO Parse HTTP tracker response
+	fmt.Println(resp)
+	return nil, nil
 }
 
 // http://bittorrent.org/beps/bep_0015.html
-func udpTracker(url *url.URL, metaInfo *MetaInfo) {
-	content := NewUdpTrackerContent(url, metaInfo)
-	err := content.connect()
+func udpTracker(url *url.URL, metaInfo *MetaInfo) (peers []Peer, err error) {
+	conn, err := dial(url)
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
-	content.announce()
+
+	announceResponse, err := func() (announceResponse *UdpAnnounceResponse, err error) {
+		var connectResponse *UdpConnectResponse
+		// 0:connect 1:announce
+		state := 0
+		// 	访问超时最多重试8次，当有请求成功则将重试次数重置为0
+		for n := 0; n < udpConnectRetries; n++ {
+			// 15 * 2 ^ n seconds
+			timeout := int64(udpConnectTimeout * math.Pow(2, float64(n)))
+			switch state {
+			case 0:
+				connectResponse, err = connect(conn, timeout)
+				if err != nil {
+					if oe, ok := err.(*net.OpError); ok && oe.Timeout() {
+						break
+					} else {
+						return
+					}
+				}
+				n = -1
+				state = 1
+				break
+			case 1:
+				announceResponse, err = announce(conn, timeout, connectResponse.ConnectionId, metaInfo)
+				if err != nil {
+					if oe, ok := err.(*net.OpError); ok && oe.Timeout() {
+						break
+					} else {
+						return
+					}
+				}
+				return
+			}
+		}
+		return
+	}()
+
+	if err != nil {
+		return
+	}
+
+	return announceResponse.Peers, nil
 }
 
 func lookupIP(host string, scheme string) (ip net.IP, err error) {
