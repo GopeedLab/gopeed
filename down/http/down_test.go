@@ -122,6 +122,14 @@ func TestTemp(t *testing.T) {
 	s = time.Now().UnixNano()
 	f.Write(bts)
 	fmt.Printf("write from 128M+9b use %d\n", time.Now().UnixNano()-s)
+	s = time.Now().UnixNano()
+	f.Seek(0, 0)
+	f.Write(bts)
+	fmt.Printf("write from 0 agein use %d\n", time.Now().UnixNano()-s)
+	s = time.Now().UnixNano()
+	f.Seek(1024*1024*64, 0)
+	f.Write(bts)
+	fmt.Printf("write from agein 64M use %d\n", time.Now().UnixNano()-s)
 }
 
 func fileMd5(filePath string) string {

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/cenkalti/mse"
 	"io"
 	"net"
 	"strconv"
@@ -30,6 +31,9 @@ const (
 type Peer struct {
 	IP   uint32
 	Port uint16
+
+	Torrent *Torrent
+	conn    net.Conn
 }
 
 func (peer *Peer) Address() string {
@@ -82,16 +86,29 @@ func (handshake *Handshake) decode(buf []byte) error {
 	return nil
 }
 
-func (peer *Peer) DoDownload(metaInfo *MetaInfo, peerId [20]byte) error {
+func dialMse(address string, infoHash [20]byte) (net.Conn, error) {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil, err
+	}
+	mseConn := mse.WrapConn(conn)
+	_, err = mseConn.HandshakeOutgoing(infoHash[:], mse.PlainText, nil)
+	if err != nil {
+		return nil, err
+	}
+	return mseConn, nil
+}
+
+func (peer *Peer) DoDownload() error {
 	if peer.Port == 0 {
 		return fmt.Errorf("error port %d", peer.Port)
 	}
-	conn, err := net.Dial("tcp", peer.Address())
+	conn, err := dialMse(peer.Address(), peer.Torrent.MetaInfo.InfoHash)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = doHandshake(peer, metaInfo, peerId, conn)
+	err = peer.doHandshake(conn)
 	if err != nil {
 		return err
 	}
@@ -204,12 +221,15 @@ func (peer *Peer) DoDownload(metaInfo *MetaInfo, peerId [20]byte) error {
 
 // Handshake of Peer wire protocol
 // Per https://wiki.theory.org/index.php/BitTorrentSpecification#Handshake
-func doHandshake(peer *Peer, metaInfo *MetaInfo, peerId [20]byte, conn net.Conn) error {
+func (peer *Peer) doHandshake(conn net.Conn) error {
+	metaInfo := peer.Torrent.MetaInfo
+	peerID := peer.Torrent.client.PeerID
+
 	reserved := [8]byte{}
-	reserved[5] = 0x10
-	reserved[6] = 0x0
-	reserved[7] = 0x5
-	handshakeReq := NewHandshake(reserved, metaInfo.InfoHash, peerId)
+	/*	reserved[5] = 0x10
+		reserved[6] = 0x0
+		reserved[7] = 0x5*/
+	handshakeReq := NewHandshake(reserved, metaInfo.InfoHash, peerID)
 	buf, err := handshakeReq.encode()
 	if err != nil {
 		return err

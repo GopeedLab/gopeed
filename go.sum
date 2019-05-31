@@ -1,2 +1,4 @@
+github.com/cenkalti/mse v0.0.0-20140930130441-6ef65f170972 h1:FvAasVrPm/VUO8M0odLDqA9Y7VbALYq3PRAwmWGPw78=
+github.com/cenkalti/mse v0.0.0-20140930130441-6ef65f170972/go.mod h1:wGf99xKTJ8f/a8cC1inMqFz9cGEzISLLid5F6i5fI/g=
 github.com/marksamman/bencode v0.0.0-20150821143521-dc84f26e086e h1:KMs6SK8iDSR1+ZzOK10L5wGPpWDByyvOe5nrqk51g2U=
 github.com/marksamman/bencode v0.0.0-20150821143521-dc84f26e086e/go.mod h1:+AHfJo5+69p+fjvMJTmYajNP9rFBHQcaTDFmuXRRATI=

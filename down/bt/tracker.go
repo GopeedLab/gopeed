@@ -1,7 +1,6 @@
 package bt
 
 import (
-	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -26,6 +25,14 @@ const (
 	udpActionError         = 3
 )
 
+type Tracker struct {
+	torrent *Torrent
+}
+
+func NewTracker(torrent *Torrent) *Tracker {
+	return &Tracker{torrent: torrent}
+}
+
 /*
 	Offset  Size            Name            Value
 	0       64-bit integer  protocol_id     0x41727101980 // magic constant
@@ -34,25 +41,25 @@ const (
 	16
 	Per https://www.libtorrent.org/udp_tracker_protocol.html#connecting
 */
-type UdpConnectRequest struct {
-	ProtocolId    uint64
-	Action        uint32
-	TransactionId uint32
+type udpConnectRequest struct {
+	protocolId    uint64
+	action        uint32
+	transactionId uint32
 }
 
-func NewUdpConnectRequest() *UdpConnectRequest {
-	return &UdpConnectRequest{
-		ProtocolId:    udpConnectRequestMagic,
-		Action:        udpActionConnect,
-		TransactionId: mrand.Uint32(),
+func newUdpConnectRequest() *udpConnectRequest {
+	return &udpConnectRequest{
+		protocolId:    udpConnectRequestMagic,
+		action:        udpActionConnect,
+		transactionId: mrand.Uint32(),
 	}
 }
 
-func (req *UdpConnectRequest) Encode() []byte {
+func (req *udpConnectRequest) Encode() []byte {
 	buf := make([]byte, 16)
-	binary.BigEndian.PutUint64(buf[:8], req.ProtocolId)
-	binary.BigEndian.PutUint32(buf[8:12], req.Action)
-	binary.BigEndian.PutUint32(buf[12:], req.TransactionId)
+	binary.BigEndian.PutUint64(buf[:8], req.protocolId)
+	binary.BigEndian.PutUint32(buf[8:12], req.action)
+	binary.BigEndian.PutUint32(buf[12:], req.transactionId)
 	return buf
 }
 
@@ -63,17 +70,17 @@ func (req *UdpConnectRequest) Encode() []byte {
 	8       64-bit integer  connection_id
 	16
 */
-type UdpConnectResponse struct {
-	Action        uint32
-	TransactionId uint32
-	ConnectionId  uint64
+type udpConnectResponse struct {
+	action        uint32
+	transactionId uint32
+	connectionId  uint64
 }
 
-func NewUdpConnectResponse(buf []byte) *UdpConnectResponse {
-	return &UdpConnectResponse{
-		Action:        binary.BigEndian.Uint32(buf[:4]),
-		TransactionId: binary.BigEndian.Uint32(buf[4:8]),
-		ConnectionId:  binary.BigEndian.Uint64(buf[8:]),
+func newUdpConnectResponse(buf []byte) *udpConnectResponse {
+	return &udpConnectResponse{
+		action:        binary.BigEndian.Uint32(buf[:4]),
+		transactionId: binary.BigEndian.Uint32(buf[4:8]),
+		connectionId:  binary.BigEndian.Uint64(buf[8:]),
 	}
 }
 
@@ -88,52 +95,52 @@ func NewUdpConnectResponse(buf []byte) *UdpConnectResponse {
 	64      64-bit integer  left
 	72      64-bit integer  uploaded
 	80      32-bit integer  event           0 // 0: none; 1: completed; 2: started; 3: stopped
-	84      32-bit integer  IP address      0 // default
+	84      32-bit integer  ip address      0 // default
 	88      32-bit integer  key
 	92      32-bit integer  num_want        -1 // default
 	96      16-bit integer  port
 	98
 	Per https://www.libtorrent.org/udp_tracker_protocol.html#announcing
 */
-type UdpAnnounceRequest struct {
-	ConnectionId  uint64
-	Action        uint32
-	TransactionId uint32
-	InfoHash      [20]byte
-	PeerID        [20]byte
-	Downloaded    uint64
-	Left          uint64
-	Uploaded      uint64
-	Event         uint32
-	IP            uint32
-	Key           uint32
-	NumWant       int32
-	Port          uint16
+type udpAnnounceRequest struct {
+	connectionId  uint64
+	action        uint32
+	transactionId uint32
+	infoHash      [20]byte
+	peerID        [20]byte
+	downloaded    uint64
+	left          uint64
+	uploaded      uint64
+	event         uint32
+	ip            uint32
+	key           uint32
+	numWant       int32
+	port          uint16
 }
 
-func NewUdpAnnounceRequest(connectionId uint64) *UdpAnnounceRequest {
-	return &UdpAnnounceRequest{
-		ConnectionId:  connectionId,
-		Action:        udpActionAnnounce,
-		TransactionId: mrand.Uint32(),
+func newUdpAnnounceRequest(connectionId uint64) *udpAnnounceRequest {
+	return &udpAnnounceRequest{
+		connectionId:  connectionId,
+		action:        udpActionAnnounce,
+		transactionId: mrand.Uint32(),
 	}
 }
 
-func (req *UdpAnnounceRequest) encode() []byte {
+func (req *udpAnnounceRequest) encode() []byte {
 	buf := make([]byte, 98, 98)
-	binary.BigEndian.PutUint64(buf[:8], req.ConnectionId)
-	binary.BigEndian.PutUint32(buf[8:12], req.Action)
-	binary.BigEndian.PutUint32(buf[12:16], req.TransactionId)
-	copy(buf[16:36], req.InfoHash[:])
-	copy(buf[36:56], req.PeerID[:])
-	binary.BigEndian.PutUint64(buf[56:64], req.Downloaded)
-	binary.BigEndian.PutUint64(buf[64:72], req.Left)
-	binary.BigEndian.PutUint64(buf[72:80], req.Uploaded)
-	binary.BigEndian.PutUint32(buf[80:84], req.Event)
-	binary.BigEndian.PutUint32(buf[84:88], req.IP)
-	binary.BigEndian.PutUint32(buf[88:92], req.Key)
-	binary.BigEndian.PutUint32(buf[92:96], uint32(req.NumWant))
-	binary.BigEndian.PutUint16(buf[96:98], req.Port)
+	binary.BigEndian.PutUint64(buf[:8], req.connectionId)
+	binary.BigEndian.PutUint32(buf[8:12], req.action)
+	binary.BigEndian.PutUint32(buf[12:16], req.transactionId)
+	copy(buf[16:36], req.infoHash[:])
+	copy(buf[36:56], req.peerID[:])
+	binary.BigEndian.PutUint64(buf[56:64], req.downloaded)
+	binary.BigEndian.PutUint64(buf[64:72], req.left)
+	binary.BigEndian.PutUint64(buf[72:80], req.uploaded)
+	binary.BigEndian.PutUint32(buf[80:84], req.event)
+	binary.BigEndian.PutUint32(buf[84:88], req.ip)
+	binary.BigEndian.PutUint32(buf[88:92], req.key)
+	binary.BigEndian.PutUint32(buf[92:96], uint32(req.numWant))
+	binary.BigEndian.PutUint16(buf[96:98], req.port)
 	return buf
 }
 
@@ -144,34 +151,34 @@ func (req *UdpAnnounceRequest) encode() []byte {
 	8           32-bit integer  interval
 	12          32-bit integer  leechers
 	16          32-bit integer  seeders
-	20 + 6 * n  32-bit integer  IP address
+	20 + 6 * n  32-bit integer  ip address
 	24 + 6 * n  16-bit integer  TCP port
 	20 + 6 * N
 	Per https://www.libtorrent.org/udp_tracker_protocol.html#announcing
 */
-type UdpAnnounceResponse struct {
-	Action        uint32
-	TransactionId uint32
-	Interval      uint32
-	Leechers      uint32
-	Seeders       uint32
-	Peers         []Peer
+type udpAnnounceResponse struct {
+	action        uint32
+	transactionId uint32
+	interval      uint32
+	leechers      uint32
+	seeders       uint32
+	peers         []Peer
 }
 
-func NewUdpAnnounceResponse(buf []byte) *UdpAnnounceResponse {
-	response := &UdpAnnounceResponse{
-		Action:        binary.BigEndian.Uint32(buf[:4]),
-		TransactionId: binary.BigEndian.Uint32(buf[4:8]),
-		Interval:      binary.BigEndian.Uint32(buf[8:12]),
-		Leechers:      binary.BigEndian.Uint32(buf[12:16]),
-		Seeders:       binary.BigEndian.Uint32(buf[16:20]),
+func newUdpAnnounceResponse(buf []byte) *udpAnnounceResponse {
+	response := &udpAnnounceResponse{
+		action:        binary.BigEndian.Uint32(buf[:4]),
+		transactionId: binary.BigEndian.Uint32(buf[4:8]),
+		interval:      binary.BigEndian.Uint32(buf[8:12]),
+		leechers:      binary.BigEndian.Uint32(buf[12:16]),
+		seeders:       binary.BigEndian.Uint32(buf[16:20]),
 	}
 	count := (len(buf) - 20) / 6
-	response.Peers = make([]Peer, count, count)
+	response.peers = make([]Peer, count, count)
 	for i := 0; i < count; i++ {
 		ipBegin := 20 + 6*i
 		portBegin := ipBegin + 4
-		response.Peers[i] = Peer{
+		response.peers[i] = Peer{
 			IP:   binary.BigEndian.Uint32(buf[ipBegin:portBegin]),
 			Port: binary.BigEndian.Uint16(buf[portBegin : portBegin+2]),
 		}
@@ -179,33 +186,8 @@ func NewUdpAnnounceResponse(buf []byte) *UdpAnnounceResponse {
 	return response
 }
 
-func dial(trackerUrl *url.URL) (*net.UDPConn, error) {
-	host, portStr, err := net.SplitHostPort(trackerUrl.Host)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	port, err := strconv.ParseInt(portStr, 10, 32)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	ip, err := lookupIP(host, trackerUrl.Scheme)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-
-	srcAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
-	dstAddr := &net.UDPAddr{
-		IP:   ip,
-		Port: int(port),
-	}
-	return net.DialUDP(trackerUrl.Scheme, srcAddr, dstAddr)
-}
-
-func connect(conn *net.UDPConn, timeout int64) (response *UdpConnectResponse, err error) {
-	request := NewUdpConnectRequest()
+func (tracker *Tracker) connect(conn *net.UDPConn, timeout int64) (response *udpConnectResponse, err error) {
+	request := newUdpConnectRequest()
 	buf := request.Encode()
 	conn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(timeout)))
 	conn.Write(buf)
@@ -217,27 +199,24 @@ func connect(conn *net.UDPConn, timeout int64) (response *UdpConnectResponse, er
 		err = NewTrackerError(ErrResponse, errors.New("invalid response"))
 		return
 	}
-	response = NewUdpConnectResponse(buf)
+	response = newUdpConnectResponse(buf)
 	return
 }
 
-func announce(conn *net.UDPConn, timeout int64, connectionId uint64, metaInfo *MetaInfo) (response *UdpAnnounceResponse, err error) {
-	request := NewUdpAnnounceRequest(connectionId)
-	request.InfoHash = metaInfo.InfoHash
-	peerID, err := GenPeerID()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	request.PeerID = peerID
-	request.Downloaded = 0
-	request.Uploaded = 0
-	request.Left = metaInfo.GetTotalSize() - request.Downloaded
-	request.Event = 0
-	request.IP = 0
-	request.Key = 0
-	request.NumWant = 50
-	request.Port = 6882
+func (tracker *Tracker) announce(conn *net.UDPConn, timeout int64, connectionId uint64) (response *udpAnnounceResponse, err error) {
+	torrent := tracker.torrent
+
+	request := newUdpAnnounceRequest(connectionId)
+	request.infoHash = torrent.MetaInfo.InfoHash
+	request.peerID = torrent.client.PeerID
+	request.downloaded = 0
+	request.uploaded = 0
+	request.left = torrent.MetaInfo.FileSize - request.downloaded
+	request.event = 0
+	request.ip = 0
+	request.key = 0
+	request.numWant = -1
+	request.port = 6882
 	encode := request.encode()
 	conn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(timeout)))
 	conn.Write(encode)
@@ -247,16 +226,29 @@ func announce(conn *net.UDPConn, timeout int64, connectionId uint64, metaInfo *M
 		fmt.Println(err)
 		return
 	}
-	response = NewUdpAnnounceResponse(buf[:len])
+	response = newUdpAnnounceResponse(buf[:len])
 	return
 }
 
-func (metaInfo *MetaInfo) Tracker() (peers []Peer, err error) {
-	if len(metaInfo.AnnounceList) > 0 {
+func (tracker *Tracker) Tracker() (peers []Peer, err error) {
+	metaInfo := tracker.torrent.MetaInfo
+
+	checkAnnounceList := func(announceList [][]string) bool {
+		if len(announceList) > 0 {
+			for _, l := range announceList {
+				if len(l) > 0 {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	if checkAnnounceList(metaInfo.AnnounceList) {
 		for _, announceArr := range metaInfo.AnnounceList {
 			if len(announceArr) > 0 {
 				for _, announce := range announceArr {
-					peers, err = doTracker(announce, metaInfo)
+					peers, err = tracker.doTracker(announce)
 					if err == nil {
 						return
 					}
@@ -264,7 +256,7 @@ func (metaInfo *MetaInfo) Tracker() (peers []Peer, err error) {
 			}
 		}
 	} else {
-		peers, err = doTracker(metaInfo.Announce, metaInfo)
+		peers, err = tracker.doTracker(metaInfo.Announce)
 		if err == nil {
 			return
 		}
@@ -272,16 +264,16 @@ func (metaInfo *MetaInfo) Tracker() (peers []Peer, err error) {
 	return
 }
 
-func doTracker(announce string, metaInfo *MetaInfo) (peers []Peer, err error) {
+func (tracker *Tracker) doTracker(announce string) (peers []Peer, err error) {
 	if announce != "" {
 		url, _ := url.Parse(announce)
 		switch url.Scheme {
 		case "http", "https":
 			// TODO UDP test
 			break
-			return httpTracker(url, metaInfo)
+			return tracker.httpTracker(url)
 		case "udp", "udp4", "udp6":
-			return udpTracker(url, metaInfo)
+			return tracker.udpTracker(url)
 		default:
 			return nil, errors.New("unsupported protocol")
 		}
@@ -289,31 +281,18 @@ func doTracker(announce string, metaInfo *MetaInfo) (peers []Peer, err error) {
 	return nil, errors.New("empty announce")
 }
 
-// 生成Peer ID，规则为前三位固定字母(-GP)+SemVer(xyz),后面随机生成
-// 参考：https://wiki.theory.org/index.php/BitTorrentSpecification#peer_id
-func GenPeerID() ([20]byte, error) {
-	peerId := [20]byte{'-', 'G', 'P', '0', '0', '1'}
-	_, err := rand.Read(peerId[6:])
-	if err != nil {
-		return peerId, err
-	}
-	return peerId, nil
-}
-
 // http://bittorrent.org/beps/bep_0003.html#trackers
-func httpTracker(url *url.URL, metaInfo *MetaInfo) (peers []Peer, err error) {
+func (tracker *Tracker) httpTracker(url *url.URL) (peers []Peer, err error) {
+	metaInfo := tracker.torrent.MetaInfo
+	peerID := tracker.torrent.client.PeerID
+
 	query := url.Query()
 	query.Add("info_hash", string(metaInfo.InfoHash[:]))
-	// Generate peer ID
-	peerID, err := GenPeerID()
-	if err != nil {
-		return
-	}
 	query.Add("peer_id", string(peerID[:]))
 	query.Add("port", "6882")
 	query.Add("uploaded", "0")
 	query.Add("downloaded", "0")
-	query.Add("left", strconv.FormatInt(int64(metaInfo.GetTotalSize()), 10))
+	query.Add("left", strconv.FormatInt(int64(metaInfo.FileSize), 10))
 	url.RawQuery = query.Encode()
 	request, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
@@ -340,14 +319,15 @@ func httpTracker(url *url.URL, metaInfo *MetaInfo) (peers []Peer, err error) {
 }
 
 // http://bittorrent.org/beps/bep_0015.html
-func udpTracker(url *url.URL, metaInfo *MetaInfo) (peers []Peer, err error) {
+func (tracker *Tracker) udpTracker(url *url.URL) (peers []Peer, err error) {
 	conn, err := dial(url)
 	if err != nil {
 		return
 	}
+	defer conn.Close()
 
-	announceResponse, err := func() (announceResponse *UdpAnnounceResponse, err error) {
-		var connectResponse *UdpConnectResponse
+	announceResponse, err := func() (announceResponse *udpAnnounceResponse, err error) {
+		var connectResponse *udpConnectResponse
 		// 0:connect 1:announce
 		state := 0
 		// 	访问超时最多重试8次，当有请求成功则将重试次数重置为0
@@ -356,7 +336,7 @@ func udpTracker(url *url.URL, metaInfo *MetaInfo) (peers []Peer, err error) {
 			timeout := int64(udpConnectTimeout * math.Pow(2, float64(n)))
 			switch state {
 			case 0:
-				connectResponse, err = connect(conn, timeout)
+				connectResponse, err = tracker.connect(conn, timeout)
 				if err != nil {
 					if oe, ok := err.(*net.OpError); ok && oe.Timeout() {
 						break
@@ -368,7 +348,7 @@ func udpTracker(url *url.URL, metaInfo *MetaInfo) (peers []Peer, err error) {
 				state = 1
 				break
 			case 1:
-				announceResponse, err = announce(conn, timeout, connectResponse.ConnectionId, metaInfo)
+				announceResponse, err = tracker.announce(conn, timeout, connectResponse.connectionId)
 				if err != nil {
 					if oe, ok := err.(*net.OpError); ok && oe.Timeout() {
 						break
@@ -386,7 +366,29 @@ func udpTracker(url *url.URL, metaInfo *MetaInfo) (peers []Peer, err error) {
 		return
 	}
 
-	return announceResponse.Peers, nil
+	return announceResponse.peers, nil
+}
+
+func dial(trackerUrl *url.URL) (*net.UDPConn, error) {
+	host, portStr, err := net.SplitHostPort(trackerUrl.Host)
+	if err != nil {
+		return nil, err
+	}
+	port, err := strconv.ParseInt(portStr, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	ip, err := lookupIP(host, trackerUrl.Scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	srcAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
+	dstAddr := &net.UDPAddr{
+		IP:   ip,
+		Port: int(port),
+	}
+	return net.DialUDP(trackerUrl.Scheme, srcAddr, dstAddr)
 }
 
 func lookupIP(host string, scheme string) (ip net.IP, err error) {
