@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+gopeed
 
 # Test binary, built with `go test -c`
 *.test
@@ -14,3 +15,4 @@
 debug
 
 .idea/
+.vscode/

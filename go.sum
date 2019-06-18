@@ -1,5 +1,7 @@
 github.com/marksamman/bencode v0.0.0-20150821143521-dc84f26e086e h1:KMs6SK8iDSR1+ZzOK10L5wGPpWDByyvOe5nrqk51g2U=
 github.com/marksamman/bencode v0.0.0-20150821143521-dc84f26e086e/go.mod h1:+AHfJo5+69p+fjvMJTmYajNP9rFBHQcaTDFmuXRRATI=
+github.com/spf13/pflag v1.0.3 h1:zPAT6CGy6wXeQ7NtTnaTerfKOsV6V6F8agHXFiazDkg=
+github.com/spf13/pflag v1.0.3/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/net v0.0.0-20190501004415-9ce7a6920f09 h1:KaQtG+aDELoNmXYas3TVkGNYRuq8JQ1aa7LJt8EXVyo=
 golang.org/x/net v0.0.0-20190501004415-9ce7a6920f09/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=

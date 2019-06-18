@@ -15,7 +15,7 @@ import (
 
 type Download interface {
 	Resolve(request *http.Request) (*http.Response, error)
-	Down(request *http.Request) error
+	Down(request *http.Request, parrallelsNumber int) error
 }
 
 // Resolve return the file response to be downloaded
@@ -29,6 +29,7 @@ func Resolve(request *Request) (*Response, error) {
 	httpClient := BuildHTTPClient()
 	response, err := httpClient.Do(httpRequest)
 	if err != nil {
+		fmt.Errorf("httpClient: Do: %v", err)
 		return nil, err
 	}
 	defer response.Body.Close()
@@ -68,6 +69,7 @@ func Resolve(request *Request) (*Response, error) {
 			if total != "" && total != "*" {
 				parse, err := strconv.ParseInt(total, 10, 64)
 				if err != nil {
+					fmt.Errorf("ParseInt: %v", err)
 					return nil, err
 				}
 				ret.Size = parse
@@ -76,6 +78,7 @@ func Resolve(request *Request) (*Response, error) {
 	} else {
 		contentLength := response.Header.Get("Content-Length")
 		if contentLength != "" {
+			fmt.Errorf("Header: Get: contentLength=%v", contentLength)
 			ret.Size, _ = strconv.ParseInt(contentLength, 10, 64)
 		}
 	}
@@ -83,7 +86,7 @@ func Resolve(request *Request) (*Response, error) {
 }
 
 // Down
-func Down(request *Request) error {
+func Down(request *Request, parrallelsNumber int) error {
 	response, err := Resolve(request)
 	if err != nil {
 		return err
@@ -99,7 +102,7 @@ func Down(request *Request) error {
 	}
 	// support range
 	if response.Range {
-		cons := 16
+		cons := parrallelsNumber
 		chunkSize := response.Size / int64(cons)
 		var (
 			waitGroup = &sync.WaitGroup{}
