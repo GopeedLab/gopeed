@@ -60,7 +60,7 @@ func ParseFromFile(path string) (*MetaInfo, error) {
 	var metaInfo MetaInfo
 	json.Unmarshal(bytes, &metaInfo)
 	if metaInfo.Info != nil {
-		// Encode info hash
+		// encode info hash
 		info := btDecode["info"].(map[string]interface{})
 		infoBtEncode := bencode.Encode(info)
 		metaInfo.InfoHash = sha1.Sum(infoBtEncode[:])

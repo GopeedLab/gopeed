@@ -34,6 +34,15 @@ type Peer struct {
 
 	Torrent *Torrent
 	conn    net.Conn
+
+	// this client is choking the peer
+	AmChoking bool
+	// this client is interested in the peer
+	AmInterested bool
+	// peer is choking this client
+	PeerChoking bool
+	// peer is interested in this client
+	PeerInterested bool
 }
 
 func (peer *Peer) Address() string {
@@ -56,7 +65,19 @@ type Message struct {
 	Payload []byte
 }
 
-func NewHandshake(reserved [8]byte, infoHash [20]byte, peerID [20]byte) *Handshake {
+type MessageBitfield []bool
+
+func decodeBitfield(payload []byte) MessageBitfield {
+	bits := make([]bool, len(payload)*8)
+	for i, b := range payload {
+		for j := 0; j < 8; j++ {
+			bits[i*8+j] = b&(1<<uint(7-j)) > 0
+		}
+	}
+	return bits
+}
+
+func newHandshake(reserved [8]byte, infoHash [20]byte, peerID [20]byte) *Handshake {
 	var arr [ProtocolIdentifierLength]byte
 	copy(arr[:], ProtocolIdentifier)
 	return &Handshake{
@@ -112,6 +133,11 @@ func (peer *Peer) DoDownload() error {
 	if err != nil {
 		return err
 	}
+	// handshake success,init status
+	peer.AmChoking = true
+	peer.AmInterested = false
+	peer.PeerChoking = true
+	peer.PeerInterested = false
 
 	scanner := bufio.NewScanner(conn)
 	scanner.Split(splitMessage)
@@ -124,16 +150,22 @@ func (peer *Peer) DoDownload() error {
 		} else {
 			switch MessageType(buf[4]) {
 			case Choke:
+				peer.PeerChoking = true
 				break
 			case Unchoke:
+				peer.PeerChoking = false
 				break
 			case Interested:
+				peer.PeerInterested = true
 				break
 			case NotInterested:
+				peer.PeerInterested = false
 				break
 			case Have:
 				break
 			case Bitfield:
+				bitfield := decodeBitfield(message.Payload)
+				fmt.Println(bitfield)
 				break
 			case Request:
 				break
@@ -229,7 +261,7 @@ func (peer *Peer) doHandshake(conn net.Conn) error {
 	/*	reserved[5] = 0x10
 		reserved[6] = 0x0
 		reserved[7] = 0x5*/
-	handshakeReq := NewHandshake(reserved, metaInfo.InfoHash, peerID)
+	handshakeReq := newHandshake(reserved, metaInfo.InfoHash, peerID)
 	buf, err := handshakeReq.encode()
 	if err != nil {
 		return err
@@ -252,6 +284,11 @@ func (peer *Peer) doHandshake(conn net.Conn) error {
 	return nil
 }
 
+// Message protocol
+// length prefix| message ID | payload
+// 4-byte       | 1-byte     | remaining bytes
+// 100          | 5          | 99-bytes
+// https://wiki.theory.org/index.php/BitTorrentSpecification#Messages
 func splitMessage(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	if !atEOF && len(data) > 4 {
 		length := int(binary.BigEndian.Uint32(data))

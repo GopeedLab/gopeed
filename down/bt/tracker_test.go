@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestClient_AddTorrent(t *testing.T) {
+func TestTracker_Tracker(t *testing.T) {
 	client := NewClient()
 	metaInfo, err := ParseFromFile("testdata/Game.of.Thrones.S08E05.720p.WEB.H264-MEMENTO.torrent")
 	if err != nil {
