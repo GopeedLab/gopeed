@@ -1,4 +1,4 @@
-package bt
+package metainfo
 
 import (
 	"crypto/sha1"

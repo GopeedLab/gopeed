@@ -1,4 +1,4 @@
-package bt
+package tracker
 
 import (
 	"fmt"
@@ -10,6 +10,10 @@ const (
 	ErrTimeout  ErrorCode = -1
 	ErrResponse ErrorCode = -2
 )
+
+type BtError interface {
+	error
+}
 
 type TrackerError struct {
 	Code ErrorCode

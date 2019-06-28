@@ -1,4 +1,4 @@
-package bt
+package peer
 
 import (
 	"bufio"
@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/cenkalti/mse"
+	"gopeed/down/bt/metainfo"
 	"io"
 	"net"
 	"strconv"
@@ -310,6 +311,6 @@ func decodeMessage(buf []byte) *Message {
 	return msg
 }
 
-func doBitfield(peer *Peer, metaInfo *MetaInfo, conn net.Conn) {
+func doBitfield(peer *Peer, metaInfo *metainfo.MetaInfo, conn net.Conn) {
 
 }

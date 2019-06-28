@@ -2,13 +2,15 @@ package bt
 
 import (
 	"crypto/rand"
+	"gopeed/down/bt/metainfo"
+	"gopeed/down/bt/torrent"
 	"net/url"
 )
 
 type Client struct {
 	PeerID [20]byte
 
-	torrents []Torrent
+	// torrents []torrent.Torrent
 }
 
 func NewClient() *Client {
@@ -31,19 +33,19 @@ func (client *Client) AddTorrent(rawurl string) error {
 	if err != nil {
 		return err
 	}
-	var metaInfo *MetaInfo
+	var metaInfo *metainfo.MetaInfo
 	switch parse.Scheme {
 	case "magnet":
 	// TODO 磁力链接解析
 	default:
-		metaInfo, err = ParseFromFile(rawurl)
+		metaInfo, err = metainfo.ParseFromFile(rawurl)
 		break
 	}
 	if err != nil {
 		return err
 	}
 
-	torrent := Torrent{
+	torrent := torrent.Torrent{
 		client:   client,
 		MetaInfo: metaInfo,
 	}
