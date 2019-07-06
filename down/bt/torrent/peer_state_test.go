@@ -9,17 +9,8 @@ import (
 )
 
 func Test_peerState_handshake(t *testing.T) {
-	torrent := buildTorrent()
-	tracker := &tracker.Tracker{
-		PeerID:   torrent.PeerID,
-		MetaInfo: torrent.MetaInfo,
-	}
-	peers, err := tracker.Tracker()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Tracker end")
-	ps := getUsablePeer(torrent, peers)
+
+	ps := getUsablePeer()
 
 	// 发出握手请求
 	handshake, err := ps.handshake()
@@ -29,6 +20,20 @@ func Test_peerState_handshake(t *testing.T) {
 		panic(err)
 	}
 	fmt.Println(handshake)
+}
+
+func Test_peerState_download(t *testing.T) {
+
+	ps := getUsablePeer()
+
+	// 发出握手请求
+	_, err := ps.handshake()
+	if err != nil {
+		panic(err)
+	}
+	// 开始下载
+	err = ps.download()
+
 }
 
 func buildTorrent() *Torrent {
@@ -41,7 +46,18 @@ func buildTorrent() *Torrent {
 	return NewTorrent(peer.GenPeerID(), metaInfo)
 }
 
-func getUsablePeer(torrent *Torrent, peers []peer.Peer) *peerState {
+// 获取一个能连接上的peer
+func getUsablePeer() *peerState {
+	torrent := buildTorrent()
+	tracker := &tracker.Tracker{
+		PeerID:   torrent.PeerID,
+		MetaInfo: torrent.MetaInfo,
+	}
+	peers, err := tracker.Tracker()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Tracker end")
 	ch := make(chan *peerState, 1)
 	for i := range peers {
 		go peerTest(torrent, &peers[i], ch)

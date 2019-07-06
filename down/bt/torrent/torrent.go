@@ -2,7 +2,6 @@ package torrent
 
 import (
 	"gopeed/down/bt/metainfo"
-	"gopeed/down/bt/peer"
 )
 
 type Torrent struct {
@@ -20,8 +19,4 @@ func NewTorrent(peerID [20]byte, metaInfo *metainfo.MetaInfo) *Torrent {
 		PieceState: make([]pieceState, len(metaInfo.Info.Pieces)),
 	}
 	return torrent
-}
-
-// 检查一个peer能否提供需要下载的文件分片
-func CheckPeer(bitfield peer.MsgBitfield) {
 }

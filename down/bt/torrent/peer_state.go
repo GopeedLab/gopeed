@@ -21,6 +21,8 @@ type peerState struct {
 	peerChoking bool
 	// peer is interested in this client
 	peerInterested bool
+
+	bitfield peer.MsgBitfield
 }
 
 // 使用MSE加密来避免运营商对bt流量的封锁，基本上现在市面上BT客户端都默认开启了，不用MSE的话很多Peer拒绝连接
@@ -85,14 +87,14 @@ func (ps *peerState) download() error {
 		buf := scanner.Bytes()
 		message := &peer.Message{}
 		message.Decode(buf)
-		switch peer.MessageType(message.Type) {
+		switch message.ID {
 		case peer.Keepalive:
 			break
 		case peer.Choke:
 			ps.peerChoking = true
 			break
 		case peer.Unchoke:
-			ps.peerChoking = false
+			ps.handleUnchoke()
 			break
 		case peer.Interested:
 			ps.peerInterested = true
@@ -103,9 +105,7 @@ func (ps *peerState) download() error {
 		case peer.Have:
 			break
 		case peer.Bitfield:
-			bitfield := peer.MsgBitfield(message.Payload)
-			// 判断peer能提供需要下载的文件分片
-
+			ps.handleBitfield(message.Payload)
 			break
 		case peer.Request:
 			break
@@ -116,4 +116,50 @@ func (ps *peerState) download() error {
 		}
 	}
 	return nil
+}
+
+func (ps *peerState) handleUnchoke() {
+	ps.peerChoking = false
+	// 如果客户端对peer感兴趣并且peer没有choked客户端，就可以开始下载了
+	if ps.amInterested {
+		have := ps.getHavePieces(ps.bitfield)
+		if len(have) > 0 {
+			/*for _, index := range have {
+				ps.conn.Write((&peer.Message{13, peer.Request,}))
+			}*/
+			return
+		}
+	}
+	ps.conn.Close()
+}
+
+func (ps *peerState) handleBitfield(payload []byte) {
+	ps.bitfield = payload
+	have := ps.getHavePieces(ps.bitfield)
+	if len(have) > 0 {
+		// 表示对该peer感兴趣，并且不choked该peer
+		_, err := ps.conn.Write(peer.NewMessage(peer.Interested, []byte{}).Encode())
+		if err != nil {
+			ps.conn.Close()
+			return
+		}
+		ps.amInterested = true
+		_, err = ps.conn.Write(peer.NewMessage(peer.Unchoke, []byte{}).Encode())
+		if err != nil {
+			ps.conn.Close()
+			return
+		}
+		ps.amChoking = false
+	} else {
+		ps.conn.Close()
+	}
+}
+
+// 获取peer能提供需要下载的文件分片
+func (ps *peerState) getHavePieces(bitfield peer.MsgBitfield) []int {
+	states := make([]bool, len(ps.torrent.PieceState))
+	for i := range states {
+		states[i] = ps.torrent.PieceState[i].complete
+	}
+	return bitfield.Have(states)
 }
