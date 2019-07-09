@@ -2,6 +2,7 @@ package torrent
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	"github.com/cenkalti/mse"
 	"gopeed/down/bt/peer"
@@ -26,7 +27,7 @@ type peerState struct {
 }
 
 // 使用MSE加密来避免运营商对bt流量的封锁，基本上现在市面上BT客户端都默认开启了，不用MSE的话很多Peer拒绝连接
-// http://wiki.vuze.com/w/Message_Stream_Encryption
+// see http://wiki.vuze.com/w/Message_Stream_Encryption
 func (ps *peerState) dialMse() error {
 	conn, err := net.Dial("tcp", ps.Address())
 	if err != nil {
@@ -43,7 +44,7 @@ func (ps *peerState) dialMse() error {
 }
 
 // Handshake of Peer wire protocol
-// https://wiki.theory.org/index.php/BitTorrentSpecification#Handshake
+// see https://wiki.theory.org/index.php/BitTorrentSpecification#Handshake
 func (ps *peerState) handshake() (*peer.Handshake, error) {
 	handshakeRes, err := func() (*peer.Handshake, error) {
 		handshakeReq := peer.NewHandshake([8]byte{}, ps.torrent.MetaInfo.InfoHash, ps.torrent.PeerID)
@@ -79,7 +80,6 @@ func (ps *peerState) handshake() (*peer.Handshake, error) {
 	return handshakeRes, nil
 }
 
-//
 func (ps *peerState) download() error {
 	scanner := bufio.NewScanner(ps.conn)
 	scanner.Split(peer.SplitMessage)
@@ -124,9 +124,17 @@ func (ps *peerState) handleUnchoke() {
 	if ps.amInterested {
 		have := ps.getHavePieces(ps.bitfield)
 		if len(have) > 0 {
-			/*for _, index := range have {
-				ps.conn.Write((&peer.Message{13, peer.Request,}))
-			}*/
+			for i := range have {
+				buf := make([]byte, 12)
+				binary.BigEndian.PutUint32(buf[:4], uint32(have[i]))
+				binary.BigEndian.PutUint32(buf[4:8], 0)
+				binary.BigEndian.PutUint32(buf[8:], 2<<13)
+				_, err := ps.conn.Write(peer.NewMessage(peer.Request, buf).Encode())
+				if err != nil {
+					ps.conn.Close()
+					return
+				}
+			}
 			return
 		}
 	}

@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 )
 
-type MessageID byte
+type MessageID int
 
 const (
 	Keepalive     MessageID = -1
@@ -42,7 +42,7 @@ func (msg *Message) Encode() []byte {
 		buf := make([]byte, 5+len(msg.Payload))
 		binary.BigEndian.PutUint32(buf, msg.Length)
 		buf[4] = byte(msg.ID)
-		buf = append(buf, msg.Payload[:]...)
+		copy(buf[5:], msg.Payload[:])
 		return buf
 	}
 }
