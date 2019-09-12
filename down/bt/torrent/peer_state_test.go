@@ -2,9 +2,9 @@ package torrent
 
 import (
 	"fmt"
-	"gopeed/down/bt/metainfo"
-	"gopeed/down/bt/peer"
-	"gopeed/down/bt/tracker"
+	"github.com/monkeyWie/gopeed/down/bt/metainfo"
+	"github.com/monkeyWie/gopeed/down/bt/peer"
+	"github.com/monkeyWie/gopeed/down/bt/tracker"
 	"testing"
 )
 
@@ -31,6 +31,8 @@ func Test_peerState_download(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("handshake end")
+
 	// 开始下载
 	err = ps.download()
 
@@ -76,4 +78,8 @@ func peerTest(torrent *Torrent, peer *peer.Peer, ch chan *peerState) {
 		return
 	}
 	ch <- ps
+}
+
+func TestSome(t *testing.T) {
+	fmt.Println(11)
 }

@@ -1,7 +1,7 @@
 package torrent
 
 import (
-	"gopeed/down/bt/metainfo"
+	"github.com/monkeyWie/gopeed/down/bt/metainfo"
 )
 
 type Torrent struct {

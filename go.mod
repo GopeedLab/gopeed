@@ -1,6 +1,6 @@
-module gopeed
+module github.com/monkeyWie/gopeed
 
-go 1.12
+go 1.13
 
 require (
 	github.com/cenkalti/mse v0.0.0-20140930130441-6ef65f170972

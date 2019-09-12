@@ -39,8 +39,8 @@ type File struct {
 }
 
 type ExtraInfo struct {
-	InfoHash [20]byte
-	FileSize uint64
+	InfoHash  [20]byte
+	TotalSize uint64
 }
 
 func ParseFromFile(path string) (*MetaInfo, error) {
@@ -75,8 +75,20 @@ func ParseFromFile(path string) (*MetaInfo, error) {
 			}
 		}
 	}
-	metaInfo.FileSize = getTotalSize(&metaInfo)
+	metaInfo.TotalSize = getTotalSize(&metaInfo)
 	return &metaInfo, nil
+}
+
+// 获取某个分片的大小
+func (metaInfo *MetaInfo) GetPieceSize(index int) uint64 {
+	// 是否为最后一个分片
+	if index == len(metaInfo.Info.Pieces)-1 {
+		size := metaInfo.TotalSize % metaInfo.Info.PieceLength
+		if size > 0 {
+			return size
+		}
+	}
+	return metaInfo.Info.PieceLength
 }
 
 func getTotalSize(metaInfo *MetaInfo) uint64 {

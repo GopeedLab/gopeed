@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"gopeed/down/bt/metainfo"
-	"gopeed/down/bt/peer"
+	"github.com/monkeyWie/gopeed/down/bt/metainfo"
+	"github.com/monkeyWie/gopeed/down/bt/peer"
 	"io"
 	"io/ioutil"
 	"math"
@@ -208,7 +208,7 @@ func (tracker *Tracker) announce(conn *net.UDPConn, timeout int64, connectionId 
 	request.peerID = tracker.PeerID
 	request.downloaded = 0
 	request.uploaded = 0
-	request.left = tracker.MetaInfo.FileSize - request.downloaded
+	request.left = tracker.MetaInfo.TotalSize - request.downloaded
 	request.event = 0
 	request.ip = 0
 	request.key = 0
@@ -287,7 +287,7 @@ func (tracker *Tracker) httpTracker(url *url.URL) (peers []peer.Peer, err error)
 	query.Add("port", "6882")
 	query.Add("uploaded", "0")
 	query.Add("downloaded", "0")
-	query.Add("left", strconv.FormatInt(int64(metaInfo.FileSize), 10))
+	query.Add("left", strconv.FormatInt(int64(metaInfo.TotalSize), 10))
 	url.RawQuery = query.Encode()
 	request, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {

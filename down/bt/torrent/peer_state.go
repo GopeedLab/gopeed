@@ -5,8 +5,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/cenkalti/mse"
-	"gopeed/down/bt/peer"
+	"github.com/monkeyWie/gopeed/down/bt/peer"
+	"github.com/monkeyWie/gopeed/down/bt/peer/message"
 	"io"
+	"math"
 	"net"
 )
 
@@ -23,7 +25,8 @@ type peerState struct {
 	// peer is interested in this client
 	peerInterested bool
 
-	bitfield peer.MsgBitfield
+	writeMsgCh chan []byte
+	bitfield   *message.Bitfield
 }
 
 // 使用MSE加密来避免运营商对bt流量的封锁，基本上现在市面上BT客户端都默认开启了，不用MSE的话很多Peer拒绝连接
@@ -81,38 +84,50 @@ func (ps *peerState) handshake() (*peer.Handshake, error) {
 }
 
 func (ps *peerState) download() error {
+	// 异步写，防止读取阻塞
+	ps.writeMsgCh = make(chan []byte, 64)
+	go func() {
+		for buf := range ps.writeMsgCh {
+			_, err := ps.conn.Write(buf)
+			if err != nil {
+				fmt.Println(err)
+				ps.conn.Close()
+			}
+		}
+	}()
 	scanner := bufio.NewScanner(ps.conn)
-	scanner.Split(peer.SplitMessage)
+	scanner.Split(message.SplitMessage)
 	for scanner.Scan() {
 		buf := scanner.Bytes()
-		message := &peer.Message{}
-		message.Decode(buf)
-		switch message.ID {
-		case peer.Keepalive:
-			break
-		case peer.Choke:
-			ps.peerChoking = true
-			break
-		case peer.Unchoke:
-			ps.handleUnchoke()
-			break
-		case peer.Interested:
-			ps.peerInterested = true
-			break
-		case peer.NotInterested:
-			ps.peerInterested = false
-			break
-		case peer.Have:
-			break
-		case peer.Bitfield:
-			ps.handleBitfield(message.Payload)
-			break
-		case peer.Request:
-			break
-		case peer.Piece:
-			break
-		case peer.Cancel:
-			break
+		length := binary.BigEndian.Uint32(buf[:4])
+		if length == 0 {
+			// 	keepalive
+		} else {
+			messageID := message.ID(buf[4])
+			payload := buf[5:]
+			switch messageID {
+			case message.IdChoke:
+				break
+			case message.IdUnchoke:
+				ps.handleUnchoke()
+				break
+			case message.IdInterested:
+				break
+			case message.IdNotinterested:
+				break
+			case message.IdHave:
+				break
+			case message.IdBitfield:
+				ps.handleBitfield(payload)
+				break
+			case message.IdRequest:
+				break
+			case message.IdPiece:
+				ps.handlePiece()
+				break
+			case message.IdCancel:
+				break
+			}
 		}
 	}
 	return nil
@@ -124,16 +139,19 @@ func (ps *peerState) handleUnchoke() {
 	if ps.amInterested {
 		have := ps.getHavePieces(ps.bitfield)
 		if len(have) > 0 {
-			for i := range have {
-				buf := make([]byte, 12)
-				binary.BigEndian.PutUint32(buf[:4], uint32(have[i]))
-				binary.BigEndian.PutUint32(buf[4:8], 0)
-				binary.BigEndian.PutUint32(buf[8:], 2<<13)
-				_, err := ps.conn.Write(peer.NewMessage(peer.Request, buf).Encode())
-				if err != nil {
-					ps.conn.Close()
-					return
+			// 获取分片的长度
+			for _, index := range have {
+				pieceLength := ps.torrent.MetaInfo.GetPieceSize(index)
+				lastOffset := uint64(0)
+				// 按块下载分片
+				for lastOffset < pieceLength {
+					blockLength := math.Min(2<<13, float64(pieceLength-lastOffset))
+					ps.write(message.NewRequest(uint32(index), uint32(lastOffset), uint32(blockLength)).Encode())
+					lastOffset += uint64(blockLength)
+					fmt.Println("request piece")
 				}
+				// TODO 测试代码
+				break
 			}
 			return
 		}
@@ -142,32 +160,50 @@ func (ps *peerState) handleUnchoke() {
 }
 
 func (ps *peerState) handleBitfield(payload []byte) {
-	ps.bitfield = payload
+	ps.bitfield = message.NewBitfield(payload)
 	have := ps.getHavePieces(ps.bitfield)
 	if len(have) > 0 {
 		// 表示对该peer感兴趣，并且不choked该peer
-		_, err := ps.conn.Write(peer.NewMessage(peer.Interested, []byte{}).Encode())
-		if err != nil {
-			ps.conn.Close()
-			return
-		}
+		ps.write(message.NewInterested().Encode())
 		ps.amInterested = true
-		_, err = ps.conn.Write(peer.NewMessage(peer.Unchoke, []byte{}).Encode())
-		if err != nil {
-			ps.conn.Close()
-			return
-		}
+
+		ps.write(message.NewUnchoke().Encode())
 		ps.amChoking = false
 	} else {
 		ps.conn.Close()
 	}
 }
 
+// 处理分片下载响应
+func (ps *peerState) handlePiece() {
+	fmt.Println("one piece")
+}
+
 // 获取peer能提供需要下载的文件分片
-func (ps *peerState) getHavePieces(bitfield peer.MsgBitfield) []int {
+func (ps *peerState) getHavePieces(bitfield *message.Bitfield) []int {
 	states := make([]bool, len(ps.torrent.PieceState))
 	for i := range states {
 		states[i] = ps.torrent.PieceState[i].complete
 	}
 	return bitfield.Have(states)
 }
+
+// 异步写入数据
+func (ps *peerState) write(buf []byte) {
+	ps.writeMsgCh <- buf
+}
+
+// 获取要写入到的文件
+/*func (ps *peerState) getWriteFile(request *message.Request) string {
+	info := ps.torrent.MetaInfo.Info
+	// 单文件
+	if len(info.Files) == 0 {
+		return info.Name
+	} else {
+		request.Index * info.PieceLength + be
+		for i := 0; i < len(info.Files); i++ {
+
+		}
+	}
+}
+*/

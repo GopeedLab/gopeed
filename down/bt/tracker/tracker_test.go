@@ -2,7 +2,7 @@ package tracker
 
 import (
 	"fmt"
-	"gopeed/down/bt/metainfo"
+	"github.com/monkeyWie/gopeed/down/bt/metainfo"
 	"testing"
 )
 

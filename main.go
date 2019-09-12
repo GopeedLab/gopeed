@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
-	"gopeed/down/http"
+	"github.com/monkeyWie/gopeed/down/bt/metainfo"
+	"github.com/monkeyWie/gopeed/down/bt/peer"
+	"github.com/monkeyWie/gopeed/down/bt/torrent"
+	"github.com/monkeyWie/gopeed/down/bt/tracker"
+	"github.com/monkeyWie/gopeed/down/http"
 )
 
 func main() {
@@ -20,5 +24,26 @@ func main() {
 	}
 	got, _ := http.Resolve(request)
 	fmt.Println(got)
+	getUsablePeer()
 	// webview.Open("Minimal webview example", "https://www.baidu.com", 800, 600, true)
+}
+
+func buildTorrent() *torrent.Torrent {
+	metaInfo, err := metainfo.ParseFromFile("../testdata/Game.of.Thrones.S08E05.720p.WEB.H264-MEMENTO.torrent")
+	if err != nil {
+		panic(err)
+	}
+	metaInfo.Announce = "udp://tracker.opentrackr.org:1337/announce"
+	metaInfo.AnnounceList = [][]string{}
+	return torrent.NewTorrent(peer.GenPeerID(), metaInfo)
+}
+
+// 获取一个能连接上的peer
+func getUsablePeer() {
+	torrent := buildTorrent()
+	tracker := &tracker.Tracker{
+		PeerID:   torrent.PeerID,
+		MetaInfo: torrent.MetaInfo,
+	}
+	tracker.Tracker()
 }
