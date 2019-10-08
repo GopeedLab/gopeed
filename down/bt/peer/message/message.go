@@ -29,14 +29,14 @@ type Message struct {
 	ID     ID
 }
 
-func (msg Message) Encode() []byte {
+func (msg *Message) Encode() []byte {
 	buf := make([]byte, 5)
 	binary.BigEndian.PutUint32(buf, msg.Length)
 	buf[4] = byte(msg.ID)
 	return buf
 }
 
-func (msg Message) Decode(buf []byte) {
+func (msg *Message) Decode(buf []byte) {
 	msg.Length = binary.BigEndian.Uint32(buf)
 	msg.ID = ID(buf[4])
 }

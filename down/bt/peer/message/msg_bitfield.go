@@ -2,13 +2,13 @@ package message
 
 // bitfield: <len=0001+X><id=5><bitfield>
 type Bitfield struct {
-	Message
+	*Message
 	payload []byte
 }
 
 func NewBitfield(payload []byte) *Bitfield {
 	return &Bitfield{
-		Message: Message{
+		Message: &Message{
 			Length: uint32(len(payload) + 1),
 			ID:     IdBitfield,
 		},
@@ -21,8 +21,9 @@ func (b *Bitfield) Encode() []byte {
 }
 
 func (b *Bitfield) Decode(buf []byte) Serialize {
+	b.Message = &Message{}
 	b.Message.Decode(buf)
-	copy(b.payload, buf[5:])
+	b.payload = buf[5:]
 	return b
 }
 

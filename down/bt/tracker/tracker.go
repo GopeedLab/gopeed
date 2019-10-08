@@ -204,11 +204,11 @@ func (tracker *Tracker) connect(conn *net.UDPConn, timeout int64) (response *udp
 
 func (tracker *Tracker) announce(conn *net.UDPConn, timeout int64, connectionId uint64) (response *udpAnnounceResponse, err error) {
 	request := newUdpAnnounceRequest(connectionId)
-	request.infoHash = tracker.MetaInfo.InfoHash
+	request.infoHash = tracker.MetaInfo.GetInfoHash()
 	request.peerID = tracker.PeerID
 	request.downloaded = 0
 	request.uploaded = 0
-	request.left = tracker.MetaInfo.TotalSize - request.downloaded
+	request.left = tracker.MetaInfo.GetTotalSize() - request.downloaded
 	request.event = 0
 	request.ip = 0
 	request.key = 0
@@ -282,12 +282,13 @@ func (tracker *Tracker) httpTracker(url *url.URL) (peers []peer.Peer, err error)
 	peerID := tracker.PeerID
 
 	query := url.Query()
-	query.Add("info_hash", string(metaInfo.InfoHash[:]))
+	infoHash := metaInfo.GetInfoHash()
+	query.Add("info_hash", string(infoHash[:]))
 	query.Add("peer_id", string(peerID[:]))
 	query.Add("port", "6882")
 	query.Add("uploaded", "0")
 	query.Add("downloaded", "0")
-	query.Add("left", strconv.FormatInt(int64(metaInfo.TotalSize), 10))
+	query.Add("left", strconv.FormatInt(int64(metaInfo.GetTotalSize()), 10))
 	url.RawQuery = query.Encode()
 	request, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {

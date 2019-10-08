@@ -10,5 +10,6 @@ func TestParseFromFile(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(metaInfo)
+	fmt.Printf("%+v\n", metaInfo)
+	fmt.Printf("%+v\n", metaInfo.Info.Files)
 }

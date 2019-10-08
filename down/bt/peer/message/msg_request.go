@@ -26,9 +26,9 @@ func NewRequest(index uint32, begin uint32, length uint32) *Request {
 
 func (r *Request) Encode() []byte {
 	buf := make([]byte, 12)
-	binary.BigEndian.PutUint32(buf[:4], r.Index)
+	binary.BigEndian.PutUint32(buf[0:4], r.Index)
 	binary.BigEndian.PutUint32(buf[4:8], r.Begin)
-	binary.BigEndian.PutUint32(buf[8:], r.Length)
+	binary.BigEndian.PutUint32(buf[8:12], r.Length)
 	return append(r.Message.Encode(), buf...)
 }
 

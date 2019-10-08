@@ -43,7 +43,7 @@ func buildTorrent() *Torrent {
 	if err != nil {
 		panic(err)
 	}
-	metaInfo.Announce = "udp://tracker.opentrackr.org:1337/announce"
+	metaInfo.Announce = "udp://exodus.desync.com:6969/announce"
 	metaInfo.AnnounceList = [][]string{}
 	return NewTorrent(peer.GenPeerID(), metaInfo)
 }

@@ -22,7 +22,9 @@ type MetaInfo struct {
 	UrlList []string `json:"url-list"`
 	Info    *Info    `json:"info"`
 
-	ExtraInfo `json:"-"`
+	infoHash    [20]byte     `json:"-"`
+	totalSize   uint64       `json:"-"`
+	fileDetails []FileDetail `json:"-"`
 }
 
 type Info struct {
@@ -34,13 +36,15 @@ type Info struct {
 }
 
 type File struct {
-	Length uint64 `json:"length"`
-	Path   string `json:"path"`
+	Length uint64   `json:"length"`
+	Path   []string `json:"path"`
 }
 
-type ExtraInfo struct {
-	InfoHash  [20]byte
-	TotalSize uint64
+type FileDetail struct {
+	Length uint64
+	Path   []string
+	Begin  int64
+	End    int64
 }
 
 func ParseFromFile(path string) (*MetaInfo, error) {
@@ -63,7 +67,7 @@ func ParseFromFile(path string) (*MetaInfo, error) {
 		// encode info hash
 		info := btDecode["info"].(map[string]interface{})
 		infoBtEncode := bencode.Encode(info)
-		metaInfo.InfoHash = sha1.Sum(infoBtEncode[:])
+		metaInfo.infoHash = sha1.Sum(infoBtEncode[:])
 		// Split pieces hash
 		pieces := info["pieces"].(string)
 		if pieces != "" {
@@ -75,7 +79,7 @@ func ParseFromFile(path string) (*MetaInfo, error) {
 			}
 		}
 	}
-	metaInfo.TotalSize = getTotalSize(&metaInfo)
+	calcFileSize(&metaInfo)
 	return &metaInfo, nil
 }
 
@@ -83,7 +87,7 @@ func ParseFromFile(path string) (*MetaInfo, error) {
 func (metaInfo *MetaInfo) GetPieceSize(index int) uint64 {
 	// 是否为最后一个分片
 	if index == len(metaInfo.Info.Pieces)-1 {
-		size := metaInfo.TotalSize % metaInfo.Info.PieceLength
+		size := metaInfo.totalSize % metaInfo.Info.PieceLength
 		if size > 0 {
 			return size
 		}
@@ -91,17 +95,40 @@ func (metaInfo *MetaInfo) GetPieceSize(index int) uint64 {
 	return metaInfo.Info.PieceLength
 }
 
-func getTotalSize(metaInfo *MetaInfo) uint64 {
+// 获取所有文件的大小
+func (metaInfo *MetaInfo) GetTotalSize() uint64 {
+	return metaInfo.totalSize
+}
+
+// 获取info hash
+func (metaInfo *MetaInfo) GetInfoHash() [20]byte {
+	return metaInfo.infoHash
+}
+
+// 获取所有文件的开始偏移字节
+func (metaInfo *MetaInfo) GetFileDetails() []FileDetail {
+	return metaInfo.fileDetails
+}
+
+// 计算所有文件的大小
+func calcFileSize(metaInfo *MetaInfo) {
 	if metaInfo.Info != nil {
-		if len(metaInfo.Info.Files) > 0 {
+		fileCount := len(metaInfo.Info.Files)
+		if fileCount > 0 {
+			metaInfo.fileDetails = make([]FileDetail, fileCount)
 			var length uint64
-			for _, f := range metaInfo.Info.Files {
+			for i, f := range metaInfo.Info.Files {
+				metaInfo.fileDetails[i] = FileDetail{
+					Length: f.Length,
+					Path:   f.Path,
+					Begin:  int64(length),
+					End:    int64(length + f.Length),
+				}
 				length += f.Length
 			}
-			return length
+			metaInfo.totalSize = length
 		} else {
-			return metaInfo.Info.Length
+			metaInfo.totalSize = metaInfo.Info.Length
 		}
 	}
-	return 0
 }
