@@ -83,7 +83,7 @@ func TestBitfield_IsComplete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := &Bitfield{
-				Message: tt.fields.Message,
+				Message: &tt.fields.Message,
 				payload: tt.fields.payload,
 			}
 			if got := b.IsComplete(tt.args.i); got != tt.want {
@@ -151,7 +151,7 @@ func TestBitfield_Have(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := &Bitfield{
-				Message: tt.fields.Message,
+				Message: &tt.fields.Message,
 				payload: tt.fields.payload,
 			}
 			if got := b.Have(tt.args.pieces); !reflect.DeepEqual(got, tt.want) {
