@@ -246,7 +246,7 @@ func (tracker *Tracker) Tracker() (peers []peer.Peer, err error) {
 		for _, announceArr := range metaInfo.AnnounceList {
 			if len(announceArr) > 0 {
 				for _, announce := range announceArr {
-					peers, err = tracker.doTracker(announce)
+					peers, err = tracker.DoTracker(announce)
 					if err == nil {
 						return
 					}
@@ -254,18 +254,16 @@ func (tracker *Tracker) Tracker() (peers []peer.Peer, err error) {
 			}
 		}
 	} else {
-		peers, err = tracker.doTracker(metaInfo.Announce)
+		peers, err = tracker.DoTracker(metaInfo.Announce)
 	}
 	return
 }
 
-func (tracker *Tracker) doTracker(announce string) (peers []peer.Peer, err error) {
+func (tracker *Tracker) DoTracker(announce string) (peers []peer.Peer, err error) {
 	if announce != "" {
 		url, _ := url.Parse(announce)
 		switch url.Scheme {
 		case "http", "https":
-			// TODO UDP test
-			break
 			return tracker.httpTracker(url)
 		case "udp", "udp4", "udp6":
 			return tracker.udpTracker(url)

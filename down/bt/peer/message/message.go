@@ -8,15 +8,15 @@ import (
 type ID byte
 
 const (
-	IdChoke         ID = 0
-	IdUnchoke       ID = 1
-	IdInterested    ID = 2
-	IdNotinterested ID = 3
-	IdHave          ID = 4
-	IdBitfield      ID = 5
-	IdRequest       ID = 6
-	IdPiece         ID = 7
-	IdCancel        ID = 8
+	IdChoke ID = iota
+	IdUnchoke
+	IdInterested
+	IdNotinterested
+	IdHave
+	IdBitfield
+	IdRequest
+	IdPiece
+	IdCancel
 )
 
 /*type Message struct {

@@ -10,6 +10,6 @@ func TestParseFromFile(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%+v\n", metaInfo)
+	fmt.Printf("%+v\n", metaInfo.AnnounceList)
 	fmt.Printf("%+v\n", metaInfo.Info.Files)
 }

@@ -30,7 +30,7 @@ type MetaInfo struct {
 type Info struct {
 	Name        string `json:"name"`
 	PieceLength uint64 `json:"piece length"`
-	Pieces      []string
+	Pieces      [][20]byte
 	Length      uint64 `json:"length"`
 	Files       []File `json:"files"`
 }
@@ -71,11 +71,12 @@ func ParseFromFile(path string) (*MetaInfo, error) {
 		// Split pieces hash
 		pieces := info["pieces"].(string)
 		if pieces != "" {
-			metaInfo.Info.Pieces = make([]string, len(pieces)/20)
+			metaInfo.Info.Pieces = make([][20]byte, len(pieces)/20)
 			// pieces parse
 			for i := range metaInfo.Info.Pieces {
 				begin := i * 20
-				metaInfo.Info.Pieces[i] = pieces[begin : begin+20]
+				metaInfo.Info.Pieces[i] = [20]byte{}
+				copy(metaInfo.Info.Pieces[i][:], pieces[begin:begin+20])
 			}
 		}
 	}
