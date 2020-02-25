@@ -2,8 +2,8 @@ package bt
 
 import (
 	"crypto/rand"
-	"github.com/monkeyWie/gopeed/down/bt/metainfo"
-	"github.com/monkeyWie/gopeed/down/bt/torrent"
+	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed/protocol/bt/torrent"
 	"net/url"
 )
 

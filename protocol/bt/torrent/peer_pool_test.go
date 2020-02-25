@@ -2,7 +2,7 @@ package torrent
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed/down/bt/peer"
+	"github.com/monkeyWie/gopeed/protocol/bt/peer"
 	"testing"
 )
 

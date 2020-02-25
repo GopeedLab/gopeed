@@ -101,10 +101,7 @@ func Down(request *Request) error {
 	if response.Range {
 		cons := 16
 		chunkSize := response.Size / int64(cons)
-		var (
-			waitGroup = &sync.WaitGroup{}
-			fileLock  = &sync.Mutex{}
-		)
+		waitGroup := &sync.WaitGroup{}
 		waitGroup.Add(cons)
 		for i := 0; i < cons; i++ {
 			start := int64(i) * chunkSize
@@ -112,11 +109,11 @@ func Down(request *Request) error {
 			if i == cons-1 {
 				end = response.Size
 			}
-			go downChunk(request, file, start, end-1, waitGroup, fileLock)
+			go downChunk(request, file, start, end-1, waitGroup)
 		}
 		waitGroup.Wait()
 	} else {
-		downChunk(request, file, 0, response.Size, nil, nil)
+		downChunk(request, file, 0, response.Size, nil)
 	}
 	return nil
 }
@@ -148,7 +145,7 @@ func BuildHTTPClient() *http.Client {
 	return &http.Client{Jar: jar}
 }
 
-func downChunk(request *Request, file *os.File, start int64, end int64, waitGroup *sync.WaitGroup, fileLock *sync.Mutex) {
+func downChunk(request *Request, file *os.File, start int64, end int64, waitGroup *sync.WaitGroup) {
 	if waitGroup != nil {
 		defer waitGroup.Done()
 	}
@@ -163,13 +160,11 @@ func downChunk(request *Request, file *os.File, start int64, end int64, waitGrou
 	}
 	defer httpResponse.Body.Close()
 	buf := make([]byte, 8192)
-	writeIndex := int64(start)
+	writeIndex := start
 	for {
 		n, err := httpResponse.Body.Read(buf)
 		if n > 0 {
-			fileLock.Lock()
 			writeSize, err := file.WriteAt(buf[0:n], writeIndex)
-			fileLock.Unlock()
 			if err != nil {
 				fmt.Println(err)
 				return

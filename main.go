@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed/down/bt/metainfo"
-	"github.com/monkeyWie/gopeed/down/bt/peer"
-	"github.com/monkeyWie/gopeed/down/bt/torrent"
-	"github.com/monkeyWie/gopeed/down/bt/tracker"
-	"github.com/monkeyWie/gopeed/down/http"
+	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed/protocol/bt/torrent"
+	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
+	"github.com/monkeyWie/gopeed/protocol/http"
 )
 
 func main() {

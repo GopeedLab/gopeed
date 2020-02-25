@@ -2,8 +2,8 @@ package torrent
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed/down/bt/metainfo"
-	"github.com/monkeyWie/gopeed/down/bt/tracker"
+	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
 	"sync"
 	"time"
 )
@@ -43,7 +43,6 @@ func (t *Torrent) Download(path string) {
 		go func(index int) {
 			peer := t.peerPool.get()
 			if peer == nil {
-				fmt.Println("no peer")
 				time.Sleep(time.Second * 10)
 				t.PiecesState.setState(index, stateReady)
 				<-taskCh
@@ -58,7 +57,12 @@ func (t *Torrent) Download(path string) {
 				fmt.Printf("peer ready:%s,download %d\n", peer.Address(), index)
 				err = pc.downloadPiece(index)
 				if err != nil {
-					t.PiecesState.setState(index, stateDownloading)
+					fmt.Println(err)
+					// 下载失败
+					t.PiecesState.setState(index, stateReady)
+				} else {
+					// 下载完成
+					t.PiecesState.setState(index, stateFinished)
 				}
 				t.peerPool.release(peer)
 			}
@@ -73,11 +77,7 @@ func (t *Torrent) fetchPeers() {
 		PeerID:   t.PeerID,
 		MetaInfo: t.MetaInfo,
 	}
-	urls := []string{
-		"udp://exodus.desync.com:6969/announce",
-		"udp://tracker.openbittorrent.com:80/announce",
-		"udp://tracker.leechers-paradise.org:6969",
-	}
+	urls := tracker.MetaInfo.AnnounceList[0]
 	var wg sync.WaitGroup
 	ch := make(chan interface{})
 	wg.Add(len(urls))
@@ -86,7 +86,7 @@ func (t *Torrent) fetchPeers() {
 			defer wg.Done()
 			peers, err := tracker.DoTracker(url)
 			if err == nil {
-				fmt.Println("tracker end:" + url)
+				fmt.Printf("Tracker end,url:%s,count:%d\n", url, len(peers))
 				ch <- nil
 				t.peerPool.put(peers)
 			}

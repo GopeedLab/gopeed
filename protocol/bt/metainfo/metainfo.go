@@ -29,10 +29,12 @@ type MetaInfo struct {
 
 type Info struct {
 	Name        string `json:"name"`
-	PieceLength uint64 `json:"piece length"`
+	PieceLength int    `json:"piece length"`
 	Pieces      [][20]byte
-	Length      uint64 `json:"length"`
-	Files       []File `json:"files"`
+	// 单个文件时，length为该文件的长度
+	Length uint64 `json:"length"`
+	// 多个文件
+	Files []File `json:"files"`
 }
 
 type File struct {
@@ -45,6 +47,12 @@ type FileDetail struct {
 	Path   []string
 	Begin  int64
 	End    int64
+}
+
+type PieceMapping struct {
+	file  int
+	begin int64
+	end   int64
 }
 
 func ParseFromFile(path string) (*MetaInfo, error) {
@@ -85,12 +93,12 @@ func ParseFromFile(path string) (*MetaInfo, error) {
 }
 
 // 获取某个分片的大小
-func (metaInfo *MetaInfo) GetPieceSize(index int) uint64 {
+func (metaInfo *MetaInfo) GetPieceLength(index int) int {
 	// 是否为最后一个分片
 	if index == len(metaInfo.Info.Pieces)-1 {
-		size := metaInfo.totalSize % metaInfo.Info.PieceLength
+		size := metaInfo.totalSize % uint64(metaInfo.Info.PieceLength)
 		if size > 0 {
-			return size
+			return int(size)
 		}
 	}
 	return metaInfo.Info.PieceLength

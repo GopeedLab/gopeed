@@ -49,6 +49,7 @@ func TestDown(t *testing.T) {
 				return
 			}
 			downMd5 := fileMd5("favicon.ico")
+			os.Remove("favicon.ico")
 			if "8de7a6a2e786861013d61b77b2394012" != downMd5 {
 				t.Errorf("error md5= %v", downMd5)
 				return

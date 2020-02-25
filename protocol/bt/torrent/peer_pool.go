@@ -1,7 +1,7 @@
 package torrent
 
 import (
-	"github.com/monkeyWie/gopeed/down/bt/peer"
+	"github.com/monkeyWie/gopeed/protocol/bt/peer"
 	"sync"
 )
 

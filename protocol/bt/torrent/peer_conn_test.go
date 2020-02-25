@@ -2,8 +2,9 @@ package torrent
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed/down/bt/peer"
-	"github.com/monkeyWie/gopeed/down/bt/tracker"
+	"github.com/monkeyWie/gopeed/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -104,7 +105,6 @@ func getUsablePeerMore() chan *peerConn {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Tracker end,peer count:%d\n", len(peers))
 	ch := make(chan *peerConn)
 	for i := range peers {
 		go peerTest(torrent, &peers[i], ch)
@@ -143,5 +143,24 @@ func TestSome(t *testing.T) {
 	r := <-ch
 	fmt.Println(r)
 	fmt.Println("111")
+
+}
+
+func TestSome2(t *testing.T) {
+	wg := sync.WaitGroup{}
+	wg.Add(10)
+	file, err := os.OpenFile("e:/testbt/test.data", os.O_RDWR|os.O_CREATE, 0644)
+	for i := 0; i < 10; i++ {
+		go func(i int) {
+			for j := 0; j < 100; j++ {
+				if err != nil {
+					panic(err)
+				}
+				_, err = file.WriteAt([]byte{byte(i)}, int64(i*8))
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
 
 }
