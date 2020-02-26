@@ -46,12 +46,12 @@ func (client *Client) AddTorrent(rawurl string) error {
 	}
 
 	torrent := torrent.Torrent{
-		client:   client,
+		// client:   client,
 		MetaInfo: metaInfo,
 	}
-	client.torrents = append(client.torrents, torrent)
+	// client.torrents = append(client.torrents, torrent)
 
-	torrent.Download()
+	torrent.Download("")
 
 	return nil
 }

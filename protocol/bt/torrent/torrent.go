@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
 	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
-	"sync"
 	"time"
 )
 
@@ -12,17 +11,17 @@ type Torrent struct {
 	PeerID   [20]byte
 	MetaInfo *metainfo.MetaInfo
 
-	PiecesState *piecesState
-	peerPool    *peerPool
+	pieces   *pieces
+	peerPool *peerPool
 
 	Path string
 }
 
 func NewTorrent(peerID [20]byte, metaInfo *metainfo.MetaInfo) *Torrent {
 	torrent := &Torrent{
-		PeerID:      peerID,
-		MetaInfo:    metaInfo,
-		PiecesState: NewPiecesState(len(metaInfo.Info.Pieces)),
+		PeerID:   peerID,
+		MetaInfo: metaInfo,
+		pieces:   newPiecesState(len(metaInfo.Info.Pieces)),
 	}
 	return torrent
 }
@@ -32,10 +31,11 @@ func (t *Torrent) Download(path string) {
 	t.peerPool = newPeerPool()
 	t.fetchPeers()
 
-	taskCh := make(chan interface{}, 16)
+	taskCh := make(chan interface{}, 128)
 	defer close(taskCh)
 	for {
-		index := t.PiecesState.getReadyAndDownload()
+		// 获取一个待下载的piece
+		index := t.pieces.getReady()
 		if index == -1 {
 			return
 		}
@@ -43,28 +43,30 @@ func (t *Torrent) Download(path string) {
 		go func(index int) {
 			peer := t.peerPool.get()
 			if peer == nil {
+				fmt.Println("no peer")
 				time.Sleep(time.Second * 10)
-				t.PiecesState.setState(index, stateReady)
+				t.pieces.setState(index, stateReady)
 				<-taskCh
 				return
 			}
 			pc := NewPeerConn(t, peer)
 			err := pc.ready()
 			if err != nil {
-				t.PiecesState.setState(index, stateReady)
-				t.peerPool.remove(peer)
+				t.pieces.setState(index, stateReady)
+				t.peerPool.unavailable(peer)
 			} else {
 				fmt.Printf("peer ready:%s,download %d\n", peer.Address(), index)
 				err = pc.downloadPiece(index)
 				if err != nil {
-					fmt.Println(err)
+					fmt.Println("down piece error:" + err.Error())
 					// 下载失败
-					t.PiecesState.setState(index, stateReady)
+					t.pieces.setState(index, stateReady)
+					t.peerPool.unavailable(peer)
 				} else {
 					// 下载完成
-					t.PiecesState.setState(index, stateFinished)
+					t.pieces.setState(index, stateFinished)
+					t.peerPool.release(peer)
 				}
-				t.peerPool.release(peer)
 			}
 			<-taskCh
 		}(index)
@@ -78,23 +80,12 @@ func (t *Torrent) fetchPeers() {
 		MetaInfo: t.MetaInfo,
 	}
 	urls := tracker.MetaInfo.AnnounceList[0]
-	var wg sync.WaitGroup
-	ch := make(chan interface{})
-	wg.Add(len(urls))
 	for _, url := range urls {
 		go func(url string) {
-			defer wg.Done()
 			peers, err := tracker.DoTracker(url)
 			if err == nil {
-				fmt.Printf("Tracker end,url:%s,count:%d\n", url, len(peers))
-				ch <- nil
 				t.peerPool.put(peers)
 			}
 		}(url)
 	}
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-	<-ch
 }

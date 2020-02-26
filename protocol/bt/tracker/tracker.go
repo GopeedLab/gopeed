@@ -28,7 +28,7 @@ const (
 )
 
 /*
-	Offset  Size            Name            Value
+	Offset  size            Name            Value
 	0       64-bit integer  protocol_id     0x41727101980 // magic constant
 	8       32-bit integer  action          0 // connect
 	12      32-bit integer  transaction_id
@@ -58,7 +58,7 @@ func (req *udpConnectRequest) encode() []byte {
 }
 
 /*
-	Offset  Size            Name            Value
+	Offset  size            Name            Value
 	0       32-bit integer  action          0 // connect
 	4       32-bit integer  transaction_id
 	8       64-bit integer  connection_id
@@ -79,7 +79,7 @@ func newUdpConnectResponse(buf []byte) *udpConnectResponse {
 }
 
 /*
-	Offset  Size    Name    Value
+	Offset  size    Name    Value
 	0       64-bit integer  connection_id
 	8       32-bit integer  action          1 // announce
 	12      32-bit integer  transaction_id
@@ -139,7 +139,7 @@ func (req *udpAnnounceRequest) encode() []byte {
 }
 
 /*
-	Offset      Size            Name            Value
+	Offset      size            Name            Value
 	0           32-bit integer  action          1 // announce
 	4           32-bit integer  transaction_id
 	8           32-bit integer  interval

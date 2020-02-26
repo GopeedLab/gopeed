@@ -32,7 +32,7 @@ func Test_PeerPool(t *testing.T) {
 	})
 	get := pool.get()
 	pool.release(get)
-	pool.remove(get)
+	pool.unavailable(get)
 	for i := 0; i < 5; i++ {
 		fmt.Println(pool.get())
 	}

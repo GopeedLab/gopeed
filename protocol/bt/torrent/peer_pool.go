@@ -6,77 +6,63 @@ import (
 )
 
 type peerPool struct {
-	peers []peerState
-	lock  *sync.Mutex
+	states map[peer.Peer]*peerState
+	lock   *sync.Mutex
 }
 
 type peerState struct {
-	peer  *peer.Peer
+	// 是否在被使用
 	using bool
-	ready bool
+	// 下载失败次数
+	errors int
 }
 
 func newPeerPool() *peerPool {
 	return &peerPool{
-		lock: &sync.Mutex{},
+		lock:   &sync.Mutex{},
+		states: map[peer.Peer]*peerState{},
 	}
 }
 
 func (pp *peerPool) put(peers []peer.Peer) {
 	pp.lock.Lock()
 	defer pp.lock.Unlock()
-	for i := range peers {
-		pp.peers = append(pp.peers, peerState{
-			peer:  &peers[i],
-			using: false,
-		})
+	for _, peer := range peers {
+		if _, ok := pp.states[peer]; !ok {
+			pp.states[peer] = &peerState{
+				using:  false,
+				errors: 0,
+			}
+		}
+
 	}
 }
 
 func (pp *peerPool) get() *peer.Peer {
 	pp.lock.Lock()
 	defer pp.lock.Unlock()
-	for i, p := range pp.peers {
-		if !p.using {
-			pp.peers[i].using = true
-			return pp.peers[i].peer
+	for peer, state := range pp.states {
+		if !state.using {
+			state.using = true
+			return &peer
 		}
 	}
 	return nil
 }
 
-func (pp *peerPool) ready(peer *peer.Peer) {
-	pp.lock.Lock()
-	defer pp.lock.Unlock()
-	i := findPeer(pp, peer)
-	if i != -1 {
-		pp.peers[i].ready = true
-	}
-}
-
 func (pp *peerPool) release(peer *peer.Peer) {
 	pp.lock.Lock()
 	defer pp.lock.Unlock()
-	i := findPeer(pp, peer)
-	if i != -1 {
-		pp.peers[i].using = false
-	}
+	pp.states[*peer].using = false
+	pp.states[*peer].errors = 0
 }
 
-func (pp *peerPool) remove(peer *peer.Peer) {
+func (pp *peerPool) unavailable(peer *peer.Peer) {
 	pp.lock.Lock()
 	defer pp.lock.Unlock()
-	i := findPeer(pp, peer)
-	if i != -1 {
-		pp.peers = append(pp.peers[0:i], pp.peers[i+1:]...)
+	pp.states[*peer].errors++
+	if pp.states[*peer].errors > 3 {
+		delete(pp.states, *peer)
 	}
-}
 
-func findPeer(pp *peerPool, peer *peer.Peer) int {
-	for i := range pp.peers {
-		if pp.peers[i].peer == peer {
-			return i
-		}
-	}
-	return -1
 }

@@ -10,14 +10,12 @@ import (
 	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
 	"github.com/monkeyWie/gopeed/protocol/bt/peer"
 	"github.com/monkeyWie/gopeed/protocol/bt/peer/message"
-	"path/filepath"
-	"sync/atomic"
-
 	"io"
 	"math"
 	"net"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 )
 
@@ -37,14 +35,13 @@ type peerConn struct {
 	// peer is interested in this client
 	peerInterested bool
 
-	bitfield      *message.Bitfield
-	readyComplete bool
+	bitfield         *message.Bitfield
+	readyComplete    bool
+	downloadComplete bool
 
-	downloadedCh chan bool
+	downloadedCh chan error
 	// block个数
 	blockCount int
-	// 已经下载的block个数
-	blockDownloadedCount int32
 	// block下载队列，官方推荐为5
 	blockQueue chan interface{}
 }
@@ -114,12 +111,13 @@ func (pc *peerConn) handshake() (*peer.Handshake, error) {
 // 准备下载
 func (pc *peerConn) ready() error {
 	if err := pc.dialMse(); err != nil {
-		return err
+		return fmt.Errorf("tcp dial error %w", err)
 	}
 	if _, err := pc.handshake(); err != nil {
-		return err
+		return fmt.Errorf("handshake error %w", err)
 	}
 	pc.readyComplete = false
+	pc.downloadComplete = false
 	readyCh := make(chan bool)
 	defer close(readyCh)
 	go func() {
@@ -157,6 +155,14 @@ func (pc *peerConn) ready() error {
 				}
 			}
 		}
+		// 还未下载完成时连接断开
+		if pc.downloadedCh != nil && !pc.downloadComplete {
+			err := scanner.Err()
+			if err == nil {
+				err = io.EOF
+			}
+			pc.downloadedCh <- err
+		}
 	}()
 	err := func() error {
 		select {
@@ -183,18 +189,17 @@ func (pc *peerConn) ready() error {
 // 下载指定piece
 func (pc *peerConn) downloadPiece(index int) error {
 	pieceLength := pc.torrent.MetaInfo.GetPieceLength(index)
-	lastOffset := 0
-
 	pc.blockCount = int(math.Ceil(float64(pieceLength) / BlockSize))
-	pc.downloadedCh = make(chan bool)
+	pc.downloadedCh = make(chan error)
 	defer close(pc.downloadedCh)
-
-	waitDuration := time.Second * 30
-	timer := time.NewTimer(waitDuration)
-	defer timer.Stop()
 	// 按块下载分片
 	for i := 0; i < pc.blockCount; i++ {
-		offset := pieceLength * i
+		offset := BlockSize * i
+		// 如果已经下载过就跳过
+		if pc.torrent.pieces.isBlockDownloaded(index, offset) {
+			continue
+		}
+
 		var blockLength uint32
 		if i == pc.blockCount-1 {
 			// 最后一个block大小需要计算出来
@@ -202,24 +207,20 @@ func (pc *peerConn) downloadPiece(index int) error {
 		} else {
 			blockLength = BlockSize
 		}
-		// 标记block开始下载
-		offset32 := uint32(lastOffset)
-		// block下载排队，并做超时处理
-		timer.Reset(waitDuration)
+		// block下载排队，如果连接出现问题直接返回异常
 		select {
 		case pc.blockQueue <- nil:
-		case <-timer.C:
-			return errors.New("download timeout")
+			break
+		case err := <-pc.downloadedCh:
+			return err
 		}
 		// 发起request，对方会响应piece
-		_, err := pc.conn.Write(message.NewRequest(uint32(index), offset32, blockLength).Encode())
+		_, err := pc.conn.Write(message.NewRequest(uint32(index), uint32(offset), blockLength).Encode())
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
-	// 监听是否下载完成
-	<-pc.downloadedCh
-	return nil
+	return <-pc.downloadedCh
 }
 
 func (pc *peerConn) handleUnchoke(readyCh chan<- bool) {
@@ -317,11 +318,13 @@ func (pc *peerConn) handlePiece(buf []byte) {
 			}
 		}()
 	}
+	pc.torrent.pieces.setBlockDownloaded(int(piece.Index), int(piece.Begin))
+	fmt.Printf("piece %d downloaded block %d,count %d\n", piece.Index, piece.Begin, pc.torrent.pieces.blockSize(int(piece.Index)))
 	// 出队
 	<-pc.blockQueue
 
 	// piece全部下载完
-	if atomic.AddInt32(&pc.blockDownloadedCount, 1) == int32(pc.blockCount) {
+	if pc.torrent.pieces.blockSize(int(piece.Index)) == pc.blockCount {
 		// 计算piece对应的文件偏移
 		sha1 := sha1.New()
 		pieceLength := pc.torrent.MetaInfo.GetPieceLength(int(piece.Index))
@@ -360,9 +363,15 @@ func (pc *peerConn) handlePiece(buf []byte) {
 			fmt.Printf("piece %d 校验通过\n", piece.Index)
 		} else {
 			fmt.Printf("piece %d 校验失败\n", piece.Index)
+			// 清空该piece上所有的block下载记录
+			pc.torrent.pieces.clearBlocks(int(piece.Index))
 		}
+		// 标记下载完成
+		pc.downloadComplete = true
+		// 断开连接 TODO 用连接池进行复用
+		pc.conn.Close()
 		// piece下载完成
-		pc.downloadedCh <- true
+		pc.downloadedCh <- nil
 	}
 }
 
@@ -385,9 +394,9 @@ type fileBlock struct {
 
 // 获取peer能提供需要下载的文件分片
 func (pc *peerConn) getHavePieces(bitfield *message.Bitfield) []int {
-	states := make([]bool, pc.torrent.PiecesState.Size())
+	states := make([]bool, pc.torrent.pieces.size())
 	for i := range states {
-		states[i] = pc.torrent.PiecesState.getState(i) == stateFinished
+		states[i] = pc.torrent.pieces.getState(i) == stateFinished
 	}
 	return bitfield.Have(states)
 }
