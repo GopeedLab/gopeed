@@ -66,6 +66,17 @@ func (ps *pieces) size() int {
 	return len(ps.arr)
 }
 
+func (ps *pieces) isDone() bool {
+	ps.rw.RLock()
+	defer ps.rw.RUnlock()
+	for _, s := range ps.arr {
+		if s.state != stateFinished {
+			return false
+		}
+	}
+	return true
+}
+
 // 指定piece下的某个block是否下载完成
 func (ps *pieces) isBlockDownloaded(pieceIndex int, blockIndex int) bool {
 	return ps.arr[pieceIndex].blocks.ContainsInt(blockIndex)

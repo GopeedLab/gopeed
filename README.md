@@ -6,7 +6,7 @@
 - [ ] BitTorrent下载实现
     - [x] .torrent文件解析
     - [x] tracker协议实现
-    - [ ] peer wire protocol协议实现
+    - [x] peer wire protocol协议实现
     - [ ] DHT协议实现
     - [ ] 磁力链接支持
     - [ ] uTP协议实现

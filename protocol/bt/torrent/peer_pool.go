@@ -2,10 +2,14 @@ package torrent
 
 import (
 	"github.com/monkeyWie/gopeed/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
 	"sync"
+	"time"
 )
 
 type peerPool struct {
+	torrent *Torrent
+
 	states map[peer.Peer]*peerState
 	lock   *sync.Mutex
 }
@@ -17,11 +21,34 @@ type peerState struct {
 	errors int
 }
 
-func newPeerPool() *peerPool {
+func newPeerPool(torrent *Torrent) *peerPool {
 	return &peerPool{
-		lock:   &sync.Mutex{},
-		states: map[peer.Peer]*peerState{},
+		torrent: torrent,
+		lock:    &sync.Mutex{},
+		states:  map[peer.Peer]*peerState{},
 	}
+}
+
+func (pp *peerPool) fetch() {
+	tracker := &tracker.Tracker{
+		PeerID:   pp.torrent.PeerID,
+		MetaInfo: pp.torrent.MetaInfo,
+	}
+
+	go func() {
+		for {
+			// 当peer数量少于200个时重新发起一次tracker
+			if len(pp.states) < 200 {
+				go func() {
+					for peers := range tracker.Tracker() {
+						pp.put(peers)
+					}
+				}()
+			}
+			// 每5分钟检测一次
+			time.Sleep(time.Minute * 5)
+		}
+	}()
 }
 
 func (pp *peerPool) put(peers []peer.Peer) {
@@ -50,6 +77,7 @@ func (pp *peerPool) get() *peer.Peer {
 	return nil
 }
 
+// 将peer重新放回池中，等待使用
 func (pp *peerPool) release(peer *peer.Peer) {
 	pp.lock.Lock()
 	defer pp.lock.Unlock()
@@ -57,9 +85,11 @@ func (pp *peerPool) release(peer *peer.Peer) {
 	pp.states[*peer].errors = 0
 }
 
+// 标记peer为不可用，超过3次则剔除该peer
 func (pp *peerPool) unavailable(peer *peer.Peer) {
 	pp.lock.Lock()
 	defer pp.lock.Unlock()
+	pp.states[*peer].using = false
 	pp.states[*peer].errors++
 	if pp.states[*peer].errors > 3 {
 		delete(pp.states, *peer)

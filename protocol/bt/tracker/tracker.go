@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -108,7 +109,7 @@ type udpAnnounceRequest struct {
 	event         uint32
 	ip            uint32
 	key           uint32
-	numWant       int32
+	numWant       uint32
 	port          uint16
 }
 
@@ -133,7 +134,7 @@ func (req *udpAnnounceRequest) encode() []byte {
 	binary.BigEndian.PutUint32(buf[80:84], req.event)
 	binary.BigEndian.PutUint32(buf[84:88], req.ip)
 	binary.BigEndian.PutUint32(buf[88:92], req.key)
-	binary.BigEndian.PutUint32(buf[92:96], uint32(req.numWant))
+	binary.BigEndian.PutUint32(buf[92:96], req.numWant)
 	binary.BigEndian.PutUint16(buf[96:98], req.port)
 	return buf
 }
@@ -212,14 +213,18 @@ func (tracker *Tracker) announce(conn *net.UDPConn, timeout int64, connectionId 
 	request.event = 0
 	request.ip = 0
 	request.key = 0
-	request.numWant = 50
+	request.numWant = 200
 	request.port = 6882
 	encode := request.encode()
 	conn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(timeout)))
 	conn.Write(encode)
-	buf := make([]byte, 512)
+	buf := make([]byte, 20+request.numWant*6)
 	len, err := conn.Read(buf)
 	if err != nil {
+		return
+	}
+	if len < 20 {
+		err = errors.New("announce fail")
 		return
 	}
 	response = newUdpAnnounceResponse(buf[:len])
@@ -227,7 +232,8 @@ func (tracker *Tracker) announce(conn *net.UDPConn, timeout int64, connectionId 
 }
 
 // 通过tracker服务器获取peer信息
-func (tracker *Tracker) Tracker() (peers []peer.Peer, err error) {
+func (tracker *Tracker) Tracker() <-chan []peer.Peer {
+	peersCh := make(chan []peer.Peer)
 	metaInfo := tracker.MetaInfo
 
 	checkAnnounceList := func(announceList [][]string) bool {
@@ -243,20 +249,35 @@ func (tracker *Tracker) Tracker() (peers []peer.Peer, err error) {
 
 	// 只要获取到了peers就直接返回
 	if checkAnnounceList(metaInfo.AnnounceList) {
+		wg := sync.WaitGroup{}
 		for _, announceArr := range metaInfo.AnnounceList {
 			if len(announceArr) > 0 {
 				for _, announce := range announceArr {
-					peers, err = tracker.DoTracker(announce)
-					if err == nil {
-						return
-					}
+					wg.Add(1)
+					go func(announce string) {
+						peers, err := tracker.DoTracker(announce)
+						if err == nil {
+							peersCh <- peers
+						}
+						wg.Done()
+					}(announce)
 				}
 			}
 		}
+		go func() {
+			wg.Wait()
+			close(peersCh)
+		}()
 	} else {
-		peers, err = tracker.DoTracker(metaInfo.Announce)
+		go func() {
+			peers, err := tracker.DoTracker(metaInfo.Announce)
+			if err == nil {
+				peersCh <- peers
+			}
+			close(peersCh)
+		}()
 	}
-	return
+	return peersCh
 }
 
 func (tracker *Tracker) DoTracker(announce string) (peers []peer.Peer, err error) {
@@ -323,13 +344,13 @@ func (tracker *Tracker) udpTracker(url *url.URL) (peers []peer.Peer, err error) 
 	announceResponse, err := func() (announceResponse *udpAnnounceResponse, err error) {
 		var connectResponse *udpConnectResponse
 		// 0:connect 1:announce
-		state := 0
+		state := udpActionConnect
 		// 	访问超时最多重试8次，当有请求成功则将重试次数重置为0
 		for n := 0; n < udpConnectRetries; n++ {
 			// 15 * 2 ^ n seconds
 			timeout := int64(udpConnectTimeout * math.Pow(2, float64(n)))
 			switch state {
-			case 0:
+			case udpActionConnect:
 				connectResponse, err = tracker.connect(conn, timeout)
 				if err != nil {
 					if oe, ok := err.(*net.OpError); ok && oe.Timeout() {
@@ -339,9 +360,9 @@ func (tracker *Tracker) udpTracker(url *url.URL) (peers []peer.Peer, err error) 
 					}
 				}
 				n = -1
-				state = 1
+				state = udpActionAnnounce
 				break
-			case 1:
+			case udpActionAnnounce:
 				announceResponse, err = tracker.announce(conn, timeout, connectResponse.connectionId)
 				if err != nil {
 					if oe, ok := err.(*net.OpError); ok && oe.Timeout() {

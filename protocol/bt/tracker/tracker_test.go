@@ -17,10 +17,6 @@ func TestTracker_Tracker(t *testing.T) {
 	}
 	tracker.MetaInfo.Announce = "udp://tracker.opentrackr.org:1337/announce"
 	tracker.MetaInfo.AnnounceList = [][]string{}
-	peers, err := tracker.Tracker()
-	if err != nil {
-		panic(err)
-		return
-	}
+	peers := <-tracker.Tracker()
 	fmt.Println(len(peers))
 }

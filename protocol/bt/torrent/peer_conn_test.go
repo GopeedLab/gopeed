@@ -101,10 +101,7 @@ func getUsablePeerMore() chan *peerConn {
 		PeerID:   torrent.PeerID,
 		MetaInfo: torrent.MetaInfo,
 	}
-	peers, err := tracker.Tracker()
-	if err != nil {
-		panic(err)
-	}
+	peers := <-tracker.Tracker()
 	ch := make(chan *peerConn)
 	for i := range peers {
 		go peerTest(torrent, &peers[i], ch)
@@ -162,5 +159,4 @@ func TestSome2(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
-
 }

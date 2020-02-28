@@ -10,6 +10,7 @@ import (
 	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
 	"github.com/monkeyWie/gopeed/protocol/bt/peer"
 	"github.com/monkeyWie/gopeed/protocol/bt/peer/message"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"math"
 	"net"
@@ -20,7 +21,9 @@ import (
 )
 
 // 现在主流客户端的block大小都是16KB
-const BlockSize = 2 << 13
+const blockSize = 2 << 13
+
+var errPieceCheckFailed = errors.New("piece check failed")
 
 type peerConn struct {
 	torrent *Torrent
@@ -35,18 +38,19 @@ type peerConn struct {
 	// peer is interested in this client
 	peerInterested bool
 
-	bitfield         *message.Bitfield
-	readyComplete    bool
-	downloadComplete bool
+	bitfield    *message.Bitfield
+	readyEnd    bool
+	downloadEnd bool
 
 	downloadedCh chan error
+	disconnectCh chan error
 	// block个数
 	blockCount int
 	// block下载队列，官方推荐为5
-	blockQueue chan interface{}
+	blockQueueCh chan interface{}
 }
 
-func NewPeerConn(torrent *Torrent, peer *peer.Peer) *peerConn {
+func newPeerConn(torrent *Torrent, peer *peer.Peer) *peerConn {
 	return &peerConn{
 		torrent: torrent,
 		peer:    peer,
@@ -116,10 +120,10 @@ func (pc *peerConn) ready() error {
 	if _, err := pc.handshake(); err != nil {
 		return fmt.Errorf("handshake error %w", err)
 	}
-	pc.readyComplete = false
-	pc.downloadComplete = false
+	pc.readyEnd = false
+	pc.downloadEnd = false
 	readyCh := make(chan bool)
-	defer close(readyCh)
+	pc.disconnectCh = make(chan error)
 	go func() {
 		scanner := bufio.NewScanner(pc.conn)
 		scanner.Split(message.SplitMessage)
@@ -156,13 +160,12 @@ func (pc *peerConn) ready() error {
 			}
 		}
 		// 还未下载完成时连接断开
-		if pc.downloadedCh != nil && !pc.downloadComplete {
-			err := scanner.Err()
-			if err == nil {
-				err = io.EOF
-			}
-			pc.downloadedCh <- err
+		err := scanner.Err()
+		if err == nil {
+			err = io.EOF
 		}
+		pc.disconnectCh <- err
+		close(pc.disconnectCh)
 	}()
 	err := func() error {
 		select {
@@ -177,24 +180,22 @@ func (pc *peerConn) ready() error {
 			return errors.New("ready time out")
 		}
 	}()
-	pc.readyComplete = true
 	if err != nil {
 		pc.conn.Close()
 		return err
 	}
-	pc.blockQueue = make(chan interface{}, 5)
+	pc.blockQueueCh = make(chan interface{}, 5)
 	return nil
 }
 
 // 下载指定piece
 func (pc *peerConn) downloadPiece(index int) error {
 	pieceLength := pc.torrent.MetaInfo.GetPieceLength(index)
-	pc.blockCount = int(math.Ceil(float64(pieceLength) / BlockSize))
+	pc.blockCount = int(math.Ceil(float64(pieceLength) / blockSize))
 	pc.downloadedCh = make(chan error)
-	defer close(pc.downloadedCh)
 	// 按块下载分片
 	for i := 0; i < pc.blockCount; i++ {
-		offset := BlockSize * i
+		offset := blockSize * i
 		// 如果已经下载过就跳过
 		if pc.torrent.pieces.isBlockDownloaded(index, offset) {
 			continue
@@ -205,36 +206,43 @@ func (pc *peerConn) downloadPiece(index int) error {
 			// 最后一个block大小需要计算出来
 			blockLength = uint32(pieceLength - offset)
 		} else {
-			blockLength = BlockSize
+			blockLength = blockSize
 		}
 		// block下载排队，如果连接出现问题直接返回异常
 		select {
-		case pc.blockQueue <- nil:
+		case pc.blockQueueCh <- nil:
 			break
-		case err := <-pc.downloadedCh:
+		case err := <-pc.disconnectCh:
 			return err
 		}
 		// 发起request，对方会响应piece
 		_, err := pc.conn.Write(message.NewRequest(uint32(index), uint32(offset), blockLength).Encode())
 		if err != nil {
-			fmt.Println(err)
+			return err
 		}
 	}
-	return <-pc.downloadedCh
+	select {
+	case err := <-pc.downloadedCh:
+		return err
+	case err := <-pc.disconnectCh:
+		return err
+	}
 }
 
 func (pc *peerConn) handleUnchoke(readyCh chan<- bool) {
 	pc.peerChoking = false
 	// 已经处理过Unchoke信号
-	if pc.readyComplete {
+	if pc.readyEnd {
 		return
 	}
+	pc.readyEnd = true
 	// 如果客户端对peer感兴趣并且peer没有choked客户端，就可以开始下载了
 	if pc.amInterested {
 		readyCh <- true
 	} else {
 		readyCh <- false
 	}
+	close(readyCh)
 }
 
 func (pc *peerConn) handleBitfield(buf []byte) {
@@ -319,9 +327,10 @@ func (pc *peerConn) handlePiece(buf []byte) {
 		}()
 	}
 	pc.torrent.pieces.setBlockDownloaded(int(piece.Index), int(piece.Begin))
-	fmt.Printf("piece %d downloaded block %d,count %d\n", piece.Index, piece.Begin, pc.torrent.pieces.blockSize(int(piece.Index)))
 	// 出队
-	<-pc.blockQueue
+	<-pc.blockQueueCh
+
+	log.Debugf("piece:%d block:%d already:%d", piece.Index, piece.Begin, pc.torrent.pieces.blockSize(int(piece.Index)))
 
 	// piece全部下载完
 	if pc.torrent.pieces.blockSize(int(piece.Index)) == pc.blockCount {
@@ -356,22 +365,23 @@ func (pc *peerConn) handlePiece(buf []byte) {
 				break
 			}
 		}
+		// 标记下载完成
+		pc.downloadEnd = true
+		// 断开连接 TODO 用连接池进行复用
+		pc.conn.Close()
+
 		// 校验piece SHA-1 hash
 		downHash := [20]byte{}
 		copy(downHash[:], sha1.Sum(nil))
 		if downHash == pc.torrent.MetaInfo.Info.Pieces[piece.Index] {
-			fmt.Printf("piece %d 校验通过\n", piece.Index)
+			log.Infof("piece %d 校验通过", piece.Index)
+			// piece下载完成
+			pc.downloadedCh <- nil
 		} else {
-			fmt.Printf("piece %d 校验失败\n", piece.Index)
-			// 清空该piece上所有的block下载记录
-			pc.torrent.pieces.clearBlocks(int(piece.Index))
+			log.Infof("piece %d 校验失败", piece.Index)
+			pc.downloadedCh <- errPieceCheckFailed
 		}
-		// 标记下载完成
-		pc.downloadComplete = true
-		// 断开连接 TODO 用连接池进行复用
-		pc.conn.Close()
-		// piece下载完成
-		pc.downloadedCh <- nil
+		close(pc.downloadedCh)
 	}
 }
 

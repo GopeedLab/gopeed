@@ -1,9 +1,10 @@
 package torrent
 
 import (
+	"errors"
 	"fmt"
 	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
-	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -11,8 +12,9 @@ type Torrent struct {
 	PeerID   [20]byte
 	MetaInfo *metainfo.MetaInfo
 
-	pieces   *pieces
-	peerPool *peerPool
+	pieces     *pieces
+	peerPool   *peerPool
+	completeCh chan bool
 
 	Path string
 }
@@ -28,64 +30,66 @@ func NewTorrent(peerID [20]byte, metaInfo *metainfo.MetaInfo) *Torrent {
 
 func (t *Torrent) Download(path string) {
 	t.Path = path
-	t.peerPool = newPeerPool()
-	t.fetchPeers()
+	t.peerPool = newPeerPool(t)
+	t.peerPool.fetch()
 
-	taskCh := make(chan interface{}, 128)
-	defer close(taskCh)
+	pieceQueueCh := make(chan interface{}, 128)
+	defer close(pieceQueueCh)
+	t.completeCh = make(chan bool)
+	defer close(t.completeCh)
 	for {
+		pieceQueueCh <- nil
 		// 获取一个待下载的piece
 		index := t.pieces.getReady()
+		// 没有待下载的piece了
 		if index == -1 {
-			return
+			fmt.Println("wait piece")
+			if <-t.completeCh {
+				// 下载完成
+				break
+			} else {
+				// 继续下载
+				continue
+			}
 		}
-		taskCh <- nil
 		go func(index int) {
 			peer := t.peerPool.get()
 			if peer == nil {
-				fmt.Println("no peer")
 				time.Sleep(time.Second * 10)
 				t.pieces.setState(index, stateReady)
-				<-taskCh
+				<-pieceQueueCh
 				return
 			}
-			pc := NewPeerConn(t, peer)
+			pc := newPeerConn(t, peer)
+			log.Debugf("peer ready start:%s,download %d", peer.Address(), index)
 			err := pc.ready()
 			if err != nil {
+				log.Debugf("peer ready error:%s,download %d,error:%s", peer.Address(), index, err.Error())
 				t.pieces.setState(index, stateReady)
 				t.peerPool.unavailable(peer)
 			} else {
-				fmt.Printf("peer ready:%s,download %d\n", peer.Address(), index)
+				log.Debugf("peer ready success:%s,download %d", peer.Address(), index)
 				err = pc.downloadPiece(index)
 				if err != nil {
-					fmt.Println("down piece error:" + err.Error())
 					// 下载失败
 					t.pieces.setState(index, stateReady)
 					t.peerPool.unavailable(peer)
+					if errors.Is(err, errPieceCheckFailed) {
+						// piece校验失败，需要重新下载过一遍，清空block记录
+						t.pieces.clearBlocks(index)
+					}
+					t.completeCh <- false
 				} else {
 					// 下载完成
 					t.pieces.setState(index, stateFinished)
 					t.peerPool.release(peer)
+					// 检查是否所有piece下载完成
+					if t.pieces.isDone() {
+						t.completeCh <- true
+					}
 				}
 			}
-			<-taskCh
+			<-pieceQueueCh
 		}(index)
-	}
-}
-
-// 获取可用的peer
-func (t *Torrent) fetchPeers() {
-	tracker := &tracker.Tracker{
-		PeerID:   t.PeerID,
-		MetaInfo: t.MetaInfo,
-	}
-	urls := tracker.MetaInfo.AnnounceList[0]
-	for _, url := range urls {
-		go func(url string) {
-			peers, err := tracker.DoTracker(url)
-			if err == nil {
-				t.peerPool.put(peers)
-			}
-		}(url)
 	}
 }
