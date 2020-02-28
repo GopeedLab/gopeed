@@ -2,7 +2,6 @@ package torrent
 
 import (
 	"errors"
-	"fmt"
 	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
 	log "github.com/sirupsen/logrus"
 	"time"
@@ -43,7 +42,6 @@ func (t *Torrent) Download(path string) {
 		index := t.pieces.getReady()
 		// 没有待下载的piece了
 		if index == -1 {
-			fmt.Println("wait piece")
 			if <-t.completeCh {
 				// 下载完成
 				break

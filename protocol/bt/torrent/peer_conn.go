@@ -212,6 +212,8 @@ func (pc *peerConn) downloadPiece(index int) error {
 		select {
 		case pc.blockQueueCh <- nil:
 			break
+		case err := <-pc.downloadedCh:
+			return err
 		case err := <-pc.disconnectCh:
 			return err
 		}
