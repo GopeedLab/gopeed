@@ -6,11 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/cenkalti/mse"
-	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
-	"github.com/monkeyWie/gopeed/protocol/bt/peer"
-	"github.com/monkeyWie/gopeed/protocol/bt/peer/message"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"math"
 	"net"
@@ -18,12 +13,20 @@ import (
 	"path"
 	"path/filepath"
 	"time"
+
+	"github.com/cenkalti/mse"
+	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed/protocol/bt/peer/message"
+	log "github.com/sirupsen/logrus"
 )
 
 // 现在主流客户端的block大小都是16KB
 const blockSize = 2 << 13
+const keepaliveTimeout = 60 * 2
 
 var errPieceCheckFailed = errors.New("piece check failed")
+var keepaliveData = make([]byte, 4)
 
 type peerConn struct {
 	torrent *Torrent
@@ -38,12 +41,15 @@ type peerConn struct {
 	// peer is interested in this client
 	peerInterested bool
 
-	bitfield    *message.Bitfield
-	readyEnd    bool
-	downloadEnd bool
+	// 上一次收到包的时间
+	lastReciveTime int64
+
+	bitfield *message.Bitfield
+	readyEnd bool
 
 	downloadedCh chan error
 	disconnectCh chan error
+	keepaliveCh  chan error
 	// block个数
 	blockCount int
 	// block下载队列，官方推荐为5
@@ -112,6 +118,26 @@ func (pc *peerConn) handshake() (*peer.Handshake, error) {
 	return handshakeRes, nil
 }
 
+func (pc *peerConn) handleKeepalive() {
+	pc.lastReciveTime = time.Now().Unix()
+	for {
+		time.Sleep(time.Minute * 2)
+		// 如果超过两分钟没有响应，则断开连接
+		if time.Now().Unix()-pc.lastReciveTime > keepaliveTimeout {
+			pc.conn.Close()
+			break
+		}
+		// 两分钟发送一次心跳包
+		_, err := pc.conn.Write(keepaliveData)
+		if err != nil {
+			pc.conn.Close()
+			break
+		}
+	}
+	pc.keepaliveCh <- fmt.Errorf("keepalive fail")
+	close(pc.keepaliveCh)
+}
+
 // 准备下载
 func (pc *peerConn) ready() error {
 	if err := pc.dialMse(); err != nil {
@@ -121,13 +147,15 @@ func (pc *peerConn) ready() error {
 		return fmt.Errorf("handshake error %w", err)
 	}
 	pc.readyEnd = false
-	pc.downloadEnd = false
 	readyCh := make(chan bool)
 	pc.disconnectCh = make(chan error)
+	pc.keepaliveCh = make(chan error)
+	go pc.handleKeepalive()
 	go func() {
 		scanner := bufio.NewScanner(pc.conn)
 		scanner.Split(message.SplitMessage)
 		for scanner.Scan() {
+			pc.lastReciveTime = time.Now().Unix()
 			buf := scanner.Bytes()
 			length := binary.BigEndian.Uint32(buf[:4])
 			if length == 0 {
@@ -172,9 +200,8 @@ func (pc *peerConn) ready() error {
 		case status := <-readyCh:
 			if status {
 				return nil
-			} else {
-				return errors.New("ready fail")
 			}
+			return errors.New("ready fail")
 		case <-time.After(time.Second * 30):
 			// 30秒之后超时
 			return errors.New("ready time out")
@@ -184,15 +211,16 @@ func (pc *peerConn) ready() error {
 		pc.conn.Close()
 		return err
 	}
-	pc.blockQueueCh = make(chan interface{}, 5)
 	return nil
 }
 
 // 下载指定piece
-func (pc *peerConn) downloadPiece(index int) error {
+func (pc *peerConn) downloadPiece(index int) (err error) {
 	pieceLength := pc.torrent.MetaInfo.GetPieceLength(index)
 	pc.blockCount = int(math.Ceil(float64(pieceLength) / blockSize))
 	pc.downloadedCh = make(chan error)
+	pc.blockQueueCh = make(chan interface{}, 5)
+	defer close(pc.blockQueueCh)
 	// 按块下载分片
 	for i := 0; i < pc.blockCount; i++ {
 		offset := blockSize * i
@@ -212,23 +240,35 @@ func (pc *peerConn) downloadPiece(index int) error {
 		select {
 		case pc.blockQueueCh <- nil:
 			break
-		case err := <-pc.downloadedCh:
-			return err
-		case err := <-pc.disconnectCh:
-			return err
+		case err = <-pc.downloadedCh:
+			break
+		case err = <-pc.disconnectCh:
+			break
+		case err = <-pc.keepaliveCh:
+			break
+		}
+		if err != nil {
+			pc.conn.Close()
+			return
 		}
 		// 发起request，对方会响应piece
-		_, err := pc.conn.Write(message.NewRequest(uint32(index), uint32(offset), blockLength).Encode())
+		_, err = pc.conn.Write(message.NewRequest(uint32(index), uint32(offset), blockLength).Encode())
 		if err != nil {
-			return err
+			break
 		}
 	}
 	select {
-	case err := <-pc.downloadedCh:
-		return err
-	case err := <-pc.disconnectCh:
-		return err
+	case err = <-pc.downloadedCh:
+		break
+	case err = <-pc.disconnectCh:
+		break
+	case err = <-pc.keepaliveCh:
+		break
 	}
+	if err != nil {
+		pc.conn.Close()
+	}
+	return
 }
 
 func (pc *peerConn) handleUnchoke(readyCh chan<- bool) {
@@ -367,8 +407,6 @@ func (pc *peerConn) handlePiece(buf []byte) {
 				break
 			}
 		}
-		// 标记下载完成
-		pc.downloadEnd = true
 		// 断开连接 TODO 用连接池进行复用
 		pc.conn.Close()
 
@@ -376,11 +414,9 @@ func (pc *peerConn) handlePiece(buf []byte) {
 		downHash := [20]byte{}
 		copy(downHash[:], sha1.Sum(nil))
 		if downHash == pc.torrent.MetaInfo.Info.Pieces[piece.Index] {
-			log.Infof("piece %d 校验通过", piece.Index)
 			// piece下载完成
 			pc.downloadedCh <- nil
 		} else {
-			log.Infof("piece %d 校验失败", piece.Index)
 			pc.downloadedCh <- errPieceCheckFailed
 		}
 		close(pc.downloadedCh)

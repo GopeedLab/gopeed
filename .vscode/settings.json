@@ -1,17 +1,9 @@
 {
   "go.useLanguageServer": true,
-  "go.languageServerExperimentalFeatures": {
-    "diagnostics": true // for diagnostics as you type
-  },
   "[go]": {
-    "editor.snippetSuggestions": "none",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
       "source.organizeImports": true
     }
   },
-  "gopls": {
-    "usePlaceholders": true, // add parameter placeholders when completing a function
-    "enhancedHover": true // experimental to improve quality of hover (will be on by default soon)
-  }
 }

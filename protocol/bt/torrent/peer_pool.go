@@ -1,10 +1,11 @@
 package torrent
 
 import (
-	"github.com/monkeyWie/gopeed/protocol/bt/peer"
-	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
 	"sync"
 	"time"
+
+	"github.com/monkeyWie/gopeed/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
 )
 
 type peerPool struct {
@@ -45,8 +46,8 @@ func (pp *peerPool) fetch() {
 					}
 				}()
 			}
-			// 每5分钟检测一次
-			time.Sleep(time.Minute * 5)
+			// 每2分钟检测一次
+			time.Sleep(time.Minute * 2)
 		}
 	}()
 }

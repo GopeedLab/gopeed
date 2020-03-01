@@ -3,8 +3,9 @@ package metainfo
 import (
 	"crypto/sha1"
 	"encoding/json"
-	"github.com/marksamman/bencode"
 	"os"
+
+	"github.com/marksamman/bencode"
 )
 
 type MetaInfo struct {
@@ -22,9 +23,9 @@ type MetaInfo struct {
 	UrlList []string `json:"url-list"`
 	Info    *Info    `json:"info"`
 
-	infoHash    [20]byte     `json:"-"`
-	totalSize   uint64       `json:"-"`
-	fileDetails []FileDetail `json:"-"`
+	infoHash    [20]byte
+	totalSize   uint64
+	fileDetails []FileDetail
 }
 
 type Info struct {

@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
-	"github.com/monkeyWie/gopeed/protocol/bt/peer"
 	"io"
 	"io/ioutil"
 	"math"
@@ -16,12 +14,15 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed/protocol/bt/peer"
 )
 
 const (
 	udpConnectRequestMagic = 0x41727101980
 	udpConnectTimeout      = 15
-	udpConnectRetries      = 8
+	udpConnectRetries      = 3
 	udpActionConnect       = 0
 	udpActionAnnounce      = 1
 	udpActionScrape        = 2

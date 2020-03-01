@@ -1,8 +1,9 @@
 package torrent
 
 import (
-	"github.com/RoaringBitmap/roaring"
 	"sync"
+
+	"github.com/RoaringBitmap/roaring"
 )
 
 type state int
@@ -60,6 +61,18 @@ func (ps *pieces) getReady() int {
 		}
 	}
 	return -1
+}
+
+func (ps *pieces) getLeft() int {
+	ps.rw.RLock()
+	defer ps.rw.RUnlock()
+	count := 0
+	for _, s := range ps.arr {
+		if s.state != stateFinished {
+			count++
+		}
+	}
+	return count
 }
 
 func (ps *pieces) size() int {

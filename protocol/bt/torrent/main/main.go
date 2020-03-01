@@ -1,25 +1,21 @@
-package torrent
+package main
 
 import (
-	"testing"
-
 	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
 	"github.com/monkeyWie/gopeed/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed/protocol/bt/torrent"
 	log "github.com/sirupsen/logrus"
 )
 
-func init() {
+func main() {
 	log.SetLevel(log.DebugLevel)
-}
-
-func TestTorrent_Download(t *testing.T) {
 	torrent := buildTorrent()
 	torrent.Download("e:/testbt/download")
 }
 
-func buildTorrent() *Torrent {
+func buildTorrent() *torrent.Torrent {
 	// metaInfo, err := metainfo.ParseFromFile("../testdata/Game.of.Thrones.S08E05.720p.WEB.H264-MEMENTO.torrent")
-	metaInfo, err := metainfo.ParseFromFile("../testdata/office.torrent")
+	metaInfo, err := metainfo.ParseFromFile("../../testdata/office.torrent")
 	if err != nil {
 		panic(err)
 	}
@@ -74,5 +70,5 @@ func buildTorrent() *Torrent {
 		"udp://qg.lorzl.gq:2710/announce",
 		"udp://bt2.54new.com:8080/announce",
 	}...)
-	return NewTorrent(peer.GenPeerID(), metaInfo)
+	return torrent.NewTorrent(peer.GenPeerID(), metaInfo)
 }

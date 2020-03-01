@@ -2,9 +2,10 @@ package torrent
 
 import (
 	"errors"
+	"time"
+
 	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 type Torrent struct {
@@ -13,7 +14,7 @@ type Torrent struct {
 
 	pieces     *pieces
 	peerPool   *peerPool
-	completeCh chan bool
+	completeCh chan interface{}
 
 	Path string
 }
@@ -32,9 +33,9 @@ func (t *Torrent) Download(path string) {
 	t.peerPool = newPeerPool(t)
 	t.peerPool.fetch()
 
-	pieceQueueCh := make(chan interface{}, 128)
+	pieceQueueCh := make(chan interface{}, 256)
 	defer close(pieceQueueCh)
-	t.completeCh = make(chan bool)
+	t.completeCh = make(chan interface{})
 	defer close(t.completeCh)
 	for {
 		pieceQueueCh <- nil
@@ -42,13 +43,10 @@ func (t *Torrent) Download(path string) {
 		index := t.pieces.getReady()
 		// 没有待下载的piece了
 		if index == -1 {
-			if <-t.completeCh {
-				// 下载完成
-				break
-			} else {
-				// 继续下载
-				continue
-			}
+			log.Debugf("no piece to download")
+			<-t.completeCh
+			// 下载完成
+			break
 		}
 		go func(index int) {
 			peer := t.peerPool.get()
@@ -59,16 +57,14 @@ func (t *Torrent) Download(path string) {
 				return
 			}
 			pc := newPeerConn(t, peer)
-			log.Debugf("peer ready start:%s,download %d", peer.Address(), index)
 			err := pc.ready()
 			if err != nil {
-				log.Debugf("peer ready error:%s,download %d,error:%s", peer.Address(), index, err.Error())
 				t.pieces.setState(index, stateReady)
 				t.peerPool.unavailable(peer)
 			} else {
-				log.Debugf("peer ready success:%s,download %d", peer.Address(), index)
 				err = pc.downloadPiece(index)
 				if err != nil {
+					log.Debugf("piece %d download fail:%s", index, err.Error())
 					// 下载失败
 					t.pieces.setState(index, stateReady)
 					t.peerPool.unavailable(peer)
@@ -76,14 +72,14 @@ func (t *Torrent) Download(path string) {
 						// piece校验失败，需要重新下载过一遍，清空block记录
 						t.pieces.clearBlocks(index)
 					}
-					t.completeCh <- false
 				} else {
 					// 下载完成
 					t.pieces.setState(index, stateFinished)
 					t.peerPool.release(peer)
+					log.Debugf("piece %d download success,total:%d,left:%d", index, t.pieces.size(), t.pieces.getLeft())
 					// 检查是否所有piece下载完成
 					if t.pieces.isDone() {
-						t.completeCh <- true
+						t.completeCh <- nil
 					}
 				}
 			}
