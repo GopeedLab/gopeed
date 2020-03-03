@@ -1,11 +1,10 @@
 package torrent
 
 import (
-	"testing"
-
 	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
 	"github.com/monkeyWie/gopeed/protocol/bt/peer"
 	log "github.com/sirupsen/logrus"
+	"testing"
 )
 
 func init() {
