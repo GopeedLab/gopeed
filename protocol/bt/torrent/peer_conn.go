@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/RoaringBitmap/roaring"
 	"io"
 	"net"
 	"os"
@@ -229,7 +230,7 @@ func (pc *peerConn) downloadPiece(index int) (err error) {
 		} else {
 			blockLength = blockSize
 		}
-		// block下载排队，如果连接出现问题直接返回异常
+		// block下载排队
 		select {
 		case pc.blockQueueCh <- nil:
 			break
@@ -238,6 +239,7 @@ func (pc *peerConn) downloadPiece(index int) (err error) {
 		case err = <-pc.disconnectCh:
 			break
 		}
+		// 如果连接出现问题或下载失败直接返回异常
 		if err != nil {
 			pc.conn.Close()
 			return
@@ -436,12 +438,14 @@ type fileBlock struct {
 }
 
 // 获取peer能提供需要下载的文件分片
-func (pc *peerConn) getHavePieces(bitfield *message.Bitfield) []int {
-	states := make([]bool, pc.torrent.pieceStates.size())
-	for i := range states {
-		states[i] = pc.torrent.pieceStates.getState(i) == stateFinish
+func (pc *peerConn) getHavePieces(bitfield *message.Bitfield) []uint32 {
+	had := roaring.New()
+	for i := 0; i < pc.torrent.pieceStates.size(); i++ {
+		if pc.torrent.pieceStates.getState(i) == stateFinish {
+			had.AddInt(i)
+		}
 	}
-	return bitfield.Have(states)
+	return bitfield.Provide(had)
 }
 
 // 获取要写入到的文件

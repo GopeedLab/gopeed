@@ -25,46 +25,6 @@ func Test_peerState_ready(t *testing.T) {
 
 }
 
-func Test_peerState_download(t *testing.T) {
-
-	psCh := getUsablePeerMore()
-
-	lock := sync.Mutex{}
-	state := map[int]bool{}
-
-	for {
-		select {
-		case ps := <-psCh:
-			go func() {
-				// 下载前准备
-				err := ps.ready()
-				if err != nil {
-					fmt.Println("ready error")
-					return
-				}
-				have := ps.getHavePieces(ps.bitfield)
-				fmt.Printf("download is ready,have %d\n", len(have))
-				if len(have) > 0 {
-					// 获取分片的长度
-					for _, index := range have {
-						lock.Lock()
-						if state[index] {
-							lock.Unlock()
-							continue
-						} else {
-							state[index] = true
-							lock.Unlock()
-						}
-						fmt.Printf("download index %d\n", index)
-						ps.downloadPiece(index)
-					}
-					return
-				}
-			}()
-		}
-	}
-}
-
 func Test_peerState_downloadPiece(t *testing.T) {
 
 	ps := getUsablePeer()
@@ -81,7 +41,7 @@ func Test_peerState_downloadPiece(t *testing.T) {
 		// 获取分片的长度
 		for _, index := range have {
 			fmt.Printf("download index %d\n", index)
-			ps.downloadPiece(index)
+			ps.downloadPiece(int(index))
 		}
 		return
 	}

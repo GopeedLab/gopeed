@@ -3,6 +3,7 @@ package metainfo
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/RoaringBitmap/roaring"
 	"testing"
 )
 
@@ -16,4 +17,16 @@ func TestParseFromFile(t *testing.T) {
 	fmt.Printf("%+v\n", metaInfo.Info.Files)
 	fmt.Printf("%+v\n", metaInfo.Info.PieceLength)
 	fmt.Printf("%+v\n", hex.EncodeToString(metaInfo.infoHash[:]))
+}
+
+func TestParseFromFile2(t *testing.T) {
+	a := 0b10010000
+	b := 0b01111111
+	fmt.Printf("%08b\n", (a&b)^b)
+
+	have := roaring.BitmapOf(0, 3)
+	peer := roaring.BitmapOf(1, 2, 3, 4, 5, 6, 7)
+
+	need := roaring.Xor(roaring.And(have, peer), peer)
+	fmt.Println(need.ToArray())
 }
