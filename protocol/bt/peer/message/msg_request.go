@@ -6,22 +6,26 @@ import (
 
 // request: <len=0013><id=6><index><begin><length>
 type Request struct {
-	Message
+	*base
 	Index  uint32
 	Begin  uint32
 	Length uint32
 }
 
-func NewRequest(index uint32, begin uint32, length uint32) *Request {
+func NewRequest() *Request {
 	return &Request{
-		Message: Message{
-			Length: 13,
-			ID:     IdRequest,
+		base: &base{
+			id: IdRequest,
 		},
-		Index:  index,
-		Begin:  begin,
-		Length: length,
 	}
+}
+
+func BuildRequest(index uint32, begin uint32, length uint32) *Request {
+	request := NewRequest()
+	request.Index = index
+	request.Begin = begin
+	request.Length = length
+	return request
 }
 
 func (r *Request) Encode() []byte {
@@ -29,13 +33,11 @@ func (r *Request) Encode() []byte {
 	binary.BigEndian.PutUint32(buf[0:4], r.Index)
 	binary.BigEndian.PutUint32(buf[4:8], r.Begin)
 	binary.BigEndian.PutUint32(buf[8:12], r.Length)
-	return append(r.Message.Encode(), buf...)
+	return encode(r.base, buf)
 }
 
-func (r *Request) Decode(buf []byte) Serialize {
-	r.Message.Decode(buf)
-	r.Length = binary.BigEndian.Uint32(buf[5:9])
-	r.Begin = binary.BigEndian.Uint32(buf[9:13])
-	r.Index = binary.BigEndian.Uint32(buf[13:17])
-	return r
+func (r *Request) Decode(buf []byte) {
+	r.Length = binary.BigEndian.Uint32(buf[0:4])
+	r.Begin = binary.BigEndian.Uint32(buf[4:8])
+	r.Index = binary.BigEndian.Uint32(buf[8:12])
 }

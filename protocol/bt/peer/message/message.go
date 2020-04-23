@@ -11,7 +11,7 @@ const (
 	IdChoke ID = iota
 	IdUnchoke
 	IdInterested
-	IdNotinterested
+	IdNotInterested
 	IdHave
 	IdBitfield
 	IdRequest
@@ -24,34 +24,81 @@ const (
 	ID      MessageID
 	Payload []byte
 }*/
-type Message struct {
-	Length uint32
-	ID     ID
+
+type base struct {
+	id ID
 }
 
-func (msg *Message) Encode() []byte {
-	buf := make([]byte, 5)
-	binary.BigEndian.PutUint32(buf, msg.Length)
-	buf[4] = byte(msg.ID)
+func (base *base) ID() ID {
+	return base.id
+}
+
+func (base *base) Encode() []byte {
+	return encode(base, nil)
+}
+
+func (base *base) Decode(body []byte) {
+
+}
+
+type Message interface {
+	ID() ID
+	Encode() []byte
+	Decode(body []byte)
+}
+
+type TestMsg struct {
+	*base
+}
+
+func (base *TestMsg) Encode() []byte {
+	return []byte{1, 2, 3}
+}
+
+func (base *TestMsg) Decode(body []byte) {
+}
+
+func encode(base *base, body []byte) []byte {
+	buf := make([]byte, 5+len(body))
+	binary.BigEndian.PutUint32(buf, uint32(len(buf)))
+	buf[4] = byte(base.id)
+	copy(buf[4:], body)
 	return buf
 }
 
-func (msg *Message) Decode(buf []byte) {
+/*func Decode(buf []byte) Message {
+	head := make([]byte, 5)
+	body := message.Encode()
+	binary.BigEndian.PutUint32(head, uint32(len(head)+len(body)))
+	head[4] = byte(message.ID())
+	return append(head, body...)
+}
+
+func (msg *Message) ToBytes() []byte {
+	buf := make([]byte, 5)
+	binary.BigEndian.PutUint32(buf, msg.Length)
+	buf[4] = byte(msg.ID)
+	if msg.Payload != nil {
+		return append(buf, msg.Payload.Encode()...)
+	} else {
+		return buf
+	}
+}
+
+func (msg *Message) FormBytes(buf []byte) {
 	msg.Length = binary.BigEndian.Uint32(buf)
 	msg.ID = ID(buf[4])
-}
+	if msg.Payload != nil {
+		msg.Payload.Decode(buf[4:])
+	}
+}*/
 
-type Serialize interface {
-	Encode() []byte
-	Decode(buf []byte) Serialize
-}
-
-/*func NewMessage(id MessageID, payload []byte) *Message {
-	message := &Message{ID: id, Payload: payload}
+/*func NewMessage(id MessageID, Payload []byte) *Message {
+	message := &Message{ID: id, Payload: Payload}
 	if id == Keepalive {
 		message.Length = 0
 	} else {
-		message.Length = uint32(len(payload) + 1)
+		message.Length = uint32(len(Payload) + 1)
 	}
 	return message
 }

@@ -1,24 +1,14 @@
 package message
 
-// choke: <len=0001><id=0>
+// choke: <len=0001><id=3>
 type NotInterested struct {
-	Message
+	*base
 }
 
 func NewNotInterested() *NotInterested {
 	return &NotInterested{
-		Message{
-			Length: 1,
-			ID:     IdNotinterested,
+		base: &base{
+			id: IdNotInterested,
 		},
 	}
-}
-
-func (ni *NotInterested) Encode() []byte {
-	return ni.Message.Encode()
-}
-
-func (ni *NotInterested) Decode(buf []byte) Serialize {
-	ni.Message.Decode(buf)
-	return ni
 }

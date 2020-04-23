@@ -155,8 +155,7 @@ func (pc *peerConn) ready() error {
 			if length == 0 {
 				// 	keepalive
 			} else {
-				messageID := message.ID(buf[4])
-				switch messageID {
+				switch message.ID(buf[4]) {
 				case message.IdChoke:
 					break
 				case message.IdUnchoke:
@@ -164,7 +163,7 @@ func (pc *peerConn) ready() error {
 					break
 				case message.IdInterested:
 					break
-				case message.IdNotinterested:
+				case message.IdNotInterested:
 					break
 				case message.IdHave:
 					break
@@ -245,7 +244,7 @@ func (pc *peerConn) downloadPiece(index int) (err error) {
 			return
 		}
 		// 发起request，对方会响应piece
-		_, err = pc.conn.Write(message.NewRequest(uint32(index), uint32(offset), blockLength).Encode())
+		_, err = pc.conn.Write(message.BuildRequest(uint32(index), uint32(offset), blockLength).Encode())
 		if err != nil {
 			break
 		}
@@ -279,7 +278,7 @@ func (pc *peerConn) handleUnchoke(readyCh chan<- bool) {
 }
 
 func (pc *peerConn) handleBitfield(buf []byte) {
-	pc.bitfield = &message.Bitfield{}
+	pc.bitfield = message.NewBitfield()
 	pc.bitfield.Decode(buf)
 	have := pc.getHavePieces(pc.bitfield)
 	if len(have) > 0 {
@@ -296,7 +295,7 @@ func (pc *peerConn) handleBitfield(buf []byte) {
 
 // 处理下载响应，每次接收到响应直接将block写入到对应文件中
 func (pc *peerConn) handlePiece(buf []byte) {
-	piece := &message.Piece{}
+	piece := message.NewPiece()
 	piece.Decode(buf)
 	info := pc.torrent.MetaInfo.Info
 	fds := pc.torrent.MetaInfo.GetFileDetails()

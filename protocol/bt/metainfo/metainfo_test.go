@@ -16,6 +16,7 @@ func TestParseFromFile(t *testing.T) {
 	fmt.Printf("%+v\n", metaInfo.AnnounceList)
 	fmt.Printf("%+v\n", metaInfo.Info.Files)
 	fmt.Printf("%+v\n", metaInfo.Info.PieceLength)
+	fmt.Printf("%+v\n", len(metaInfo.Info.Pieces))
 	fmt.Printf("%+v\n", hex.EncodeToString(metaInfo.infoHash[:]))
 }
 

@@ -8,7 +8,6 @@ import (
 
 func TestBitfield_IsComplete(t *testing.T) {
 	type fields struct {
-		Message Message
 		payload *roaring.Bitmap
 	}
 	type args struct {
@@ -44,8 +43,8 @@ func TestBitfield_IsComplete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := &Bitfield{
-				Message: &tt.fields.Message,
-				payload: tt.fields.payload,
+				pieceCount: 100,
+				bitmap:     tt.fields.payload,
 			}
 			if got := b.IsComplete(tt.args.i); got != tt.want {
 				t.Errorf("Bitfield.IsComplete() = %v, want %v", got, tt.want)
@@ -54,9 +53,8 @@ func TestBitfield_IsComplete(t *testing.T) {
 	}
 }
 
-func TestBitfield_Have(t *testing.T) {
+func TestBitfield_Provide(t *testing.T) {
 	type fields struct {
-		Message Message
 		payload *roaring.Bitmap
 	}
 	type args struct {
@@ -102,8 +100,8 @@ func TestBitfield_Have(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := &Bitfield{
-				Message: &tt.fields.Message,
-				payload: tt.fields.payload,
+				pieceCount: 100,
+				bitmap:     tt.fields.payload,
 			}
 			if got := b.Provide(tt.args.had); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Bitfield.Provide() = %v, want %v", got, tt.want)

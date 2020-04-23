@@ -1,12 +1,16 @@
 package message
 
 // 	keep-alive: <len=0000>
-type Keepalive struct{}
-
-func (k *Keepalive) Encode() []byte {
-	return []byte{0, 0, 0, 0}
+type Keepalive struct {
+	*base
 }
 
-func (k *Keepalive) Decode(buf []byte) Serialize {
-	return &Keepalive{}
+var data = make([]byte, 4)
+
+func (k *Keepalive) Encode() []byte {
+	return data
+}
+
+func (k *Keepalive) Decode(body []byte) {
+
 }
