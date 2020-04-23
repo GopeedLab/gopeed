@@ -303,10 +303,10 @@ func (pc *peerConn) handlePiece(buf []byte) {
 	pieceBegin := int64(piece.Index) * int64(info.PieceLength)
 	blockBegin := pieceBegin + int64(piece.Begin)
 	// 计算block对应要写到的文件偏移
-	var fileBlocks []fileBlock
+	var fileBlocks []*fileBlock
 	if len(info.Files) == 0 {
 		// 单文件
-		fileBlocks = append(fileBlocks, fileBlock{
+		fileBlocks = append(fileBlocks, &fileBlock{
 			filepath:   info.Name,
 			fileSeek:   blockBegin,
 			blockBegin: 0,
@@ -420,7 +420,7 @@ func (pc *peerConn) handlePiece(buf []byte) {
 }
 
 // 获取piece对应要写入的文件
-func getWriteFile(pieceBegin int64, fds []metainfo.FileDetail) int {
+func getWriteFile(pieceBegin int64, fds []*metainfo.FileDetail) int {
 	for i, f := range fds {
 		if f.Begin <= pieceBegin && f.End > pieceBegin {
 			return i

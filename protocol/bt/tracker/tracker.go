@@ -158,7 +158,7 @@ type udpAnnounceResponse struct {
 	interval      uint32
 	leechers      uint32
 	seeders       uint32
-	peers         []peer.Peer
+	peers         []*peer.Peer
 }
 
 func newUdpAnnounceResponse(buf []byte) *udpAnnounceResponse {
@@ -170,11 +170,11 @@ func newUdpAnnounceResponse(buf []byte) *udpAnnounceResponse {
 		seeders:       binary.BigEndian.Uint32(buf[16:20]),
 	}
 	count := (len(buf) - 20) / 6
-	response.peers = make([]peer.Peer, count, count)
+	response.peers = make([]*peer.Peer, count, count)
 	for i := 0; i < count; i++ {
 		ipBegin := 20 + 6*i
 		portBegin := ipBegin + 4
-		response.peers[i] = peer.Peer{
+		response.peers[i] = &peer.Peer{
 			IP:   binary.BigEndian.Uint32(buf[ipBegin:portBegin]),
 			Port: binary.BigEndian.Uint16(buf[portBegin : portBegin+2]),
 		}
@@ -233,8 +233,8 @@ func (tracker *Tracker) announce(conn *net.UDPConn, timeout int64, connectionId 
 }
 
 // 通过tracker服务器获取peer信息
-func (tracker *Tracker) Tracker() <-chan []peer.Peer {
-	peersCh := make(chan []peer.Peer)
+func (tracker *Tracker) Tracker() <-chan []*peer.Peer {
+	peersCh := make(chan []*peer.Peer)
 	metaInfo := tracker.MetaInfo
 
 	checkAnnounceList := func(announceList [][]string) bool {
@@ -281,7 +281,7 @@ func (tracker *Tracker) Tracker() <-chan []peer.Peer {
 	return peersCh
 }
 
-func (tracker *Tracker) DoTracker(announce string) (peers []peer.Peer, err error) {
+func (tracker *Tracker) DoTracker(announce string) (peers []*peer.Peer, err error) {
 	if announce != "" {
 		url, _ := url.Parse(announce)
 		switch url.Scheme {
@@ -297,7 +297,7 @@ func (tracker *Tracker) DoTracker(announce string) (peers []peer.Peer, err error
 }
 
 // http://bittorrent.org/beps/bep_0003.html#trackers
-func (tracker *Tracker) httpTracker(url *url.URL) (peers []peer.Peer, err error) {
+func (tracker *Tracker) httpTracker(url *url.URL) (peers []*peer.Peer, err error) {
 	metaInfo := tracker.MetaInfo
 	peerID := tracker.PeerID
 
@@ -335,7 +335,7 @@ func (tracker *Tracker) httpTracker(url *url.URL) (peers []peer.Peer, err error)
 }
 
 // http://bittorrent.org/beps/bep_0015.html
-func (tracker *Tracker) udpTracker(url *url.URL) (peers []peer.Peer, err error) {
+func (tracker *Tracker) udpTracker(url *url.URL) (peers []*peer.Peer, err error) {
 	conn, err := dial(url)
 	if err != nil {
 		return

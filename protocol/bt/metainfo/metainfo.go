@@ -25,7 +25,7 @@ type MetaInfo struct {
 
 	infoHash    [20]byte
 	totalSize   uint64
-	fileDetails []FileDetail
+	fileDetails []*FileDetail
 }
 
 type Info struct {
@@ -35,7 +35,7 @@ type Info struct {
 	// 单个文件时，length为该文件的长度
 	Length uint64 `json:"length"`
 	// 多个文件
-	Files []File `json:"files"`
+	Files []*File `json:"files"`
 }
 
 type File struct {
@@ -116,7 +116,7 @@ func (metaInfo *MetaInfo) GetInfoHash() [20]byte {
 }
 
 // 获取所有文件的开始偏移字节
-func (metaInfo *MetaInfo) GetFileDetails() []FileDetail {
+func (metaInfo *MetaInfo) GetFileDetails() []*FileDetail {
 	return metaInfo.fileDetails
 }
 
@@ -125,10 +125,10 @@ func calcFileSize(metaInfo *MetaInfo) {
 	if metaInfo.Info != nil {
 		fileCount := len(metaInfo.Info.Files)
 		if fileCount > 0 {
-			metaInfo.fileDetails = make([]FileDetail, fileCount)
+			metaInfo.fileDetails = make([]*FileDetail, fileCount)
 			var length uint64
 			for i, f := range metaInfo.Info.Files {
-				metaInfo.fileDetails[i] = FileDetail{
+				metaInfo.fileDetails[i] = &FileDetail{
 					Length: f.Length,
 					Path:   f.Path,
 					Begin:  int64(length),
