@@ -64,7 +64,7 @@ func getUsablePeerMore() chan *peerConn {
 	peers := <-tracker.Tracker()
 	ch := make(chan *peerConn)
 	for i := range peers {
-		go peerTest(torrent, &peers[i], ch)
+		go peerTest(torrent, peers[i], ch)
 	}
 	return ch
 }

@@ -7,7 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
-	mrand "math/rand"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -47,7 +47,7 @@ func newUdpConnectRequest() *udpConnectRequest {
 	return &udpConnectRequest{
 		protocolId:    udpConnectRequestMagic,
 		action:        udpActionConnect,
-		transactionId: mrand.Uint32(),
+		transactionId: rand.Uint32(),
 	}
 }
 
@@ -118,7 +118,7 @@ func newUdpAnnounceRequest(connectionId uint64) *udpAnnounceRequest {
 	return &udpAnnounceRequest{
 		connectionId:  connectionId,
 		action:        udpActionAnnounce,
-		transactionId: mrand.Uint32(),
+		transactionId: rand.Uint32(),
 	}
 }
 
@@ -187,7 +187,7 @@ type Tracker struct {
 	MetaInfo *metainfo.MetaInfo
 }
 
-func (tracker *Tracker) connect(conn *net.UDPConn, timeout int64) (response *udpConnectResponse, err error) {
+func (tracker *Tracker) connect(conn net.Conn, timeout int64) (response *udpConnectResponse, err error) {
 	request := newUdpConnectRequest()
 	buf := request.encode()
 	conn.SetReadDeadline(time.Now().Add(time.Second * time.Duration(timeout)))
@@ -204,7 +204,7 @@ func (tracker *Tracker) connect(conn *net.UDPConn, timeout int64) (response *udp
 	return
 }
 
-func (tracker *Tracker) announce(conn *net.UDPConn, timeout int64, connectionId uint64) (response *udpAnnounceResponse, err error) {
+func (tracker *Tracker) announce(conn net.Conn, timeout int64, connectionId uint64) (response *udpAnnounceResponse, err error) {
 	request := newUdpAnnounceRequest(connectionId)
 	request.infoHash = tracker.MetaInfo.GetInfoHash()
 	request.peerID = tracker.PeerID
@@ -346,7 +346,7 @@ func (tracker *Tracker) udpTracker(url *url.URL) (peers []*peer.Peer, err error)
 		var connectResponse *udpConnectResponse
 		// 0:connect 1:announce
 		state := udpActionConnect
-		// 	访问超时最多重试8次，当有请求成功则将重试次数重置为0
+		// 访问超时最多重试8次，当有请求成功则将重试次数重置为0
 		for n := 0; n < udpConnectRetries; n++ {
 			// 15 * 2 ^ n seconds
 			timeout := int64(udpConnectTimeout * math.Pow(2, float64(n)))
@@ -385,26 +385,8 @@ func (tracker *Tracker) udpTracker(url *url.URL) (peers []*peer.Peer, err error)
 	return announceResponse.peers, nil
 }
 
-func dial(trackerUrl *url.URL) (*net.UDPConn, error) {
-	host, portStr, err := net.SplitHostPort(trackerUrl.Host)
-	if err != nil {
-		return nil, err
-	}
-	port, err := strconv.ParseInt(portStr, 10, 32)
-	if err != nil {
-		return nil, err
-	}
-	ip, err := lookupIP(host, trackerUrl.Scheme)
-	if err != nil {
-		return nil, err
-	}
-
-	srcAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
-	dstAddr := &net.UDPAddr{
-		IP:   ip,
-		Port: int(port),
-	}
-	return net.DialUDP(trackerUrl.Scheme, srcAddr, dstAddr)
+func dial(trackerUrl *url.URL) (net.Conn, error) {
+	return net.Dial(trackerUrl.Scheme, trackerUrl.Host)
 }
 
 func lookupIP(host string, scheme string) (ip net.IP, err error) {

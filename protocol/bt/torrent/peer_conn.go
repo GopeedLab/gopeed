@@ -324,7 +324,7 @@ func (pc *peerConn) handlePiece(buf []byte) {
 			fileWritable := f.End - blockFileBegin
 			// 计算block剩余写入字节数
 			blockWritable := blockLength - blockSeek
-			fb := fileBlock{
+			fb := &fileBlock{
 				filepath:   filepath.Join(f.Path...),
 				fileSeek:   blockFileBegin - f.Begin,
 				blockBegin: blockSeek,
@@ -420,6 +420,7 @@ func (pc *peerConn) handlePiece(buf []byte) {
 }
 
 // 获取piece对应要写入的文件
+// TODO 使用sort.Search二分查找法检索
 func getWriteFile(pieceBegin int64, fds []*metainfo.FileDetail) int {
 	for i, f := range fds {
 		if f.Begin <= pieceBegin && f.End > pieceBegin {

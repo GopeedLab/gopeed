@@ -60,10 +60,9 @@ func (b *Bitfield) IsComplete(i int) bool {
 }
 
 // 给定一组分片下载状态，计算出当前peer能提供下载的分片下标，如果已经拥有则不用提供
-// had = 0b10010000,has = 0b01111111
-// had & has = 0b10010000 & 0b01111111 = 0b00010000
-// had & has ^ has = 0b00010000 ^ 0b01111111 = 0b01101111
+// has = 0b01111111,had = 0b10010000
+// has & ~had = 0b01111111 & 0b01101111 = 0b01101111
 func (b *Bitfield) Provide(had *roaring.Bitmap) []uint32 {
-	xor := roaring.Xor(roaring.And(had, b.bitmap), b.bitmap)
+	xor := roaring.AndNot(b.bitmap, had)
 	return xor.ToArray()
 }

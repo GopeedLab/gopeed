@@ -11,7 +11,7 @@ import (
 type peerPool struct {
 	torrent *Torrent
 
-	states map[peer.Peer]*peerState
+	states map[*peer.Peer]*peerState
 	lock   *sync.Mutex
 }
 
@@ -26,7 +26,7 @@ func newPeerPool(torrent *Torrent) *peerPool {
 	return &peerPool{
 		torrent: torrent,
 		lock:    &sync.Mutex{},
-		states:  map[peer.Peer]*peerState{},
+		states:  map[*peer.Peer]*peerState{},
 	}
 }
 
@@ -52,7 +52,7 @@ func (pp *peerPool) fetch() {
 	}()
 }
 
-func (pp *peerPool) put(peers []peer.Peer) {
+func (pp *peerPool) put(peers []*peer.Peer) {
 	pp.lock.Lock()
 	defer pp.lock.Unlock()
 	for _, peer := range peers {
@@ -72,7 +72,7 @@ func (pp *peerPool) get() *peer.Peer {
 	for peer, state := range pp.states {
 		if !state.using {
 			state.using = true
-			return &peer
+			return peer
 		}
 	}
 	return nil
@@ -82,18 +82,18 @@ func (pp *peerPool) get() *peer.Peer {
 func (pp *peerPool) release(peer *peer.Peer) {
 	pp.lock.Lock()
 	defer pp.lock.Unlock()
-	pp.states[*peer].using = false
-	pp.states[*peer].errors = 0
+	pp.states[peer].using = false
+	pp.states[peer].errors = 0
 }
 
 // 标记peer为不可用，超过3次则剔除该peer
 func (pp *peerPool) unavailable(peer *peer.Peer) {
 	pp.lock.Lock()
 	defer pp.lock.Unlock()
-	pp.states[*peer].using = false
-	pp.states[*peer].errors++
-	if pp.states[*peer].errors > 3 {
-		delete(pp.states, *peer)
+	pp.states[peer].using = false
+	pp.states[peer].errors++
+	if pp.states[peer].errors > 3 {
+		delete(pp.states, peer)
 	}
 
 }

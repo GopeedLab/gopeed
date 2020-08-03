@@ -13,11 +13,6 @@ import (
 	"sync"
 )
 
-type Download interface {
-	Resolve(request *http.Request) (*http.Response, error)
-	Down(request *http.Request) error
-}
-
 // Resolve return the file response to be downloaded
 func Resolve(request *Request) (*Response, error) {
 	httpRequest, err := BuildHTTPRequest(request)
@@ -53,9 +48,9 @@ func Resolve(request *Request) (*Response, error) {
 			ret.Name = subLastSlash(parse.Path)
 		}
 	}
-	// Unknow file name
+	// Unknown file name
 	if ret.Name == "" {
-		ret.Name = "unknow"
+		ret.Name = "unknown"
 	}
 	// Is support range
 	ret.Range = response.StatusCode == 206
