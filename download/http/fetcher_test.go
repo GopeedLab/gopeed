@@ -7,17 +7,62 @@ import (
 	"golang.org/x/net/proxy"
 	"io"
 	"io/ioutil"
+	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 )
 
+func startMockServer() net.Listener {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+	file, err := os.Create("./test.data")
+	if err != nil {
+		panic(err)
+	}
+	buf := make([]byte, 1024)
+	for i := 0; i < 20*1024; i++ {
+		_, err := rand.Read(buf)
+		if err != nil {
+			panic(err)
+		}
+		file.WriteAt(buf, int64(i*1024))
+	}
+
+	go func() {
+		http.Serve(listener, http.FileServer(http.Dir("./")))
+	}()
+	return &delFileListener{
+		File:     file,
+		Listener: listener,
+	}
+}
+
+type delFileListener struct {
+	*os.File
+	net.Listener
+}
+
+func (c *delFileListener) Close() error {
+	c.File.Close()
+	err := os.Remove(c.File.Name())
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	return c.Listener.Close()
+}
+
 func TestFetcher_Resolve(t *testing.T) {
+	listener := startMockServer()
+	defer listener.Close()
 	fetcher := &Fetcher{}
 	resolve, err := fetcher.Resolve(&common.Request{
-		// URL: "https://github.com/monkeyWie/github-actions-demo/releases/download/v1.0.6/simple-v1.0.6-windows-x64.zip",
-		URL: "http://192.168.200.163:8088/go1.12.7.linux-amd64.tar.gz",
+		URL: "http://" + listener.Addr().String() + "/test.data",
 	})
 	if err != nil {
 		t.Fatal(err)

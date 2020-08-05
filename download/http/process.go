@@ -31,11 +31,7 @@ func NewProcess(fetcher *Fetcher, res *common.Resource, opts *common.Options) *P
 func (p *Process) Start() error {
 	ctl := p.fetcher.GetCtl()
 	// 创建文件
-	var filename = p.opts.Name
-	if filename == "" {
-		filename = p.res.Files[0].Name
-	}
-	name := filepath.Join(p.opts.Path, filename)
+	name := p.name()
 	err := ctl.Touch(name, p.res.Size)
 	if err != nil {
 		return err
@@ -50,31 +46,23 @@ func (p *Process) Start() error {
 		p.chunks = make([]*model.Chunk, p.opts.Connections)
 		p.clients = make([]*http.Response, p.opts.Connections)
 		for i := 0; i < p.opts.Connections; i++ {
-			begin := chunkSize * int64(i)
-			end := begin + chunkSize
+			var (
+				begin = chunkSize * int64(i)
+				end   int64
+			)
 			if i == p.opts.Connections-1 {
-				// 最后一个连接下载的分块大小需要特殊计算，保证把文件下载完
-				chunkSize = end + p.res.Size%int64(p.opts.Connections)
+				// 最后一个分块需要保证把文件下载完
+				end = p.res.Size
+			} else {
+				end = begin + chunkSize
 			}
-			p.chunks[i] = model.NewChunk(begin, end)
+			chunk := model.NewChunk(begin, end)
+			p.chunks[i] = chunk
 			go func(i int) {
-				errCh <- p.doFetch(i, name, begin, end)
+				errCh <- p.fetchChunk(i, name, chunk)
 			}(i)
 		}
-		var failErr error
-		for i := 0; i < p.opts.Connections; i++ {
-			err := <-errCh
-			if failErr == nil {
-				// 有一个连接下载失败，立即停止下载
-				failErr = err
-				if failErr != nil {
-					p.Pause()
-				}
-			}
-		}
-		if failErr != nil {
-			return failErr
-		}
+		return p.wait(errCh)
 	}
 	return nil
 }
@@ -89,49 +77,82 @@ func (p *Process) Pause() error {
 }
 
 func (p *Process) Continue() error {
-	return nil
+	var (
+		name  = p.name()
+		errCh = make(chan error)
+	)
+	for i := 0; i < p.opts.Connections; i++ {
+		go func(i int) {
+			errCh <- p.fetchChunk(i, name, p.chunks[i])
+		}(i)
+	}
+	return p.wait(errCh)
 }
 
 func (p *Process) Delete() error {
 	panic("implement me")
 }
 
-func (p *Process) doFetch(index int, filename string, begin, end int64) (err error) {
+func (p *Process) name() string {
+	// 创建文件
+	var filename = p.opts.Name
+	if filename == "" {
+		filename = p.res.Files[0].Name
+	}
+	return filepath.Join(p.opts.Path, filename)
+}
+
+func (p *Process) wait(errCh <-chan error) error {
+	var failErr error
+	for i := 0; i < p.opts.Connections; i++ {
+		err := <-errCh
+		if failErr == nil {
+			// 有一个连接下载失败，立即停止下载
+			failErr = err
+			if failErr != nil {
+				p.Pause()
+			}
+		}
+	}
+	if failErr != nil {
+		return failErr
+	}
+	return nil
+}
+
+func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err error) {
 	httpReq, err := BuildRequest(p.res.Req)
 	if err != nil {
 		return err
 	}
-	httpReq.Header.Set(common.HttpHeaderRange, fmt.Sprintf(common.HttpHeaderRangeFormat, begin, end))
-	client := BuildClient()
-
+	var (
+		client = BuildClient()
+		buf    = make([]byte, 8192)
+	)
 	// 重试5次
 	for i := 0; i < 5; i++ {
 		var (
 			resp  *http.Response
 			retry bool
 		)
+		httpReq.Header.Set(common.HttpHeaderRange,
+			fmt.Sprintf(common.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
 		resp, err = client.Do(httpReq)
 		if err != nil {
 			// 连接失败，直接重试
 			continue
 		}
-		p.chunks[index].Downloaded = 0
 		p.clients[index] = resp
 		retry, err = func() (bool, error) {
 			defer resp.Body.Close()
-			var (
-				buf    = make([]byte, 8192)
-				offset = begin
-			)
 			for {
 				n, err := resp.Body.Read(buf)
 				if n > 0 {
-					len, err := p.fetcher.GetCtl().Write(filename, offset, buf[:n])
+					_, err := p.fetcher.GetCtl().Write(name, chunk.Begin+chunk.Downloaded, buf[:n])
 					if err != nil {
 						return false, err
 					}
-					offset += int64(len)
-					p.chunks[index].Downloaded = p.chunks[i].Downloaded + int64(len)
+					chunk.Downloaded += int64(n)
 				}
 				if err != nil {
 					if err != io.EOF {
