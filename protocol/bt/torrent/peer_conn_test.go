@@ -2,8 +2,8 @@ package torrent
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed/protocol/bt/peer"
-	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/tracker"
 	"os"
 	"sync"
 	"testing"

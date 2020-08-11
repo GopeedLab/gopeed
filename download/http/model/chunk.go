@@ -1,7 +1,7 @@
 package model
 
 import (
-	"github.com/monkeyWie/gopeed/download/common"
+	"github.com/monkeyWie/gopeed-core/download/common"
 )
 
 type Chunk struct {

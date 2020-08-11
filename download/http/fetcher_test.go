@@ -3,7 +3,7 @@ package http
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/monkeyWie/gopeed/download/common"
+	"github.com/monkeyWie/gopeed-core/download/common"
 	"io"
 	"math/rand"
 	"net"

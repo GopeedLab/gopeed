@@ -3,7 +3,7 @@ package download
 import (
 	"errors"
 	"github.com/google/uuid"
-	"github.com/monkeyWie/gopeed/download/common"
+	"github.com/monkeyWie/gopeed-core/download/common"
 	"net/url"
 	"strings"
 )

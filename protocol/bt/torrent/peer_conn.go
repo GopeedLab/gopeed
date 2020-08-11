@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/cenkalti/mse"
-	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
-	"github.com/monkeyWie/gopeed/protocol/bt/peer"
-	"github.com/monkeyWie/gopeed/protocol/bt/peer/message"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/peer/message"
 	log "github.com/sirupsen/logrus"
 )
 

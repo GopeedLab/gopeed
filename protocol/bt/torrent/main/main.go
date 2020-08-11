@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
-	"github.com/monkeyWie/gopeed/protocol/bt/peer"
-	"github.com/monkeyWie/gopeed/protocol/bt/torrent"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/torrent"
 	log "github.com/sirupsen/logrus"
 )
 

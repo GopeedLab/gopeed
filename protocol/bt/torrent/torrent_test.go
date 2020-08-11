@@ -1,8 +1,8 @@
 package torrent
 
 import (
-	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
-	"github.com/monkeyWie/gopeed/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/peer"
 	log "github.com/sirupsen/logrus"
 	"testing"
 )

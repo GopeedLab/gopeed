@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
-	"github.com/monkeyWie/gopeed/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/peer"
 )
 
 const (

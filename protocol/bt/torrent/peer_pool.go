@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/monkeyWie/gopeed/protocol/bt/peer"
-	"github.com/monkeyWie/gopeed/protocol/bt/tracker"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/peer"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/tracker"
 )
 
 type peerPool struct {

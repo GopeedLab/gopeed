@@ -1,4 +1,4 @@
-module github.com/monkeyWie/gopeed
+module github.com/monkeyWie/gopeed-core
 
 go 1.13
 

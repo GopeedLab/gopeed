@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/monkeyWie/gopeed/protocol/bt/metainfo"
+	"github.com/monkeyWie/gopeed-core/protocol/bt/metainfo"
 	log "github.com/sirupsen/logrus"
 )
 

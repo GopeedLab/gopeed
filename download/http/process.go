@@ -2,8 +2,8 @@ package http
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed/download/common"
-	"github.com/monkeyWie/gopeed/download/http/model"
+	"github.com/monkeyWie/gopeed-core/download/common"
+	"github.com/monkeyWie/gopeed-core/download/http/model"
 	"io"
 	"net/http"
 	"path/filepath"

@@ -3,8 +3,8 @@ package http
 import (
 	"bytes"
 	"fmt"
-	"github.com/monkeyWie/gopeed/download/common"
-	"github.com/monkeyWie/gopeed/download/http/model"
+	"github.com/monkeyWie/gopeed-core/download/common"
+	"github.com/monkeyWie/gopeed-core/download/http/model"
 	"io/ioutil"
 	"mime"
 	"net/http"

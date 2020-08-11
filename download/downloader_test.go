@@ -2,8 +2,8 @@ package download
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed/download/common"
-	"github.com/monkeyWie/gopeed/download/http"
+	"github.com/monkeyWie/gopeed-core/download/common"
+	"github.com/monkeyWie/gopeed-core/download/http"
 	"testing"
 )
 
