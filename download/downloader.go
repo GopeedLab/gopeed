@@ -5,7 +5,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/monkeyWie/gopeed/download/common"
 	"net/url"
-	"os"
 	"strings"
 )
 
@@ -26,7 +25,7 @@ type Downloader struct {
 }
 
 func NewDownloader(fetchers ...common.Fetcher) *Downloader {
-	d := &Downloader{Controller: &common.Controller{Files: make(map[string]*os.File)}}
+	d := &Downloader{Controller: common.NewController()}
 	d.fetches = make(map[string]common.Fetcher)
 	for _, f := range fetchers {
 		for _, p := range f.Protocols() {

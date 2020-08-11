@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/monkeyWie/gopeed/download/common"
 	"github.com/monkeyWie/gopeed/download/http/model"
@@ -16,8 +15,25 @@ import (
 	"time"
 )
 
+type RequestError struct {
+	Code int
+	Msg  string
+}
+
+func NewRequestError(code int, msg string) *RequestError {
+	return &RequestError{Code: code, Msg: msg}
+}
+
+func (re *RequestError) Error() string {
+	return fmt.Sprintf("http request fail,code:%d", re.Code)
+}
+
 type Fetcher struct {
 	*common.BaseFetcher
+}
+
+func NewFetcher() *Fetcher {
+	return &Fetcher{BaseFetcher: &common.BaseFetcher{}}
 }
 
 func (h *Fetcher) Protocols() []string {
@@ -36,7 +52,8 @@ func (h *Fetcher) Resolve(req *common.Request) (*common.Resource, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer httpResp.Body.Close()
+	// 拿到响应头就关闭，不用加defer
+	httpResp.Body.Close()
 	res := &common.Resource{
 		Req:   req,
 		Range: false,
@@ -57,13 +74,15 @@ func (h *Fetcher) Resolve(req *common.Request) (*common.Resource, error) {
 	} else if common.HttpCodeOK == httpResp.StatusCode {
 		// 返回200响应码，不支持断点下载，通过Content-Length头获取文件大小，获取不到的话可能是chunked编码
 		contentLength := httpResp.Header.Get(common.HttpHeaderContentLength)
-		parse, err := strconv.ParseInt(contentLength, 10, 64)
-		if err != nil {
-			return nil, err
+		if contentLength != "" {
+			parse, err := strconv.ParseInt(contentLength, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			res.Size = parse
 		}
-		res.Size = parse
 	} else {
-		return nil, errors.New("http request fail")
+		return nil, NewRequestError(httpResp.StatusCode, httpResp.Status)
 	}
 	file := &common.FileInfo{
 		Size: res.Size,

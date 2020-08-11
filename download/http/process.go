@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"sync"
 )
 
 type Process struct {
@@ -17,6 +18,8 @@ type Process struct {
 	status  common.Status
 	clients []*http.Response
 	chunks  []*model.Chunk
+
+	pauseLock *sync.Mutex
 }
 
 func NewProcess(fetcher *Fetcher, res *common.Resource, opts *common.Options) *Process {
@@ -25,6 +28,8 @@ func NewProcess(fetcher *Fetcher, res *common.Resource, opts *common.Options) *P
 		res:     res,
 		opts:    opts,
 		status:  common.DownloadStatusReady,
+
+		pauseLock: &sync.Mutex{},
 	}
 }
 
@@ -32,11 +37,14 @@ func (p *Process) Start() error {
 	ctl := p.fetcher.GetCtl()
 	// 创建文件
 	name := p.name()
-	err := ctl.Touch(name, p.res.Size)
+	_, err := ctl.Touch(name, p.res.Size)
 	if err != nil {
 		return err
 	}
-	if p.res.Range && p.res.Size > 0 {
+	defer p.close()
+	p.status = common.DownloadStatusStart
+	var fetchErr error
+	if p.res.Range {
 		// 每个连接平均需要下载的分块大小
 		var (
 			chunkSize = p.res.Size / int64(p.opts.Connections)
@@ -62,12 +70,27 @@ func (p *Process) Start() error {
 				errCh <- p.fetchChunk(i, name, chunk)
 			}(i)
 		}
-		return p.wait(errCh)
+		fetchErr = p.wait(errCh)
+	} else {
+		// 只支持单连接下载
+		p.chunks = make([]*model.Chunk, 1)
+		p.clients = make([]*http.Response, 1)
+		p.chunks[0] = model.NewChunk(0, 0)
+		fetchErr = p.fetchChunk(0, name, p.chunks[0])
 	}
-	return nil
+	if p.status == common.DownloadStatusPause {
+		return nil
+	}
+	return fetchErr
 }
 
 func (p *Process) Pause() error {
+	p.pauseLock.Lock()
+	defer p.pauseLock.Unlock()
+	if common.DownloadStatusStart != p.status {
+		return nil
+	}
+	p.status = common.DownloadStatusPause
 	if len(p.clients) > 0 {
 		for _, client := range p.clients {
 			client.Body.Close()
@@ -77,10 +100,28 @@ func (p *Process) Pause() error {
 }
 
 func (p *Process) Continue() error {
+	if func() bool {
+		p.pauseLock.Lock()
+		defer p.pauseLock.Unlock()
+		if common.DownloadStatusPause != p.status && common.DownloadStatusError != p.status {
+			return true
+		}
+		p.status = common.DownloadStatusStart
+		return false
+	}() {
+		return nil
+	}
+
 	var (
+		ctl   = p.fetcher.GetCtl()
 		name  = p.name()
 		errCh = make(chan error)
 	)
+	_, err := ctl.Open(name)
+	if err != nil {
+		return err
+	}
+	defer ctl.Close(name)
 	for i := 0; i < p.opts.Connections; i++ {
 		go func(i int) {
 			errCh <- p.fetchChunk(i, name, p.chunks[i])
@@ -91,6 +132,10 @@ func (p *Process) Continue() error {
 
 func (p *Process) Delete() error {
 	panic("implement me")
+}
+
+func (p *Process) close() error {
+	return p.fetcher.GetCtl().Close(p.name())
 }
 
 func (p *Process) name() string {
@@ -120,6 +165,14 @@ func (p *Process) wait(errCh <-chan error) error {
 	return nil
 }
 
+type action int
+
+const (
+	actionDirect action = iota
+	actionContinue
+	actionReturn
+)
+
 func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err error) {
 	httpReq, err := BuildRequest(p.res.Req)
 	if err != nil {
@@ -135,14 +188,37 @@ func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 			resp  *http.Response
 			retry bool
 		)
-		httpReq.Header.Set(common.HttpHeaderRange,
-			fmt.Sprintf(common.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
-		resp, err = client.Do(httpReq)
-		if err != nil {
-			// 连接失败，直接重试
-			continue
+		if p.res.Range {
+			httpReq.Header.Set(common.HttpHeaderRange,
+				fmt.Sprintf(common.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
+		} else {
+			chunk.Downloaded = 0
 		}
-		p.clients[index] = resp
+		var act action
+		act, err = func() (action, error) {
+			p.pauseLock.Lock()
+			defer p.pauseLock.Unlock()
+			if p.status == common.DownloadStatusPause {
+				return actionReturn, nil
+			}
+			resp, err = client.Do(httpReq)
+			if err != nil {
+				// 连接失败，直接重试
+				return actionContinue, err
+			}
+			if resp.StatusCode != common.HttpCodeOK && resp.StatusCode != common.HttpCodePartialContent {
+				err = NewRequestError(resp.StatusCode, resp.Status)
+				return actionContinue, err
+			}
+			p.clients[index] = resp
+			return actionDirect, nil
+		}()
+		fmt.Printf("action:%d\n", act)
+		if act == actionContinue {
+			continue
+		} else if act == actionReturn {
+			return nil
+		}
 		retry, err = func() (bool, error) {
 			defer resp.Body.Close()
 			for {

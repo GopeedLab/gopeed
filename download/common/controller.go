@@ -36,10 +36,9 @@ type Options struct {
 }
 
 type FileInfo struct {
-	Name       string
-	Path       string
-	Size       int64
-	Downloaded int64
+	Name string
+	Path string
+	Size int64
 }
 
 type Process interface {
@@ -53,25 +52,42 @@ type Controller struct {
 	Files map[string]*os.File
 }
 
-func (c *Controller) Touch(name string, size int64) error {
+func NewController() *Controller {
+	return &Controller{Files: make(map[string]*os.File)}
+}
+
+func (c *Controller) Touch(name string, size int64) (file *os.File, err error) {
 	if size > 0 {
-		return os.Truncate(name, size)
+		err := os.Truncate(name, size)
+		if err != nil {
+			return nil, err
+		}
+		file, err = os.OpenFile(name, os.O_RDWR, 0666)
+	} else {
+		file, err = os.Create(name)
 	}
-	_, err := os.Create(name)
-	return err
+	if err == nil {
+		c.Files[name] = file
+	}
+	return
+}
+
+func (c *Controller) Open(name string) (file *os.File, err error) {
+	file, err = os.OpenFile(name, os.O_RDWR, 0666)
+	if err == nil {
+		c.Files[name] = file
+	}
+	return
 }
 
 func (c *Controller) Write(name string, offset int64, buf []byte) (int, error) {
-	file, ok := c.Files[name]
-	if !ok {
-		var err error
-		file, err = os.OpenFile(name, os.O_RDWR, 0666)
-		if err != nil {
-			return 0, err
-		}
-		c.Files[name] = file
-	}
-	return file.WriteAt(buf, offset)
+	return c.Files[name].WriteAt(buf, offset)
+}
+
+func (c *Controller) Close(name string) error {
+	err := c.Files[name].Close()
+	delete(c.Files, name)
+	return err
 }
 
 func (c *Controller) ContextDialer() (proxy.Dialer, error) {
