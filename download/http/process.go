@@ -46,11 +46,7 @@ func (p *Process) Start() error {
 	var fetchErr error
 	if p.res.Range {
 		// 每个连接平均需要下载的分块大小
-		var (
-			chunkSize = p.res.Size / int64(p.opts.Connections)
-			errCh     = make(chan error)
-		)
-		defer close(errCh)
+		chunkSize := p.res.Size / int64(p.opts.Connections)
 		p.chunks = make([]*model.Chunk, p.opts.Connections)
 		p.clients = make([]*http.Response, p.opts.Connections)
 		for i := 0; i < p.opts.Connections; i++ {
@@ -66,11 +62,8 @@ func (p *Process) Start() error {
 			}
 			chunk := model.NewChunk(begin, end)
 			p.chunks[i] = chunk
-			go func(i int) {
-				errCh <- p.fetchChunk(i, name, chunk)
-			}(i)
 		}
-		fetchErr = p.wait(errCh)
+		fetchErr = p.fetch()
 	} else {
 		// 只支持单连接下载
 		p.chunks = make([]*model.Chunk, 1)
@@ -78,8 +71,8 @@ func (p *Process) Start() error {
 		p.chunks[0] = model.NewChunk(0, 0)
 		fetchErr = p.fetchChunk(0, name, p.chunks[0])
 	}
-	if p.status == common.DownloadStatusPause {
-		return nil
+	if fetchErr != nil && fetchErr != common.PauseErr {
+		p.Pause()
 	}
 	return fetchErr
 }
@@ -90,6 +83,7 @@ func (p *Process) Pause() error {
 	if common.DownloadStatusStart != p.status {
 		return nil
 	}
+	fmt.Println("============Pause============")
 	p.status = common.DownloadStatusPause
 	if len(p.clients) > 0 {
 		for _, client := range p.clients {
@@ -111,23 +105,18 @@ func (p *Process) Continue() error {
 	}() {
 		return nil
 	}
+	fmt.Println("============Continue============")
 
 	var (
-		ctl   = p.fetcher.GetCtl()
-		name  = p.name()
-		errCh = make(chan error)
+		ctl  = p.fetcher.GetCtl()
+		name = p.name()
 	)
 	_, err := ctl.Open(name)
 	if err != nil {
 		return err
 	}
 	defer ctl.Close(name)
-	for i := 0; i < p.opts.Connections; i++ {
-		go func(i int) {
-			errCh <- p.fetchChunk(i, name, p.chunks[i])
-		}(i)
-	}
-	return p.wait(errCh)
+	return p.fetch()
 }
 
 func (p *Process) Delete() error {
@@ -147,31 +136,37 @@ func (p *Process) name() string {
 	return filepath.Join(p.opts.Path, filename)
 }
 
-func (p *Process) wait(errCh <-chan error) error {
-	var failErr error
+func (p *Process) fetch() error {
+	errCh := make(chan error)
+	defer close(errCh)
+
+	var done bool
+	var lock sync.Mutex
+
 	for i := 0; i < p.opts.Connections; i++ {
-		err := <-errCh
-		if failErr == nil {
-			// 有一个连接下载失败，立即停止下载
-			failErr = err
-			if failErr != nil {
-				p.Pause()
+		go func(i int) {
+			err := p.fetchChunk(i, p.name(), p.chunks[i])
+			lock.Lock()
+			if !done {
+				errCh <- err
 			}
+			lock.Unlock()
+		}(i)
+	}
+
+	var err error
+	for i := 0; i < p.opts.Connections; i++ {
+		err = <-errCh
+		if err != nil {
+			// 有一个连接下载失败，立即返回
+			lock.Lock()
+			done = true
+			lock.Unlock()
+			break
 		}
 	}
-	if failErr != nil {
-		return failErr
-	}
-	return nil
+	return err
 }
-
-type action int
-
-const (
-	actionDirect action = iota
-	actionContinue
-	actionReturn
-)
 
 func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err error) {
 	httpReq, err := BuildRequest(p.res.Req)
@@ -191,33 +186,33 @@ func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 		if p.res.Range {
 			httpReq.Header.Set(common.HttpHeaderRange,
 				fmt.Sprintf(common.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
+			fmt.Printf(common.HttpHeaderRangeFormat+"\n", chunk.Begin+chunk.Downloaded, chunk.End)
 		} else {
 			chunk.Downloaded = 0
 		}
-		var act action
-		act, err = func() (action, error) {
+		err = func() error {
 			p.pauseLock.Lock()
 			defer p.pauseLock.Unlock()
 			if p.status == common.DownloadStatusPause {
-				return actionReturn, nil
+				return common.PauseErr
 			}
 			resp, err = client.Do(httpReq)
 			if err != nil {
-				// 连接失败，直接重试
-				return actionContinue, err
+				return err
 			}
 			if resp.StatusCode != common.HttpCodeOK && resp.StatusCode != common.HttpCodePartialContent {
 				err = NewRequestError(resp.StatusCode, resp.Status)
-				return actionContinue, err
+				return err
 			}
 			p.clients[index] = resp
-			return actionDirect, nil
-		}()
-		fmt.Printf("action:%d\n", act)
-		if act == actionContinue {
-			continue
-		} else if act == actionReturn {
 			return nil
+		}()
+		if err != nil {
+			if err == common.PauseErr {
+				return err
+			}
+			// 请求失败重试
+			continue
 		}
 		retry, err = func() (bool, error) {
 			defer resp.Body.Close()

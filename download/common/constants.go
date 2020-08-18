@@ -1,5 +1,7 @@
 package common
 
+import "errors"
+
 type Status int
 
 const (
@@ -20,4 +22,9 @@ const (
 	HttpHeaderContentDisposition = "Content-Disposition"
 
 	HttpHeaderRangeFormat = "bytes=%d-%d"
+)
+
+var (
+	PauseErr  = errors.New("pause")
+	DeleteErr = errors.New("delete")
 )
