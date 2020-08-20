@@ -19,7 +19,7 @@ type Process struct {
 	clients []*http.Response
 	chunks  []*model.Chunk
 
-	pauseLock *sync.Mutex
+	pauseCond *sync.Cond
 }
 
 func NewProcess(fetcher *Fetcher, res *common.Resource, opts *common.Options) *Process {
@@ -29,7 +29,7 @@ func NewProcess(fetcher *Fetcher, res *common.Resource, opts *common.Options) *P
 		opts:    opts,
 		status:  common.DownloadStatusReady,
 
-		pauseLock: &sync.Mutex{},
+		pauseCond: sync.NewCond(&sync.Mutex{}),
 	}
 }
 
@@ -69,7 +69,7 @@ func (p *Process) Start() error {
 		p.chunks = make([]*model.Chunk, 1)
 		p.clients = make([]*http.Response, 1)
 		p.chunks[0] = model.NewChunk(0, 0)
-		fetchErr = p.fetchChunk(0, name, p.chunks[0])
+		fetchErr = p.fetch()
 	}
 	if fetchErr != nil && fetchErr != common.PauseErr {
 		p.Pause()
@@ -78,25 +78,26 @@ func (p *Process) Start() error {
 }
 
 func (p *Process) Pause() error {
-	p.pauseLock.Lock()
-	defer p.pauseLock.Unlock()
+	p.pauseCond.L.Lock()
+	defer p.pauseCond.L.Unlock()
 	if common.DownloadStatusStart != p.status {
 		return nil
 	}
-	fmt.Println("============Pause============")
 	p.status = common.DownloadStatusPause
 	if len(p.clients) > 0 {
 		for _, client := range p.clients {
 			client.Body.Close()
 		}
 	}
+	// 释放锁，并等待下载结束
+	p.pauseCond.Wait()
 	return nil
 }
 
 func (p *Process) Continue() error {
 	if func() bool {
-		p.pauseLock.Lock()
-		defer p.pauseLock.Unlock()
+		p.pauseCond.L.Lock()
+		defer p.pauseCond.L.Unlock()
 		if common.DownloadStatusPause != p.status && common.DownloadStatusError != p.status {
 			return true
 		}
@@ -105,7 +106,6 @@ func (p *Process) Continue() error {
 	}() {
 		return nil
 	}
-	fmt.Println("============Continue============")
 
 	var (
 		ctl  = p.fetcher.GetCtl()
@@ -137,35 +137,28 @@ func (p *Process) name() string {
 }
 
 func (p *Process) fetch() error {
-	errCh := make(chan error)
+	errCh := make(chan error, p.opts.Connections)
 	defer close(errCh)
-
-	var done bool
-	var lock sync.Mutex
 
 	for i := 0; i < p.opts.Connections; i++ {
 		go func(i int) {
-			err := p.fetchChunk(i, p.name(), p.chunks[i])
-			lock.Lock()
-			if !done {
-				errCh <- err
-			}
-			lock.Unlock()
+			errCh <- p.fetchChunk(i, p.name(), p.chunks[i])
 		}(i)
 	}
 
-	var err error
+	var retErr error
 	for i := 0; i < p.opts.Connections; i++ {
-		err = <-errCh
-		if err != nil {
-			// 有一个连接下载失败，立即返回
-			lock.Lock()
-			done = true
-			lock.Unlock()
-			break
+		err := <-errCh
+		if retErr != nil {
+			retErr = err
+			// 有一个连接失败就立即终止下载
+			if retErr != common.PauseErr {
+				p.Pause()
+			}
 		}
 	}
-	return err
+	p.pauseCond.Signal()
+	return retErr
 }
 
 func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err error) {
@@ -186,13 +179,12 @@ func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 		if p.res.Range {
 			httpReq.Header.Set(common.HttpHeaderRange,
 				fmt.Sprintf(common.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
-			fmt.Printf(common.HttpHeaderRangeFormat+"\n", chunk.Begin+chunk.Downloaded, chunk.End)
 		} else {
 			chunk.Downloaded = 0
 		}
 		err = func() error {
-			p.pauseLock.Lock()
-			defer p.pauseLock.Unlock()
+			p.pauseCond.L.Lock()
+			defer p.pauseCond.L.Unlock()
 			if p.status == common.DownloadStatusPause {
 				return common.PauseErr
 			}

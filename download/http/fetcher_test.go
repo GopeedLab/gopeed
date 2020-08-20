@@ -75,17 +75,17 @@ func TestFetcher_DownloadContinue(t *testing.T) {
 	listener := startTestFileServer()
 	defer listener.Close()
 	// 暂停继续
-	// downloadContinue(listener, 1, t)
+	downloadContinue(listener, 1, t)
 	downloadContinue(listener, 5, t)
-	// downloadContinue(listener, 8, t)
-	// downloadContinue(listener, 16, t)
+	downloadContinue(listener, 8, t)
+	downloadContinue(listener, 16, t)
 }
 
 func TestFetcher_DownloadChunked(t *testing.T) {
 	listener := startTestChunkedServer()
 	defer listener.Close()
 	// chunked编码下载
-	downloadNormal(listener, 1, t)
+	//downloadNormal(listener, 1, t)
 	downloadContinue(listener, 1, t)
 }
 
@@ -181,14 +181,21 @@ type delFileListener struct {
 func (c *delFileListener) Close() error {
 	defer func() {
 		c.File.Close()
-		if err := os.Remove(c.File.Name()); err != nil {
+		if err := ifExistAndRemove(c.File.Name()); err != nil {
 			fmt.Println(err)
 		}
-		if err := os.Remove(downloadFile); err != nil {
+		if err := ifExistAndRemove(downloadFile); err != nil {
 			fmt.Println(err)
 		}
 	}()
 	return c.Listener.Close()
+}
+
+func ifExistAndRemove(name string) error {
+	if _, err := os.Stat(name); !os.IsNotExist(err) {
+		return os.Remove(name)
+	}
+	return nil
 }
 
 func downloadReady(listener net.Listener, connections int, t *testing.T) common.Process {
@@ -237,7 +244,7 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 	if err := process.Pause(); err != nil {
 		t.Fatal(err)
 	}
-	/*time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 200)
 	if err := process.Continue(); err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +252,7 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 	got := fileMd5(downloadFile)
 	if want != got {
 		t.Errorf("Download error = %v, want %v", got, want)
-	}*/
+	}
 }
 
 func fileMd5(filePath string) string {
