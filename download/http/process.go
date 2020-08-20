@@ -78,11 +78,7 @@ func (p *Process) Pause() error {
 		return nil
 	}
 	p.status = common.DownloadStatusPause
-	if len(p.clients) > 0 {
-		for _, client := range p.clients {
-			client.Body.Close()
-		}
-	}
+	p.stop()
 	// 释放锁，并等待下载结束
 	p.pauseCond.Wait()
 	return nil
@@ -143,16 +139,31 @@ func (p *Process) fetch() error {
 	var retErr error
 	for i := 0; i < p.opts.Connections; i++ {
 		err := <-errCh
-		if retErr != nil {
+		if err != nil && retErr == nil {
 			retErr = err
 			// 有一个连接失败就立即终止下载
 			if retErr != common.PauseErr {
-				p.Pause()
+				func() {
+					p.pauseCond.L.Lock()
+					defer p.pauseCond.L.Unlock()
+					p.stop()
+				}()
 			}
 		}
 	}
 	p.pauseCond.Signal()
 	return retErr
+}
+
+func (p *Process) stop() {
+	if len(p.clients) > 0 {
+		for _, client := range p.clients {
+			fmt.Println("client close")
+			if client != nil {
+				client.Body.Close()
+			}
+		}
+	}
 }
 
 func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err error) {
@@ -186,11 +197,11 @@ func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 			if err != nil {
 				return err
 			}
+			p.clients[index] = resp
 			if resp.StatusCode != common.HttpCodeOK && resp.StatusCode != common.HttpCodePartialContent {
 				err = NewRequestError(resp.StatusCode, resp.Status)
 				return err
 			}
-			p.clients[index] = resp
 			return nil
 		}()
 		if err != nil {

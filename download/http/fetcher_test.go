@@ -76,8 +76,11 @@ func TestFetcher_DownloadContinue(t *testing.T) {
 	defer listener.Close()
 	// 暂停继续
 	downloadContinue(listener, 1, t)
+	fmt.Println("d1")
 	downloadContinue(listener, 5, t)
+	fmt.Println("d5")
 	downloadContinue(listener, 8, t)
+	fmt.Println("d8")
 	downloadContinue(listener, 16, t)
 }
 
@@ -94,6 +97,13 @@ func TestFetcher_DownloadRetry(t *testing.T) {
 	defer listener.Close()
 	// chunked编码下载
 	downloadNormal(listener, 1, t)
+}
+
+func TestFetcher_DownloadError(t *testing.T) {
+	listener := startTestErrorServer()
+	defer listener.Close()
+	// chunked编码下载
+	downloadError(listener, 1, t)
 }
 
 func startTestFileServer() net.Listener {
@@ -133,6 +143,21 @@ func startTestRetryServer() net.Listener {
 			}
 			defer file.Close()
 			io.Copy(writer, file)
+		})
+		return mux
+	})
+}
+
+func startTestErrorServer() net.Listener {
+	counter := 0
+	return startTestServer(func() http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+buildName, func(writer http.ResponseWriter, request *http.Request) {
+			counter++
+			if counter != 1 {
+				writer.WriteHeader(500)
+				return
+			}
 		})
 		return mux
 	})
@@ -252,6 +277,14 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 	got := fileMd5(downloadFile)
 	if want != got {
 		t.Errorf("Download error = %v, want %v", got, want)
+	}
+}
+
+func downloadError(listener net.Listener, connections int, t *testing.T) {
+	process := downloadReady(listener, connections, t)
+	err := process.Start()
+	if err == nil {
+		t.Errorf("Download error = %v, want %v", err, nil)
 	}
 }
 
