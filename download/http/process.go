@@ -43,7 +43,6 @@ func (p *Process) Start() error {
 	}
 	defer p.close()
 	p.status = common.DownloadStatusStart
-	var fetchErr error
 	if p.res.Range {
 		// 每个连接平均需要下载的分块大小
 		chunkSize := p.res.Size / int64(p.opts.Connections)
@@ -63,18 +62,13 @@ func (p *Process) Start() error {
 			chunk := model.NewChunk(begin, end)
 			p.chunks[i] = chunk
 		}
-		fetchErr = p.fetch()
 	} else {
 		// 只支持单连接下载
 		p.chunks = make([]*model.Chunk, 1)
 		p.clients = make([]*http.Response, 1)
 		p.chunks[0] = model.NewChunk(0, 0)
-		fetchErr = p.fetch()
 	}
-	if fetchErr != nil && fetchErr != common.PauseErr {
-		p.Pause()
-	}
-	return fetchErr
+	return p.fetch()
 }
 
 func (p *Process) Pause() error {
