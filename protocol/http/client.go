@@ -6,8 +6,8 @@ import (
 	"mime"
 	"net/http"
 	"net/http/cookiejar"
-	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,21 +32,15 @@ func Resolve(request *Request) (*Response, error) {
 	}
 	ret := &Response{}
 	// Get file name by "Content-Disposition"
-	contentDisposition := response.Header.Get("Content-Disposition")
-	if contentDisposition != "" {
+	if contentDisposition := response.Header.Get("Content-Disposition"); contentDisposition != "" {
 		_, params, _ := mime.ParseMediaType(contentDisposition)
-		filename := params["filename"]
-		if filename != "" {
+		if filename := params["filename"]; filename != "" {
 			ret.Name = filename
 		}
 	}
 	// Get file name by URL
 	if ret.Name == "" {
-		parse, err := url.Parse(httpRequest.URL.String())
-		if err == nil {
-			// e.g. /files/test.txt => test.txt
-			ret.Name = subLastSlash(parse.Path)
-		}
+		ret.Name = path.Base(httpRequest.URL.Path)
 	}
 	// Unknown file name
 	if ret.Name == "" {

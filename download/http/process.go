@@ -20,6 +20,7 @@ type Process struct {
 	chunks  []*model.Chunk
 
 	pauseCond *sync.Cond
+	eventCh   chan common.Event
 }
 
 func NewProcess(fetcher *Fetcher, res *common.Resource, opts *common.Options) *Process {
@@ -31,6 +32,11 @@ func NewProcess(fetcher *Fetcher, res *common.Resource, opts *common.Options) *P
 
 		pauseCond: sync.NewCond(&sync.Mutex{}),
 	}
+}
+
+func (p *Process) Listen() <-chan common.Event {
+	p.eventCh = make(chan common.Event)
+	return p.eventCh
 }
 
 func (p *Process) Start() error {
@@ -68,6 +74,7 @@ func (p *Process) Start() error {
 		p.clients = make([]*http.Response, 1)
 		p.chunks[0] = model.NewChunk(0, 0)
 	}
+	p.dispatch(common.DownloadStatusStart)
 	return p.fetch()
 }
 
@@ -242,4 +249,10 @@ func (p *Process) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 		p.chunks[index].Status = common.DownloadStatusDone
 	}
 	return
+}
+
+func (p *Process) dispatch(status common.Status) {
+	if p.eventCh != nil {
+		p.eventCh <- &Event{status: status}
+	}
 }

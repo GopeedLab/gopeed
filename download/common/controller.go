@@ -57,14 +57,12 @@ func NewController() *Controller {
 }
 
 func (c *Controller) Touch(name string, size int64) (file *os.File, err error) {
+	file, err = os.Create(name)
 	if size > 0 {
-		err := os.Truncate(name, size)
+		err = os.Truncate(name, size)
 		if err != nil {
 			return nil, err
 		}
-		file, err = os.OpenFile(name, os.O_RDWR, 0666)
-	} else {
-		file, err = os.Create(name)
 	}
 	if err == nil {
 		c.Files[name] = file
@@ -73,7 +71,7 @@ func (c *Controller) Touch(name string, size int64) (file *os.File, err error) {
 }
 
 func (c *Controller) Open(name string) (file *os.File, err error) {
-	file, err = os.OpenFile(name, os.O_RDWR, 0666)
+	file, err = os.OpenFile(name, os.O_RDWR, os.ModePerm)
 	if err == nil {
 		c.Files[name] = file
 	}
