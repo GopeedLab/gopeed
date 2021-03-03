@@ -1,11 +1,11 @@
 package http
 
-import "github.com/monkeyWie/gopeed-core/download/common"
+import "github.com/monkeyWie/gopeed-core/download/base"
 
 type Event struct {
-	status common.Status
+	status base.Status
 }
 
-func (e *Event) Status() common.Status {
+func (e *Event) Status() base.Status {
 	return e.status
 }

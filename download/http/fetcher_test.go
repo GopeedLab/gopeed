@@ -4,7 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/monkeyWie/gopeed-core/download/common"
+	"github.com/monkeyWie/gopeed-core/download/base"
 	"io"
 	"math/rand"
 	"net"
@@ -23,20 +23,20 @@ const downloadName = "download.data"
 const downloadFile = testDir + downloadName
 
 func TestFetcher_Resolve(t *testing.T) {
-	testResolve(startTestFileServer, &common.Resource{
+	testResolve(startTestFileServer, &base.Resource{
 		Size:  buildSize,
 		Range: true,
-		Files: []*common.FileInfo{
+		Files: []*base.FileInfo{
 			{
 				Name: buildName,
 				Size: buildSize,
 			},
 		},
 	}, t)
-	testResolve(startTestChunkedServer, &common.Resource{
+	testResolve(startTestChunkedServer, &base.Resource{
 		Size:  0,
 		Range: false,
-		Files: []*common.FileInfo{
+		Files: []*base.FileInfo{
 			{
 				Name: buildName,
 				Size: 0,
@@ -45,11 +45,11 @@ func TestFetcher_Resolve(t *testing.T) {
 	}, t)
 }
 
-func testResolve(startTestServer func() net.Listener, want *common.Resource, t *testing.T) {
+func testResolve(startTestServer func() net.Listener, want *base.Resource, t *testing.T) {
 	listener := startTestServer()
 	defer listener.Close()
 	fetcher := NewFetcher()
-	res, err := fetcher.Resolve(&common.Request{
+	res, err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + buildName,
 	})
 	if err != nil {
@@ -88,7 +88,7 @@ func TestFetcher_DownloadChunked(t *testing.T) {
 	listener := startTestChunkedServer()
 	defer listener.Close()
 	// chunked编码下载
-	//downloadNormal(listener, 1, t)
+	downloadNormal(listener, 1, t)
 	downloadContinue(listener, 1, t)
 }
 
@@ -223,16 +223,16 @@ func ifExistAndRemove(name string) error {
 	return nil
 }
 
-func downloadReady(listener net.Listener, connections int, t *testing.T) common.Process {
+func downloadReady(listener net.Listener, connections int, t *testing.T) base.Fetcher {
 	fetcher := NewFetcher()
-	fetcher.InitCtl(common.NewController())
-	res, err := fetcher.Resolve(&common.Request{
+	fetcher.Init(base.NewController())
+	res, err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + buildName,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	process, err := fetcher.Create(res, &common.Options{
+	err = fetcher.Create(res, &base.Options{
 		Name:        downloadName,
 		Path:        testDir,
 		Connections: connections,
@@ -240,13 +240,13 @@ func downloadReady(listener net.Listener, connections int, t *testing.T) common.
 	if err != nil {
 		t.Fatal(err)
 	}
-	return process
+	return fetcher
 
 }
 
 func downloadNormal(listener net.Listener, connections int, t *testing.T) {
-	process := downloadReady(listener, connections, t)
-	err := process.Start()
+	fetcher := downloadReady(listener, connections, t)
+	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,19 +258,19 @@ func downloadNormal(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadContinue(listener net.Listener, connections int, t *testing.T) {
-	process := downloadReady(listener, connections, t)
+	fetcher := downloadReady(listener, connections, t)
 	go func() {
-		err := process.Start()
-		if err != nil && err != common.PauseErr {
+		err := fetcher.Start()
+		if err != nil && err != base.PauseErr {
 			t.Fatal(err)
 		}
 	}()
 	time.Sleep(time.Millisecond * 200)
-	if err := process.Pause(); err != nil {
+	if err := fetcher.Pause(); err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 200)
-	if err := process.Continue(); err != nil {
+	if err := fetcher.Continue(); err != nil {
 		t.Fatal(err)
 	}
 	want := fileMd5(buildFile)
@@ -281,8 +281,8 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadError(listener net.Listener, connections int, t *testing.T) {
-	process := downloadReady(listener, connections, t)
-	err := process.Start()
+	fetcher := downloadReady(listener, connections, t)
+	err := fetcher.Start()
 	if err == nil {
 		t.Errorf("Download error = %v, want %v", err, nil)
 	}

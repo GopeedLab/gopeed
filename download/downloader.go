@@ -3,65 +3,69 @@ package download
 import (
 	"errors"
 	"github.com/google/uuid"
-	"github.com/monkeyWie/gopeed-core/download/common"
+	"github.com/monkeyWie/gopeed-core/download/base"
 	"net/url"
 	"strings"
 )
 
 type TaskInfo struct {
 	ID     string
-	Res    *common.Resource
-	Opts   *common.Options
-	Status common.Status
-	Files  map[string]*common.FileInfo
+	Res    *base.Resource
+	Opts   *base.Options
+	Status base.Status
+	Files  map[string]*base.FileInfo
 
-	process common.Process
+	fetcher base.Fetcher
 }
+
+type FetcherBuilder func() (protocols []string, builder func() base.Fetcher)
 
 type Downloader struct {
-	fetches map[string]common.Fetcher
-	tasks   map[string]*TaskInfo
-	*common.Controller
+	fetchBuilders map[string]func() base.Fetcher
+	tasks         map[string]*TaskInfo
+	*base.DefaultController
 }
 
-func NewDownloader(fetchers ...common.Fetcher) *Downloader {
-	d := &Downloader{Controller: common.NewController()}
-	d.fetches = make(map[string]common.Fetcher)
-	for _, f := range fetchers {
-		for _, p := range f.Protocols() {
-			d.fetches[strings.ToUpper(p)] = f
+func NewDownloader(fbs ...FetcherBuilder) *Downloader {
+	d := &Downloader{DefaultController: base.NewController()}
+	d.fetchBuilders = make(map[string]func() base.Fetcher)
+	for _, f := range fbs {
+		protocols, builder := f()
+		for _, p := range protocols {
+			d.fetchBuilders[strings.ToUpper(p)] = builder
 		}
-		f.InitCtl(d.Controller)
 	}
 	d.tasks = make(map[string]*TaskInfo)
 	return d
 }
 
-func (d *Downloader) getFetcher(URL string) (common.Fetcher, error) {
+func (d *Downloader) buildFetcher(URL string) (base.Fetcher, error) {
 	url, err := url.Parse(URL)
 	if err != nil {
 		return nil, err
 	}
-	if fetch, ok := d.fetches[strings.ToUpper(url.Scheme)]; ok {
-		return fetch, nil
+	if fetchBuilder, ok := d.fetchBuilders[strings.ToUpper(url.Scheme)]; ok {
+		fetcher := fetchBuilder()
+		fetcher.Init(d.DefaultController)
+		return fetcher, nil
 	}
 	return nil, errors.New("unsupported protocol")
 }
 
-func (d *Downloader) Resolve(req *common.Request) (*common.Resource, error) {
-	fetcher, err := d.getFetcher(req.URL)
+func (d *Downloader) Resolve(req *base.Request) (*base.Resource, error) {
+	fetcher, err := d.buildFetcher(req.URL)
 	if err != nil {
 		return nil, err
 	}
 	return fetcher.Resolve(req)
 }
 
-func (d *Downloader) Create(res *common.Resource, opts *common.Options) error {
-	fetcher, err := d.getFetcher(res.Req.URL)
+func (d *Downloader) Create(res *base.Resource, opts *base.Options) error {
+	fetcher, err := d.buildFetcher(res.Req.URL)
 	if err != nil {
 		return err
 	}
-	process, err := fetcher.Create(res, opts)
+	err = fetcher.Create(res, opts)
 	if err != nil {
 		return err
 	}
@@ -70,12 +74,12 @@ func (d *Downloader) Create(res *common.Resource, opts *common.Options) error {
 		ID:      id,
 		Res:     res,
 		Opts:    opts,
-		Status:  common.DownloadStatusReady,
-		process: process,
+		Status:  base.DownloadStatusReady,
+		fetcher: fetcher,
 	}
-	return process.Start()
+	return fetcher.Start()
 }
 
 func (d *Downloader) Pause(id string) {
-	d.tasks[id].process.Pause()
+	d.tasks[id].fetcher.Pause()
 }

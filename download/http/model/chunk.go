@@ -1,11 +1,11 @@
 package model
 
 import (
-	"github.com/monkeyWie/gopeed-core/download/common"
+	"github.com/monkeyWie/gopeed-core/download/base"
 )
 
 type Chunk struct {
-	Status     common.Status
+	Status     base.Status
 	Begin      int64
 	End        int64
 	Downloaded int64
@@ -13,7 +13,7 @@ type Chunk struct {
 
 func NewChunk(begin int64, end int64) *Chunk {
 	return &Chunk{
-		Status: common.DownloadStatusReady,
+		Status: base.DownloadStatusReady,
 		Begin:  begin,
 		End:    end,
 	}

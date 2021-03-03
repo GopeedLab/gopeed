@@ -1,4 +1,4 @@
-package common
+package base
 
 import (
 	"golang.org/x/net/proxy"
@@ -6,6 +6,14 @@ import (
 	"os"
 	"time"
 )
+
+type Controller interface {
+	Touch(name string, size int64) (file *os.File, err error)
+	Open(name string) (file *os.File, err error)
+	Write(name string, offset int64, buf []byte) (int, error)
+	Close(name string) error
+	ContextDialer() (proxy.Dialer, error)
+}
 
 // 下载请求
 type Request struct {
@@ -41,22 +49,15 @@ type FileInfo struct {
 	Size int64
 }
 
-type Process interface {
-	Start() error
-	Pause() error
-	Continue() error
-	Delete() error
-}
-
-type Controller struct {
+type DefaultController struct {
 	Files map[string]*os.File
 }
 
-func NewController() *Controller {
-	return &Controller{Files: make(map[string]*os.File)}
+func NewController() *DefaultController {
+	return &DefaultController{Files: make(map[string]*os.File)}
 }
 
-func (c *Controller) Touch(name string, size int64) (file *os.File, err error) {
+func (c *DefaultController) Touch(name string, size int64) (file *os.File, err error) {
 	file, err = os.Create(name)
 	if size > 0 {
 		err = os.Truncate(name, size)
@@ -70,7 +71,7 @@ func (c *Controller) Touch(name string, size int64) (file *os.File, err error) {
 	return
 }
 
-func (c *Controller) Open(name string) (file *os.File, err error) {
+func (c *DefaultController) Open(name string) (file *os.File, err error) {
 	file, err = os.OpenFile(name, os.O_RDWR, os.ModePerm)
 	if err == nil {
 		c.Files[name] = file
@@ -78,17 +79,17 @@ func (c *Controller) Open(name string) (file *os.File, err error) {
 	return
 }
 
-func (c *Controller) Write(name string, offset int64, buf []byte) (int, error) {
+func (c *DefaultController) Write(name string, offset int64, buf []byte) (int, error) {
 	return c.Files[name].WriteAt(buf, offset)
 }
 
-func (c *Controller) Close(name string) error {
+func (c *DefaultController) Close(name string) error {
 	err := c.Files[name].Close()
 	delete(c.Files, name)
 	return err
 }
 
-func (c *Controller) ContextDialer() (proxy.Dialer, error) {
+func (c *DefaultController) ContextDialer() (proxy.Dialer, error) {
 	// return proxy.SOCKS5("tpc", "127.0.0.1:9999", nil, nil)
 	var dialer proxy.Dialer
 	return &DialerWarp{dialer: dialer}, nil

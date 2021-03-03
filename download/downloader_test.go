@@ -2,14 +2,14 @@ package download
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed-core/download/common"
+	"github.com/monkeyWie/gopeed-core/download/base"
 	"github.com/monkeyWie/gopeed-core/download/http"
 	"testing"
 )
 
 func TestDownloader_Resolve(t *testing.T) {
 	downloader := buildDownloader()
-	res, err := downloader.Resolve(&common.Request{
+	res, err := downloader.Resolve(&base.Request{
 		URL: "http://192.168.200.163:8088/docker-compose",
 	})
 	if err != nil {
@@ -20,13 +20,13 @@ func TestDownloader_Resolve(t *testing.T) {
 
 func TestDownloader_Create(t *testing.T) {
 	downloader := buildDownloader()
-	res, err := downloader.Resolve(&common.Request{
+	res, err := downloader.Resolve(&base.Request{
 		URL: "http://192.168.200.163:8088/docker-compose",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = downloader.Create(res, &common.Options{
+	err = downloader.Create(res, &base.Options{
 		Path:        "E:\\test\\gopeed\\http",
 		Connections: 4,
 	})
@@ -36,5 +36,5 @@ func TestDownloader_Create(t *testing.T) {
 }
 
 func buildDownloader() *Downloader {
-	return NewDownloader(&http.Fetcher{BaseFetcher: &common.BaseFetcher{}})
+	return NewDownloader(http.FetcherBuilder)
 }
