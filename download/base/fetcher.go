@@ -4,13 +4,12 @@ package base
 type Fetcher interface {
 	Init(ctl Controller)
 	// 解析请求
-	Resolve(req *Request) (*Resource, error)
+	Resolve(req *Request) (res *Resource, err error)
 	// 创建任务
-	Create(res *Resource, opts *Options) error
-	Start() error
-	Pause() error
-	Continue() error
-	Delete() error
+	Create(res *Resource, opts *Options) (err error)
+	Start() (err error)
+	Pause() (err error)
+	Continue() (err error)
 }
 
 type DefaultFetcher struct {

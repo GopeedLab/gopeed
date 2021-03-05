@@ -26,6 +26,9 @@ func TestDownloader_Create(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	downloader.Listener(func(taskInfo *TaskInfo, status base.Status) {
+		fmt.Printf("task:%s,status %d\n", taskInfo.ID, status)
+	})
 	err = downloader.Create(res, &base.Options{
 		Path:        "E:\\test\\gopeed\\http",
 		Connections: 4,

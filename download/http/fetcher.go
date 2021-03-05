@@ -14,7 +14,6 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -40,11 +39,16 @@ type Fetcher struct {
 	clients []*http.Response
 	chunks  []*model.Chunk
 
-	pauseCond *sync.Cond
+	pauseCh chan interface{}
+	doneCh  chan error
 }
 
 func NewFetcher() *Fetcher {
-	return &Fetcher{}
+	return &Fetcher{
+		DefaultFetcher: new(base.DefaultFetcher),
+		pauseCh:        make(chan interface{}),
+		doneCh:         make(chan error),
+	}
 }
 
 var protocols = []string{"HTTP", "HTTPS"}
@@ -56,11 +60,11 @@ func FetcherBuilder() ([]string, func() base.Fetcher) {
 }
 
 func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
-	httpReq, err := BuildRequest(req)
+	httpReq, err := buildRequest(req)
 	if err != nil {
 		return nil, err
 	}
-	client := BuildClient()
+	client := buildClient()
 	// 只访问一个字节，测试资源是否支持Range请求
 	httpReq.Header.Set(base.HttpHeaderRange, fmt.Sprintf(base.HttpHeaderRangeFormat, 0, 0))
 	httpResp, err := client.Do(httpReq)
@@ -129,18 +133,17 @@ func (f *Fetcher) Create(res *base.Resource, opts *base.Options) error {
 	f.res = res
 	f.opts = opts
 	f.status = base.DownloadStatusReady
-	f.pauseCond = sync.NewCond(&sync.Mutex{})
 	return nil
 }
 
-func (f *Fetcher) Start() error {
+func (f *Fetcher) Start() (err error) {
 	// 创建文件
 	name := f.name()
-	_, err := f.Ctl.Touch(name, f.res.Size)
+	_, err = f.Ctl.Touch(name, f.res.Size)
 	if err != nil {
 		return err
 	}
-	defer f.close()
+	defer f.Ctl.Close(name)
 	f.status = base.DownloadStatusStart
 	if f.res.Range {
 		// 每个连接平均需要下载的分块大小
@@ -167,50 +170,33 @@ func (f *Fetcher) Start() error {
 		f.clients = make([]*http.Response, 1)
 		f.chunks[0] = model.NewChunk(0, 0)
 	}
+
 	return f.fetch()
 }
 
-func (f *Fetcher) Pause() error {
-	f.pauseCond.L.Lock()
-	defer f.pauseCond.L.Unlock()
+func (f *Fetcher) Pause() (err error) {
 	if base.DownloadStatusStart != f.status {
-		return nil
+		return
 	}
 	f.status = base.DownloadStatusPause
 	f.stop()
-	// 释放锁，并等待下载结束
-	f.pauseCond.Wait()
-	return nil
+	<-f.pauseCh
+	f.Ctl.Close(f.name())
+	return
 }
 
-func (f *Fetcher) Continue() error {
-	if func() bool {
-		f.pauseCond.L.Lock()
-		defer f.pauseCond.L.Unlock()
-		if base.DownloadStatusPause != f.status && base.DownloadStatusError != f.status {
-			return true
-		}
-		f.status = base.DownloadStatusStart
-		return false
-	}() {
-		return nil
+func (f *Fetcher) Continue() (err error) {
+	if base.DownloadStatusStart == f.status || base.DownloadStatusDone == f.status {
+		return
 	}
-
+	f.status = base.DownloadStatusStart
 	var name = f.name()
-	_, err := f.Ctl.Open(name)
+	_, err = f.Ctl.Open(name)
 	if err != nil {
 		return err
 	}
 	defer f.Ctl.Close(name)
 	return f.fetch()
-}
-
-func (f *Fetcher) Delete() error {
-	panic("implement me")
-}
-
-func (f *Fetcher) close() error {
-	return f.Ctl.Close(f.name())
 }
 
 func (f *Fetcher) name() string {
@@ -222,7 +208,7 @@ func (f *Fetcher) name() string {
 	return filepath.Join(f.opts.Path, filename)
 }
 
-func (f *Fetcher) fetch() error {
+func (f *Fetcher) fetch() (err error) {
 	errCh := make(chan error, f.opts.Connections)
 	defer close(errCh)
 
@@ -232,23 +218,34 @@ func (f *Fetcher) fetch() error {
 		}(i)
 	}
 
-	var retErr error
+	stopFlag := false
 	for i := 0; i < f.opts.Connections; i++ {
-		err := <-errCh
-		if err != nil && retErr == nil {
-			retErr = err
-			// 有一个连接失败就立即终止下载
-			if retErr != base.PauseErr {
-				func() {
-					f.pauseCond.L.Lock()
-					defer f.pauseCond.L.Unlock()
-					f.stop()
-				}()
+		fetchErr := <-errCh
+		if fetchErr != nil && !stopFlag {
+			// 确保如果有暂停操作返回暂停
+			if err == nil || err != base.PauseErr {
+				err = fetchErr
+			}
+			if fetchErr != base.PauseErr {
+				// 有一个连接失败就立即终止下载
+				stopFlag = true
+				f.stop()
 			}
 		}
 	}
-	f.pauseCond.Signal()
-	return retErr
+
+	if err != nil {
+		if err == base.PauseErr {
+			f.pauseCh <- nil
+			err = nil
+		} else {
+			f.status = base.DownloadStatusError
+		}
+	} else {
+		f.status = base.DownloadStatusDone
+	}
+	f.doneCh <- err
+	return
 }
 
 func (f *Fetcher) stop() {
@@ -262,12 +259,12 @@ func (f *Fetcher) stop() {
 }
 
 func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err error) {
-	httpReq, err := BuildRequest(f.res.Req)
+	httpReq, err := buildRequest(f.res.Req)
 	if err != nil {
 		return err
 	}
 	var (
-		client = BuildClient()
+		client = buildClient()
 		buf    = make([]byte, 8192)
 	)
 	// 重试5次
@@ -283,8 +280,6 @@ func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 			chunk.Downloaded = 0
 		}
 		err = func() error {
-			f.pauseCond.L.Lock()
-			defer f.pauseCond.L.Unlock()
 			if f.status == base.DownloadStatusPause {
 				return base.PauseErr
 			}
@@ -326,7 +321,7 @@ func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 			}
 			return false, nil
 		}()
-		if err == nil || !retry {
+		if !retry {
 			// 下载成功，跳出重试
 			break
 		}
@@ -339,7 +334,7 @@ func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 	return
 }
 
-func BuildClient() *http.Client {
+func buildClient() *http.Client {
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)
 	return &http.Client{
@@ -348,7 +343,7 @@ func BuildClient() *http.Client {
 	}
 }
 
-func BuildRequest(req *base.Request) (*http.Request, error) {
+func buildRequest(req *base.Request) (*http.Request, error) {
 	url, err := url.Parse(req.URL)
 	if err != nil {
 		return nil, err
