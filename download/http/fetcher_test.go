@@ -76,11 +76,8 @@ func TestFetcher_DownloadContinue(t *testing.T) {
 	defer listener.Close()
 	// 暂停继续
 	downloadContinue(listener, 1, t)
-	fmt.Println("d1")
 	downloadContinue(listener, 5, t)
-	fmt.Println("d5")
 	downloadContinue(listener, 8, t)
-	fmt.Println("d8")
 	downloadContinue(listener, 16, t)
 }
 
@@ -223,9 +220,9 @@ func ifExistAndRemove(name string) error {
 	return nil
 }
 
-func downloadReady(listener net.Listener, connections int, t *testing.T) base.Fetcher {
+func downloadReady(listener net.Listener, connections int, t *testing.T) (base.Fetcher, <-chan error) {
 	fetcher := NewFetcher()
-	fetcher.Init(base.NewController())
+	doneCh := fetcher.Setup(base.NewController())
 	res, err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + buildName,
 	})
@@ -240,13 +237,17 @@ func downloadReady(listener net.Listener, connections int, t *testing.T) base.Fe
 	if err != nil {
 		t.Fatal(err)
 	}
-	return fetcher
+	return fetcher, doneCh
 
 }
 
 func downloadNormal(listener net.Listener, connections int, t *testing.T) {
-	fetcher := downloadReady(listener, connections, t)
+	fetcher, doneCh := downloadReady(listener, connections, t)
 	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = <-doneCh
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,18 +259,20 @@ func downloadNormal(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadContinue(listener net.Listener, connections int, t *testing.T) {
-	fetcher := downloadReady(listener, connections, t)
-	go func() {
-		err := fetcher.Start()
-		if err != nil && err != base.PauseErr {
-			t.Fatal(err)
-		}
-	}()
+	fetcher, doneCh := downloadReady(listener, connections, t)
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
 	time.Sleep(time.Millisecond * 500)
 	if err := fetcher.Pause(); err != nil {
 		t.Fatal(err)
 	}
 	if err := fetcher.Continue(); err != nil {
+		t.Fatal(err)
+	}
+	err = <-doneCh
+	if err != nil {
 		t.Fatal(err)
 	}
 	want := fileMd5(buildFile)
@@ -280,8 +283,12 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadError(listener net.Listener, connections int, t *testing.T) {
-	fetcher := downloadReady(listener, connections, t)
+	fetcher, doneCh := downloadReady(listener, connections, t)
 	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = <-doneCh
 	if err == nil {
 		t.Errorf("Download error = %v, want %v", err, nil)
 	}

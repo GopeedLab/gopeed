@@ -25,6 +25,5 @@ const (
 )
 
 var (
-	PauseErr  = errors.New("pause")
 	DeleteErr = errors.New("delete")
 )

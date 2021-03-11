@@ -40,14 +40,12 @@ type Fetcher struct {
 	chunks  []*model.Chunk
 
 	pauseCh chan interface{}
-	doneCh  chan error
 }
 
 func NewFetcher() *Fetcher {
 	return &Fetcher{
 		DefaultFetcher: new(base.DefaultFetcher),
 		pauseCh:        make(chan interface{}),
-		doneCh:         make(chan error),
 	}
 }
 
@@ -114,11 +112,11 @@ func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
 			file.Name = filename
 		}
 	}
-	// Get file name by URL
+	// Get file filename by URL
 	if file.Name == "" {
 		file.Name = path.Base(req.URL)
 	}
-	// unknown file name
+	// unknown file filename
 	if file.Name == "" {
 		file.Name = "unknown"
 	}
@@ -138,12 +136,11 @@ func (f *Fetcher) Create(res *base.Resource, opts *base.Options) error {
 
 func (f *Fetcher) Start() (err error) {
 	// 创建文件
-	name := f.name()
+	name := f.filename()
 	_, err = f.Ctl.Touch(name, f.res.Size)
 	if err != nil {
 		return err
 	}
-	defer f.Ctl.Close(name)
 	f.status = base.DownloadStatusStart
 	if f.res.Range {
 		// 每个连接平均需要下载的分块大小
@@ -157,9 +154,9 @@ func (f *Fetcher) Start() (err error) {
 			)
 			if i == f.opts.Connections-1 {
 				// 最后一个分块需要保证把文件下载完
-				end = f.res.Size
+				end = f.res.Size - 1
 			} else {
-				end = begin + chunkSize
+				end = begin + chunkSize - 1
 			}
 			chunk := model.NewChunk(begin, end)
 			f.chunks[i] = chunk
@@ -170,8 +167,8 @@ func (f *Fetcher) Start() (err error) {
 		f.clients = make([]*http.Response, 1)
 		f.chunks[0] = model.NewChunk(0, 0)
 	}
-
-	return f.fetch()
+	f.fetch()
+	return
 }
 
 func (f *Fetcher) Pause() (err error) {
@@ -181,7 +178,6 @@ func (f *Fetcher) Pause() (err error) {
 	f.status = base.DownloadStatusPause
 	f.stop()
 	<-f.pauseCh
-	f.Ctl.Close(f.name())
 	return
 }
 
@@ -190,16 +186,16 @@ func (f *Fetcher) Continue() (err error) {
 		return
 	}
 	f.status = base.DownloadStatusStart
-	var name = f.name()
+	var name = f.filename()
 	_, err = f.Ctl.Open(name)
 	if err != nil {
 		return err
 	}
-	defer f.Ctl.Close(name)
-	return f.fetch()
+	f.fetch()
+	return
 }
 
-func (f *Fetcher) name() string {
+func (f *Fetcher) filename() string {
 	// 创建文件
 	var filename = f.opts.Name
 	if filename == "" {
@@ -208,44 +204,42 @@ func (f *Fetcher) name() string {
 	return filepath.Join(f.opts.Path, filename)
 }
 
-func (f *Fetcher) fetch() (err error) {
+func (f *Fetcher) fetch() {
 	errCh := make(chan error, f.opts.Connections)
-	defer close(errCh)
 
 	for i := 0; i < f.opts.Connections; i++ {
 		go func(i int) {
-			errCh <- f.fetchChunk(i, f.name(), f.chunks[i])
+			errCh <- f.fetchChunk(i, f.filename(), f.chunks[i])
 		}(i)
 	}
 
-	stopFlag := false
-	for i := 0; i < f.opts.Connections; i++ {
-		fetchErr := <-errCh
-		if fetchErr != nil && !stopFlag {
-			// 确保如果有暂停操作返回暂停
-			if err == nil || err != base.PauseErr {
-				err = fetchErr
-			}
-			if fetchErr != base.PauseErr {
+	go func() {
+		var err error
+		stopFlag := false
+		for i := 0; i < f.opts.Connections; i++ {
+			fetchErr := <-errCh
+			if fetchErr != nil && !stopFlag {
 				// 有一个连接失败就立即终止下载
+				err = fetchErr
 				stopFlag = true
 				f.stop()
 			}
 		}
-	}
 
-	if err != nil {
-		if err == base.PauseErr {
+		// 下载停止，关闭文件句柄
+		f.Ctl.Close(f.filename())
+
+		if f.status == base.DownloadStatusPause {
 			f.pauseCh <- nil
-			err = nil
 		} else {
-			f.status = base.DownloadStatusError
+			if err != nil {
+				f.status = base.DownloadStatusError
+			} else {
+				f.status = base.DownloadStatusDone
+			}
+			f.DoneCh <- err
 		}
-	} else {
-		f.status = base.DownloadStatusDone
-	}
-	f.doneCh <- err
-	return
+	}()
 }
 
 func (f *Fetcher) stop() {
@@ -269,6 +263,14 @@ func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 	)
 	// 重试5次
 	for i := 0; i < 5; i++ {
+		// 如果下载完成直接返回
+		if chunk.Status == base.DownloadStatusDone {
+			return
+		}
+		// 如果已暂停直接跳出
+		if f.status == base.DownloadStatusPause {
+			break
+		}
 		var (
 			resp  *http.Response
 			retry bool
@@ -280,9 +282,6 @@ func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 			chunk.Downloaded = 0
 		}
 		err = func() error {
-			if f.status == base.DownloadStatusPause {
-				return base.PauseErr
-			}
 			resp, err = client.Do(httpReq)
 			if err != nil {
 				return err
@@ -295,9 +294,6 @@ func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 			return nil
 		}()
 		if err != nil {
-			if err == base.PauseErr {
-				return err
-			}
 			// 请求失败重试
 			continue
 		}
@@ -326,10 +322,17 @@ func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 			break
 		}
 	}
-	if err != nil {
-		f.chunks[index].Status = base.DownloadStatusError
+
+	if f.status == base.DownloadStatusPause {
+		chunk.Status = base.DownloadStatusPause
+	} else if chunk.Downloaded >= chunk.End-chunk.Begin+1 {
+		chunk.Status = base.DownloadStatusDone
 	} else {
-		f.chunks[index].Status = base.DownloadStatusDone
+		if err != nil {
+			chunk.Status = base.DownloadStatusError
+		} else {
+			chunk.Status = base.DownloadStatusDone
+		}
 	}
 	return
 }

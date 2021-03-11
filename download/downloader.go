@@ -49,7 +49,7 @@ func (d *Downloader) buildFetcher(URL string) (base.Fetcher, error) {
 	}
 	if fetchBuilder, ok := d.fetchBuilders[strings.ToUpper(url.Scheme)]; ok {
 		fetcher := fetchBuilder()
-		fetcher.Init(d.DefaultController)
+		fetcher.Setup(d.DefaultController)
 		return fetcher, nil
 	}
 	return nil, errors.New("unsupported protocol")
