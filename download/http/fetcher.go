@@ -2,9 +2,11 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/monkeyWie/gopeed-core/download/base"
 	"github.com/monkeyWie/gopeed-core/download/http/model"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -39,6 +41,8 @@ type Fetcher struct {
 	clients []*http.Response
 	chunks  []*model.Chunk
 
+	ctx     context.Context
+	cancel  context.CancelFunc
 	pauseCh chan interface{}
 }
 
@@ -58,7 +62,7 @@ func FetcherBuilder() ([]string, func() base.Fetcher) {
 }
 
 func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
-	httpReq, err := buildRequest(req)
+	httpReq, err := buildRequest(nil, req)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +180,7 @@ func (f *Fetcher) Pause() (err error) {
 		return
 	}
 	f.status = base.DownloadStatusPause
-	f.stop()
+	f.cancel()
 	<-f.pauseCh
 	return
 }
@@ -205,30 +209,19 @@ func (f *Fetcher) filename() string {
 }
 
 func (f *Fetcher) fetch() {
-	errCh := make(chan error, f.opts.Connections)
-
+	f.ctx, f.cancel = context.WithCancel(context.Background())
+	eg, _ := errgroup.WithContext(f.ctx)
 	for i := 0; i < f.opts.Connections; i++ {
-		go func(i int) {
-			errCh <- f.fetchChunk(i, f.filename(), f.chunks[i])
-		}(i)
+		i := i
+		eg.Go(func() error {
+			return f.fetchChunk(i)
+		})
 	}
 
 	go func() {
-		var err error
-		stopFlag := false
-		for i := 0; i < f.opts.Connections; i++ {
-			fetchErr := <-errCh
-			if fetchErr != nil && !stopFlag {
-				// 有一个连接失败就立即终止下载
-				err = fetchErr
-				stopFlag = true
-				f.stop()
-			}
-		}
-
+		err := eg.Wait()
 		// 下载停止，关闭文件句柄
 		f.Ctl.Close(f.filename())
-
 		if f.status == base.DownloadStatusPause {
 			f.pauseCh <- nil
 		} else {
@@ -242,18 +235,11 @@ func (f *Fetcher) fetch() {
 	}()
 }
 
-func (f *Fetcher) stop() {
-	if len(f.clients) > 0 {
-		for _, client := range f.clients {
-			if client != nil {
-				client.Body.Close()
-			}
-		}
-	}
-}
+func (f *Fetcher) fetchChunk(index int) (err error) {
+	filename := f.filename()
+	chunk := f.chunks[index]
 
-func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err error) {
-	httpReq, err := buildRequest(f.res.Req)
+	httpReq, err := buildRequest(f.ctx, f.res.Req)
 	if err != nil {
 		return err
 	}
@@ -302,7 +288,7 @@ func (f *Fetcher) fetchChunk(index int, name string, chunk *model.Chunk) (err er
 			for {
 				n, err := resp.Body.Read(buf)
 				if n > 0 {
-					_, err := f.Ctl.Write(name, chunk.Begin+chunk.Downloaded, buf[:n])
+					_, err := f.Ctl.Write(filename, chunk.Begin+chunk.Downloaded, buf[:n])
 					if err != nil {
 						return false, err
 					}
@@ -346,30 +332,44 @@ func buildClient() *http.Client {
 	}
 }
 
-func buildRequest(req *base.Request) (*http.Request, error) {
+func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request, err error) {
 	url, err := url.Parse(req.URL)
 	if err != nil {
-		return nil, err
-	}
-	httpReq := &http.Request{
-		URL:    url,
-		Header: map[string][]string{},
+		return
 	}
 
-	if req.Extra != nil {
-		if extra, ok := req.Extra.(model.Extra); ok {
-			if extra.Method != "" {
-				httpReq.Method = extra.Method
-			} else {
-				httpReq.Method = http.MethodGet
+	var (
+		method string
+		body   io.Reader
+	)
+	headers := make(map[string][]string)
+	if req.Extra == nil {
+		method = http.MethodGet
+	} else {
+		extra := req.Extra.(model.Extra)
+		if extra.Method != "" {
+			method = extra.Method
+		} else {
+			method = http.MethodGet
+		}
+		if len(extra.Header) > 0 {
+			for k, v := range extra.Header {
+				headers[k] = []string{v}
 			}
-			if len(extra.Header) > 0 {
-				for k, v := range extra.Header {
-					httpReq.Header[k] = []string{v}
-				}
-			}
-			httpReq.Body = ioutil.NopCloser(bytes.NewBufferString(extra.Body))
+		}
+		if extra.Body != "" {
+			body = ioutil.NopCloser(bytes.NewBufferString(extra.Body))
 		}
 	}
+
+	if ctx != nil {
+		httpReq, err = http.NewRequestWithContext(ctx, method, url.String(), body)
+	} else {
+		httpReq, err = http.NewRequest(method, url.String(), body)
+	}
+	if err != nil {
+		return
+	}
+	httpReq.Header = headers
 	return httpReq, nil
 }

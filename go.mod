@@ -9,4 +9,5 @@ require (
 	github.com/marksamman/bencode v0.0.0-20150821143521-dc84f26e086e
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )

@@ -264,10 +264,11 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Millisecond * 200)
 	if err := fetcher.Pause(); err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(time.Millisecond * 200)
 	if err := fetcher.Continue(); err != nil {
 		t.Fatal(err)
 	}
