@@ -90,7 +90,7 @@ func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
 			if err != nil {
 				return nil, err
 			}
-			res.Size = parse
+			res.TotalSize = parse
 		}
 	} else if base.HttpCodeOK == httpResp.StatusCode {
 		// 返回200响应码，不支持断点下载，通过Content-Length头获取文件大小，获取不到的话可能是chunked编码
@@ -100,13 +100,13 @@ func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
 			if err != nil {
 				return nil, err
 			}
-			res.Size = parse
+			res.TotalSize = parse
 		}
 	} else {
 		return nil, NewRequestError(httpResp.StatusCode, httpResp.Status)
 	}
 	file := &base.FileInfo{
-		Size: res.Size,
+		Size: res.TotalSize,
 	}
 	contentDisposition := httpResp.Header.Get(base.HttpHeaderContentDisposition)
 	if contentDisposition != "" {
@@ -141,14 +141,14 @@ func (f *Fetcher) Create(res *base.Resource, opts *base.Options) error {
 func (f *Fetcher) Start() (err error) {
 	// 创建文件
 	name := f.filename()
-	_, err = f.Ctl.Touch(name, f.res.Size)
+	_, err = f.Ctl.Touch(name, f.res.TotalSize)
 	if err != nil {
 		return err
 	}
 	f.status = base.DownloadStatusStart
 	if f.res.Range {
 		// 每个连接平均需要下载的分块大小
-		chunkSize := f.res.Size / int64(f.opts.Connections)
+		chunkSize := f.res.TotalSize / int64(f.opts.Connections)
 		f.chunks = make([]*model.Chunk, f.opts.Connections)
 		f.clients = make([]*http.Response, f.opts.Connections)
 		for i := 0; i < f.opts.Connections; i++ {
@@ -158,7 +158,7 @@ func (f *Fetcher) Start() (err error) {
 			)
 			if i == f.opts.Connections-1 {
 				// 最后一个分块需要保证把文件下载完
-				end = f.res.Size - 1
+				end = f.res.TotalSize - 1
 			} else {
 				end = begin + chunkSize - 1
 			}

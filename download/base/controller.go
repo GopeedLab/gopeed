@@ -27,7 +27,7 @@ type Request struct {
 type Resource struct {
 	Req *Request
 	// 资源总大小
-	Size int64
+	TotalSize int64
 	// 是否支持断点下载
 	Range bool
 	// 资源所包含的文件列表

@@ -1,44 +1,31 @@
 package http
 
 import (
-	"crypto/md5"
-	"encoding/hex"
-	"fmt"
 	"github.com/monkeyWie/gopeed-core/download/base"
-	"io"
-	"math/rand"
+	"github.com/monkeyWie/gopeed-core/download/dltest"
 	"net"
-	"net/http"
-	"os"
 	"reflect"
 	"testing"
 	"time"
 )
 
-const testDir = "./"
-const buildSize = 200 * 1024 * 1024
-const buildName = "build.data"
-const buildFile = testDir + buildName
-const downloadName = "download.data"
-const downloadFile = testDir + downloadName
-
 func TestFetcher_Resolve(t *testing.T) {
-	testResolve(startTestFileServer, &base.Resource{
-		Size:  buildSize,
-		Range: true,
+	testResolve(dltest.StartTestFileServer, &base.Resource{
+		TotalSize: dltest.BuildSize,
+		Range:     true,
 		Files: []*base.FileInfo{
 			{
-				Name: buildName,
-				Size: buildSize,
+				Name: dltest.BuildName,
+				Size: dltest.BuildSize,
 			},
 		},
 	}, t)
-	testResolve(startTestChunkedServer, &base.Resource{
-		Size:  0,
-		Range: false,
+	testResolve(dltest.StartTestChunkedServer, &base.Resource{
+		TotalSize: 0,
+		Range:     false,
 		Files: []*base.FileInfo{
 			{
-				Name: buildName,
+				Name: dltest.BuildName,
 				Size: 0,
 			},
 		},
@@ -50,7 +37,7 @@ func testResolve(startTestServer func() net.Listener, want *base.Resource, t *te
 	defer listener.Close()
 	fetcher := NewFetcher()
 	res, err := fetcher.Resolve(&base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + buildName,
+		URL: "http://" + listener.Addr().String() + "/" + dltest.BuildName,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +49,7 @@ func testResolve(startTestServer func() net.Listener, want *base.Resource, t *te
 }
 
 func TestFetcher_DownloadNormal(t *testing.T) {
-	listener := startTestFileServer()
+	listener := dltest.StartTestFileServer()
 	defer listener.Close()
 	// 正常下载
 	downloadNormal(listener, 1, t)
@@ -72,7 +59,7 @@ func TestFetcher_DownloadNormal(t *testing.T) {
 }
 
 func TestFetcher_DownloadContinue(t *testing.T) {
-	listener := startTestFileServer()
+	listener := dltest.StartTestFileServer()
 	defer listener.Close()
 	// 暂停继续
 	downloadContinue(listener, 1, t)
@@ -82,7 +69,7 @@ func TestFetcher_DownloadContinue(t *testing.T) {
 }
 
 func TestFetcher_DownloadChunked(t *testing.T) {
-	listener := startTestChunkedServer()
+	listener := dltest.StartTestChunkedServer()
 	defer listener.Close()
 	// chunked编码下载
 	downloadNormal(listener, 1, t)
@@ -90,176 +77,59 @@ func TestFetcher_DownloadChunked(t *testing.T) {
 }
 
 func TestFetcher_DownloadRetry(t *testing.T) {
-	listener := startTestRetryServer()
+	listener := dltest.StartTestRetryServer()
 	defer listener.Close()
 	// chunked编码下载
 	downloadNormal(listener, 1, t)
 }
 
 func TestFetcher_DownloadError(t *testing.T) {
-	listener := startTestErrorServer()
+	listener := dltest.StartTestErrorServer()
 	defer listener.Close()
 	// chunked编码下载
 	downloadError(listener, 1, t)
 }
 
-func startTestFileServer() net.Listener {
-	return startTestServer(func() http.Handler {
-		return http.FileServer(http.Dir(testDir))
-	})
-}
-
-func startTestChunkedServer() net.Listener {
-	return startTestServer(func() http.Handler {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/"+buildName, func(writer http.ResponseWriter, request *http.Request) {
-			file, err := os.Open(buildFile)
-			if err != nil {
-				panic(err)
-			}
-			defer file.Close()
-			io.Copy(writer, file)
-		})
-		return mux
-	})
-}
-
-func startTestRetryServer() net.Listener {
-	counter := 0
-	return startTestServer(func() http.Handler {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/"+buildName, func(writer http.ResponseWriter, request *http.Request) {
-			counter++
-			if counter != 1 && counter < 5 {
-				writer.WriteHeader(500)
-				return
-			}
-			file, err := os.Open(buildFile)
-			if err != nil {
-				panic(err)
-			}
-			defer file.Close()
-			io.Copy(writer, file)
-		})
-		return mux
-	})
-}
-
-func startTestErrorServer() net.Listener {
-	counter := 0
-	return startTestServer(func() http.Handler {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/"+buildName, func(writer http.ResponseWriter, request *http.Request) {
-			counter++
-			if counter != 1 {
-				writer.WriteHeader(500)
-				return
-			}
-		})
-		return mux
-	})
-}
-
-func startTestServer(serverHandle func() http.Handler) net.Listener {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		panic(err)
-	}
-	file, err := os.Create(buildFile)
-	if err != nil {
-		panic(err)
-	}
-	// 随机生成一个文件
-	l := int64(8192)
-	buf := make([]byte, l)
-	size := int64(0)
-	for {
-		_, err := rand.Read(buf)
-		if err != nil {
-			panic(err)
-		}
-		if size+l >= buildSize {
-			file.WriteAt(buf[0:buildSize-size], size)
-			break
-		}
-		file.WriteAt(buf, size)
-		size += l
-	}
-	server := &http.Server{}
-	server.Handler = serverHandle()
-	go server.Serve(listener)
-
-	return &delFileListener{
-		File:     file,
-		Listener: listener,
-	}
-}
-
-type delFileListener struct {
-	*os.File
-	net.Listener
-}
-
-func (c *delFileListener) Close() error {
-	defer func() {
-		c.File.Close()
-		if err := ifExistAndRemove(c.File.Name()); err != nil {
-			fmt.Println(err)
-		}
-		if err := ifExistAndRemove(downloadFile); err != nil {
-			fmt.Println(err)
-		}
-	}()
-	return c.Listener.Close()
-}
-
-func ifExistAndRemove(name string) error {
-	if _, err := os.Stat(name); !os.IsNotExist(err) {
-		return os.Remove(name)
-	}
-	return nil
-}
-
-func downloadReady(listener net.Listener, connections int, t *testing.T) (base.Fetcher, <-chan error) {
+func downloadReady(listener net.Listener, connections int, t *testing.T) base.Fetcher {
 	fetcher := NewFetcher()
-	doneCh := fetcher.Setup(base.NewController())
+	fetcher.Setup(base.NewController())
 	res, err := fetcher.Resolve(&base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + buildName,
+		URL: "http://" + listener.Addr().String() + "/" + dltest.BuildName,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = fetcher.Create(res, &base.Options{
-		Name:        downloadName,
-		Path:        testDir,
+		Name:        dltest.DownloadName,
+		Path:        dltest.TestDir,
 		Connections: connections,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return fetcher, doneCh
+	return fetcher
 
 }
 
 func downloadNormal(listener net.Listener, connections int, t *testing.T) {
-	fetcher, doneCh := downloadReady(listener, connections, t)
+	fetcher := downloadReady(listener, connections, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = <-doneCh
+	err = fetcher.Wait()
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := fileMd5(buildFile)
-	got := fileMd5(downloadFile)
+	want := dltest.FileMd5(dltest.BuildFile)
+	got := dltest.FileMd5(dltest.DownloadFile)
 	if want != got {
 		t.Errorf("Download error = %v, want %v", got, want)
 	}
 }
 
 func downloadContinue(listener net.Listener, connections int, t *testing.T) {
-	fetcher, doneCh := downloadReady(listener, connections, t)
+	fetcher := downloadReady(listener, connections, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -272,43 +142,25 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 	if err := fetcher.Continue(); err != nil {
 		t.Fatal(err)
 	}
-	err = <-doneCh
+	err = fetcher.Wait()
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := fileMd5(buildFile)
-	got := fileMd5(downloadFile)
+	want := dltest.FileMd5(dltest.BuildFile)
+	got := dltest.FileMd5(dltest.DownloadFile)
 	if want != got {
 		t.Errorf("Download error = %v, want %v", got, want)
 	}
 }
 
 func downloadError(listener net.Listener, connections int, t *testing.T) {
-	fetcher, doneCh := downloadReady(listener, connections, t)
+	fetcher := downloadReady(listener, connections, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = <-doneCh
+	err = fetcher.Wait()
 	if err == nil {
 		t.Errorf("Download error = %v, want %v", err, nil)
 	}
-}
-
-func fileMd5(filePath string) string {
-	file, err := os.Open(filePath)
-	if err != nil {
-		panic(err)
-	}
-	// Tell the program to call the following function when the current function returns
-	defer file.Close()
-
-	// Open a new hash interface to write to
-	hash := md5.New()
-
-	// Copy the file in the hash interface and check for any error
-	if _, err := io.Copy(hash, file); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(hash.Sum(nil))
 }

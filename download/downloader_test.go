@@ -1,43 +1,75 @@
 package download
 
 import (
-	"fmt"
 	"github.com/monkeyWie/gopeed-core/download/base"
+	"github.com/monkeyWie/gopeed-core/download/dltest"
 	"github.com/monkeyWie/gopeed-core/download/http"
+	"reflect"
+	"sync"
 	"testing"
 )
 
 func TestDownloader_Resolve(t *testing.T) {
-	downloader := buildDownloader()
-	res, err := downloader.Resolve(&base.Request{
-		URL: "http://192.168.200.163:8088/docker-compose",
-	})
+	listener := dltest.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(http.FetcherBuilder)
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + dltest.BuildName,
+	}
+	res, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(res)
+	want := &base.Resource{
+		Req:       req,
+		TotalSize: dltest.BuildSize,
+		Range:     true,
+		Files: []*base.FileInfo{
+			{
+				Name: dltest.BuildName,
+				Path: "",
+				Size: dltest.BuildSize,
+			},
+		},
+	}
+	if !reflect.DeepEqual(res, want) {
+		t.Errorf("Resolve error = %s, want %s", dltest.ToJson(res), dltest.ToJson(want))
+	}
 }
 
 func TestDownloader_Create(t *testing.T) {
-	downloader := buildDownloader()
-	res, err := downloader.Resolve(&base.Request{
-		URL: "http://192.168.200.163:8088/docker-compose",
-	})
+	listener := dltest.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(http.FetcherBuilder)
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + dltest.BuildName,
+	}
+	res, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 	downloader.Listener(func(taskInfo *TaskInfo, status base.Status) {
-		fmt.Printf("task:%s,status %d\n", taskInfo.ID, status)
+		if status == base.DownloadStatusDone {
+			wg.Done()
+		}
 	})
 	err = downloader.Create(res, &base.Options{
-		Path:        "E:\\test\\gopeed\\http",
+		Path:        dltest.TestDir,
+		Name:        dltest.DownloadName,
 		Connections: 4,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-
-func buildDownloader() *Downloader {
-	return NewDownloader(http.FetcherBuilder)
+	wg.Wait()
+	want := dltest.FileMd5(dltest.BuildFile)
+	got := dltest.FileMd5(dltest.DownloadFile)
+	if want != got {
+		t.Errorf("Download error = %v, want %v", got, want)
+	}
 }

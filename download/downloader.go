@@ -81,13 +81,20 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (err error) 
 		fetcher: fetcher,
 		locker:  new(sync.Mutex),
 	}
+	d.emit(d.tasks[id], base.DownloadStatusStart)
 	go func() {
 		err = fetcher.Start()
 		if err != nil {
 			d.emit(d.tasks[id], base.DownloadStatusError)
+			return
+		}
+		err = fetcher.Wait()
+		if err != nil {
+			d.emit(d.tasks[id], base.DownloadStatusError)
+		} else {
+			d.emit(d.tasks[id], base.DownloadStatusDone)
 		}
 	}()
-	d.emit(d.tasks[id], base.DownloadStatusStart)
 	return
 }
 
