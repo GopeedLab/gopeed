@@ -199,6 +199,18 @@ func (f *Fetcher) Continue() (err error) {
 	return
 }
 
+func (f *Fetcher) Progress() base.Progress {
+	p := make(base.Progress, 0)
+	if len(f.chunks) > 0 {
+		total := int64(0)
+		for _, chunk := range f.chunks {
+			total += chunk.Downloaded
+		}
+		p = append(p, total)
+	}
+	return p
+}
+
 func (f *Fetcher) filename() string {
 	// 创建文件
 	var filename = f.opts.Name

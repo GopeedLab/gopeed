@@ -12,6 +12,16 @@ const (
 	DownloadStatusDone
 )
 
+type EventKey string
+
+const (
+	EventKeyStart    = "start"
+	EventKeyPause    = "pause"
+	EventKeyProgress = "progress"
+	EventKeyError    = "error"
+	EventKeyDone     = "done"
+)
+
 const (
 	HttpCodeOK             = 200
 	HttpCodePartialContent = 206

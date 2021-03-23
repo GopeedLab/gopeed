@@ -53,8 +53,8 @@ func TestDownloader_Create(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	downloader.Listener(func(taskInfo *TaskInfo, status base.Status) {
-		if status == base.DownloadStatusDone {
+	downloader.Listener(func(taskInfo *TaskInfo, eventKey base.EventKey) {
+		if eventKey == base.EventKeyDone {
 			wg.Done()
 		}
 	})

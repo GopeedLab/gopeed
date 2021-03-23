@@ -11,6 +11,8 @@ type Fetcher interface {
 	Pause() (err error)
 	Continue() (err error)
 
+	// 获取任务下载进度
+	Progress() Progress
 	// 该方法会一直阻塞，直到任务下载结束
 	Wait() (err error)
 }

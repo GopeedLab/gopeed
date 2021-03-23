@@ -142,3 +142,15 @@ func (d *DialerWarp) Dial(network, addr string) (c net.Conn, err error) {
 	}
 	return &ConnWarp{conn: conn}, nil
 }
+
+// 获取任务中各个文件的已下载字节数
+type Progress []int64
+
+// TotalDownloaded 获取任务总下载字节数
+func (p Progress) TotalDownloaded() int64 {
+	total := int64(0)
+	for _, d := range p {
+		total += d
+	}
+	return total
+}
