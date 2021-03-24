@@ -295,6 +295,8 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 			// 请求失败重试
 			continue
 		}
+		// 请求成功就重置错误次数，连续失败5次才终止
+		i = 0
 		retry, err = func() (bool, error) {
 			defer resp.Body.Close()
 			for {
