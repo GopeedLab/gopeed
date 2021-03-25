@@ -7,19 +7,19 @@ on:
       - dev
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-go@v2
-        with:
-          go-version: '^1.15.2'
-      - uses: actions/checkout@v2
-      - name: Lint Go Code
-        run: |
-          export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
-          go get -u golang.org/x/lint/golint
-          golint -set_exit_status ./...
+#  lint:
+#    name: Lint
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/setup-go@v2
+#        with:
+#          go-version: '^1.15.2'
+#      - uses: actions/checkout@v2
+#      - name: Lint Go Code
+#        run: |
+#          export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
+#          go get -u golang.org/x/lint/golint
+#          golint -set_exit_status ./...
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -37,7 +37,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test]
+#    needs: [lint, test]
+    needs: [test]
     steps:
       - uses: actions/setup-go@v2
         with:
