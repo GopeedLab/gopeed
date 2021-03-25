@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed-core/protocol/http"
+	"github.com/monkeyWie/gopeed-core/pkg/protocol/http"
 )
 
 func main() {

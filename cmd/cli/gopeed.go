@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed-core/download"
-	"github.com/monkeyWie/gopeed-core/download/base"
-	"github.com/monkeyWie/gopeed-core/download/http"
-	"github.com/monkeyWie/gopeed-core/util"
+	"github.com/monkeyWie/gopeed-core/internal/protocol/http"
+	"github.com/monkeyWie/gopeed-core/pkg/base"
+	"github.com/monkeyWie/gopeed-core/pkg/download"
+	"github.com/monkeyWie/gopeed-core/pkg/util"
 	"path/filepath"
 	"sync"
 )
@@ -33,11 +33,11 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	downloader.Listener(func(taskInfo *download.TaskInfo, eventKey base.EventKey) {
-		if eventKey == base.EventKeyProgress {
+	downloader.Listener(func(taskInfo *download.TaskInfo, eventKey download.EventKey) {
+		if eventKey == download.EventKeyProgress {
 			printProgress(taskInfo, "downloading...")
 		}
-		if eventKey == base.EventKeyDone {
+		if eventKey == download.EventKeyDone {
 			printProgress(taskInfo, "complete")
 			wg.Done()
 		}
