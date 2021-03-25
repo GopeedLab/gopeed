@@ -1,0 +1,47 @@
+name: build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - dev
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.2'
+      - uses: actions/checkout@v2
+      - name: Lint Go Code
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
+          go get -u golang.org/x/lint/golint
+          golint -set_exit_status ./...
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.2'
+      - uses: actions/checkout@v2
+      - name: Run Unit tests.
+        run: go test ./... -v -covermode=count -coverprofile=coverage.txt
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: true
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.2'
+      - uses: actions/checkout@v2
+      - name: Build
+        run: go build -ldflags="-s -w" -o bin/gopeed cmd/gopeed/gopeed.go

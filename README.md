@@ -1,3 +1,6 @@
+[![Build Status](https://github.com/monkeyWie/gopeed-core/workflows/build/badge.svg)](https://github.com/monkeyWie/gopeed-core/actions?query=workflow%3Abuild)
+[![Codecov](https://codecov.io/gh/monkeyWie/gopeed-core/branch/master/graph/badge.svg)](https://codecov.io/gh/monkeyWie/gopeed-core)
+
 ## gopeed
 
 支持多协议（HTTP、BitTorrent）下载的客户端，提供命令行、RESTful API、WebSocket、Go 类库方式来使用。
