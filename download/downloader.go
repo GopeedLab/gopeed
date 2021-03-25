@@ -121,7 +121,14 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (err error) 
 			d.emit(task, base.EventKeyError)
 		} else {
 			task.Progress.Used = task.timer.Used()
-			task.Progress.Speed = task.Res.TotalSize / (task.Progress.Used / int64(time.Second))
+			if task.Res.TotalSize == 0 {
+				task.Res.TotalSize = task.fetcher.Progress().TotalDownloaded()
+			}
+			used := task.Progress.Used / int64(time.Second)
+			if used == 0 {
+				used = 1
+			}
+			task.Progress.Speed = task.Res.TotalSize / used
 			task.Progress.Downloaded = task.Res.TotalSize
 			d.emit(d.tasks[id], base.EventKeyDone)
 		}
@@ -144,7 +151,7 @@ func (d *Downloader) Continue(id string) {
 	defer task.locker.Unlock()
 	task.timer.Continue()
 	task.fetcher.Continue()
-	d.emit(task, base.EventKeyStart)
+	d.emit(task, base.EventKeyContinue)
 }
 
 func (d *Downloader) Listener(fn func(taskInfo *TaskInfo, eventKey base.EventKey)) {

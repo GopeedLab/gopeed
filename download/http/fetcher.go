@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -117,8 +118,8 @@ func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
 		}
 	}
 	// Get file filename by URL
-	if file.Name == "" {
-		file.Name = path.Base(req.URL)
+	if file.Name == "" && strings.Count(req.URL, "/") > 2 {
+		file.Name = filepath.Base(req.URL)
 	}
 	// unknown file filename
 	if file.Name == "" {
