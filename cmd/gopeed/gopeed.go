@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed-core/internal/protocol/http"
 	"github.com/monkeyWie/gopeed-core/pkg/base"
 	"github.com/monkeyWie/gopeed-core/pkg/download"
 	"github.com/monkeyWie/gopeed-core/pkg/util"
@@ -15,43 +14,46 @@ const progressWidth = 20
 func main() {
 	args := parse()
 
-	downloader := download.NewDownloader(http.FetcherBuilder)
-	res, err := downloader.Resolve(&base.Request{
-		URL: args.url,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	err = downloader.Create(res, &base.Options{
-		Path:        *args.dir,
-		Connections: *args.connections,
-	})
-	if err != nil {
-		panic(err)
-	}
-
 	var wg sync.WaitGroup
+	err := download.Boot().
+		URL(args.url).
+		Listener(func(event *download.Event) {
+			if event.Key == download.EventKeyProgress {
+				printProgress(event.Task, "downloading...")
+			}
+			if event.Key == download.EventKeyFinally {
+				var title string
+				if event.Err != nil {
+					title = "fail"
+				} else {
+					title = "complete"
+				}
+				printProgress(event.Task, title)
+				fmt.Println()
+				if event.Err != nil {
+					gPrint("reason: " + event.Err.Error())
+				} else {
+					gPrint("saving file " + filepath.Join(*args.dir, event.Task.Res.Files[0].Name))
+				}
+				wg.Done()
+			}
+		}).
+		Create(&base.Options{
+			Path:        *args.dir,
+			Connections: *args.connections,
+		})
+	if err != nil {
+		panic(err)
+	}
 	wg.Add(1)
-	downloader.Listener(func(taskInfo *download.TaskInfo, eventKey download.EventKey) {
-		if eventKey == download.EventKeyProgress {
-			printProgress(taskInfo, "downloading...")
-		}
-		if eventKey == download.EventKeyDone {
-			printProgress(taskInfo, "complete")
-			wg.Done()
-		}
-	})
 	wg.Wait()
-	fmt.Println()
-	gPrint("saving file " + filepath.Join(*args.dir, res.Files[0].Name))
 }
 
-func printProgress(taskInfo *download.TaskInfo, title string) {
-	rate := float64(taskInfo.Progress.Downloaded) / float64(taskInfo.Res.TotalSize)
+func printProgress(task *download.TaskInfo, title string) {
+	rate := float64(task.Progress.Downloaded) / float64(task.Res.TotalSize)
 	completeWidth := int(progressWidth * rate)
-	speed := util.ByteFmt(taskInfo.Progress.Speed)
-	totalSize := util.ByteFmt(taskInfo.Res.TotalSize)
+	speed := util.ByteFmt(task.Progress.Speed)
+	totalSize := util.ByteFmt(task.Res.TotalSize)
 	fmt.Printf("\r%s [", title)
 	for i := 0; i < progressWidth; i++ {
 		if i < completeWidth {

@@ -13,9 +13,17 @@ go install github.com/monkeyWie/gopeed-core
 
 ## 示例
 
-```go
+可以在本仓库的[\_examples](_examples)目录下查看
 
-```
+## 命令行工具
+
+### 预览
+
+![](_docs/img/cli-demo.gif)
+
+### 下载
+
+前往[releases](https://github.com/monkeyWie/gopeed-core/releases)页面
 
 ## TODO
 

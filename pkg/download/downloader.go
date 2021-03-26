@@ -15,6 +15,7 @@ import (
 )
 
 type FetcherBuilder func() (protocols []string, builder func() fetcher.Fetcher)
+type Listener func(event *Event)
 
 type TaskInfo struct {
 	ID       string
@@ -42,10 +43,8 @@ type Downloader struct {
 	*controller.DefaultController
 	fetchBuilders map[string]func() fetcher.Fetcher
 	tasks         map[string]*TaskInfo
-	listener      func(taskInfo *TaskInfo, eventKey EventKey)
+	listener      Listener
 }
-
-var DefaultDownloader = NewDownloader(http.FetcherBuilder)
 
 func NewDownloader(fbs ...FetcherBuilder) *Downloader {
 	d := &Downloader{DefaultController: controller.NewController()}
@@ -72,7 +71,7 @@ func NewDownloader(fbs ...FetcherBuilder) *Downloader {
 					task.Progress.Used = task.timer.Used()
 					task.Progress.Speed = current - task.Progress.Downloaded
 					task.Progress.Downloaded = current
-					d.emit(task, EventKeyProgress)
+					d.emit(EventKeyProgress, task)
 				}
 			}
 			time.Sleep(time.Second)
@@ -107,6 +106,9 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (err error) 
 	if err != nil {
 		return
 	}
+	if !res.Range || opts.Connections < 1 {
+		opts.Connections = 1
+	}
 	err = fetcher.Create(res, opts)
 	if err != nil {
 		return
@@ -124,16 +126,15 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (err error) 
 	}
 	d.tasks[id] = task
 	task.timer.Start()
-	d.emit(task, EventKeyStart)
+	d.emit(EventKeyStart, task)
 	err = fetcher.Start()
 	if err != nil {
-		d.emit(task, EventKeyError)
 		return
 	}
 	go func() {
 		err = fetcher.Wait()
 		if err != nil {
-			d.emit(task, EventKeyError)
+			d.emit(EventKeyError, task, err)
 		} else {
 			task.Progress.Used = task.timer.Used()
 			if task.Res.TotalSize == 0 {
@@ -145,8 +146,9 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (err error) 
 			}
 			task.Progress.Speed = task.Res.TotalSize / used
 			task.Progress.Downloaded = task.Res.TotalSize
-			d.emit(d.tasks[id], EventKeyDone)
+			d.emit(EventKeyDone, task)
 		}
+		d.emit(EventKeyFinally, task, err)
 	}()
 	return
 }
@@ -157,7 +159,7 @@ func (d *Downloader) Pause(id string) {
 	defer task.locker.Unlock()
 	task.timer.Pause()
 	task.fetcher.Pause()
-	d.emit(task, EventKeyPause)
+	d.emit(EventKeyPause, task)
 }
 
 func (d *Downloader) Continue(id string) {
@@ -166,29 +168,66 @@ func (d *Downloader) Continue(id string) {
 	defer task.locker.Unlock()
 	task.timer.Continue()
 	task.fetcher.Continue()
-	d.emit(task, EventKeyContinue)
+	d.emit(EventKeyContinue, task)
 }
 
-func (d *Downloader) Listener(fn func(taskInfo *TaskInfo, eventKey EventKey)) {
+func (d *Downloader) Listener(fn Listener) {
 	d.listener = fn
 }
 
-func (d *Downloader) emit(taskInfo *TaskInfo, eventKey EventKey) {
+func (d *Downloader) emit(eventKey EventKey, task *TaskInfo, errs ...error) {
 	if d.listener != nil {
-		d.listener(taskInfo, eventKey)
+		var err error
+		if len(errs) > 0 {
+			err = errs[0]
+		}
+		d.listener(&Event{
+			Key:  eventKey,
+			Task: task,
+			Err:  err,
+		})
 	}
 }
 
-// Resolve 解析资源
-func Resolve(url string, extra ...interface{}) (*base.Resource, error) {
-	var e interface{}
-	if len(extra) == 0 {
-		e = nil
-	} else {
-		e = extra[0]
-	}
-	return DefaultDownloader.Resolve(&base.Request{
-		URL:   url,
-		Extra: e,
+var defaultDownloader = NewDownloader(http.FetcherBuilder)
+
+type boot struct {
+	url      string
+	extra    interface{}
+	listener Listener
+}
+
+func (b *boot) URL(url string) *boot {
+	b.url = url
+	return b
+}
+
+func (b *boot) Extra(extra interface{}) *boot {
+	b.extra = extra
+	return b
+}
+
+func (b *boot) Resolve() (*base.Resource, error) {
+	return defaultDownloader.Resolve(&base.Request{
+		URL:   b.url,
+		Extra: b.extra,
 	})
+}
+
+func (b *boot) Listener(listener Listener) *boot {
+	b.listener = listener
+	return b
+}
+
+func (b *boot) Create(opts *base.Options) error {
+	res, err := b.Resolve()
+	if err != nil {
+		return err
+	}
+	defaultDownloader.Listener(b.listener)
+	return defaultDownloader.Create(res, opts)
+}
+
+func Boot() *boot {
+	return &boot{}
 }

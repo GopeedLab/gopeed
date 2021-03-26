@@ -12,6 +12,11 @@ func TestByteFmt(t *testing.T) {
 		want string
 	}{
 		{
+			name: "unknown",
+			args: args{size: int64(0)},
+			want: "unknown",
+		},
+		{
 			name: "100B",
 			args: args{size: int64(100)},
 			want: "100B",

@@ -130,9 +130,6 @@ func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
 }
 
 func (f *Fetcher) Create(res *base.Resource, opts *base.Options) error {
-	if opts.Connections != 1 && !res.Range {
-		opts.Connections = 1
-	}
 	f.res = res
 	f.opts = opts
 	f.status = base.DownloadStatusReady

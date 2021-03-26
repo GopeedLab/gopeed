@@ -9,9 +9,11 @@ const (
 	EventKeyProgress = "progress"
 	EventKeyError    = "error"
 	EventKeyDone     = "done"
+	EventKeyFinally  = "finally"
 )
 
 type Event struct {
-	EventKey
-	TaskInfo
+	Key  EventKey
+	Task *TaskInfo
+	Err  error
 }
