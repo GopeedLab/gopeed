@@ -3,12 +3,16 @@ name: release
 on:
   push:
     branches:
-      - dev
+      - master
 jobs:
   release:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.15.2'
+      - uses: actions/checkout@v2
       - name: Build Cli
         run: |
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o gopeed.exe cmd/gopeed/*
@@ -21,7 +25,7 @@ jobs:
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload Cli windows
+      - name: Upload Cli Windows
         uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -30,7 +34,7 @@ jobs:
           asset_path: ./gopeed-windows-x64.zip
           asset_name: gopeed-${{ steps.create_release.outputs.name }}-windows-x64.zip
           asset_content_type: application/zip
-      - name: Upload Cli linux
+      - name: Upload Cli Linux
         uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,7 +43,7 @@ jobs:
           asset_path: ./gopeed-linux-x64.zip
           asset_name: gopeed-${{ steps.create_release.outputs.name }}-linux-x64.zip
           asset_content_type: application/zip
-      - name: Upload Cli darwin
+      - name: Upload Cli Darwin
         uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
