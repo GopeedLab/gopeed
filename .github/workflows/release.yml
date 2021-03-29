@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - '_docs/**'
+      - 'README.md'
 jobs:
   release:
     runs-on: ubuntu-latest

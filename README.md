@@ -1,5 +1,5 @@
-[![Build Status](https://github.com/monkeyWie/gopeed-core/workflows/build/badge.svg)](https://github.com/monkeyWie/gopeed-core/actions?query=workflow%3Abuild)
-[![Codecov](https://codecov.io/gh/monkeyWie/gopeed-core/branch/dev/graph/badge.svg)](https://codecov.io/gh/monkeyWie/gopeed-core)
+[![Test Status](https://github.com/monkeyWie/gopeed-core/workflows/test/badge.svg)](https://github.com/monkeyWie/gopeed-core/actions?query=workflow%3Atest)
+[![Codecov](https://codecov.io/gh/monkeyWie/gopeed-core/branch/master/graph/badge.svg)](https://codecov.io/gh/monkeyWie/gopeed-core)
 [![Release](https://img.shields.io/github/release/monkeyWie/gopeed-core.svg?style=flat-square)](https://github.com/monkeyWie/gopeed-core/releases)
 
 ## gopeed
