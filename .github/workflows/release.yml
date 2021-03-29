@@ -35,7 +35,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
           asset_path: ./gopeed-windows-x64.zip
-          asset_name: gopeed-${{ steps.create_release.outputs.name }}-windows-x64.zip
+          asset_name: gopeed-${{ steps.create_release.outputs.tag_name }}-windows-x64.zip
           asset_content_type: application/zip
       - name: Upload Cli Linux
         uses: actions/upload-release-asset@v1.0.1
@@ -44,7 +44,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
           asset_path: ./gopeed-linux-x64.zip
-          asset_name: gopeed-${{ steps.create_release.outputs.name }}-linux-x64.zip
+          asset_name: gopeed-${{ steps.create_release.outputs.tag_name }}-linux-x64.zip
           asset_content_type: application/zip
       - name: Upload Cli Darwin
         uses: actions/upload-release-asset@v1.0.1
@@ -53,5 +53,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
           asset_path: ./gopeed-darwin-x64.zip
-          asset_name: gopeed-${{ steps.create_release.outputs.name }}-darwin-x64.zip
+          asset_name: gopeed-${{ steps.create_release.outputs.tag_name }}-darwin-x64.zip
           asset_content_type: application/zip
