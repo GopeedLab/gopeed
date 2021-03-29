@@ -3,10 +3,16 @@ name: test
 on:
   pull_request:
     branches:
-      - dev
+      - master
+    paths-ignore:
+      - '_docs/**'
+      - 'README.md'
   push:
     branches:
-      - dev
+      - master
+    paths-ignore:
+      - '_docs/**'
+      - 'README.md'
 
 jobs:
 #  lint:
