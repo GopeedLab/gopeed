@@ -48,6 +48,10 @@ type Process interface {
 	Delete() error
 }
 
+type FileCreator interface {
+	Create(name string, size int64) (file *os.File, err error)
+}
+
 type Controller struct {
 	Files map[string]*os.File
 }
