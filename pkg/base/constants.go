@@ -5,7 +5,8 @@ import "errors"
 type Status int
 
 const (
-	DownloadStatusReady Status = iota
+	DownloadStatusPrepare Status = iota
+	DownloadStatusReady
 	DownloadStatusStart
 	DownloadStatusPause
 	DownloadStatusError

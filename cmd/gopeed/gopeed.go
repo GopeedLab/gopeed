@@ -49,7 +49,7 @@ func main() {
 	wg.Wait()
 }
 
-func printProgress(task *download.TaskInfo, title string) {
+func printProgress(task *download.Task, title string) {
 	rate := float64(task.Progress.Downloaded) / float64(task.Res.TotalSize)
 	completeWidth := int(progressWidth * rate)
 	speed := util.ByteFmt(task.Progress.Speed)

@@ -20,7 +20,7 @@ func parse() *args {
 	}
 	var args args
 	args.connections = flag.Int("C", 16, "Concurrent connections.")
-	args.dir = flag.String("D", dir, "Save directory.")
+	args.dir = flag.String("D", dir, "Store directory.")
 	flag.Parse()
 	t := flag.Args()
 	if len(t) > 0 {

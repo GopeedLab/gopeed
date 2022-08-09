@@ -39,27 +39,12 @@ type Fetcher struct {
 	res     *base.Resource
 	opts    *base.Options
 	status  base.Status
-	clients []*http.Response
 	chunks  []*Chunk
+	clients []*http.Response
 
 	ctx     context.Context
 	cancel  context.CancelFunc
 	pauseCh chan interface{}
-}
-
-func NewFetcher() *Fetcher {
-	return &Fetcher{
-		DefaultFetcher: new(fetcher.DefaultFetcher),
-		pauseCh:        make(chan interface{}),
-	}
-}
-
-var protocols = []string{"HTTP", "HTTPS"}
-
-func FetcherBuilder() ([]string, func() fetcher.Fetcher) {
-	return protocols, func() fetcher.Fetcher {
-		return NewFetcher()
-	}
 }
 
 func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
@@ -340,7 +325,7 @@ func buildClient() *http.Client {
 	jar, _ := cookiejar.New(nil)
 	return &http.Client{
 		Jar:     jar,
-		Timeout: time.Second * 10,
+		Timeout: time.Second * 60,
 	}
 }
 
@@ -384,4 +369,41 @@ func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request
 	}
 	httpReq.Header = headers
 	return httpReq, nil
+}
+
+type FetcherData struct {
+	Chunks []*Chunk
+}
+
+type FetcherBuilder struct {
+}
+
+var schemes = []string{"HTTP", "HTTPS"}
+
+func (fb *FetcherBuilder) Schemes() []string {
+	return schemes
+}
+
+func (fb *FetcherBuilder) Build() fetcher.Fetcher {
+	return &Fetcher{
+		DefaultFetcher: new(fetcher.DefaultFetcher),
+		pauseCh:        make(chan interface{}),
+	}
+}
+
+func (fb *FetcherBuilder) Store(f fetcher.Fetcher) interface{} {
+	_f := f.(*Fetcher)
+	return &FetcherData{
+		Chunks: _f.chunks,
+	}
+}
+
+func (fb *FetcherBuilder) Resume(res *base.Resource, opts *base.Options, data interface{}) fetcher.Fetcher {
+	fetcher := new(FetcherBuilder).Build().(*Fetcher)
+	fs := data.(*FetcherData)
+	fetcher.res = res
+	fetcher.opts = opts
+	fetcher.chunks = fs.Chunks
+	fetcher.status = base.DownloadStatusPause
+	return fetcher
 }
