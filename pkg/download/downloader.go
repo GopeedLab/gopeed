@@ -88,7 +88,9 @@ func (d *Downloader) Resolve(req *base.Request) (string, *base.Resource, error) 
 	if err != nil {
 		return "", nil, err
 	}
-	task := NewTask(fetcher)
+	task := NewTask()
+	task.fetcher = fetcher
+	task.Res = res
 	d.tasks[task.ID] = task
 	return task.ID, res, nil
 }
@@ -106,7 +108,6 @@ func (d *Downloader) Create(taskID string, res *base.Resource, opts *base.Option
 	if err != nil {
 		return
 	}
-	task.Res = res
 	task.Opts = opts
 	task.Status = base.DownloadStatusReady
 	task.Progress = &Progress{}
@@ -124,15 +125,15 @@ func (d *Downloader) Create(taskID string, res *base.Resource, opts *base.Option
 			d.emit(EventKeyError, task, err)
 		} else {
 			task.Progress.Used = task.timer.Used()
-			if task.Res.TotalSize == 0 {
-				task.Res.TotalSize = task.fetcher.Progress().TotalDownloaded()
+			if task.Res.Length == 0 {
+				task.Res.Length = task.fetcher.Progress().TotalDownloaded()
 			}
 			used := task.Progress.Used / int64(time.Second)
 			if used == 0 {
 				used = 1
 			}
-			task.Progress.Speed = task.Res.TotalSize / used
-			task.Progress.Downloaded = task.Res.TotalSize
+			task.Progress.Speed = task.Res.Length / used
+			task.Progress.Downloaded = task.Res.Length
 			d.emit(EventKeyDone, task)
 		}
 		d.emit(EventKeyFinally, task, err)

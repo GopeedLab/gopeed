@@ -5,7 +5,7 @@ import (
 	"github.com/monkeyWie/gopeed-core/pkg/base"
 	"github.com/monkeyWie/gopeed-core/pkg/download"
 	"github.com/monkeyWie/gopeed-core/pkg/util"
-	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -31,9 +31,9 @@ func main() {
 				printProgress(event.Task, title)
 				fmt.Println()
 				if event.Err != nil {
-					gPrint("reason: " + event.Err.Error())
+					fmt.Printf("reason: %s", event.Err.Error())
 				} else {
-					gPrint("saving file " + filepath.Join(*args.dir, event.Task.Res.Files[0].Name))
+					fmt.Printf("saving path: %s", *args.dir)
 				}
 				wg.Done()
 			}
@@ -49,18 +49,32 @@ func main() {
 	wg.Wait()
 }
 
+var (
+	lastLineLen = 0
+	sb          = new(strings.Builder)
+)
+
 func printProgress(task *download.Task, title string) {
-	rate := float64(task.Progress.Downloaded) / float64(task.Res.TotalSize)
+	rate := float64(task.Progress.Downloaded) / float64(task.Res.Length)
 	completeWidth := int(progressWidth * rate)
 	speed := util.ByteFmt(task.Progress.Speed)
-	totalSize := util.ByteFmt(task.Res.TotalSize)
-	fmt.Printf("\r%s [", title)
+	totalSize := util.ByteFmt(task.Res.Length)
+	sb.WriteString(fmt.Sprintf("\r%s [", title))
 	for i := 0; i < progressWidth; i++ {
 		if i < completeWidth {
-			fmt.Print("■")
+			sb.WriteString("■")
 		} else {
-			fmt.Print("□")
+			sb.WriteString("□")
 		}
 	}
-	fmt.Printf("] %.1f%%    %s/s    %s", rate*100, speed, totalSize)
+	sb.WriteString(fmt.Sprintf("] %.1f%%    %s/s    %s", rate*100, speed, totalSize))
+	if lastLineLen != 0 {
+		paddingLen := lastLineLen - sb.Len()
+		if paddingLen > 0 {
+			sb.WriteString(strings.Repeat(" ", paddingLen))
+		}
+	}
+	lastLineLen = sb.Len()
+	fmt.Print(sb.String())
+	sb.Reset()
 }

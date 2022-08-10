@@ -21,10 +21,9 @@ type Task struct {
 	locker  *sync.Mutex
 }
 
-func NewTask(fetcher fetcher.Fetcher) *Task {
+func NewTask() *Task {
 	return &Task{
-		ID:      uuid.New().String(),
-		Status:  base.DownloadStatusPrepare,
-		fetcher: fetcher,
+		ID:     uuid.New().String(),
+		Status: base.DownloadStatusPrepare,
 	}
 }

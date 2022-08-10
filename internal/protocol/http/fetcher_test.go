@@ -13,8 +13,8 @@ import (
 
 func TestFetcher_Resolve(t *testing.T) {
 	testResolve(test.StartTestFileServer, &base.Resource{
-		TotalSize: test.BuildSize,
-		Range:     true,
+		Length: test.BuildSize,
+		Range:  true,
 		Files: []*base.FileInfo{
 			{
 				Name: test.BuildName,
@@ -23,8 +23,8 @@ func TestFetcher_Resolve(t *testing.T) {
 		},
 	}, t)
 	testResolve(test.StartTestChunkedServer, &base.Resource{
-		TotalSize: 0,
-		Range:     false,
+		Length: 0,
+		Range:  false,
 		Files: []*base.FileInfo{
 			{
 				Name: test.BuildName,

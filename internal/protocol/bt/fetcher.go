@@ -16,7 +16,7 @@ type Fetcher struct {
 	Ctl controller.Controller
 
 	torrent *torrent.Torrent
-	ops     *base.Options
+	opts    *base.Options
 }
 
 func (f *Fetcher) Setup(ctl controller.Controller) (err error) {
@@ -45,14 +45,15 @@ func (f *Fetcher) Resolve(req *base.Request) (res *base.Resource, err error) {
 	}
 	<-f.torrent.GotInfo()
 	res = &base.Resource{
-		Req:   req,
-		Range: true,
-		Files: make([]*base.FileInfo, len(f.torrent.Files())),
+		Req:    req,
+		Length: f.torrent.Length(),
+		Range:  true,
+		Files:  make([]*base.FileInfo, len(f.torrent.Files())),
 	}
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
 			Name: filepath.Base(file.DisplayPath()),
-			Path: file.Path(),
+			Path: filepath.Dir(file.Path()),
 			Size: file.Length(),
 		}
 	}
@@ -60,15 +61,21 @@ func (f *Fetcher) Resolve(req *base.Request) (res *base.Resource, err error) {
 }
 
 func (f *Fetcher) Create(res *base.Resource, opts *base.Options) (err error) {
-	f.ops = opts
+	f.opts = opts
+	if len(f.opts.SelectFiles) == 0 {
+		f.opts.SelectFiles = make([]int, len(res.Files))
+		for i := range f.opts.SelectFiles {
+			f.opts.SelectFiles[i] = i
+		}
+	}
 	return nil
 }
 
 func (f *Fetcher) Start() (err error) {
-	if len(f.ops.SelectFiles) == 0 {
+	if len(f.opts.SelectFiles) == 0 {
 		f.torrent.DownloadAll()
 	} else {
-		for _, index := range f.ops.SelectFiles {
+		for _, index := range f.opts.SelectFiles {
 			f.torrent.Files()[index].Download()
 		}
 	}
@@ -86,7 +93,7 @@ func (f *Fetcher) Continue() (err error) {
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {
-	p := make(fetcher.Progress, len(f.ops.SelectFiles))
+	p := make(fetcher.Progress, len(f.opts.SelectFiles))
 	for i := range p {
 		file := f.torrent.Files()[i]
 		p[i] = file.BytesCompleted()
