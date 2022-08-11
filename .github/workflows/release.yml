@@ -12,46 +12,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: '^1.18'
-      - uses: actions/checkout@v2
-      - name: Build Cli
-        run: |
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o gopeed.exe cmd/gopeed/*
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o gopeed cmd/gopeed/*
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -o gopeed cmd/gopeed/*
-          zip gopeed-windows-x64.zip gopeed.exe
-          zip gopeed-linux-x64.zip gopeed
-          zip gopeed-darwin-x64.zip gopeed
+      - uses: actions/checkout@v3
       - uses: release-drafter/release-drafter@v5
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload Cli Windows
-        uses: actions/upload-release-asset@v1.0.1
+      - name: Build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.create_release.outputs.tag_name }}
+        run: |
+          mkdir -p dist/zip
+          goos_arr=(windows darwin linux)
+          goarch_arr=(386 amd64 arm arm64)
+          export CGO_ENABLED=0
+          for goos in "${goos_arr[@]}"; do
+            for goarch in "${goarch_arr[@]}"; do
+              dir="dist/gopeed-$VERSION-$goos-$goarch/"
+              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed-core/cmd/gopeed \
+              && cd $dir \
+              && zip -r ../zip/gopeed-$VERSION-$goos-$goarch.zip * \
+              && cd ../..) \
+              || true
+            done
+          done
+      - name: Upload
+        uses: shogo82148/actions-upload-release-asset@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./gopeed-windows-x64.zip
-          asset_name: gopeed-${{ steps.create_release.outputs.tag_name }}-windows-x64.zip
-          asset_content_type: application/zip
-      - name: Upload Cli Linux
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./gopeed-linux-x64.zip
-          asset_name: gopeed-${{ steps.create_release.outputs.tag_name }}-linux-x64.zip
-          asset_content_type: application/zip
-      - name: Upload Cli Darwin
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          asset_path: ./gopeed-darwin-x64.zip
-          asset_name: gopeed-${{ steps.create_release.outputs.tag_name }}-darwin-x64.zip
-          asset_content_type: application/zip
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/zip/*
