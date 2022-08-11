@@ -29,13 +29,13 @@ go install github.com/monkeyWie/gopeed-core
 ## TODO
 
 - [x] HTTP 下载实现
-- [ ] BitTorrent 下载实现
+- [x] BitTorrent 下载实现
   - [x] .torrent 文件解析
   - [x] tracker 协议实现
   - [x] peer wire protocol 协议实现
-  - [ ] DHT 协议实现
-  - [ ] 磁力链接支持
-  - [ ] uTP 协议实现
+  - [x] DHT 协议实现
+  - [x] 磁力链接支持
+  - [x] uTP 协议实现
 - [x] 下载接口抽象(不关心具体协议)
 - [ ] 支持自定义配置
 - [ ] 限速功能实现
