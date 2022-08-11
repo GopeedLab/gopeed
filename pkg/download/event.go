@@ -14,6 +14,6 @@ const (
 
 type Event struct {
 	Key  EventKey
-	Task *TaskInfo
+	Task *Task
 	Err  error
 }

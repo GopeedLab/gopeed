@@ -7,7 +7,7 @@ import (
 
 // 对应协议的下载支持
 type Fetcher interface {
-	Setup(ctl controller.Controller)
+	Setup(ctl controller.Controller) error
 	// 解析请求
 	Resolve(req *base.Request) (res *base.Resource, err error)
 	// 创建任务
@@ -22,14 +22,27 @@ type Fetcher interface {
 	Wait() (err error)
 }
 
+type FetcherBuilder interface {
+	Schemes() []string
+	Build() Fetcher
+}
+
+type FetcherSaver interface {
+	// Store 存储任务
+	Store(fetcher Fetcher) interface{}
+	// Resume 恢复任务
+	Resume(res *base.Resource, opts *base.Options, data interface{}) Fetcher
+}
+
 type DefaultFetcher struct {
 	Ctl    controller.Controller
 	DoneCh chan error
 }
 
-func (f *DefaultFetcher) Setup(ctl controller.Controller) {
+func (f *DefaultFetcher) Setup(ctl controller.Controller) (err error) {
 	f.Ctl = ctl
 	f.DoneCh = make(chan error, 1)
+	return
 }
 
 func (f *DefaultFetcher) Wait() (err error) {

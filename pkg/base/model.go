@@ -3,6 +3,8 @@ package base
 // 下载请求
 type Request struct {
 	// 下载链接
+	Schema string
+	// 下载链接
 	URL string
 	// 附加信息
 	Extra interface{}
@@ -12,7 +14,7 @@ type Request struct {
 type Resource struct {
 	Req *Request
 	// 资源总大小
-	TotalSize int64
+	Length int64
 	// 是否支持断点下载
 	Range bool
 	// 资源所包含的文件列表
@@ -33,4 +35,6 @@ type Options struct {
 	Path string
 	// 并发连接数
 	Connections int
+	// 下载的文件下标列表
+	SelectFiles []int
 }

@@ -13,18 +13,18 @@ func TestDownloader_Resolve(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
 
-	downloader := NewDownloader(http.FetcherBuilder)
+	downloader := NewDownloader(new(http.FetcherBuilder))
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	res, err := downloader.Resolve(req)
+	_, res, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := &base.Resource{
-		Req:       req,
-		TotalSize: test.BuildSize,
-		Range:     true,
+		Req:    req,
+		Length: test.BuildSize,
+		Range:  true,
 		Files: []*base.FileInfo{
 			{
 				Name: test.BuildName,
@@ -42,11 +42,11 @@ func TestDownloader_Create(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
 
-	downloader := NewDownloader(http.FetcherBuilder)
+	downloader := NewDownloader(new(http.FetcherBuilder))
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	res, err := downloader.Resolve(req)
+	taskID, res, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestDownloader_Create(t *testing.T) {
 			wg.Done()
 		}
 	})
-	err = downloader.Create(res, &base.Options{
+	err = downloader.Create(taskID, res, &base.Options{
 		Path:        test.Dir,
 		Name:        test.DownloadName,
 		Connections: 4,
