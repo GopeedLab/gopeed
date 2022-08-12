@@ -36,11 +36,10 @@ func (re *RequestError) Error() string {
 type Fetcher struct {
 	*fetcher.DefaultFetcher
 
-	res     *base.Resource
-	opts    *base.Options
-	status  base.Status
-	chunks  []*Chunk
-	clients []*http.Response
+	res    *base.Resource
+	opts   *base.Options
+	status base.Status
+	chunks []*Chunk
 
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -133,7 +132,6 @@ func (f *Fetcher) Start() (err error) {
 		// 每个连接平均需要下载的分块大小
 		chunkSize := f.res.Length / int64(f.opts.Connections)
 		f.chunks = make([]*Chunk, f.opts.Connections)
-		f.clients = make([]*http.Response, f.opts.Connections)
 		for i := 0; i < f.opts.Connections; i++ {
 			var (
 				begin = chunkSize * int64(i)
@@ -151,7 +149,6 @@ func (f *Fetcher) Start() (err error) {
 	} else {
 		// 只支持单连接下载
 		f.chunks = make([]*Chunk, 1)
-		f.clients = make([]*http.Response, 1)
 		f.chunks[0] = NewChunk(0, 0)
 	}
 	f.fetch()
@@ -267,7 +264,6 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 			if err != nil {
 				return err
 			}
-			f.clients[index] = resp
 			if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
 				err = NewRequestError(resp.StatusCode, resp.Status)
 				return err
@@ -306,17 +302,18 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 		}
 	}
 
-	if f.status == base.DownloadStatusPause {
-		chunk.Status = base.DownloadStatusPause
-	} else if chunk.Downloaded >= chunk.End-chunk.Begin+1 {
-		chunk.Status = base.DownloadStatusDone
-	} else {
-		if err != nil {
-			chunk.Status = base.DownloadStatusError
-		} else {
-			chunk.Status = base.DownloadStatusDone
-		}
+	if err != nil {
+		chunk.Status = base.DownloadStatusError
+		return
 	}
+
+	isComplete := f.res.Range && chunk.Downloaded >= chunk.End-chunk.Begin+1
+	if f.status == base.DownloadStatusPause && !isComplete {
+		chunk.Status = base.DownloadStatusPause
+		return
+	}
+
+	chunk.Status = base.DownloadStatusDone
 	return
 }
 

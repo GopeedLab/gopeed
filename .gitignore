@@ -20,3 +20,5 @@ bin/
 .torrent.db
 .torrent.db-shm
 .torrent.db-wal
+
+.data

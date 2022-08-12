@@ -75,7 +75,7 @@ func TestFetcher_DownloadChunked(t *testing.T) {
 	defer listener.Close()
 	// chunked编码下载
 	downloadNormal(listener, 1, t)
-	downloadContinue(listener, 1, t)
+	//downloadContinue(listener, 1, t)
 }
 
 func TestFetcher_DownloadRetry(t *testing.T) {
@@ -184,9 +184,9 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 	}
 
 	fb := new(FetcherBuilder)
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 200)
 	data := fb.Store(fetcher)
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Millisecond * 200)
 	fetcher.Pause()
 
 	fetcher = fb.Resume(res, opts, data)
