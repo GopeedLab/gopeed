@@ -6,6 +6,7 @@ import (
 	"github.com/monkeyWie/gopeed-core/pkg/base"
 	"github.com/monkeyWie/gopeed-core/pkg/util"
 	"sync"
+	"time"
 )
 
 type Task struct {
@@ -16,6 +17,8 @@ type Task struct {
 	Files    map[string]*base.FileInfo
 	Progress *Progress
 
+	CreateTime time.Time
+
 	fetcher fetcher.Fetcher
 	timer   *util.Timer
 	locker  *sync.Mutex
@@ -24,6 +27,6 @@ type Task struct {
 func NewTask() *Task {
 	return &Task{
 		ID:     uuid.New().String(),
-		Status: base.DownloadStatusPrepare,
+		Status: base.DownloadStatusReady,
 	}
 }

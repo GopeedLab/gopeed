@@ -45,10 +45,10 @@ func (f *Fetcher) Resolve(req *base.Request) (res *base.Resource, err error) {
 	}
 	<-f.torrent.GotInfo()
 	res = &base.Resource{
-		Req:    req,
-		Length: f.torrent.Length(),
-		Range:  true,
-		Files:  make([]*base.FileInfo, len(f.torrent.Files())),
+		Req:   req,
+		Size:  f.torrent.Length(),
+		Range: true,
+		Files: make([]*base.FileInfo, len(f.torrent.Files())),
 	}
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
@@ -62,12 +62,6 @@ func (f *Fetcher) Resolve(req *base.Request) (res *base.Resource, err error) {
 
 func (f *Fetcher) Create(res *base.Resource, opts *base.Options) (err error) {
 	f.opts = opts
-	if len(f.opts.SelectFiles) == 0 {
-		f.opts.SelectFiles = make([]int, len(res.Files))
-		for i := range f.opts.SelectFiles {
-			f.opts.SelectFiles[i] = i
-		}
-	}
 	return nil
 }
 

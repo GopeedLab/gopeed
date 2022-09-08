@@ -27,7 +27,7 @@ type Progress struct {
 type Downloader struct {
 	*controller.DefaultController
 	fetchBuilders map[string]fetcher.FetcherBuilder
-	tasks         map[string]*Task
+	tasks         []*Task
 	listener      Listener
 }
 
@@ -39,15 +39,14 @@ func NewDownloader(fbs ...fetcher.FetcherBuilder) *Downloader {
 			d.fetchBuilders[strings.ToUpper(p)] = f
 		}
 	}
-	d.tasks = make(map[string]*Task)
+	d.tasks = make([]*Task, 0)
 
 	// 每秒统计一次下载速度
 	go func() {
 		for {
 			if len(d.tasks) > 0 {
 				for _, task := range d.tasks {
-					if task.Status == base.DownloadStatusPrepare ||
-						task.Status == base.DownloadStatusDone ||
+					if task.Status == base.DownloadStatusDone ||
 						task.Status == base.DownloadStatusError ||
 						task.Status == base.DownloadStatusPause {
 						continue
@@ -79,42 +78,54 @@ func (d *Downloader) buildFetcher(url string) (fetcher.Fetcher, error) {
 	return nil, errors.New("unsupported protocol")
 }
 
-func (d *Downloader) Resolve(req *base.Request) (string, *base.Resource, error) {
+func (d *Downloader) Resolve(req *base.Request) (*base.Resource, error) {
 	fetcher, err := d.buildFetcher(req.URL)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 	res, err := fetcher.Resolve(req)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
-	task := NewTask()
-	task.fetcher = fetcher
-	task.Res = res
-	d.tasks[task.ID] = task
-	return task.ID, res, nil
+
+	return res, nil
 }
 
-func (d *Downloader) Create(taskID string, res *base.Resource, opts *base.Options) (err error) {
-	task := d.tasks[taskID]
-	fetcher := d.tasks[taskID].fetcher
+func (d *Downloader) Create(res *base.Resource, opts *base.Options) (taskId string, err error) {
 	if opts == nil {
 		opts = &base.Options{}
 	}
 	if !res.Range || opts.Connections < 1 {
 		opts.Connections = 1
 	}
+	if len(opts.SelectFiles) == 0 {
+		opts.SelectFiles = make([]int, len(res.Files))
+		for i := range opts.SelectFiles {
+			opts.SelectFiles[i] = i
+		}
+	}
+
+	fetcher, err := d.buildFetcher(res.Req.URL)
+	if err != nil {
+		return
+	}
 	err = fetcher.Create(res, opts)
 	if err != nil {
 		return
 	}
+
+	task := NewTask()
+	task.fetcher = fetcher
+	task.Res = res
 	task.Opts = opts
-	task.Status = base.DownloadStatusReady
 	task.Progress = &Progress{}
 	task.timer = &util.Timer{}
 	task.locker = new(sync.Mutex)
 	task.timer.Start()
+	taskId = task.ID
+	d.tasks = append(d.tasks, task)
 	d.emit(EventKeyStart, task)
+
 	err = fetcher.Start()
 	if err != nil {
 		return
@@ -125,15 +136,15 @@ func (d *Downloader) Create(taskID string, res *base.Resource, opts *base.Option
 			d.emit(EventKeyError, task, err)
 		} else {
 			task.Progress.Used = task.timer.Used()
-			if task.Res.Length == 0 {
-				task.Res.Length = task.fetcher.Progress().TotalDownloaded()
+			if task.Res.Size == 0 {
+				task.Res.Size = task.fetcher.Progress().TotalDownloaded()
 			}
 			used := task.Progress.Used / int64(time.Second)
 			if used == 0 {
 				used = 1
 			}
-			task.Progress.Speed = task.Res.Length / used
-			task.Progress.Downloaded = task.Res.Length
+			task.Progress.Speed = task.Res.Size / used
+			task.Progress.Downloaded = task.Res.Size
 			d.emit(EventKeyDone, task)
 		}
 		d.emit(EventKeyFinally, task, err)
@@ -142,7 +153,7 @@ func (d *Downloader) Create(taskID string, res *base.Resource, opts *base.Option
 }
 
 func (d *Downloader) Pause(id string) {
-	task := d.tasks[id]
+	task := d.getTask(id)
 	task.locker.Lock()
 	defer task.locker.Unlock()
 	task.timer.Pause()
@@ -151,7 +162,7 @@ func (d *Downloader) Pause(id string) {
 }
 
 func (d *Downloader) Continue(id string) {
-	task := d.tasks[id]
+	task := d.getTask(id)
 	task.locker.Lock()
 	defer task.locker.Unlock()
 	task.timer.Continue()
@@ -177,6 +188,15 @@ func (d *Downloader) emit(eventKey EventKey, task *Task, errs ...error) {
 	}
 }
 
+func (d *Downloader) getTask(id string) *Task {
+	for _, task := range d.tasks {
+		if task.ID == id {
+			return task
+		}
+	}
+	return nil
+}
+
 var defaultDownloader = NewDownloader(new(http.FetcherBuilder), new(bt.FetcherBuilder))
 
 type boot struct {
@@ -195,7 +215,7 @@ func (b *boot) Extra(extra interface{}) *boot {
 	return b
 }
 
-func (b *boot) Resolve() (string, *base.Resource, error) {
+func (b *boot) Resolve() (*base.Resource, error) {
 	return defaultDownloader.Resolve(&base.Request{
 		URL:   b.url,
 		Extra: b.extra,
@@ -207,13 +227,13 @@ func (b *boot) Listener(listener Listener) *boot {
 	return b
 }
 
-func (b *boot) Create(opts *base.Options) error {
-	taskID, res, err := b.Resolve()
+func (b *boot) Create(opts *base.Options) (string, error) {
+	res, err := b.Resolve()
 	if err != nil {
-		return err
+		return "", err
 	}
 	defaultDownloader.Listener(b.listener)
-	return defaultDownloader.Create(taskID, res, opts)
+	return defaultDownloader.Create(res, opts)
 }
 
 func Boot() *boot {
