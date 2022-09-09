@@ -8,7 +8,6 @@ import (
 	"github.com/monkeyWie/gopeed-core/pkg/base"
 	"golang.org/x/sync/errgroup"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/http"
 	"net/http/cookiejar"
@@ -75,7 +74,7 @@ func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
 			if err != nil {
 				return nil, err
 			}
-			res.Length = parse
+			res.Size = parse
 		}
 	} else if base.HttpCodeOK == httpResp.StatusCode {
 		// 返回200响应码，不支持断点下载，通过Content-Length头获取文件大小，获取不到的话可能是chunked编码
@@ -85,13 +84,13 @@ func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
 			if err != nil {
 				return nil, err
 			}
-			res.Length = parse
+			res.Size = parse
 		}
 	} else {
 		return nil, NewRequestError(httpResp.StatusCode, httpResp.Status)
 	}
 	file := &base.FileInfo{
-		Size: res.Length,
+		Size: res.Size,
 	}
 	contentDisposition := httpResp.Header.Get(base.HttpHeaderContentDisposition)
 	if contentDisposition != "" {
@@ -123,14 +122,14 @@ func (f *Fetcher) Create(res *base.Resource, opts *base.Options) error {
 func (f *Fetcher) Start() (err error) {
 	// 创建文件
 	name := f.filename()
-	_, err = f.Ctl.Touch(name, f.res.Length)
+	_, err = f.Ctl.Touch(name, f.res.Size)
 	if err != nil {
 		return err
 	}
-	f.status = base.DownloadStatusStart
+	f.status = base.DownloadStatusRunning
 	if f.res.Range {
 		// 每个连接平均需要下载的分块大小
-		chunkSize := f.res.Length / int64(f.opts.Connections)
+		chunkSize := f.res.Size / int64(f.opts.Connections)
 		f.chunks = make([]*Chunk, f.opts.Connections)
 		for i := 0; i < f.opts.Connections; i++ {
 			var (
@@ -139,7 +138,7 @@ func (f *Fetcher) Start() (err error) {
 			)
 			if i == f.opts.Connections-1 {
 				// 最后一个分块需要保证把文件下载完
-				end = f.res.Length - 1
+				end = f.res.Size - 1
 			} else {
 				end = begin + chunkSize - 1
 			}
@@ -156,7 +155,7 @@ func (f *Fetcher) Start() (err error) {
 }
 
 func (f *Fetcher) Pause() (err error) {
-	if base.DownloadStatusStart != f.status {
+	if base.DownloadStatusRunning != f.status {
 		return
 	}
 	f.status = base.DownloadStatusPause
@@ -166,10 +165,10 @@ func (f *Fetcher) Pause() (err error) {
 }
 
 func (f *Fetcher) Continue() (err error) {
-	if base.DownloadStatusStart == f.status || base.DownloadStatusDone == f.status {
+	if base.DownloadStatusRunning == f.status || base.DownloadStatusDone == f.status {
 		return
 	}
-	f.status = base.DownloadStatusStart
+	f.status = base.DownloadStatusRunning
 	var name = f.filename()
 	_, err = f.Ctl.Open(name)
 	if err != nil {
@@ -352,7 +351,7 @@ func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request
 			}
 		}
 		if extra.Body != "" {
-			body = ioutil.NopCloser(bytes.NewBufferString(extra.Body))
+			body = bytes.NewBufferString(extra.Body)
 		}
 	}
 

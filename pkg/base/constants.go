@@ -1,16 +1,13 @@
 package base
 
-import "errors"
-
-type Status int
+type Status string
 
 const (
-	DownloadStatusPrepare Status = iota
-	DownloadStatusReady
-	DownloadStatusStart
-	DownloadStatusPause
-	DownloadStatusError
-	DownloadStatusDone
+	DownloadStatusReady   Status = "ready"
+	DownloadStatusRunning Status = "running"
+	DownloadStatusPause   Status = "pause"
+	DownloadStatusError   Status = "error"
+	DownloadStatusDone    Status = "done"
 )
 
 const (
@@ -23,8 +20,4 @@ const (
 	HttpHeaderContentDisposition = "Content-Disposition"
 
 	HttpHeaderRangeFormat = "bytes=%d-%d"
-)
-
-var (
-	DeleteErr = errors.New("delete")
 )

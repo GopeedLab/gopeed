@@ -18,9 +18,9 @@ func TestFetcher_Resolve_Torrent(t *testing.T) {
 	}
 
 	want := &base.Resource{
-		Req:    res.Req,
-		Length: 1466714112,
-		Range:  true,
+		Req:   res.Req,
+		Size:  1466714112,
+		Range: true,
 		Files: []*base.FileInfo{
 			{
 				Name: "ubuntu-22.04-live-server-amd64.iso",
@@ -30,7 +30,7 @@ func TestFetcher_Resolve_Torrent(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(want, res) {
-		t.Errorf("Resolve error = %v, want %v", res, want)
+		t.Errorf("Resolve() got = %v, want %v", res, want)
 	}
 }
 

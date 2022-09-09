@@ -15,7 +15,7 @@ func main() {
 	args := parse()
 
 	var wg sync.WaitGroup
-	err := download.Boot().
+	_, err := download.Boot().
 		URL(args.url).
 		Listener(func(event *download.Event) {
 			if event.Key == download.EventKeyProgress {
@@ -55,10 +55,10 @@ var (
 )
 
 func printProgress(task *download.Task, title string) {
-	rate := float64(task.Progress.Downloaded) / float64(task.Res.Length)
+	rate := float64(task.Progress.Downloaded) / float64(task.Res.Size)
 	completeWidth := int(progressWidth * rate)
 	speed := util.ByteFmt(task.Progress.Speed)
-	totalSize := util.ByteFmt(task.Res.Length)
+	totalSize := util.ByteFmt(task.Res.Size)
 	sb.WriteString(fmt.Sprintf("\r%s [", title))
 	for i := 0; i < progressWidth; i++ {
 		if i < completeWidth {

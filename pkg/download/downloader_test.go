@@ -17,14 +17,14 @@ func TestDownloader_Resolve(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	_, res, err := downloader.Resolve(req)
+	res, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := &base.Resource{
-		Req:    req,
-		Length: test.BuildSize,
-		Range:  true,
+		Req:   req,
+		Size:  test.BuildSize,
+		Range: true,
 		Files: []*base.FileInfo{
 			{
 				Name: test.BuildName,
@@ -33,8 +33,8 @@ func TestDownloader_Resolve(t *testing.T) {
 			},
 		},
 	}
-	if !reflect.DeepEqual(res, want) {
-		t.Errorf("Resolve error = %s, want %s", test.ToJson(res), test.ToJson(want))
+	if !reflect.DeepEqual(want, res) {
+		t.Errorf("Resolve() got = %v, want %v", res, want)
 	}
 }
 
@@ -46,7 +46,7 @@ func TestDownloader_Create(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	taskID, res, err := downloader.Resolve(req)
+	res, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestDownloader_Create(t *testing.T) {
 			wg.Done()
 		}
 	})
-	err = downloader.Create(taskID, res, &base.Options{
+	_, err = downloader.Create(res, &base.Options{
 		Path:        test.Dir,
 		Name:        test.DownloadName,
 		Connections: 4,
@@ -70,6 +70,6 @@ func TestDownloader_Create(t *testing.T) {
 	want := test.FileMd5(test.BuildFile)
 	got := test.FileMd5(test.DownloadFile)
 	if want != got {
-		t.Errorf("Download error = %v, want %v", got, want)
+		t.Errorf("Download() got = %v, want %v", got, want)
 	}
 }

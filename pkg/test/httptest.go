@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -56,6 +57,29 @@ func StartTestRetryServer() net.Listener {
 			}
 			defer file.Close()
 			io.Copy(writer, file)
+		})
+		return mux
+	})
+}
+
+func StartTestPostServer() net.Listener {
+	return startTestServer(func() http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			if request.Method == "POST" && request.Header.Get("Authorization") != "" {
+				var data map[string]interface{}
+				if err := json.NewDecoder(request.Body).Decode(&data); err != nil {
+					panic(err)
+				}
+				if data["name"] == BuildName {
+					file, err := os.Open(BuildFile)
+					if err != nil {
+						panic(err)
+					}
+					defer file.Close()
+					io.Copy(writer, file)
+				}
+			}
 		})
 		return mux
 	})

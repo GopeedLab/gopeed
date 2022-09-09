@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"github.com/monkeyWie/gopeed-core/internal/controller"
 	"github.com/monkeyWie/gopeed-core/internal/fetcher"
 	"github.com/monkeyWie/gopeed-core/pkg/base"
@@ -13,8 +14,8 @@ import (
 
 func TestFetcher_Resolve(t *testing.T) {
 	testResolve(test.StartTestFileServer, &base.Resource{
-		Length: test.BuildSize,
-		Range:  true,
+		Size:  test.BuildSize,
+		Range: true,
 		Files: []*base.FileInfo{
 			{
 				Name: test.BuildName,
@@ -23,8 +24,8 @@ func TestFetcher_Resolve(t *testing.T) {
 		},
 	}, t)
 	testResolve(test.StartTestChunkedServer, &base.Resource{
-		Length: 0,
-		Range:  false,
+		Size:  0,
+		Range: false,
 		Files: []*base.FileInfo{
 			{
 				Name: test.BuildName,
@@ -46,7 +47,7 @@ func testResolve(startTestServer func() net.Listener, want *base.Resource, t *te
 	}
 	res.Req = nil
 	if !reflect.DeepEqual(want, res) {
-		t.Errorf("Resolve error = %v, want %v", res, want)
+		t.Errorf("Resolve() got = %v, want %v", res, want)
 	}
 }
 
@@ -75,7 +76,13 @@ func TestFetcher_DownloadChunked(t *testing.T) {
 	defer listener.Close()
 	// chunked编码下载
 	downloadNormal(listener, 1, t)
-	//downloadContinue(listener, 1, t)
+}
+
+func TestFetcher_DownloadPost(t *testing.T) {
+	listener := test.StartTestPostServer()
+	defer listener.Close()
+	// post下载
+	downloadPost(listener, 1, t)
 }
 
 func TestFetcher_DownloadRetry(t *testing.T) {
@@ -135,7 +142,31 @@ func downloadNormal(listener net.Listener, connections int, t *testing.T) {
 	want := test.FileMd5(test.BuildFile)
 	got := test.FileMd5(test.DownloadFile)
 	if want != got {
-		t.Errorf("Download error = %v, want %v", got, want)
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
+func downloadPost(listener net.Listener, connections int, t *testing.T) {
+	fetcher, _, _ := downloadReady(listener, connections, t)
+	fetcher.(*Fetcher).res.Req.Extra = Extra{
+		Method: "POST",
+		Header: map[string]string{
+			"Authorization": "Bearer 123456",
+		},
+		Body: fmt.Sprintf(`{"name":"%s"}`, test.BuildName),
+	}
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
 	}
 }
 
@@ -160,7 +191,7 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 	want := test.FileMd5(test.BuildFile)
 	got := test.FileMd5(test.DownloadFile)
 	if want != got {
-		t.Errorf("Download error = %v, want %v", got, want)
+		t.Errorf("Download() got = %v, want %v", got, want)
 	}
 }
 
@@ -172,7 +203,7 @@ func downloadError(listener net.Listener, connections int, t *testing.T) {
 	}
 	err = fetcher.Wait()
 	if err == nil {
-		t.Errorf("Download error = %v, want %v", err, nil)
+		t.Errorf("Download() got = %v, want %v", err, nil)
 	}
 }
 
@@ -200,7 +231,7 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 	want := test.FileMd5(test.BuildFile)
 	got := test.FileMd5(test.DownloadFile)
 	if want != got {
-		t.Errorf("Download error = %v, want %v", got, want)
+		t.Errorf("Download() got = %v, want %v", got, want)
 	}
 }
 
