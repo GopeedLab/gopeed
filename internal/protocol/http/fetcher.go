@@ -126,7 +126,7 @@ func (f *Fetcher) Start() (err error) {
 	if err != nil {
 		return err
 	}
-	f.status = base.DownloadStatusStart
+	f.status = base.DownloadStatusRunning
 	if f.res.Range {
 		// 每个连接平均需要下载的分块大小
 		chunkSize := f.res.Size / int64(f.opts.Connections)
@@ -155,7 +155,7 @@ func (f *Fetcher) Start() (err error) {
 }
 
 func (f *Fetcher) Pause() (err error) {
-	if base.DownloadStatusStart != f.status {
+	if base.DownloadStatusRunning != f.status {
 		return
 	}
 	f.status = base.DownloadStatusPause
@@ -165,10 +165,10 @@ func (f *Fetcher) Pause() (err error) {
 }
 
 func (f *Fetcher) Continue() (err error) {
-	if base.DownloadStatusStart == f.status || base.DownloadStatusDone == f.status {
+	if base.DownloadStatusRunning == f.status || base.DownloadStatusDone == f.status {
 		return
 	}
-	f.status = base.DownloadStatusStart
+	f.status = base.DownloadStatusRunning
 	var name = f.filename()
 	_, err = f.Ctl.Open(name)
 	if err != nil {

@@ -38,9 +38,9 @@ jobs:
       - uses: actions/checkout@v2
       - name: Run Unit tests.
         run: go test ./... -v -covermode=count -coverprofile=coverage.txt
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@v3
         with:
-          file: ./coverage.txt
+          files: ./coverage.txt
           fail_ci_if_error: true
   build:
     name: Build

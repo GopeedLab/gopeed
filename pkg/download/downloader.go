@@ -17,11 +17,11 @@ type Listener func(event *Event)
 
 type Progress struct {
 	// 下载耗时(纳秒)
-	Used int64
+	Used int64 `json:"used"`
 	// 每秒下载字节数
-	Speed int64
+	Speed int64 `json:"speed"`
 	// 已下载的字节数
-	Downloaded int64
+	Downloaded int64 `json:"downloaded"`
 }
 
 type Downloader struct {
@@ -122,9 +122,10 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (taskId stri
 	task.timer = &util.Timer{}
 	task.locker = new(sync.Mutex)
 	task.timer.Start()
-	taskId = task.ID
+	task.Status = base.DownloadStatusRunning
 	d.tasks = append(d.tasks, task)
 	d.emit(EventKeyStart, task)
+	taskId = task.ID
 
 	err = fetcher.Start()
 	if err != nil {
@@ -133,6 +134,7 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (taskId stri
 	go func() {
 		err = fetcher.Wait()
 		if err != nil {
+			task.Status = base.DownloadStatusError
 			d.emit(EventKeyError, task, err)
 		} else {
 			task.Progress.Used = task.timer.Used()
@@ -145,6 +147,7 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (taskId stri
 			}
 			task.Progress.Speed = task.Res.Size / used
 			task.Progress.Downloaded = task.Res.Size
+			task.Status = base.DownloadStatusDone
 			d.emit(EventKeyDone, task)
 		}
 		d.emit(EventKeyFinally, task, err)
@@ -153,21 +156,33 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (taskId stri
 }
 
 func (d *Downloader) Pause(id string) {
-	task := d.getTask(id)
+	task := d.GetTask(id)
+	if task == nil {
+		return
+	}
 	task.locker.Lock()
 	defer task.locker.Unlock()
-	task.timer.Pause()
-	task.fetcher.Pause()
-	d.emit(EventKeyPause, task)
+	if task.Status == base.DownloadStatusRunning {
+		task.Status = base.DownloadStatusPause
+		task.timer.Pause()
+		task.fetcher.Pause()
+		d.emit(EventKeyPause, task)
+	}
 }
 
 func (d *Downloader) Continue(id string) {
-	task := d.getTask(id)
+	task := d.GetTask(id)
+	if task == nil {
+		return
+	}
 	task.locker.Lock()
 	defer task.locker.Unlock()
-	task.timer.Continue()
-	task.fetcher.Continue()
-	d.emit(EventKeyContinue, task)
+	if task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusError {
+		task.Status = base.DownloadStatusRunning
+		task.timer.Continue()
+		task.fetcher.Continue()
+		d.emit(EventKeyContinue, task)
+	}
 }
 
 func (d *Downloader) Listener(fn Listener) {
@@ -188,13 +203,17 @@ func (d *Downloader) emit(eventKey EventKey, task *Task, errs ...error) {
 	}
 }
 
-func (d *Downloader) getTask(id string) *Task {
+func (d *Downloader) GetTask(id string) *Task {
 	for _, task := range d.tasks {
 		if task.ID == id {
 			return task
 		}
 	}
 	return nil
+}
+
+func (d *Downloader) GetTasks() []*Task {
+	return d.tasks
 }
 
 var defaultDownloader = NewDownloader(new(http.FetcherBuilder), new(bt.FetcherBuilder))

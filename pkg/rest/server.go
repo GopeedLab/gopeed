@@ -24,8 +24,12 @@ func Start(addr string, port int) (int, error) {
 	}
 
 	var r = mux.NewRouter()
-	r.Methods("POST").Path("/api/v1/resolve").HandlerFunc(Resolve)
-	r.Methods("POST").Path("/api/v1/tasks").HandlerFunc(CreateTask)
+	r.Methods(http.MethodPost).Path("/api/v1/resolve").HandlerFunc(Resolve)
+	r.Methods(http.MethodPost).Path("/api/v1/tasks").HandlerFunc(CreateTask)
+	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/pause").HandlerFunc(PauseTask)
+	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/continue").HandlerFunc(ContinueTask)
+	r.Methods(http.MethodGet).Path("/api/v1/tasks/{id}").HandlerFunc(GetTask)
+	r.Methods(http.MethodGet).Path("/api/v1/tasks").HandlerFunc(GetTasks)
 
 	srv = &http.Server{Handler: r}
 	go func() {

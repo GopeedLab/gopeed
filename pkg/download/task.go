@@ -10,14 +10,13 @@ import (
 )
 
 type Task struct {
-	ID       string
-	Res      *base.Resource
-	Opts     *base.Options
-	Status   base.Status
-	Files    map[string]*base.FileInfo
-	Progress *Progress
-
-	CreateTime time.Time
+	ID         string                    `json:"id"`
+	Res        *base.Resource            `json:"res"`
+	Opts       *base.Options             `json:"opts"`
+	Status     base.Status               `json:"status"`
+	Files      map[string]*base.FileInfo `json:"files"`
+	Progress   *Progress                 `json:"progress"`
+	CreateTime time.Time                 `json:"create_time"`
 
 	fetcher fetcher.Fetcher
 	timer   *util.Timer
@@ -26,7 +25,8 @@ type Task struct {
 
 func NewTask() *Task {
 	return &Task{
-		ID:     uuid.New().String(),
-		Status: base.DownloadStatusReady,
+		ID:         uuid.New().String(),
+		Status:     base.DownloadStatusReady,
+		CreateTime: time.Now(),
 	}
 }
