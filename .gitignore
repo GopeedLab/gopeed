@@ -23,3 +23,5 @@ bin/
 
 *.data
 *.db
+
+.DS_Store
