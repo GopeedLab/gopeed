@@ -16,10 +16,6 @@ func (t *Timer) Pause() {
 	t.used += time.Now().UnixNano() - t.t
 }
 
-func (t *Timer) Continue() {
-	t.t = time.Now().UnixNano()
-}
-
 func (t *Timer) Used() int64 {
 	return (time.Now().UnixNano() - t.t) + t.used
 }

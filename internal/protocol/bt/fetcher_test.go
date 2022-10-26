@@ -19,14 +19,17 @@ func TestFetcher_Resolve_Torrent(t *testing.T) {
 
 	want := &base.Resource{
 		Req:   res.Req,
+		Name:  "ubuntu-22.04-live-server-amd64.iso",
 		Size:  1466714112,
 		Range: true,
 		Files: []*base.FileInfo{
 			{
 				Name: "ubuntu-22.04-live-server-amd64.iso",
-				Path: ".",
 				Size: 1466714112,
 			},
+		},
+		Extra: map[string]any{
+			"infoHash": "8a55cfbd5ca5d11507364765936c4f9e55b253ed",
 		},
 	}
 	if !reflect.DeepEqual(want, res) {

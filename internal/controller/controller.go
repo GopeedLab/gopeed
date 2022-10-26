@@ -1,18 +1,13 @@
 package controller
 
 import (
-	"golang.org/x/net/proxy"
-	"net"
 	"os"
-	"time"
+	"path/filepath"
 )
 
 type Controller interface {
 	Touch(name string, size int64) (file *os.File, err error)
-	Open(name string) (file *os.File, err error)
-	Write(name string, offset int64, buf []byte) (int, error)
-	Close(name string) error
-	ContextDialer() (proxy.Dialer, error)
+	//ContextDialer() (proxy.Dialer, error)
 }
 
 type DefaultController struct {
@@ -24,6 +19,10 @@ func NewController() *DefaultController {
 }
 
 func (c *DefaultController) Touch(name string, size int64) (file *os.File, err error) {
+	dir := filepath.Dir(name)
+	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+		return
+	}
 	file, err = os.Create(name)
 	if size > 0 {
 		err = os.Truncate(name, size)
@@ -37,25 +36,7 @@ func (c *DefaultController) Touch(name string, size int64) (file *os.File, err e
 	return
 }
 
-func (c *DefaultController) Open(name string) (file *os.File, err error) {
-	file, err = os.OpenFile(name, os.O_RDWR, os.ModePerm)
-	if err == nil {
-		c.Files[name] = file
-	}
-	return
-}
-
-func (c *DefaultController) Write(name string, offset int64, buf []byte) (int, error) {
-	return c.Files[name].WriteAt(buf, offset)
-}
-
-func (c *DefaultController) Close(name string) error {
-	err := c.Files[name].Close()
-	delete(c.Files, name)
-	return err
-}
-
-func (c *DefaultController) ContextDialer() (proxy.Dialer, error) {
+/*func (c *DefaultController) ContextDialer() (proxy.Dialer, error) {
 	// return proxy.SOCKS5("tpc", "127.0.0.1:9999", nil, nil)
 	var dialer proxy.Dialer
 	return &DialerWarp{dialer: dialer}, nil
@@ -107,4 +88,4 @@ func (d *DialerWarp) Dial(network, addr string) (c net.Conn, err error) {
 		return nil, err
 	}
 	return &ConnWarp{conn: conn}, nil
-}
+}*/

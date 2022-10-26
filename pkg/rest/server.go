@@ -2,23 +2,49 @@ package rest
 
 import (
 	"context"
-	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/monkeyWie/gopeed-core/internal/protocol/bt"
-	fhttp "github.com/monkeyWie/gopeed-core/internal/protocol/http"
 	"github.com/monkeyWie/gopeed-core/pkg/download"
+	"github.com/monkeyWie/gopeed-core/pkg/rest/model"
+	"github.com/monkeyWie/gopeed-core/pkg/util"
 	"net"
 	"net/http"
+	"strconv"
 )
 
 var (
 	srv *http.Server
 
-	Downloader = download.NewDownloader(new(fhttp.FetcherBuilder), new(bt.FetcherBuilder))
+	Downloader *download.Downloader
 )
 
-func Start(addr string, port int) (int, error) {
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", addr, port))
+func Start(startCfg *model.StartConfig) (int, error) {
+	if startCfg == nil {
+		startCfg = &model.StartConfig{}
+	}
+	startCfg.Init()
+
+	downloadCfg := &download.DownloaderConfig{}
+	if startCfg.Storage == model.StorageBolt {
+		downloadCfg.Storage = download.NewBoltStorage(startCfg.StorageDir)
+	} else {
+		downloadCfg.Storage = download.NewMemStorage()
+	}
+	downloadCfg.RefreshInterval = startCfg.RefreshInterval
+	Downloader = download.NewDownloader(downloadCfg.Init())
+	if err := Downloader.Setup(); err != nil {
+		return 0, err
+	}
+
+	serverConfig := getAndPutServerConfig(startCfg)
+	var address string
+	if startCfg.Network == "unix" {
+		address = startCfg.Address
+		util.SafeRemove(address)
+	} else {
+		address = net.JoinHostPort(serverConfig.Host, strconv.Itoa(serverConfig.Port))
+	}
+
+	listener, err := net.Listen(startCfg.Network, address)
 	if err != nil {
 		return 0, err
 	}
@@ -28,8 +54,11 @@ func Start(addr string, port int) (int, error) {
 	r.Methods(http.MethodPost).Path("/api/v1/tasks").HandlerFunc(CreateTask)
 	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/pause").HandlerFunc(PauseTask)
 	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/continue").HandlerFunc(ContinueTask)
+	r.Methods(http.MethodDelete).Path("/api/v1/tasks/{id}").HandlerFunc(DeleteTask)
 	r.Methods(http.MethodGet).Path("/api/v1/tasks/{id}").HandlerFunc(GetTask)
 	r.Methods(http.MethodGet).Path("/api/v1/tasks").HandlerFunc(GetTasks)
+	r.Methods(http.MethodGet).Path("/api/v1/config").HandlerFunc(GetConfig)
+	r.Methods(http.MethodPut).Path("/api/v1/config").HandlerFunc(PutConfig)
 
 	srv = &http.Server{Handler: r}
 	go func() {
@@ -38,12 +67,37 @@ func Start(addr string, port int) (int, error) {
 			panic(err)
 		}
 	}()
-	return listener.Addr().(*net.TCPAddr).Port, nil
+	if addr, ok := listener.Addr().(*net.TCPAddr); ok {
+		return addr.Port, nil
+	}
+	return 0, nil
 }
 
-func Stop() error {
+func Stop() {
 	if srv != nil {
-		return srv.Shutdown(context.TODO())
+		if err := srv.Shutdown(context.TODO()); err != nil {
+			// TODO log
+		}
 	}
-	return nil
+	if Downloader != nil {
+		if err := Downloader.Close(); err != nil {
+			// TODO log
+		}
+	}
+}
+
+func getAndPutServerConfig(startCfg *model.StartConfig) *model.ServerConfig {
+	var serverConfig model.ServerConfig
+	err := Downloader.GetConfig(&serverConfig)
+	// first start
+	if err != nil {
+		if startCfg.Network == "tcp" {
+			host, port, _ := net.SplitHostPort(startCfg.Address)
+			serverConfig.Host = host
+			serverConfig.Port, _ = strconv.Atoi(port)
+		}
+		serverConfig.Init()
+		Downloader.PutConfig(serverConfig)
+	}
+	return &serverConfig
 }

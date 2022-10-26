@@ -3,17 +3,20 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/monkeyWie/gopeed-core/internal/test"
 	"github.com/monkeyWie/gopeed-core/pkg/base"
 	"github.com/monkeyWie/gopeed-core/pkg/download"
 	"github.com/monkeyWie/gopeed-core/pkg/rest/model"
-	"github.com/monkeyWie/gopeed-core/pkg/test"
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 )
 
 var (
@@ -21,6 +24,7 @@ var (
 
 	taskReq = &base.Request{}
 	taskRes = &base.Resource{
+		Name:  test.BuildName,
 		Req:   taskReq,
 		Size:  test.BuildSize,
 		Range: true,
@@ -32,9 +36,9 @@ var (
 			},
 		},
 	}
-	createReq = &model.CreateTaskReq{
-		Resource: taskRes,
-		Options: &base.Options{
+	createReq = &model.CreateTask{
+		Res: taskRes,
+		Opts: &base.Options{
 			Path:        test.Dir,
 			Name:        test.DownloadName,
 			Connections: 2,
@@ -130,6 +134,28 @@ func TestPauseAndContinueTask(t *testing.T) {
 	})
 }
 
+func TestDeleteTask(t *testing.T) {
+	doTest(func() {
+		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId, nil)
+		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
+		checkCode(code, http.StatusNotFound)
+	})
+}
+
+func TestDeleteTaskForce(t *testing.T) {
+	doTest(func() {
+		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+		time.Sleep(time.Millisecond * 500)
+		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId+"?force=true", nil)
+		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
+		checkCode(code, http.StatusNotFound)
+		if _, err := os.Stat(test.DownloadFile); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("DeleteTaskForce() got = %v, want %v", err, os.ErrNotExist)
+		}
+	})
+}
+
 func TestGetTasks(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup
@@ -140,30 +166,65 @@ func TestGetTasks(t *testing.T) {
 			}
 		})
 
-		httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+		httpRequestCheckOk[string](http.MethodPost, fmt.Sprintf("/api/v1/tasks?status=%s,%s",
+			base.DownloadStatusReady, base.DownloadStatusRunning), createReq)
 		code, _ := httpRequest[[]*download.Task](http.MethodGet, "/api/v1/tasks", nil)
-		checkCode(code, 400)
+		checkCode(code, http.StatusBadRequest)
 
 		wg.Wait()
-		r := httpRequestCheckOk[[]*download.Task](http.MethodGet, "/api/v1/tasks?status=done", nil)
+		r := httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s",
+			base.DownloadStatusDone), nil)
 		if r[0].Status != base.DownloadStatusDone {
 			t.Errorf("GetTasks() got = %v, want %v", r[0].Status, base.DownloadStatusDone)
+		}
+		r = httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s,%s",
+			base.DownloadStatusReady, base.DownloadStatusRunning), nil)
+		if len(r) > 0 {
+			t.Errorf("GetTasks() got = %v, want %v", len(r), 0)
+		}
+	})
+}
+
+func TestGetAndPutConfig(t *testing.T) {
+	doTest(func() {
+		cfg := httpRequestCheckOk[*model.ServerConfig](http.MethodGet, "/api/v1/config", nil)
+
+		cfg.Port = 8888
+		cfg.Connections = 32
+		cfg.DownloadDir = "./download"
+		cfg.Extra = map[string]any{
+			"theme": "dark",
+		}
+		httpRequestCheckOk[any](http.MethodPut, "/api/v1/config", cfg)
+
+		newCfg := httpRequestCheckOk[*model.ServerConfig](http.MethodGet, "/api/v1/config", nil)
+		if !reflect.DeepEqual(newCfg, cfg) {
+			t.Errorf("GetAndPutConfig() got = %v, want %v", newCfg, cfg)
 		}
 	})
 }
 
 func doTest(handler func()) {
-	fileListener := doStart()
-	defer func() {
-		fileListener.Close()
-		Stop()
-	}()
-	taskReq.URL = "http://" + fileListener.Addr().String() + "/" + test.BuildName
-	handler()
+	testFunc := func(storage model.Storage) {
+		fileListener := doStart(storage)
+		defer func() {
+			if err := fileListener.Close(); err != nil {
+				panic(err)
+			}
+			Stop()
+		}()
+		defer Downloader.Clear()
+		taskReq.URL = "http://" + fileListener.Addr().String() + "/" + test.BuildName
+		handler()
+	}
+	testFunc(model.StorageMem)
+	testFunc(model.StorageBolt)
 }
 
-func doStart() net.Listener {
-	port, err := Start("127.0.0.1", 0)
+func doStart(storage model.Storage) net.Listener {
+	port, err := Start((&model.StartConfig{
+		Storage: storage,
+	}).Init())
 	if err != nil {
 		panic(err)
 	}

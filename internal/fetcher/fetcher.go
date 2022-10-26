@@ -15,6 +15,7 @@ type Fetcher interface {
 	Start() (err error)
 	Pause() (err error)
 	Continue() (err error)
+	Close() (err error)
 
 	// 获取任务各个文件下载进度
 	Progress() Progress
@@ -25,13 +26,11 @@ type Fetcher interface {
 type FetcherBuilder interface {
 	Schemes() []string
 	Build() Fetcher
-}
 
-type FetcherSaver interface {
 	// Store 存储任务
-	Store(fetcher Fetcher) interface{}
-	// Resume 恢复任务
-	Resume(res *base.Resource, opts *base.Options, data interface{}) Fetcher
+	Store(fetcher Fetcher) (any, error)
+	// Restore 恢复任务
+	Restore() (v any, f func(res *base.Resource, opts *base.Options, v any) Fetcher)
 }
 
 type DefaultFetcher struct {

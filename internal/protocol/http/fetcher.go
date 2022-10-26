@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"github.com/monkeyWie/gopeed-core/internal/fetcher"
 	"github.com/monkeyWie/gopeed-core/pkg/base"
+	"github.com/monkeyWie/gopeed-core/pkg/util"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"mime"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -38,8 +40,9 @@ type Fetcher struct {
 	res    *base.Resource
 	opts   *base.Options
 	status base.Status
-	chunks []*Chunk
+	chunks []*chunk
 
+	file    *os.File
 	ctx     context.Context
 	cancel  context.CancelFunc
 	pauseCh chan interface{}
@@ -95,20 +98,21 @@ func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
 	contentDisposition := httpResp.Header.Get(base.HttpHeaderContentDisposition)
 	if contentDisposition != "" {
 		_, params, _ := mime.ParseMediaType(contentDisposition)
-		filename := params["filename"]
+		filename := params["filePath"]
 		if filename != "" {
 			file.Name = filename
 		}
 	}
-	// Get file filename by URL
+	// Get file filePath by URL
 	if file.Name == "" && strings.Count(req.URL, "/") > 2 {
 		file.Name = filepath.Base(req.URL)
 	}
-	// unknown file filename
+	// unknown file filePath
 	if file.Name == "" {
 		file.Name = "unknown"
 	}
 	res.Files = append(res.Files, file)
+	res.Name = file.Name
 	return res, nil
 }
 
@@ -121,35 +125,13 @@ func (f *Fetcher) Create(res *base.Resource, opts *base.Options) error {
 
 func (f *Fetcher) Start() (err error) {
 	// 创建文件
-	name := f.filename()
-	_, err = f.Ctl.Touch(name, f.res.Size)
+	name := f.filepath()
+	f.file, err = f.Ctl.Touch(name, f.res.Size)
 	if err != nil {
 		return err
 	}
 	f.status = base.DownloadStatusRunning
-	if f.res.Range {
-		// 每个连接平均需要下载的分块大小
-		chunkSize := f.res.Size / int64(f.opts.Connections)
-		f.chunks = make([]*Chunk, f.opts.Connections)
-		for i := 0; i < f.opts.Connections; i++ {
-			var (
-				begin = chunkSize * int64(i)
-				end   int64
-			)
-			if i == f.opts.Connections-1 {
-				// 最后一个分块需要保证把文件下载完
-				end = f.res.Size - 1
-			} else {
-				end = begin + chunkSize - 1
-			}
-			chunk := NewChunk(begin, end)
-			f.chunks[i] = chunk
-		}
-	} else {
-		// 只支持单连接下载
-		f.chunks = make([]*Chunk, 1)
-		f.chunks[0] = NewChunk(0, 0)
-	}
+	f.chunks = splitChunk(f.res, f.opts)
 	f.fetch()
 	return
 }
@@ -169,12 +151,18 @@ func (f *Fetcher) Continue() (err error) {
 		return
 	}
 	f.status = base.DownloadStatusRunning
-	var name = f.filename()
-	_, err = f.Ctl.Open(name)
+	f.file, err = os.OpenFile(f.filepath(), os.O_RDWR, os.ModeAppend)
 	if err != nil {
 		return err
 	}
 	f.fetch()
+	return
+}
+
+func (f *Fetcher) Close() (err error) {
+	if err = f.Pause(); err != nil {
+		return
+	}
 	return
 }
 
@@ -190,13 +178,8 @@ func (f *Fetcher) Progress() fetcher.Progress {
 	return p
 }
 
-func (f *Fetcher) filename() string {
-	// 创建文件
-	var filename = f.opts.Name
-	if filename == "" {
-		filename = f.res.Files[0].Name
-	}
-	return filepath.Join(f.opts.Path, filename)
+func (f *Fetcher) filepath() string {
+	return util.Filepath(f.opts.Path, f.res.Files[0].Name, f.opts.Name)
 }
 
 func (f *Fetcher) fetch() {
@@ -212,7 +195,7 @@ func (f *Fetcher) fetch() {
 	go func() {
 		err := eg.Wait()
 		// 下载停止，关闭文件句柄
-		f.Ctl.Close(f.filename())
+		f.file.Close()
 		if f.status == base.DownloadStatusPause {
 			f.pauseCh <- nil
 		} else {
@@ -227,7 +210,6 @@ func (f *Fetcher) fetch() {
 }
 
 func (f *Fetcher) fetchChunk(index int) (err error) {
-	filename := f.filename()
 	chunk := f.chunks[index]
 
 	httpReq, err := buildRequest(f.ctx, f.res.Req)
@@ -280,7 +262,7 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 			for {
 				n, err := resp.Body.Read(buf)
 				if n > 0 {
-					_, err := f.Ctl.Write(filename, chunk.Begin+chunk.Downloaded, buf[:n])
+					_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
 					if err != nil {
 						return false, err
 					}
@@ -316,6 +298,33 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 	return
 }
 
+func splitChunk(res *base.Resource, opts *base.Options) (chunks []*chunk) {
+	if res.Range {
+		// 每个连接平均需要下载的分块大小
+		chunkSize := res.Size / int64(opts.Connections)
+		chunks = make([]*chunk, opts.Connections)
+		for i := 0; i < opts.Connections; i++ {
+			var (
+				begin = chunkSize * int64(i)
+				end   int64
+			)
+			if i == opts.Connections-1 {
+				// 最后一个分块需要保证把文件下载完
+				end = res.Size - 1
+			} else {
+				end = begin + chunkSize - 1
+			}
+			chunk := newChunk(begin, end)
+			chunks[i] = chunk
+		}
+	} else {
+		// 只支持单连接下载
+		chunks = make([]*chunk, 1)
+		chunks[0] = newChunk(0, 0)
+	}
+	return
+}
+
 func buildClient() *http.Client {
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)
@@ -339,7 +348,7 @@ func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request
 	if req.Extra == nil {
 		method = http.MethodGet
 	} else {
-		extra := req.Extra.(Extra)
+		extra := req.Extra.(extra)
 		if extra.Method != "" {
 			method = extra.Method
 		} else {
@@ -367,8 +376,8 @@ func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request
 	return httpReq, nil
 }
 
-type FetcherData struct {
-	Chunks []*Chunk
+type fetcherData struct {
+	Chunks []*chunk
 }
 
 type FetcherBuilder struct {
@@ -387,19 +396,26 @@ func (fb *FetcherBuilder) Build() fetcher.Fetcher {
 	}
 }
 
-func (fb *FetcherBuilder) Store(f fetcher.Fetcher) interface{} {
+func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
-	return &FetcherData{
+	return &fetcherData{
 		Chunks: _f.chunks,
-	}
+	}, nil
 }
 
-func (fb *FetcherBuilder) Resume(res *base.Resource, opts *base.Options, data interface{}) fetcher.Fetcher {
-	fetcher := new(FetcherBuilder).Build().(*Fetcher)
-	fs := data.(*FetcherData)
-	fetcher.res = res
-	fetcher.opts = opts
-	fetcher.chunks = fs.Chunks
-	fetcher.status = base.DownloadStatusPause
-	return fetcher
+func (fb *FetcherBuilder) Restore() (v any, f func(res *base.Resource, opts *base.Options, v any) fetcher.Fetcher) {
+	return &fetcherData{}, func(res *base.Resource, opts *base.Options, v any) fetcher.Fetcher {
+		fd := v.(*fetcherData)
+		fb := &FetcherBuilder{}
+		fetcher := fb.Build().(*Fetcher)
+		fetcher.res = res
+		fetcher.opts = opts
+		fetcher.status = base.DownloadStatusPause
+		if len(fd.Chunks) == 0 {
+			fetcher.chunks = splitChunk(res, opts)
+		} else {
+			fetcher.chunks = fd.Chunks
+		}
+		return fetcher
+	}
 }

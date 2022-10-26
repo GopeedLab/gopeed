@@ -1,7 +1,7 @@
 package download
 
 import (
-	"github.com/google/uuid"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/monkeyWie/gopeed-core/internal/fetcher"
 	"github.com/monkeyWie/gopeed-core/pkg/base"
 	"github.com/monkeyWie/gopeed-core/pkg/util"
@@ -10,23 +10,40 @@ import (
 )
 
 type Task struct {
-	ID         string                    `json:"id"`
-	Res        *base.Resource            `json:"res"`
-	Opts       *base.Options             `json:"opts"`
-	Status     base.Status               `json:"status"`
-	Files      map[string]*base.FileInfo `json:"files"`
-	Progress   *Progress                 `json:"progress"`
-	CreateTime time.Time                 `json:"create_time"`
+	ID        string         `json:"id"`
+	Res       *base.Resource `json:"res"`
+	Opts      *base.Options  `json:"opts"`
+	Status    base.Status    `json:"status"`
+	Progress  *Progress      `json:"progress"`
+	Size      int64          `json:"size"`
+	CreatedAt time.Time      `json:"createdAt"`
 
-	fetcher fetcher.Fetcher
-	timer   *util.Timer
-	locker  *sync.Mutex
+	fetcherBuilder fetcher.FetcherBuilder
+	fetcher        fetcher.Fetcher
+	timer          *util.Timer
+	lock           *sync.Mutex
 }
 
 func NewTask() *Task {
+	id, err := gonanoid.New()
+	if err != nil {
+		panic(err)
+	}
 	return &Task{
-		ID:         uuid.New().String(),
-		Status:     base.DownloadStatusReady,
-		CreateTime: time.Now(),
+		ID:        id,
+		Status:    base.DownloadStatusReady,
+		CreatedAt: time.Now(),
+	}
+}
+
+func (t *Task) clone() *Task {
+	return &Task{
+		ID:        t.ID,
+		Res:       t.Res,
+		Opts:      t.Opts,
+		Status:    t.Status,
+		Progress:  t.Progress,
+		Size:      t.Size,
+		CreatedAt: t.CreatedAt,
 	}
 }

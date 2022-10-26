@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/monkeyWie/gopeed-core/internal/controller"
 	"github.com/monkeyWie/gopeed-core/internal/fetcher"
+	"github.com/monkeyWie/gopeed-core/internal/test"
 	"github.com/monkeyWie/gopeed-core/pkg/base"
-	"github.com/monkeyWie/gopeed-core/pkg/test"
 	"net"
 	"reflect"
 	"testing"
@@ -14,6 +14,7 @@ import (
 
 func TestFetcher_Resolve(t *testing.T) {
 	testResolve(test.StartTestFileServer, &base.Resource{
+		Name:  test.BuildName,
 		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
@@ -24,6 +25,7 @@ func TestFetcher_Resolve(t *testing.T) {
 		},
 	}, t)
 	testResolve(test.StartTestChunkedServer, &base.Resource{
+		Name:  test.BuildName,
 		Size:  0,
 		Range: false,
 		Files: []*base.FileInfo{
@@ -148,7 +150,7 @@ func downloadNormal(listener net.Listener, connections int, t *testing.T) {
 
 func downloadPost(listener net.Listener, connections int, t *testing.T) {
 	fetcher, _, _ := downloadReady(listener, connections, t)
-	fetcher.(*Fetcher).res.Req.Extra = Extra{
+	fetcher.(*Fetcher).res.Req.Extra = extra{
 		Method: "POST",
 		Header: map[string]string{
 			"Authorization": "Bearer 123456",
@@ -176,11 +178,11 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 50)
 	if err := fetcher.Pause(); err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 50)
 	if err := fetcher.Continue(); err != nil {
 		t.Fatal(err)
 	}
@@ -215,12 +217,19 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 	}
 
 	fb := new(FetcherBuilder)
-	time.Sleep(time.Millisecond * 200)
-	data := fb.Store(fetcher)
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 50)
+	data, err := fb.Store(fetcher)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Millisecond * 50)
 	fetcher.Pause()
 
-	fetcher = fb.Resume(res, opts, data)
+	_, f := fb.Restore()
+	f(res, opts, data)
+	if err != nil {
+		t.Fatal(err)
+	}
 	fetcher.Setup(controller.NewController())
 	fetcher.Continue()
 

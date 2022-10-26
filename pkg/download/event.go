@@ -8,6 +8,7 @@ const (
 	EventKeyContinue = "continue"
 	EventKeyProgress = "progress"
 	EventKeyError    = "error"
+	EventKeyDelete   = "delete"
 	EventKeyDone     = "done"
 	EventKeyFinally  = "finally"
 )

@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 )
 
 const (
@@ -23,6 +24,25 @@ const (
 func StartTestFileServer() net.Listener {
 	return startTestServer(func() http.Handler {
 		return http.FileServer(http.Dir(Dir))
+	})
+}
+
+type SlowFileServer struct {
+	delay   time.Duration
+	handler http.Handler
+}
+
+func (s *SlowFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(s.delay)
+	s.handler.ServeHTTP(w, r)
+}
+
+func StartTestSlowFileServer(delay time.Duration) net.Listener {
+	return startTestServer(func() http.Handler {
+		return &SlowFileServer{
+			delay:   delay,
+			handler: http.FileServer(http.Dir(Dir)),
+		}
 	})
 }
 
