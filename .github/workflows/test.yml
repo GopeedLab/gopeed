@@ -34,11 +34,11 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
           go-version: '^1.18'
           cache: true
-      - uses: actions/checkout@v3
       - name: Run Unit tests.
         run: go test ./... -v -covermode=count -coverprofile=coverage.txt
       - uses: codecov/codecov-action@v3
@@ -51,10 +51,10 @@ jobs:
 #    needs: [lint, test]
     needs: [test]
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
           go-version: '^1.18'
           cache: true
-      - uses: actions/checkout@v2
       - name: Build
         run: go build github.com/monkeyWie/gopeed/cmd/gopeed

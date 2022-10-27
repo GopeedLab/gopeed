@@ -16,10 +16,10 @@ jobs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
 
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
           go-version: '^1.18'
-      - uses: actions/checkout@v3
       - uses: release-drafter/release-drafter@v5
         id: create_release
         env:
@@ -28,11 +28,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ release ]
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
           go-version: '^1.18'
           cache: true
-      - uses: actions/checkout@v3
       - name: Build
         env:
           VERSION: ${{ needs.release.outputs.tag_name }}
@@ -60,6 +60,7 @@ jobs:
     runs-on: macos-latest
     needs: [ release ]
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
           go-version: '^1.18'
@@ -69,7 +70,6 @@ jobs:
           node-version: 16
           cache: 'npm'
       - uses: subosito/flutter-action@v2
-      - uses: actions/checkout@v3
       - name: Install appdmg
         run: npm install -g appdmg
       - name: Build
