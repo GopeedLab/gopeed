@@ -6,10 +6,14 @@ on:
       - master
     paths-ignore:
       - '_docs/**'
-      - 'README.md'
+      - '_examples/**'
+      - 'README*.md'
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.create_release.outputs.tag_name }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
 
     steps:
       - uses: actions/setup-go@v3
@@ -20,9 +24,18 @@ jobs:
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build-cli:
+    runs-on: ubuntu-latest
+    needs: [ release ]
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '^1.18'
+          cache: true
+      - uses: actions/checkout@v3
       - name: Build
         env:
-          VERSION: ${{ steps.create_release.outputs.tag_name }}
+          VERSION: ${{ needs.release.outputs.tag_name }}
         run: |
           mkdir -p dist/zip
           goos_arr=(windows darwin linux)
@@ -33,7 +46,7 @@ jobs:
               dir="dist/gopeed-$VERSION-$goos-$goarch/"
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/gopeed \
               && cd $dir \
-              && zip -r ../zip/gopeed-$VERSION-$goos-$goarch.zip * \
+              && zip -r ../zip/gopeed-cli-$VERSION-$goos-$goarch.zip * \
               && cd ../..) \
               || true
             done
@@ -41,5 +54,48 @@ jobs:
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ needs.release.outputs.upload_url }}
           asset_path: dist/zip/*
+  build-macos:
+    runs-on: macos-latest
+    needs: [ release ]
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '^1.18'
+          cache: true
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'npm'
+      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v3
+      - name: Install appdmg
+        run: npm install -g appdmg
+      - name: Build
+        env:
+          VERSION: ${{ needs.release.outputs.tag_name }}
+        run: |
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
+          
+          cd ui/flutter
+          flutter config --enable-macos-desktop
+          flutter build macos --release
+          cd build/macos/Build/Products/Release
+          cat>appdmg.json<<EOF
+          {
+            "title": "Gopeed",
+            "icon": "Gopeed.app/Contents/Resources/AppIcon.icns",
+            "contents": [
+              { "x": 448, "y": 344, "type": "link", "path": "/Applications" },
+              { "x": 192, "y": 344, "type": "file", "path": "Gopeed.app" }
+            ]
+          }
+          EOF
+          mkdir dist
+          appdmg appdmg.json dist/Gopeed-$VERSION.dmg
+      - name: Upload
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: dist/*

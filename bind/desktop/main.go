@@ -1,5 +1,3 @@
-// go build -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
-// go build -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos//libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
 package main
 
 import "C"
