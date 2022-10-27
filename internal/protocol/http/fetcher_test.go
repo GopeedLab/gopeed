@@ -2,10 +2,10 @@ package http
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed-core/internal/controller"
-	"github.com/monkeyWie/gopeed-core/internal/fetcher"
-	"github.com/monkeyWie/gopeed-core/internal/test"
-	"github.com/monkeyWie/gopeed-core/pkg/base"
+	"github.com/monkeyWie/gopeed/internal/controller"
+	"github.com/monkeyWie/gopeed/internal/fetcher"
+	"github.com/monkeyWie/gopeed/internal/test"
+	"github.com/monkeyWie/gopeed/pkg/base"
 	"net"
 	"reflect"
 	"testing"

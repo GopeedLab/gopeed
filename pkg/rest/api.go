@@ -2,10 +2,10 @@ package rest
 
 import (
 	"github.com/gorilla/mux"
-	"github.com/monkeyWie/gopeed-core/pkg/base"
-	"github.com/monkeyWie/gopeed-core/pkg/download"
-	"github.com/monkeyWie/gopeed-core/pkg/rest/model"
-	"github.com/monkeyWie/gopeed-core/pkg/rest/util"
+	"github.com/monkeyWie/gopeed/pkg/base"
+	"github.com/monkeyWie/gopeed/pkg/download"
+	"github.com/monkeyWie/gopeed/pkg/rest/model"
+	"github.com/monkeyWie/gopeed/pkg/rest/util"
 	"net/http"
 	"strings"
 )

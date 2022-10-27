@@ -1,9 +1,9 @@
 package bt
 
 import (
-	"github.com/monkeyWie/gopeed-core/internal/controller"
-	"github.com/monkeyWie/gopeed-core/internal/fetcher"
-	"github.com/monkeyWie/gopeed-core/pkg/base"
+	"github.com/monkeyWie/gopeed/internal/controller"
+	"github.com/monkeyWie/gopeed/internal/fetcher"
+	"github.com/monkeyWie/gopeed/pkg/base"
 	"reflect"
 	"testing"
 )

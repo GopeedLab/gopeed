@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:macos_secure_bookmarks/macos_secure_bookmarks.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'util.dart';
+
 class MacSecureUtil {
   static const _bookmarkKey = "bookmark:";
 
   static Future<void> saveBookmark(String dir) async {
-    if (!Platform.isMacOS) {
+    if (!Util.isMacos()) {
       return;
     }
     final secureBookmarks = SecureBookmarks();
@@ -17,7 +19,7 @@ class MacSecureUtil {
   }
 
   static Future<void> loadBookmark() async {
-    if (!Platform.isMacOS) {
+    if (!Util.isMacos()) {
       return;
     }
     final prefs = await SharedPreferences.getInstance();

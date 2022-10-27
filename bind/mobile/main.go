@@ -1,10 +1,10 @@
-// gomobile bind -ldflags="-w -s" -o libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed-core/bind/mobile
+// gomobile bind -ldflags="-w -s" -o libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
 package libgopeed
 
 import (
 	"encoding/json"
-	"github.com/monkeyWie/gopeed-core/pkg/rest"
-	"github.com/monkeyWie/gopeed-core/pkg/rest/model"
+	"github.com/monkeyWie/gopeed/pkg/rest"
+	"github.com/monkeyWie/gopeed/pkg/rest/model"
 )
 
 func Start(cfg string) (int, error) {

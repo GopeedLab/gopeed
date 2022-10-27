@@ -1,4 +1,4 @@
-module github.com/monkeyWie/gopeed-core
+module github.com/monkeyWie/gopeed
 
 go 1.18
 
@@ -36,8 +36,10 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
+	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/lispad/go-generics-tools v1.0.0 // indirect

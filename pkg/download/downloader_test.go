@@ -1,8 +1,8 @@
 package download
 
 import (
-	"github.com/monkeyWie/gopeed-core/internal/test"
-	"github.com/monkeyWie/gopeed-core/pkg/base"
+	"github.com/monkeyWie/gopeed/internal/test"
+	"github.com/monkeyWie/gopeed/pkg/base"
 	"reflect"
 	"sync"
 	"testing"

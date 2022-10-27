@@ -1,12 +1,12 @@
-// go build -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dll github.com/monkeyWie/gopeed-core/bind/desktop
-// go build -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dylib github.com/monkeyWie/gopeed-core/bind/desktop
+// go build -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
+// go build -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos//libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
 package main
 
 import "C"
 import (
 	"encoding/json"
-	"github.com/monkeyWie/gopeed-core/pkg/rest"
-	"github.com/monkeyWie/gopeed-core/pkg/rest/model"
+	"github.com/monkeyWie/gopeed/pkg/rest"
+	"github.com/monkeyWie/gopeed/pkg/rest/model"
 )
 
 func main() {}

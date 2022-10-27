@@ -31,7 +31,7 @@ jobs:
           for goos in "${goos_arr[@]}"; do
             for goarch in "${goarch_arr[@]}"; do
               dir="dist/gopeed-$VERSION-$goos-$goarch/"
-              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed-core/cmd/gopeed \
+              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/gopeed \
               && cd $dir \
               && zip -r ../zip/gopeed-$VERSION-$goos-$goarch.zip * \
               && cd ../..) \
