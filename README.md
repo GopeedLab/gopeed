@@ -1,6 +1,6 @@
-[![Test Status](https://github.com/monkeyWie/gopeed-core/workflows/test/badge.svg)](https://github.com/monkeyWie/gopeed-core/actions?query=workflow%3Atest)
+[![Test Status](https://github.com/monkeyWie/gopeed/workflows/test/badge.svg)](https://github.com/monkeyWie/gopeed/actions?query=workflow%3Atest)
 [![Codecov](https://codecov.io/gh/monkeyWie/gopeed-core/branch/master/graph/badge.svg)](https://codecov.io/gh/monkeyWie/gopeed-core)
-[![Release](https://img.shields.io/github/release/monkeyWie/gopeed-core.svg?style=flat-square)](https://github.com/monkeyWie/gopeed-core/releases)
+[![Release](https://img.shields.io/github/release/monkeyWie/gopeed-core.svg?style=flat-square)](https://github.com/monkeyWie/gopeed/releases)
 
 ## gopeed
 
@@ -9,7 +9,7 @@
 ## 安装
 
 ```sh
-go install github.com/monkeyWie/gopeed-core
+go install github.com/monkeyWie/gopeed
 ```
 
 ## 示例
@@ -24,7 +24,7 @@ go install github.com/monkeyWie/gopeed-core
 
 ### 下载
 
-前往[releases](https://github.com/monkeyWie/gopeed-core/releases)页面
+前往[releases](https://github.com/monkeyWie/gopeed/releases)页面
 
 ## TODO
 

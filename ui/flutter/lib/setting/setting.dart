@@ -1,9 +1,5 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:gopeed/api/api.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -48,7 +44,11 @@ class Setting {
       this.themeMode = ThemeMode.values.byName(themeMode);
     }
 
-    if (Platform.isAndroid) {
+    if(Util.isWeb()){
+      downloadDir = "./";
+      return;
+    }
+    if (Util.isAndroid()) {
       downloadDir =
       '${await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOADS)}/com.gopeed';
       return;

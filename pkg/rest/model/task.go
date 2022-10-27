@@ -1,6 +1,6 @@
 package model
 
-import "github.com/monkeyWie/gopeed-core/pkg/base"
+import "github.com/monkeyWie/gopeed/pkg/base"
 
 type CreateTask struct {
 	Res  *base.Resource `json:"res"`

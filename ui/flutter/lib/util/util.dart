@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 class Util {
   static String fmtByte(int byte) {
     if (byte < 1024) {
@@ -21,11 +23,29 @@ class Util {
     return (dir == "" ? "" : "$dir/") + buildPath(path, name);
   }
 
+  static isWeb() {
+    return kIsWeb;
+  }
+
+  static isAndroid() {
+    return !kIsWeb && Platform.isAndroid;
+  }
+
+  static isMacos() {
+    return !kIsWeb && Platform.isMacOS;
+  }
+
   static isDesktop() {
+    if (kIsWeb) {
+      return false;
+    }
     return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   }
 
   static isUnix() {
+    if (kIsWeb) {
+      return false;
+    }
     return !Platform.isWindows;
   }
 }

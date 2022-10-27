@@ -1,4 +1,3 @@
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -15,6 +14,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
 import '../../routes/router.dart';
+import '../../util/util.dart';
 import '../../widget/directory_selector.dart';
 
 class CreateView extends GetView<CreateController> {
@@ -114,7 +114,7 @@ class CreateView extends GetView<CreateController> {
                     width: width,
                     child: Form(
                         key: createFormKey,
-                        autovalidateMode: AutovalidateMode.always, //开启自动校验
+                        autovalidateMode: AutovalidateMode.always,
                         child: Column(
                           children: [
                             Expanded(
@@ -159,7 +159,7 @@ class CreateView extends GetView<CreateController> {
                       try {
                         if (createFormKey.currentState!.validate()) {
                           downloadController.start();
-                          if (Platform.isAndroid) {
+                          if (Util.isAndroid()) {
                             if (!await Permission.storage.request().isGranted) {
                               Get.snackbar("错误", "需要开启存储权限");
                               return;
@@ -183,7 +183,7 @@ class CreateView extends GetView<CreateController> {
                         }
                       } catch (e) {
                         Get.snackbar("错误", e.toString());
-                        developer.log(e.toString(), name: 'flutter');
+                        rethrow;
                       } finally {
                         downloadController.reset();
                       }

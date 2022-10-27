@@ -2,9 +2,9 @@ package download
 
 import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/monkeyWie/gopeed-core/internal/fetcher"
-	"github.com/monkeyWie/gopeed-core/pkg/base"
-	"github.com/monkeyWie/gopeed-core/pkg/util"
+	"github.com/monkeyWie/gopeed/internal/fetcher"
+	"github.com/monkeyWie/gopeed/pkg/base"
+	"github.com/monkeyWie/gopeed/pkg/util"
 	"sync"
 	"time"
 )

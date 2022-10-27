@@ -2,12 +2,12 @@ package download
 
 import (
 	"errors"
-	"github.com/monkeyWie/gopeed-core/internal/controller"
-	"github.com/monkeyWie/gopeed-core/internal/fetcher"
-	"github.com/monkeyWie/gopeed-core/internal/protocol/bt"
-	"github.com/monkeyWie/gopeed-core/internal/protocol/http"
-	"github.com/monkeyWie/gopeed-core/pkg/base"
-	"github.com/monkeyWie/gopeed-core/pkg/util"
+	"github.com/monkeyWie/gopeed/internal/controller"
+	"github.com/monkeyWie/gopeed/internal/fetcher"
+	"github.com/monkeyWie/gopeed/internal/protocol/bt"
+	"github.com/monkeyWie/gopeed/internal/protocol/http"
+	"github.com/monkeyWie/gopeed/pkg/base"
+	"github.com/monkeyWie/gopeed/pkg/util"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -380,7 +380,7 @@ func (d *Downloader) GetTasks() []*Task {
 	return d.tasks
 }
 
-func (d *Downloader) GetConfig(v any) error {
+func (d *Downloader) GetConfig(v any) (bool, error) {
 	return d.storage.Get(bucketConfig, "config", v)
 }
 

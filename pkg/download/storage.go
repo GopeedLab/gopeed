@@ -11,7 +11,7 @@ import (
 type Storage interface {
 	Setup(buckets []string) error
 	Put(bucket string, key string, v any) error
-	Get(bucket string, key string, v any) error
+	Get(bucket string, key string, v any) (bool, error)
 	List(bucket string, v any) error
 	Pop(bucket string, key string, v any) error
 	Delete(bucket string, key string) error
@@ -67,9 +67,12 @@ func (n *MemStorage) Put(bucket string, key string, v any) error {
 	return nil
 }
 
-func (n *MemStorage) Get(bucket string, key string, v any) error {
-	changeValue(v, memData[bucket][key])
-	return nil
+func (n *MemStorage) Get(bucket string, key string, v any) (bool, error) {
+	if dv, ok := memData[bucket][key]; ok {
+		changeValue(v, dv)
+		return true, nil
+	}
+	return false, nil
 }
 
 func (n *MemStorage) List(bucket string, v any) error {
@@ -147,7 +150,7 @@ func (b *BoltStorage) Put(bucket string, key string, v any) error {
 	})
 }
 
-func (b *BoltStorage) Get(bucket string, key string, v any) error {
+func (b *BoltStorage) Get(bucket string, key string, v any) (bool, error) {
 	var data []byte
 	err := b.db.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
@@ -155,9 +158,15 @@ func (b *BoltStorage) Get(bucket string, key string, v any) error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
-	return json.Unmarshal(data, v)
+	if data == nil {
+		return false, nil
+	}
+	if err := json.Unmarshal(data, v); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (b *BoltStorage) List(bucket string, v any) error {

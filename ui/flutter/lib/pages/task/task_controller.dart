@@ -55,7 +55,7 @@ class TaskController extends GetxController {
 
     loadTab();
     _timer = Timer.periodic(
-        Duration(milliseconds: LibgopeedBoot.instance.refreshInterval),
+        Duration(milliseconds: LibgopeedBoot.instance.config.refreshInterval),
         (timer) async {
       loadTab();
     });
