@@ -79,7 +79,7 @@ jobs:
 
   build-macos-arm64:
     runs-on: macos-latest
-    needs: [ release, build-lib ]
+    needs: [ release, build-macos-arm64-lib ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
