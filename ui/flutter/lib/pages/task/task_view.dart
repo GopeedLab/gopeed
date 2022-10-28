@@ -6,6 +6,7 @@ import 'package:gopeed/api/api.dart';
 import 'package:gopeed/api/model/task.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../../util/util.dart';
 import 'task_controller.dart';
 

@@ -48,6 +48,7 @@ dependencies:
   shared_preferences: ^2.0.15
   permission_handler: ^10.1.0
   external_path: ^1.0.3
+  logger: ^1.1.0
 
 dev_dependencies:
   flutter_test:

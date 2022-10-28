@@ -1,6 +1,7 @@
+import 'package:json_annotation/json_annotation.dart';
+
 import 'options.dart';
 import 'resource.dart';
-import 'package:json_annotation/json_annotation.dart';
 
 part 'task.g.dart';
 

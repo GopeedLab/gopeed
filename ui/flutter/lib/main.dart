@@ -5,13 +5,18 @@ import 'core/libgopeed_boot.dart';
 import 'routes/router.dart';
 import 'setting/setting.dart';
 import 'theme/theme.dart';
+import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await LibgopeedBoot.instance.start();
-  await Setting.instance.load();
+  try {
+    await LibgopeedBoot.instance.start();
+    await Setting.instance.load();
+  } catch (e) {
+    logger.e("init fail", e);
+  }
   MacSecureUtil.loadBookmark();
 
   runApp(GetMaterialApp.router(

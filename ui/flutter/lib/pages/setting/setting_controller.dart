@@ -1,6 +1,4 @@
 import 'package:get/get.dart';
-import 'package:gopeed/api/api.dart';
-import 'package:gopeed/api/model/server_config.dart';
 
 import '../../setting/setting.dart';
 

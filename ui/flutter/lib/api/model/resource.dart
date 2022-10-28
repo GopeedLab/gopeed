@@ -1,5 +1,6 @@
-import 'request.dart';
 import 'package:json_annotation/json_annotation.dart';
+
+import 'request.dart';
 
 part 'resource.g.dart';
 
