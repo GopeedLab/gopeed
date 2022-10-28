@@ -8,6 +8,7 @@ on:
       - '_docs/**'
       - '_examples/**'
       - 'README*.md'
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -46,7 +47,7 @@ jobs:
               dir="dist/gopeed-$VERSION-$goos-$goarch/"
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/gopeed \
               && cd $dir \
-              && zip -r ../zip/gopeed-cli-$VERSION-$goos-$goarch.zip * \
+              && zip -r ../zip/gopeed-cli-$VERSION-$goarch-$goos.zip * \
               && cd ../..) \
               || true
             done
@@ -76,7 +77,10 @@ jobs:
         env:
           VERSION: ${{ needs.release.outputs.tag_name }}
         run: |
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
+          go install src.techknowlogick.com/xgo@latest
+          xgo -go go-1.18.x --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
+          mv libgopeed-*.dylib ui/flutter/macos/Frameworks/libgopeed.dylib
+          # go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
           
           cd ui/flutter
           flutter config --enable-macos-desktop
@@ -93,7 +97,7 @@ jobs:
           }
           EOF
           mkdir dist
-          appdmg appdmg.json dist/Gopeed-$VERSION.dmg
+          appdmg appdmg.json dist/Gopeed-$VERSION-arm64-macos.dmg
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
