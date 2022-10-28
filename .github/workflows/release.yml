@@ -56,6 +56,7 @@ jobs:
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
           asset_path: dist/zip/*
+          overwrite: true
   build-macos:
     runs-on: macos-latest
     needs: [ release ]
@@ -98,3 +99,4 @@ jobs:
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
           asset_path: ui/flutter/build/macos/Build/Products/Release/dist/*
+          overwrite: true
