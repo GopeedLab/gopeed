@@ -58,9 +58,28 @@ jobs:
           upload_url: ${{ needs.release.outputs.upload_url }}
           asset_path: dist/zip/*
           overwrite: true
-  build-macos:
-    runs-on: macos-latest
+  build-macos-arm64-lib:
+    runs-on: ubuntu-latest
     needs: [ release ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '^1.18'
+          cache: true
+      - name: Build
+        run: |
+          go install src.techknowlogick.com/xgo@latest
+          xgo -go go-1.18.x --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
+          mv libgopeed-*.dylib libgopeed.dylib
+      - uses: actions/upload-artifact@v3
+        with:
+          name: macos-arm64-lib
+          path: libgopeed.dylib
+
+  build-macos-arm64:
+    runs-on: macos-latest
+    needs: [ release, build-lib ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
@@ -73,13 +92,14 @@ jobs:
       - uses: subosito/flutter-action@v2
       - name: Install appdmg
         run: npm install -g appdmg
+      - uses: actions/download-artifact@v3
+        with:
+          name: arm64-mac-lib
+          path: ui/flutter/macos/Frameworks
       - name: Build
         env:
           VERSION: ${{ needs.release.outputs.tag_name }}
         run: |
-          go install src.techknowlogick.com/xgo@latest
-          xgo -go go-1.18.x --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
-          mv libgopeed-*.dylib ui/flutter/macos/Frameworks/libgopeed.dylib
           # go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
           
           cd ui/flutter
