@@ -45,5 +45,6 @@ app.*.map.json
 
 # Libgopeed
 android/app/libs/libgopeed.aar
+android/app/libs/libgopeed-sources.jar
 macos/Frameworks/libgopeed.h
 macos/Frameworks/libgopeed.dylib
