@@ -161,6 +161,8 @@ jobs:
           VERSION: ${{ needs.release.outputs.tag_name }}
         run: |
           mkdir ui/flutter/android/app/libs
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile init
           gomobile bind -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
           cd ui/flutter
           flutter build apk
