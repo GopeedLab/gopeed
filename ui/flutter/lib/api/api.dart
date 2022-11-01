@@ -23,23 +23,23 @@ class _Client {
     if (_instance == null) {
       _instance = _Client._internal();
       var dio = Dio();
-      dio.options.baseUrl = "http://${LibgopeedBoot.instance.config.address}";
+      final isUnixSocket = LibgopeedBoot.instance.config.network == 'unix';
+      dio.options.baseUrl = isUnixSocket
+          ? 'http://127.0.0.1'
+          : 'http://${LibgopeedBoot.instance.config.address}';
       _instance!.dio = dio;
-      if(_instance!.dio.httpClientAdapter is DefaultHttpClientAdapter){
+      if (isUnixSocket) {
         (_instance!.dio.httpClientAdapter as DefaultHttpClientAdapter)
             .onHttpClientCreate = (client) {
-          if (LibgopeedBoot.instance.config.network == "unix") {
-            client.connectionFactory =
-                (Uri uri, String? proxyHost, int? proxyPort) {
-              var address = InternetAddress(LibgopeedBoot.instance.config.address,
-                  type: InternetAddressType.unix);
-              return Socket.startConnect(address, 0);
-            };
-          }
+          client.connectionFactory =
+              (Uri uri, String? proxyHost, int? proxyPort) {
+            var address = InternetAddress(LibgopeedBoot.instance.config.address,
+                type: InternetAddressType.unix);
+            return Socket.startConnect(address, 0);
+          };
           return client;
         };
       }
-
     }
     return _instance!;
   }

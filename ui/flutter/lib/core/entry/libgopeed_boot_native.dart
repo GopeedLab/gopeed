@@ -33,11 +33,6 @@ class LibgopeedBootNative implements LibgopeedBoot {
 
   @override
   Future<void> start() async {
-    // if is debug mode,use local http server
-    if (kDebugMode) {
-      return;
-    }
-
     var storageDir = "./";
     if (!Util.isUnix()) {
       // not support unix socket, use tcp

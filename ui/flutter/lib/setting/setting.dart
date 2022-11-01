@@ -7,11 +7,11 @@ import '../api/model/server_config.dart';
 import '../util/util.dart';
 
 class Setting {
-  late String host;
-  late int port;
-  late int connections;
-  late String downloadDir;
-  late ThemeMode themeMode;
+  String host = "127.0.0.1";
+  int port = 0;
+  int connections = 0;
+  String downloadDir = "";
+  ThemeMode themeMode = ThemeMode.system;
 
   Setting({
     required this.host,
@@ -44,13 +44,13 @@ class Setting {
       this.themeMode = ThemeMode.values.byName(themeMode);
     }
 
-    if(Util.isWeb()){
+    if (Util.isWeb()) {
       downloadDir = "./";
       return;
     }
     if (Util.isAndroid()) {
       downloadDir =
-      '${await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOADS)}/com.gopeed';
+          '${await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOADS)}/com.gopeed';
       return;
     }
 
