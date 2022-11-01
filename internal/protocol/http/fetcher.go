@@ -141,8 +141,11 @@ func (f *Fetcher) Pause() (err error) {
 		return
 	}
 	f.status = base.DownloadStatusPause
-	f.cancel()
-	<-f.pauseCh
+
+	if f.cancel != nil {
+		f.cancel()
+		<-f.pauseCh
+	}
 	return
 }
 

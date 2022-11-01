@@ -40,14 +40,14 @@ jobs:
         run: |
           mkdir -p dist/zip
           goos_arr=(windows darwin linux)
-          goarch_arr=(386 amd64 arm arm64)
+          goarch_arr=(386 amd64 arm64)
           export CGO_ENABLED=0
           for goos in "${goos_arr[@]}"; do
             for goarch in "${goarch_arr[@]}"; do
               dir="dist/gopeed-$VERSION-$goos-$goarch/"
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/gopeed \
               && cd $dir \
-              && zip -r ../zip/gopeed-cli-$VERSION-$goarch-$goos.zip * \
+              && zip -r ../zip/gopeed-cli-$VERSION-$goos-$goarch.zip * \
               && cd ../..) \
               || true
             done
@@ -128,14 +128,14 @@ jobs:
           }
           EOF
           mkdir dist
-          appdmg appdmg.json dist/Gopeed-$VERSION-arm64-macos.dmg
+          appdmg appdmg.json dist/Gopeed-$VERSION-macos-arm64.dmg
           
           # amd64
           cd $PROJECT_DIR
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
           cp bin/libgopeed.dylib ui/flutter/build/macos/Build/Products/Release/Gopeed.app/Contents/Frameworks/
           cd ui/flutter/build/macos/Build/Products/Release
-          appdmg appdmg.json dist/Gopeed-$VERSION-amd64-macos.dmg
+          appdmg appdmg.json dist/Gopeed-$VERSION-macos-amd64.dmg
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
