@@ -198,12 +198,14 @@ jobs:
           export CGO_ENABLED=0
           for goos in "${goos_arr[@]}"; do
             for goarch in "${goarch_arr[@]}"; do
-              dir="dist/gopeed-$VERSION-$goos-$goarch/"
+              name=gopeed-web-$VERSION-$goos-$goarch
+              dir="dist/$name/"
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/web \
               && cd $dir \
               && file=$(ls -AU | head -1) \
-              && mv $file $(echo $file | sed -e "s/web/gopeed/g") \
-              && zip -r ../zip/gopeed-web-$VERSION-$goos-$goarch.zip * \
+              && mkdir name \
+              && mv $file $name/$(echo $file | sed -e "s/web/gopeed/g") \
+              && zip -r ../zip/$name.zip * \
               && cd ../..) \
               || true
             done
