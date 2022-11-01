@@ -133,7 +133,7 @@ jobs:
           # amd64
           cd $PROJECT_DIR
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
-          cp bin/libgopeed.dylib ui/flutter/build/macos/Build/Products/Release/Gopeed.app/Contents/Frameworks/ github.com/monkeyWie/gopeed/bind/desktop
+          cp bin/libgopeed.dylib ui/flutter/build/macos/Build/Products/Release/Gopeed.app/Contents/Frameworks/
           cd ui/flutter/build/macos/Build/Products/Release
           appdmg appdmg.json dist/Gopeed-$VERSION-amd64-macos.dmg
       - name: Upload
