@@ -199,7 +199,7 @@ jobs:
           for goos in "${goos_arr[@]}"; do
             for goarch in "${goarch_arr[@]}"; do
               dir="dist/gopeed-$VERSION-$goos-$goarch/"
-              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/web \
+              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/web \
               && cd $dir \
               && rename 's/^web/gopeed/' *  \
               && zip -r ../zip/gopeed-web-$VERSION-$goos-$goarch.zip * \

@@ -40,7 +40,7 @@ jobs:
           go-version: '^1.19'
           cache: true
       - name: Run Unit tests.
-        run: go test ./... -v -covermode=count -coverprofile=coverage.txt
+        run: go test $(go list ./... | grep -v /cmd/ | grep -v /bind/ ) -v -covermode=count -coverprofile=coverage.txt
       - uses: codecov/codecov-action@v3
         with:
           files: ./coverage.txt
