@@ -201,7 +201,8 @@ jobs:
               dir="dist/gopeed-$VERSION-$goos-$goarch/"
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/web \
               && cd $dir \
-              && rename 's/^web/gopeed/' *  \
+              && file=$(ls -AU | head -1) \
+              && mv $file $(echo $file | sed -e "s/web/gopeed/g") \
               && zip -r ../zip/gopeed-web-$VERSION-$goos-$goarch.zip * \
               && cd ../..) \
               || true
