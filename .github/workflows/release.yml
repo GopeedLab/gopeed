@@ -3,7 +3,7 @@ name: release
 on:
   push:
     branches:
-      - master
+      - main
     paths-ignore:
       - '_docs/**'
       - '_examples/**'

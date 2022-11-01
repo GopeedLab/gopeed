@@ -3,14 +3,14 @@ name: test
 on:
   pull_request:
     branches:
-      - master
+      - main
     paths-ignore:
       - '_docs/**'
       - '_examples/**'
       - 'README*.md'
   push:
     branches:
-      - master
+      - main
     paths-ignore:
       - '_docs/**'
       - '_examples/**'
