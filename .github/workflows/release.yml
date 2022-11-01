@@ -25,39 +25,39 @@ jobs:
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  build-cli:
-    runs-on: ubuntu-latest
-    needs: [ release ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-        with:
-          go-version: '^1.19'
-          cache: true
-      - name: Build
-        env:
-          VERSION: ${{ needs.release.outputs.tag_name }}
-        run: |
-          mkdir -p dist/zip
-          goos_arr=(windows darwin linux)
-          goarch_arr=(386 amd64 arm64)
-          export CGO_ENABLED=0
-          for goos in "${goos_arr[@]}"; do
-            for goarch in "${goarch_arr[@]}"; do
-              dir="dist/gopeed-$VERSION-$goos-$goarch/"
-              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/gopeed \
-              && cd $dir \
-              && zip -r ../zip/gopeed-cli-$VERSION-$goos-$goarch.zip * \
-              && cd ../..) \
-              || true
-            done
-          done
-      - name: Upload
-        uses: shogo82148/actions-upload-release-asset@v1
-        with:
-          upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: dist/zip/*
-          overwrite: true
+#  build-cli:
+#    runs-on: ubuntu-latest
+#    needs: [ release ]
+#    steps:
+#      - uses: actions/checkout@v3
+#      - uses: actions/setup-go@v3
+#        with:
+#          go-version: '^1.19'
+#          cache: true
+#      - name: Build
+#        env:
+#          VERSION: ${{ needs.release.outputs.tag_name }}
+#        run: |
+#          mkdir -p dist/zip
+#          goos_arr=(windows darwin linux)
+#          goarch_arr=(386 amd64 arm64)
+#          export CGO_ENABLED=0
+#          for goos in "${goos_arr[@]}"; do
+#            for goarch in "${goarch_arr[@]}"; do
+#              dir="dist/gopeed-$VERSION-$goos-$goarch/"
+#              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/gopeed \
+#              && cd $dir \
+#              && zip -r ../zip/gopeed-cli-$VERSION-$goos-$goarch.zip * \
+#              && cd ../..) \
+#              || true
+#            done
+#          done
+#      - name: Upload
+#        uses: shogo82148/actions-upload-release-asset@v1
+#        with:
+#          upload_url: ${{ needs.release.outputs.upload_url }}
+#          asset_path: dist/zip/*
+#          overwrite: true
   build-macos-arm64-lib:
     runs-on: ubuntu-latest
     needs: [ release ]
@@ -163,7 +163,7 @@ jobs:
           mkdir ui/flutter/android/app/libs
           go install golang.org/x/mobile/cmd/gomobile@latest
           gomobile init
-          gomobile bind -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
+          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
           cd ui/flutter
           flutter build apk
           mkdir dist
@@ -173,4 +173,43 @@ jobs:
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
           asset_path: ui/flutter/dist/*
+          overwrite: true
+  build-web:
+    runs-on: ubuntu-latest
+    needs: [ release ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '^1.19'
+          cache: true
+      - uses: subosito/flutter-action@v2
+      - name: Build
+        env:
+          VERSION: ${{ needs.release.outputs.tag_name }}
+        run: |
+          cd ui/flutter
+          flutter build web
+          cd ../../
+          cp -r ui/flutter/build/web cmd/web/dist
+          mkdir -p dist/zip
+          goos_arr=(windows darwin linux)
+          goarch_arr=(386 amd64 arm64)
+          export CGO_ENABLED=0
+          for goos in "${goos_arr[@]}"; do
+            for goarch in "${goarch_arr[@]}"; do
+              dir="dist/gopeed-$VERSION-$goos-$goarch/"
+              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/web \
+              && cd $dir \
+              && rename 's/^web/gopeed/' *  \
+              && zip -r ../zip/gopeed-web-$VERSION-$goos-$goarch.zip * \
+              && cd ../..) \
+              || true
+            done
+          done
+      - name: Upload
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: dist/zip/*
           overwrite: true

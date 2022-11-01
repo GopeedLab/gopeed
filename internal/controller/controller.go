@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 )
@@ -11,11 +12,10 @@ type Controller interface {
 }
 
 type DefaultController struct {
-	Files map[string]*os.File
 }
 
 func NewController() *DefaultController {
-	return &DefaultController{Files: make(map[string]*os.File)}
+	return &DefaultController{}
 }
 
 func (c *DefaultController) Touch(name string, size int64) (file *os.File, err error) {
@@ -24,14 +24,14 @@ func (c *DefaultController) Touch(name string, size int64) (file *os.File, err e
 		return
 	}
 	file, err = os.Create(name)
+	if err != nil && !errors.Is(err, os.ErrExist) {
+		return
+	}
 	if size > 0 {
 		err = os.Truncate(name, size)
 		if err != nil {
 			return nil, err
 		}
-	}
-	if err == nil {
-		c.Files[name] = file
 	}
 	return
 }

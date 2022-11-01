@@ -19,7 +19,7 @@ var (
 )
 
 func Start(startCfg *model.StartConfig) (int, error) {
-	srv, listener, err := buildServer(startCfg)
+	srv, listener, err := BuildServer(startCfg)
 	if err != nil {
 		return 0, err
 	}
@@ -38,17 +38,6 @@ func Start(startCfg *model.StartConfig) (int, error) {
 	return port, nil
 }
 
-func StartSync(startCfg *model.StartConfig) error {
-	srv, listener, err := buildServer(startCfg)
-	if err != nil {
-		return err
-	}
-	if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
-		return err
-	}
-	return nil
-}
-
 func Stop() {
 	if srv != nil {
 		if err := srv.Shutdown(context.TODO()); err != nil {
@@ -62,7 +51,7 @@ func Stop() {
 	}
 }
 
-func buildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error) {
+func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error) {
 	if startCfg == nil {
 		startCfg = &model.StartConfig{}
 	}
@@ -104,6 +93,9 @@ func buildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodGet).Path("/api/v1/tasks").HandlerFunc(GetTasks)
 	r.Methods(http.MethodGet).Path("/api/v1/config").HandlerFunc(GetConfig)
 	r.Methods(http.MethodPut).Path("/api/v1/config").HandlerFunc(PutConfig)
+	if startCfg.WebEnable {
+		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))
+	}
 
 	srv = &http.Server{Handler: handlers.CORS(
 		handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),

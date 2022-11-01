@@ -23,3 +23,5 @@ bin/
 *.db
 
 .DS_Store
+
+dist/

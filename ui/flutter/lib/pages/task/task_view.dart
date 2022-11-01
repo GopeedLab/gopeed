@@ -114,8 +114,6 @@ class Item extends StatelessWidget {
         list.add(IconButton(
           icon: const Icon(Icons.folder_open),
           onPressed: () async {
-            print(Util.buildAbsPath(task.opts.path, task.res.files[0].path,
-                task.res.files[0].name));
             final file = File(Util.buildAbsPath(task.opts.path,
                 task.res.files[0].path, task.res.files[0].name));
             await launchUrl(file.parent.uri);

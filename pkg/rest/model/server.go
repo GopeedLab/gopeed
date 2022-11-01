@@ -1,5 +1,7 @@
 package model
 
+import "io/fs"
+
 type Storage string
 
 const (
@@ -13,6 +15,9 @@ type StartConfig struct {
 	Storage         Storage `json:"storage"`
 	StorageDir      string  `json:"storageDir"`
 	RefreshInterval int     `json:"refreshInterval"`
+
+	WebEnable bool
+	WebFS     fs.FS
 }
 
 func (cfg *StartConfig) Init() *StartConfig {
