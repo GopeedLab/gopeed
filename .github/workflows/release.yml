@@ -225,7 +225,7 @@ jobs:
           cd ui/flutter
           flutter build apk
           mkdir dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/gopeed-$VERSION-android.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dist/Gopeed-$VERSION-android.apk
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
