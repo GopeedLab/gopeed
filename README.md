@@ -2,46 +2,90 @@
 [![Codecov](https://codecov.io/gh/monkeyWie/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/monkeyWie/gopeed)
 [![Release](https://img.shields.io/github/release/monkeyWie/gopeed.svg?style=flat-square)](https://github.com/monkeyWie/gopeed/releases)
 
-## gopeed
+![](_docs/img/banner.png)
 
-支持多协议（HTTP、BitTorrent）下载的客户端，提供命令行、RESTful API、WebSocket、Go 类库方式来使用。
+## 介绍
+
+Gopeed 是一款由`Golang`+`flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。
 
 ## 安装
 
-```sh
-go install github.com/monkeyWie/gopeed
+[点击前往](https://github.com/monkeyWie/gopeed/releases/latest)
+
+### 命令行工具
+
+使用`go get`安装：
+
+```bash
+go install github.com/monkeyWie/gopeed/cmd/gopeed
 ```
 
-## 示例
+## 界面展示
 
-可以在本仓库的[\_examples](_examples)目录下查看
+![](_docs/img/ui-demo.png)
 
-## 命令行工具
+## 开发
 
-### 预览
+本项目分为前端和后端两个部分，前端使用`flutter`，后端使用`Golang`，两边通过`http`协议进行通讯，在 unix 系统下，使用的是`unix socket`，在 windows 系统下，使用的是`tcp`协议。
 
-![](_docs/img/cli-demo.gif)
+> 前端代码位于`ui/flutter`目录下。
 
-### 下载
+### 克隆项目
 
-前往[releases](https://github.com/monkeyWie/gopeed/releases)页面
+```bash
+git clone git@github.com:monkeyWie/gopeed.git
+```
 
-## TODO
+### 环境要求
 
-- [x] HTTP 下载实现
-- [x] BitTorrent 下载实现
-  - [x] .torrent 文件解析
-  - [x] tracker 协议实现
-  - [x] peer wire protocol 协议实现
-  - [x] DHT 协议实现
-  - [x] 磁力链接支持
-  - [x] uTP 协议实现
-- [x] 下载接口抽象(不关心具体协议)
-- [ ] 支持自定义配置
-- [ ] 限速功能实现
-- [x] 命令行工具提供
-- [ ] RESTful 服务提供
+1. Golang 1.9+
+2. Flutter 3.0+
 
-## 参与
+### 编译
 
-由于项目目前还未定型，代码可能随时有大的调整，所以暂不接受 PR，当然如果有什么好的想法可以在 issue 区提出来。
+#### 桌面端
+
+首先需要按照[flutter desktop 官网文档](https://docs.flutter.dev/development/platform-integration/desktop)进行环境配置，然后需要准备好`cgo`环境，具体可以自行搜索。
+
+构建命令：
+
+- macos
+
+```bash
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
+cd ui/flutter
+flutter build macos
+```
+
+#### 移动端
+
+同样的，首先需要把`flutter`环境配置好，具体可以参考官网文档，然后也是需要准备好`cgo`环境，接着安装`gomobile`：
+
+```bash
+go install golang.org/x/mobile/cmd/gomobile@latest
+gomobile init
+```
+
+构建命令：
+
+- android
+
+```bash
+gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
+cd ui/flutter
+flutter build apk
+```
+
+#### Web 端（推荐本地调试使用）
+
+Web 端直接与后端 http 服务通讯，不需要额外准备环境。
+
+构建命令：
+
+```bash
+cd ui/flutter
+flutter build web
+cd ../../
+cp -r ui/flutter/build/web cmd/web/dist
+go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/monkeyWie/gopeed/cmd/web
+```
