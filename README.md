@@ -12,14 +12,6 @@ Gopeed 是一款由`Golang`+`flutter`开发的高速下载器，支持（HTTP、
 
 [点击前往](https://github.com/monkeyWie/gopeed/releases/latest)
 
-### 命令行工具
-
-使用`go install`安装：
-
-```bash
-go install github.com/monkeyWie/gopeed/cmd/gopeed
-```
-
 **已支持平台**
 
 |         | 386 | amd64 | arm64 |
@@ -31,6 +23,13 @@ go install github.com/monkeyWie/gopeed/cmd/gopeed
 | ios     | ❌  | ❌    | ❌    |
 | web     | ✅  | ✅    | ✅    |
 
+### 命令行工具
+
+使用`go install`安装：
+
+```bash
+go install github.com/monkeyWie/gopeed/cmd/gopeed
+```
 ## 界面展示
 
 ![](_docs/img/ui-demo.png)
