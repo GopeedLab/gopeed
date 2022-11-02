@@ -8,20 +8,18 @@
 
 Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。
 
-## 安装
-
-[点击前往](https://github.com/monkeyWie/gopeed/releases/latest)
+## 下载
 
 **已支持平台**
 
-|         | 386 | amd64 | arm64 |
-| ------- | --- | ----- | ----- |
-| windows | ❌  | ✅    | ❌    |
-| macos   | ❌  | ✅    | ✅    |
-| linux   | ❌  | ✅    | ✅    |
-| android | ✅  | ✅    | ✅    |
-| ios     | ❌  | ❌    | ❌    |
-| web     | ✅  | ✅    | ✅    |
+- [x] windows
+- [x] macos
+- [x] linux
+- [x] android
+- [ ] ios
+- [x] web
+
+[点击前往](https://github.com/monkeyWie/gopeed/releases/latest)
 
 ### 命令行工具
 
