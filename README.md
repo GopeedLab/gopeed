@@ -6,7 +6,7 @@
 
 ## 介绍
 
-Gopeed 是一款由`Golang`+`flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。
+Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。
 
 ## 安装
 
