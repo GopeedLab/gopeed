@@ -174,6 +174,61 @@ jobs:
           upload_url: ${{ needs.release.outputs.upload_url }}
           asset_path: ui/flutter/dist/*
           overwrite: true
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: [ release ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '^1.19'
+          cache: true
+      - uses: subosito/flutter-action@v2
+      - name: Build
+        env:
+          VERSION: ${{ needs.release.outputs.tag_name }}
+        run: |
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/monkeyWie/gopeed/bind/desktop
+          cd ui/flutter
+          flutter build linux
+          mkdir -p debian/gui
+          cat>debian/debian.yaml<<EOF
+          flutter_app: 
+            command: Gopeed
+            arch: amd64
+            parent: /usr/local/lib
+          control:
+            Package: gopeed
+            Version: $VERSION
+            Architecture: amd64
+            Essential: no
+            Priority: optional
+            Depends:
+            Maintainer: monkeyWie
+            Description: High speed downloader that supports all platforms.
+          EOF
+
+          cat>debian/gui/Gopeed.desktop<<EOF
+          [Desktop Entry]
+          Version=1.0
+          Name=Gopeed
+          GenericName=Gopeed
+          Comment=High speed downloader that supports all platforms.
+          Terminal=false
+          Type=Application
+          Categories=Utility
+          Keywords=Flutter;Downloader;
+          EOF
+
+          dart pub global activate flutter_to_debian
+          flutter_to_debian
+          mv debian/packages/gopeed*.deb gopeed-$VERSION-linux.deb
+      - name: Upload
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ui/flutter/debian/packages
+          overwrite: true
   build-web:
     runs-on: ubuntu-latest
     needs: [ release ]

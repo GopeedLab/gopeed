@@ -74,6 +74,10 @@ class LibgopeedBootNative implements LibgopeedBoot {
       _libgopeed =
           LibgopeedFFi(LibgopeedBind(DynamicLibrary.open('libgopeed.dylib')));
     }
+    if (Platform.isLinux) {
+      _libgopeed =
+          LibgopeedFFi(LibgopeedBind(DynamicLibrary.open('libgopeed.so')));
+    }
   }
 
   // FFI run in isolate
