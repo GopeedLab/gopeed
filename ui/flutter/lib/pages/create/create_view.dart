@@ -19,8 +19,7 @@ class CreateView extends GetView<CreateController> {
   CreateView({Key? key}) : super(key: key);
 
   final _resolveFormKey = GlobalKey<FormState>();
-  final _urlController = TextEditingController(
-      text: "https://dldir1.qq.com/weixin/Windows/WeChatSetup.exe");
+  final _urlController = TextEditingController();
   final _confirmController = RoundedLoadingButtonController();
 
   @override
