@@ -225,7 +225,7 @@ jobs:
 
           dart pub global activate flutter_to_debian
           flutter_to_debian
-          mv debian/packages/gopeed*.deb gopeed-$VERSION-linux.deb
+          mv debian/packages/gopeed*.deb debian/packages/gopeed-$VERSION-linux.deb
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
