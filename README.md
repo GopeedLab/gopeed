@@ -58,6 +58,14 @@ git clone git@github.com:monkeyWie/gopeed.git
 
 构建命令：
 
+- windows
+
+```bash
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
+cd ui/flutter
+flutter build windows
+```
+
 - macos
 
 ```bash
