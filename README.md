@@ -14,7 +14,7 @@ Gopeed 是一款由`Golang`+`flutter`开发的高速下载器，支持（HTTP、
 
 ### 命令行工具
 
-使用`go get`安装：
+使用`go install`安装：
 
 ```bash
 go install github.com/monkeyWie/gopeed/cmd/gopeed
