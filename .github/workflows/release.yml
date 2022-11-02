@@ -198,7 +198,7 @@ jobs:
           cat>debian/debian.yaml<<EOF
           flutter_app: 
             command: Gopeed
-            arch: amd64
+            arch: x64
             parent: /usr/local/lib
           control:
             Package: gopeed
