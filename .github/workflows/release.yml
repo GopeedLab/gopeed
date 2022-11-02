@@ -203,7 +203,7 @@ jobs:
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/web \
               && cd $dir \
               && file=$(ls -AU | head -1) \
-              && mkdir name \
+              && mkdir $name \
               && mv $file $name/$(echo $file | sed -e "s/web/gopeed/g") \
               && zip -r ../zip/$name.zip * \
               && cd ../..) \
