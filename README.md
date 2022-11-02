@@ -30,6 +30,7 @@ Gopeed 是一款由`Golang`+`flutter`开发的高速下载器，支持（HTTP、
 ```bash
 go install github.com/monkeyWie/gopeed/cmd/gopeed
 ```
+
 ## 界面展示
 
 ![](_docs/img/ui-demo.png)
@@ -69,7 +70,7 @@ flutter build macos
 
 #### 移动端
 
-同样的，首先需要把`flutter`环境配置好，具体可以参考官网文档，然后也是需要准备好`cgo`环境，接着安装`gomobile`：
+同样的也是需要准备好`cgo`环境，接着安装`gomobile`：
 
 ```bash
 go install golang.org/x/mobile/cmd/gomobile@latest
@@ -99,3 +100,7 @@ cd ../../
 cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/monkeyWie/gopeed/cmd/web
 ```
+
+## 开源许可
+
+基于 [GPLv3](LICENSE) 协议开源。
