@@ -163,13 +163,14 @@ jobs:
           cd ui/flutter
           flutter build linux
           mkdir -p debian/gui
+          cp assets/icon/icon_1024.png debian/gui/gopeed.png
           cat>debian/debian.yaml<<EOF
           flutter_app: 
-            command: Gopeed
+            command: gopeed
             arch: x64
             parent: /usr/local/lib
           control:
-            Package: Gopeed
+            Package: gopeed
             Version: ${VERSION:1} 
             Architecture: amd64
             Essential: no
@@ -179,9 +180,9 @@ jobs:
             Description: High speed downloader that supports all platforms.
           EOF
 
-          cat>debian/gui/Gopeed.desktop<<EOF
+          cat>debian/gui/gopeed.desktop<<EOF
           [Desktop Entry]
-          Version=1.0
+          Version=${VERSION:1} 
           Name=Gopeed
           GenericName=Gopeed
           Comment=High speed downloader that supports all platforms.
@@ -193,7 +194,7 @@ jobs:
 
           dart pub global activate flutter_to_debian
           flutter_to_debian
-          mv debian/packages/Gopeed*.deb debian/packages/Gopeed-$VERSION-linux-amd64.deb
+          mv debian/packages/gopeed*.deb debian/packages/Gopeed-$VERSION-linux-amd64.deb
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
