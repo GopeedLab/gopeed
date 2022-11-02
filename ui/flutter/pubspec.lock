@@ -141,13 +141,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.16.0"
-  console:
-    dependency: transitive
-    description:
-      name: console
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "4.1.0"
   context_menus:
     dependency: "direct main"
     description:
@@ -333,13 +326,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "4.6.5"
-  get_it:
-    dependency: transitive
-    description:
-      name: get_it
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "7.2.0"
   glob:
     dependency: transitive
     description:
@@ -494,13 +480,6 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.2"
-  msix:
-    dependency: "direct dev"
-    description:
-      name: msix
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "3.7.0"
   package_config:
     dependency: transitive
     description:
