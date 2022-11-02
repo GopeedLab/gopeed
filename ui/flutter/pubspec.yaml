@@ -67,6 +67,7 @@ dev_dependencies:
     git:
       url: https://github.com/fluttercommunity/flutter_launcher_icons.git
       ref: v0.11.0
+  msix: ^3.7.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -122,6 +123,14 @@ flutter_icons:
   macos:
     generate: true
     image_path: "assets/icon/icon_macos_1024.png"
+
+msix_config:
+  display_name: Gopeed
+  publisher_display_name: gopeed.com
+  identity_name: com.gopeed
+  logo_path: assets/icon/icon_1024.png
+  capabilities: privateNetworkClientServer
+  install_certificate: false
 
 ffigen:
   name: LibgopeedBind

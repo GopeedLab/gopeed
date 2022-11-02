@@ -43,9 +43,17 @@ app.*.map.json
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 
 # Libgopeed
-android/app/libs/libgopeed.aar
-android/app/libs/libgopeed-sources.jar
+windows/libgopeed.h
+windows/libgopeed.dll
 macos/Frameworks/libgopeed.h
 macos/Frameworks/libgopeed.dylib
+linux/bundle/lib/libgopeed.h
+linux/bundle/lib/libgopeed.dylib
+android/app/libs/libgopeed.aar
+android/app/libs/libgopeed-sources.jar
 
 debian/packages
+
+generated_plugin_registrant.cc
+generated_plugin_registrant.h
+generated_plugins.cmake

@@ -70,14 +70,17 @@ class LibgopeedBootNative implements LibgopeedBoot {
   }
 
   _ffiInit() {
+    var libName = "libgopeed.";
+    if (Platform.isWindows) {
+      libName += "dll";
+    }
     if (Platform.isMacOS) {
-      _libgopeed =
-          LibgopeedFFi(LibgopeedBind(DynamicLibrary.open('libgopeed.dylib')));
+      libName += "dylib";
     }
     if (Platform.isLinux) {
-      _libgopeed =
-          LibgopeedFFi(LibgopeedBind(DynamicLibrary.open('libgopeed.so')));
+      libName += "so";
     }
+    _libgopeed = LibgopeedFFi(LibgopeedBind(DynamicLibrary.open(libName)));
   }
 
   // FFI run in isolate
