@@ -1,4 +1,4 @@
-import "./libgopeed_boot_stub.dart"
+import "libgopeed_boot_stub.dart"
     if (dart.library.html) 'entry/libgopeed_boot_browser.dart'
     if (dart.library.io) 'entry/libgopeed_boot_native.dart';
 

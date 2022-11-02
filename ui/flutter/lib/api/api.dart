@@ -3,11 +3,11 @@ import 'dart:io';
 
 import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
-import 'package:gopeed/api/model/create_task.dart';
-import 'package:gopeed/api/model/request.dart';
-import 'package:gopeed/api/model/resource.dart';
-import 'package:gopeed/api/model/result.dart';
-import 'package:gopeed/api/model/task.dart';
+import 'model/create_task.dart';
+import 'model/request.dart';
+import 'model/resource.dart';
+import 'model/result.dart';
+import 'model/task.dart';
 
 import '../core/libgopeed_boot.dart';
 import 'model/server_config.dart';

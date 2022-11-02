@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
-import 'package:gopeed/core/common/libgopeed_interface.dart';
-import 'package:gopeed/core/common/start_config.dart';
+import 'libgopeed_interface.dart';
+import 'start_config.dart';
 
 class LibgopeedChannel implements LibgopeedInterface {
   static const _channel = MethodChannel('gopeed.com/libgopeed');

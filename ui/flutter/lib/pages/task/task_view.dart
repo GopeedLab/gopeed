@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/api.dart';
-import 'package:gopeed/api/model/task.dart';
+import '../../api/api.dart';
+import '../../api/model/task.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 

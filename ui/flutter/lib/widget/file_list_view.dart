@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gopeed/util/util.dart';
+import '../util/util.dart';
 
 import '../api/model/resource.dart';
 

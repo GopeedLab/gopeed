@@ -1,4 +1,4 @@
-import 'package:gopeed/core/common/start_config.dart';
+import 'start_config.dart';
 
 abstract class LibgopeedInterface {
   Future<int> start(StartConfig cfg);

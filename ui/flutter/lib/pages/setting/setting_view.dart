@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/setting/setting.dart';
-import 'package:gopeed/widget/directory_selector.dart';
+import '../../setting/setting.dart';
+import '../../widget/directory_selector.dart';
 
 import 'setting_controller.dart';
 

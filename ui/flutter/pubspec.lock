@@ -286,6 +286,15 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_launcher_icons:
+    dependency: "direct dev"
+    description:
+      path: "."
+      ref: "v0.11.0"
+      resolved-ref: "5d45f1fa6fcb28608ba77eb53937ac2cc077f2e3"
+      url: "https://github.com/fluttercommunity/flutter_launcher_icons.git"
+    source: git
+    version: "0.11.0"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -352,6 +361,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "4.0.1"
+  image:
+    dependency: transitive
+    description:
+      name: image
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.2.2"
   intl:
     dependency: transitive
     description:
@@ -562,6 +578,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.1.1"
+  petitparser:
+    dependency: transitive
+    description:
+      name: petitparser
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "5.1.0"
   platform:
     dependency: transitive
     description:
@@ -882,6 +905,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.2.0+2"
+  xml:
+    dependency: transitive
+    description:
+      name: xml
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "6.1.0"
   yaml:
     dependency: transitive
     description:

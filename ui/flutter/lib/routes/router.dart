@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
-import 'package:gopeed/pages/create/create_controller.dart';
-import 'package:gopeed/pages/setting/setting_view.dart';
+import '../pages/create/create_controller.dart';
+import '../pages/setting/setting_view.dart';
 
 import '../pages/create/create_view.dart';
 import '../pages/home/home_controller.dart';

@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:get/get.dart';
-import 'package:gopeed/api/model/task.dart';
-import 'package:gopeed/core/libgopeed_boot.dart';
+import '../../api/model/task.dart';
+import '../../core/libgopeed_boot.dart';
 
 import '../../api/api.dart';
 

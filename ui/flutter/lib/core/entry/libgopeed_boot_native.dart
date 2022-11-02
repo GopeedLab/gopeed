@@ -3,11 +3,10 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:flutter/foundation.dart';
-import 'package:gopeed/core/common/libgopeed_channel.dart';
-import 'package:gopeed/util/util.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../util/util.dart';
+import '../common/libgopeed_channel.dart';
 import '../common/libgopeed_ffi.dart';
 import '../common/libgopeed_interface.dart';
 import '../common/start_config.dart';

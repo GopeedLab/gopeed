@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/api.dart';
-import 'package:gopeed/api/model/create_task.dart';
-import 'package:gopeed/api/model/options.dart';
-import 'package:gopeed/api/model/request.dart';
-import 'package:gopeed/api/model/resource.dart';
-import 'package:gopeed/pages/create/create_controller.dart';
-import 'package:gopeed/setting/setting.dart';
-import 'package:gopeed/widget/file_list_view.dart';
+import '../../api/api.dart';
+import '../../api/model/create_task.dart';
+import '../../api/model/options.dart';
+import '../../api/model/request.dart';
+import '../../api/model/resource.dart';
+import 'create_controller.dart';
+import '../../setting/setting.dart';
+import '../../widget/file_list_view.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 

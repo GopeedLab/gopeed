@@ -63,6 +63,10 @@ dev_dependencies:
   ffigen: ^6.1.2
   build_runner: ^2.2.1
   json_serializable: ^6.3.2
+  flutter_launcher_icons:
+    git:
+      url: https://github.com/fluttercommunity/flutter_launcher_icons.git
+      ref: v0.11.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -105,9 +109,23 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
 
+# flutter pub run flutter_launcher_icons:main
+flutter_icons:
+  image_path_android: "assets/icon/icon_1024.png"
+  android: true # can specify file name here e.g. "ic_launcher"
+  web:
+    generate: true
+    image_path: "assets/icon/icon_1024.png"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon_1024.png"
+  macos:
+    generate: true
+    image_path: "assets/icon/icon_macos_1024.png"
+
 ffigen:
   name: LibgopeedBind
-  description: Bindings to gopeed core.
+  description: Bindings to gopeed library.
   output: 'lib/core/ffi/libgopeed_bind.dart'
   headers:
     entry-points:
