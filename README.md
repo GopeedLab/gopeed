@@ -41,16 +41,16 @@ go install github.com/monkeyWie/gopeed/cmd/gopeed
 
 > 前端代码位于`ui/flutter`目录下。
 
+### 环境要求
+
+1. Golang 1.9+
+2. Flutter 3.0+
+
 ### 克隆项目
 
 ```bash
 git clone git@github.com:monkeyWie/gopeed.git
 ```
-
-### 环境要求
-
-1. Golang 1.9+
-2. Flutter 3.0+
 
 ### 编译
 
@@ -63,9 +63,17 @@ git clone git@github.com:monkeyWie/gopeed.git
 - macos
 
 ```bash
-go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
 cd ui/flutter
 flutter build macos
+```
+
+- linux
+
+```bash
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/monkeyWie/gopeed/bind/desktop
+cd ui/flutter
+flutter build linux
 ```
 
 #### 移动端
