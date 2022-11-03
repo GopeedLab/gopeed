@@ -39,9 +39,8 @@ jobs:
         env:
           VERSION: ${{ needs.release.outputs.tag_name }}
         run: |
-          ls C:\ProgramData\Chocolatey\lib
-          ls ${Env:ProgramFiles(x86)}
-          ls ${Env:ProgramFiles}
+          ls C:\ProgramData\Chocolatey\lib\mingw
+          ls C:\ProgramData\Chocolatey\lib\mingw\bin
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
           cd ui/flutter
           flutter build windows
