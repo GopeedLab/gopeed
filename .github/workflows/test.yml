@@ -5,6 +5,8 @@ on:
     branches:
       - main
     paths-ignore:
+      - '.github/workflows/release.yml'
+      - '.github/release-drafter.yml'
       - '_docs/**'
       - '_examples/**'
       - 'README*.md'
@@ -12,6 +14,8 @@ on:
     branches:
       - main
     paths-ignore:
+      - '.github/workflows/release.yml'
+      - '.github/release-drafter.yml'
       - '_docs/**'
       - '_examples/**'
       - 'README*.md'
