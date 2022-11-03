@@ -98,7 +98,7 @@ jobs:
           [Run]
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
-          & "${Env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" setup.iss
+          iscc.exe setup.iss
           mv "Output\gopeed.exe" "Output\Gopeed-$env:VERSION-windows-amd64.exe"
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
