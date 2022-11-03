@@ -39,7 +39,9 @@ jobs:
         env:
           VERSION: ${{ needs.release.outputs.tag_name }}
         run: |
-          Get-ChildItem -Path C:\Windows\System32 -Recurse –Include msvcp140.dll
+          ls C:\Windows\System32\msvcp140.dll
+          ls C:\Windows\System32\vcruntime140.dll
+          ls C:\Windows\System32\vcruntime140_1.dll
           exit 0
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
           cd ui/flutter
