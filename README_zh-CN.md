@@ -44,7 +44,7 @@ go install github.com/monkeyWie/gopeed/cmd/gopeed
 
 ### 环境要求
 
-1. Golang 1.9+
+1. Golang 1.19+
 2. Flutter 3.0+
 
 ### 克隆项目
