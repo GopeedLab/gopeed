@@ -10,6 +10,8 @@ on:
       - '_docs/**'
       - '_examples/**'
       - 'README*.md'
+      - '.gitignore'
+      - 'ui/flutter/.gitignore'
   push:
     branches:
       - main
@@ -19,6 +21,8 @@ on:
       - '_docs/**'
       - '_examples/**'
       - 'README*.md'
+      - '.gitignore'
+      - 'ui/flutter/.gitignore'
 
 jobs:
 #  lint:

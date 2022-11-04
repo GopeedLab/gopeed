@@ -11,6 +11,8 @@ on:
       - '_docs/**'
       - '_examples/**'
       - 'README*.md'
+      - '.gitignore'
+      - 'ui/flutter/.gitignore'
 
 jobs:
   release:
