@@ -5,15 +5,13 @@
 
 ![](_docs/img/banner.png)
 
-[English](/README.md) | [中文](/README_zh-CN.md)
+## 介绍
 
-## Introduction
+Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。
 
-Gopeed is a high-speed downloader developed by `Golang`+`Flutter`, which supports (HTTP, BitTorrent, Magnet) protocol downloads and supports all platforms.
+## 下载
 
-## Installation
-
-**Supported platforms**
+**已支持平台**
 
 - [x] windows
 - [x] macos
@@ -22,46 +20,44 @@ Gopeed is a high-speed downloader developed by `Golang`+`Flutter`, which support
 - [ ] ios
 - [x] web
 
-[Go Release](https://github.com/monkeyWie/gopeed/releases/latest)
+[点击前往](https://github.com/monkeyWie/gopeed/releases/latest)
 
-### Command tool
+### 命令行工具
 
-use `go install`:
-
-````bash
+使用`go install`安装：
 
 ```bash
 go install github.com/monkeyWie/gopeed/cmd/gopeed
-````
+```
 
-## Showcase
+## 界面展示
 
 ![](_docs/img/ui-demo.png)
 
-## Development
+## 开发
 
-This project is divided into two parts, the front end uses `flutter`, the back end uses `Golang`, and the two sides communicate through the `http` protocol. On the unix system, `unix socket` is used, and on the windows system, `tcp` protocol is used.
+本项目分为前端和后端两个部分，前端使用`flutter`，后端使用`Golang`，两边通过`http`协议进行通讯，在 unix 系统下，使用的是`unix socket`，在 windows 系统下，使用的是`tcp`协议。
 
-> The front code is located in the `ui/flutter` directory.
+> 前端代码位于`ui/flutter`目录下。
 
-### Environment
+### 环境要求
 
 1. Golang 1.9+
 2. Flutter 3.0+
 
-### Clone
+### 克隆项目
 
 ```bash
 git clone git@github.com:monkeyWie/gopeed.git
 ```
 
-### Build
+### 编译
 
-#### Desktop
+#### 桌面端
 
-First, you need to configure the environment according to the [flutter desktop official website document](https://docs.flutter.dev/development/platform-integration/desktop), and then you need to prepare the `cgo` environment, which can be searched for yourself.
+首先需要按照[flutter desktop 官网文档](https://docs.flutter.dev/development/platform-integration/desktop)进行环境配置，然后需要准备好`cgo`环境，具体可以自行搜索。
 
-command:
+构建命令：
 
 - windows
 
@@ -87,16 +83,16 @@ cd ui/flutter
 flutter build linux
 ```
 
-#### Mobile
+#### 移动端
 
-Same as before, you also need to prepare the `cgo` environment, and then install `gomobile`:
+同样的也是需要准备好`cgo`环境，接着安装`gomobile`：
 
 ```bash
 go install golang.org/x/mobile/cmd/gomobile@latest
 gomobile init
 ```
 
-command:
+构建命令：
 
 - android
 
@@ -106,13 +102,11 @@ cd ui/flutter
 flutter build apk
 ```
 
-#### Web
+#### Web 端（推荐本地调试使用）
 
-Web platform communicates directly with the backend http server, no additional environment is required.
+Web 端直接与后端 http 服务通讯，不需要额外准备环境。
 
-```bash
-
-command:
+构建命令：
 
 ```bash
 cd ui/flutter
@@ -122,7 +116,6 @@ cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/monkeyWie/gopeed/cmd/web
 ```
 
-## License
+## 开源许可
 
-[GPLv3](LICENSE)
-
+基于 [GPLv3](LICENSE) 协议开源。
