@@ -22,17 +22,15 @@ Gopeed is a high-speed downloader developed by `Golang`+`Flutter`, which support
 - [ ] ios
 - [x] web
 
-[Go Release](https://github.com/monkeyWie/gopeed/releases/latest)
+[To Release](https://github.com/monkeyWie/gopeed/releases/latest)
 
 ### Command tool
 
 use `go install`:
 
-````bash
-
 ```bash
 go install github.com/monkeyWie/gopeed/cmd/gopeed
-````
+```
 
 ## Showcase
 
@@ -110,7 +108,7 @@ flutter build apk
 
 Web platform communicates directly with the backend http server, no additional environment is required.
 
-```bash
+````bash
 
 command:
 
@@ -120,9 +118,8 @@ flutter build web
 cd ../../
 cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/monkeyWie/gopeed/cmd/web
-```
+````
 
 ## License
 
 [GPLv3](LICENSE)
-
