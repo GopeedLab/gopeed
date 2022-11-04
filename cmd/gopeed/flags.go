@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 )
 
 type args struct {
@@ -14,7 +13,7 @@ type args struct {
 }
 
 func parse() *args {
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	dir, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
