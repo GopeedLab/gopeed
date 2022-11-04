@@ -5,6 +5,9 @@ on:
     branches:
       - main
     paths-ignore:
+      - '_github/**'
+      - '!_github/workflows/release.yml'
+      - '!_github/release-drafter.yml'
       - '_docs/**'
       - '_examples/**'
       - 'README*.md'
