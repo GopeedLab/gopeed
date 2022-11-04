@@ -5,6 +5,8 @@
 
 ![](_docs/img/banner.png)
 
+[English](/README.md) | [中文](/README_zh-CN.md)
+
 ## 介绍
 
 Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。
