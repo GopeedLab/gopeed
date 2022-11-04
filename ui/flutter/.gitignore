@@ -54,6 +54,10 @@ android/app/libs/libgopeed-sources.jar
 
 debian/packages
 
-generated_plugin_registrant.cc
-generated_plugin_registrant.h
-generated_plugins.cmake
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
+linux/flutter/generated_plugins.cmake
+macos/Flutter/GeneratedPluginRegistrant.swift
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+windows/flutter/generated_plugins.cmake
