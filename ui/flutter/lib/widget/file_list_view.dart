@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../util/util.dart';
 
 import '../api/model/resource.dart';
@@ -29,7 +30,8 @@ class _FileListViewState extends State<FileListView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(padding: EdgeInsets.only(top: 10)),
-        Text("选择文件", style: TextStyle(color: themeData.hintColor)),
+        Text('create.selectDir'.tr,
+            style: TextStyle(color: themeData.hintColor)),
         Expanded(
             child: Container(
                 margin: const EdgeInsets.only(top: 10),

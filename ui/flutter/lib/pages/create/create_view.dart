@@ -30,13 +30,13 @@ class CreateView extends GetView<CreateController> {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Get.rootDelegate.offNamed(Routes.task)),
         actions: [Container()],
-        title: const Text("创建任务"),
+        title: Text('create.title'.tr),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
         child: Form(
           key: _resolveFormKey,
-          autovalidateMode: AutovalidateMode.always, //开启自动校验
+          autovalidateMode: AutovalidateMode.always,
           child: Column(
             children: [
               TextFormField(
@@ -44,12 +44,14 @@ class CreateView extends GetView<CreateController> {
                   controller: _urlController,
                   minLines: 1,
                   maxLines: 15,
-                  decoration: const InputDecoration(
-                      hintText: "请输入下载链接，支持 HTTP/HTTPS/MAGNET",
-                      labelText: "下载链接",
-                      icon: Icon(Icons.link)),
+                  decoration: InputDecoration(
+                      hintText: 'create.downloadLinkHit'.tr,
+                      labelText: 'create.downloadLink'.tr,
+                      icon: const Icon(Icons.link)),
                   validator: (v) {
-                    return v!.trim().isNotEmpty ? null : "请输入下载链接";
+                    return v!.trim().isNotEmpty
+                        ? null
+                        : 'create.downloadLinkValid'.tr;
                   }),
               // 登录按钮
               Center(
@@ -71,14 +73,14 @@ class CreateView extends GetView<CreateController> {
                               ));
                               await _showResolveDialog(res);
                             } catch (e) {
-                              Get.snackbar("错误", e.toString());
+                              Get.snackbar('error'.tr, e.toString());
                             } finally {
                               _confirmController.reset();
                             }
                           }
                         },
                         controller: _confirmController,
-                        child: const Text("确认"),
+                        child: Text('confirm'.tr),
                       ),
                     )),
               ),
@@ -142,7 +144,7 @@ class CreateView extends GetView<CreateController> {
                     onPressed: () {
                       Get.back();
                     },
-                    child: const Text("取消"),
+                    child: Text('cancel'.tr),
                   ),
                 ),
                 ConstrainedBox(
@@ -158,7 +160,8 @@ class CreateView extends GetView<CreateController> {
                           downloadController.start();
                           if (Util.isAndroid()) {
                             if (!await Permission.storage.request().isGranted) {
-                              Get.snackbar("错误", "需要开启存储权限");
+                              Get.snackbar('error'.tr,
+                                  'create.error.noStoragePermission'.tr);
                               return;
                             }
                           }
@@ -179,14 +182,14 @@ class CreateView extends GetView<CreateController> {
                           Get.rootDelegate.offNamed(Routes.task);
                         }
                       } catch (e) {
-                        Get.snackbar("错误", e.toString());
+                        Get.snackbar('error'.tr, e.toString());
                         rethrow;
                       } finally {
                         downloadController.reset();
                       }
                     },
                     controller: downloadController,
-                    child: const Text("下载"),
+                    child: Text('create.download'.tr),
                   ),
                 ),
               ],

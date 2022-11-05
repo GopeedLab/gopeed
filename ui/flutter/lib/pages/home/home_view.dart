@@ -37,11 +37,11 @@ class HomeView extends GetView<HomeController> {
               AnimatedBarItems(
                   icon: const Icon(Icons.list),
                   selectedColor: Get.theme.primaryColor,
-                  title: const Text('任务')),
+                  title: Text('home.task'.tr)),
               AnimatedBarItems(
                   icon: const Icon(Icons.settings),
                   selectedColor: Get.theme.primaryColor,
-                  title: const Text('设置')),
+                  title: Text('home.setting'.tr)),
             ],
             iconSize: 32,
             barAnimation: BarAnimation.fade,

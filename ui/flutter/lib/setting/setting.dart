@@ -1,7 +1,10 @@
 import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
+import 'package:gopeed/i18n/messages.dart';
 import '../api/api.dart';
 import 'package:path_provider/path_provider.dart';
+
+import 'dart:ui' as ui;
 
 import '../api/model/server_config.dart';
 import '../util/util.dart';
@@ -12,14 +15,7 @@ class Setting {
   int connections = 0;
   String downloadDir = "";
   ThemeMode themeMode = ThemeMode.system;
-
-  Setting({
-    required this.host,
-    required this.port,
-    required this.connections,
-    required this.downloadDir,
-    required this.themeMode,
-  });
+  Locale locale = ui.window.locale;
 
   // singleton pattern
   static Setting? _instance;
@@ -38,10 +34,12 @@ class Setting {
     connections = config.connections;
     downloadDir = config.downloadDir;
     final themeMode = config.extra?['themeMode'];
-    if (themeMode == null) {
-      this.themeMode = ThemeMode.system;
-    } else {
+    if (themeMode != null) {
       this.themeMode = ThemeMode.values.byName(themeMode);
+    }
+    final locale = config.extra?['locale'];
+    if (locale != null) {
+      this.locale = toLocale(locale);
     }
 
     if (Util.isWeb()) {
@@ -69,6 +67,7 @@ class Setting {
       downloadDir: downloadDir,
       extra: {
         'themeMode': themeMode.name,
+        'locale': locale.toString(),
       },
     );
     await putConfig(config);

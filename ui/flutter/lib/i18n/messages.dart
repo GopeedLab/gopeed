@@ -1,0 +1,75 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+Locale toLocale(String key) {
+  final arr = key.split('_');
+  return Locale(arr[0], arr[1]);
+}
+
+final messages = _Messages();
+const fallbackLocale = Locale('en', 'US');
+
+class _Messages extends Translations {
+  @override
+  Map<String, Map<String, String>> get keys => {
+        'zh_CN': {
+          'error': '错误',
+          'confirm': '确认',
+          'cancel': '取消',
+          'home.task': '任务',
+          'home.setting': '设置',
+          'create.title': '创建任务',
+          'create.downloadLink': '下载链接',
+          'create.downloadLinkValid': '请输入下载链接',
+          'create.downloadLinkHit': '请输入下载链接，支持 HTTP/HTTPS/MAGNET',
+          'create.download': '下载',
+          'create.error.noStoragePermission': '需要开启存储权限',
+          'create.selectDir': '选择目录',
+          'setting.title': '设置',
+          'setting.basic': '基础设置',
+          'setting.theme': '主题',
+          'setting.themeSystem': '跟随系统',
+          'setting.themeLight': '明亮主题',
+          'setting.themeDark': '暗黑主题',
+          'setting.downloadDir': '下载目录',
+          'setting.downloadDirValid': '请选择下载目录',
+          'setting.connections': '连接数',
+          'setting.locale': '语言',
+          'setting.locale.zh_CN': '中文（简体）',
+          'setting.locale.en_US': '英文（美国）',
+          'task.deleteTask': '删除任务',
+          'task.deleteTaskTip': '保留已下载的文件',
+          'task.delete': '删除',
+        },
+        'en_US': {
+          'error': 'Error',
+          'confirm': 'Confirm',
+          'cancel': 'Cancel',
+          'home.task': 'Task',
+          'home.setting': 'Setting',
+          'create.title': 'Create Task',
+          'create.downloadLink': 'Download Link',
+          'create.downloadLinkValid': 'Please enter the download link',
+          'create.downloadLinkHit':
+              'Please enter the download link, HTTP/HTTPS/MAGNET supported',
+          'create.download': 'Download',
+          'create.error.noStoragePermission': 'Storage permission required',
+          'create.selectDir': 'Select Directory',
+          'setting.title': 'Setting',
+          'setting.basic': 'Basic',
+          'setting.theme': 'Theme',
+          'setting.themeSystem': 'System',
+          'setting.themeLight': 'Light',
+          'setting.themeDark': 'Dark',
+          'setting.downloadDir': 'Download Directory',
+          'setting.downloadDirValid': 'Please select the download directory',
+          'setting.connections': 'Connections',
+          'setting.locale': 'Language',
+          'setting.locale.zh_CN': 'Chinese(Simplified)',
+          'setting.locale.en_US': 'English(US)',
+          'task.deleteTask': 'Delete Task',
+          'task.deleteTaskTip': 'Keep downloaded files',
+          'task.delete': 'Delete',
+        },
+      };
+}
