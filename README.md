@@ -108,8 +108,6 @@ flutter build apk
 
 Web platform communicates directly with the backend http server, no additional environment is required.
 
-````bash
-
 command:
 
 ```bash
