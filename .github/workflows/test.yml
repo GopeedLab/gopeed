@@ -5,39 +5,39 @@ on:
     branches:
       - main
     paths-ignore:
-      - '_github/**'
-      - '!_github/workflows/test.yml'
-      - '_docs/**'
-      - '_examples/**'
-      - 'README*.md'
-      - '.gitignore'
-      - 'ui/flutter/.gitignore'
+      - ".github/**"
+      - "!.github/workflows/test.yml"
+      - "_docs/**"
+      - "_examples/**"
+      - "README*.md"
+      - ".gitignore"
+      - "ui/flutter/.gitignore"
   push:
     branches:
       - main
     paths-ignore:
-      - '_github/**'
-      - '!_github/workflows/test.yml'
-      - '_docs/**'
-      - '_examples/**'
-      - 'README*.md'
-      - '.gitignore'
-      - 'ui/flutter/.gitignore'
+      - ".github/**"
+      - "!.github/workflows/test.yml"
+      - "_docs/**"
+      - "_examples/**"
+      - "README*.md"
+      - ".gitignore"
+      - "ui/flutter/.gitignore"
 
 jobs:
-#  lint:
-#    name: Lint
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/setup-go@v2
-#        with:
-#          go-version: '^1.19'
-#      - uses: actions/checkout@v2
-#      - name: Lint Go Code
-#        run: |
-#          export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
-#          go get -u golang.org/x/lint/golint
-#          golint -set_exit_status ./...
+  #  lint:
+  #    name: Lint
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - uses: actions/setup-go@v2
+  #        with:
+  #          go-version: '^1.19'
+  #      - uses: actions/checkout@v2
+  #      - name: Lint Go Code
+  #        run: |
+  #          export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
+  #          go get -u golang.org/x/lint/golint
+  #          golint -set_exit_status ./...
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version: '^1.19'
+          go-version: "^1.19"
           cache: true
       - name: Run Unit tests.
         run: go test $(go list ./... | grep -v /cmd/ | grep -v /bind/ ) -v -covermode=count -coverprofile=coverage.txt
@@ -56,13 +56,13 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-#    needs: [lint, test]
+    #    needs: [lint, test]
     needs: [test]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version: '^1.19'
+          go-version: "^1.19"
           cache: true
       - name: Build
         run: go build github.com/monkeyWie/gopeed/cmd/gopeed
