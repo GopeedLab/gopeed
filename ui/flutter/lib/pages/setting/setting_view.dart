@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/i18n/messages.dart';
 import '../../setting/setting.dart';
 import '../../widget/directory_selector.dart';
 
@@ -21,26 +22,26 @@ class SettingView extends GetView<SettingController> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('设置'),
+        title: Text('setting.title'.tr),
         centerTitle: true,
       ),
       body: Column(
-        // 左对齐
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("基本设置", style: Get.textTheme.titleLarge),
+          Text('setting.basic'.tr, style: Get.textTheme.titleLarge),
           const SizedBox(height: 10),
           Obx(() => Card(
                   child: Column(
                 children: _buildConfigItems([
                   _ConfigItem(
-                      "主题",
+                      'setting.theme'.tr,
                       () => _getThemeName(controller.setting.value.themeMode),
                       () => DropdownButton<ThemeMode>(
                             value: controller.setting.value.themeMode,
                             isDense: true,
                             onChanged: (value) {
                               controller.setting.value.themeMode = value!;
+                              controller.clearTapStatus();
                               Get.changeThemeMode(value);
 
                               debounceSave();
@@ -52,8 +53,8 @@ class SettingView extends GetView<SettingController> {
                                     ))
                                 .toList(),
                           )),
-                  _ConfigItem(
-                      "下载目录", () => controller.setting.value.downloadDir, () {
+                  _ConfigItem('setting.downloadDir'.tr,
+                      () => controller.setting.value.downloadDir, () {
                     final downloadDirController = TextEditingController(
                         text: controller.setting.value.downloadDir);
                     downloadDirController.addListener(() {
@@ -61,6 +62,7 @@ class SettingView extends GetView<SettingController> {
                           controller.setting.value.downloadDir) {
                         controller.setting.value.downloadDir =
                             downloadDirController.text;
+                        controller.clearTapStatus();
 
                         debounceSave();
                       }
@@ -70,7 +72,7 @@ class SettingView extends GetView<SettingController> {
                       showLabel: false,
                     );
                   }),
-                  _ConfigItem("连接数",
+                  _ConfigItem('setting.connections'.tr,
                       () => controller.setting.value.connections.toString(),
                       () {
                     final connectionsController = TextEditingController(
@@ -95,6 +97,27 @@ class SettingView extends GetView<SettingController> {
                       ],
                     );
                   }),
+                  _ConfigItem(
+                      'setting.locale'.tr,
+                      () => _getLocaleName(controller.setting.value.locale),
+                      () => DropdownButton<Locale>(
+                            value: controller.setting.value.locale,
+                            isDense: true,
+                            onChanged: (value) {
+                              controller.setting.value.locale = value!;
+                              controller.clearTapStatus();
+                              Get.updateLocale(value);
+
+                              debounceSave();
+                            },
+                            items: _getLocales()
+                                .map((e) => DropdownMenuItem<Locale>(
+                                      value: toLocale(e
+                                          .substring(_settingLocaleKey.length)),
+                                      child: Text(e.tr),
+                                    ))
+                                .toList(),
+                          )),
                 ]),
               ))),
         ],
@@ -130,12 +153,25 @@ class SettingView extends GetView<SettingController> {
   String _getThemeName(ThemeMode themeMode) {
     switch (themeMode) {
       case ThemeMode.system:
-        return "跟随系统";
+        return 'setting.themeSystem'.tr;
       case ThemeMode.light:
-        return "明亮主题";
+        return 'setting.themeLight'.tr;
       case ThemeMode.dark:
-        return "暗黑主题";
+        return 'setting.themeDark'.tr;
     }
+  }
+
+  final _settingLocaleKey = 'setting.locale.';
+
+  List<String> _getLocales() {
+    return messages.keys[fallbackLocale.toString()]!.entries
+        .where((e) => e.key.startsWith(_settingLocaleKey))
+        .map((e) => e.key)
+        .toList();
+  }
+
+  String _getLocaleName(Locale locale) {
+    return '$_settingLocaleKey${locale.toString()}'.tr;
   }
 }
 

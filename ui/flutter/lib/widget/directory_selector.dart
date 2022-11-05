@@ -26,12 +26,12 @@ class _DirectorySelectorState extends State<DirectorySelector> {
           readOnly: true,
           controller: widget.controller,
           decoration: widget.showLabel
-              ? const InputDecoration(
-                  labelText: "下载目录",
+              ? InputDecoration(
+                  labelText: 'setting.downloadDir'.tr,
                 )
               : null,
           validator: (v) {
-            return v!.trim().isNotEmpty ? null : "请选择下载目录";
+            return v!.trim().isNotEmpty ? null : 'setting.downloadDirValid'.tr;
           },
         )),
         IconButton(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'core/libgopeed_boot.dart';
+import 'i18n/messages.dart';
 import 'routes/router.dart';
 import 'setting/setting.dart';
 import 'theme/theme.dart';
@@ -24,6 +25,9 @@ void main() async {
     theme: GopeedTheme.light,
     darkTheme: GopeedTheme.dark,
     themeMode: Setting.instance.themeMode,
+    translations: messages,
+    locale: Setting.instance.locale,
+    fallbackLocale: fallbackLocale,
     getPages: Routes.routes,
   ));
 }

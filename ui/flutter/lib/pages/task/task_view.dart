@@ -65,8 +65,6 @@ class Item extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var controller = Get.find<TaskController>();
-
     return Card(
         elevation: 4.0,
         child: InkWell(
@@ -153,22 +151,23 @@ class Item extends StatelessWidget {
         context: Get.context!,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
-              title: const Text("删除任务"),
+              title: Text('task.deleteTask'.tr),
               content: Obx(() => CheckboxListTile(
                   value: keep.value,
-                  title: Text("保留已下载的文件", style: Get.textTheme.bodyText1),
+                  title: Text('task.deleteTaskTip'.tr,
+                      style: Get.textTheme.bodyText1),
                   onChanged: (v) {
                     keep.value = v!;
                   })),
               actions: [
                 TextButton(
-                  child: const Text("取消"),
-                  onPressed: () => Get.back(), //关闭对话框
+                  child: Text('cancel'.tr),
+                  onPressed: () => Get.back(),
                 ),
                 TextButton(
-                  child: const Text(
-                    "删除",
-                    style: TextStyle(color: Colors.redAccent),
+                  child: Text(
+                    'task.delete'.tr,
+                    style: const TextStyle(color: Colors.redAccent),
                   ),
                   onPressed: () async {
                     try {
@@ -176,7 +175,7 @@ class Item extends StatelessWidget {
                       Get.find<TaskController>().loadTab();
                       Get.back();
                     } catch (e) {
-                      Get.snackbar("错误", e.toString());
+                      Get.snackbar('error'.tr, e.toString());
                     }
                   },
                 ),
