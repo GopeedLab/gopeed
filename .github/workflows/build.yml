@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: thebritican/fetch-latest-release@v1
+      - uses: thebritican/fetch-latest-release@v2.0.0
         id: get-release
         with:
           github_token: ${{ github.token }}
