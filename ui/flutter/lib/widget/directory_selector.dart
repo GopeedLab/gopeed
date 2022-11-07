@@ -1,6 +1,7 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/util/util.dart';
 
 import '../util/mac_secure_util.dart';
 
@@ -23,7 +24,7 @@ class _DirectorySelectorState extends State<DirectorySelector> {
       children: [
         Expanded(
             child: TextFormField(
-          readOnly: true,
+          readOnly: Util.isWeb() ? false : true,
           controller: widget.controller,
           decoration: widget.showLabel
               ? InputDecoration(
@@ -34,18 +35,20 @@ class _DirectorySelectorState extends State<DirectorySelector> {
             return v!.trim().isNotEmpty ? null : 'setting.downloadDirValid'.tr;
           },
         )),
-        IconButton(
-            icon: const Icon(Icons.folder_open),
-            onPressed: () async {
-              if (GetPlatform.isDesktop) {
-                var dir = await getDirectoryPath();
-                if (dir != null) {
-                  widget.controller.text = dir;
-                  MacSecureUtil.saveBookmark(dir);
-                }
-              }
-            })
-      ],
+        !Util.isDesktop()
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.folder_open),
+                onPressed: () async {
+                  if (GetPlatform.isDesktop) {
+                    var dir = await getDirectoryPath();
+                    if (dir != null) {
+                      widget.controller.text = dir;
+                      MacSecureUtil.saveBookmark(dir);
+                    }
+                  }
+                })
+      ].where((e) => e != null).map((e) => e!).toList(),
     );
   }
 }

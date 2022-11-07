@@ -21,6 +21,7 @@ Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、
 - [x] android
 - [ ] ios
 - [x] web
+- [x] docker
 
 [点击前往](https://github.com/monkeyWie/gopeed/releases/latest)
 
@@ -31,6 +32,15 @@ Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、
 ```bash
 go install github.com/monkeyWie/gopeed/cmd/gopeed
 ```
+
+### Docker
+
+```bash
+docker run liwei2633/gopeed:latest -v /path/to/download:/download -p 9999:9999
+```
+
+当 docker 容器运行时，可以通过 `http://localhost:9999` 访问 web 页面。
+> 提示：在设置页面把下载路径修改为 `/download` 以便在宿主机访问下载完的文件。
 
 ## 界面展示
 
