@@ -43,7 +43,7 @@ jobs:
           cp $system\vcruntime140_1.dll $release
 
           New-Item -Path build\windows\Output -ItemType Directory
-          Compress-Archive -Path $release -DestinationPath build\windows\Output\Gopeed-$env:VERSION-windows-amd64.zip
+          Compress-Archive -Path "$release*" -DestinationPath build\windows\Output\Gopeed-$env:VERSION-windows-amd64.zip
 
           cd build/windows
           echo @"
