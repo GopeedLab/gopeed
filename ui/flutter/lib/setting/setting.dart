@@ -14,14 +14,16 @@ class Setting {
   int port = 0;
   int connections = 0;
   String downloadDir = "";
-  ThemeMode themeMode = ThemeMode.system;
-  Locale locale = ui.window.locale;
+  late ThemeMode themeMode;
+  late String locale;
 
   // singleton pattern
   static Setting? _instance;
 
   static Setting get instance {
     _instance ??= Setting._internal();
+    _instance!.themeMode = ThemeMode.system;
+    _instance!.locale = getLocaleKey(ui.window.locale);
     return _instance!;
   }
 
@@ -39,7 +41,7 @@ class Setting {
     }
     final locale = config.extra?['locale'];
     if (locale != null) {
-      this.locale = toLocale(locale);
+      this.locale = locale;
     }
 
     if (Util.isWeb()) {
@@ -67,7 +69,7 @@ class Setting {
       downloadDir: downloadDir,
       extra: {
         'themeMode': themeMode.name,
-        'locale': locale.toString(),
+        'locale': locale,
       },
     );
     await putConfig(config);
