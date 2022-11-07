@@ -6,6 +6,10 @@ Locale toLocale(String key) {
   return Locale(arr[0], arr[1]);
 }
 
+String getLocaleKey(Locale locale) {
+  return '${locale.languageCode}_${locale.countryCode}';
+}
+
 final messages = _Messages();
 const fallbackLocale = Locale('en', 'US');
 
@@ -21,7 +25,8 @@ class _Messages extends Translations {
           'create.title': '创建任务',
           'create.downloadLink': '下载链接',
           'create.downloadLinkValid': '请输入下载链接',
-          'create.downloadLinkHit': '请输入下载链接，支持 HTTP/HTTPS/MAGNET',
+          'create.downloadLinkHit': '请输入下载链接，支持 HTTP/HTTPS/MAGNET@append',
+          'create.downloadLinkHitDesktop': '，也可以直接拖拽种子文件到此处',
           'create.download': '下载',
           'create.error.noStoragePermission': '需要开启存储权限',
           'create.selectDir': '选择目录',
@@ -51,7 +56,9 @@ class _Messages extends Translations {
           'create.downloadLink': 'Download Link',
           'create.downloadLinkValid': 'Please enter the download link',
           'create.downloadLinkHit':
-              'Please enter the download link, HTTP/HTTPS/MAGNET supported',
+              'Please enter the download link, HTTP/HTTPS/MAGNET supported@append',
+          'create.downloadLinkHitDesktop':
+              ', or drag the torrent file here directly',
           'create.download': 'Download',
           'create.error.noStoragePermission': 'Storage permission required',
           'create.selectDir': 'Select Directory',

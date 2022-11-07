@@ -1,3 +1,4 @@
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../api/api.dart';
@@ -32,63 +33,73 @@ class CreateView extends GetView<CreateController> {
         actions: [Container()],
         title: Text('create.title'.tr),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-        child: Form(
-          key: _resolveFormKey,
-          autovalidateMode: AutovalidateMode.always,
-          child: Column(
-            children: [
-              TextFormField(
-                  autofocus: true,
-                  controller: _urlController,
-                  minLines: 1,
-                  maxLines: 15,
-                  decoration: InputDecoration(
-                      hintText: 'create.downloadLinkHit'.tr,
-                      labelText: 'create.downloadLink'.tr,
-                      icon: const Icon(Icons.link)),
-                  validator: (v) {
-                    return v!.trim().isNotEmpty
-                        ? null
-                        : 'create.downloadLinkValid'.tr;
-                  }),
-              // 登录按钮
-              Center(
-                child: Padding(
-                    padding: const EdgeInsets.all(15.0),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints.tightFor(
-                        width: 150,
-                        height: 40,
-                      ),
-                      child: RoundedLoadingButton(
-                        color: Get.theme.colorScheme.secondary,
-                        onPressed: () async {
-                          if (_resolveFormKey.currentState!.validate()) {
-                            _confirmController.start();
-                            try {
-                              final res = await resolve(Request(
-                                url: _urlController.text,
-                              ));
-                              await _showResolveDialog(res);
-                            } catch (e) {
-                              Get.snackbar('error'.tr, e.toString());
-                            } finally {
-                              _confirmController.reset();
+      body: DropTarget(
+        onDragDone: (details) {
+          _urlController.text = details.files[0].path;
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+          child: Form(
+            key: _resolveFormKey,
+            autovalidateMode: AutovalidateMode.always,
+            child: Column(
+              children: [
+                TextFormField(
+                    autofocus: true,
+                    controller: _urlController,
+                    minLines: 1,
+                    maxLines: 15,
+                    decoration: InputDecoration(
+                        hintText: _hitText(),
+                        labelText: 'create.downloadLink'.tr,
+                        icon: const Icon(Icons.link)),
+                    validator: (v) {
+                      return v!.trim().isNotEmpty
+                          ? null
+                          : 'create.downloadLinkValid'.tr;
+                    }),
+                Center(
+                  child: Padding(
+                      padding: const EdgeInsets.all(15.0),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints.tightFor(
+                          width: 150,
+                          height: 40,
+                        ),
+                        child: RoundedLoadingButton(
+                          color: Get.theme.colorScheme.secondary,
+                          onPressed: () async {
+                            if (_resolveFormKey.currentState!.validate()) {
+                              _confirmController.start();
+                              try {
+                                final res = await resolve(Request(
+                                  url: _urlController.text,
+                                ));
+                                await _showResolveDialog(res);
+                              } catch (e) {
+                                Get.snackbar('error'.tr, e.toString());
+                              } finally {
+                                _confirmController.reset();
+                              }
                             }
-                          }
-                        },
-                        controller: _confirmController,
-                        child: Text('confirm'.tr),
-                      ),
-                    )),
-              ),
-            ],
+                          },
+                          controller: _confirmController,
+                          child: Text('confirm'.tr),
+                        ),
+                      )),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  String _hitText() {
+    return 'create.downloadLinkHit'.trParams({
+      'append': Util.isDesktop() ? 'create.downloadLinkHitDesktop'.tr : '',
+    });
   }
 
   Future<void> _showResolveDialog(Resource res) async {

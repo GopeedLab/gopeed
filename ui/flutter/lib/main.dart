@@ -26,7 +26,7 @@ void main() async {
     darkTheme: GopeedTheme.dark,
     themeMode: Setting.instance.themeMode,
     translations: messages,
-    locale: Setting.instance.locale,
+    locale: toLocale(Setting.instance.locale),
     fallbackLocale: fallbackLocale,
     getPages: Routes.routes,
   ));

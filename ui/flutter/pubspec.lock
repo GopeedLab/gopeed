@@ -183,6 +183,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.2.4"
+  desktop_drop:
+    dependency: "direct main"
+    description:
+      name: desktop_drop
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.3.3"
   dio:
     dependency: "direct main"
     description:

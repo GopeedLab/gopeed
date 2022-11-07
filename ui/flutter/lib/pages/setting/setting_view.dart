@@ -16,8 +16,15 @@ class SettingView extends GetView<SettingController> {
   Widget build(BuildContext context) {
     Timer? timer;
     debounceSave() {
+      var completer = Completer<void>();
       timer?.cancel();
-      timer = Timer(const Duration(milliseconds: 500), Setting.instance.save);
+      timer = Timer(const Duration(milliseconds: 500), () {
+        Setting.instance
+            .save()
+            .then(completer.complete)
+            .onError(completer.completeError);
+      });
+      return completer.future;
     }
 
     return Scaffold(
@@ -39,12 +46,12 @@ class SettingView extends GetView<SettingController> {
                       () => DropdownButton<ThemeMode>(
                             value: controller.setting.value.themeMode,
                             isDense: true,
-                            onChanged: (value) {
+                            onChanged: (value) async {
                               controller.setting.value.themeMode = value!;
                               controller.clearTapStatus();
                               Get.changeThemeMode(value);
 
-                              debounceSave();
+                              await debounceSave();
                             },
                             items: ThemeMode.values
                                 .map((e) => DropdownMenuItem<ThemeMode>(
@@ -57,14 +64,14 @@ class SettingView extends GetView<SettingController> {
                       () => controller.setting.value.downloadDir, () {
                     final downloadDirController = TextEditingController(
                         text: controller.setting.value.downloadDir);
-                    downloadDirController.addListener(() {
+                    downloadDirController.addListener(() async {
                       if (downloadDirController.text !=
                           controller.setting.value.downloadDir) {
                         controller.setting.value.downloadDir =
                             downloadDirController.text;
                         controller.clearTapStatus();
 
-                        debounceSave();
+                        await debounceSave();
                       }
                     });
                     return DirectorySelector(
@@ -77,14 +84,14 @@ class SettingView extends GetView<SettingController> {
                       () {
                     final connectionsController = TextEditingController(
                         text: controller.setting.value.connections.toString());
-                    connectionsController.addListener(() {
+                    connectionsController.addListener(() async {
                       if (connectionsController.text.isNotEmpty &&
                           connectionsController.text !=
                               controller.setting.value.connections.toString()) {
                         controller.setting.value.connections =
                             int.parse(connectionsController.text);
 
-                        debounceSave();
+                        await debounceSave();
                       }
                     });
 
@@ -100,20 +107,20 @@ class SettingView extends GetView<SettingController> {
                   _ConfigItem(
                       'setting.locale'.tr,
                       () => _getLocaleName(controller.setting.value.locale),
-                      () => DropdownButton<Locale>(
+                      () => DropdownButton<String>(
                             value: controller.setting.value.locale,
                             isDense: true,
-                            onChanged: (value) {
+                            onChanged: (value) async {
                               controller.setting.value.locale = value!;
                               controller.clearTapStatus();
-                              Get.updateLocale(value);
+                              Get.updateLocale(toLocale(value));
 
-                              debounceSave();
+                              await debounceSave();
                             },
                             items: _getLocales()
-                                .map((e) => DropdownMenuItem<Locale>(
-                                      value: toLocale(e
-                                          .substring(_settingLocaleKey.length)),
+                                .map((e) => DropdownMenuItem<String>(
+                                      value:
+                                          e.substring(_settingLocaleKey.length),
                                       child: Text(e.tr),
                                     ))
                                 .toList(),
@@ -164,14 +171,18 @@ class SettingView extends GetView<SettingController> {
   final _settingLocaleKey = 'setting.locale.';
 
   List<String> _getLocales() {
-    return messages.keys[fallbackLocale.toString()]!.entries
+    return messages.keys[getLocaleKey(fallbackLocale)]!.entries
         .where((e) => e.key.startsWith(_settingLocaleKey))
         .map((e) => e.key)
         .toList();
   }
 
-  String _getLocaleName(Locale locale) {
-    return '$_settingLocaleKey${locale.toString()}'.tr;
+  String _getLocaleName(String locale) {
+    final localeKey = '$_settingLocaleKey${locale.toString()}';
+    if (messages.keys[locale]?.containsKey(localeKey) ?? false) {
+      return localeKey.tr;
+    }
+    return '$_settingLocaleKey$locale'.tr;
   }
 }
 
