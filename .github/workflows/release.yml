@@ -4,15 +4,15 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - ".github/**"
-      - "!.github/workflows/release.yml"
-      - "!.github/release-drafter.yml"
-      - "_docs/**"
-      - "_examples/**"
-      - "README*.md"
-      - ".gitignore"
-      - "ui/flutter/.gitignore"
+    paths:
+      - "bind/**"
+      - "cmd/**"
+      - "internal/**"
+      - "pkg/**"
+      - "ui/**"
+      - ".github/workflows/release.yml"
+      - "go.mod"
+      - "go.sum"
 
 jobs:
   release:

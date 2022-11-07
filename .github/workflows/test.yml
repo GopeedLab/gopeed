@@ -4,25 +4,27 @@ on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - ".github/**"
-      - "!.github/workflows/test.yml"
-      - "_docs/**"
-      - "_examples/**"
-      - "README*.md"
-      - ".gitignore"
-      - "ui/flutter/.gitignore"
+    paths:
+      - "bind/**"
+      - "cmd/**"
+      - "internal/**"
+      - "pkg/**"
+      - "ui/**"
+      - ".github/workflows/test.yml"
+      - "go.mod"
+      - "go.sum"
   push:
     branches:
       - main
-    paths-ignore:
-      - ".github/**"
-      - "!.github/workflows/test.yml"
-      - "_docs/**"
-      - "_examples/**"
-      - "README*.md"
-      - ".gitignore"
-      - "ui/flutter/.gitignore"
+    paths:
+      - "bind/**"
+      - "cmd/**"
+      - "internal/**"
+      - "pkg/**"
+      - "ui/**"
+      - ".github/workflows/test.yml"
+      - "go.mod"
+      - "go.sum"
 
 jobs:
   #  lint:
