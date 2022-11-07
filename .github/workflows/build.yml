@@ -329,7 +329,7 @@ jobs:
         env:
           VERSION: ${{ needs.get_release.outputs.tag_name }}
         run: |
-          tag=liwei2633/gopeed:$VERSION
+          tag=liwei2633/gopeed:${VERSION:1}
           docker build -t $tag .
           docker login -u liwei2633 -p ${{ secrets.DOCKER_PASSWORD }}
           docker push $tag
