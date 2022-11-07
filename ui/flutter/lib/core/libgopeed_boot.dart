@@ -9,7 +9,7 @@ class LibgopeedConfig {
 
   LibgopeedConfig({
     this.network = "tcp",
-    this.address = "127.0.0.1:9999",
+    this.address = "127.0.0.1:0",
     this.refreshInterval = 500,
   });
 }

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
+import 'package:gopeed/util/util.dart';
 import 'model/create_task.dart';
 import 'model/request.dart';
 import 'model/resource.dart';
@@ -26,7 +27,9 @@ class _Client {
       final isUnixSocket = LibgopeedBoot.instance.config.network == 'unix';
       dio.options.baseUrl = isUnixSocket
           ? 'http://127.0.0.1'
-          : 'http://${LibgopeedBoot.instance.config.address}';
+          : (Util.isWeb()
+              ? ""
+              : 'http://${LibgopeedBoot.instance.config.address}');
       _instance!.dio = dio;
       if (isUnixSocket) {
         (_instance!.dio.httpClientAdapter as DefaultHttpClientAdapter)

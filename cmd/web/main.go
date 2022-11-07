@@ -26,7 +26,7 @@ func main() {
 	cfg := &model.StartConfig{
 		Network:   "tcp",
 		Address:   "127.0.0.1:9999",
-		Storage:   model.StorageMem,
+		Storage:   model.StorageBolt,
 		WebEnable: true,
 		WebFS:     sub,
 	}

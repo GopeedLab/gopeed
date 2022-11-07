@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/i18n/messages.dart';
+import 'package:gopeed/util/util.dart';
 import '../../setting/setting.dart';
 import '../../widget/directory_selector.dart';
 
@@ -69,7 +70,9 @@ class SettingView extends GetView<SettingController> {
                           controller.setting.value.downloadDir) {
                         controller.setting.value.downloadDir =
                             downloadDirController.text;
-                        controller.clearTapStatus();
+                        if (Util.isDesktop()) {
+                          controller.clearTapStatus();
+                        }
 
                         await debounceSave();
                       }
