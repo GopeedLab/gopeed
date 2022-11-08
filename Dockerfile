@@ -10,7 +10,7 @@ WORKDIR /app
 COPY ./go.mod ./go.sum ./
 RUN go mod download
 COPY . .
-COPY --from=flutter /app/build/web/* ./cmd/web/dist/
+COPY --from=flutter /app/build/web ./cmd/web/dist
 RUN CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w" -o dist/gopeed github.com/monkeyWie/gopeed/cmd/web
 
 FROM alpine:3.14.2
