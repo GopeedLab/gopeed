@@ -25,7 +25,7 @@ Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、
 
 [点击前往](https://github.com/monkeyWie/gopeed/releases/latest)
 
-> 注：macos 版本运行如果提示损坏，请在终端执行 `xattr -d com.apple.quarantine /Applications/gopeed.app` 命令
+> 注：macos 版本运行如果提示损坏，请在终端执行 `xattr -d com.apple.quarantine /Applications/Gopeed.app` 命令
 
 ### 命令行工具
 

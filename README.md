@@ -25,7 +25,7 @@ Gopeed is a high-speed downloader developed by `Golang`+`Flutter`, which support
 
 [To Release](https://github.com/monkeyWie/gopeed/releases/latest)
 
-> Tips: If the macos open failed, please execute the `xattr -d com.apple.quarantine /Applications/gopeed.app` command in the terminal
+> Tips: If the macos open failed, please execute the `xattr -d com.apple.quarantine /Applications/Gopeed.app` command in the terminal
 
 ### Command tool
 
