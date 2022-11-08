@@ -13,6 +13,7 @@ on:
       - ".github/workflows/release.yml"
       - "go.mod"
       - "go.sum"
+      - "Dockerfile"
 
 jobs:
   release:
