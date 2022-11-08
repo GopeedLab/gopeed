@@ -38,7 +38,7 @@ go install github.com/monkeyWie/gopeed/cmd/gopeed
 ### Docker
 
 ```bash
-docker run -d liwei2633/gopeed -v /path/to/download:/download -p 9999:9999
+docker run -d -p 9999:9999 -v /path/to/download:/download liwei2633/gopeed
 ```
 
 When the docker container is running, you can access the web page through `http://localhost:9999`.
