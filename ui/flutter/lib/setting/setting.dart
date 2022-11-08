@@ -13,7 +13,7 @@ class Setting {
   String host = "127.0.0.1";
   int port = 0;
   int connections = 0;
-  String downloadDir = "";
+  late String downloadDir;
   late ThemeMode themeMode;
   late String locale;
 
@@ -44,10 +44,6 @@ class Setting {
       this.locale = locale;
     }
 
-    if (Util.isWeb()) {
-      downloadDir = "./";
-      return;
-    }
     if (Util.isAndroid()) {
       downloadDir =
           '${await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOADS)}/com.gopeed';
@@ -55,6 +51,9 @@ class Setting {
     }
 
     if (downloadDir.isEmpty) {
+      if (Util.isWeb()) {
+        downloadDir = './';
+      }
       if (Util.isDesktop()) {
         downloadDir = (await getDownloadsDirectory())!.path;
       }
