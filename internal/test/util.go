@@ -49,3 +49,7 @@ func ToJson(v interface{}) string {
 	buf, _ := json.Marshal(v)
 	return string(buf)
 }
+
+func JsonEqual(v1 any, v2 any) bool {
+	return ToJson(v1) == ToJson(v2)
+}

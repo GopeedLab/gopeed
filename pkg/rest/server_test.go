@@ -22,7 +22,15 @@ import (
 var (
 	restPort int
 
-	taskReq = &base.Request{}
+	taskReq = &base.Request{
+		Extra: map[string]any{
+			"method": "",
+			"header": map[string]string{
+				"User-Agent": "gopeed",
+			},
+			"body": "",
+		},
+	}
 	taskRes = &base.Resource{
 		Name:  test.BuildName,
 		Req:   taskReq,
@@ -39,9 +47,11 @@ var (
 	createReq = &model.CreateTask{
 		Res: taskRes,
 		Opts: &base.Options{
-			Path:        test.Dir,
-			Name:        test.DownloadName,
-			Connections: 2,
+			Path: test.Dir,
+			Name: test.DownloadName,
+			Extra: map[string]any{
+				"connections": 2,
+			},
 		},
 	}
 )
@@ -49,8 +59,8 @@ var (
 func TestResolve(t *testing.T) {
 	doTest(func() {
 		resp := httpRequestCheckOk[*base.Resource](http.MethodPost, "/api/v1/resolve", taskReq)
-		if !reflect.DeepEqual(taskRes, resp) {
-			t.Errorf("Resolve() got = %v, want %v", resp, taskRes)
+		if !test.JsonEqual(taskRes, resp) {
+			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp), test.ToJson(taskRes))
 		}
 	})
 }
@@ -187,19 +197,31 @@ func TestGetTasks(t *testing.T) {
 
 func TestGetAndPutConfig(t *testing.T) {
 	doTest(func() {
-		cfg := httpRequestCheckOk[*model.ServerConfig](http.MethodGet, "/api/v1/config", nil)
-
-		cfg.Port = 8888
-		cfg.Connections = 32
+		cfg := httpRequestCheckOk[*download.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
 		cfg.DownloadDir = "./download"
 		cfg.Extra = map[string]any{
 			"theme": "dark",
+			"port":  8888,
 		}
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/config", cfg)
 
-		newCfg := httpRequestCheckOk[*model.ServerConfig](http.MethodGet, "/api/v1/config", nil)
-		if !reflect.DeepEqual(newCfg, cfg) {
-			t.Errorf("GetAndPutConfig() got = %v, want %v", newCfg, cfg)
+		newCfg := httpRequestCheckOk[*download.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
+		if !test.JsonEqual(cfg, newCfg) {
+			t.Errorf("GetAndPutConfig() got = %v, want %v", test.ToJson(newCfg), test.ToJson(cfg))
+		}
+	})
+}
+
+func TestDoAction(t *testing.T) {
+	doTest(func() {
+		ret := httpRequestCheckOk[[][]string](http.MethodPost, "/api/v1/action", map[string]any{
+			"name":   "bt",
+			"action": "resolve",
+			"params": "https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt",
+		})
+
+		if len(ret) == 0 {
+			t.Errorf("DoAction() got = %v, want %v", len(ret), ">0")
 		}
 	})
 }

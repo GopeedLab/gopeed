@@ -25,12 +25,6 @@ func Resolve(w http.ResponseWriter, r *http.Request) {
 func CreateTask(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateTask
 	if util.ReadJson(w, r, &req) {
-		if req.Opts.Connections == 0 {
-			req.Opts.Connections = getServerConfig().Connections
-		}
-		if req.Opts.Path == "" {
-			req.Opts.Path = getServerConfig().DownloadDir
-		}
 		taskId, err := Downloader.Create(req.Res, req.Opts)
 		if err != nil {
 			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
@@ -106,7 +100,7 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func PutConfig(w http.ResponseWriter, r *http.Request) {
-	var cfg model.ServerConfig
+	var cfg download.DownloaderStoreConfig
 	if util.ReadJson(w, r, &cfg) {
 		if err := Downloader.PutConfig(&cfg); err != nil {
 			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
@@ -116,8 +110,21 @@ func PutConfig(w http.ResponseWriter, r *http.Request) {
 	util.WriteJsonOk(w, nil)
 }
 
-func getServerConfig() *model.ServerConfig {
-	var cfg model.ServerConfig
-	Downloader.GetConfig(&cfg)
-	return &cfg
+func DoAction(w http.ResponseWriter, r *http.Request) {
+	var action model.Action
+	if util.ReadJson(w, r, &action) {
+		ret, err := Downloader.Handle(action.Name, action.Action, action.Params)
+		if err != nil {
+			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
+			return
+		}
+		util.WriteJsonOk(w, model.NewResultWithData(ret))
+		return
+	}
+	util.WriteJsonOk(w, nil)
+}
+
+func getServerConfig() *download.DownloaderStoreConfig {
+	_, cfg, _ := Downloader.GetConfig()
+	return cfg
 }

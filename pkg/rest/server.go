@@ -63,19 +63,20 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	} else {
 		downloadCfg.Storage = download.NewMemStorage()
 	}
+	downloadCfg.Init()
 	downloadCfg.RefreshInterval = startCfg.RefreshInterval
-	Downloader = download.NewDownloader(downloadCfg.Init())
+	Downloader = download.NewDownloader(downloadCfg)
 	if err := Downloader.Setup(); err != nil {
 		return nil, nil, err
 	}
 
-	serverConfig := getAndPutServerConfig(startCfg)
+	host, port := getAndPutServerConfig(startCfg)
 	var address string
 	if startCfg.Network == "unix" {
 		address = startCfg.Address
 		util.SafeRemove(address)
 	} else {
-		address = net.JoinHostPort(serverConfig.Host, strconv.Itoa(serverConfig.Port))
+		address = net.JoinHostPort(host, strconv.Itoa(port))
 	}
 
 	listener, err := net.Listen(startCfg.Network, address)
@@ -93,6 +94,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodGet).Path("/api/v1/tasks").HandlerFunc(GetTasks)
 	r.Methods(http.MethodGet).Path("/api/v1/config").HandlerFunc(GetConfig)
 	r.Methods(http.MethodPut).Path("/api/v1/config").HandlerFunc(PutConfig)
+	r.Methods(http.MethodPost).Path("/api/v1/action").HandlerFunc(DoAction)
 	if startCfg.WebEnable {
 		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))
 	}
@@ -105,21 +107,23 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	return srv, listener, nil
 }
 
-func getAndPutServerConfig(startCfg *model.StartConfig) *model.ServerConfig {
-	var serverConfig model.ServerConfig
-	exist, err := Downloader.GetConfig(&serverConfig)
+func getAndPutServerConfig(startCfg *model.StartConfig) (host string, port int) {
+	exist, downloaderCfg, err := Downloader.GetConfig()
 	if err != nil {
 		// TODO log
 	}
 	// first start
 	if !exist {
 		if startCfg.Network == "tcp" {
-			host, port, _ := net.SplitHostPort(startCfg.Address)
-			serverConfig.Host = host
-			serverConfig.Port, _ = strconv.Atoi(port)
+			h, p, _ := net.SplitHostPort(startCfg.Address)
+			host = h
+			port, _ = strconv.Atoi(p)
+			downloaderCfg.Extra = map[string]any{
+				"host": host,
+				"port": port,
+			}
 		}
-		serverConfig.Init()
-		Downloader.PutConfig(serverConfig)
+		Downloader.PutConfig(downloaderCfg)
 	}
-	return &serverConfig
+	return
 }

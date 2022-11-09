@@ -1,6 +1,8 @@
 package http
 
-import "github.com/monkeyWie/gopeed/pkg/base"
+import (
+	"github.com/monkeyWie/gopeed/pkg/base"
+)
 
 type chunk struct {
 	Status     base.Status
@@ -17,8 +19,16 @@ func newChunk(begin int64, end int64) *chunk {
 	}
 }
 
-type extra struct {
-	Method string
-	Header map[string]string
-	Body   string
+type ReqExtra struct {
+	Method string            `json:"method"`
+	Header map[string]string `json:"header"`
+	Body   string            `json:"body"`
+}
+
+type OptsExtra struct {
+	Connections int `json:"connections"`
+}
+
+type config struct {
+	Connections int `json:"connections"`
 }

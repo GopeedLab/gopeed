@@ -1,6 +1,8 @@
 package bt
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
@@ -8,7 +10,9 @@ import (
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/util"
+	"net/http"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,7 +21,8 @@ import (
 var client *torrent.Client
 
 type Fetcher struct {
-	Ctl controller.Controller
+	Ctl *controller.Controller
+	*config
 
 	torrent *torrent.Torrent
 	res     *base.Resource
@@ -29,7 +34,11 @@ type Fetcher struct {
 	torrentPaths map[string]string
 }
 
-func (f *Fetcher) Setup(ctl controller.Controller) (err error) {
+func (f *Fetcher) Name() string {
+	return "bt"
+}
+
+func (f *Fetcher) Setup(ctl *controller.Controller) (err error) {
 	f.Ctl = ctl
 	var once sync.Once
 	once.Do(func() {
@@ -59,6 +68,9 @@ func (f *Fetcher) Setup(ctl controller.Controller) (err error) {
 
 		f.torrentPaths = make(map[string]string)
 	})
+
+	// load config
+	f.config = &config{}
 	return
 }
 
@@ -105,9 +117,7 @@ func (f *Fetcher) Resolve(req *base.Request) (res *base.Resource, err error) {
 		Name:  f.torrent.Name(),
 		Range: true,
 		Files: make([]*base.FileInfo, len(f.torrent.Files())),
-		Extra: map[string]any{
-			"infoHash": f.torrent.InfoHash().String(),
-		},
+		Hash:  f.torrent.InfoHash().String(),
 	}
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
@@ -130,10 +140,9 @@ func (f *Fetcher) Create(res *base.Resource, opts *base.Options) (err error) {
 		}
 	}
 	if f.opts.Path != "" {
-		if extra, ok := res.Extra.(map[string]any); ok {
-			f.torrentPaths[extra["infoHash"].(string)] = f.opts.Path
-		}
+		f.torrentPaths[res.Hash] = f.opts.Path
 	}
+
 	f.progress = make(fetcher.Progress, len(f.opts.SelectFiles))
 	f.ready.Store(false)
 	return nil
@@ -192,6 +201,18 @@ func (f *Fetcher) addTorrent(url string, resolve bool) (err error) {
 	if err != nil {
 		return
 	}
+	var cfg config
+	exist, err := f.Ctl.GetConfig(&cfg)
+	if err != nil {
+		return
+	}
+	if exist && len(cfg.Trackers) > 0 {
+		announceList := make([][]string, 0)
+		for _, tracker := range cfg.Trackers {
+			announceList = append(announceList, []string{tracker})
+		}
+		f.torrent.AddTrackers(announceList)
+	}
 	<-f.torrent.GotInfo()
 	if resolve {
 		return
@@ -211,6 +232,40 @@ func (fb *FetcherBuilder) Schemes() []string {
 
 func (fb *FetcherBuilder) Build() fetcher.Fetcher {
 	return &Fetcher{}
+}
+
+func (fb *FetcherBuilder) Handle(action string, params any) (ret any, err error) {
+	switch action {
+	// resolve tracker subscribe url
+	case "resolve":
+		url, ok := params.(string)
+		if !ok || url == "" {
+			return nil, base.BadParams
+		}
+		resp, err := http.Get(url)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("http request fail, code: %d", resp.StatusCode)
+		}
+		ret := make([][]string, 0)
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line != "" {
+				ret = append(ret, []string{line})
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			return nil, err
+		}
+		return ret, nil
+	default:
+		return nil, base.NotFound
+	}
+	return
 }
 
 func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {

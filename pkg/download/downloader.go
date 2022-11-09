@@ -4,8 +4,6 @@ import (
 	"errors"
 	"github.com/monkeyWie/gopeed/internal/controller"
 	"github.com/monkeyWie/gopeed/internal/fetcher"
-	"github.com/monkeyWie/gopeed/internal/protocol/bt"
-	"github.com/monkeyWie/gopeed/internal/protocol/http"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/util"
 	"strings"
@@ -32,7 +30,6 @@ type Progress struct {
 }
 
 type Downloader struct {
-	controller    *controller.DefaultController
 	fetchBuilders map[string]fetcher.FetcherBuilder
 	storage       Storage
 	tasks         []*Task
@@ -43,34 +40,6 @@ type Downloader struct {
 	closed          atomic.Bool
 }
 
-type DownloaderConfig struct {
-	Controller    *controller.DefaultController
-	FetchBuilders []fetcher.FetcherBuilder
-	Storage       Storage
-
-	// RefreshInterval time duration to refresh task progress(ms)
-	RefreshInterval int
-}
-
-func (cfg *DownloaderConfig) Init() *DownloaderConfig {
-	if cfg.Controller == nil {
-		cfg.Controller = controller.NewController()
-	}
-	if len(cfg.FetchBuilders) == 0 {
-		cfg.FetchBuilders = []fetcher.FetcherBuilder{
-			new(http.FetcherBuilder),
-			new(bt.FetcherBuilder),
-		}
-	}
-	if cfg.Storage == nil {
-		cfg.Storage = NewMemStorage()
-	}
-	if cfg.RefreshInterval == 0 {
-		cfg.RefreshInterval = 1000
-	}
-	return cfg
-}
-
 func NewDownloader(cfg *DownloaderConfig) *Downloader {
 	if cfg == nil {
 		cfg = &DownloaderConfig{}
@@ -78,7 +47,6 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 	cfg.Init()
 
 	d := &Downloader{
-		controller:      cfg.Controller,
 		fetchBuilders:   make(map[string]fetcher.FetcherBuilder),
 		refreshInterval: cfg.RefreshInterval,
 		storage:         cfg.Storage,
@@ -166,10 +134,18 @@ func (d *Downloader) buildFetcher(url string) (fetcher.FetcherBuilder, fetcher.F
 	}
 	if ok {
 		fetcher := fetchBuilder.Build()
-		fetcher.Setup(d.controller)
+		d.setupFetcher(fetcher)
 		return fetchBuilder, fetcher, nil
 	}
 	return nil, nil, errors.New("unsupported protocol")
+}
+
+func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
+	ctl := controller.NewController()
+	ctl.GetConfig = func(v any) (bool, error) {
+		return d.getProtocolConfig(fetcher.Name(), v)
+	}
+	fetcher.Setup(ctl)
 }
 
 func (d *Downloader) Resolve(req *base.Request) (*base.Resource, error) {
@@ -189,13 +165,19 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (taskId stri
 	if opts == nil {
 		opts = &base.Options{}
 	}
-	if !res.Range || opts.Connections < 1 {
-		opts.Connections = 1
-	}
 	if len(opts.SelectFiles) == 0 {
 		opts.SelectFiles = make([]int, 0)
 		for i := range res.Files {
 			opts.SelectFiles = append(opts.SelectFiles, i)
+		}
+	}
+	if opts.Path == "" {
+		exist, storeConfig, err := d.GetConfig()
+		if err != nil {
+			return "", err
+		}
+		if exist {
+			opts.Path = storeConfig.DownloadDir
 		}
 	}
 
@@ -349,6 +331,16 @@ func (d *Downloader) Clear() error {
 	return nil
 }
 
+func (d *Downloader) Handle(name string, action string, params any) (ret any, err error) {
+	for _, fb := range d.fetchBuilders {
+		f := fb.Build()
+		if name == f.Name() {
+			return fb.Handle(action, params)
+		}
+	}
+	return nil, base.NotFound
+}
+
 func (d *Downloader) Listener(fn Listener) {
 	d.listener = fn
 }
@@ -380,12 +372,34 @@ func (d *Downloader) GetTasks() []*Task {
 	return d.tasks
 }
 
-func (d *Downloader) GetConfig(v any) (bool, error) {
-	return d.storage.Get(bucketConfig, "config", v)
+func (d *Downloader) GetConfig() (bool, *DownloaderStoreConfig, error) {
+	var cfg DownloaderStoreConfig
+	exist, err := d.storage.Get(bucketConfig, "config", &cfg)
+	if err != nil {
+		return false, nil, err
+	}
+	return exist, &cfg, nil
 }
 
-func (d *Downloader) PutConfig(v any) error {
+func (d *Downloader) PutConfig(v *DownloaderStoreConfig) error {
 	return d.storage.Put(bucketConfig, "config", v)
+}
+
+func (d *Downloader) getProtocolConfig(name string, v any) (bool, error) {
+	exist, cfg, err := d.GetConfig()
+	if err != nil {
+		return false, err
+	}
+	if !exist {
+		return false, nil
+	}
+	if cfg.ProtocolExtra == nil || cfg.ProtocolExtra[name] == nil {
+		return false, nil
+	}
+	if err := util.MapToStruct(cfg.ProtocolExtra[name], v); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (d *Downloader) watch(task *Task) {
@@ -437,7 +451,7 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 			task.fetcher = fetcherBuilder.Build()
 			task.fetcher.Create(task.Res, task.Opts)
 		}
-		task.fetcher.Setup(d.controller)
+		d.setupFetcher(task.fetcher)
 		go d.watch(task)
 	}
 	return nil

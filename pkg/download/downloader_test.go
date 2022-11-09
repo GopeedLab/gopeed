@@ -1,6 +1,7 @@
 package download
 
 import (
+	"github.com/monkeyWie/gopeed/internal/protocol/http"
 	"github.com/monkeyWie/gopeed/internal/test"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"reflect"
@@ -68,9 +69,11 @@ func TestDownloader_Create(t *testing.T) {
 		}
 	})
 	_, err = downloader.Create(res, &base.Options{
-		Path:        test.Dir,
-		Name:        test.DownloadName,
-		Connections: 4,
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -103,9 +106,11 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	}
 
 	id, err := downloader.Create(res, &base.Options{
-		Path:        test.Dir,
-		Name:        test.DownloadName,
-		Connections: 4,
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -147,4 +152,89 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	}
 
 	downloader.Clear()
+}
+
+func TestDownloader_Handle(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	ret, err := downloader.Handle("bt", "resolve", "https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, ok := ret.([][]string)
+	if !ok {
+		t.Errorf("Handle() got = %T, want %v", ret, "[][]string")
+	}
+	if len(list) == 0 {
+		t.Errorf("Handle() got = %v, want %v", len(list), ">0")
+	}
+
+	_, err = downloader.Handle("bt", "no", nil)
+	if err != base.NotFound {
+		t.Errorf("Handle() got = %v, want %v", err, base.NotFound)
+	}
+
+	_, err = downloader.Handle("http", "no", nil)
+	if err != base.NotFound {
+		t.Errorf("Handle() got = %v, want %v", err, base.NotFound)
+	}
+}
+
+func TestDownloader_Protocol_Config(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	var httpCfg map[string]any
+	exits, err := downloader.getProtocolConfig("http", &httpCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exits {
+		t.Errorf("getProtocolConfig() got = %v, want %v", exits, false)
+	}
+
+	storeCfg := &DownloaderStoreConfig{
+		RefreshInterval: 500,
+		DownloadDir:     "./downloads",
+		ProtocolExtra: map[string]any{
+			"http": map[string]any{
+				"connections": 4,
+			},
+			"bt": map[string]any{
+				"trackerSubscribeUrls": []string{
+					"https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt",
+				},
+				"trackers": []string{
+					"udp://tracker.coppersurfer.tk:6969/announce",
+					"udp://tracker.leechers-paradise.org:6969/announce",
+				},
+			},
+		},
+		Extra: map[string]any{
+			"theme": "dark",
+		},
+	}
+
+	if err := downloader.PutConfig(storeCfg); err != nil {
+		t.Fatal(err)
+	}
+
+	exits, newStoreCfg, err := downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exits {
+		t.Errorf("GetConfig() got = %v, want %v", exits, true)
+	}
+
+	if !test.JsonEqual(storeCfg, newStoreCfg) {
+		t.Errorf("GetConfig() got = %v, want %v", test.ToJson(storeCfg), test.ToJson(newStoreCfg))
+	}
 }

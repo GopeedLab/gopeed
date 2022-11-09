@@ -32,27 +32,3 @@ func (cfg *StartConfig) Init() *StartConfig {
 	}
 	return cfg
 }
-
-// ServerConfig is present in the database
-type ServerConfig struct {
-	Host string `json:"host"`
-	Port int    `json:"port"`
-
-	Connections int    `json:"connections"`
-	DownloadDir string `json:"downloadDir"`
-
-	Extra map[string]any `json:"extra"`
-}
-
-func (cfg *ServerConfig) Init() *ServerConfig {
-	if cfg.Host == "" {
-		cfg.Host = "127.0.0.1"
-	}
-	if cfg.Port < 0 {
-		cfg.Port = 0
-	}
-	if cfg.Connections <= 0 {
-		cfg.Connections = 16
-	}
-	return cfg
-}

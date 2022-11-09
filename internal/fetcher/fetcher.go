@@ -7,7 +7,9 @@ import (
 
 // 对应协议的下载支持
 type Fetcher interface {
-	Setup(ctl controller.Controller) error
+	Name() string
+
+	Setup(ctl *controller.Controller) error
 	// 解析请求
 	Resolve(req *base.Request) (res *base.Resource, err error)
 	// 创建任务
@@ -27,6 +29,9 @@ type FetcherBuilder interface {
 	Schemes() []string
 	Build() Fetcher
 
+	// Handle custom specific actions
+	Handle(action string, params any) (ret any, err error)
+
 	// Store 存储任务
 	Store(fetcher Fetcher) (any, error)
 	// Restore 恢复任务
@@ -34,11 +39,11 @@ type FetcherBuilder interface {
 }
 
 type DefaultFetcher struct {
-	Ctl    controller.Controller
+	Ctl    *controller.Controller
 	DoneCh chan error
 }
 
-func (f *DefaultFetcher) Setup(ctl controller.Controller) (err error) {
+func (f *DefaultFetcher) Setup(ctl *controller.Controller) (err error) {
 	f.Ctl = ctl
 	f.DoneCh = make(chan error, 1)
 	return
