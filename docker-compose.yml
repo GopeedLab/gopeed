@@ -7,5 +7,5 @@ services:
       - 9999:9999 # HTTP port (host:container)
     image: liwei2633/gopeed
     volumes:
-      - /path/to/download:/download # replace with your prefer path
+      - ~/Downloads:/download # replace with your prefer path
     restart: unless-stopped
