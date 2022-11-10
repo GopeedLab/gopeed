@@ -37,9 +37,35 @@ go install github.com/monkeyWie/gopeed/cmd/gopeed
 
 ### Docker
 
+#### Start directly
+
 ```bash
 docker run -d -p 9999:9999 -v /path/to/download:/download liwei2633/gopeed
 ```
+
+#### Using Docker Compose
+
+```yaml
+version: '3'
+
+services:
+  gopeed:
+    container_name: gopeed
+    ports:
+      - 9999:9999
+    image: liwei2633/gopeed
+    volumes:
+      - ~/Downloads:/download
+    restart: unless-stopped
+```
+
+Use the command below to start container:
+
+```bash
+docker compose up -d
+```
+
+#### Access Gopeed
 
 When the docker container is running, you can access the web page through `http://localhost:9999`.
 > Tip: Modify the download path to `/download` on the setting page to access the downloaded files on the host.
