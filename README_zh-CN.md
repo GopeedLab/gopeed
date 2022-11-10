@@ -44,6 +44,22 @@ docker run -d -p 9999:9999 -v /path/to/download:/download liwei2633/gopeed
 当 docker 容器运行时，可以通过 `http://localhost:9999` 访问 web 页面。
 > 提示：在设置页面把下载路径修改为 `/download` 以便在宿主机访问下载完的文件。
 
+#### Docker Compose
+
+```yaml
+version: '3'
+
+services:
+  gopeed:
+    container_name: gopeed
+    ports:
+      - 9999:9999
+    image: liwei2633/gopeed
+    volumes:
+      - /path/to/download:/download
+    restart: unless-stopped
+```
+
 ## 界面展示
 
 ![](_docs/img/ui-demo.png)
