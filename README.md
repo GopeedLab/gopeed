@@ -41,6 +41,9 @@ go install github.com/monkeyWie/gopeed/cmd/gopeed
 docker run -d -p 9999:9999 -v /path/to/download:/download liwei2633/gopeed
 ```
 
+When the docker container is running, you can access the web page through `http://localhost:9999`.
+> Tip: Modify the download path to `/download` on the setting page to access the downloaded files on the host.
+
 #### Docker Compose
 
 ```yaml
@@ -56,9 +59,6 @@ services:
       - /path/to/download:/download
     restart: unless-stopped
 ```
-
-When the docker container is running, you can access the web page through `http://localhost:9999`.
-> Tip: Modify the download path to `/download` on the setting page to access the downloaded files on the host.
 
 ## Showcase
 
