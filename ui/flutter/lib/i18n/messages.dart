@@ -88,7 +88,7 @@ class _Messages extends Translations {
           'home.setting': 'Настройки',
           'create.title': 'Создать задачу',
           'create.downloadLink': 'Ссылка для скачивание',
-          'create.downloadLinkValid': 'Пожалуйста, введите ссылку для скачивание',
+          'create.downloadLinkValid': 'Пожалуйста, введите ссылку для скачивания',
           'create.downloadLinkHit':
               'Пожалуйста, введите ссылку для скачивания, HTTP/HTTPS/MAGNET supported@append',
           'create.downloadLinkHitDesktop':
