@@ -16,6 +16,7 @@ const enUS = {
     'create.selectFile': 'Select File',
     'setting.title': 'Setting',
     'setting.basic': 'Basic',
+    'setting.advanced': 'Advanced',
     'setting.theme': 'Theme',
     'setting.themeSystem': 'System',
     'setting.themeLight': 'Light',
