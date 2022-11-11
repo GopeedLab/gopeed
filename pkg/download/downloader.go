@@ -2,8 +2,10 @@ package download
 
 import (
 	"errors"
+	"fmt"
 	"github.com/monkeyWie/gopeed/internal/controller"
 	"github.com/monkeyWie/gopeed/internal/fetcher"
+	"github.com/monkeyWie/gopeed/internal/test"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/util"
 	"strings"
@@ -393,10 +395,12 @@ func (d *Downloader) getProtocolConfig(name string, v any) (bool, error) {
 	if !exist {
 		return false, nil
 	}
-	if cfg.ProtocolExtra == nil || cfg.ProtocolExtra[name] == nil {
+	if cfg.ProtocolConfig == nil || cfg.ProtocolConfig[name] == nil {
 		return false, nil
 	}
-	if err := util.MapToStruct(cfg.ProtocolExtra[name], v); err != nil {
+	// TODO remove
+	fmt.Println(test.ToJson(cfg.ProtocolConfig[name]))
+	if err := util.MapToStruct(cfg.ProtocolConfig[name], v); err != nil {
 		return false, err
 	}
 	return true, nil

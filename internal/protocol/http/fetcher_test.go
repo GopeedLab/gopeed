@@ -7,6 +7,7 @@ import (
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/internal/test"
 	"github.com/monkeyWie/gopeed/pkg/base"
+	"github.com/monkeyWie/gopeed/pkg/protocol/http"
 	"net"
 	"reflect"
 	"testing"
@@ -144,7 +145,7 @@ func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, 
 	opts = &base.Options{
 		Name: test.DownloadName,
 		Path: test.Dir,
-		Extra: OptsExtra{
+		Extra: http.OptsExtra{
 			Connections: connections,
 		},
 	}
@@ -174,7 +175,7 @@ func downloadNormal(listener net.Listener, connections int, t *testing.T) {
 
 func downloadPost(listener net.Listener, connections int, t *testing.T) {
 	fetcher, _, _ := downloadReady(listener, connections, t)
-	fetcher.(*Fetcher).res.Req.Extra = &ReqExtra{
+	fetcher.(*Fetcher).res.Req.Extra = &http.ReqExtra{
 		Method: "POST",
 		Header: map[string]string{
 			"Authorization": "Bearer 123456",

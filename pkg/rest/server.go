@@ -9,7 +9,6 @@ import (
 	"github.com/monkeyWie/gopeed/pkg/util"
 	"net"
 	"net/http"
-	"strconv"
 )
 
 var (
@@ -70,16 +69,11 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		return nil, nil, err
 	}
 
-	host, port := getAndPutServerConfig(startCfg)
-	var address string
 	if startCfg.Network == "unix" {
-		address = startCfg.Address
-		util.SafeRemove(address)
-	} else {
-		address = net.JoinHostPort(host, strconv.Itoa(port))
+		util.SafeRemove(startCfg.Address)
 	}
 
-	listener, err := net.Listen(startCfg.Network, address)
+	listener, err := net.Listen(startCfg.Network, startCfg.Address)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -105,25 +99,4 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		handlers.AllowedOrigins([]string{"*"}),
 	)(r)}
 	return srv, listener, nil
-}
-
-func getAndPutServerConfig(startCfg *model.StartConfig) (host string, port int) {
-	exist, downloaderCfg, err := Downloader.GetConfig()
-	if err != nil {
-		// TODO log
-	}
-	// first start
-	if !exist {
-		if startCfg.Network == "tcp" {
-			h, p, _ := net.SplitHostPort(startCfg.Address)
-			host = h
-			port, _ = strconv.Atoi(p)
-			downloaderCfg.Extra = map[string]any{
-				"host": host,
-				"port": port,
-			}
-		}
-		Downloader.PutConfig(downloaderCfg)
-	}
-	return
 }

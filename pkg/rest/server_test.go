@@ -200,8 +200,11 @@ func TestGetAndPutConfig(t *testing.T) {
 		cfg := httpRequestCheckOk[*download.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
 		cfg.DownloadDir = "./download"
 		cfg.Extra = map[string]any{
+			"serverConfig": &Config{
+				Host: "127.0.0.1",
+				Port: 8080,
+			},
 			"theme": "dark",
-			"port":  8888,
 		}
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/config", cfg)
 

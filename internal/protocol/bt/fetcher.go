@@ -22,7 +22,6 @@ var client *torrent.Client
 
 type Fetcher struct {
 	Ctl *controller.Controller
-	*config
 
 	torrent *torrent.Torrent
 	res     *base.Resource
@@ -68,9 +67,6 @@ func (f *Fetcher) Setup(ctl *controller.Controller) (err error) {
 
 		f.torrentPaths = make(map[string]string)
 	})
-
-	// load config
-	f.config = &config{}
 	return
 }
 

@@ -18,10 +18,10 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
 
 Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
       'id': instance.id,
-      'res': instance.res,
-      'opts': instance.opts,
+      'res': instance.res.toJson(),
+      'opts': instance.opts.toJson(),
       'status': _$StatusEnumMap[instance.status]!,
-      'progress': instance.progress,
+      'progress': instance.progress.toJson(),
       'size': instance.size,
       'createdAt': instance.createdAt.toIso8601String(),
     };

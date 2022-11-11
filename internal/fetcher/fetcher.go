@@ -5,36 +5,40 @@ import (
 	"github.com/monkeyWie/gopeed/pkg/base"
 )
 
-// 对应协议的下载支持
+// Fetcher defines the interface for a download protocol.
 type Fetcher interface {
+	// Name return the name of the protocol.
 	Name() string
 
 	Setup(ctl *controller.Controller) error
-	// 解析请求
+	// Resolve resource info from request
 	Resolve(req *base.Request) (res *base.Resource, err error)
-	// 创建任务
+	// Create ready to download, but not started
 	Create(res *base.Resource, opts *base.Options) (err error)
 	Start() (err error)
 	Pause() (err error)
 	Continue() (err error)
 	Close() (err error)
 
-	// 获取任务各个文件下载进度
+	// Progress returns the progress of the download.
 	Progress() Progress
-	// 该方法会一直阻塞，直到任务下载结束
+	// Wait for the download to complete, this method will block until the download is done.
 	Wait() (err error)
 }
 
+// FetcherBuilder defines the interface for a fetcher builder.
 type FetcherBuilder interface {
+	// Schemes returns the schemes supported by the fetcher.
 	Schemes() []string
+	// Build returns a new fetcher.
 	Build() Fetcher
 
 	// Handle custom specific actions
 	Handle(action string, params any) (ret any, err error)
 
-	// Store 存储任务
+	// Store fetcher
 	Store(fetcher Fetcher) (any, error)
-	// Restore 恢复任务
+	// Restore fetcher
 	Restore() (v any, f func(res *base.Resource, opts *base.Options, v any) Fetcher)
 }
 
@@ -53,10 +57,10 @@ func (f *DefaultFetcher) Wait() (err error) {
 	return <-f.DoneCh
 }
 
-// 获取任务中各个文件的已下载字节数
+// Progress is a map of the progress of each file in the torrent.
 type Progress []int64
 
-// TotalDownloaded 获取任务总下载字节数
+// TotalDownloaded returns the total downloaded bytes.
 func (p Progress) TotalDownloaded() int64 {
 	total := int64(0)
 	for _, d := range p {

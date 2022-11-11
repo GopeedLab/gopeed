@@ -19,7 +19,7 @@ func WriteJsonOk(w http.ResponseWriter, v any) {
 }
 
 func WriteJson(w http.ResponseWriter, code int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
 }

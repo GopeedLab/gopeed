@@ -1,9 +1,9 @@
 package download
 
 import (
-	"github.com/monkeyWie/gopeed/internal/protocol/http"
 	"github.com/monkeyWie/gopeed/internal/test"
 	"github.com/monkeyWie/gopeed/pkg/base"
+	"github.com/monkeyWie/gopeed/pkg/protocol/http"
 	"reflect"
 	"sync"
 	"testing"
@@ -203,7 +203,7 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 	storeCfg := &DownloaderStoreConfig{
 		RefreshInterval: 500,
 		DownloadDir:     "./downloads",
-		ProtocolExtra: map[string]any{
+		ProtocolConfig: map[string]any{
 			"http": map[string]any{
 				"connections": 4,
 			},

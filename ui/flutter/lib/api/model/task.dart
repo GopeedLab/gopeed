@@ -7,7 +7,7 @@ part 'task.g.dart';
 
 enum Status { ready, running, pause, error, done }
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class Task {
   String id;
   Resource res;

@@ -24,6 +24,9 @@ func (cfg *StartConfig) Init() *StartConfig {
 	if cfg.Network == "" {
 		cfg.Network = "tcp"
 	}
+	if cfg.Address == "" {
+		cfg.Address = "127.0.0.1:0"
+	}
 	if cfg.Storage == "" {
 		cfg.Storage = StorageBolt
 	}

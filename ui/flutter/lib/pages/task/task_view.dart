@@ -2,61 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../api/api.dart';
-import '../../api/model/task.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../api/api.dart';
+import '../../api/model/task.dart';
 import '../../util/util.dart';
 import 'task_controller.dart';
-
-class TaskView extends GetView<TaskController> {
-  const TaskView({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(56),
-            child: AppBar(
-              bottom: TabBar(
-                tabs: const [
-                  Tab(
-                    icon: Icon(Icons.file_download),
-                  ),
-                  Tab(
-                    icon: Icon(Icons.done),
-                  ),
-                ],
-                onTap: (index) {
-                  controller.tabIndex.value = index;
-                  if (index == 1) {
-                    controller.loadTab();
-                  }
-                },
-              ),
-            )),
-        body: TabBarView(
-          children: [
-            Obx(() => buildTaskList(controller.unDoneTasks)),
-            Obx(() => buildTaskList(controller.doneTasks)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildTaskList(List<Task> tasks) {
-    return ListView.builder(
-      itemCount: tasks.length,
-      itemBuilder: (context, index) {
-        return Item(task: tasks[index]);
-      },
-    );
-  }
-}
 
 class Item extends StatelessWidget {
   final Task task;
@@ -144,6 +96,18 @@ class Item extends StatelessWidget {
     return list;
   }
 
+  double getProgress() {
+    return task.size <= 0 ? 1 : task.progress.downloaded / task.size;
+  }
+
+  bool isDone() {
+    return task.status == Status.done;
+  }
+
+  bool isRunning() {
+    return task.status == Status.running;
+  }
+
   Future<void> _showDeleteDialog(String id) {
     final keep = true.obs;
 
@@ -182,16 +146,52 @@ class Item extends StatelessWidget {
               ],
             ));
   }
+}
 
-  double getProgress() {
-    return task.size <= 0 ? 1 : task.progress.downloaded / task.size;
+class TaskView extends GetView<TaskController> {
+  const TaskView({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(56),
+            child: AppBar(
+              bottom: TabBar(
+                tabs: const [
+                  Tab(
+                    icon: Icon(Icons.file_download),
+                  ),
+                  Tab(
+                    icon: Icon(Icons.done),
+                  ),
+                ],
+                onTap: (index) {
+                  if (controller.tabIndex.value != index) {
+                    controller.tabIndex.value = index;
+                    controller.loadTab();
+                  }
+                },
+              ),
+            )),
+        body: TabBarView(
+          children: [
+            Obx(() => buildTaskList(controller.unDoneTasks)),
+            Obx(() => buildTaskList(controller.doneTasks)),
+          ],
+        ),
+      ),
+    );
   }
 
-  bool isRunning() {
-    return task.status == Status.running;
-  }
-
-  bool isDone() {
-    return task.status == Status.done;
+  Widget buildTaskList(List<Task> tasks) {
+    return ListView.builder(
+      itemCount: tasks.length,
+      itemBuilder: (context, index) {
+        return Item(task: tasks[index]);
+      },
+    );
   }
 }

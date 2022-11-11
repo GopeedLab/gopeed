@@ -3,15 +3,14 @@ import 'dart:io';
 
 import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
-import 'package:gopeed/util/util.dart';
+import '../util/util.dart';
 import 'model/create_task.dart';
 import 'model/request.dart';
 import 'model/resource.dart';
 import 'model/result.dart';
 import 'model/task.dart';
 
-import '../core/libgopeed_boot.dart';
-import 'model/server_config.dart';
+import 'model/downloader_config.dart';
 
 class _Client {
   static _Client? _instance;
@@ -20,25 +19,22 @@ class _Client {
 
   _Client._internal();
 
-  factory _Client() {
+  factory _Client(String network, String address) {
     if (_instance == null) {
       _instance = _Client._internal();
       var dio = Dio();
-      final isUnixSocket = LibgopeedBoot.instance.config.network == 'unix';
+      final isUnixSocket = network == 'unix';
       dio.options.baseUrl = isUnixSocket
           ? 'http://127.0.0.1'
-          : (Util.isWeb()
-              ? ""
-              : 'http://${LibgopeedBoot.instance.config.address}');
+          : (Util.isWeb() ? "" : 'http://$address');
       _instance!.dio = dio;
       if (isUnixSocket) {
         (_instance!.dio.httpClientAdapter as DefaultHttpClientAdapter)
             .onHttpClientCreate = (client) {
           client.connectionFactory =
               (Uri uri, String? proxyHost, int? proxyPort) {
-            var address = InternetAddress(LibgopeedBoot.instance.config.address,
-                type: InternetAddressType.unix);
-            return Socket.startConnect(address, 0);
+            return Socket.startConnect(
+                InternetAddress(address, type: InternetAddressType.unix), 0);
           };
           return client;
         };
@@ -48,7 +44,11 @@ class _Client {
   }
 }
 
-var _client = _Client();
+late _Client _client;
+
+void init(String network, String address) {
+  _client = _Client(network, address);
+}
 
 Future<T> _parse<T>(
   Future<Response> Function() fetch,
@@ -57,7 +57,7 @@ Future<T> _parse<T>(
   try {
     var resp = await fetch();
     if (fromJsonT != null) {
-      return Result<T>.fromJson(jsonDecode(resp.data), fromJsonT).data as T;
+      return Result<T>.fromJson(resp.data, fromJsonT).data as T;
     } else {
       return null as T;
     }
@@ -65,8 +65,7 @@ Future<T> _parse<T>(
     if (e.response == null) {
       throw Exception("Server error");
     }
-    throw Exception(
-        Result.fromJson(jsonDecode(e.response?.data), (_) => null).msg);
+    throw Exception(Result.fromJson(e.response?.data, (_) => null).msg);
   }
 }
 
@@ -77,7 +76,6 @@ Future<Resource> resolve(Request request) async {
 }
 
 Future<String> createTask(CreateTask createTask) async {
-  print(jsonEncode(createTask));
   return _parse<String>(
       () => _client.dio.post("/api/v1/tasks", data: createTask),
       (data) => data as String);
@@ -103,11 +101,11 @@ Future<void> deleteTask(String id, bool force) async {
       () => _client.dio.delete("/api/v1/tasks/$id?force=$force"), null);
 }
 
-Future<ServerConfig> getConfig() async {
+Future<DownloaderConfig> getConfig() async {
   return _parse(() => _client.dio.get("/api/v1/config"),
-      (data) => ServerConfig.fromJson(data));
+      (data) => DownloaderConfig.fromJson(data));
 }
 
-Future<void> putConfig(ServerConfig config) async {
+Future<void> putConfig(DownloaderConfig config) async {
   return _parse(() => _client.dio.put("/api/v1/config", data: config), null);
 }
