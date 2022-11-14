@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/util/log_util.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,7 +64,16 @@ class AppController extends GetxController {
   }
 
   Future<void> loadDownloaderConfig() async {
-    downloaderConfig.value = await getConfig();
+    try {
+      downloaderConfig.value = await getConfig();
+    } catch (e) {
+      logger.w("load downloader config fail", e);
+      downloaderConfig.value = DownloaderConfig();
+    }
+    await _initDownloaderConfig();
+  }
+
+  _initDownloaderConfig() async {
     final config = downloaderConfig.value;
     config.protocolConfig ??= ProtocolConfig();
     if (config.protocolConfig!.http.connections == 0) {

@@ -26,7 +26,7 @@ const enUS = {
     'setting.connections': 'Connections',
     'setting.locale': 'Language',
     'setting.locale.zh_CN': 'Chinese(Simplified)',
-    'setting.locale.en_US': 'English(US)',
+    'setting.locale.en_US': 'English',
     'task.deleteTask': 'Delete Task',
     'task.deleteTaskTip': 'Keep downloaded files',
     'task.delete': 'Delete',

@@ -17,18 +17,21 @@ void main() async {
 Future<void> init() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final controller = Get.put(AppController());
   try {
-    final controller = Get.put(AppController());
     await controller.loadStartConfig();
-
     final startCfg = controller.startConfig.value;
     startCfg.runningPort =
         await LibgopeedBoot.instance.start(startCfg.network, startCfg.address);
     api.init(startCfg.network, startCfg.runningAddress);
-    await controller.loadDownloaderConfig();
+  } catch (e) {
+    logger.e("libgopeed init fail", e);
+  }
 
+  try {
+    await controller.loadDownloaderConfig();
     MacSecureUtil.loadBookmark();
   } catch (e) {
-    logger.e("init fail", e);
+    logger.e("load config fail", e);
   }
 }

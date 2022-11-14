@@ -1,11 +1,10 @@
 import 'package:get/get.dart';
 
 class SettingController extends GetxController {
-  final basicTapStatues = <int, bool>{}.obs;
-  final advancedTapStatues = <int, bool>{}.obs;
+  final tapStatues = <bool>[].obs;
 
   void clearTapStatus() {
-    basicTapStatues.clear();
-    advancedTapStatues.clear();
+    // set all tap status to false
+    tapStatues.value = tapStatues.map((e) => false).toList();
   }
 }

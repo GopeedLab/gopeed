@@ -25,7 +25,7 @@ const zhCN = {
     'setting.connections': '连接数',
     'setting.locale': '语言',
     'setting.locale.zh_CN': '中文（简体）',
-    'setting.locale.en_US': '英文（美国）',
+    'setting.locale.en_US': '英语',
     'task.deleteTask': '删除任务',
     'task.deleteTaskTip': '保留已下载的文件',
     'task.delete': '删除',

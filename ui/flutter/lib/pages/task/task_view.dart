@@ -34,7 +34,7 @@ class Item extends StatelessWidget {
                       flex: 1,
                       child: Text(
                         "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
-                        style: Get.textTheme.bodyText1
+                        style: context.textTheme.bodyText1
                             ?.copyWith(color: Get.theme.disabledColor),
                       ).padding(left: 18)),
                   Expanded(
@@ -43,7 +43,7 @@ class Item extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Text("${Util.fmtByte(task.progress.speed)} / s",
-                              style: Get.textTheme.subtitle2),
+                              style: context.textTheme.subtitle2),
                           ...buildActions()
                         ],
                       )),
@@ -111,15 +111,17 @@ class Item extends StatelessWidget {
   Future<void> _showDeleteDialog(String id) {
     final keep = true.obs;
 
+    final context = Get.context!;
+
     return showDialog<void>(
-        context: Get.context!,
+        context: context,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
               title: Text('task.deleteTask'.tr),
               content: Obx(() => CheckboxListTile(
                   value: keep.value,
                   title: Text('task.deleteTaskTip'.tr,
-                      style: Get.textTheme.bodyText1),
+                      style: context.textTheme.bodyText1),
                   onChanged: (v) {
                     keep.value = v!;
                   })),
