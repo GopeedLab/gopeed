@@ -172,7 +172,7 @@ class SettingView extends GetView<SettingController> {
         ipController.addListener(() async {});
         return TextField(
           key: key,
-          focusNode: focusNode,
+          focusNode: FocusNode(),
           controller: ipController,
           decoration: InputDecoration(
             hintText: 'Enter a search term',
@@ -242,40 +242,22 @@ class SettingView extends GetView<SettingController> {
         ));
   }
 
-  // void _tapInputWidget(GlobalKey key) {
-  //   GestureDetector? detector;
-  //   void searchForGestureDetector(BuildContext? element) {
-  //     element?.visitChildElements((element) {
-  //       if (element.widget is GestureDetector) {
-  //         detector = element.widget as GestureDetector?;
-  //       } else {
-  //         searchForGestureDetector(element);
-  //       }
-  //     });
-  //   }
-
-  //   final ro = key.currentContext?.findRenderObject();
-  //   if (ro is RenderBox) {
-  //     final offset = ro.localToGlobal(Offset.zero);
-  //     print('${offset.dx},${offset.dy}');
-  //     GestureBinding.instance.handlePointerEvent(PointerDownEvent(
-  //       position: offset,
-  //     ));
-  //   }
-
-  //   // searchForGestureDetector(key.currentContext);
-
-  //   // detector?.onTap?.call();
-  // }
-
   void _tapInputWidget(GlobalKey key) {
-    dynamic detector;
+    if (key.currentContext == null) {
+      return;
+    }
+
+    if (key.currentContext?.widget is TextField) {
+      final textField = key.currentContext?.widget as TextField;
+      textField.focusNode?.requestFocus();
+      return;
+    }
+
+    GestureDetector? detector;
     void searchForGestureDetector(BuildContext? element) {
       element?.visitChildElements((element) {
-        if (element.widget is GestureDetector ||
-            element.widget is TextSelectionGestureDetector) {
-          detector = element.widget;
-          return;
+        if (element.widget is GestureDetector) {
+          detector = element.widget as GestureDetector?;
         } else {
           searchForGestureDetector(element);
         }
@@ -283,15 +265,33 @@ class SettingView extends GetView<SettingController> {
     }
 
     searchForGestureDetector(key.currentContext);
-
-    if (detector != null) {
-      if (detector is GestureDetector) {
-        detector.onTap?.call();
-      } else if (detector is TextSelectionGestureDetector) {
-        detector.onTapDown?.call(TapDownDetails());
-      }
-    }
+    detector?.onTap?.call();
   }
+
+  // void _tapInputWidget(GlobalKey key) {
+  //   dynamic detector;
+  //   void searchForGestureDetector(BuildContext? element) {
+  //     element?.visitChildElements((element) {
+  //       if (element.widget is GestureDetector ||
+  //           element.widget is TextSelectionGestureDetector) {
+  //         detector = element.widget;
+  //         return;
+  //       } else {
+  //         searchForGestureDetector(element);
+  //       }
+  //     });
+  //   }
+
+  //   searchForGestureDetector(key.currentContext);
+
+  //   if (detector != null) {
+  //     if (detector is GestureDetector) {
+  //       detector.onTap?.call();
+  //     } else if (detector is TextSelectionGestureDetector) {
+  //       detector.onTapDown?.call(TapDownDetails());
+  //     }
+  //   }
+  // }
 
   Widget Function() _buildConfigItem(String label, String Function() text,
       Widget Function(Key key, FocusNode focusNode) input) {
