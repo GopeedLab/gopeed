@@ -108,7 +108,7 @@ class _Messages extends Translations {
           'setting.locale': 'Язык',
           'setting.locale.zh_CN': 'Китайский(Упрощенный)',
           'setting.locale.en_US': 'Английский(США)',
-          'setting.locale.ru_RU': 'Русский(Россия),
+          'setting.locale.ru_RU': 'Русский(Россия)',
           'task.deleteTask': 'Удалить задачу',
           'task.deleteTaskTip': 'Сохранить загруженные файлы',
           'task.delete': 'Удалить',
