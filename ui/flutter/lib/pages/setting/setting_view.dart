@@ -12,6 +12,7 @@ import '../app/app_controller.dart';
 import 'setting_controller.dart';
 
 const _padding = SizedBox(height: 10);
+const _configWidth = 250.0;
 
 class SettingView extends GetView<SettingController> {
   final _settingLocaleKey = 'setting.locale.';
@@ -40,14 +41,13 @@ class SettingView extends GetView<SettingController> {
     final basicConfigItems = [
       _buildConfigItem(
           'setting.theme'.tr,
-          () => _getThemeName(downloaderCfg.value.extra!.themeMode),
-          (Key key, FocusNode focusNode) => DropdownButton<String>(
+          () => _getThemeName(downloaderCfg.value.extra?.themeMode),
+          (Key key) => DropdownButton<String>(
                 key: key,
-                value: downloaderCfg.value.extra!.themeMode,
-                isDense: true,
+                value: downloaderCfg.value.extra?.themeMode,
                 onChanged: (value) async {
                   downloaderCfg.update((val) {
-                    val!.extra!.themeMode = value!;
+                    val?.extra?.themeMode = value!;
                   });
                   Get.changeThemeMode(ThemeMode.values.byName(value!));
                   controller.clearTapStatus();
@@ -63,7 +63,7 @@ class SettingView extends GetView<SettingController> {
               )),
       _buildConfigItem(
           'setting.downloadDir'.tr, () => downloaderCfg.value.downloadDir,
-          (Key key, FocusNode focusNode) {
+          (Key key) {
         final downloadDirController =
             TextEditingController(text: downloaderCfg.value.downloadDir);
         downloadDirController.addListener(() async {
@@ -108,11 +108,10 @@ class SettingView extends GetView<SettingController> {
       // }),
       _buildConfigItem(
           'setting.locale'.tr,
-          () => _getLocaleName(downloaderCfg.value.extra!.locale),
-          (Key key, FocusNode focusNode) => DropdownButton<String>(
+          () => _getLocaleName(downloaderCfg.value.extra?.locale),
+          (Key key) => DropdownButton<String>(
                 key: key,
-                focusNode: focusNode,
-                value: downloaderCfg.value.extra!.locale,
+                value: downloaderCfg.value.extra?.locale,
                 isDense: true,
                 onChanged: (value) async {
                   downloaderCfg.update((val) {
@@ -142,41 +141,120 @@ class SettingView extends GetView<SettingController> {
 
     final advancedConfigItems = [
       _buildConfigItem(
-        '后端协议',
-        () => startCfg.value.network == 'tcp' ? 'TCP' : 'Unix',
-        (Key key, FocusNode focusNode) => Row(
-          children: [
-            Expanded(
-              child: RadioListTile<String>(
-                value: 'tcp',
-                groupValue: startCfg.value.network,
-                onChanged: changeNetwork,
-                title: Text('TCP'),
+        '后端协议(重启后生效)',
+        () => startCfg.value.network == 'tcp'
+            ? 'TCP ${startCfg.value.address}'
+            : 'Unix',
+        (Key key) {
+          final items = <Widget>[
+            SizedBox(
+              width: 150,
+              child: DropdownButtonFormField<String>(
+                value: startCfg.value.network,
+                onChanged: (value) async {
+                  startCfg.update((val) {
+                    val!.network = value!;
+                  });
+
+                  await debounceSave();
+                },
+                items: [
+                  !Util.isMobile()
+                      ? const DropdownMenuItem<String>(
+                          value: 'tcp',
+                          child: Text('TCP'),
+                        )
+                      : null,
+                  Util.isUnix()
+                      ? const DropdownMenuItem<String>(
+                          value: 'unix',
+                          child: Text('Unix'),
+                        )
+                      : null,
+                ].where((e) => e != null).map((e) => e!).toList(),
               ),
-            ),
-            Expanded(
-              child: RadioListTile<String>(
-                value: 'unix',
-                groupValue: startCfg.value.network,
-                onChanged: changeNetwork,
-                title: Text('Unix'),
+            )
+          ];
+          if (Util.isDesktop() && startCfg.value.network == 'tcp') {
+            final arr = startCfg.value.address.split(":");
+            var ip = "127.0.0.1";
+            var port = "0";
+            if (arr.length > 1) {
+              ip = arr[0];
+              port = arr[1];
+            }
+
+            final ipController = TextEditingController(text: ip);
+            final portController = TextEditingController(text: port);
+            updateAddress() async {
+              final newAddress = "${ipController.text}:${portController.text}";
+              if (newAddress != startCfg.value.address) {
+                startCfg.value.address = newAddress;
+
+                await debounceSave();
+              }
+            }
+
+            ipController.addListener(updateAddress);
+            portController.addListener(updateAddress);
+            items.addAll([
+              const Padding(padding: EdgeInsets.only(left: 20)),
+              SizedBox(
+                width: 200,
+                child: TextFormField(
+                  controller: ipController,
+                  decoration: const InputDecoration(
+                    labelText: "IP",
+                    contentPadding: EdgeInsets.all(0.0),
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp("[0-9.]")),
+                  ],
+                ),
               ),
+              const Padding(padding: EdgeInsets.only(left: 10)),
+              SizedBox(
+                width: 200,
+                child: TextFormField(
+                  controller: portController,
+                  decoration: const InputDecoration(
+                    labelText: '端口',
+                    contentPadding: EdgeInsets.all(0.0),
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    _NumericalRangeFormatter(min: 0, max: 65535),
+                  ],
+                ),
+              ),
+            ]);
+          }
+
+          return Form(
+            child: Row(
+              children: items,
             ),
-          ],
-        ),
+          );
+        },
       ),
-      _buildConfigItem('IP', () => downloaderCfg.value.downloadDir,
-          (Key key, FocusNode focusNode) {
+      _buildConfigItem('接口鉴权', () => downloaderCfg.value.downloadDir,
+          (Key key) {
         final ipController =
             TextEditingController(text: downloaderCfg.value.downloadDir);
         ipController.addListener(() async {});
-        return TextField(
-          key: key,
-          focusNode: FocusNode(),
-          controller: ipController,
-          decoration: InputDecoration(
-            hintText: 'Enter a search term',
-          ),
+        return Row(
+          children: [
+            SizedBox(
+              width: 150,
+              child: SwitchListTile(
+                title: Text("开启"),
+                onChanged: (bool value) {},
+                value: true,
+              ),
+            ),
+          ],
         );
       })
     ];
@@ -190,54 +268,57 @@ class SettingView extends GetView<SettingController> {
           onTap: () {
             controller.clearTapStatus();
           },
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('setting.basic'.tr, style: context.textTheme.titleLarge),
-                _padding,
-                Obx(() => Card(
-                        child: Column(
-                      children: basicConfigItems.map((e) => e()).toList(),
-                    ))),
-                _padding,
-                Text('setting.advanced'.tr,
-                    style: context.textTheme.titleLarge),
-                _padding,
-                Obx(() => Card(
-                        child: Column(
-                      children: [
-                        ...advancedConfigItems.map((e) => e()).toList(),
-                        // DefaultTabController(
-                        //   length: 2,
-                        //   child: Column(
-                        //     mainAxisSize: MainAxisSize.min,
-                        //     children: <Widget>[
-                        //       Container(
-                        //         child: TabBar(tabs: [
-                        //           Tab(text: "HTTP"),
-                        //           Tab(text: "BitTorrent"),
-                        //         ]),
-                        //       ),
-                        //       Container(
-                        //         //Add this to give height
-                        //         height: MediaQuery.of(context).size.height,
-                        //         child: TabBarView(children: [
-                        //           Container(
-                        //             child: Text("Home Body"),
-                        //           ),
-                        //           Container(
-                        //             child: Text("Articles Body"),
-                        //           ),
-                        //         ]),
-                        //       ),
-                        //     ],
-                        //   ),
-                        // ),
-                      ],
-                    ))),
-              ],
-            ).paddingOnly(left: 16, right: 16, top: 16, bottom: 96),
+          child: Container(
+            alignment: Alignment.topLeft,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('setting.basic'.tr, style: context.textTheme.titleLarge),
+                  _padding,
+                  Obx(() => Card(
+                          child: Column(
+                        children: basicConfigItems.map((e) => e()).toList(),
+                      ))),
+                  _padding,
+                  Text('setting.advanced'.tr,
+                      style: context.textTheme.titleLarge),
+                  _padding,
+                  Obx(() => Card(
+                          child: Column(
+                        children: [
+                          ...advancedConfigItems.map((e) => e()).toList(),
+                          // DefaultTabController(
+                          //   length: 2,
+                          //   child: Column(
+                          //     mainAxisSize: MainAxisSize.min,
+                          //     children: <Widget>[
+                          //       Container(
+                          //         child: TabBar(tabs: [
+                          //           Tab(text: "HTTP"),
+                          //           Tab(text: "BitTorrent"),
+                          //         ]),
+                          //       ),
+                          //       Container(
+                          //         //Add this to give height
+                          //         height: MediaQuery.of(context).size.height,
+                          //         child: TabBarView(children: [
+                          //           Container(
+                          //             child: Text("Home Body"),
+                          //           ),
+                          //           Container(
+                          //             child: Text("Articles Body"),
+                          //           ),
+                          //         ]),
+                          //       ),
+                          //     ],
+                          //   ),
+                          // ),
+                        ],
+                      ))),
+                ],
+              ).paddingAll(16),
+            ),
           ),
         ));
   }
@@ -293,16 +374,15 @@ class SettingView extends GetView<SettingController> {
   //   }
   // }
 
-  Widget Function() _buildConfigItem(String label, String Function() text,
-      Widget Function(Key key, FocusNode focusNode) input) {
+  Widget Function() _buildConfigItem(
+      String label, String Function() text, Widget Function(Key key) input) {
     final tapStatues = controller.tapStatues;
     tapStatues.add(false);
     final i = controller.tapStatues.length - 1;
     final key = GlobalKey();
-    final focusNode = FocusNode();
     return () => ListTile(
         title: Text(label),
-        subtitle: tapStatues[i] ? input(key, focusNode) : Text(text()),
+        subtitle: tapStatues[i] ? input(key) : Text(text()),
         onTap: () {
           tapStatues[i] = true;
           // set other false
@@ -318,7 +398,7 @@ class SettingView extends GetView<SettingController> {
         });
   }
 
-  String _getLocaleName(String locale) {
+  String _getLocaleName(String? locale) {
     final localeKey = '$_settingLocaleKey${locale.toString()}';
     if (messages.keys[locale]?.containsKey(localeKey) ?? false) {
       return localeKey.tr;
@@ -333,14 +413,14 @@ class SettingView extends GetView<SettingController> {
         .toList();
   }
 
-  String _getThemeName(String themeMode) {
-    switch (ThemeMode.values.byName(themeMode)) {
-      case ThemeMode.system:
-        return 'setting.themeSystem'.tr;
+  String _getThemeName(String? themeMode) {
+    switch (ThemeMode.values.byName(themeMode ?? ThemeMode.system.name)) {
       case ThemeMode.light:
         return 'setting.themeLight'.tr;
       case ThemeMode.dark:
         return 'setting.themeDark'.tr;
+      default:
+        return 'setting.themeSystem'.tr;
     }
   }
 }
