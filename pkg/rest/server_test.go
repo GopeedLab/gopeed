@@ -229,9 +229,34 @@ func TestDoAction(t *testing.T) {
 	})
 }
 
+func TestAuthorization(t *testing.T) {
+	var cfg = &model.StartConfig{}
+	cfg.Init()
+	cfg.ApiToken = "123456"
+	fileListener := doStart(cfg)
+	defer func() {
+		if err := fileListener.Close(); err != nil {
+			panic(err)
+		}
+		Stop()
+	}()
+
+	code, _ := doHttpRequest[any](http.MethodGet, "/api/v1/config", nil, nil)
+	checkCode(code, http.StatusUnauthorized)
+
+	code, _ = doHttpRequest[any](http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": cfg.ApiToken,
+	}, nil)
+	checkCode(code, http.StatusOK)
+
+}
+
 func doTest(handler func()) {
 	testFunc := func(storage model.Storage) {
-		fileListener := doStart(storage)
+		var cfg = &model.StartConfig{}
+		cfg.Init()
+		cfg.Storage = storage
+		fileListener := doStart(cfg)
 		defer func() {
 			if err := fileListener.Close(); err != nil {
 				panic(err)
@@ -246,10 +271,8 @@ func doTest(handler func()) {
 	testFunc(model.StorageBolt)
 }
 
-func doStart(storage model.Storage) net.Listener {
-	port, err := Start((&model.StartConfig{
-		Storage: storage,
-	}).Init())
+func doStart(cfg *model.StartConfig) net.Listener {
+	port, err := Start(cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -257,7 +280,7 @@ func doStart(storage model.Storage) net.Listener {
 	return test.StartTestFileServer()
 }
 
-func httpRequest[T any](method string, path string, req any) (int, *model.Result[T]) {
+func doHttpRequest[T any](method string, path string, headers map[string]string, req any) (int, *model.Result[T]) {
 	var body io.Reader
 	if req != nil {
 		buf, _ := json.Marshal(req)
@@ -267,6 +290,11 @@ func httpRequest[T any](method string, path string, req any) (int, *model.Result
 	request, err := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:%d%s", restPort, path), body)
 	if err != nil {
 		panic(err)
+	}
+	if headers != nil {
+		for k, v := range headers {
+			request.Header.Set(k, v)
+		}
 	}
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
@@ -279,6 +307,10 @@ func httpRequest[T any](method string, path string, req any) (int, *model.Result
 		panic(err)
 	}
 	return response.StatusCode, &r
+}
+
+func httpRequest[T any](method string, path string, req any) (int, *model.Result[T]) {
+	return doHttpRequest[T](method, path, nil, req)
 }
 
 func httpRequestCheckOk[T any](method string, path string, req any) T {

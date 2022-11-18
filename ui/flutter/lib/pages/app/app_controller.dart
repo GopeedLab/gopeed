@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/core/common/start_config.dart';
 import 'package:gopeed/util/log_util.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,55 +13,58 @@ import '../../api/model/downloader_config.dart';
 import '../../i18n/messages.dart';
 import '../../util/util.dart';
 
-class StartConfig {
-  late String network;
-  late String address;
-  late int runningPort;
-
-  String get runningAddress {
-    if (network == 'unix') {
-      return address;
-    }
-    return '${address.split(':').first}:$runningPort';
-  }
-}
-
 const _startConfigNetwork = "start.network";
 const _startConfigAddress = "start.address";
+const _startConfigApiToken = "start.apiToken";
 
 const unixSocketPath = 'gopeed.sock';
 
 class AppController extends GetxController {
+  static StartConfig? _defaultStartConfig;
+
   final startConfig = StartConfig().obs;
+  final runningPort = 0.obs;
   final downloaderConfig = DownloaderConfig().obs;
 
-  Future<void> loadStartConfig() async {
-    final prefs = await SharedPreferences.getInstance();
-    final network = prefs.getString(_startConfigNetwork);
-    final address = prefs.getString(_startConfigAddress);
-
-    // loaded from shared preferences
-    if (network != null && address != null) {
-      startConfig.value.network = network;
-      startConfig.value.address = address;
-      return;
+  String runningAddress() {
+    if (startConfig.value.network == 'unix') {
+      return startConfig.value.address;
     }
+    return '${startConfig.value.address.split(':').first}:$runningPort';
+  }
 
-    // default value
+  Future<StartConfig> _initDefaultStartConfig() async {
+    if (_defaultStartConfig != null) {
+      return _defaultStartConfig!;
+    }
+    _defaultStartConfig = StartConfig();
     if (!Util.isUnix()) {
       // not support unix socket, use tcp
-      startConfig.value.network = "tcp";
-      startConfig.value.address = "127.0.0.1:0";
+      _defaultStartConfig!.network = "tcp";
+      _defaultStartConfig!.address = "127.0.0.1:0";
     } else {
-      startConfig.value.network = "unix";
+      _defaultStartConfig!.network = "unix";
       if (Util.isDesktop()) {
-        startConfig.value.address = unixSocketPath;
+        _defaultStartConfig!.address = unixSocketPath;
       }
       if (Util.isMobile()) {
-        startConfig.value.address =
+        _defaultStartConfig!.address =
             "${(await getTemporaryDirectory()).path}/$unixSocketPath";
       }
     }
+    _defaultStartConfig!.apiToken = '';
+    return _defaultStartConfig!;
+  }
+
+  Future<void> loadStartConfig() async {
+    final defaultCfg = await _initDefaultStartConfig();
+    final prefs = await SharedPreferences.getInstance();
+    startConfig.value.network =
+        prefs.getString(_startConfigNetwork) ?? defaultCfg.network;
+    startConfig.value.address =
+        prefs.getString(_startConfigAddress) ?? defaultCfg.address;
+    startConfig.value.apiToken =
+        prefs.getString(_startConfigApiToken) ?? defaultCfg.apiToken;
   }
 
   Future<void> loadDownloaderConfig() async {

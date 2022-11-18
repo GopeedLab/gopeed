@@ -15,6 +15,7 @@ type StartConfig struct {
 	Storage         Storage `json:"storage"`
 	StorageDir      string  `json:"storageDir"`
 	RefreshInterval int     `json:"refreshInterval"`
+	ApiToken        string  `json:"apiToken"`
 
 	WebEnable bool
 	WebFS     fs.FS

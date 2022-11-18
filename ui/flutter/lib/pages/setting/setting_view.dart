@@ -131,17 +131,9 @@ class SettingView extends GetView<SettingController> {
               )),
     ];
 
-    changeNetwork(String? value) async {
-      startCfg.update((val) {
-        val!.network = value!;
-      });
-
-      await debounceSave();
-    }
-
     final advancedConfigItems = [
       _buildConfigItem(
-        '后端协议(重启后生效)',
+        '接口协议',
         () => startCfg.value.network == 'tcp'
             ? 'TCP ${startCfg.value.address}'
             : 'Unix',
@@ -239,25 +231,30 @@ class SettingView extends GetView<SettingController> {
           );
         },
       ),
-      _buildConfigItem('接口鉴权', () => downloaderCfg.value.downloadDir,
-          (Key key) {
-        final ipController =
-            TextEditingController(text: downloaderCfg.value.downloadDir);
-        ipController.addListener(() async {});
-        return Row(
-          children: [
-            SizedBox(
-              width: 150,
-              child: SwitchListTile(
-                title: Text("开启"),
-                onChanged: (bool value) {},
-                value: true,
-              ),
-            ),
-          ],
-        );
-      })
     ];
+
+    if (Util.isDesktop() && startCfg.value.network == 'tcp') {
+      advancedConfigItems.add(_buildConfigItem(
+          '接口令牌', () => startCfg.value.apiToken.isEmpty ? "未设置" : '已设置',
+          (Key key) {
+        final apiTokenController =
+            TextEditingController(text: startCfg.value.apiToken);
+        apiTokenController.addListener(() async {
+          if (apiTokenController.text != startCfg.value.apiToken) {
+            startCfg.value.apiToken = apiTokenController.text;
+
+            await debounceSave();
+          }
+        });
+        apiTokenController.addListener(() async {});
+        return TextField(
+          key: key,
+          obscureText: true,
+          controller: apiTokenController,
+          focusNode: FocusNode(),
+        );
+      }));
+    }
 
     return Scaffold(
         appBar: AppBar(

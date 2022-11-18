@@ -21,9 +21,8 @@ Future<void> init() async {
   try {
     await controller.loadStartConfig();
     final startCfg = controller.startConfig.value;
-    startCfg.runningPort =
-        await LibgopeedBoot.instance.start(startCfg.network, startCfg.address);
-    api.init(startCfg.network, startCfg.runningAddress);
+    controller.runningPort.value = await LibgopeedBoot.instance.start(startCfg);
+    api.init(startCfg.network, controller.runningAddress(), startCfg.apiToken);
   } catch (e) {
     logger.e("libgopeed init fail", e);
   }

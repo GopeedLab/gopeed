@@ -19,7 +19,7 @@ class _Client {
 
   _Client._internal();
 
-  factory _Client(String network, String address) {
+  factory _Client(String network, String address, String apiToken) {
     if (_instance == null) {
       _instance = _Client._internal();
       var dio = Dio();
@@ -27,6 +27,13 @@ class _Client {
       dio.options.baseUrl = isUnixSocket
           ? 'http://127.0.0.1'
           : (Util.isWeb() ? "" : 'http://$address');
+      dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+        if (apiToken.isNotEmpty) {
+          options.headers['Authorization'] = apiToken;
+        }
+        handler.next(options);
+      }));
+
       _instance!.dio = dio;
       if (isUnixSocket) {
         (_instance!.dio.httpClientAdapter as DefaultHttpClientAdapter)
@@ -46,8 +53,8 @@ class _Client {
 
 late _Client _client;
 
-void init(String network, String address) {
-  _client = _Client(network, address);
+void init(String network, String address, String apiToken) {
+  _client = _Client(network, address, apiToken);
 }
 
 Future<T> _parse<T>(

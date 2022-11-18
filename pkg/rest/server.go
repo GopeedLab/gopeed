@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/monkeyWie/gopeed/pkg/download"
 	"github.com/monkeyWie/gopeed/pkg/rest/model"
+	util2 "github.com/monkeyWie/gopeed/pkg/rest/util"
 	"github.com/monkeyWie/gopeed/pkg/util"
 	"net"
 	"net/http"
@@ -91,6 +92,18 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodPost).Path("/api/v1/action").HandlerFunc(DoAction)
 	if startCfg.WebEnable {
 		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))
+	}
+
+	if startCfg.ApiToken != "" {
+		r.Use(func(h http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Authorization") != startCfg.ApiToken {
+					util2.WriteJson(w, http.StatusUnauthorized, model.NewResultWithMsg("invalid token"))
+					return
+				}
+				h.ServeHTTP(w, r)
+			})
+		})
 	}
 
 	srv = &http.Server{Handler: handlers.CORS(
