@@ -11,7 +11,6 @@ import '../app/app_controller.dart';
 import 'setting_controller.dart';
 
 const _padding = SizedBox(height: 10);
-const _configWidth = 250.0;
 final _divider = const Divider().paddingOnly(left: 10, right: 10);
 
 class SettingView extends GetView<SettingController> {
@@ -38,231 +37,223 @@ class SettingView extends GetView<SettingController> {
       return completer.future;
     }
 
-    return Obx(() {
-      final basicConfigItems = [
-        _buildConfigItem(
-            'setting.theme',
-            () => _getThemeName(downloaderCfg.value.extra?.themeMode),
-            (Key key) => DropdownButton<String>(
-                  key: key,
-                  value: downloaderCfg.value.extra?.themeMode,
-                  onChanged: (value) async {
-                    downloaderCfg.update((val) {
-                      val?.extra?.themeMode = value!;
-                    });
-                    Get.changeThemeMode(ThemeMode.values.byName(value!));
-                    controller.clearTap();
+    // http config items start
+    final httpConfig = downloaderCfg.value.protocolConfig!.http;
+    final buildHttpConnections = _buildConfigItem(
+        'setting.connections'.tr, () => httpConfig.connections.toString(),
+        (Key key) {
+      final connectionsController =
+          TextEditingController(text: httpConfig.connections.toString());
+      connectionsController.addListener(() async {
+        if (connectionsController.text.isNotEmpty &&
+            connectionsController.text != httpConfig.connections.toString()) {
+          httpConfig.connections = int.parse(connectionsController.text);
 
-                    await debounceSave();
-                  },
-                  items: ThemeMode.values
-                      .map((e) => DropdownMenuItem<String>(
-                            value: e.name,
-                            child: Text(_getThemeName(e.name)),
-                          ))
-                      .toList(),
-                )),
-        _buildConfigItem(
-            'setting.downloadDir', () => downloaderCfg.value.downloadDir,
-            (Key key) {
-          final downloadDirController =
-              TextEditingController(text: downloaderCfg.value.downloadDir);
-          downloadDirController.addListener(() async {
-            if (downloadDirController.text != downloaderCfg.value.downloadDir) {
-              downloaderCfg.value.downloadDir = downloadDirController.text;
-              if (Util.isDesktop()) {
+          await debounceSave();
+        }
+      });
+
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: connectionsController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          _NumericalRangeFormatter(min: 1, max: 256),
+        ],
+      );
+    });
+
+    // ui config items start
+    final buildTheme = _buildConfigItem(
+        'setting.theme',
+        () => _getThemeName(downloaderCfg.value.extra?.themeMode),
+        (Key key) => DropdownButton<String>(
+              key: key,
+              value: downloaderCfg.value.extra?.themeMode,
+              onChanged: (value) async {
+                downloaderCfg.update((val) {
+                  val?.extra?.themeMode = value!;
+                });
+                Get.changeThemeMode(ThemeMode.values.byName(value!));
                 controller.clearTap();
-              }
+
+                await debounceSave();
+              },
+              items: ThemeMode.values
+                  .map((e) => DropdownMenuItem<String>(
+                        value: e.name,
+                        child: Text(_getThemeName(e.name)),
+                      ))
+                  .toList(),
+            ));
+    final buildDownloadDir = _buildConfigItem(
+        'setting.downloadDir', () => downloaderCfg.value.downloadDir,
+        (Key key) {
+      final downloadDirController =
+          TextEditingController(text: downloaderCfg.value.downloadDir);
+      downloadDirController.addListener(() async {
+        if (downloadDirController.text != downloaderCfg.value.downloadDir) {
+          downloaderCfg.value.downloadDir = downloadDirController.text;
+          if (Util.isDesktop()) {
+            controller.clearTap();
+          }
+
+          await debounceSave();
+        }
+      });
+      return DirectorySelector(
+        controller: downloadDirController,
+        showLabel: false,
+      );
+    });
+    final buildLocale = _buildConfigItem(
+        'setting.locale',
+        () => _getLocaleName(downloaderCfg.value.extra?.locale),
+        (Key key) => DropdownButton<String>(
+              key: key,
+              value: downloaderCfg.value.extra?.locale,
+              isDense: true,
+              onChanged: (value) async {
+                downloaderCfg.update((val) {
+                  val!.extra!.locale = value!;
+                });
+                Get.updateLocale(toLocale(value!));
+                controller.clearTap();
+
+                await debounceSave();
+              },
+              items: _getLocales()
+                  .map((e) => DropdownMenuItem<String>(
+                        value: e.substring(_settingLocaleKey.length),
+                        child: Text(e.tr),
+                      ))
+                  .toList(),
+            ));
+
+    // advanced config items start
+    final buildApiProtocol = _buildConfigItem(
+      '接口协议',
+      () => startCfg.value.network == 'tcp'
+          ? 'TCP ${startCfg.value.address}'
+          : 'Unix',
+      (Key key) {
+        final items = <Widget>[
+          SizedBox(
+            width: 150,
+            child: DropdownButtonFormField<String>(
+              value: startCfg.value.network,
+              onChanged: (value) async {
+                startCfg.update((val) {
+                  val!.network = value!;
+                });
+
+                await debounceSave();
+              },
+              items: [
+                !Util.isMobile()
+                    ? const DropdownMenuItem<String>(
+                        value: 'tcp',
+                        child: Text('TCP'),
+                      )
+                    : null,
+                Util.isUnix()
+                    ? const DropdownMenuItem<String>(
+                        value: 'unix',
+                        child: Text('Unix'),
+                      )
+                    : null,
+              ].where((e) => e != null).map((e) => e!).toList(),
+            ),
+          )
+        ];
+        if (Util.isDesktop() && startCfg.value.network == 'tcp') {
+          final arr = startCfg.value.address.split(":");
+          var ip = "127.0.0.1";
+          var port = "0";
+          if (arr.length > 1) {
+            ip = arr[0];
+            port = arr[1];
+          }
+
+          final ipController = TextEditingController(text: ip);
+          final portController = TextEditingController(text: port);
+          updateAddress() async {
+            final newAddress = "${ipController.text}:${portController.text}";
+            if (newAddress != startCfg.value.address) {
+              startCfg.value.address = newAddress;
 
               await debounceSave();
             }
-          });
-          return DirectorySelector(
-            controller: downloadDirController,
-            showLabel: false,
-          );
-        }),
-        _buildConfigItem(
-            'setting.locale',
-            () => _getLocaleName(downloaderCfg.value.extra?.locale),
-            (Key key) => DropdownButton<String>(
-                  key: key,
-                  value: downloaderCfg.value.extra?.locale,
-                  isDense: true,
-                  onChanged: (value) async {
-                    downloaderCfg.update((val) {
-                      val!.extra!.locale = value!;
-                    });
-                    Get.updateLocale(toLocale(value!));
-                    controller.clearTap();
+          }
 
-                    await debounceSave();
-                  },
-                  items: _getLocales()
-                      .map((e) => DropdownMenuItem<String>(
-                            value: e.substring(_settingLocaleKey.length),
-                            child: Text(e.tr),
-                          ))
-                      .toList(),
-                )),
-      ];
-
-      final httpConfig = downloaderCfg.value.protocolConfig!.http;
-      final httpConfigItems = [
-        _buildConfigItem(
-            'setting.connections'.tr, () => httpConfig.connections.toString(),
-            (Key key) {
-          final connectionsController =
-              TextEditingController(text: httpConfig.connections.toString());
-          connectionsController.addListener(() async {
-            if (connectionsController.text.isNotEmpty &&
-                connectionsController.text !=
-                    httpConfig.connections.toString()) {
-              httpConfig.connections = int.parse(connectionsController.text);
-
-              await debounceSave();
-            }
-          });
-
-          return TextField(
-            key: key,
-            focusNode: FocusNode(),
-            controller: connectionsController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              _NumericalRangeFormatter(min: 1, max: 256),
-            ],
-          );
-        })
-      ];
-
-      final advancedConfigItems = [
-        _buildConfigItem(
-          '接口协议',
-          () => startCfg.value.network == 'tcp'
-              ? 'TCP ${startCfg.value.address}'
-              : 'Unix',
-          (Key key) {
-            final items = <Widget>[
-              SizedBox(
-                width: 150,
-                child: DropdownButtonFormField<String>(
-                  value: startCfg.value.network,
-                  onChanged: (value) async {
-                    startCfg.update((val) {
-                      val!.network = value!;
-                    });
-
-                    await debounceSave();
-                  },
-                  items: [
-                    !Util.isMobile()
-                        ? const DropdownMenuItem<String>(
-                            value: 'tcp',
-                            child: Text('TCP'),
-                          )
-                        : null,
-                    Util.isUnix()
-                        ? const DropdownMenuItem<String>(
-                            value: 'unix',
-                            child: Text('Unix'),
-                          )
-                        : null,
-                  ].where((e) => e != null).map((e) => e!).toList(),
+          ipController.addListener(updateAddress);
+          portController.addListener(updateAddress);
+          items.addAll([
+            const Padding(padding: EdgeInsets.only(left: 20)),
+            SizedBox(
+              width: 200,
+              child: TextFormField(
+                controller: ipController,
+                decoration: const InputDecoration(
+                  labelText: "IP",
+                  contentPadding: EdgeInsets.all(0.0),
                 ),
-              )
-            ];
-            if (Util.isDesktop() && startCfg.value.network == 'tcp') {
-              final arr = startCfg.value.address.split(":");
-              var ip = "127.0.0.1";
-              var port = "0";
-              if (arr.length > 1) {
-                ip = arr[0];
-                port = arr[1];
-              }
-
-              final ipController = TextEditingController(text: ip);
-              final portController = TextEditingController(text: port);
-              updateAddress() async {
-                final newAddress =
-                    "${ipController.text}:${portController.text}";
-                if (newAddress != startCfg.value.address) {
-                  startCfg.value.address = newAddress;
-
-                  await debounceSave();
-                }
-              }
-
-              ipController.addListener(updateAddress);
-              portController.addListener(updateAddress);
-              items.addAll([
-                const Padding(padding: EdgeInsets.only(left: 20)),
-                SizedBox(
-                  width: 200,
-                  child: TextFormField(
-                    controller: ipController,
-                    decoration: const InputDecoration(
-                      labelText: "IP",
-                      contentPadding: EdgeInsets.all(0.0),
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp("[0-9.]")),
-                    ],
-                  ),
-                ),
-                const Padding(padding: EdgeInsets.only(left: 10)),
-                SizedBox(
-                  width: 200,
-                  child: TextFormField(
-                    controller: portController,
-                    decoration: const InputDecoration(
-                      labelText: '端口',
-                      contentPadding: EdgeInsets.all(0.0),
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      _NumericalRangeFormatter(min: 0, max: 65535),
-                    ],
-                  ),
-                ),
-              ]);
-            }
-
-            return Form(
-              child: Row(
-                children: items,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp("[0-9.]")),
+                ],
               ),
-            );
-          },
-        ),
-      ];
+            ),
+            const Padding(padding: EdgeInsets.only(left: 10)),
+            SizedBox(
+              width: 200,
+              child: TextFormField(
+                controller: portController,
+                decoration: const InputDecoration(
+                  labelText: '端口',
+                  contentPadding: EdgeInsets.all(0.0),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  _NumericalRangeFormatter(min: 0, max: 65535),
+                ],
+              ),
+            ),
+          ]);
+        }
 
-      if (Util.isDesktop() && startCfg.value.network == 'tcp') {
-        advancedConfigItems.add(_buildConfigItem(
-            '接口令牌', () => startCfg.value.apiToken.isEmpty ? "未设置" : '已设置',
-            (Key key) {
-          final apiTokenController =
-              TextEditingController(text: startCfg.value.apiToken);
-          apiTokenController.addListener(() async {
-            if (apiTokenController.text != startCfg.value.apiToken) {
-              startCfg.value.apiToken = apiTokenController.text;
+        return Form(
+          child: Row(
+            children: items,
+          ),
+        );
+      },
+    );
+    final buildApiToken = _buildConfigItem(
+        '接口令牌', () => startCfg.value.apiToken.isEmpty ? "未设置" : '已设置',
+        (Key key) {
+      final apiTokenController =
+          TextEditingController(text: startCfg.value.apiToken);
+      apiTokenController.addListener(() async {
+        if (apiTokenController.text != startCfg.value.apiToken) {
+          startCfg.value.apiToken = apiTokenController.text;
 
-              await debounceSave();
-            }
-          });
-          apiTokenController.addListener(() async {});
-          return TextField(
-            key: key,
-            obscureText: true,
-            controller: apiTokenController,
-            focusNode: FocusNode(),
-          );
-        }));
-      }
+          await debounceSave();
+        }
+      });
+      apiTokenController.addListener(() async {});
+      return TextField(
+        key: key,
+        obscureText: true,
+        controller: apiTokenController,
+        focusNode: FocusNode(),
+      );
+    });
 
+    return Obx(() {
       return GestureDetector(
         onTap: () {
           controller.clearTap();
@@ -292,11 +283,17 @@ class SettingView extends GetView<SettingController> {
                       Text('HTTP', style: context.textTheme.titleLarge),
                       Card(
                           child: Column(
-                        children: _addDivider(httpConfigItems),
+                        children: _addDivider([
+                          buildHttpConnections(),
+                        ]),
                       )),
                       Card(
                           child: Column(
-                        children: _addDivider(basicConfigItems),
+                        children: _addDivider([
+                          buildTheme(),
+                          buildDownloadDir(),
+                          buildLocale(),
+                        ]),
                       )),
                     ]),
                   ),
@@ -305,7 +302,12 @@ class SettingView extends GetView<SettingController> {
                       Card(
                           child: Column(
                         children: [
-                          ..._addDivider(advancedConfigItems),
+                          ..._addDivider([
+                            buildApiProtocol(),
+                            Util.isDesktop() && startCfg.value.network == 'tcp'
+                                ? buildApiToken()
+                                : null,
+                          ]),
                         ],
                       )),
                     ],
@@ -317,44 +319,44 @@ class SettingView extends GetView<SettingController> {
     });
   }
 
-  // void _tapInputWidget(GlobalKey key) {
-  //   if (key.currentContext == null) {
-  //     return;
-  //   }
+  void _tapInputWidget(GlobalKey key) {
+    if (key.currentContext == null) {
+      return;
+    }
 
-  //   if (key.currentContext?.widget is TextField) {
-  //     final textField = key.currentContext?.widget as TextField;
-  //     textField.focusNode?.requestFocus();
-  //     return;
-  //   }
+    if (key.currentContext?.widget is TextField) {
+      final textField = key.currentContext?.widget as TextField;
+      textField.focusNode?.requestFocus();
+      return;
+    }
 
-  //   GestureDetector? detector;
-  //   void searchForGestureDetector(BuildContext? element) {
-  //     element?.visitChildElements((element) {
-  //       if (element.widget is GestureDetector) {
-  //         detector = element.widget as GestureDetector?;
-  //       } else {
-  //         searchForGestureDetector(element);
-  //       }
-  //     });
-  //   }
+    GestureDetector? detector;
+    void searchForGestureDetector(BuildContext? element) {
+      element?.visitChildElements((element) {
+        if (element.widget is GestureDetector) {
+          detector = element.widget as GestureDetector?;
+        } else {
+          searchForGestureDetector(element);
+        }
+      });
+    }
 
-  //   searchForGestureDetector(key.currentContext);
-  //   detector?.onTap?.call();
-  // }
+    searchForGestureDetector(key.currentContext);
+    detector?.onTap?.call();
+  }
 
-  Widget _buildConfigItem(
+  Widget Function() _buildConfigItem(
       String label, String Function() text, Widget Function(Key key) input) {
     final tapStatues = controller.tapStatues;
     final inputKey = GlobalKey();
-    return ListTile(
+    return () => ListTile(
         title: Text(label.tr),
         subtitle: tapStatues[label] ?? false ? input(inputKey) : Text(text()),
         onTap: () {
           controller.onTap(label);
-          // WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-          //   _tapInputWidget(inputKey);
-          // });
+          WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+            _tapInputWidget(inputKey);
+          });
         });
   }
 
@@ -367,11 +369,12 @@ class SettingView extends GetView<SettingController> {
     return result;
   }
 
-  List<Widget> _addDivider(List<Widget> widgets) {
+  List<Widget> _addDivider(List<Widget?> widgets) {
     final result = <Widget>[];
-    for (var i = 0; i < widgets.length; i++) {
-      result.add(widgets[i]);
-      if (i != widgets.length - 1) {
+    final newArr = widgets.where((e) => e != null).map((e) => e!).toList();
+    for (var i = 0; i < newArr.length; i++) {
+      result.add(newArr[i]);
+      if (i != newArr.length - 1) {
         result.add(_divider);
       }
     }
