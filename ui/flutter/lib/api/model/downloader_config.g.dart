@@ -9,29 +9,16 @@ part of 'downloader_config.dart';
 DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
     DownloaderConfig()
       ..downloadDir = json['downloadDir'] as String
-      ..protocolConfig = json['protocolConfig'] == null
-          ? null
-          : ProtocolConfig.fromJson(
-              json['protocolConfig'] as Map<String, dynamic>)
-      ..extra = json['extra'] == null
-          ? null
-          : ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>);
+      ..protocolConfig = ProtocolConfig.fromJson(
+          json['protocolConfig'] as Map<String, dynamic>)
+      ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>);
 
-Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) {
-  final val = <String, dynamic>{
-    'downloadDir': instance.downloadDir,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('protocolConfig', instance.protocolConfig?.toJson());
-  writeNotNull('extra', instance.extra?.toJson());
-  return val;
-}
+Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
+    <String, dynamic>{
+      'downloadDir': instance.downloadDir,
+      'protocolConfig': instance.protocolConfig.toJson(),
+      'extra': instance.extra.toJson(),
+    };
 
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>
     ProtocolConfig()
@@ -53,24 +40,54 @@ Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
     };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig()
-  ..trackerSubscribeUrls = (json['trackerSubscribeUrls'] as List<dynamic>)
-      .map((e) => e as String)
-      .toList()
   ..trackers =
       (json['trackers'] as List<dynamic>).map((e) => e as String).toList();
 
 Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
-      'trackerSubscribeUrls': instance.trackerSubscribeUrls,
       'trackers': instance.trackers,
     };
 
-ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
-      themeMode: json['themeMode'] as String? ?? '',
-      locale: json['locale'] as String? ?? '',
-    );
+ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig()
+  ..themeMode = json['themeMode'] as String
+  ..locale = json['locale'] as String
+  ..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>);
 
 Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
     <String, dynamic>{
       'themeMode': instance.themeMode,
       'locale': instance.locale,
+      'bt': instance.bt.toJson(),
     };
+
+ExtraConfigBt _$ExtraConfigBtFromJson(Map<String, dynamic> json) =>
+    ExtraConfigBt()
+      ..trackerSubscribeUrls = (json['trackerSubscribeUrls'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList()
+      ..lastTrackerUpdateTime = json['lastTrackerUpdateTime'] == null
+          ? null
+          : DateTime.parse(json['lastTrackerUpdateTime'] as String)
+      ..subscribeTrackers = (json['subscribeTrackers'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList()
+      ..customTrackers = (json['customTrackers'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList();
+
+Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) {
+  final val = <String, dynamic>{
+    'trackerSubscribeUrls': instance.trackerSubscribeUrls,
+  };
+
+  void writeNotNull(String key, dynamic value) {
+    if (value != null) {
+      val[key] = value;
+    }
+  }
+
+  writeNotNull('lastTrackerUpdateTime',
+      instance.lastTrackerUpdateTime?.toIso8601String());
+  val['subscribeTrackers'] = instance.subscribeTrackers;
+  val['customTrackers'] = instance.customTrackers;
+  return val;
+}

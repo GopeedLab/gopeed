@@ -5,8 +5,8 @@ part 'downloader_config.g.dart';
 @JsonSerializable(explicitToJson: true)
 class DownloaderConfig {
   String downloadDir = '';
-  ProtocolConfig? protocolConfig;
-  ExtraConfig? extra;
+  ProtocolConfig protocolConfig = ProtocolConfig();
+  ExtraConfig extra = ExtraConfig();
 
   DownloaderConfig();
 
@@ -40,7 +40,6 @@ class HttpConfig {
 
 @JsonSerializable()
 class BtConfig {
-  List<String> trackerSubscribeUrls = [];
   List<String> trackers = [];
 
   BtConfig();
@@ -50,17 +49,29 @@ class BtConfig {
   Map<String, dynamic> toJson() => _$BtConfigToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class ExtraConfig {
   String themeMode = '';
   String locale = '';
+  ExtraConfigBt bt = ExtraConfigBt();
 
-  ExtraConfig({
-    this.themeMode = '',
-    this.locale = '',
-  });
+  ExtraConfig();
 
   factory ExtraConfig.fromJson(Map<String, dynamic> json) =>
       _$ExtraConfigFromJson(json);
   Map<String, dynamic> toJson() => _$ExtraConfigToJson(this);
+}
+
+@JsonSerializable()
+class ExtraConfigBt {
+  List<String> trackerSubscribeUrls = [];
+  DateTime? lastTrackerUpdateTime;
+  List<String> subscribeTrackers = [];
+  List<String> customTrackers = [];
+
+  ExtraConfigBt();
+
+  factory ExtraConfigBt.fromJson(Map<String, dynamic> json) =>
+      _$ExtraConfigBtFromJson(json);
+  Map<String, dynamic> toJson() => _$ExtraConfigBtToJson(this);
 }

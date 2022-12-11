@@ -1,12 +1,15 @@
 package rest
 
 import (
+	"compress/gzip"
 	"github.com/gorilla/mux"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/download"
 	"github.com/monkeyWie/gopeed/pkg/rest/model"
 	"github.com/monkeyWie/gopeed/pkg/rest/util"
+	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -110,10 +113,50 @@ func PutConfig(w http.ResponseWriter, r *http.Request) {
 	util.WriteJsonOk(w, nil)
 }
 
-func DoAction(w http.ResponseWriter, r *http.Request) {
-	var action model.Action
+func DoProxy(w http.ResponseWriter, r *http.Request) {
+	target := r.Header.Get("X-Target-Uri")
+	if target == "" {
+		util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg("header is required: X-Target-Uri"))
+		return
+	}
+	targetUrl, err := url.Parse(target)
+	if err != nil {
+		util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg(err.Error()))
+		return
+	}
+	r.RequestURI = ""
+	r.URL = targetUrl
+	r.Host = targetUrl.Host
+	resp, err := http.DefaultClient.Do(r)
+	if err != nil {
+		util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg(err.Error()))
+		return
+	}
+	defer resp.Body.Close()
+	w.WriteHeader(resp.StatusCode)
+	for k, vv := range resp.Header {
+		for _, v := range vv {
+			w.Header().Add(k, v)
+		}
+	}
+	var reader io.ReadCloser
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err = gzip.NewReader(resp.Body)
+		defer reader.Close()
+	default:
+		reader = resp.Body
+	}
+	if _, err := io.Copy(w, reader); err != nil {
+		util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg(err.Error()))
+		return
+	}
+}
+
+func DoCommand(w http.ResponseWriter, r *http.Request) {
+	var action model.Command
 	if util.ReadJson(w, r, &action) {
-		ret, err := Downloader.Handle(action.Name, action.Action, action.Params)
+		ret, err := Downloader.Handle(action.Protocol, action.Action, action.Params)
 		if err != nil {
 			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
 			return

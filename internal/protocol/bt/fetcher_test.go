@@ -54,9 +54,6 @@ func buildConfigFetcher() fetcher.Fetcher {
 	fetcher := new(FetcherBuilder).Build()
 	newController := controller.NewController()
 	mockCfg := config{
-		TrackerSubscribeUrls: []string{
-			"https://https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt",
-		},
 		Trackers: []string{
 			"udp://tracker.birkenwald.de:6969/announce",
 			"udp://tracker.bitsearch.to:1337/announce",

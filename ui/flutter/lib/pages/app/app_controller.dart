@@ -3,14 +3,14 @@ import 'dart:ui' as ui;
 import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/core/common/start_config.dart';
-import 'package:gopeed/util/log_util.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../api/api.dart';
 import '../../api/model/downloader_config.dart';
+import '../../core/common/start_config.dart';
 import '../../i18n/messages.dart';
+import '../../util/log_util.dart';
 import '../../util/util.dart';
 
 const _startConfigNetwork = "start.network";
@@ -79,12 +79,10 @@ class AppController extends GetxController {
 
   _initDownloaderConfig() async {
     final config = downloaderConfig.value;
-    config.protocolConfig ??= ProtocolConfig();
-    if (config.protocolConfig!.http.connections == 0) {
-      config.protocolConfig!.http.connections = 16;
+    if (config.protocolConfig.http.connections == 0) {
+      config.protocolConfig.http.connections = 16;
     }
-    config.extra ??= ExtraConfig();
-    final extra = config.extra!;
+    final extra = config.extra;
     if (extra.themeMode.isEmpty) {
       extra.themeMode = ThemeMode.system.name;
     }

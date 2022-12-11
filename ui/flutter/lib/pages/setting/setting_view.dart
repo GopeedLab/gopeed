@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../api/api.dart';
 import '../../i18n/messages.dart';
 import '../../util/util.dart';
+import '../../widget/check_list_view.dart';
 import '../../widget/directory_selector.dart';
+import '../../widget/outlined_button_loading.dart';
 import '../app/app_controller.dart';
 import 'setting_controller.dart';
 
@@ -25,7 +29,7 @@ class SettingView extends GetView<SettingController> {
     final startCfg = appController.startConfig;
 
     Timer? timer;
-    debounceSave() {
+    debounceSave({bool needRestart = false}) {
       var completer = Completer<void>();
       timer?.cancel();
       timer = Timer(const Duration(milliseconds: 500), () {
@@ -33,12 +37,37 @@ class SettingView extends GetView<SettingController> {
             .saveConfig()
             .then(completer.complete)
             .onError(completer.completeError);
+        if (needRestart) {
+          Get.snackbar("提示", "此配置项在下次启动时生效");
+        }
       });
       return completer.future;
     }
 
+    // download basic config items start
+    final buildDownloadDir = _buildConfigItem(
+        'setting.downloadDir', () => downloaderCfg.value.downloadDir,
+        (Key key) {
+      final downloadDirController =
+          TextEditingController(text: downloaderCfg.value.downloadDir);
+      downloadDirController.addListener(() async {
+        if (downloadDirController.text != downloaderCfg.value.downloadDir) {
+          downloaderCfg.value.downloadDir = downloadDirController.text;
+          if (Util.isDesktop()) {
+            controller.clearTap();
+          }
+
+          await debounceSave();
+        }
+      });
+      return DirectorySelector(
+        controller: downloadDirController,
+        showLabel: false,
+      );
+    });
+
     // http config items start
-    final httpConfig = downloaderCfg.value.protocolConfig!.http;
+    final httpConfig = downloaderCfg.value.protocolConfig.http;
     final buildHttpConnections = _buildConfigItem(
         'setting.connections'.tr, () => httpConfig.connections.toString(),
         (Key key) {
@@ -65,16 +94,125 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
+    // bt config items start
+    final btConfig = downloaderCfg.value.protocolConfig.bt;
+    final btExtConfig = downloaderCfg.value.extra.bt;
+    refreshTrackers() {
+      btConfig.trackers.clear();
+      btConfig.trackers.addAll(btExtConfig.subscribeTrackers);
+      btConfig.trackers.addAll(btExtConfig.customTrackers);
+    }
+
+    final buildBtTrackerSubscribeUrls = _buildConfigItem(
+        '订阅 tracker'.tr, () => '${btExtConfig.trackerSubscribeUrls.length}条',
+        (Key key) {
+      final trackerUpdateController = OutlinedButtonLoadingController();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 200,
+            child: CheckListView(
+              items: const [
+                'https://github.com/ngosang/trackerslist/raw/master/trackers_all.txt',
+                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_http.txt',
+                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_https.txt',
+                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_ip.txt',
+                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_udp.txt',
+                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_ws.txt',
+                'https://github.com/ngosang/trackerslist/raw/master/trackers_best.txt',
+                'https://github.com/ngosang/trackerslist/raw/master/trackers_best_ip.txt',
+                'https://github.com/XIU2/TrackersListCollection/raw/master/all.txt',
+                'https://github.com/XIU2/TrackersListCollection/raw/master/best.txt',
+                'https://github.com/XIU2/TrackersListCollection/raw/master/http.txt',
+              ],
+              checked: btExtConfig.trackerSubscribeUrls,
+              onChanged: (value) {
+                btExtConfig.trackerSubscribeUrls = value;
+
+                debounceSave();
+              },
+            ),
+          ),
+          _padding,
+          Row(
+            children: [
+              OutlinedButtonLoading(
+                onPressed: () async {
+                  trackerUpdateController.start();
+                  try {
+                    final result = <String>[];
+                    for (var u in btExtConfig.trackerSubscribeUrls) {
+                      result.addAll(await getTrackers(u));
+                    }
+                    btExtConfig.subscribeTrackers.clear();
+                    btExtConfig.subscribeTrackers.addAll(result);
+                    refreshTrackers();
+                    downloaderCfg.update((val) {
+                      val!.extra.bt.lastTrackerUpdateTime = DateTime.now();
+                    });
+
+                    await debounceSave();
+                  } catch (e) {
+                    Get.snackbar("错误", "更新失败");
+                  } finally {
+                    trackerUpdateController.stop();
+                  }
+                },
+                controller: trackerUpdateController,
+                child: Text("更新"),
+              ),
+              Flexible(
+                child: SizedBox(
+                  width: 200,
+                  child: SwitchListTile(
+                      // contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: true,
+                      onChanged: (bool value) {},
+                      title: Text("每天自动更新")), // TODO 自动更新and国际化调整
+                ),
+              ),
+            ],
+          ),
+          Text("上次更新：${btExtConfig.lastTrackerUpdateTime?.toLocal() ?? ''}"),
+        ],
+      );
+    });
+    final buildBtTrackers = _buildConfigItem(
+        '添加 tracker'.tr, () => '${btExtConfig.customTrackers.length}条',
+        (Key key) {
+      final trackersController = TextEditingController(
+          text: btExtConfig.customTrackers.join('\r\n').toString());
+      const ls = LineSplitter();
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: trackersController,
+        keyboardType: TextInputType.multiline,
+        maxLines: 5,
+        decoration: InputDecoration(
+          hintText: '请输入 tracker 地址，每行一条'.tr,
+        ),
+        onChanged: (value) async {
+          btExtConfig.customTrackers = ls.convert(value);
+          refreshTrackers();
+
+          await debounceSave();
+        },
+      );
+    });
+
     // ui config items start
     final buildTheme = _buildConfigItem(
         'setting.theme',
-        () => _getThemeName(downloaderCfg.value.extra?.themeMode),
+        () => _getThemeName(downloaderCfg.value.extra.themeMode),
         (Key key) => DropdownButton<String>(
               key: key,
-              value: downloaderCfg.value.extra?.themeMode,
+              value: downloaderCfg.value.extra.themeMode,
               onChanged: (value) async {
                 downloaderCfg.update((val) {
-                  val?.extra?.themeMode = value!;
+                  val?.extra.themeMode = value!;
                 });
                 Get.changeThemeMode(ThemeMode.values.byName(value!));
                 controller.clearTap();
@@ -88,36 +226,16 @@ class SettingView extends GetView<SettingController> {
                       ))
                   .toList(),
             ));
-    final buildDownloadDir = _buildConfigItem(
-        'setting.downloadDir', () => downloaderCfg.value.downloadDir,
-        (Key key) {
-      final downloadDirController =
-          TextEditingController(text: downloaderCfg.value.downloadDir);
-      downloadDirController.addListener(() async {
-        if (downloadDirController.text != downloaderCfg.value.downloadDir) {
-          downloaderCfg.value.downloadDir = downloadDirController.text;
-          if (Util.isDesktop()) {
-            controller.clearTap();
-          }
-
-          await debounceSave();
-        }
-      });
-      return DirectorySelector(
-        controller: downloadDirController,
-        showLabel: false,
-      );
-    });
     final buildLocale = _buildConfigItem(
         'setting.locale',
-        () => _getLocaleName(downloaderCfg.value.extra?.locale),
+        () => _getLocaleName(downloaderCfg.value.extra.locale),
         (Key key) => DropdownButton<String>(
               key: key,
-              value: downloaderCfg.value.extra?.locale,
+              value: downloaderCfg.value.extra.locale,
               isDense: true,
               onChanged: (value) async {
                 downloaderCfg.update((val) {
-                  val!.extra!.locale = value!;
+                  val!.extra.locale = value!;
                 });
                 Get.updateLocale(toLocale(value!));
                 controller.clearTap();
@@ -149,7 +267,7 @@ class SettingView extends GetView<SettingController> {
                   val!.network = value!;
                 });
 
-                await debounceSave();
+                await debounceSave(needRestart: true);
               },
               items: [
                 !Util.isMobile()
@@ -184,7 +302,7 @@ class SettingView extends GetView<SettingController> {
             if (newAddress != startCfg.value.address) {
               startCfg.value.address = newAddress;
 
-              await debounceSave();
+              await debounceSave(needRestart: true);
             }
           }
 
@@ -241,7 +359,7 @@ class SettingView extends GetView<SettingController> {
         if (apiTokenController.text != startCfg.value.apiToken) {
           startCfg.value.apiToken = apiTokenController.text;
 
-          await debounceSave();
+          await debounceSave(needRestart: true);
         }
       });
       apiTokenController.addListener(() async {});
@@ -277,25 +395,42 @@ class SettingView extends GetView<SettingController> {
                   )),
               body: TabBarView(
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _addPadding([
-                      Text('HTTP', style: context.textTheme.titleLarge),
-                      Card(
-                          child: Column(
-                        children: _addDivider([
-                          buildHttpConnections(),
-                        ]),
-                      )),
-                      Card(
-                          child: Column(
-                        children: _addDivider([
-                          buildTheme(),
-                          buildDownloadDir(),
-                          buildLocale(),
-                        ]),
-                      )),
-                    ]),
+                  SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _addPadding([
+                        Text('基础'),
+                        Card(
+                            child: Column(
+                          children: _addDivider([
+                            buildDownloadDir(),
+                          ]),
+                        )),
+                        Text('HTTP'),
+                        Card(
+                            child: Column(
+                          children: _addDivider([
+                            buildHttpConnections(),
+                          ]),
+                        )),
+                        Text('BitTorrent'),
+                        Card(
+                            child: Column(
+                          children: _addDivider([
+                            buildBtTrackerSubscribeUrls(),
+                            buildBtTrackers(),
+                          ]),
+                        )),
+                        Text('界面'),
+                        Card(
+                            child: Column(
+                          children: _addDivider([
+                            buildTheme(),
+                            buildLocale(),
+                          ]),
+                        )),
+                      ]),
+                    ),
                   ),
                   Column(
                     children: [
@@ -330,7 +465,7 @@ class SettingView extends GetView<SettingController> {
       return;
     }
 
-    GestureDetector? detector;
+    /* GestureDetector? detector;
     void searchForGestureDetector(BuildContext? element) {
       element?.visitChildElements((element) {
         if (element.widget is GestureDetector) {
@@ -342,7 +477,7 @@ class SettingView extends GetView<SettingController> {
     }
 
     searchForGestureDetector(key.currentContext);
-    detector?.onTap?.call();
+    detector?.onTap?.call(); */
   }
 
   Widget Function() _buildConfigItem(
@@ -405,6 +540,15 @@ class SettingView extends GetView<SettingController> {
       default:
         return 'setting.themeSystem'.tr;
     }
+  }
+
+  Future<List<String>> getTrackers(String subscribeUrl) async {
+    final resp = await proxyRequest(subscribeUrl);
+    if (resp.statusCode != 200) {
+      throw Exception('Failed to get trackers');
+    }
+    const ls = LineSplitter();
+    return ls.convert(resp.data).where((e) => e.isNotEmpty).toList();
   }
 }
 

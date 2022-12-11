@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/monkeyWie/gopeed/internal/protocol/bt"
 	"github.com/monkeyWie/gopeed/internal/test"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/download"
@@ -215,16 +216,16 @@ func TestGetAndPutConfig(t *testing.T) {
 	})
 }
 
-func TestDoAction(t *testing.T) {
+func TestDoCommand(t *testing.T) {
 	doTest(func() {
-		ret := httpRequestCheckOk[[][]string](http.MethodPost, "/api/v1/action", map[string]any{
+		ret := httpRequestCheckOk[[][]string](http.MethodPost, "/api/v1/command", map[string]any{
 			"name":   "bt",
-			"action": "resolve",
+			"action": bt.ActionResolveTrackerUrl,
 			"params": "https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt",
 		})
 
 		if len(ret) == 0 {
-			t.Errorf("DoAction() got = %v, want %v", len(ret), ">0")
+			t.Errorf("DoCommand() got = %v, want %v", len(ret), ">0")
 		}
 	})
 }

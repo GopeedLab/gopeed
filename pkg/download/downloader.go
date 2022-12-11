@@ -2,10 +2,8 @@ package download
 
 import (
 	"errors"
-	"fmt"
 	"github.com/monkeyWie/gopeed/internal/controller"
 	"github.com/monkeyWie/gopeed/internal/fetcher"
-	"github.com/monkeyWie/gopeed/internal/test"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/util"
 	"strings"
@@ -398,8 +396,6 @@ func (d *Downloader) getProtocolConfig(name string, v any) (bool, error) {
 	if cfg.ProtocolConfig == nil || cfg.ProtocolConfig[name] == nil {
 		return false, nil
 	}
-	// TODO remove
-	fmt.Println(test.ToJson(cfg.ProtocolConfig[name]))
 	if err := util.MapToStruct(cfg.ProtocolConfig[name], v); err != nil {
 		return false, err
 	}
@@ -453,9 +449,9 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 		}
 		if task.fetcher == nil {
 			task.fetcher = fetcherBuilder.Build()
-			task.fetcher.Create(task.Res, task.Opts)
 		}
 		d.setupFetcher(task.fetcher)
+		task.fetcher.Create(task.Res, task.Opts)
 		go d.watch(task)
 	}
 	return nil

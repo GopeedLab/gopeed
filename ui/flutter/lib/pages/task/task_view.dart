@@ -31,22 +31,20 @@ class Item extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                      flex: 1,
                       child: Text(
-                        "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
-                        style: context.textTheme.bodyText1
-                            ?.copyWith(color: Get.theme.disabledColor),
-                      ).padding(left: 18)),
+                    "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
+                    style: context.textTheme.bodyText1
+                        ?.copyWith(color: Get.theme.disabledColor),
+                  ).padding(left: 18)),
                   Expanded(
-                      flex: 1,
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text("${Util.fmtByte(task.progress.speed)} / s",
-                              style: context.textTheme.subtitle2),
-                          ...buildActions()
-                        ],
-                      )),
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text("${Util.fmtByte(task.progress.speed)} / s",
+                          style: context.textTheme.subtitle2),
+                      ...buildActions()
+                    ],
+                  )),
                 ],
               ),
               LinearProgressIndicator(

@@ -207,6 +207,7 @@ func (f *Fetcher) addTorrent(url string, resolve bool) (err error) {
 		for _, tracker := range cfg.Trackers {
 			announceList = append(announceList, []string{tracker})
 		}
+		fmt.Printf("announceList size %d\n", len(announceList))
 		f.torrent.AddTrackers(announceList)
 	}
 	<-f.torrent.GotInfo()
@@ -222,6 +223,10 @@ type FetcherBuilder struct {
 
 var schemes = []string{"FILE", "MAGNET"}
 
+const (
+	ActionResolveTrackerUrl = "resolveTrackerUrl"
+)
+
 func (fb *FetcherBuilder) Schemes() []string {
 	return schemes
 }
@@ -233,7 +238,7 @@ func (fb *FetcherBuilder) Build() fetcher.Fetcher {
 func (fb *FetcherBuilder) Handle(action string, params any) (ret any, err error) {
 	switch action {
 	// resolve tracker subscribe url
-	case "resolve":
+	case ActionResolveTrackerUrl:
 		url, ok := params.(string)
 		if !ok || url == "" {
 			return nil, base.BadParams
@@ -246,12 +251,12 @@ func (fb *FetcherBuilder) Handle(action string, params any) (ret any, err error)
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("http request fail, code: %d", resp.StatusCode)
 		}
-		ret := make([][]string, 0)
+		ret := make([]string, 0)
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
 			if line != "" {
-				ret = append(ret, []string{line})
+				ret = append(ret, line)
 			}
 		}
 		if err := scanner.Err(); err != nil {

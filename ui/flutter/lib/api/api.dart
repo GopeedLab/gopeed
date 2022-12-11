@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
+import 'package:gopeed/api/model/command.dart';
 import '../util/util.dart';
 import 'model/create_task.dart';
 import 'model/request.dart';
@@ -115,4 +115,13 @@ Future<DownloaderConfig> getConfig() async {
 
 Future<void> putConfig(DownloaderConfig config) async {
   return _parse(() => _client.dio.put("/api/v1/config", data: config), null);
+}
+
+Future<Response<T>> proxyRequest<T>(String uri,
+    {data, Options? options}) async {
+  options ??= Options();
+  options.headers ??= {};
+  options.headers!["X-Target-Uri"] = uri;
+
+  return _client.dio.request("/api/v1/proxy", data: data, options: options);
 }
