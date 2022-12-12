@@ -17,7 +17,7 @@ import (
 var client *torrent.Client
 
 type Fetcher struct {
-	Ctl controller.Controller
+	Ctl *controller.Controller
 
 	torrent *torrent.Torrent
 	res     *base.Resource
@@ -29,7 +29,11 @@ type Fetcher struct {
 	torrentPaths map[string]string
 }
 
-func (f *Fetcher) Setup(ctl controller.Controller) (err error) {
+func (f *Fetcher) Name() string {
+	return "bt"
+}
+
+func (f *Fetcher) Setup(ctl *controller.Controller) (err error) {
 	f.Ctl = ctl
 	var once sync.Once
 	once.Do(func() {
@@ -105,9 +109,7 @@ func (f *Fetcher) Resolve(req *base.Request) (res *base.Resource, err error) {
 		Name:  f.torrent.Name(),
 		Range: true,
 		Files: make([]*base.FileInfo, len(f.torrent.Files())),
-		Extra: map[string]any{
-			"infoHash": f.torrent.InfoHash().String(),
-		},
+		Hash:  f.torrent.InfoHash().String(),
 	}
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
@@ -130,10 +132,9 @@ func (f *Fetcher) Create(res *base.Resource, opts *base.Options) (err error) {
 		}
 	}
 	if f.opts.Path != "" {
-		if extra, ok := res.Extra.(map[string]any); ok {
-			f.torrentPaths[extra["infoHash"].(string)] = f.opts.Path
-		}
+		f.torrentPaths[res.Hash] = f.opts.Path
 	}
+
 	f.progress = make(fetcher.Progress, len(f.opts.SelectFiles))
 	f.ready.Store(false)
 	return nil
@@ -191,6 +192,18 @@ func (f *Fetcher) addTorrent(url string, resolve bool) (err error) {
 	}
 	if err != nil {
 		return
+	}
+	var cfg config
+	exist, err := f.Ctl.GetConfig(&cfg)
+	if err != nil {
+		return
+	}
+	if exist && len(cfg.Trackers) > 0 {
+		announceList := make([][]string, 0)
+		for _, tracker := range cfg.Trackers {
+			announceList = append(announceList, []string{tracker})
+		}
+		f.torrent.AddTrackers(announceList)
 	}
 	<-f.torrent.GotInfo()
 	if resolve {

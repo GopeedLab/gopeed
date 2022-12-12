@@ -16,48 +16,30 @@ import '../libgopeed_boot.dart';
 LibgopeedBoot create() => LibgopeedBootNative();
 
 class LibgopeedBootNative implements LibgopeedBoot {
-  late LibgopeedConfig _config;
   late LibgopeedInterface _libgopeed;
   late SendPort _childSendPort;
 
   LibgopeedBootNative() {
-    _config = LibgopeedConfig();
     if (!Util.isDesktop()) {
       _libgopeed = LibgopeedChannel();
     }
   }
 
   @override
-  LibgopeedConfig get config => _config;
-
-  @override
-  Future<void> start() async {
+  Future<int> start(StartConfig cfg) async {
     var storageDir = "./";
-    if (!Util.isUnix()) {
-      // not support unix socket, use tcp
-      _config.network = "tcp";
-      _config.address = "127.0.0.1:0";
-    } else {
-      _config.network = "unix";
-      if (Util.isDesktop()) {
-        _config.address = LibgopeedBoot.unixSocketPath;
-      } else if (Platform.isAndroid) {
-        _config.address =
-            "${(await getTemporaryDirectory()).path}/${LibgopeedBoot.unixSocketPath}";
-        storageDir = (await getExternalStorageDirectory())?.path ?? "";
-      }
+    if (Platform.isAndroid) {
+      storageDir = (await getExternalStorageDirectory())?.path ?? storageDir;
     }
-    final cfg = StartConfig(
-        network: _config.network,
-        address: _config.address,
-        storage: 'bolt',
-        storageDir: storageDir,
-        refreshInterval: _config.refreshInterval);
+    if (Platform.isIOS) {
+      storageDir = (await getLibraryDirectory()).path;
+    }
+    cfg.storage = 'bolt';
+    cfg.storageDir = storageDir;
+    cfg.refreshInterval = 0;
     var port =
         Util.isDesktop() ? await _ffiStart(cfg) : await _libgopeed.start(cfg);
-    if (_config.network == "tcp") {
-      _config.address = "${_config.address.split(":")[0]}:$port";
-    }
+    return port;
   }
 
   @override

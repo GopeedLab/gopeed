@@ -1,11 +1,13 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/monkeyWie/gopeed/internal/controller"
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/internal/test"
 	"github.com/monkeyWie/gopeed/pkg/base"
+	"github.com/monkeyWie/gopeed/pkg/protocol/http"
 	"net"
 	"reflect"
 	"testing"
@@ -111,8 +113,29 @@ func TestFetcher_DownloadResume(t *testing.T) {
 	downloadResume(listener, 16, t)
 }
 
+func TestFetcher_Config(t *testing.T) {
+	fetcher, _, _ := doDownloadReady(buildConfigFetcher(), test.StartTestFileServer(), 0, t)
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
 func downloadReady(listener net.Listener, connections int, t *testing.T) (fetcher fetcher.Fetcher, res *base.Resource, opts *base.Options) {
-	fetcher = buildFetcher()
+	return doDownloadReady(buildFetcher(), listener, connections, t)
+}
+
+func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, t *testing.T) (fetcher fetcher.Fetcher, res *base.Resource, opts *base.Options) {
+	fetcher = f
 	res, err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	})
@@ -120,9 +143,11 @@ func downloadReady(listener net.Listener, connections int, t *testing.T) (fetche
 		t.Fatal(err)
 	}
 	opts = &base.Options{
-		Name:        test.DownloadName,
-		Path:        test.Dir,
-		Connections: connections,
+		Name: test.DownloadName,
+		Path: test.Dir,
+		Extra: http.OptsExtra{
+			Connections: connections,
+		},
 	}
 	err = fetcher.Create(res, opts)
 	if err != nil {
@@ -150,7 +175,7 @@ func downloadNormal(listener net.Listener, connections int, t *testing.T) {
 
 func downloadPost(listener net.Listener, connections int, t *testing.T) {
 	fetcher, _, _ := downloadReady(listener, connections, t)
-	fetcher.(*Fetcher).res.Req.Extra = extra{
+	fetcher.(*Fetcher).res.Req.Extra = &http.ReqExtra{
 		Method: "POST",
 		Header: map[string]string{
 			"Authorization": "Bearer 123456",
@@ -248,4 +273,20 @@ func buildFetcher() *Fetcher {
 	fetcher := new(FetcherBuilder).Build()
 	fetcher.Setup(controller.NewController())
 	return fetcher.(*Fetcher)
+}
+
+func buildConfigFetcher() fetcher.Fetcher {
+	fetcher := new(FetcherBuilder).Build()
+	newController := controller.NewController()
+	mockCfg := config{
+		Connections: 16,
+	}
+	newController.GetConfig = func(v any) (bool, error) {
+		if err := json.Unmarshal([]byte(test.ToJson(mockCfg)), v); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	fetcher.Setup(newController)
+	return fetcher
 }

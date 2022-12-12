@@ -20,7 +20,7 @@ class LibgopeedFFi implements LibgopeedInterface {
     var completer = Completer<int>();
     var result = _libgopeed.Start(jsonEncode(cfg).toNativeUtf8().cast());
     if (result.r1 != nullptr) {
-      completer.completeError(result.r1.cast<Utf8>().toDartString());
+      completer.completeError(Exception(result.r1.cast<Utf8>().toDartString()));
     } else {
       completer.complete(result.r0);
     }

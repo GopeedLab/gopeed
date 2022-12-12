@@ -4,19 +4,14 @@ part 'start_config.g.dart';
 
 @JsonSerializable()
 class StartConfig {
-  String network;
-  String address;
-  String storage;
-  String storageDir;
-  int refreshInterval;
+  late String network;
+  late String address;
+  late String storage;
+  late String storageDir;
+  late int refreshInterval;
+  late String apiToken;
 
-  StartConfig({
-    required this.network,
-    required this.address,
-    required this.storage,
-    required this.storageDir,
-    required this.refreshInterval,
-  });
+  StartConfig();
 
   factory StartConfig.fromJson(Map<String, dynamic> json) =>
       _$StartConfigFromJson(json);

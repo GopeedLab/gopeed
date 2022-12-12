@@ -8,18 +8,18 @@ import (
 
 func ReadJson(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
-		WriteJson(w, 500, model.NewResultWithMsg(err.Error()))
+		WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
 		return false
 	}
 	return true
 }
 
 func WriteJsonOk(w http.ResponseWriter, v any) {
-	WriteJson(w, 200, v)
+	WriteJson(w, http.StatusOK, v)
 }
 
 func WriteJson(w http.ResponseWriter, code int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
 }

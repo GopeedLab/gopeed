@@ -6,10 +6,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/monkeyWie/gopeed/pkg/download"
 	"github.com/monkeyWie/gopeed/pkg/rest/model"
+	restUtil "github.com/monkeyWie/gopeed/pkg/rest/util"
 	"github.com/monkeyWie/gopeed/pkg/util"
 	"net"
 	"net/http"
-	"strconv"
 )
 
 var (
@@ -63,22 +63,18 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	} else {
 		downloadCfg.Storage = download.NewMemStorage()
 	}
+	downloadCfg.Init()
 	downloadCfg.RefreshInterval = startCfg.RefreshInterval
-	Downloader = download.NewDownloader(downloadCfg.Init())
+	Downloader = download.NewDownloader(downloadCfg)
 	if err := Downloader.Setup(); err != nil {
 		return nil, nil, err
 	}
 
-	serverConfig := getAndPutServerConfig(startCfg)
-	var address string
 	if startCfg.Network == "unix" {
-		address = startCfg.Address
-		util.SafeRemove(address)
-	} else {
-		address = net.JoinHostPort(serverConfig.Host, strconv.Itoa(serverConfig.Port))
+		util.SafeRemove(startCfg.Address)
 	}
 
-	listener, err := net.Listen(startCfg.Network, address)
+	listener, err := net.Listen(startCfg.Network, startCfg.Address)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -93,33 +89,27 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodGet).Path("/api/v1/tasks").HandlerFunc(GetTasks)
 	r.Methods(http.MethodGet).Path("/api/v1/config").HandlerFunc(GetConfig)
 	r.Methods(http.MethodPut).Path("/api/v1/config").HandlerFunc(PutConfig)
+	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
 	if startCfg.WebEnable {
 		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))
 	}
 
+	if startCfg.ApiToken != "" {
+		r.Use(func(h http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("X-Api-Token") != startCfg.ApiToken {
+					restUtil.WriteJson(w, http.StatusUnauthorized, model.NewResultWithMsg("invalid token"))
+					return
+				}
+				h.ServeHTTP(w, r)
+			})
+		})
+	}
+
 	srv = &http.Server{Handler: handlers.CORS(
-		handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
-		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+		handlers.AllowedHeaders([]string{"Content-Type", "X-Api-Token", "X-Target-Uri"}),
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
 		handlers.AllowedOrigins([]string{"*"}),
 	)(r)}
 	return srv, listener, nil
-}
-
-func getAndPutServerConfig(startCfg *model.StartConfig) *model.ServerConfig {
-	var serverConfig model.ServerConfig
-	exist, err := Downloader.GetConfig(&serverConfig)
-	if err != nil {
-		// TODO log
-	}
-	// first start
-	if !exist {
-		if startCfg.Network == "tcp" {
-			host, port, _ := net.SplitHostPort(startCfg.Address)
-			serverConfig.Host = host
-			serverConfig.Port, _ = strconv.Atoi(port)
-		}
-		serverConfig.Init()
-		Downloader.PutConfig(serverConfig)
-	}
-	return &serverConfig
 }

@@ -6,13 +6,11 @@ part 'options.g.dart';
 class Options {
   String name;
   String path;
-  int connections;
   List<int> selectFiles;
 
   Options({
     required this.name,
     required this.path,
-    required this.connections,
     required this.selectFiles,
   });
 

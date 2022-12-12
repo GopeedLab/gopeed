@@ -1,18 +1,7 @@
+import 'common/start_config.dart';
 import "libgopeed_boot_stub.dart"
     if (dart.library.html) 'entry/libgopeed_boot_browser.dart'
     if (dart.library.io) 'entry/libgopeed_boot_native.dart';
-
-class LibgopeedConfig {
-  late String network;
-  late String address;
-  late int refreshInterval;
-
-  LibgopeedConfig({
-    this.network = "tcp",
-    this.address = "127.0.0.1:0",
-    this.refreshInterval = 500,
-  });
-}
 
 abstract class LibgopeedBoot {
   static const unixSocketPath = 'gopeed.sock';
@@ -26,9 +15,7 @@ abstract class LibgopeedBoot {
 
   factory LibgopeedBoot() => create();
 
-  Future<void> start();
+  Future<int> start(StartConfig cfg);
 
   Future<void> stop();
-
-  LibgopeedConfig get config;
 }

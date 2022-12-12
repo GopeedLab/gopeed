@@ -1,27 +1,27 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:rounded_loading_button/rounded_loading_button.dart';
+
 import '../../api/api.dart';
 import '../../api/model/create_task.dart';
 import '../../api/model/options.dart';
 import '../../api/model/request.dart';
 import '../../api/model/resource.dart';
-import 'create_controller.dart';
-import '../../setting/setting.dart';
-import '../../widget/file_list_view.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:rounded_loading_button/rounded_loading_button.dart';
-
 import '../../routes/router.dart';
 import '../../util/util.dart';
 import '../../widget/directory_selector.dart';
+import '../../widget/file_list_view.dart';
+import '../app/app_controller.dart';
+import 'create_controller.dart';
 
 class CreateView extends GetView<CreateController> {
-  CreateView({Key? key}) : super(key: key);
-
   final _resolveFormKey = GlobalKey<FormState>();
+
   final _urlController = TextEditingController();
   final _confirmController = RoundedLoadingButtonController();
+  CreateView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -103,9 +103,11 @@ class CreateView extends GetView<CreateController> {
   }
 
   Future<void> _showResolveDialog(Resource res) async {
+    final appController = Get.find<AppController>();
+    final setting = appController.downloaderConfig.value;
+
     final createFormKey = GlobalKey<FormState>();
-    final pathController =
-        TextEditingController(text: Setting.instance.downloadDir);
+    final pathController = TextEditingController(text: setting.downloadDir);
     final downloadController = RoundedLoadingButtonController();
     var fileValues = List.filled(res.files.length, true);
 
@@ -181,7 +183,6 @@ class CreateView extends GetView<CreateController> {
                               opts: Options(
                                 name: '',
                                 path: pathController.text,
-                                connections: Setting.instance.connections,
                                 selectFiles: fileValues
                                     .asMap()
                                     .entries

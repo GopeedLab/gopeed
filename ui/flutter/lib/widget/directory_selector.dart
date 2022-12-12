@@ -1,9 +1,9 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/util/util.dart';
 
 import '../util/mac_secure_util.dart';
+import '../util/util.dart';
 
 class DirectorySelector extends StatefulWidget {
   final TextEditingController controller;

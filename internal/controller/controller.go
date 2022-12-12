@@ -6,19 +6,29 @@ import (
 	"path/filepath"
 )
 
-type Controller interface {
-	Touch(name string, size int64) (file *os.File, err error)
+type Controller struct {
+	GetConfig func(v any) (bool, error)
+	FileController
 	//ContextDialer() (proxy.Dialer, error)
 }
 
-type DefaultController struct {
+type FileController interface {
+	Touch(name string, size int64) (file *os.File, err error)
 }
 
-func NewController() *DefaultController {
-	return &DefaultController{}
+type DefaultFileController struct {
 }
 
-func (c *DefaultController) Touch(name string, size int64) (file *os.File, err error) {
+func NewController() *Controller {
+	return &Controller{
+		FileController: &DefaultFileController{},
+		GetConfig: func(v any) (bool, error) {
+			return false, nil
+		},
+	}
+}
+
+func (c *DefaultFileController) Touch(name string, size int64) (file *os.File, err error) {
 	dir := filepath.Dir(name)
 	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
 		return

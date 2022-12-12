@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/pkg/base"
+	fhttp "github.com/monkeyWie/gopeed/pkg/protocol/http"
 	"github.com/monkeyWie/gopeed/pkg/util"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -34,6 +35,21 @@ func (re *RequestError) Error() string {
 	return fmt.Sprintf("http request fail,code:%d", re.Code)
 }
 
+type chunk struct {
+	Status     base.Status
+	Begin      int64
+	End        int64
+	Downloaded int64
+}
+
+func newChunk(begin int64, end int64) *chunk {
+	return &chunk{
+		Status: base.DownloadStatusReady,
+		Begin:  begin,
+		End:    end,
+	}
+}
+
 type Fetcher struct {
 	*fetcher.DefaultFetcher
 
@@ -48,7 +64,14 @@ type Fetcher struct {
 	pauseCh chan interface{}
 }
 
+func (f *Fetcher) Name() string {
+	return "http"
+}
+
 func (f *Fetcher) Resolve(req *base.Request) (*base.Resource, error) {
+	if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
+		return nil, err
+	}
 	httpReq, err := buildRequest(nil, req)
 	if err != nil {
 		return nil, err
@@ -120,6 +143,29 @@ func (f *Fetcher) Create(res *base.Resource, opts *base.Options) error {
 	f.res = res
 	f.opts = opts
 	f.status = base.DownloadStatusReady
+
+	if err := base.ParseReqExtra[fhttp.ReqExtra](res.Req); err != nil {
+		return err
+	}
+	if err := base.ParseOptsExtra[fhttp.OptsExtra](opts); err != nil {
+		return err
+	}
+	if opts.Extra == nil {
+		opts.Extra = &fhttp.ReqExtra{}
+	}
+	extra := opts.Extra.(*fhttp.OptsExtra)
+	if extra.Connections == 0 {
+		var cfg config
+		exist, err := f.Ctl.GetConfig(&cfg)
+		if err != nil {
+			return err
+		}
+		if exist {
+			extra.Connections = cfg.Connections
+		} else {
+			extra.Connections = 1
+		}
+	}
 	return nil
 }
 
@@ -131,7 +177,7 @@ func (f *Fetcher) Start() (err error) {
 		return err
 	}
 	f.status = base.DownloadStatusRunning
-	f.chunks = splitChunk(f.res, f.opts)
+	f.chunks = f.splitChunk()
 	f.fetch()
 	return
 }
@@ -188,7 +234,7 @@ func (f *Fetcher) filepath() string {
 func (f *Fetcher) fetch() {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 	eg, _ := errgroup.WithContext(f.ctx)
-	for i := 0; i < f.opts.Connections; i++ {
+	for i := 0; i < f.opts.Extra.(*fhttp.OptsExtra).Connections; i++ {
 		i := i
 		eg.Go(func() error {
 			return f.fetchChunk(i)
@@ -301,19 +347,20 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 	return
 }
 
-func splitChunk(res *base.Resource, opts *base.Options) (chunks []*chunk) {
-	if res.Range {
+func (f *Fetcher) splitChunk() (chunks []*chunk) {
+	if f.res.Range {
+		connections := f.opts.Extra.(*fhttp.OptsExtra).Connections
 		// 每个连接平均需要下载的分块大小
-		chunkSize := res.Size / int64(opts.Connections)
-		chunks = make([]*chunk, opts.Connections)
-		for i := 0; i < opts.Connections; i++ {
+		chunkSize := f.res.Size / int64(connections)
+		chunks = make([]*chunk, connections)
+		for i := 0; i < connections; i++ {
 			var (
 				begin = chunkSize * int64(i)
 				end   int64
 			)
-			if i == opts.Connections-1 {
+			if i == connections-1 {
 				// 最后一个分块需要保证把文件下载完
-				end = res.Size - 1
+				end = f.res.Size - 1
 			} else {
 				end = begin + chunkSize - 1
 			}
@@ -351,7 +398,7 @@ func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request
 	if req.Extra == nil {
 		method = http.MethodGet
 	} else {
-		extra := req.Extra.(extra)
+		extra := req.Extra.(*fhttp.ReqExtra)
 		if extra.Method != "" {
 			method = extra.Method
 		} else {
@@ -414,8 +461,10 @@ func (fb *FetcherBuilder) Restore() (v any, f func(res *base.Resource, opts *bas
 		fetcher.res = res
 		fetcher.opts = opts
 		fetcher.status = base.DownloadStatusPause
+		base.ParseReqExtra[fhttp.ReqExtra](res.Req)
+		base.ParseOptsExtra[fhttp.OptsExtra](opts)
 		if len(fd.Chunks) == 0 {
-			fetcher.chunks = splitChunk(res, opts)
+			fetcher.chunks = fetcher.splitChunk()
 		} else {
 			fetcher.chunks = fd.Chunks
 		}

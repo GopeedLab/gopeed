@@ -2,6 +2,7 @@ package rest
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,7 +23,15 @@ import (
 var (
 	restPort int
 
-	taskReq = &base.Request{}
+	taskReq = &base.Request{
+		Extra: map[string]any{
+			"method": "",
+			"header": map[string]string{
+				"User-Agent": "gopeed",
+			},
+			"body": "",
+		},
+	}
 	taskRes = &base.Resource{
 		Name:  test.BuildName,
 		Req:   taskReq,
@@ -39,9 +48,11 @@ var (
 	createReq = &model.CreateTask{
 		Res: taskRes,
 		Opts: &base.Options{
-			Path:        test.Dir,
-			Name:        test.DownloadName,
-			Connections: 2,
+			Path: test.Dir,
+			Name: test.DownloadName,
+			Extra: map[string]any{
+				"connections": 2,
+			},
 		},
 	}
 )
@@ -49,8 +60,8 @@ var (
 func TestResolve(t *testing.T) {
 	doTest(func() {
 		resp := httpRequestCheckOk[*base.Resource](http.MethodPost, "/api/v1/resolve", taskReq)
-		if !reflect.DeepEqual(taskRes, resp) {
-			t.Errorf("Resolve() got = %v, want %v", resp, taskRes)
+		if !test.JsonEqual(taskRes, resp) {
+			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp), test.ToJson(taskRes))
 		}
 	})
 }
@@ -187,26 +198,68 @@ func TestGetTasks(t *testing.T) {
 
 func TestGetAndPutConfig(t *testing.T) {
 	doTest(func() {
-		cfg := httpRequestCheckOk[*model.ServerConfig](http.MethodGet, "/api/v1/config", nil)
-
-		cfg.Port = 8888
-		cfg.Connections = 32
+		cfg := httpRequestCheckOk[*download.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
 		cfg.DownloadDir = "./download"
 		cfg.Extra = map[string]any{
+			"serverConfig": &Config{
+				Host: "127.0.0.1",
+				Port: 8080,
+			},
 			"theme": "dark",
 		}
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/config", cfg)
 
-		newCfg := httpRequestCheckOk[*model.ServerConfig](http.MethodGet, "/api/v1/config", nil)
-		if !reflect.DeepEqual(newCfg, cfg) {
-			t.Errorf("GetAndPutConfig() got = %v, want %v", newCfg, cfg)
+		newCfg := httpRequestCheckOk[*download.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
+		if !test.JsonEqual(cfg, newCfg) {
+			t.Errorf("GetAndPutConfig() got = %v, want %v", test.ToJson(newCfg), test.ToJson(cfg))
 		}
 	})
 }
 
+func TestDoProxy(t *testing.T) {
+	doTest(func() {
+		code, respBody := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
+			"X-Target-Uri": "https://github.com/monkeyWie/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
+		}, nil)
+		if code != http.StatusOK {
+			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusOK)
+		}
+		want := "4ee193b676f1ebb2ad810e016350d52a"
+		got := fmt.Sprintf("%x", md5.Sum(respBody))
+		if got != want {
+			t.Errorf("DoProxy() got = %v, want %v", got, want)
+		}
+	})
+}
+
+func TestAuthorization(t *testing.T) {
+	var cfg = &model.StartConfig{}
+	cfg.Init()
+	cfg.ApiToken = "123456"
+	fileListener := doStart(cfg)
+	defer func() {
+		if err := fileListener.Close(); err != nil {
+			panic(err)
+		}
+		Stop()
+	}()
+
+	code, _ := doHttpRequest[any](http.MethodGet, "/api/v1/config", nil, nil)
+	checkCode(code, http.StatusUnauthorized)
+
+	code, _ = doHttpRequest[any](http.MethodGet, "/api/v1/config", map[string]string{
+		"X-Api-Token": cfg.ApiToken,
+	}, nil)
+	checkCode(code, http.StatusOK)
+
+}
+
 func doTest(handler func()) {
 	testFunc := func(storage model.Storage) {
-		fileListener := doStart(storage)
+		var cfg = &model.StartConfig{}
+		cfg.Init()
+		cfg.Storage = storage
+		fileListener := doStart(cfg)
 		defer func() {
 			if err := fileListener.Close(); err != nil {
 				panic(err)
@@ -221,10 +274,8 @@ func doTest(handler func()) {
 	testFunc(model.StorageBolt)
 }
 
-func doStart(storage model.Storage) net.Listener {
-	port, err := Start((&model.StartConfig{
-		Storage: storage,
-	}).Init())
+func doStart(cfg *model.StartConfig) net.Listener {
+	port, err := Start(cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -232,32 +283,50 @@ func doStart(storage model.Storage) net.Listener {
 	return test.StartTestFileServer()
 }
 
-func httpRequest[T any](method string, path string, req any) (int, *model.Result[T]) {
-	var body io.Reader
-	if req != nil {
-		buf, _ := json.Marshal(req)
-		body = bytes.NewBuffer(buf)
+func doHttpRequest0(method string, path string, headers map[string]string, body any) (int, []byte) {
+	var reader io.Reader
+	if body != nil {
+		buf, _ := json.Marshal(body)
+		reader = bytes.NewBuffer(buf)
 	}
 
-	request, err := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:%d%s", restPort, path), body)
+	request, err := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:%d%s", restPort, path), reader)
 	if err != nil {
 		panic(err)
+	}
+	if headers != nil {
+		for k, v := range headers {
+			request.Header.Set(k, v)
+		}
 	}
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		panic(err)
 	}
 	defer response.Body.Close()
-
-	var r model.Result[T]
-	if err := json.NewDecoder(response.Body).Decode(&r); err != nil {
+	respBody, err := io.ReadAll(response.Body)
+	if err != nil {
 		panic(err)
 	}
-	return response.StatusCode, &r
+	return response.StatusCode, respBody
 }
 
-func httpRequestCheckOk[T any](method string, path string, req any) T {
-	code, result := httpRequest[T](method, path, req)
+func doHttpRequest[T any](method string, path string, headers map[string]string, body any) (int, *model.Result[T]) {
+	code, respBody := doHttpRequest0(method, path, headers, body)
+
+	var r model.Result[T]
+	if err := json.Unmarshal(respBody, &r); err != nil {
+		panic(err)
+	}
+	return code, &r
+}
+
+func httpRequest[T any](method string, path string, body any) (int, *model.Result[T]) {
+	return doHttpRequest[T](method, path, nil, body)
+}
+
+func httpRequestCheckOk[T any](method string, path string, body any) T {
+	code, result := httpRequest[T](method, path, body)
 	checkOk(code)
 	return result.Data
 }

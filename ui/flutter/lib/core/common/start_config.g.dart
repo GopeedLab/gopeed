@@ -6,13 +6,13 @@ part of 'start_config.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-StartConfig _$StartConfigFromJson(Map<String, dynamic> json) => StartConfig(
-      network: json['network'] as String,
-      address: json['address'] as String,
-      storage: json['storage'] as String,
-      storageDir: json['storageDir'] as String,
-      refreshInterval: json['refreshInterval'] as int,
-    );
+StartConfig _$StartConfigFromJson(Map<String, dynamic> json) => StartConfig()
+  ..network = json['network'] as String
+  ..address = json['address'] as String
+  ..storage = json['storage'] as String
+  ..storageDir = json['storageDir'] as String
+  ..refreshInterval = json['refreshInterval'] as int
+  ..apiToken = json['apiToken'] as String;
 
 Map<String, dynamic> _$StartConfigToJson(StartConfig instance) =>
     <String, dynamic>{
@@ -21,4 +21,5 @@ Map<String, dynamic> _$StartConfigToJson(StartConfig instance) =>
       'storage': instance.storage,
       'storageDir': instance.storageDir,
       'refreshInterval': instance.refreshInterval,
+      'apiToken': instance.apiToken,
     };

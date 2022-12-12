@@ -25,7 +25,7 @@ func parse() *args {
 	if len(t) > 0 {
 		args.url = t[0]
 	} else {
-		gPrintln("missing url parameter")
+		gPrintln("missing url parameter, for example: gopeed https://www.google.com or gopeed bt.torrent or gopeed magnet:?xt=urn:btih:...")
 		gPrintln("try 'gopeed -h' for more information")
 		os.Exit(1)
 	}

@@ -2,61 +2,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../api/api.dart';
-import '../../api/model/task.dart';
 import 'package:styled_widget/styled_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../api/api.dart';
+import '../../api/model/task.dart';
 import '../../util/util.dart';
 import 'task_controller.dart';
-
-class TaskView extends GetView<TaskController> {
-  const TaskView({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(56),
-            child: AppBar(
-              bottom: TabBar(
-                tabs: const [
-                  Tab(
-                    icon: Icon(Icons.file_download),
-                  ),
-                  Tab(
-                    icon: Icon(Icons.done),
-                  ),
-                ],
-                onTap: (index) {
-                  controller.tabIndex.value = index;
-                  if (index == 1) {
-                    controller.loadTab();
-                  }
-                },
-              ),
-            )),
-        body: TabBarView(
-          children: [
-            Obx(() => buildTaskList(controller.unDoneTasks)),
-            Obx(() => buildTaskList(controller.doneTasks)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildTaskList(List<Task> tasks) {
-    return ListView.builder(
-      itemCount: tasks.length,
-      itemBuilder: (context, index) {
-        return Item(task: tasks[index]);
-      },
-    );
-  }
-}
 
 class Item extends StatelessWidget {
   final Task task;
@@ -79,22 +31,20 @@ class Item extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                      flex: 1,
                       child: Text(
-                        "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
-                        style: Get.textTheme.bodyText1
-                            ?.copyWith(color: Get.theme.disabledColor),
-                      ).padding(left: 18)),
+                    "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
+                    style: context.textTheme.bodyText1
+                        ?.copyWith(color: Get.theme.disabledColor),
+                  ).padding(left: 18)),
                   Expanded(
-                      flex: 1,
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text("${Util.fmtByte(task.progress.speed)} / s",
-                              style: Get.textTheme.subtitle2),
-                          ...buildActions()
-                        ],
-                      )),
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text("${Util.fmtByte(task.progress.speed)} / s",
+                          style: context.textTheme.subtitle2),
+                      ...buildActions()
+                    ],
+                  )),
                 ],
               ),
               LinearProgressIndicator(
@@ -144,18 +94,32 @@ class Item extends StatelessWidget {
     return list;
   }
 
+  double getProgress() {
+    return task.size <= 0 ? 1 : task.progress.downloaded / task.size;
+  }
+
+  bool isDone() {
+    return task.status == Status.done;
+  }
+
+  bool isRunning() {
+    return task.status == Status.running;
+  }
+
   Future<void> _showDeleteDialog(String id) {
     final keep = true.obs;
 
+    final context = Get.context!;
+
     return showDialog<void>(
-        context: Get.context!,
+        context: context,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
               title: Text('task.deleteTask'.tr),
               content: Obx(() => CheckboxListTile(
                   value: keep.value,
                   title: Text('task.deleteTaskTip'.tr,
-                      style: Get.textTheme.bodyText1),
+                      style: context.textTheme.bodyText1),
                   onChanged: (v) {
                     keep.value = v!;
                   })),
@@ -182,16 +146,52 @@ class Item extends StatelessWidget {
               ],
             ));
   }
+}
 
-  double getProgress() {
-    return task.size <= 0 ? 1 : task.progress.downloaded / task.size;
+class TaskView extends GetView<TaskController> {
+  const TaskView({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(56),
+            child: AppBar(
+              bottom: TabBar(
+                tabs: const [
+                  Tab(
+                    icon: Icon(Icons.file_download),
+                  ),
+                  Tab(
+                    icon: Icon(Icons.done),
+                  ),
+                ],
+                onTap: (index) {
+                  if (controller.tabIndex.value != index) {
+                    controller.tabIndex.value = index;
+                    controller.loadTab();
+                  }
+                },
+              ),
+            )),
+        body: TabBarView(
+          children: [
+            Obx(() => buildTaskList(controller.unDoneTasks)),
+            Obx(() => buildTaskList(controller.doneTasks)),
+          ],
+        ),
+      ),
+    );
   }
 
-  bool isRunning() {
-    return task.status == Status.running;
-  }
-
-  bool isDone() {
-    return task.status == Status.done;
+  Widget buildTaskList(List<Task> tasks) {
+    return ListView.builder(
+      itemCount: tasks.length,
+      itemBuilder: (context, index) {
+        return Item(task: tasks[index]);
+      },
+    );
   }
 }

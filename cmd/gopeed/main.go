@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/download"
+	"github.com/monkeyWie/gopeed/pkg/protocol/http"
 	"github.com/monkeyWie/gopeed/pkg/util"
 	"strings"
 	"sync"
@@ -39,8 +40,8 @@ func main() {
 			}
 		}).
 		Create(&base.Options{
-			Path:        *args.dir,
-			Connections: *args.connections,
+			Path:  *args.dir,
+			Extra: http.OptsExtra{Connections: *args.connections},
 		})
 	if err != nil {
 		panic(err)

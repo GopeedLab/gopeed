@@ -1,13 +1,13 @@
 import 'package:get/get.dart';
-import '../pages/create/create_controller.dart';
-import '../pages/setting/setting_view.dart';
 
+import '../pages/create/create_controller.dart';
 import '../pages/create/create_view.dart';
 import '../pages/home/home_controller.dart';
 import '../pages/home/home_view.dart';
 import '../pages/root/root_controller.dart';
 import '../pages/root/root_view.dart';
 import '../pages/setting/setting_controller.dart';
+import '../pages/setting/setting_view.dart';
 import '../pages/task/task_controller.dart';
 import '../pages/task/task_view.dart';
 

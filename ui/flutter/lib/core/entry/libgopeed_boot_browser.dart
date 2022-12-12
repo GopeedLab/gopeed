@@ -1,21 +1,17 @@
 import 'dart:async';
 
+import 'package:gopeed/core/common/start_config.dart';
+
 import '../libgopeed_boot.dart';
 
 LibgopeedBoot create() => LibgopeedBootBrowser();
 
 class LibgopeedBootBrowser implements LibgopeedBoot {
-  late LibgopeedConfig _config;
-
-  LibgopeedBootBrowser() {
-    _config = LibgopeedConfig();
+  // do nothing
+  @override
+  Future<int> start(StartConfig cfg) async {
+    return 0;
   }
-
-  @override
-  LibgopeedConfig get config => _config;
-
-  @override
-  Future<void> start() async {}
 
   @override
   Future<void> stop() async {}
