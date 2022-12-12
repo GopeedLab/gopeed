@@ -18,8 +18,7 @@ const mainLocale = Locale('zh', 'CN');
 const fallbackLocale = Locale('en', 'US');
 
 class _Messages extends Translations {
+  // just include available locales here
   @override
   Map<String, Map<String, String>> get keys => {...zhCN, ...enUS};
 }
-
-const availableLanguages = ['zh_CN', 'en_US'];

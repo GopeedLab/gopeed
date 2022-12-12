@@ -53,7 +53,7 @@ Future<void> onStart() async {
   if (kDebugMode) {
     final mainLang = getLocaleKey(mainLocale);
     final fullMessages = messages.keys[mainLang];
-    availableLanguages.where((e) => e != mainLang).forEach((lang) {
+    messages.keys.keys.where((e) => e != mainLang).forEach((lang) {
       final langMessages = messages.keys[lang];
       if (langMessages == null) {
         logger.w("missing language: $lang");

@@ -221,7 +221,7 @@ class SettingView extends GetView<SettingController> {
 
                 await debounceSave();
               },
-              items: availableLanguages
+              items: messages.keys.keys
                   .map((e) => DropdownMenuItem<String>(
                         value: e,
                         child: Text(messages.keys[e]!['label']!),
