@@ -10,6 +10,7 @@ import 'util/mac_secure_util.dart';
 
 void main() async {
   await init();
+  onStart();
 
   runApp(const AppView());
 }
@@ -33,4 +34,9 @@ Future<void> init() async {
   } catch (e) {
     logger.e("load config fail", e);
   }
+}
+
+Future<void> onStart() async {
+  final appController = Get.find<AppController>();
+  await appController.trackerUpdateOnStart();
 }

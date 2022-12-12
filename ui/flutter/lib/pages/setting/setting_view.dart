@@ -95,13 +95,7 @@ class SettingView extends GetView<SettingController> {
     });
 
     // bt config items start
-    final btConfig = downloaderCfg.value.protocolConfig.bt;
     final btExtConfig = downloaderCfg.value.extra.bt;
-    refreshTrackers() {
-      btConfig.trackers.clear();
-      btConfig.trackers.addAll(btExtConfig.subscribeTrackers);
-      btConfig.trackers.addAll(btExtConfig.customTrackers);
-    }
 
     final buildBtTrackerSubscribeUrls = _buildConfigItem(
         '订阅 tracker'.tr, () => '${btExtConfig.trackerSubscribeUrls.length}条',
@@ -141,18 +135,7 @@ class SettingView extends GetView<SettingController> {
                 onPressed: () async {
                   trackerUpdateController.start();
                   try {
-                    final result = <String>[];
-                    for (var u in btExtConfig.trackerSubscribeUrls) {
-                      result.addAll(await getTrackers(u));
-                    }
-                    btExtConfig.subscribeTrackers.clear();
-                    btExtConfig.subscribeTrackers.addAll(result);
-                    refreshTrackers();
-                    downloaderCfg.update((val) {
-                      val!.extra.bt.lastTrackerUpdateTime = DateTime.now();
-                    });
-
-                    await debounceSave();
+                    await appController.trackerUpdate();
                   } catch (e) {
                     Get.snackbar("错误", "更新失败");
                   } finally {
@@ -166,7 +149,6 @@ class SettingView extends GetView<SettingController> {
                 child: SizedBox(
                   width: 200,
                   child: SwitchListTile(
-                      // contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
                       value: true,
                       onChanged: (bool value) {},
@@ -196,7 +178,7 @@ class SettingView extends GetView<SettingController> {
         ),
         onChanged: (value) async {
           btExtConfig.customTrackers = ls.convert(value);
-          refreshTrackers();
+          appController.refreshTrackers();
 
           await debounceSave();
         },
@@ -540,15 +522,6 @@ class SettingView extends GetView<SettingController> {
       default:
         return 'setting.themeSystem'.tr;
     }
-  }
-
-  Future<List<String>> getTrackers(String subscribeUrl) async {
-    final resp = await proxyRequest(subscribeUrl);
-    if (resp.statusCode != 200) {
-      throw Exception('Failed to get trackers');
-    }
-    const ls = LineSplitter();
-    return ls.convert(resp.data).where((e) => e.isNotEmpty).toList();
   }
 }
 

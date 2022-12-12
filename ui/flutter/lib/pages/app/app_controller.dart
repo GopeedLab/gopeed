@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:external_path/external_path.dart';
@@ -75,6 +76,49 @@ class AppController extends GetxController {
       downloaderConfig.value = DownloaderConfig();
     }
     await _initDownloaderConfig();
+  }
+
+  Future<void> trackerUpdate() async {
+    final btExtConfig = downloaderConfig.value.extra.bt;
+    final result = <String>[];
+    for (var u in btExtConfig.trackerSubscribeUrls) {
+      result.addAll(await _fetchTrackers(u));
+    }
+    btExtConfig.subscribeTrackers.clear();
+    btExtConfig.subscribeTrackers.addAll(result);
+    downloaderConfig.update((val) {
+      val!.extra.bt.lastTrackerUpdateTime = DateTime.now();
+    });
+    refreshTrackers();
+
+    await saveConfig();
+  }
+
+  refreshTrackers() {
+    final btConfig = downloaderConfig.value.protocolConfig.bt;
+    final btExtConfig = downloaderConfig.value.extra.bt;
+    btConfig.trackers.clear();
+    btConfig.trackers.addAll(btExtConfig.subscribeTrackers);
+    btConfig.trackers.addAll(btExtConfig.customTrackers);
+  }
+
+  Future<void> trackerUpdateOnStart() async {
+    final btExtConfig = downloaderConfig.value.extra.bt;
+    final lastUpdateTime = btExtConfig.lastTrackerUpdateTime;
+    // if last update time is null or more than 1 day, update trackers
+    if (lastUpdateTime == null ||
+        lastUpdateTime.difference(DateTime.now()).inDays < 0) {
+      await trackerUpdate();
+    }
+  }
+
+  Future<List<String>> _fetchTrackers(String subscribeUrl) async {
+    final resp = await proxyRequest(subscribeUrl);
+    if (resp.statusCode != 200) {
+      throw Exception('Failed to get trackers');
+    }
+    const ls = LineSplitter();
+    return ls.convert(resp.data).where((e) => e.isNotEmpty).toList();
   }
 
   _initDownloaderConfig() async {
