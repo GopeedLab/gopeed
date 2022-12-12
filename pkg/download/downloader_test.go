@@ -154,36 +154,6 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	downloader.Clear()
 }
 
-func TestDownloader_Handle(t *testing.T) {
-	downloader := NewDownloader(nil)
-	if err := downloader.Setup(); err != nil {
-		t.Fatal(err)
-	}
-	defer downloader.Clear()
-
-	ret, err := downloader.Handle("bt", "resolve", "https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt")
-	if err != nil {
-		t.Fatal(err)
-	}
-	list, ok := ret.([][]string)
-	if !ok {
-		t.Errorf("Handle() got = %T, want %v", ret, "[][]string")
-	}
-	if len(list) == 0 {
-		t.Errorf("Handle() got = %v, want %v", len(list), ">0")
-	}
-
-	_, err = downloader.Handle("bt", "no", nil)
-	if err != base.NotFound {
-		t.Errorf("Handle() got = %v, want %v", err, base.NotFound)
-	}
-
-	_, err = downloader.Handle("http", "no", nil)
-	if err != base.NotFound {
-		t.Errorf("Handle() got = %v, want %v", err, base.NotFound)
-	}
-}
-
 func TestDownloader_Protocol_Config(t *testing.T) {
 	downloader := NewDownloader(nil)
 	if err := downloader.Setup(); err != nil {
