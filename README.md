@@ -152,6 +152,7 @@ command:
 cd ui/flutter
 flutter build web
 cd ../../
+rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/monkeyWie/gopeed/cmd/web
 ````

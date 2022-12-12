@@ -1,8 +1,6 @@
 package bt
 
 import (
-	"bufio"
-	"fmt"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
@@ -10,9 +8,7 @@ import (
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/util"
-	"net/http"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -207,7 +203,6 @@ func (f *Fetcher) addTorrent(url string, resolve bool) (err error) {
 		for _, tracker := range cfg.Trackers {
 			announceList = append(announceList, []string{tracker})
 		}
-		fmt.Printf("announceList size %d\n", len(announceList))
 		f.torrent.AddTrackers(announceList)
 	}
 	<-f.torrent.GotInfo()
@@ -223,50 +218,12 @@ type FetcherBuilder struct {
 
 var schemes = []string{"FILE", "MAGNET"}
 
-const (
-	ActionResolveTrackerUrl = "resolveTrackerUrl"
-)
-
 func (fb *FetcherBuilder) Schemes() []string {
 	return schemes
 }
 
 func (fb *FetcherBuilder) Build() fetcher.Fetcher {
 	return &Fetcher{}
-}
-
-func (fb *FetcherBuilder) Handle(action string, params any) (ret any, err error) {
-	switch action {
-	// resolve tracker subscribe url
-	case ActionResolveTrackerUrl:
-		url, ok := params.(string)
-		if !ok || url == "" {
-			return nil, base.BadParams
-		}
-		resp, err := http.Get(url)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("http request fail, code: %d", resp.StatusCode)
-		}
-		ret := make([]string, 0)
-		scanner := bufio.NewScanner(resp.Body)
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if line != "" {
-				ret = append(ret, line)
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			return nil, err
-		}
-		return ret, nil
-	default:
-		return nil, base.NotFound
-	}
-	return
 }
 
 func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {

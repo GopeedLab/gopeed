@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/monkeyWie/gopeed/pkg/download"
 	"github.com/monkeyWie/gopeed/pkg/rest/model"
-	util2 "github.com/monkeyWie/gopeed/pkg/rest/util"
+	restUtil "github.com/monkeyWie/gopeed/pkg/rest/util"
 	"github.com/monkeyWie/gopeed/pkg/util"
 	"net"
 	"net/http"
@@ -97,8 +97,8 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	if startCfg.ApiToken != "" {
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Header.Get("Authorization") != startCfg.ApiToken {
-					util2.WriteJson(w, http.StatusUnauthorized, model.NewResultWithMsg("invalid token"))
+				if r.Header.Get("X-Api-Token") != startCfg.ApiToken {
+					restUtil.WriteJson(w, http.StatusUnauthorized, model.NewResultWithMsg("invalid token"))
 					return
 				}
 				h.ServeHTTP(w, r)
@@ -107,8 +107,8 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	}
 
 	srv = &http.Server{Handler: handlers.CORS(
-		handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
-		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+		handlers.AllowedHeaders([]string{"Content-Type", "X-Api-Token", "X-Target-Uri"}),
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
 		handlers.AllowedOrigins([]string{"*"}),
 	)(r)}
 	return srv, listener, nil

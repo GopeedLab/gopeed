@@ -4,9 +4,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../api/api.dart';
 import '../../i18n/messages.dart';
+import '../../util/package_info.dart';
 import '../../util/util.dart';
 import '../../widget/check_list_view.dart';
 import '../../widget/directory_selector.dart';
@@ -18,8 +20,6 @@ const _padding = SizedBox(height: 10);
 final _divider = const Divider().paddingOnly(left: 10, right: 10);
 
 class SettingView extends GetView<SettingController> {
-  final _settingLocaleKey = 'setting.locale.';
-
   const SettingView({Key? key}) : super(key: key);
 
   @override
@@ -38,7 +38,7 @@ class SettingView extends GetView<SettingController> {
             .then(completer.complete)
             .onError(completer.completeError);
         if (needRestart) {
-          Get.snackbar("提示", "此配置项在下次启动时生效");
+          Get.snackbar('tip'.tr, 'setting.effectAfterRestart'.tr);
         }
       });
       return completer.future;
@@ -98,7 +98,9 @@ class SettingView extends GetView<SettingController> {
     final btExtConfig = downloaderCfg.value.extra.bt;
 
     final buildBtTrackerSubscribeUrls = _buildConfigItem(
-        '订阅 tracker'.tr, () => '${btExtConfig.trackerSubscribeUrls.length}条',
+        'setting.subscribeTracker'.tr,
+        () => 'setting.items'.trParams(
+            {'count': btExtConfig.trackerSubscribeUrls.length.toString()}),
         (Key key) {
       final trackerUpdateController = OutlinedButtonLoadingController();
       return Column(
@@ -107,19 +109,7 @@ class SettingView extends GetView<SettingController> {
           SizedBox(
             height: 200,
             child: CheckListView(
-              items: const [
-                'https://github.com/ngosang/trackerslist/raw/master/trackers_all.txt',
-                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_http.txt',
-                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_https.txt',
-                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_ip.txt',
-                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_udp.txt',
-                'https://github.com/ngosang/trackerslist/raw/master/trackers_all_ws.txt',
-                'https://github.com/ngosang/trackerslist/raw/master/trackers_best.txt',
-                'https://github.com/ngosang/trackerslist/raw/master/trackers_best_ip.txt',
-                'https://github.com/XIU2/TrackersListCollection/raw/master/all.txt',
-                'https://github.com/XIU2/TrackersListCollection/raw/master/best.txt',
-                'https://github.com/XIU2/TrackersListCollection/raw/master/http.txt',
-              ],
+              items: allTrackerSubscribeUrls,
               checked: btExtConfig.trackerSubscribeUrls,
               onChanged: (value) {
                 btExtConfig.trackerSubscribeUrls = value;
@@ -137,13 +127,13 @@ class SettingView extends GetView<SettingController> {
                   try {
                     await appController.trackerUpdate();
                   } catch (e) {
-                    Get.snackbar("错误", "更新失败");
+                    Get.snackbar('error'.tr, 'setting.subscribeFail'.tr);
                   } finally {
                     trackerUpdateController.stop();
                   }
                 },
                 controller: trackerUpdateController,
-                child: Text("更新"),
+                child: Text('setting.update'.tr),
               ),
               Flexible(
                 child: SizedBox(
@@ -152,17 +142,24 @@ class SettingView extends GetView<SettingController> {
                       controlAffinity: ListTileControlAffinity.leading,
                       value: true,
                       onChanged: (bool value) {},
-                      title: Text("每天自动更新")), // TODO 自动更新and国际化调整
+                      title: Text('setting.updateDaily'.tr)),
                 ),
               ),
             ],
           ),
-          Text("上次更新：${btExtConfig.lastTrackerUpdateTime?.toLocal() ?? ''}"),
+          Text('setting.lastUpdate'.trParams({
+            'time': btExtConfig.lastTrackerUpdateTime != null
+                ? DateFormat('yyyy-MM-dd HH:mm:ss')
+                    .format(btExtConfig.lastTrackerUpdateTime!)
+                : ''
+          })),
         ],
       );
     });
     final buildBtTrackers = _buildConfigItem(
-        '添加 tracker'.tr, () => '${btExtConfig.customTrackers.length}条',
+        'setting.addTracker'.tr,
+        () => 'setting.items'
+            .trParams({'count': btExtConfig.customTrackers.length.toString()}),
         (Key key) {
       final trackersController = TextEditingController(
           text: btExtConfig.customTrackers.join('\r\n').toString());
@@ -174,7 +171,7 @@ class SettingView extends GetView<SettingController> {
         keyboardType: TextInputType.multiline,
         maxLines: 5,
         decoration: InputDecoration(
-          hintText: '请输入 tracker 地址，每行一条'.tr,
+          hintText: 'setting.addTrackerHit'.tr,
         ),
         onChanged: (value) async {
           btExtConfig.customTrackers = ls.convert(value);
@@ -210,7 +207,7 @@ class SettingView extends GetView<SettingController> {
             ));
     final buildLocale = _buildConfigItem(
         'setting.locale',
-        () => _getLocaleName(downloaderCfg.value.extra.locale),
+        () => messages.keys[downloaderCfg.value.extra.locale]!['label']!,
         (Key key) => DropdownButton<String>(
               key: key,
               value: downloaderCfg.value.extra.locale,
@@ -224,17 +221,30 @@ class SettingView extends GetView<SettingController> {
 
                 await debounceSave();
               },
-              items: _getLocales()
+              items: availableLanguages
                   .map((e) => DropdownMenuItem<String>(
-                        value: e.substring(_settingLocaleKey.length),
-                        child: Text(e.tr),
+                        value: e,
+                        child: Text(messages.keys[e]!['label']!),
                       ))
                   .toList(),
             ));
 
+    // about config items start
+    buildHomepage() => ListTile(
+          title: Text('主页'.tr),
+          subtitle: const Text('https://github.com/monkeyWie/gopeed'),
+          onTap: () {
+            launchUrl(Uri.parse('https://github.com/monkeyWie/gopeed'));
+          },
+        );
+    buildVersion() => ListTile(
+          title: Text('版本'.tr),
+          subtitle: Text(packageInfo.version),
+        );
+
     // advanced config items start
     final buildApiProtocol = _buildConfigItem(
-      '接口协议',
+      'setting.protocol'.tr,
       () => startCfg.value.network == 'tcp'
           ? 'TCP ${startCfg.value.address}'
           : 'Unix',
@@ -269,9 +279,9 @@ class SettingView extends GetView<SettingController> {
           )
         ];
         if (Util.isDesktop() && startCfg.value.network == 'tcp') {
-          final arr = startCfg.value.address.split(":");
-          var ip = "127.0.0.1";
-          var port = "0";
+          final arr = startCfg.value.address.split(':');
+          var ip = '127.0.0.1';
+          var port = '0';
           if (arr.length > 1) {
             ip = arr[0];
             port = arr[1];
@@ -280,7 +290,7 @@ class SettingView extends GetView<SettingController> {
           final ipController = TextEditingController(text: ip);
           final portController = TextEditingController(text: port);
           updateAddress() async {
-            final newAddress = "${ipController.text}:${portController.text}";
+            final newAddress = '${ipController.text}:${portController.text}';
             if (newAddress != startCfg.value.address) {
               startCfg.value.address = newAddress;
 
@@ -297,12 +307,12 @@ class SettingView extends GetView<SettingController> {
               child: TextFormField(
                 controller: ipController,
                 decoration: const InputDecoration(
-                  labelText: "IP",
+                  labelText: 'IP',
                   contentPadding: EdgeInsets.all(0.0),
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp("[0-9.]")),
+                  FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
                 ],
               ),
             ),
@@ -311,9 +321,9 @@ class SettingView extends GetView<SettingController> {
               width: 200,
               child: TextFormField(
                 controller: portController,
-                decoration: const InputDecoration(
-                  labelText: '端口',
-                  contentPadding: EdgeInsets.all(0.0),
+                decoration: InputDecoration(
+                  labelText: 'setting.port'.tr,
+                  contentPadding: const EdgeInsets.all(0.0),
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
@@ -333,8 +343,10 @@ class SettingView extends GetView<SettingController> {
       },
     );
     final buildApiToken = _buildConfigItem(
-        '接口令牌', () => startCfg.value.apiToken.isEmpty ? "未设置" : '已设置',
-        (Key key) {
+        'setting.apiToken'.tr,
+        () => startCfg.value.apiToken.isEmpty
+            ? 'setting.notSet'.tr
+            : 'setting.seted'.tr, (Key key) {
       final apiTokenController =
           TextEditingController(text: startCfg.value.apiToken);
       apiTokenController.addListener(() async {
@@ -367,10 +379,10 @@ class SettingView extends GetView<SettingController> {
                     bottom: TabBar(
                       tabs: [
                         Tab(
-                          text: '通用',
+                          text: 'setting.basic'.tr,
                         ),
                         Tab(
-                          text: '高级',
+                          text: 'setting.advanced'.tr,
                         ),
                       ],
                     ),
@@ -381,21 +393,21 @@ class SettingView extends GetView<SettingController> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: _addPadding([
-                        Text('基础'),
+                        Text('setting.general'.tr),
                         Card(
                             child: Column(
                           children: _addDivider([
                             buildDownloadDir(),
                           ]),
                         )),
-                        Text('HTTP'),
+                        const Text('HTTP'),
                         Card(
                             child: Column(
                           children: _addDivider([
                             buildHttpConnections(),
                           ]),
                         )),
-                        Text('BitTorrent'),
+                        const Text('BitTorrent'),
                         Card(
                             child: Column(
                           children: _addDivider([
@@ -403,12 +415,20 @@ class SettingView extends GetView<SettingController> {
                             buildBtTrackers(),
                           ]),
                         )),
-                        Text('界面'),
+                        Text('setting.ui'.tr),
                         Card(
                             child: Column(
                           children: _addDivider([
                             buildTheme(),
                             buildLocale(),
+                          ]),
+                        )),
+                        Text('setting.about'.tr),
+                        Card(
+                            child: Column(
+                          children: _addDivider([
+                            buildHomepage(),
+                            buildVersion(),
                           ]),
                         )),
                       ]),
@@ -496,21 +516,6 @@ class SettingView extends GetView<SettingController> {
       }
     }
     return result;
-  }
-
-  String _getLocaleName(String? locale) {
-    final localeKey = '$_settingLocaleKey${locale.toString()}';
-    if (messages.keys[locale]?.containsKey(localeKey) ?? false) {
-      return localeKey.tr;
-    }
-    return '$_settingLocaleKey$locale'.tr;
-  }
-
-  List<String> _getLocales() {
-    return messages.keys[getLocaleKey(fallbackLocale)]!.entries
-        .where((e) => e.key.startsWith(_settingLocaleKey))
-        .map((e) => e.key)
-        .toList();
   }
 
   String _getThemeName(String? themeMode) {

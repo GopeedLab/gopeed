@@ -153,20 +153,6 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DoCommand(w http.ResponseWriter, r *http.Request) {
-	var action model.Command
-	if util.ReadJson(w, r, &action) {
-		ret, err := Downloader.Handle(action.Protocol, action.Action, action.Params)
-		if err != nil {
-			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
-			return
-		}
-		util.WriteJsonOk(w, model.NewResultWithData(ret))
-		return
-	}
-	util.WriteJsonOk(w, nil)
-}
-
 func getServerConfig() *download.DownloaderStoreConfig {
 	_, cfg, _ := Downloader.GetConfig()
 	return cfg

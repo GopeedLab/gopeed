@@ -446,10 +446,6 @@ func (fb *FetcherBuilder) Build() fetcher.Fetcher {
 	}
 }
 
-func (fb *FetcherBuilder) Handle(action string, params any) (ret any, err error) {
-	return nil, base.NotFound
-}
-
 func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
 	return &fetcherData{

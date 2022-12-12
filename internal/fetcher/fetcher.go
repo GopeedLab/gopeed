@@ -33,9 +33,6 @@ type FetcherBuilder interface {
 	// Build returns a new fetcher.
 	Build() Fetcher
 
-	// Handle custom specific actions
-	Handle(action string, params any) (ret any, err error)
-
 	// Store fetcher
 	Store(fetcher Fetcher) (any, error)
 	// Restore fetcher

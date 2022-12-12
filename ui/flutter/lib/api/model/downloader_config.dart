@@ -65,8 +65,9 @@ class ExtraConfig {
 @JsonSerializable()
 class ExtraConfigBt {
   List<String> trackerSubscribeUrls = [];
-  DateTime? lastTrackerUpdateTime;
   List<String> subscribeTrackers = [];
+  DateTime? lastTrackerUpdateTime;
+
   List<String> customTrackers = [];
 
   ExtraConfigBt();

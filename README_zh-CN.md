@@ -152,6 +152,7 @@ Web 端直接与后端 http 服务通讯，不需要额外准备环境。
 cd ui/flutter
 flutter build web
 cd ../../
+rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/monkeyWie/gopeed/cmd/web
 ```

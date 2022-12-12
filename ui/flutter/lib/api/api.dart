@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
-import 'package:gopeed/api/model/command.dart';
+import 'package:flutter/foundation.dart';
 import '../util/util.dart';
 import 'model/create_task.dart';
 import 'model/request.dart';
@@ -24,12 +24,18 @@ class _Client {
       _instance = _Client._internal();
       var dio = Dio();
       final isUnixSocket = network == 'unix';
-      dio.options.baseUrl = isUnixSocket
-          ? 'http://127.0.0.1'
-          : (Util.isWeb() ? "" : 'http://$address');
+      var baseUrl = 'http://127.0.0.1';
+      if (!isUnixSocket) {
+        if (Util.isWeb()) {
+          baseUrl = kDebugMode ? 'http://127.0.0.1:9999' : '';
+        } else {
+          baseUrl = 'http://$address';
+        }
+      }
+      dio.options.baseUrl = baseUrl;
       dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
         if (apiToken.isNotEmpty) {
-          options.headers['Authorization'] = apiToken;
+          options.headers['X-Api-Token'] = apiToken;
         }
         handler.next(options);
       }));

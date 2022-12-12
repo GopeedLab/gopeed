@@ -20,6 +20,20 @@ const _startConfigApiToken = "start.apiToken";
 
 const unixSocketPath = 'gopeed.sock';
 
+const allTrackerSubscribeUrls = [
+  'https://github.com/ngosang/trackerslist/raw/master/trackers_all.txt',
+  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_http.txt',
+  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_https.txt',
+  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_ip.txt',
+  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_udp.txt',
+  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_ws.txt',
+  'https://github.com/ngosang/trackerslist/raw/master/trackers_best.txt',
+  'https://github.com/ngosang/trackerslist/raw/master/trackers_best_ip.txt',
+  'https://github.com/XIU2/TrackersListCollection/raw/master/all.txt',
+  'https://github.com/XIU2/TrackersListCollection/raw/master/best.txt',
+  'https://github.com/XIU2/TrackersListCollection/raw/master/http.txt',
+];
+
 class AppController extends GetxController {
   static StartConfig? _defaultStartConfig;
 
@@ -100,6 +114,8 @@ class AppController extends GetxController {
     btConfig.trackers.clear();
     btConfig.trackers.addAll(btExtConfig.subscribeTrackers);
     btConfig.trackers.addAll(btExtConfig.customTrackers);
+    // remove duplicate
+    btConfig.trackers.toSet().toList();
   }
 
   Future<void> trackerUpdateOnStart() async {
@@ -132,6 +148,10 @@ class AppController extends GetxController {
     }
     if (extra.locale.isEmpty) {
       extra.locale = getLocaleKey(ui.window.locale);
+    }
+    if (extra.bt.trackerSubscribeUrls.isEmpty) {
+      // default select all tracker subscribe urls
+      extra.bt.trackerSubscribeUrls.addAll(allTrackerSubscribeUrls);
     }
 
     if (Util.isAndroid()) {

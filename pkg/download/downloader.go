@@ -331,16 +331,6 @@ func (d *Downloader) Clear() error {
 	return nil
 }
 
-func (d *Downloader) Handle(name string, action string, params any) (ret any, err error) {
-	for _, fb := range d.fetchBuilders {
-		f := fb.Build()
-		if name == f.Name() {
-			return fb.Handle(action, params)
-		}
-	}
-	return nil, base.NotFound
-}
-
 func (d *Downloader) Listener(fn Listener) {
 	d.listener = fn
 }

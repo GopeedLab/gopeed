@@ -2,10 +2,10 @@ package rest
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/monkeyWie/gopeed/internal/protocol/bt"
 	"github.com/monkeyWie/gopeed/internal/test"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/download"
@@ -216,16 +216,18 @@ func TestGetAndPutConfig(t *testing.T) {
 	})
 }
 
-func TestDoCommand(t *testing.T) {
+func TestDoProxy(t *testing.T) {
 	doTest(func() {
-		ret := httpRequestCheckOk[[][]string](http.MethodPost, "/api/v1/command", map[string]any{
-			"name":   "bt",
-			"action": bt.ActionResolveTrackerUrl,
-			"params": "https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt",
-		})
-
-		if len(ret) == 0 {
-			t.Errorf("DoCommand() got = %v, want %v", len(ret), ">0")
+		code, respBody := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
+			"X-Target-Uri": "https://github.com/monkeyWie/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
+		}, nil)
+		if code != http.StatusOK {
+			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusOK)
+		}
+		want := "4ee193b676f1ebb2ad810e016350d52a"
+		got := fmt.Sprintf("%x", md5.Sum(respBody))
+		if got != want {
+			t.Errorf("DoProxy() got = %v, want %v", got, want)
 		}
 	})
 }
@@ -246,7 +248,7 @@ func TestAuthorization(t *testing.T) {
 	checkCode(code, http.StatusUnauthorized)
 
 	code, _ = doHttpRequest[any](http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": cfg.ApiToken,
+		"X-Api-Token": cfg.ApiToken,
 	}, nil)
 	checkCode(code, http.StatusOK)
 
@@ -281,14 +283,14 @@ func doStart(cfg *model.StartConfig) net.Listener {
 	return test.StartTestFileServer()
 }
 
-func doHttpRequest[T any](method string, path string, headers map[string]string, req any) (int, *model.Result[T]) {
-	var body io.Reader
-	if req != nil {
-		buf, _ := json.Marshal(req)
-		body = bytes.NewBuffer(buf)
+func doHttpRequest0(method string, path string, headers map[string]string, body any) (int, []byte) {
+	var reader io.Reader
+	if body != nil {
+		buf, _ := json.Marshal(body)
+		reader = bytes.NewBuffer(buf)
 	}
 
-	request, err := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:%d%s", restPort, path), body)
+	request, err := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:%d%s", restPort, path), reader)
 	if err != nil {
 		panic(err)
 	}
@@ -302,20 +304,29 @@ func doHttpRequest[T any](method string, path string, headers map[string]string,
 		panic(err)
 	}
 	defer response.Body.Close()
-
-	var r model.Result[T]
-	if err := json.NewDecoder(response.Body).Decode(&r); err != nil {
+	respBody, err := io.ReadAll(response.Body)
+	if err != nil {
 		panic(err)
 	}
-	return response.StatusCode, &r
+	return response.StatusCode, respBody
 }
 
-func httpRequest[T any](method string, path string, req any) (int, *model.Result[T]) {
-	return doHttpRequest[T](method, path, nil, req)
+func doHttpRequest[T any](method string, path string, headers map[string]string, body any) (int, *model.Result[T]) {
+	code, respBody := doHttpRequest0(method, path, headers, body)
+
+	var r model.Result[T]
+	if err := json.Unmarshal(respBody, &r); err != nil {
+		panic(err)
+	}
+	return code, &r
 }
 
-func httpRequestCheckOk[T any](method string, path string, req any) T {
-	code, result := httpRequest[T](method, path, req)
+func httpRequest[T any](method string, path string, body any) (int, *model.Result[T]) {
+	return doHttpRequest[T](method, path, nil, body)
+}
+
+func httpRequestCheckOk[T any](method string, path string, body any) T {
+	code, result := httpRequest[T](method, path, body)
 	checkOk(code)
 	return result.Data
 }

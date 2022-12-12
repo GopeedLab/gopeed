@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class CheckListView extends StatefulWidget {
   final List<String> items;
@@ -17,11 +18,11 @@ class CheckListView extends StatefulWidget {
 }
 
 class _CheckListView extends State<CheckListView> {
-  List<String> get _items => widget.items;
+  bool get _allChecked => _checked.length == _items.length;
 
   List<String> get _checked => widget.checked;
 
-  bool get _allChecked => _checked.length == _items.length;
+  List<String> get _items => widget.items;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +44,7 @@ class _CheckListView extends State<CheckListView> {
                   widget.onChanged(_checked);
                 });
               },
-              title: Text('全选'),
+              title: Text('selectAll'.tr),
             ),
             Expanded(
               child: ListView.builder(
