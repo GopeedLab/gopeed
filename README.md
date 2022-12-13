@@ -62,7 +62,7 @@ services:
 Use the command below to start container:
 
 ```bash
-docker compose up -d
+docker-compose up -d
 ```
 
 #### Access Gopeed

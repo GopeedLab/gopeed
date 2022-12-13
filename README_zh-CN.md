@@ -62,7 +62,7 @@ services:
 输入以下指令启动容器:
 
 ```bash
-docker compose up -d
+docker-compose up -d
 ```
 
 #### 访问服务
