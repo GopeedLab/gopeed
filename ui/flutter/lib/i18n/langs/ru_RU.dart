@@ -13,7 +13,7 @@ const ruRU = {
     'create.downloadLinkValid': 'Пожалуйста, введите ссылку для скачивания',
     'create.downloadLinkHit':
         'Пожалуйста, введите ссылку для скачивания, HTTP/HTTPS/MAGNET supported@append',
-    'create.downloadLinkHitDesktop': ', или перетащите сюда торрент-файл,
+    'create.downloadLinkHitDesktop': ', или перетащите сюда торрент-файл',
     'create.download': 'Скачать',
     'create.error.noStoragePermission': 'Требуется доступ к хранилищу',
     'create.selectFile': 'Выберать файл',
