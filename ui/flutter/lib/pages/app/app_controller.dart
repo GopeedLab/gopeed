@@ -147,7 +147,10 @@ class AppController extends GetxController {
       extra.themeMode = ThemeMode.system.name;
     }
     if (extra.locale.isEmpty) {
-      extra.locale = getLocaleKey(ui.window.locale);
+      final systemLocale = getLocaleKey(ui.window.locale);
+      extra.locale = messages.keys.containsKey(systemLocale)
+          ? systemLocale
+          : getLocaleKey(fallbackLocale);
     }
     if (extra.bt.trackerSubscribeUrls.isEmpty) {
       // default select all tracker subscribe urls
@@ -157,6 +160,10 @@ class AppController extends GetxController {
     if (Util.isAndroid()) {
       config.downloadDir =
           '${await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOADS)}/com.gopeed';
+      return;
+    }
+    if (Util.isIOS()) {
+      config.downloadDir = 'Documents';
       return;
     }
 

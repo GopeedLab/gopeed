@@ -231,14 +231,14 @@ class SettingView extends GetView<SettingController> {
 
     // about config items start
     buildHomepage() => ListTile(
-          title: Text('主页'.tr),
+          title: Text('setting.homepage'.tr),
           subtitle: const Text('https://github.com/monkeyWie/gopeed'),
           onTap: () {
             launchUrl(Uri.parse('https://github.com/monkeyWie/gopeed'));
           },
         );
     buildVersion() => ListTile(
-          title: Text('版本'.tr),
+          title: Text('setting.version'.tr),
           subtitle: Text(packageInfo.version),
         );
 
