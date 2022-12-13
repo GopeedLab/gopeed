@@ -11,6 +11,7 @@ on:
       - "pkg/**"
       - "ui/**"
       - ".github/workflows/release.yml"
+      - ".github/release-drafter.yml"
       - "go.mod"
       - "go.sum"
       - "Dockerfile"
