@@ -15,7 +15,9 @@ class CreateTask {
     this.opts,
   });
 
-  factory CreateTask.fromJson(Map<String, dynamic> json) =>
+  factory CreateTask.fromJson(
+    Map<String, dynamic> json,
+  ) =>
       _$CreateTaskFromJson(json);
 
   Map<String, dynamic> toJson() => _$CreateTaskToJson(this);

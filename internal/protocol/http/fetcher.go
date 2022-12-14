@@ -151,7 +151,7 @@ func (f *Fetcher) Create(res *base.Resource, opts *base.Options) error {
 		return err
 	}
 	if opts.Extra == nil {
-		opts.Extra = &fhttp.ReqExtra{}
+		opts.Extra = &fhttp.OptsExtra{}
 	}
 	extra := opts.Extra.(*fhttp.OptsExtra)
 	if extra.Connections == 0 {

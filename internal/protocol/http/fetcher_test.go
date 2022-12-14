@@ -142,12 +142,16 @@ func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	opts = &base.Options{
-		Name: test.DownloadName,
-		Path: test.Dir,
-		Extra: http.OptsExtra{
+	var extra any = nil
+	if connections > 0 {
+		extra = http.OptsExtra{
 			Connections: connections,
-		},
+		}
+	}
+	opts = &base.Options{
+		Name:  test.DownloadName,
+		Path:  test.Dir,
+		Extra: extra,
 	}
 	err = fetcher.Create(res, opts)
 	if err != nil {
