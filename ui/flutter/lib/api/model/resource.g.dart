@@ -14,27 +14,17 @@ Resource _$ResourceFromJson(Map<String, dynamic> json) => Resource(
       files: (json['files'] as List<dynamic>)
           .map((e) => FileInfo.fromJson(e as Map<String, dynamic>))
           .toList(),
-      extra: json['extra'] as Map<String, dynamic>?,
+      hash: json['hash'] as String,
     );
 
-Map<String, dynamic> _$ResourceToJson(Resource instance) {
-  final val = <String, dynamic>{
-    'req': instance.req.toJson(),
-    'name': instance.name,
-    'size': instance.size,
-    'range': instance.range,
-    'files': instance.files.map((e) => e.toJson()).toList(),
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('extra', instance.extra);
-  return val;
-}
+Map<String, dynamic> _$ResourceToJson(Resource instance) => <String, dynamic>{
+      'req': instance.req.toJson(),
+      'name': instance.name,
+      'size': instance.size,
+      'range': instance.range,
+      'files': instance.files.map((e) => e.toJson()).toList(),
+      'hash': instance.hash,
+    };
 
 FileInfo _$FileInfoFromJson(Map<String, dynamic> json) => FileInfo(
       name: json['name'] as String,

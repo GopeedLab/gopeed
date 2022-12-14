@@ -11,10 +11,29 @@ Options _$OptionsFromJson(Map<String, dynamic> json) => Options(
       path: json['path'] as String,
       selectFiles:
           (json['selectFiles'] as List<dynamic>).map((e) => e as int).toList(),
-    );
+    )..extra = json['extra'] as Map<String, dynamic>?;
 
-Map<String, dynamic> _$OptionsToJson(Options instance) => <String, dynamic>{
-      'name': instance.name,
-      'path': instance.path,
-      'selectFiles': instance.selectFiles,
+Map<String, dynamic> _$OptionsToJson(Options instance) {
+  final val = <String, dynamic>{
+    'name': instance.name,
+    'path': instance.path,
+    'selectFiles': instance.selectFiles,
+  };
+
+  void writeNotNull(String key, dynamic value) {
+    if (value != null) {
+      val[key] = value;
+    }
+  }
+
+  writeNotNull('extra', instance.extra);
+  return val;
+}
+
+OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) =>
+    OptsExtraHttp()..connections = json['connections'] as int;
+
+Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) =>
+    <String, dynamic>{
+      'connections': instance.connections,
     };

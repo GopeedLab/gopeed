@@ -11,19 +11,19 @@ class Resource {
   int size;
   bool range;
   List<FileInfo> files;
-  Map<String, dynamic>? extra;
+  String hash;
 
-  Resource({
-    required this.req,
-    required this.name,
-    required this.size,
-    required this.range,
-    required this.files,
-    this.extra,
-  });
+  Resource(
+      {required this.req,
+      required this.name,
+      required this.size,
+      required this.range,
+      required this.files,
+      required this.hash});
 
   factory Resource.fromJson(Map<String, dynamic> json) =>
       _$ResourceFromJson(json);
+
   Map<String, dynamic> toJson() => _$ResourceToJson(this);
 }
 
