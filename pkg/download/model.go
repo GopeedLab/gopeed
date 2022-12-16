@@ -34,7 +34,7 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 	}
 
 	if cfg.RefreshInterval == 0 {
-		cfg.RefreshInterval = 500
+		cfg.RefreshInterval = 350
 	}
 	return cfg
 }

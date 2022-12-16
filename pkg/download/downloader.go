@@ -102,14 +102,9 @@ func (d *Downloader) Setup() error {
 
 						current := task.fetcher.Progress().TotalDownloaded()
 						task.Progress.Used = task.timer.Used()
-						downloaded := current - task.Progress.Downloaded
-						usedTime := float64(d.refreshInterval) / 1000
-						if downloaded == 0 {
-							task.Progress.Speed = int64(float64(task.Progress.Speed) / (usedTime * 1.55))
-						} else {
-							usedTime := float64(d.refreshInterval) / 1000
-							task.Progress.Speed = int64(float64(current-task.Progress.Downloaded) / usedTime)
-						}
+						currUsedTime := float64(d.refreshInterval) / 1000
+						currSpeed := int64(float64(current-task.Progress.Downloaded) / currUsedTime)
+						task.Progress.Speed = (task.Progress.Speed + currSpeed) / 2
 						task.Progress.Downloaded = current
 						d.emit(EventKeyProgress, task)
 

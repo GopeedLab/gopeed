@@ -135,15 +135,12 @@ class SettingView extends GetView<SettingController> {
                 controller: trackerUpdateController,
                 child: Text('setting.update'.tr),
               ),
-              Flexible(
-                child: SizedBox(
-                  width: 200,
-                  child: SwitchListTile(
-                      controlAffinity: ListTileControlAffinity.leading,
-                      value: true,
-                      onChanged: (bool value) {},
-                      title: Text('setting.updateDaily'.tr)),
-                ),
+              Expanded(
+                child: SwitchListTile(
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: true,
+                    onChanged: (bool value) {},
+                    title: Text('setting.updateDaily'.tr)),
               ),
             ],
           ),
@@ -234,7 +231,8 @@ class SettingView extends GetView<SettingController> {
           title: Text('setting.homepage'.tr),
           subtitle: const Text('https://github.com/monkeyWie/gopeed'),
           onTap: () {
-            launchUrl(Uri.parse('https://github.com/monkeyWie/gopeed'));
+            launchUrl(Uri.parse('https://github.com/monkeyWie/gopeed'),
+                mode: LaunchMode.externalApplication);
           },
         );
     buildVersion() => ListTile(
