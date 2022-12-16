@@ -344,5 +344,5 @@ jobs:
             linux/amd64
             linux/arm64
           tags: |
-            liwei2633:latest
-            liwei2633:${{ env.VERSION }}
+            liwei2633/gopeed:latest
+            liwei2633/gopeed:${{ env.VERSION }}
