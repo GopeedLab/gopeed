@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 
 import '../../i18n/messages.dart';
@@ -20,6 +21,12 @@ class AppView extends GetView<AppController> {
       translations: messages,
       locale: toLocale(config.extra.locale),
       fallbackLocale: fallbackLocale,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: messages.keys.keys.map((e) => toLocale(e)).toList(),
       getPages: Routes.routes,
     );
   }

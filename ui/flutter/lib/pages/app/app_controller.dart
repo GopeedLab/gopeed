@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:ui' as ui;
 
-import 'package:external_path/external_path.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
@@ -157,23 +156,16 @@ class AppController extends GetxController {
       extra.bt.trackerSubscribeUrls.addAll(allTrackerSubscribeUrls);
     }
 
-    if (Util.isAndroid()) {
-      config.downloadDir =
-          '${await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOADS)}/com.gopeed';
+    if (Util.isDesktop()) {
+      config.downloadDir = (await getDownloadsDirectory())?.path ?? "./";
+    } else if (Util.isAndroid()) {
+      config.downloadDir = (await getExternalStorageDirectory())?.path ??
+          (await getApplicationDocumentsDirectory()).path;
       return;
-    }
-    if (Util.isIOS()) {
-      config.downloadDir = 'Documents';
-      return;
-    }
-
-    if (config.downloadDir.isEmpty) {
-      if (Util.isWeb()) {
-        config.downloadDir = './';
-      }
-      if (Util.isDesktop()) {
-        config.downloadDir = (await getDownloadsDirectory())?.path ?? "./";
-      }
+    } else if (Util.isIOS()) {
+      config.downloadDir = (await getApplicationDocumentsDirectory()).path;
+    } else {
+      config.downloadDir = './';
     }
   }
 

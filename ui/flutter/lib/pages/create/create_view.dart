@@ -1,7 +1,6 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
 import '../../api/api.dart';
@@ -171,13 +170,15 @@ class CreateView extends GetView<CreateController> {
                       try {
                         if (createFormKey.currentState!.validate()) {
                           downloadController.start();
-                          if (Util.isAndroid()) {
-                            if (!await Permission.storage.request().isGranted) {
-                              Get.snackbar('error'.tr,
-                                  'create.error.noStoragePermission'.tr);
-                              return;
-                            }
-                          }
+
+                          // if (Util.isAndroid()) {
+                          //   if (!await Permission.storage.request().isGranted) {
+                          //     Get.snackbar('error'.tr,
+                          //         'create.error.noStoragePermission'.tr);
+                          //     return;
+                          //   }
+                          // }
+
                           await createTask(CreateTask(
                               res: res,
                               opts: Options(
