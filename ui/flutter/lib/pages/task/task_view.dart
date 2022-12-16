@@ -30,13 +30,14 @@ class Item extends StatelessWidget {
               ),
               Row(
                 children: [
-                  Expanded(
+                  SizedBox(
+                      width: 180,
                       child: Text(
-                    "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
-                    style: context.textTheme.bodyText1
-                        ?.copyWith(color: Get.theme.disabledColor),
-                  ).padding(left: 18)),
-                  Expanded(
+                        "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
+                        style: context.textTheme.bodyText1
+                            ?.copyWith(color: Get.theme.disabledColor),
+                      ).padding(left: 18)),
+                  Flexible(
                       child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
