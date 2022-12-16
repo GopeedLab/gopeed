@@ -324,7 +324,6 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
-      - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
       - name: Set up QEMU
@@ -338,8 +337,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and push
         uses: docker/build-push-action@v2
-        env:
-          VERSION: ${{ needs.get-release.outputs.tag_name }}
         with:
           push: true
           platforms: |
