@@ -262,6 +262,7 @@ jobs:
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
+          APK_KEYSTORE : ${{ secrets.APK_KEYSTORE }}
           APK_KEY_PASSWORD : ${{ secrets.APK_KEY_PASSWORD }}
           APK_STORE_PASSWORD : ${{ secrets.APK_STORE_PASSWORD }}
         run: |
@@ -270,7 +271,7 @@ jobs:
           gomobile init
           gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
           cd ui/flutter
-          echo $APK_KEYSTORE | base64 -d > android/app/upload-keystore.jks
+          echo $APK_KEYSTORE | base64 -di > android/app/upload-keystore.jks
           flutter build apk
           mkdir dist
           cp build/app/outputs/flutter-apk/app-release.apk dist/Gopeed-$VERSION-android.apk
