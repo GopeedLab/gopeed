@@ -2,7 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'request.g.dart';
 
-@JsonSerializable(explicitToJson: true, genericArgumentFactories: true)
+@JsonSerializable(explicitToJson: true)
 class Request {
   String url;
   Map<String, dynamic>? extra;

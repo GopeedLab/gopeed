@@ -7,7 +7,6 @@ part of 'resource.dart';
 // **************************************************************************
 
 Resource _$ResourceFromJson(Map<String, dynamic> json) => Resource(
-      req: Request.fromJson(json['req'] as Map<String, dynamic>),
       name: json['name'] as String,
       size: json['size'] as int,
       range: json['range'] as bool,
@@ -18,7 +17,6 @@ Resource _$ResourceFromJson(Map<String, dynamic> json) => Resource(
     );
 
 Map<String, dynamic> _$ResourceToJson(Resource instance) => <String, dynamic>{
-      'req': instance.req.toJson(),
       'name': instance.name,
       'size': instance.size,
       'range': instance.range,

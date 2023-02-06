@@ -1,13 +1,13 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/api/model/resolve_result.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
 import '../../api/api.dart';
 import '../../api/model/create_task.dart';
 import '../../api/model/options.dart';
 import '../../api/model/request.dart';
-import '../../api/model/resource.dart';
 import '../../routes/router.dart';
 import '../../util/util.dart';
 import '../../widget/directory_selector.dart';
@@ -71,10 +71,10 @@ class CreateView extends GetView<CreateController> {
                             if (_resolveFormKey.currentState!.validate()) {
                               _confirmController.start();
                               try {
-                                final res = await resolve(Request(
+                                final rr = await resolve(Request(
                                   url: _urlController.text,
                                 ));
-                                await _showResolveDialog(res);
+                                await _showResolveDialog(rr);
                               } catch (e) {
                                 Get.snackbar('error'.tr, e.toString());
                               } finally {
@@ -101,7 +101,8 @@ class CreateView extends GetView<CreateController> {
     });
   }
 
-  Future<void> _showResolveDialog(Resource res) async {
+  Future<void> _showResolveDialog(ResolveResult rr) async {
+    final res = rr.res;
     final appController = Get.find<AppController>();
     final setting = appController.downloaderConfig.value;
 
@@ -180,7 +181,7 @@ class CreateView extends GetView<CreateController> {
                           // }
 
                           await createTask(CreateTask(
-                              res: res,
+                              rid: rr.id,
                               opts: Options(
                                 name: '',
                                 path: pathController.text,

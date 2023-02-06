@@ -25,7 +25,7 @@ class Item extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: Text(task.res.name),
+                title: Text(task.meta.res.name),
                 leading: const Icon(Icons.insert_drive_file),
               ),
               Row(
@@ -63,8 +63,8 @@ class Item extends StatelessWidget {
         list.add(IconButton(
           icon: const Icon(Icons.folder_open),
           onPressed: () async {
-            final file = File(Util.buildAbsPath(task.opts.path,
-                task.res.files[0].path, task.res.files[0].name));
+            final file = File(Util.buildAbsPath(task.meta.opts.path,
+                task.meta.res.files[0].path, task.meta.res.files[0].name));
             await launchUrl(file.parent.uri);
           },
         ));

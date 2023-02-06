@@ -22,8 +22,8 @@ class ProtocolConfig {
 
   ProtocolConfig();
 
-  factory ProtocolConfig.fromJson(Map<String, dynamic> json) =>
-      _$ProtocolConfigFromJson(json);
+  factory ProtocolConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? ProtocolConfig() : _$ProtocolConfigFromJson(json);
   Map<String, dynamic> toJson() => _$ProtocolConfigToJson(this);
 }
 
@@ -57,8 +57,8 @@ class ExtraConfig {
 
   ExtraConfig();
 
-  factory ExtraConfig.fromJson(Map<String, dynamic> json) =>
-      _$ExtraConfigFromJson(json);
+  factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? ExtraConfig() : _$ExtraConfigFromJson(json);
   Map<String, dynamic> toJson() => _$ExtraConfigToJson(this);
 }
 

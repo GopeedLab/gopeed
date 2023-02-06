@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import 'meta.dart';
 import 'options.dart';
 import 'resource.dart';
 
@@ -10,8 +11,7 @@ enum Status { ready, running, pause, error, done }
 @JsonSerializable(explicitToJson: true)
 class Task {
   String id;
-  Resource res;
-  Options opts;
+  Meta meta;
   Status status;
   Progress progress;
   int size;
@@ -19,8 +19,7 @@ class Task {
 
   Task({
     required this.id,
-    required this.res,
-    required this.opts,
+    required this.meta,
     required this.status,
     required this.progress,
     required this.size,

@@ -12,7 +12,6 @@ type Request struct {
 
 // 资源信息
 type Resource struct {
-	ID string `json:"id"`
 	// 资源名称
 	Name string `json:"name"`
 	// 资源总大小

@@ -1,12 +1,9 @@
 import 'package:json_annotation/json_annotation.dart';
 
-import 'request.dart';
-
 part 'resource.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class Resource {
-  Request req;
   String name;
   int size;
   bool range;
@@ -14,8 +11,7 @@ class Resource {
   String hash;
 
   Resource(
-      {required this.req,
-      required this.name,
+      {required this.name,
       required this.size,
       required this.range,
       required this.files,

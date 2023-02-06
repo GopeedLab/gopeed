@@ -91,6 +91,10 @@ This project is divided into two parts, the front end uses `flutter`, the back e
 git clone git@github.com:monkeyWie/gopeed.git
 ```
 
+### Contributing
+
+Please refer to [CONTRIBUTING.md](/CONTRIBUTING.md)
+
 ### Build
 
 #### Desktop
@@ -143,8 +147,6 @@ flutter build apk
 ```
 
 #### Web
-
-Web platform communicates directly with the backend http server, no additional environment is required.
 
 command:
 
