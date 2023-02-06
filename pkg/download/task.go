@@ -10,13 +10,12 @@ import (
 )
 
 type Task struct {
-	ID        string         `json:"id"`
-	Res       *base.Resource `json:"res"`
-	Opts      *base.Options  `json:"opts"`
-	Status    base.Status    `json:"status"`
-	Progress  *Progress      `json:"progress"`
-	Size      int64          `json:"size"`
-	CreatedAt time.Time      `json:"createdAt"`
+	ID        string               `json:"id"`
+	Meta      *fetcher.FetcherMeta `json:"meta"`
+	Status    base.Status          `json:"status"`
+	Progress  *Progress            `json:"progress"`
+	Size      int64                `json:"size"`
+	CreatedAt time.Time            `json:"createdAt"`
 
 	fetcherBuilder fetcher.FetcherBuilder
 	fetcher        fetcher.Fetcher
@@ -39,8 +38,7 @@ func NewTask() *Task {
 func (t *Task) clone() *Task {
 	return &Task{
 		ID:        t.ID,
-		Res:       t.Res,
-		Opts:      t.Opts,
+		Meta:      t.Meta,
 		Status:    t.Status,
 		Progress:  t.Progress,
 		Size:      t.Size,

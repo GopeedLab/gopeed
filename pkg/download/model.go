@@ -5,7 +5,13 @@ import (
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/internal/protocol/bt"
 	"github.com/monkeyWie/gopeed/internal/protocol/http"
+	"github.com/monkeyWie/gopeed/pkg/base"
 )
+
+type ResolveResult struct {
+	ID  string
+	Res *base.Resource
+}
 
 type DownloaderConfig struct {
 	Controller    *controller.Controller

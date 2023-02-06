@@ -34,7 +34,6 @@ var (
 	}
 	taskRes = &base.Resource{
 		Name:  test.BuildName,
-		Req:   taskReq,
 		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
@@ -46,7 +45,7 @@ var (
 		},
 	}
 	createReq = &model.CreateTask{
-		Res: taskRes,
+		Req: taskReq,
 		Opts: &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
@@ -59,9 +58,9 @@ var (
 
 func TestResolve(t *testing.T) {
 	doTest(func() {
-		resp := httpRequestCheckOk[*base.Resource](http.MethodPost, "/api/v1/resolve", taskReq)
-		if !test.JsonEqual(taskRes, resp) {
-			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp), test.ToJson(taskRes))
+		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", taskReq)
+		if !test.JsonEqual(taskRes, resp.Res) {
+			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp.Res), test.ToJson(taskRes))
 		}
 	})
 }

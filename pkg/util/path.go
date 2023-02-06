@@ -4,11 +4,11 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
+	syspath "path"
 )
 
 func Dir(path string) string {
-	dir := filepath.Dir(path)
+	dir := syspath.Dir(path)
 	if dir == "." {
 		return ""
 	}
@@ -19,7 +19,7 @@ func Filepath(path string, originName string, customName string) string {
 	if customName == "" {
 		customName = originName
 	}
-	return filepath.Join(path, customName)
+	return syspath.Join(path, customName)
 }
 
 // SafeRemove remove file safely, ignoring errors if the path does not exist.
@@ -33,7 +33,7 @@ func SafeRemove(name string) error {
 // SafeRemoveAll remove file and parent directories safely
 func SafeRemoveAll(path string, names []string) error {
 	for _, name := range names {
-		err := SafeRemove(filepath.Join(path, name))
+		err := SafeRemove(syspath.Join(path, name))
 		if err != nil {
 			return err
 		}
@@ -45,12 +45,12 @@ func SafeRemoveAll(path string, names []string) error {
 }
 
 func safeRemoveParent(path string, subPath string) error {
-	currPath := filepath.Dir(subPath)
+	currPath := syspath.Dir(subPath)
 	if currPath == "." {
 		return nil
 	}
 	// if directory is empty, remove it
-	dir := filepath.Join(path, filepath.Dir(subPath))
+	dir := syspath.Join(path, syspath.Dir(subPath))
 	empty, err := isEmpty(dir)
 	if err != nil {
 		return err

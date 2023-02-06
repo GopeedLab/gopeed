@@ -2,6 +2,7 @@ package download
 
 import (
 	"errors"
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/monkeyWie/gopeed/internal/controller"
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/pkg/base"
@@ -31,6 +32,7 @@ type Progress struct {
 
 type Downloader struct {
 	fetchBuilders map[string]fetcher.FetcherBuilder
+	fetcherMap    map[string]fetcher.Fetcher
 	storage       Storage
 	tasks         []*Task
 	listener      Listener
@@ -47,7 +49,9 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 	cfg.Init()
 
 	d := &Downloader{
-		fetchBuilders:   make(map[string]fetcher.FetcherBuilder),
+		fetchBuilders: make(map[string]fetcher.FetcherBuilder),
+		fetcherMap:    make(map[string]fetcher.Fetcher),
+
 		refreshInterval: cfg.RefreshInterval,
 		storage:         cfg.Storage,
 		lock:            &sync.Mutex{},
@@ -128,18 +132,16 @@ func (d *Downloader) Setup() error {
 	return nil
 }
 
-func (d *Downloader) buildFetcher(url string) (fetcher.FetcherBuilder, fetcher.Fetcher, error) {
+func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
 	schema := util.ParseSchema(url)
 	fetchBuilder, ok := d.fetchBuilders[schema]
 	if !ok {
 		fetchBuilder, ok = d.fetchBuilders[util.FileSchema]
 	}
 	if ok {
-		fetcher := fetchBuilder.Build()
-		d.setupFetcher(fetcher)
-		return fetchBuilder, fetcher, nil
+		return fetchBuilder, nil
 	}
-	return nil, nil, errors.New("unsupported protocol")
+	return nil, errors.New("unsupported protocol")
 }
 
 func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
@@ -150,26 +152,49 @@ func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
 	fetcher.Setup(ctl)
 }
 
-func (d *Downloader) Resolve(req *base.Request) (*base.Resource, error) {
-	_, fetcher, err := d.buildFetcher(req.URL)
+func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
+	fb, err := d.parseFb(req.URL)
 	if err != nil {
-		return nil, err
+		return
 	}
-	res, err := fetcher.Resolve(req)
+	fetcher := fb.Build()
+	d.setupFetcher(fetcher)
+	err = fetcher.Resolve(req)
 	if err != nil {
-		return nil, err
+		return
 	}
-
-	return res, nil
+	rrId, err := gonanoid.New()
+	if err != nil {
+		return
+	}
+	d.fetcherMap[rrId] = fetcher
+	rr = &ResolveResult{
+		ID:  rrId,
+		Res: fetcher.Meta().Res,
+	}
+	return
 }
 
-func (d *Downloader) Create(res *base.Resource, opts *base.Options) (taskId string, err error) {
+func (d *Downloader) DirectCreate(req *base.Request, opts *base.Options) (taskId string, err error) {
+	rr, err := d.Resolve(req)
+	if err != nil {
+		return
+	}
+	return d.Create(rr.ID, opts)
+}
+
+func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err error) {
 	if opts == nil {
 		opts = &base.Options{}
 	}
+	fetcher, ok := d.fetcherMap[rrId]
+	if !ok {
+		return "", errors.New("invalid resource id")
+	}
+	delete(d.fetcherMap, rrId)
 	if len(opts.SelectFiles) == 0 {
 		opts.SelectFiles = make([]int, 0)
-		for i := range res.Files {
+		for i := range fetcher.Meta().Res.Files {
 			opts.SelectFiles = append(opts.SelectFiles, i)
 		}
 	}
@@ -183,25 +208,24 @@ func (d *Downloader) Create(res *base.Resource, opts *base.Options) (taskId stri
 		}
 	}
 
-	fetcherBuilder, fetcher, err := d.buildFetcher(res.Req.URL)
+	fb, err := d.parseFb(fetcher.Meta().Req.URL)
 	if err != nil {
 		return
 	}
-	err = fetcher.Create(res, opts)
+	err = fetcher.Create(opts)
 	if err != nil {
 		return
 	}
 
 	task := NewTask()
-	task.fetcherBuilder = fetcherBuilder
+	task.fetcherBuilder = fb
 	task.fetcher = fetcher
-	task.Res = res
-	task.Opts = opts
+	task.Meta = fetcher.Meta()
 	task.Progress = &Progress{}
 	task.Status = base.DownloadStatusRunning
 	// calculate select files size
 	for _, selectIndex := range opts.SelectFiles {
-		task.Size += res.Files[selectIndex].Size
+		task.Size += fetcher.Meta().Res.Files[selectIndex].Size
 	}
 	initTask(task)
 	task.timer.Start()
@@ -303,10 +327,10 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 	}
 	if force {
 		names := make([]string, 0)
-		for _, file := range task.Res.Files {
-			names = append(names, util.Filepath(file.Path, file.Name, task.Opts.Name))
+		for _, file := range task.Meta.Res.Files {
+			names = append(names, util.Filepath(file.Path, file.Name, task.Meta.Opts.Name))
 		}
-		util.SafeRemoveAll(task.Opts.Path, names)
+		util.SafeRemoveAll(task.Meta.Opts.Path, names)
 	}
 	d.emit(EventKeyDelete, task)
 	task = nil
@@ -403,7 +427,7 @@ func (d *Downloader) watch(task *Task) {
 		task.Progress.Used = task.timer.Used()
 		if task.Size == 0 {
 			task.Size = task.fetcher.Progress().TotalDownloaded()
-			task.Res.Size = task.Size
+			task.Meta.Res.Size = task.Size
 		}
 		used := task.Progress.Used / int64(time.Second)
 		if used == 0 {
@@ -420,19 +444,19 @@ func (d *Downloader) watch(task *Task) {
 
 func (d *Downloader) restoreFetcher(task *Task) error {
 	if task.fetcher == nil {
-		fetcherBuilder, _, err := d.buildFetcher(task.Res.Req.URL)
+		fb, err := d.parseFb(task.Meta.Req.URL)
 		if err != nil {
 			return err
 		}
-		task.fetcherBuilder = fetcherBuilder
+		task.fetcherBuilder = fb
 		err = func() error {
-			v, f := fetcherBuilder.Restore()
+			v, f := fb.Restore()
 			if v != nil {
 				err := d.storage.Pop(bucketSave, task.ID, v)
 				if err != nil {
 					return err
 				}
-				task.fetcher = f(task.Res, task.Opts, v)
+				task.fetcher = f(task.Meta, v)
 			}
 			return nil
 		}()
@@ -440,10 +464,10 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 			// TODO log
 		}
 		if task.fetcher == nil {
-			task.fetcher = fetcherBuilder.Build()
+			task.fetcher = fb.Build()
 		}
 		d.setupFetcher(task.fetcher)
-		task.fetcher.Create(task.Res, task.Opts)
+		task.fetcher.Create(task.Meta.Opts)
 		go d.watch(task)
 	}
 	return nil
@@ -472,7 +496,7 @@ func (b *boot) Extra(extra interface{}) *boot {
 	return b
 }
 
-func (b *boot) Resolve() (*base.Resource, error) {
+func (b *boot) Resolve() (*ResolveResult, error) {
 	return defaultDownloader.Resolve(&base.Request{
 		URL:   b.url,
 		Extra: b.extra,
@@ -485,12 +509,12 @@ func (b *boot) Listener(listener Listener) *boot {
 }
 
 func (b *boot) Create(opts *base.Options) (string, error) {
-	res, err := b.Resolve()
+	rr, err := b.Resolve()
 	if err != nil {
 		return "", err
 	}
 	defaultDownloader.Listener(b.listener)
-	return defaultDownloader.Create(res, opts)
+	return defaultDownloader.Create(rr.ID, opts)
 }
 
 func Boot() *boot {
