@@ -110,7 +110,7 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 }
 
 func (f *Fetcher) Start() (err error) {
-	if f.torrent == nil {
+	if !f.ready.Load() {
 		if err = f.addTorrent(f.meta.Req.URL); err != nil {
 			return
 		}
@@ -236,5 +236,9 @@ func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {
 }
 
 func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
-	return nil, nil
+	return nil, func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher {
+		return &Fetcher{
+			meta: meta,
+		}
+	}
 }

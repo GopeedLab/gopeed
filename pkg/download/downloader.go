@@ -281,6 +281,7 @@ func (d *Downloader) Continue(id string) (err error) {
 	defer task.lock.Unlock()
 	if task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusError {
 		task.Status = base.DownloadStatusRunning
+		task.Progress.Speed = 0
 		err = d.restoreFetcher(task)
 		if err != nil {
 			return
@@ -418,6 +419,7 @@ func (d *Downloader) getProtocolConfig(name string, v any) (bool, error) {
 	return true, nil
 }
 
+// wait task done
 func (d *Downloader) watch(task *Task) {
 	err := task.fetcher.Wait()
 	if err != nil {
@@ -456,8 +458,8 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 				if err != nil {
 					return err
 				}
-				task.fetcher = f(task.Meta, v)
 			}
+			task.fetcher = f(task.Meta, v)
 			return nil
 		}()
 		if err != nil {
