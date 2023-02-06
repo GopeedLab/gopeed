@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com" "\0"
-            VALUE "FileDescription", "flutter_ui" "\0"
+            VALUE "FileDescription", "gopeed" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "flutter_ui" "\0"
+            VALUE "InternalName", "gopeed" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2023 com. All rights reserved." "\0"
-            VALUE "OriginalFilename", "flutter_ui.exe" "\0"
-            VALUE "ProductName", "flutter_ui" "\0"
+            VALUE "OriginalFilename", "gopeed.exe" "\0"
+            VALUE "ProductName", "gopeed" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
