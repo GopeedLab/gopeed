@@ -34,7 +34,6 @@ var (
 	}
 	taskRes = &base.Resource{
 		Name:  test.BuildName,
-		Req:   taskReq,
 		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
@@ -46,7 +45,7 @@ var (
 		},
 	}
 	createReq = &model.CreateTask{
-		Res: taskRes,
+		Req: taskReq,
 		Opts: &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
@@ -59,9 +58,9 @@ var (
 
 func TestResolve(t *testing.T) {
 	doTest(func() {
-		resp := httpRequestCheckOk[*base.Resource](http.MethodPost, "/api/v1/resolve", taskReq)
-		if !test.JsonEqual(taskRes, resp) {
-			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp), test.ToJson(taskRes))
+		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", taskReq)
+		if !test.JsonEqual(taskRes, resp.Res) {
+			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp.Res), test.ToJson(taskRes))
 		}
 	})
 }
@@ -148,6 +147,7 @@ func TestPauseAndContinueTask(t *testing.T) {
 func TestDeleteTask(t *testing.T) {
 	doTest(func() {
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+		time.Sleep(time.Millisecond * 200)
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId, nil)
 		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
 		checkCode(code, http.StatusNotFound)
@@ -157,7 +157,7 @@ func TestDeleteTask(t *testing.T) {
 func TestDeleteTaskForce(t *testing.T) {
 	doTest(func() {
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
-		time.Sleep(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 200)
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId+"?force=true", nil)
 		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
 		checkCode(code, http.StatusNotFound)

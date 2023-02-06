@@ -43,15 +43,14 @@ func testResolve(startTestServer func() net.Listener, want *base.Resource, t *te
 	listener := startTestServer()
 	defer listener.Close()
 	fetcher := buildFetcher()
-	res, err := fetcher.Resolve(&base.Request{
+	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	res.Req = nil
-	if !reflect.DeepEqual(want, res) {
-		t.Errorf("Resolve() got = %v, want %v", res, want)
+	if !reflect.DeepEqual(want, fetcher.meta.Res) {
+		t.Errorf("Resolve() got = %v, want %v", fetcher.meta.Res, want)
 	}
 }
 
@@ -114,7 +113,7 @@ func TestFetcher_DownloadResume(t *testing.T) {
 }
 
 func TestFetcher_Config(t *testing.T) {
-	fetcher, _, _ := doDownloadReady(buildConfigFetcher(), test.StartTestFileServer(), 0, t)
+	fetcher := doDownloadReady(buildConfigFetcher(), test.StartTestFileServer(), 0, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -130,13 +129,12 @@ func TestFetcher_Config(t *testing.T) {
 	}
 }
 
-func downloadReady(listener net.Listener, connections int, t *testing.T) (fetcher fetcher.Fetcher, res *base.Resource, opts *base.Options) {
+func downloadReady(listener net.Listener, connections int, t *testing.T) fetcher.Fetcher {
 	return doDownloadReady(buildFetcher(), listener, connections, t)
 }
 
-func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, t *testing.T) (fetcher fetcher.Fetcher, res *base.Resource, opts *base.Options) {
-	fetcher = f
-	res, err := fetcher.Resolve(&base.Request{
+func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, t *testing.T) fetcher.Fetcher {
+	err := f.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	})
 	if err != nil {
@@ -148,20 +146,20 @@ func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, 
 			Connections: connections,
 		}
 	}
-	opts = &base.Options{
+	opts := &base.Options{
 		Name:  test.DownloadName,
 		Path:  test.Dir,
 		Extra: extra,
 	}
-	err = fetcher.Create(res, opts)
+	err = f.Create(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return
+	return f
 }
 
 func downloadNormal(listener net.Listener, connections int, t *testing.T) {
-	fetcher, _, _ := downloadReady(listener, connections, t)
+	fetcher := downloadReady(listener, connections, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -178,8 +176,8 @@ func downloadNormal(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadPost(listener net.Listener, connections int, t *testing.T) {
-	fetcher, _, _ := downloadReady(listener, connections, t)
-	fetcher.(*Fetcher).res.Req.Extra = &http.ReqExtra{
+	fetcher := downloadReady(listener, connections, t)
+	fetcher.Meta().Req.Extra = &http.ReqExtra{
 		Method: "POST",
 		Header: map[string]string{
 			"Authorization": "Bearer 123456",
@@ -202,7 +200,7 @@ func downloadPost(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadContinue(listener net.Listener, connections int, t *testing.T) {
-	fetcher, _, _ := downloadReady(listener, connections, t)
+	fetcher := downloadReady(listener, connections, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -227,7 +225,7 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadError(listener net.Listener, connections int, t *testing.T) {
-	fetcher, _, _ := downloadReady(listener, connections, t)
+	fetcher := downloadReady(listener, connections, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -239,7 +237,7 @@ func downloadError(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadResume(listener net.Listener, connections int, t *testing.T) {
-	fetcher, res, opts := downloadReady(listener, connections, t)
+	fetcher := downloadReady(listener, connections, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -255,7 +253,7 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 	fetcher.Pause()
 
 	_, f := fb.Restore()
-	f(res, opts, data)
+	f(fetcher.Meta(), data)
 	if err != nil {
 		t.Fatal(err)
 	}

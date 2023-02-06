@@ -17,11 +17,10 @@ import (
 var client *torrent.Client
 
 type Fetcher struct {
-	Ctl *controller.Controller
+	ctl *controller.Controller
 
 	torrent *torrent.Torrent
-	res     *base.Resource
-	opts    *base.Options
+	meta    *fetcher.FetcherMeta
 
 	ready    atomic.Bool
 	progress fetcher.Progress
@@ -34,7 +33,10 @@ func (f *Fetcher) Name() string {
 }
 
 func (f *Fetcher) Setup(ctl *controller.Controller) (err error) {
-	f.Ctl = ctl
+	f.ctl = ctl
+	if f.meta == nil {
+		f.meta = &fetcher.FetcherMeta{}
+	}
 	var once sync.Once
 	once.Do(func() {
 		cfg := torrent.NewDefaultClientConfig()
@@ -66,46 +68,12 @@ func (f *Fetcher) Setup(ctl *controller.Controller) (err error) {
 	return
 }
 
-func (f *Fetcher) Wait() (err error) {
-	for {
-		if f.ready.Load() {
-			done := true
-			for _, selectIndex := range f.opts.SelectFiles {
-				file := f.torrent.Files()[selectIndex]
-				if file.BytesCompleted() < file.Length() {
-					done = false
-					break
-				}
-			}
-			if done {
-				// remove unselected files
-				for i, file := range f.torrent.Files() {
-					selected := false
-					for _, selectIndex := range f.opts.SelectFiles {
-						if i == selectIndex {
-							selected = true
-							break
-						}
-					}
-					if !selected {
-						util.SafeRemove(filepath.Join(f.opts.Path, file.Path()))
-					}
-				}
-				break
-			}
-		}
-		time.Sleep(time.Millisecond * 500)
-	}
-	return nil
-}
-
-func (f *Fetcher) Resolve(req *base.Request) (res *base.Resource, err error) {
-	if err = f.addTorrent(req.URL, true); err != nil {
-		return
+func (f *Fetcher) Resolve(req *base.Request) error {
+	if err := f.addTorrent(req.URL); err != nil {
+		return err
 	}
 	defer f.torrent.Drop()
-	res = &base.Resource{
-		Req:   req,
+	res := &base.Resource{
 		Name:  f.torrent.Name(),
 		Range: true,
 		Files: make([]*base.FileInfo, len(f.torrent.Files())),
@@ -119,36 +87,39 @@ func (f *Fetcher) Resolve(req *base.Request) (res *base.Resource, err error) {
 		}
 		res.Size += file.Length()
 	}
-	return
+	f.meta.Req = req
+	f.meta.Res = res
+	return nil
 }
 
-func (f *Fetcher) Create(res *base.Resource, opts *base.Options) (err error) {
-	f.res = res
-	f.opts = opts
-	if len(f.opts.SelectFiles) == 0 {
-		f.opts.SelectFiles = make([]int, 0)
+func (f *Fetcher) Create(opts *base.Options) (err error) {
+	f.meta.Opts = opts
+	if len(opts.SelectFiles) == 0 {
+		opts.SelectFiles = make([]int, 0)
 		for i := range f.torrent.Files() {
-			f.opts.SelectFiles = append(f.opts.SelectFiles, i)
+			opts.SelectFiles = append(opts.SelectFiles, i)
 		}
 	}
-	if f.opts.Path != "" {
-		f.torrentPaths[res.Hash] = f.opts.Path
+	if opts.Path != "" {
+		f.torrentPaths[f.meta.Res.Hash] = f.meta.Opts.Path
 	}
 
-	f.progress = make(fetcher.Progress, len(f.opts.SelectFiles))
+	f.progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))
 	f.ready.Store(false)
 	return nil
 }
 
 func (f *Fetcher) Start() (err error) {
-	if err = f.addTorrent(f.res.Req.URL, false); err != nil {
-		return
+	if f.torrent == nil {
+		if err = f.addTorrent(f.meta.Req.URL); err != nil {
+			return
+		}
 	}
 	files := f.torrent.Files()
-	if len(f.opts.SelectFiles) == len(files) {
+	if len(f.meta.Opts.SelectFiles) == len(files) {
 		f.torrent.DownloadAll()
 	} else {
-		for _, selectIndex := range f.opts.SelectFiles {
+		for _, selectIndex := range f.meta.Opts.SelectFiles {
 			file := files[selectIndex]
 			file.Download()
 		}
@@ -171,19 +142,56 @@ func (f *Fetcher) Close() (err error) {
 	return nil
 }
 
+func (f *Fetcher) Wait() (err error) {
+	for {
+		if f.ready.Load() {
+			done := true
+			for _, selectIndex := range f.meta.Opts.SelectFiles {
+				file := f.torrent.Files()[selectIndex]
+				if file.BytesCompleted() < file.Length() {
+					done = false
+					break
+				}
+			}
+			if done {
+				// remove unselected files
+				for i, file := range f.torrent.Files() {
+					selected := false
+					for _, selectIndex := range f.meta.Opts.SelectFiles {
+						if i == selectIndex {
+							selected = true
+							break
+						}
+					}
+					if !selected {
+						util.SafeRemove(filepath.Join(f.meta.Opts.Path, file.Path()))
+					}
+				}
+				break
+			}
+		}
+		time.Sleep(time.Millisecond * 500)
+	}
+	return nil
+}
+
+func (f *Fetcher) Meta() *fetcher.FetcherMeta {
+	return f.meta
+}
+
 func (f *Fetcher) Progress() fetcher.Progress {
 	if !f.ready.Load() {
 		return f.progress
 	}
 	for i := range f.progress {
-		selectIndex := f.opts.SelectFiles[i]
+		selectIndex := f.meta.Opts.SelectFiles[i]
 		file := f.torrent.Files()[selectIndex]
 		f.progress[i] = file.BytesCompleted()
 	}
 	return f.progress
 }
 
-func (f *Fetcher) addTorrent(url string, resolve bool) (err error) {
+func (f *Fetcher) addTorrent(url string) (err error) {
 	schema := util.ParseSchema(url)
 	if schema == "MAGNET" {
 		f.torrent, err = client.AddMagnet(url)
@@ -194,7 +202,7 @@ func (f *Fetcher) addTorrent(url string, resolve bool) (err error) {
 		return
 	}
 	var cfg config
-	exist, err := f.Ctl.GetConfig(&cfg)
+	exist, err := f.ctl.GetConfig(&cfg)
 	if err != nil {
 		return
 	}
@@ -206,9 +214,6 @@ func (f *Fetcher) addTorrent(url string, resolve bool) (err error) {
 		f.torrent.AddTrackers(announceList)
 	}
 	<-f.torrent.GotInfo()
-	if resolve {
-		return
-	}
 	f.ready.Store(true)
 	return
 }
@@ -230,6 +235,6 @@ func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {
 	return nil, nil
 }
 
-func (fb *FetcherBuilder) Restore() (v any, f func(res *base.Resource, opts *base.Options, v any) fetcher.Fetcher) {
+func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
 	return nil, nil
 }

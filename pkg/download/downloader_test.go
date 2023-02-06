@@ -22,13 +22,12 @@ func TestDownloader_Resolve(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	res, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := &base.Resource{
 		Name:  test.BuildName,
-		Req:   req,
 		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
@@ -39,8 +38,8 @@ func TestDownloader_Resolve(t *testing.T) {
 			},
 		},
 	}
-	if !reflect.DeepEqual(want, res) {
-		t.Errorf("Resolve() got = %v, want %v", res, want)
+	if !reflect.DeepEqual(want, rr.Res) {
+		t.Errorf("Resolve() got = %v, want %v", rr.Res, want)
 	}
 }
 
@@ -56,7 +55,7 @@ func TestDownloader_Create(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	res, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +67,7 @@ func TestDownloader_Create(t *testing.T) {
 			wg.Done()
 		}
 	})
-	_, err = downloader.Create(res, &base.Options{
+	_, err = downloader.Create(rr.ID, &base.Options{
 		Path: test.Dir,
 		Name: test.DownloadName,
 		Extra: http.OptsExtra{
@@ -100,12 +99,12 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	res, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	id, err := downloader.Create(res, &base.Options{
+	id, err := downloader.Create(rr.ID, &base.Options{
 		Path: test.Dir,
 		Name: test.DownloadName,
 		Extra: http.OptsExtra{

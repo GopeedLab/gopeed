@@ -8,8 +8,7 @@ part of 'task.dart';
 
 Task _$TaskFromJson(Map<String, dynamic> json) => Task(
       id: json['id'] as String,
-      res: Resource.fromJson(json['res'] as Map<String, dynamic>),
-      opts: Options.fromJson(json['opts'] as Map<String, dynamic>),
+      meta: Meta.fromJson(json['meta'] as Map<String, dynamic>),
       status: $enumDecode(_$StatusEnumMap, json['status']),
       progress: Progress.fromJson(json['progress'] as Map<String, dynamic>),
       size: json['size'] as int,
@@ -18,8 +17,7 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
 
 Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
       'id': instance.id,
-      'res': instance.res.toJson(),
-      'opts': instance.opts.toJson(),
+      'meta': instance.meta.toJson(),
       'status': _$StatusEnumMap[instance.status]!,
       'progress': instance.progress.toJson(),
       'size': instance.size,

@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'model/resolve_result.dart';
 import '../util/util.dart';
 import 'model/create_task.dart';
 import 'model/request.dart';
-import 'model/resource.dart';
 import 'model/result.dart';
 import 'model/task.dart';
 
@@ -82,10 +82,10 @@ Future<T> _parse<T>(
   }
 }
 
-Future<Resource> resolve(Request request) async {
-  return _parse<Resource>(
+Future<ResolveResult> resolve(Request request) async {
+  return _parse<ResolveResult>(
       () => _client.dio.post("/api/v1/resolve", data: request),
-      (data) => Resource.fromJson(data));
+      (data) => ResolveResult.fromJson(data));
 }
 
 Future<String> createTask(CreateTask createTask) async {

@@ -91,6 +91,10 @@ docker-compose up -d
 git clone git@github.com:monkeyWie/gopeed.git
 ```
 
+### 贡献代码
+
+请参考[贡献指南](CONTRIBUTING_zh-CN.md)
+
 ### 编译
 
 #### 桌面端
@@ -142,9 +146,7 @@ cd ui/flutter
 flutter build apk
 ```
 
-#### Web 端（推荐本地调试使用）
-
-Web 端直接与后端 http 服务通讯，不需要额外准备环境。
+#### Web 端
 
 构建命令：
 

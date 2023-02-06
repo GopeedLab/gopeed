@@ -10,8 +10,8 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
     DownloaderConfig()
       ..downloadDir = json['downloadDir'] as String
       ..protocolConfig = ProtocolConfig.fromJson(
-          json['protocolConfig'] as Map<String, dynamic>)
-      ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>);
+          json['protocolConfig'] as Map<String, dynamic>?)
+      ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{

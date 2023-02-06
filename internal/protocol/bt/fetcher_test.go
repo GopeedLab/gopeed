@@ -19,7 +19,7 @@ func TestFetcher_Config(t *testing.T) {
 }
 
 func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
-	res, err := fetcher.Resolve(&base.Request{
+	err := fetcher.Resolve(&base.Request{
 		URL: "./testdata/ubuntu-22.04-live-server-amd64.iso.torrent",
 	})
 	if err != nil {
@@ -27,7 +27,6 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 	}
 
 	want := &base.Resource{
-		Req:   res.Req,
 		Name:  "ubuntu-22.04-live-server-amd64.iso",
 		Size:  1466714112,
 		Range: true,
@@ -39,8 +38,8 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 		},
 		Hash: "8a55cfbd5ca5d11507364765936c4f9e55b253ed",
 	}
-	if !reflect.DeepEqual(want, res) {
-		t.Errorf("Resolve() got = %v, want %v", res, want)
+	if !reflect.DeepEqual(want, fetcher.Meta().Res) {
+		t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, want)
 	}
 }
 

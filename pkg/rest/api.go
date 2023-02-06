@@ -16,19 +16,30 @@ import (
 func Resolve(w http.ResponseWriter, r *http.Request) {
 	var req base.Request
 	if util.ReadJson(w, r, &req) {
-		resource, err := Downloader.Resolve(&req)
+		rr, err := Downloader.Resolve(&req)
 		if err != nil {
 			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
 			return
 		}
-		util.WriteJsonOk(w, model.NewResultWithData(resource))
+		util.WriteJsonOk(w, model.NewResultWithData(rr))
 	}
 }
 
 func CreateTask(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateTask
 	if util.ReadJson(w, r, &req) {
-		taskId, err := Downloader.Create(req.Res, req.Opts)
+		var (
+			taskId string
+			err    error
+		)
+		if req.Rid != "" {
+			taskId, err = Downloader.Create(req.Rid, req.Opts)
+		} else if req.Req != nil {
+			taskId, err = Downloader.DirectCreate(req.Req, req.Opts)
+		} else {
+			util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg("param is required: rid or req"))
+			return
+		}
 		if err != nil {
 			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
 			return

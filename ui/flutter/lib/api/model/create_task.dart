@@ -1,17 +1,19 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import 'options.dart';
-import 'resource.dart';
+import 'request.dart';
 
 part 'create_task.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class CreateTask {
-  Resource res;
+  String? rid;
+  Request? req;
   Options? opts;
 
   CreateTask({
-    required this.res,
+    this.rid,
+    this.req,
     this.opts,
   });
 

@@ -56,10 +56,10 @@ var (
 )
 
 func printProgress(task *download.Task, title string) {
-	rate := float64(task.Progress.Downloaded) / float64(task.Res.Size)
+	rate := float64(task.Progress.Downloaded) / float64(task.Meta.Res.Size)
 	completeWidth := int(progressWidth * rate)
 	speed := util.ByteFmt(task.Progress.Speed)
-	totalSize := util.ByteFmt(task.Res.Size)
+	totalSize := util.ByteFmt(task.Meta.Res.Size)
 	sb.WriteString(fmt.Sprintf("\r%s [", title))
 	for i := 0; i < progressWidth; i++ {
 		if i < completeWidth {
