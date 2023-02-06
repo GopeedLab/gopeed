@@ -87,8 +87,11 @@ func TestFilepath(t *testing.T) {
 
 func TestSafeRemove(t *testing.T) {
 	name := "test_safe_remove.data"
-	_, err := os.Create(name)
+	file, err := os.Create(name)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if err := SafeRemove(name); err != nil {
@@ -185,8 +188,11 @@ func preCreate(t *testing.T, path string, names []string) {
 		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
 			t.Fatal(err)
 		}
-		_, err := os.Create(fullPath)
+		file, err := os.Create(fullPath)
 		if err != nil {
+			t.Fatal(err)
+		}
+		if err := file.Close(); err != nil {
 			t.Fatal(err)
 		}
 	}

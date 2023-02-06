@@ -17,9 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -137,11 +135,11 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		}
 	}
 	// Get file filePath by URL
-	if file.Name == "" && strings.Count(req.URL, "/") > 2 {
-		file.Name = filepath.Base(req.URL)
+	if file.Name == "" {
+		file.Name = path.Base(httpReq.URL.Path)
 	}
 	// unknown file filePath
-	if file.Name == "" {
+	if file.Name == "" || file.Name == "/" || file.Name == "." {
 		file.Name = "unknown"
 	}
 	res.Files = append(res.Files, file)

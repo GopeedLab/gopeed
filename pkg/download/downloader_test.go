@@ -22,7 +22,7 @@ func TestDownloader_Resolve(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	res, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,8 +38,8 @@ func TestDownloader_Resolve(t *testing.T) {
 			},
 		},
 	}
-	if !reflect.DeepEqual(want, res) {
-		t.Errorf("Resolve() got = %v, want %v", res, want)
+	if !reflect.DeepEqual(want, rr.Res) {
+		t.Errorf("Resolve() got = %v, want %v", rr.Res, want)
 	}
 }
 

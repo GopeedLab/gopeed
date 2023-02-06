@@ -147,6 +147,7 @@ func TestPauseAndContinueTask(t *testing.T) {
 func TestDeleteTask(t *testing.T) {
 	doTest(func() {
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+		time.Sleep(time.Millisecond * 200)
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId, nil)
 		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
 		checkCode(code, http.StatusNotFound)
@@ -156,7 +157,7 @@ func TestDeleteTask(t *testing.T) {
 func TestDeleteTaskForce(t *testing.T) {
 	doTest(func() {
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
-		time.Sleep(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 200)
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId+"?force=true", nil)
 		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
 		checkCode(code, http.StatusNotFound)
