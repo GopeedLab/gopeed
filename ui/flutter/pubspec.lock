@@ -871,10 +871,10 @@ packages:
     dependency: "direct main"
     description:
       name: stylish_bottom_bar
-      sha256: "81ae9f1de6b249b7681ca6d5dd844c946c5e56a31d34d889a2b2042fa8728ef8"
+      sha256: "24aab3e66a3e16b4fe786d4efb87b4111c94d75964b03c7a6dd17174c56d710c"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "0.1.5"
+    version: "1.0.0"
   term_glyph:
     dependency: transitive
     description:
@@ -1028,5 +1028,5 @@ packages:
     source: hosted
     version: "3.1.1"
 sdks:
-  dart: ">=2.18.0 <3.0.0"
+  dart: ">=2.18.2 <3.0.0"
   flutter: ">=3.3.0"

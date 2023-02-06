@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:stylish_bottom_bar/model/bar_items.dart';
 import 'package:stylish_bottom_bar/stylish_bottom_bar.dart';
 
 import '../../routes/router.dart';
@@ -33,21 +34,23 @@ class HomeView extends GetView<HomeController> {
           ),
 
           bottomNavigationBar: StylishBottomBar(
+            option: AnimatedBarOptions(
+              iconSize: 32,
+              barAnimation: BarAnimation.fade,
+              iconStyle: IconStyle.Default,
+              opacity: 0.3,
+            ),
             items: [
-              AnimatedBarItems(
+              BottomBarItem(
                   icon: const Icon(Icons.list),
                   selectedColor: Get.theme.primaryColor,
                   title: Text('home.task'.tr)),
-              AnimatedBarItems(
+              BottomBarItem(
                   icon: const Icon(Icons.settings),
                   selectedColor: Get.theme.primaryColor,
                   title: Text('home.setting'.tr)),
             ],
-            iconSize: 32,
-            barAnimation: BarAnimation.fade,
-            iconStyle: IconStyle.Default,
             hasNotch: true,
-            opacity: 0.3,
             currentIndex: currentIndex,
             onTap: (index) {
               switch (index) {
