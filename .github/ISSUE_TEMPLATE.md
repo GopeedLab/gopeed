@@ -1,8 +1,8 @@
 <!--
-请根据以下模版提issue
+Please use the following template to create an issue.
 -->
-### 问题描述(必要)
-### 版本号(必要)
-### 操作系统(必要)
-### 相关截图
-### 相关日志
+### Description(required)
+### App Version(required)
+### OS Version(required)
+### Snapshots
+### Log
