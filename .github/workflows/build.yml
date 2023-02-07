@@ -12,8 +12,7 @@ jobs:
       upload_url: ${{ steps.get-release.outputs.upload_url }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: thebritican/fetch-latest-release@v2.0.0
+      - uses: monkeyWie/get-latest-release@v1
         id: get-release
   build-windows:
     runs-on: windows-latest
@@ -43,7 +42,7 @@ jobs:
           cp $system\vcruntime140_1.dll $release
 
           New-Item -Path build\windows\Output -ItemType Directory
-          Compress-Archive -Path "$release*" -DestinationPath build\windows\Output\Gopeed-$env:VERSION-windows-amd64.zip
+          Compress-Archive -Path "$release*" -DestinationPath build\windows\Output\Gopeed-$env:VERSION-windows-amd64-portable.zip
 
           cd build/windows
           echo @"
@@ -96,7 +95,9 @@ jobs:
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
           iscc.exe setup.iss
-          mv "Output\gopeed.exe" "Output\Gopeed-$env:VERSION-windows-amd64-install.exe"
+          mv "Output\gopeed.exe" "Output\Gopeed-$env:VERSION-windows-amd64.exe"
+          Compress-Archive -Path "Output\Gopeed-$env:VERSION-windows-amd64.exe" -DestinationPath build\windows\Output\Gopeed-$env:VERSION-windows-amd64.zip
+          Remove-Item -Path "Output\Gopeed-$env:VERSION-windows-amd64.exe"
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
