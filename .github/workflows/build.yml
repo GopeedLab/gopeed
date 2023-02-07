@@ -99,7 +99,7 @@ jobs:
           "@ > setup.iss
           iscc.exe setup.iss
           mv "Output\gopeed.exe" "Output\Gopeed-$env:VERSION-windows-amd64.exe"
-          Compress-Archive -Path "Output\Gopeed-$env:VERSION-windows-amd64.exe" -DestinationPath "\Output\Gopeed-$env:VERSION-windows-amd64.zip"
+          Compress-Archive -Path "Output\Gopeed-$env:VERSION-windows-amd64.exe" -DestinationPath "Output\Gopeed-$env:VERSION-windows-amd64.zip"
           Remove-Item -Path "Output\Gopeed-$env:VERSION-windows-amd64.exe"
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
