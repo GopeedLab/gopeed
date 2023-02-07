@@ -32,6 +32,27 @@ const allTrackerSubscribeUrls = [
   'https://github.com/XIU2/TrackersListCollection/raw/master/best.txt',
   'https://github.com/XIU2/TrackersListCollection/raw/master/http.txt',
 ];
+const allTrackerCdns = [
+  // jsdelivr: https://cdn.jsdelivr.net/gh/ngosang/trackerslist/trackers_all.txt
+  ["https://cdn.jsdelivr.net/gh", r".*github.com(/.*)/raw/master(/.*)"],
+  // nuaa: https://hub.nuaa.cf/ngosang/trackerslist/raw/master/trackers_all.txt
+  ["https://hub.nuaa.cf", r".*github.com(/.*)"]
+];
+final allTrackerSubscribeUrlCdns = Map.fromIterable(allTrackerSubscribeUrls,
+    key: (v) => v as String,
+    value: (v) {
+      final ret = [v as String];
+      for (final cdn in allTrackerCdns) {
+        final reg = RegExp(cdn[1]);
+        final match = reg.firstMatch(v.toString());
+        var matchStr = "";
+        for (var i = 1; i <= match!.groupCount; i++) {
+          matchStr += match.group(i)!;
+        }
+        ret.add("${cdn[0]}$matchStr");
+      }
+      return ret;
+    });
 
 class AppController extends GetxController {
   static StartConfig? _defaultStartConfig;
@@ -95,7 +116,19 @@ class AppController extends GetxController {
     final btExtConfig = downloaderConfig.value.extra.bt;
     final result = <String>[];
     for (var u in btExtConfig.trackerSubscribeUrls) {
-      result.addAll(await _fetchTrackers(u));
+      var allFail = true;
+      for (var cdn in allTrackerSubscribeUrlCdns[u]!) {
+        try {
+          result.addAll(await _fetchTrackers(u));
+          allFail = false;
+          break;
+        } catch (e) {
+          logger.w("subscribe trackers fail, url: $cdn", e);
+        }
+      }
+      if (allFail) {
+        throw Exception('subscribe trackers fail, network error');
+      }
     }
     btExtConfig.subscribeTrackers.clear();
     btExtConfig.subscribeTrackers.addAll(result);
@@ -123,7 +156,11 @@ class AppController extends GetxController {
     // if last update time is null or more than 1 day, update trackers
     if (lastUpdateTime == null ||
         lastUpdateTime.difference(DateTime.now()).inDays < 0) {
-      await trackerUpdate();
+      try {
+        await trackerUpdate();
+      } catch (e) {
+        logger.w("tracker update fail", e);
+      }
     }
   }
 
