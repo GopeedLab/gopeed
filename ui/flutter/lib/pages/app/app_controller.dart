@@ -193,16 +193,18 @@ class AppController extends GetxController {
       extra.bt.trackerSubscribeUrls.addAll(allTrackerSubscribeUrls);
     }
 
-    if (Util.isDesktop()) {
-      config.downloadDir = (await getDownloadsDirectory())?.path ?? "./";
-    } else if (Util.isAndroid()) {
-      config.downloadDir = (await getExternalStorageDirectory())?.path ??
-          (await getApplicationDocumentsDirectory()).path;
-      return;
-    } else if (Util.isIOS()) {
-      config.downloadDir = (await getApplicationDocumentsDirectory()).path;
-    } else {
-      config.downloadDir = './';
+    if (config.downloadDir.isEmpty) {
+      if (Util.isDesktop()) {
+        config.downloadDir = (await getDownloadsDirectory())?.path ?? "./";
+      } else if (Util.isAndroid()) {
+        config.downloadDir = (await getExternalStorageDirectory())?.path ??
+            (await getApplicationDocumentsDirectory()).path;
+        return;
+      } else if (Util.isIOS()) {
+        config.downloadDir = (await getApplicationDocumentsDirectory()).path;
+      } else {
+        config.downloadDir = './';
+      }
     }
   }
 
