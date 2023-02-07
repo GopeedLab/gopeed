@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import '../../i18n/messages.dart';
 import '../../routes/router.dart';
 import '../../theme/theme.dart';
-import '../home/home_controller.dart';
 import 'app_controller.dart';
 
 class AppView extends GetView<AppController> {
@@ -15,9 +14,6 @@ class AppView extends GetView<AppController> {
   Widget build(BuildContext context) {
     final config = controller.downloaderConfig.value;
     return GetMaterialApp.router(
-      initialBinding: BindingsBuilder(() {
-        Get.lazyPut<HomeController>(() => HomeController(), fenix: true);
-      }),
       useInheritedMediaQuery: true,
       debugShowCheckedModeBanner: false,
       theme: GopeedTheme.light,
