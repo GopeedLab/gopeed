@@ -11,14 +11,12 @@ class RootView extends GetView<RootController> {
   Widget build(BuildContext context) {
     return GetRouterOutlet.builder(
       builder: (context, delegate, current) {
-        return Scaffold(
-          body: GetRouterOutlet(
-            initialRoute: Routes.home,
-            // anchorRoute: '/',
-            // filterPages: (afterAnchor) {
-            //   return afterAnchor.take(1);
-            // },
-          ),
+        return GetRouterOutlet(
+          initialRoute: Routes.home,
+          // anchorRoute: '/',
+          // filterPages: (afterAnchor) {
+          //   return afterAnchor.take(1);
+          // },
         );
       },
     );

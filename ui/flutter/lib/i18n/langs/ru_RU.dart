@@ -7,6 +7,8 @@ const ruRU = {
     'cancel': 'Отмена',
     'selectAll': 'Выбрать все',
     'home.task': 'Задачи',
+    'home.downloading': 'downloading',
+    'home.downloaded': 'downloaded',
     'home.setting': 'Настройки',
     'create.title': 'Создать задачу',
     'create.downloadLink': 'Ссылка для скачивание',
