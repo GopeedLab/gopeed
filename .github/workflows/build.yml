@@ -2,8 +2,6 @@ name: build
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
 jobs:
   get-release:
     runs-on: ubuntu-latest
