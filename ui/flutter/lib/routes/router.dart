@@ -34,6 +34,7 @@ class Routes {
     GetPage(
         name: _Paths.root,
         participatesInRootNavigator: true,
+        transition: Transition.topLevel,
         // preventDuplicates: true,
         page: () => const RootView(),
         binding: BindingsBuilder(() {
@@ -52,6 +53,7 @@ class Routes {
           ),
           GetPage(
               name: _Paths.home,
+              // transition: Transition.upToDown,
               // preventDuplicates: true,
               page: () => const HomeView(),
               binding: BindingsBuilder(() {
@@ -61,6 +63,7 @@ class Routes {
               children: [
                 GetPage(
                   name: _Paths.task,
+                  transition: Transition.noTransition,
                   page: () => const TaskView(),
                   binding: BindingsBuilder(() {
                     Get.lazyPut<TaskController>(() => TaskController());
@@ -68,6 +71,7 @@ class Routes {
                 ),
                 GetPage(
                   name: _Paths.setting,
+                  transition: Transition.noTransition,
                   page: () => const SettingView(),
                   binding: BindingsBuilder(() {
                     Get.lazyPut<SettingController>(() => SettingController());

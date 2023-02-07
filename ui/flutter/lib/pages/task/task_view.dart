@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:styled_widget/styled_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/api.dart';
@@ -17,43 +16,46 @@ class Item extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-        elevation: 4.0,
-        child: InkWell(
-          onTap: () {},
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text(task.meta.res.name),
-                leading: const Icon(Icons.insert_drive_file),
-              ),
-              Row(
-                children: [
-                  SizedBox(
-                      width: 180,
-                      child: Text(
-                        "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
-                        style: context.textTheme.bodyText1
-                            ?.copyWith(color: Get.theme.disabledColor),
-                      ).padding(left: 18)),
-                  Flexible(
-                      child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text("${Util.fmtByte(task.progress.speed)} / s",
-                          style: context.textTheme.subtitle2),
-                      ...buildActions()
-                    ],
-                  )),
-                ],
-              ),
-              LinearProgressIndicator(
+    return InkWell(
+      onTap: () {},
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(children: [
+            Opacity(
+              opacity: 0.6,
+              child: LinearProgressIndicator(
+                backgroundColor: Colors.transparent,
+                minHeight: 66,
                 value: getProgress(),
               ),
-            ],
-          ),
-        )).padding(horizontal: 8, top: 8);
+            ),
+            ListTile(
+              title: Text(task.meta.res.name),
+              subtitle: Text(
+                "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
+                style: context.textTheme.bodyLarge
+                    ?.copyWith(color: Get.theme.disabledColor),
+              ),
+              leading: const Icon(Icons.insert_drive_file),
+              trailing: SizedBox(
+                width: 180,
+                child: Row(
+                  // crossAxisAlignment: CrossAxisAlignment.baseline,
+                  // textBaseline: DefaultTextStyle.of(context).style.textBaseline,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text("${Util.fmtByte(task.progress.speed)} / s",
+                        style: context.textTheme.titleSmall),
+                    ...buildActions()
+                  ],
+                ),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
   }
 
   List<Widget> buildActions() {
@@ -120,7 +122,7 @@ class Item extends StatelessWidget {
               content: Obx(() => CheckboxListTile(
                   value: keep.value,
                   title: Text('task.deleteTaskTip'.tr,
-                      style: context.textTheme.bodyText1),
+                      style: context.textTheme.bodyLarge),
                   onChanged: (v) {
                     keep.value = v!;
                   })),
