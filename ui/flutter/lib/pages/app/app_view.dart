@@ -14,6 +14,7 @@ class AppView extends GetView<AppController> {
   Widget build(BuildContext context) {
     final config = controller.downloaderConfig.value;
     return GetMaterialApp.router(
+      useInheritedMediaQuery: true,
       debugShowCheckedModeBanner: false,
       theme: GopeedTheme.light,
       darkTheme: GopeedTheme.dark,
