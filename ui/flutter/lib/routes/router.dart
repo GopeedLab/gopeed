@@ -2,16 +2,14 @@ import 'package:get/get.dart';
 
 import '../pages/create/create_controller.dart';
 import '../pages/create/create_view.dart';
-import '../pages/downloaded/downloaded_controller.dart';
-import '../pages/downloaded/downloaded_view.dart';
-import '../pages/downloading/downloading_controller.dart';
-import '../pages/downloading/downloading_view.dart';
 import '../pages/home/home_controller.dart';
 import '../pages/home/home_view.dart';
 import '../pages/root/root_controller.dart';
 import '../pages/root/root_view.dart';
 import '../pages/setting/setting_controller.dart';
 import '../pages/setting/setting_view.dart';
+import '../pages/task/task_controller.dart';
+import '../pages/task/task_view.dart';
 
 abstract class _Paths {
   static const root = '/';
@@ -19,8 +17,7 @@ abstract class _Paths {
   static const create = '/create';
 
   static const home = '/home';
-  static const downloading = '/downloading';
-  static const downloaded = '/downloaded';
+  static const task = '/task';
   static const setting = '/setting';
 }
 
@@ -30,9 +27,7 @@ class Routes {
   static const create = _Paths.create;
 
   static const home = _Paths.home;
-  static const downloading = _Paths.home + _Paths.downloading;
-  static const downloaded = _Paths.home + _Paths.downloaded;
-
+  static const task = _Paths.home + _Paths.task;
   static const setting = _Paths.home + _Paths.setting;
 
   static final routes = [
@@ -67,23 +62,11 @@ class Routes {
               }),
               children: [
                 GetPage(
-                  name: _Paths.downloading,
+                  name: _Paths.task,
                   transition: Transition.noTransition,
-                  page: () => const DownloadingView(),
+                  page: () => const TaskView(),
                   binding: BindingsBuilder(() {
-                    Get.lazyPut<DownloadingController>(
-                      () => DownloadingController(),
-                    );
-                  }),
-                ),
-                GetPage(
-                  name: _Paths.downloaded,
-                  transition: Transition.noTransition,
-                  page: () => const DownloadedView(),
-                  binding: BindingsBuilder(() {
-                    Get.lazyPut<DownloadedController>(
-                      () => DownloadedController(),
-                    );
+                    Get.lazyPut<TaskController>(() => TaskController());
                   }),
                 ),
                 GetPage(
