@@ -8,7 +8,7 @@ This project only has one main branch, namely the `main` branch. If you want to 
 
 ## Local development
 
-It is recommended to develop and debug through the web. First, start the backend service, the code is located in `cmd/api/main.go`, the default port of the service is `9999`, and then start the front-end project in `debug` mode to run.
+It is recommended to develop and debug through the web. First, start the backend service, and start it by the command line `go run cmd/api/main.go`, the default port of the service is `9999`, and then start the front-end flutter project in `debug` mode to run.
 
 ## Translation
 
