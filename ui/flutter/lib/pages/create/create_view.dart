@@ -153,7 +153,7 @@ class CreateView extends GetView<CreateController> {
                         ElevatedButton.styleFrom(shape: const StadiumBorder())
                             .copyWith(
                                 backgroundColor: MaterialStateProperty.all(
-                                    Get.theme.backgroundColor)),
+                                    Get.theme.colorScheme.background)),
                     onPressed: () {
                       Get.back();
                     },

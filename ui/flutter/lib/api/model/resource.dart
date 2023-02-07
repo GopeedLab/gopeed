@@ -7,6 +7,7 @@ class Resource {
   String name;
   int size;
   bool range;
+  String rootDir;
   List<FileInfo> files;
   String hash;
 
@@ -14,6 +15,7 @@ class Resource {
       {required this.name,
       required this.size,
       required this.range,
+      required this.rootDir,
       required this.files,
       required this.hash});
 
@@ -25,17 +27,20 @@ class Resource {
 
 @JsonSerializable()
 class FileInfo {
-  String name;
+  // String rootDir;
   String path;
+  String name;
   int size;
 
   FileInfo({
-    required this.name,
+    // required this.rootDir,
     required this.path,
+    required this.name,
     required this.size,
   });
 
   factory FileInfo.fromJson(Map<String, dynamic> json) =>
       _$FileInfoFromJson(json);
+
   Map<String, dynamic> toJson() => _$FileInfoToJson(this);
 }
