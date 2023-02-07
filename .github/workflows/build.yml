@@ -14,6 +14,9 @@ jobs:
     steps:
       - uses: monkeyWie/get-latest-release@v1
         id: get-release
+        with:
+          myToken: ${{ github.token }}
+
   build-windows:
     runs-on: windows-latest
     needs: [get-release]
