@@ -29,6 +29,9 @@ jobs:
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
+          wget https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl
+          mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\" 
+
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
           cd ui/flutter
           flutter build windows
@@ -77,9 +80,12 @@ jobs:
           Compression=lzma
           SolidCompression=yes
           WizardStyle=modern
+          LanguageDetectionMethod=uilanguage
+          ShowLanguageDialog=yes 
 
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
+          Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
           [Tasks]
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -87,6 +93,9 @@ jobs:
           [Files]
           Source: ".\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
           ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+
+          [UninstallDelete]
+          Type: filesandordirs; Name: "{app}"
 
           [Icons]
           Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
