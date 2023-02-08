@@ -15,13 +15,15 @@ func ReadJson(w http.ResponseWriter, r *http.Request, v any) bool {
 }
 
 func WriteJsonOk(w http.ResponseWriter, v any) {
-	WriteJson(w, http.StatusOK, v)
+	if v == nil {
+		WriteJson(w, http.StatusOK, model.NewResultWithData[any](nil))
+	} else {
+		WriteJson(w, http.StatusOK, v)
+	}
 }
 
 func WriteJson(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
-	if v != nil {
-		json.NewEncoder(w).Encode(v)
-	}
+	json.NewEncoder(w).Encode(v)
 }
