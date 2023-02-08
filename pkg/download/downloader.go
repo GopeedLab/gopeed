@@ -14,8 +14,11 @@ import (
 )
 
 const (
-	bucketTask   = "task"
-	bucketSave   = "save"
+	// task info bucket
+	bucketTask = "task"
+	// task download data bucket
+	bucketSave = "save"
+	// downloader config bucket
 	bucketConfig = "config"
 )
 
@@ -77,7 +80,13 @@ func (d *Downloader) Setup() error {
 	if tasks == nil {
 		tasks = make([]*Task, 0)
 	} else {
-		for _, task := range tasks {
+		for i := len(tasks) - 1; i >= 0; i-- {
+			task := tasks[i]
+			// Remove broken tasks
+			if task.Meta == nil {
+				tasks = append(tasks[:i], tasks[i+1:]...)
+				continue
+			}
 			initTask(task)
 			if task.Status != base.DownloadStatusDone && task.Status != base.DownloadStatusError {
 				task.Status = base.DownloadStatusPause
