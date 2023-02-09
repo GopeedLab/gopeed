@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	syspath "path"
+	"path/filepath"
 	"strings"
 )
 
@@ -96,4 +97,80 @@ func isEmpty(name string) (bool, error) {
 		return true, nil
 	}
 	return false, err // Either not empty or error, suits both cases
+}
+
+// CopyDir Copy all files to the target directory, if the file already exists, it will be overwritten.
+// Remove target file if the source file is not exist.
+func CopyDir(source string, target string) error {
+	if err := os.MkdirAll(target, 0755); err != nil {
+		return err
+	}
+	if err := filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relPath, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		targetPath := filepath.Join(target, relPath)
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+			return err
+		}
+		if err := copyForce(path, targetPath); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if err := filepath.Walk(target, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relPath, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		targetPath := filepath.Join(target, relPath)
+		sourcePath := strings.Replace(targetPath, target, source, 1)
+		// if source file is not exist, remove target file
+		if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
+			if err := SafeRemove(targetPath); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// copy file, if the target file already exists, it will be overwritten.
+func copyForce(source string, target string) error {
+	sourceFile, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	targetFile, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+	defer targetFile.Close()
+
+	_, err = io.Copy(targetFile, sourceFile)
+	if err != nil {
+		return err
+	}
+	return nil
 }

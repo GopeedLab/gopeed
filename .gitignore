@@ -24,4 +24,5 @@ bin/
 
 .DS_Store
 
-dist/
+node_modules/
+cmd/web/dist/

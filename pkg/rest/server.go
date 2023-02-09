@@ -63,6 +63,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	} else {
 		downloadCfg.Storage = download.NewMemStorage()
 	}
+	downloadCfg.StorageDir = startCfg.StorageDir
 	downloadCfg.Init()
 	downloadCfg.RefreshInterval = startCfg.RefreshInterval
 	Downloader = download.NewDownloader(downloadCfg)

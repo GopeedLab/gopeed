@@ -33,7 +33,7 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		if req.Rid != "" {
 			taskId, err = Downloader.Create(req.Rid, req.Opts)
 		} else if req.Req != nil {
-			taskId, err = Downloader.DirectCreate(req.Req, req.Opts)
+			taskId, err = Downloader.CreateDirect(req.Req, req.Opts)
 		} else {
 			WriteJson(w, model.NewErrorResult("param invalid: rid or req", model.CodeInvalidParam))
 			return
