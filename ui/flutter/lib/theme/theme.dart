@@ -25,13 +25,17 @@ class GopeedTheme {
     700: Color(0xFF7FFF7A),
   });
 
-  static final _light =
-      ThemeData(brightness: Brightness.light, primarySwatch: _gopeedreen);
+  static final _light = ThemeData(
+      //TODO useMaterial3: true,
+      brightness: Brightness.light,
+      primarySwatch: _gopeedreen);
   static final light = _light.copyWith(
       colorScheme: _light.colorScheme.copyWith(secondary: _gopeedreenAccent));
 
-  static final _dark =
-      ThemeData(brightness: Brightness.dark, primarySwatch: _gopeedreen);
+  static final _dark = ThemeData(
+      //TODO useMaterial3: true,
+      brightness: Brightness.dark,
+      primarySwatch: _gopeedreen);
   static final dark = _dark.copyWith(
       colorScheme: _dark.colorScheme.copyWith(secondary: _gopeedreenAccent));
 }

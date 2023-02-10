@@ -22,5 +22,6 @@ const fallbackLocale = Locale('en', 'US');
 class _Messages extends Translations {
   // just include available locales here
   @override
-  Map<String, Map<String, String>> get keys => {...zhCN, ...enUS, ...ruRU, ...faIR};
+  Map<String, Map<String, String>> get keys =>
+      {...zhCN, ...enUS, ...ruRU, ...faIR};
 }

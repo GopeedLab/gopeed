@@ -7,6 +7,8 @@ const enUS = {
     'cancel': 'Cancel',
     'selectAll': 'Select All',
     'home.task': 'Task',
+    'home.downloading': 'downloading',
+    'home.downloaded': 'downloaded',
     'home.setting': 'Setting',
     'create.title': 'Create Task',
     'create.downloadLink': 'Download Link',

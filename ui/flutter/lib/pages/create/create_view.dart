@@ -20,6 +20,7 @@ class CreateView extends GetView<CreateController> {
 
   final _urlController = TextEditingController();
   final _confirmController = RoundedLoadingButtonController();
+
   CreateView({Key? key}) : super(key: key);
 
   @override
@@ -28,8 +29,8 @@ class CreateView extends GetView<CreateController> {
       appBar: AppBar(
         leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => Get.rootDelegate.offNamed(Routes.task)),
-        actions: [Container()],
+            onPressed: () => Get.rootDelegate.offNamed(Routes.downloading)),
+        // actions: [],
         title: Text('create.title'.tr),
       ),
       body: DropTarget(
@@ -47,9 +48,10 @@ class CreateView extends GetView<CreateController> {
                     autofocus: true,
                     controller: _urlController,
                     minLines: 1,
-                    maxLines: 15,
+                    maxLines: 30,
                     decoration: InputDecoration(
                         hintText: _hitText(),
+                        hintStyle: const TextStyle(fontSize: 12),
                         labelText: 'create.downloadLink'.tr,
                         icon: const Icon(Icons.link)),
                     validator: (v) {
@@ -102,16 +104,15 @@ class CreateView extends GetView<CreateController> {
   }
 
   Future<void> _showResolveDialog(ResolveResult rr) async {
-    final res = rr.res;
+    controller.files.value = rr.res.files;
     final appController = Get.find<AppController>();
     final setting = appController.downloaderConfig.value;
 
     final createFormKey = GlobalKey<FormState>();
     final pathController = TextEditingController(text: setting.downloadDir);
     final downloadController = RoundedLoadingButtonController();
-    var fileValues = List.filled(res.files.length, true);
 
-    return await showDialog<void>(
+    return showDialog<void>(
         context: Get.context!,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
@@ -129,11 +130,7 @@ class CreateView extends GetView<CreateController> {
                         autovalidateMode: AutovalidateMode.always,
                         child: Column(
                           children: [
-                            Expanded(
-                                child: FileListView(
-                              files: res.files,
-                              values: fileValues,
-                            )),
+                            Expanded(child: FileListView()),
                             DirectorySelector(
                               controller: pathController,
                             ),
@@ -183,17 +180,12 @@ class CreateView extends GetView<CreateController> {
                           await createTask(CreateTask(
                               rid: rr.id,
                               opts: Options(
-                                name: '',
-                                path: pathController.text,
-                                selectFiles: fileValues
-                                    .asMap()
-                                    .entries
-                                    .where((e) => e.value)
-                                    .map((e) => e.key)
-                                    .toList(),
-                              )));
+                                  name: '',
+                                  path: pathController.text,
+                                  selectFiles:
+                                      controller.selectedIndexs.cast<int>())));
                           Get.back();
-                          Get.rootDelegate.offNamed(Routes.task);
+                          Get.rootDelegate.offNamed(Routes.downloading);
                         }
                       } catch (e) {
                         Get.snackbar('error'.tr, e.toString());

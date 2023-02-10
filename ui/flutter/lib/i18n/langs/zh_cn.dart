@@ -7,6 +7,8 @@ const zhCN = {
     'cancel': '取消',
     'selectAll': '全选',
     'home.task': '任务',
+    'home.downloading': '下载中',
+    'home.downloaded': '已完成',
     'home.setting': '设置',
     'create.title': '创建任务',
     'create.downloadLink': '下载链接',

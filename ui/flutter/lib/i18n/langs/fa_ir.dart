@@ -7,6 +7,8 @@ const faIR = {
     'cancel': 'انصراف',
     'selectAll': 'انتخاب همه',
     'home.task': 'کار',
+    'home.downloading': 'downloading',
+    'home.downloaded': 'downloaded',
     'home.setting': 'تنظیمات',
     'create.title': 'ایجاد کار',
     'create.downloadLink': 'لینک دانلود',
