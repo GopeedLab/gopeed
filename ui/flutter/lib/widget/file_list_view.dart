@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
 
 import '../api/model/resource.dart';
+import '../pages/app/app_controller.dart';
 import '../util/util.dart';
 
 class FileListView extends StatefulWidget {
@@ -24,7 +25,7 @@ class _FileListViewState extends State<FileListView> {
   // List<FileInfo> get _files => widget.files;
   // List<int> get _values => widget.values;
 
-  List<fluent.TreeViewItem> makeRecursive(
+  List<fluent.TreeViewItem> buildTreeViewItemsRecursive(
       List fileInfos, int level, List<fluent.TreeViewItem> treeViewItems) {
     List children = fileInfos.where((e) => e['level'] == level).toList();
     for (int i = 0; i < children.length; i++) {
@@ -33,14 +34,16 @@ class _FileListViewState extends State<FileListView> {
         // folder
         treeViewItems.add(fluent.TreeViewItem(
             // expanded: false, bug on init
-            leading: const Icon(Icons.folder),
-            content: Row(children: [
-              Text(
+            leading: const Icon(fluent.FluentIcons.open_folder_horizontal),
+            content: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              Expanded(
+                  child: Text(
                 fileInfo['name'],
                 overflow: TextOverflow.ellipsis,
-              ),
+                // style: context.textTheme.titleSmall,
+              )),
             ]),
-            children: makeRecursive(
+            children: buildTreeViewItemsRecursive(
                 fileInfos.where((e) => e['level'] > level).toList(),
                 level + 1, [])));
       } else {
@@ -49,14 +52,19 @@ class _FileListViewState extends State<FileListView> {
           value: fileInfo['fileId'],
           selected: widget.values[fileInfo['fileId']],
           collapsable: false,
-          leading: const Icon(Icons.description),
-          content: Row(children: [
-            Text(fileInfo['name']),
-            const Spacer(),
+          leading: const Icon(Icons.description_outlined),
+          content: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            Expanded(
+                child: Text(
+              fileInfo['name'],
+              overflow: TextOverflow.ellipsis,
+              // style: context.textTheme.titleSmall,
+            )),
             Text(
               Util.fmtByte(
                 fileInfo['size'],
               ),
+              // style: context.textTheme.labelMedium,
               overflow: TextOverflow.ellipsis,
             ),
           ]),
@@ -122,15 +130,18 @@ class _FileListViewState extends State<FileListView> {
       }
       idNext++;
     }
-    List<fluent.TreeViewItem> treeItems = makeRecursive(fileInfos, 0, []);
+    List<fluent.TreeViewItem> treeItems =
+        buildTreeViewItemsRecursive(fileInfos, 0, []);
     return treeItems;
   }
 
   @override
   Widget build(BuildContext context) {
-    // final themeData = Theme.of(context);
+    final appController = Get.find<AppController>();
     return fluent.FluentTheme(
-        data: fluent.ThemeData(brightness: Brightness.dark),
+        data: appController.downloaderConfig.value.extra.themeMode == 'dark'
+            ? fluent.ThemeData(brightness: Brightness.dark)
+            : fluent.ThemeData(brightness: Brightness.light),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -147,7 +158,7 @@ class _FileListViewState extends State<FileListView> {
                         borderRadius: BorderRadius.circular(5)),
                     child: fluent.TreeView(
                         onSelectionChanged: (selectedItems) async =>
-                            setState(() {
+                            setState(() async {
                               List newValues =
                                   selectedItems.map((j) => j.value).toList();
                               for (var i = 0; i < widget.values.length; i++) {
