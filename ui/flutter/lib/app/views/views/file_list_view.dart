@@ -3,17 +3,27 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
 
-import '../../../util/file_icon.dart';
-import '../../../util/util.dart';
-import '../../modules/app/controllers/app_controller.dart';
-import '../../modules/create/controllers/create_controller.dart';
+import '../api/model/resource.dart';
+import '../pages/app/app_controller.dart';
+import '../util/util.dart';
 
-class FileListView extends GetView {
-  FileListView({
+class FileListView extends StatefulWidget {
+  final List<FileInfo> files;
+  final List<bool> values;
+
+  const FileListView({
     Key? key,
+    required this.files,
+    required this.values,
   }) : super(key: key);
-  final parentController = Get.find<CreateController>();
-  final appController = Get.find<AppController>();
+
+  @override
+  State<FileListView> createState() => _FileListViewState();
+}
+
+class _FileListViewState extends State<FileListView> {
+  // List<FileInfo> get _files => widget.files;
+  // List<int> get _values => widget.values;
 
   List<fluent.TreeViewItem> buildTreeViewItemsRecursive(
       List fileInfos, int level, List<fluent.TreeViewItem> treeViewItems) {
@@ -24,7 +34,7 @@ class FileListView extends GetView {
         // folder
         treeViewItems.add(fluent.TreeViewItem(
             // expanded: false, bug on init
-            leading: const Icon(Icons.folder_open),
+            leading: const Icon(fluent.FluentIcons.open_folder_horizontal),
             content: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
               Expanded(
                   child: Text(
@@ -33,26 +43,16 @@ class FileListView extends GetView {
                 // style: context.textTheme.titleSmall,
               )),
             ]),
-            // onExpandToggle: (Fluent.TreeViewItem item, bool getsExpanded) {
-            //TODO
-            // item.expanded = getsExpanded;
-            // },
             children: buildTreeViewItemsRecursive(
                 fileInfos.where((e) => e['level'] > level).toList(),
                 level + 1, [])));
       } else {
         // file
-        if (fileInfo['selected']) {
-          parentController.selectedIndexs.add(fileInfo['fileId']);
-        }
         treeViewItems.add(fluent.TreeViewItem(
           value: fileInfo['fileId'],
-          selected: fileInfo['selected'],
+          selected: widget.values[fileInfo['fileId']],
           collapsable: false,
-          leading: fileInfo['name'].lastIndexOf('.') == -1
-              ? const Icon(fluent.FluentIcons.document)
-              : Icon(fluent.FluentIcons.allIcons[findIcon(fileInfo['name']
-                  .substring(fileInfo['name'].lastIndexOf('.') + 1))]),
+          leading: const Icon(Icons.description_outlined),
           content: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
             Expanded(
                 child: Text(
@@ -78,10 +78,10 @@ class FileListView extends GetView {
     List fileInfos = [];
     int idNext = 0;
     //make fileInfos list
-    for (var i = 0; i < parentController.files.length; i++) {
+    for (var i = 0; i < widget.files.length; i++) {
       //parentId -1 means path root
       int parentId = -1;
-      List folders = path.split(parentController.files[i].path);
+      List folders = path.split(widget.files[i].path);
       for (var folder in folders) {
         int indexInfileInfos = fileInfos.lastIndexWhere((fileInfo) =>
             fileInfo['name'] == folder && fileInfo['parentId'] == parentId);
@@ -98,6 +98,10 @@ class FileListView extends GetView {
             'name': folder,
             'parentId': parentId,
             'level': folders.indexOf(folder),
+            // 'content': Row(children: [
+            //   const Icon(Icons.folder),
+            //   Text(folder),
+            // ]),
             'children': [],
           });
           if (parentId != -1) {
@@ -107,17 +111,19 @@ class FileListView extends GetView {
           idNext++;
         }
       }
-      //add one file, add index to parent
+      //add one file add index to parent
       fileInfos.add({
         'id': idNext,
         'type': 'file',
         'fileId': i,
         'level': folders.length,
-        'name': parentController.files[i].name,
-        'size': parentController.files[i].size,
+        'name': widget.files[i].name,
+        'size': widget.files[i].size,
         'parentId': parentId,
-        //TODO add unselected logic
-        'selected': true
+        // 'content': Row(children: [
+        //   const Icon(Icons.description),
+        //   Text(widget.files[i].name),
+        // ])
       });
       if (parentId != -1) {
         fileInfos[parentId]['children'].add(idNext);
@@ -148,23 +154,19 @@ class FileListView extends GetView {
                 child: Container(
                     margin: const EdgeInsets.only(top: 10),
                     decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey, width: 1),
+                        border: Border.all(color: fluent.Colors.grey, width: 1),
                         borderRadius: BorderRadius.circular(5)),
                     child: fluent.TreeView(
-                        //changes all when folder selector is changed
-                        onSelectionChanged: (selectedItems) async => {
-                              parentController.selectedIndexs.value =
-                                  selectedItems.map((j) => j.value).toList()
-                              // for (var i = 0; i < parentController.files.length; i++)
-                              //   {
-                              //     selectedItems
-                              //             .map((j) => j.value)
-                              //             .toList()
-                              //             .contains(i)
-                              //         ? values[i] = true
-                              //         : values[i] = false
-                              //   }
-                            },
+                        onSelectionChanged: (selectedItems) async =>
+                            setState(() async {
+                              List newValues =
+                                  selectedItems.map((j) => j.value).toList();
+                              for (var i = 0; i < widget.values.length; i++) {
+                                newValues.contains(i)
+                                    ? widget.values[i] = true
+                                    : widget.values[i] = false;
+                              }
+                            }),
                         narrowSpacing: true,
                         scrollPrimary: true,
                         selectionMode: fluent.TreeViewSelectionMode.multiple,
