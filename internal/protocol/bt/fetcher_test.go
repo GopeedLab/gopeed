@@ -33,6 +33,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 		Files: []*base.FileInfo{
 			{
 				Name: "ubuntu-22.04-live-server-amd64.iso",
+				Path: "ubuntu-22.04-live-server-amd64.iso",
 				Size: 1466714112,
 			},
 		},

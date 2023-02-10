@@ -7,6 +7,8 @@ import (
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/util"
+	"os"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -200,10 +202,12 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 	if !ok {
 		return "", errors.New("invalid resource id")
 	}
-	delete(d.fetcherMap, rrId)
+	meta := fetcher.Meta()
+	meta.Opts = opts
+	res := meta.Res
 	if len(opts.SelectFiles) == 0 {
 		opts.SelectFiles = make([]int, 0)
-		for i := range fetcher.Meta().Res.Files {
+		for i := range res.Files {
 			opts.SelectFiles = append(opts.SelectFiles, i)
 		}
 	}
@@ -221,6 +225,25 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 	if err != nil {
 		return
 	}
+
+	// check if the download file is duplicated and rename it automatically.
+	files := res.Files
+	if len(files) == 1 {
+		fullPath := meta.Filepath(files[0])
+		newName, err := util.CheckDuplicateAndRename(fullPath)
+		if err != nil {
+			return "", err
+		}
+		opts.Name = newName
+	} else if res.RootDir != "" {
+		fullDirPath := path.Join(opts.Path, res.RootDir)
+		newName, err := util.CheckDuplicateAndRename(fullDirPath)
+		if err != nil {
+			return "", err
+		}
+		res.RootDir = newName
+	}
+
 	err = fetcher.Create(opts)
 	if err != nil {
 		return
@@ -234,7 +257,7 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 	task.Status = base.DownloadStatusRunning
 	// calculate select files size
 	for _, selectIndex := range opts.SelectFiles {
-		task.Size += fetcher.Meta().Res.Files[selectIndex].Size
+		task.Size += res.Files[selectIndex].Size
 	}
 	initTask(task)
 	task.timer.Start()
@@ -252,7 +275,6 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 	}
 	d.emit(EventKeyStart, task)
 	taskId = task.ID
-
 	go func() {
 		err := fetcher.Start()
 		if err != nil {
@@ -261,6 +283,7 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 		}
 		d.watch(task)
 	}()
+	delete(d.fetcherMap, rrId)
 	return
 }
 
@@ -336,11 +359,17 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 		return
 	}
 	if force {
-		names := make([]string, 0)
-		for _, file := range task.Meta.Res.Files {
-			names = append(names, util.Filepath(file.Path, file.Name, task.Meta.Opts.Name))
+		if task.Meta.Res.RootDir != "" {
+			if err = os.RemoveAll(path.Join(task.Meta.Opts.Path, task.Meta.Res.RootDir)); err != nil {
+				return
+			}
+		} else {
+			for _, file := range task.Meta.Res.Files {
+				if err = util.SafeRemove(task.Meta.Filepath(file)); err != nil {
+					return err
+				}
+			}
 		}
-		util.SafeRemoveAll(task.Meta.Opts.Path, names)
 	}
 	d.emit(EventKeyDelete, task)
 	task = nil

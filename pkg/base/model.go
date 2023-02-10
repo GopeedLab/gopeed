@@ -1,27 +1,25 @@
 package base
 
-import "github.com/monkeyWie/gopeed/pkg/util"
+import (
+	"github.com/monkeyWie/gopeed/pkg/util"
+)
 
-// 下载请求
+// Request download request
 type Request struct {
-	// 下载链接
-	URL string `json:"url"`
-	// 附加信息
-	Extra any `json:"extra"`
+	URL   string `json:"url"`
+	Extra any    `json:"extra"`
 }
 
-// 资源信息
+// Resource download resource
 type Resource struct {
-	// 资源名称
 	Name string `json:"name"`
-	// 资源总大小
-	Size int64 `json:"size"`
-	// 是否支持断点下载
-	Range bool `json:"range"`
-	// 资源所包含的文件列表
+	Size int64  `json:"size"`
+	// is support range download
+	Range   bool   `json:"range"`
+	RootDir string `json:"rootDir"`
+	// file list
 	Files []*FileInfo `json:"files"`
-	// 资源hash值
-	Hash string `json:"hash"`
+	Hash  string      `json:"hash"`
 }
 
 type FileInfo struct {
@@ -30,15 +28,15 @@ type FileInfo struct {
 	Size int64  `json:"size"`
 }
 
-// 下载选项
+// Options for download
 type Options struct {
-	// 保存文件名
+	// Download file name
 	Name string `json:"name"`
-	// 保存目录
+	// Download file path
 	Path string `json:"path"`
-	// 选择下载的文件下标列表
+	// Select file indexes to download
 	SelectFiles []int `json:"selectFiles"`
-	// 附加信息
+	// Extra info for specific fetcher
 	Extra any `json:"extra"`
 }
 
