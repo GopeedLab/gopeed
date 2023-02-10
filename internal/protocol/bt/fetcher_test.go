@@ -27,13 +27,13 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 	}
 
 	want := &base.Resource{
-		Name:  "ubuntu-22.04-live-server-amd64.iso",
-		Size:  1466714112,
-		Range: true,
+		Name:    "ubuntu-22.04-live-server-amd64.iso",
+		Size:    1466714112,
+		Range:   true,
+		RootDir: "ubuntu-22.04-live-server-amd64.iso",
 		Files: []*base.FileInfo{
 			{
 				Name: "ubuntu-22.04-live-server-amd64.iso",
-				Path: "ubuntu-22.04-live-server-amd64.iso",
 				Size: 1466714112,
 			},
 		},

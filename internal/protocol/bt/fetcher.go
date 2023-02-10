@@ -84,7 +84,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
 			Name: filepath.Base(file.DisplayPath()),
-			Path: util.Dir(path.Join(f.torrent.Info().Name, file.Path())),
+			Path: util.Dir(file.Path()),
 			Size: file.Length(),
 		}
 		res.Size += file.Length()
