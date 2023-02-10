@@ -228,20 +228,20 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 
 	// check if the download file is duplicated and rename it automatically.
 	files := res.Files
-	if len(files) == 1 {
-		fullPath := meta.Filepath(files[0])
-		newName, err := util.CheckDuplicateAndRename(fullPath)
-		if err != nil {
-			return "", err
-		}
-		opts.Name = newName
-	} else if res.RootDir != "" {
+	if res.RootDir != "" {
 		fullDirPath := path.Join(opts.Path, res.RootDir)
 		newName, err := util.CheckDuplicateAndRename(fullDirPath)
 		if err != nil {
 			return "", err
 		}
 		res.RootDir = newName
+	} else if len(files) == 1 {
+		fullPath := meta.Filepath(files[0])
+		newName, err := util.CheckDuplicateAndRename(fullPath)
+		if err != nil {
+			return "", err
+		}
+		opts.Name = newName
 	}
 
 	err = fetcher.Create(opts)
