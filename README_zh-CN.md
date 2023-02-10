@@ -11,7 +11,7 @@
 
 Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。
 
-## 下载
+## 安装
 
 **已支持平台**
 
@@ -23,7 +23,7 @@ Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、
 - [x] web
 - [x] docker
 
-[点击前往](https://github.com/monkeyWie/gopeed/releases/latest)
+[前往下载](https://github.com/monkeyWie/gopeed/releases/latest)
 
 > 注：macos 版本运行如果提示损坏，请在终端执行 `xattr -d com.apple.quarantine /Applications/Gopeed.app` 命令
 
@@ -45,22 +45,6 @@ docker run -d -p 9999:9999 -v /path/to/download:/download liwei2633/gopeed
 
 #### 使用 Docker Compose
 
-```yaml
-version: '3'
-
-services:
-  gopeed:
-    container_name: gopeed
-    ports:
-      - 9999:9999
-    image: liwei2633/gopeed
-    volumes:
-      - ~/Downloads:/download
-    restart: unless-stopped
-```
-
-输入以下指令启动容器:
-
 ```bash
 docker-compose up -d
 ```
@@ -69,6 +53,10 @@ docker-compose up -d
 
 当 docker 容器运行时，可以通过 `http://localhost:9999` 访问 web 页面。
 > 提示：在设置页面把下载路径修改为 `/download` 以便在宿主机访问下载完的文件。
+
+## 打赏
+
+如果觉得项目对你有帮助，请考虑[打赏](/.donate/index.md)以支持这个项目的发展，非常感谢！
 
 ## 界面展示
 

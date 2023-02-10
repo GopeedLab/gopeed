@@ -11,7 +11,7 @@
 
 Gopeed is a high-speed downloader developed by `Golang`+`Flutter`, which supports (HTTP, BitTorrent, Magnet) protocol downloads and supports all platforms.
 
-## Installation
+## Install
 
 **Supported platforms**
 
@@ -23,7 +23,7 @@ Gopeed is a high-speed downloader developed by `Golang`+`Flutter`, which support
 - [x] web
 - [x] docker
 
-[To Release](https://github.com/monkeyWie/gopeed/releases/latest)
+[Download](https://github.com/monkeyWie/gopeed/releases/latest)
 
 > Tips: If the macos open failed, please execute the `xattr -d com.apple.quarantine /Applications/Gopeed.app` command in the terminal
 
@@ -45,22 +45,6 @@ docker run -d -p 9999:9999 -v /path/to/download:/download liwei2633/gopeed
 
 #### Using Docker Compose
 
-```yaml
-version: '3'
-
-services:
-  gopeed:
-    container_name: gopeed
-    ports:
-      - 9999:9999
-    image: liwei2633/gopeed
-    volumes:
-      - ~/Downloads:/download
-    restart: unless-stopped
-```
-
-Use the command below to start container:
-
 ```bash
 docker-compose up -d
 ```
@@ -69,6 +53,10 @@ docker-compose up -d
 
 When the docker container is running, you can access the web page through `http://localhost:9999`.
 > Tip: Modify the download path to `/download` on the setting page to access the downloaded files on the host.
+
+## Donate
+
+If you like this project, please consider [donating](/.donate/index.md) to support the development of this project, thank you!
 
 ## Showcase
 
