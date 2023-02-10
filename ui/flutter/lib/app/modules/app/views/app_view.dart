@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 
-import '../../../../generated/locales.g.dart';
-import '../../../../i18n/messages.dart';
-import '../../../../theme/theme.dart';
-import '../../../routes/app_pages.dart';
-import '../../home/bindings/home_binding.dart';
-import '../controllers/app_controller.dart';
+import '../../i18n/messages.dart';
+import '../../routes/router.dart';
+import '../../theme/theme.dart';
+import '../home/home_controller.dart';
+import 'app_controller.dart';
 
 class AppView extends GetView<AppController> {
   const AppView({Key? key}) : super(key: key);
@@ -16,20 +15,15 @@ class AppView extends GetView<AppController> {
   Widget build(BuildContext context) {
     final config = controller.downloaderConfig.value;
     return GetMaterialApp.router(
-      // title: "Gopeed",
-      // binds: [
-      //   Bind.put(xxxService()),
-      // ],
-      // initialRoute: AppPages.INITIAL,
-      initialBinding: HomeBinding(),
-      getPages: AppPages.routes,
+      initialBinding: BindingsBuilder(() {
+        Get.lazyPut<HomeController>(() => HomeController(), fenix: true);
+      }),
       useInheritedMediaQuery: true,
       debugShowCheckedModeBanner: false,
       theme: GopeedTheme.light,
       darkTheme: GopeedTheme.dark,
       themeMode: ThemeMode.values.byName(config.extra.themeMode),
-      // translations: messages,
-      translationsKeys: AppTranslation.translations,
+      translations: messages,
       locale: toLocale(config.extra.locale),
       fallbackLocale: fallbackLocale,
       localizationsDelegates: const [
@@ -38,6 +32,7 @@ class AppView extends GetView<AppController> {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: messages.keys.keys.map((e) => toLocale(e)).toList(),
+      getPages: Routes.routes,
     );
   }
 }

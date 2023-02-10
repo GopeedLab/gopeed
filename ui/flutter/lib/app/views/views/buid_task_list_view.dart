@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../api/api.dart';
-import '../../../../api/model/task.dart';
-import '../../../../util/util.dart';
-import '../../routes/app_pages.dart';
+import '../../api/api.dart';
+import '../../api/model/task.dart';
+import '../../routes/router.dart';
+import '../../util/util.dart';
 
 class BuildTaskListView extends GetView {
   final List<Task> tasks;
@@ -26,7 +26,7 @@ class BuildTaskListView extends GetView {
               icon: const Icon(Icons.add),
               tooltip: 'create.title'.tr,
               onPressed: () {
-                Get.rootDelegate.toNamed(Routes.CREATE);
+                Get.rootDelegate.toNamed(Routes.create);
               },
             ),
             //TODO appBar toggleALl/start selected/delete selected/

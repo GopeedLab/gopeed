@@ -4,16 +4,16 @@ import 'package:get/get.dart';
 import 'package:gopeed/api/model/resolve_result.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
-import '../../../../api/api.dart';
-import '../../../../api/model/create_task.dart';
-import '../../../../api/model/options.dart';
-import '../../../../api/model/request.dart';
-import '../../../../util/util.dart';
-import '../../../routes/app_pages.dart';
-import '../../../views/views/directory_selector.dart';
-import '../../../views/views/file_list_view.dart';
-import '../../app/controllers/app_controller.dart';
-import '../controllers/create_controller.dart';
+import '../../api/api.dart';
+import '../../api/model/create_task.dart';
+import '../../api/model/options.dart';
+import '../../api/model/request.dart';
+import '../../routes/router.dart';
+import '../../util/util.dart';
+import '../../widget/directory_selector.dart';
+import '../../widget/file_list_view.dart';
+import '../app/app_controller.dart';
+import 'create_controller.dart';
 
 class CreateView extends GetView<CreateController> {
   final _resolveFormKey = GlobalKey<FormState>();
@@ -29,7 +29,7 @@ class CreateView extends GetView<CreateController> {
       appBar: AppBar(
         leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => Get.rootDelegate.offNamed(Routes.DOWNLOADING)),
+            onPressed: () => Get.rootDelegate.offNamed(Routes.downloading)),
         // actions: [],
         title: Text('create.title'.tr),
       ),
@@ -185,7 +185,7 @@ class CreateView extends GetView<CreateController> {
                                   selectFiles:
                                       controller.selectedIndexs.cast<int>())));
                           Get.back();
-                          Get.rootDelegate.offNamed(Routes.DOWNLOADING);
+                          Get.rootDelegate.offNamed(Routes.downloading);
                         }
                       } catch (e) {
                         Get.snackbar('error'.tr, e.toString());
