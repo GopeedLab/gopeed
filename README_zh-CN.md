@@ -1,7 +1,7 @@
 [![Test Status](https://github.com/monkeyWie/gopeed/workflows/test/badge.svg)](https://github.com/monkeyWie/gopeed/actions?query=workflow%3Atest)
 [![Codecov](https://codecov.io/gh/monkeyWie/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/monkeyWie/gopeed)
 [![Release](https://img.shields.io/github/release/monkeyWie/gopeed.svg?style=flat-square)](https://github.com/monkeyWie/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://github.com/monkeyWie/gopeed/blob/main/.donate/index.md)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://github.com/monkeyWie/gopeed/blob/main/.donate/index.md#donate)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
 ![](_docs/img/banner.png)
@@ -57,7 +57,7 @@ docker-compose up -d
 
 ## 打赏
 
-如果觉得项目对你有帮助，请考虑[打赏](/.donate/index.md)以支持这个项目的发展，非常感谢！
+如果觉得项目对你有帮助，请考虑[打赏](/.donate/index.md#donate)以支持这个项目的发展，非常感谢！
 
 ## 界面展示
 
