@@ -3,6 +3,7 @@ package fetcher
 import (
 	"github.com/monkeyWie/gopeed/internal/controller"
 	"github.com/monkeyWie/gopeed/pkg/base"
+	"path"
 )
 
 // Fetcher defines the interface for a download protocol.
@@ -34,6 +35,14 @@ type FetcherMeta struct {
 	Req  *base.Request  `json:"req"`
 	Res  *base.Resource `json:"res"`
 	Opts *base.Options  `json:"opts"`
+}
+
+func (m *FetcherMeta) Filepath(file *base.FileInfo) string {
+	finalName := m.Opts.Name
+	if finalName == "" {
+		finalName = file.Name
+	}
+	return path.Join(m.Opts.Path, m.Res.RootDir, finalName)
 }
 
 // FetcherBuilder defines the interface for a fetcher builder.

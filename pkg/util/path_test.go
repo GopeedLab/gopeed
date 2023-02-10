@@ -2,7 +2,6 @@ package util
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -106,99 +105,97 @@ func TestSafeRemove(t *testing.T) {
 	}
 }
 
-func TestSafeRemoveAll(t *testing.T) {
-	testDir := "test_dir"
-	err := os.Mkdir(testDir, 0755)
+func TestGetSingleDir(t *testing.T) {
+	type args struct {
+		paths []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "empty",
+			args: args{
+				paths: []string{},
+			},
+			want: "",
+		},
+		{
+			name: "blank",
+			args: args{
+				paths: []string{""},
+			},
+			want: "",
+		},
+		{
+			name: "blank multi",
+			args: args{
+				paths: []string{"", "a"},
+			},
+			want: "",
+		},
+		{
+			name: "multi dir not single",
+			args: args{
+				paths: []string{"a", "b"},
+			},
+			want: "",
+		},
+		{
+			name: "single dir",
+			args: args{
+				paths: []string{"a"},
+			},
+			want: "a",
+		},
+		{
+			name: "multi dir single",
+			args: args{
+				paths: []string{"a/b", "a/c"},
+			},
+			want: "a",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GetSingleDir(tt.args.paths); got != tt.want {
+				t.Errorf("IsSingleDir() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCheckDuplicateAndRename(t *testing.T) {
+	doCheckDuplicateAndRename(t, []string{}, "a.txt", "a.txt")
+	doCheckDuplicateAndRename(t, []string{"a.txt"}, "a.txt", "a (1).txt")
+	doCheckDuplicateAndRename(t, []string{"a.txt", "a (1).txt"}, "a.txt", "a (2).txt")
+
+	doCheckDuplicateAndRename(t, []string{}, "a", "a")
+	doCheckDuplicateAndRename(t, []string{"a"}, "a", "a (1)")
+	doCheckDuplicateAndRename(t, []string{"a", "a (1)"}, "a", "a (2)")
+}
+
+func doCheckDuplicateAndRename(t *testing.T, exitsPaths []string, path string, except string) {
+	for _, path := range exitsPaths {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	defer func() {
+		for _, path := range exitsPaths {
+			if err := os.RemoveAll(path); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}()
+
+	got, err := CheckDuplicateAndRename(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(testDir)
-
-	doSafeRemoveAll(t, testDir, []string{
-		"1.txt",
-	}, []string{})
-
-	doSafeRemoveAll(t, testDir, []string{
-		"1.txt",
-	}, []string{
-		"2.txt",
-	}, "2.txt")
-
-	doSafeRemoveAll(t, testDir, []string{
-		"1.txt",
-		"a/b/c/1.txt",
-		"a/b/1.txt",
-		"a/1.txt",
-	}, []string{})
-
-	doSafeRemoveAll(t, testDir, []string{
-		"1.txt",
-		"a/b/c/1.txt",
-		"a/b/1.txt",
-		"a/1.txt",
-	}, []string{
-		"a/b/2.txt",
-	}, "a/b/2.txt")
-
-	doSafeRemoveAll(t, testDir, []string{
-		"1.txt",
-		"a/b/c/1.txt",
-		"a/b/1.txt",
-		"a/1.txt",
-	}, []string{
-		"a/2.txt",
-	}, "a/2.txt")
-}
-
-func doSafeRemoveAll(t *testing.T, path string, downloadNames []string, otherNames []string, exist ...string) {
-	preCreate(t, path, downloadNames)
-	preCreate(t, path, otherNames)
-
-	if err := SafeRemoveAll(path, downloadNames); err != nil {
-		t.Fatal(err)
+	if got != except {
+		t.Errorf("CheckDuplicateAndRename() = %v, want %v", got, except)
 	}
-
-	if len(exist) == 0 {
-		for _, name := range downloadNames {
-			filePath := filepath.Join(path, name)
-			if isExist(filePath) {
-				t.Fatalf("file %s should not exist", filePath)
-			}
-			subDirPath := filepath.Dir(name)
-			if subDirPath != "." {
-				dirPath := filepath.Join(path, subDirPath)
-				if isExist(dirPath) {
-					t.Fatalf("dir %s should not exist", dirPath)
-				}
-			}
-		}
-		return
-	}
-
-	for _, name := range exist {
-		if !isExist(filepath.Join(path, name)) {
-			t.Fatalf("file %s should exist", name)
-		}
-	}
-}
-
-func preCreate(t *testing.T, path string, names []string) {
-	for _, name := range names {
-		fullPath := filepath.Join(path, name)
-		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
-			t.Fatal(err)
-		}
-		file, err := os.Create(fullPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := file.Close(); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-func isExist(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil || os.IsExist(err)
 }

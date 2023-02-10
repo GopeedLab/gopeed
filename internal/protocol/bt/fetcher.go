@@ -8,6 +8,7 @@ import (
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	"github.com/monkeyWie/gopeed/pkg/util"
+	"path"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -74,15 +75,16 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	}
 	defer f.torrent.Drop()
 	res := &base.Resource{
-		Name:  f.torrent.Name(),
-		Range: true,
-		Files: make([]*base.FileInfo, len(f.torrent.Files())),
-		Hash:  f.torrent.InfoHash().String(),
+		Name:    f.torrent.Name(),
+		Range:   true,
+		RootDir: f.torrent.Name(),
+		Files:   make([]*base.FileInfo, len(f.torrent.Files())),
+		Hash:    f.torrent.InfoHash().String(),
 	}
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
 			Name: filepath.Base(file.DisplayPath()),
-			Path: util.Dir(file.Path()),
+			Path: util.Dir(path.Join(f.torrent.Info().Name, file.Path())),
 			Size: file.Length(),
 		}
 		res.Size += file.Length()
@@ -101,7 +103,7 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 		}
 	}
 	if opts.Path != "" {
-		f.torrentPaths[f.meta.Res.Hash] = f.meta.Opts.Path
+		f.torrentPaths[f.meta.Res.Hash] = path.Join(f.meta.Opts.Path, f.meta.Res.RootDir)
 	}
 
 	f.progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))

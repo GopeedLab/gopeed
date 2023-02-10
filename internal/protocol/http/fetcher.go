@@ -8,7 +8,6 @@ import (
 	"github.com/monkeyWie/gopeed/internal/fetcher"
 	"github.com/monkeyWie/gopeed/pkg/base"
 	fhttp "github.com/monkeyWie/gopeed/pkg/protocol/http"
-	"github.com/monkeyWie/gopeed/pkg/util"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"mime"
@@ -245,7 +244,7 @@ func (f *Fetcher) Wait() (err error) {
 }
 
 func (f *Fetcher) filepath() string {
-	return util.Filepath(f.meta.Opts.Path, f.meta.Res.Files[0].Name, f.meta.Opts.Name)
+	return f.meta.Filepath(f.meta.Res.Files[0])
 }
 
 func (f *Fetcher) fetch() {

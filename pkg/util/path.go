@@ -2,9 +2,11 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	syspath "path"
+	"strings"
 )
 
 func Dir(path string) string {
@@ -30,39 +32,55 @@ func SafeRemove(name string) error {
 	return nil
 }
 
-// SafeRemoveAll remove file and parent directories safely
-func SafeRemoveAll(path string, names []string) error {
-	for _, name := range names {
-		err := SafeRemove(syspath.Join(path, name))
-		if err != nil {
-			return err
+// CheckDuplicateAndRename rename duplicate file, add suffix (1) (2) ...
+// if file name is a.txt, rename to a (1).txt
+// if directory name is a, rename to a (1)
+// return new name
+func CheckDuplicateAndRename(path string) (string, error) {
+	dir := syspath.Dir(path)
+	name := syspath.Base(path)
+
+	// if file not exists, return directly
+	_, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return name, nil
 		}
-		if err := safeRemoveParent(path, name); err != nil {
-			return err
+		return "", err
+	}
+
+	index := strings.LastIndex(name, ".")
+	var nameTpl string
+	if index == -1 {
+		nameTpl = name + " (%d)"
+	} else {
+		nameTpl = name[:index] + " (%d)" + name[index:]
+	}
+	for i := 1; ; i++ {
+		newName := fmt.Sprintf(nameTpl, i)
+		newPath := syspath.Join(dir, newName)
+		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			return newName, nil
 		}
 	}
-	return nil
 }
 
-func safeRemoveParent(path string, subPath string) error {
-	currPath := syspath.Dir(subPath)
-	if currPath == "." {
-		return nil
+// GetSingleDir get the top level single folder name,if not exist, return empty string
+func GetSingleDir(paths []string) string {
+	if len(paths) == 0 {
+		return ""
 	}
-	// if directory is empty, remove it
-	dir := syspath.Join(path, syspath.Dir(subPath))
-	empty, err := isEmpty(dir)
-	if err != nil {
-		return err
+	split := strings.Split(paths[0], "/")
+	if len(split) == 0 || split[0] == "" {
+		return ""
 	}
-	if empty {
-		err = SafeRemove(dir)
-		if err != nil {
-			return err
+	dir := split[0]
+	for i := 1; i < len(paths); i++ {
+		if !strings.HasPrefix(paths[i], dir) {
+			return ""
 		}
-		return safeRemoveParent(path, currPath)
 	}
-	return nil
+	return dir
 }
 
 // check directory is empty
