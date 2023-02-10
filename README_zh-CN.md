@@ -2,6 +2,7 @@
 [![Codecov](https://codecov.io/gh/monkeyWie/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/monkeyWie/gopeed)
 [![Release](https://img.shields.io/github/release/monkeyWie/gopeed.svg?style=flat-square)](https://github.com/monkeyWie/gopeed/releases)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://github.com/monkeyWie/gopeed/blob/main/.donate/index.md)
 
 ![](_docs/img/banner.png)
 
