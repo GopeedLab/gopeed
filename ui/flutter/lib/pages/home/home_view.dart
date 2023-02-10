@@ -54,19 +54,18 @@ class HomeView extends GetView<HomeController> {
                       },
                       destinations: [
                         NavigationRailDestination(
-                          icon: const Icon(Icons.list),
+                          icon: const Icon(Icons.add),
                           selectedIcon: const Icon(Icons.add),
                           label: Text('create.title'.tr),
                         ),
                         NavigationRailDestination(
                           icon: const Icon(Icons.list),
-                          selectedIcon: const Icon(Icons.list_outlined),
+                          selectedIcon: const Icon(Icons.list),
                           label: Text('home.task'.tr),
                         ),
                         NavigationRailDestination(
-                          icon:
-                              const Icon(Icons.settings_applications_outlined),
-                          selectedIcon: const Icon(Icons.settings_applications),
+                          icon: const Icon(Icons.settings),
+                          selectedIcon: const Icon(Icons.settings),
                           label: Text('home.setting'.tr),
                         ),
                       ],
@@ -76,7 +75,7 @@ class HomeView extends GetView<HomeController> {
                     ))
                 : const Flexible(flex: 0, child: SizedBox.shrink()),
             Flexible(
-                flex: 10,
+                flex: 9,
                 child: GetRouterOutlet(
                   initialRoute: Routes.task,
                 ))
