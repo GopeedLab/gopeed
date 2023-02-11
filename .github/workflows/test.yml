@@ -67,4 +67,4 @@ jobs:
           go-version: "^1.19"
           cache: true
       - name: Build
-        run: go build github.com/monkeyWie/gopeed/cmd/gopeed
+        run: go build github.com/GopeedLab/gopeed/cmd/gopeed

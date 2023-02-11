@@ -229,9 +229,9 @@ class SettingView extends GetView<SettingController> {
     // about config items start
     buildHomepage() => ListTile(
           title: Text('setting.homepage'.tr),
-          subtitle: const Text('https://github.com/monkeyWie/gopeed'),
+          subtitle: const Text('https://github.com/GopeedLab/gopeed'),
           onTap: () {
-            launchUrl(Uri.parse('https://github.com/monkeyWie/gopeed'),
+            launchUrl(Uri.parse('https://github.com/GopeedLab/gopeed'),
                 mode: LaunchMode.externalApplication);
           },
         );

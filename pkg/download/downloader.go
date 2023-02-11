@@ -2,11 +2,11 @@ package download
 
 import (
 	"errors"
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/monkeyWie/gopeed/internal/controller"
-	"github.com/monkeyWie/gopeed/internal/fetcher"
-	"github.com/monkeyWie/gopeed/pkg/base"
-	"github.com/monkeyWie/gopeed/pkg/util"
 	"os"
 	"path"
 	"strings"

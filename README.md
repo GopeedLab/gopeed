@@ -1,7 +1,7 @@
-[![Test Status](https://github.com/monkeyWie/gopeed/workflows/test/badge.svg)](https://github.com/monkeyWie/gopeed/actions?query=workflow%3Atest)
-[![Codecov](https://codecov.io/gh/monkeyWie/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/monkeyWie/gopeed)
-[![Release](https://img.shields.io/github/release/monkeyWie/gopeed.svg?style=flat-square)](https://github.com/monkeyWie/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://github.com/monkeyWie/gopeed/blob/main/.donate/index.md#donate)
+[![Test Status](https://github.com/GopeedLab/gopeed/workflows/test/badge.svg)](https://github.com/GopeedLab/gopeed/actions?query=workflow%3Atest)
+[![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
+[![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg?style=flat-square)](https://github.com/GopeedLab/gopeed/releases)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://github.com/GopeedLab/gopeed/blob/main/.donate/index.md#donate)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
 ![](_docs/img/banner.png)
@@ -24,7 +24,7 @@ Gopeed (full name Go Speed), a high-speed downloader developed by `Golang` + `Fl
 - [x] web
 - [x] docker
 
-[Download](https://github.com/monkeyWie/gopeed/releases/latest)
+[Download](https://github.com/GopeedLab/gopeed/releases/latest)
 
 > Tips: If the macos open failed, please execute the `xattr -d com.apple.quarantine /Applications/Gopeed.app` command in the terminal
 
@@ -33,7 +33,7 @@ Gopeed (full name Go Speed), a high-speed downloader developed by `Golang` + `Fl
 use `go install`:
 
 ```bash
-go install github.com/monkeyWie/gopeed/cmd/gopeed
+go install github.com/GopeedLab/gopeed/cmd/gopeed
 ```
 
 ### Docker
@@ -95,7 +95,7 @@ command:
 - windows
 
 ```bash
-go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
 cd ui/flutter
 flutter build windows
 ```
@@ -103,7 +103,7 @@ flutter build windows
 - macos
 
 ```bash
-go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
 cd ui/flutter
 flutter build macos
 ```
@@ -111,7 +111,7 @@ flutter build macos
 - linux
 
 ```bash
-go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/monkeyWie/gopeed/bind/desktop
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
 cd ui/flutter
 flutter build linux
 ```
@@ -130,7 +130,7 @@ command:
 - android
 
 ```bash
-gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
+gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
 cd ui/flutter
 flutter build apk
 ```
@@ -145,7 +145,7 @@ flutter build web
 cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
-go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/monkeyWie/gopeed/cmd/web
+go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
 ````
 
 ## License

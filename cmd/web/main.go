@@ -6,8 +6,8 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/monkeyWie/gopeed/pkg/rest"
-	"github.com/monkeyWie/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/pkg/rest"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"io/fs"
 	"net/http"
 )

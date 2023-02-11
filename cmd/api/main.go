@@ -3,8 +3,8 @@ package main
 import (
 	_ "embed"
 	"fmt"
-	"github.com/monkeyWie/gopeed/pkg/rest"
-	"github.com/monkeyWie/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/pkg/rest"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"net/http"
 )
 

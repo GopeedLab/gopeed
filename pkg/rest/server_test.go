@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/monkeyWie/gopeed/internal/test"
-	"github.com/monkeyWie/gopeed/pkg/base"
-	"github.com/monkeyWie/gopeed/pkg/download"
-	"github.com/monkeyWie/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/internal/test"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"io"
 	"net"
 	"net/http"
@@ -219,7 +219,7 @@ func TestGetAndPutConfig(t *testing.T) {
 func TestDoProxy(t *testing.T) {
 	doTest(func() {
 		code, respBody := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
-			"X-Target-Uri": "https://github.com/monkeyWie/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
+			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
 		}, nil)
 		if code != http.StatusOK {
 			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusOK)

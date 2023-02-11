@@ -1,13 +1,13 @@
 package bt
 
 import (
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
-	"github.com/monkeyWie/gopeed/internal/controller"
-	"github.com/monkeyWie/gopeed/internal/fetcher"
-	"github.com/monkeyWie/gopeed/pkg/base"
-	"github.com/monkeyWie/gopeed/pkg/util"
 	"path"
 	"path/filepath"
 	"sync"

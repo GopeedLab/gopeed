@@ -2,7 +2,7 @@ package util
 
 import (
 	"encoding/json"
-	"github.com/monkeyWie/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"net/http"
 )
 

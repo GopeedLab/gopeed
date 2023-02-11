@@ -1,7 +1,7 @@
 package base
 
 import (
-	"github.com/monkeyWie/gopeed/pkg/util"
+	"github.com/GopeedLab/gopeed/pkg/util"
 )
 
 // Request download request

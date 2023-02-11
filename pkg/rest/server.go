@@ -2,12 +2,12 @@ package rest
 
 import (
 	"context"
+	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
+	restUtil "github.com/GopeedLab/gopeed/pkg/rest/util"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/monkeyWie/gopeed/pkg/download"
-	"github.com/monkeyWie/gopeed/pkg/rest/model"
-	restUtil "github.com/monkeyWie/gopeed/pkg/rest/util"
-	"github.com/monkeyWie/gopeed/pkg/util"
 	"net"
 	"net/http"
 )

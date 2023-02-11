@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed/pkg/base"
-	"github.com/monkeyWie/gopeed/pkg/download"
-	"github.com/monkeyWie/gopeed/pkg/protocol/http"
-	"github.com/monkeyWie/gopeed/pkg/util"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	"strings"
 	"sync"
 )

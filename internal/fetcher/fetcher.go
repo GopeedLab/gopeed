@@ -1,8 +1,8 @@
 package fetcher
 
 import (
-	"github.com/monkeyWie/gopeed/internal/controller"
-	"github.com/monkeyWie/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	"path"
 )
 

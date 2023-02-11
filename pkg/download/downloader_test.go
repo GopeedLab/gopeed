@@ -1,9 +1,9 @@
 package download
 
 import (
-	"github.com/monkeyWie/gopeed/internal/test"
-	"github.com/monkeyWie/gopeed/pkg/base"
-	"github.com/monkeyWie/gopeed/pkg/protocol/http"
+	"github.com/GopeedLab/gopeed/internal/test"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"reflect"
 	"sync"
 	"testing"

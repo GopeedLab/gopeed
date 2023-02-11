@@ -2,11 +2,11 @@ package rest
 
 import (
 	"compress/gzip"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/pkg/rest/util"
 	"github.com/gorilla/mux"
-	"github.com/monkeyWie/gopeed/pkg/base"
-	"github.com/monkeyWie/gopeed/pkg/download"
-	"github.com/monkeyWie/gopeed/pkg/rest/model"
-	"github.com/monkeyWie/gopeed/pkg/rest/util"
 	"io"
 	"net/http"
 	"net/url"

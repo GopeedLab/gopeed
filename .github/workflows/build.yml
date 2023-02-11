@@ -32,7 +32,7 @@ jobs:
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\" 
 
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
           flutter build windows
           $mingw = "C:\ProgramData\Chocolatey\lib\mingw\tools\install\mingw64\bin"
@@ -187,7 +187,7 @@ jobs:
 
           # amd64
           cd $PROJECT_DIR
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
           cp bin/libgopeed.dylib ui/flutter/build/macos/Build/Products/Release/Gopeed.app/Contents/Frameworks/
           cd ui/flutter/build/macos/Build/Products/Release
           appdmg appdmg.json dist/Gopeed-$VERSION-macos-amd64.dmg
@@ -214,7 +214,7 @@ jobs:
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/monkeyWie/gopeed/bind/desktop
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
           flutter build linux
           mkdir -p debian/gui
@@ -280,7 +280,7 @@ jobs:
           mkdir ui/flutter/android/app/libs
           go install golang.org/x/mobile/cmd/gomobile@latest
           gomobile init
-          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
+          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
           echo $APK_KEYSTORE | base64 -di > android/app/upload-keystore.jks
           flutter build apk
@@ -318,7 +318,7 @@ jobs:
             for goarch in "${goarch_arr[@]}"; do
               name=gopeed-web-$VERSION-$goos-$goarch
               dir="dist/$name/"
-              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/web \
+              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/GopeedLab/gopeed/cmd/web \
               && cd $dir \
               && file=$(ls -AU | head -1) \
               && mkdir $name \
