@@ -100,11 +100,11 @@ class HomeView extends GetView<HomeController> {
                   onTap: (index) {
                     switch (index) {
                       case 0:
-                        delegate.toNamed(Routes.downloaded);
+                        delegate.toNamed(Routes.downloading);
                         controller.currentIndex.value = 0;
                         break;
                       case 1:
-                        delegate.toNamed(Routes.downloading);
+                        delegate.toNamed(Routes.downloaded);
                         controller.currentIndex.value = 1;
                         break;
                       case 2:
