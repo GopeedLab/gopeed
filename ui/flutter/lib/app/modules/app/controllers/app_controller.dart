@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../core/common/start_config.dart';
+import '../../../../generated/locales.g.dart';
 import '../../../../i18n/messages.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/util.dart';
@@ -184,7 +185,7 @@ class AppController extends GetxController {
     }
     if (extra.locale.isEmpty) {
       final systemLocale = getLocaleKey(ui.window.locale);
-      extra.locale = messages.keys.containsKey(systemLocale)
+      extra.locale = AppTranslation.translations.containsKey(systemLocale)
           ? systemLocale
           : getLocaleKey(fallbackLocale);
     }

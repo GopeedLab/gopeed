@@ -4,16 +4,16 @@ import 'package:get/get.dart';
 import 'package:gopeed/api/model/resolve_result.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
-import '../../api/api.dart';
-import '../../api/model/create_task.dart';
-import '../../api/model/options.dart';
-import '../../api/model/request.dart';
-import '../../routes/router.dart';
-import '../../util/util.dart';
-import '../../widget/directory_selector.dart';
-import '../../widget/file_list_view.dart';
-import '../app/app_controller.dart';
-import 'create_controller.dart';
+import '../../../../api/api.dart';
+import '../../../../api/model/create_task.dart';
+import '../../../../api/model/options.dart';
+import '../../../../api/model/request.dart';
+import '../../../../util/util.dart';
+import '../../../routes/app_pages.dart';
+import '../../../views/views/directory_selector.dart';
+import '../../../views/views/file_list_view.dart';
+import '../../app/controllers/app_controller.dart';
+import '../controllers/create_controller.dart';
 
 class CreateView extends GetView<CreateController> {
   final _resolveFormKey = GlobalKey<FormState>();
@@ -29,9 +29,9 @@ class CreateView extends GetView<CreateController> {
       appBar: AppBar(
         leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => Get.rootDelegate.offNamed(Routes.downloading)),
+            onPressed: () => Get.rootDelegate.offNamed(Routes.DOWNLOADING)),
         // actions: [],
-        title: Text('create.title'.tr),
+        title: Text('create'.tr),
       ),
       body: DropTarget(
         onDragDone: (details) {
@@ -52,12 +52,12 @@ class CreateView extends GetView<CreateController> {
                     decoration: InputDecoration(
                         hintText: _hitText(),
                         hintStyle: const TextStyle(fontSize: 12),
-                        labelText: 'create.downloadLink'.tr,
+                        labelText: 'downloadLink'.tr,
                         icon: const Icon(Icons.link)),
                     validator: (v) {
                       return v!.trim().isNotEmpty
                           ? null
-                          : 'create.downloadLinkValid'.tr;
+                          : 'downloadLinkValid'.tr;
                     }),
                 Center(
                   child: Padding(
@@ -98,8 +98,8 @@ class CreateView extends GetView<CreateController> {
   }
 
   String _hitText() {
-    return 'create.downloadLinkHit'.trParams({
-      'append': Util.isDesktop() ? 'create.downloadLinkHitDesktop'.tr : '',
+    return 'downloadLinkHit'.trParams({
+      'append': Util.isDesktop() ? 'downloadLinkHitDesktop'.tr : '',
     });
   }
 
@@ -172,7 +172,7 @@ class CreateView extends GetView<CreateController> {
                           // if (Util.isAndroid()) {
                           //   if (!await Permission.storage.request().isGranted) {
                           //     Get.snackbar('error'.tr,
-                          //         'create.error.noStoragePermission'.tr);
+                          //         'noStoragePermission'.tr);
                           //     return;
                           //   }
                           // }
@@ -185,7 +185,7 @@ class CreateView extends GetView<CreateController> {
                                   selectFiles:
                                       controller.selectedIndexs.cast<int>())));
                           Get.back();
-                          Get.rootDelegate.offNamed(Routes.downloading);
+                          Get.rootDelegate.offNamed(Routes.DOWNLOADING);
                         }
                       } catch (e) {
                         Get.snackbar('error'.tr, e.toString());
@@ -195,7 +195,7 @@ class CreateView extends GetView<CreateController> {
                       }
                     },
                     controller: downloadController,
-                    child: Text('create.download'.tr),
+                    child: Text('download'.tr),
                   ),
                 ),
               ],

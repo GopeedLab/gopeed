@@ -20,7 +20,7 @@ start the front-end flutter project in `debug` mode to run.
 The internationalization files of Gopeed are located in the `ui/flutter/assets/locales` directory.
 You only need to add the corresponding language file in this directory.
 
-Generate locales after you edit locales/internationalization:
+Generate locales after you edit locales:
 
 ```
 get generate locales 
