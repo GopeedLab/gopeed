@@ -10,7 +10,7 @@ import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../generated/locales.g.dart';
-import '../../../../i18n/messages.dart';
+import '../../../../i18n/localeManager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/util.dart';
 
