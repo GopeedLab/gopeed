@@ -24,7 +24,7 @@ class BuildTaskListView extends GetView {
           actions: <Widget>[
             IconButton(
               icon: const Icon(Icons.add),
-              tooltip: 'create.title'.tr,
+              tooltip: 'create'.tr,
               onPressed: () {
                 Get.rootDelegate.toNamed(Routes.CREATE);
               },
@@ -32,14 +32,14 @@ class BuildTaskListView extends GetView {
             //TODO appBar toggleALl/start selected/delete selected/
             // IconButton(
             //   icon: const Icon(Icons.pause),
-            //   tooltip: 'create.title'.tr,
+            //   tooltip: 'title'.tr,
             //   onPressed: () {
             //     // pause all
             //   },
             // ),
             // IconButton(
             //   icon: const Icon(Icons.delete),
-            //   tooltip: 'create.title'.tr,
+            //   tooltip: 'title'.tr,
             //   onPressed: () {
             //     // delete all
             //   },

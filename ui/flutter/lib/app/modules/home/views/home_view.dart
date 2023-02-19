@@ -22,7 +22,7 @@ class HomeView extends GetView<HomeController> {
                   ? NavigationRail(
                       extended: true,
                       labelType: NavigationRailLabelType.none,
-                      minExtendedWidth: 140,
+                      minExtendedWidth: 170,
                       groupAlignment: 0,
                       // useIndicator: false,
                       onDestinationSelected: (int index) {

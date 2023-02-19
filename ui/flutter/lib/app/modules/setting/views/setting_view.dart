@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../generated/locales.g.dart';
 import '../../../../i18n/messages.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
@@ -202,7 +203,8 @@ class SettingView extends GetView<SettingController> {
             ));
     final buildLocale = _buildConfigItem(
         'locale',
-        () => messages.keys[downloaderCfg.value.extra.locale]!['label']!,
+        () => AppTranslation
+            .translations[downloaderCfg.value.extra.locale]!['label']!,
         (Key key) => DropdownButton<String>(
               key: key,
               value: downloaderCfg.value.extra.locale,
@@ -216,10 +218,10 @@ class SettingView extends GetView<SettingController> {
 
                 await debounceSave();
               },
-              items: messages.keys.keys
+              items: AppTranslation.translations.keys
                   .map((e) => DropdownMenuItem<String>(
                         value: e,
-                        child: Text(messages.keys[e]!['label']!),
+                        child: Text(AppTranslation.translations[e]!['label']!),
                       ))
                   .toList(),
             ));

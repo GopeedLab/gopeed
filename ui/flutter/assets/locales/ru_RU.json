@@ -9,7 +9,7 @@
   "downloading": "downloading",
   "downloaded": "downloaded",
   "setting": "Настройки",
-  "title": "Создать задачу",
+  "create": "Создать задачу",
   "downloadLink": "Ссылка для скачивание",
   "downloadLinkValid": "Пожалуйста, введите ссылку для скачивания",
   "downloadLinkHit": "Пожалуйста, введите ссылку для скачивания, HTTP/HTTPS/MAGNET supported@append",

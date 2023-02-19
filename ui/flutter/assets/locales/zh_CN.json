@@ -9,7 +9,7 @@
   "downloading": "下载中",
   "downloaded": "已完成",
   "setting": "设置",
-  "title": "创建任务",
+  "create": "创建任务",
   "downloadLink": "下载链接",
   "downloadLinkValid": "请输入下载链接",
   "downloadLinkHit": "请输入下载链接，支持 HTTP/HTTPS/MAGNET@append",

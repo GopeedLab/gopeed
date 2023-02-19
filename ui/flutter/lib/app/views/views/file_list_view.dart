@@ -141,7 +141,7 @@ class FileListView extends GetView {
           children: [
             const Padding(padding: EdgeInsets.only(top: 10)),
             Text(
-              'create.selectFile'.tr,
+              'selectFile'.tr,
               // style: TextStyle(color: themeData.hintColor),
             ),
             Expanded(

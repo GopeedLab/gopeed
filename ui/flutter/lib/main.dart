@@ -7,6 +7,7 @@ import 'package:gopeed/i18n/messages.dart';
 import 'app/modules/app/controllers/app_controller.dart';
 import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
+import 'generated/locales.g.dart';
 import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
@@ -52,9 +53,11 @@ Future<void> onStart() async {
   // if is debug mode, check language message is complete
   if (kDebugMode) {
     final mainLang = getLocaleKey(mainLocale);
-    final fullMessages = messages.keys[mainLang];
-    messages.keys.keys.where((e) => e != mainLang).forEach((lang) {
-      final langMessages = messages.keys[lang];
+    final fullMessages = AppTranslation.translations[mainLang];
+    AppTranslation.translations.keys
+        .where((e) => e != mainLang)
+        .forEach((lang) {
+      final langMessages = AppTranslation.translations[lang];
       if (langMessages == null) {
         logger.w("missing language: $lang");
         return;

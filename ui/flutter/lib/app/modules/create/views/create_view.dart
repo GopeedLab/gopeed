@@ -31,7 +31,7 @@ class CreateView extends GetView<CreateController> {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Get.rootDelegate.offNamed(Routes.DOWNLOADING)),
         // actions: [],
-        title: Text('create.title'.tr),
+        title: Text('create'.tr),
       ),
       body: DropTarget(
         onDragDone: (details) {
@@ -52,12 +52,12 @@ class CreateView extends GetView<CreateController> {
                     decoration: InputDecoration(
                         hintText: _hitText(),
                         hintStyle: const TextStyle(fontSize: 12),
-                        labelText: 'create.downloadLink'.tr,
+                        labelText: 'downloadLink'.tr,
                         icon: const Icon(Icons.link)),
                     validator: (v) {
                       return v!.trim().isNotEmpty
                           ? null
-                          : 'create.downloadLinkValid'.tr;
+                          : 'downloadLinkValid'.tr;
                     }),
                 Center(
                   child: Padding(
@@ -98,8 +98,8 @@ class CreateView extends GetView<CreateController> {
   }
 
   String _hitText() {
-    return 'create.downloadLinkHit'.trParams({
-      'append': Util.isDesktop() ? 'create.downloadLinkHitDesktop'.tr : '',
+    return 'downloadLinkHit'.trParams({
+      'append': Util.isDesktop() ? 'downloadLinkHitDesktop'.tr : '',
     });
   }
 
@@ -172,7 +172,7 @@ class CreateView extends GetView<CreateController> {
                           // if (Util.isAndroid()) {
                           //   if (!await Permission.storage.request().isGranted) {
                           //     Get.snackbar('error'.tr,
-                          //         'create.error.noStoragePermission'.tr);
+                          //         'noStoragePermission'.tr);
                           //     return;
                           //   }
                           // }
@@ -195,7 +195,7 @@ class CreateView extends GetView<CreateController> {
                       }
                     },
                     controller: downloadController,
-                    child: Text('create.download'.tr),
+                    child: Text('download'.tr),
                   ),
                 ),
               ],

@@ -29,7 +29,8 @@ class AppView extends GetView<AppController> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: messages.keys.keys.map((e) => toLocale(e)).toList(),
+      supportedLocales:
+          AppTranslation.translations.keys.map((e) => toLocale(e)).toList(),
       getPages: AppPages.routes,
     );
   }
