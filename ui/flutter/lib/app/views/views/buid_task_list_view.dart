@@ -78,10 +78,10 @@ class BuildTaskListView extends GetView {
           context: context,
           barrierDismissible: false,
           builder: (_) => AlertDialog(
-                title: Text('task.deleteTask'.tr),
+                title: Text('deleteTask'.tr),
                 content: Obx(() => CheckboxListTile(
                     value: keep.value,
-                    title: Text('task.deleteTaskTip'.tr,
+                    title: Text('deleteTaskTip'.tr,
                         style: context.textTheme.bodyLarge),
                     onChanged: (v) {
                       keep.value = v!;
@@ -93,7 +93,7 @@ class BuildTaskListView extends GetView {
                   ),
                   TextButton(
                     child: Text(
-                      'task.delete'.tr,
+                      'delete'.tr,
                       style: const TextStyle(color: Colors.redAccent),
                     ),
                     onPressed: () async {

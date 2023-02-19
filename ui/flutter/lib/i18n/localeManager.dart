@@ -9,5 +9,5 @@ String getLocaleKey(Locale locale) {
   return '${locale.languageCode}_${locale.countryCode}';
 }
 
-const mainLocale = Locale('zh', 'CN');
+const debugLocale = Locale('zh', 'CN');
 const fallbackLocale = Locale('en', 'US');

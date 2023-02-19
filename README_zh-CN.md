@@ -146,6 +146,7 @@ cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
+go run cmd/web/main.go
 ```
 
 ## 开源许可

@@ -32,7 +32,7 @@ Please refer to `en_us.dart` for translation.
 
 ## flutter development
 
-Don't forget to run`dart format .`before you commit to keep your code in standard dart format
+Don't forget to run`dart format ./ui/flutter`before you commit to keep your code in standard dart format
 
 Turn on build_runner watcher if you want to edit api/models:
 

@@ -2,12 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/api/api.dart' as api;
-import 'package:gopeed/i18n/messages.dart';
 
 import 'app/modules/app/controllers/app_controller.dart';
 import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
 import 'generated/locales.g.dart';
+import 'i18n/localeManager.dart';
 import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
@@ -50,9 +50,9 @@ Future<void> onStart() async {
   final appController = Get.find<AppController>();
   await appController.trackerUpdateOnStart();
 
-  // if is debug mode, check language message is complete
+  // if is debug mode, check language message is complete,change debug locale to your comfortable language if you want
   if (kDebugMode) {
-    final mainLang = getLocaleKey(mainLocale);
+    final mainLang = getLocaleKey(debugLocale);
     final fullMessages = AppTranslation.translations[mainLang];
     AppTranslation.translations.keys
         .where((e) => e != mainLang)
