@@ -13,7 +13,7 @@ PR，合并到 `main` 分支。
 flutter 项目即可运行。
 
 ## 翻译
-
+ 
 Gopeed 的国际化文件位于 `ui/flutter/assets/locales` 目录下，只需要在该目录下添加对应的语言文件即可。
 
 编辑locales/internationalization后请运行以下命令:

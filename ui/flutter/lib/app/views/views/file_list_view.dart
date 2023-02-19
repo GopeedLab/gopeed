@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
 
-import '../pages/app/app_controller.dart';
-import '../pages/create/create_controller.dart';
-import '../util/file_icon.dart';
-import '../util/util.dart';
+import '../../../util/file_icon.dart';
+import '../../../util/util.dart';
+import '../../modules/app/controllers/app_controller.dart';
+import '../../modules/create/controllers/create_controller.dart';
 
 class FileListView extends GetView {
   FileListView({
