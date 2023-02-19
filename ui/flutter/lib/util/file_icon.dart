@@ -13,23 +13,90 @@ findIcon(String filename) {
 const List iconMaps = [
   //media
   {
-    'extensions': ['jpg', 'png', 'gif', 'bmp', 'jpeg', 'jpe', 'jif', 'jfif', 'jfi', 'webp', 'tiff', 'tif', 'ico', 'svg', 'webp'],
+    'extensions': [
+      'jpg',
+      'png',
+      'gif',
+      'bmp',
+      'jpeg',
+      'jpe',
+      'jif',
+      'jfif',
+      'jfi',
+      'webp',
+      'tiff',
+      'tif',
+      'ico',
+      'svg',
+      'webp'
+    ],
     'type': 'Image',
     'thumbnail': 'file_image'
   },
   {
-    'extensions': ['mp4', 'webm', 'mpg', 'mp2', 'mpeg', 'mpe', 'mpv', 'ocg', 'm4p', 'm4v', 'avi', 'wmv', 'mov', 'qt', 'flv', 'swf', 'mkv', 'rmvb', 'rm', 'vob', '3gp'],
+    'extensions': [
+      'mp4',
+      'webm',
+      'mpg',
+      'mp2',
+      'mpeg',
+      'mpe',
+      'mpv',
+      'ocg',
+      'm4p',
+      'm4v',
+      'avi',
+      'wmv',
+      'mov',
+      'qt',
+      'flv',
+      'swf',
+      'mkv',
+      'rmvb',
+      'rm',
+      'vob',
+      '3gp'
+    ],
     'type': 'Video',
     'thumbnail': 'file_video'
   },
   {
-    'extensions': ['mp3', 'ogg', 'ogm', 'wav', '.aac', '.ape', '.flac', '.flav', '.m4a', '.wma'],
+    'extensions': [
+      'mp3',
+      'ogg',
+      'ogm',
+      'wav',
+      '.aac',
+      '.ape',
+      '.flac',
+      '.flav',
+      '.m4a',
+      '.wma'
+    ],
     'type': 'Audio',
     'thumbnail': 'file_audio'
   },
   //compressed
   {
-    'extensions': ['7z', 'brotli', 'bzip2', 'gz', 'gzip', 'rar', 'tgz', 'xz', 'zip', 'zstd', 'deb', 'msi', 'snap', 'iso', 'dmg', 'dockerfile', 'dockerignore'],
+    'extensions': [
+      '7z',
+      'brotli',
+      'bzip2',
+      'gz',
+      'gzip',
+      'rar',
+      'tgz',
+      'xz',
+      'zip',
+      'zstd',
+      'deb',
+      'msi',
+      'snap',
+      'iso',
+      'dmg',
+      'dockerfile',
+      'dockerignore'
+    ],
     'type': 'Archive',
     'thumbnail': 'file_archive'
   },
@@ -56,7 +123,18 @@ const List iconMaps = [
     'thumbnail': 'file_excel'
   },
   {
-    'extensions': ['pot', 'potm', 'potx', 'ppam', 'pps', 'ppsm', 'ppsx', 'ppt', 'pptn', 'pptx'],
+    'extensions': [
+      'pot',
+      'potm',
+      'potx',
+      'ppam',
+      'pps',
+      'ppsm',
+      'ppsx',
+      'ppt',
+      'pptn',
+      'pptx'
+    ],
     'type': 'Powerpoint Document',
     'thumbnail': 'file_powerpoint'
   },
@@ -79,7 +157,22 @@ const List iconMaps = [
     'thumbnail': 'link_ext'
   },
   {
-    'extensions': ['ini', 'dlc', 'config', 'conf', 'properties', 'prop', 'settings', 'option', 'props', 'toml', 'prefs', 'sln.dotsettings', 'sln.dotsettings.user', 'cfg'],
+    'extensions': [
+      'ini',
+      'dlc',
+      'config',
+      'conf',
+      'properties',
+      'prop',
+      'settings',
+      'option',
+      'props',
+      'toml',
+      'prefs',
+      'sln.dotsettings',
+      'sln.dotsettings.user',
+      'cfg'
+    ],
     'type': 'Settings',
     'thumbnail': 'cog_alt'
   },
