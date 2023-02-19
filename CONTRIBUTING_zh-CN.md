@@ -26,7 +26,7 @@ get generate locales
 
 ## flutter开发
 
-每次提交前请务必运行`dart format .`
+每次提交前请务必`dart format ./ui/flutter`
 
 如果要编辑api/models，请打开build_runner watcher:
 
