@@ -4,9 +4,9 @@ import 'package:get/get.dart';
 import 'package:gopeed/api/api.dart' as api;
 import 'package:gopeed/i18n/messages.dart';
 
+import 'app/modules/app/controllers/app_controller.dart';
+import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
-import 'pages/app/app_controller.dart';
-import 'pages/app/app_view.dart';
 import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
