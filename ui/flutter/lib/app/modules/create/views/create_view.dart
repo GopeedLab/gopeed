@@ -70,18 +70,18 @@ class CreateView extends GetView<CreateController> {
                         child: RoundedLoadingButton(
                           color: Get.theme.colorScheme.secondary,
                           onPressed: () async {
-                            if (_resolveFormKey.currentState!.validate()) {
+                            try {
                               _confirmController.start();
-                              try {
+                              if (_resolveFormKey.currentState!.validate()) {
                                 final rr = await resolve(Request(
                                   url: _urlController.text,
                                 ));
                                 await _showResolveDialog(rr);
-                              } catch (e) {
-                                Get.snackbar('error'.tr, e.toString());
-                              } finally {
-                                _confirmController.reset();
                               }
+                            } catch (e) {
+                              Get.snackbar('error'.tr, e.toString());
+                            } finally {
+                              _confirmController.reset();
                             }
                           },
                           controller: _confirmController,
@@ -106,12 +106,11 @@ class CreateView extends GetView<CreateController> {
   Future<void> _showResolveDialog(ResolveResult rr) async {
     controller.files.value = rr.res.files;
     final appController = Get.find<AppController>();
-    final setting = appController.downloaderConfig.value;
 
     final createFormKey = GlobalKey<FormState>();
-    final pathController = TextEditingController(text: setting.downloadDir);
+    final pathController = TextEditingController(
+        text: appController.downloaderConfig.value.downloadDir);
     final downloadController = RoundedLoadingButtonController();
-
     return showDialog<void>(
         context: Get.context!,
         barrierDismissible: false,
@@ -163,40 +162,47 @@ class CreateView extends GetView<CreateController> {
                     height: Get.theme.buttonTheme.height,
                   ),
                   child: RoundedLoadingButton(
-                    color: Get.theme.colorScheme.secondary,
-                    onPressed: () async {
-                      try {
-                        if (createFormKey.currentState!.validate()) {
+                      color: Get.theme.colorScheme.secondary,
+                      duration: const Duration(milliseconds: 100),
+                      onPressed: () async {
+                        try {
                           downloadController.start();
+                          if (controller.selectedIndexes.isEmpty) {
+                            Get.snackbar('tip'.tr, 'noFileSelected'.tr);
+                            return;
+                          }
+                          if (createFormKey.currentState!.validate()) {
+                            // if (Util.isAndroid()) {
+                            //   if (!await Permission.storage.request().isGranted) {
+                            //     Get.snackbar('error'.tr,
+                            //         'noStoragePermission'.tr);
+                            //     return;
+                            //   }
+                            // }
 
-                          // if (Util.isAndroid()) {
-                          //   if (!await Permission.storage.request().isGranted) {
-                          //     Get.snackbar('error'.tr,
-                          //         'noStoragePermission'.tr);
-                          //     return;
-                          //   }
-                          // }
-
-                          await createTask(CreateTask(
-                              rid: rr.id,
-                              opts: Options(
-                                  name: '',
-                                  path: pathController.text,
-                                  selectFiles:
-                                      controller.selectedIndexs.cast<int>())));
-                          Get.back();
-                          Get.rootDelegate.offNamed(Routes.DOWNLOADING);
+                            await createTask(CreateTask(
+                                rid: rr.id,
+                                opts: Options(
+                                    name: '',
+                                    path: pathController.text,
+                                    selectFiles: controller.selectedIndexes
+                                        .cast<int>())));
+                            Get.rootDelegate.offNamed(Routes.DOWNLOADING);
+                          }
+                        } catch (e) {
+                          Get.snackbar('error'.tr, e.toString());
+                          rethrow;
+                        } finally {
+                          downloadController.reset();
                         }
-                      } catch (e) {
-                        Get.snackbar('error'.tr, e.toString());
-                        rethrow;
-                      } finally {
-                        downloadController.reset();
-                      }
-                    },
-                    controller: downloadController,
-                    child: Text('download'.tr),
-                  ),
+                      },
+                      controller: downloadController,
+                      child: Text(
+                        'download'.tr,
+                        // style: controller.selectedIndexes.isEmpty
+                        //     ? Get.textTheme.disabled
+                        //     : Get.textTheme.titleSmall
+                      )),
                 ),
               ],
             ));

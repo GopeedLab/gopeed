@@ -15,6 +15,7 @@
   "downloadLinkHit": "请输入下载链接，支持 HTTP/HTTPS/MAGNET@append",
   "downloadLinkHitDesktop": "，也可以直接拖拽种子文件到此处",
   "download": "下载",
+  "noFileSelected": "请至少选择一个文件下载",
   "noStoragePermission": "需要开启存储权限",
   "selectFile": "选择文件",
   "basic": "基础",

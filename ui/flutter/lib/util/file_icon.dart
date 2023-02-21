@@ -1,5 +1,6 @@
-findIcon(String ext) {
-  String res = 'document';
+findIcon(String filename) {
+  String res = 'file';
+  String ext = filename.substring(filename.lastIndexOf('.') + 1);
   for (var iconMap in iconMaps) {
     if (iconMap['extensions'].contains(ext)) {
       res = iconMap['thumbnail'];
@@ -57,7 +58,7 @@ const List iconMaps = [
       '3gp'
     ],
     'type': 'Video',
-    'thumbnail': 'my_movies_t_v'
+    'thumbnail': 'file_video'
   },
   {
     'extensions': [
@@ -73,7 +74,7 @@ const List iconMaps = [
       '.wma'
     ],
     'type': 'Audio',
-    'thumbnail': 'music_in_collection_fill'
+    'thumbnail': 'file_audio'
   },
   //compressed
   {
@@ -97,23 +98,29 @@ const List iconMaps = [
       'dockerignore'
     ],
     'type': 'Archive',
-    'thumbnail': 'package'
+    'thumbnail': 'file_archive'
   },
   //office relative
   {
     'extensions': ['pdf'],
     'type': 'Portable Document Format',
-    'thumbnail': 'pdf'
+    'thumbnail': 'file_pdf'
   },
   {
-    'extensions': ['txt', 'doc', 'docb', 'docm', 'dot', 'dotm', 'docx', 'rtf'],
-    'type': 'Word Document',
-    'thumbnail': 'text_document_edit'
+    'extensions': ['txt', 'docb', 'rtf'],
+    'type': 'Document',
+    'thumbnail': 'doc_text'
   },
+  {
+    'extensions': ['doc', 'docm', 'dot', 'dotm', 'docx'],
+    'type': 'Word Document',
+    'thumbnail': 'file_word'
+  },
+
   {
     'extensions': ['xlsx', 'xls', 'xlsb', 'xls', 'ods', 'fods', 'csv'],
     'type': 'Excel Document',
-    'thumbnail': 'excel_document'
+    'thumbnail': 'file_excel'
   },
   {
     'extensions': [
@@ -129,13 +136,13 @@ const List iconMaps = [
       'pptx'
     ],
     'type': 'Powerpoint Document',
-    'thumbnail': 'power_point_document'
+    'thumbnail': 'file_powerpoint'
   },
   //other
   {
     'extensions': ['lnk'],
     'type': 'Shortcut',
-    'thumbnail': 'file_symlink'
+    'thumbnail': 'link_ext'
   },
   {
     'extensions': [
@@ -155,12 +162,12 @@ const List iconMaps = [
       'cfg'
     ],
     'type': 'Settings',
-    'thumbnail': 'text_document_settings'
+    'thumbnail': 'cog_alt'
   },
   {
     'extensions': ['html', 'htm', 'xhtml', 'html_vm'],
     'type': 'html',
-    'thumbnail': 'file_h_t_m_l'
+    'thumbnail': 'html5'
   },
   //code relative
   // {

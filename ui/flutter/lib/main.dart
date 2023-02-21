@@ -7,7 +7,7 @@ import 'app/modules/app/controllers/app_controller.dart';
 import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
 import 'generated/locales.g.dart';
-import 'i18n/localeManager.dart';
+import 'util/localeManager.dart';
 import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
