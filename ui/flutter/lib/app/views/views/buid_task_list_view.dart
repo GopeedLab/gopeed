@@ -6,6 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../api/api.dart';
 import '../../../api/model/task.dart';
+import '../../../util/file_icon.dart';
+import '../../../util/icons.dart';
 import '../../../util/util.dart';
 import '../../routes/app_pages.dart';
 
@@ -171,25 +173,36 @@ class BuildTaskListView extends GetView {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
       Stack(children: [
         !isDone()
-            ? Opacity(
-                opacity: 0.6,
-                child: LinearProgressIndicator(
-                  backgroundColor: Colors.transparent,
-                  color: pickColor(),
-                  minHeight: 66,
-                  value: getProgress(),
-                ),
-              )
+            ? Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: Opacity(
+                  opacity: 0.6,
+                  child: LinearProgressIndicator(
+                    backgroundColor: Colors.transparent,
+                    color: pickColor(),
+                    // minHeight: 76,
+                    value: getProgress(),
+                  ),
+                ))
             : const SizedBox.shrink(),
         ListTile(
+          // isThreeLine: true,
           title: Text(task.meta.res.name,
-              maxLines: 2, overflow: TextOverflow.ellipsis),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Get.textTheme.titleSmall),
           subtitle: Text(
             "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
             style: context.textTheme.bodyLarge
                 ?.copyWith(color: Get.theme.disabledColor),
           ),
-          leading: const Icon(Icons.insert_drive_file),
+          leading: task.meta.res.name.lastIndexOf('.') == -1
+              ? const Icon(FaIcons.file)
+              : Icon(FaIcons.allIcons[findIcon(task.meta.res.name)]),
+
           trailing: SizedBox(
             width: 180,
             child: Row(
@@ -203,7 +216,7 @@ class BuildTaskListView extends GetView {
               ],
             ),
           ),
-        )
+        ),
       ])
     ]));
   }

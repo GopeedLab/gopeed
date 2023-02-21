@@ -15,6 +15,7 @@
   "downloadLinkHit": "Please enter the download link, HTTP/HTTPS/MAGNET supported@append",
   "downloadLinkHitDesktop": ", or drag the torrent file here directly",
   "download": "Download",
+  "noFileSelected": "Please select at least one file to continue.",
   "noStoragePermission": "Storage permission required",
   "selectFile": "Select File",
   "basic": "Basic",

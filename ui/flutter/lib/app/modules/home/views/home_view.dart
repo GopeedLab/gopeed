@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:stylish_bottom_bar/model/bar_items.dart';
-import 'package:stylish_bottom_bar/stylish_bottom_bar.dart';
 
 import '../../../routes/app_pages.dart';
 import '../../../views/views/responsive_builder.dart';
@@ -77,29 +75,23 @@ class HomeView extends GetView<HomeController> {
               ))
             ]),
         bottomNavigationBar: ResponsiveBuilder.isNarrow(context)
-            ? StylishBottomBar(
-                option: AnimatedBarOptions(
-                  iconSize: 32,
-                  barAnimation: BarAnimation.blink,
-                  iconStyle: IconStyle.Default,
-                  opacity: 0.3,
-                ),
-                items: [
-                  BottomBarItem(
-                      icon: const Icon(Icons.format_align_left_outlined),
-                      selectedColor: Get.theme.primaryColor,
-                      title: Text('downloading'.tr)),
-                  BottomBarItem(
-                      icon: const Icon(Icons.format_align_justify_outlined),
-                      selectedColor: Get.theme.primaryColor,
-                      title: Text('downloaded'.tr)),
-                  BottomBarItem(
-                      icon: const Icon(Icons.settings),
-                      selectedColor: Get.theme.primaryColor,
-                      title: Text('setting'.tr)),
+            ? BottomNavigationBar(
+                items: <BottomNavigationBarItem>[
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.format_align_left_outlined),
+                    label: 'downloading'.tr,
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.format_align_justify_outlined),
+                    label: 'downloaded'.tr,
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.settings),
+                    label: 'setting'.tr,
+                  ),
                 ],
-                // hasNotch: true,
                 currentIndex: controller.currentIndex.value,
+                // selectedItemColor: Get.theme.highlightColor,
                 onTap: (index) {
                   switch (index) {
                     case 0:
@@ -117,6 +109,46 @@ class HomeView extends GetView<HomeController> {
                   }
                 },
               )
+            // StylishBottomBar(
+            //         option: AnimatedBarOptions(
+            //           iconSize: 32,
+            //           barAnimation: BarAnimation.blink,
+            //           iconStyle: IconStyle.Default,
+            //           opacity: 0.3,
+            //         ),
+            //         items: [
+            //           BottomBarItem(
+            //               icon: const Icon(Icons.format_align_left_outlined),
+            //               selectedColor: Get.theme.primaryColor,
+            //               title: Text('downloading'.tr)),
+            //           BottomBarItem(
+            //               icon: const Icon(Icons.format_align_justify_outlined),
+            //               selectedColor: Get.theme.primaryColor,
+            //               title: Text('downloaded'.tr)),
+            //           BottomBarItem(
+            //               icon: const Icon(Icons.settings),
+            //               selectedColor: Get.theme.primaryColor,
+            //               title: Text('setting'.tr)),
+            //         ],
+            //         // hasNotch: true,
+            //         currentIndex: controller.currentIndex.value,
+            //         onTap: (index) {
+            //           switch (index) {
+            //             case 0:
+            //               delegate.toNamed(Routes.DOWNLOADING);
+            //               controller.currentIndex.value = 0;
+            //               break;
+            //             case 1:
+            //               delegate.toNamed(Routes.DOWNLOADED);
+            //               controller.currentIndex.value = 1;
+            //               break;
+            //             case 2:
+            //               delegate.toNamed(Routes.SETTING);
+            //               controller.currentIndex.value = 2;
+            //               break;
+            //           }
+            //         },
+            //       )
             : const SizedBox.shrink(),
       );
     });

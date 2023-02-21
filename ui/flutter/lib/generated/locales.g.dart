@@ -29,6 +29,7 @@ class LocaleKeys {
   static const downloadLinkHit = 'downloadLinkHit';
   static const downloadLinkHitDesktop = 'downloadLinkHitDesktop';
   static const download = 'download';
+  static const noFileSelected = 'noFileSelected';
   static const noStoragePermission = 'noStoragePermission';
   static const selectFile = 'selectFile';
   static const basic = 'basic';
@@ -63,7 +64,6 @@ class LocaleKeys {
   static const deleteTask = 'deleteTask';
   static const deleteTaskTip = 'deleteTaskTip';
   static const delete = 'delete';
-  static const title = 'title';
 }
 
 class Locales {
@@ -85,6 +85,7 @@ class Locales {
         'Please enter the download link, HTTP/HTTPS/MAGNET supported@append',
     'downloadLinkHitDesktop': ', or drag the torrent file here directly',
     'download': 'Download',
+    'noFileSelected': 'Please select at least one file to continue.',
     'noStoragePermission': 'Storage permission required',
     'selectFile': 'Select File',
     'basic': 'Basic',
@@ -129,15 +130,10 @@ class Locales {
     'cancel': 'انصراف',
     'selectAll': 'انتخاب همه',
     'task': 'کار',
-    'downloading': 'downloading',
-    'downloaded': 'downloaded',
     'setting': 'تنظیمات',
-    'title': 'ایجاد کار',
+    'create': 'ایجاد کار',
     'downloadLink': 'لینک دانلود',
     'downloadLinkValid': 'لطفا لینک دانلود را وارد کنید',
-    'downloadLinkHit':
-        'Please enter the download link, HTTP/HTTPS/MAGNET supported@append',
-    'downloadLinkHitDesktop': ', or drag the torrent file here directly',
     'download': 'دانلود',
     'noStoragePermission': 'مجوز ذخیره سازی مورد نیاز است',
     'selectFile': 'انتخاب فایل',
@@ -183,10 +179,8 @@ class Locales {
     'cancel': 'Отмена',
     'selectAll': 'Выбрать все',
     'task': 'Задачи',
-    'downloading': 'downloading',
-    'downloaded': 'downloaded',
     'setting': 'Настройки',
-    'title': 'Создать задачу',
+    'create': 'Создать задачу',
     'downloadLink': 'Ссылка для скачивание',
     'downloadLinkValid': 'Пожалуйста, введите ссылку для скачивания',
     'downloadLinkHit':
@@ -240,12 +234,13 @@ class Locales {
     'downloading': '下载中',
     'downloaded': '已完成',
     'setting': '设置',
-    'title': '创建任务',
+    'create': '创建任务',
     'downloadLink': '下载链接',
     'downloadLinkValid': '请输入下载链接',
     'downloadLinkHit': '请输入下载链接，支持 HTTP/HTTPS/MAGNET@append',
     'downloadLinkHitDesktop': '，也可以直接拖拽种子文件到此处',
     'download': '下载',
+    'noFileSelected': '请至少选择一个文件下载',
     'noStoragePermission': '需要开启存储权限',
     'selectFile': '选择文件',
     'basic': '基础',
