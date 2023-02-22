@@ -42,7 +42,7 @@ dependencies:
   json_annotation: ^4.6.0
   dio: ^4.0.6
   path_provider: ^2.0.11
-  file_selector: ^0.9.2
+  file_picker: ^5.2.5
   macos_secure_bookmarks: ^0.2.1
   rounded_loading_button: ^2.1.0
   url_launcher: ^6.1.6

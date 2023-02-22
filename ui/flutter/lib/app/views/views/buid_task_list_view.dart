@@ -204,14 +204,16 @@ class BuildTaskListView extends GetView {
               : Icon(FaIcons.allIcons[findIcon(task.meta.res.name)]),
 
           trailing: SizedBox(
-            width: 180,
+            width: task.status == Status.done ? 80 : 180,
             child: Row(
               // crossAxisAlignment: CrossAxisAlignment.baseline,
               // textBaseline: DefaultTextStyle.of(context).style.textBaseline,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text("${Util.fmtByte(task.progress.speed)} / s",
-                    style: context.textTheme.titleSmall),
+                task.status == Status.done
+                    ? const SizedBox.shrink()
+                    : Text("${Util.fmtByte(task.progress.speed)} / s",
+                        style: context.textTheme.titleSmall),
                 ...buildActions()
               ],
             ),
