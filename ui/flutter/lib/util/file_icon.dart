@@ -138,6 +138,18 @@ const List iconMaps = [
     'type': 'Powerpoint Document',
     'thumbnail': 'file_powerpoint'
   },
+  //windows
+  {
+    'extensions': ['exe'],
+    'type': 'Microsoft',
+    'thumbnail': 'windows'
+  },
+  //android
+  {
+    'extensions': ['apk'],
+    'type': 'Android',
+    'thumbnail': 'windows'
+  },
   //other
   {
     'extensions': ['lnk'],

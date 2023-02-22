@@ -1,4 +1,4 @@
-import 'package:file_selector/file_selector.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -41,7 +41,7 @@ class _DirectorySelectorState extends State<DirectorySelector> {
                 icon: const Icon(Icons.folder_open),
                 onPressed: () async {
                   if (GetPlatform.isDesktop) {
-                    var dir = await getDirectoryPath();
+                    var dir = await FilePicker.platform.getDirectoryPath();
                     if (dir != null) {
                       widget.controller.text = dir;
                       MacSecureUtil.saveBookmark(dir);

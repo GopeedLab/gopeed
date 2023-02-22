@@ -20,24 +20,27 @@ class FileListView extends GetView {
 
   List findChildFileIdsRecursive(children) {
     List res = [];
-    for (var i in children) {
-      if (fileInfos[i]['type'] == 'folder') {
-        findChildFileIdsRecursive(fileInfos[i]['children']);
+    for (var k in children) {
+      if (fileInfos[k]['type'] == 'folder') {
+        res.addAll(findChildFileIdsRecursive(fileInfos[k]['children']));
       } else {
-        res.add(i);
+        res.add(fileInfos[k]['fileId']);
       }
     }
     return res;
   }
 
   List<fluent.TreeViewItem> buildTreeViewItemsRecursive(
-      int level, List<fluent.TreeViewItem> treeViewItems) {
-    List children = fileInfos.where((e) => e['level'] == level).toList();
-    for (int i = 0; i < children.length; i++) {
-      Map fileInfo = children[i];
+      int level, int parentId) {
+    List<fluent.TreeViewItem> res = [];
+    List children = fileInfos
+        .where((e) => e['level'] == level && e['parentId'] == parentId)
+        .toList();
+    for (int j = 0; j < children.length; j++) {
+      Map fileInfo = children[j];
       if (fileInfo['type'] == 'folder') {
         // folder
-        treeViewItems.add(fluent.TreeViewItem(
+        res.add(fluent.TreeViewItem(
             // expanded: false, bug on init
             // value: fileInfo['id'],
             onInvoked: (item, reason) async {
@@ -47,12 +50,12 @@ class FileListView extends GetView {
                 List childrenIds =
                     findChildFileIdsRecursive(fileInfo['children']);
                 if (item.selected == true) {
-                  parentController.selectedIndexes
-                      .addAll(findChildFileIdsRecursive(childrenIds));
+                  parentController.selectedIndexes.addAll(childrenIds);
                 } else {
                   parentController.selectedIndexes
                       .removeWhere((index) => childrenIds.contains(index));
                 }
+                debugPrint('${parentController.selectedIndexes.cast<int>()}');
               }
             },
             leading:
@@ -76,13 +79,13 @@ class FileListView extends GetView {
             children: buildTreeViewItemsRecursive(
                 // fileInfos.where((e) => e['level'] > level).toList(),
                 level + 1,
-                [])));
+                fileInfo['id'])));
       } else {
         // file
         // if (fileInfo['selected']) {
         //   parentController.selectedIndexs.add(fileInfo['fileId']);
         // }
-        treeViewItems.add(fluent.TreeViewItem(
+        res.add(fluent.TreeViewItem(
           value: fileInfo['fileId'],
           selected: fileInfo['selected'],
           onInvoked: (item, reason) async => {
@@ -91,7 +94,8 @@ class FileListView extends GetView {
                 ? item.selected == false
                     ? parentController.selectedIndexes.remove(item.value)
                     : parentController.selectedIndexes.add(item.value)
-                : null
+                : null,
+            debugPrint('${parentController.selectedIndexes.cast<int>()}')
           },
           collapsable: false,
           leading: fileInfo['name'].lastIndexOf('.') == -1
@@ -115,13 +119,13 @@ class FileListView extends GetView {
         ));
       }
     }
-    return treeViewItems;
+    return res;
   }
 
   List<fluent.TreeViewItem> items(files) {
     List infos = [];
     int idNext = 0;
-    List selectedIndexs = [];
+    List selectedFileIds = [];
     // List openedFolders = [];
     //make fileInfos list
     for (var i = 0; i < files.length; i++) {
@@ -166,16 +170,16 @@ class FileListView extends GetView {
         //TODO add unselected logic
         'selected': true
       });
-      selectedIndexs.add(idNext);
+      selectedFileIds.add(i);
       if (parentId != -1) {
         infos[parentId]['children'].add(idNext);
       }
       idNext++;
     }
     fileInfos = infos;
-    parentController.selectedIndexes.value = selectedIndexs;
+    parentController.selectedIndexes.value = selectedFileIds;
     // parentController.openedFolders.value = openedFolders;
-    List<fluent.TreeViewItem> treeItems = buildTreeViewItemsRecursive(0, []);
+    List<fluent.TreeViewItem> treeItems = buildTreeViewItemsRecursive(0, -1);
     return treeItems;
   }
 
@@ -203,19 +207,22 @@ class FileListView extends GetView {
                         border: Border.all(color: Colors.grey, width: 1),
                         borderRadius: BorderRadius.circular(5)),
                     child: fluent.TreeView(
-                        // shrinkWrap: false,
-                        // addRepaintBoundaries: false,
-                        // usePrototypeItem: true,
-                        // onItemInvoked: (item, reason) async => {},
-                        onSecondaryTap: (item, details) async {
-                          debugPrint(
-                              'onSecondaryTap $item at ${details.globalPosition}');
-                        },
-                        // onSelectionChanged: (selectedItems) async => {},
-                        narrowSpacing: true,
-                        // scrollPrimary: true,
-                        selectionMode: fluent.TreeViewSelectionMode.multiple,
-                        items: items(files)))),
+                      shrinkWrap: false,
+                      // addRepaintBoundaries: false,
+                      // usePrototypeItem: true,
+                      // onItemInvoked: (item, reason) async => {},
+                      onSecondaryTap: (item, details) async {
+                        debugPrint(
+                            'onSecondaryTap $item at ${details.globalPosition}');
+                      },
+                      // onSelectionChanged: (selectedItems) async => {},
+                      narrowSpacing: true,
+                      // cacheExtent: 2000,
+                      items: items(files),
+                      // itemExtent: fileInfos.length.toDouble(),
+                      // scrollPrimary: true,
+                      selectionMode: fluent.TreeViewSelectionMode.multiple,
+                    ))),
           ],
         ));
   }

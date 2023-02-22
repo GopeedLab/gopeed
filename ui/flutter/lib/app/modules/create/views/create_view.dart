@@ -163,7 +163,6 @@ class CreateView extends GetView<CreateController> {
                   ),
                   child: RoundedLoadingButton(
                       color: Get.theme.colorScheme.secondary,
-                      duration: const Duration(milliseconds: 100),
                       onPressed: () async {
                         try {
                           downloadController.start();
@@ -179,7 +178,6 @@ class CreateView extends GetView<CreateController> {
                             //     return;
                             //   }
                             // }
-
                             await createTask(CreateTask(
                                 rid: rr.id,
                                 opts: Options(
@@ -187,6 +185,7 @@ class CreateView extends GetView<CreateController> {
                                     path: pathController.text,
                                     selectFiles: controller.selectedIndexes
                                         .cast<int>())));
+                            Get.back();
                             Get.rootDelegate.offNamed(Routes.DOWNLOADING);
                           }
                         } catch (e) {
