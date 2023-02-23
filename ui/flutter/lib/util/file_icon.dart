@@ -1,5 +1,5 @@
 findIcon(String filename) {
-  String res = 'file';
+  String res = 'doc';
   String ext = filename.substring(filename.lastIndexOf('.') + 1);
   for (var iconMap in iconMaps) {
     if (iconMap['extensions'].contains(ext)) {
