@@ -72,7 +72,7 @@ This project is divided into two parts, the front end uses `flutter`, the back e
 ### Environment
 
 1. Golang 1.19+
-2. Flutter 3.0+
+2. Flutter 3.7+
 
 ### Clone
 

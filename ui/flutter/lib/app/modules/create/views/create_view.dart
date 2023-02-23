@@ -104,7 +104,7 @@ class CreateView extends GetView<CreateController> {
   }
 
   Future<void> _showResolveDialog(ResolveResult rr) async {
-    controller.files.value = rr.res.files;
+    final files = rr.res.files;
     final appController = Get.find<AppController>();
 
     final createFormKey = GlobalKey<FormState>();
@@ -129,7 +129,7 @@ class CreateView extends GetView<CreateController> {
                         autovalidateMode: AutovalidateMode.always,
                         child: Column(
                           children: [
-                            Expanded(child: FileListView()),
+                            Expanded(child: FileListView(files: files)),
                             DirectorySelector(
                               controller: pathController,
                             ),

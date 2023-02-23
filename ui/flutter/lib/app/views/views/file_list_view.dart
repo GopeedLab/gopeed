@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/api/model/resource.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../util/file_icon.dart';
@@ -10,97 +11,164 @@ import '../../modules/app/controllers/app_controller.dart';
 import '../../modules/create/controllers/create_controller.dart';
 
 class FileListView extends GetView {
+  final List<FileInfo> files;
+
   FileListView({
     Key? key,
+    required this.files,
   }) : super(key: key);
   final parentController = Get.find<CreateController>();
   final appController = Get.find<AppController>();
 
-  late final List fileInfos;
-
-  List findChildFileIdsRecursive(children) {
+  List findChildFileIdsR(List children) {
     List res = [];
     for (var k in children) {
-      if (fileInfos[k]['type'] == 'folder') {
-        res.addAll(findChildFileIdsRecursive(fileInfos[k]['children']));
+      if (parentController.fileInfos[k]['type'] == 'folder') {
+        res.addAll(
+            findChildFileIdsR(parentController.fileInfos[k]['children']));
       } else {
-        res.add(fileInfos[k]['fileId']);
+        res.add(parentController.fileInfos[k]['fileId']);
       }
     }
     return res;
   }
 
-  List<fluent.TreeViewItem> buildTreeViewItemsRecursive(
-      int level, int parentId) {
+  void clearDescendantFolderSizeR(int id) {
+    if (parentController.fileInfos[id]['type'] == 'folder') {
+      parentController.fileInfos[id]['size'] = 0;
+      for (var childId in parentController.fileInfos[id]['children']) {
+        clearDescendantFolderSizeR(childId);
+      }
+    }
+  }
+
+  void reduceAncestorFolderSizeR(int id, int size) {
+    int parentId = parentController.fileInfos[id]['parentId'];
+
+    if (parentId != -1) {
+      parentController.fileInfos[parentId]['size'] -= size;
+      reduceAncestorFolderSizeR(parentId, size);
+    }
+  }
+
+  int addDescendantFolderSizeR(int id) {
+    if (parentController.fileInfos[id]['type'] == 'folder') {
+      for (var childId in parentController.fileInfos[id]['children']) {
+        parentController.fileInfos[id]['size'] +=
+            addDescendantFolderSizeR(childId);
+      }
+    }
+    return parentController.fileInfos[id]['size'];
+  }
+
+  void addAncestorFolderSizeR(int id, int size) {
+    int parentId = parentController.fileInfos[id]['parentId'];
+    if (parentId != -1) {
+      parentController.fileInfos[parentId]['size'] += size;
+      addAncestorFolderSizeR(parentId, size);
+    }
+  }
+
+  List<fluent.TreeViewItem> buildTreeViewItemsR(int level, int parentId) {
     List<fluent.TreeViewItem> res = [];
-    List children = fileInfos
+    List children = parentController.fileInfos
         .where((e) => e['level'] == level && e['parentId'] == parentId)
         .toList();
     for (int j = 0; j < children.length; j++) {
       Map fileInfo = children[j];
+
       if (fileInfo['type'] == 'folder') {
         // folder
         res.add(fluent.TreeViewItem(
             // expanded: false, bug on init
-            // value: fileInfo['id'],
+            value: fileInfo['id'],
             onInvoked: (item, reason) async {
-              debugPrint('onItemInvoked(reason=$reason): $item');
-              if (reason.toString() ==
-                  'TreeViewItemInvokeReason.selectionToggle') {
-                List childrenIds =
-                    findChildFileIdsRecursive(fileInfo['children']);
+              if (reason == fluent.TreeViewItemInvokeReason.selectionToggle) {
+                List childrenIds = findChildFileIdsR(fileInfo['children']);
                 if (item.selected == true) {
                   parentController.selectedIndexes.addAll(childrenIds);
+                  parentController.fileInfos[fileInfo['id']]['size'] = 0;
+                  addDescendantFolderSizeR(item.value);
+                  addAncestorFolderSizeR(item.value, fileInfo['size']);
+                  parentController.fileInfos.refresh();
                 } else {
                   parentController.selectedIndexes
                       .removeWhere((index) => childrenIds.contains(index));
+                  reduceAncestorFolderSizeR(item.value, fileInfo['size']);
+                  clearDescendantFolderSizeR(item.value);
+
+                  parentController.fileInfos.refresh();
                 }
-                debugPrint('${parentController.selectedIndexes.cast<int>()}');
               }
             },
-            leading:
-                // parentController.openedFolders.contains(fileInfo['id'])
-                //     ? const Icon(FaIcons.folder)
-                //     : const Icon(FaIcons.folder_open),
-                const Icon(FaIcons.folder),
+            leading: Obx(() {
+              return parentController.openedFolders.contains(fileInfo['id'])
+                  ? const Icon(FaIcons.folder_open,
+                      color: Colors.lightBlueAccent)
+                  : const Icon(FaIcons.folder, color: Colors.lightBlueAccent);
+            }),
+            onExpandToggle: (fluent.TreeViewItem item, bool getExpanded) async {
+              getExpanded
+                  ? parentController.openedFolders.add(item.value)
+                  : parentController.openedFolders.remove(item.value);
+            },
             content: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
               Expanded(
-                  child: Text(
-                fileInfo['name'],
-                overflow: TextOverflow.ellipsis,
-                // style: context.textTheme.titleSmall,
-              )),
+                child: Text(
+                  fileInfo['name'],
+                  overflow: TextOverflow.ellipsis,
+                  // style: context.textTheme.titleSmall,
+                ),
+              ),
+              Obx(() {
+                return parentController.fileInfos[fileInfo['id']]['size'] != 0
+                    ? Text(
+                        Util.fmtByte(
+                            parentController.fileInfos[fileInfo['id']]['size']),
+                        // style: context.textTheme.labelMedium,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : const SizedBox.shrink();
+              })
             ]),
-            // onExpandToggle: (fluent.TreeViewItem item, bool getExpanded) async {
-            //   getExpanded
-            //       ? parentController.openedFolders.add(item.value)
-            //       : parentController.openedFolders.remove(item.value);
-            // },
-            children: buildTreeViewItemsRecursive(
-                // fileInfos.where((e) => e['level'] > level).toList(),
+            children: buildTreeViewItemsR(
+                // parentController.fileInfos.where((e) => e['level'] > level).toList(),
                 level + 1,
                 fileInfo['id'])));
       } else {
         // file
-        // if (fileInfo['selected']) {
-        //   parentController.selectedIndexs.add(fileInfo['fileId']);
-        // }
         res.add(fluent.TreeViewItem(
-          value: fileInfo['fileId'],
+          value: {'id': fileInfo['id'], 'fileId': fileInfo['fileId']},
           selected: fileInfo['selected'],
-          onInvoked: (item, reason) async => {
-            debugPrint('onItemInvoked(reason=$reason): $item'),
-            reason.toString() == 'TreeViewItemInvokeReason.selectionToggle'
-                ? item.selected == false
-                    ? parentController.selectedIndexes.remove(item.value)
-                    : parentController.selectedIndexes.add(item.value)
-                : null,
-            debugPrint('${parentController.selectedIndexes.cast<int>()}')
+          onInvoked: (item, reason) async {
+            if (reason == fluent.TreeViewItemInvokeReason.selectionToggle) {
+              if (item.selected == true) {
+                parentController.selectedIndexes.add(item.value['fileId']);
+                addAncestorFolderSizeR(item.value['id'], fileInfo['size']);
+                parentController.fileInfos.refresh();
+              } else {
+                parentController.selectedIndexes.remove(item.value['fileId']);
+                reduceAncestorFolderSizeR(item.value['id'], fileInfo['size']);
+                parentController.fileInfos.refresh();
+              }
+            }
           },
           collapsable: false,
           leading: fileInfo['name'].lastIndexOf('.') == -1
-              ? const Icon(FaIcons.file)
-              : Icon(FaIcons.allIcons[findIcon(fileInfo['name'])]),
+              ? Icon(
+                  FaIcons.doc,
+                  color: appController.downloaderConfig.value.extra.themeMode ==
+                          'dark'
+                      ? Colors.white
+                      : Colors.black45,
+                )
+              : Icon(
+                  FaIcons.allIcons[findIcon(fileInfo['name'])],
+                  color: appController.downloaderConfig.value.extra.themeMode ==
+                          'dark'
+                      ? Colors.white
+                      : Colors.black45,
+                ),
           content: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
             Expanded(
                 child: Text(
@@ -119,41 +187,45 @@ class FileListView extends GetView {
         ));
       }
     }
+
     return res;
   }
 
-  List<fluent.TreeViewItem> items(files) {
+  List<fluent.TreeViewItem> get items {
     List infos = [];
     int idNext = 0;
     List selectedFileIds = [];
-    // List openedFolders = [];
+    List openedFolders = [];
     //make fileInfos list
     for (var i = 0; i < files.length; i++) {
       //parentId -1 means path root
       int parentId = -1;
       List folders = path.split(files[i].path);
       for (var folder in folders) {
-        int indexInfileInfos = infos.lastIndexWhere((fileInfo) =>
+        int indexInInfos = infos.lastIndexWhere((fileInfo) =>
             fileInfo['name'] == folder && fileInfo['parentId'] == parentId);
-        //TODO calculate folder size
-        if (indexInfileInfos != -1) {
+
+        if (indexInInfos != -1) {
           //  folder exists
-          parentId = infos[indexInfileInfos]['id'];
+          parentId = infos[indexInInfos]['id'];
+          // add size
+          infos[indexInInfos]['size'] += files[i].size;
         } else {
           // parent not exist
           // create one and add index to parent's children
           infos.add({
+            'level': folders.indexOf(folder),
             'id': idNext,
             'type': 'folder',
             'name': folder,
+            'size': files[i].size,
             'parentId': parentId,
-            'level': folders.indexOf(folder),
             'children': [],
           });
+          openedFolders.add(idNext);
           if (parentId != -1) {
             infos[parentId]['children'].add(idNext);
           }
-          // openedFolders.add(idNext);
           parentId = idNext;
           idNext++;
         }
@@ -176,22 +248,19 @@ class FileListView extends GetView {
       }
       idNext++;
     }
-    fileInfos = infos;
+    parentController.fileInfos.value = infos;
     parentController.selectedIndexes.value = selectedFileIds;
-    // parentController.openedFolders.value = openedFolders;
-    List<fluent.TreeViewItem> treeItems = buildTreeViewItemsRecursive(0, -1);
+    parentController.openedFolders.value = openedFolders;
+    List<fluent.TreeViewItem> treeItems = buildTreeViewItemsR(0, -1);
     return treeItems;
   }
 
   @override
   Widget build(BuildContext context) {
-    final files = parentController.files;
     return fluent.FluentTheme(
-        data:
-            Get.find<AppController>().downloaderConfig.value.extra.themeMode ==
-                    'dark'
-                ? fluent.ThemeData(brightness: Brightness.dark)
-                : fluent.ThemeData(brightness: Brightness.light),
+        data: appController.downloaderConfig.value.extra.themeMode == 'dark'
+            ? fluent.ThemeData(brightness: Brightness.dark)
+            : fluent.ThemeData(brightness: Brightness.light),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -207,9 +276,11 @@ class FileListView extends GetView {
                         border: Border.all(color: Colors.grey, width: 1),
                         borderRadius: BorderRadius.circular(5)),
                     child: fluent.TreeView(
+                      selectionMode: fluent.TreeViewSelectionMode.multiple,
                       shrinkWrap: false,
                       // addRepaintBoundaries: false,
-                      // usePrototypeItem: true,
+                      usePrototypeItem: true,
+                      // cacheExtent: 20,
                       // onItemInvoked: (item, reason) async => {},
                       onSecondaryTap: (item, details) async {
                         debugPrint(
@@ -217,11 +288,8 @@ class FileListView extends GetView {
                       },
                       // onSelectionChanged: (selectedItems) async => {},
                       narrowSpacing: true,
-                      // cacheExtent: 2000,
-                      items: items(files),
-                      // itemExtent: fileInfos.length.toDouble(),
+                      items: items,
                       // scrollPrimary: true,
-                      selectionMode: fluent.TreeViewSelectionMode.multiple,
                     ))),
           ],
         ));
