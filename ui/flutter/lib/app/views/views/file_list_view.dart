@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -258,9 +260,11 @@ class FileListView extends GetView {
   @override
   Widget build(BuildContext context) {
     return fluent.FluentTheme(
-        data: appController.downloaderConfig.value.extra.themeMode == 'dark'
-            ? fluent.ThemeData(brightness: Brightness.dark)
-            : fluent.ThemeData(brightness: Brightness.light),
+        data: appController.downloaderConfig.value.extra.themeMode == 'system'
+            ? fluent.FluentThemeData(brightness: ui.window.platformBrightness)
+            : appController.downloaderConfig.value.extra.themeMode == 'light'
+                ? fluent.FluentThemeData(brightness: Brightness.light)
+                : fluent.FluentThemeData(brightness: Brightness.dark),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
