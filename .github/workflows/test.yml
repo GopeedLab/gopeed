@@ -41,7 +41,7 @@ jobs:
   #          go get -u golang.org/x/lint/golint
   #          golint -set_exit_status ./...
   test:
-    name: Test
+    name: Test check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -54,9 +54,8 @@ jobs:
       - uses: codecov/codecov-action@v3
         with:
           files: ./coverage.txt
-          fail_ci_if_error: true
   build:
-    name: Build
+    name: Build check
     runs-on: ubuntu-latest
     #    needs: [lint, test]
     needs: [test]
@@ -66,5 +65,9 @@ jobs:
         with:
           go-version: "^1.19"
           cache: true
+      - uses: subosito/flutter-action@v2
       - name: Build
-        run: go build github.com/GopeedLab/gopeed/cmd/gopeed
+        run: |
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
+          cd ui/flutter
+          flutter build linux
