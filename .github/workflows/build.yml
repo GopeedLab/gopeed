@@ -316,7 +316,11 @@ jobs:
           export CGO_ENABLED=0
           for goos in "${goos_arr[@]}"; do
             for goarch in "${goarch_arr[@]}"; do
-              name=gopeed-web-$VERSION-$goos-$goarch
+              goos_name=$goos
+              if [ $goos = "darwin" ]; then
+                goos_name="macos"
+              fi
+              name=gopeed-web-$VERSION-goos_name-$goarch
               dir="dist/$name/"
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/GopeedLab/gopeed/cmd/web \
               && cd $dir \
