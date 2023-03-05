@@ -2,9 +2,9 @@ package rest
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
-	restUtil "github.com/GopeedLab/gopeed/pkg/rest/util"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -98,7 +98,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Header.Get("X-Api-Token") != startCfg.ApiToken {
-					restUtil.WriteJson(w, http.StatusUnauthorized, model.NewResultWithMsg("invalid token"))
+					WriteJson(w, model.NewErrorResult("invalid token", model.CodeUnauthorized))
 					return
 				}
 				h.ServeHTTP(w, r)
@@ -112,4 +112,18 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		handlers.AllowedOrigins([]string{"*"}),
 	)(r)}
 	return srv, listener, nil
+}
+
+func ReadJson(r *http.Request, w http.ResponseWriter, v any) bool {
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return false
+	}
+	return true
+}
+
+func WriteJson(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(v)
 }

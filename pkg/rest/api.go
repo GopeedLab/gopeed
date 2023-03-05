@@ -5,7 +5,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
-	"github.com/GopeedLab/gopeed/pkg/rest/util"
 	"github.com/gorilla/mux"
 	"io"
 	"net/http"
@@ -15,19 +14,19 @@ import (
 
 func Resolve(w http.ResponseWriter, r *http.Request) {
 	var req base.Request
-	if util.ReadJson(w, r, &req) {
+	if ReadJson(r, w, &req) {
 		rr, err := Downloader.Resolve(&req)
 		if err != nil {
-			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
+			WriteJson(w, model.NewErrorResult(err.Error()))
 			return
 		}
-		util.WriteJsonOk(w, model.NewResultWithData(rr))
+		WriteJson(w, model.NewOkResult(rr))
 	}
 }
 
 func CreateTask(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateTask
-	if util.ReadJson(w, r, &req) {
+	if ReadJson(r, w, &req) {
 		var (
 			taskId string
 			err    error
@@ -37,64 +36,85 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 		} else if req.Req != nil {
 			taskId, err = Downloader.DirectCreate(req.Req, req.Opts)
 		} else {
-			util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg("param is required: rid or req"))
+			WriteJson(w, model.NewErrorResult("param invalid: rid or req", model.CodeInvalidParam))
 			return
 		}
 		if err != nil {
-			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
+			WriteJson(w, model.NewErrorResult(err.Error()))
 			return
 		}
-		util.WriteJsonOk(w, model.NewResultWithData(taskId))
+		WriteJson(w, model.NewOkResult(taskId))
 	}
 }
 
 func PauseTask(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["id"]
-	if err := Downloader.Pause(taskId); err != nil {
-		util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
+	if taskId == "" {
+		WriteJson(w, model.NewErrorResult("param invalid: id", model.CodeInvalidParam))
 		return
 	}
-	util.WriteJsonOk(w, nil)
+	if err := Downloader.Pause(taskId); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
 }
 
 func ContinueTask(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["id"]
-	if err := Downloader.Continue(taskId); err != nil {
-		util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
+	if taskId == "" {
+		WriteJson(w, model.NewErrorResult("param invalid: id", model.CodeInvalidParam))
 		return
 	}
-	util.WriteJsonOk(w, nil)
+	if err := Downloader.Continue(taskId); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
 }
 
 func DeleteTask(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["id"]
 	force := r.FormValue("force")
-	if err := Downloader.Delete(taskId, force == "true"); err != nil {
-		util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
+	if taskId == "" {
+		WriteJson(w, model.NewErrorResult("param invalid: id", model.CodeInvalidParam))
 		return
 	}
-	util.WriteJsonOk(w, nil)
+	if err := Downloader.Delete(taskId, force == "true"); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
 }
 
 func GetTask(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["id"]
-	task := Downloader.GetTask(taskId)
-	if task == nil {
-		util.WriteJson(w, http.StatusNotFound, model.NewResultWithMsg("task not found"))
+	if taskId == "" {
+		WriteJson(w, model.NewErrorResult("param invalid: id", model.CodeInvalidParam))
 		return
 	}
-	util.WriteJsonOk(w, model.NewResultWithData(task))
+	task := Downloader.GetTask(taskId)
+	if task == nil {
+		WriteJson(w, model.NewErrorResult("task not found", model.CodeTaskNotFound))
+		return
+	}
+	WriteJson(w, model.NewOkResult(task))
 }
 
 func GetTasks(w http.ResponseWriter, r *http.Request) {
 	status := r.FormValue("status")
 	if status == "" {
-		util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg("param is required: status"))
-		return
+		status = strings.Join([]string{
+			string(base.DownloadStatusReady),
+			string(base.DownloadStatusRunning),
+			string(base.DownloadStatusPause),
+			string(base.DownloadStatusError),
+			string(base.DownloadStatusDone),
+		}, ",")
 	}
 	statusArr := strings.Split(status, ",")
 	tasks := Downloader.GetTasks()
@@ -106,33 +126,33 @@ func GetTasks(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	util.WriteJsonOk(w, model.NewResultWithData(result))
+	WriteJson(w, model.NewOkResult(result))
 }
 
 func GetConfig(w http.ResponseWriter, r *http.Request) {
-	util.WriteJsonOk(w, model.NewResultWithData(getServerConfig()))
+	WriteJson(w, model.NewOkResult(getServerConfig()))
 }
 
 func PutConfig(w http.ResponseWriter, r *http.Request) {
 	var cfg download.DownloaderStoreConfig
-	if util.ReadJson(w, r, &cfg) {
+	if ReadJson(r, w, &cfg) {
 		if err := Downloader.PutConfig(&cfg); err != nil {
-			util.WriteJson(w, http.StatusInternalServerError, model.NewResultWithMsg(err.Error()))
+			WriteJson(w, model.NewErrorResult(err.Error()))
 			return
 		}
 	}
-	util.WriteJsonOk(w, nil)
+	WriteJson(w, model.NewNilResult())
 }
 
 func DoProxy(w http.ResponseWriter, r *http.Request) {
 	target := r.Header.Get("X-Target-Uri")
 	if target == "" {
-		util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg("header is required: X-Target-Uri"))
+		WriteJson(w, model.NewErrorResult("param invalid: X-Target-Uri", model.CodeInvalidParam))
 		return
 	}
 	targetUrl, err := url.Parse(target)
 	if err != nil {
-		util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg(err.Error()))
+		WriteJson(w, model.NewErrorResult(err.Error()))
 		return
 	}
 	r.RequestURI = ""
@@ -140,7 +160,7 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 	r.Host = targetUrl.Host
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
-		util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg(err.Error()))
+		WriteJson(w, model.NewErrorResult(err.Error()))
 		return
 	}
 	defer resp.Body.Close()
@@ -159,7 +179,7 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 		reader = resp.Body
 	}
 	if _, err := io.Copy(w, reader); err != nil {
-		util.WriteJson(w, http.StatusBadRequest, model.NewResultWithMsg(err.Error()))
+		WriteJson(w, model.NewErrorResult(err.Error()))
 		return
 	}
 }

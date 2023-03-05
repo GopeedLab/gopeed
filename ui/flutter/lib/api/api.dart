@@ -70,15 +70,17 @@ Future<T> _parse<T>(
   try {
     var resp = await fetch();
     if (fromJsonT != null) {
-      return Result<T>.fromJson(resp.data, fromJsonT).data as T;
+      final result = Result<T>.fromJson(resp.data, fromJsonT);
+      if (result.code == 0) {
+        return result.data as T;
+      } else {
+        throw Exception(result);
+      }
     } else {
       return null as T;
     }
   } on DioError catch (e) {
-    if (e.response == null) {
-      throw Exception("Server error");
-    }
-    throw Exception(Result.fromJson(e.response?.data, (_) => null).msg);
+    throw Exception(Result(code: 1000, msg: e.message));
   }
 }
 
