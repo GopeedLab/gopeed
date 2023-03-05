@@ -4,10 +4,12 @@ part 'result.g.dart';
 
 @JsonSerializable(genericArgumentFactories: true)
 class Result<T> {
+  int code;
   String? msg;
   T? data;
 
   Result({
+    required this.code,
     this.msg,
     this.data,
   });
@@ -18,6 +20,7 @@ class Result<T> {
   ) =>
       _$ResultFromJson(json, fromJsonT);
   Map<String, dynamic> toJson() => {
+        'code': code,
         'msg': msg,
         'data': data is List
             ? (data as dynamic)?.map((e) => e.toJson()).toList()

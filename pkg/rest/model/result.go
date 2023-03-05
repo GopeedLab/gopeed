@@ -1,21 +1,39 @@
 package model
 
+type RespCode int
+
+const (
+	CodeOk RespCode = 0
+	// CodeError is the common error code
+	CodeError RespCode = 1000
+	// CodeInvalidParam is the error code for invalid parameter
+	CodeInvalidParam RespCode = 1001
+	// CodeTaskNotFound is the error code for task not found
+	CodeTaskNotFound RespCode = 2001
+)
+
 type Result[T any] struct {
-	Msg  string `json:"msg"`
-	Data T      `json:"data"`
+	Code RespCode `json:"code"`
+	Msg  string   `json:"msg"`
+	Data T        `json:"data"`
 }
 
-func NewResult[T any](msg string, data T) *Result[T] {
+func NewOkResult[T any](data T) *Result[T] {
 	return &Result[T]{
-		Msg:  msg,
+		Code: CodeOk,
 		Data: data,
 	}
 }
 
-func NewResultWithMsg(msg string) *Result[any] {
-	return NewResult[any](msg, nil)
-}
+func NewErrorResult(msg string, code ...RespCode) *Result[any] {
+	// if code is not provided, the default code is CodeError
+	c := CodeError
+	if len(code) > 0 {
+		c = code[0]
+	}
 
-func NewResultWithData[T any](data T) *Result[T] {
-	return NewResult[T]("", data)
+	return &Result[any]{
+		Code: c,
+		Msg:  msg,
+	}
 }
