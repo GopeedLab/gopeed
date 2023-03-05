@@ -7,9 +7,9 @@ const (
 	// CodeError is the common error code
 	CodeError RespCode = 1000
 	// CodeUnauthorized is the error code for unauthorized
-	CodeUnauthorized RespCode = 1002
+	CodeUnauthorized RespCode = 1001
 	// CodeInvalidParam is the error code for invalid parameter
-	CodeInvalidParam RespCode = 1003
+	CodeInvalidParam RespCode = 1002
 	// CodeTaskNotFound is the error code for task not found
 	CodeTaskNotFound RespCode = 2001
 )
