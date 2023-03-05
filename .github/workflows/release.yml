@@ -16,6 +16,9 @@ on:
       - "go.sum"
       - "Dockerfile"
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
