@@ -150,7 +150,7 @@ func TestDeleteTask(t *testing.T) {
 		time.Sleep(time.Millisecond * 200)
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId, nil)
 		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
-		checkCode(code, http.StatusNotFound)
+		checkCode(code, model.CodeTaskNotFound)
 	})
 }
 
@@ -160,7 +160,7 @@ func TestDeleteTaskForce(t *testing.T) {
 		time.Sleep(time.Millisecond * 200)
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId+"?force=true", nil)
 		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
-		checkCode(code, http.StatusNotFound)
+		checkCode(code, model.CodeTaskNotFound)
 		if _, err := os.Stat(test.DownloadFile); !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("DeleteTaskForce() got = %v, want %v", err, os.ErrNotExist)
 		}
@@ -179,8 +179,7 @@ func TestGetTasks(t *testing.T) {
 
 		httpRequestCheckOk[string](http.MethodPost, fmt.Sprintf("/api/v1/tasks?status=%s,%s",
 			base.DownloadStatusReady, base.DownloadStatusRunning), createReq)
-		code, _ := httpRequest[[]*download.Task](http.MethodGet, "/api/v1/tasks", nil)
-		checkCode(code, http.StatusBadRequest)
+		httpRequestCheckOk[[]*download.Task](http.MethodGet, "/api/v1/tasks", nil)
 
 		wg.Wait()
 		r := httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s",
@@ -245,12 +244,12 @@ func TestAuthorization(t *testing.T) {
 	}()
 
 	code, _ := doHttpRequest[any](http.MethodGet, "/api/v1/config", nil, nil)
-	checkCode(code, http.StatusUnauthorized)
+	checkCode(code, model.CodeUnauthorized)
 
 	code, _ = doHttpRequest[any](http.MethodGet, "/api/v1/config", map[string]string{
 		"X-Api-Token": cfg.ApiToken,
 	}, nil)
-	checkCode(code, http.StatusOK)
+	checkCode(code, model.CodeOk)
 
 }
 
@@ -308,17 +307,20 @@ func doHttpRequest0(method string, path string, headers map[string]string, body 
 	if err != nil {
 		panic(err)
 	}
+	if response.StatusCode != http.StatusOK {
+		panic(fmt.Sprintf("http request failed, status code: %d", response.StatusCode))
+	}
 	return response.StatusCode, respBody
 }
 
 func doHttpRequest[T any](method string, path string, headers map[string]string, body any) (int, *model.Result[T]) {
-	code, respBody := doHttpRequest0(method, path, headers, body)
+	_, respBody := doHttpRequest0(method, path, headers, body)
 
 	var r model.Result[T]
 	if err := json.Unmarshal(respBody, &r); err != nil {
 		panic(err)
 	}
-	return code, &r
+	return int(r.Code), &r
 }
 
 func httpRequest[T any](method string, path string, body any) (int, *model.Result[T]) {
@@ -332,11 +334,11 @@ func httpRequestCheckOk[T any](method string, path string, body any) T {
 }
 
 func checkOk(code int) {
-	checkCode(code, 200)
+	checkCode(code, model.CodeOk)
 }
 
-func checkCode(code int, exceptCode int) {
-	if code != exceptCode {
+func checkCode(code int, exceptCode model.RespCode) {
+	if code != int(exceptCode) {
 		panic(fmt.Sprintf("code got = %d, want %d", code, exceptCode))
 	}
 }

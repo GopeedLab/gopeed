@@ -6,8 +6,10 @@ const (
 	CodeOk RespCode = 0
 	// CodeError is the common error code
 	CodeError RespCode = 1000
+	// CodeUnauthorized is the error code for unauthorized
+	CodeUnauthorized RespCode = 1002
 	// CodeInvalidParam is the error code for invalid parameter
-	CodeInvalidParam RespCode = 1001
+	CodeInvalidParam RespCode = 1003
 	// CodeTaskNotFound is the error code for task not found
 	CodeTaskNotFound RespCode = 2001
 )
@@ -22,6 +24,12 @@ func NewOkResult[T any](data T) *Result[T] {
 	return &Result[T]{
 		Code: CodeOk,
 		Data: data,
+	}
+}
+
+func NewNilResult() *Result[any] {
+	return &Result[any]{
+		Code: CodeOk,
 	}
 }
 
