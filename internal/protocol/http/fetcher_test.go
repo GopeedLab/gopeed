@@ -79,6 +79,7 @@ func TestFetcher_DownloadChunked(t *testing.T) {
 	defer listener.Close()
 	// chunked编码下载
 	downloadNormal(listener, 1, t)
+	downloadNormal(listener, 2, t)
 }
 
 func TestFetcher_DownloadPost(t *testing.T) {

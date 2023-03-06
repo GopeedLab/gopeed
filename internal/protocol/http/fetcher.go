@@ -250,7 +250,7 @@ func (f *Fetcher) filepath() string {
 func (f *Fetcher) fetch() {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 	eg, _ := errgroup.WithContext(f.ctx)
-	for i := 0; i < f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections; i++ {
+	for i := 0; i < len(f.chunks); i++ {
 		i := i
 		eg.Go(func() error {
 			return f.fetchChunk(i)
