@@ -8,6 +8,7 @@ import '../../../api/api.dart';
 import '../../../api/model/task.dart';
 import '../../../util/file_icon.dart';
 import '../../../util/icons.dart';
+import '../../../util/message.dart';
 import '../../../util/util.dart';
 import '../../routes/app_pages.dart';
 
@@ -103,7 +104,7 @@ class BuildTaskListView extends GetView {
                         await deleteTask(id, !keep.value);
                         Get.back();
                       } catch (e) {
-                        Get.snackbar('error'.tr, e.toString());
+                        showErrorMessage(e);
                       }
                     },
                   ),

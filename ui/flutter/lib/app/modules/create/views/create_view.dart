@@ -1,13 +1,15 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/model/resolve_result.dart';
+import '../../../../api/model/resolve_result.dart';
+import '../../../../api/model/result.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
+import '../../../../util/message.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
 import '../../../views/views/directory_selector.dart';
@@ -79,7 +81,7 @@ class CreateView extends GetView<CreateController> {
                                 await _showResolveDialog(rr);
                               }
                             } catch (e) {
-                              Get.snackbar('error'.tr, e.toString());
+                              showErrorMessage(e);
                             } finally {
                               _confirmController.reset();
                             }
@@ -167,7 +169,7 @@ class CreateView extends GetView<CreateController> {
                         try {
                           downloadController.start();
                           if (controller.selectedIndexes.isEmpty) {
-                            Get.snackbar('tip'.tr, 'noFileSelected'.tr);
+                            showMessage('tip'.tr, 'noFileSelected'.tr);
                             return;
                           }
                           if (createFormKey.currentState!.validate()) {
@@ -189,8 +191,7 @@ class CreateView extends GetView<CreateController> {
                             Get.rootDelegate.offNamed(Routes.DOWNLOADING);
                           }
                         } catch (e) {
-                          Get.snackbar('error'.tr, e.toString());
-                          rethrow;
+                          showErrorMessage(e);
                         } finally {
                           downloadController.reset();
                         }

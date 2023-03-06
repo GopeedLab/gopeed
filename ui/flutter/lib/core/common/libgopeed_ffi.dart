@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:ffi';
 
 import 'package:ffi/ffi.dart';
-import '../ffi/libgopeed_bind.dart';
 
+import '../ffi/libgopeed_bind.dart';
 import 'libgopeed_interface.dart';
 import 'start_config.dart';
 
