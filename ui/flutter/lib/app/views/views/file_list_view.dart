@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/model/resource.dart';
+import '../../../api/model/resource.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../util/file_icon.dart';

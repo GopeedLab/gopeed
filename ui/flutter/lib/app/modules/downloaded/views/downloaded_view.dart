@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/app/views/views/buid_task_list_view.dart';
 
+import '../../../views/views/buid_task_list_view.dart';
 import '../controllers/downloaded_controller.dart';
 
 class DownloadedView extends GetView<DownloadedController> {

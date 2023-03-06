@@ -1,6 +1,6 @@
-import 'package:gopeed/api/model/options.dart';
-import 'package:gopeed/api/model/request.dart';
-import 'package:gopeed/api/model/resource.dart';
+import 'options.dart';
+import 'request.dart';
+import 'resource.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'meta.g.dart';

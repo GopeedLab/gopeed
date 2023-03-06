@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/api.dart' as api;
 
+import 'api/api.dart' as api;
 import 'app/modules/app/controllers/app_controller.dart';
 import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';

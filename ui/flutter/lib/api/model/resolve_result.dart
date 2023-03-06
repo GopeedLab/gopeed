@@ -1,5 +1,6 @@
-import 'package:gopeed/api/model/resource.dart';
 import 'package:json_annotation/json_annotation.dart';
+
+import 'resource.dart';
 
 part 'resolve_result.g.dart';
 

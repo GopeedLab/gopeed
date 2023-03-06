@@ -125,7 +125,7 @@ Future<void> putConfig(DownloaderConfig config) async {
   return _parse(() => _client.dio.put("/api/v1/config", data: config), null);
 }
 
-Future<Response<T>> proxyRequest<T>(String uri,
+Future<Response<String>> proxyRequest<T>(String uri,
     {data, Options? options}) async {
   options ??= Options();
   options.headers ??= {};

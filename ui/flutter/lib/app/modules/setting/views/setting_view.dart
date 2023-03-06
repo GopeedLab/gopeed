@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import '../../../../util/message.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -39,7 +40,7 @@ class SettingView extends GetView<SettingController> {
             .then(completer.complete)
             .onError(completer.completeError);
         if (needRestart) {
-          Get.snackbar('tip'.tr, 'effectAfterRestart'.tr);
+          showMessage('tip'.tr, 'effectAfterRestart'.tr);
         }
       });
       return completer.future;
@@ -126,7 +127,7 @@ class SettingView extends GetView<SettingController> {
                   try {
                     await appController.trackerUpdate();
                   } catch (e) {
-                    Get.snackbar('error'.tr, 'subscribeFail'.tr);
+                    showErrorMessage('subscribeFail'.tr);
                   } finally {
                     trackerUpdateController.stop();
                   }

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:gopeed/core/common/start_config.dart';
+import '../common/start_config.dart';
 
 import '../libgopeed_boot.dart';
 
