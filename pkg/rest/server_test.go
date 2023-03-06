@@ -229,6 +229,15 @@ func TestDoProxy(t *testing.T) {
 			t.Errorf("DoProxy() got = %v, want %v", got, want)
 		}
 	})
+
+	doTest(func() {
+		code, _ := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
+			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/NOT_FOUND",
+		}, nil)
+		if code != http.StatusNotFound {
+			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusNotFound)
+		}
+	})
 }
 
 func TestAuthorization(t *testing.T) {
@@ -307,14 +316,15 @@ func doHttpRequest0(method string, path string, headers map[string]string, body 
 	if err != nil {
 		panic(err)
 	}
-	if response.StatusCode != http.StatusOK {
-		panic(fmt.Sprintf("http request failed, status code: %d", response.StatusCode))
-	}
+
 	return response.StatusCode, respBody
 }
 
 func doHttpRequest[T any](method string, path string, headers map[string]string, body any) (int, *model.Result[T]) {
-	_, respBody := doHttpRequest0(method, path, headers, body)
+	statusCode, respBody := doHttpRequest0(method, path, headers, body)
+	if statusCode != http.StatusOK {
+		panic(fmt.Sprintf("http request failed, status code: %d", statusCode))
+	}
 
 	var r model.Result[T]
 	if err := json.Unmarshal(respBody, &r); err != nil {

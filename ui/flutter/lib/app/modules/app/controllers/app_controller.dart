@@ -120,7 +120,7 @@ class AppController extends GetxController {
       var allFail = true;
       for (var cdn in allTrackerSubscribeUrlCdns[u]!) {
         try {
-          result.addAll(await _fetchTrackers(u));
+          result.addAll(await _fetchTrackers(cdn));
           allFail = false;
           break;
         } catch (e) {
@@ -168,10 +168,14 @@ class AppController extends GetxController {
   Future<List<String>> _fetchTrackers(String subscribeUrl) async {
     final resp = await proxyRequest(subscribeUrl);
     if (resp.statusCode != 200) {
-      throw Exception('Failed to get trackers');
+      throw Exception(
+          'Failed to get trackers, status code: ${resp.statusCode}');
+    }
+    if (resp.data == null || resp.data!.isEmpty) {
+      throw Exception('Failed to get trackers, data is null');
     }
     const ls = LineSplitter();
-    return ls.convert(resp.data).where((e) => e.isNotEmpty).toList();
+    return ls.convert(resp.data!).where((e) => e.isNotEmpty).toList();
   }
 
   _initDownloaderConfig() async {

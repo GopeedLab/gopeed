@@ -147,12 +147,12 @@ func PutConfig(w http.ResponseWriter, r *http.Request) {
 func DoProxy(w http.ResponseWriter, r *http.Request) {
 	target := r.Header.Get("X-Target-Uri")
 	if target == "" {
-		WriteJson(w, model.NewErrorResult("param invalid: X-Target-Uri", model.CodeInvalidParam))
+		writeError(w, "param invalid: X-Target-Uri")
 		return
 	}
 	targetUrl, err := url.Parse(target)
 	if err != nil {
-		WriteJson(w, model.NewErrorResult(err.Error()))
+		writeError(w, err.Error())
 		return
 	}
 	r.RequestURI = ""
@@ -160,7 +160,7 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 	r.Host = targetUrl.Host
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
-		WriteJson(w, model.NewErrorResult(err.Error()))
+		writeError(w, err.Error())
 		return
 	}
 	defer resp.Body.Close()
@@ -179,9 +179,14 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 		reader = resp.Body
 	}
 	if _, err := io.Copy(w, reader); err != nil {
-		WriteJson(w, model.NewErrorResult(err.Error()))
+		writeError(w, err.Error())
 		return
 	}
+}
+
+func writeError(w http.ResponseWriter, msg string) {
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte(msg))
 }
 
 func getServerConfig() *download.DownloaderStoreConfig {
