@@ -29,6 +29,7 @@ type Task struct {
 	fetcher        fetcher.Fetcher
 	timer          *util.Timer
 	lock           *sync.Mutex
+	speedArr       []int64
 }
 
 func NewTask() *Task {
@@ -52,6 +53,18 @@ func (t *Task) clone() *Task {
 		Size:      t.Size,
 		CreatedAt: t.CreatedAt,
 	}
+}
+
+func (t *Task) calcSpeed(downloaded int64, usedTime float64) int64 {
+	t.speedArr = append(t.speedArr, downloaded)
+	if len(t.speedArr) > 6 {
+		t.speedArr = t.speedArr[1:]
+	}
+	var total int64
+	for _, v := range t.speedArr {
+		total += v
+	}
+	return int64(float64(total) / float64(len(t.speedArr)) / usedTime)
 }
 
 type DownloaderConfig struct {
