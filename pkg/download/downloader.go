@@ -97,8 +97,9 @@ func (d *Downloader) Setup() error {
 	}
 	d.tasks = tasks
 
-	// 每秒统计一次下载速度
+	// 每个tick统计一次下载速度
 	go func() {
+
 		for !d.closed.Load() {
 			if len(d.tasks) > 0 {
 				for _, task := range d.tasks {
@@ -117,9 +118,7 @@ func (d *Downloader) Setup() error {
 
 						current := task.fetcher.Progress().TotalDownloaded()
 						task.Progress.Used = task.timer.Used()
-						currUsedTime := float64(d.refreshInterval) / 1000
-						currSpeed := int64(float64(current-task.Progress.Downloaded) / currUsedTime)
-						task.Progress.Speed = (task.Progress.Speed + currSpeed) / 2
+						task.Progress.Speed = task.calcSpeed(current-task.Progress.Downloaded, float64(d.refreshInterval)/1000)
 						task.Progress.Downloaded = current
 						d.emit(EventKeyProgress, task)
 
@@ -516,6 +515,7 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 func initTask(task *Task) {
 	task.timer = &util.Timer{}
 	task.lock = &sync.Mutex{}
+	task.speedArr = make([]int64, 0)
 }
 
 var defaultDownloader = NewDownloader(nil)
