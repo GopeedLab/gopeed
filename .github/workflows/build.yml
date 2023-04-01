@@ -127,20 +127,9 @@ jobs:
         with:
           go-version: "^1.19"
           cache: true
-      - run: mkdir -p ~/image-cache
-      - id: image-cache
-        uses: actions/cache@v3
-        with:
-          path: ~/image-cache
-          key: image-cache-xgo-v1.19
-      - if: steps.image-cache.outputs.cache-hit != 'true'
-        run: |
-          docker pull techknowlogick/xgo:go-1.19.x
-          docker save -o ~/image-cache/xgo.tar techknowlogick/xgo:go-1.19.x
-      - if: steps.image-cache.outputs.cache-hit == 'true'
-        run: docker load -i ~/image-cache/xgo.tar
       - name: Build
         run: |
+          docker pull techknowlogick/xgo:go-1.19.x
           go install src.techknowlogick.com/xgo@latest
           xgo --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
           mv libgopeed-*.dylib libgopeed.dylib
