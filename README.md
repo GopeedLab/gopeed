@@ -35,7 +35,7 @@ Visit ✈️[Official Website](https://gopeed.com)
 use `go install`:
 
 ```bash
-go install github.com/GopeedLab/gopeed/cmd/gopeed
+go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
 
 ### Docker
@@ -125,6 +125,7 @@ Same as before, you also need to prepare the `cgo` environment, and then install
 
 ```bash
 go install golang.org/x/mobile/cmd/gomobile@latest
+go get golang.org/x/mobile/bind
 gomobile init
 ```
 

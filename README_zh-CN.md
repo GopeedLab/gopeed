@@ -35,7 +35,7 @@ Gopeed（全称 Go Speed），是一款由`Golang`+`Flutter`开发的高速下�
 使用`go install`安装：
 
 ```bash
-go install github.com/GopeedLab/gopeed/cmd/gopeed
+go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
 
 ### Docker
@@ -124,6 +124,7 @@ flutter build linux
 
 ```bash
 go install golang.org/x/mobile/cmd/gomobile@latest
+go get golang.org/x/mobile/bind
 gomobile init
 ```
 

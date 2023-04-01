@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
-import 'package:logger/src/outputs/file_output.dart';
 
 import 'util.dart';
 

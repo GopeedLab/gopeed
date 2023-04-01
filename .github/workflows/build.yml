@@ -283,6 +283,7 @@ jobs:
         run: |
           mkdir ui/flutter/android/app/libs
           go install golang.org/x/mobile/cmd/gomobile@latest
+          go get golang.org/x/mobile/bind
           gomobile init
           gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
