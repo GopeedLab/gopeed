@@ -313,7 +313,7 @@ jobs:
               if [ $goos = "darwin" ]; then
                 goos_name="macos"
               fi
-              name=gopeed-web-$VERSION-goos_name-$goarch
+              name=gopeed-web-$VERSION-$goos_name-$goarch
               dir="dist/$name/"
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/GopeedLab/gopeed/cmd/web \
               && cd $dir \
