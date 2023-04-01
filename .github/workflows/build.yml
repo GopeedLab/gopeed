@@ -270,7 +270,6 @@ jobs:
           APK_KEY_PASSWORD : ${{ secrets.APK_KEY_PASSWORD }}
           APK_STORE_PASSWORD : ${{ secrets.APK_STORE_PASSWORD }}
         run: |
-          mkdir ui/flutter/android/app/libs
           go install golang.org/x/mobile/cmd/gomobile@latest
           go get golang.org/x/mobile/bind
           gomobile init
