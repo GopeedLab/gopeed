@@ -49,6 +49,9 @@
   "effectAfterRestart": "Effect after restart",
   "deleteTask": "Delete Task",
   "deleteTaskTip": "Keep downloaded files",
-  "delete": "Delete"
+  "delete": "Delete",
+  "newVersionTitle": "Discover new version @version",
+  "newVersionUpdate": "Download Now",
+  "newVersionLater": "Later"
 }
 

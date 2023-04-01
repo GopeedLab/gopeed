@@ -6,6 +6,8 @@
   "cancel": "Отмена",
   "selectAll": "Выбрать все",
   "task": "Задачи",
+  "downloading": "Загрузка",
+  "downloaded": "Загружено",
   "setting": "Настройки",
   "create": "Создать задачу",
   "downloadLink": "Ссылка для скачивание",
@@ -13,6 +15,7 @@
   "downloadLinkHit": "Пожалуйста, введите ссылку для скачивания, HTTP/HTTPS/MAGNET supported@append",
   "downloadLinkHitDesktop": ", или перетащите сюда торрент-файл",
   "download": "Скачать",
+  "noFileSelected": "Файл не выбран",
   "noStoragePermission": "Требуется доступ к хранилищу",
   "selectFile": "Выберать файл",
   "basic": "Основные параметры",
@@ -46,5 +49,8 @@
   "effectAfterRestart": "Эффект после перезагрузки",
   "deleteTask": "Удалить задачу",
   "deleteTaskTip": "Сохранить загруженные файлы",
-  "delete": "Удалить"
+  "delete": "Удалить",
+  "newVersionTitle": "Обнаружена новая версия @version",
+  "newVersionUpdate": "Скачать сейчас",
+  "newVersionLater": "позже"
 }

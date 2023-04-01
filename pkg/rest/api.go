@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"compress/gzip"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
@@ -164,24 +163,30 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
-	w.WriteHeader(resp.StatusCode)
 	for k, vv := range resp.Header {
 		for _, v := range vv {
-			w.Header().Add(k, v)
+			w.Header().Set(k, v)
 		}
 	}
-	var reader io.ReadCloser
-	switch resp.Header.Get("Content-Encoding") {
-	case "gzip":
-		reader, err = gzip.NewReader(resp.Body)
-		defer reader.Close()
-	default:
-		reader = resp.Body
-	}
-	if _, err := io.Copy(w, reader); err != nil {
+	w.WriteHeader(resp.StatusCode)
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil {
 		writeError(w, err.Error())
 		return
 	}
+	w.Write(buf)
+	//var reader io.ReadCloser
+	//switch resp.Header.Get("Content-Encoding") {
+	//case "gzip":
+	//	reader, err = gzip.NewReader(resp.Body)
+	//	defer reader.Close()
+	//default:
+	//	reader = resp.Body
+	//}
+	//if _, err := io.Copy(w, resp.Body); err != nil {
+	//	writeError(w, err.Error())
+	//	return
+	//}
 }
 
 func writeError(w http.ResponseWriter, msg string) {

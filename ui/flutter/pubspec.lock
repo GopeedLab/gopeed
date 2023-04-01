@@ -41,6 +41,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.10.0"
+  badges:
+    dependency: "direct main"
+    description:
+      name: badges
+      sha256: d33d4e07197d6e61ddc940640f2b4dc303d3c80887011344940e24d7522f8d26
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.0.3"
   boolean_selector:
     dependency: transitive
     description:
@@ -221,10 +229,10 @@ packages:
     dependency: "direct main"
     description:
       name: dio
-      sha256: "7d328c4d898a61efc3cd93655a0955858e29a0aa647f0f9e02d59b3bb275e2e8"
+      sha256: "0894a098594263fe1caaba3520e3016d8a855caeb010a882273189cca10f11e9"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "4.0.6"
+    version: "5.1.1"
   fake_async:
     dependency: transitive
     description:
@@ -466,10 +474,10 @@ packages:
     dependency: transitive
     description:
       name: logging_appenders
-      sha256: "013e8548b79e3b8dc0333f3efae706184356b5926c6bea59150efa126c91598c"
+      sha256: c2ea00fb779a81e995943f1e3e6e6969d463de3882d134d78ad58e76f2b6f1b1
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.2"
   lottie:
     dependency: "direct main"
     description:

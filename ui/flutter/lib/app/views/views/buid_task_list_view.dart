@@ -24,30 +24,37 @@ class BuildTaskListView extends GetView {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          actions: <Widget>[
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'create'.tr,
-              onPressed: () {
-                Get.rootDelegate.toNamed(Routes.CREATE);
-              },
+            // actions: <Widget>[
+            //   // IconButton(
+            //   //   icon: const Icon(Icons.add),
+            //   //   tooltip: 'create'.tr,
+            //   //   onPressed: () {
+            //   //     Get.rootDelegate.toNamed(Routes.CREATE);
+            //   //   },
+            //   // ),
+            //   //TODO appBar toggleALl/start selected/delete selected/
+            //   // IconButton(
+            //   //   icon: const Icon(Icons.pause),
+            //   //   tooltip: 'title'.tr,
+            //   //   onPressed: () {
+            //   //     // pause all
+            //   //   },
+            //   // ),
+            //   // IconButton(
+            //   //   icon: const Icon(Icons.delete),
+            //   //   tooltip: 'title'.tr,
+            //   //   onPressed: () {
+            //   //     // delete all
+            //   //   },
+            //   // )
+            // ],
             ),
-            //TODO appBar toggleALl/start selected/delete selected/
-            // IconButton(
-            //   icon: const Icon(Icons.pause),
-            //   tooltip: 'title'.tr,
-            //   onPressed: () {
-            //     // pause all
-            //   },
-            // ),
-            // IconButton(
-            //   icon: const Icon(Icons.delete),
-            //   tooltip: 'title'.tr,
-            //   onPressed: () {
-            //     // delete all
-            //   },
-            // )
-          ],
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            Get.rootDelegate.toNamed(Routes.CREATE);
+          },
+          tooltip: 'create'.tr,
+          child: const Icon(Icons.add),
         ),
         body: Obx(() {
           return buildTaskList(context, tasks);

@@ -8,9 +8,12 @@
     "task": "کار",
     "setting": "تنظیمات",
     "create": "ایجاد کار",
+    "downloading": "دانلود کردن",
+    "downloaded": "دانلود شدن",
     "downloadLink": "لینک دانلود",
     "downloadLinkValid": "لطفا لینک دانلود را وارد کنید",
     "download": "دانلود",
+    "noFileSelected": "لطفا حداقل یک فایل را جهت دانلود انتخاب کنید.",
     "noStoragePermission": "مجوز ذخیره سازی مورد نیاز است",
     "selectFile": "انتخاب فایل",
     "basic": "پایه",
@@ -44,6 +47,8 @@
     "effectAfterRestart": "Effect after restart",
     "deleteTask": "پاک کردن کار",
     "deleteTaskTip": "فایل های دانلود شده را نگه دارد",
-    "delete": "پاک کردن"
+    "delete": "پاک کردن",
+    "newVersionTitle": "@version عنوان: کشف نسخه جدید",
+    "newVersionUpdate": "دریافت اکنون",
+    "newVersionLater": "بعداً"
 }
-
