@@ -238,8 +238,29 @@ class SettingView extends GetView<SettingController> {
           },
         );
     buildVersion() {
-      final hasNewVersion = controller.latestVersion.value != '' &&
-          controller.latestVersion.value != packageInfo.version;
+      bool isNewVersion(String current, String latest) {
+        if (latest == "") {
+          return false;
+        }
+
+        final v1Parts = current.split('.');
+        final v2Parts = latest.split('.');
+
+        for (var i = 0; i < 3; i++) {
+          final v1Part = int.parse(v1Parts[i]);
+          final v2Part = int.parse(v2Parts[i]);
+
+          if (v1Part < v2Part) {
+            return true;
+          } else if (v1Part > v2Part) {
+            return false;
+          }
+        }
+        return false;
+      }
+
+      var hasNewVersion =
+          isNewVersion(packageInfo.version, controller.latestVersion.value);
       return ListTile(
         title: hasNewVersion
             ? badges.Badge(
@@ -263,9 +284,7 @@ class SettingView extends GetView<SettingController> {
                         ),
                         TextButton(
                           onPressed: () {
-                            launchUrl(
-                                Uri.parse(
-                                    'https://github.com/GopeedLab/gopeed/releases/latest'),
+                            launchUrl(Uri.parse('https://gopeed.com'),
                                 mode: LaunchMode.externalApplication);
                           },
                           child: Text('newVersionUpdate'.tr),
