@@ -1,7 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'model/resolve_result.dart';
 import '../util/util.dart';
@@ -33,6 +34,9 @@ class _Client {
         }
       }
       dio.options.baseUrl = baseUrl;
+      dio.options.contentType = Headers.jsonContentType;
+      dio.options.connectTimeout = const Duration(seconds: 5);
+      dio.options.receiveTimeout = const Duration(seconds: 60);
       dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
         if (apiToken.isNotEmpty) {
           options.headers['X-Api-Token'] = apiToken;
@@ -42,7 +46,7 @@ class _Client {
 
       _instance!.dio = dio;
       if (isUnixSocket) {
-        (_instance!.dio.httpClientAdapter as DefaultHttpClientAdapter)
+        (_instance!.dio.httpClientAdapter as IOHttpClientAdapter)
             .onHttpClientCreate = (client) {
           client.connectionFactory =
               (Uri uri, String? proxyHost, int? proxyPort) {
@@ -131,5 +135,7 @@ Future<Response<String>> proxyRequest<T>(String uri,
   options.headers ??= {};
   options.headers!["X-Target-Uri"] = uri;
 
-  return _client.dio.request("/api/v1/proxy", data: data, options: options);
+  // add timestamp to avoid cache
+  return _client.dio.request("/api/v1/proxy?t=${DateTime.now()}",
+      data: data, options: options);
 }

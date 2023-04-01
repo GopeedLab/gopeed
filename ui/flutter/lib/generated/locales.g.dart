@@ -64,6 +64,9 @@ class LocaleKeys {
   static const deleteTask = 'deleteTask';
   static const deleteTaskTip = 'deleteTaskTip';
   static const delete = 'delete';
+  static const newVersionTitle = 'newVersionTitle';
+  static const newVersionUpdate = 'newVersionUpdate';
+  static const newVersionLater = 'newVersionLater';
 }
 
 class Locales {
@@ -121,6 +124,9 @@ class Locales {
     'deleteTask': 'Delete Task',
     'deleteTaskTip': 'Keep downloaded files',
     'delete': 'Delete',
+    'newVersionTitle': 'Discover new version @version',
+    'newVersionUpdate': 'Download Now',
+    'newVersionLater': 'Later',
   };
   static const fa_IR = {
     'label': 'فارسی',
@@ -132,9 +138,12 @@ class Locales {
     'task': 'کار',
     'setting': 'تنظیمات',
     'create': 'ایجاد کار',
+    'downloading': 'دانلود کردن',
+    'downloaded': 'دانلود شدن',
     'downloadLink': 'لینک دانلود',
     'downloadLinkValid': 'لطفا لینک دانلود را وارد کنید',
     'download': 'دانلود',
+    'noFileSelected': 'لطفا حداقل یک فایل را جهت دانلود انتخاب کنید.',
     'noStoragePermission': 'مجوز ذخیره سازی مورد نیاز است',
     'selectFile': 'انتخاب فایل',
     'basic': 'پایه',
@@ -170,6 +179,9 @@ class Locales {
     'deleteTask': 'پاک کردن کار',
     'deleteTaskTip': 'فایل های دانلود شده را نگه دارد',
     'delete': 'پاک کردن',
+    'newVersionTitle': '@version عنوان: کشف نسخه جدید',
+    'newVersionUpdate': 'دریافت اکنون',
+    'newVersionLater': 'بعداً',
   };
   static const ru_RU = {
     'label': 'Русский(Россия)',
@@ -179,6 +191,8 @@ class Locales {
     'cancel': 'Отмена',
     'selectAll': 'Выбрать все',
     'task': 'Задачи',
+    'downloading': 'Загрузка',
+    'downloaded': 'Загружено',
     'setting': 'Настройки',
     'create': 'Создать задачу',
     'downloadLink': 'Ссылка для скачивание',
@@ -187,6 +201,7 @@ class Locales {
         'Пожалуйста, введите ссылку для скачивания, HTTP/HTTPS/MAGNET supported@append',
     'downloadLinkHitDesktop': ', или перетащите сюда торрент-файл',
     'download': 'Скачать',
+    'noFileSelected': 'Файл не выбран',
     'noStoragePermission': 'Требуется доступ к хранилищу',
     'selectFile': 'Выберать файл',
     'basic': 'Основные параметры',
@@ -222,6 +237,9 @@ class Locales {
     'deleteTask': 'Удалить задачу',
     'deleteTaskTip': 'Сохранить загруженные файлы',
     'delete': 'Удалить',
+    'newVersionTitle': 'Обнаружена новая версия @version',
+    'newVersionUpdate': 'Скачать сейчас',
+    'newVersionLater': 'позже',
   };
   static const zh_CN = {
     'label': '中文（简体）',
@@ -275,5 +293,8 @@ class Locales {
     'deleteTask': '删除任务',
     'deleteTaskTip': '保留已下载的文件',
     'delete': '删除',
+    'newVersionTitle': '发现新版本 @version',
+    'newVersionUpdate': '立即下载',
+    'newVersionLater': '稍后再说',
   };
 }

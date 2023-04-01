@@ -49,5 +49,8 @@
   "effectAfterRestart": "此配置项将在重启应用后生效",
   "deleteTask": "删除任务",
   "deleteTaskTip": "保留已下载的文件",
-  "delete": "删除"
+  "delete": "删除",
+  "newVersionTitle": "发现新版本 @version",
+  "newVersionUpdate": "立即下载",
+  "newVersionLater": "稍后再说"
 }

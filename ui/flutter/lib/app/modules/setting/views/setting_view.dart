@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import '../../../../util/message.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:badges/badges.dart' as badges;
 
 import '../../../../generated/locales.g.dart';
 import '../../../../util/localeManager.dart';
@@ -236,10 +237,45 @@ class SettingView extends GetView<SettingController> {
                 mode: LaunchMode.externalApplication);
           },
         );
-    buildVersion() => ListTile(
-          title: Text('version'.tr),
-          subtitle: Text(packageInfo.version),
-        );
+    buildVersion() {
+      final hasNewVersion = controller.latestVersion.value != '' &&
+          controller.latestVersion.value != packageInfo.version;
+      return ListTile(
+        title: hasNewVersion
+            ? badges.Badge(
+                position: badges.BadgePosition.topStart(start: 36),
+                child: Text('version'.tr))
+            : Text('version'.tr),
+        subtitle: Text(packageInfo.version),
+        onTap: () {
+          if (hasNewVersion) {
+            showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                      content: Text('newVersionTitle'.trParams(
+                          {'version': controller.latestVersion.value})),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Get.back();
+                          },
+                          child: Text('newVersionLater'.tr),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            launchUrl(
+                                Uri.parse(
+                                    'https://github.com/GopeedLab/gopeed/releases/latest'),
+                                mode: LaunchMode.externalApplication);
+                          },
+                          child: Text('newVersionUpdate'.tr),
+                        ),
+                      ],
+                    ));
+          }
+        },
+      );
+    }
 
     // advanced config items start
     final buildApiProtocol = _buildConfigItem(
