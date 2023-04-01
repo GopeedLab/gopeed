@@ -5,12 +5,10 @@ package main
 
 import (
 	"embed"
+	"github.com/GopeedLab/gopeed/cmd"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"io/fs"
 )
-
-//go:embed banner.txt
-var banner string
 
 //go:embed dist/*
 var dist embed.FS
