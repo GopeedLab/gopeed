@@ -165,6 +165,7 @@ jobs:
           # amd64 lib
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/lib-amd64/macos-amd64-lib github.com/GopeedLab/gopeed/bind/desktop
           # universal binary
+          mkdir -p ui/flutter/macos/Frameworks
           cp ui/flutter/lib-amd64/macos-amd64-lib ui/flutter/macos/Frameworks/
           cp ui/flutter/lib-arm64/macos-arm64-lib ui/flutter/macos/Frameworks/
           cd ui/flutter/macos/Frameworks
