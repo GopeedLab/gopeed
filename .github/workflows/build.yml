@@ -161,8 +161,14 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           PROJECT_DIR=$(pwd)
+          
+          # amd64 lib
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/macos-amd64-lib github.com/GopeedLab/gopeed/bind/desktop
+          # universal binary
+          cd ui/flutter/macos/Frameworks
+          lipo -create macos-amd64-lib macos-arm64-lib -output libgopeed.dylib
 
-          cd ui/flutter
+          cd $PROJECT_DIR/ui/flutter
           flutter build macos
           cd build/macos/Build/Products/Release
           cat>appdmg.json<<EOF
@@ -176,14 +182,7 @@ jobs:
           }
           EOF
           mkdir dist
-          appdmg appdmg.json dist/Gopeed-$VERSION-macos-arm64.dmg
-
-          # amd64
-          cd $PROJECT_DIR
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
-          cp bin/libgopeed.dylib ui/flutter/build/macos/Build/Products/Release/Gopeed.app/Contents/Frameworks/
-          cd ui/flutter/build/macos/Build/Products/Release
-          appdmg appdmg.json dist/Gopeed-$VERSION-macos-amd64.dmg
+          appdmg appdmg.json dist/Gopeed-$VERSION-macos.dmg
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
