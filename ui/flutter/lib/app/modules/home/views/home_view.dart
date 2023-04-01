@@ -37,8 +37,8 @@ class HomeView extends GetView<HomeController> {
                       },
                       destinations: [
                         NavigationRailDestination(
-                          icon: const Icon(Icons.done),
-                          selectedIcon: const Icon(Icons.done),
+                          icon: const Icon(Icons.list),
+                          selectedIcon: const Icon(Icons.list),
                           label: Text('task'.tr),
                         ),
                         NavigationRailDestination(
@@ -67,7 +67,7 @@ class HomeView extends GetView<HomeController> {
             ? BottomNavigationBar(
                 items: <BottomNavigationBarItem>[
                   BottomNavigationBarItem(
-                    icon: const Icon(Icons.done),
+                    icon: const Icon(Icons.list),
                     label: 'task'.tr,
                   ),
                   BottomNavigationBarItem(
