@@ -41,15 +41,13 @@ class HomeView extends GetView<HomeController> {
                       },
                       destinations: [
                         NavigationRailDestination(
-                          icon: const Icon(Icons.format_align_left_outlined),
-                          selectedIcon:
-                              const Icon(Icons.format_align_left_outlined),
+                          icon: const Icon(Icons.file_download),
+                          selectedIcon: const Icon(Icons.file_download),
                           label: Text('downloading'.tr),
                         ),
                         NavigationRailDestination(
-                          icon: const Icon(Icons.format_align_justify_outlined),
-                          selectedIcon:
-                              const Icon(Icons.format_align_justify_outlined),
+                          icon: const Icon(Icons.done),
+                          selectedIcon: const Icon(Icons.done),
                           label: Text('downloaded'.tr),
                         ),
                         NavigationRailDestination(
@@ -59,7 +57,7 @@ class HomeView extends GetView<HomeController> {
                         ),
                       ],
                       selectedIndex: controller.currentIndex.value,
-                      leading: const Icon(Icons.logo_dev),
+                      leading: const Icon(Icons.menu),
                       // trailing: const Icon(Icons.info_outline),
                     )
                   : const SizedBox.shrink(),
@@ -78,11 +76,11 @@ class HomeView extends GetView<HomeController> {
             ? BottomNavigationBar(
                 items: <BottomNavigationBarItem>[
                   BottomNavigationBarItem(
-                    icon: const Icon(Icons.format_align_left_outlined),
+                    icon: const Icon(Icons.file_download),
                     label: 'downloading'.tr,
                   ),
                   BottomNavigationBarItem(
-                    icon: const Icon(Icons.format_align_justify_outlined),
+                    icon: const Icon(Icons.done),
                     label: 'downloaded'.tr,
                   ),
                   BottomNavigationBarItem(
@@ -118,11 +116,11 @@ class HomeView extends GetView<HomeController> {
             //         ),
             //         items: [
             //           BottomBarItem(
-            //               icon: const Icon(Icons.format_align_left_outlined),
+            //               icon: const Icon(Icons.file_download),
             //               selectedColor: Get.theme.primaryColor,
             //               title: Text('downloading'.tr)),
             //           BottomBarItem(
-            //               icon: const Icon(Icons.format_align_justify_outlined),
+            //               icon: const Icon(Icons.done),
             //               selectedColor: Get.theme.primaryColor,
             //               title: Text('downloaded'.tr)),
             //           BottomBarItem(
