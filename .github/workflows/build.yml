@@ -155,7 +155,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: macos-arm64-lib
-          path: ui/flutter/libs
+          path: ui/flutter/lib-arm64
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
@@ -163,11 +163,12 @@ jobs:
           PROJECT_DIR=$(pwd)
           
           # amd64 lib
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/libs/macos-amd64-lib github.com/GopeedLab/gopeed/bind/desktop
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/lib-amd64/macos-amd64-lib github.com/GopeedLab/gopeed/bind/desktop
           # universal binary
-          cd ui/flutter/libs
-          lipo -create macos-amd64-lib macos-arm64-lib -output libgopeed.dylib
-          cp libgopeed.dylib ../macos/Frameworks
+          cp ui/flutter/lib-amd64/macos-amd64-lib ui/flutter/macos/Frameworks/
+          cp ui/flutter/lib-arm64/macos-arm64-lib ui/flutter/macos/Frameworks/
+          cd ui/flutter/macos/Frameworks
+          lipo -create -output libgopeed.dylib macos-amd64-lib macos-arm64-lib
 
           cd $PROJECT_DIR/ui/flutter
           flutter build macos
