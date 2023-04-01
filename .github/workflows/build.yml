@@ -163,15 +163,13 @@ jobs:
           PROJECT_DIR=$(pwd)
           
           # amd64 lib
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/lib-amd64/macos-amd64-lib github.com/GopeedLab/gopeed/bind/desktop
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/lib-amd64/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
           # universal binary
           mkdir -p ui/flutter/macos/Frameworks
-          pwd
-          ls -al /Users/runner/work/gopeed/gopeed/ui/flutter/lib-arm64
-          cp ui/flutter/lib-amd64/macos-amd64-lib ui/flutter/macos/Frameworks/
-          cp ui/flutter/lib-arm64/macos-arm64-lib ui/flutter/macos/Frameworks/
+          cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/macos/Frameworks/amd64-lib
+          cp ui/flutter/lib-arm64/libgopeed.dylib ui/flutter/macos/Frameworks/arm64-lib
           cd ui/flutter/macos/Frameworks
-          lipo -create -output libgopeed.dylib macos-amd64-lib macos-arm64-lib
+          lipo -create -output libgopeed.dylib amd64-lib arm64-lib
 
           cd $PROJECT_DIR/ui/flutter
           flutter build macos
