@@ -1,4 +1,4 @@
-FROM cirrusci/flutter:3.3.7 AS flutter
+FROM cirrusci/flutter:3.7.9 AS flutter
 WORKDIR /app
 COPY ./ui/flutter/pubspec.yaml ./ui/flutter/pubspec.lock ./
 RUN flutter pub get
