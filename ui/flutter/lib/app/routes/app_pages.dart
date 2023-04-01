@@ -1,24 +1,20 @@
 import 'package:get/get.dart';
+import 'package:gopeed/app/modules/task/views/task_view.dart';
 
 import '../modules/create/bindings/create_binding.dart';
 import '../modules/create/views/create_view.dart';
-import '../modules/downloaded/bindings/downloaded_binding.dart';
-import '../modules/downloaded/views/downloaded_view.dart';
-import '../modules/downloading/bindings/downloading_binding.dart';
-import '../modules/downloading/views/downloading_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/root/bindings/root_binding.dart';
 import '../modules/root/views/root_view.dart';
 import '../modules/setting/bindings/setting_binding.dart';
 import '../modules/setting/views/setting_view.dart';
+import '../modules/task/bindings/task_binding.dart';
 
 part 'app_routes.dart';
 
 class AppPages {
   AppPages._();
-
-  static const INITIAL = Routes.ROOT;
 
   static final routes = [
     GetPage(
@@ -38,21 +34,14 @@ class AppPages {
               binding: HomeBinding(),
               children: [
                 GetPage(
-                  name: _Paths.DOWNLOADED,
-                  transition: Transition.noTransition,
-                  page: () => const DownloadedView(),
-                  binding: DownloadedBinding(),
-                ),
-                GetPage(
-                  name: _Paths.DOWNLOADING,
-                  transition: Transition.noTransition,
-                  page: () => const DownloadingView(),
-                  binding: DownloadingBinding(),
-                ),
+                    name: _Paths.TASK,
+                    page: () => const TaskView(),
+                    transition: Transition.noTransition,
+                    binding: TaskBinding()),
                 GetPage(
                   name: _Paths.SETTING,
-                  transition: Transition.noTransition,
                   page: () => const SettingView(),
+                  transition: Transition.noTransition,
                   binding: SettingBinding(),
                 ),
               ]),

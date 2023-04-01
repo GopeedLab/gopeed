@@ -3,20 +3,18 @@ part of 'app_pages.dart';
 
 abstract class Routes {
   Routes._();
-  static const DOWNLOADED = _Paths.HOME + _Paths.DOWNLOADED;
-  static const DOWNLOADING = _Paths.HOME + _Paths.DOWNLOADING;
-  static const CREATE = _Paths.CREATE;
   static const ROOT = _Paths.ROOT;
-  static const SETTING = _Paths.HOME + _Paths.SETTING;
   static const HOME = _Paths.HOME;
+  static const CREATE = _Paths.CREATE;
+  static const TASK = _Paths.HOME + _Paths.TASK;
+  static const SETTING = _Paths.HOME + _Paths.SETTING;
 }
 
 abstract class _Paths {
   _Paths._();
-  static const DOWNLOADED = '/downloaded';
-  static const DOWNLOADING = '/downloading';
-  static const CREATE = '/create';
   static const ROOT = '/';
-  static const SETTING = '/setting';
   static const HOME = '/home';
+  static const CREATE = '/create';
+  static const TASK = '/task';
+  static const SETTING = '/setting';
 }

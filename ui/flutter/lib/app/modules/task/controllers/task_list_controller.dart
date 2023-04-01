@@ -5,17 +5,25 @@ import 'package:get/get.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/task.dart';
 
-class DownloadedController extends GetxController {
+abstract class TaskListController extends GetxController {
+  List<Status> statuses;
+
+  TaskListController(this.statuses);
+
   final tasks = <Task>[].obs;
+  final isRunning = false.obs;
+
   late final Timer _timer;
 
   @override
   void onInit() async {
     super.onInit();
-    await getTasksState();
+
+    start();
     _timer = Timer.periodic(const Duration(milliseconds: 1000), (timer) async {
-      // debugPrint('timer${DateTime.now()}');
-      await getTasksState();
+      if (isRunning.value) {
+        await getTasksState();
+      }
     });
   }
 
@@ -25,7 +33,16 @@ class DownloadedController extends GetxController {
     _timer.cancel();
   }
 
+  void start() async {
+    await getTasksState();
+    isRunning.value = true;
+  }
+
+  void stop() {
+    isRunning.value = false;
+  }
+
   getTasksState() async {
-    tasks.value = await getTasks([Status.done]);
+    tasks.value = await getTasks(statuses);
   }
 }

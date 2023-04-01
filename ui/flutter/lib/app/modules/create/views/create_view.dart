@@ -31,7 +31,7 @@ class CreateView extends GetView<CreateController> {
       appBar: AppBar(
         leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => Get.rootDelegate.offNamed(Routes.DOWNLOADING)),
+            onPressed: () => Get.rootDelegate.offNamed(Routes.TASK)),
         // actions: [],
         title: Text('create'.tr),
       ),
@@ -188,7 +188,7 @@ class CreateView extends GetView<CreateController> {
                                     selectFiles: controller.selectedIndexes
                                         .cast<int>())));
                             Get.back();
-                            Get.rootDelegate.offNamed(Routes.DOWNLOADING);
+                            Get.rootDelegate.offNamed(Routes.TASK);
                           }
                         } catch (e) {
                           showErrorMessage(e);

@@ -12,7 +12,7 @@ class HomeView extends GetView<HomeController> {
   Widget build(BuildContext context) {
     return GetRouterOutlet.builder(builder: (context, delegate, currentRoute) {
       return Scaffold(
-        extendBody: true,
+        // extendBody: true,
         body: Row(
             // crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -26,29 +26,20 @@ class HomeView extends GetView<HomeController> {
                       onDestinationSelected: (int index) {
                         switch (index) {
                           case 0:
-                            delegate.toNamed(Routes.DOWNLOADING);
                             controller.currentIndex.value = 0;
+                            delegate.toNamed(Routes.TASK);
                             break;
                           case 1:
-                            delegate.toNamed(Routes.DOWNLOADED);
                             controller.currentIndex.value = 1;
-                            break;
-                          case 2:
                             delegate.toNamed(Routes.SETTING);
-                            controller.currentIndex.value = 2;
                             break;
                         }
                       },
                       destinations: [
                         NavigationRailDestination(
-                          icon: const Icon(Icons.file_download),
-                          selectedIcon: const Icon(Icons.file_download),
-                          label: Text('downloading'.tr),
-                        ),
-                        NavigationRailDestination(
                           icon: const Icon(Icons.done),
                           selectedIcon: const Icon(Icons.done),
-                          label: Text('downloaded'.tr),
+                          label: Text('task'.tr),
                         ),
                         NavigationRailDestination(
                           icon: const Icon(Icons.settings),
@@ -63,7 +54,7 @@ class HomeView extends GetView<HomeController> {
                   : const SizedBox.shrink(),
               Expanded(
                   child: GetRouterOutlet(
-                initialRoute: Routes.DOWNLOADING,
+                initialRoute: Routes.TASK,
                 // anchorRoute: '/',
                 // filterPages: (afterAnchor) {
                 //   logger.w(afterAnchor);
@@ -76,12 +67,8 @@ class HomeView extends GetView<HomeController> {
             ? BottomNavigationBar(
                 items: <BottomNavigationBarItem>[
                   BottomNavigationBarItem(
-                    icon: const Icon(Icons.file_download),
-                    label: 'downloading'.tr,
-                  ),
-                  BottomNavigationBarItem(
                     icon: const Icon(Icons.done),
-                    label: 'downloaded'.tr,
+                    label: 'task'.tr,
                   ),
                   BottomNavigationBarItem(
                     icon: const Icon(Icons.settings),
@@ -93,16 +80,12 @@ class HomeView extends GetView<HomeController> {
                 onTap: (index) {
                   switch (index) {
                     case 0:
-                      delegate.toNamed(Routes.DOWNLOADING);
                       controller.currentIndex.value = 0;
+                      delegate.toNamed(Routes.TASK);
                       break;
                     case 1:
-                      delegate.toNamed(Routes.DOWNLOADED);
                       controller.currentIndex.value = 1;
-                      break;
-                    case 2:
                       delegate.toNamed(Routes.SETTING);
-                      controller.currentIndex.value = 2;
                       break;
                   }
                 },
