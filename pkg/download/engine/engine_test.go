@@ -1,4 +1,4 @@
-package extension
+package engine
 
 import (
 	"crypto/md5"
@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/test"
-	"github.com/GopeedLab/gopeed/pkg/download/extension/inject/file"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/dop251/goja"
 	"io"
 	"net"
@@ -198,7 +198,7 @@ func doTestPolyfill(t *testing.T, module string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !value.ToBoolean() {
+	if !value.(bool) {
 		t.Fatalf("module %s not polyfilled", module)
 	}
 }
@@ -276,21 +276,7 @@ func callTestFun(engine *Engine, fun string, args ...any) (any, error) {
 	if !ok {
 		return nil, errors.New("function not found:" + fun)
 	}
-	var result goja.Value
-	var err error
-	if args == nil {
-		result, err = engine.RunNative(test)
-	} else {
-		jsArgs := make([]goja.Value, 0)
-		for _, arg := range args {
-			jsArgs = append(jsArgs, engine.Runtime.ToValue(arg))
-		}
-		result, err = engine.RunNative(test, jsArgs...)
-	}
-	if err != nil {
-		return nil, err
-	}
-	return ResolveResult(result)
+	return engine.CallFunction(test, args...)
 }
 
 func calcMd5(reader io.Reader) string {

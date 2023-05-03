@@ -1,12 +1,12 @@
-package extension
+package engine
 
 import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/GopeedLab/gopeed/pkg/download/extension/inject/file"
-	"github.com/GopeedLab/gopeed/pkg/download/extension/inject/formdata"
-	"github.com/GopeedLab/gopeed/pkg/download/extension/inject/xhr"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/xhr"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
 	"github.com/dop251/goja_nodejs/url"
@@ -21,32 +21,48 @@ type Engine struct {
 	Runtime *goja.Runtime
 }
 
-func (e *Engine) RunString(script string) (value goja.Value, err error) {
+// RunString executes the script and returns the go type value
+// if script result is promise, it will be resolved
+func (e *Engine) RunString(script string) (value any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
 		}
 	}()
+	var result goja.Value
 	e.loop.Run(func(runtime *goja.Runtime) {
-		value, err = runtime.RunString(script)
+		result, err = runtime.RunString(script)
 	})
-	return
+	if err != nil {
+		return
+	}
+	return resolveResult(result)
 }
 
-func (e *Engine) RunNative(cb goja.Callable, args ...goja.Value) (value goja.Value, err error) {
+// CallFunction calls the function and returns the go type value
+// if function result is promise, it will be resolved
+func (e *Engine) CallFunction(fn goja.Callable, args ...any) (value any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
 		}
 	}()
+	var result goja.Value
 	e.loop.Run(func(runtime *goja.Runtime) {
 		if args == nil {
-			value, err = cb(nil)
+			result, err = fn(nil)
 		} else {
-			value, err = cb(nil, args...)
+			var jsArgs []goja.Value
+			for _, arg := range args {
+				jsArgs = append(jsArgs, runtime.ToValue(arg))
+			}
+			result, err = fn(nil, jsArgs...)
 		}
 	})
-	return
+	if err != nil {
+		return nil, err
+	}
+	return resolveResult(result)
 }
 
 func (e *Engine) Close() {
@@ -60,6 +76,7 @@ func NewEngine() *Engine {
 	}
 	loop.Run(func(runtime *goja.Runtime) {
 		engine.Runtime = runtime
+		runtime.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 		url.Enable(runtime)
 		if err := file.Enable(runtime); err != nil {
 			return
@@ -78,13 +95,13 @@ func NewEngine() *Engine {
 	return engine
 }
 
-func Run(script string) (value goja.Value, err error) {
+func Run(script string) (value any, err error) {
 	engine := NewEngine()
 	return engine.RunString(script)
 }
 
-// ResolveResult if the value is Promise, it will be resolved and return the result.
-func ResolveResult(value goja.Value) (any, error) {
+// if the value is Promise, it will be resolved and return the result.
+func resolveResult(value goja.Value) (any, error) {
 	export := value.Export()
 	switch export.(type) {
 	case *goja.Promise:

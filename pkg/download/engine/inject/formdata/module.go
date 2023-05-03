@@ -56,7 +56,6 @@ func (fd *FormData) Values() []any {
 }
 
 func Enable(runtime *goja.Runtime) error {
-	runtime.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 	file := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
 		instance := &FormData{
 			data: make(map[string]any),

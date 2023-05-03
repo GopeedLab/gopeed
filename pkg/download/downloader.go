@@ -1,18 +1,14 @@
 package download
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/download/extension"
 	"github.com/GopeedLab/gopeed/pkg/util"
-	"github.com/go-git/go-git/v5"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -26,8 +22,8 @@ const (
 	bucketSave = "save"
 	// downloader config bucket
 	bucketConfig = "config"
-	// downloader extension bucket
-	bucketExtension = "extension"
+	// downloader engine bucket
+	bucketExtension = "engine"
 )
 
 type Listener func(event *Event)
@@ -53,7 +49,7 @@ type Downloader struct {
 	lock            *sync.Mutex
 	closed          atomic.Bool
 
-	extensions []*extension.Extension
+	extensions []*Extension
 }
 
 func NewDownloader(cfg *DownloaderConfig) *Downloader {
@@ -71,6 +67,8 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		refreshInterval: cfg.RefreshInterval,
 		storage:         cfg.Storage,
 		lock:            &sync.Mutex{},
+
+		extensions: make([]*Extension, 0),
 	}
 	for _, f := range cfg.FetchBuilders {
 		for _, p := range f.Schemes() {
@@ -180,10 +178,17 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	}
 	fetcher := fb.Build()
 	d.setupFetcher(fetcher)
-	err = fetcher.Resolve(req)
-	if err != nil {
-		return
+
+	res := d.triggerBeforeResolve(req)
+	if res != nil {
+		fetcher.Meta().Res = res
+	} else {
+		err = fetcher.Resolve(req)
+		if err != nil {
+			return
+		}
 	}
+
 	rrId, err := gonanoid.New()
 	if err != nil {
 		return
@@ -521,76 +526,6 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 		go d.watch(task)
 	}
 	return nil
-}
-
-func (d *Downloader) InstallExtensionByGit(url string) error {
-	ext, err := d.fetchExtensionInfoByGit(url)
-	if err != nil {
-		return err
-	}
-
-	tempDir := filepath.Join(d.cfg.StorageDir, "extensions_temp", ext.Dir)
-	if err := util.CopyDir(tempDir, filepath.Join(d.cfg.StorageDir, "extensions", ext.Manifest.Name)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (d *Downloader) InstallExtensionByFolder(path string) error {
-	ext, err := d.fetchExtensionInfoByFolder(path)
-	if err != nil {
-		return err
-	}
-
-	if err := util.CopyDir(path, filepath.Join(d.cfg.StorageDir, "extensions", ext.Manifest.Name)); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (d *Downloader) fetchExtensionInfoByGit(url string) (ext *extension.Extension, err error) {
-	extTempDir := filepath.Join(d.cfg.StorageDir, "extensions_temp")
-	// check if temp dir not exist, create it
-	if _, err = os.Stat(extTempDir); os.IsNotExist(err) {
-		if err = os.Mkdir(extTempDir, os.ModePerm); err != nil {
-			return
-		}
-	}
-	_, err = git.PlainClone(extTempDir, false, &git.CloneOptions{
-		URL: url,
-	})
-	if err != nil {
-		return
-	}
-	// cut project name
-	_, projectDirName := filepath.Split(url)
-	projectDirName = strings.TrimSuffix(projectDirName, ".git")
-	ext, err = d.fetchExtensionInfoByFolder(filepath.Join(extTempDir, projectDirName))
-	if err != nil {
-		return
-	}
-	ext.URL = url
-	return
-}
-
-func (d *Downloader) fetchExtensionInfoByFolder(extPath string) (ext *extension.Extension, err error) {
-	// resolve extension manifest
-	manifestTempPath := filepath.Join(extPath, "manifest.json")
-	if _, err = os.Stat(manifestTempPath); os.IsNotExist(err) {
-		return
-	}
-	file, err := os.ReadFile(manifestTempPath)
-	if err != nil {
-		return
-	}
-	ext = &extension.Extension{
-		Dir:      path.Base(extPath),
-		Manifest: &extension.Manifest{},
-	}
-	if err = json.Unmarshal(file, ext.Manifest); err != nil {
-		return
-	}
-	return
 }
 
 func initTask(task *Task) {

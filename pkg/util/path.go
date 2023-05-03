@@ -101,7 +101,7 @@ func isEmpty(name string) (bool, error) {
 
 // CopyDir Copy all files to the target directory, if the file already exists, it will be overwritten.
 // Remove target file if the source file is not exist.
-func CopyDir(source string, target string) error {
+func CopyDir(source string, target string, excludeDir ...string) error {
 	if err := os.MkdirAll(target, 0755); err != nil {
 		return err
 	}
@@ -110,6 +110,13 @@ func CopyDir(source string, target string) error {
 			return err
 		}
 		if info.IsDir() {
+			if len(excludeDir) > 0 {
+				for _, dir := range excludeDir {
+					if info.IsDir() && info.Name() == dir {
+						return filepath.SkipDir
+					}
+				}
+			}
 			return nil
 		}
 		relPath, err := filepath.Rel(source, path)
@@ -133,14 +140,21 @@ func CopyDir(source string, target string) error {
 			return err
 		}
 		if info.IsDir() {
+			if len(excludeDir) > 0 {
+				for _, dir := range excludeDir {
+					if info.IsDir() && info.Name() == dir {
+						return filepath.SkipDir
+					}
+				}
+			}
 			return nil
 		}
-		relPath, err := filepath.Rel(source, path)
+		relPath, err := filepath.Rel(target, path)
 		if err != nil {
 			return err
 		}
 		targetPath := filepath.Join(target, relPath)
-		sourcePath := strings.Replace(targetPath, target, source, 1)
+		sourcePath := filepath.Join(source, relPath)
 		// if source file is not exist, remove target file
 		if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
 			if err := SafeRemove(targetPath); err != nil {

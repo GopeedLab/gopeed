@@ -22,7 +22,6 @@ func NewJsFile(runtime *goja.Runtime) (goja.Value, error) {
 }
 
 func Enable(runtime *goja.Runtime) error {
-	runtime.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 	file := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
 		instance := &File{}
 		instanceValue := runtime.ToValue(instance).(*goja.Object)

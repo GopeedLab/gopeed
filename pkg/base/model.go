@@ -1,6 +1,7 @@
 package base
 
 import (
+	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/util"
 )
 
@@ -20,6 +21,25 @@ type Resource struct {
 	// file list
 	Files []*FileInfo `json:"files"`
 	Hash  string      `json:"hash"`
+}
+
+func (r *Resource) Validate() error {
+	if r.Name == "" {
+		return fmt.Errorf("invalid name")
+	}
+	if r.Size < 0 {
+		return fmt.Errorf("invalid size")
+	}
+	if r.Files == nil || len(r.Files) == 0 {
+		return fmt.Errorf("invalid files")
+	}
+	for _, file := range r.Files {
+		if file.Name == "" {
+			return fmt.Errorf("invalid file name")
+		}
+	}
+	return nil
+
 }
 
 type FileInfo struct {
