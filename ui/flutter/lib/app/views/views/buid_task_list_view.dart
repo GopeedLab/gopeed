@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:path/path.dart' as path;
 
 import '../../../api/api.dart';
 import '../../../api/model/task.dart';
+import '../../../util/file_explorer.dart';
 import '../../../util/file_icon.dart';
 import '../../../util/icons.dart';
 import '../../../util/message.dart';
@@ -51,6 +53,18 @@ class BuildTaskListView extends GetView {
 
     bool isRunning() {
       return task.status == Status.running;
+    }
+
+    String buildExplorerUrl(Task task) {
+      if (task.meta.res.rootDir.trim().isEmpty) {
+        return path.join(
+            Util.safeDir(task.meta.opts.path),
+            Util.safeDir(task.meta.res.files[0].path),
+            task.meta.res.files[0].name);
+      } else {
+        return path.join(Util.safeDir(task.meta.opts.path),
+            Util.safeDir(task.meta.res.rootDir));
+      }
     }
 
     Future<void> showDeleteDialog(String id) {
@@ -100,9 +114,7 @@ class BuildTaskListView extends GetView {
           list.add(IconButton(
             icon: const Icon(Icons.folder_open),
             onPressed: () async {
-              final file = File(Util.buildAbsPath(task.meta.opts.path,
-                  task.meta.res.files[0].path, task.meta.res.files[0].name));
-              await launchUrl(file.parent.uri);
+              await FileExplorer.openAndSelectFile(buildExplorerUrl(task));
             },
           ));
         }

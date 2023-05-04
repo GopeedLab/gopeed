@@ -3,12 +3,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class Util {
-  static String buildAbsPath(String dir, String path, String name) {
-    return (dir == "" ? "" : "$dir/") + buildPath(path, name);
-  }
-
-  static String buildPath(String path, String name) {
-    return (path == "" ? "" : "$path/") + name;
+  static String safeDir(String path) {
+    if (path == "." || path == "./" || path == ".\\") {
+      return "";
+    }
+    return path;
   }
 
   static String fmtByte(int byte) {
