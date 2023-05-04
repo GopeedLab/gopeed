@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "blob-polyfill": "^7.0.20220408",
-    "formdata-polyfill": "^4.0.10",
     "whatwg-fetch": "^3.6.2"
   }
 }
