@@ -13,9 +13,17 @@ import (
 const progressWidth = 20
 
 func main() {
-	args := parse()
+	//args := parse()
+	var dir = "./"
+	var connections = 8
+	args := &args{
+		url:         "https://sel-kor-ping.vultr.com/vultr.com.100MB.bin",
+		dir:         &dir,
+		connections: &connections,
+	}
 
 	var wg sync.WaitGroup
+	wg.Add(1)
 	_, err := download.Boot().
 		URL(args.url).
 		Listener(func(event *download.Event) {
@@ -46,7 +54,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	wg.Add(1)
 	wg.Wait()
 }
 
