@@ -100,6 +100,9 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 	if cfg.RefreshInterval == 0 {
 		cfg.RefreshInterval = 350
 	}
+	if cfg.MaxParallel == 0 {
+		cfg.MaxParallel = 3
+	}
 	return cfg
 }
 
@@ -107,6 +110,7 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 type DownloaderStoreConfig struct {
 	RefreshInterval int            `json:"refreshInterval"` // RefreshInterval time duration to refresh task progress(ms)
 	DownloadDir     string         `json:"downloadDir"`     // DownloadDir is the default directory to save the downloaded files
+	MaxParallel     int            `json:"maxParallel"`     // MaxParallel is the max parallel download count
 	ProtocolConfig  map[string]any `json:"protocolConfig"`  // ProtocolConfig is special config for each protocol
 	Extra           map[string]any `json:"extra"`           // Extra is the extra config
 }

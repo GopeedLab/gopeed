@@ -2,7 +2,6 @@ package util
 
 import "time"
 
-// 计时器
 type Timer struct {
 	t    int64
 	used int64

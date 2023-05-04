@@ -269,13 +269,12 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 	task.fetcher = fetcher
 	task.Meta = fetcher.Meta()
 	task.Progress = &Progress{}
-	task.Status = base.DownloadStatusRunning
+	task.Status = base.DownloadStatusReady
 	// calculate select files size
 	for _, selectIndex := range opts.SelectFiles {
 		task.Size += res.Files[selectIndex].Size
 	}
-	initTask(task)
-	task.timer.Start()
+	var autoStart bool
 	err = func() error {
 		d.lock.Lock()
 		defer d.lock.Unlock()
@@ -283,21 +282,27 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 			return err
 		}
 		d.tasks = append(d.tasks, task)
+		autoStart = d.canAutoStart()
 		return nil
 	}()
 	if err != nil {
 		return
 	}
-	d.emit(EventKeyStart, task)
 	taskId = task.ID
-	go func() {
-		err := fetcher.Start()
-		if err != nil {
-			d.emit(EventKeyError, task, err)
-			return
-		}
-		d.watch(task)
-	}()
+	if autoStart {
+		task.Status = base.DownloadStatusRunning
+		initTask(task)
+		task.timer.Start()
+		d.emit(EventKeyStart, task)
+		go func() {
+			err := fetcher.Start()
+			if err != nil {
+				d.emit(EventKeyError, task, err)
+				return
+			}
+			d.watch(task)
+		}()
+	}
 	delete(d.fetcherMap, rrId)
 	return
 }
@@ -316,6 +321,13 @@ func (d *Downloader) Pause(id string) (err error) {
 		d.storage.Put(bucketTask, task.ID, task.clone())
 		d.emit(EventKeyPause, task)
 	}
+	go func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+		if tw := d.takeWait(); tw != nil {
+			d.Continue(tw.ID)
+		}
+	}()
 	return
 }
 
@@ -326,13 +338,14 @@ func (d *Downloader) Continue(id string) (err error) {
 	}
 	task.lock.Lock()
 	defer task.lock.Unlock()
-	if task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusError {
+	if task.Status != base.DownloadStatusRunning && task.Status != base.DownloadStatusDone {
 		task.Status = base.DownloadStatusRunning
 		task.Progress.Speed = 0
 		err = d.restoreFetcher(task)
 		if err != nil {
 			return
 		}
+		go d.watch(task)
 		task.timer.Start()
 		err = task.fetcher.Continue()
 		if err != nil {
@@ -341,6 +354,13 @@ func (d *Downloader) Continue(id string) (err error) {
 		d.storage.Put(bucketTask, task.ID, task.clone())
 		d.emit(EventKeyContinue, task)
 	}
+	go func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+		if pw := d.putWait(task); pw != nil {
+			d.Pause(pw.ID)
+		}
+	}()
 	return
 }
 
@@ -523,7 +543,39 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 		}
 		d.setupFetcher(task.fetcher)
 		task.fetcher.Create(task.Meta.Opts)
-		go d.watch(task)
+	}
+	return nil
+}
+
+// check downloading task count, if less than max parallel, can auto start
+func (d *Downloader) canAutoStart() bool {
+	downloadingCount := 0
+	for _, t := range d.tasks {
+		if t.Status == base.DownloadStatusRunning {
+			downloadingCount++
+		}
+	}
+	return downloadingCount < d.cfg.MaxParallel
+}
+
+// take a task from wait list
+func (d *Downloader) takeWait() *Task {
+	for _, t := range d.tasks {
+		if t.Status == base.DownloadStatusReady {
+			return t
+		}
+	}
+	return nil
+}
+
+// put a task to wait list when downloading count more than max parallel
+func (d *Downloader) putWait(current *Task) *Task {
+	if !d.canAutoStart() {
+		for _, t := range d.tasks {
+			if t != current && t.Status == base.DownloadStatusRunning {
+				return t
+			}
+		}
 	}
 	return nil
 }
