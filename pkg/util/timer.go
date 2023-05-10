@@ -2,10 +2,15 @@ package util
 
 import "time"
 
-// 计时器
 type Timer struct {
 	t    int64
 	used int64
+}
+
+func NewTimer(used int64) *Timer {
+	return &Timer{
+		used: used,
+	}
 }
 
 func (t *Timer) Start() {

@@ -67,11 +67,37 @@ class SettingView extends GetView<SettingController> {
         showLabel: false,
       );
     });
+    final buildMaxRunning = _buildConfigItem(
+        'maxRunning', () => downloaderCfg.value.maxRunning.toString(),
+        (Key key) {
+      final maxRunningController = TextEditingController(
+          text: downloaderCfg.value.maxRunning.toString());
+      maxRunningController.addListener(() async {
+        if (maxRunningController.text.isNotEmpty &&
+            maxRunningController.text !=
+                downloaderCfg.value.maxRunning.toString()) {
+          downloaderCfg.value.maxRunning = int.parse(maxRunningController.text);
+
+          await debounceSave();
+        }
+      });
+
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: maxRunningController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          _NumericalRangeFormatter(min: 1, max: 256),
+        ],
+      );
+    });
 
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;
     final buildHttpConnections = _buildConfigItem(
-        'connections'.tr, () => httpConfig.connections.toString(), (Key key) {
+        'connections', () => httpConfig.connections.toString(), (Key key) {
       final connectionsController =
           TextEditingController(text: httpConfig.connections.toString());
       connectionsController.addListener(() async {
@@ -99,7 +125,7 @@ class SettingView extends GetView<SettingController> {
     final btExtConfig = downloaderCfg.value.extra.bt;
 
     final buildBtTrackerSubscribeUrls = _buildConfigItem(
-        'subscribeTracker'.tr,
+        'subscribeTracker',
         () => 'items'.trParams(
             {'count': btExtConfig.trackerSubscribeUrls.length.toString()}),
         (Key key) {
@@ -155,7 +181,7 @@ class SettingView extends GetView<SettingController> {
       );
     });
     final buildBtTrackers = _buildConfigItem(
-        'addTracker'.tr,
+        'addTracker',
         () => 'items'
             .trParams({'count': btExtConfig.customTrackers.length.toString()}),
         (Key key) {
@@ -298,7 +324,7 @@ class SettingView extends GetView<SettingController> {
 
     // advanced config items start
     final buildApiProtocol = _buildConfigItem(
-      'protocol'.tr,
+      'protocol',
       () => startCfg.value.network == 'tcp'
           ? 'TCP ${startCfg.value.address}'
           : 'Unix',
@@ -396,7 +422,7 @@ class SettingView extends GetView<SettingController> {
         );
       },
     );
-    final buildApiToken = _buildConfigItem('apiToken'.tr,
+    final buildApiToken = _buildConfigItem('apiToken',
         () => startCfg.value.apiToken.isEmpty ? 'notSet'.tr : 'seted'.tr,
         (Key key) {
       final apiTokenController =
@@ -426,7 +452,7 @@ class SettingView extends GetView<SettingController> {
           length: 2,
           child: Scaffold(
               appBar: PreferredSize(
-                  preferredSize: Size.fromHeight(56),
+                  preferredSize: const Size.fromHeight(56),
                   child: AppBar(
                     bottom: TabBar(
                       tabs: [
@@ -448,9 +474,8 @@ class SettingView extends GetView<SettingController> {
                         Text('general'.tr),
                         Card(
                             child: Column(
-                          children: _addDivider([
-                            buildDownloadDir(),
-                          ]),
+                          children: _addDivider(
+                              [buildDownloadDir(), buildMaxRunning()]),
                         )),
                         const Text('HTTP'),
                         Card(

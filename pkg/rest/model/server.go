@@ -12,9 +12,9 @@ const (
 type StartConfig struct {
 	Network         string  `json:"network"`
 	Address         string  `json:"address"`
+	RefreshInterval int     `json:"refreshInterval"`
 	Storage         Storage `json:"storage"`
 	StorageDir      string  `json:"storageDir"`
-	RefreshInterval int     `json:"refreshInterval"`
 	ApiToken        string  `json:"apiToken"`
 
 	WebEnable bool
@@ -27,6 +27,9 @@ func (cfg *StartConfig) Init() *StartConfig {
 	}
 	if cfg.Address == "" {
 		cfg.Address = "127.0.0.1:0"
+	}
+	if cfg.RefreshInterval == 0 {
+		cfg.RefreshInterval = 350
 	}
 	if cfg.Storage == "" {
 		cfg.Storage = StorageBolt

@@ -170,8 +170,7 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 	}
 
 	storeCfg := &DownloaderStoreConfig{
-		RefreshInterval: 500,
-		DownloadDir:     "./downloads",
+		DownloadDir: "./downloads",
 		ProtocolConfig: map[string]any{
 			"http": map[string]any{
 				"connections": 4,
@@ -191,16 +190,13 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 		},
 	}
 
-	if err := downloader.PutConfig(storeCfg); err != nil {
+	if err = downloader.PutConfig(storeCfg); err != nil {
 		t.Fatal(err)
 	}
 
-	exits, newStoreCfg, err := downloader.GetConfig()
+	newStoreCfg, err := downloader.GetConfig()
 	if err != nil {
 		t.Fatal(err)
-	}
-	if !exits {
-		t.Errorf("GetConfig() got = %v, want %v", exits, true)
 	}
 
 	if !test.JsonEqual(storeCfg, newStoreCfg) {

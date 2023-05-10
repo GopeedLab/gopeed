@@ -73,15 +73,12 @@ Future<T> _parse<T>(
 ) async {
   try {
     var resp = await fetch();
-    if (fromJsonT != null) {
-      final result = Result<T>.fromJson(resp.data, fromJsonT);
-      if (result.code == 0) {
-        return result.data as T;
-      } else {
-        throw Exception(result);
-      }
+    fromJsonT ??= (json) => null as T;
+    final result = Result<T>.fromJson(resp.data, fromJsonT);
+    if (result.code == 0) {
+      return result.data as T;
     } else {
-      return null as T;
+      throw Exception(result);
     }
   } on DioError catch (e) {
     throw Exception(Result(code: 1000, msg: e.message));

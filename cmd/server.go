@@ -3,7 +3,6 @@ package cmd
 import (
 	_ "embed"
 	"fmt"
-	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"net/http"
@@ -20,18 +19,17 @@ func Start(cfg *model.StartConfig) {
 	if err != nil {
 		panic(err)
 	}
-	exist, _, err := rest.Downloader.GetConfig()
+	downloadCfg, err := rest.Downloader.GetConfig()
 	if err != nil {
 		panic(err)
 	}
-	if !exist {
+	if downloadCfg.FirstLoad {
 		// Set default download dir to user download dir
 		userDir, err := os.UserHomeDir()
 		if err == nil {
 			downloadDir := filepath.Join(userDir, "Downloads")
-			rest.Downloader.PutConfig(&download.DownloaderStoreConfig{
-				DownloadDir: downloadDir,
-			})
+			downloadCfg.DownloadDir = downloadDir
+			rest.Downloader.PutConfig(downloadCfg)
 		}
 
 	}

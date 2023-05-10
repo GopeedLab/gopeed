@@ -1,12 +1,10 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import 'meta.dart';
-import 'options.dart';
-import 'resource.dart';
 
 part 'task.g.dart';
 
-enum Status { ready, running, pause, error, done }
+enum Status { ready, running, pause, wait, error, done }
 
 @JsonSerializable(explicitToJson: true)
 class Task {

@@ -28,6 +28,7 @@ const _$StatusEnumMap = {
   Status.ready: 'ready',
   Status.running: 'running',
   Status.pause: 'pause',
+  Status.wait: 'wait',
   Status.error: 'error',
   Status.done: 'done',
 };
