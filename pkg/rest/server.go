@@ -57,14 +57,15 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	}
 	startCfg.Init()
 
-	downloadCfg := &download.DownloaderConfig{}
+	downloadCfg := &download.DownloaderConfig{
+		RefreshInterval: startCfg.RefreshInterval,
+	}
 	if startCfg.Storage == model.StorageBolt {
 		downloadCfg.Storage = download.NewBoltStorage(startCfg.StorageDir)
 	} else {
 		downloadCfg.Storage = download.NewMemStorage()
 	}
 	downloadCfg.Init()
-	downloadCfg.RefreshInterval = startCfg.RefreshInterval
 	Downloader = download.NewDownloader(downloadCfg)
 	if err := Downloader.Setup(); err != nil {
 		return nil, nil, err

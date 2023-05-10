@@ -123,14 +123,22 @@ class BuildTaskListView extends GetView {
           list.add(IconButton(
             icon: const Icon(Icons.pause),
             onPressed: () async {
-              await pauseTask(task.id);
+              try {
+                await pauseTask(task.id);
+              } catch (e) {
+                showErrorMessage(e);
+              }
             },
           ));
         } else {
           list.add(IconButton(
             icon: const Icon(Icons.play_arrow),
             onPressed: () async {
-              await continueTask(task.id);
+              try {
+                await continueTask(task.id);
+              } catch (e) {
+                showErrorMessage(e);
+              }
             },
           ));
         }
@@ -198,16 +206,14 @@ class BuildTaskListView extends GetView {
               : Icon(FaIcons.allIcons[findIcon(task.meta.res.name)]),
 
           trailing: SizedBox(
-            width: task.status == Status.done ? 80 : 180,
+            width: 180,
             child: Row(
               // crossAxisAlignment: CrossAxisAlignment.baseline,
               // textBaseline: DefaultTextStyle.of(context).style.textBaseline,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                task.status == Status.done
-                    ? const SizedBox.shrink()
-                    : Text("${Util.fmtByte(task.progress.speed)} / s",
-                        style: context.textTheme.titleSmall),
+                Text("${Util.fmtByte(task.progress.speed)} / s",
+                    style: context.textTheme.titleSmall),
                 ...buildActions()
               ],
             ),
