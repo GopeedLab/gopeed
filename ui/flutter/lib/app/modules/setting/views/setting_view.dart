@@ -527,7 +527,7 @@ class SettingView extends GetView<SettingController> {
                     ],
                   ),
                 ],
-              ).paddingOnly(left: 16, right: 16, top: 16, bottom: 64)),
+              ).paddingOnly(left: 16, right: 16, top: 16, bottom: 16)),
         ),
       );
     });

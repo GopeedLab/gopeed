@@ -49,7 +49,7 @@ dependencies:
   shared_preferences: ^2.0.15
   logger: ^1.3.0
   desktop_drop: ^0.3.3
-  package_info_plus: ^3.0.2
+  package_info_plus: ^4.0.0
   fluent_ui: ^4.4.0
   path: any
   badges: ^3.0.3
