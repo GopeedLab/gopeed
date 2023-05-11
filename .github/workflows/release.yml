@@ -16,6 +16,9 @@ on:
       - "go.sum"
       - "Dockerfile"
 
+env:
+  GO_VERSION: 1.19
+
 permissions:
   contents: write
 
@@ -28,9 +31,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: "^1.19"
+          go-version: ${{ env.GO_VERSION }}
       - uses: release-drafter/release-drafter@v5
         id: create_release
         env:
