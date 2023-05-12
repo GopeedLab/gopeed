@@ -38,6 +38,7 @@ class LocaleKeys {
   static const downloadDir = 'downloadDir';
   static const downloadDirValid = 'downloadDirValid';
   static const connections = 'connections';
+  static const maxRunning = 'maxRunning';
   static const items = 'items';
   static const subscribeTracker = 'subscribeTracker';
   static const subscribeFail = 'subscribeFail';
@@ -97,6 +98,7 @@ class Locales {
     'downloadDir': 'Download Directory',
     'downloadDirValid': 'Please select the download directory',
     'connections': 'Connections',
+    'maxRunning': 'Max Running Tasks',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':
@@ -210,6 +212,7 @@ class Locales {
     'downloadDir': 'Папка загрузки',
     'downloadDirValid': 'Пожалуйста, выберите папку для загрузки',
     'connections': 'Соединений',
+    'maxRunning': 'Максимальное количество активных задач',
     'items': '@подсчет элементов',
     'subscribeTracker': 'Подпись трекера',
     'subscribeFail':
@@ -267,6 +270,7 @@ class Locales {
     'downloadDir': '下载目录',
     'downloadDirValid': '请选择下载目录',
     'connections': '连接数',
+    'maxRunning': '最大下载数',
     'items': '@count 条',
     'subscribeTracker': '订阅 Tracker',
     'subscribeFail': '订阅失败，请检查网络或稍后重试',

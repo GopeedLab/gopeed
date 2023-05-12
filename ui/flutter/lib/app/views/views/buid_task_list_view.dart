@@ -1,11 +1,11 @@
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:path/path.dart' as path;
 
 import '../../../api/api.dart';
 import '../../../api/model/task.dart';
+import '../../../util/file_explorer.dart';
 import '../../../util/file_icon.dart';
 import '../../../util/icons.dart';
 import '../../../util/message.dart';
@@ -51,6 +51,18 @@ class BuildTaskListView extends GetView {
 
     bool isRunning() {
       return task.status == Status.running;
+    }
+
+    String buildExplorerUrl(Task task) {
+      if (task.meta.res.rootDir.trim().isEmpty) {
+        return path.join(
+            Util.safeDir(task.meta.opts.path),
+            Util.safeDir(task.meta.res.files[0].path),
+            task.meta.res.files[0].name);
+      } else {
+        return path.join(Util.safeDir(task.meta.opts.path),
+            Util.safeDir(task.meta.res.rootDir));
+      }
     }
 
     Future<void> showDeleteDialog(String id) {
@@ -100,9 +112,7 @@ class BuildTaskListView extends GetView {
           list.add(IconButton(
             icon: const Icon(Icons.folder_open),
             onPressed: () async {
-              final file = File(Util.buildAbsPath(task.meta.opts.path,
-                  task.meta.res.files[0].path, task.meta.res.files[0].name));
-              await launchUrl(file.parent.uri);
+              await FileExplorer.openAndSelectFile(buildExplorerUrl(task));
             },
           ));
         }
@@ -111,14 +121,22 @@ class BuildTaskListView extends GetView {
           list.add(IconButton(
             icon: const Icon(Icons.pause),
             onPressed: () async {
-              await pauseTask(task.id);
+              try {
+                await pauseTask(task.id);
+              } catch (e) {
+                showErrorMessage(e);
+              }
             },
           ));
         } else {
           list.add(IconButton(
             icon: const Icon(Icons.play_arrow),
             onPressed: () async {
-              await continueTask(task.id);
+              try {
+                await continueTask(task.id);
+              } catch (e) {
+                showErrorMessage(e);
+              }
             },
           ));
         }
@@ -186,16 +204,14 @@ class BuildTaskListView extends GetView {
               : Icon(FaIcons.allIcons[findIcon(task.meta.res.name)]),
 
           trailing: SizedBox(
-            width: task.status == Status.done ? 80 : 180,
+            width: 180,
             child: Row(
               // crossAxisAlignment: CrossAxisAlignment.baseline,
               // textBaseline: DefaultTextStyle.of(context).style.textBaseline,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                task.status == Status.done
-                    ? const SizedBox.shrink()
-                    : Text("${Util.fmtByte(task.progress.speed)} / s",
-                        style: context.textTheme.titleSmall),
+                Text("${Util.fmtByte(task.progress.speed)} / s",
+                    style: context.textTheme.titleSmall),
                 ...buildActions()
               ],
             ),

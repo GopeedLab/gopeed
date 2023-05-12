@@ -2,7 +2,6 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../api/model/resolve_result.dart';
-import '../../../../api/model/result.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
 import '../../../../api/api.dart';

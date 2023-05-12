@@ -7,6 +7,12 @@ type Timer struct {
 	used int64
 }
 
+func NewTimer(used int64) *Timer {
+	return &Timer{
+		used: used,
+	}
+}
+
 func (t *Timer) Start() {
 	t.t = time.Now().UnixNano()
 }

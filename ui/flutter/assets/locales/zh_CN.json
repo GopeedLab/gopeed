@@ -24,6 +24,7 @@
   "downloadDir": "下载目录",
   "downloadDirValid": "请选择下载目录",
   "connections": "连接数",
+  "maxRunning": "最大下载数",
   "items": "@count 条",
   "subscribeTracker": "订阅 Tracker",
   "subscribeFail": "订阅失败，请检查网络或稍后重试",

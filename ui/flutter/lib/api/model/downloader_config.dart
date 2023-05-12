@@ -5,6 +5,7 @@ part 'downloader_config.g.dart';
 @JsonSerializable(explicitToJson: true)
 class DownloaderConfig {
   String downloadDir = '';
+  int maxRunning = 0;
   ProtocolConfig protocolConfig = ProtocolConfig();
   ExtraConfig extra = ExtraConfig();
 

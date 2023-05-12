@@ -195,6 +195,6 @@ func writeError(w http.ResponseWriter, msg string) {
 }
 
 func getServerConfig() *download.DownloaderStoreConfig {
-	_, cfg, _ := Downloader.GetConfig()
+	cfg, _ := Downloader.GetConfig()
 	return cfg
 }

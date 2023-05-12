@@ -9,6 +9,7 @@ part of 'downloader_config.dart';
 DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
     DownloaderConfig()
       ..downloadDir = json['downloadDir'] as String
+      ..maxRunning = json['maxRunning'] as int
       ..protocolConfig = ProtocolConfig.fromJson(
           json['protocolConfig'] as Map<String, dynamic>?)
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?);
@@ -16,6 +17,7 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
       'downloadDir': instance.downloadDir,
+      'maxRunning': instance.maxRunning,
       'protocolConfig': instance.protocolConfig.toJson(),
       'extra': instance.extra.toJson(),
     };

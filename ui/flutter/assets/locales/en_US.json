@@ -24,6 +24,7 @@
   "downloadDir": "Download Directory",
   "downloadDirValid": "Please select the download directory",
   "connections": "Connections",
+  "maxRunning": "Max Running Tasks",
   "items": "@count items",
   "subscribeTracker": "Subscribe Tracker",
   "subscribeFail": "Subscribe failed, please check network or try again later",

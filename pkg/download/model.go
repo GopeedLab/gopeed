@@ -70,7 +70,9 @@ func (t *Task) calcSpeed(downloaded int64, usedTime float64) int64 {
 type DownloaderConfig struct {
 	Controller    *controller.Controller
 	FetchBuilders []fetcher.FetcherBuilder
-	Storage       Storage
+
+	RefreshInterval int `json:"refreshInterval"` // RefreshInterval time duration to refresh task progress(ms)
+	Storage         Storage
 	StorageDir    string
 
 	*DownloaderStoreConfig
@@ -86,31 +88,28 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 			new(bt.FetcherBuilder),
 		}
 	}
-	if cfg.Storage == nil {
-		cfg.Storage = NewMemStorage()
-	}
-	if cfg.StorageDir == "" {
-		cfg.StorageDir = "./"
-	}
-
-	if cfg.DownloaderStoreConfig == nil {
-		cfg.DownloaderStoreConfig = &DownloaderStoreConfig{}
-	}
-
 	if cfg.RefreshInterval == 0 {
 		cfg.RefreshInterval = 350
 	}
-	if cfg.MaxParallel == 0 {
-		cfg.MaxParallel = 3
+	if cfg.Storage == nil {
+		cfg.Storage = NewMemStorage()
 	}
 	return cfg
 }
 
 // DownloaderStoreConfig is the config that can restore the downloader.
 type DownloaderStoreConfig struct {
-	RefreshInterval int            `json:"refreshInterval"` // RefreshInterval time duration to refresh task progress(ms)
-	DownloadDir     string         `json:"downloadDir"`     // DownloadDir is the default directory to save the downloaded files
-	MaxParallel     int            `json:"maxParallel"`     // MaxParallel is the max parallel download count
-	ProtocolConfig  map[string]any `json:"protocolConfig"`  // ProtocolConfig is special config for each protocol
-	Extra           map[string]any `json:"extra"`           // Extra is the extra config
+	FirstLoad bool `json:"-"` // fromNoStore is the flag that the config is first time init and not from store
+
+	DownloadDir    string         `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
+	MaxRunning     int            `json:"maxRunning"`     // MaxRunning is the max running download count
+	ProtocolConfig map[string]any `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
+	Extra          map[string]any `json:"extra"`          // Extra is the extra config
+}
+
+func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
+	if cfg.MaxRunning == 0 {
+		cfg.MaxRunning = 3
+	}
+	return cfg
 }
