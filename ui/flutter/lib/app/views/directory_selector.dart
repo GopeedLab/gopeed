@@ -2,8 +2,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../util/mac_secure_util.dart';
-import '../../../util/util.dart';
+import '../../util/mac_secure_util.dart';
+import '../../util/util.dart';
 
 class DirectorySelector extends StatefulWidget {
   final TextEditingController controller;
@@ -35,19 +35,17 @@ class _DirectorySelectorState extends State<DirectorySelector> {
             return v!.trim().isNotEmpty ? null : 'downloadDirValid'.tr;
           },
         )),
-        !Util.isDesktop()
-            ? null
-            : IconButton(
+        Util.isDesktop() || Util.isAndroid()
+            ? IconButton(
                 icon: const Icon(Icons.folder_open),
                 onPressed: () async {
-                  if (GetPlatform.isDesktop) {
-                    var dir = await FilePicker.platform.getDirectoryPath();
-                    if (dir != null) {
-                      widget.controller.text = dir;
-                      MacSecureUtil.saveBookmark(dir);
-                    }
+                  var dir = await FilePicker.platform.getDirectoryPath();
+                  if (dir != null) {
+                    widget.controller.text = dir;
+                    MacSecureUtil.saveBookmark(dir);
                   }
                 })
+            : null
       ].where((e) => e != null).map((e) => e!).toList(),
     );
   }

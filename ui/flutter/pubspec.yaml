@@ -53,6 +53,8 @@ dependencies:
   fluent_ui: ^4.4.0
   path: any
   badges: ^3.0.3
+  app_links: ^3.4.2
+  uri_to_file: ^0.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
