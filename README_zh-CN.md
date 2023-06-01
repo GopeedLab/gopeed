@@ -152,6 +152,18 @@ go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed
 go run cmd/web/main.go
 ```
 
+## 感谢
+
+### 贡献者
+
+<a href="https://github.com/GopeedLab/gopeed/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=GopeedLab/gopeed" />
+</a>
+
+### JetBrains
+
+[![goland](_docs/img/goland.svg)](https://www.jetbrains.com/?from=gopeed)
+
 ## 开源许可
 
 基于 [GPLv3](LICENSE) 协议开源。
