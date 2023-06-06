@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../routes/app_pages.dart';
-import '../../../views/views/responsive_builder.dart';
+import '../../../views/responsive_builder.dart';
 import '../controllers/home_controller.dart';
 
 class HomeView extends GetView<HomeController> {

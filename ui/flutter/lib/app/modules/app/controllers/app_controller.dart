@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uri_to_file/uri_to_file.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
@@ -13,6 +16,7 @@ import '../../../../generated/locales.g.dart';
 import '../../../../util/localeManager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/util.dart';
+import '../../../routes/app_pages.dart';
 
 const _startConfigNetwork = "start.network";
 const _startConfigAddress = "start.address";
@@ -61,6 +65,42 @@ class AppController extends GetxController {
   final startConfig = StartConfig().obs;
   final runningPort = 0.obs;
   final downloaderConfig = DownloaderConfig().obs;
+
+  late AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSubscription;
+
+  @override
+  void onReady() {
+    super.onReady();
+    _initDeepLinks();
+  }
+
+  @override
+  void onClose() {
+    _linkSubscription?.cancel();
+  }
+
+  Future<void> _initDeepLinks() async {
+    _appLinks = AppLinks();
+
+    // Handle link when app is in warm state (front or background)
+    _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
+      await _toCreate(uri);
+    });
+
+    // Check initial link if app was in cold state (terminated)
+    final uri = await _appLinks.getInitialAppLink();
+    if (uri != null) {
+      await _toCreate(uri);
+    }
+  }
+
+  Future<void> _toCreate(Uri uri) async {
+    final path = uri.scheme == "magnet"
+        ? uri.toString()
+        : (await toFile(uri.toString())).path;
+    await Get.rootDelegate.offAndToNamed(Routes.CREATE, arguments: path);
+  }
 
   String runningAddress() {
     if (startConfig.value.network == 'unix') {

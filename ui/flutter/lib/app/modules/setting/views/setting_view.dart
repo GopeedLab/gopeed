@@ -1,21 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import '../../../../util/message.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:badges/badges.dart' as badges;
 
 import '../../../../generated/locales.g.dart';
 import '../../../../util/localeManager.dart';
+import '../../../../util/message.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
-import '../../../views/views/check_list_view.dart';
-import '../../../views/views/directory_selector.dart';
-import '../../../views/views/outlined_button_loading.dart';
+import '../../../views/check_list_view.dart';
+import '../../../views/directory_selector.dart';
+import '../../../views/outlined_button_loading.dart';
 import '../../app/controllers/app_controller.dart';
 import '../controllers/setting_controller.dart';
 
