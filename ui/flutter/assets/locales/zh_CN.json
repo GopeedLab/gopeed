@@ -50,6 +50,8 @@
   "notSet": "未设置",
   "set": "已设置",
   "effectAfterRestart": "此配置项将在重启应用后生效",
+  "startAll": "全部开始",
+  "pauseAll": "全部暂停",
   "deleteTask": "删除任务",
   "deleteTaskTip": "保留已下载的文件",
   "delete": "删除",

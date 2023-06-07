@@ -64,6 +64,8 @@ class LocaleKeys {
   static const notSet = 'notSet';
   static const set = 'set';
   static const effectAfterRestart = 'effectAfterRestart';
+  static const startAll = 'startAll';
+  static const pauseAll = 'pauseAll';
   static const deleteTask = 'deleteTask';
   static const deleteTaskTip = 'deleteTaskTip';
   static const delete = 'delete';
@@ -127,6 +129,8 @@ class Locales {
     'notSet': 'NS',
     'set': 'SET',
     'effectAfterRestart': 'Effect after restart',
+    'startAll': 'Start All',
+    'pauseAll': 'Pause All',
     'deleteTask': 'Delete Task',
     'deleteTaskTip': 'Keep downloaded files',
     'delete': 'Delete',
@@ -184,6 +188,8 @@ class Locales {
     'notSet': 'NS',
     'set': 'SET',
     'effectAfterRestart': 'Effect after restart',
+    'startAll': 'شروع همه',
+    'pauseAll': 'توقف همه',
     'deleteTask': 'پاک کردن کار',
     'deleteTaskTip': 'فایل های دانلود شده را نگه دارد',
     'delete': 'پاک کردن',
@@ -245,6 +251,8 @@ class Locales {
     'notSet': 'Не установлено',
     'set': 'Установлено',
     'effectAfterRestart': 'Эффект после перезагрузки',
+    'startAll': 'Запустить все',
+    'pauseAll': 'Приостановить все',
     'deleteTask': 'Удалить задачу',
     'deleteTaskTip': 'Сохранить загруженные файлы',
     'delete': 'Удалить',
@@ -304,6 +312,8 @@ class Locales {
     'notSet': '未设置',
     'set': '已设置',
     'effectAfterRestart': '此配置项将在重启应用后生效',
+    'startAll': '全部开始',
+    'pauseAll': '全部暂停',
     'deleteTask': '删除任务',
     'deleteTaskTip': '保留已下载的文件',
     'delete': '删除',
