@@ -41,6 +41,10 @@ class Util {
     return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   }
 
+  static isWindows() {
+    return !kIsWeb && Platform.isWindows;
+  }
+
   static isMacos() {
     return !kIsWeb && Platform.isMacOS;
   }

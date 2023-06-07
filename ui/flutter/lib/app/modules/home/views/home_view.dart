@@ -11,6 +11,15 @@ class HomeView extends GetView<HomeController> {
   @override
   Widget build(BuildContext context) {
     return GetRouterOutlet.builder(builder: (context, delegate, currentRoute) {
+      switch (currentRoute?.location) {
+        case Routes.SETTING:
+          controller.currentIndex.value = 1;
+          break;
+        default:
+          controller.currentIndex.value = 0;
+          break;
+      }
+
       return Scaffold(
         // extendBody: true,
         body: Row(

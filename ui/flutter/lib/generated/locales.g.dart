@@ -23,6 +23,8 @@ class LocaleKeys {
   static const downloading = 'downloading';
   static const downloaded = 'downloaded';
   static const setting = 'setting';
+  static const donate = 'donate';
+  static const exit = 'exit';
   static const create = 'create';
   static const downloadLink = 'downloadLink';
   static const downloadLinkValid = 'downloadLinkValid';
@@ -82,6 +84,8 @@ class Locales {
     'downloading': 'downloading',
     'downloaded': 'downloaded',
     'setting': 'Setting',
+    'donate': 'Donate',
+    'exit': 'Exit',
     'create': 'Create Task',
     'downloadLink': 'Download Link',
     'downloadLinkValid': 'Please enter the download link',
@@ -139,6 +143,8 @@ class Locales {
     'selectAll': 'انتخاب همه',
     'task': 'کار',
     'setting': 'تنظیمات',
+    'donate': 'کمک مالی',
+    'exit': 'خروج',
     'create': 'ایجاد کار',
     'downloading': 'دانلود کردن',
     'downloaded': 'دانلود شدن',
@@ -196,6 +202,8 @@ class Locales {
     'downloading': 'Загрузка',
     'downloaded': 'Загружено',
     'setting': 'Настройки',
+    'donate': 'Пожертвовать',
+    'exit': 'Выход',
     'create': 'Создать задачу',
     'downloadLink': 'Ссылка для скачивание',
     'downloadLinkValid': 'Пожалуйста, введите ссылку для скачивания',
@@ -255,6 +263,8 @@ class Locales {
     'downloading': '下载中',
     'downloaded': '已完成',
     'setting': '设置',
+    'donate': '打赏',
+    'exit': '退出',
     'create': '创建任务',
     'downloadLink': '下载链接',
     'downloadLinkValid': '请输入下载链接',
