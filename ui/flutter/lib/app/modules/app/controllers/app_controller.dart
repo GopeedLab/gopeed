@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'package:uri_to_file/uri_to_file.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
@@ -15,6 +17,7 @@ import '../../../../core/common/start_config.dart';
 import '../../../../generated/locales.g.dart';
 import '../../../../util/localeManager.dart';
 import '../../../../util/log_util.dart';
+import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
 
@@ -59,7 +62,7 @@ final allTrackerSubscribeUrlCdns = Map.fromIterable(allTrackerSubscribeUrls,
       return ret;
     });
 
-class AppController extends GetxController {
+class AppController extends GetxController with WindowListener, TrayListener {
   static StartConfig? _defaultStartConfig;
 
   final startConfig = StartConfig().obs;
@@ -72,12 +75,45 @@ class AppController extends GetxController {
   @override
   void onReady() {
     super.onReady();
-    _initDeepLinks();
+    try {
+      _initDeepLinks();
+    } catch (e) {
+      logger.w("initDeepLinks error", e);
+    }
+    try {
+      _initWinodws();
+    } catch (e) {
+      logger.w("_initWinodws error", e);
+    }
+    try {
+      _initTray();
+    } catch (e) {
+      logger.w("initTray error", e);
+    }
   }
 
   @override
   void onClose() {
     _linkSubscription?.cancel();
+    trayManager.removeListener(this);
+  }
+
+  @override
+  void onWindowClose() async {
+    final isPreventClose = await windowManager.isPreventClose();
+    if (isPreventClose) {
+      windowManager.hide();
+    }
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    windowManager.show();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    trayManager.popUpContextMenu();
   }
 
   Future<void> _initDeepLinks() async {
@@ -93,6 +129,56 @@ class AppController extends GetxController {
     if (uri != null) {
       await _toCreate(uri);
     }
+  }
+
+  Future<void> _initWinodws() async {
+    if (!Util.isDesktop()) {
+      return;
+    }
+    windowManager.addListener(this);
+  }
+
+  Future<void> _initTray() async {
+    if (!Util.isDesktop()) {
+      return;
+    }
+    await trayManager.setIcon(
+      Util.isWindows()
+          ? 'assets/tray_icon/icon.ico'
+          : 'assets/tray_icon/icon.png',
+    );
+    final menu = Menu(items: [
+      MenuItem(
+        label: "create".tr,
+        onClick: (menuItem) async => {
+          await windowManager.show(),
+          await Get.rootDelegate.offAndToNamed(Routes.CREATE),
+        },
+      ),
+      MenuItem(
+        label: 'setting'.tr,
+        onClick: (menuItem) async => {
+          await windowManager.show(),
+          await Get.rootDelegate.offAndToNamed(Routes.SETTING),
+        },
+      ),
+      MenuItem.separator(),
+      MenuItem(
+        label: 'donate'.tr,
+        onClick: (menuItem) => {windowManager.destroy()},
+      ),
+      MenuItem(
+        label: '${"version".tr}（${packageInfo.version}）',
+        onClick: (menuItem) => {windowManager.destroy()},
+      ),
+      MenuItem.separator(),
+      MenuItem(
+        label: 'exit'.tr,
+        onClick: (menuItem) => {windowManager.destroy()},
+      ),
+    ]);
+    await trayManager.setContextMenu(menu);
+    trayManager.addListener(this);
   }
 
   Future<void> _toCreate(Uri uri) async {

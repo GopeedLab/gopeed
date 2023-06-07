@@ -9,6 +9,8 @@
   "downloading": "downloading",
   "downloaded": "downloaded",
   "setting": "Setting",
+  "donate": "Donate",
+  "exit": "Exit",
   "create": "Create Task",
   "downloadLink": "Download Link",
   "downloadLinkValid": "Please enter the download link",
