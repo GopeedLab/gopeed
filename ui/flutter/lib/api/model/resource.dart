@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import 'request.dart';
+
 part 'resource.g.dart';
 
 @JsonSerializable(explicitToJson: true)
@@ -25,18 +27,18 @@ class Resource {
   Map<String, dynamic> toJson() => _$ResourceToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class FileInfo {
-  // String rootDir;
   String path;
   String name;
   int size;
+  Request? request;
 
   FileInfo({
-    // required this.rootDir,
     required this.path,
     required this.name,
     required this.size,
+    this.request,
   });
 
   factory FileInfo.fromJson(Map<String, dynamic> json) =>

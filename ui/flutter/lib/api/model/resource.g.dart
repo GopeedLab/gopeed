@@ -30,10 +30,24 @@ FileInfo _$FileInfoFromJson(Map<String, dynamic> json) => FileInfo(
       path: json['path'] as String,
       name: json['name'] as String,
       size: json['size'] as int,
+      request: json['request'] == null
+          ? null
+          : Request.fromJson(json['request'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$FileInfoToJson(FileInfo instance) => <String, dynamic>{
-      'path': instance.path,
-      'name': instance.name,
-      'size': instance.size,
-    };
+Map<String, dynamic> _$FileInfoToJson(FileInfo instance) {
+  final val = <String, dynamic>{
+    'path': instance.path,
+    'name': instance.name,
+    'size': instance.size,
+  };
+
+  void writeNotNull(String key, dynamic value) {
+    if (value != null) {
+      val[key] = value;
+    }
+  }
+
+  writeNotNull('request', instance.request?.toJson());
+  return val;
+}

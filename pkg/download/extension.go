@@ -2,7 +2,6 @@ package download
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -21,7 +20,7 @@ func (d *Downloader) InstallExtensionByGit(url string) error {
 		return err
 	}
 
-	tempDir := filepath.Join(d.cfg.StorageDir, "extensions_temp", ext.Dir)
+	tempDir := filepath.Join(d.cfg.StorageDir, ".extensions", ext.Dir)
 	if err := util.CopyDir(tempDir, filepath.Join(d.cfg.StorageDir, "extensions", ext.Manifest.Name), "node_modules"); err != nil {
 		return err
 	}
@@ -102,7 +101,15 @@ func (d *Downloader) triggerBeforeResolve(req *base.Request) (res *base.Resource
 							// TODO: log
 							return
 						}
-						fmt.Println(ctx)
+						// calculate resource total size
+						if ctx.Res != nil && len(ctx.Res.Files) > 0 {
+							var size int64 = 0
+							for _, f := range ctx.Res.Files {
+								size += f.Size
+							}
+							ctx.Res.Size = size
+						}
+						res = ctx.Res
 					}
 				}()
 			}

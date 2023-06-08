@@ -84,6 +84,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	var r = mux.NewRouter()
 	r.Methods(http.MethodPost).Path("/api/v1/resolve").HandlerFunc(Resolve)
 	r.Methods(http.MethodPost).Path("/api/v1/tasks").HandlerFunc(CreateTask)
+	r.Methods(http.MethodPost).Path("/api/v1/tasks/batch").HandlerFunc(CreateTaskBatch)
 	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/pause").HandlerFunc(PauseTask)
 	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/continue").HandlerFunc(ContinueTask)
 	r.Methods(http.MethodDelete).Path("/api/v1/tasks/{id}").HandlerFunc(DeleteTask)

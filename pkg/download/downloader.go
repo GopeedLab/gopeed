@@ -23,8 +23,8 @@ const (
 	bucketSave = "save"
 	// downloader config bucket
 	bucketConfig = "config"
-	// downloader engine bucket
-	bucketExtension = "engine"
+	// downloader extension bucket
+	bucketExtension = "extension"
 )
 
 type Listener func(event *Event)
@@ -46,8 +46,8 @@ type Downloader struct {
 	tasks         []*Task
 	listener      Listener
 
-	lock            *sync.Mutex
-	closed          atomic.Bool
+	lock   *sync.Mutex
+	closed atomic.Bool
 
 	extensions []*Extension
 }
@@ -64,8 +64,8 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		fetchBuilders: make(map[string]fetcher.FetcherBuilder),
 		fetcherMap:    make(map[string]fetcher.Fetcher),
 
-		storage:         cfg.Storage,
-		lock:            &sync.Mutex{},
+		storage: cfg.Storage,
+		lock:    &sync.Mutex{},
 
 		extensions: make([]*Extension, 0),
 	}
@@ -188,24 +188,27 @@ func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
 }
 
 func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
+	rrId, err := gonanoid.New()
+	if err != nil {
+		return
+	}
+
+	res := d.triggerBeforeResolve(req)
+	if res != nil {
+		rr = &ResolveResult{
+			ID:  rrId,
+			Res: res,
+		}
+		return
+	}
+
 	fb, err := d.parseFb(req.URL)
 	if err != nil {
 		return
 	}
 	fetcher := fb.Build()
 	d.setupFetcher(fetcher)
-
-	res := d.triggerBeforeResolve(req)
-	if res != nil {
-		fetcher.Meta().Res = res
-	} else {
-		err = fetcher.Resolve(req)
-		if err != nil {
-			return
-		}
-	}
-
-	rrId, err := gonanoid.New()
+	err = fetcher.Resolve(req)
 	if err != nil {
 		return
 	}
@@ -223,6 +226,17 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 		return
 	}
 	return d.Create(rr.ID, opts)
+}
+
+func (d *Downloader) CreateDirectBatch(reqs []*base.Request, opts *base.Options) (taskIds []string, err error) {
+	for _, req := range reqs {
+		taskId, err := d.CreateDirect(req, opts)
+		if err != nil {
+			return nil, err
+		}
+		taskIds = append(taskIds, taskId)
+	}
+	return
 }
 
 func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err error) {

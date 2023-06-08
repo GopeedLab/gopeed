@@ -46,6 +46,8 @@ type FileInfo struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 	Size int64  `json:"size"`
+
+	Req *Request `json:"req"`
 }
 
 // Options for download
