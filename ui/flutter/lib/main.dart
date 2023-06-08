@@ -28,13 +28,9 @@ Future<void> init() async {
     const windowOptions = WindowOptions(
       size: Size(1024, 768),
       center: true,
-      backgroundColor: Colors.transparent,
       skipTaskbar: false,
     );
     windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.setBrightness(
-        Brightness.light,
-      );
       await windowManager.show();
       await windowManager.focus();
       await windowManager.setPreventClose(true);

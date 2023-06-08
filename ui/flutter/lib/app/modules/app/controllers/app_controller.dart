@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:uri_to_file/uri_to_file.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart';
@@ -81,9 +82,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
       logger.w("initDeepLinks error", e);
     }
     try {
-      _initWinodws();
+      _initWindows();
     } catch (e) {
-      logger.w("_initWinodws error", e);
+      logger.w("initWindows error", e);
     }
     try {
       _initTray();
@@ -131,7 +132,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
   }
 
-  Future<void> _initWinodws() async {
+  Future<void> _initWindows() async {
     if (!Util.isDesktop()) {
       return;
     }
@@ -142,11 +143,14 @@ class AppController extends GetxController with WindowListener, TrayListener {
     if (!Util.isDesktop()) {
       return;
     }
-    await trayManager.setIcon(
-      Util.isWindows()
-          ? 'assets/tray_icon/icon.ico'
-          : 'assets/tray_icon/icon.png',
-    );
+    if (Util.isWindows()) {
+      await trayManager.setIcon('assets/tray_icon/icon.ico');
+    } else if (Util.isMacos()) {
+      await trayManager.setIcon('assets/tray_icon/icon_mac.png',
+          isTemplate: true);
+    } else {
+      await trayManager.setIcon('assets/tray_icon/icon.png');
+    }
     final menu = Menu(items: [
       MenuItem(
         label: "create".tr,
@@ -165,11 +169,15 @@ class AppController extends GetxController with WindowListener, TrayListener {
       MenuItem.separator(),
       MenuItem(
         label: 'donate'.tr,
-        onClick: (menuItem) => {windowManager.destroy()},
+        onClick: (menuItem) => {
+          launchUrl(
+              Uri.parse(
+                  "https://github.com/GopeedLab/gopeed/blob/main/.donate/index.md#donate"),
+              mode: LaunchMode.externalApplication)
+        },
       ),
       MenuItem(
         label: '${"version".tr}（${packageInfo.version}）',
-        onClick: (menuItem) => {windowManager.destroy()},
       ),
       MenuItem.separator(),
       MenuItem(
