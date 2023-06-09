@@ -115,9 +115,10 @@ class CreateView extends GetView<CreateController> {
   }
 
   Future<void> _doResolve() async {
-    if (_confirmController.currentState == ButtonState.loading) {
+    if (controller.isResolving.value) {
       return;
     }
+    controller.isResolving.value = true;
     try {
       _confirmController.start();
       if (_resolveFormKey.currentState!.validate()) {
@@ -130,6 +131,7 @@ class CreateView extends GetView<CreateController> {
       showErrorMessage(e);
     } finally {
       _confirmController.reset();
+      controller.isResolving.value = false;
     }
   }
 

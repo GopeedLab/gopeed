@@ -111,6 +111,14 @@ Future<void> continueTask(String id) async {
   return _parse(() => _client.dio.put("/api/v1/tasks/$id/continue"), null);
 }
 
+Future<void> pauseAllTasks() async {
+  return _parse(() => _client.dio.put("/api/v1/tasks/pause"), null);
+}
+
+Future<void> continueAllTasks() async {
+  return _parse(() => _client.dio.put("/api/v1/tasks/continue"), null);
+}
+
 Future<void> deleteTask(String id, bool force) async {
   return _parse(
       () => _client.dio.delete("/api/v1/tasks/$id?force=$force"), null);

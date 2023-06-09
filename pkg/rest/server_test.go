@@ -144,6 +144,39 @@ func TestPauseAndContinueTask(t *testing.T) {
 	})
 }
 
+func TestPauseAllAndContinueALLTasks(t *testing.T) {
+	doTest(func() {
+		cfg, err := Downloader.GetConfig()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		createAndPause := func() {
+			taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+			httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
+		}
+
+		total := cfg.MaxRunning + 2
+		for i := 0; i < total; i++ {
+			createAndPause()
+		}
+
+		// continue all
+		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/continue", nil)
+		tasks := httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s", base.DownloadStatusRunning), nil)
+		if len(tasks) != cfg.MaxRunning {
+			t.Errorf("ContinueAllTasks() got = %v, want %v", len(tasks), cfg.MaxRunning)
+		}
+		// pause all
+		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/pause", nil)
+		tasks = httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s,%s", base.DownloadStatusReady, base.DownloadStatusPause), nil)
+		if len(tasks) != total {
+			t.Errorf("PauseAllTasks() got = %v, want %v", len(tasks), total)
+		}
+
+	})
+}
+
 func TestDeleteTask(t *testing.T) {
 	doTest(func() {
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
@@ -275,6 +308,16 @@ func doTest(handler func()) {
 			Stop()
 		}()
 		defer Downloader.Clear()
+		defer func() {
+			tasks := Downloader.GetTasks()
+			taskIds := make([]string, len(tasks))
+			for i, task := range tasks {
+				taskIds[i] = task.ID
+			}
+			for _, id := range taskIds {
+				Downloader.Delete(id, true)
+			}
+		}()
 		taskReq.URL = "http://" + fileListener.Addr().String() + "/" + test.BuildName
 		handler()
 	}

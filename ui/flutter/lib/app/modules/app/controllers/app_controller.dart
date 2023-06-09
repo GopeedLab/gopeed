@@ -118,6 +118,11 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _initDeepLinks() async {
+    // currently only support android
+    if (!Util.isAndroid()) {
+      return;
+    }
+
     _appLinks = AppLinks();
 
     // Handle link when app is in warm state (front or background)
@@ -158,6 +163,15 @@ class AppController extends GetxController with WindowListener, TrayListener {
           await windowManager.show(),
           await Get.rootDelegate.offAndToNamed(Routes.CREATE),
         },
+      ),
+      MenuItem.separator(),
+      MenuItem(
+        label: "startAll".tr,
+        onClick: (menuItem) async => {continueAllTasks()},
+      ),
+      MenuItem(
+        label: "pauseAll".tr,
+        onClick: (menuItem) async => {pauseAllTasks()},
       ),
       MenuItem(
         label: 'setting'.tr,

@@ -50,6 +50,8 @@
   "notSet": "NS",
   "set": "SET",
   "effectAfterRestart": "Effect after restart",
+  "startAll": "Start All",
+  "pauseAll": "Pause All",
   "deleteTask": "Delete Task",
   "deleteTaskTip": "Keep downloaded files",
   "delete": "Delete",
