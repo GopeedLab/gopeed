@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
 
-import '../../../api/api.dart';
-import '../../../api/model/task.dart';
-import '../../../util/file_explorer.dart';
-import '../../../util/file_icon.dart';
-import '../../../util/icons.dart';
-import '../../../util/message.dart';
-import '../../../util/util.dart';
-import '../../routes/app_pages.dart';
+import '../../api/api.dart';
+import '../../api/model/task.dart';
+import '../../util/file_explorer.dart';
+import '../../util/file_icon.dart';
+import '../../util/icons.dart';
+import '../../util/message.dart';
+import '../../util/util.dart';
+import '../routes/app_pages.dart';
 
 class BuildTaskListView extends GetView {
   final List<Task> tasks;

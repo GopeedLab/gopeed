@@ -90,6 +90,22 @@ func ContinueTask(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewNilResult())
 }
 
+func PauseAllTask(w http.ResponseWriter, r *http.Request) {
+	if err := Downloader.PauseAll(); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
+func ContinueAllTask(w http.ResponseWriter, r *http.Request) {
+	if err := Downloader.ContinueAll(); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
 func DeleteTask(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["id"]

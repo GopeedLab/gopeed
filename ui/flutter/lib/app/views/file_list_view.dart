@@ -3,14 +3,14 @@ import 'dart:ui' as ui;
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../api/model/resource.dart';
+import '../../api/model/resource.dart';
 import 'package:path/path.dart' as path;
 
-import '../../../util/file_icon.dart';
-import '../../../util/icons.dart';
-import '../../../util/util.dart';
-import '../../modules/app/controllers/app_controller.dart';
-import '../../modules/create/controllers/create_controller.dart';
+import '../../util/file_icon.dart';
+import '../../util/icons.dart';
+import '../../util/util.dart';
+import '../modules/app/controllers/app_controller.dart';
+import '../modules/create/controllers/create_controller.dart';
 
 class FileListView extends GetView {
   final List<FileInfo> files;

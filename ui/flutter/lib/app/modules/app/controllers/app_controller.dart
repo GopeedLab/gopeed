@@ -1,10 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tray_manager/tray_manager.dart';
+import 'package:uri_to_file/uri_to_file.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
@@ -12,7 +18,9 @@ import '../../../../core/common/start_config.dart';
 import '../../../../generated/locales.g.dart';
 import '../../../../util/localeManager.dart';
 import '../../../../util/log_util.dart';
+import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
+import '../../../routes/app_pages.dart';
 
 const _startConfigNetwork = "start.network";
 const _startConfigAddress = "start.address";
@@ -55,12 +63,152 @@ final allTrackerSubscribeUrlCdns = Map.fromIterable(allTrackerSubscribeUrls,
       return ret;
     });
 
-class AppController extends GetxController {
+class AppController extends GetxController with WindowListener, TrayListener {
   static StartConfig? _defaultStartConfig;
 
   final startConfig = StartConfig().obs;
   final runningPort = 0.obs;
   final downloaderConfig = DownloaderConfig().obs;
+
+  late AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSubscription;
+
+  @override
+  void onReady() {
+    super.onReady();
+    try {
+      _initDeepLinks();
+    } catch (e) {
+      logger.w("initDeepLinks error", e);
+    }
+    try {
+      _initWindows();
+    } catch (e) {
+      logger.w("initWindows error", e);
+    }
+    try {
+      _initTray();
+    } catch (e) {
+      logger.w("initTray error", e);
+    }
+  }
+
+  @override
+  void onClose() {
+    _linkSubscription?.cancel();
+    trayManager.removeListener(this);
+  }
+
+  @override
+  void onWindowClose() async {
+    final isPreventClose = await windowManager.isPreventClose();
+    if (isPreventClose) {
+      windowManager.hide();
+    }
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    windowManager.show();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    trayManager.popUpContextMenu();
+  }
+
+  Future<void> _initDeepLinks() async {
+    // currently only support android
+    if (!Util.isAndroid()) {
+      return;
+    }
+
+    _appLinks = AppLinks();
+
+    // Handle link when app is in warm state (front or background)
+    _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
+      await _toCreate(uri);
+    });
+
+    // Check initial link if app was in cold state (terminated)
+    final uri = await _appLinks.getInitialAppLink();
+    if (uri != null) {
+      await _toCreate(uri);
+    }
+  }
+
+  Future<void> _initWindows() async {
+    if (!Util.isDesktop()) {
+      return;
+    }
+    windowManager.addListener(this);
+  }
+
+  Future<void> _initTray() async {
+    if (!Util.isDesktop()) {
+      return;
+    }
+    if (Util.isWindows()) {
+      await trayManager.setIcon('assets/tray_icon/icon.ico');
+    } else if (Util.isMacos()) {
+      await trayManager.setIcon('assets/tray_icon/icon_mac.png',
+          isTemplate: true);
+    } else {
+      await trayManager.setIcon('assets/tray_icon/icon.png');
+    }
+    final menu = Menu(items: [
+      MenuItem(
+        label: "create".tr,
+        onClick: (menuItem) async => {
+          await windowManager.show(),
+          await Get.rootDelegate.offAndToNamed(Routes.CREATE),
+        },
+      ),
+      MenuItem.separator(),
+      MenuItem(
+        label: "startAll".tr,
+        onClick: (menuItem) async => {continueAllTasks()},
+      ),
+      MenuItem(
+        label: "pauseAll".tr,
+        onClick: (menuItem) async => {pauseAllTasks()},
+      ),
+      MenuItem(
+        label: 'setting'.tr,
+        onClick: (menuItem) async => {
+          await windowManager.show(),
+          await Get.rootDelegate.offAndToNamed(Routes.SETTING),
+        },
+      ),
+      MenuItem.separator(),
+      MenuItem(
+        label: 'donate'.tr,
+        onClick: (menuItem) => {
+          launchUrl(
+              Uri.parse(
+                  "https://github.com/GopeedLab/gopeed/blob/main/.donate/index.md#donate"),
+              mode: LaunchMode.externalApplication)
+        },
+      ),
+      MenuItem(
+        label: '${"version".tr}（${packageInfo.version}）',
+      ),
+      MenuItem.separator(),
+      MenuItem(
+        label: 'exit'.tr,
+        onClick: (menuItem) => {windowManager.destroy()},
+      ),
+    ]);
+    await trayManager.setContextMenu(menu);
+    trayManager.addListener(this);
+  }
+
+  Future<void> _toCreate(Uri uri) async {
+    final path = uri.scheme == "magnet"
+        ? uri.toString()
+        : (await toFile(uri.toString())).path;
+    await Get.rootDelegate.offAndToNamed(Routes.CREATE, arguments: path);
+  }
 
   String runningAddress() {
     if (startConfig.value.network == 'unix') {

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'api/api.dart' as api;
 import 'app/modules/app/controllers/app_controller.dart';
@@ -11,6 +12,7 @@ import 'util/localeManager.dart';
 import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
+import 'util/util.dart';
 
 void main() async {
   await init();
@@ -21,6 +23,19 @@ void main() async {
 
 Future<void> init() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Util.isDesktop()) {
+    await windowManager.ensureInitialized();
+    const windowOptions = WindowOptions(
+      size: Size(1024, 768),
+      center: true,
+      skipTaskbar: false,
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+      await windowManager.setPreventClose(true);
+    });
+  }
 
   final controller = Get.put(AppController());
   try {

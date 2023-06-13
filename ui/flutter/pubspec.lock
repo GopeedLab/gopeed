@@ -17,6 +17,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "5.0.0"
+  app_links:
+    dependency: "direct main"
+    description:
+      name: app_links
+      sha256: d572dcdff49c4cfcfa6f315e2683e518ec6eb54e084d01e51d9631a4dcc1b5e8
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.4.2"
   archive:
     dependency: transitive
     description:
@@ -518,6 +526,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.4.0"
+  menu_base:
+    dependency: transitive
+    description:
+      name: menu_base
+      sha256: "820368014a171bd1241030278e6c2617354f492f5c703d7b7d4570a6b8b84405"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.1.1"
   meta:
     dependency: transitive
     description:
@@ -710,6 +726,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.27.5"
+  screen_retriever:
+    dependency: transitive
+    description:
+      name: screen_retriever
+      sha256: "4931f226ca158123ccd765325e9fbf360bfed0af9b460a10f960f9bb13d58323"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.1.6"
   scroll_pos:
     dependency: transitive
     description:
@@ -798,6 +822,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.2"
+  shortid:
+    dependency: transitive
+    description:
+      name: shortid
+      sha256: d0b40e3dbb50497dad107e19c54ca7de0d1a274eb9b4404991e443dadb9ebedb
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.1.2"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -891,6 +923,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.0"
+  tray_manager:
+    dependency: "direct main"
+    description:
+      name: tray_manager
+      sha256: b1975a05e0c6999e983cf9a58a6a098318c896040ccebac5398a3cc9e43b9c69
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.2.0"
   typed_data:
     dependency: transitive
     description:
@@ -899,6 +939,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.3.1"
+  uri_to_file:
+    dependency: "direct main"
+    description:
+      name: uri_to_file
+      sha256: "84afd633b1492fc465c768141e1a29edd519061bf99935b6b4d0d5de8ec7c108"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.2.0"
   url_launcher:
     dependency: "direct main"
     description:
@@ -995,6 +1043,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "4.1.4"
+  window_manager:
+    dependency: "direct main"
+    description:
+      name: window_manager
+      sha256: "95096fede562cbb65f30d38b62d819a458f59ba9fe4a317f6cee669710f6676b"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.3.4"
   xdg_directories:
     dependency: transitive
     description:

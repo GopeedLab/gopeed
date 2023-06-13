@@ -7,6 +7,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"math"
 	"os"
 	"path"
 	"sort"
@@ -358,6 +359,41 @@ func (d *Downloader) Continue(id string) (err error) {
 		return
 	}
 	return d.doContinue(task)
+}
+
+func (d *Downloader) PauseAll() (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	for _, task := range d.tasks {
+		if task.Status == base.DownloadStatusRunning {
+			if err = d.doPause(task, base.DownloadStatusPause); err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+func (d *Downloader) ContinueAll() (err error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	runningCount := 0
+	continueTasks := make([]*Task, 0)
+	for _, task := range d.tasks {
+		if task.Status == base.DownloadStatusRunning {
+			runningCount++
+		} else if task.Status != base.DownloadStatusDone {
+			continueTasks = append(continueTasks, task)
+		}
+	}
+	// calculate how many tasks can be continued, can't exceed maxRunning
+	continueCount := int(math.Min(float64(d.cfg.MaxRunning-runningCount), float64(len(continueTasks))))
+	for i := 0; i < continueCount; i++ {
+		if err = d.doContinue(continueTasks[i]); err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (d *Downloader) Delete(id string, force bool) (err error) {

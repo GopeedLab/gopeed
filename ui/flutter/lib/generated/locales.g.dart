@@ -23,6 +23,8 @@ class LocaleKeys {
   static const downloading = 'downloading';
   static const downloaded = 'downloaded';
   static const setting = 'setting';
+  static const donate = 'donate';
+  static const exit = 'exit';
   static const create = 'create';
   static const downloadLink = 'downloadLink';
   static const downloadLinkValid = 'downloadLinkValid';
@@ -62,6 +64,8 @@ class LocaleKeys {
   static const notSet = 'notSet';
   static const set = 'set';
   static const effectAfterRestart = 'effectAfterRestart';
+  static const startAll = 'startAll';
+  static const pauseAll = 'pauseAll';
   static const deleteTask = 'deleteTask';
   static const deleteTaskTip = 'deleteTaskTip';
   static const delete = 'delete';
@@ -82,6 +86,8 @@ class Locales {
     'downloading': 'downloading',
     'downloaded': 'downloaded',
     'setting': 'Setting',
+    'donate': 'Donate',
+    'exit': 'Exit',
     'create': 'Create Task',
     'downloadLink': 'Download Link',
     'downloadLinkValid': 'Please enter the download link',
@@ -123,6 +129,8 @@ class Locales {
     'notSet': 'NS',
     'set': 'SET',
     'effectAfterRestart': 'Effect after restart',
+    'startAll': 'Start All',
+    'pauseAll': 'Pause All',
     'deleteTask': 'Delete Task',
     'deleteTaskTip': 'Keep downloaded files',
     'delete': 'Delete',
@@ -139,6 +147,8 @@ class Locales {
     'selectAll': 'انتخاب همه',
     'task': 'کار',
     'setting': 'تنظیمات',
+    'donate': 'کمک مالی',
+    'exit': 'خروج',
     'create': 'ایجاد کار',
     'downloading': 'دانلود کردن',
     'downloaded': 'دانلود شدن',
@@ -178,6 +188,8 @@ class Locales {
     'notSet': 'NS',
     'set': 'SET',
     'effectAfterRestart': 'Effect after restart',
+    'startAll': 'شروع همه',
+    'pauseAll': 'توقف همه',
     'deleteTask': 'پاک کردن کار',
     'deleteTaskTip': 'فایل های دانلود شده را نگه دارد',
     'delete': 'پاک کردن',
@@ -196,6 +208,8 @@ class Locales {
     'downloading': 'Загрузка',
     'downloaded': 'Загружено',
     'setting': 'Настройки',
+    'donate': 'Пожертвовать',
+    'exit': 'Выход',
     'create': 'Создать задачу',
     'downloadLink': 'Ссылка для скачивание',
     'downloadLinkValid': 'Пожалуйста, введите ссылку для скачивания',
@@ -237,6 +251,8 @@ class Locales {
     'notSet': 'Не установлено',
     'set': 'Установлено',
     'effectAfterRestart': 'Эффект после перезагрузки',
+    'startAll': 'Запустить все',
+    'pauseAll': 'Приостановить все',
     'deleteTask': 'Удалить задачу',
     'deleteTaskTip': 'Сохранить загруженные файлы',
     'delete': 'Удалить',
@@ -255,6 +271,8 @@ class Locales {
     'downloading': '下载中',
     'downloaded': '已完成',
     'setting': '设置',
+    'donate': '打赏',
+    'exit': '退出',
     'create': '创建任务',
     'downloadLink': '下载链接',
     'downloadLinkValid': '请输入下载链接',
@@ -294,6 +312,8 @@ class Locales {
     'notSet': '未设置',
     'set': '已设置',
     'effectAfterRestart': '此配置项将在重启应用后生效',
+    'startAll': '全部开始',
+    'pauseAll': '全部暂停',
     'deleteTask': '删除任务',
     'deleteTaskTip': '保留已下载的文件',
     'delete': '删除',

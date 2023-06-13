@@ -1,4 +1,5 @@
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../api/model/resolve_result.dart';
@@ -11,8 +12,8 @@ import '../../../../api/model/request.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
-import '../../../views/views/directory_selector.dart';
-import '../../../views/views/file_list_view.dart';
+import '../../../views/directory_selector.dart';
+import '../../../views/file_list_view.dart';
 import '../../app/controllers/app_controller.dart';
 import '../controllers/create_controller.dart';
 
@@ -26,6 +27,14 @@ class CreateView extends GetView<CreateController> {
 
   @override
   Widget build(BuildContext context) {
+    final String? filePath = Get.rootDelegate.arguments();
+    if (_urlController.text.isEmpty && filePath != null) {
+      _urlController.text = filePath;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _doResolve();
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -45,21 +54,42 @@ class CreateView extends GetView<CreateController> {
             autovalidateMode: AutovalidateMode.always,
             child: Column(
               children: [
-                TextFormField(
-                    autofocus: true,
-                    controller: _urlController,
-                    minLines: 1,
-                    maxLines: 30,
-                    decoration: InputDecoration(
-                        hintText: _hitText(),
-                        hintStyle: const TextStyle(fontSize: 12),
-                        labelText: 'downloadLink'.tr,
-                        icon: const Icon(Icons.link)),
-                    validator: (v) {
-                      return v!.trim().isNotEmpty
-                          ? null
-                          : 'downloadLinkValid'.tr;
-                    }),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                          autofocus: true,
+                          controller: _urlController,
+                          minLines: 1,
+                          maxLines: 30,
+                          decoration: InputDecoration(
+                            hintText: _hitText(),
+                            hintStyle: const TextStyle(fontSize: 12),
+                            labelText: 'downloadLink'.tr,
+                            icon: const Icon(Icons.link),
+                            suffixIcon: IconButton(
+                              onPressed: _urlController.clear,
+                              icon: const Icon(Icons.clear),
+                            ),
+                          ),
+                          validator: (v) {
+                            return v!.trim().isNotEmpty
+                                ? null
+                                : 'downloadLinkValid'.tr;
+                          }),
+                    ),
+                    IconButton(
+                        icon: const Icon(Icons.folder_open),
+                        onPressed: () async {
+                          var pr = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ["torrent"]);
+                          if (pr != null) {
+                            _urlController.text = pr.files[0].path ?? "";
+                          }
+                        }),
+                  ],
+                ),
                 Center(
                   child: Padding(
                       padding: const EdgeInsets.all(15.0),
@@ -70,21 +100,7 @@ class CreateView extends GetView<CreateController> {
                         ),
                         child: RoundedLoadingButton(
                           color: Get.theme.colorScheme.secondary,
-                          onPressed: () async {
-                            try {
-                              _confirmController.start();
-                              if (_resolveFormKey.currentState!.validate()) {
-                                final rr = await resolve(Request(
-                                  url: _urlController.text,
-                                ));
-                                await _showResolveDialog(rr);
-                              }
-                            } catch (e) {
-                              showErrorMessage(e);
-                            } finally {
-                              _confirmController.reset();
-                            }
-                          },
+                          onPressed: _doResolve,
                           controller: _confirmController,
                           child: Text('confirm'.tr),
                         ),
@@ -96,6 +112,27 @@ class CreateView extends GetView<CreateController> {
         ),
       ),
     );
+  }
+
+  Future<void> _doResolve() async {
+    if (controller.isResolving.value) {
+      return;
+    }
+    controller.isResolving.value = true;
+    try {
+      _confirmController.start();
+      if (_resolveFormKey.currentState!.validate()) {
+        final rr = await resolve(Request(
+          url: _urlController.text,
+        ));
+        await _showResolveDialog(rr);
+      }
+    } catch (e) {
+      showErrorMessage(e);
+    } finally {
+      _confirmController.reset();
+      controller.isResolving.value = false;
+    }
   }
 
   String _hitText() {
