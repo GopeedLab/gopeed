@@ -13,14 +13,7 @@ import (
 const progressWidth = 20
 
 func main() {
-	//args := parse()
-	var dir = "./"
-	var connections = 8
-	args := &args{
-		url:         "https://sel-kor-ping.vultr.com/vultr.com.100MB.bin",
-		dir:         &dir,
-		connections: &connections,
-	}
+	args := parse()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
