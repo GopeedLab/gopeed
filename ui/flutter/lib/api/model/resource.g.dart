@@ -10,11 +10,11 @@ Resource _$ResourceFromJson(Map<String, dynamic> json) => Resource(
       name: json['name'] as String,
       size: json['size'] as int,
       range: json['range'] as bool,
-      rootDir: json['rootDir'] as String,
+      rootDir: json['rootDir'] as String? ?? "",
       files: (json['files'] as List<dynamic>)
           .map((e) => FileInfo.fromJson(e as Map<String, dynamic>))
           .toList(),
-      hash: json['hash'] as String,
+      hash: json['hash'] as String? ?? "",
     );
 
 Map<String, dynamic> _$ResourceToJson(Resource instance) => <String, dynamic>{
@@ -30,9 +30,9 @@ FileInfo _$FileInfoFromJson(Map<String, dynamic> json) => FileInfo(
       path: json['path'] as String,
       name: json['name'] as String,
       size: json['size'] as int,
-      request: json['request'] == null
+      req: json['req'] == null
           ? null
-          : Request.fromJson(json['request'] as Map<String, dynamic>),
+          : ResolvedRequest.fromJson(json['req'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$FileInfoToJson(FileInfo instance) {
@@ -48,6 +48,6 @@ Map<String, dynamic> _$FileInfoToJson(FileInfo instance) {
     }
   }
 
-  writeNotNull('request', instance.request?.toJson());
+  writeNotNull('req', instance.req?.toJson());
   return val;
 }

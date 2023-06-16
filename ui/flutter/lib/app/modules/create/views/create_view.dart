@@ -2,6 +2,9 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/api/model/create_task_batch.dart';
+import 'package:gopeed/api/model/resolved_request.dart';
+import 'package:gopeed/api/model/resource.dart';
 import '../../../../api/model/resolve_result.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
@@ -216,13 +219,41 @@ class CreateView extends GetView<CreateController> {
                             //     return;
                             //   }
                             // }
-                            await createTask(CreateTask(
-                                rid: rr.id,
-                                opts: Options(
-                                    name: '',
-                                    path: pathController.text,
-                                    selectFiles: controller.selectedIndexes
-                                        .cast<int>())));
+
+                            final reqFiles = rr.res.files
+                                .where((e) => e.req != null)
+                                .toList();
+                            if (reqFiles.isNotEmpty) {
+                              // if the resource is a multi-task resource, call the batch download api
+                              final selectReqs =
+                                  controller.selectedIndexes.map((i) {
+                                final file = reqFiles[i];
+                                final optReq = file.req!;
+                                // fill the file path into the download request
+                                optReq.res = Resource(
+                                    name: file.name,
+                                    size: file.size,
+                                    range: optReq.res?.range ?? true,
+                                    files: [
+                                      FileInfo(
+                                        name: file.name,
+                                        size: file.size,
+                                        path: file.path,
+                                      )
+                                    ]);
+                                return optReq;
+                              }).toList();
+                              await createTaskBatch(CreateTaskBatch(
+                                  reqs: selectReqs,
+                                  opts: Options(path: pathController.text)));
+                            } else {
+                              await createTask(CreateTask(
+                                  rid: rr.id,
+                                  opts: Options(
+                                      path: pathController.text,
+                                      selectFiles: controller.selectedIndexes
+                                          .cast<int>())));
+                            }
                             Get.back();
                             Get.rootDelegate.offNamed(Routes.TASK);
                           }

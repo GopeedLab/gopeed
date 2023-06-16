@@ -129,6 +129,7 @@ func startTestServer(serverHandle func() http.Handler) net.Listener {
 	if err != nil {
 		panic(err)
 	}
+	defer file.Close()
 	// 随机生成一个文件
 	l := int64(8192)
 	buf := make([]byte, l)

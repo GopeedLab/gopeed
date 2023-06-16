@@ -1,6 +1,5 @@
+import 'package:gopeed/api/model/resolved_request.dart';
 import 'package:json_annotation/json_annotation.dart';
-
-import 'request.dart';
 
 part 'resource.g.dart';
 
@@ -17,9 +16,9 @@ class Resource {
       {required this.name,
       required this.size,
       required this.range,
-      required this.rootDir,
+      this.rootDir = "",
       required this.files,
-      required this.hash});
+      this.hash = ""});
 
   factory Resource.fromJson(Map<String, dynamic> json) =>
       _$ResourceFromJson(json);
@@ -32,13 +31,13 @@ class FileInfo {
   String path;
   String name;
   int size;
-  Request? request;
+  ResolvedRequest? req;
 
   FileInfo({
     required this.path,
     required this.name,
     required this.size,
-    this.request,
+    this.req,
   });
 
   factory FileInfo.fromJson(Map<String, dynamic> json) =>

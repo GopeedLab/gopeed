@@ -14,6 +14,14 @@ import (
 	"strings"
 )
 
+type HookEvent string
+
+const (
+	HookEventOnResolve HookEvent = "onResolve"
+	HookEventOnError   HookEvent = "onError"
+	HookEventOnDone    HookEvent = "onDone"
+)
+
 func (d *Downloader) InstallExtensionByGit(url string) error {
 	ext, err := d.fetchExtensionInfoByGit(url)
 	if err != nil {
@@ -39,15 +47,13 @@ func (d *Downloader) InstallExtensionByFolder(path string) error {
 		return err
 	}
 	d.extensions = append(d.extensions, ext)
-	return nil
+	return d.storage.Put(bucketExtension, ext.Manifest.Name, ext)
 }
 
-func (d *Downloader) triggerBeforeResolve(req *base.Request) (res *base.Resource) {
+func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	// init extension global object
 	gopeed := &Instance{
-		Hooks: &InstanceHooks{
-			hooks: make(map[string]goja.Callable),
-		},
+		Hooks: make(InstanceHooks),
 	}
 	ctx := &Context{
 		Req: req,
@@ -55,16 +61,7 @@ func (d *Downloader) triggerBeforeResolve(req *base.Request) (res *base.Resource
 	var err error
 	for _, ext := range d.extensions {
 		for _, script := range ext.Manifest.Scripts {
-			var match bool
-			for _, exp := range script.Matches {
-				if match, err = path.Match(exp, req.URL); err != nil {
-					// TODO: log
-					match = false
-				} else if match {
-					break
-				}
-			}
-			if match {
+			if script.match(HookEventOnResolve, req.URL) {
 				scriptFilePath := filepath.Join(d.cfg.StorageDir, "extensions", ext.Manifest.Name, script.Entry)
 				if _, err = os.Stat(scriptFilePath); os.IsNotExist(err) {
 					continue
@@ -95,7 +92,7 @@ func (d *Downloader) triggerBeforeResolve(req *base.Request) (res *base.Resource
 						// TODO: log
 						return
 					}
-					if fn, ok := gopeed.Hooks.hooks["beforeResolve"]; ok {
+					if fn, ok := gopeed.Hooks[HookEventOnResolve]; ok {
 						_, err = engine.CallFunction(fn, ctx)
 						if err != nil {
 							// TODO: log
@@ -187,12 +184,12 @@ type Extension struct {
 	// Dir engine directory name
 	Dir string `json:"dir"`
 
-	// Manifest engine manifest info
+	// Manifest extension manifest info
 	*Manifest `json:"manifest"`
 }
 
 type Manifest struct {
-	// Name engine global unique name
+	// Name extension global unique name
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -200,16 +197,40 @@ type Manifest struct {
 	// Version semantic version string
 	Version string `json:"version"`
 	// Homepage homepage url
-	Homepage string     `json:"homepage"`
-	Scripts  []*Script  `json:"scripts"`
-	Settings []*Setting `json:"settings"`
+	Homepage string `json:"homepage"`
+	// Repository code repository url
+	Repository string     `json:"repository"`
+	Scripts    []*Script  `json:"scripts"`
+	Settings   []*Setting `json:"settings"`
 }
 
 type Script struct {
+	// Hooks hook event list
+	Hooks []string `json:"hooks"`
 	// Matches match url pattern list
 	Matches []string `json:"matches"`
 	// Entry js script file path
 	Entry string `json:"entry"`
+}
+
+func (s *Script) match(event HookEvent, url string) bool {
+	if len(s.Hooks) == 0 {
+		return false
+	}
+	for _, hook := range s.Hooks {
+		if hook != string(event) {
+			return false
+		}
+	}
+	if len(s.Matches) == 0 {
+		return false
+	}
+	for _, match := range s.Matches {
+		if util.Match(match, url) {
+			return true
+		}
+	}
+	return false
 }
 
 type SettingType string
@@ -239,15 +260,25 @@ type Option struct {
 }
 
 type Instance struct {
-	Hooks *InstanceHooks `json:"hooks"`
+	Hooks InstanceHooks `json:"hooks"`
 }
 
-type InstanceHooks struct {
-	hooks map[string]goja.Callable
+type InstanceHooks map[HookEvent]goja.Callable
+
+func (h InstanceHooks) register(name HookEvent, fn goja.Callable) {
+	h[name] = fn
 }
 
-func (h *InstanceHooks) Register(name string, fn goja.Callable) {
-	h.hooks[name] = fn
+func (h InstanceHooks) OnResolve(fn goja.Callable) {
+	h.register(HookEventOnResolve, fn)
+}
+
+func (h InstanceHooks) OnError(fn goja.Callable) {
+	h.register(HookEventOnError, fn)
+}
+
+func (h InstanceHooks) OnDone(fn goja.Callable) {
+	h.register(HookEventOnDone, fn)
 }
 
 type Context struct {

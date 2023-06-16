@@ -42,7 +42,7 @@ func (m *FetcherMeta) Filepath(file *base.FileInfo) string {
 	if finalName == "" {
 		finalName = file.Name
 	}
-	return path.Join(m.Opts.Path, m.Res.RootDir, finalName)
+	return path.Join(m.Opts.Path, m.Res.RootDir, file.Path, finalName)
 }
 
 // FetcherBuilder defines the interface for a fetcher builder.

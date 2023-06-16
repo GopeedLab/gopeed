@@ -12,7 +12,11 @@ void showErrorMessage(msg) {
     Get.snackbar(title, ((msg as dynamic).message as Result).msg!);
     return;
   }
-  Get.snackbar(title, msg);
+  if (msg is String) {
+    Get.snackbar(title, msg);
+    return;
+  }
+  Get.snackbar(title, msg.toString());
 }
 
 void showMessage(title, msg) {

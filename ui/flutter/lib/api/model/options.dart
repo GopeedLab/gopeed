@@ -10,9 +10,9 @@ class Options {
   Map<String, dynamic>? extra;
 
   Options({
-    required this.name,
-    required this.path,
-    required this.selectFiles,
+    this.name = "",
+    this.path = "",
+    this.selectFiles = const [],
   });
 
   factory Options.fromJson(Map<String, dynamic> json) =>

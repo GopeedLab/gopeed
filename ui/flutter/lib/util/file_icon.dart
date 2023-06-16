@@ -148,7 +148,7 @@ const List iconMaps = [
   {
     'extensions': ['apk'],
     'type': 'Android',
-    'thumbnail': 'windows'
+    'thumbnail': 'android'
   },
   //other
   {

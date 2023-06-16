@@ -1,0 +1,23 @@
+{
+  "name": "gopeed-ext-test",
+  "title": "gopeed extension test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "hooks": [
+        "onResolve"
+      ],
+      "matches": [
+        "*://github.com/*"
+      ],
+      "entry": "index.js"
+    }
+  ],
+  "settings": [
+    {
+      "name": "ua",
+      "title": "User-Agent",
+      "type": "string"
+    }
+  ]
+}

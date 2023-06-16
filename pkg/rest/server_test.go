@@ -44,15 +44,25 @@ var (
 			},
 		},
 	}
-	createReq = &model.CreateTask{
-		Req: taskReq,
-		Opts: &base.Options{
-			Path: test.Dir,
-			Name: test.DownloadName,
-			Extra: map[string]any{
-				"connections": 2,
-			},
+	createOpts = &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: map[string]any{
+			"connections": 2,
 		},
+	}
+	createReq = &model.CreateTask{
+		Req: &base.ResolvedRequest{
+			Request: taskReq,
+		},
+		Opts: createOpts,
+	}
+	createResoledReq = &model.CreateTask{
+		Req: &base.ResolvedRequest{
+			Request: taskReq,
+			Res:     taskRes,
+		},
+		Opts: createOpts,
 	}
 )
 
@@ -66,6 +76,35 @@ func TestResolve(t *testing.T) {
 }
 
 func TestCreateTask(t *testing.T) {
+	doTest(func() {
+		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", taskReq)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		Downloader.Listener(func(event *download.Event) {
+			if event.Key == download.EventKeyFinally {
+				wg.Done()
+			}
+		})
+
+		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", &model.CreateTask{
+			Rid:  resp.ID,
+			Opts: createOpts,
+		})
+		if taskId == "" {
+			t.Fatal("create task failed")
+		}
+
+		wg.Wait()
+		want := test.FileMd5(test.BuildFile)
+		got := test.FileMd5(test.DownloadFile)
+		if want != got {
+			t.Errorf("CreateTask() got = %v, want %v", got, want)
+		}
+	})
+}
+
+func TestCreateDirectTask(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -84,8 +123,51 @@ func TestCreateTask(t *testing.T) {
 		want := test.FileMd5(test.BuildFile)
 		got := test.FileMd5(test.DownloadFile)
 		if want != got {
-			t.Errorf("CreateTask() got = %v, want %v", got, want)
+			t.Errorf("CreateDirectTask() got = %v, want %v", got, want)
 		}
+	})
+}
+
+func TestCreateDirectTaskWithResoled(t *testing.T) {
+	doTest(func() {
+		var wg sync.WaitGroup
+		wg.Add(1)
+		Downloader.Listener(func(event *download.Event) {
+			if event.Key == download.EventKeyFinally {
+				wg.Done()
+			}
+		})
+
+		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createResoledReq)
+		if taskId == "" {
+			t.Fatal("create task failed")
+		}
+
+		wg.Wait()
+		want := test.FileMd5(test.BuildFile)
+		got := test.FileMd5(test.DownloadFile)
+		if want != got {
+			t.Errorf("CreateDirectTaskWithResoled() got = %v, want %v", got, want)
+		}
+	})
+}
+
+func TestCreateTaskBatchBatch(t *testing.T) {
+	doTest(func() {
+		batchSize := 5
+
+		var reqs []*base.ResolvedRequest
+		for i := 0; i < batchSize; i++ {
+			reqs = append(reqs, createResoledReq.Req)
+		}
+		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &model.CreateTaskBatch{
+			Reqs: reqs,
+			Opts: createOpts,
+		})
+		if len(taskIds) != batchSize {
+			t.Errorf("CreateTaskBatch() taskIds size got = %v, want %v", len(taskIds), batchSize)
+		}
+		time.Sleep(time.Second)
 	})
 }
 
@@ -306,9 +388,11 @@ func doTest(handler func()) {
 				panic(err)
 			}
 			Stop()
+			Downloader.Clear()
 		}()
-		defer Downloader.Clear()
 		defer func() {
+			Downloader.PauseAll()
+
 			tasks := Downloader.GetTasks()
 			taskIds := make([]string, len(tasks))
 			for i, task := range tasks {

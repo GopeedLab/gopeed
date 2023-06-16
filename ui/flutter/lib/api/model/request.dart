@@ -9,6 +9,7 @@ class Request {
 
   Request({
     required this.url,
+    this.extra,
   });
 
   factory Request.fromJson(Map<String, dynamic> json) =>

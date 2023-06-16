@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
@@ -317,7 +318,11 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 			return nil
 		}()
 		if err != nil {
-			// 请求失败重试
+			// if is request is canceled by pause, return
+			if errors.Is(err, context.Canceled) {
+				return
+			}
+			// retry request
 			continue
 		}
 		// 请求成功就重置错误次数，连续失败5次才终止
