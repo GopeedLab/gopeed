@@ -3,6 +3,8 @@ import 'package:gopeed/app/modules/task/views/task_view.dart';
 
 import '../modules/create/bindings/create_binding.dart';
 import '../modules/create/views/create_view.dart';
+import '../modules/extension/bindings/extension_binding.dart';
+import '../modules/extension/views/extension_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/root/bindings/root_binding.dart';
@@ -38,6 +40,11 @@ class AppPages {
                     page: () => const TaskView(),
                     transition: Transition.noTransition,
                     binding: TaskBinding()),
+                GetPage(
+                    name: _Paths.EXTENSION,
+                    page: () => const ExtensionView(),
+                    transition: Transition.noTransition,
+                    binding: ExtensionBinding()),
                 GetPage(
                   name: _Paths.SETTING,
                   page: () => const SettingView(),

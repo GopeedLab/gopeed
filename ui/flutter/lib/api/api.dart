@@ -3,15 +3,15 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
-import 'package:gopeed/api/model/create_task_batch.dart';
-import 'model/resolve_result.dart';
+
 import '../util/util.dart';
 import 'model/create_task.dart';
+import 'model/create_task_batch.dart';
+import 'model/downloader_config.dart';
 import 'model/request.dart';
+import 'model/resolve_result.dart';
 import 'model/result.dart';
 import 'model/task.dart';
-
-import 'model/downloader_config.dart';
 
 class _Client {
   static _Client? _instance;
@@ -147,6 +147,8 @@ Future<Response<String>> proxyRequest<T>(String uri,
   options.headers!["X-Target-Uri"] = uri;
 
   // add timestamp to avoid cache
-  return _client.dio.request("/api/v1/proxy?t=${DateTime.now()}",
-      data: data, options: options);
+  return _client.dio.request(
+      "/api/v1/proxy?t=${DateTime.now().millisecondsSinceEpoch}",
+      data: data,
+      options: options);
 }

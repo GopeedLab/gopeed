@@ -194,11 +194,11 @@ type Manifest struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Icon        string `json:"icon"`
-	// Version semantic version string
+	// Version semantic version string, like: 1.0.0
 	Version string `json:"version"`
 	// Homepage homepage url
 	Homepage string `json:"homepage"`
-	// Repository code repository url
+	// Repository git repository url
 	Repository string     `json:"repository"`
 	Scripts    []*Script  `json:"scripts"`
 	Settings   []*Setting `json:"settings"`

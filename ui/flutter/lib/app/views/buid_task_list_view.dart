@@ -1,7 +1,7 @@
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
+import 'package:styled_widget/styled_widget.dart';
 
 import '../../api/api.dart';
 import '../../api/model/task.dart';
@@ -154,70 +154,44 @@ class BuildTaskListView extends GetView {
       return task.size <= 0 ? 1 : task.progress.downloaded / task.size;
     }
 
-    Color pickColor() {
-      switch (task.status) {
-        // ready, running, pause, error, done
-        case Status.running:
-          return Get.theme.colorScheme.primary;
-        // case Status.pause:
-        //   return Get.theme.colorScheme.secondary;
-        case Status.error:
-          return Get.theme.colorScheme.error;
-        default:
-          return Get.theme.colorScheme.primary;
-      }
-    }
-
-    return InkWell(
-        // onTap: () {},
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Stack(children: [
-        !isDone()
-            ? Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: Opacity(
-                  opacity: 0.6,
-                  child: LinearProgressIndicator(
-                    backgroundColor: Colors.transparent,
-                    color: pickColor(),
-                    // minHeight: 76,
-                    value: getProgress(),
-                  ),
-                ))
-            : const SizedBox.shrink(),
-        ListTile(
-          // isThreeLine: true,
-          title: Text(task.meta.res.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Get.textTheme.titleSmall),
-          subtitle: Text(
-            "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
-            style: context.textTheme.bodyLarge
-                ?.copyWith(color: Get.theme.disabledColor),
+    return Card(
+        elevation: 4.0,
+        child: InkWell(
+          onTap: () {},
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                  title: Text(task.meta.res.name),
+                  leading: task.meta.res.name.lastIndexOf('.') == -1
+                      ? const Icon(FaIcons.file)
+                      : Icon(FaIcons.allIcons[findIcon(task.meta.res.name)])),
+              Row(
+                children: [
+                  Expanded(
+                      flex: 1,
+                      child: Text(
+                        "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
+                        style: Get.textTheme.bodyLarge
+                            ?.copyWith(color: Get.theme.disabledColor),
+                      ).padding(left: 18)),
+                  Expanded(
+                      flex: 1,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text("${Util.fmtByte(task.progress.speed)} / s",
+                              style: Get.textTheme.titleSmall),
+                          ...buildActions()
+                        ],
+                      )),
+                ],
+              ),
+              LinearProgressIndicator(
+                value: getProgress(),
+              ),
+            ],
           ),
-          leading: task.meta.res.name.lastIndexOf('.') == -1
-              ? const Icon(FaIcons.file)
-              : Icon(FaIcons.allIcons[findIcon(task.meta.res.name)]),
-
-          trailing: SizedBox(
-            width: 180,
-            child: Row(
-              // crossAxisAlignment: CrossAxisAlignment.baseline,
-              // textBaseline: DefaultTextStyle.of(context).style.textBaseline,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text("${Util.fmtByte(task.progress.speed)} / s",
-                    style: context.textTheme.titleSmall),
-                ...buildActions()
-              ],
-            ),
-          ),
-        ),
-      ])
-    ]));
+        )).padding(horizontal: 8, top: 8);
   }
 }
