@@ -80,7 +80,7 @@ This project is divided into two parts, the front end uses `flutter`, the back e
 ### Clone
 
 ```bash
-git clone git@github.com:monkeyWie/gopeed.git
+git clone git@github.com:GopeedLab/gopeed.git
 ```
 
 ### Contributing
