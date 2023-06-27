@@ -3,7 +3,7 @@ WORKDIR /app
 COPY ./ui/flutter/pubspec.yaml ./ui/flutter/pubspec.lock ./
 RUN flutter pub get
 COPY ./ui/flutter ./
-RUN flutter build web
+RUN flutter build web --web-renderer html
 
 FROM golang:1.19.3 AS go
 WORKDIR /app
