@@ -310,7 +310,7 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           cd ui/flutter
-          flutter build web
+          flutter build web --web-renderer html
           cd ../../
           cp -r ui/flutter/build/web cmd/web/dist
           mkdir -p dist/zip
