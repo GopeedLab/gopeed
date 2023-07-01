@@ -14,6 +14,14 @@ import (
 	"strings"
 )
 
+var (
+	gitSuffix = ".git"
+
+	tempExtensionsDir   = ".extensions"
+	extensionsDir       = "extensions"
+	extensionIgnoreDirs = []string{gitSuffix, "node_modules"}
+)
+
 type HookEvent string
 
 const (
@@ -23,31 +31,61 @@ const (
 )
 
 func (d *Downloader) InstallExtensionByGit(url string) error {
-	ext, err := d.fetchExtensionInfoByGit(url)
-	if err != nil {
-		return err
+	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+		url = "https://" + url
 	}
 
-	tempDir := filepath.Join(d.cfg.StorageDir, ".extensions", ext.Dir)
-	if err := util.CopyDir(tempDir, filepath.Join(d.cfg.StorageDir, "extensions", ext.Manifest.Name), "node_modules"); err != nil {
+	// resolve project path
+	gitPath, projectPath := path.Split(url)
+	projectPath = strings.TrimSuffix(projectPath, gitSuffix)
+	// resolve project name and sub path
+	pathArr := strings.SplitN(projectPath, "#", 2)
+	projectPath = pathArr[0]
+	subPath := ""
+	if len(pathArr) > 1 {
+		subPath = pathArr[1]
+	}
+
+	tempExtDir := filepath.Join(d.cfg.StorageDir, tempExtensionsDir, projectPath)
+	if err := util.RmAndMkDirAll(tempExtDir); err != nil {
 		return err
 	}
-	// remove temp dir
-	os.RemoveAll(tempDir)
+	// clone project to extension temp dir
+	gitUrl := gitPath + projectPath + gitSuffix
+	if _, err := git.PlainClone(tempExtDir, false, &git.CloneOptions{
+		URL:   gitUrl,
+		Depth: 1,
+	}); err != nil {
+		return err
+	}
+	defer os.RemoveAll(tempExtDir)
+
+	if err := d.InstallExtensionByFolder(filepath.Join(tempExtDir, subPath)); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (d *Downloader) InstallExtensionByFolder(path string) error {
-	ext, err := d.fetchExtensionInfoByFolder(path)
+	// resolve engine manifest
+	manifestTempPath := filepath.Join(path, "manifest.json")
+	if _, err := os.Stat(manifestTempPath); os.IsNotExist(err) {
+		return err
+	}
+	file, err := os.ReadFile(manifestTempPath)
 	if err != nil {
 		return err
 	}
+	ext := new(Extension)
+	if err = json.Unmarshal(file, ext); err != nil {
+		return err
+	}
 
-	if err := util.CopyDir(path, filepath.Join(d.cfg.StorageDir, "extensions", ext.Manifest.Name), "node_modules"); err != nil {
+	if err := util.CopyDir(path, d.extensionPath(ext), extensionIgnoreDirs...); err != nil {
 		return err
 	}
 	d.extensions = append(d.extensions, ext)
-	return d.storage.Put(bucketExtension, ext.Manifest.Name, ext)
+	return d.storage.Put(bucketExtension, ext.identity(), ext)
 }
 
 func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
@@ -60,9 +98,9 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	}
 	var err error
 	for _, ext := range d.extensions {
-		for _, script := range ext.Manifest.Scripts {
+		for _, script := range ext.Scripts {
 			if script.match(HookEventOnResolve, req.URL) {
-				scriptFilePath := filepath.Join(d.cfg.StorageDir, "extensions", ext.Manifest.Name, script.Entry)
+				scriptFilePath := filepath.Join(d.extensionPath(ext), script.Entry)
 				if _, err = os.Stat(scriptFilePath); os.IsNotExist(err) {
 					continue
 				}
@@ -115,49 +153,8 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	return
 }
 
-func (d *Downloader) fetchExtensionInfoByGit(url string) (ext *Extension, err error) {
-	extTempDir := filepath.Join(d.cfg.StorageDir, "extensions_temp")
-	// check if temp dir not exist, create it
-	if _, err = os.Stat(extTempDir); os.IsNotExist(err) {
-		if err = os.Mkdir(extTempDir, os.ModePerm); err != nil {
-			return
-		}
-	}
-	_, err = git.PlainClone(extTempDir, false, &git.CloneOptions{
-		URL: url,
-	})
-	if err != nil {
-		return
-	}
-	// cut project name
-	_, projectDirName := filepath.Split(url)
-	projectDirName = strings.TrimSuffix(projectDirName, ".git")
-	ext, err = d.fetchExtensionInfoByFolder(filepath.Join(extTempDir, projectDirName))
-	if err != nil {
-		return
-	}
-	ext.URL = url
-	return
-}
-
-func (d *Downloader) fetchExtensionInfoByFolder(extPath string) (ext *Extension, err error) {
-	// resolve engine manifest
-	manifestTempPath := filepath.Join(extPath, "manifest.json")
-	if _, err = os.Stat(manifestTempPath); os.IsNotExist(err) {
-		return
-	}
-	file, err := os.ReadFile(manifestTempPath)
-	if err != nil {
-		return
-	}
-	ext = &Extension{
-		Dir:      path.Base(extPath),
-		Manifest: &Manifest{},
-	}
-	if err = json.Unmarshal(file, ext.Manifest); err != nil {
-		return
-	}
-	return
+func (d *Downloader) extensionPath(ext *Extension) string {
+	return filepath.Join(d.cfg.StorageDir, extensionsDir, ext.identity())
 }
 
 func parseRes(value any) (*base.Resource, error) {
@@ -179,18 +176,8 @@ func parseRes(value any) (*base.Resource, error) {
 }
 
 type Extension struct {
-	// URL git repository url
-	URL string `json:"url"`
-	// Dir engine directory name
-	Dir string `json:"dir"`
-
-	// Manifest extension manifest info
-	*Manifest `json:"manifest"`
-}
-
-type Manifest struct {
-	// Name extension global unique name
 	Name        string `json:"name"`
+	Author      string `json:"author"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Icon        string `json:"icon"`
@@ -199,9 +186,18 @@ type Manifest struct {
 	// Homepage homepage url
 	Homepage string `json:"homepage"`
 	// Repository git repository url
-	Repository string     `json:"repository"`
-	Scripts    []*Script  `json:"scripts"`
-	Settings   []*Setting `json:"settings"`
+	Repository string `json:"repository"`
+	// RepositoryPath git repository sub path
+	RepositoryPath string     `json:"repositoryPath"`
+	Scripts        []*Script  `json:"scripts"`
+	Settings       []*Setting `json:"settings"`
+}
+
+func (e *Extension) identity() string {
+	if e.Author == "" {
+		return e.Name
+	}
+	return e.Author + "@" + e.Name
 }
 
 type Script struct {
@@ -243,9 +239,10 @@ const (
 )
 
 type Setting struct {
-	Name     string `json:"name"`
-	Title    string `json:"title"`
-	Required bool   `json:"required"`
+	Name        string `json:"name"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Required    bool   `json:"required"`
 	// setting type
 	Type SettingType `json:"type"`
 	// default value

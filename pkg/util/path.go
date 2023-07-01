@@ -66,39 +66,6 @@ func CheckDuplicateAndRename(path string) (string, error) {
 	}
 }
 
-// GetSingleDir get the top level single folder name,if not exist, return empty string
-func GetSingleDir(paths []string) string {
-	if len(paths) == 0 {
-		return ""
-	}
-	split := strings.Split(paths[0], "/")
-	if len(split) == 0 || split[0] == "" {
-		return ""
-	}
-	dir := split[0]
-	for i := 1; i < len(paths); i++ {
-		if !strings.HasPrefix(paths[i], dir) {
-			return ""
-		}
-	}
-	return dir
-}
-
-// check directory is empty
-func isEmpty(name string) (bool, error) {
-	f, err := os.Open(name)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-
-	_, err = f.Readdirnames(1) // Or f.Readdir(1)
-	if err == io.EOF {
-		return true, nil
-	}
-	return false, err // Either not empty or error, suits both cases
-}
-
 // CopyDir Copy all files to the target directory, if the file already exists, it will be overwritten.
 // Remove target file if the source file is not exist.
 func CopyDir(source string, target string, excludeDir ...string) error {
@@ -163,6 +130,17 @@ func CopyDir(source string, target string, excludeDir ...string) error {
 		}
 		return nil
 	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RmAndMkDirAll remove and create directory, if the directory already exists, it will be overwritten.
+func RmAndMkDirAll(path string) error {
+	if err := os.RemoveAll(path); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(path, 0755); err != nil {
 		return err
 	}
 	return nil

@@ -26,5 +26,5 @@ bin/
 
 node_modules/
 cmd/web/dist/
-.test_ext/
+.test_storage/
 .test_download/

@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "embed"
 	"github.com/GopeedLab/gopeed/cmd"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
