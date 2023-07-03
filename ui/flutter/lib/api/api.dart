@@ -34,6 +34,7 @@ class _Client {
       }
       dio.options.baseUrl = baseUrl;
       dio.options.contentType = Headers.jsonContentType;
+      dio.options.sendTimeout = const Duration(seconds: 5);
       dio.options.connectTimeout = const Duration(seconds: 5);
       dio.options.receiveTimeout = const Duration(seconds: 60);
       dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
@@ -46,7 +47,8 @@ class _Client {
       _instance!.dio = dio;
       if (isUnixSocket) {
         (_instance!.dio.httpClientAdapter as IOHttpClientAdapter)
-            .onHttpClientCreate = (client) {
+            .createHttpClient = () {
+          final client = HttpClient();
           client.connectionFactory =
               (Uri uri, String? proxyHost, int? proxyPort) {
             return Socket.startConnect(
@@ -79,7 +81,12 @@ Future<T> _parse<T>(
     } else {
       throw Exception(result);
     }
-  } on DioError catch (e) {
+  } on DioException catch (e) {
+    if (e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.connectionTimeout) {
+      throw Exception(Result(code: 1000, msg: "request timeout"));
+    }
     throw Exception(Result(code: 1000, msg: e.message));
   }
 }
