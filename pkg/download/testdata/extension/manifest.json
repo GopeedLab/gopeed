@@ -4,9 +4,7 @@
   "version": "0.0.1",
   "scripts": [
     {
-      "hooks": [
-        "onResolve"
-      ],
+      "event": "onResolve",
       "matches": [
         "*://github.com/*"
       ],

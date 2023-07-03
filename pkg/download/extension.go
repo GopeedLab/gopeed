@@ -22,12 +22,12 @@ var (
 	extensionIgnoreDirs = []string{gitSuffix, "node_modules"}
 )
 
-type HookEvent string
+type ActivationEvent string
 
 const (
-	HookEventOnResolve HookEvent = "onResolve"
-	HookEventOnError   HookEvent = "onError"
-	HookEventOnDone    HookEvent = "onDone"
+	HookEventOnResolve ActivationEvent = "onResolve"
+	//HookEventOnError   HookEvent = "onError"
+	//HookEventOnDone    HookEvent = "onDone"
 )
 
 func (d *Downloader) InstallExtensionByGit(url string) error {
@@ -91,7 +91,7 @@ func (d *Downloader) InstallExtensionByFolder(path string) error {
 func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	// init extension global object
 	gopeed := &Instance{
-		Hooks: make(InstanceHooks),
+		Events: make(InstanceEvents),
 	}
 	ctx := &Context{
 		Req: req,
@@ -130,7 +130,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 						// TODO: log
 						return
 					}
-					if fn, ok := gopeed.Hooks[HookEventOnResolve]; ok {
+					if fn, ok := gopeed.Events[HookEventOnResolve]; ok {
 						_, err = engine.CallFunction(fn, ctx)
 						if err != nil {
 							// TODO: log
@@ -201,22 +201,20 @@ func (e *Extension) identity() string {
 }
 
 type Script struct {
-	// Hooks hook event list
-	Hooks []string `json:"hooks"`
-	// Matches match url pattern list
+	// Event active event name
+	Event string `json:"event"`
+	// Matches match request url pattern list
 	Matches []string `json:"matches"`
 	// Entry js script file path
 	Entry string `json:"entry"`
 }
 
-func (s *Script) match(event HookEvent, url string) bool {
-	if len(s.Hooks) == 0 {
+func (s *Script) match(event ActivationEvent, url string) bool {
+	if s.Event == "" {
 		return false
 	}
-	for _, hook := range s.Hooks {
-		if hook != string(event) {
-			return false
-		}
+	if s.Event != string(event) {
+		return false
 	}
 	if len(s.Matches) == 0 {
 		return false
@@ -257,26 +255,26 @@ type Option struct {
 }
 
 type Instance struct {
-	Hooks InstanceHooks `json:"hooks"`
+	Events InstanceEvents `json:"events"`
 }
 
-type InstanceHooks map[HookEvent]goja.Callable
+type InstanceEvents map[ActivationEvent]goja.Callable
 
-func (h InstanceHooks) register(name HookEvent, fn goja.Callable) {
+func (h InstanceEvents) register(name ActivationEvent, fn goja.Callable) {
 	h[name] = fn
 }
 
-func (h InstanceHooks) OnResolve(fn goja.Callable) {
+func (h InstanceEvents) OnResolve(fn goja.Callable) {
 	h.register(HookEventOnResolve, fn)
 }
 
-func (h InstanceHooks) OnError(fn goja.Callable) {
-	h.register(HookEventOnError, fn)
-}
-
-func (h InstanceHooks) OnDone(fn goja.Callable) {
-	h.register(HookEventOnDone, fn)
-}
+//func (h InstanceEvents) OnError(fn goja.Callable) {
+//	h.register(HookEventOnError, fn)
+//}
+//
+//func (h InstanceEvents) OnDone(fn goja.Callable) {
+//	h.register(HookEventOnDone, fn)
+//}
 
 type Context struct {
 	Req *base.Request  `json:"req"`

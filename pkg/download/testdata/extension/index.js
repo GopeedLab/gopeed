@@ -1,4 +1,4 @@
-gopeed.hooks.onResolve(async function (ctx) {
+gopeed.events.onResolve(async function (ctx) {
     ctx.res = {
         name: "test",
         files: Array(2).fill(true).map((_, i) => ({
