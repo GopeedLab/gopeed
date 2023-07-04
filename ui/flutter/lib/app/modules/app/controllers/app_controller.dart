@@ -365,6 +365,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_startConfigNetwork, startConfig.value.network);
     await prefs.setString(_startConfigAddress, startConfig.value.address);
+    await prefs.setString(_startConfigApiToken, startConfig.value.apiToken);
     await putConfig(downloaderConfig.value);
   }
 }
