@@ -423,7 +423,7 @@ class SettingView extends GetView<SettingController> {
       },
     );
     final buildApiToken = _buildConfigItem('apiToken',
-        () => startCfg.value.apiToken.isEmpty ? 'notSet'.tr : 'seted'.tr,
+        () => startCfg.value.apiToken.isEmpty ? 'notSet'.tr : 'set'.tr,
         (Key key) {
       final apiTokenController =
           TextEditingController(text: startCfg.value.apiToken);
@@ -434,7 +434,6 @@ class SettingView extends GetView<SettingController> {
           await debounceSave(needRestart: true);
         }
       });
-      apiTokenController.addListener(() async {});
       return TextField(
         key: key,
         obscureText: true,
