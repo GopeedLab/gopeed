@@ -9,15 +9,15 @@
 
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md)
 
-## Introduction
+## はじめに
 
-Gopeed (full name Go Speed), a high-speed downloader developed by `Golang` + `Flutter`, supports (HTTP, BitTorrent, Magnet) protocol, and supports all platforms.
+Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された高速ダウンローダーで、(HTTP、BitTorrent、Magnet) プロトコルをサポートし、すべてのプラットフォームをサポートします。
 
-Visit ✈ [Official Website](https://gopeed.com) | 📖 [Develop Docs](https://docs.gopeed.com)
+見て下さい ✈ [公式ウェブサイト](https://gopeed.com) | 📖 [開発ドキュメント](https://docs.gopeed.com)
 
-## Install
+## インストール
 
-**Supported platforms**
+**サポートするプラットフォーム**
 
 - [x] windows
 - [x] macos
@@ -27,13 +27,13 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Develop Docs](https://d
 - [x] web
 - [x] docker
 
-[Download](https://github.com/GopeedLab/gopeed/releases/latest)
+[ダウンロード](https://github.com/GopeedLab/gopeed/releases/latest)
 
-> Tips: If the macos open failed, please execute the `xattr -d com.apple.quarantine /Applications/Gopeed.app` command in the terminal
+> ヒント: macos を開くのに失敗した場合は、ターミナルで `xattr -d com.apple.quarantine /Applications/Gopeed.app` コマンドを実行してください
 
-### Command tool
+### コマンドツール
 
-use `go install`:
+`go install` を使用:
 
 ```bash
 go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
@@ -41,60 +41,60 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 
 ### Docker
 
-#### Start directly
+#### 直接始める
 
 ```bash
 docker run -d -p 9999:9999 -v /path/to/download:/download liwei2633/gopeed
 ```
 
-#### Using Docker Compose
+#### Docker Compose の使用
 
 ```bash
 docker-compose up -d
 ```
 
-#### Access Gopeed
+#### Gopeed へのアクセス
 
-When the docker container is running, you can access the web page through `http://localhost:9999`.
+docker コンテナが起動しているときは、`http://localhost:9999` からウェブページにアクセスできます。
 
-> Tip: Modify the download path to `/download` on the setting page to access the downloaded files on the host.
+> ヒント: 設定ページでダウンロードパスを `/download` に変更すると、ホスト上でダウンロードしたファイルにアクセスできます。
 
-## Donate
+## 寄付
 
-If you like this project, please consider [donating](/.donate/index.md#donate) to support the development of this project, thank you!
+もしこのプロジェクトがお気に召しましたら、このプロジェクトの発展を支援するために[寄付](/.donate/index.md#donate)をご検討ください！
 
-## Showcase
+## ショーケース
 
 ![](_docs/img/ui-demo.png)
 
-## Development
+## 開発
 
-This project is divided into two parts, the front end uses `flutter`, the back end uses `Golang`, and the two sides communicate through the `http` protocol. On the unix system, `unix socket` is used, and on the windows system, `tcp` protocol is used.
+このプロジェクトは二つの部分に分かれており、フロントエンドでは `flutter` を、バックエンドでは `Golang` を使用し、両者は `http` プロトコルで通信する。ユニックスシステムでは `unix socket` を、ウィンドウズシステムでは `tcp` プロトコルを使用します。
 
-> The front code is located in the `ui/flutter` directory.
+> フロントコードは `ui/flutter` ディレクトリにあります。
 
-### Environment
+### 環境
 
-1. Golang 1.19+
+1. Go 言語 1.19+
 2. Flutter 3.7+
 
-### Clone
+### クローン
 
 ```bash
 git clone git@github.com:GopeedLab/gopeed.git
 ```
 
-### Contributing
+### コントリビュート
 
-Please refer to [CONTRIBUTING.md](/CONTRIBUTING.md)
+[CONTRIBUTING.md](/CONTRIBUTING.md) をご参照ください
 
-### Build
+### ビルド
 
-#### Desktop
+#### デスクトップ
 
-First, you need to configure the environment according to the [flutter desktop official website document](https://docs.flutter.dev/development/platform-integration/desktop), and then you need to prepare the `cgo` environment, which can be searched for yourself.
+まず、[flutter デスクトップ公式サイトドキュメント](https://docs.flutter.dev/development/platform-integration/desktop)に従って環境を設定し、自分で検索できる `cgo` 環境を用意します。
 
-command:
+コマンド:
 
 - windows
 
@@ -120,9 +120,9 @@ cd ui/flutter
 flutter build linux
 ```
 
-#### Mobile
+#### モバイル
 
-Same as before, you also need to prepare the `cgo` environment, and then install `gomobile`:
+先ほどと同じように、`cgo` 環境を準備し、`gomobile` をインストールする必要があります:
 
 ```bash
 go install golang.org/x/mobile/cmd/gomobile@latest
@@ -130,7 +130,7 @@ go get golang.org/x/mobile/bind
 gomobile init
 ```
 
-command:
+コマンド:
 
 - android
 
@@ -142,7 +142,7 @@ flutter build apk
 
 #### Web
 
-command:
+コマンド:
 
 ```bash
 cd ui/flutter
@@ -154,9 +154,9 @@ go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed
 go run cmd/web/main.go
 ```
 
-## Thanks
+## 感謝
 
-### Contributors
+### コントリビューター
 
 <a href="https://github.com/GopeedLab/gopeed/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=GopeedLab/gopeed" />
@@ -166,6 +166,6 @@ go run cmd/web/main.go
 
 [![goland](_docs/img/goland.svg)](https://www.jetbrains.com/?from=gopeed)
 
-## License
+## ライセンス
 
 [GPLv3](LICENSE)
