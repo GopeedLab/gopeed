@@ -153,7 +153,7 @@ func TestPauseAllAndContinueALLTasks(t *testing.T) {
 
 		createAndPause := func() {
 			taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
-			httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
+			httpRequestCheckOk[*download.Task](http.MethodPut, "/api/v1/tasks/"+taskId+"/pause", nil)
 		}
 
 		total := cfg.MaxRunning + 2
