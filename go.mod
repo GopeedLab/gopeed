@@ -7,6 +7,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/matoous/go-nanoid/v2 v2.0.0
+	github.com/virtuald/go-paniclog v0.0.0-20190812204905-43a7fa316459
 	go.etcd.io/bbolt v1.3.6
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
 )
