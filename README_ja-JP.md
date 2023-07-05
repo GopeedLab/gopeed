@@ -86,7 +86,7 @@ git clone git@github.com:GopeedLab/gopeed.git
 
 ### コントリビュート
 
-[CONTRIBUTING.md](/CONTRIBUTING.md) をご参照ください
+[CONTRIBUTING.md](/CONTRIBUTING_ja-JP.md) をご参照ください
 
 ### ビルド
 
