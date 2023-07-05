@@ -7,9 +7,11 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/virtuald/go-paniclog"
 	"math"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -69,6 +71,8 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 			d.fetchBuilders[strings.ToUpper(p)] = f
 		}
 	}
+
+	logPanic(cfg.StorageDir)
 	return d
 }
 
@@ -632,6 +636,28 @@ func (d *Downloader) doContinue(task *Task) (err error) {
 		err = d.start(task)
 	}
 	return
+}
+
+// redirect stderr to log file, when panic happened log it
+func logPanic(logDir string) {
+	fp := filepath.Join(logDir, "crash.log")
+	// if log file not exists, create it
+	var f *os.File
+	if _, err := os.Stat(fp); err != nil {
+		if !os.IsNotExist(err) {
+			return
+		}
+		f, err = os.Create(fp)
+		if err != nil {
+			return
+		}
+	} else {
+		f, err = os.OpenFile(fp, os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return
+		}
+	}
+	paniclog.RedirectStderr(f)
 }
 
 func initTask(task *Task) {

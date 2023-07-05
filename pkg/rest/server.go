@@ -65,6 +65,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	} else {
 		downloadCfg.Storage = download.NewMemStorage()
 	}
+	downloadCfg.StorageDir = startCfg.StorageDir
 	downloadCfg.Init()
 	Downloader = download.NewDownloader(downloadCfg)
 	if err := Downloader.Setup(); err != nil {
