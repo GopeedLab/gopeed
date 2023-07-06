@@ -30,7 +30,7 @@ get generate locales
 
 翻訳については `en_us.dart` を参照してください。
 
-## フラッター開発
+## flutter での開発
 
 コミットする前に `dart format ./ui/flutter` を実行し、コードを標準の dart フォーマットにしておくことを忘れないでください
 
