@@ -1,19 +1,23 @@
 import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
-
 import 'util.dart';
 
 final logger = Logger(
-  printer: PrettyPrinter(),
+  filter: ProductionFilter(),
+  printer: LogfmtPrinter(),
   output: buildOutput(),
 );
 
 buildOutput() {
-  // if is debug mode, output to console
+  // if is debug mode, don't log to file
   if (!kDebugMode && Util.isDesktop()) {
-    return FileOutput(file: File('log.txt'));
+    const logDirPath = 'logs';
+    var logDir = Directory(logDirPath);
+    if (!logDir.existsSync()) {
+      logDir.createSync();
+    }
+    return FileOutput(file: File('$logDirPath/client.log'));
   }
   return null;
 }
