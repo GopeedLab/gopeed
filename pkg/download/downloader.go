@@ -72,7 +72,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		}
 	}
 
-	logPanic(cfg.StorageDir)
+	logPanic(filepath.Join(cfg.StorageDir, "logs"))
 	return d
 }
 
@@ -640,22 +640,12 @@ func (d *Downloader) doContinue(task *Task) (err error) {
 
 // redirect stderr to log file, when panic happened log it
 func logPanic(logDir string) {
-	fp := filepath.Join(logDir, "crash.log")
-	// if log file not exists, create it
-	var f *os.File
-	if _, err := os.Stat(fp); err != nil {
-		if !os.IsNotExist(err) {
-			return
-		}
-		f, err = os.Create(fp)
-		if err != nil {
-			return
-		}
-	} else {
-		f, err = os.OpenFile(fp, os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-			return
-		}
+	if err := util.CreateDirIfNotExist(logDir); err != nil {
+		return
+	}
+	f, err := os.Create(filepath.Join(logDir, "crash.log"))
+	if err != nil {
+		return
 	}
 	paniclog.RedirectStderr(f)
 }
