@@ -35,7 +35,7 @@ class SettingView extends GetView<SettingController> {
     debounceSave({bool needRestart = false}) {
       var completer = Completer<void>();
       timer?.cancel();
-      timer = Timer(const Duration(milliseconds: 500), () {
+      timer = Timer(const Duration(milliseconds: 1000), () {
         appController
             .saveConfig()
             .then(completer.complete)

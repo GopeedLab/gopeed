@@ -3,7 +3,6 @@ package util
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	syspath "path"
 	"strings"
@@ -83,17 +82,9 @@ func GetSingleDir(paths []string) string {
 	return dir
 }
 
-// check directory is empty
-func isEmpty(name string) (bool, error) {
-	f, err := os.Open(name)
-	if err != nil {
-		return false, err
+func CreateDirIfNotExist(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return os.MkdirAll(dir, 0o777)
 	}
-	defer f.Close()
-
-	_, err = f.Readdirnames(1) // Or f.Readdir(1)
-	if err == io.EOF {
-		return true, nil
-	}
-	return false, err // Either not empty or error, suits both cases
+	return nil
 }
