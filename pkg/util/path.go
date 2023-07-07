@@ -3,6 +3,7 @@ package util
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	syspath "path"
 	"path/filepath"

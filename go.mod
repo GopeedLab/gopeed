@@ -5,6 +5,9 @@ go 1.19
 require (
 	github.com/anacrolix/missinggo/v2 v2.7.2-0.20230527121029-a582b4f397b9
 	github.com/anacrolix/torrent v1.52.3
+	github.com/dop251/goja v0.0.0-20230203172422-5460598cfa32
+	github.com/dop251/goja_nodejs v0.0.0-20230207183254-2229640ea097
+	github.com/go-git/go-git/v5 v5.5.2
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/matoous/go-nanoid/v2 v2.0.0
@@ -17,7 +20,10 @@ replace github.com/anacrolix/torrent => github.com/monkeyWie/torrent v1.52.4-alp
 
 require (
 	crawshaw.io/sqlite v0.3.3-0.20220618202545-d1964889ea3c // indirect
+	github.com/Microsoft/go-winio v0.5.2 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20221026131551-cf6655e29de4 // indirect
 	github.com/RoaringBitmap/roaring v1.2.3 // indirect
+	github.com/acomagu/bufpipe v1.0.3 // indirect
 	github.com/ajwerner/btree v0.0.0-20211221152037-f427b3e689c0 // indirect
 	github.com/alecthomas/atomic v0.1.0-alpha2 // indirect
 	github.com/anacrolix/chansync v0.3.0 // indirect
@@ -38,16 +44,25 @@ require (
 	github.com/benbjohnson/immutable v0.3.0 // indirect
 	github.com/bits-and-blooms/bitset v1.2.2 // indirect
 	github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8 // indirect
+	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
+	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
+	github.com/go-git/gcfg v1.5.0 // indirect
+	github.com/go-git/go-billy/v5 v5.4.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
+	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/lispad/go-generics-tools v1.1.0 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/pion/datachannel v1.5.2 // indirect
@@ -68,14 +83,20 @@ require (
 	github.com/pion/turn/v2 v2.0.8 // indirect
 	github.com/pion/udp v0.1.4 // indirect
 	github.com/pion/webrtc/v3 v3.1.42 // indirect
+	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/dnscache v0.0.0-20211102005908-e0241e321417 // indirect
+	github.com/sergi/go-diff v1.1.0 // indirect
+	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/tidwall/btree v1.6.0 // indirect
+	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.opentelemetry.io/otel v1.8.0 // indirect
 	go.opentelemetry.io/otel/trace v1.8.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
+	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
