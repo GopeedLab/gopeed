@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../generated/locales.g.dart';
-import '../../../../util/localeManager.dart';
+import '../../../../util/locale_manager.dart';
 import '../../../../util/message.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
