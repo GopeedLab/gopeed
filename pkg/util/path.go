@@ -3,7 +3,6 @@ package util
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	syspath "path"
 	"path/filepath"
@@ -163,6 +162,13 @@ func copyForce(source string, target string) error {
 	_, err = io.Copy(targetFile, sourceFile)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func CreateDirIfNotExist(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return os.MkdirAll(dir, 0o777)
 	}
 	return nil
 }

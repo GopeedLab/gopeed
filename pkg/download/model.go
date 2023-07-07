@@ -73,7 +73,7 @@ type DownloaderConfig struct {
 
 	RefreshInterval int `json:"refreshInterval"` // RefreshInterval time duration to refresh task progress(ms)
 	Storage         Storage
-	StorageDir    string
+	StorageDir      string
 
 	*DownloaderStoreConfig
 }

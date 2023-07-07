@@ -7,7 +7,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
-	"github.com/anacrolix/torrent/storage"
 	"path"
 	"path/filepath"
 	"sync"
@@ -15,7 +14,12 @@ import (
 	"time"
 )
 
-var client *torrent.Client
+var (
+	client        *torrent.Client
+	lock          sync.Mutex
+	torrentDirMap = make(map[string]string)
+	ftMap         = make(map[string]*fileTorrentImpl)
+)
 
 type Fetcher struct {
 	ctl *controller.Controller
@@ -23,10 +27,9 @@ type Fetcher struct {
 	torrent *torrent.Torrent
 	meta    *fetcher.FetcherMeta
 
-	ready    atomic.Bool
-	progress fetcher.Progress
-
-	torrentPaths map[string]string
+	torrentReady atomic.Bool
+	create       atomic.Bool
+	progress     fetcher.Progress
 }
 
 func (f *Fetcher) Name() string {
@@ -38,34 +41,29 @@ func (f *Fetcher) Setup(ctl *controller.Controller) (err error) {
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
-	var once sync.Once
-	once.Do(func() {
-		cfg := torrent.NewDefaultClientConfig()
-		cfg.ListenPort = 0
+	return
+}
 
-		// Support custom download path for each torrent
-		pieceCompletion, err := storage.NewDefaultPieceCompletionForDir(cfg.DataDir)
-		if err != nil {
-			pieceCompletion = storage.NewMapPieceCompletion()
-		}
-		clientImplCloser := storage.NewFileOpts(storage.NewFileClientOpts{
-			ClientBaseDir: cfg.DataDir,
-			TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
-				if dir, ok := f.torrentPaths[infoHash.String()]; ok {
-					return dir
-				}
-				return baseDir
-			},
-			PieceCompletion: pieceCompletion,
-		})
-		cfg.DefaultStorage = clientImplCloser
-		client, err = torrent.NewClient(cfg)
-		if err != nil {
-			return
-		}
+func (f *Fetcher) initClient() (err error) {
+	lock.Lock()
+	defer lock.Unlock()
 
-		f.torrentPaths = make(map[string]string)
+	if client != nil {
+		return
+	}
+
+	cfg := torrent.NewDefaultClientConfig()
+	cfg.ListenPort = 0
+	cfg.DefaultStorage = newFileOpts(newFileClientOpts{
+		ClientBaseDir: cfg.DataDir,
+		HandleFileTorrent: func(infoHash metainfo.Hash, ft *fileTorrentImpl) {
+			if dir, ok := torrentDirMap[infoHash.String()]; ok {
+				ft.setTorrentDir(dir)
+			}
+			ftMap[infoHash.String()] = ft
+		},
 	})
+	client, err = torrent.NewClient(cfg)
 	return
 }
 
@@ -73,7 +71,14 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if err := f.addTorrent(req.URL); err != nil {
 		return err
 	}
-	defer f.torrent.Drop()
+	go func() {
+		// recycle unused torrent resource
+		time.Sleep(time.Minute * 3)
+		if !f.create.Load() {
+			f.torrentReady.Store(false)
+			f.safeDrop()
+		}
+	}()
 	res := &base.Resource{
 		Name:    f.torrent.Name(),
 		Range:   true,
@@ -95,6 +100,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 }
 
 func (f *Fetcher) Create(opts *base.Options) (err error) {
+	f.create.Store(true)
 	f.meta.Opts = opts
 	if len(opts.SelectFiles) == 0 {
 		opts.SelectFiles = make([]int, 0)
@@ -103,16 +109,19 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 		}
 	}
 	if opts.Path != "" {
-		f.torrentPaths[f.meta.Res.Hash] = path.Join(f.meta.Opts.Path, f.meta.Res.RootDir)
+		torrentDirMap[f.meta.Res.Hash] = path.Join(f.meta.Opts.Path, f.meta.Res.RootDir)
+		if ft, ok := ftMap[f.meta.Res.Hash]; ok {
+			// reuse resolve fetcher
+			ft.setTorrentDir(torrentDirMap[f.meta.Res.Hash])
+		}
 	}
 
 	f.progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))
-	f.ready.Store(false)
 	return nil
 }
 
 func (f *Fetcher) Start() (err error) {
-	if !f.ready.Load() {
+	if !f.torrentReady.Load() {
 		if err = f.addTorrent(f.meta.Req.URL); err != nil {
 			return
 		}
@@ -130,8 +139,8 @@ func (f *Fetcher) Start() (err error) {
 }
 
 func (f *Fetcher) Pause() (err error) {
-	f.ready.Store(false)
-	f.torrent.Drop()
+	f.torrentReady.Store(false)
+	f.safeDrop()
 	return
 }
 
@@ -140,13 +149,22 @@ func (f *Fetcher) Continue() (err error) {
 }
 
 func (f *Fetcher) Close() (err error) {
-	f.torrent.Drop()
+	f.safeDrop()
 	return nil
+}
+
+func (f *Fetcher) safeDrop() {
+	defer func() {
+		// ignore panic
+		_ = recover()
+	}()
+
+	f.torrent.Drop()
 }
 
 func (f *Fetcher) Wait() (err error) {
 	for {
-		if f.ready.Load() {
+		if f.torrentReady.Load() {
 			done := true
 			for _, selectIndex := range f.meta.Opts.SelectFiles {
 				file := f.torrent.Files()[selectIndex]
@@ -182,7 +200,7 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {
-	if !f.ready.Load() {
+	if !f.torrentReady.Load() {
 		return f.progress
 	}
 	for i := range f.progress {
@@ -194,6 +212,9 @@ func (f *Fetcher) Progress() fetcher.Progress {
 }
 
 func (f *Fetcher) addTorrent(url string) (err error) {
+	if err = f.initClient(); err != nil {
+		return
+	}
 	schema := util.ParseSchema(url)
 	if schema == "MAGNET" {
 		f.torrent, err = client.AddMagnet(url)
@@ -216,7 +237,7 @@ func (f *Fetcher) addTorrent(url string) (err error) {
 		f.torrent.AddTrackers(announceList)
 	}
 	<-f.torrent.GotInfo()
-	f.ready.Store(true)
+	f.torrentReady.Store(true)
 	return
 }
 

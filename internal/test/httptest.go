@@ -46,10 +46,21 @@ func StartTestSlowFileServer(delay time.Duration) net.Listener {
 	})
 }
 
-func StartTestChunkedServer() net.Listener {
+func StartTestCustomServer() net.Listener {
 	return startTestServer(func() http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		mux.HandleFunc("/disposition", func(writer http.ResponseWriter, request *http.Request) {
+			writer.Header().Set("Content-Disposition", "attachment; filename=\""+BuildName+"\"")
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
 			file, err := os.Open(BuildFile)
 			if err != nil {
 				panic(err)

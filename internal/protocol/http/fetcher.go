@@ -129,7 +129,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	contentDisposition := httpResp.Header.Get(base.HttpHeaderContentDisposition)
 	if contentDisposition != "" {
 		_, params, _ := mime.ParseMediaType(contentDisposition)
-		filename := params["filePath"]
+		filename := params["filename"]
 		if filename != "" {
 			file.Name = filename
 		}

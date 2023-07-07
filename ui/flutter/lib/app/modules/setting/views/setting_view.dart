@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../generated/locales.g.dart';
-import '../../../../util/localeManager.dart';
+import '../../../../util/locale_manager.dart';
 import '../../../../util/message.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
@@ -35,7 +35,7 @@ class SettingView extends GetView<SettingController> {
     debounceSave({bool needRestart = false}) {
       var completer = Completer<void>();
       timer?.cancel();
-      timer = Timer(const Duration(milliseconds: 500), () {
+      timer = Timer(const Duration(milliseconds: 1000), () {
         appController
             .saveConfig()
             .then(completer.complete)
@@ -423,7 +423,7 @@ class SettingView extends GetView<SettingController> {
       },
     );
     final buildApiToken = _buildConfigItem('apiToken',
-        () => startCfg.value.apiToken.isEmpty ? 'notSet'.tr : 'seted'.tr,
+        () => startCfg.value.apiToken.isEmpty ? 'notSet'.tr : 'set'.tr,
         (Key key) {
       final apiTokenController =
           TextEditingController(text: startCfg.value.apiToken);
@@ -434,7 +434,6 @@ class SettingView extends GetView<SettingController> {
           await debounceSave(needRestart: true);
         }
       });
-      apiTokenController.addListener(() async {});
       return TextField(
         key: key,
         obscureText: true,

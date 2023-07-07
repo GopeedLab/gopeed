@@ -15,7 +15,7 @@ import (
 )
 
 func TestFetcher_Resolve(t *testing.T) {
-	testResolve(test.StartTestFileServer, &base.Resource{
+	testResolve(test.StartTestFileServer, test.BuildName, &base.Resource{
 		Name:  test.BuildName,
 		Size:  test.BuildSize,
 		Range: true,
@@ -26,7 +26,18 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
-	testResolve(test.StartTestChunkedServer, &base.Resource{
+	testResolve(test.StartTestCustomServer, "disposition", &base.Resource{
+		Name:  test.BuildName,
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: test.BuildName,
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
+	testResolve(test.StartTestCustomServer, test.BuildName, &base.Resource{
 		Name:  test.BuildName,
 		Size:  0,
 		Range: false,
@@ -39,12 +50,12 @@ func TestFetcher_Resolve(t *testing.T) {
 	}, t)
 }
 
-func testResolve(startTestServer func() net.Listener, want *base.Resource, t *testing.T) {
+func testResolve(startTestServer func() net.Listener, path string, want *base.Resource, t *testing.T) {
 	listener := startTestServer()
 	defer listener.Close()
 	fetcher := buildFetcher()
 	err := fetcher.Resolve(&base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		URL: "http://" + listener.Addr().String() + "/" + path,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +86,7 @@ func TestFetcher_DownloadContinue(t *testing.T) {
 }
 
 func TestFetcher_DownloadChunked(t *testing.T) {
-	listener := test.StartTestChunkedServer()
+	listener := test.StartTestCustomServer()
 	defer listener.Close()
 	// chunked编码下载
 	downloadNormal(listener, 1, t)

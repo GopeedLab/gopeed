@@ -16,7 +16,7 @@ import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../generated/locales.g.dart';
-import '../../../../util/localeManager.dart';
+import '../../../../util/locale_manager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
@@ -365,6 +365,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_startConfigNetwork, startConfig.value.network);
     await prefs.setString(_startConfigAddress, startConfig.value.address);
+    await prefs.setString(_startConfigApiToken, startConfig.value.apiToken);
     await putConfig(downloaderConfig.value);
   }
 }

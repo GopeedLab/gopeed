@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../generated/locales.g.dart';
 import '../../../../theme/theme.dart';
-import '../../../../util/localeManager.dart';
+import '../../../../util/locale_manager.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/app_controller.dart';
 
