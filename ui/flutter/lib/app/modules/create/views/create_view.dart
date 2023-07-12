@@ -233,7 +233,7 @@ class CreateView extends GetView<CreateController> {
                                 optReq.res = Resource(
                                     name: file.name,
                                     size: file.size,
-                                    range: optReq.res?.range ?? true,
+                                    range: rr.res.range,
                                     files: [
                                       FileInfo(
                                         name: file.name,

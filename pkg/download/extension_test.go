@@ -25,11 +25,11 @@ func TestDownloader_InstallExtensionByFolder(t *testing.T) {
 
 func TestDownloader_InstallExtensionByGit(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if err := downloader.InstallExtensionByGit("https://github.com/GopeedLab/gopeed-extension-samples#github-release"); err != nil {
+		if err := downloader.InstallExtensionByGit("https://github.com/GopeedLab/gopeed-extension-samples#github-release-sample"); err != nil {
 			t.Fatal(err)
 		}
 		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://github.com/GopeedLab/gopeed/release",
+			URL: "https://github.com/GopeedLab/gopeed/releases",
 		})
 		if err != nil {
 			t.Fatal(err)

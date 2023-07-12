@@ -185,12 +185,12 @@ type Extension struct {
 	Version string `json:"version"`
 	// Homepage homepage url
 	Homepage string `json:"homepage"`
+	// InstallUrl install url
+	InstallUrl string `json:"installUrl"`
 	// Repository git repository url
-	Repository string `json:"repository"`
-	// RepositoryPath git repository sub path
-	RepositoryPath string     `json:"repositoryPath"`
-	Scripts        []*Script  `json:"scripts"`
-	Settings       []*Setting `json:"settings"`
+	Repository string     `json:"repository"`
+	Scripts    []*Script  `json:"scripts"`
+	Settings   []*Setting `json:"settings"`
 }
 
 func (e *Extension) identity() string {

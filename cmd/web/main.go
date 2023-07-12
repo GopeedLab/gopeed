@@ -19,11 +19,12 @@ func main() {
 		panic(err)
 	}
 	cfg := &model.StartConfig{
-		Network:   "tcp",
-		Address:   "0.0.0.0:9999",
-		Storage:   model.StorageBolt,
-		WebEnable: true,
-		WebFS:     sub,
+		Network:        "tcp",
+		Address:        "0.0.0.0:9999",
+		Storage:        model.StorageBolt,
+		ProductionMode: true,
+		WebEnable:      true,
+		WebFS:          sub,
 	}
-	cmd.Start(cfg)
+	cmd.Start(cfg, true)
 }

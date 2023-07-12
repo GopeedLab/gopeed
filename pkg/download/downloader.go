@@ -77,7 +77,9 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		}
 	}
 
-	logPanic(filepath.Join(cfg.StorageDir, "logs"))
+	if cfg.ProductionMode {
+		logPanic(filepath.Join(cfg.StorageDir, "logs"))
+	}
 	return d
 }
 
@@ -103,7 +105,7 @@ func (d *Downloader) Setup() error {
 	d.cfg.DownloaderStoreConfig.Init()
 	// load tasks from storage
 	var tasks []*Task
-	if err := d.storage.List(bucketTask, &tasks); err != nil {
+	if err = d.storage.List(bucketTask, &tasks); err != nil {
 		return err
 	}
 	if tasks == nil {
@@ -194,7 +196,7 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	}
 
 	res := d.triggerOnResolve(req)
-	if res != nil {
+	if res != nil && len(res.Files) > 0 {
 		rr = &ResolveResult{
 			ID:  rrId,
 			Res: res,

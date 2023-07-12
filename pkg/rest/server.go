@@ -58,6 +58,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	startCfg.Init()
 
 	downloadCfg := &download.DownloaderConfig{
+		ProductionMode:  startCfg.ProductionMode,
 		RefreshInterval: startCfg.RefreshInterval,
 	}
 	if startCfg.Storage == model.StorageBolt {

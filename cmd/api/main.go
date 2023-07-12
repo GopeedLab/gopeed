@@ -5,6 +5,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
 
+// only for local development
 func main() {
 	cfg := &model.StartConfig{
 		Network: "tcp",

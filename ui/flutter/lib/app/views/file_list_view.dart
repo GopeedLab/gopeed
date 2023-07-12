@@ -178,13 +178,15 @@ class FileListView extends GetView {
               overflow: TextOverflow.ellipsis,
               // style: context.textTheme.titleSmall,
             )),
-            Text(
-              Util.fmtByte(
-                fileInfo['size'],
-              ),
-              // style: context.textTheme.labelMedium,
-              overflow: TextOverflow.ellipsis,
-            ),
+            fileInfo['size'] > 0
+                ? Text(
+                    Util.fmtByte(
+                      fileInfo['size'],
+                    ),
+                    // style: context.textTheme.labelMedium,
+                    overflow: TextOverflow.ellipsis,
+                  )
+                : const SizedBox.shrink(),
           ]),
         ));
       }
