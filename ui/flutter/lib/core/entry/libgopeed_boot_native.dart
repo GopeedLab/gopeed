@@ -17,7 +17,6 @@ LibgopeedBoot create() => LibgopeedBootNative();
 
 class LibgopeedBootNative implements LibgopeedBoot {
   late LibgopeedInterface _libgopeed;
-  late SendPort _childSendPort;
 
   LibgopeedBootNative() {
     if (!Util.isDesktop()) {
@@ -44,11 +43,7 @@ class LibgopeedBootNative implements LibgopeedBoot {
 
   @override
   Future<void> stop() async {
-    if (Util.isDesktop()) {
-      await _ffiStop();
-    } else {
-      await _libgopeed.stop();
-    }
+    await _libgopeed.stop();
   }
 
   _ffiInit() {
@@ -67,90 +62,9 @@ class LibgopeedBootNative implements LibgopeedBoot {
 
   // FFI run in isolate
   Future<int> _ffiStart(StartConfig cfg) async {
-    var startCompleter = Completer<int>();
-
-    var mainReceive = ReceivePort();
-    var isolate = await Isolate.spawn((SendPort sendPort) {
+    return await Isolate.run(() async {
       _ffiInit();
-      var childReceive = ReceivePort();
-      sendPort.send(childReceive.sendPort);
-
-      childReceive.listen((message) async {
-        late _Result result;
-        try {
-          if (message is _StartParam) {
-            result = _StartResult();
-            (result as _StartResult).port = await _libgopeed.start(message.cfg);
-          }
-          if (message is _StopParam) {
-            result = _StopResult();
-            await _libgopeed.stop();
-            childReceive.close();
-            Isolate.exit(sendPort);
-          }
-        } on Exception catch (e) {
-          result.exception = e;
-        }
-        sendPort.send(result);
-      });
-    }, mainReceive.sendPort);
-
-    var childCompleter = Completer<void>();
-    mainReceive.listen((message) {
-      if (message is SendPort) {
-        _childSendPort = message;
-        childCompleter.complete();
-      }
-      if (message is _StartResult) {
-        if (message.exception != null) {
-          startCompleter.completeError(message.exception!);
-        } else {
-          startCompleter.complete(message.port!);
-        }
-      }
-      if (message is _StopResult) {
-        isolate.kill();
-        if (message.exception != null) {
-          _stopCompleter.completeError(message.exception!);
-        } else {
-          _stopCompleter.complete();
-        }
-      }
+      return await _libgopeed.start(cfg);
     });
-    await childCompleter.future;
-    _childSendPort.send(_StartParam(cfg: cfg));
-    return startCompleter.future;
   }
-
-  late Completer<void> _stopCompleter;
-
-  Future<void> _ffiStop() async {
-    _stopCompleter = Completer<void>();
-    _childSendPort.send(_StopParam());
-    return _stopCompleter.future;
-  }
-}
-
-class _Result {
-  Exception? exception;
-
-  _Result();
-}
-
-class _StartParam {
-  final StartConfig cfg;
-
-  _StartParam({required this.cfg});
-}
-
-class _StartResult extends _Result {
-  int? port;
-
-  _StartResult();
-}
-
-class _StopParam {}
-
-class _StopResult extends _Result {
-  _StopResult();
 }
