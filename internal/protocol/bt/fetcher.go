@@ -36,7 +36,7 @@ func (f *Fetcher) Name() string {
 	return "bt"
 }
 
-func (f *Fetcher) Setup(ctl *controller.Controller) (err error) {
+func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
@@ -142,10 +142,6 @@ func (f *Fetcher) Pause() (err error) {
 	f.torrentReady.Store(false)
 	f.safeDrop()
 	return
-}
-
-func (f *Fetcher) Continue() (err error) {
-	return f.Start()
 }
 
 func (f *Fetcher) Close() (err error) {

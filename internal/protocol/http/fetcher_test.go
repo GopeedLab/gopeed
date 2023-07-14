@@ -222,7 +222,7 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 50)
-	if err := fetcher.Continue(); err != nil {
+	if err := fetcher.Start(); err != nil {
 		t.Fatal(err)
 	}
 	err = fetcher.Wait()
@@ -270,7 +270,7 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 		t.Fatal(err)
 	}
 	fetcher.Setup(controller.NewController())
-	fetcher.Continue()
+	fetcher.Start()
 
 	err = fetcher.Wait()
 	if err != nil {

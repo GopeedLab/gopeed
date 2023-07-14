@@ -23,12 +23,6 @@ type Resource struct {
 	Hash  string      `json:"hash"`
 }
 
-// ResolvedRequest request with resolved resource info
-type ResolvedRequest struct {
-	*Request `json:",inline"`
-	Res      *Resource `json:"res"`
-}
-
 func (r *Resource) Validate() error {
 	if r.Name == "" {
 		return fmt.Errorf("invalid name")
@@ -53,7 +47,7 @@ type FileInfo struct {
 	Path string `json:"path"`
 	Size int64  `json:"size"`
 
-	Req *ResolvedRequest `json:"req"`
+	Req *Request `json:"req"`
 }
 
 // Options for download
@@ -66,6 +60,16 @@ type Options struct {
 	SelectFiles []int `json:"selectFiles"`
 	// Extra info for specific fetcher
 	Extra any `json:"extra"`
+}
+
+func (o *Options) InitSelectFiles(fileSize int) {
+	// if selectFiles is empty, select all files
+	if len(o.SelectFiles) == 0 {
+		o.SelectFiles = make([]int, fileSize)
+		for i := 0; i < fileSize; i++ {
+			o.SelectFiles[i] = i
+		}
+	}
 }
 
 func (o *Options) Clone() *Options {

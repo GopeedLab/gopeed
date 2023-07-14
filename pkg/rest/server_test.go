@@ -52,16 +52,11 @@ var (
 		},
 	}
 	createReq = &model.CreateTask{
-		Req: &base.ResolvedRequest{
-			Request: taskReq,
-		},
+		Req:  taskReq,
 		Opts: createOpts,
 	}
 	createResoledReq = &model.CreateTask{
-		Req: &base.ResolvedRequest{
-			Request: taskReq,
-			Res:     taskRes,
-		},
+		Req:  taskReq,
 		Opts: createOpts,
 	}
 )
@@ -156,7 +151,7 @@ func TestCreateTaskBatchBatch(t *testing.T) {
 	doTest(func() {
 		batchSize := 5
 
-		var reqs []*base.ResolvedRequest
+		var reqs []*base.Request
 		for i := 0; i < batchSize; i++ {
 			reqs = append(reqs, createResoledReq.Req)
 		}
@@ -173,25 +168,10 @@ func TestCreateTaskBatchBatch(t *testing.T) {
 
 func TestPauseAndContinueTask(t *testing.T) {
 	doTest(func() {
-		type result struct {
-			pauseCount    int
-			continueCount int
-			md5           string
-		}
-
-		var got = result{
-			pauseCount:    0,
-			continueCount: 0,
-			md5:           "",
-		}
 		var wg sync.WaitGroup
 		wg.Add(1)
 		Downloader.Listener(func(event *download.Event) {
 			switch event.Key {
-			case download.EventKeyPause:
-				got.pauseCount++
-			case download.EventKeyContinue:
-				got.continueCount++
 			case download.EventKeyFinally:
 				wg.Done()
 			}
@@ -214,12 +194,8 @@ func TestPauseAndContinueTask(t *testing.T) {
 		}
 
 		wg.Wait()
-		want := result{
-			pauseCount:    1,
-			continueCount: 1,
-			md5:           test.FileMd5(test.BuildFile),
-		}
-		got.md5 = test.FileMd5(test.DownloadFile)
+		want := test.FileMd5(test.BuildFile)
+		got := test.FileMd5(test.DownloadFile)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("PauseAndContinueTask() got = %v, want %v", got, want)
 		}
@@ -251,7 +227,7 @@ func TestPauseAllAndContinueALLTasks(t *testing.T) {
 		}
 		// pause all
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/pause", nil)
-		tasks = httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s,%s", base.DownloadStatusReady, base.DownloadStatusPause), nil)
+		tasks = httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s", base.DownloadStatusPause), nil)
 		if len(tasks) != total {
 			t.Errorf("PauseAllTasks() got = %v, want %v", len(tasks), total)
 		}

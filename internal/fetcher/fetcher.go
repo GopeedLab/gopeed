@@ -12,14 +12,13 @@ type Fetcher interface {
 	// Name return the name of the protocol.
 	Name() string
 
-	Setup(ctl *controller.Controller) error
+	Setup(ctl *controller.Controller)
 	// Resolve resource info from request
 	Resolve(req *base.Request) error
 	// Create ready to download, but not started
 	Create(opts *base.Options) error
 	Start() error
 	Pause() error
-	Continue() error
 	Close() error
 
 	// Meta returns the meta information of the download.
