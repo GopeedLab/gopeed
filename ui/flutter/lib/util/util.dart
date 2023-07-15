@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -58,5 +59,28 @@ class Util {
 
   static isWeb() {
     return kIsWeb;
+  }
+
+  // if one future complete, return the result, only all future error, return the last error
+  static anyOk<T>(Iterable<Future<T>> futures) {
+    final completer = Completer<T>();
+    Object lastError;
+    var count = futures.length;
+    for (var future in futures) {
+      future.then((value) {
+        if (!completer.isCompleted) {
+          completer.complete(value);
+        }
+      }).catchError((e) {
+        lastError = e;
+        count--;
+        print(count);
+        if (count == 0) {
+          print("completeError");
+          completer.completeError(lastError);
+        }
+      });
+    }
+    return completer.future;
   }
 }
