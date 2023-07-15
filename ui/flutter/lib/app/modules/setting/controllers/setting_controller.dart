@@ -28,17 +28,21 @@ class SettingController extends GetxController {
   void fetchLatestVersion() async {
     String? releaseDataStr;
     try {
-      releaseDataStr =
-          (await proxyRequest("https://gopeed.com/api/release")).data;
-    } catch (e) {
       releaseDataStr = (await proxyRequest(
               "https://api.github.com/repos/GopeedLab/gopeed/releases/latest"))
           .data;
+    } catch (e) {
+      releaseDataStr =
+          (await proxyRequest("https://gopeed.com/api/release")).data;
     }
     if (releaseDataStr == null) {
       return;
     }
     final releaseData = jsonDecode(releaseDataStr);
+    final tagName = releaseData["tag_name"];
+    if (tagName == null) {
+      return;
+    }
     latestVersion.value = releaseData["tag_name"].substring(1);
   }
 }

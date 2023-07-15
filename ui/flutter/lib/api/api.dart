@@ -147,6 +147,8 @@ Future<Response<String>> proxyRequest<T>(String uri,
   options.headers!["X-Target-Uri"] = uri;
 
   // add timestamp to avoid cache
-  return _client.dio.request("/api/v1/proxy?t=${DateTime.now()}",
-      data: data, options: options);
+  return _client.dio.request(
+      "/api/v1/proxy?t=${DateTime.now().millisecondsSinceEpoch}",
+      data: data,
+      options: options);
 }
