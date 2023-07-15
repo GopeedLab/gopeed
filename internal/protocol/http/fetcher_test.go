@@ -125,7 +125,9 @@ func TestFetcher_DownloadResume(t *testing.T) {
 }
 
 func TestFetcher_Config(t *testing.T) {
-	fetcher := doDownloadReady(buildConfigFetcher(), test.StartTestFileServer(), 0, t)
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+	fetcher := doDownloadReady(buildConfigFetcher(), listener, 0, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)

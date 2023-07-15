@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -161,28 +162,26 @@ func startTestServer(serverHandle func() http.Handler) net.Listener {
 	server.Handler = serverHandle()
 	go server.Serve(listener)
 
-	return &delFileListener{
-		File:     file,
+	return &shutdownListener{
+		server:   server,
 		Listener: listener,
 	}
 }
 
-type delFileListener struct {
-	*os.File
+type shutdownListener struct {
+	server *http.Server
 	net.Listener
 }
 
-func (c *delFileListener) Close() error {
-	defer func() {
-		c.File.Close()
-		if err := ifExistAndRemove(c.File.Name()); err != nil {
-			fmt.Println(err)
-		}
-		if err := ifExistAndRemove(DownloadFile); err != nil {
-			fmt.Println(err)
-		}
-	}()
-	return c.Listener.Close()
+func (c *shutdownListener) Close() error {
+	closeErr := c.server.Shutdown(context.Background())
+	if err := ifExistAndRemove(BuildFile); err != nil {
+		fmt.Println(err)
+	}
+	if err := ifExistAndRemove(DownloadFile); err != nil {
+		fmt.Println(err)
+	}
+	return closeErr
 }
 
 func ifExistAndRemove(name string) error {

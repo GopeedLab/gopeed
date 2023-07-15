@@ -55,8 +55,8 @@ type Fetcher struct {
 	chunks []*chunk
 
 	file   *os.File
-	ctx    context.Context
 	cancel context.CancelFunc
+	eg     *errgroup.Group
 }
 
 func (f *Fetcher) Name() string {
@@ -204,7 +204,7 @@ func (f *Fetcher) Pause() (err error) {
 	if f.cancel != nil {
 		f.cancel()
 		// wait for pause handle complete
-		<-f.ctx.Done()
+		f.eg.Wait()
 		f.file.Close()
 	}
 	return
@@ -242,19 +242,20 @@ func (f *Fetcher) filepath() string {
 }
 
 func (f *Fetcher) fetch() {
-	f.ctx, f.cancel = context.WithCancel(context.Background())
-	eg, _ := errgroup.WithContext(f.ctx)
+	var ctx context.Context
+	ctx, f.cancel = context.WithCancel(context.Background())
+	f.eg, _ = errgroup.WithContext(ctx)
 	for i := 0; i < len(f.chunks); i++ {
 		i := i
-		eg.Go(func() error {
-			return f.fetchChunk(i)
+		f.eg.Go(func() error {
+			return f.fetchChunk(i, ctx)
 		})
 	}
 
 	go func() {
-		err := eg.Wait()
+		err := f.eg.Wait()
 		// check if canceled
-		if errors.Is(err, context.Canceled) || errors.Is(err, os.ErrClosed) {
+		if errors.Is(err, context.Canceled) {
 			return
 		}
 		f.file.Close()
@@ -262,10 +263,10 @@ func (f *Fetcher) fetch() {
 	}()
 }
 
-func (f *Fetcher) fetchChunk(index int) (err error) {
+func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	chunk := f.chunks[index]
 
-	httpReq, err := buildRequest(f.ctx, f.meta.Req)
+	httpReq, err := buildRequest(ctx, f.meta.Req)
 	if err != nil {
 		return err
 	}
