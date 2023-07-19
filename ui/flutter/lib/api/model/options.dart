@@ -2,17 +2,18 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'options.g.dart';
 
-@JsonSerializable(explicitToJson: true, genericArgumentFactories: true)
+@JsonSerializable(explicitToJson: true)
 class Options {
   String name;
   String path;
   List<int> selectFiles;
-  Map<String, dynamic>? extra;
+  Object? extra;
 
   Options({
     required this.name,
     required this.path,
     required this.selectFiles,
+    this.extra,
   });
 
   factory Options.fromJson(Map<String, dynamic> json) =>

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
+import 'dart:ui';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
@@ -337,7 +338,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       extra.themeMode = ThemeMode.system.name;
     }
     if (extra.locale.isEmpty) {
-      final systemLocale = getLocaleKey(ui.window.locale);
+      final systemLocale = getLocaleKey(PlatformDispatcher.instance.locale);
       extra.locale = AppTranslation.translations.containsKey(systemLocale)
           ? systemLocale
           : getLocaleKey(fallbackLocale);

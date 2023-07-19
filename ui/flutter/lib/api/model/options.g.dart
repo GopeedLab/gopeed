@@ -11,7 +11,8 @@ Options _$OptionsFromJson(Map<String, dynamic> json) => Options(
       path: json['path'] as String,
       selectFiles:
           (json['selectFiles'] as List<dynamic>).map((e) => e as int).toList(),
-    )..extra = json['extra'] as Map<String, dynamic>?;
+      extra: json['extra'],
+    );
 
 Map<String, dynamic> _$OptionsToJson(Options instance) {
   final val = <String, dynamic>{
