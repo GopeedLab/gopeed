@@ -44,7 +44,7 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 #### 直接运行
 
 ```bash
-docker run -d -p 9999:9999 -v /path/to/download:/download liwei2633/gopeed
+docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads liwei2633/gopeed
 ```
 
 #### 使用 Docker Compose
@@ -56,7 +56,6 @@ docker-compose up -d
 #### 访问服务
 
 当 docker 容器运行时，可以通过 `http://localhost:9999` 访问 web 页面。
-> 提示：在设置页面把下载路径修改为 `/download` 以便在宿主机访问下载完的文件。
 
 ## 打赏
 
