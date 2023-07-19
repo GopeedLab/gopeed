@@ -27,6 +27,7 @@ class LocaleKeys {
   static const donate = 'donate';
   static const exit = 'exit';
   static const create = 'create';
+  static const advancedOptions = 'advancedOptions';
   static const downloadLink = 'downloadLink';
   static const downloadLinkValid = 'downloadLinkValid';
   static const downloadLinkHit = 'downloadLinkHit';
@@ -35,6 +36,7 @@ class LocaleKeys {
   static const noFileSelected = 'noFileSelected';
   static const noStoragePermission = 'noStoragePermission';
   static const selectFile = 'selectFile';
+  static const rename = 'rename';
   static const basic = 'basic';
   static const advanced = 'advanced';
   static const general = 'general';
@@ -90,6 +92,7 @@ class Locales {
     'donate': 'Donate',
     'exit': 'Exit',
     'create': 'Create Task',
+    'advancedOptions': 'Advanced Options',
     'downloadLink': 'Download Link',
     'downloadLinkValid': 'Please enter the download link',
     'downloadLinkHit':
@@ -99,6 +102,7 @@ class Locales {
     'noFileSelected': 'Please select at least one file to continue.',
     'noStoragePermission': 'Storage permission required',
     'selectFile': 'Select File',
+    'rename': 'Rename',
     'basic': 'Basic',
     'advanced': 'Advanced',
     'general': 'General',
@@ -336,6 +340,7 @@ class Locales {
     'donate': '打赏',
     'exit': '退出',
     'create': '创建任务',
+    'advancedOptions': '高级选项',
     'downloadLink': '下载链接',
     'downloadLinkValid': '请输入下载链接',
     'downloadLinkHit': '请输入下载链接，支持 HTTP/HTTPS/MAGNET@append',
@@ -344,6 +349,7 @@ class Locales {
     'noFileSelected': '请至少选择一个文件下载',
     'noStoragePermission': '需要开启存储权限',
     'selectFile': '选择文件',
+    'rename': '重命名',
     'basic': '基础',
     'advanced': '高级',
     'general': '通用',
