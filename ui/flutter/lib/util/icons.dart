@@ -28,6 +28,7 @@ class FaIcons {
 
   static const _kFontFam = 'FontAwesome';
   static const Map<String, IconData> allIcons = {
+    'file': file,
     'doc': doc,
     'file_image': file_image,
     'file_video': file_video,
