@@ -2,6 +2,7 @@ package download
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -11,7 +12,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -20,6 +23,8 @@ var (
 	tempExtensionsDir   = ".extensions"
 	extensionsDir       = "extensions"
 	extensionIgnoreDirs = []string{gitSuffix, "node_modules"}
+
+	ErrExtensionNotFound = fmt.Errorf("extension not found")
 )
 
 type ActivationEvent string
@@ -31,6 +36,112 @@ const (
 )
 
 func (d *Downloader) InstallExtensionByGit(url string) error {
+	return d.fetchExtensionByGit(url, d.InstallExtensionByFolder)
+}
+
+func (d *Downloader) InstallExtensionByFolder(path string) error {
+	ext, err := d.parseExtensionByPath(path)
+	if err != nil {
+		return err
+	}
+
+	if err = util.CopyDir(path, d.extensionPath(ext), extensionIgnoreDirs...); err != nil {
+		return err
+	}
+
+	// if extension is not installed, add it to the list, otherwise update it
+	installedExt := d.findExtension(ext.Identity)
+	if installedExt == nil {
+		ext.CreatedAt = time.Now()
+		ext.UpdatedAt = ext.CreatedAt
+		installedExt = ext
+		d.extensions = append(d.extensions, installedExt)
+	} else {
+		installedExt.update(ext)
+	}
+	return d.storage.Put(bucketExtension, installedExt.Identity, installedExt)
+}
+
+// UpgradeCheckExtension Check if there is a new version for the extension.
+func (d *Downloader) UpgradeCheckExtension(identity string) (newVersion string, err error) {
+	ext := d.findExtension(identity)
+	if ext == nil {
+		err = ErrExtensionNotFound
+		return
+	}
+	if ext.InstallUrl == "" {
+		return
+	}
+	err = d.fetchExtensionByGit(ext.InstallUrl, func(tempExtPath string) error {
+		tempExt, err := d.parseExtensionByPath(tempExtPath)
+		if err != nil {
+			return err
+		}
+		if tempExt.Version != ext.Version {
+			newVersion = tempExt.Version
+		}
+		return nil
+	})
+	return
+}
+
+func (d *Downloader) UpgradeExtension(identity string) error {
+	ext := d.findExtension(identity)
+	if ext == nil {
+		return ErrExtensionNotFound
+	}
+	if ext.InstallUrl == "" {
+		return nil
+	}
+	return d.InstallExtensionByGit(ext.InstallUrl)
+}
+
+func (d *Downloader) UpdateExtensionSettings(identity string, settings map[string]any) error {
+	ext := d.findExtension(identity)
+	if ext == nil {
+		return ErrExtensionNotFound
+	}
+	for _, setting := range ext.Settings {
+		if value, ok := settings[setting.Name]; ok {
+			setting.Value = value
+		}
+	}
+	return d.storage.Put(bucketExtension, ext.Identity, ext)
+}
+
+func (d *Downloader) DeleteExtension(identity string) error {
+	ext := d.findExtension(identity)
+	if ext == nil {
+		return ErrExtensionNotFound
+	}
+	// remove from disk
+	if err := os.RemoveAll(d.extensionPath(ext)); err != nil {
+		return err
+	}
+	// remove from extensions
+	for i, e := range d.extensions {
+		if e.Identity == identity {
+			d.extensions = append(d.extensions[:i], d.extensions[i+1:]...)
+			break
+		}
+	}
+	return d.storage.Delete(bucketExtension, identity)
+}
+
+func (d *Downloader) GetExtensions() []*Extension {
+	return d.extensions
+}
+
+func (d *Downloader) findExtension(identity string) *Extension {
+	for _, ext := range d.extensions {
+		if ext.Identity == identity {
+			return ext
+		}
+	}
+	return nil
+}
+
+func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath string) error) error {
 	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
 		url = "https://" + url
 	}
@@ -60,32 +171,28 @@ func (d *Downloader) InstallExtensionByGit(url string) error {
 	}
 	defer os.RemoveAll(tempExtDir)
 
-	if err := d.InstallExtensionByFolder(filepath.Join(tempExtDir, subPath)); err != nil {
+	if err := handler(filepath.Join(tempExtDir, subPath)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (d *Downloader) InstallExtensionByFolder(path string) error {
-	// resolve engine manifest
+func (d *Downloader) parseExtensionByPath(path string) (*Extension, error) {
+	// resolve extension manifest
 	manifestTempPath := filepath.Join(path, "manifest.json")
 	if _, err := os.Stat(manifestTempPath); os.IsNotExist(err) {
-		return err
+		return nil, err
 	}
 	file, err := os.ReadFile(manifestTempPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	ext := new(Extension)
-	if err = json.Unmarshal(file, ext); err != nil {
-		return err
+	var ext Extension
+	if err = json.Unmarshal(file, &ext); err != nil {
+		return nil, err
 	}
-
-	if err := util.CopyDir(path, d.extensionPath(ext), extensionIgnoreDirs...); err != nil {
-		return err
-	}
-	d.extensions = append(d.extensions, ext)
-	return d.storage.Put(bucketExtension, ext.identity(), ext)
+	ext.Identity = ext.buildIdentity()
+	return &ext, nil
 }
 
 func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
@@ -112,6 +219,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 						return
 					}
 					defer scriptFile.Close()
+					ctx.Settings = parseSettings(ext.Settings)
 					var scriptBuf []byte
 					scriptBuf, err = io.ReadAll(scriptFile)
 					if err != nil {
@@ -138,11 +246,11 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 						}
 						// calculate resource total size
 						if ctx.Res != nil && len(ctx.Res.Files) > 0 {
-							var size int64 = 0
-							for _, f := range ctx.Res.Files {
-								size += f.Size
+							if err = ctx.Res.Validate(); err != nil {
+								// TODO: log
+								return
 							}
-							ctx.Res.Size = size
+							ctx.Res.CalcSize()
 						}
 						res = ctx.Res
 					}
@@ -154,28 +262,12 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 }
 
 func (d *Downloader) extensionPath(ext *Extension) string {
-	return filepath.Join(d.cfg.StorageDir, extensionsDir, ext.identity())
-}
-
-func parseRes(value any) (*base.Resource, error) {
-	if value == nil {
-		return nil, nil
-	}
-	buf, err := json.Marshal(value)
-	if err != nil {
-		return nil, err
-	}
-	var res base.Resource
-	if err := json.Unmarshal(buf, &res); err != nil {
-		return nil, err
-	}
-	if err := res.Validate(); err != nil {
-		return nil, err
-	}
-	return &res, nil
+	return filepath.Join(d.cfg.StorageDir, extensionsDir, ext.Identity)
 }
 
 type Extension struct {
+	// Identity is global unique for an extension, it's a combination of author and name
+	Identity    string `json:"identity"`
 	Name        string `json:"name"`
 	Author      string `json:"author"`
 	Title       string `json:"title"`
@@ -191,13 +283,32 @@ type Extension struct {
 	Repository string     `json:"repository"`
 	Scripts    []*Script  `json:"scripts"`
 	Settings   []*Setting `json:"settings"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-func (e *Extension) identity() string {
+func (e *Extension) buildIdentity() string {
 	if e.Author == "" {
 		return e.Name
 	}
 	return e.Author + "@" + e.Name
+}
+
+func (e *Extension) update(newExt *Extension) error {
+	e.Name = newExt.Name
+	e.Author = newExt.Author
+	e.Title = newExt.Title
+	e.Description = newExt.Description
+	e.Icon = newExt.Icon
+	e.Version = newExt.Version
+	e.Homepage = newExt.Homepage
+	e.InstallUrl = newExt.InstallUrl
+	e.Repository = newExt.Repository
+	e.Scripts = newExt.Scripts
+	e.Settings = newExt.Settings
+	e.UpdatedAt = time.Now()
+	return nil
 }
 
 type Script struct {
@@ -230,10 +341,9 @@ func (s *Script) match(event ActivationEvent, url string) bool {
 type SettingType string
 
 const (
-	SettingTypeString = "string"
-	SettingTypeInt    = "int"
-	SettingTypeFloat  = "float"
-	SettingTypeBool   = "bool"
+	SettingTypeString  SettingType = "string"
+	SettingTypeNumber  SettingType = "number"
+	SettingTypeBoolean SettingType = "boolean"
 )
 
 type Setting struct {
@@ -244,7 +354,9 @@ type Setting struct {
 	// setting type
 	Type SettingType `json:"type"`
 	// default value
-	value    any       `json:"value"`
+	Default any `json:"default"`
+	// setting value
+	Value    any       `json:"value"`
 	Multiple bool      `json:"multiple"`
 	Options  []*Option `json:"options"`
 }
@@ -277,6 +389,45 @@ func (h InstanceEvents) OnResolve(fn goja.Callable) {
 //}
 
 type Context struct {
-	Req *base.Request  `json:"req"`
-	Res *base.Resource `json:"res"`
+	Req      *base.Request  `json:"req"`
+	Res      *base.Resource `json:"res"`
+	Settings map[string]any `json:"settings"`
+}
+
+func parseSettings(settings []*Setting) map[string]any {
+	m := make(map[string]any)
+	for _, s := range settings {
+		var val any
+		if s.Value != nil {
+			val = s.Value
+		} else {
+			val = s.Default
+		}
+		m[s.Name] = tryParse(val, s.Type)
+	}
+	return m
+}
+
+func tryParse(val any, settingType SettingType) any {
+	if val == nil {
+		return val
+	}
+	switch settingType {
+	case SettingTypeString:
+		return fmt.Sprint(val)
+	case SettingTypeNumber:
+		vv, err := strconv.ParseFloat(fmt.Sprint(val), 64)
+		if err != nil {
+			return nil
+		}
+		return vv
+	case SettingTypeBoolean:
+		vv, err := strconv.ParseBool(fmt.Sprint(val))
+		if err != nil {
+			return nil
+		}
+		return vv
+	default:
+		return nil
+	}
 }

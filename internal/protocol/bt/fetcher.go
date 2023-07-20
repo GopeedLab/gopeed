@@ -92,8 +92,8 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 			Path: util.Dir(file.Path()),
 			Size: file.Length(),
 		}
-		res.Size += file.Length()
 	}
+	res.CalcSize()
 	f.meta.Req = req
 	f.meta.Res = res
 	return nil

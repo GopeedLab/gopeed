@@ -132,7 +132,7 @@ func (d *Downloader) Setup() error {
 	}
 	d.tasks = tasks
 
-	// 每个tick统计一次下载速度
+	// calculate download speed every tick
 	go func() {
 
 		for !d.closed.Load() {
@@ -425,6 +425,8 @@ func (d *Downloader) Clear() error {
 			return err
 		}
 	}
+	d.tasks = make([]*Task, 0)
+	d.extensions = make([]*Extension, 0)
 	if err := d.storage.Clear(); err != nil {
 		return err
 	}

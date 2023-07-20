@@ -95,6 +95,11 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodGet).Path("/api/v1/tasks").HandlerFunc(GetTasks)
 	r.Methods(http.MethodGet).Path("/api/v1/config").HandlerFunc(GetConfig)
 	r.Methods(http.MethodPut).Path("/api/v1/config").HandlerFunc(PutConfig)
+	r.Methods(http.MethodGet).Path("/api/v1/extensions").HandlerFunc(GetExtensions)
+	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/settings").HandlerFunc(PutExtensionSettings)
+	r.Methods(http.MethodDelete).Path("/api/v1/extensions/{identity}").HandlerFunc(DeleteExtension)
+	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/upgrade/check").HandlerFunc(UpgradeCheckExtension)
+	r.Methods(http.MethodPost).Path("/api/v1/extensions/{identity}/upgrade").HandlerFunc(UpgradeExtension)
 	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
 	if startCfg.WebEnable {
 		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))

@@ -25,21 +25,26 @@ type Resource struct {
 
 func (r *Resource) Validate() error {
 	if r.Name == "" {
-		return fmt.Errorf("invalid name")
-	}
-	if r.Size < 0 {
-		return fmt.Errorf("invalid size")
+		return fmt.Errorf("invalid resource name")
 	}
 	if r.Files == nil || len(r.Files) == 0 {
-		return fmt.Errorf("invalid files")
+		return fmt.Errorf("invalid resource files")
 	}
 	for _, file := range r.Files {
 		if file.Name == "" {
-			return fmt.Errorf("invalid file name")
+			return fmt.Errorf("invalid resource file name")
 		}
 	}
 	return nil
 
+}
+
+func (r *Resource) CalcSize() {
+	var size int64
+	for _, file := range r.Files {
+		size += file.Size
+	}
+	r.Size = size
 }
 
 type FileInfo struct {

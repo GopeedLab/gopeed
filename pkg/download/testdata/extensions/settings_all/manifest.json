@@ -1,0 +1,64 @@
+{
+  "name": "settings-all",
+  "title": "gopeed extension settings all type test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onResolve",
+      "matches": [
+        "*://*/*"
+      ],
+      "entry": "index.js"
+    }
+  ],
+  "settings": [
+    {
+      "name": "string",
+      "title": "string null test",
+      "type": "string"
+    },
+    {
+      "name": "number",
+      "title": "number null test",
+      "type": "number"
+    },
+    {
+      "name": "boolean",
+      "title": "boolean null test",
+      "type": "boolean"
+    },
+    {
+      "name": "stringDefault",
+      "title": "string default test",
+      "type": "string",
+      "default": "default"
+    },
+    {
+      "name": "numberDefault",
+      "title": "number default test",
+      "type": "number",
+      "default": 1
+    },
+    {
+      "name": "booleanDefault",
+      "title": "boolean default test",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "name": "stringValued",
+      "title": "string valued test",
+      "type": "string"
+    },
+    {
+      "name": "numberValued",
+      "title": "number valued test",
+      "type": "number"
+    },
+    {
+      "name": "booleanValued",
+      "title": "boolean valued test",
+      "type": "boolean"
+    }
+  ]
+}

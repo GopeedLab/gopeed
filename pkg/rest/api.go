@@ -175,6 +175,51 @@ func PutConfig(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewNilResult())
 }
 
+func GetExtensions(w http.ResponseWriter, r *http.Request) {
+	WriteJson(w, model.NewOkResult(Downloader.GetExtensions()))
+}
+
+func PutExtensionSettings(w http.ResponseWriter, r *http.Request) {
+	var req model.UpdateExtensionSettings
+	if ReadJson(r, w, &req) {
+		if err := Downloader.UpdateExtensionSettings(req.Identity, req.Settings); err != nil {
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
+func DeleteExtension(w http.ResponseWriter, r *http.Request) {
+	identity := r.FormValue("identity")
+	if err := Downloader.DeleteExtension(identity); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
+func UpgradeCheckExtension(w http.ResponseWriter, r *http.Request) {
+	identity := r.FormValue("identity")
+	newVersion, err := Downloader.UpgradeCheckExtension(identity)
+	if err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewOkResult(&model.UpgradeCheckExtensionResp{
+		NewVersion: newVersion,
+	}))
+}
+
+func UpgradeExtension(w http.ResponseWriter, r *http.Request) {
+	identity := r.FormValue("identity")
+	if err := Downloader.UpgradeExtension(identity); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
 func DoProxy(w http.ResponseWriter, r *http.Request) {
 	target := r.Header.Get("X-Target-Uri")
 	if target == "" {
