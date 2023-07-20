@@ -166,8 +166,8 @@ class BuildTaskListView extends GetView {
               ListTile(
                   title: Text(fileName(task.meta)),
                   leading: (task.meta.res.rootDir.isNotEmpty
-                                         ? const Icon(FaIcons.folder)
-                                         : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))])),
+                      ? const Icon(FaIcons.folder)
+                      : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))]))),
               Row(
                 children: [
                   Expanded(
