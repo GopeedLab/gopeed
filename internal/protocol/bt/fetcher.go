@@ -4,6 +4,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
@@ -68,7 +69,11 @@ func (f *Fetcher) initClient() (err error) {
 }
 
 func (f *Fetcher) Resolve(req *base.Request) error {
-	if err := f.addTorrent(req.URL); err != nil {
+	if err := base.ParseReqExtra[bt.ReqExtra](req); err != nil {
+		return err
+	}
+
+	if err := f.addTorrent(req); err != nil {
 		return err
 	}
 	go func() {
@@ -122,7 +127,7 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 
 func (f *Fetcher) Start() (err error) {
 	if !f.torrentReady.Load() {
-		if err = f.addTorrent(f.meta.Req.URL); err != nil {
+		if err = f.addTorrent(f.meta.Req); err != nil {
 			return
 		}
 	}
@@ -207,15 +212,15 @@ func (f *Fetcher) Progress() fetcher.Progress {
 	return f.progress
 }
 
-func (f *Fetcher) addTorrent(url string) (err error) {
+func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	if err = f.initClient(); err != nil {
 		return
 	}
-	schema := util.ParseSchema(url)
+	schema := util.ParseSchema(req.URL)
 	if schema == "MAGNET" {
-		f.torrent, err = client.AddMagnet(url)
+		f.torrent, err = client.AddMagnet(req.URL)
 	} else {
-		f.torrent, err = client.AddTorrentFromFile(url)
+		f.torrent, err = client.AddTorrentFromFile(req.URL)
 	}
 	if err != nil {
 		return
@@ -225,9 +230,25 @@ func (f *Fetcher) addTorrent(url string) (err error) {
 	if err != nil {
 		return
 	}
+
+	// use map to deduplicate
+	trackers := make(map[string]bool)
+	if req.Extra != nil {
+		extra := req.Extra.(*bt.ReqExtra)
+		if len(extra.Trackers) > 0 {
+			for _, tracker := range extra.Trackers {
+				trackers[tracker] = true
+			}
+		}
+	}
 	if exist && len(cfg.Trackers) > 0 {
-		announceList := make([][]string, 0)
 		for _, tracker := range cfg.Trackers {
+			trackers[tracker] = true
+		}
+	}
+	if len(trackers) > 0 {
+		announceList := make([][]string, 0)
+		for tracker := range trackers {
 			announceList = append(announceList, []string{tracker})
 		}
 		f.torrent.AddTrackers(announceList)

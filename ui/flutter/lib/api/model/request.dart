@@ -5,7 +5,7 @@ part 'request.g.dart';
 @JsonSerializable(explicitToJson: true)
 class Request {
   String url;
-  Map<String, dynamic>? extra;
+  Object? extra;
 
   Request({
     required this.url,
@@ -21,7 +21,7 @@ class Request {
 @JsonSerializable()
 class ReqExtraHttp {
   String method = 'GET';
-  Map<String, String> headers = {};
+  Map<String, String> header = {};
   String body = '';
 
   ReqExtraHttp();
@@ -30,4 +30,16 @@ class ReqExtraHttp {
       _$ReqExtraHttpFromJson(json);
 
   Map<String, dynamic> toJson() => _$ReqExtraHttpToJson(this);
+}
+
+@JsonSerializable()
+class ReqExtraBt {
+  List<String> trackers = [];
+
+  ReqExtraBt();
+
+  factory ReqExtraBt.fromJson(Map<String, dynamic> json) =>
+      _$ReqExtraBtFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ReqExtraBtToJson(this);
 }

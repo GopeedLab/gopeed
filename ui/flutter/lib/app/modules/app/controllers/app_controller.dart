@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
+import 'dart:ui';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
@@ -42,10 +43,13 @@ const allTrackerSubscribeUrls = [
   'https://github.com/XIU2/TrackersListCollection/raw/master/http.txt',
 ];
 const allTrackerCdns = [
-  // jsdelivr: https://cdn.jsdelivr.net/gh/ngosang/trackerslist/trackers_all.txt
-  ["https://cdn.jsdelivr.net/gh", r".*github.com(/.*)/raw/master(/.*)"],
-  // nuaa: https://hub.nuaa.cf/ngosang/trackerslist/raw/master/trackers_all.txt
-  ["https://hub.nuaa.cf", r".*github.com(/.*)"]
+  // jsdelivr: https://fastly.jsdelivr.net/gh/ngosang/trackerslist/trackers_all.txt
+  ["https://fastly.jsdelivr.net/gh", r".*github.com(/.*)/raw/master(/.*)"],
+  // ghproxy: https://ghproxy.com/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
+  [
+    "https://ghproxy.com/https://raw.githubusercontent.com",
+    r".*github.com(/.*)/raw(/.*)"
+  ]
 ];
 final allTrackerSubscribeUrlCdns = Map.fromIterable(allTrackerSubscribeUrls,
     key: (v) => v as String,
@@ -265,18 +269,16 @@ class AppController extends GetxController with WindowListener, TrayListener {
     final btExtConfig = downloaderConfig.value.extra.bt;
     final result = <String>[];
     for (var u in btExtConfig.trackerSubscribeUrls) {
-      var allFail = true;
-      for (var cdn in allTrackerSubscribeUrlCdns[u]!) {
-        try {
-          result.addAll(await _fetchTrackers(cdn));
-          allFail = false;
-          break;
-        } catch (e) {
-          logger.w("subscribe trackers fail, url: $cdn", e);
-        }
+      final cdns = allTrackerSubscribeUrlCdns[u];
+      if (cdns == null) {
+        continue;
       }
-      if (allFail) {
-        throw Exception('subscribe trackers fail, network error');
+      try {
+        final trackers =
+            await Util.anyOk(cdns.map((cdn) => _fetchTrackers(cdn)));
+        result.addAll(trackers);
+      } catch (e) {
+        logger.w("subscribe trackers fail, url: $u", e);
       }
     }
     btExtConfig.subscribeTrackers.clear();
@@ -336,7 +338,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       extra.themeMode = ThemeMode.dark.name;
     }
     if (extra.locale.isEmpty) {
-      final systemLocale = getLocaleKey(ui.window.locale);
+      final systemLocale = getLocaleKey(PlatformDispatcher.instance.locale);
       extra.locale = AppTranslation.translations.containsKey(systemLocale)
           ? systemLocale
           : getLocaleKey(fallbackLocale);

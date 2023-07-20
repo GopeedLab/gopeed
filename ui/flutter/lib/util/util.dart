@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -11,7 +13,9 @@ class Util {
   }
 
   static String fmtByte(int byte) {
-    if (byte < 1024) {
+    if (byte < 0) {
+      return "0 B";
+    } else if (byte < 1024) {
       return "$byte B";
     } else if (byte < 1024 * 1024) {
       return "${(byte / 1024).toStringAsFixed(2)} KB";
@@ -58,5 +62,34 @@ class Util {
 
   static isWeb() {
     return kIsWeb;
+  }
+
+  static List<String> textToLines(String text) {
+    if (text.isEmpty) {
+      return [];
+    }
+    const ls = LineSplitter();
+    return ls.convert(text);
+  }
+
+  // if one future complete, return the result, only all future error, return the last error
+  static anyOk<T>(Iterable<Future<T>> futures) {
+    final completer = Completer<T>();
+    Object lastError;
+    var count = futures.length;
+    for (var future in futures) {
+      future.then((value) {
+        if (!completer.isCompleted) {
+          completer.complete(value);
+        }
+      }).catchError((e) {
+        lastError = e;
+        count--;
+        if (count == 0) {
+          completer.completeError(lastError);
+        }
+      });
+    }
+    return completer.future;
   }
 }

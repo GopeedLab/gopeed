@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/api/model/meta.dart';
+import 'package:gopeed/api/model/resource.dart';
 import 'package:path/path.dart' as path;
 import 'package:styled_widget/styled_widget.dart';
 
@@ -162,10 +164,10 @@ class BuildTaskListView extends GetView {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                  title: Text(task.meta.res.name),
-                  leading: task.meta.res.name.lastIndexOf('.') == -1
-                      ? const Icon(FaIcons.file)
-                      : Icon(FaIcons.allIcons[findIcon(task.meta.res.name)])),
+                  title: Text(fileName(task.meta)),
+                  leading: (task.meta.res.rootDir.isNotEmpty
+                                         ? const Icon(FaIcons.folder)
+                                         : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))])),
               Row(
                 children: [
                   Expanded(
@@ -193,5 +195,12 @@ class BuildTaskListView extends GetView {
             ],
           ),
         )).padding(horizontal: 8, top: 8);
+  }
+
+  String fileName(Meta meta) {
+    if (meta.res.files.length > 1) {
+      return meta.res.name;
+    }
+    return meta.opts.name.isEmpty ? meta.res.files[0].name : meta.opts.name;
   }
 }

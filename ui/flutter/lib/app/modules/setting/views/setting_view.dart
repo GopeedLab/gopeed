@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../generated/locales.g.dart';
+import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
 import '../../../../util/message.dart';
 import '../../../../util/package_info.dart';
@@ -89,7 +90,7 @@ class SettingView extends GetView<SettingController> {
         keyboardType: TextInputType.number,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
-          _NumericalRangeFormatter(min: 1, max: 256),
+          NumericalRangeFormatter(min: 1, max: 256),
         ],
       );
     });
@@ -116,7 +117,7 @@ class SettingView extends GetView<SettingController> {
         keyboardType: TextInputType.number,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
-          _NumericalRangeFormatter(min: 1, max: 256),
+          NumericalRangeFormatter(min: 1, max: 256),
         ],
       );
     });
@@ -187,7 +188,6 @@ class SettingView extends GetView<SettingController> {
         (Key key) {
       final trackersController = TextEditingController(
           text: btExtConfig.customTrackers.join('\r\n').toString());
-      const ls = LineSplitter();
       return TextField(
         key: key,
         focusNode: FocusNode(),
@@ -198,7 +198,7 @@ class SettingView extends GetView<SettingController> {
           hintText: 'addTrackerHit'.tr,
         ),
         onChanged: (value) async {
-          btExtConfig.customTrackers = ls.convert(value);
+          btExtConfig.customTrackers = Util.textToLines(value);
           appController.refreshTrackers();
 
           await debounceSave();
@@ -408,7 +408,7 @@ class SettingView extends GetView<SettingController> {
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  _NumericalRangeFormatter(min: 0, max: 65535),
+                  NumericalRangeFormatter(min: 0, max: 65535),
                 ],
               ),
             ),
@@ -602,42 +602,6 @@ class SettingView extends GetView<SettingController> {
         return 'themeDark'.tr;
       default:
         return 'themeSystem'.tr;
-    }
-  }
-}
-
-// class _ConfigItem {
-//   late String label;
-//   late String Function() text;
-//   late Widget Function(Key key) inputItem;
-//
-//   _ConfigItem(this.label, this.text, this.inputItem);
-// }
-
-class _NumericalRangeFormatter extends TextInputFormatter {
-  final int min;
-  final int max;
-
-  _NumericalRangeFormatter({required this.min, required this.max});
-
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    if (newValue.text.isEmpty) {
-      return newValue;
-    }
-    var intVal = int.tryParse(newValue.text);
-    if (intVal == null) {
-      return oldValue;
-    }
-    if (intVal < min) {
-      return newValue.copyWith(text: min.toString());
-    } else if (intVal > max) {
-      return oldValue.copyWith(text: max.toString());
-    } else {
-      return newValue;
     }
   }
 }

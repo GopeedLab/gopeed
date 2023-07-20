@@ -6,6 +6,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
 	"reflect"
 	"testing"
 )
@@ -21,6 +22,12 @@ func TestFetcher_Config(t *testing.T) {
 func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 	err := fetcher.Resolve(&base.Request{
 		URL: "./testdata/ubuntu-22.04-live-server-amd64.iso.torrent",
+		Extra: bt.ReqExtra{
+			Trackers: []string{
+				"udp://tracker.birkenwald.de:6969/announce",
+				"udp://tracker.bitsearch.to:1337/announce",
+			},
+		},
 	})
 	if err != nil {
 		panic(err)
