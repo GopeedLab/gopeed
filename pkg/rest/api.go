@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
@@ -138,19 +139,15 @@ func GetTask(w http.ResponseWriter, r *http.Request) {
 
 func GetTasks(w http.ResponseWriter, r *http.Request) {
 	status := r.FormValue("status")
+	tasks := Downloader.GetTasks()
 	if status == "" {
-		status = strings.Join([]string{
-			string(base.DownloadStatusReady),
-			string(base.DownloadStatusRunning),
-			string(base.DownloadStatusPause),
-			string(base.DownloadStatusError),
-			string(base.DownloadStatusDone),
-		}, ",")
+		WriteJson(w, model.NewOkResult(tasks))
+		return
 	}
 	statusArr := strings.Split(status, ",")
-	tasks := Downloader.GetTasks()
 	result := make([]*download.Task, 0)
 	for _, task := range tasks {
+		fmt.Printf("task status: %s\n", task.Status)
 		for _, s := range statusArr {
 			if task.Status == base.Status(s) {
 				result = append(result, task)

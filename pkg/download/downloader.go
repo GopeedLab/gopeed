@@ -642,17 +642,20 @@ func (d *Downloader) doPause(task *Task, status base.Status) (err error) {
 }
 
 func (d *Downloader) doContinue(task *Task) (err error) {
-	func() {
+	err = func() error {
 		task.lock.Lock()
 		defer task.lock.Unlock()
 		if task.Status != base.DownloadStatusRunning && task.Status != base.DownloadStatusDone {
-			err = d.restoreFetcher(task)
+			err := d.restoreFetcher(task)
 			if err != nil {
-				return
+				return err
 			}
 		}
-		return
+		return nil
 	}()
+	if err != nil {
+		return
+	}
 	go func() {
 		if err := d.start(task); err != nil {
 			// TODO log
