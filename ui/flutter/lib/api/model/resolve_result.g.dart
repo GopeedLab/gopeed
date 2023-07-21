@@ -8,7 +8,7 @@ part of 'resolve_result.dart';
 
 ResolveResult _$ResolveResultFromJson(Map<String, dynamic> json) =>
     ResolveResult(
-      id: json['id'] as String,
+      id: json['id'] as String? ?? "",
       res: Resource.fromJson(json['res'] as Map<String, dynamic>),
     );
 

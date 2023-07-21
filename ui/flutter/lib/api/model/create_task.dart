@@ -1,15 +1,14 @@
-import 'package:gopeed/api/model/resolve_result.dart';
-import 'package:gopeed/api/model/resolved_request.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 import 'options.dart';
+import 'request.dart';
 
 part 'create_task.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class CreateTask {
   String? rid;
-  ResolvedRequest? req;
+  Request? req;
   Options? opts;
 
   CreateTask({

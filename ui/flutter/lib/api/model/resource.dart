@@ -1,4 +1,4 @@
-import 'package:gopeed/api/model/resolved_request.dart';
+import 'package:gopeed/api/model/request.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'resource.g.dart';
@@ -13,9 +13,9 @@ class Resource {
   String hash;
 
   Resource(
-      {required this.name,
-      required this.size,
-      required this.range,
+      {this.name = "",
+      this.size = 0,
+      this.range = false,
       this.rootDir = "",
       required this.files,
       this.hash = ""});
@@ -31,12 +31,12 @@ class FileInfo {
   String path;
   String name;
   int size;
-  ResolvedRequest? req;
+  Request? req;
 
   FileInfo({
-    required this.path,
+    this.path = "",
     required this.name,
-    required this.size,
+    this.size = 0,
     this.req,
   });
 

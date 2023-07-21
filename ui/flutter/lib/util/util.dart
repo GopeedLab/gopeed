@@ -69,7 +69,7 @@ class Util {
       return [];
     }
     const ls = LineSplitter();
-    return ls.convert(text);
+    return ls.convert(text).where((line) => line.isNotEmpty).toList();
   }
 
   // if one future complete, return the result, only all future error, return the last error

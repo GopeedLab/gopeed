@@ -7,9 +7,9 @@ part of 'resource.dart';
 // **************************************************************************
 
 Resource _$ResourceFromJson(Map<String, dynamic> json) => Resource(
-      name: json['name'] as String,
-      size: json['size'] as int,
-      range: json['range'] as bool,
+      name: json['name'] as String? ?? "",
+      size: json['size'] as int? ?? 0,
+      range: json['range'] as bool? ?? false,
       rootDir: json['rootDir'] as String? ?? "",
       files: (json['files'] as List<dynamic>)
           .map((e) => FileInfo.fromJson(e as Map<String, dynamic>))
@@ -27,12 +27,12 @@ Map<String, dynamic> _$ResourceToJson(Resource instance) => <String, dynamic>{
     };
 
 FileInfo _$FileInfoFromJson(Map<String, dynamic> json) => FileInfo(
-      path: json['path'] as String,
+      path: json['path'] as String? ?? "",
       name: json['name'] as String,
-      size: json['size'] as int,
+      size: json['size'] as int? ?? 0,
       req: json['req'] == null
           ? null
-          : ResolvedRequest.fromJson(json['req'] as Map<String, dynamic>),
+          : Request.fromJson(json['req'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$FileInfoToJson(FileInfo instance) {

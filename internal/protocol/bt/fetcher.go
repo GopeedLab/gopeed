@@ -84,43 +84,16 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 			f.safeDrop()
 		}
 	}()
-	res := &base.Resource{
-		Name:    f.torrent.Name(),
-		Range:   true,
-		RootDir: f.torrent.Name(),
-		Files:   make([]*base.FileInfo, len(f.torrent.Files())),
-		Hash:    f.torrent.InfoHash().String(),
-	}
-	for i, file := range f.torrent.Files() {
-		res.Files[i] = &base.FileInfo{
-			Name: filepath.Base(file.DisplayPath()),
-			Path: util.Dir(file.Path()),
-			Size: file.Length(),
-		}
-	}
-	res.CalcSize()
 	f.meta.Req = req
-	f.meta.Res = res
 	return nil
 }
 
 func (f *Fetcher) Create(opts *base.Options) (err error) {
 	f.create.Store(true)
 	f.meta.Opts = opts
-	if len(opts.SelectFiles) == 0 {
-		opts.SelectFiles = make([]int, 0)
-		for i := range f.torrent.Files() {
-			opts.SelectFiles = append(opts.SelectFiles, i)
-		}
-	}
-	if opts.Path != "" {
+	if f.meta.Res != nil {
 		torrentDirMap[f.meta.Res.Hash] = path.Join(f.meta.Opts.Path, f.meta.Res.RootDir)
-		if ft, ok := ftMap[f.meta.Res.Hash]; ok {
-			// reuse resolve fetcher
-			ft.setTorrentDir(torrentDirMap[f.meta.Res.Hash])
-		}
 	}
-
 	f.progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))
 	return nil
 }
@@ -130,6 +103,9 @@ func (f *Fetcher) Start() (err error) {
 		if err = f.addTorrent(f.meta.Req); err != nil {
 			return
 		}
+	}
+	if ft, ok := ftMap[f.meta.Res.Hash]; ok {
+		ft.setTorrentDir(path.Join(f.meta.Opts.Path, f.meta.Res.RootDir))
 	}
 	files := f.torrent.Files()
 	if len(f.meta.Opts.SelectFiles) == len(files) {
@@ -212,6 +188,28 @@ func (f *Fetcher) Progress() fetcher.Progress {
 	return f.progress
 }
 
+func (f *Fetcher) updateRes() {
+	res := &base.Resource{
+		Name:    f.torrent.Name(),
+		Range:   true,
+		RootDir: f.torrent.Name(),
+		Files:   make([]*base.FileInfo, len(f.torrent.Files())),
+		Hash:    f.torrent.InfoHash().String(),
+	}
+	for i, file := range f.torrent.Files() {
+		res.Files[i] = &base.FileInfo{
+			Name: filepath.Base(file.DisplayPath()),
+			Path: util.Dir(file.Path()),
+			Size: file.Length(),
+		}
+	}
+	res.CalcSize()
+	f.meta.Res = res
+	if f.meta.Opts != nil {
+		f.meta.Opts.InitSelectFiles(len(res.Files))
+	}
+}
+
 func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	if err = f.initClient(); err != nil {
 		return
@@ -254,6 +252,7 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 		f.torrent.AddTrackers(announceList)
 	}
 	<-f.torrent.GotInfo()
+	f.updateRes()
 	f.torrentReady.Store(true)
 	return
 }

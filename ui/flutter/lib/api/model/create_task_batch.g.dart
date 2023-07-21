@@ -9,7 +9,7 @@ part of 'create_task_batch.dart';
 CreateTaskBatch _$CreateTaskBatchFromJson(Map<String, dynamic> json) =>
     CreateTaskBatch(
       reqs: (json['reqs'] as List<dynamic>?)
-          ?.map((e) => ResolvedRequest.fromJson(e as Map<String, dynamic>))
+          ?.map((e) => Request.fromJson(e as Map<String, dynamic>))
           .toList(),
       opts: json['opts'] == null
           ? null

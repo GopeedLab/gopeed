@@ -39,7 +39,7 @@ dependencies:
   lottie: ^1.4.2
   styled_widget: ^0.4.0+3
   context_menus: ^1.0.2
-  json_annotation: ^4.6.0
+  json_annotation: ^4.8.1
   dio: ^5.2.1
   path_provider: ^2.0.11
   file_picker: ^5.2.5

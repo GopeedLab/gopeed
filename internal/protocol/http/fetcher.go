@@ -135,7 +135,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	}
 	// unknown file filePath
 	if file.Name == "" || file.Name == "/" || file.Name == "." {
-		file.Name = "unknown"
+		file.Name = httpReq.URL.Hostname()
 	}
 	res.Files = append(res.Files, file)
 	res.Name = file.Name

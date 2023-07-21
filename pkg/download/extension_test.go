@@ -70,6 +70,16 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 		if len(extensions) != 1 || extensions[0].Version == oldVersion {
 			t.Fatal("extension update fail")
 		}
+
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/GopeedLab/gopeed/releases",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) == 1 {
+			t.Fatal("resolve error")
+		}
 	})
 }
 
@@ -112,6 +122,22 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 }
 
 func TestDownloader_DeleteExtension(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if err := downloader.InstallExtensionByFolder("./testdata/extensions/basic"); err != nil {
+			t.Fatal(err)
+		}
+		extensions := downloader.GetExtensions()
+		if err := downloader.DeleteExtension(extensions[0].Identity); err != nil {
+			t.Fatal(err)
+		}
+		extensions = downloader.GetExtensions()
+		if len(extensions) != 0 {
+			t.Fatal("extension delete fail")
+		}
+	})
+}
+
+func TestDownloader_Extension_OnResolve(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		if err := downloader.InstallExtensionByFolder("./testdata/extensions/basic"); err != nil {
 			t.Fatal(err)

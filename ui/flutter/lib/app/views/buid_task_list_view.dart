@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/api/model/meta.dart';
-import 'package:gopeed/api/model/resource.dart';
 import 'package:path/path.dart' as path;
 import 'package:styled_widget/styled_widget.dart';
 
@@ -56,14 +55,14 @@ class BuildTaskListView extends GetView {
     }
 
     String buildExplorerUrl(Task task) {
-      if (task.meta.res.rootDir.trim().isEmpty) {
+      if (task.meta.res!.rootDir.trim().isEmpty) {
         return path.join(
             Util.safeDir(task.meta.opts.path),
-            Util.safeDir(task.meta.res.files[0].path),
-            task.meta.res.files[0].name);
+            Util.safeDir(task.meta.res!.files[0].path),
+            task.meta.res!.files[0].name);
       } else {
         return path.join(Util.safeDir(task.meta.opts.path),
-            Util.safeDir(task.meta.res.rootDir));
+            Util.safeDir(task.meta.res!.rootDir));
       }
     }
 
@@ -153,7 +152,8 @@ class BuildTaskListView extends GetView {
     }
 
     double getProgress() {
-      return task.size <= 0 ? 1 : task.progress.downloaded / task.size;
+      final totalSize = task.meta.res?.size ?? 0;
+      return totalSize <= 0 ? 0 : task.progress.downloaded / totalSize;
     }
 
     return Card(
@@ -165,7 +165,7 @@ class BuildTaskListView extends GetView {
             children: [
               ListTile(
                   title: Text(fileName(task.meta)),
-                  leading: (task.meta.res.rootDir.isNotEmpty
+                  leading: (task.meta.res?.rootDir.isNotEmpty ?? false
                       ? const Icon(FaIcons.folder)
                       : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))]))),
               Row(
@@ -173,7 +173,7 @@ class BuildTaskListView extends GetView {
                   Expanded(
                       flex: 1,
                       child: Text(
-                        "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
+                        "${isDone() ? "" : Util.fmtByte(task.progress.downloaded)}${(task.meta.res?.size ?? 0) <= 0 ? "" : " / ${Util.fmtByte(task.meta.res!.size)}"}",
                         style: Get.textTheme.bodyLarge
                             ?.copyWith(color: Get.theme.disabledColor),
                       ).padding(left: 18)),
@@ -198,9 +198,24 @@ class BuildTaskListView extends GetView {
   }
 
   String fileName(Meta meta) {
-    if (meta.res.files.length > 1) {
-      return meta.res.name;
+    if (meta.res == null) {
+      final u = Uri.parse(meta.req.url);
+      if (u.scheme.startsWith("http")) {
+        return u.path.isNotEmpty
+            ? u.path.substring(u.path.lastIndexOf("/") + 1)
+            : u.host;
+      } else {
+        final params = u.queryParameters;
+        if (params.containsKey("dn")) {
+          return params["dn"]!;
+        } else {
+          return params["xt"]!.split(":").last;
+        }
+      }
     }
-    return meta.opts.name.isEmpty ? meta.res.files[0].name : meta.opts.name;
+    if (meta.res!.files.length > 1) {
+      return meta.res!.name;
+    }
+    return meta.opts.name.isEmpty ? meta.res!.files[0].name : meta.opts.name;
   }
 }

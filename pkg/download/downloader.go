@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -40,19 +41,13 @@ type Progress struct {
 	Downloaded int64 `json:"downloaded"`
 }
 
-type fetcherResolved struct {
-	req     *base.Request
-	fetcher fetcher.Fetcher
-	rr      *ResolveResult
-}
-
 type Downloader struct {
-	cfg           *DownloaderConfig
-	fetchBuilders map[string]fetcher.FetcherBuilder
-	resolvedMap   map[string]*fetcherResolved
-	storage       Storage
-	tasks         []*Task
-	listener      Listener
+	cfg             *DownloaderConfig
+	fetcherBuilders map[string]fetcher.FetcherBuilder
+	fetcherCache    map[string]fetcher.Fetcher
+	storage         Storage
+	tasks           []*Task
+	listener        Listener
 
 	lock   *sync.Mutex
 	closed atomic.Bool
@@ -69,8 +64,8 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 	d := &Downloader{
 		cfg: cfg,
 
-		fetchBuilders: make(map[string]fetcher.FetcherBuilder),
-		resolvedMap:   make(map[string]*fetcherResolved),
+		fetcherBuilders: make(map[string]fetcher.FetcherBuilder),
+		fetcherCache:    make(map[string]fetcher.Fetcher),
 
 		storage: cfg.Storage,
 		lock:    &sync.Mutex{},
@@ -79,7 +74,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 	}
 	for _, f := range cfg.FetchBuilders {
 		for _, p := range f.Schemes() {
-			d.fetchBuilders[strings.ToUpper(p)] = f
+			d.fetcherBuilders[strings.ToUpper(p)] = f
 		}
 	}
 
@@ -131,10 +126,13 @@ func (d *Downloader) Setup() error {
 		}
 	}
 	d.tasks = tasks
+	// sort by create time
+	sort.Slice(d.tasks, func(i, j int) bool {
+		return d.tasks[i].CreatedAt.Before(d.tasks[j].CreatedAt)
+	})
 
 	// calculate download speed every tick
 	go func() {
-
 		for !d.closed.Load() {
 			if len(d.tasks) > 0 {
 				for _, task := range d.tasks {
@@ -177,9 +175,9 @@ func (d *Downloader) Setup() error {
 
 func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
 	schema := util.ParseSchema(url)
-	fetchBuilder, ok := d.fetchBuilders[schema]
+	fetchBuilder, ok := d.fetcherBuilders[schema]
 	if !ok {
-		fetchBuilder, ok = d.fetchBuilders[util.FileSchema]
+		fetchBuilder, ok = d.fetcherBuilders[util.FileSchema]
 	}
 	if ok {
 		return fetchBuilder, nil
@@ -201,18 +199,11 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 		return
 	}
 
-	fr := &fetcherResolved{
-		req: req,
-		rr:  rr,
-	}
-
 	res := d.triggerOnResolve(req)
 	if res != nil && len(res.Files) > 0 {
 		rr = &ResolveResult{
-			ID:  rrId,
 			Res: res,
 		}
-		d.resolvedMap[rrId] = fr
 		return
 	}
 
@@ -224,12 +215,11 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	if err != nil {
 		return
 	}
+	d.fetcherCache[rrId] = fetcher
 	rr = &ResolveResult{
 		ID:  rrId,
 		Res: fetcher.Meta().Res,
 	}
-	fr.fetcher = fetcher
-	d.resolvedMap[rrId] = fr
 	return
 }
 
@@ -258,39 +248,12 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 	if opts == nil {
 		opts = &base.Options{}
 	}
-	fr, ok := d.resolvedMap[rrId]
+	fetcher, ok := d.fetcherCache[rrId]
 	if !ok {
 		return "", errors.New("invalid resource id")
 	}
-	defer delete(d.resolvedMap, rrId)
-
-	if fr.fetcher != nil {
-		// normal task
-		return d.doCreate(fr.fetcher, opts)
-	} else {
-		// resource is changed by the extension
-		res := fr.rr.Res
-		if len(res.Files) == 0 {
-			return "", errors.New("invalid resource files")
-		}
-		// create task for selected file
-		opts.InitSelectFiles(len(res.Files))
-		for index := range opts.SelectFiles {
-			file := res.Files[index]
-			if file.Req != nil {
-				fb, err := d.parseFb(file.Req.URL)
-				if err != nil {
-					return "", err
-				}
-				fetcher := fb.Build()
-				fetcher.Resolve(file.Req)
-				if _, err = d.doCreate(fetcher, opts.Clone()); err != nil {
-					return "", err
-				}
-			}
-		}
-	}
-	return
+	defer delete(d.fetcherCache, rrId)
+	return d.doCreate(fetcher, opts)
 }
 
 func (d *Downloader) Pause(id string) (err error) {
@@ -591,15 +554,14 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	taskId = task.ID
 
 	go d.watch(task)
-	go func() {
-		d.tryRunning(func(remain int) {
-			if remain > 0 {
-				if err := d.start(task); err != nil {
-					// TODO log
-				}
+	go d.tryRunning(func(remain int) {
+		if remain > 0 {
+			if err = d.start(task); err != nil {
+				// TODO log
+				return
 			}
-		})
-	}()
+		}
+	})
 	return
 }
 
@@ -644,7 +606,12 @@ func (d *Downloader) doPauseAll() (err error) {
 func (d *Downloader) start(task *Task) error {
 	task.lock.Lock()
 	defer task.lock.Unlock()
-	return d.doStart(task)
+	if err := d.doStart(task); err != nil {
+		task.Status = base.DownloadStatusError
+		d.emit(EventKeyError, task, err)
+		return err
+	}
+	return nil
 }
 
 func (d *Downloader) doStart(task *Task) error {
@@ -675,15 +642,23 @@ func (d *Downloader) doPause(task *Task, status base.Status) (err error) {
 }
 
 func (d *Downloader) doContinue(task *Task) (err error) {
-	task.lock.Lock()
-	defer task.lock.Unlock()
-	if task.Status != base.DownloadStatusRunning && task.Status != base.DownloadStatusDone {
-		err = d.restoreFetcher(task)
-		if err != nil {
+	func() {
+		task.lock.Lock()
+		defer task.lock.Unlock()
+		if task.Status != base.DownloadStatusRunning && task.Status != base.DownloadStatusDone {
+			err = d.restoreFetcher(task)
+			if err != nil {
+				return
+			}
+		}
+		return
+	}()
+	go func() {
+		if err := d.start(task); err != nil {
+			// TODO log
 			return
 		}
-		err = d.doStart(task)
-	}
+	}()
 	return
 }
 

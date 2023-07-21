@@ -63,6 +63,12 @@ class _Client {
   }
 }
 
+class TimeoutException implements Exception {
+  final String message;
+
+  TimeoutException(this.message);
+}
+
 late _Client _client;
 
 void init(String network, String address, String apiToken) {
@@ -86,7 +92,7 @@ Future<T> _parse<T>(
     if (e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
         e.type == DioExceptionType.connectionTimeout) {
-      throw Exception(Result(code: 1000, msg: "request timeout"));
+      throw TimeoutException("request timeout");
     }
     throw Exception(Result(code: 1000, msg: e.message));
   }

@@ -15,12 +15,5 @@
       ],
       "entry": "index.js"
     }
-  ],
-  "settings": [
-    {
-      "name": "ua",
-      "title": "User-Agent",
-      "type": "string"
-    }
   ]
 }

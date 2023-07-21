@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/api/model/create_task_batch.dart';
-import 'package:gopeed/api/model/resolved_request.dart';
 import 'package:gopeed/api/model/resource.dart';
 import '../../../../api/model/resolve_result.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
@@ -207,25 +206,23 @@ class CreateView extends GetView<CreateController> {
     try {
       _confirmController.start();
       if (_resolveFormKey.currentState!.validate()) {
-        Object? extra;
-        if (controller.showAdvanced.value) {
-          final u = Uri.parse(_urlController.text);
-          if (u.scheme.startsWith("http")) {
-            extra = ReqExtraHttp()
-              ..header = {
-                "User-Agent": _httpUaController.text,
-                "Cookie": _httpCookieController.text,
-                "Referer": _httpRefererController.text,
-              };
-          } else {
-            extra = ReqExtraBt()
-              ..trackers = Util.textToLines(_btTrackerController.text);
-          }
+        // check if is multi line urls
+        final urls = Util.textToLines(_urlController.text);
+        ResolveResult rr;
+        if (urls.length > 1) {
+          rr = ResolveResult(
+              res: Resource(
+                  files: urls
+                      .map((u) => FileInfo(
+                          name: u,
+                          req: Request(url: u, extra: parseReqExtra(u))))
+                      .toList()));
+        } else {
+          rr = await resolve(Request(
+            url: _urlController.text,
+            extra: parseReqExtra(_urlController.text),
+          ));
         }
-        final rr = await resolve(Request(
-          url: _urlController.text,
-          extra: extra,
-        ));
         await _showResolveDialog(rr);
       }
     } catch (e) {
@@ -234,6 +231,25 @@ class CreateView extends GetView<CreateController> {
       _confirmController.reset();
       controller.isResolving.value = false;
     }
+  }
+
+  Object? parseReqExtra(String url) {
+    Object? reqExtra;
+    if (controller.showAdvanced.value) {
+      final u = Uri.parse(_urlController.text);
+      if (u.scheme.startsWith("http")) {
+        reqExtra = ReqExtraHttp()
+          ..header = {
+            "User-Agent": _httpUaController.text,
+            "Cookie": _httpCookieController.text,
+            "Referer": _httpRefererController.text,
+          };
+      } else {
+        reqExtra = ReqExtraBt()
+          ..trackers = Util.textToLines(_btTrackerController.text);
+      }
+    }
+    return reqExtra;
   }
 
   String _hitText() {
@@ -328,19 +344,38 @@ class CreateView extends GetView<CreateController> {
                             showMessage('tip'.tr, 'noFileSelected'.tr);
                             return;
                           }
+                          Object? optExtra = connectionsController.text.isEmpty
+                              ? null
+                              : (OptsExtraHttp()
+                                ..connections =
+                                    int.parse(connectionsController.text));
                           if (createFormKey.currentState!.validate()) {
-                            await createTask(CreateTask(
-                                rid: rr.id,
-                                opts: Options(
+                            if (rr.id.isEmpty &&
+                                rr.res.files
+                                    .where((e) => e.req != null)
+                                    .isNotEmpty) {
+                              // check if is multi task resouces, if so, create task batch
+                              await createTaskBatch(CreateTaskBatch(
+                                  reqs: controller.selectedIndexes
+                                      .map((index) => rr.res.files[index].req)
+                                      .where((req) => req != null)
+                                      .map((req) => req!)
+                                      .toList(),
+                                  opts: Options(
                                     name: nameController.text,
                                     path: pathController.text,
-                                    selectFiles:
-                                        controller.selectedIndexes.cast<int>(),
-                                    extra: connectionsController.text.isEmpty
-                                        ? null
-                                        : (OptsExtraHttp()
-                                          ..connections = int.parse(
-                                              connectionsController.text)))));
+                                    selectFiles: [],
+                                    extra: optExtra,
+                                  )));
+                            } else {
+                              await createTask(CreateTask(
+                                  rid: rr.id,
+                                  opts: Options(
+                                      name: nameController.text,
+                                      path: pathController.text,
+                                      selectFiles: controller.selectedIndexes,
+                                      extra: optExtra)));
+                            }
                             Get.back();
                             Get.rootDelegate.offNamed(Routes.TASK);
                           }

@@ -10,7 +10,7 @@ CreateTask _$CreateTaskFromJson(Map<String, dynamic> json) => CreateTask(
       rid: json['rid'] as String?,
       req: json['req'] == null
           ? null
-          : ResolvedRequest.fromJson(json['req'] as Map<String, dynamic>),
+          : Request.fromJson(json['req'] as Map<String, dynamic>),
       opts: json['opts'] == null
           ? null
           : Options.fromJson(json['opts'] as Map<String, dynamic>),

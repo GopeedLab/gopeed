@@ -48,6 +48,17 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
+
+	fetcher := buildFetcher()
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://github.com",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fetcher.Meta().Res.Name != "github.com" || fetcher.Meta().Res.Files[0].Name != "github.com" {
+		t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, "github.com")
+	}
 }
 
 func testResolve(startTestServer func() net.Listener, path string, want *base.Resource, t *testing.T) {
