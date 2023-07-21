@@ -606,6 +606,7 @@ func (d *Downloader) doPauseAll() (err error) {
 func (d *Downloader) start(task *Task) error {
 	task.lock.Lock()
 	defer task.lock.Unlock()
+	task.Status = base.DownloadStatusRunning
 	if err := d.doStart(task); err != nil {
 		task.Status = base.DownloadStatusError
 		d.emit(EventKeyError, task, err)
@@ -615,7 +616,6 @@ func (d *Downloader) start(task *Task) error {
 }
 
 func (d *Downloader) doStart(task *Task) error {
-	task.Status = base.DownloadStatusRunning
 	task.Progress.Speed = 0
 	task.timer.Start()
 	if err := d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
