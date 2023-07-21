@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
@@ -147,7 +146,6 @@ func GetTasks(w http.ResponseWriter, r *http.Request) {
 	statusArr := strings.Split(status, ",")
 	result := make([]*download.Task, 0)
 	for _, task := range tasks {
-		fmt.Printf("task status: %s\n", task.Status)
 		for _, s := range statusArr {
 			if task.Status == base.Status(s) {
 				result = append(result, task)
