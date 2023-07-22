@@ -132,6 +132,9 @@ type BoltStorage struct {
 }
 
 func NewBoltStorage(dir string) *BoltStorage {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		panic(err)
+	}
 	path := filepath.Join(dir, dbFile)
 	db, err := bbolt.Open(path, 0600, nil)
 	if err != nil {

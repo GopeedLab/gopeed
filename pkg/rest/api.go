@@ -170,8 +170,25 @@ func PutConfig(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewNilResult())
 }
 
+func InstallExtension(w http.ResponseWriter, r *http.Request) {
+	var req model.InstallExtension
+	if ReadJson(r, w, &req) {
+		installedExt, err := Downloader.InstallExtensionByGit(req.URL)
+		if err != nil {
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
+		WriteJson(w, model.NewOkResult(installedExt.Identity))
+	}
+}
+
 func GetExtensions(w http.ResponseWriter, r *http.Request) {
-	WriteJson(w, model.NewOkResult(Downloader.GetExtensions()))
+	list := Downloader.GetExtensions()
+	baseList := make([]download.ExtensionBase, len(list))
+	for i, ext := range list {
+		baseList[i] = ext.ExtensionBase
+	}
+	WriteJson(w, model.NewOkResult(baseList))
 }
 
 func PutExtensionSettings(w http.ResponseWriter, r *http.Request) {
@@ -185,8 +202,20 @@ func PutExtensionSettings(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewNilResult())
 }
 
+func GetExtensionSettings(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	identity := vars["identity"]
+	ext, err := Downloader.GetExtension(identity)
+	if err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewOkResult(ext.Settings))
+}
+
 func DeleteExtension(w http.ResponseWriter, r *http.Request) {
-	identity := r.FormValue("identity")
+	vars := mux.Vars(r)
+	identity := vars["identity"]
 	if err := Downloader.DeleteExtension(identity); err != nil {
 		WriteJson(w, model.NewErrorResult(err.Error()))
 		return
@@ -195,7 +224,8 @@ func DeleteExtension(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpgradeCheckExtension(w http.ResponseWriter, r *http.Request) {
-	identity := r.FormValue("identity")
+	vars := mux.Vars(r)
+	identity := vars["identity"]
 	newVersion, err := Downloader.UpgradeCheckExtension(identity)
 	if err != nil {
 		WriteJson(w, model.NewErrorResult(err.Error()))
@@ -207,7 +237,8 @@ func UpgradeCheckExtension(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpgradeExtension(w http.ResponseWriter, r *http.Request) {
-	identity := r.FormValue("identity")
+	vars := mux.Vars(r)
+	identity := vars["identity"]
 	if err := Downloader.UpgradeExtension(identity); err != nil {
 		WriteJson(w, model.NewErrorResult(err.Error()))
 		return

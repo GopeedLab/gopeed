@@ -59,6 +59,9 @@ var (
 		Req:  taskReq,
 		Opts: createOpts,
 	}
+	installExtensionReq = &model.InstallExtension{
+		URL: "https://github.com/GopeedLab/gopeed-extension-samples#github-release-sample",
+	}
 )
 
 func TestResolve(t *testing.T) {
@@ -308,6 +311,84 @@ func TestGetAndPutConfig(t *testing.T) {
 	})
 }
 
+func TestInstallExtension(t *testing.T) {
+	doTest(func() {
+		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
+		if identity == "" {
+			t.Errorf("InstallExtension() got = %v, want %v", identity, "not empty")
+		}
+
+		// not a valid extension repository
+		code, _ := httpRequest[string](http.MethodPost, "/api/v1/extensions", &model.InstallExtension{
+			URL: "https://github.com/GopeedLab/gopeed",
+		})
+		checkCode(code, model.CodeError)
+
+		// not a git repository
+		code, _ = httpRequest[string](http.MethodPost, "/api/v1/extensions", &model.InstallExtension{
+			URL: "https://github.com",
+		})
+		checkCode(code, model.CodeError)
+	})
+}
+
+func TestGetExtensions(t *testing.T) {
+	doTest(func() {
+		httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
+		extensions := httpRequestCheckOk[[]*download.Extension](http.MethodGet, "/api/v1/extensions", nil)
+		if len(extensions) == 0 {
+			t.Errorf("GetExtensions() got = %v, want %v", len(extensions), "not empty")
+		}
+	})
+}
+
+func TestPutExtensionSettings(t *testing.T) {
+	doTest(func() {
+		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
+
+		httpRequestCheckOk[any](http.MethodPut, "/api/v1/extensions/"+identity+"/settings", &model.UpdateExtensionSettings{
+			Identity: identity,
+			Settings: map[string]any{
+				"undefined": "test",
+				"ua":        "test",
+			},
+		})
+
+		settings := httpRequestCheckOk[[]*download.Setting](http.MethodGet, "/api/v1/extensions/"+identity+"/settings", nil)
+		if len(settings) != 1 {
+			t.Errorf("PutExtensionSettings() got = %v, want %v", len(settings), 1)
+		}
+
+		if settings[0].Name != "ua" || settings[0].Value != "test" {
+			t.Errorf("PutExtensionSettings() got = %v, want %v", settings[0].Value, "test")
+		}
+	})
+}
+
+func TestDeleteExtension(t *testing.T) {
+	doTest(func() {
+		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
+		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/extensions/"+identity, nil)
+		extensions := httpRequestCheckOk[[]*download.Extension](http.MethodGet, "/api/v1/extensions", nil)
+		if len(extensions) != 0 {
+			t.Errorf("GetExtensions() got = %v, want %v", len(extensions), 0)
+		}
+	})
+}
+
+func TestUpgradeCheckExtension(t *testing.T) {
+	doTest(func() {
+		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
+		resp := httpRequestCheckOk[*model.UpgradeCheckExtensionResp](http.MethodGet, "/api/v1/extensions/"+identity+"/upgrade", nil)
+		// no new version
+		if resp.NewVersion != "" {
+			t.Errorf("UpgradeCheckExtension() got = %v, want %v", resp.NewVersion, "")
+		}
+		// force upgrade
+		httpRequestCheckOk[any](http.MethodPost, "/api/v1/extensions/"+identity+"/upgrade", nil)
+	})
+}
+
 func TestDoProxy(t *testing.T) {
 	doTest(func() {
 		code, respBody := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
@@ -360,6 +441,7 @@ func doTest(handler func()) {
 		var cfg = &model.StartConfig{}
 		cfg.Init()
 		cfg.Storage = storage
+		cfg.StorageDir = ".test_storage"
 		fileListener := doStart(cfg)
 		defer func() {
 			if err := fileListener.Close(); err != nil {
@@ -379,6 +461,7 @@ func doTest(handler func()) {
 			for _, id := range taskIds {
 				Downloader.Delete(id, true)
 			}
+			os.RemoveAll(cfg.StorageDir)
 		}()
 		taskReq.URL = "http://" + fileListener.Addr().String() + "/" + test.BuildName
 		handler()

@@ -35,22 +35,22 @@ const (
 	//HookEventOnDone    HookEvent = "onDone"
 )
 
-func (d *Downloader) InstallExtensionByGit(url string) error {
+func (d *Downloader) InstallExtensionByGit(url string) (*Extension, error) {
 	return d.fetchExtensionByGit(url, d.InstallExtensionByFolder)
 }
 
-func (d *Downloader) InstallExtensionByFolder(path string) error {
+func (d *Downloader) InstallExtensionByFolder(path string) (*Extension, error) {
 	ext, err := d.parseExtensionByPath(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = util.CopyDir(path, d.extensionPath(ext), extensionIgnoreDirs...); err != nil {
-		return err
+		return nil, err
 	}
 
 	// if extension is not installed, add it to the list, otherwise update it
-	installedExt := d.findExtension(ext.Identity)
+	installedExt := d.getExtension(ext.Identity)
 	if installedExt == nil {
 		ext.CreatedAt = time.Now()
 		ext.UpdatedAt = ext.CreatedAt
@@ -59,60 +59,65 @@ func (d *Downloader) InstallExtensionByFolder(path string) error {
 	} else {
 		installedExt.update(ext)
 	}
-	return d.storage.Put(bucketExtension, installedExt.Identity, installedExt)
+	if err = d.storage.Put(bucketExtension, installedExt.Identity, installedExt); err != nil {
+		return nil, err
+	}
+	return installedExt, nil
 }
 
 // UpgradeCheckExtension Check if there is a new version for the extension.
 func (d *Downloader) UpgradeCheckExtension(identity string) (newVersion string, err error) {
-	ext := d.findExtension(identity)
-	if ext == nil {
-		err = ErrExtensionNotFound
-		return
+	ext, err := d.GetExtension(identity)
+	if err != nil {
+		return "", err
 	}
 	if ext.InstallUrl == "" {
 		return
 	}
-	err = d.fetchExtensionByGit(ext.InstallUrl, func(tempExtPath string) error {
+	_, err = d.fetchExtensionByGit(ext.InstallUrl, func(tempExtPath string) (*Extension, error) {
 		tempExt, err := d.parseExtensionByPath(tempExtPath)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if tempExt.Version != ext.Version {
 			newVersion = tempExt.Version
 		}
-		return nil
+		return tempExt, nil
 	})
 	return
 }
 
 func (d *Downloader) UpgradeExtension(identity string) error {
-	ext := d.findExtension(identity)
-	if ext == nil {
-		return ErrExtensionNotFound
+	ext, err := d.GetExtension(identity)
+	if err != nil {
+		return err
 	}
 	if ext.InstallUrl == "" {
 		return nil
 	}
-	return d.InstallExtensionByGit(ext.InstallUrl)
+	if _, err := d.InstallExtensionByGit(ext.InstallUrl); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *Downloader) UpdateExtensionSettings(identity string, settings map[string]any) error {
-	ext := d.findExtension(identity)
-	if ext == nil {
-		return ErrExtensionNotFound
+	ext, err := d.GetExtension(identity)
+	if err != nil {
+		return err
 	}
 	for _, setting := range ext.Settings {
 		if value, ok := settings[setting.Name]; ok {
-			setting.Value = value
+			setting.Value = tryParse(value, setting.Type)
 		}
 	}
 	return d.storage.Put(bucketExtension, ext.Identity, ext)
 }
 
 func (d *Downloader) DeleteExtension(identity string) error {
-	ext := d.findExtension(identity)
-	if ext == nil {
-		return ErrExtensionNotFound
+	ext, err := d.GetExtension(identity)
+	if err != nil {
+		return err
 	}
 	// remove from disk
 	if err := os.RemoveAll(d.extensionPath(ext)); err != nil {
@@ -132,7 +137,15 @@ func (d *Downloader) GetExtensions() []*Extension {
 	return d.extensions
 }
 
-func (d *Downloader) findExtension(identity string) *Extension {
+func (d *Downloader) GetExtension(identity string) (*Extension, error) {
+	extension := d.getExtension(identity)
+	if extension == nil {
+		return nil, ErrExtensionNotFound
+	}
+	return extension, nil
+}
+
+func (d *Downloader) getExtension(identity string) *Extension {
 	for _, ext := range d.extensions {
 		if ext.Identity == identity {
 			return ext
@@ -141,17 +154,16 @@ func (d *Downloader) findExtension(identity string) *Extension {
 	return nil
 }
 
-func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath string) error) error {
+func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath string) (*Extension, error)) (*Extension, error) {
 	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
 		url = "https://" + url
 	}
 
 	// resolve project path
-	gitPath, projectPath := path.Split(url)
-	projectPath = strings.TrimSuffix(projectPath, gitSuffix)
+	parentPath, projectPath := path.Split(url)
 	// resolve project name and sub path
 	pathArr := strings.SplitN(projectPath, "#", 2)
-	projectPath = pathArr[0]
+	projectPath = strings.TrimSuffix(pathArr[0], gitSuffix)
 	subPath := ""
 	if len(pathArr) > 1 {
 		subPath = pathArr[1]
@@ -159,22 +171,19 @@ func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath st
 
 	tempExtDir := filepath.Join(d.cfg.StorageDir, tempExtensionsDir, projectPath)
 	if err := util.RmAndMkDirAll(tempExtDir); err != nil {
-		return err
+		return nil, err
 	}
 	// clone project to extension temp dir
-	gitUrl := gitPath + projectPath + gitSuffix
+	gitUrl := parentPath + projectPath + gitSuffix
 	if _, err := git.PlainClone(tempExtDir, false, &git.CloneOptions{
 		URL:   gitUrl,
 		Depth: 1,
 	}); err != nil {
-		return err
+		return nil, err
 	}
 	defer os.RemoveAll(tempExtDir)
 
-	if err := handler(filepath.Join(tempExtDir, subPath)); err != nil {
-		return err
-	}
-	return nil
+	return handler(filepath.Join(tempExtDir, subPath))
 }
 
 func (d *Downloader) parseExtensionByPath(path string) (*Extension, error) {
@@ -189,6 +198,9 @@ func (d *Downloader) parseExtensionByPath(path string) (*Extension, error) {
 	}
 	var ext Extension
 	if err = json.Unmarshal(file, &ext); err != nil {
+		return nil, err
+	}
+	if err = ext.validate(); err != nil {
 		return nil, err
 	}
 	ext.Identity = ext.buildIdentity()
@@ -265,7 +277,7 @@ func (d *Downloader) extensionPath(ext *Extension) string {
 	return filepath.Join(d.cfg.StorageDir, extensionsDir, ext.Identity)
 }
 
-type Extension struct {
+type ExtensionBase struct {
 	// Identity is global unique for an extension, it's a combination of author and name
 	Identity    string `json:"identity"`
 	Name        string `json:"name"`
@@ -280,12 +292,30 @@ type Extension struct {
 	// InstallUrl install url
 	InstallUrl string `json:"installUrl"`
 	// Repository git repository url
-	Repository string     `json:"repository"`
-	Scripts    []*Script  `json:"scripts"`
-	Settings   []*Setting `json:"settings"`
+	Repository string `json:"repository"`
 
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+}
+
+type Extension struct {
+	ExtensionBase
+
+	Scripts  []*Script  `json:"scripts"`
+	Settings []*Setting `json:"settings"`
+}
+
+func (e *Extension) validate() error {
+	if e.Name == "" {
+		return fmt.Errorf("extension name is required")
+	}
+	if e.Title == "" {
+		return fmt.Errorf("extension title is required")
+	}
+	if e.Version == "" {
+		return fmt.Errorf("extension version is required")
+	}
+	return nil
 }
 
 func (e *Extension) buildIdentity() string {
@@ -296,8 +326,6 @@ func (e *Extension) buildIdentity() string {
 }
 
 func (e *Extension) update(newExt *Extension) error {
-	e.Name = newExt.Name
-	e.Author = newExt.Author
 	e.Title = newExt.Title
 	e.Description = newExt.Description
 	e.Icon = newExt.Icon
