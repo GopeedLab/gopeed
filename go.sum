@@ -210,8 +210,8 @@ github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJ
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
-github.com/monkeyWie/torrent v1.52.4-alpha h1:iir8NMyLkv6X/D4skGUx8Htb8q57cPk9A6bYlRfrrqA=
-github.com/monkeyWie/torrent v1.52.4-alpha/go.mod h1:yBUcBuIOlttGEgAW/6gamzQGD+k2+wUh65fOPPzxvC4=
+github.com/monkeyWie/torrent v1.52.5-alpha h1:JnGTtfwrnrxaMdpzDgHbzfLEnXhkmldnk0iyka+2Ntw=
+github.com/monkeyWie/torrent v1.52.5-alpha/go.mod h1:yBUcBuIOlttGEgAW/6gamzQGD+k2+wUh65fOPPzxvC4=
 github.com/mschoch/smat v0.0.0-20160514031455-90eadee771ae/go.mod h1:qAyveg+e4CE+eKJXWVjKXM4ck2QobLqTDytGJbLLhJg=
 github.com/mschoch/smat v0.2.0 h1:8imxQsjDm8yFEAVBe7azKmKSgzSkZXDuKkSq9374khM=
 github.com/mschoch/smat v0.2.0/go.mod h1:kc9mz7DoBKqDyiRL7VZN8KvXQMWeTaVnttLRXOlotKw=

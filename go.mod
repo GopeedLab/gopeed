@@ -13,7 +13,7 @@ require (
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
 )
 
-replace github.com/anacrolix/torrent => github.com/monkeyWie/torrent v1.52.4-alpha
+replace github.com/anacrolix/torrent => github.com/monkeyWie/torrent v1.52.5-alpha
 
 require (
 	crawshaw.io/sqlite v0.3.3-0.20220618202545-d1964889ea3c // indirect
