@@ -223,7 +223,7 @@ func TestPauseAllAndContinueALLTasks(t *testing.T) {
 
 		// continue all
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/continue", nil)
-		time.Sleep(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 100)
 		tasks := httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s", base.DownloadStatusRunning), nil)
 		if len(tasks) != cfg.MaxRunning {
 			t.Errorf("ContinueAllTasks() got = %v, want %v", len(tasks), cfg.MaxRunning)
