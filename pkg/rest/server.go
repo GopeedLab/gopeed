@@ -107,14 +107,21 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))
 	}
 
-	if startCfg.ApiToken != "" {
+	if startCfg.ApiToken != "" || (startCfg.WebEnable && startCfg.WebBasicAuth != nil) {
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Header.Get("X-Api-Token") != startCfg.ApiToken {
-					WriteJson(w, model.NewErrorResult("invalid token", model.CodeUnauthorized))
+				if startCfg.ApiToken != "" && r.Header.Get("X-Api-Token") == startCfg.ApiToken {
+					h.ServeHTTP(w, r)
 					return
 				}
-				h.ServeHTTP(w, r)
+				if startCfg.WebEnable && startCfg.WebBasicAuth != nil {
+					if r.Header.Get("Authorization") == startCfg.WebBasicAuth.Authorization() {
+						h.ServeHTTP(w, r)
+						return
+					}
+					w.Header().Set("WWW-Authenticate", "Basic realm=\"gopeed web\"")
+				}
+				WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
 			})
 		})
 	}
@@ -136,7 +143,11 @@ func ReadJson(r *http.Request, w http.ResponseWriter, v any) bool {
 }
 
 func WriteJson(w http.ResponseWriter, v any) {
+	WriteStatusJson(w, http.StatusOK, v)
+}
+
+func WriteStatusJson(w http.ResponseWriter, statusCode int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(v)
 }
