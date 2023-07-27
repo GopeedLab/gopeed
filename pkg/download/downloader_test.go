@@ -27,7 +27,6 @@ func TestDownloader_Resolve(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := &base.Resource{
-		Name:  test.BuildName,
 		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
@@ -82,6 +81,52 @@ func TestDownloader_Create(t *testing.T) {
 	got := test.FileMd5(test.DownloadFile)
 	if want != got {
 		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
+func TestDownloader_CreateRename(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}
+	var wg sync.WaitGroup
+	wg.Add(2)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
+	_, err := downloader.CreateDirectBatch([]*base.Request{
+		req,
+		req,
+	}, &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wg.Wait()
+
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+	got = test.FileMd5(test.DownloadRenameFile)
+	if want != got {
+		t.Errorf("Download() rename got = %v, want %v", got, want)
 	}
 }
 

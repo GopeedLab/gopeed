@@ -18,8 +18,10 @@ const (
 	Dir       = "./"
 	BuildFile = Dir + BuildName
 
-	DownloadName = "download.data"
-	DownloadFile = Dir + DownloadName
+	DownloadName       = "download.data"
+	DownloadRename     = "download (1).data"
+	DownloadFile       = Dir + DownloadName
+	DownloadRenameFile = Dir + DownloadRename
 )
 
 func StartTestFileServer() net.Listener {
@@ -179,6 +181,9 @@ func (c *shutdownListener) Close() error {
 		fmt.Println(err)
 	}
 	if err := ifExistAndRemove(DownloadFile); err != nil {
+		fmt.Println(err)
+	}
+	if err := ifExistAndRemove(DownloadRenameFile); err != nil {
 		fmt.Println(err)
 	}
 	return closeErr

@@ -8,7 +8,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
-	"path"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -76,14 +75,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if err := f.addTorrent(req); err != nil {
 		return err
 	}
-	go func() {
-		// recycle unused torrent resource
-		time.Sleep(time.Minute * 3)
-		if !f.create.Load() {
-			f.torrentReady.Store(false)
-			f.safeDrop()
-		}
-	}()
+	f.updateRes()
 	f.meta.Req = req
 	return nil
 }
@@ -92,7 +84,7 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 	f.create.Store(true)
 	f.meta.Opts = opts
 	if f.meta.Res != nil {
-		torrentDirMap[f.meta.Res.Hash] = path.Join(f.meta.Opts.Path, f.meta.Res.RootDir)
+		torrentDirMap[f.meta.Res.Hash] = f.meta.FolderPath()
 	}
 	f.progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))
 	return nil
@@ -105,7 +97,7 @@ func (f *Fetcher) Start() (err error) {
 		}
 	}
 	if ft, ok := ftMap[f.meta.Res.Hash]; ok {
-		ft.setTorrentDir(path.Join(f.meta.Opts.Path, f.meta.Res.RootDir))
+		ft.setTorrentDir(f.meta.FolderPath())
 	}
 	files := f.torrent.Files()
 	if len(f.meta.Opts.SelectFiles) == len(files) {
@@ -190,11 +182,10 @@ func (f *Fetcher) Progress() fetcher.Progress {
 
 func (f *Fetcher) updateRes() {
 	res := &base.Resource{
-		Name:    f.torrent.Name(),
-		Range:   true,
-		RootDir: f.torrent.Name(),
-		Files:   make([]*base.FileInfo, len(f.torrent.Files())),
-		Hash:    f.torrent.InfoHash().String(),
+		Name:  f.torrent.Name(),
+		Range: true,
+		Files: make([]*base.FileInfo, len(f.torrent.Files())),
+		Hash:  f.torrent.InfoHash().String(),
 	}
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
@@ -252,7 +243,6 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 		f.torrent.AddTrackers(announceList)
 	}
 	<-f.torrent.GotInfo()
-	f.updateRes()
 	f.torrentReady.Store(true)
 	return
 }

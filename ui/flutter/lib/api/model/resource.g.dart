@@ -10,7 +10,6 @@ Resource _$ResourceFromJson(Map<String, dynamic> json) => Resource(
       name: json['name'] as String? ?? "",
       size: json['size'] as int? ?? 0,
       range: json['range'] as bool? ?? false,
-      rootDir: json['rootDir'] as String? ?? "",
       files: (json['files'] as List<dynamic>)
           .map((e) => FileInfo.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -21,7 +20,6 @@ Map<String, dynamic> _$ResourceToJson(Resource instance) => <String, dynamic>{
       'name': instance.name,
       'size': instance.size,
       'range': instance.range,
-      'rootDir': instance.rootDir,
       'files': instance.files.map((e) => e.toJson()).toList(),
       'hash': instance.hash,
     };

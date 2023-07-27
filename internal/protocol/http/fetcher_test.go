@@ -16,7 +16,6 @@ import (
 
 func TestFetcher_Resolve(t *testing.T) {
 	testResolve(test.StartTestFileServer, test.BuildName, &base.Resource{
-		Name:  test.BuildName,
 		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
@@ -27,7 +26,6 @@ func TestFetcher_Resolve(t *testing.T) {
 		},
 	}, t)
 	testResolve(test.StartTestCustomServer, "disposition", &base.Resource{
-		Name:  test.BuildName,
 		Size:  test.BuildSize,
 		Range: false,
 		Files: []*base.FileInfo{
@@ -38,7 +36,6 @@ func TestFetcher_Resolve(t *testing.T) {
 		},
 	}, t)
 	testResolve(test.StartTestCustomServer, test.BuildName, &base.Resource{
-		Name:  test.BuildName,
 		Size:  0,
 		Range: false,
 		Files: []*base.FileInfo{
@@ -56,7 +53,7 @@ func TestFetcher_Resolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fetcher.Meta().Res.Name != "github.com" || fetcher.Meta().Res.Files[0].Name != "github.com" {
+	if fetcher.Meta().Res.Files[0].Name != "github.com" {
 		t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, "github.com")
 	}
 }

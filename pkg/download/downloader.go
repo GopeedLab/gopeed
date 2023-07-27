@@ -10,7 +10,6 @@ import (
 	"github.com/virtuald/go-paniclog"
 	"math"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -350,15 +349,13 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 		return
 	}
 	if force && task.Meta.Res != nil {
-		if task.Meta.Res.RootDir != "" {
-			if err = os.RemoveAll(path.Join(task.Meta.Opts.Path, task.Meta.Res.RootDir)); err != nil {
+		if task.Meta.Res.Name != "" {
+			if err = os.RemoveAll(task.Meta.FolderPath()); err != nil {
 				return
 			}
 		} else {
-			for _, file := range task.Meta.Res.Files {
-				if err = util.SafeRemove(task.Meta.Filepath(file)); err != nil {
-					return err
-				}
+			if err = util.SafeRemove(task.Meta.SingleFilepath()); err != nil {
+				return err
 			}
 		}
 	}
@@ -606,7 +603,35 @@ func (d *Downloader) doPauseAll() (err error) {
 func (d *Downloader) start(task *Task) error {
 	task.lock.Lock()
 	defer task.lock.Unlock()
+	isCreate := task.Status == base.DownloadStatusReady
 	task.Status = base.DownloadStatusRunning
+	if task.Meta.Res == nil {
+		err := task.fetcher.Resolve(task.Meta.Req)
+		if err != nil {
+			task.Status = base.DownloadStatusError
+			d.emit(EventKeyError, task, err)
+			return err
+		}
+		isCreate = true
+	}
+	if isCreate {
+		// check if the download file is duplicated and rename it automatically.
+		if task.Meta.Res.Name != "" {
+			fullDirPath := task.Meta.FolderPath()
+			newName, err := util.CheckDuplicateAndRename(fullDirPath)
+			if err != nil {
+				return err
+			}
+			task.Meta.Opts.Name = newName
+		} else {
+			fullFilePath := task.Meta.SingleFilepath()
+			newName, err := util.CheckDuplicateAndRename(fullFilePath)
+			if err != nil {
+				return err
+			}
+			task.Meta.Opts.Name = newName
+		}
+	}
 	if err := d.doStart(task); err != nil {
 		task.Status = base.DownloadStatusError
 		d.emit(EventKeyError, task, err)

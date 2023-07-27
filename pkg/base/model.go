@@ -13,11 +13,11 @@ type Request struct {
 
 // Resource download resource
 type Resource struct {
+	// if name is not empty, the resource is a folder and the name is the folder name
 	Name string `json:"name"`
 	Size int64  `json:"size"`
 	// is support range download
-	Range   bool   `json:"range"`
-	RootDir string `json:"rootDir"`
+	Range bool `json:"range"`
 	// file list
 	Files []*FileInfo `json:"files"`
 	Hash  string      `json:"hash"`

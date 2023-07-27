@@ -8,7 +8,6 @@ class Resource {
   String name;
   int size;
   bool range;
-  String rootDir;
   List<FileInfo> files;
   String hash;
 
@@ -16,7 +15,6 @@ class Resource {
       {this.name = "",
       this.size = 0,
       this.range = false,
-      this.rootDir = "",
       required this.files,
       this.hash = ""});
 

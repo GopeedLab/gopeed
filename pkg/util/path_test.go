@@ -78,7 +78,7 @@ func TestFilepath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := Filepath(tt.args.path, tt.args.originName, tt.args.customName); got != tt.want {
-				t.Errorf("Filepath() = %v, want %v", got, tt.want)
+				t.Errorf("SingleFilepath() = %v, want %v", got, tt.want)
 			}
 		})
 	}

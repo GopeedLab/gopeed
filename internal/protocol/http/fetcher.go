@@ -138,7 +138,6 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		file.Name = httpReq.URL.Hostname()
 	}
 	res.Files = append(res.Files, file)
-	res.Name = file.Name
 	f.meta.Req = req
 	f.meta.Res = res
 	return nil
@@ -173,14 +172,9 @@ func (f *Fetcher) Create(opts *base.Options) error {
 }
 
 func (f *Fetcher) Start() (err error) {
-	if f.meta.Res == nil {
-		if err = f.Resolve(f.meta.Req); err != nil {
-			return
-		}
-	}
-	name := f.filepath()
+	name := f.meta.SingleFilepath()
 	// if file not exist, create it, else open it
-	_, err = os.Stat(f.filepath())
+	_, err = os.Stat(name)
 	if err != nil {
 		if os.IsNotExist(err) {
 			f.file, err = f.ctl.Touch(name, f.meta.Res.Size)
@@ -188,7 +182,7 @@ func (f *Fetcher) Start() (err error) {
 			return
 		}
 	} else {
-		f.file, err = os.OpenFile(f.filepath(), os.O_RDWR, os.ModeAppend)
+		f.file, err = os.OpenFile(name, os.O_RDWR, os.ModeAppend)
 	}
 	if err != nil {
 		return err
@@ -235,10 +229,6 @@ func (f *Fetcher) Progress() fetcher.Progress {
 
 func (f *Fetcher) Wait() (err error) {
 	return <-f.doneCh
-}
-
-func (f *Fetcher) filepath() string {
-	return f.meta.Filepath(f.meta.Res.Files[0])
 }
 
 func (f *Fetcher) fetch() {

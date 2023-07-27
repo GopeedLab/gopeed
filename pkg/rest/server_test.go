@@ -33,7 +33,6 @@ var (
 		},
 	}
 	taskRes = &base.Resource{
-		Name:  test.BuildName,
 		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{

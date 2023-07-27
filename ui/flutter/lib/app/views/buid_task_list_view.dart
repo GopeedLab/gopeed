@@ -38,8 +38,11 @@ class BuildTaskListView extends GetView {
 
   Widget buildTaskList(BuildContext context, tasks) {
     return ListView.builder(
-      itemCount: tasks.length,
+      itemCount: tasks.length + 1,
       itemBuilder: (context, index) {
+        if (index == tasks.length) {
+          return const SizedBox(height: 75);
+        }
         return item(context, tasks[index]);
       },
     );
@@ -55,14 +58,12 @@ class BuildTaskListView extends GetView {
     }
 
     String buildExplorerUrl(Task task) {
-      if (task.meta.res!.rootDir.trim().isEmpty) {
-        return path.join(
-            Util.safeDir(task.meta.opts.path),
-            Util.safeDir(task.meta.res!.files[0].path),
-            task.meta.res!.files[0].name);
+      if (task.meta.res!.name.isEmpty) {
+        return path.join(Util.safeDir(task.meta.opts.path),
+            Util.safeDir(task.meta.res!.files[0].path), fileName(task.meta));
       } else {
         return path.join(Util.safeDir(task.meta.opts.path),
-            Util.safeDir(task.meta.res!.rootDir));
+            Util.safeDir(fileName(task.meta)));
       }
     }
 
@@ -165,7 +166,7 @@ class BuildTaskListView extends GetView {
             children: [
               ListTile(
                   title: Text(fileName(task.meta)),
-                  leading: (task.meta.res?.rootDir.isNotEmpty ?? false
+                  leading: (task.meta.res?.name.isNotEmpty ?? false
                       ? const Icon(FaIcons.folder)
                       : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))]))),
               Row(
@@ -173,7 +174,7 @@ class BuildTaskListView extends GetView {
                   Expanded(
                       flex: 1,
                       child: Text(
-                        "${isDone() ? "" : Util.fmtByte(task.progress.downloaded)}${(task.meta.res?.size ?? 0) <= 0 ? "" : " / ${Util.fmtByte(task.meta.res!.size)}"}",
+                        "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${(task.meta.res?.size ?? 0) <= 0 ? "" : Util.fmtByte(task.meta.res!.size)}",
                         style: Get.textTheme.bodyLarge
                             ?.copyWith(color: Get.theme.disabledColor),
                       ).padding(left: 18)),
@@ -194,7 +195,7 @@ class BuildTaskListView extends GetView {
               ),
             ],
           ),
-        )).padding(horizontal: 8, top: 8);
+        )).padding(horizontal: 14, top: 8);
   }
 
   String fileName(Meta meta) {
@@ -213,9 +214,12 @@ class BuildTaskListView extends GetView {
         }
       }
     }
-    if (meta.res!.files.length > 1) {
+    if (meta.opts.name.isNotEmpty) {
+      return meta.opts.name;
+    }
+    if (meta.res!.name.isNotEmpty) {
       return meta.res!.name;
     }
-    return meta.opts.name.isEmpty ? meta.res!.files[0].name : meta.opts.name;
+    return meta.res!.files[0].name;
   }
 }
