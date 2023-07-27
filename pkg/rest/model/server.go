@@ -1,6 +1,9 @@
 package model
 
-import "io/fs"
+import (
+	"encoding/base64"
+	"io/fs"
+)
 
 type Storage string
 
@@ -17,8 +20,9 @@ type StartConfig struct {
 	StorageDir      string  `json:"storageDir"`
 	ApiToken        string  `json:"apiToken"`
 
-	WebEnable bool
-	WebFS     fs.FS
+	WebEnable    bool
+	WebFS        fs.FS
+	WebBasicAuth *WebBasicAuth
 }
 
 func (cfg *StartConfig) Init() *StartConfig {
@@ -38,4 +42,15 @@ func (cfg *StartConfig) Init() *StartConfig {
 		cfg.StorageDir = "./"
 	}
 	return cfg
+}
+
+type WebBasicAuth struct {
+	Username string
+	Password string
+}
+
+// Authorization returns the value of the Authorization header to be used in HTTP requests.
+func (cfg *WebBasicAuth) Authorization() string {
+	userId := cfg.Username + ":" + cfg.Password
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(userId))
 }
