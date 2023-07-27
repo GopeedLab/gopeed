@@ -273,7 +273,7 @@ func TestDoProxy(t *testing.T) {
 	})
 }
 
-func TestAuthorization(t *testing.T) {
+func TestApiToken(t *testing.T) {
 	var cfg = &model.StartConfig{}
 	cfg.Init()
 	cfg.ApiToken = "123456"
@@ -285,14 +285,55 @@ func TestAuthorization(t *testing.T) {
 		Stop()
 	}()
 
-	code, _ := doHttpRequest[any](http.MethodGet, "/api/v1/config", nil, nil)
-	checkCode(code, model.CodeUnauthorized)
+	status, _ := doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestApiToken() got = %v, want %v", status, http.StatusUnauthorized)
+	}
 
-	code, _ = doHttpRequest[any](http.MethodGet, "/api/v1/config", map[string]string{
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
 		"X-Api-Token": cfg.ApiToken,
 	}, nil)
-	checkCode(code, model.CodeOk)
+	if status != http.StatusOK {
+		t.Errorf("TestApiToken() got = %v, want %v", status, http.StatusOK)
+	}
 
+}
+
+func TestAuthorization(t *testing.T) {
+	var cfg = &model.StartConfig{}
+	cfg.Init()
+	cfg.ApiToken = "123456"
+	cfg.WebEnable = true
+	cfg.WebBasicAuth = &model.WebBasicAuth{
+		Username: "admin",
+		Password: "123456",
+	}
+	fileListener := doStart(cfg)
+	defer func() {
+		if err := fileListener.Close(); err != nil {
+			panic(err)
+		}
+		Stop()
+	}()
+
+	status, _ := doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": cfg.WebBasicAuth.Authorization(),
+	}, nil)
+	if status != http.StatusOK {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"X-Api-Token": cfg.ApiToken,
+	}, nil)
+	if status != http.StatusOK {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
+	}
 }
 
 func doTest(handler func()) {
