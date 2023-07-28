@@ -51,8 +51,14 @@ class CreateView extends GetView<CreateController> {
         title: Text('create'.tr),
       ),
       body: DropTarget(
-        onDragDone: (details) {
-          _urlController.text = details.files[0].path;
+        onDragDone: (details) async {
+          if (!Util.isWeb()) {
+            _urlController.text = details.files[0].path;
+            return;
+          }
+          _urlController.text = details.files[0].name;
+          final bytes = await details.files[0].readAsBytes();
+          controller.setFileDataUri(bytes);
         },
         child: Padding(
             padding:
@@ -61,44 +67,54 @@ class CreateView extends GetView<CreateController> {
                 key: _resolveFormKey,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 child: Column(children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                            autofocus: true,
-                            controller: _urlController,
-                            minLines: 1,
-                            maxLines: 5,
-                            decoration: InputDecoration(
-                              hintText: _hitText(),
-                              hintStyle: const TextStyle(fontSize: 12),
-                              labelText: 'downloadLink'.tr,
-                              icon: const Icon(Icons.link),
-                              suffixIcon: IconButton(
-                                onPressed: _urlController.clear,
-                                icon: const Icon(Icons.clear),
-                              ),
-                            ),
-                            validator: (v) {
-                              return v!.trim().isNotEmpty
-                                  ? null
-                                  : 'downloadLinkValid'.tr;
-                            }),
+                  Row(children: [
+                    Expanded(
+                      child: TextFormField(
+                        autofocus: true,
+                        controller: _urlController,
+                        minLines: 1,
+                        maxLines: 5,
+                        decoration: InputDecoration(
+                          hintText: _hitText(),
+                          hintStyle: const TextStyle(fontSize: 12),
+                          labelText: 'downloadLink'.tr,
+                          icon: const Icon(Icons.link),
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              _urlController.clear();
+                              controller.clearFileDataUri();
+                            },
+                            icon: const Icon(Icons.clear),
+                          ),
+                        ),
+                        validator: (v) {
+                          return v!.trim().isNotEmpty
+                              ? null
+                              : 'downloadLinkValid'.tr;
+                        },
+                        onChanged: (v) async {
+                          controller.clearFileDataUri();
+                        },
                       ),
-                      Util.isWeb()
-                          ? null
-                          : IconButton(
-                              icon: const Icon(Icons.folder_open),
-                              onPressed: () async {
-                                var pr = await FilePicker.platform.pickFiles(
-                                    type: FileType.custom,
-                                    allowedExtensions: ["torrent"]);
-                                if (pr != null) {
-                                  _urlController.text = pr.files[0].path ?? "";
-                                }
-                              }),
-                    ].where((e) => e != null).map((e) => e!).toList(),
-                  ),
+                    ),
+                    IconButton(
+                        icon: const Icon(Icons.folder_open),
+                        onPressed: () async {
+                          var pr = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ["torrent"]);
+                          if (pr != null) {
+                            if (!Util.isWeb()) {
+                              _urlController.text = pr.files[0].path ?? "";
+                              return;
+                            }
+                            _urlController.text = pr.files[0].name;
+                            controller.setFileDataUri(pr.files[0].bytes!);
+                          }
+                        }),
+                  ]
+                      //.where((e) => e != null).map((e) => e!).toList(),
+                      ),
                   Obx(() => Visibility(
                       visible: controller.showAdvanced.value,
                       child: Padding(
@@ -205,8 +221,11 @@ class CreateView extends GetView<CreateController> {
       _confirmController.start();
       if (_resolveFormKey.currentState!.validate()) {
         Object? extra;
+        final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
+            ? controller.fileDataUri.value
+            : _urlController.text;
         if (controller.showAdvanced.value) {
-          final u = Uri.parse(_urlController.text);
+          final u = Uri.parse(submitUrl);
           if (u.scheme.startsWith("http")) {
             extra = ReqExtraHttp()
               ..header = {
@@ -220,7 +239,7 @@ class CreateView extends GetView<CreateController> {
           }
         }
         final rr = await resolve(Request(
-          url: _urlController.text,
+          url: submitUrl,
           extra: extra,
         ));
         await _showResolveDialog(rr);
@@ -235,7 +254,8 @@ class CreateView extends GetView<CreateController> {
 
   String _hitText() {
     return 'downloadLinkHit'.trParams({
-      'append': Util.isDesktop() ? 'downloadLinkHitDesktop'.tr : '',
+      'append':
+          Util.isDesktop() || Util.isWeb() ? 'downloadLinkHitDesktop'.tr : '',
     });
   }
 

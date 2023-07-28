@@ -169,9 +169,6 @@ func (d *Downloader) Setup() error {
 func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
 	schema := util.ParseSchema(url)
 	fetchBuilder, ok := d.fetchBuilders[schema]
-	if !ok {
-		fetchBuilder, ok = d.fetchBuilders[util.FileSchema]
-	}
 	if ok {
 		return fetchBuilder, nil
 	}
