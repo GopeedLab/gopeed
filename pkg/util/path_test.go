@@ -199,3 +199,43 @@ func doCheckDuplicateAndRename(t *testing.T, exitsPaths []string, path string, e
 		t.Errorf("CheckDuplicateAndRename() = %v, want %v", got, except)
 	}
 }
+
+func TestIsExistsFile(t *testing.T) {
+	type args struct {
+		path string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "exist",
+			args: args{
+				path: "./path.go",
+			},
+			want: true,
+		},
+		{
+			name: "not exist",
+			args: args{
+				path: "./path_not_exist.go",
+			},
+			want: false,
+		},
+		{
+			name: "is dir",
+			args: args{
+				path: "../util",
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsExistsFile(tt.args.path); got != tt.want {
+				t.Errorf("IsExistsFile() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
