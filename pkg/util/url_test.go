@@ -37,13 +37,6 @@ func TestParseSchema(t *testing.T) {
 			want: "FILE",
 		},
 		{
-			name: "file-not-exists",
-			args: args{
-				url: "not.txt",
-			},
-			want: "",
-		},
-		{
 			name: "file-no-scheme",
 			args: args{
 				url: "./url.go",
@@ -56,6 +49,13 @@ func TestParseSchema(t *testing.T) {
 				url: "data:application/x-bittorrent;base64,test",
 			},
 			want: "APPLICATION/X-BITTORRENT",
+		},
+		{
+			name: "windows-path",
+			args: args{
+				url: "D:\\bt.torrent",
+			},
+			want: "FILE",
 		},
 	}
 	for _, tt := range tests {

@@ -10,12 +10,9 @@ const FileSchema = "FILE"
 
 func ParseSchema(url string) string {
 	index := strings.Index(url, ":")
-	if index == -1 {
-		// check is file path
-		if IsExistsFile(url) {
-			return FileSchema
-		}
-		return ""
+	// if no schema or windows path like C:\a.txt, return FILE
+	if index == -1 || index == 1 {
+		return FileSchema
 	}
 	schema := url[:index]
 	if schema == "data" {
