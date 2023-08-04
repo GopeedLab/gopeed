@@ -42,7 +42,7 @@ class AppPages {
                     binding: TaskBinding()),
                 GetPage(
                     name: _Paths.EXTENSION,
-                    page: () => const ExtensionView(),
+                    page: () => ExtensionView(),
                     transition: Transition.noTransition,
                     binding: ExtensionBinding()),
                 GetPage(

@@ -4,15 +4,15 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/model/create_task_batch.dart';
-import 'package:gopeed/api/model/resource.dart';
-import '../../../../api/model/resolve_result.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
+import '../../../../api/model/create_task_batch.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
+import '../../../../api/model/resolve_result.dart';
+import '../../../../api/model/resource.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
@@ -234,9 +234,9 @@ class CreateView extends GetView<CreateController> {
                           req: Request(url: u, extra: parseReqExtra(u))))
                       .toList()));
         } else {
-        final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
-                    ? controller.fileDataUri.value
-                    : _urlController.text;
+          final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
+              ? controller.fileDataUri.value
+              : _urlController.text;
           rr = await resolve(Request(
             url: submitUrl,
             extra: parseReqExtra(_urlController.text),
@@ -299,7 +299,7 @@ class CreateView extends GetView<CreateController> {
                   var width = MediaQuery.of(context).size.width;
 
                   return SizedBox(
-                    height: height * 0.5,
+                    height: height * 0.75,
                     width: width,
                     child: Form(
                         key: createFormKey,

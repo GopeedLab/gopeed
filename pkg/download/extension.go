@@ -277,7 +277,7 @@ func (d *Downloader) extensionPath(ext *Extension) string {
 	return filepath.Join(d.cfg.StorageDir, extensionsDir, ext.Identity)
 }
 
-type ExtensionBase struct {
+type Extension struct {
 	// Identity is global unique for an extension, it's a combination of author and name
 	Identity    string `json:"identity"`
 	Name        string `json:"name"`
@@ -292,17 +292,12 @@ type ExtensionBase struct {
 	// InstallUrl install url
 	InstallUrl string `json:"installUrl"`
 	// Repository git repository url
-	Repository string `json:"repository"`
+	Repository string     `json:"repository"`
+	Scripts    []*Script  `json:"scripts"`
+	Settings   []*Setting `json:"settings"`
 
-	CreatedAt time.Time `json:"-"`
-	UpdatedAt time.Time `json:"-"`
-}
-
-type Extension struct {
-	ExtensionBase
-
-	Scripts  []*Script  `json:"scripts"`
-	Settings []*Setting `json:"settings"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (e *Extension) validate() error {

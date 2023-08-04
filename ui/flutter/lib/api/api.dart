@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
+import 'package:gopeed/api/model/extension.dart';
+import 'package:gopeed/api/model/install_extension.dart';
 
 import '../util/util.dart';
 import 'model/create_task.dart';
@@ -151,6 +153,17 @@ Future<DownloaderConfig> getConfig() async {
 
 Future<void> putConfig(DownloaderConfig config) async {
   return _parse(() => _client.dio.put("/api/v1/config", data: config), null);
+}
+
+Future<void> installExtension(InstallExtension installExtension) async {
+  return _parse(
+      () => _client.dio.post("/api/v1/extensions", data: installExtension),
+      null);
+}
+
+Future<List<Extension>> getExtensions() async {
+  return _parse<List<Extension>>(() => _client.dio.get("/api/v1/extensions"),
+      (data) => (data as List).map((e) => Extension.fromJson(e)).toList());
 }
 
 Future<Response<String>> proxyRequest<T>(String uri,

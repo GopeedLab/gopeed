@@ -184,11 +184,7 @@ func InstallExtension(w http.ResponseWriter, r *http.Request) {
 
 func GetExtensions(w http.ResponseWriter, r *http.Request) {
 	list := Downloader.GetExtensions()
-	baseList := make([]download.ExtensionBase, len(list))
-	for i, ext := range list {
-		baseList[i] = ext.ExtensionBase
-	}
-	WriteJson(w, model.NewOkResult(baseList))
+	WriteJson(w, model.NewOkResult(list))
 }
 
 func PutExtensionSettings(w http.ResponseWriter, r *http.Request) {
@@ -278,18 +274,6 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(buf)
-	//var reader io.ReadCloser
-	//switch resp.Header.Get("Content-Encoding") {
-	//case "gzip":
-	//	reader, err = gzip.NewReader(resp.Body)
-	//	defer reader.Close()
-	//default:
-	//	reader = resp.Body
-	//}
-	//if _, err := io.Copy(w, resp.Body); err != nil {
-	//	writeError(w, err.Error())
-	//	return
-	//}
 }
 
 func writeError(w http.ResponseWriter, msg string) {

@@ -157,6 +157,18 @@ class BuildTaskListView extends GetView {
       return totalSize <= 0 ? 0 : task.progress.downloaded / totalSize;
     }
 
+    String getProgressText() {
+      if (isDone()) {
+        return Util.fmtByte(task.meta.res!.size);
+      }
+      if (task.meta.res == null) {
+        return "";
+      }
+      final total = task.meta.res!.size;
+      return Util.fmtByte(task.progress.downloaded) +
+          (total > 0 ? " / ${Util.fmtByte(total)}" : "");
+    }
+
     return Card(
         elevation: 4.0,
         child: InkWell(
@@ -174,7 +186,7 @@ class BuildTaskListView extends GetView {
                   Expanded(
                       flex: 1,
                       child: Text(
-                        "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${(task.meta.res?.size ?? 0) <= 0 ? "" : Util.fmtByte(task.meta.res!.size)}",
+                        getProgressText(),
                         style: Get.textTheme.bodyLarge
                             ?.copyWith(color: Get.theme.disabledColor),
                       ).padding(left: 18)),

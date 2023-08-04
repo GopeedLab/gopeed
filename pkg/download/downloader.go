@@ -130,6 +130,16 @@ func (d *Downloader) Setup() error {
 		return d.tasks[i].CreatedAt.Before(d.tasks[j].CreatedAt)
 	})
 
+	// load extensions from storage
+	var extensions []*Extension
+	if err = d.storage.List(bucketExtension, &extensions); err != nil {
+		return err
+	}
+	if extensions == nil {
+		extensions = make([]*Extension, 0)
+	}
+	d.extensions = extensions
+
 	// calculate download speed every tick
 	go func() {
 		for !d.closed.Load() {
@@ -174,7 +184,7 @@ func (d *Downloader) Setup() error {
 
 func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
 	schema := util.ParseSchema(url)
-	fetchBuilder, ok := d.fetchBuilders[schema]
+	fetchBuilder, ok := d.fetcherBuilders[schema]
 	if ok {
 		return fetchBuilder, nil
 	}
