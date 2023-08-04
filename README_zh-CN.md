@@ -74,7 +74,7 @@ docker-compose up -d
 ### 环境要求
 
 1. Golang 1.19+
-2. Flutter 3.7+
+2. Flutter 3.10+
 
 ### 克隆项目
 

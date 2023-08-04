@@ -245,10 +245,10 @@ packages:
     dependency: "direct main"
     description:
       name: desktop_drop
-      sha256: "0cd056191b701a2b5ba040f2306349e461fafdaa5df4569b2228cdf87b58eced"
+      sha256: "4ca4d960f4b11c032e9adfd2a0a8ac615bc3fddb4cbe73dcf840dd8077582186"
       url: "https://pub.flutter-io.cn"
     source: hosted
-    version: "0.3.3"
+    version: "0.4.1"
   dio:
     dependency: "direct main"
     description:

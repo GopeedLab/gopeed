@@ -1,6 +1,7 @@
 package bt
 
 import (
+	"bytes"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -208,6 +209,15 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	schema := util.ParseSchema(req.URL)
 	if schema == "MAGNET" {
 		f.torrent, err = client.AddMagnet(req.URL)
+	} else if schema == "APPLICATION/X-BITTORRENT" {
+		_, data := util.ParseDataUri(req.URL)
+		buf := bytes.NewBuffer(data)
+		var metaInfo *metainfo.MetaInfo
+		metaInfo, err = metainfo.Load(buf)
+		if err != nil {
+			return err
+		}
+		f.torrent, err = client.AddTorrent(metaInfo)
 	} else {
 		f.torrent, err = client.AddTorrentFromFile(req.URL)
 	}
@@ -250,7 +260,7 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 type FetcherBuilder struct {
 }
 
-var schemes = []string{"FILE", "MAGNET"}
+var schemes = []string{"FILE", "MAGNET", "APPLICATION/X-BITTORRENT"}
 
 func (fb *FetcherBuilder) Schemes() []string {
 	return schemes

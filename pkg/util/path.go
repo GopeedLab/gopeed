@@ -173,3 +173,13 @@ func CreateDirIfNotExist(dir string) error {
 	}
 	return nil
 }
+
+// IsExistsFile check file exists and is a file
+func IsExistsFile(path string) bool {
+	info, err := os.Stat(path)
+	// 判断路径是否存在，并且是一个文件
+	if err == nil && !info.IsDir() {
+		return true
+	}
+	return false
+}
