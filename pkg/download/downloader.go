@@ -47,8 +47,9 @@ type Downloader struct {
 	tasks         []*Task
 	listener      Listener
 
-	lock   *sync.Mutex
-	closed atomic.Bool
+	lock           *sync.Mutex
+	fetcherMapLock *sync.RWMutex
+	closed         atomic.Bool
 }
 
 func NewDownloader(cfg *DownloaderConfig) *Downloader {
@@ -63,8 +64,9 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		fetchBuilders: make(map[string]fetcher.FetcherBuilder),
 		fetcherMap:    make(map[string]fetcher.Fetcher),
 
-		storage: cfg.Storage,
-		lock:    &sync.Mutex{},
+		storage:        cfg.Storage,
+		lock:           &sync.Mutex{},
+		fetcherMapLock: &sync.RWMutex{},
 	}
 	for _, f := range cfg.FetchBuilders {
 		for _, p := range f.Schemes() {
@@ -198,7 +200,9 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	if err != nil {
 		return
 	}
+	d.fetcherMapLock.Lock()
 	d.fetcherMap[rrId] = fetcher
+	d.fetcherMapLock.Unlock()
 	rr = &ResolveResult{
 		ID:  rrId,
 		Res: fetcher.Meta().Res,
@@ -218,11 +222,17 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 	if opts == nil {
 		opts = &base.Options{}
 	}
+	d.fetcherMapLock.RLock()
 	fetcher, ok := d.fetcherMap[rrId]
+	d.fetcherMapLock.RUnlock()
 	if !ok {
 		return "", errors.New("invalid resource id")
 	}
-	defer delete(d.fetcherMap, rrId)
+	defer func() {
+		d.fetcherMapLock.Lock()
+		delete(d.fetcherMap, rrId)
+		d.fetcherMapLock.Unlock()
+	}()
 
 	meta := fetcher.Meta()
 	meta.Opts = opts
