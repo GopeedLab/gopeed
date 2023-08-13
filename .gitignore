@@ -29,3 +29,4 @@ node_modules/
 cmd/web/dist/
 .test_storage/
 .test_download/
+/extensions

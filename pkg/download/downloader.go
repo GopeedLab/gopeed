@@ -2,6 +2,7 @@ package download
 
 import (
 	"errors"
+	"fmt"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -241,10 +242,13 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 
 func (d *Downloader) CreateDirectBatch(optReqs []*base.Request, opts *base.Options) (taskIds []string, err error) {
 	for _, optReq := range optReqs {
+		t := time.Now()
 		taskId, err := d.CreateDirect(optReq, opts.Clone())
 		if err != nil {
 			return nil, err
 		}
+		used := time.Since(t)
+		fmt.Printf("create task %s, used %s\n", taskId, used)
 		taskIds = append(taskIds, taskId)
 	}
 	return
@@ -543,20 +547,19 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	task.Progress = &Progress{}
 	task.Status = base.DownloadStatusReady
 	initTask(task)
-	err = func() error {
-		d.lock.Lock()
-		defer d.lock.Unlock()
-		d.tasks = append(d.tasks, task)
-		return d.storage.Put(bucketTask, task.ID, task.clone())
-	}()
-	if err != nil {
+	if err = fetcher.Create(opts); err != nil {
 		return
 	}
-	if err = fetcher.Create(opts); err != nil {
+	if err = d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
 		return
 	}
 	taskId = task.ID
 
+	go func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+		d.tasks = append(d.tasks, task)
+	}()
 	go d.watch(task)
 	go d.tryRunning(func(remain int) {
 		if remain > 0 {
@@ -570,9 +573,6 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 }
 
 func (d *Downloader) tryRunning(cb func(remain int)) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
 	runningCount := 0
 	for _, task := range d.tasks {
 		if task.Status == base.DownloadStatusRunning {

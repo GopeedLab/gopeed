@@ -28,9 +28,9 @@ class ExtensionView extends GetView<ExtensionController> {
               ),
               const SizedBox(width: 10),
               IconButton(
-                  onPressed: () {
+                  onPressed: () async {
                     try {
-                      installExtension(
+                      await installExtension(
                           InstallExtension(url: _installUrlController.text));
                       Get.snackbar('提示', '安装成功');
                     } catch (e) {

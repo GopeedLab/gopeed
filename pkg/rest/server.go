@@ -99,6 +99,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodGet).Path("/api/v1/extensions").HandlerFunc(GetExtensions)
 	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/settings").HandlerFunc(PutExtensionSettings)
 	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/settings").HandlerFunc(GetExtensionSettings)
+	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/switch").HandlerFunc(SwitchExtension)
 	r.Methods(http.MethodDelete).Path("/api/v1/extensions/{identity}").HandlerFunc(DeleteExtension)
 	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/upgrade").HandlerFunc(UpgradeCheckExtension)
 	r.Methods(http.MethodPost).Path("/api/v1/extensions/{identity}/upgrade").HandlerFunc(UpgradeExtension)

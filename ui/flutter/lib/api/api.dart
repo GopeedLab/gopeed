@@ -166,6 +166,15 @@ Future<List<Extension>> getExtensions() async {
       (data) => (data as List).map((e) => Extension.fromJson(e)).toList());
 }
 
+Future<void> switchExtension(String identity) async {
+  return _parse(
+      () => _client.dio.delete("/api/v1/extensions/$identity/switch"), null);
+}
+
+Future<void> deleteExtension(String identity) async {
+  return _parse(() => _client.dio.delete("/api/v1/extensions/$identity"), null);
+}
+
 Future<Response<String>> proxyRequest<T>(String uri,
     {data, Options? options}) async {
   options ??= Options();

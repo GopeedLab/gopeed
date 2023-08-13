@@ -15,6 +15,7 @@ class Extension {
   String installUrl;
   String repository;
   List<Settings>? settings;
+  bool disabled;
 
   Extension({
     required this.identity,
@@ -27,6 +28,7 @@ class Extension {
     required this.homepage,
     required this.installUrl,
     required this.repository,
+    required this.disabled,
   });
 
   factory Extension.fromJson(Map<String, dynamic> json) =>

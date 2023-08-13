@@ -17,20 +17,35 @@ Extension _$ExtensionFromJson(Map<String, dynamic> json) => Extension(
       homepage: json['homepage'] as String,
       installUrl: json['installUrl'] as String,
       repository: json['repository'] as String,
-    );
+      disabled: json['disabled'] as bool,
+    )..settings = (json['settings'] as List<dynamic>?)
+        ?.map((e) => Settings.fromJson(e as Map<String, dynamic>))
+        .toList();
 
-Map<String, dynamic> _$ExtensionToJson(Extension instance) => <String, dynamic>{
-      'identity': instance.identity,
-      'name': instance.name,
-      'author': instance.author,
-      'title': instance.title,
-      'description': instance.description,
-      'icon': instance.icon,
-      'version': instance.version,
-      'homepage': instance.homepage,
-      'installUrl': instance.installUrl,
-      'repository': instance.repository,
-    };
+Map<String, dynamic> _$ExtensionToJson(Extension instance) {
+  final val = <String, dynamic>{
+    'identity': instance.identity,
+    'name': instance.name,
+    'author': instance.author,
+    'title': instance.title,
+    'description': instance.description,
+    'icon': instance.icon,
+    'version': instance.version,
+    'homepage': instance.homepage,
+    'installUrl': instance.installUrl,
+    'repository': instance.repository,
+  };
+
+  void writeNotNull(String key, dynamic value) {
+    if (value != null) {
+      val[key] = value;
+    }
+  }
+
+  writeNotNull('settings', instance.settings?.map((e) => e.toJson()).toList());
+  val['disabled'] = instance.disabled;
+  return val;
+}
 
 Settings _$SettingsFromJson(Map<String, dynamic> json) => Settings(
       name: json['name'] as String,

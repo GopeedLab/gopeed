@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:path/path.dart' as path;
+
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 
 import '../../../../api/api.dart';
@@ -370,10 +372,7 @@ class CreateView extends GetView<CreateController> {
                                 ..connections =
                                     int.parse(connectionsController.text));
                           if (createFormKey.currentState!.validate()) {
-                            if (rr.id.isEmpty &&
-                                rr.res.files
-                                    .where((e) => e.req != null)
-                                    .isNotEmpty) {
+                            if (rr.id.isEmpty) {
                               // check if is multi task resouces, if so, create task batch
                               await createTaskBatch(CreateTaskBatch(
                                   reqs: controller.selectedIndexes
@@ -383,7 +382,8 @@ class CreateView extends GetView<CreateController> {
                                       .toList(),
                                   opts: Options(
                                     name: nameController.text,
-                                    path: pathController.text,
+                                    path: path.join(
+                                        pathController.text, rr.res.name),
                                     selectFiles: [],
                                     extra: optExtra,
                                   )));

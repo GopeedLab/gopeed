@@ -114,6 +114,15 @@ func (d *Downloader) UpdateExtensionSettings(identity string, settings map[strin
 	return d.storage.Put(bucketExtension, ext.Identity, ext)
 }
 
+func (d *Downloader) SwitchExtension(identity string) error {
+	ext, err := d.GetExtension(identity)
+	if err != nil {
+		return err
+	}
+	ext.Disabled = !ext.Disabled
+	return d.storage.Put(bucketExtension, ext.Identity, ext)
+}
+
 func (d *Downloader) DeleteExtension(identity string) error {
 	ext, err := d.GetExtension(identity)
 	if err != nil {
@@ -296,6 +305,7 @@ type Extension struct {
 	Scripts    []*Script  `json:"scripts"`
 	Settings   []*Setting `json:"settings"`
 
+	Disabled  bool      `json:"disabled"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -389,6 +399,7 @@ type Option struct {
 	Value any    `json:"value"`
 }
 
+// Instance inject to js context
 type Instance struct {
 	Events InstanceEvents `json:"events"`
 }

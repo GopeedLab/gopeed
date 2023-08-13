@@ -33,10 +33,9 @@ func TestFetcher_Resolve_DataUri_Torrent(t *testing.T) {
 	}
 
 	want := &base.Resource{
-		Name:    "ubuntu-22.04-live-server-amd64.iso",
-		Size:    1466714112,
-		Range:   true,
-		RootDir: "ubuntu-22.04-live-server-amd64.iso",
+		Name:  "ubuntu-22.04-live-server-amd64.iso",
+		Size:  1466714112,
+		Range: true,
 		Files: []*base.FileInfo{
 			{
 				Name: "ubuntu-22.04-live-server-amd64.iso",

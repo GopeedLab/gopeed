@@ -152,6 +152,24 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 	})
 }
 
+func TestDownloader_SwitchExtension(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/basic")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if installedExt.Disabled == true {
+			t.Fatal("extension disabled")
+		}
+		if err = downloader.SwitchExtension(installedExt.Identity); err != nil {
+			t.Fatal(err)
+		}
+		if installedExt.Disabled == false {
+			t.Fatal("extension enabled")
+		}
+	})
+}
+
 func TestDownloader_DeleteExtension(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_all")

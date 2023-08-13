@@ -364,13 +364,24 @@ func TestPutExtensionSettings(t *testing.T) {
 	})
 }
 
+func TestSwitchExtension(t *testing.T) {
+	doTest(func() {
+		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
+		httpRequestCheckOk[any](http.MethodPut, "/api/v1/extensions/"+identity+"/switch", nil)
+		extensions := httpRequestCheckOk[[]*download.Extension](http.MethodGet, "/api/v1/extensions", nil)
+		if !extensions[0].Disabled {
+			t.Errorf("TestSwitchExtension() got = %v, want %v", extensions[0].Disabled, true)
+		}
+	})
+}
+
 func TestDeleteExtension(t *testing.T) {
 	doTest(func() {
 		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/extensions/"+identity, nil)
 		extensions := httpRequestCheckOk[[]*download.Extension](http.MethodGet, "/api/v1/extensions", nil)
 		if len(extensions) != 0 {
-			t.Errorf("GetExtensions() got = %v, want %v", len(extensions), 0)
+			t.Errorf("TestDeleteExtension() got = %v, want %v", len(extensions), 0)
 		}
 	})
 }
