@@ -528,7 +528,9 @@ func (d *Downloader) watch(task *Task) {
 		d.emit(EventKeyDone, task)
 	}
 	d.emit(EventKeyFinally, task, err)
-	d.notifyRunning()
+	if task.Status == EventKeyDone {
+		d.notifyRunning()
+	}
 }
 
 func (d *Downloader) restoreFetcher(task *Task) error {
