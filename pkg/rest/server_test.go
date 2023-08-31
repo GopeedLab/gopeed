@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/monkeyWie/gopeed/internal/test"
-	"github.com/monkeyWie/gopeed/pkg/base"
-	"github.com/monkeyWie/gopeed/pkg/download"
-	"github.com/monkeyWie/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/internal/test"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"io"
 	"net"
 	"net/http"
@@ -34,7 +34,6 @@ var (
 	}
 	taskRes = &base.Resource{
 		Name:  test.BuildName,
-		Req:   taskReq,
 		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
@@ -46,7 +45,7 @@ var (
 		},
 	}
 	createReq = &model.CreateTask{
-		Res: taskRes,
+		Req: taskReq,
 		Opts: &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
@@ -59,9 +58,9 @@ var (
 
 func TestResolve(t *testing.T) {
 	doTest(func() {
-		resp := httpRequestCheckOk[*base.Resource](http.MethodPost, "/api/v1/resolve", taskReq)
-		if !test.JsonEqual(taskRes, resp) {
-			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp), test.ToJson(taskRes))
+		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", taskReq)
+		if !test.JsonEqual(taskRes, resp.Res) {
+			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp.Res), test.ToJson(taskRes))
 		}
 	})
 }
@@ -145,22 +144,56 @@ func TestPauseAndContinueTask(t *testing.T) {
 	})
 }
 
+func TestPauseAllAndContinueALLTasks(t *testing.T) {
+	doTest(func() {
+		cfg, err := Downloader.GetConfig()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		createAndPause := func() {
+			taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+			httpRequestCheckOk[*download.Task](http.MethodPut, "/api/v1/tasks/"+taskId+"/pause", nil)
+		}
+
+		total := cfg.MaxRunning + 2
+		for i := 0; i < total; i++ {
+			createAndPause()
+		}
+
+		// continue all
+		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/continue", nil)
+		tasks := httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s", base.DownloadStatusRunning), nil)
+		if len(tasks) != cfg.MaxRunning {
+			t.Errorf("ContinueAllTasks() got = %v, want %v", len(tasks), cfg.MaxRunning)
+		}
+		// pause all
+		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/pause", nil)
+		tasks = httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s,%s", base.DownloadStatusReady, base.DownloadStatusPause), nil)
+		if len(tasks) != total {
+			t.Errorf("PauseAllTasks() got = %v, want %v", len(tasks), total)
+		}
+
+	})
+}
+
 func TestDeleteTask(t *testing.T) {
 	doTest(func() {
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+		time.Sleep(time.Millisecond * 200)
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId, nil)
 		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
-		checkCode(code, http.StatusNotFound)
+		checkCode(code, model.CodeTaskNotFound)
 	})
 }
 
 func TestDeleteTaskForce(t *testing.T) {
 	doTest(func() {
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
-		time.Sleep(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * 200)
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId+"?force=true", nil)
 		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
-		checkCode(code, http.StatusNotFound)
+		checkCode(code, model.CodeTaskNotFound)
 		if _, err := os.Stat(test.DownloadFile); !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("DeleteTaskForce() got = %v, want %v", err, os.ErrNotExist)
 		}
@@ -179,8 +212,7 @@ func TestGetTasks(t *testing.T) {
 
 		httpRequestCheckOk[string](http.MethodPost, fmt.Sprintf("/api/v1/tasks?status=%s,%s",
 			base.DownloadStatusReady, base.DownloadStatusRunning), createReq)
-		code, _ := httpRequest[[]*download.Task](http.MethodGet, "/api/v1/tasks", nil)
-		checkCode(code, http.StatusBadRequest)
+		httpRequestCheckOk[[]*download.Task](http.MethodGet, "/api/v1/tasks", nil)
 
 		wg.Wait()
 		r := httpRequestCheckOk[[]*download.Task](http.MethodGet, fmt.Sprintf("/api/v1/tasks?status=%s",
@@ -219,7 +251,7 @@ func TestGetAndPutConfig(t *testing.T) {
 func TestDoProxy(t *testing.T) {
 	doTest(func() {
 		code, respBody := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
-			"X-Target-Uri": "https://github.com/monkeyWie/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
+			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
 		}, nil)
 		if code != http.StatusOK {
 			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusOK)
@@ -230,9 +262,18 @@ func TestDoProxy(t *testing.T) {
 			t.Errorf("DoProxy() got = %v, want %v", got, want)
 		}
 	})
+
+	doTest(func() {
+		code, _ := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
+			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/NOT_FOUND",
+		}, nil)
+		if code != http.StatusNotFound {
+			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusNotFound)
+		}
+	})
 }
 
-func TestAuthorization(t *testing.T) {
+func TestApiToken(t *testing.T) {
 	var cfg = &model.StartConfig{}
 	cfg.Init()
 	cfg.ApiToken = "123456"
@@ -244,14 +285,55 @@ func TestAuthorization(t *testing.T) {
 		Stop()
 	}()
 
-	code, _ := doHttpRequest[any](http.MethodGet, "/api/v1/config", nil, nil)
-	checkCode(code, http.StatusUnauthorized)
+	status, _ := doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestApiToken() got = %v, want %v", status, http.StatusUnauthorized)
+	}
 
-	code, _ = doHttpRequest[any](http.MethodGet, "/api/v1/config", map[string]string{
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
 		"X-Api-Token": cfg.ApiToken,
 	}, nil)
-	checkCode(code, http.StatusOK)
+	if status != http.StatusOK {
+		t.Errorf("TestApiToken() got = %v, want %v", status, http.StatusOK)
+	}
 
+}
+
+func TestAuthorization(t *testing.T) {
+	var cfg = &model.StartConfig{}
+	cfg.Init()
+	cfg.ApiToken = "123456"
+	cfg.WebEnable = true
+	cfg.WebBasicAuth = &model.WebBasicAuth{
+		Username: "admin",
+		Password: "123456",
+	}
+	fileListener := doStart(cfg)
+	defer func() {
+		if err := fileListener.Close(); err != nil {
+			panic(err)
+		}
+		Stop()
+	}()
+
+	status, _ := doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": cfg.WebBasicAuth.Authorization(),
+	}, nil)
+	if status != http.StatusOK {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"X-Api-Token": cfg.ApiToken,
+	}, nil)
+	if status != http.StatusOK {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
+	}
 }
 
 func doTest(handler func()) {
@@ -267,6 +349,16 @@ func doTest(handler func()) {
 			Stop()
 		}()
 		defer Downloader.Clear()
+		defer func() {
+			tasks := Downloader.GetTasks()
+			taskIds := make([]string, len(tasks))
+			for i, task := range tasks {
+				taskIds[i] = task.ID
+			}
+			for _, id := range taskIds {
+				Downloader.Delete(id, true)
+			}
+		}()
 		taskReq.URL = "http://" + fileListener.Addr().String() + "/" + test.BuildName
 		handler()
 	}
@@ -308,17 +400,21 @@ func doHttpRequest0(method string, path string, headers map[string]string, body 
 	if err != nil {
 		panic(err)
 	}
+
 	return response.StatusCode, respBody
 }
 
 func doHttpRequest[T any](method string, path string, headers map[string]string, body any) (int, *model.Result[T]) {
-	code, respBody := doHttpRequest0(method, path, headers, body)
+	statusCode, respBody := doHttpRequest0(method, path, headers, body)
+	if statusCode != http.StatusOK {
+		panic(fmt.Sprintf("http request failed, status code: %d", statusCode))
+	}
 
 	var r model.Result[T]
 	if err := json.Unmarshal(respBody, &r); err != nil {
 		panic(err)
 	}
-	return code, &r
+	return int(r.Code), &r
 }
 
 func httpRequest[T any](method string, path string, body any) (int, *model.Result[T]) {
@@ -332,11 +428,11 @@ func httpRequestCheckOk[T any](method string, path string, body any) T {
 }
 
 func checkOk(code int) {
-	checkCode(code, 200)
+	checkCode(code, model.CodeOk)
 }
 
-func checkCode(code int, exceptCode int) {
-	if code != exceptCode {
+func checkCode(code int, exceptCode model.RespCode) {
+	if code != int(exceptCode) {
 		panic(fmt.Sprintf("code got = %d, want %d", code, exceptCode))
 	}
 }

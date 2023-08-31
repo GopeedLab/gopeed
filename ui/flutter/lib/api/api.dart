@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import 'package:dio/adapter.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
+import 'model/resolve_result.dart';
 import '../util/util.dart';
 import 'model/create_task.dart';
 import 'model/request.dart';
-import 'model/resource.dart';
 import 'model/result.dart';
 import 'model/task.dart';
 
@@ -33,6 +33,10 @@ class _Client {
         }
       }
       dio.options.baseUrl = baseUrl;
+      dio.options.contentType = Headers.jsonContentType;
+      dio.options.sendTimeout = const Duration(seconds: 5);
+      dio.options.connectTimeout = const Duration(seconds: 5);
+      dio.options.receiveTimeout = const Duration(seconds: 60);
       dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
         if (apiToken.isNotEmpty) {
           options.headers['X-Api-Token'] = apiToken;
@@ -42,8 +46,9 @@ class _Client {
 
       _instance!.dio = dio;
       if (isUnixSocket) {
-        (_instance!.dio.httpClientAdapter as DefaultHttpClientAdapter)
-            .onHttpClientCreate = (client) {
+        (_instance!.dio.httpClientAdapter as IOHttpClientAdapter)
+            .createHttpClient = () {
+          final client = HttpClient();
           client.connectionFactory =
               (Uri uri, String? proxyHost, int? proxyPort) {
             return Socket.startConnect(
@@ -69,23 +74,27 @@ Future<T> _parse<T>(
 ) async {
   try {
     var resp = await fetch();
-    if (fromJsonT != null) {
-      return Result<T>.fromJson(resp.data, fromJsonT).data as T;
+    fromJsonT ??= (json) => null as T;
+    final result = Result<T>.fromJson(resp.data, fromJsonT);
+    if (result.code == 0) {
+      return result.data as T;
     } else {
-      return null as T;
+      throw Exception(result);
     }
-  } on DioError catch (e) {
-    if (e.response == null) {
-      throw Exception("Server error");
+  } on DioException catch (e) {
+    if (e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.connectionTimeout) {
+      throw Exception(Result(code: 1000, msg: "request timeout"));
     }
-    throw Exception(Result.fromJson(e.response?.data, (_) => null).msg);
+    throw Exception(Result(code: 1000, msg: e.message));
   }
 }
 
-Future<Resource> resolve(Request request) async {
-  return _parse<Resource>(
+Future<ResolveResult> resolve(Request request) async {
+  return _parse<ResolveResult>(
       () => _client.dio.post("/api/v1/resolve", data: request),
-      (data) => Resource.fromJson(data));
+      (data) => ResolveResult.fromJson(data));
 }
 
 Future<String> createTask(CreateTask createTask) async {
@@ -109,6 +118,14 @@ Future<void> continueTask(String id) async {
   return _parse(() => _client.dio.put("/api/v1/tasks/$id/continue"), null);
 }
 
+Future<void> pauseAllTasks() async {
+  return _parse(() => _client.dio.put("/api/v1/tasks/pause"), null);
+}
+
+Future<void> continueAllTasks() async {
+  return _parse(() => _client.dio.put("/api/v1/tasks/continue"), null);
+}
+
 Future<void> deleteTask(String id, bool force) async {
   return _parse(
       () => _client.dio.delete("/api/v1/tasks/$id?force=$force"), null);
@@ -123,11 +140,15 @@ Future<void> putConfig(DownloaderConfig config) async {
   return _parse(() => _client.dio.put("/api/v1/config", data: config), null);
 }
 
-Future<Response<T>> proxyRequest<T>(String uri,
+Future<Response<String>> proxyRequest<T>(String uri,
     {data, Options? options}) async {
   options ??= Options();
   options.headers ??= {};
   options.headers!["X-Target-Uri"] = uri;
 
-  return _client.dio.request("/api/v1/proxy", data: data, options: options);
+  // add timestamp to avoid cache
+  return _client.dio.request(
+      "/api/v1/proxy?t=${DateTime.now().millisecondsSinceEpoch}",
+      data: data,
+      options: options);
 }

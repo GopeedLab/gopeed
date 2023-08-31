@@ -1,17 +1,21 @@
-[![Test Status](https://github.com/monkeyWie/gopeed/workflows/test/badge.svg)](https://github.com/monkeyWie/gopeed/actions?query=workflow%3Atest)
-[![Codecov](https://codecov.io/gh/monkeyWie/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/monkeyWie/gopeed)
-[![Release](https://img.shields.io/github/release/monkeyWie/gopeed.svg?style=flat-square)](https://github.com/monkeyWie/gopeed/releases)
+[![Test Status](https://github.com/GopeedLab/gopeed/workflows/test/badge.svg)](https://github.com/GopeedLab/gopeed/actions?query=workflow%3Atest)
+[![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
+[![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
+[![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://github.com/GopeedLab/gopeed/blob/main/.donate/index.md#donate)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
 ![](_docs/img/banner.png)
 
-[English](/README.md) | [中文](/README_zh-CN.md)
+[English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md)
 
 ## 介绍
 
-Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。
+Gopeed（全称 Go Speed），是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。
 
-## 下载
+访问 ✈ [官方网站](https://gopeed.com/zh-CN) | 📖 [开发文档](https://docs.gopeed.com/zh/)
+
+## 安装
 
 **已支持平台**
 
@@ -23,7 +27,7 @@ Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、
 - [x] web
 - [x] docker
 
-[点击前往](https://github.com/monkeyWie/gopeed/releases/latest)
+[前往下载](https://github.com/GopeedLab/gopeed/releases/latest)
 
 > 注：macos 版本运行如果提示损坏，请在终端执行 `xattr -d com.apple.quarantine /Applications/Gopeed.app` 命令
 
@@ -32,7 +36,7 @@ Gopeed 是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、
 使用`go install`安装：
 
 ```bash
-go install github.com/monkeyWie/gopeed/cmd/gopeed
+go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
 
 ### Docker
@@ -40,35 +44,22 @@ go install github.com/monkeyWie/gopeed/cmd/gopeed
 #### 直接运行
 
 ```bash
-docker run -d -p 9999:9999 -v /path/to/download:/download liwei2633/gopeed
+docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads liwei2633/gopeed
 ```
 
 #### 使用 Docker Compose
 
-```yaml
-version: '3'
-
-services:
-  gopeed:
-    container_name: gopeed
-    ports:
-      - 9999:9999
-    image: liwei2633/gopeed
-    volumes:
-      - ~/Downloads:/download
-    restart: unless-stopped
-```
-
-输入以下指令启动容器:
-
 ```bash
-docker compose up -d
+docker-compose up -d
 ```
 
 #### 访问服务
 
 当 docker 容器运行时，可以通过 `http://localhost:9999` 访问 web 页面。
-> 提示：在设置页面把下载路径修改为 `/download` 以便在宿主机访问下载完的文件。
+
+## 打赏
+
+如果觉得项目对你有帮助，请考虑[打赏](/.donate/index.md#donate)以支持这个项目的发展，非常感谢！
 
 ## 界面展示
 
@@ -83,13 +74,17 @@ docker compose up -d
 ### 环境要求
 
 1. Golang 1.19+
-2. Flutter 3.0+
+2. Flutter 3.10+
 
 ### 克隆项目
 
 ```bash
-git clone git@github.com:monkeyWie/gopeed.git
+git clone git@github.com:GopeedLab/gopeed.git
 ```
+
+### 贡献代码
+
+请参考[贡献指南](CONTRIBUTING_zh-CN.md)
 
 ### 编译
 
@@ -102,7 +97,7 @@ git clone git@github.com:monkeyWie/gopeed.git
 - windows
 
 ```bash
-go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
 cd ui/flutter
 flutter build windows
 ```
@@ -110,7 +105,7 @@ flutter build windows
 - macos
 
 ```bash
-go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
 cd ui/flutter
 flutter build macos
 ```
@@ -118,7 +113,7 @@ flutter build macos
 - linux
 
 ```bash
-go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/monkeyWie/gopeed/bind/desktop
+go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
 cd ui/flutter
 flutter build linux
 ```
@@ -129,6 +124,7 @@ flutter build linux
 
 ```bash
 go install golang.org/x/mobile/cmd/gomobile@latest
+go get golang.org/x/mobile/bind
 gomobile init
 ```
 
@@ -137,14 +133,12 @@ gomobile init
 - android
 
 ```bash
-gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
+gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
 cd ui/flutter
 flutter build apk
 ```
 
-#### Web 端（推荐本地调试使用）
-
-Web 端直接与后端 http 服务通讯，不需要额外准备环境。
+#### Web 端
 
 构建命令：
 
@@ -154,8 +148,21 @@ flutter build web
 cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
-go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/monkeyWie/gopeed/cmd/web
+go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
+go run cmd/web/main.go
 ```
+
+## 感谢
+
+### 贡献者
+
+<a href="https://github.com/GopeedLab/gopeed/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=GopeedLab/gopeed" />
+</a>
+
+### JetBrains
+
+[![goland](_docs/img/goland.svg)](https://www.jetbrains.com/?from=gopeed)
 
 ## 开源许可
 

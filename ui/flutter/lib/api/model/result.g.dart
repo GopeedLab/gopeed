@@ -11,6 +11,7 @@ Result<T> _$ResultFromJson<T>(
   T Function(Object? json) fromJsonT,
 ) =>
     Result<T>(
+      code: json['code'] as int,
       msg: json['msg'] as String?,
       data: _$nullableGenericFromJson(json['data'], fromJsonT),
     );
@@ -19,7 +20,9 @@ Map<String, dynamic> _$ResultToJson<T>(
   Result<T> instance,
   Object? Function(T value) toJsonT,
 ) {
-  final val = <String, dynamic>{};
+  final val = <String, dynamic>{
+    'code': instance.code,
+  };
 
   void writeNotNull(String key, dynamic value) {
     if (value != null) {

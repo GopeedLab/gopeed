@@ -1,15 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/api.dart' as api;
-import 'package:gopeed/i18n/messages.dart';
+import 'package:window_manager/window_manager.dart';
 
+import 'api/api.dart' as api;
+import 'app/modules/app/controllers/app_controller.dart';
+import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
-import 'pages/app/app_controller.dart';
-import 'pages/app/app_view.dart';
+import 'generated/locales.g.dart';
+import 'util/locale_manager.dart';
 import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
+import 'util/util.dart';
 
 void main() async {
   await init();
@@ -20,6 +23,19 @@ void main() async {
 
 Future<void> init() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Util.isDesktop()) {
+    await windowManager.ensureInitialized();
+    const windowOptions = WindowOptions(
+      size: Size(800, 600),
+      center: true,
+      skipTaskbar: false,
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+      await windowManager.setPreventClose(true);
+    });
+  }
 
   final controller = Get.put(AppController());
   try {
@@ -49,12 +65,14 @@ Future<void> onStart() async {
   final appController = Get.find<AppController>();
   await appController.trackerUpdateOnStart();
 
-  // if is debug mode, check language message is complete
+  // if is debug mode, check language message is complete,change debug locale to your comfortable language if you want
   if (kDebugMode) {
-    final mainLang = getLocaleKey(mainLocale);
-    final fullMessages = messages.keys[mainLang];
-    messages.keys.keys.where((e) => e != mainLang).forEach((lang) {
-      final langMessages = messages.keys[lang];
+    final mainLang = getLocaleKey(debugLocale);
+    final fullMessages = AppTranslation.translations[mainLang];
+    AppTranslation.translations.keys
+        .where((e) => e != mainLang)
+        .forEach((lang) {
+      final langMessages = AppTranslation.translations[lang];
       if (langMessages == null) {
         logger.w("missing language: $lang");
         return;

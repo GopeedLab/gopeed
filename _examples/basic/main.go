@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/monkeyWie/gopeed/pkg/base"
-	"github.com/monkeyWie/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 )
 
 func main() {
@@ -16,7 +17,9 @@ func main() {
 			}
 		}).
 		Create(&base.Options{
-			Connections: 8,
+			Extra: http.OptsExtra{
+				Connections: 8,
+			},
 		})
 	if err != nil {
 		panic(err)

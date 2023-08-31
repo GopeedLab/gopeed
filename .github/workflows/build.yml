@@ -2,8 +2,14 @@ name: build
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
+
+env:
+  GO_VERSION: 1.19
+  FLUTTER_VERSION: 3.10.6
+
+permissions:
+  contents: write
+
 jobs:
   get-release:
     runs-on: ubuntu-latest
@@ -12,24 +18,30 @@ jobs:
       upload_url: ${{ steps.get-release.outputs.upload_url }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: thebritican/fetch-latest-release@v2.0.0
+      - uses: monkeyWie/get-latest-release@v1
         id: get-release
+        with:
+          myToken: ${{ github.token }}
+
   build-windows:
     runs-on: windows-latest
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: "^1.19"
-          cache: true
+          go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/monkeyWie/gopeed/bind/desktop
+          Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
+          mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\" 
+
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
           flutter build windows
           $mingw = "C:\ProgramData\Chocolatey\lib\mingw\tools\install\mingw64\bin"
@@ -43,7 +55,7 @@ jobs:
           cp $system\vcruntime140_1.dll $release
 
           New-Item -Path build\windows\Output -ItemType Directory
-          Compress-Archive -Path "$release*" -DestinationPath build\windows\Output\Gopeed-$env:VERSION-windows-amd64.zip
+          Compress-Archive -Path "$release*" -DestinationPath "build\windows\Output\Gopeed-$env:VERSION-windows-amd64-portable.zip"
 
           cd build/windows
           echo @"
@@ -77,9 +89,12 @@ jobs:
           Compression=lzma
           SolidCompression=yes
           WizardStyle=modern
+          LanguageDetectionMethod=uilanguage
+          ShowLanguageDialog=yes 
 
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
+          Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
           [Tasks]
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -87,6 +102,9 @@ jobs:
           [Files]
           Source: ".\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
           ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+
+          [UninstallDelete]
+          Type: filesandordirs; Name: "{app}"
 
           [Icons]
           Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -96,7 +114,9 @@ jobs:
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
           iscc.exe setup.iss
-          mv "Output\gopeed.exe" "Output\Gopeed-$env:VERSION-windows-amd64-install.exe"
+          mv "Output\gopeed.exe" "Output\Gopeed-$env:VERSION-windows-amd64.exe"
+          Compress-Archive -Path "Output\Gopeed-$env:VERSION-windows-amd64.exe" -DestinationPath "Output\Gopeed-$env:VERSION-windows-amd64.zip"
+          Remove-Item -Path "Output\Gopeed-$env:VERSION-windows-amd64.exe"
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
@@ -108,24 +128,12 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: "^1.19"
-          cache: true
-      - run: mkdir -p ~/image-cache
-      - id: image-cache
-        uses: actions/cache@v3
-        with:
-          path: ~/image-cache
-          key: image-cache-xgo-v1.19
-      - if: steps.image-cache.outputs.cache-hit != 'true'
-        run: |
-          docker pull techknowlogick/xgo:go-1.19.x
-          docker save -o ~/image-cache/xgo.tar techknowlogick/xgo:go-1.19.x
-      - if: steps.image-cache.outputs.cache-hit == 'true'
-        run: docker load -i ~/image-cache/xgo.tar
+          go-version: ${{ env.GO_VERSION }}
       - name: Build
         run: |
+          docker pull techknowlogick/xgo:go-1.19.x
           go install src.techknowlogick.com/xgo@latest
           xgo --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
           mv libgopeed-*.dylib libgopeed.dylib
@@ -138,27 +146,37 @@ jobs:
     needs: [get-release, build-macos-arm64-lib]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: "^1.19"
-          cache: true
+          go-version: ${{ env.GO_VERSION }}
       - uses: actions/setup-node@v3
         with:
           node-version: 16
       - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Install appdmg
         run: npm install -g appdmg
       - uses: actions/download-artifact@v3
         with:
           name: macos-arm64-lib
-          path: ui/flutter/macos/Frameworks
+          path: ui/flutter/lib-arm64
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           PROJECT_DIR=$(pwd)
+          
+          # amd64 lib
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/lib-amd64/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
+          # universal binary
+          mkdir -p ui/flutter/macos/Frameworks
+          cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/macos/Frameworks/amd64-lib
+          cp ui/flutter/lib-arm64/libgopeed.dylib ui/flutter/macos/Frameworks/arm64-lib
+          cd ui/flutter/macos/Frameworks
+          lipo -create -output libgopeed.dylib amd64-lib arm64-lib
 
-          cd ui/flutter
+          cd $PROJECT_DIR/ui/flutter
           flutter build macos
           cd build/macos/Build/Products/Release
           cat>appdmg.json<<EOF
@@ -172,14 +190,7 @@ jobs:
           }
           EOF
           mkdir dist
-          appdmg appdmg.json dist/Gopeed-$VERSION-macos-arm64.dmg
-
-          # amd64
-          cd $PROJECT_DIR
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o bin/libgopeed.dylib github.com/monkeyWie/gopeed/bind/desktop
-          cp bin/libgopeed.dylib ui/flutter/build/macos/Build/Products/Release/Gopeed.app/Contents/Frameworks/
-          cd ui/flutter/build/macos/Build/Products/Release
-          appdmg appdmg.json dist/Gopeed-$VERSION-macos-amd64.dmg
+          appdmg appdmg.json dist/Gopeed-$VERSION-macos.dmg
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
@@ -191,19 +202,20 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: "^1.19"
-          cache: true
+          go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - run: |
           sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/monkeyWie/gopeed/bind/desktop
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
           flutter build linux
           mkdir -p debian/gui
@@ -250,24 +262,29 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: "^1.19"
-          cache: true
+          go-version: ${{ env.GO_VERSION }}
       - uses: actions/setup-java@v3
         with:
           distribution: "zulu"
           java-version: "11"
       - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
+          APK_KEYSTORE : ${{ secrets.APK_KEYSTORE }}
+          APK_KEY_PASSWORD : ${{ secrets.APK_KEY_PASSWORD }}
+          APK_STORE_PASSWORD : ${{ secrets.APK_STORE_PASSWORD }}
         run: |
-          mkdir ui/flutter/android/app/libs
           go install golang.org/x/mobile/cmd/gomobile@latest
+          go get golang.org/x/mobile/bind
           gomobile init
-          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/monkeyWie/gopeed/bind/mobile
+          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
+          echo $APK_KEYSTORE | base64 -di > android/app/upload-keystore.jks
           flutter build apk
           mkdir dist
           cp build/app/outputs/flutter-apk/app-release.apk dist/Gopeed-$VERSION-android.apk
@@ -282,17 +299,18 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: "^1.19"
-          cache: true
+          go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           cd ui/flutter
-          flutter build web
+          flutter build web --web-renderer html
           cd ../../
           cp -r ui/flutter/build/web cmd/web/dist
           mkdir -p dist/zip
@@ -301,9 +319,13 @@ jobs:
           export CGO_ENABLED=0
           for goos in "${goos_arr[@]}"; do
             for goarch in "${goarch_arr[@]}"; do
-              name=gopeed-web-$VERSION-$goos-$goarch
+              goos_name=$goos
+              if [ $goos = "darwin" ]; then
+                goos_name="macos"
+              fi
+              name=gopeed-web-$VERSION-$goos_name-$goarch
               dir="dist/$name/"
-              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/monkeyWie/gopeed/cmd/web \
+              (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w" -o $dir github.com/GopeedLab/gopeed/cmd/web \
               && cd $dir \
               && file=$(ls -AU | head -1) \
               && mkdir $name \
@@ -324,13 +346,25 @@ jobs:
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
-      - name: Build
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: liwei2633
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and push
+        uses: docker/build-push-action@v2
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
-        run: |
-          tag=liwei2633/gopeed:${VERSION:1}
-          docker build -t $tag .
-          docker login -u liwei2633 -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push $tag
-          docker tag $tag liwei2633/gopeed:latest
-          docker push liwei2633/gopeed:latest
+        with:
+          push: true
+          platforms: |
+            linux/386
+            linux/amd64
+            linux/arm64
+          tags: |
+            liwei2633/gopeed:latest
+            liwei2633/gopeed:${{ env.VERSION }}

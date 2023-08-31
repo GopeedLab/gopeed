@@ -9,13 +9,15 @@ part of 'downloader_config.dart';
 DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
     DownloaderConfig()
       ..downloadDir = json['downloadDir'] as String
+      ..maxRunning = json['maxRunning'] as int
       ..protocolConfig = ProtocolConfig.fromJson(
-          json['protocolConfig'] as Map<String, dynamic>)
-      ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>);
+          json['protocolConfig'] as Map<String, dynamic>?)
+      ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
       'downloadDir': instance.downloadDir,
+      'maxRunning': instance.maxRunning,
       'protocolConfig': instance.protocolConfig.toJson(),
       'extra': instance.extra.toJson(),
     };
@@ -64,12 +66,12 @@ ExtraConfigBt _$ExtraConfigBtFromJson(Map<String, dynamic> json) =>
       ..trackerSubscribeUrls = (json['trackerSubscribeUrls'] as List<dynamic>)
           .map((e) => e as String)
           .toList()
-      ..lastTrackerUpdateTime = json['lastTrackerUpdateTime'] == null
-          ? null
-          : DateTime.parse(json['lastTrackerUpdateTime'] as String)
       ..subscribeTrackers = (json['subscribeTrackers'] as List<dynamic>)
           .map((e) => e as String)
           .toList()
+      ..lastTrackerUpdateTime = json['lastTrackerUpdateTime'] == null
+          ? null
+          : DateTime.parse(json['lastTrackerUpdateTime'] as String)
       ..customTrackers = (json['customTrackers'] as List<dynamic>)
           .map((e) => e as String)
           .toList();
@@ -77,6 +79,7 @@ ExtraConfigBt _$ExtraConfigBtFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) {
   final val = <String, dynamic>{
     'trackerSubscribeUrls': instance.trackerSubscribeUrls,
+    'subscribeTrackers': instance.subscribeTrackers,
   };
 
   void writeNotNull(String key, dynamic value) {
@@ -87,7 +90,6 @@ Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) {
 
   writeNotNull('lastTrackerUpdateTime',
       instance.lastTrackerUpdateTime?.toIso8601String());
-  val['subscribeTrackers'] = instance.subscribeTrackers;
   val['customTrackers'] = instance.customTrackers;
   return val;
 }

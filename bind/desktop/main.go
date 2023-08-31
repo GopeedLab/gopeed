@@ -3,8 +3,8 @@ package main
 import "C"
 import (
 	"encoding/json"
-	"github.com/monkeyWie/gopeed/pkg/rest"
-	"github.com/monkeyWie/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/pkg/rest"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
 
 func main() {}

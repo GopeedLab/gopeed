@@ -1,18 +1,21 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
 class Util {
-  static String buildAbsPath(String dir, String path, String name) {
-    return (dir == "" ? "" : "$dir/") + buildPath(path, name);
-  }
-
-  static String buildPath(String path, String name) {
-    return (path == "" ? "" : "$path/") + name;
+  static String safeDir(String path) {
+    if (path == "." || path == "./" || path == ".\\") {
+      return "";
+    }
+    return path;
   }
 
   static String fmtByte(int byte) {
-    if (byte < 1024) {
+    if (byte < 0) {
+      return "0 B";
+    } else if (byte < 1024) {
       return "$byte B";
     } else if (byte < 1024 * 1024) {
       return "${(byte / 1024).toStringAsFixed(2)} KB";
@@ -42,6 +45,10 @@ class Util {
     return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
   }
 
+  static isWindows() {
+    return !kIsWeb && Platform.isWindows;
+  }
+
   static isMacos() {
     return !kIsWeb && Platform.isMacOS;
   }
@@ -55,5 +62,34 @@ class Util {
 
   static isWeb() {
     return kIsWeb;
+  }
+
+  static List<String> textToLines(String text) {
+    if (text.isEmpty) {
+      return [];
+    }
+    const ls = LineSplitter();
+    return ls.convert(text);
+  }
+
+  // if one future complete, return the result, only all future error, return the last error
+  static anyOk<T>(Iterable<Future<T>> futures) {
+    final completer = Completer<T>();
+    Object lastError;
+    var count = futures.length;
+    for (var future in futures) {
+      future.then((value) {
+        if (!completer.isCompleted) {
+          completer.complete(value);
+        }
+      }).catchError((e) {
+        lastError = e;
+        count--;
+        if (count == 0) {
+          completer.completeError(lastError);
+        }
+      });
+    }
+    return completer.future;
   }
 }

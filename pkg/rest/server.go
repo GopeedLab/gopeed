@@ -2,12 +2,12 @@ package rest
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/monkeyWie/gopeed/pkg/download"
-	"github.com/monkeyWie/gopeed/pkg/rest/model"
-	restUtil "github.com/monkeyWie/gopeed/pkg/rest/util"
-	"github.com/monkeyWie/gopeed/pkg/util"
 	"net"
 	"net/http"
 )
@@ -57,14 +57,16 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	}
 	startCfg.Init()
 
-	downloadCfg := &download.DownloaderConfig{}
+	downloadCfg := &download.DownloaderConfig{
+		RefreshInterval: startCfg.RefreshInterval,
+	}
 	if startCfg.Storage == model.StorageBolt {
 		downloadCfg.Storage = download.NewBoltStorage(startCfg.StorageDir)
 	} else {
 		downloadCfg.Storage = download.NewMemStorage()
 	}
+	downloadCfg.StorageDir = startCfg.StorageDir
 	downloadCfg.Init()
-	downloadCfg.RefreshInterval = startCfg.RefreshInterval
 	Downloader = download.NewDownloader(downloadCfg)
 	if err := Downloader.Setup(); err != nil {
 		return nil, nil, err
@@ -84,6 +86,8 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodPost).Path("/api/v1/tasks").HandlerFunc(CreateTask)
 	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/pause").HandlerFunc(PauseTask)
 	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/continue").HandlerFunc(ContinueTask)
+	r.Methods(http.MethodPut).Path("/api/v1/tasks/pause").HandlerFunc(PauseAllTask)
+	r.Methods(http.MethodPut).Path("/api/v1/tasks/continue").HandlerFunc(ContinueAllTask)
 	r.Methods(http.MethodDelete).Path("/api/v1/tasks/{id}").HandlerFunc(DeleteTask)
 	r.Methods(http.MethodGet).Path("/api/v1/tasks/{id}").HandlerFunc(GetTask)
 	r.Methods(http.MethodGet).Path("/api/v1/tasks").HandlerFunc(GetTasks)
@@ -94,14 +98,21 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))
 	}
 
-	if startCfg.ApiToken != "" {
+	if startCfg.ApiToken != "" || (startCfg.WebEnable && startCfg.WebBasicAuth != nil) {
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Header.Get("X-Api-Token") != startCfg.ApiToken {
-					restUtil.WriteJson(w, http.StatusUnauthorized, model.NewResultWithMsg("invalid token"))
+				if startCfg.ApiToken != "" && r.Header.Get("X-Api-Token") == startCfg.ApiToken {
+					h.ServeHTTP(w, r)
 					return
 				}
-				h.ServeHTTP(w, r)
+				if startCfg.WebEnable && startCfg.WebBasicAuth != nil {
+					if r.Header.Get("Authorization") == startCfg.WebBasicAuth.Authorization() {
+						h.ServeHTTP(w, r)
+						return
+					}
+					w.Header().Set("WWW-Authenticate", "Basic realm=\"gopeed web\"")
+				}
+				WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
 			})
 		})
 	}
@@ -112,4 +123,22 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		handlers.AllowedOrigins([]string{"*"}),
 	)(r)}
 	return srv, listener, nil
+}
+
+func ReadJson(r *http.Request, w http.ResponseWriter, v any) bool {
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return false
+	}
+	return true
+}
+
+func WriteJson(w http.ResponseWriter, v any) {
+	WriteStatusJson(w, http.StatusOK, v)
+}
+
+func WriteStatusJson(w http.ResponseWriter, statusCode int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(v)
 }

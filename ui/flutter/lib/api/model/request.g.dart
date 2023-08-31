@@ -8,7 +8,7 @@ part of 'request.dart';
 
 Request _$RequestFromJson(Map<String, dynamic> json) => Request(
       url: json['url'] as String,
-      extra: json['extra'] as Map<String, dynamic>?,
+      extra: json['extra'],
     );
 
 Map<String, dynamic> _$RequestToJson(Request instance) {
@@ -25,3 +25,24 @@ Map<String, dynamic> _$RequestToJson(Request instance) {
   writeNotNull('extra', instance.extra);
   return val;
 }
+
+ReqExtraHttp _$ReqExtraHttpFromJson(Map<String, dynamic> json) => ReqExtraHttp()
+  ..method = json['method'] as String
+  ..header = Map<String, String>.from(json['header'] as Map)
+  ..body = json['body'] as String;
+
+Map<String, dynamic> _$ReqExtraHttpToJson(ReqExtraHttp instance) =>
+    <String, dynamic>{
+      'method': instance.method,
+      'header': instance.header,
+      'body': instance.body,
+    };
+
+ReqExtraBt _$ReqExtraBtFromJson(Map<String, dynamic> json) => ReqExtraBt()
+  ..trackers =
+      (json['trackers'] as List<dynamic>).map((e) => e as String).toList();
+
+Map<String, dynamic> _$ReqExtraBtToJson(ReqExtraBt instance) =>
+    <String, dynamic>{
+      'trackers': instance.trackers,
+    };

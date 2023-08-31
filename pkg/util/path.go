@@ -2,13 +2,14 @@ package util
 
 import (
 	"errors"
-	"io"
+	"fmt"
 	"os"
-	"path/filepath"
+	syspath "path"
+	"strings"
 )
 
 func Dir(path string) string {
-	dir := filepath.Dir(path)
+	dir := syspath.Dir(path)
 	if dir == "." {
 		return ""
 	}
@@ -19,7 +20,7 @@ func Filepath(path string, originName string, customName string) string {
 	if customName == "" {
 		customName = originName
 	}
-	return filepath.Join(path, customName)
+	return syspath.Join(path, customName)
 }
 
 // SafeRemove remove file safely, ignoring errors if the path does not exist.
@@ -30,52 +31,70 @@ func SafeRemove(name string) error {
 	return nil
 }
 
-// SafeRemoveAll remove file and parent directories safely
-func SafeRemoveAll(path string, names []string) error {
-	for _, name := range names {
-		err := SafeRemove(filepath.Join(path, name))
-		if err != nil {
-			return err
+// CheckDuplicateAndRename rename duplicate file, add suffix (1) (2) ...
+// if file name is a.txt, rename to a (1).txt
+// if directory name is a, rename to a (1)
+// return new name
+func CheckDuplicateAndRename(path string) (string, error) {
+	dir := syspath.Dir(path)
+	name := syspath.Base(path)
+
+	// if file not exists, return directly
+	_, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return name, nil
 		}
-		if err := safeRemoveParent(path, name); err != nil {
-			return err
+		return "", err
+	}
+
+	index := strings.LastIndex(name, ".")
+	var nameTpl string
+	if index == -1 {
+		nameTpl = name + " (%d)"
+	} else {
+		nameTpl = name[:index] + " (%d)" + name[index:]
+	}
+	for i := 1; ; i++ {
+		newName := fmt.Sprintf(nameTpl, i)
+		newPath := syspath.Join(dir, newName)
+		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			return newName, nil
 		}
+	}
+}
+
+// GetSingleDir get the top level single folder name,if not exist, return empty string
+func GetSingleDir(paths []string) string {
+	if len(paths) == 0 {
+		return ""
+	}
+	split := strings.Split(paths[0], "/")
+	if len(split) == 0 || split[0] == "" {
+		return ""
+	}
+	dir := split[0]
+	for i := 1; i < len(paths); i++ {
+		if !strings.HasPrefix(paths[i], dir) {
+			return ""
+		}
+	}
+	return dir
+}
+
+func CreateDirIfNotExist(dir string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return os.MkdirAll(dir, 0o777)
 	}
 	return nil
 }
 
-func safeRemoveParent(path string, subPath string) error {
-	currPath := filepath.Dir(subPath)
-	if currPath == "." {
-		return nil
+// IsExistsFile check file exists and is a file
+func IsExistsFile(path string) bool {
+	info, err := os.Stat(path)
+	// 判断路径是否存在，并且是一个文件
+	if err == nil && !info.IsDir() {
+		return true
 	}
-	// if directory is empty, remove it
-	dir := filepath.Join(path, filepath.Dir(subPath))
-	empty, err := isEmpty(dir)
-	if err != nil {
-		return err
-	}
-	if empty {
-		err = SafeRemove(dir)
-		if err != nil {
-			return err
-		}
-		return safeRemoveParent(path, currPath)
-	}
-	return nil
-}
-
-// check directory is empty
-func isEmpty(name string) (bool, error) {
-	f, err := os.Open(name)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-
-	_, err = f.Readdirnames(1) // Or f.Readdir(1)
-	if err == io.EOF {
-		return true, nil
-	}
-	return false, err // Either not empty or error, suits both cases
+	return false
 }

@@ -1,29 +1,48 @@
 package fetcher
 
 import (
-	"github.com/monkeyWie/gopeed/internal/controller"
-	"github.com/monkeyWie/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"path"
 )
 
 // Fetcher defines the interface for a download protocol.
+// One fetcher for each download task
 type Fetcher interface {
 	// Name return the name of the protocol.
 	Name() string
 
 	Setup(ctl *controller.Controller) error
 	// Resolve resource info from request
-	Resolve(req *base.Request) (res *base.Resource, err error)
+	Resolve(req *base.Request) error
 	// Create ready to download, but not started
-	Create(res *base.Resource, opts *base.Options) (err error)
-	Start() (err error)
-	Pause() (err error)
-	Continue() (err error)
-	Close() (err error)
+	Create(opts *base.Options) error
+	Start() error
+	Pause() error
+	Continue() error
+	Close() error
 
+	// Meta returns the meta information of the download.
+	Meta() *FetcherMeta
 	// Progress returns the progress of the download.
 	Progress() Progress
 	// Wait for the download to complete, this method will block until the download is done.
-	Wait() (err error)
+	Wait() error
+}
+
+// FetcherMeta defines the meta information of a fetcher.
+type FetcherMeta struct {
+	Req  *base.Request  `json:"req"`
+	Res  *base.Resource `json:"res"`
+	Opts *base.Options  `json:"opts"`
+}
+
+func (m *FetcherMeta) Filepath(file *base.FileInfo) string {
+	finalName := m.Opts.Name
+	if finalName == "" {
+		finalName = file.Name
+	}
+	return path.Join(m.Opts.Path, m.Res.RootDir, finalName)
 }
 
 // FetcherBuilder defines the interface for a fetcher builder.
@@ -36,11 +55,12 @@ type FetcherBuilder interface {
 	// Store fetcher
 	Store(fetcher Fetcher) (any, error)
 	// Restore fetcher
-	Restore() (v any, f func(res *base.Resource, opts *base.Options, v any) Fetcher)
+	Restore() (v any, f func(meta *FetcherMeta, v any) Fetcher)
 }
 
 type DefaultFetcher struct {
 	Ctl    *controller.Controller
+	Meta   *FetcherMeta
 	DoneCh chan error
 }
 
