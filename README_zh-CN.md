@@ -141,7 +141,7 @@ flutter build apk
 - ios
 
 ```bash
-gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Runner/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
 cd ui/flutter
 flutter build ios --no-codesign
 ```
