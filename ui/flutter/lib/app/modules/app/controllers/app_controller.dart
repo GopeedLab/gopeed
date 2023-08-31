@@ -225,7 +225,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       return _defaultStartConfig!;
     }
     _defaultStartConfig = StartConfig();
-    if (!Util.isUnix()) {
+    if (!Util.supportUnixSocket()) {
       // not support unix socket, use tcp
       _defaultStartConfig!.network = "tcp";
       _defaultStartConfig!.address = "127.0.0.1:0";
