@@ -1,8 +1,0 @@
-framework module "Libgopeed" {
-	header "ref.h"
-    header "Libgopeed.objc.h"
-    header "Universe.objc.h"
-    header "Libgopeed.h"
-
-    export *
-}

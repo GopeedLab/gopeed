@@ -23,7 +23,7 @@ Gopeed（全称 Go Speed），是一款由`Golang`+`Flutter`开发的高速下�
 - [x] macos
 - [x] linux
 - [x] android
-- [ ] ios
+- [x] ios
 - [x] web
 - [x] docker
 
@@ -136,6 +136,14 @@ gomobile init
 gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
 cd ui/flutter
 flutter build apk
+```
+
+- ios
+
+```bash
+gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Runner/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+cd ui/flutter
+flutter build ios --no-codesign
 ```
 
 #### Web 端

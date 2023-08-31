@@ -294,6 +294,38 @@ jobs:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: ui/flutter/dist/*
           overwrite: true
+  build-ios:
+    runs-on: macos-latest
+    needs: [get-release]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Build
+        env:
+          VERSION: ${{ needs.get-release.outputs.tag_name }}
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go get golang.org/x/mobile/bind
+          gomobile init
+          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Runner/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+          cd ui/flutter
+          flutter build ios --no-codesign
+          mkdir Payload
+          cp -r build/ios/iphoneos/Runner.app Payload
+          zip -r -y Payload.zip Payload/Runner.app
+          mkdir dist
+          mv Payload.zip dist/Gopeed-$VERSION-ios.ipa
+      - name: Upload
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.get-release.outputs.upload_url }}
+          asset_path: ui/flutter/dist/*
+          overwrite: true
   build-web:
     runs-on: ubuntu-latest
     needs: [get-release]
