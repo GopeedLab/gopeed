@@ -313,6 +313,7 @@ jobs:
           go get golang.org/x/mobile/bind
           gomobile init
           gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+          rm -rf ui/flutter/ios/Frameworks/Libgopeed.xcframework/ios-arm64_x86_64-simulator
           cd ui/flutter
           flutter build ios --no-codesign
           mkdir Payload
