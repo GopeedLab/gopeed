@@ -305,7 +305,7 @@ class CreateView extends GetView<CreateController> {
                   var width = MediaQuery.of(context).size.width;
 
                   return SizedBox(
-                    height: height * 0.5,
+                    height: height * 0.75,
                     width: width,
                     child: Form(
                         key: createFormKey,
