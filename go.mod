@@ -4,10 +4,7 @@ go 1.19
 
 require (
 	github.com/anacrolix/missinggo/v2 v2.7.2-0.20230527121029-a582b4f397b9
-	github.com/anacrolix/torrent v1.52.3
-	github.com/dop251/goja v0.0.0-20230203172422-5460598cfa32
-	github.com/dop251/goja_nodejs v0.0.0-20230207183254-2229640ea097
-	github.com/go-git/go-git/v5 v5.5.2
+	github.com/anacrolix/torrent v1.52.5
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/matoous/go-nanoid/v2 v2.0.0
@@ -15,8 +12,6 @@ require (
 	go.etcd.io/bbolt v1.3.6
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
 )
-
-replace github.com/anacrolix/torrent => github.com/monkeyWie/torrent v1.52.5-alpha
 
 require (
 	crawshaw.io/sqlite v0.3.3-0.20220618202545-d1964889ea3c // indirect
@@ -30,7 +25,7 @@ require (
 	github.com/anacrolix/dht/v2 v2.19.2-0.20221121215055-066ad8494444 // indirect
 	github.com/anacrolix/envpprof v1.2.1 // indirect
 	github.com/anacrolix/generics v0.0.0-20230428105757-683593396d68 // indirect
-	github.com/anacrolix/go-libutp v1.2.0 // indirect
+	github.com/anacrolix/go-libutp v1.3.1 // indirect
 	github.com/anacrolix/log v0.14.0 // indirect
 	github.com/anacrolix/missinggo v1.3.0 // indirect
 	github.com/anacrolix/missinggo/perf v1.0.0 // indirect

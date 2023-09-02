@@ -18,7 +18,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"time"
 )
 
 type RequestError struct {
@@ -81,13 +80,14 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		return err
 	}
 	client := buildClient()
-	// 只访问一个字节，测试资源是否支持Range请求
+	// send Range request to check whether the server supports breakpoint continuation
+	// just test one byte, Range: bytes=0-0
 	httpReq.Header.Set(base.HttpHeaderRange, fmt.Sprintf(base.HttpHeaderRangeFormat, 0, 0))
 	httpResp, err := client.Do(httpReq)
 	if err != nil {
 		return err
 	}
-	// 拿到响应头就关闭，不用加defer
+	// close response body immediately
 	httpResp.Body.Close()
 	res := &base.Resource{
 		Range: false,
@@ -357,8 +357,7 @@ func buildClient() *http.Client {
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)
 	return &http.Client{
-		Jar:     jar,
-		Timeout: time.Second * 60,
+		Jar: jar,
 	}
 }
 
