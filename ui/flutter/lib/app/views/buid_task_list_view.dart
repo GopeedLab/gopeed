@@ -113,7 +113,9 @@ class BuildTaskListView extends GetView {
           list.add(IconButton(
             icon: const Icon(Icons.folder_open),
             onPressed: () async {
-              await FileExplorer.openAndSelectFile(buildExplorerUrl(task));
+              // await FileExplorer.openAndSelectFile(buildExplorerUrl(task));
+              Get.rootDelegate
+                  .toNamed(Routes.TASK_FILES, parameters: {'id': task.id});
             },
           ));
         }
