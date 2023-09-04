@@ -30,6 +30,8 @@ class CreateView extends GetView<CreateController> {
   final _httpRefererController = TextEditingController();
   final _btTrackerController = TextEditingController();
 
+  final _availableSchemes = ["http:", "https:", "magnet:"];
+
   CreateView({Key? key}) : super(key: key);
 
   @override
@@ -37,8 +39,24 @@ class CreateView extends GetView<CreateController> {
     final String? filePath = Get.rootDelegate.arguments();
     if (_urlController.text.isEmpty && filePath != null) {
       _urlController.text = filePath;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await _doResolve();
+      _urlController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _urlController.text.length));
+    }
+
+    // if no file path, read from clipboard
+    if (filePath?.isEmpty ?? true) {
+      Clipboard.getData('text/plain').then((value) {
+        if (value?.text?.isNotEmpty ?? false) {
+          if (_availableSchemes
+              .where((e) =>
+                  value!.text!.startsWith(e) ||
+                  value.text!.startsWith(e.toUpperCase()))
+              .isNotEmpty) {
+            _urlController.text = value!.text!;
+            _urlController.selection = TextSelection.fromPosition(
+                TextPosition(offset: _urlController.text.length));
+          }
+        }
       });
     }
 
@@ -287,7 +305,7 @@ class CreateView extends GetView<CreateController> {
                   var width = MediaQuery.of(context).size.width;
 
                   return SizedBox(
-                    height: height * 0.5,
+                    height: height * 0.75,
                     width: width,
                     child: Form(
                         key: createFormKey,
