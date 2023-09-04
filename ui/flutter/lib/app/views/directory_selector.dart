@@ -24,7 +24,7 @@ class _DirectorySelectorState extends State<DirectorySelector> {
       children: [
         Expanded(
             child: TextFormField(
-          readOnly: Util.isWeb() ? false : true,
+          readOnly: Util.isWeb() && !Util.isIOS() ? false : true,
           controller: widget.controller,
           decoration: widget.showLabel
               ? InputDecoration(
@@ -35,7 +35,7 @@ class _DirectorySelectorState extends State<DirectorySelector> {
             return v!.trim().isNotEmpty ? null : 'downloadDirValid'.tr;
           },
         )),
-        !Util.isWeb()
+        !Util.isWeb() && !Util.isIOS()
             ? IconButton(
                 icon: const Icon(Icons.folder_open),
                 onPressed: () async {
