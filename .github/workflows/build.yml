@@ -39,7 +39,7 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
-          mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\" 
+          mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
 
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
@@ -90,7 +90,7 @@ jobs:
           SolidCompression=yes
           WizardStyle=modern
           LanguageDetectionMethod=uilanguage
-          ShowLanguageDialog=yes 
+          ShowLanguageDialog=yes
 
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -166,7 +166,7 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           PROJECT_DIR=$(pwd)
-          
+
           # amd64 lib
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/lib-amd64/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
           # universal binary
@@ -221,13 +221,13 @@ jobs:
           mkdir -p debian/gui
           cp assets/icon/icon_1024.png debian/gui/gopeed.png
           cat>debian/debian.yaml<<EOF
-          flutter_app: 
+          flutter_app:
             command: gopeed
             arch: x64
             parent: /usr/local/lib
           control:
             Package: gopeed
-            Version: ${VERSION:1} 
+            Version: ${VERSION:1}
             Architecture: amd64
             Essential: no
             Priority: optional
@@ -238,7 +238,7 @@ jobs:
 
           cat>debian/gui/gopeed.desktop<<EOF
           [Desktop Entry]
-          Version=${VERSION:1} 
+          Version=${VERSION:1}
           Name=Gopeed
           GenericName=Gopeed
           Comment=High speed downloader that supports all platforms.
@@ -288,6 +288,38 @@ jobs:
           flutter build apk
           mkdir dist
           cp build/app/outputs/flutter-apk/app-release.apk dist/Gopeed-$VERSION-android.apk
+      - name: Upload
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.get-release.outputs.upload_url }}
+          asset_path: ui/flutter/dist/*
+          overwrite: true
+  build-ios:
+    runs-on: macos-latest
+    needs: [get-release]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Build
+        env:
+          VERSION: ${{ needs.get-release.outputs.tag_name }}
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go get golang.org/x/mobile/bind
+          gomobile init
+          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+          cd ui/flutter
+          flutter build ios --no-codesign
+          mkdir Payload
+          cp -r build/ios/iphoneos/Runner.app Payload
+          zip -r -y Payload.zip Payload/Runner.app
+          mkdir dist
+          mv Payload.zip dist/Gopeed-$VERSION-ios.ipa
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
