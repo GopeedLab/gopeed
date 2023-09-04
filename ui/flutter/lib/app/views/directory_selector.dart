@@ -24,7 +24,7 @@ class _DirectorySelectorState extends State<DirectorySelector> {
       children: [
         Expanded(
             child: TextFormField(
-          readOnly: Util.isWeb() && !Util.isIOS() ? false : true,
+          readOnly: Util.isWeb() ? false : true,
           controller: widget.controller,
           decoration: widget.showLabel
               ? InputDecoration(

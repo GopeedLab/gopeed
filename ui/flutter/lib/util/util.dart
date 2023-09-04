@@ -12,6 +12,13 @@ class Util {
     return path;
   }
 
+  static String safePathJoin(List<String> paths) {
+    return paths
+        .map((e) => safeDir(e))
+        .join("/")
+        .replaceAll(RegExp(r'//'), "/");
+  }
+
   static String fmtByte(int byte) {
     if (byte < 0) {
       return "0 B";
