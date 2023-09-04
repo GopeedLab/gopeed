@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/api/model/meta.dart';
-import 'package:gopeed/api/model/resource.dart';
 import 'package:path/path.dart' as path;
 
 import '../../api/api.dart';
@@ -109,13 +108,16 @@ class BuildTaskListView extends GetView {
     List<Widget> buildActions() {
       final list = <Widget>[];
       if (isDone()) {
-        if (Util.isDesktop()) {
+        if (Util.isDesktop() || Util.isMobile()) {
           list.add(IconButton(
             icon: const Icon(Icons.folder_open),
-            onPressed: () async {
-              // await FileExplorer.openAndSelectFile(buildExplorerUrl(task));
-              Get.rootDelegate
-                  .toNamed(Routes.TASK_FILES, parameters: {'id': task.id});
+            onPressed: () {
+              if (Util.isDesktop()) {
+                FileExplorer.openAndSelectFile(buildExplorerUrl(task));
+              } else {
+                Get.rootDelegate
+                    .toNamed(Routes.TASK_FILES, parameters: {'id': task.id});
+              }
             },
           ));
         }

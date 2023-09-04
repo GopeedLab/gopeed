@@ -56,7 +56,7 @@ class TaskFilesController extends GetxController {
         }
       }
 
-      while (dir != "") {
+      while (dir != "/" && dir != "") {
         findParent(dir);
         dir = dir.substring(0, dir.lastIndexOf("/"));
       }

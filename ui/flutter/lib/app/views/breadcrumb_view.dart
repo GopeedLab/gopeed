@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class Breadcrumb extends StatelessWidget {
   final List<String> items;
@@ -17,38 +18,42 @@ class Breadcrumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int length = items.length + items.length - 1;
-    return Wrap(
-      spacing: 8.0,
-      runSpacing: 4.0,
-      alignment: WrapAlignment.start,
-      children: List.generate(
-        length,
-        (index) {
-          final isEven = index % 2 == 0;
-          if (isEven) {
-            final isLast = index == length - 1;
-            final item = items[index ~/ 2];
-            return MouseRegion(
-              cursor:
-                  !isLast ? SystemMouseCursors.click : SystemMouseCursors.basic,
-              child: GestureDetector(
-                child: Text(
-                  item,
-                  style: isLast ? activeTextStyle : textStyle,
+    List<Widget> children = [];
+    for (int i = 0; i < items.length; i++) {
+      children.add(
+        GestureDetector(
+          onTap: () {
+            if (onItemTap != null) {
+              onItemTap!(i);
+            }
+          },
+          child: Text(
+            items[i],
+            style: i == items.length - 1 ? activeTextStyle : textStyle,
+          ),
+        ),
+      );
+      if (i != items.length - 1) {
+        children.add(const Text(" > "));
+      }
+    }
+    return Row(
+      children: [
+        ...(children.length == 1
+            ? children.sublist(0, 1)
+            : children.sublist(0, 2)),
+        children.length > 2
+            ? Expanded(
+                child: SingleChildScrollView(
+                  reverse: true,
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: children.sublist(2),
+                  ),
                 ),
-                onTap: () {
-                  if (onItemTap != null) {
-                    onItemTap!(index);
-                  }
-                },
-              ),
-            );
-          } else {
-            return const Text(" > ");
-          }
-        },
-      ),
-    );
+              )
+            : null,
+      ].where((e) => e != null).map((e) => e!).toList(),
+    ).paddingOnly(right: 12);
   }
 }

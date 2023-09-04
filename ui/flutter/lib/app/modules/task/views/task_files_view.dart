@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/util/util.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../../../../util/file_icon.dart';
 import '../../../../util/icons.dart';
+import '../../../../util/util.dart';
 import '../../../views/breadcrumb_view.dart';
 import '../controllers/task_files_controller.dart';
 
@@ -47,6 +49,7 @@ class TaskFilesView extends GetView<TaskFilesController> {
               Expanded(
                 child: ListView.builder(
                   itemBuilder: (context, index) {
+                    final meta = controller.task.value!.meta;
                     final file = fileList[index];
                     return ListTile(
                       leading: file.isDirectory
@@ -57,6 +60,18 @@ class TaskFilesView extends GetView<TaskFilesController> {
                           ? Text(
                               "${controller.dirItemCount(file.fullPath)} items")
                           : Text(Util.fmtByte(file.size)),
+                      trailing: file.isDirectory
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.share),
+                              onPressed: () {
+                                final xfile = XFile(Util.safePathJoin([
+                                  meta.opts.path,
+                                  meta.res.rootDir,
+                                  file.fullPath
+                                ]));
+                                Share.shareXFiles([xfile]);
+                              }),
                       onTap: () {
                         if (file.isDirectory) {
                           controller.toDir(file.fullPath);
