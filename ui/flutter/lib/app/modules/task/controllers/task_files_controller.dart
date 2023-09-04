@@ -61,6 +61,19 @@ class TaskFilesController extends GetxController {
         dir = dir.substring(0, dir.lastIndexOf("/"));
       }
     }
+
+    // sort children, directories first then files, alphabetically
+    _dirMap.forEach((key, value) {
+      value.sort((a, b) {
+        if (a.isDirectory && !b.isDirectory) {
+          return -1;
+        } else if (!a.isDirectory && b.isDirectory) {
+          return 1;
+        } else {
+          return a.name.compareTo(b.name);
+        }
+      });
+    });
   }
 
   void toDir(String dir) {

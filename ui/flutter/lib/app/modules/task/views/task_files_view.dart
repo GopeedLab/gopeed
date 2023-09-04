@@ -57,8 +57,11 @@ class TaskFilesView extends GetView<TaskFilesController> {
                           : Icon(FaIcons.allIcons[findIcon(file.name)]),
                       title: Text(fileList[index].name),
                       subtitle: file.isDirectory
-                          ? Text(
-                              "${controller.dirItemCount(file.fullPath)} items")
+                          ? Text('items'.trParams({
+                              'count': controller
+                                  .dirItemCount(file.fullPath)
+                                  .toString()
+                            }))
                           : Text(Util.fmtByte(file.size)),
                       trailing: file.isDirectory
                           ? null
