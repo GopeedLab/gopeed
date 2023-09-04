@@ -115,8 +115,10 @@ flutter:
 
 # flutter pub run flutter_launcher_icons:main
 flutter_icons:
-  image_path_android: "assets/icon/icon_1024.png"
+  image_path: "assets/icon/icon_1024.png"
   android: true # can specify file name here e.g. "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
   web:
     generate: true
     image_path: "assets/icon/icon_1024.png"

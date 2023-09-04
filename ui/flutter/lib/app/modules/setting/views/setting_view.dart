@@ -342,13 +342,11 @@ class SettingView extends GetView<SettingController> {
                 await debounceSave(needRestart: true);
               },
               items: [
-                !Util.isMobile()
-                    ? const DropdownMenuItem<String>(
-                        value: 'tcp',
-                        child: Text('TCP'),
-                      )
-                    : null,
-                Util.isUnix()
+                const DropdownMenuItem<String>(
+                  value: 'tcp',
+                  child: Text('TCP'),
+                ),
+                Util.supportUnixSocket()
                     ? const DropdownMenuItem<String>(
                         value: 'unix',
                         child: Text('Unix'),

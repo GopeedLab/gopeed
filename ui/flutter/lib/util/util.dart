@@ -60,15 +60,15 @@ class Util {
     return !kIsWeb && Platform.isMacOS;
   }
 
-  static isUnix() {
+  static isWeb() {
+    return kIsWeb;
+  }
+
+  static supportUnixSocket() {
     if (kIsWeb) {
       return false;
     }
-    return !Platform.isWindows;
-  }
-
-  static isWeb() {
-    return kIsWeb;
+    return Platform.isLinux || Platform.isMacOS || Platform.isAndroid;
   }
 
   static List<String> textToLines(String text) {
