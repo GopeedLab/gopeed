@@ -757,6 +757,22 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.4.0"
+  share_plus:
+    dependency: "direct main"
+    description:
+      name: share_plus
+      sha256: "6cec740fa0943a826951223e76218df002804adb588235a8910dc3d6b0654e11"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "7.1.0"
+  share_plus_platform_interface:
+    dependency: transitive
+    description:
+      name: share_plus_platform_interface
+      sha256: "357412af4178d8e11d14f41723f80f12caea54cf0d5cd29af9dcdab85d58aea7"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.3.0"
   shared_preferences:
     dependency: "direct main"
     description:
@@ -1015,6 +1031,14 @@ packages:
     description:
       name: url_launcher_windows
       sha256: "7967065dd2b5fccc18c653b97958fdf839c5478c28e767c61ee879f4e7882422"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.0.7"
+  uuid:
+    dependency: transitive
+    description:
+      name: uuid
+      sha256: "648e103079f7c64a36dc7d39369cabb358d377078a051d6ae2ad3aa539519313"
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.0.7"

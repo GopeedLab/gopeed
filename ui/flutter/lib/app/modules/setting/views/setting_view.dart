@@ -334,21 +334,21 @@ class SettingView extends GetView<SettingController> {
             width: 150,
             child: DropdownButtonFormField<String>(
               value: startCfg.value.network,
-              onChanged: (value) async {
-                startCfg.update((val) {
-                  val!.network = value!;
-                });
+              onChanged: Util.isDesktop()
+                  ? (value) async {
+                      startCfg.update((val) {
+                        val!.network = value!;
+                      });
 
-                await debounceSave(needRestart: true);
-              },
+                      await debounceSave(needRestart: true);
+                    }
+                  : null,
               items: [
-                !Util.isMobile()
-                    ? const DropdownMenuItem<String>(
-                        value: 'tcp',
-                        child: Text('TCP'),
-                      )
-                    : null,
-                Util.isUnix()
+                const DropdownMenuItem<String>(
+                  value: 'tcp',
+                  child: Text('TCP'),
+                ),
+                Util.supportUnixSocket()
                     ? const DropdownMenuItem<String>(
                         value: 'unix',
                         child: Text('Unix'),

@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:gopeed/app/modules/task/views/task_files_view.dart';
 import 'package:gopeed/app/modules/task/views/task_view.dart';
 
 import '../modules/create/bindings/create_binding.dart';
@@ -12,6 +13,7 @@ import '../modules/root/views/root_view.dart';
 import '../modules/setting/bindings/setting_binding.dart';
 import '../modules/setting/views/setting_view.dart';
 import '../modules/task/bindings/task_binding.dart';
+import '../modules/task/bindings/task_files_binding.dart';
 
 part 'app_routes.dart';
 
@@ -39,7 +41,14 @@ class AppPages {
                     name: _Paths.TASK,
                     page: () => const TaskView(),
                     transition: Transition.noTransition,
-                    binding: TaskBinding()),
+                    binding: TaskBinding(),
+                    children: [
+                      GetPage(
+                          name: _Paths.TASK_FILES,
+                          page: () => const TaskFilesView(),
+                          transition: Transition.noTransition,
+                          binding: TaskFilesBinding()),
+                    ]),
                 GetPage(
                     name: _Paths.EXTENSION,
                     page: () => ExtensionView(),

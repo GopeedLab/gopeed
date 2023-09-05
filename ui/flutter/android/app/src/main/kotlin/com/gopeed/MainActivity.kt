@@ -31,12 +31,8 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "stop" -> {
-                    try {
-                        Libgopeed.stop()
-                        result.success(null)
-                    } catch (e: Exception) {
-                        result.error("ERROR", e.message, null)
-                    }
+                    Libgopeed.stop()
+                    result.success(null)
                 }
                 else -> {
                     result.notImplemented()

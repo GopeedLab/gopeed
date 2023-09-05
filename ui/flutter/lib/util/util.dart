@@ -12,6 +12,13 @@ class Util {
     return path;
   }
 
+  static String safePathJoin(List<String> paths) {
+    return paths
+        .map((e) => safeDir(e))
+        .join("/")
+        .replaceAll(RegExp(r'//'), "/");
+  }
+
   static String fmtByte(int byte) {
     if (byte < 0) {
       return "0 B";
@@ -53,15 +60,15 @@ class Util {
     return !kIsWeb && Platform.isMacOS;
   }
 
-  static isUnix() {
+  static isWeb() {
+    return kIsWeb;
+  }
+
+  static supportUnixSocket() {
     if (kIsWeb) {
       return false;
     }
-    return !Platform.isWindows;
-  }
-
-  static isWeb() {
-    return kIsWeb;
+    return Platform.isLinux || Platform.isMacOS || Platform.isAndroid;
   }
 
   static List<String> textToLines(String text) {
