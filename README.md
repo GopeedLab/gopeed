@@ -7,6 +7,8 @@
 
 ![](_docs/img/banner.png)
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R6IJGN6)
+
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md)
 
 ## Introduction
@@ -160,7 +162,7 @@ go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed
 go run cmd/web/main.go
 ```
 
-## Thanks
+## Credits
 
 ### Contributors
 
