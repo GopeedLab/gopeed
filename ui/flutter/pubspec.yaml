@@ -59,6 +59,7 @@ dependencies:
   tray_manager: ^0.2.0
   autoscale_tabbarview: ^1.0.2
   share_plus: ^7.1.0
+  open_file: ^3.3.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
