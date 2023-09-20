@@ -390,6 +390,9 @@ func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request
 			body = bytes.NewBufferString(extra.Body)
 		}
 	}
+	if _, ok := headers[base.HttpHeaderUserAgent]; !ok {
+		headers[base.HttpHeaderUserAgent] = []string{base.AgentName}
+	}
 
 	if ctx != nil {
 		httpReq, err = http.NewRequestWithContext(ctx, method, url.String(), body)
