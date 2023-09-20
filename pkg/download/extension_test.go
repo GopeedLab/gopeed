@@ -161,7 +161,7 @@ func TestDownloader_SwitchExtension(t *testing.T) {
 		if installedExt.Disabled == true {
 			t.Fatal("extension disabled")
 		}
-		if err = downloader.SwitchExtension(installedExt.Identity); err != nil {
+		if err = downloader.SwitchExtension(installedExt.Identity, false); err != nil {
 			t.Fatal(err)
 		}
 		if installedExt.Disabled == false {

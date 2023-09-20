@@ -187,10 +187,12 @@ func GetExtensions(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewOkResult(list))
 }
 
-func PutExtensionSettings(w http.ResponseWriter, r *http.Request) {
+func UpdateExtensionSettings(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	identity := vars["identity"]
 	var req model.UpdateExtensionSettings
 	if ReadJson(r, w, &req) {
-		if err := Downloader.UpdateExtensionSettings(req.Identity, req.Settings); err != nil {
+		if err := Downloader.UpdateExtensionSettings(identity, req.Settings); err != nil {
 			WriteJson(w, model.NewErrorResult(err.Error()))
 			return
 		}
@@ -198,23 +200,15 @@ func PutExtensionSettings(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewNilResult())
 }
 
-func GetExtensionSettings(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	identity := vars["identity"]
-	ext, err := Downloader.GetExtension(identity)
-	if err != nil {
-		WriteJson(w, model.NewErrorResult(err.Error()))
-		return
-	}
-	WriteJson(w, model.NewOkResult(ext.Settings))
-}
-
 func SwitchExtension(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	identity := vars["identity"]
-	if err := Downloader.SwitchExtension(identity); err != nil {
-		WriteJson(w, model.NewErrorResult(err.Error()))
-		return
+	var switchExtension model.SwitchExtension
+	if ReadJson(r, w, &switchExtension) {
+		if err := Downloader.SwitchExtension(identity, switchExtension.Status); err != nil {
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
 	}
 	WriteJson(w, model.NewNilResult())
 }
@@ -229,7 +223,7 @@ func DeleteExtension(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewNilResult())
 }
 
-func UpgradeCheckExtension(w http.ResponseWriter, r *http.Request) {
+func UpdateCheckExtension(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	identity := vars["identity"]
 	newVersion, err := Downloader.UpgradeCheckExtension(identity)
@@ -237,7 +231,7 @@ func UpgradeCheckExtension(w http.ResponseWriter, r *http.Request) {
 		WriteJson(w, model.NewErrorResult(err.Error()))
 		return
 	}
-	WriteJson(w, model.NewOkResult(&model.UpgradeCheckExtensionResp{
+	WriteJson(w, model.NewOkResult(&model.UpdateCheckExtensionResp{
 		NewVersion: newVersion,
 	}))
 }

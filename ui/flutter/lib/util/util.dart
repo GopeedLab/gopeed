@@ -3,8 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class Util {
+  static String? _storageDir;
+
   static String safeDir(String path) {
     if (path == "." || path == "./" || path == ".\\") {
       return "";
@@ -31,6 +35,24 @@ class Util {
     } else {
       return "${(byte / 1024 / 1024 / 1024).toStringAsFixed(2)} GB";
     }
+  }
+
+  static Future<void> initStorageDir() async {
+    var storageDir = "./";
+    if (Platform.isAndroid) {
+      storageDir = (await getExternalStorageDirectory())?.path ?? storageDir;
+    } else if (Platform.isIOS) {
+      storageDir = (await getLibraryDirectory()).path;
+    }
+    _storageDir = storageDir;
+  }
+
+  static String getStorageDir() {
+    return _storageDir!;
+  }
+
+  static String getStorageAsset(String asset) {
+    return path.join(getStorageDir(), asset);
   }
 
   static isAndroid() {

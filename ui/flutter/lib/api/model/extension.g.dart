@@ -19,7 +19,7 @@ Extension _$ExtensionFromJson(Map<String, dynamic> json) => Extension(
       repository: json['repository'] as String,
       disabled: json['disabled'] as bool,
     )..settings = (json['settings'] as List<dynamic>?)
-        ?.map((e) => Settings.fromJson(e as Map<String, dynamic>))
+        ?.map((e) => Setting.fromJson(e as Map<String, dynamic>))
         .toList();
 
 Map<String, dynamic> _$ExtensionToJson(Extension instance) {
@@ -47,7 +47,7 @@ Map<String, dynamic> _$ExtensionToJson(Extension instance) {
   return val;
 }
 
-Settings _$SettingsFromJson(Map<String, dynamic> json) => Settings(
+Setting _$SettingFromJson(Map<String, dynamic> json) => Setting(
       name: json['name'] as String,
       title: json['title'] as String,
       description: json['description'] as String,
@@ -55,13 +55,12 @@ Settings _$SettingsFromJson(Map<String, dynamic> json) => Settings(
       type: $enumDecode(_$SettingTypeEnumMap, json['type']),
       multiple: json['multiple'] as bool,
     )
-      ..defaultValue = json['defaultValue']
       ..value = json['value']
       ..options = (json['options'] as List<dynamic>?)
           ?.map((e) => Option.fromJson(e as Map<String, dynamic>))
           .toList();
 
-Map<String, dynamic> _$SettingsToJson(Settings instance) {
+Map<String, dynamic> _$SettingToJson(Setting instance) {
   final val = <String, dynamic>{
     'name': instance.name,
     'title': instance.title,
@@ -76,7 +75,6 @@ Map<String, dynamic> _$SettingsToJson(Settings instance) {
     }
   }
 
-  writeNotNull('defaultValue', instance.defaultValue);
   writeNotNull('value', instance.value);
   val['multiple'] = instance.multiple;
   writeNotNull('options', instance.options);
@@ -90,11 +88,11 @@ const _$SettingTypeEnumMap = {
 };
 
 Option _$OptionFromJson(Map<String, dynamic> json) => Option(
-      title: json['title'] as String,
+      label: json['label'] as String,
       value: json['value'] as Object,
     );
 
 Map<String, dynamic> _$OptionToJson(Option instance) => <String, dynamic>{
-      'title': instance.title,
+      'label': instance.label,
       'value': instance.value,
     };

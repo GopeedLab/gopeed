@@ -114,12 +114,12 @@ func (d *Downloader) UpdateExtensionSettings(identity string, settings map[strin
 	return d.storage.Put(bucketExtension, ext.Identity, ext)
 }
 
-func (d *Downloader) SwitchExtension(identity string) error {
+func (d *Downloader) SwitchExtension(identity string, status bool) error {
 	ext, err := d.GetExtension(identity)
 	if err != nil {
 		return err
 	}
-	ext.Disabled = !ext.Disabled
+	ext.Disabled = !status
 	return d.storage.Put(bucketExtension, ext.Identity, ext)
 }
 
@@ -339,7 +339,8 @@ func (e *Extension) update(newExt *Extension) error {
 	e.InstallUrl = newExt.InstallUrl
 	e.Repository = newExt.Repository
 	e.Scripts = newExt.Scripts
-	e.Settings = newExt.Settings
+	// don't override settings
+	//e.Settings = newExt.Settings
 	e.UpdatedAt = time.Now()
 	return nil
 }
@@ -386,8 +387,6 @@ type Setting struct {
 	Required    bool   `json:"required"`
 	// setting type
 	Type SettingType `json:"type"`
-	// default value
-	Default any `json:"default"`
 	// setting value
 	Value    any       `json:"value"`
 	Multiple bool      `json:"multiple"`
@@ -395,7 +394,7 @@ type Setting struct {
 }
 
 type Option struct {
-	Title string `json:"title"`
+	Label string `json:"label"`
 	Value any    `json:"value"`
 }
 
@@ -434,8 +433,6 @@ func parseSettings(settings []*Setting) map[string]any {
 		var val any
 		if s.Value != nil {
 			val = s.Value
-		} else {
-			val = s.Default
 		}
 		m[s.Name] = tryParse(val, s.Type)
 	}
@@ -444,7 +441,7 @@ func parseSettings(settings []*Setting) map[string]any {
 
 func tryParse(val any, settingType SettingType) any {
 	if val == nil {
-		return val
+		return nil
 	}
 	switch settingType {
 	case SettingTypeString:

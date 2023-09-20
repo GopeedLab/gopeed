@@ -341,25 +341,24 @@ func TestGetExtensions(t *testing.T) {
 	})
 }
 
-func TestPutExtensionSettings(t *testing.T) {
+func TestUpdateExtensionSettings(t *testing.T) {
 	doTest(func() {
 		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
 
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/extensions/"+identity+"/settings", &model.UpdateExtensionSettings{
-			Identity: identity,
 			Settings: map[string]any{
 				"undefined": "test",
 				"ua":        "test",
 			},
 		})
 
-		settings := httpRequestCheckOk[[]*download.Setting](http.MethodGet, "/api/v1/extensions/"+identity+"/settings", nil)
+		settings := httpRequestCheckOk[*download.Extension](http.MethodGet, "/api/v1/extensions/"+identity, nil).Settings
 		if len(settings) != 1 {
-			t.Errorf("PutExtensionSettings() got = %v, want %v", len(settings), 1)
+			t.Errorf("UpdateExtensionSettings() got = %v, want %v", len(settings), 1)
 		}
 
 		if settings[0].Name != "ua" || settings[0].Value != "test" {
-			t.Errorf("PutExtensionSettings() got = %v, want %v", settings[0].Value, "test")
+			t.Errorf("UpdateExtensionSettings() got = %v, want %v", settings[0].Value, "test")
 		}
 	})
 }
@@ -367,7 +366,9 @@ func TestPutExtensionSettings(t *testing.T) {
 func TestSwitchExtension(t *testing.T) {
 	doTest(func() {
 		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
-		httpRequestCheckOk[any](http.MethodPut, "/api/v1/extensions/"+identity+"/switch", nil)
+		httpRequestCheckOk[any](http.MethodPut, "/api/v1/extensions/"+identity+"/switch", &model.SwitchExtension{
+			Status: false,
+		})
 		extensions := httpRequestCheckOk[[]*download.Extension](http.MethodGet, "/api/v1/extensions", nil)
 		if !extensions[0].Disabled {
 			t.Errorf("TestSwitchExtension() got = %v, want %v", extensions[0].Disabled, true)
@@ -386,16 +387,16 @@ func TestDeleteExtension(t *testing.T) {
 	})
 }
 
-func TestUpgradeCheckExtension(t *testing.T) {
+func TestUpdateCheckExtension(t *testing.T) {
 	doTest(func() {
 		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
-		resp := httpRequestCheckOk[*model.UpgradeCheckExtensionResp](http.MethodGet, "/api/v1/extensions/"+identity+"/upgrade", nil)
+		resp := httpRequestCheckOk[*model.UpdateCheckExtensionResp](http.MethodGet, "/api/v1/extensions/"+identity+"/update", nil)
 		// no new version
 		if resp.NewVersion != "" {
-			t.Errorf("UpgradeCheckExtension() got = %v, want %v", resp.NewVersion, "")
+			t.Errorf("UpdateCheckExtension() got = %v, want %v", resp.NewVersion, "")
 		}
-		// force upgrade
-		httpRequestCheckOk[any](http.MethodPost, "/api/v1/extensions/"+identity+"/upgrade", nil)
+		// force update
+		httpRequestCheckOk[any](http.MethodPost, "/api/v1/extensions/"+identity+"/update", nil)
 	})
 }
 

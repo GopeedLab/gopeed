@@ -19,7 +19,7 @@ class TaskFilesView extends GetView<TaskFilesController> {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Get.rootDelegate.popRoute()),
           // actions: [],
-          title: Obx(() => Text(controller.task.value?.meta.res.name ?? "")),
+          title: Obx(() => Text(controller.task.value!.meta.res!.name)),
         ),
         body: Obx(() {
           final fileList = controller.fileList;
@@ -70,7 +70,7 @@ class TaskFilesView extends GetView<TaskFilesController> {
                               onPressed: () {
                                 final xfile = XFile(Util.safePathJoin([
                                   meta.opts.path,
-                                  meta.res.rootDir,
+                                  meta.res!.name,
                                   file.fullPath
                                 ]));
                                 Share.shareXFiles([xfile]);

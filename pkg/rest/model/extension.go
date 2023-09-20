@@ -5,10 +5,13 @@ type InstallExtension struct {
 }
 
 type UpdateExtensionSettings struct {
-	Identity string         `json:"identity"`
 	Settings map[string]any `json:"settings"`
 }
 
-type UpgradeCheckExtensionResp struct {
+type SwitchExtension struct {
+	Status bool `json:"status"`
+}
+
+type UpdateCheckExtensionResp struct {
 	NewVersion string `json:"newVersion"`
 }

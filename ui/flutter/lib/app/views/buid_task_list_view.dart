@@ -91,7 +91,7 @@ class BuildTaskListView extends GetView {
                   ),
                   TextButton(
                     child: Text(
-                      'delete'.tr,
+                      'confirm'.tr,
                       style: const TextStyle(color: Colors.redAccent),
                     ),
                     onPressed: () async {
@@ -216,6 +216,9 @@ class BuildTaskListView extends GetView {
   }
 
   String fileName(Meta meta) {
+    if (meta.opts.name.isNotEmpty) {
+      return meta.opts.name;
+    }
     if (meta.res == null) {
       final u = Uri.parse(meta.req.url);
       if (u.scheme.startsWith("http")) {
@@ -230,9 +233,6 @@ class BuildTaskListView extends GetView {
           return params["xt"]!.split(":").last;
         }
       }
-    }
-    if (meta.opts.name.isNotEmpty) {
-      return meta.opts.name;
     }
     if (meta.res!.name.isNotEmpty) {
       return meta.res!.name;

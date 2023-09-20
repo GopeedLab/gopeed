@@ -59,6 +59,8 @@ dependencies:
   tray_manager: ^0.2.0
   autoscale_tabbarview: ^1.0.2
   share_plus: ^7.1.0
+  flutter_form_builder: ^9.1.1
+  form_builder_validators: ^9.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -88,6 +90,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/tray_icon/
+    - assets/extension/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

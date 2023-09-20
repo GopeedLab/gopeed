@@ -14,7 +14,7 @@ class Extension {
   String homepage;
   String installUrl;
   String repository;
-  List<Settings>? settings;
+  List<Setting>? settings;
   bool disabled;
 
   Extension({
@@ -37,18 +37,17 @@ class Extension {
 }
 
 @JsonSerializable()
-class Settings {
+class Setting {
   String name;
   String title;
   String description;
   bool required;
   SettingType type;
-  Object? defaultValue;
   Object? value;
   bool multiple;
   List<Option>? options;
 
-  Settings({
+  Setting({
     required this.name,
     required this.title,
     required this.description,
@@ -57,18 +56,18 @@ class Settings {
     required this.multiple,
   });
 
-  factory Settings.fromJson(Map<String, dynamic> json) =>
-      _$SettingsFromJson(json);
-  Map<String, dynamic> toJson() => _$SettingsToJson(this);
+  factory Setting.fromJson(Map<String, dynamic> json) =>
+      _$SettingFromJson(json);
+  Map<String, dynamic> toJson() => _$SettingToJson(this);
 }
 
 @JsonSerializable()
 class Option {
-  String title;
+  String label;
   Object value;
 
   Option({
-    required this.title,
+    required this.label,
     required this.value,
   });
 

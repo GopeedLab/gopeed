@@ -26,15 +26,8 @@ class LibgopeedBootNative implements LibgopeedBoot {
 
   @override
   Future<int> start(StartConfig cfg) async {
-    var storageDir = "./";
-    if (Platform.isAndroid) {
-      storageDir = (await getExternalStorageDirectory())?.path ?? storageDir;
-    }
-    if (Platform.isIOS) {
-      storageDir = (await getLibraryDirectory()).path;
-    }
     cfg.storage = 'bolt';
-    cfg.storageDir = storageDir;
+    cfg.storageDir = Util.getStorageDir();
     cfg.refreshInterval = 0;
     var port =
         Util.isDesktop() ? await _ffiStart(cfg) : await _libgopeed.start(cfg);

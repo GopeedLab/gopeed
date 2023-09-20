@@ -5,6 +5,7 @@ import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:gopeed/api/model/extension.dart';
 import 'package:gopeed/api/model/install_extension.dart';
+import 'package:gopeed/api/model/switch_extension.dart';
 
 import '../util/util.dart';
 import 'model/create_task.dart';
@@ -14,6 +15,8 @@ import 'model/request.dart';
 import 'model/resolve_result.dart';
 import 'model/result.dart';
 import 'model/task.dart';
+import 'model/update_extension_settings.dart';
+import 'model/update_check_extension_resp.dart';
 
 class _Client {
   static _Client? _instance;
@@ -166,13 +169,34 @@ Future<List<Extension>> getExtensions() async {
       (data) => (data as List).map((e) => Extension.fromJson(e)).toList());
 }
 
-Future<void> switchExtension(String identity) async {
+Future<void> updateExtensionSettings(
+    String identity, UpdateExtensionSettings updateExtensionSettings) async {
   return _parse(
-      () => _client.dio.delete("/api/v1/extensions/$identity/switch"), null);
+      () => _client.dio.put("/api/v1/extensions/$identity/settings",
+          data: updateExtensionSettings),
+      null);
+}
+
+Future<void> switchExtension(
+    String identity, SwitchExtension switchExtension) async {
+  return _parse(
+      () => _client.dio
+          .put("/api/v1/extensions/$identity/switch", data: switchExtension),
+      null);
 }
 
 Future<void> deleteExtension(String identity) async {
   return _parse(() => _client.dio.delete("/api/v1/extensions/$identity"), null);
+}
+
+Future<UpdateCheckExtensionResp> upgradeCheckExtension(String identity) async {
+  return _parse(() => _client.dio.get("/api/v1/extensions/$identity/update"),
+      (data) => UpdateCheckExtensionResp.fromJson(data));
+}
+
+Future<void> updateExtension(String identity) async {
+  return _parse(
+      () => _client.dio.post("/api/v1/extensions/$identity/update"), null);
 }
 
 Future<Response<String>> proxyRequest<T>(String uri,
