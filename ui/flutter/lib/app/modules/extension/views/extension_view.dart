@@ -39,8 +39,8 @@ class ExtensionView extends GetView<ExtensionController> {
               Expanded(
                 child: TextField(
                   controller: _installUrlController,
-                  decoration: const InputDecoration(
-                    labelText: '扩展安装地址',
+                  decoration: InputDecoration(
+                    labelText: 'extensionInstallUrl'.tr,
                   ),
                 ),
               ),
@@ -52,7 +52,7 @@ class ExtensionView extends GetView<ExtensionController> {
                     try {
                       await installExtension(
                           InstallExtension(url: _installUrlController.text));
-                      Get.snackbar('提示', '安装成功');
+                      Get.snackbar('tip'.tr, 'extensionInstallSuccess'.tr);
                       await controller.load();
                     } catch (e) {
                       showErrorMessage(e);
@@ -165,7 +165,8 @@ class ExtensionView extends GetView<ExtensionController> {
                                               icon: const Icon(Icons.refresh)))
                                       : IconButton(
                                           onPressed: () {
-                                            showMessage('tip'.tr, '已经是最新版本了');
+                                            showMessage('tip'.tr,
+                                                'extensionAlreadyLatest'.tr);
                                           },
                                           icon: const Icon(Icons.refresh))),
                                 ]
@@ -203,7 +204,7 @@ class ExtensionView extends GetView<ExtensionController> {
                     key: formKey,
                     // autovalidateMode: AutovalidateMode.always,
                     child: Column(children: [
-                      const Text('设置'),
+                      Text('setting'.tr),
                       Expanded(
                         child: SingleChildScrollView(
                           child: Column(
@@ -332,7 +333,7 @@ class ExtensionView extends GetView<ExtensionController> {
         context: Get.context!,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
-              title: Text('删除扩展'.tr),
+              title: Text('extensionDelete'.tr),
               actions: [
                 TextButton(
                   child: Text('cancel'.tr),
@@ -382,7 +383,7 @@ class ExtensionView extends GetView<ExtensionController> {
                       await controller.load();
                       controller.updateFlags.remove(extension.identity);
                       Get.back();
-                      showMessage('tip'.tr, '更新成功');
+                      showMessage('tip'.tr, 'extensionUpdateSuccess'.tr);
                     } catch (e) {
                       showErrorMessage(e);
                     } finally {

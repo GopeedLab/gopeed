@@ -58,7 +58,7 @@ class HomeView extends GetView<HomeController> {
                         NavigationRailDestination(
                           icon: const Icon(Icons.extension),
                           selectedIcon: const Icon(Icons.extension),
-                          label: Text('extension'.tr),
+                          label: Text('extensions'.tr),
                         ),
                         NavigationRailDestination(
                           icon: const Icon(Icons.settings),
