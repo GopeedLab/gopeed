@@ -122,11 +122,11 @@ func TestDownloader_CreateRename(t *testing.T) {
 	want := test.FileMd5(test.BuildFile)
 	got := test.FileMd5(test.DownloadFile)
 	if want != got {
-		t.Errorf("Download() got = %v, want %v", got, want)
+		t.Errorf("Downloader_CreateRename() got = %v, want %v", got, want)
 	}
 	got = test.FileMd5(test.DownloadRenameFile)
 	if want != got {
-		t.Errorf("Download() rename got = %v, want %v", got, want)
+		t.Errorf("Downloader_CreateRename() got = %v, want %v", got, want)
 	}
 }
 

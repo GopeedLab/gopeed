@@ -2,7 +2,6 @@ package download
 
 import (
 	"errors"
-	"fmt"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -246,13 +245,10 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 
 func (d *Downloader) CreateDirectBatch(optReqs []*base.Request, opts *base.Options) (taskIds []string, err error) {
 	for _, optReq := range optReqs {
-		t := time.Now()
 		taskId, err := d.CreateDirect(optReq, opts.Clone())
 		if err != nil {
 			return nil, err
 		}
-		used := time.Since(t)
-		fmt.Printf("create task %s, used %s\n", taskId, used)
 		taskIds = append(taskIds, taskId)
 	}
 	return
@@ -620,8 +616,8 @@ func (d *Downloader) doPauseAll() (err error) {
 }
 
 func (d *Downloader) start(task *Task) error {
-	task.lock.Lock()
-	defer task.lock.Unlock()
+	d.lock.Lock()
+	defer d.lock.Unlock()
 	isCreate := task.Status == base.DownloadStatusReady
 	task.Status = base.DownloadStatusRunning
 	if task.Meta.Res == nil {

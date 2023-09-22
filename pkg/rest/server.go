@@ -97,6 +97,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodPut).Path("/api/v1/config").HandlerFunc(PutConfig)
 	r.Methods(http.MethodPost).Path("/api/v1/extensions").HandlerFunc(InstallExtension)
 	r.Methods(http.MethodGet).Path("/api/v1/extensions").HandlerFunc(GetExtensions)
+	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}").HandlerFunc(GetExtension)
 	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/settings").HandlerFunc(UpdateExtensionSettings)
 	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/switch").HandlerFunc(SwitchExtension)
 	r.Methods(http.MethodDelete).Path("/api/v1/extensions/{identity}").HandlerFunc(DeleteExtension)

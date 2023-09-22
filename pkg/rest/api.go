@@ -187,6 +187,17 @@ func GetExtensions(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewOkResult(list))
 }
 
+func GetExtension(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	identity := vars["identity"]
+	ext, err := Downloader.GetExtension(identity)
+	if err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewOkResult(ext))
+}
+
 func UpdateExtensionSettings(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	identity := vars["identity"]
