@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../util/file_icon.dart';
@@ -65,16 +66,35 @@ class TaskFilesView extends GetView<TaskFilesController> {
                           : Text(Util.fmtByte(file.size)),
                       trailing: file.isDirectory
                           ? null
-                          : IconButton(
-                              icon: const Icon(Icons.share),
-                              onPressed: () {
-                                final xfile = XFile(Util.safePathJoin([
-                                  meta.opts.path,
-                                  meta.res!.name,
-                                  file.fullPath
-                                ]));
-                                Share.shareXFiles([xfile]);
-                              }),
+                          : SizedBox(
+                              width: 100,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  IconButton(
+                                      icon: const Icon(Icons.play_circle),
+                                      onPressed: () {
+                                        OpenFile.open(
+                                          Util.safePathJoin([
+                                            meta.opts.path,
+                                            meta.res.rootDir,
+                                            file.fullPath
+                                          ]),
+                                        );
+                                      }),
+                                  IconButton(
+                                      icon: const Icon(Icons.share),
+                                      onPressed: () {
+                                        final xfile = XFile(Util.safePathJoin([
+                                          meta.opts.path,
+                                          meta.res!.name,
+                                          file.fullPath
+                                        ]));
+                                        Share.shareXFiles([xfile]);
+                                      })
+                                ],
+                              ),
+                            ),
                       onTap: () {
                         if (file.isDirectory) {
                           controller.toDir(file.fullPath);
