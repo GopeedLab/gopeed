@@ -563,7 +563,7 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	}
 	taskId = task.ID
 
-	go func() {
+	func() {
 		d.lock.Lock()
 		defer d.lock.Unlock()
 		d.tasks = append(d.tasks, task)
@@ -616,8 +616,8 @@ func (d *Downloader) doPauseAll() (err error) {
 }
 
 func (d *Downloader) start(task *Task) error {
-	d.lock.Lock()
-	defer d.lock.Unlock()
+	task.lock.Lock()
+	defer task.lock.Unlock()
 	isCreate := task.Status == base.DownloadStatusReady
 	task.Status = base.DownloadStatusRunning
 	if task.Meta.Res == nil {
@@ -629,7 +629,10 @@ func (d *Downloader) start(task *Task) error {
 		}
 		isCreate = true
 	}
+
 	if isCreate {
+		d.lock.Lock()
+		defer d.lock.Unlock()
 		// check if the download file is duplicated and rename it automatically.
 		if task.Meta.Res.Name != "" {
 			fullDirPath := task.Meta.FolderPath()

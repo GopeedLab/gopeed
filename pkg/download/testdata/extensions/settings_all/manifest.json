@@ -31,19 +31,19 @@
       "name": "stringDefault",
       "title": "string default test",
       "type": "string",
-      "default": "default"
+      "value": "default"
     },
     {
       "name": "numberDefault",
       "title": "number default test",
       "type": "number",
-      "default": 1
+      "value": 1
     },
     {
       "name": "booleanDefault",
       "title": "boolean default test",
       "type": "boolean",
-      "default": true
+      "value": true
     },
     {
       "name": "stringValued",
