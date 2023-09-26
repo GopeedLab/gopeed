@@ -104,18 +104,17 @@ func TestDownloader_CreateRename(t *testing.T) {
 			wg.Done()
 		}
 	})
-	_, err := downloader.CreateDirectBatch([]*base.Request{
-		req,
-		req,
-	}, &base.Options{
-		Path: test.Dir,
-		Name: test.DownloadName,
-		Extra: http.OptsExtra{
-			Connections: 4,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
+	for i := 0; i < 2; i++ {
+		_, err := downloader.CreateDirect(req, &base.Options{
+			Path: test.Dir,
+			Name: test.DownloadName,
+			Extra: http.OptsExtra{
+				Connections: 4,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	wg.Wait()
 

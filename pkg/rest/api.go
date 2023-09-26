@@ -46,22 +46,6 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CreateTaskBatch(w http.ResponseWriter, r *http.Request) {
-	var req model.CreateTaskBatch
-	if ReadJson(r, w, &req) {
-		if len(req.Reqs) == 0 {
-			WriteJson(w, model.NewErrorResult("param invalid: reqs", model.CodeInvalidParam))
-			return
-		}
-		taskIds, err := Downloader.CreateDirectBatch(req.Reqs, req.Opts)
-		if err != nil {
-			WriteJson(w, model.NewErrorResult(err.Error()))
-			return
-		}
-		WriteJson(w, model.NewOkResult(taskIds))
-	}
-}
-
 func PauseTask(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["id"]

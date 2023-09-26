@@ -9,7 +9,6 @@ import 'package:gopeed/api/model/switch_extension.dart';
 
 import '../util/util.dart';
 import 'model/create_task.dart';
-import 'model/create_task_batch.dart';
 import 'model/downloader_config.dart';
 import 'model/request.dart';
 import 'model/resolve_result.dart';
@@ -113,12 +112,6 @@ Future<String> createTask(CreateTask createTask) async {
   return _parse<String>(
       () => _client.dio.post("/api/v1/tasks", data: createTask),
       (data) => data as String);
-}
-
-Future<List<String>> createTaskBatch(CreateTaskBatch createTaskBatch) async {
-  return _parse<List<String>>(
-      () => _client.dio.post("/api/v1/tasks/batch", data: createTaskBatch),
-      (data) => (data as List).map((e) => e as String).toList());
 }
 
 Future<List<Task>> getTasks(List<Status> statuses) async {

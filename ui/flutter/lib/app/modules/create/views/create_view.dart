@@ -10,7 +10,6 @@ import 'package:rounded_loading_button/rounded_loading_button.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
-import '../../../../api/model/create_task_batch.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
@@ -252,9 +251,9 @@ class CreateView extends GetView<CreateController> {
         // check if is multi line urls
         final urls = Util.textToLines(_urlController.text);
         ResolveResult rr;
-        bool isMultipleLines;
+        bool isMuiltiLine = false;
         if (urls.length > 1) {
-          isMultipleLines = true;
+          isMuiltiLine = true;
           rr = ResolveResult(
               res: Resource(
                   files: urls
@@ -263,7 +262,6 @@ class CreateView extends GetView<CreateController> {
                           req: Request(url: u, extra: parseReqExtra(u))))
                       .toList()));
         } else {
-          isMultipleLines = false;
           final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
               ? controller.fileDataUri.value
               : _urlController.text;
@@ -272,7 +270,7 @@ class CreateView extends GetView<CreateController> {
             extra: parseReqExtra(_urlController.text),
           ));
         }
-        await _showResolveDialog(rr, isMultipleLines);
+        await _showResolveDialog(rr, isMuiltiLine);
       }
     } catch (e) {
       showErrorMessage(e);
@@ -308,8 +306,7 @@ class CreateView extends GetView<CreateController> {
     });
   }
 
-  Future<void> _showResolveDialog(
-      ResolveResult rr, bool isMultipleLines) async {
+  Future<void> _showResolveDialog(ResolveResult rr, bool isMuiltiLine) async {
     final files = rr.res.files;
     final appController = Get.find<AppController>();
 
@@ -402,35 +399,21 @@ class CreateView extends GetView<CreateController> {
                                     int.parse(connectionsController.text));
                           if (createFormKey.currentState!.validate()) {
                             if (rr.id.isEmpty) {
-                              if (isMultipleLines) {
-                                // if is multiple lines, create task batch
-                                await createTaskBatch(CreateTaskBatch(
-                                    reqs: controller.selectedIndexes
-                                        .map((index) => rr.res.files[index].req)
-                                        .where((req) => req != null)
-                                        .map((req) => req!)
-                                        .toList(),
+                              // create task batch, there has two ways to batch create task
+                              // 1. from multi line urls
+                              // 2. from extension resolve result
+                              await Future.wait(
+                                  controller.selectedIndexes.map((index) {
+                                final file = rr.res.files[index];
+                                return createTask(CreateTask(
+                                    req: file.req!,
                                     opts: Options(
-                                      name: nameController.text,
-                                      path: pathController.text,
-                                      selectFiles: [],
-                                      extra: optExtra,
-                                    )));
-                              } else {
-                                // it maybe from extension, create task foreach file
-                                await Future.wait(
-                                    controller.selectedIndexes.map((index) {
-                                  final file = rr.res.files[index];
-                                  return createTask(CreateTask(
-                                      req: file.req!,
-                                      opts: Options(
-                                          name: file.name,
-                                          path: path.join(
-                                              pathController.text, rr.res.name),
-                                          selectFiles: [],
-                                          extra: optExtra)));
-                                }));
-                              }
+                                        name: isMuiltiLine ? "" : file.name,
+                                        path: path.join(
+                                            pathController.text, rr.res.name),
+                                        selectFiles: [],
+                                        extra: optExtra)));
+                              }));
                             } else {
                               await createTask(CreateTask(
                                   rid: rr.id,

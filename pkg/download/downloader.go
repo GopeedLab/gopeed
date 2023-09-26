@@ -243,17 +243,6 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	return d.doCreate(fetcher, opts)
 }
 
-func (d *Downloader) CreateDirectBatch(optReqs []*base.Request, opts *base.Options) (taskIds []string, err error) {
-	for _, optReq := range optReqs {
-		taskId, err := d.CreateDirect(optReq, opts.Clone())
-		if err != nil {
-			return nil, err
-		}
-		taskIds = append(taskIds, taskId)
-	}
-	return
-}
-
 func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err error) {
 	if opts == nil {
 		opts = &base.Options{}

@@ -149,25 +149,6 @@ func TestCreateDirectTaskWithResoled(t *testing.T) {
 	})
 }
 
-func TestCreateTaskBatchBatch(t *testing.T) {
-	doTest(func() {
-		batchSize := 5
-
-		var reqs []*base.Request
-		for i := 0; i < batchSize; i++ {
-			reqs = append(reqs, createResoledReq.Req)
-		}
-		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &model.CreateTaskBatch{
-			Reqs: reqs,
-			Opts: createOpts,
-		})
-		if len(taskIds) != batchSize {
-			t.Errorf("CreateTaskBatch() taskIds size got = %v, want %v", len(taskIds), batchSize)
-		}
-		time.Sleep(time.Second)
-	})
-}
-
 func TestPauseAndContinueTask(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup
