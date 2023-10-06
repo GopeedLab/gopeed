@@ -5,8 +5,10 @@
   "description": "Download github release assets",
   "version": "0.0.1",
   "homepage": "https://gopeed.com",
-  "repository": "https://github.com/GopeedLab/gopeed-extension-samples",
-  "installURL": "https://github.com/GopeedLab/gopeed-extension-samples#github-release-sample",
+  "repository": {
+    "url": "https://github.com/GopeedLab/gopeed-extension-samples",
+    "directory": "github-release-sample"
+  },
   "scripts": [
     {
       "event": "onResolve",

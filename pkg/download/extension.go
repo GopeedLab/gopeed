@@ -30,9 +30,9 @@ var (
 type ActivationEvent string
 
 const (
-	HookEventOnResolve ActivationEvent = "onResolve"
-	//HookEventOnError   HookEvent = "onError"
-	//HookEventOnDone    HookEvent = "onDone"
+	EventOnResolve ActivationEvent = "onResolve"
+	//EventOnError   ActivationEvent = "onError"
+	//EventOnDone    ActivationEvent = "onDone"
 )
 
 func (d *Downloader) InstallExtensionByGit(url string) (*Extension, error) {
@@ -69,12 +69,13 @@ func (d *Downloader) InstallExtensionByFolder(path string) (*Extension, error) {
 func (d *Downloader) UpgradeCheckExtension(identity string) (newVersion string, err error) {
 	ext, err := d.GetExtension(identity)
 	if err != nil {
-		return "", err
-	}
-	if ext.InstallUrl == "" {
 		return
 	}
-	_, err = d.fetchExtensionByGit(ext.InstallUrl, func(tempExtPath string) (*Extension, error) {
+	installUrl := ext.buildInstallUrl()
+	if installUrl == "" {
+		return
+	}
+	_, err = d.fetchExtensionByGit(installUrl, func(tempExtPath string) (*Extension, error) {
 		tempExt, err := d.parseExtensionByPath(tempExtPath)
 		if err != nil {
 			return nil, err
@@ -92,10 +93,11 @@ func (d *Downloader) UpgradeExtension(identity string) error {
 	if err != nil {
 		return err
 	}
-	if ext.InstallUrl == "" {
+	installUrl := ext.buildInstallUrl()
+	if installUrl == "" {
 		return nil
 	}
-	if _, err := d.InstallExtensionByGit(ext.InstallUrl); err != nil {
+	if _, err := d.InstallExtensionByGit(installUrl); err != nil {
 		return err
 	}
 	return nil
@@ -227,7 +229,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	var err error
 	for _, ext := range d.extensions {
 		for _, script := range ext.Scripts {
-			if script.match(HookEventOnResolve, req.URL) {
+			if script.match(EventOnResolve, req.URL) {
 				scriptFilePath := filepath.Join(d.extensionPath(ext), script.Entry)
 				if _, err = os.Stat(scriptFilePath); os.IsNotExist(err) {
 					continue
@@ -259,7 +261,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 						// TODO: log
 						return
 					}
-					if fn, ok := gopeed.Events[HookEventOnResolve]; ok {
+					if fn, ok := gopeed.Events[EventOnResolve]; ok {
 						_, err = engine.CallFunction(fn, ctx)
 						if err != nil {
 							// TODO: log
@@ -298,12 +300,10 @@ type Extension struct {
 	Version string `json:"version"`
 	// Homepage homepage url
 	Homepage string `json:"homepage"`
-	// InstallUrl install url
-	InstallUrl string `json:"installUrl"`
-	// Repository git repository url
-	Repository string     `json:"repository"`
-	Scripts    []*Script  `json:"scripts"`
-	Settings   []*Setting `json:"settings"`
+	// Repository git repository info
+	Repository *Repository `json:"repository"`
+	Scripts    []*Script   `json:"scripts"`
+	Settings   []*Setting  `json:"settings"`
 
 	Disabled  bool      `json:"disabled"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -330,19 +330,41 @@ func (e *Extension) buildIdentity() string {
 	return e.Author + "@" + e.Name
 }
 
+func (e *Extension) buildInstallUrl() string {
+	if e.Repository == nil || e.Repository.Url == "" {
+		return ""
+	}
+	repoUrl := e.Repository.Url
+	if e.Repository.Directory != "" {
+		if strings.HasSuffix(repoUrl, "/") {
+			repoUrl = repoUrl[:len(repoUrl)-1]
+		}
+		dir := e.Repository.Directory
+		if strings.HasPrefix(dir, "/") {
+			dir = dir[1:]
+		}
+		repoUrl = repoUrl + "#" + dir
+	}
+	return repoUrl
+}
+
 func (e *Extension) update(newExt *Extension) error {
 	e.Title = newExt.Title
 	e.Description = newExt.Description
 	e.Icon = newExt.Icon
 	e.Version = newExt.Version
 	e.Homepage = newExt.Homepage
-	e.InstallUrl = newExt.InstallUrl
 	e.Repository = newExt.Repository
 	e.Scripts = newExt.Scripts
 	// don't override settings
 	//e.Settings = newExt.Settings
 	e.UpdatedAt = time.Now()
 	return nil
+}
+
+type Repository struct {
+	Url       string `json:"url"`
+	Directory string `json:"directory"`
 }
 
 type Script struct {
@@ -410,7 +432,7 @@ func (h InstanceEvents) register(name ActivationEvent, fn goja.Callable) {
 }
 
 func (h InstanceEvents) OnResolve(fn goja.Callable) {
-	h.register(HookEventOnResolve, fn)
+	h.register(EventOnResolve, fn)
 }
 
 //func (h InstanceEvents) OnError(fn goja.Callable) {

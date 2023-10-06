@@ -13,7 +13,7 @@ class Extension {
   String version;
   String homepage;
   String installUrl;
-  String repository;
+  Repository? repository;
   List<Setting>? settings;
   bool disabled;
 
@@ -34,6 +34,21 @@ class Extension {
   factory Extension.fromJson(Map<String, dynamic> json) =>
       _$ExtensionFromJson(json);
   Map<String, dynamic> toJson() => _$ExtensionToJson(this);
+}
+
+@JsonSerializable()
+class Repository {
+  String url;
+  String directory;
+
+  Repository({
+    required this.url,
+    required this.directory,
+  });
+
+  factory Repository.fromJson(Map<String, dynamic> json) =>
+      _$RepositoryFromJson(json);
+  Map<String, dynamic> toJson() => _$RepositoryToJson(this);
 }
 
 @JsonSerializable()

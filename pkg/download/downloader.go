@@ -29,6 +29,10 @@ const (
 	bucketExtension = "extension"
 )
 
+var (
+	ErrTaskNotFound = errors.New("task not found")
+)
+
 type Listener func(event *Event)
 
 type Progress struct {
@@ -264,7 +268,7 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 func (d *Downloader) Pause(id string) (err error) {
 	task := d.GetTask(id)
 	if task == nil {
-		return
+		return ErrTaskNotFound
 	}
 	if err = d.doPause(task, base.DownloadStatusPause); err != nil {
 		return err
@@ -275,7 +279,7 @@ func (d *Downloader) Pause(id string) (err error) {
 func (d *Downloader) Continue(id string) (err error) {
 	task := d.GetTask(id)
 	if task == nil {
-		return
+		return ErrTaskNotFound
 	}
 	d.tryRunning(func(remain int) {
 		if remain == 0 {
@@ -330,7 +334,7 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 	defer d.lock.Unlock()
 	task := d.GetTask(id)
 	if task == nil {
-		return
+		return ErrTaskNotFound
 	}
 	task.lock.Lock()
 	defer task.lock.Unlock()

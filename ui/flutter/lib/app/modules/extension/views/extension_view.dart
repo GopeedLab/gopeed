@@ -130,11 +130,12 @@ class ExtensionView extends GetView<ExtensionController> {
                                           },
                                           icon: const Icon(Icons.home))
                                       : null,
-                                  extension.repository.isNotEmpty == true
+                                  extension.repository?.url.isNotEmpty == true
                                       ? IconButton(
                                           onPressed: () {
                                             launchUrl(
-                                                Uri.parse(extension.repository),
+                                                Uri.parse(
+                                                    extension.repository!.url),
                                                 mode: LaunchMode
                                                     .externalApplication);
                                           },

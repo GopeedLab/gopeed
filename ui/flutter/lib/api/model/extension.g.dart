@@ -16,7 +16,9 @@ Extension _$ExtensionFromJson(Map<String, dynamic> json) => Extension(
       version: json['version'] as String,
       homepage: json['homepage'] as String,
       installUrl: json['installUrl'] as String,
-      repository: json['repository'] as String,
+      repository: json['repository'] == null
+          ? null
+          : Repository.fromJson(json['repository'] as Map<String, dynamic>),
       disabled: json['disabled'] as bool,
     )..settings = (json['settings'] as List<dynamic>?)
         ?.map((e) => Setting.fromJson(e as Map<String, dynamic>))
@@ -33,7 +35,6 @@ Map<String, dynamic> _$ExtensionToJson(Extension instance) {
     'version': instance.version,
     'homepage': instance.homepage,
     'installUrl': instance.installUrl,
-    'repository': instance.repository,
   };
 
   void writeNotNull(String key, dynamic value) {
@@ -42,10 +43,22 @@ Map<String, dynamic> _$ExtensionToJson(Extension instance) {
     }
   }
 
+  writeNotNull('repository', instance.repository?.toJson());
   writeNotNull('settings', instance.settings?.map((e) => e.toJson()).toList());
   val['disabled'] = instance.disabled;
   return val;
 }
+
+Repository _$RepositoryFromJson(Map<String, dynamic> json) => Repository(
+      url: json['url'] as String,
+      directory: json['directory'],
+    );
+
+Map<String, dynamic> _$RepositoryToJson(Repository instance) =>
+    <String, dynamic>{
+      'url': instance.url,
+      'directory': instance.directory,
+    };
 
 Setting _$SettingFromJson(Map<String, dynamic> json) => Setting(
       name: json['name'] as String,
