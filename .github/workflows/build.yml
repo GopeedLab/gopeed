@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  GO_VERSION: 1.19
+  GO_VERSION: 1.20
   FLUTTER_VERSION: 3.10.6
 
 permissions:

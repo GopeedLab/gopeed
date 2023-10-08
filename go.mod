@@ -1,6 +1,6 @@
 module github.com/GopeedLab/gopeed
 
-go 1.19
+go 1.20
 
 require (
 	github.com/anacrolix/missinggo/v2 v2.7.2-0.20230527121029-a582b4f397b9
