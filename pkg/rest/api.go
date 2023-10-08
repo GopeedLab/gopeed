@@ -157,7 +157,15 @@ func PutConfig(w http.ResponseWriter, r *http.Request) {
 func InstallExtension(w http.ResponseWriter, r *http.Request) {
 	var req model.InstallExtension
 	if ReadJson(r, w, &req) {
-		installedExt, err := Downloader.InstallExtensionByGit(req.URL)
+		var (
+			installedExt *download.Extension
+			err          error
+		)
+		if req.DevMode {
+			installedExt, err = Downloader.InstallExtensionByFolder(req.URL, true)
+		} else {
+			installedExt, err = Downloader.InstallExtensionByGit(req.URL)
+		}
 		if err != nil {
 			WriteJson(w, model.NewErrorResult(err.Error()))
 			return

@@ -4,9 +4,11 @@ part 'install_extension.g.dart';
 
 @JsonSerializable()
 class InstallExtension {
+  bool devMode;
   String url;
 
   InstallExtension({
+    this.devMode = false,
     required this.url,
   });
 

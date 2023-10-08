@@ -8,7 +8,24 @@ import (
 
 func TestDownloader_InstallExtensionByFolder(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/basic"); err != nil {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/basic", false); err != nil {
+			t.Fatal(err)
+		}
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) == 1 {
+			t.Fatal("resolve error")
+		}
+	})
+}
+
+func TestDownloader_InstallExtensionByFolderDevMode(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/basic", true); err != nil {
 			t.Fatal(err)
 		}
 		rr, err := downloader.Resolve(&base.Request{
@@ -76,7 +93,7 @@ func TestDownloader_InstallExtensionByGitFull(t *testing.T) {
 
 func TestDownloader_UpgradeExtension(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/update")
+		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/update", false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,7 +133,7 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 
 func TestDownloader_Extension_Settings(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_empty"); err != nil {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_empty", false); err != nil {
 			t.Fatal(err)
 		}
 		rr, err := downloader.Resolve(&base.Request{
@@ -131,7 +148,7 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 	})
 
 	setupDownloader(func(downloader *Downloader) {
-		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_all")
+		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_all", false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -154,7 +171,7 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 
 func TestDownloader_SwitchExtension(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/basic")
+		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/basic", false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -172,7 +189,7 @@ func TestDownloader_SwitchExtension(t *testing.T) {
 
 func TestDownloader_DeleteExtension(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_all")
+		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_all", false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -189,7 +206,7 @@ func TestDownloader_DeleteExtension(t *testing.T) {
 
 func TestDownloader_Extension_OnResolve(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_all")
+		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_all", false)
 		if err != nil {
 			t.Fatal(err)
 		}

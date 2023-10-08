@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:badges/badges.dart' as badges;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -8,6 +9,7 @@ import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/app/views/text_button_loading.dart';
 import '../../../../api/model/update_extension_settings.dart';
+import '../../../../util/mac_secure_util.dart';
 import '../../../../util/message.dart';
 import 'package:path/path.dart' as path;
 import 'package:rounded_loading_button/rounded_loading_button.dart';
@@ -48,6 +50,10 @@ class ExtensionView extends GetView<ExtensionController> {
               IconButtonLoading(
                   controller: _installBtnController,
                   onPressed: () async {
+                    if (_installUrlController.text.isEmpty) {
+                      controller.tryOpenDevMode();
+                      return;
+                    }
                     _installBtnController.start();
                     try {
                       await installExtension(
@@ -60,7 +66,26 @@ class ExtensionView extends GetView<ExtensionController> {
                       _installBtnController.stop();
                     }
                   },
-                  icon: const Icon(Icons.download))
+                  icon: const Icon(Icons.download)),
+              Obx(() => Util.isDesktop() && controller.devMode.value
+                  ? IconButton(
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: () async {
+                        var dir = await FilePicker.platform.getDirectoryPath();
+                        if (dir != null) {
+                          MacSecureUtil.saveBookmark(dir);
+                          try {
+                            await installExtension(
+                                InstallExtension(devMode: true, url: dir));
+                            Get.snackbar(
+                                'tip'.tr, 'extensionInstallSuccess'.tr);
+                            await controller.load();
+                          } catch (e) {
+                            showErrorMessage(e);
+                          }
+                        }
+                      })
+                  : Container()),
             ],
           ),
           const SizedBox(height: 32),
@@ -106,13 +131,23 @@ class ExtensionView extends GetView<ExtensionController> {
                                     },
                                   ),
                                   title: Row(
-                                    children: [
-                                      Text(extension.title),
-                                      const SizedBox(width: 8),
-                                      Chip(
-                                        label: Text('v${extension.version}'),
-                                      ),
-                                    ],
+                                    children: () {
+                                      final list = [
+                                        Text(extension.title),
+                                        const SizedBox(width: 8),
+                                        Chip(
+                                          label: Text('v${extension.version}'),
+                                        )
+                                      ];
+                                      if (extension.devMode) {
+                                        list.add(const SizedBox(width: 8));
+                                        list.add(Chip(
+                                          label: Text('dev'.tr),
+                                          backgroundColor: Colors.redAccent,
+                                        ));
+                                      }
+                                      return list;
+                                    }(),
                                   ),
                                   subtitle: Text(extension.description),
                                 ),

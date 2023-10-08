@@ -1,7 +1,8 @@
 package model
 
 type InstallExtension struct {
-	URL string `json:"url"`
+	DevMode bool   `json:"devMode"`
+	URL     string `json:"url"`
 }
 
 type UpdateExtensionSettings struct {

@@ -24,7 +24,8 @@ var (
 	extensionsDir       = "extensions"
 	extensionIgnoreDirs = []string{gitSuffix, "node_modules"}
 
-	ErrExtensionNotFound = fmt.Errorf("extension not found")
+	ErrExtensionNoManifest = fmt.Errorf("manifest.json not found")
+	ErrExtensionNotFound   = fmt.Errorf("extension not found")
 )
 
 type ActivationEvent string
@@ -39,14 +40,20 @@ func (d *Downloader) InstallExtensionByGit(url string) (*Extension, error) {
 	return d.fetchExtensionByGit(url, d.InstallExtensionByFolder)
 }
 
-func (d *Downloader) InstallExtensionByFolder(path string) (*Extension, error) {
+func (d *Downloader) InstallExtensionByFolder(path string, devMode bool) (*Extension, error) {
 	ext, err := d.parseExtensionByPath(path)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = util.CopyDir(path, d.extensionPath(ext), extensionIgnoreDirs...); err != nil {
-		return nil, err
+	// if dev mode, don't copy the extension to the extensions' directory
+	if devMode {
+		ext.DevMode = true
+		ext.DevPath, _ = filepath.Abs(path)
+	} else {
+		if err = util.CopyDir(path, d.extensionPath(ext), extensionIgnoreDirs...); err != nil {
+			return nil, err
+		}
 	}
 
 	// if extension is not installed, add it to the list, otherwise update it
@@ -75,7 +82,7 @@ func (d *Downloader) UpgradeCheckExtension(identity string) (newVersion string, 
 	if installUrl == "" {
 		return
 	}
-	_, err = d.fetchExtensionByGit(installUrl, func(tempExtPath string) (*Extension, error) {
+	_, err = d.fetchExtensionByGit(installUrl, func(tempExtPath string, devMode bool) (*Extension, error) {
 		tempExt, err := d.parseExtensionByPath(tempExtPath)
 		if err != nil {
 			return nil, err
@@ -131,8 +138,10 @@ func (d *Downloader) DeleteExtension(identity string) error {
 		return err
 	}
 	// remove from disk
-	if err := os.RemoveAll(d.extensionPath(ext)); err != nil {
-		return err
+	if !ext.DevMode {
+		if err := os.RemoveAll(d.extensionPath(ext)); err != nil {
+			return err
+		}
 	}
 	// remove from extensions
 	for i, e := range d.extensions {
@@ -165,7 +174,7 @@ func (d *Downloader) getExtension(identity string) *Extension {
 	return nil
 }
 
-func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath string) (*Extension, error)) (*Extension, error) {
+func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath string, devMode bool) (*Extension, error)) (*Extension, error) {
 	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
 		url = "https://" + url
 	}
@@ -194,14 +203,14 @@ func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath st
 	}
 	defer os.RemoveAll(tempExtDir)
 
-	return handler(filepath.Join(tempExtDir, subPath))
+	return handler(filepath.Join(tempExtDir, subPath), false)
 }
 
 func (d *Downloader) parseExtensionByPath(path string) (*Extension, error) {
 	// resolve extension manifest
 	manifestTempPath := filepath.Join(path, "manifest.json")
 	if _, err := os.Stat(manifestTempPath); os.IsNotExist(err) {
-		return nil, err
+		return nil, ErrExtensionNoManifest
 	}
 	file, err := os.ReadFile(manifestTempPath)
 	if err != nil {
@@ -228,6 +237,9 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	}
 	var err error
 	for _, ext := range d.extensions {
+		if ext.Disabled {
+			continue
+		}
 		for _, script := range ext.Scripts {
 			if script.match(EventOnResolve, req.URL) {
 				scriptFilePath := filepath.Join(d.extensionPath(ext), script.Entry)
@@ -285,6 +297,9 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 }
 
 func (d *Downloader) extensionPath(ext *Extension) string {
+	if ext.DevMode {
+		return ext.DevPath
+	}
 	return filepath.Join(d.cfg.StorageDir, extensionsDir, ext.Identity)
 }
 
@@ -304,8 +319,13 @@ type Extension struct {
 	Repository *Repository `json:"repository"`
 	Scripts    []*Script   `json:"scripts"`
 	Settings   []*Setting  `json:"settings"`
+	// Disabled if true, this extension will be ignored
+	Disabled bool `json:"disabled"`
 
-	Disabled  bool      `json:"disabled"`
+	DevMode bool `json:"devMode"`
+	// DevPath is the local path of extension source code
+	DevPath string `json:"devPath"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

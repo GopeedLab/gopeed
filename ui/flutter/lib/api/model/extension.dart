@@ -12,10 +12,10 @@ class Extension {
   String icon;
   String version;
   String homepage;
-  String installUrl;
   Repository? repository;
   List<Setting>? settings;
   bool disabled;
+  bool devMode;
 
   Extension({
     required this.identity,
@@ -26,9 +26,9 @@ class Extension {
     required this.icon,
     required this.version,
     required this.homepage,
-    required this.installUrl,
     required this.repository,
     required this.disabled,
+    required this.devMode,
   });
 
   factory Extension.fromJson(Map<String, dynamic> json) =>
