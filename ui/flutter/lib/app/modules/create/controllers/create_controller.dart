@@ -13,6 +13,7 @@ class CreateController extends GetxController
   final isResolving = false.obs;
   final showAdvanced = false.obs;
   late TabController advancedTabController;
+  final oldUrl = "".obs;
   final fileDataUri = "".obs;
 
   @override

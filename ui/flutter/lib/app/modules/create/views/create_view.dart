@@ -58,7 +58,10 @@ class CreateView extends GetView<CreateController> {
             _urlController.text = value!.text!;
             _urlController.selection = TextSelection.fromPosition(
                 TextPosition(offset: _urlController.text.length));
+            return;
           }
+
+          recognizeMagnetUri(value!.text!);
         }
       });
     }
@@ -120,6 +123,10 @@ class CreateView extends GetView<CreateController> {
                           },
                           onChanged: (v) async {
                             controller.clearFileDataUri();
+                            if (controller.oldUrl.value.isEmpty) {
+                              recognizeMagnetUri(v);
+                            }
+                            controller.oldUrl.value = v;
                           },
                         ),
                       ),
@@ -238,6 +245,20 @@ class CreateView extends GetView<CreateController> {
         ),
       ),
     );
+  }
+
+  // recognize magnet uri, if length == 40, auto add magnet prefix
+  recognizeMagnetUri(String text) {
+    if (text.length != 40) {
+      return;
+    }
+    final exp = RegExp(r"[0-9a-fA-F]+");
+    if (exp.hasMatch(text)) {
+      final uri = "magnet:?xt=urn:btih:$text";
+      _urlController.text = uri;
+      _urlController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _urlController.text.length));
+    }
   }
 
   Future<void> _doResolve() async {
