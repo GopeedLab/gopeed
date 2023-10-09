@@ -111,7 +111,7 @@ type DownloaderStoreConfig struct {
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	if cfg.MaxRunning == 0 {
-		cfg.MaxRunning = 3
+		cfg.MaxRunning = 5
 	}
 	return cfg
 }

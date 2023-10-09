@@ -347,6 +347,18 @@ class CreateView extends GetView<CreateController> {
                   var height = MediaQuery.of(context).size.height;
                   var width = MediaQuery.of(context).size.width;
 
+                  var treeFiles = files;
+                  // if has root dir, add root dir to file path
+                  if (rr.res.name.isNotEmpty) {
+                    treeFiles = files
+                        .map((e) => FileInfo(
+                            path: Util.safePathJoin([rr.res.name, e.path]),
+                            name: e.name,
+                            size: e.size,
+                            req: e.req))
+                        .toList();
+                  }
+
                   return SizedBox(
                     height: height * 0.75,
                     width: width,
@@ -355,7 +367,7 @@ class CreateView extends GetView<CreateController> {
                         autovalidateMode: AutovalidateMode.always,
                         child: Column(
                           children: [
-                            Expanded(child: FileListView(files: files)),
+                            Expanded(child: FileListView(files: treeFiles)),
                             TextFormField(
                               controller: nameController,
                               decoration: InputDecoration(

@@ -29,7 +29,7 @@ class ExtensionController extends GetxController {
     }
   }
 
-  // 在两秒内5次安装按钮进入开发者模式
+  // Try to open dev mode when install button is clicked 5 times in 2 seconds
   void tryOpenDevMode() {
     if (_devModeCount == 0) {
       Future.delayed(const Duration(seconds: 2), () {

@@ -239,7 +239,7 @@ func UpdateCheckExtension(w http.ResponseWriter, r *http.Request) {
 	}))
 }
 
-func UpgradeExtension(w http.ResponseWriter, r *http.Request) {
+func UpdateExtension(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	identity := vars["identity"]
 	if err := Downloader.UpgradeExtension(identity); err != nil {

@@ -9,6 +9,17 @@ import 'package:path/path.dart' as path;
 class Util {
   static String? _storageDir;
 
+  static String cleanPath(String path) {
+    path = path.replaceAll(RegExp(r'\\'), "/");
+    if (path.startsWith(".")) {
+      path = path.substring(1);
+    }
+    if (path.startsWith("/")) {
+      path = path.substring(1);
+    }
+    return path;
+  }
+
   static String safeDir(String path) {
     if (path == "." || path == "./" || path == ".\\") {
       return "";

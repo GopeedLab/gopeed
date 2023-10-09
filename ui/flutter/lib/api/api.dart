@@ -204,3 +204,7 @@ Future<Response<String>> proxyRequest<T>(String uri,
       data: data,
       options: options);
 }
+
+String join(String path) {
+  return "${_client.dio.options.baseUrl}/${Util.cleanPath(path)}";
+}

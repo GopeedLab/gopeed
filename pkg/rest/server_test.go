@@ -59,7 +59,7 @@ var (
 		Opts: createOpts,
 	}
 	installExtensionReq = &model.InstallExtension{
-		URL: "https://github.com/GopeedLab/gopeed-extension-samples#github-release-sample",
+		URL: "https://github.com/GopeedLab/gopeed-extension-samples#github-contributor-avatars-sample",
 	}
 )
 
@@ -378,6 +378,25 @@ func TestUpdateCheckExtension(t *testing.T) {
 		}
 		// force update
 		httpRequestCheckOk[any](http.MethodPost, "/api/v1/extensions/"+identity+"/update", nil)
+	})
+}
+
+func TestFsExtension(t *testing.T) {
+	doTest(func() {
+		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
+		statusCode, _ := doHttpRequest0(http.MethodGet, "/fs/extensions/"+identity+"/icon.png", nil, nil)
+		if statusCode != http.StatusOK {
+			t.Errorf("FsExtension() got = %v, want %v", statusCode, http.StatusOK)
+		}
+	})
+}
+
+func TestFsExtensionFail(t *testing.T) {
+	doTest(func() {
+		statusCode, _ := doHttpRequest0(http.MethodGet, "/fs/extensions/not_exist/icon.png", nil, nil)
+		if statusCode != http.StatusNotFound {
+			t.Errorf("TestFsExtensionFail() got = %v, want %v", statusCode, http.StatusNotFound)
+		}
 	})
 }
 

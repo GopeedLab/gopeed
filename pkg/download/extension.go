@@ -51,7 +51,7 @@ func (d *Downloader) InstallExtensionByFolder(path string, devMode bool) (*Exten
 		ext.DevMode = true
 		ext.DevPath, _ = filepath.Abs(path)
 	} else {
-		if err = util.CopyDir(path, d.extensionPath(ext), extensionIgnoreDirs...); err != nil {
+		if err = util.CopyDir(path, d.ExtensionPath(ext), extensionIgnoreDirs...); err != nil {
 			return nil, err
 		}
 	}
@@ -139,7 +139,7 @@ func (d *Downloader) DeleteExtension(identity string) error {
 	}
 	// remove from disk
 	if !ext.DevMode {
-		if err := os.RemoveAll(d.extensionPath(ext)); err != nil {
+		if err := os.RemoveAll(d.ExtensionPath(ext)); err != nil {
 			return err
 		}
 	}
@@ -242,7 +242,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 		}
 		for _, script := range ext.Scripts {
 			if script.match(EventOnResolve, req.URL) {
-				scriptFilePath := filepath.Join(d.extensionPath(ext), script.Entry)
+				scriptFilePath := filepath.Join(d.ExtensionPath(ext), script.Entry)
 				if _, err = os.Stat(scriptFilePath); os.IsNotExist(err) {
 					continue
 				}
@@ -296,7 +296,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	return
 }
 
-func (d *Downloader) extensionPath(ext *Extension) string {
+func (d *Downloader) ExtensionPath(ext *Extension) string {
 	if ext.DevMode {
 		return ext.DevPath
 	}

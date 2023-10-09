@@ -91,7 +91,7 @@ class HomeView extends GetView<HomeController> {
                   ),
                   BottomNavigationBarItem(
                     icon: const Icon(Icons.extension),
-                    label: 'extension'.tr,
+                    label: 'extensions'.tr,
                   ),
                   BottomNavigationBarItem(
                     icon: const Icon(Icons.settings),

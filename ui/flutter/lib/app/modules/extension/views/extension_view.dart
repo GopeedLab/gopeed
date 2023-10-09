@@ -36,58 +36,59 @@ class ExtensionView extends GetView<ExtensionController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _installUrlController,
-                  decoration: InputDecoration(
-                    labelText: 'extensionInstallUrl'.tr,
+          Obx(() => Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _installUrlController,
+                      decoration: InputDecoration(
+                        labelText: 'extensionInstallUrl'.tr,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              IconButtonLoading(
-                  controller: _installBtnController,
-                  onPressed: () async {
-                    if (_installUrlController.text.isEmpty) {
-                      controller.tryOpenDevMode();
-                      return;
-                    }
-                    _installBtnController.start();
-                    try {
-                      await installExtension(
-                          InstallExtension(url: _installUrlController.text));
-                      Get.snackbar('tip'.tr, 'extensionInstallSuccess'.tr);
-                      await controller.load();
-                    } catch (e) {
-                      showErrorMessage(e);
-                    } finally {
-                      _installBtnController.stop();
-                    }
-                  },
-                  icon: const Icon(Icons.download)),
-              Obx(() => Util.isDesktop() && controller.devMode.value
-                  ? IconButton(
-                      icon: const Icon(Icons.folder_open),
+                  const SizedBox(width: 10),
+                  IconButtonLoading(
+                      controller: _installBtnController,
                       onPressed: () async {
-                        var dir = await FilePicker.platform.getDirectoryPath();
-                        if (dir != null) {
-                          MacSecureUtil.saveBookmark(dir);
-                          try {
-                            await installExtension(
-                                InstallExtension(devMode: true, url: dir));
-                            Get.snackbar(
-                                'tip'.tr, 'extensionInstallSuccess'.tr);
-                            await controller.load();
-                          } catch (e) {
-                            showErrorMessage(e);
-                          }
+                        if (_installUrlController.text.isEmpty) {
+                          controller.tryOpenDevMode();
+                          return;
                         }
-                      })
-                  : Container()),
-            ],
-          ),
+                        _installBtnController.start();
+                        try {
+                          await installExtension(InstallExtension(
+                              url: _installUrlController.text));
+                          Get.snackbar('tip'.tr, 'extensionInstallSuccess'.tr);
+                          await controller.load();
+                        } catch (e) {
+                          showErrorMessage(e);
+                        } finally {
+                          _installBtnController.stop();
+                        }
+                      },
+                      icon: const Icon(Icons.download)),
+                  controller.devMode.value && Util.isDesktop()
+                      ? IconButton(
+                          icon: const Icon(Icons.folder_open),
+                          onPressed: () async {
+                            var dir =
+                                await FilePicker.platform.getDirectoryPath();
+                            if (dir != null) {
+                              MacSecureUtil.saveBookmark(dir);
+                              try {
+                                await installExtension(
+                                    InstallExtension(devMode: true, url: dir));
+                                Get.snackbar(
+                                    'tip'.tr, 'extensionInstallSuccess'.tr);
+                                await controller.load();
+                              } catch (e) {
+                                showErrorMessage(e);
+                              }
+                            }
+                          })
+                      : Container()
+                ],
+              )),
           const SizedBox(height: 32),
           Expanded(
               child: Obx(() => ListView.builder(
@@ -108,15 +109,18 @@ class ExtensionView extends GetView<ExtensionController> {
                                           width: 48,
                                           height: 48,
                                         )
-                                      : Image.file(
-                                          File(path.join(
-                                              Util.getStorageDir(),
-                                              "extensions",
-                                              extension.identity,
-                                              extension.icon)),
-                                          width: 48,
-                                          height: 48,
-                                        ),
+                                      : Util.isWeb()
+                                          ? Image.network(join(
+                                              '/fs/extensions/${extension.identity}/${extension.icon}'))
+                                          : Image.file(
+                                              File(path.join(
+                                                  Util.getStorageDir(),
+                                                  "extensions",
+                                                  extension.identity,
+                                                  extension.icon)),
+                                              width: 48,
+                                              height: 48,
+                                            ),
                                   trailing: Switch(
                                     value: !extension.disabled,
                                     onChanged: (value) async {

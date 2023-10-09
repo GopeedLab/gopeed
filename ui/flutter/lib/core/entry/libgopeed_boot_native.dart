@@ -3,8 +3,6 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:path_provider/path_provider.dart';
-
 import '../../util/util.dart';
 import '../common/libgopeed_channel.dart';
 import '../common/libgopeed_ffi.dart';
