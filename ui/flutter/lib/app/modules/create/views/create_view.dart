@@ -440,7 +440,7 @@ class CreateView extends GetView<CreateController> {
                                 final file = rr.res.files[index];
                                 return createTask(CreateTask(
                                     req: file.req!,
-                                    opts: Options(
+                                    opt: Options(
                                         name: isMuiltiLine ? "" : file.name,
                                         path: path.join(
                                             pathController.text, rr.res.name),
@@ -450,7 +450,7 @@ class CreateView extends GetView<CreateController> {
                             } else {
                               await createTask(CreateTask(
                                   rid: rr.id,
-                                  opts: Options(
+                                  opt: Options(
                                       name: nameController.text,
                                       path: pathController.text,
                                       selectFiles: controller.selectedIndexes,

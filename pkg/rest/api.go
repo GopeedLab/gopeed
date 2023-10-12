@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 func Resolve(w http.ResponseWriter, r *http.Request) {
@@ -31,9 +30,9 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 			err    error
 		)
 		if req.Rid != "" {
-			taskId, err = Downloader.Create(req.Rid, req.Opts)
+			taskId, err = Downloader.Create(req.Rid, req.Opt)
 		} else if req.Req != nil {
-			taskId, err = Downloader.CreateDirect(req.Req, req.Opts)
+			taskId, err = Downloader.CreateDirect(req.Req, req.Opt)
 		} else {
 			WriteJson(w, model.NewErrorResult("param invalid: rid or req", model.CodeInvalidParam))
 			return
@@ -121,16 +120,16 @@ func GetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetTasks(w http.ResponseWriter, r *http.Request) {
-	status := r.FormValue("status")
+	r.ParseForm()
+	status := r.Form["status"]
 	tasks := Downloader.GetTasks()
-	if status == "" {
+	if len(status) == 0 {
 		WriteJson(w, model.NewOkResult(tasks))
 		return
 	}
-	statusArr := strings.Split(status, ",")
 	result := make([]*download.Task, 0)
 	for _, task := range tasks {
-		for _, s := range statusArr {
+		for _, s := range status {
 			if task.Status == base.Status(s) {
 				result = append(result, task)
 			}

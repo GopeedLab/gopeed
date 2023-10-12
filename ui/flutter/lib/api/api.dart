@@ -117,7 +117,7 @@ Future<String> createTask(CreateTask createTask) async {
 Future<List<Task>> getTasks(List<Status> statuses) async {
   return _parse<List<Task>>(
       () => _client.dio
-          .get("/api/v1/tasks?status=${statuses.map((e) => e.name).join(",")}"),
+          .get("/api/v1/tasks?${statuses.map((e) => "status=$e").join("&")}"),
       (data) => (data as List).map((e) => Task.fromJson(e)).toList());
 }
 

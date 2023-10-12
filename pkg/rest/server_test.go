@@ -51,12 +51,12 @@ var (
 		},
 	}
 	createReq = &model.CreateTask{
-		Req:  taskReq,
-		Opts: createOpts,
+		Req: taskReq,
+		Opt: createOpts,
 	}
 	createResoledReq = &model.CreateTask{
-		Req:  taskReq,
-		Opts: createOpts,
+		Req: taskReq,
+		Opt: createOpts,
 	}
 	installExtensionReq = &model.InstallExtension{
 		URL: "https://github.com/GopeedLab/gopeed-extension-samples#github-contributor-avatars-sample",
@@ -85,8 +85,8 @@ func TestCreateTask(t *testing.T) {
 		})
 
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", &model.CreateTask{
-			Rid:  resp.ID,
-			Opts: createOpts,
+			Rid: resp.ID,
+			Opt: createOpts,
 		})
 		if taskId == "" {
 			t.Fatal("create task failed")
@@ -253,7 +253,7 @@ func TestGetTasks(t *testing.T) {
 			}
 		})
 
-		httpRequestCheckOk[string](http.MethodPost, fmt.Sprintf("/api/v1/tasks?status=%s,%s",
+		httpRequestCheckOk[string](http.MethodPost, fmt.Sprintf("/api/v1/tasks?status=%s&status=%s",
 			base.DownloadStatusReady, base.DownloadStatusRunning), createReq)
 		httpRequestCheckOk[[]*download.Task](http.MethodGet, "/api/v1/tasks", nil)
 
