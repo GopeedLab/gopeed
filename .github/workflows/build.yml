@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
 
 env:
-  GO_VERSION: 1.19
-  FLUTTER_VERSION: 3.10.6
+  GO_VERSION: "1.19"
+  FLUTTER_VERSION: "3.10.6"
 
 permissions:
   contents: write
@@ -133,9 +133,8 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - name: Build
         run: |
-          docker pull techknowlogick/xgo:go-1.19.x
           go install src.techknowlogick.com/xgo@latest
-          xgo --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
+          xgo -go go-$GO_VERSION.x --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
           mv libgopeed-*.dylib libgopeed.dylib
       - uses: actions/upload-artifact@v3
         with:
@@ -397,6 +396,8 @@ jobs:
             linux/386
             linux/amd64
             linux/arm64
+            linux/arm/v6
+            linux/arm/v7
           tags: |
             liwei2633/gopeed:latest
             liwei2633/gopeed:${{ env.VERSION }}

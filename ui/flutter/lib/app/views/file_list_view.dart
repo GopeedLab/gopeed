@@ -88,7 +88,7 @@ class FileListView extends GetView {
               if (reason == fluent.TreeViewItemInvokeReason.selectionToggle) {
                 List childrenIds = findChildFileIdsR(fileInfo['children']);
                 if (item.selected == true) {
-                  parentController.selectedIndexes.addAll(childrenIds);
+                  parentController.selectedIndexes.addAll(childrenIds.cast());
                   parentController.fileInfos[fileInfo['id']]['size'] = 0;
                   addDescendantFolderSizeR(item.value);
                   addAncestorFolderSizeR(item.value, fileInfo['size']);
@@ -178,13 +178,15 @@ class FileListView extends GetView {
               overflow: TextOverflow.ellipsis,
               // style: context.textTheme.titleSmall,
             )),
-            Text(
-              Util.fmtByte(
-                fileInfo['size'],
-              ),
-              // style: context.textTheme.labelMedium,
-              overflow: TextOverflow.ellipsis,
-            ),
+            fileInfo['size'] > 0
+                ? Text(
+                    Util.fmtByte(
+                      fileInfo['size'],
+                    ),
+                    // style: context.textTheme.labelMedium,
+                    overflow: TextOverflow.ellipsis,
+                  )
+                : const SizedBox.shrink(),
           ]),
         ));
       }
@@ -251,7 +253,7 @@ class FileListView extends GetView {
       idNext++;
     }
     parentController.fileInfos.value = infos;
-    parentController.selectedIndexes.value = selectedFileIds;
+    parentController.selectedIndexes.value = selectedFileIds.cast();
     parentController.openedFolders.value = openedFolders;
     List<fluent.TreeViewItem> treeItems = buildTreeViewItemsR(0, -1);
     return treeItems;

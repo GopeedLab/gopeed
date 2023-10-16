@@ -12,8 +12,11 @@ class HomeView extends GetView<HomeController> {
   Widget build(BuildContext context) {
     return GetRouterOutlet.builder(builder: (context, delegate, currentRoute) {
       switch (currentRoute?.location) {
-        case Routes.SETTING:
+        case Routes.EXTENSION:
           controller.currentIndex.value = 1;
+          break;
+        case Routes.SETTING:
+          controller.currentIndex.value = 2;
           break;
         default:
           controller.currentIndex.value = 0;
@@ -33,22 +36,29 @@ class HomeView extends GetView<HomeController> {
                       groupAlignment: 0,
                       // useIndicator: false,
                       onDestinationSelected: (int index) {
+                        controller.currentIndex.value = index;
                         switch (index) {
                           case 0:
-                            controller.currentIndex.value = 0;
-                            delegate.toNamed(Routes.TASK);
+                            delegate.offAndToNamed(Routes.TASK);
                             break;
                           case 1:
-                            controller.currentIndex.value = 1;
-                            delegate.toNamed(Routes.SETTING);
+                            delegate.offAndToNamed(Routes.EXTENSION);
+                            break;
+                          case 2:
+                            delegate.offAndToNamed(Routes.SETTING);
                             break;
                         }
                       },
                       destinations: [
                         NavigationRailDestination(
-                          icon: const Icon(Icons.list),
-                          selectedIcon: const Icon(Icons.list),
+                          icon: const Icon(Icons.task),
+                          selectedIcon: const Icon(Icons.task),
                           label: Text('task'.tr),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.extension),
+                          selectedIcon: const Icon(Icons.extension),
+                          label: Text('extensions'.tr),
                         ),
                         NavigationRailDestination(
                           icon: const Icon(Icons.settings),
@@ -76,8 +86,12 @@ class HomeView extends GetView<HomeController> {
             ? BottomNavigationBar(
                 items: <BottomNavigationBarItem>[
                   BottomNavigationBarItem(
-                    icon: const Icon(Icons.list),
+                    icon: const Icon(Icons.task),
                     label: 'task'.tr,
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.extension),
+                    label: 'extensions'.tr,
                   ),
                   BottomNavigationBarItem(
                     icon: const Icon(Icons.settings),
@@ -87,14 +101,16 @@ class HomeView extends GetView<HomeController> {
                 currentIndex: controller.currentIndex.value,
                 // selectedItemColor: Get.theme.highlightColor,
                 onTap: (index) {
+                  controller.currentIndex.value = index;
                   switch (index) {
                     case 0:
-                      controller.currentIndex.value = 0;
-                      delegate.toNamed(Routes.TASK);
+                      delegate.offAndToNamed(Routes.TASK);
                       break;
                     case 1:
-                      controller.currentIndex.value = 1;
-                      delegate.toNamed(Routes.SETTING);
+                      delegate.offAndToNamed(Routes.EXTENSION);
+                      break;
+                    case 2:
+                      delegate.offAndToNamed(Routes.SETTING);
                       break;
                   }
                 },

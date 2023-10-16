@@ -3,8 +3,10 @@ package util
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	syspath "path"
+	"path/filepath"
 	"strings"
 )
 
@@ -64,22 +66,105 @@ func CheckDuplicateAndRename(path string) (string, error) {
 	}
 }
 
-// GetSingleDir get the top level single folder name,if not exist, return empty string
-func GetSingleDir(paths []string) string {
-	if len(paths) == 0 {
-		return ""
+// CopyDir Copy all files to the target directory, if the file already exists, it will be overwritten.
+// Remove target file if the source file is not exist.
+func CopyDir(source string, target string, excludeDir ...string) error {
+	if err := os.MkdirAll(target, 0755); err != nil {
+		return err
 	}
-	split := strings.Split(paths[0], "/")
-	if len(split) == 0 || split[0] == "" {
-		return ""
-	}
-	dir := split[0]
-	for i := 1; i < len(paths); i++ {
-		if !strings.HasPrefix(paths[i], dir) {
-			return ""
+	if err := filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
+		if info.IsDir() {
+			if len(excludeDir) > 0 {
+				for _, dir := range excludeDir {
+					if info.IsDir() && info.Name() == dir {
+						return filepath.SkipDir
+					}
+				}
+			}
+			return nil
+		}
+		relPath, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+		targetPath := filepath.Join(target, relPath)
+		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+			return err
+		}
+		if err := copyForce(path, targetPath); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
-	return dir
+
+	if err := filepath.Walk(target, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			if len(excludeDir) > 0 {
+				for _, dir := range excludeDir {
+					if info.IsDir() && info.Name() == dir {
+						return filepath.SkipDir
+					}
+				}
+			}
+			return nil
+		}
+		relPath, err := filepath.Rel(target, path)
+		if err != nil {
+			return err
+		}
+		targetPath := filepath.Join(target, relPath)
+		sourcePath := filepath.Join(source, relPath)
+		// if source file is not exist, remove target file
+		if _, err := os.Stat(sourcePath); os.IsNotExist(err) {
+			if err := SafeRemove(targetPath); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RmAndMkDirAll remove and create directory, if the directory already exists, it will be overwritten.
+func RmAndMkDirAll(path string) error {
+	if err := os.RemoveAll(path); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
+// copy file, if the target file already exists, it will be overwritten.
+func copyForce(source string, target string) error {
+	sourceFile, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	targetFile, err := os.Create(target)
+	if err != nil {
+		return err
+	}
+	defer targetFile.Close()
+
+	_, err = io.Copy(targetFile, sourceFile)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func CreateDirIfNotExist(dir string) error {
@@ -92,7 +177,7 @@ func CreateDirIfNotExist(dir string) error {
 // IsExistsFile check file exists and is a file
 func IsExistsFile(path string) bool {
 	info, err := os.Stat(path)
-	// 判断路径是否存在，并且是一个文件
+	// if file exists and is a file
 	if err == nil && !info.IsDir() {
 		return true
 	}

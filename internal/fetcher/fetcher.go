@@ -12,14 +12,13 @@ type Fetcher interface {
 	// Name return the name of the protocol.
 	Name() string
 
-	Setup(ctl *controller.Controller) error
+	Setup(ctl *controller.Controller)
 	// Resolve resource info from request
 	Resolve(req *base.Request) error
 	// Create ready to download, but not started
 	Create(opts *base.Options) error
 	Start() error
 	Pause() error
-	Continue() error
 	Close() error
 
 	// Meta returns the meta information of the download.
@@ -37,12 +36,25 @@ type FetcherMeta struct {
 	Opts *base.Options  `json:"opts"`
 }
 
-func (m *FetcherMeta) Filepath(file *base.FileInfo) string {
-	finalName := m.Opts.Name
-	if finalName == "" {
-		finalName = file.Name
+// FolderPath return the folder path of the meta info.
+func (m *FetcherMeta) FolderPath() string {
+	// check if rename folder
+	folder := m.Res.Name
+	if m.Opts.Name != "" {
+		folder = m.Opts.Name
 	}
-	return path.Join(m.Opts.Path, m.Res.RootDir, finalName)
+	return path.Join(m.Opts.Path, folder)
+}
+
+// SingleFilepath return the single file path of the meta info.
+func (m *FetcherMeta) SingleFilepath() string {
+	// check if rename file
+	file := m.Res.Files[0]
+	fileName := file.Name
+	if m.Opts.Name != "" {
+		fileName = m.Opts.Name
+	}
+	return path.Join(m.Opts.Path, file.Path, fileName)
 }
 
 // FetcherBuilder defines the interface for a fetcher builder.

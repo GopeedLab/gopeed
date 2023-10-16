@@ -3,8 +3,23 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class Util {
+  static String? _storageDir;
+
+  static String cleanPath(String path) {
+    path = path.replaceAll(RegExp(r'\\'), "/");
+    if (path.startsWith(".")) {
+      path = path.substring(1);
+    }
+    if (path.startsWith("/")) {
+      path = path.substring(1);
+    }
+    return path;
+  }
+
   static String safeDir(String path) {
     if (path == "." || path == "./" || path == ".\\") {
       return "";
@@ -31,6 +46,24 @@ class Util {
     } else {
       return "${(byte / 1024 / 1024 / 1024).toStringAsFixed(2)} GB";
     }
+  }
+
+  static Future<void> initStorageDir() async {
+    var storageDir = "./";
+    if (Platform.isAndroid) {
+      storageDir = (await getExternalStorageDirectory())?.path ?? storageDir;
+    } else if (Platform.isIOS) {
+      storageDir = (await getLibraryDirectory()).path;
+    }
+    _storageDir = storageDir;
+  }
+
+  static String getStorageDir() {
+    return _storageDir!;
+  }
+
+  static String getStorageAsset(String asset) {
+    return path.join(getStorageDir(), asset);
   }
 
   static isAndroid() {
@@ -76,7 +109,7 @@ class Util {
       return [];
     }
     const ls = LineSplitter();
-    return ls.convert(text);
+    return ls.convert(text).where((line) => line.isNotEmpty).toList();
   }
 
   // if one future complete, return the result, only all future error, return the last error

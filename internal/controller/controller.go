@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 )
@@ -34,7 +33,7 @@ func (c *DefaultFileController) Touch(name string, size int64) (file *os.File, e
 		return
 	}
 	file, err = os.Create(name)
-	if err != nil && !errors.Is(err, os.ErrExist) {
+	if err != nil {
 		return
 	}
 	if size > 0 {

@@ -78,7 +78,7 @@ func TestFilepath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := Filepath(tt.args.path, tt.args.originName, tt.args.customName); got != tt.want {
-				t.Errorf("Filepath() = %v, want %v", got, tt.want)
+				t.Errorf("SingleFilepath() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -102,67 +102,6 @@ func TestSafeRemove(t *testing.T) {
 
 	if err := SafeRemove("test_safe_remove_not_exist.data"); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestGetSingleDir(t *testing.T) {
-	type args struct {
-		paths []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "empty",
-			args: args{
-				paths: []string{},
-			},
-			want: "",
-		},
-		{
-			name: "blank",
-			args: args{
-				paths: []string{""},
-			},
-			want: "",
-		},
-		{
-			name: "blank multi",
-			args: args{
-				paths: []string{"", "a"},
-			},
-			want: "",
-		},
-		{
-			name: "multi dir not single",
-			args: args{
-				paths: []string{"a", "b"},
-			},
-			want: "",
-		},
-		{
-			name: "single dir",
-			args: args{
-				paths: []string{"a"},
-			},
-			want: "a",
-		},
-		{
-			name: "multi dir single",
-			args: args{
-				paths: []string{"a/b", "a/c"},
-			},
-			want: "a",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetSingleDir(tt.args.paths); got != tt.want {
-				t.Errorf("IsSingleDir() = %v, want %v", got, tt.want)
-			}
-		})
 	}
 }
 

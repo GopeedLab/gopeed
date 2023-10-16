@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';

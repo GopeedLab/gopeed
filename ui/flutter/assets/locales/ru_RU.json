@@ -56,6 +56,6 @@
   "deleteTaskTip": "Сохранить загруженные файлы",
   "delete": "Удалить",
   "newVersionTitle": "Обнаружена новая версия @version",
-  "newVersionUpdate": "Скачать сейчас",
+  "newVersionUpdate": "Обновить",
   "newVersionLater": "позже"
 }

@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 func Resolve(w http.ResponseWriter, r *http.Request) {
@@ -31,9 +30,9 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 			err    error
 		)
 		if req.Rid != "" {
-			taskId, err = Downloader.Create(req.Rid, req.Opts)
+			taskId, err = Downloader.Create(req.Rid, req.Opt)
 		} else if req.Req != nil {
-			taskId, err = Downloader.CreateDirect(req.Req, req.Opts)
+			taskId, err = Downloader.CreateDirect(req.Req, req.Opt)
 		} else {
 			WriteJson(w, model.NewErrorResult("param invalid: rid or req", model.CodeInvalidParam))
 			return
@@ -121,21 +120,16 @@ func GetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetTasks(w http.ResponseWriter, r *http.Request) {
-	status := r.FormValue("status")
-	if status == "" {
-		status = strings.Join([]string{
-			string(base.DownloadStatusReady),
-			string(base.DownloadStatusRunning),
-			string(base.DownloadStatusPause),
-			string(base.DownloadStatusError),
-			string(base.DownloadStatusDone),
-		}, ",")
-	}
-	statusArr := strings.Split(status, ",")
+	r.ParseForm()
+	status := r.Form["status"]
 	tasks := Downloader.GetTasks()
+	if len(status) == 0 {
+		WriteJson(w, model.NewOkResult(tasks))
+		return
+	}
 	result := make([]*download.Task, 0)
 	for _, task := range tasks {
-		for _, s := range statusArr {
+		for _, s := range status {
 			if task.Status == base.Status(s) {
 				result = append(result, task)
 			}
@@ -155,6 +149,101 @@ func PutConfig(w http.ResponseWriter, r *http.Request) {
 			WriteJson(w, model.NewErrorResult(err.Error()))
 			return
 		}
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
+func InstallExtension(w http.ResponseWriter, r *http.Request) {
+	var req model.InstallExtension
+	if ReadJson(r, w, &req) {
+		var (
+			installedExt *download.Extension
+			err          error
+		)
+		if req.DevMode {
+			installedExt, err = Downloader.InstallExtensionByFolder(req.URL, true)
+		} else {
+			installedExt, err = Downloader.InstallExtensionByGit(req.URL)
+		}
+		if err != nil {
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
+		WriteJson(w, model.NewOkResult(installedExt.Identity))
+	}
+}
+
+func GetExtensions(w http.ResponseWriter, r *http.Request) {
+	list := Downloader.GetExtensions()
+	WriteJson(w, model.NewOkResult(list))
+}
+
+func GetExtension(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	identity := vars["identity"]
+	ext, err := Downloader.GetExtension(identity)
+	if err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewOkResult(ext))
+}
+
+func UpdateExtensionSettings(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	identity := vars["identity"]
+	var req model.UpdateExtensionSettings
+	if ReadJson(r, w, &req) {
+		if err := Downloader.UpdateExtensionSettings(identity, req.Settings); err != nil {
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
+func SwitchExtension(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	identity := vars["identity"]
+	var switchExtension model.SwitchExtension
+	if ReadJson(r, w, &switchExtension) {
+		if err := Downloader.SwitchExtension(identity, switchExtension.Status); err != nil {
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
+func DeleteExtension(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	identity := vars["identity"]
+	if err := Downloader.DeleteExtension(identity); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
+func UpdateCheckExtension(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	identity := vars["identity"]
+	newVersion, err := Downloader.UpgradeCheckExtension(identity)
+	if err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewOkResult(&model.UpdateCheckExtensionResp{
+		NewVersion: newVersion,
+	}))
+}
+
+func UpdateExtension(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	identity := vars["identity"]
+	if err := Downloader.UpgradeExtension(identity); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
 	}
 	WriteJson(w, model.NewNilResult())
 }
@@ -191,18 +280,6 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(buf)
-	//var reader io.ReadCloser
-	//switch resp.Header.Get("Content-Encoding") {
-	//case "gzip":
-	//	reader, err = gzip.NewReader(resp.Body)
-	//	defer reader.Close()
-	//default:
-	//	reader = resp.Body
-	//}
-	//if _, err := io.Copy(w, resp.Body); err != nil {
-	//	writeError(w, err.Error())
-	//	return
-	//}
 }
 
 func writeError(w http.ResponseWriter, msg string) {

@@ -8,11 +8,12 @@ class CreateController extends GetxController
     with GetSingleTickerProviderStateMixin {
   // final files = [].obs;
   final RxList fileInfos = [].obs;
-  final RxList selectedIndexes = [].obs;
   final RxList openedFolders = [].obs;
+  final selectedIndexes = <int>[].obs;
   final isResolving = false.obs;
   final showAdvanced = false.obs;
   late TabController advancedTabController;
+  final oldUrl = "".obs;
   final fileDataUri = "".obs;
 
   @override

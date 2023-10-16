@@ -10,6 +10,10 @@ import (
 	"github.com/gorilla/mux"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 var (
@@ -26,7 +30,6 @@ func Start(startCfg *model.StartConfig) (int, error) {
 
 	go func() {
 		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
-			// TODO log
 			panic(err)
 		}
 	}()
@@ -41,12 +44,12 @@ func Start(startCfg *model.StartConfig) (int, error) {
 func Stop() {
 	if srv != nil {
 		if err := srv.Shutdown(context.TODO()); err != nil {
-			// TODO log
+			Downloader.Logger.Warn().Err(err).Msg("shutdown server failed")
 		}
 	}
 	if Downloader != nil {
 		if err := Downloader.Close(); err != nil {
-			// TODO log
+			Downloader.Logger.Warn().Err(err).Msg("close downloader failed")
 		}
 	}
 }
@@ -58,6 +61,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	startCfg.Init()
 
 	downloadCfg := &download.DownloaderConfig{
+		ProductionMode:  startCfg.ProductionMode,
 		RefreshInterval: startCfg.RefreshInterval,
 	}
 	if startCfg.Storage == model.StorageBolt {
@@ -93,6 +97,15 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodGet).Path("/api/v1/tasks").HandlerFunc(GetTasks)
 	r.Methods(http.MethodGet).Path("/api/v1/config").HandlerFunc(GetConfig)
 	r.Methods(http.MethodPut).Path("/api/v1/config").HandlerFunc(PutConfig)
+	r.Methods(http.MethodPost).Path("/api/v1/extensions").HandlerFunc(InstallExtension)
+	r.Methods(http.MethodGet).Path("/api/v1/extensions").HandlerFunc(GetExtensions)
+	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}").HandlerFunc(GetExtension)
+	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/settings").HandlerFunc(UpdateExtensionSettings)
+	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/switch").HandlerFunc(SwitchExtension)
+	r.Methods(http.MethodDelete).Path("/api/v1/extensions/{identity}").HandlerFunc(DeleteExtension)
+	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateCheckExtension)
+	r.Methods(http.MethodPost).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateExtension)
+	r.PathPrefix("/fs/extensions").Handler(http.FileServer(new(extensionFileSystem)))
 	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
 	if startCfg.WebEnable {
 		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))
@@ -123,6 +136,32 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		handlers.AllowedOrigins([]string{"*"}),
 	)(r)}
 	return srv, listener, nil
+}
+
+// handle extension file resource
+type extensionFileSystem struct {
+}
+
+func (e *extensionFileSystem) Open(name string) (http.File, error) {
+	// remove prefix
+	path := strings.TrimPrefix(name, "/fs/extensions")
+	// match extension identity, eg: /fs/extensions/identity/xxx
+	reg := regexp.MustCompile(`^/([^/]+)/(.*)$`)
+	if !reg.MatchString(path) {
+		return nil, os.ErrNotExist
+	}
+	matched := reg.FindStringSubmatch(path)
+	if len(matched) != 3 {
+		return nil, os.ErrNotExist
+	}
+	// get extension identity
+	identity := matched[1]
+	extension, err := Downloader.GetExtension(identity)
+	if err != nil {
+		return nil, os.ErrNotExist
+	}
+	extensionPath := Downloader.ExtensionPath(extension)
+	return os.Open(filepath.Join(extensionPath, matched[2]))
 }
 
 func ReadJson(r *http.Request, w http.ResponseWriter, v any) bool {
