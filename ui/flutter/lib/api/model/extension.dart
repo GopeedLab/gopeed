@@ -59,7 +59,6 @@ class Setting {
   bool required;
   SettingType type;
   Object? value;
-  bool multiple;
   List<Option>? options;
 
   Setting({
@@ -68,7 +67,6 @@ class Setting {
     required this.description,
     required this.required,
     required this.type,
-    required this.multiple,
   });
 
   factory Setting.fromJson(Map<String, dynamic> json) =>

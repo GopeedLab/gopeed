@@ -1,6 +1,7 @@
 package download
 
 import (
+	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"os"
 	"testing"
@@ -218,6 +219,17 @@ func TestDownloader_Extension_OnResolve(t *testing.T) {
 			t.Fatal("extension delete fail")
 		}
 	})
+}
+
+func TestDownloader_Extension_Logger(t *testing.T) {
+	logger := logger.NewLogger(false, "")
+	il := newInstanceLogger(&Extension{
+		Name: "test",
+	}, logger)
+	il.Debug("msg1", "msg2")
+	il.Info("msg1", "msg2")
+	il.Warn("msg1", "msg2")
+	il.Error("msg1", "msg2")
 }
 
 func setupDownloader(fn func(downloader *Downloader)) {

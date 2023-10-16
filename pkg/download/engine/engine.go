@@ -9,10 +9,11 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/xhr"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
+	"github.com/dop251/goja_nodejs/process"
 	"github.com/dop251/goja_nodejs/url"
 )
 
-//go:embed polyfill/dist/index.js
+//go:embed polyfill/out/index.js
 var polyfillScript string
 
 type Engine struct {
@@ -78,6 +79,7 @@ func NewEngine() *Engine {
 		engine.Runtime = runtime
 		runtime.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 		url.Enable(runtime)
+		process.Enable(runtime)
 		if err := file.Enable(runtime); err != nil {
 			return
 		}
@@ -88,6 +90,10 @@ func NewEngine() *Engine {
 			return
 		}
 		if _, err := runtime.RunString(polyfillScript); err != nil {
+			return
+		}
+		// polyfill global
+		if err := runtime.Set("global", runtime.GlobalObject()); err != nil {
 			return
 		}
 		return

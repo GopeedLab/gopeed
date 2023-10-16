@@ -66,7 +66,6 @@ Setting _$SettingFromJson(Map<String, dynamic> json) => Setting(
       description: json['description'] as String,
       required: json['required'] as bool,
       type: $enumDecode(_$SettingTypeEnumMap, json['type']),
-      multiple: json['multiple'] as bool,
     )
       ..value = json['value']
       ..options = (json['options'] as List<dynamic>?)
@@ -89,7 +88,6 @@ Map<String, dynamic> _$SettingToJson(Setting instance) {
   }
 
   writeNotNull('value', instance.value);
-  val['multiple'] = instance.multiple;
   writeNotNull('options', instance.options);
   return val;
 }

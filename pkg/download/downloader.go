@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -45,6 +46,9 @@ type Progress struct {
 }
 
 type Downloader struct {
+	Logger          *logger.Logger
+	ExtensionLogger *logger.Logger
+
 	cfg             *DownloaderConfig
 	fetcherBuilders map[string]fetcher.FetcherBuilder
 	fetcherCache    map[string]fetcher.Fetcher
@@ -83,6 +87,8 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		}
 	}
 
+	d.Logger = logger.NewLogger(cfg.ProductionMode, filepath.Join(cfg.StorageDir, "logs", "core.log"))
+	d.ExtensionLogger = logger.NewLogger(cfg.ProductionMode, filepath.Join(cfg.StorageDir, "logs", "extension.log"))
 	if cfg.ProductionMode {
 		logPanic(filepath.Join(cfg.StorageDir, "logs"))
 	}
@@ -171,13 +177,16 @@ func (d *Downloader) Setup() error {
 						// store fetcher progress
 						data, err := task.fetcherBuilder.Store(task.fetcher)
 						if err != nil {
-							return // TODO log
+							d.Logger.Error().Stack().Err(err).Msgf("serialize fetcher failed: %s", task.ID)
+							return
 						}
 						if err := d.storage.Put(bucketSave, task.ID, data); err != nil {
-							return // TODO log
+							d.Logger.Error().Stack().Err(err).Msgf("persist fetcher failed: %s", task.ID)
+							return
 						}
 						if err := d.storage.Put(bucketTask, task.ID, task); err != nil {
-							return // TODO log
+							d.Logger.Error().Stack().Err(err).Msgf("persist task failed: %s", task.ID)
+							return
 						}
 					}()
 				}
@@ -509,7 +518,7 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 			return nil
 		}()
 		if err != nil {
-			// TODO log
+			d.Logger.Error().Stack().Err(err).Msgf("deserialize fetcher failed, task id: %s", task.ID)
 		}
 		if task.fetcher == nil {
 			task.fetcher = fb.Build()
@@ -565,7 +574,7 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	go d.tryRunning(func(remain int) {
 		if remain > 0 {
 			if err = d.start(task); err != nil {
-				// TODO log
+				d.Logger.Error().Stack().Err(err).Msgf("start task failed, task id: %s", task.ID)
 				return
 			}
 		}
@@ -694,7 +703,7 @@ func (d *Downloader) doContinue(task *Task) (err error) {
 	}
 	go func() {
 		if err := d.start(task); err != nil {
-			// TODO log
+			d.Logger.Error().Stack().Err(err).Msgf("start task failed, task id: %s", task.ID)
 			return
 		}
 	}()

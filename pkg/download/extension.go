@@ -3,6 +3,7 @@ package download
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -242,6 +243,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 		}
 		for _, script := range ext.Scripts {
 			if script.match(EventOnResolve, req.URL) {
+				gopeed.Logger = newInstanceLogger(ext, d.ExtensionLogger)
 				scriptFilePath := filepath.Join(d.ExtensionPath(ext), script.Entry)
 				if _, err = os.Stat(scriptFilePath); os.IsNotExist(err) {
 					continue
@@ -250,7 +252,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 					var scriptFile *os.File
 					scriptFile, err = os.Open(scriptFilePath)
 					if err != nil {
-						// TODO: log
+						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] open script file failed", ext.buildIdentity())
 						return
 					}
 					defer scriptFile.Close()
@@ -258,31 +260,31 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 					var scriptBuf []byte
 					scriptBuf, err = io.ReadAll(scriptFile)
 					if err != nil {
-						// TODO: log
+						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] read script file failed", ext.buildIdentity())
 						return
 					}
 					engine := engine.NewEngine()
 					defer engine.Close()
 					err = engine.Runtime.Set("gopeed", gopeed)
 					if err != nil {
-						// TODO: log
+						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] engine inject failed", ext.buildIdentity())
 						return
 					}
 					_, err = engine.RunString(string(scriptBuf))
 					if err != nil {
-						// TODO: log
+						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] run script failed", ext.buildIdentity())
 						return
 					}
 					if fn, ok := gopeed.Events[EventOnResolve]; ok {
 						_, err = engine.CallFunction(fn, ctx)
 						if err != nil {
-							// TODO: log
+							gopeed.Logger.logger.Error().Err(err).Msgf("[%s] call function failed: %s", EventOnResolve, ext.buildIdentity())
 							return
 						}
 						// calculate resource total size
 						if ctx.Res != nil && len(ctx.Res.Files) > 0 {
 							if err = ctx.Res.Validate(); err != nil {
-								// TODO: log
+								gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] resource invalid", ext.buildIdentity())
 								return
 							}
 							ctx.Res.CalcSize()
@@ -430,9 +432,9 @@ type Setting struct {
 	// setting type
 	Type SettingType `json:"type"`
 	// setting value
-	Value    any       `json:"value"`
-	Multiple bool      `json:"multiple"`
-	Options  []*Option `json:"options"`
+	Value any `json:"value"`
+	//Multiple bool      `json:"multiple"`
+	Options []*Option `json:"options"`
 }
 
 type Option struct {
@@ -442,7 +444,8 @@ type Option struct {
 
 // Instance inject to js context
 type Instance struct {
-	Events InstanceEvents `json:"events"`
+	Events InstanceEvents  `json:"events"`
+	Logger *InstanceLogger `json:"logger"`
 }
 
 type InstanceEvents map[ActivationEvent]goja.Callable
@@ -462,6 +465,46 @@ func (h InstanceEvents) OnResolve(fn goja.Callable) {
 //func (h InstanceEvents) OnDone(fn goja.Callable) {
 //	h.register(HookEventOnDone, fn)
 //}
+
+type InstanceLogger struct {
+	identity string
+	devMode  bool
+	logger   *logger.Logger
+}
+
+func (l *InstanceLogger) Debug(msg ...any) {
+	if l.devMode {
+		l.logger.Debug().Msg(l.append(msg...))
+	}
+}
+
+func (l *InstanceLogger) Info(msg ...any) {
+	l.logger.Info().Msg(l.append(msg...))
+}
+
+func (l *InstanceLogger) Warn(msg ...any) {
+	l.logger.Warn().Msg(l.append(msg...))
+}
+
+func (l *InstanceLogger) Error(msg ...any) {
+	l.logger.Error().Msg(l.append(msg...))
+}
+
+func (l *InstanceLogger) append(msg ...any) string {
+	strMsg := make([]string, len(msg))
+	for i, m := range msg {
+		strMsg[i] = fmt.Sprint(m)
+	}
+	return fmt.Sprintf("[%s] %s", l.identity, strings.Join(strMsg, " "))
+}
+
+func newInstanceLogger(extension *Extension, logger *logger.Logger) *InstanceLogger {
+	return &InstanceLogger{
+		identity: extension.buildIdentity(),
+		devMode:  extension.DevMode,
+		logger:   logger,
+	}
+}
 
 type Context struct {
 	Req      *base.Request  `json:"req"`

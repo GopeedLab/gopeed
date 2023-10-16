@@ -55,7 +55,9 @@ const List iconMaps = [
       'rmvb',
       'rm',
       'vob',
-      '3gp'
+      '3gp',
+      'm4s',
+      'ts'
     ],
     'type': 'Video',
     'thumbnail': 'file_video'

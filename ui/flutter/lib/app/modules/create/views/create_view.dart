@@ -40,30 +40,31 @@ class CreateView extends GetView<CreateController> {
   @override
   Widget build(BuildContext context) {
     final String? filePath = Get.rootDelegate.arguments();
-    if (_urlController.text.isEmpty && filePath != null) {
-      _urlController.text = filePath;
-      _urlController.selection = TextSelection.fromPosition(
-          TextPosition(offset: _urlController.text.length));
-    }
+    if (_urlController.text.isEmpty) {
+      if (filePath?.isNotEmpty ?? false) {
+        // get file path from route arguments
+        _urlController.text = filePath!;
+        _urlController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _urlController.text.length));
+      } else {
+        // read clipboard
+        Clipboard.getData('text/plain').then((value) {
+          if (value?.text?.isNotEmpty ?? false) {
+            if (_availableSchemes
+                .where((e) =>
+                    value!.text!.startsWith(e) ||
+                    value.text!.startsWith(e.toUpperCase()))
+                .isNotEmpty) {
+              _urlController.text = value!.text!;
+              _urlController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: _urlController.text.length));
+              return;
+            }
 
-    // if no file path, read from clipboard
-    if (filePath?.isEmpty ?? true) {
-      Clipboard.getData('text/plain').then((value) {
-        if (value?.text?.isNotEmpty ?? false) {
-          if (_availableSchemes
-              .where((e) =>
-                  value!.text!.startsWith(e) ||
-                  value.text!.startsWith(e.toUpperCase()))
-              .isNotEmpty) {
-            _urlController.text = value!.text!;
-            _urlController.selection = TextSelection.fromPosition(
-                TextPosition(offset: _urlController.text.length));
-            return;
+            recognizeMagnetUri(value!.text!);
           }
-
-          recognizeMagnetUri(value!.text!);
-        }
-      });
+        });
+      }
     }
 
     return Scaffold(
@@ -328,7 +329,6 @@ class CreateView extends GetView<CreateController> {
   }
 
   Future<void> _showResolveDialog(ResolveResult rr, bool isMuiltiLine) async {
-    final files = rr.res.files;
     final appController = Get.find<AppController>();
 
     final createFormKey = GlobalKey<FormState>();
@@ -341,23 +341,12 @@ class CreateView extends GetView<CreateController> {
         context: Get.context!,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
+              title: rr.res.name.isEmpty ? null : Text(rr.res.name),
               content: Builder(
                 builder: (context) {
                   // Get available height and width of the build area of this widget. Make a choice depending on the size.
                   var height = MediaQuery.of(context).size.height;
                   var width = MediaQuery.of(context).size.width;
-
-                  var treeFiles = files;
-                  // if has root dir, add root dir to file path
-                  if (rr.res.name.isNotEmpty) {
-                    treeFiles = files
-                        .map((e) => FileInfo(
-                            path: Util.safePathJoin([rr.res.name, e.path]),
-                            name: e.name,
-                            size: e.size,
-                            req: e.req))
-                        .toList();
-                  }
 
                   return SizedBox(
                     height: height * 0.75,
@@ -367,7 +356,7 @@ class CreateView extends GetView<CreateController> {
                         autovalidateMode: AutovalidateMode.always,
                         child: Column(
                           children: [
-                            Expanded(child: FileListView(files: treeFiles)),
+                            Expanded(child: FileListView(files: rr.res.files)),
                             TextFormField(
                               controller: nameController,
                               decoration: InputDecoration(

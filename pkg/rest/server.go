@@ -30,7 +30,6 @@ func Start(startCfg *model.StartConfig) (int, error) {
 
 	go func() {
 		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
-			// TODO log
 			panic(err)
 		}
 	}()
@@ -45,12 +44,12 @@ func Start(startCfg *model.StartConfig) (int, error) {
 func Stop() {
 	if srv != nil {
 		if err := srv.Shutdown(context.TODO()); err != nil {
-			// TODO log
+			Downloader.Logger.Warn().Err(err).Msg("shutdown server failed")
 		}
 	}
 	if Downloader != nil {
 		if err := Downloader.Close(); err != nil {
-			// TODO log
+			Downloader.Logger.Warn().Err(err).Msg("close downloader failed")
 		}
 	}
 }
