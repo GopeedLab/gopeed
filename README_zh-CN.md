@@ -2,7 +2,7 @@
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
 [![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://github.com/GopeedLab/gopeed/blob/main/.donate/index.md#donate)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://docs.gopeed.com/zh/donate)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
 ![](_docs/img/banner.png)
@@ -59,9 +59,9 @@ docker-compose up -d
 
 当 docker 容器运行时，可以通过 `http://localhost:9999` 访问 web 页面。
 
-## 打赏
+## 赞助
 
-如果觉得项目对你有帮助，请考虑[打赏](/.donate/index.md#donate)以支持这个项目的发展，非常感谢！
+如果觉得项目对你有帮助，请考虑[赞助](https://docs.gopeed.com/zh/donate)以支持这个项目的发展，非常感谢！
 
 ## 界面展示
 

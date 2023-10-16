@@ -76,6 +76,12 @@ class LocaleKeys {
   static const newVersionTitle = 'newVersionTitle';
   static const newVersionUpdate = 'newVersionUpdate';
   static const newVersionLater = 'newVersionLater';
+  static const extensions = 'extensions';
+  static const extensionInstallUrl = 'extensionInstallUrl';
+  static const extensionInstallSuccess = 'extensionInstallSuccess';
+  static const extensionUpdateSuccess = 'extensionUpdateSuccess';
+  static const extensionDelete = 'extensionDelete';
+  static const extensionAlreadyLatest = 'extensionAlreadyLatest';
 }
 
 class Locales {
@@ -141,8 +147,14 @@ class Locales {
     'deleteTaskTip': 'Keep downloaded files',
     'delete': 'Delete',
     'newVersionTitle': 'Discover new version @version',
-    'newVersionUpdate': 'Download Now',
+    'newVersionUpdate': 'Update Now',
     'newVersionLater': 'Later',
+    'extensions': 'Extensions',
+    'extensionInstallUrl': 'Install URL',
+    'extensionInstallSuccess': 'Installed successfully',
+    'extensionUpdateSuccess': 'Updated successfully',
+    'extensionDelete': 'Delete Extension',
+    'extensionAlreadyLatest': 'It\'s already the latest version',
   };
   static const fa_IR = {
     'label': 'فارسی',
@@ -200,7 +212,7 @@ class Locales {
     'deleteTaskTip': 'فایل های دانلود شده را نگه دارد',
     'delete': 'پاک کردن',
     'newVersionTitle': '@version عنوان: کشف نسخه جدید',
-    'newVersionUpdate': 'دریافت اکنون',
+    'newVersionUpdate': 'بروزرسانی',
     'newVersionLater': 'بعداً',
   };
   static const ja_JP = {
@@ -261,7 +273,7 @@ class Locales {
     'deleteTaskTip': 'ダウンロードしたファイルを保持',
     'delete': '削除',
     'newVersionTitle': '新しいバージョン @version を発見する',
-    'newVersionUpdate': '今すぐダウンロード',
+    'newVersionUpdate': 'アップデート',
     'newVersionLater': '後で',
   };
   static const ru_RU = {
@@ -324,7 +336,7 @@ class Locales {
     'deleteTaskTip': 'Сохранить загруженные файлы',
     'delete': 'Удалить',
     'newVersionTitle': 'Обнаружена новая версия @version',
-    'newVersionUpdate': 'Скачать сейчас',
+    'newVersionUpdate': 'Обновить',
     'newVersionLater': 'позже',
   };
   static const zh_CN = {
@@ -387,8 +399,14 @@ class Locales {
     'deleteTaskTip': '保留已下载的文件',
     'delete': '删除',
     'newVersionTitle': '发现新版本 @version',
-    'newVersionUpdate': '立即下载',
+    'newVersionUpdate': '立即更新',
     'newVersionLater': '稍后再说',
+    'extensions': '扩展',
+    'extensionInstallUrl': '安装链接',
+    'extensionInstallSuccess': '安装成功',
+    'extensionUpdateSuccess': '更新成功',
+    'extensionDelete': '删除扩展',
+    'extensionAlreadyLatest': '已经是最新版本',
   };
   static const zh_TW = {
     'label': '中文 (正體) ',

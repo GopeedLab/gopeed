@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/api/model/meta.dart';
 import 'package:path/path.dart' as path;
+import 'package:styled_widget/styled_widget.dart';
 
 import '../../api/api.dart';
 import '../../api/model/task.dart';
@@ -37,8 +38,11 @@ class BuildTaskListView extends GetView {
 
   Widget buildTaskList(BuildContext context, tasks) {
     return ListView.builder(
-      itemCount: tasks.length,
+      itemCount: tasks.length + 1,
       itemBuilder: (context, index) {
+        if (index == tasks.length) {
+          return const SizedBox(height: 75);
+        }
         return item(context, tasks[index]);
       },
     );
@@ -54,14 +58,12 @@ class BuildTaskListView extends GetView {
     }
 
     String buildExplorerUrl(Task task) {
-      if (task.meta.res.rootDir.trim().isEmpty) {
-        return path.join(
-            Util.safeDir(task.meta.opts.path),
-            Util.safeDir(task.meta.res.files[0].path),
-            task.meta.res.files[0].name);
+      if (task.meta.res!.name.isEmpty) {
+        return path.join(Util.safeDir(task.meta.opts.path),
+            Util.safeDir(task.meta.res!.files[0].path), fileName(task.meta));
       } else {
         return path.join(Util.safeDir(task.meta.opts.path),
-            Util.safeDir(task.meta.res.rootDir));
+            Util.safeDir(fileName(task.meta)));
       }
     }
 
@@ -89,7 +91,7 @@ class BuildTaskListView extends GetView {
                   ),
                   TextButton(
                     child: Text(
-                      'delete'.tr,
+                      'confirm'.tr,
                       style: const TextStyle(color: Colors.redAccent),
                     ),
                     onPressed: () async {
@@ -156,80 +158,85 @@ class BuildTaskListView extends GetView {
     }
 
     double getProgress() {
-      return task.size <= 0 ? 1 : task.progress.downloaded / task.size;
+      final totalSize = task.meta.res?.size ?? 0;
+      return totalSize <= 0 ? 0 : task.progress.downloaded / totalSize;
     }
 
-    Color pickColor() {
-      switch (task.status) {
-        // ready, running, pause, error, done
-        case Status.running:
-          return Get.theme.colorScheme.primary;
-        // case Status.pause:
-        //   return Get.theme.colorScheme.secondary;
-        case Status.error:
-          return Get.theme.colorScheme.error;
-        default:
-          return Get.theme.colorScheme.primary;
+    String getProgressText() {
+      if (isDone()) {
+        return Util.fmtByte(task.meta.res!.size);
       }
+      if (task.meta.res == null) {
+        return "";
+      }
+      final total = task.meta.res!.size;
+      return Util.fmtByte(task.progress.downloaded) +
+          (total > 0 ? " / ${Util.fmtByte(total)}" : "");
     }
 
-    return InkWell(
-        // onTap: () {},
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Stack(children: [
-        !isDone()
-            ? Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: Opacity(
-                  opacity: 0.6,
-                  child: LinearProgressIndicator(
-                    backgroundColor: Colors.transparent,
-                    color: pickColor(),
-                    // minHeight: 76,
-                    value: getProgress(),
-                  ),
-                ))
-            : const SizedBox.shrink(),
-        ListTile(
-          // isThreeLine: true,
-          title: Text(fileName(task.meta),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Get.textTheme.titleSmall),
-          subtitle: Text(
-            "${isDone() ? "" : "${Util.fmtByte(task.progress.downloaded)} / "}${Util.fmtByte(task.size)}",
-            style: context.textTheme.bodyLarge
-                ?.copyWith(color: Get.theme.disabledColor),
+    return Card(
+        elevation: 4.0,
+        child: InkWell(
+          onTap: () {},
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                  title: Text(fileName(task.meta)),
+                  leading: (task.meta.res?.name.isNotEmpty ?? false
+                      ? const Icon(FaIcons.folder)
+                      : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))]))),
+              Row(
+                children: [
+                  Expanded(
+                      flex: 1,
+                      child: Text(
+                        getProgressText(),
+                        style: Get.textTheme.bodyLarge
+                            ?.copyWith(color: Get.theme.disabledColor),
+                      ).padding(left: 18)),
+                  Expanded(
+                      flex: 1,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text("${Util.fmtByte(task.progress.speed)} / s",
+                              style: Get.textTheme.titleSmall),
+                          ...buildActions()
+                        ],
+                      )),
+                ],
+              ),
+              LinearProgressIndicator(
+                value: getProgress(),
+              ),
+            ],
           ),
-          leading: (task.meta.res.rootDir.isNotEmpty
-              ? const Icon(FaIcons.folder)
-              : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))])),
-
-          trailing: SizedBox(
-            width: 180,
-            child: Row(
-              // crossAxisAlignment: CrossAxisAlignment.baseline,
-              // textBaseline: DefaultTextStyle.of(context).style.textBaseline,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text("${Util.fmtByte(task.progress.speed)} / s",
-                    style: context.textTheme.titleSmall),
-                ...buildActions()
-              ],
-            ),
-          ),
-        ),
-      ])
-    ]));
+        )).padding(horizontal: 14, top: 8);
   }
 
   String fileName(Meta meta) {
-    if (meta.res.files.length > 1) {
-      return meta.res.name;
+    if (meta.opts.name.isNotEmpty) {
+      return meta.opts.name;
     }
-    return meta.opts.name.isEmpty ? meta.res.files[0].name : meta.opts.name;
+    if (meta.res == null) {
+      final u = Uri.parse(meta.req.url);
+      if (u.scheme.startsWith("http")) {
+        return u.path.isNotEmpty
+            ? u.path.substring(u.path.lastIndexOf("/") + 1)
+            : u.host;
+      } else {
+        final params = u.queryParameters;
+        if (params.containsKey("dn")) {
+          return params["dn"]!;
+        } else {
+          return params["xt"]!.split(":").last;
+        }
+      }
+    }
+    if (meta.res!.name.isNotEmpty) {
+      return meta.res!.name;
+    }
+    return meta.res!.files[0].name;
   }
 }

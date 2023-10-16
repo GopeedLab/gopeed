@@ -55,7 +55,9 @@ const List iconMaps = [
       'rmvb',
       'rm',
       'vob',
-      '3gp'
+      '3gp',
+      'm4s',
+      'ts'
     ],
     'type': 'Video',
     'thumbnail': 'file_video'
@@ -148,7 +150,7 @@ const List iconMaps = [
   {
     'extensions': ['apk'],
     'type': 'Android',
-    'thumbnail': 'windows'
+    'thumbnail': 'android'
   },
   //other
   {

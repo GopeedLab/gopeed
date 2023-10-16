@@ -15,6 +15,14 @@ void showErrorMessage(msg) {
   Get.snackbar(title, msg.toString());
 }
 
+var _showMessageFlag = true;
+
 void showMessage(title, msg) {
-  Get.snackbar(title, msg);
+  if (_showMessageFlag) {
+    _showMessageFlag = false;
+    Get.snackbar(title, msg);
+    Future.delayed(const Duration(seconds: 3), () {
+      _showMessageFlag = true;
+    });
+  }
 }

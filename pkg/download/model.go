@@ -75,6 +75,8 @@ type DownloaderConfig struct {
 	Storage         Storage
 	StorageDir      string
 
+	ProductionMode bool
+
 	*DownloaderStoreConfig
 }
 
@@ -99,7 +101,7 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 
 // DownloaderStoreConfig is the config that can restore the downloader.
 type DownloaderStoreConfig struct {
-	FirstLoad bool `json:"-"` // fromNoStore is the flag that the config is first time init and not from store
+	FirstLoad bool `json:"-"` // FirstLoad is the flag that the config is first time init and not from store
 
 	DownloadDir    string         `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
 	MaxRunning     int            `json:"maxRunning"`     // MaxRunning is the max running download count
@@ -109,7 +111,7 @@ type DownloaderStoreConfig struct {
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	if cfg.MaxRunning == 0 {
-		cfg.MaxRunning = 3
+		cfg.MaxRunning = 5
 	}
 	return cfg
 }

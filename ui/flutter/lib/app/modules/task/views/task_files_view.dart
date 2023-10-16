@@ -20,7 +20,7 @@ class TaskFilesView extends GetView<TaskFilesController> {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Get.rootDelegate.popRoute()),
           // actions: [],
-          title: Obx(() => Text(controller.task.value?.meta.res.name ?? "")),
+          title: Obx(() => Text(controller.task.value!.meta.res!.name)),
         ),
         body: Obx(() {
           final fileList = controller.fileList;
@@ -52,6 +52,8 @@ class TaskFilesView extends GetView<TaskFilesController> {
                   itemBuilder: (context, index) {
                     final meta = controller.task.value!.meta;
                     final file = fileList[index];
+                    final filePath = Util.safePathJoin(
+                        [meta.opts.path, meta.res!.name, file.fullPath]);
                     return ListTile(
                       leading: file.isDirectory
                           ? const Icon(Icons.folder)
@@ -74,22 +76,12 @@ class TaskFilesView extends GetView<TaskFilesController> {
                                   IconButton(
                                       icon: const Icon(Icons.play_circle),
                                       onPressed: () {
-                                        OpenFile.open(
-                                          Util.safePathJoin([
-                                            meta.opts.path,
-                                            meta.res.rootDir,
-                                            file.fullPath
-                                          ]),
-                                        );
+                                        OpenFile.open(filePath);
                                       }),
                                   IconButton(
                                       icon: const Icon(Icons.share),
                                       onPressed: () {
-                                        final xfile = XFile(Util.safePathJoin([
-                                          meta.opts.path,
-                                          meta.res.rootDir,
-                                          file.fullPath
-                                        ]));
+                                        final xfile = XFile(filePath);
                                         Share.shareXFiles([xfile]);
                                       })
                                 ],

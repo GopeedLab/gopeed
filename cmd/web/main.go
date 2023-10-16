@@ -30,15 +30,16 @@ func main() {
 	}
 
 	cfg := &model.StartConfig{
-		Network:      "tcp",
-		Address:      fmt.Sprintf("%s:%d", *args.Address, *args.Port),
-		Storage:      model.StorageBolt,
-		ApiToken:     *args.ApiToken,
-		WebEnable:    true,
-		WebFS:        sub,
-		WebBasicAuth: webBasicAuth,
+		Network:        "tcp",
+		Address:        fmt.Sprintf("%s:%d", *args.Address, *args.Port),
+		Storage:        model.StorageBolt,
+		ApiToken:       *args.ApiToken,
+		ProductionMode: true,
+		WebEnable:      true,
+		WebFS:          sub,
+		WebBasicAuth:   webBasicAuth,
 	}
-	cmd.Start(cfg)
+	cmd.Start(cfg, true)
 }
 
 func isNotBlank(str *string) bool {

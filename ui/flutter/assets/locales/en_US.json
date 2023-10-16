@@ -58,7 +58,13 @@
   "deleteTaskTip": "Keep downloaded files",
   "delete": "Delete",
   "newVersionTitle": "Discover new version @version",
-  "newVersionUpdate": "Download Now",
-  "newVersionLater": "Later"
+  "newVersionUpdate": "Update Now",
+  "newVersionLater": "Later",
+  "extensions": "Extensions",
+  "extensionInstallUrl": "Install URL",
+  "extensionInstallSuccess": "Installed successfully",
+  "extensionUpdateSuccess": "Updated successfully",
+  "extensionDelete": "Delete Extension",
+  "extensionAlreadyLatest": "It's already the latest version"
 }
 

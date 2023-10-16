@@ -27,8 +27,8 @@ on:
       - "go.sum"
 
 env:
-  GO_VERSION: "1.20"
-  FLUTTER_VERSION: 3.10.6
+  GO_VERSION: "1.19"
+  FLUTTER_VERSION: "3.10.6"
 
 jobs:
   #  lint:

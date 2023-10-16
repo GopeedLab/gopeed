@@ -1,11 +1,11 @@
 package main
 
 import (
-	_ "embed"
 	"github.com/GopeedLab/gopeed/cmd"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
 
+// only for local development
 func main() {
 	cfg := &model.StartConfig{
 		Network: "tcp",

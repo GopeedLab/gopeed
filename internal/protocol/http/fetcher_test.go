@@ -16,7 +16,6 @@ import (
 
 func TestFetcher_Resolve(t *testing.T) {
 	testResolve(test.StartTestFileServer, test.BuildName, &base.Resource{
-		Name:  test.BuildName,
 		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
@@ -27,7 +26,6 @@ func TestFetcher_Resolve(t *testing.T) {
 		},
 	}, t)
 	testResolve(test.StartTestCustomServer, "disposition", &base.Resource{
-		Name:  test.BuildName,
 		Size:  test.BuildSize,
 		Range: false,
 		Files: []*base.FileInfo{
@@ -38,7 +36,6 @@ func TestFetcher_Resolve(t *testing.T) {
 		},
 	}, t)
 	testResolve(test.StartTestCustomServer, test.BuildName, &base.Resource{
-		Name:  test.BuildName,
 		Size:  0,
 		Range: false,
 		Files: []*base.FileInfo{
@@ -48,6 +45,17 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
+
+	fetcher := buildFetcher()
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://github.com",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fetcher.Meta().Res.Files[0].Name != "github.com" {
+		t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, "github.com")
+	}
 }
 
 func testResolve(startTestServer func() net.Listener, path string, want *base.Resource, t *testing.T) {
@@ -125,7 +133,9 @@ func TestFetcher_DownloadResume(t *testing.T) {
 }
 
 func TestFetcher_Config(t *testing.T) {
-	fetcher := doDownloadReady(buildConfigFetcher(), test.StartTestFileServer(), 0, t)
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+	fetcher := doDownloadReady(buildConfigFetcher(), listener, 0, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -222,7 +232,7 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 50)
-	if err := fetcher.Continue(); err != nil {
+	if err := fetcher.Start(); err != nil {
 		t.Fatal(err)
 	}
 	err = fetcher.Wait()
@@ -270,7 +280,7 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 		t.Fatal(err)
 	}
 	fetcher.Setup(controller.NewController())
-	fetcher.Continue()
+	fetcher.Start()
 
 	err = fetcher.Wait()
 	if err != nil {
