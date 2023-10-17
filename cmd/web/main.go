@@ -39,7 +39,7 @@ func main() {
 		WebFS:          sub,
 		WebBasicAuth:   webBasicAuth,
 	}
-	cmd.Start(cfg, true)
+	cmd.Start(cfg)
 }
 
 func isNotBlank(str *string) bool {
