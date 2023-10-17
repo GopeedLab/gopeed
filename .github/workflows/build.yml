@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  GO_VERSION: "1.19"
+  GO_VERSION: "1.19.12"
   FLUTTER_VERSION: "3.10.6"
 
 permissions:
@@ -134,7 +134,7 @@ jobs:
       - name: Build
         run: |
           go install src.techknowlogick.com/xgo@latest
-          xgo -go go-$GO_VERSION.x --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
+          xgo -go go-1.19.x --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
           mv libgopeed-*.dylib libgopeed.dylib
       - uses: actions/upload-artifact@v3
         with:
