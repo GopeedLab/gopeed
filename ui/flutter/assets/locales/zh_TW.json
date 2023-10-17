@@ -59,7 +59,7 @@
   "delete": "刪除",
   "newVersionTitle": "發現新版本 @version",
   "newVersionUpdate": "立刻更新",
-  "newVersionLater": "稍後更新"
+  "newVersionLater": "稍後更新",
   "extensions": "外掛程序",
   "extensionInstallUrl": "安裝鏈接",
   "extensionInstallSuccess": "安裝完成",

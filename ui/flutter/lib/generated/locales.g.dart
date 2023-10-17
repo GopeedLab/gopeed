@@ -451,7 +451,7 @@ class Locales {
     'theme': '佈景主題',
     'themeSystem': '跟隨系統',
     'themeLight': '亮色主題',
-    'themeDark': '暗色主題',
+    'themeDark': '深色主題',
     'locale': '語言',
     'about': '關於',
     'homepage': '訪問主頁',
@@ -470,5 +470,11 @@ class Locales {
     'newVersionTitle': '發現新版本 @version',
     'newVersionUpdate': '立刻更新',
     'newVersionLater': '稍後更新',
+    'extensions': '外掛程序',
+    'extensionInstallUrl': '安裝鏈接',
+    'extensionInstallSuccess': '安裝完成',
+    'extensionUpdateSuccess': '更新完成',
+    'extensionDelete': '解除安裝',
+    'extensionAlreadyLatest': '已是最新版本',
   };
 }
