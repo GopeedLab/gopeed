@@ -25,7 +25,7 @@ jobs:
 
   build-windows:
     runs-on: windows-latest
-    needs: [get-release]
+    needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -125,7 +125,7 @@ jobs:
           overwrite: true
   build-macos-arm64-lib:
     runs-on: ubuntu-latest
-    needs: [get-release]
+    needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -142,7 +142,7 @@ jobs:
           path: libgopeed.dylib
   build-macos:
     runs-on: macos-latest
-    needs: [get-release, build-macos-arm64-lib]
+    needs: [ get-release, build-macos-arm64-lib ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -198,7 +198,7 @@ jobs:
           overwrite: true
   build-linux:
     runs-on: ubuntu-latest
-    needs: [get-release]
+    needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -258,7 +258,7 @@ jobs:
           overwrite: true
   build-android:
     runs-on: ubuntu-latest
-    needs: [get-release]
+    needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -274,9 +274,9 @@ jobs:
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
-          APK_KEYSTORE : ${{ secrets.APK_KEYSTORE }}
-          APK_KEY_PASSWORD : ${{ secrets.APK_KEY_PASSWORD }}
-          APK_STORE_PASSWORD : ${{ secrets.APK_STORE_PASSWORD }}
+          APK_KEYSTORE: ${{ secrets.APK_KEYSTORE }}
+          APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
+          APK_STORE_PASSWORD: ${{ secrets.APK_STORE_PASSWORD }}
         run: |
           go install golang.org/x/mobile/cmd/gomobile@latest
           go get golang.org/x/mobile/bind
@@ -295,7 +295,7 @@ jobs:
           overwrite: true
   build-ios:
     runs-on: macos-latest
-    needs: [get-release]
+    needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -327,7 +327,7 @@ jobs:
           overwrite: true
   build-web:
     runs-on: ubuntu-latest
-    needs: [get-release]
+    needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -374,8 +374,12 @@ jobs:
           overwrite: true
   build-docker:
     runs-on: ubuntu-latest
-    needs: [get-release]
+    needs: [ get-release ]
     steps:
+      - name: Remove unnecessary files
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v3
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
