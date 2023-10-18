@@ -132,6 +132,55 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 	})
 }
 
+func TestDownloader_ResolveWithExtra(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/extra", false); err != nil {
+			t.Fatal(err)
+		}
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) != 2 {
+			t.Fatal("resolve error")
+		}
+	})
+}
+
+func TestDownloader_Extension_Errors(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/script_error", false); err != nil {
+			t.Fatal(err)
+		}
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) == 2 {
+			t.Fatal("script error catch failed")
+		}
+	})
+
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/function_error", false); err != nil {
+			t.Fatal(err)
+		}
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) == 2 {
+			t.Fatal("function error catch failed")
+		}
+	})
+}
+
 func TestDownloader_Extension_Settings(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_empty", false); err != nil {

@@ -1,6 +1,6 @@
 {
-  "name": "storage",
-  "title": "gopeed extension storage test",
+  "name": "extra",
+  "title": "gopeed extension extra test",
   "version": "0.0.1",
   "scripts": [
     {
@@ -15,7 +15,8 @@
     {
       "name": "ua",
       "title": "User-Agent",
-      "type": "string"
+      "type": "string",
+      "value": "gopeed"
     }
   ]
 }
