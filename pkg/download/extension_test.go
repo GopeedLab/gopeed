@@ -170,6 +170,23 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 	})
 }
 
+func TestDownloader_ExtensionStorage(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/storage", false); err != nil {
+			t.Fatal(err)
+		}
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) == 1 {
+			t.Fatal("resolve error")
+		}
+	})
+}
+
 func TestDownloader_SwitchExtension(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/basic", false)
