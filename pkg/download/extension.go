@@ -257,6 +257,10 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 					}
 					defer scriptFile.Close()
 					ctx.Settings = parseSettings(ext.Settings)
+					ctx.Storage = &ContextStorage{
+						storage:  d.storage,
+						identity: ext.buildIdentity(),
+					}
 					var scriptBuf []byte
 					scriptBuf, err = io.ReadAll(scriptFile)
 					if err != nil {
@@ -507,9 +511,10 @@ func newInstanceLogger(extension *Extension, logger *logger.Logger) *InstanceLog
 }
 
 type Context struct {
-	Req      *base.Request  `json:"req"`
-	Res      *base.Resource `json:"res"`
-	Settings map[string]any `json:"settings"`
+	Req      *base.Request   `json:"req"`
+	Res      *base.Resource  `json:"res"`
+	Settings map[string]any  `json:"settings"`
+	Storage  *ContextStorage `json:"storage"`
 }
 
 func parseSettings(settings []*Setting) map[string]any {
@@ -546,4 +551,51 @@ func tryParse(val any, settingType SettingType) any {
 	default:
 		return nil
 	}
+}
+
+type ContextStorage struct {
+	storage  Storage
+	identity string
+}
+
+func (s *ContextStorage) Get(key string) any {
+	raw := s.getRawData()
+	if v, ok := raw[key]; ok {
+		return v
+	}
+	return nil
+}
+
+func (s *ContextStorage) Set(key string, value string) {
+	raw := s.getRawData()
+	raw[key] = value
+	s.storage.Put(bucketExtensionStorage, s.identity, raw)
+}
+
+func (s *ContextStorage) Remove(key string) {
+	raw := s.getRawData()
+	delete(raw, key)
+	s.storage.Put(bucketExtensionStorage, s.identity, raw)
+}
+
+func (s *ContextStorage) Keys() []string {
+	raw := s.getRawData()
+	keys := make([]string, 0)
+	for k := range raw {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func (s *ContextStorage) Clear() {
+	s.storage.Delete(bucketExtensionStorage, s.identity)
+}
+
+func (s *ContextStorage) getRawData() map[string]string {
+	var data map[string]string
+	s.storage.Get(bucketExtensionStorage, s.identity, &data)
+	if data == nil {
+		data = make(map[string]string)
+	}
+	return data
 }

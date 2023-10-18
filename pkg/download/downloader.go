@@ -28,6 +28,8 @@ const (
 	bucketConfig = "config"
 	// downloader extension bucket
 	bucketExtension = "extension"
+	// downloader extension storage bucket
+	bucketExtensionStorage = "extension_storage"
 )
 
 var (
@@ -97,7 +99,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 
 func (d *Downloader) Setup() error {
 	// setup storage
-	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketConfig, bucketExtension}); err != nil {
+	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
 		return err
 	}
 	// load config from storage
