@@ -16,6 +16,7 @@ class Extension {
   List<Setting>? settings;
   bool disabled;
   bool devMode;
+  String devPath;
 
   Extension({
     required this.identity,
@@ -29,6 +30,7 @@ class Extension {
     required this.repository,
     required this.disabled,
     required this.devMode,
+    required this.devPath,
   });
 
   factory Extension.fromJson(Map<String, dynamic> json) =>
