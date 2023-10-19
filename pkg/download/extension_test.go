@@ -132,6 +132,50 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 	})
 }
 
+func TestDownloader_ExtensionByOnStart(t *testing.T) {
+	downloadAndCheck := func(req *base.Request) {
+		setupDownloader(func(downloader *Downloader) {
+			if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/on_start", false); err != nil {
+				t.Fatal(err)
+			}
+			errCh := make(chan error, 1)
+			downloader.Listener(func(event *Event) {
+				if event.Key == EventKeyFinally {
+					errCh <- event.Err
+				}
+			})
+			id, err := downloader.CreateDirect(req, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = <-errCh
+			if err != nil {
+				t.Fatal("extension on start download error")
+			}
+			task := downloader.GetTask(id)
+			if task.Meta.Req.URL != "https://github.com" {
+				t.Fatal("extension on start modify url error")
+			}
+			if task.Meta.Req.Labels["modified"] != "true" {
+				t.Fatal("extension on start modify label error")
+			}
+		})
+	}
+
+	// url match
+	downloadAndCheck(&base.Request{
+		URL: "https://github.com/gopeed/test/404",
+	})
+
+	// label match
+	downloadAndCheck(&base.Request{
+		URL: "https://xxx.com",
+		Labels: map[string]string{
+			"test": "true",
+		},
+	})
+}
+
 func TestDownloader_Extension_Settings(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_empty", false); err != nil {

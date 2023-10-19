@@ -9,6 +9,15 @@ import (
 type Request struct {
 	URL   string `json:"url"`
 	Extra any    `json:"extra"`
+	// Labels is used to mark the download task
+	Labels map[string]string `json:"labels"`
+}
+
+func (r *Request) Validate() error {
+	if r.URL == "" {
+		return fmt.Errorf("invalid request url")
+	}
+	return nil
 }
 
 // Resource download resource
@@ -36,7 +45,6 @@ func (r *Resource) Validate() error {
 		}
 	}
 	return nil
-
 }
 
 func (r *Resource) CalcSize() {

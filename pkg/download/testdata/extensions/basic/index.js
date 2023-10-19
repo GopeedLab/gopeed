@@ -6,6 +6,9 @@ gopeed.events.onResolve(async function (ctx) {
                 size: 1024,
                 req: {
                     url: ctx.req.url + "/" + i,
+                    labels:{
+                        "from": ctx.info.name,
+                    }
                 }
             }),
         ),
