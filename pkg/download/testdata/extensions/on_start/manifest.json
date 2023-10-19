@@ -1,0 +1,19 @@
+{
+  "name": "on-start",
+  "title": "gopeed extension on start event test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onStart",
+      "match": {
+        "urls": [
+          "*://github.com/*"
+        ],
+        "labels": [
+          "test"
+        ]
+      },
+      "entry": "index.js"
+    }
+  ]
+}

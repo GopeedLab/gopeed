@@ -429,6 +429,9 @@ func (d *Downloader) emit(eventKey EventKey, task *Task, errs ...error) {
 			Task: task,
 			Err:  err,
 		})
+		if eventKey == EventKeyError {
+			d.emit(EventKeyFinally, task, err)
+		}
 	}
 }
 
@@ -494,8 +497,8 @@ func (d *Downloader) watch(task *Task) {
 		task.Status = base.DownloadStatusDone
 		d.storage.Put(bucketTask, task.ID, task.clone())
 		d.emit(EventKeyDone, task)
+		d.emit(EventKeyFinally, task, err)
 	}
-	d.emit(EventKeyFinally, task, err)
 	if task.Status == EventKeyDone {
 		d.notifyRunning()
 	}
@@ -622,6 +625,8 @@ func (d *Downloader) doPauseAll() (err error) {
 func (d *Downloader) start(task *Task) error {
 	task.lock.Lock()
 	defer task.lock.Unlock()
+	d.triggerOnStart(task)
+
 	isCreate := task.Status == base.DownloadStatusReady
 	task.Status = base.DownloadStatusRunning
 	if task.Meta.Res == nil {
