@@ -1,15 +1,13 @@
 {
-  "name": "storage",
-  "title": "gopeed extension storage test",
+  "name": "extra",
+  "title": "gopeed extension extra test",
   "version": "0.0.1",
   "scripts": [
     {
       "event": "onResolve",
-      "match": {
-        "urls": [
-          "*://*/*"
-        ]
-      },
+      "matches": [
+        "*://github.com/*"
+      ],
       "entry": "index.js"
     }
   ],
@@ -17,7 +15,8 @@
     {
       "name": "ua",
       "title": "User-Agent",
-      "type": "string"
+      "type": "string",
+      "value": "gopeed"
     }
   ]
 }

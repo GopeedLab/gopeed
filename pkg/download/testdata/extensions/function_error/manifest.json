@@ -1,15 +1,13 @@
 {
-  "name": "storage",
-  "title": "gopeed extension storage test",
+  "name": "function-error",
+  "title": "gopeed extension function error test",
   "version": "0.0.1",
   "scripts": [
     {
       "event": "onResolve",
-      "match": {
-        "urls": [
-          "*://*/*"
-        ]
-      },
+      "matches": [
+        "*://github.com/*"
+      ],
       "entry": "index.js"
     }
   ],
