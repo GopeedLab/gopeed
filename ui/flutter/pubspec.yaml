@@ -41,7 +41,7 @@ dependencies:
   context_menus: ^1.0.2
   json_annotation: ^4.6.0
   dio: ^5.2.1
-  path_provider: ^2.0.11
+  path_provider: ^2.1.1
   file_picker: 5.3.1
   macos_secure_bookmarks: ^0.2.1
   rounded_loading_button: ^2.1.0
@@ -60,6 +60,8 @@ dependencies:
   autoscale_tabbarview: ^1.0.2
   share_plus: ^7.1.0
   open_file: ^3.3.2
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -72,9 +74,10 @@ dev_dependencies:
   flutter_lints: ^2.0.0
   ffigen: ^8.0.2
   # build json model: flutter pub run build_runner build --delete-conflicting-outputs
-  build_runner: ^2.2.1
+  build_runner: ^2.4.6
   json_serializable: ^6.3.2
   flutter_launcher_icons: ^0.13.1
+  isar_generator: ^3.1.0+1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

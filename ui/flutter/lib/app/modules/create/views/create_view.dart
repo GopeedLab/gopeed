@@ -4,9 +4,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/app/modules/history/views/history_view.dart';
 import '../../../../api/model/resolve_result.dart';
 import 'package:rounded_loading_button/rounded_loading_button.dart';
-
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
@@ -84,154 +84,186 @@ class CreateView extends GetView<CreateController> {
             FocusScope.of(context).requestFocus(FocusNode());
           },
           child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-              child: Form(
-                  key: _resolveFormKey,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  child: Column(children: [
-                    Row(children: [
-                      Expanded(
-                        child: TextFormField(
-                          autofocus: true,
-                          controller: _urlController,
-                          minLines: 1,
-                          maxLines: 5,
-                          decoration: InputDecoration(
-                            hintText: _hitText(),
-                            hintStyle: const TextStyle(fontSize: 12),
-                            labelText: 'downloadLink'.tr,
-                            icon: const Icon(Icons.link),
-                            suffixIcon: IconButton(
-                              onPressed: () {
-                                _urlController.clear();
-                                controller.clearFileDataUri();
-                              },
-                              icon: const Icon(Icons.clear),
-                            ),
+            padding:
+                const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+            child: Form(
+              key: _resolveFormKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                children: [
+                  Row(children: [
+                    Expanded(
+                      child: TextFormField(
+                        autofocus: true,
+                        controller: _urlController,
+                        minLines: 1,
+                        maxLines: 5,
+                        decoration: InputDecoration(
+                          hintText: _hitText(),
+                          hintStyle: const TextStyle(fontSize: 12),
+                          labelText: 'downloadLink'.tr,
+                          icon: const Icon(Icons.link),
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              _urlController.clear();
+                              controller.clearFileDataUri();
+                            },
+                            icon: const Icon(Icons.clear),
                           ),
-                          validator: (v) {
-                            return v!.trim().isNotEmpty
-                                ? null
-                                : 'downloadLinkValid'.tr;
-                          },
-                          onChanged: (v) async {
-                            controller.clearFileDataUri();
-                          },
                         ),
+                        validator: (v) {
+                          return v!.trim().isNotEmpty
+                              ? null
+                              : 'downloadLinkValid'.tr;
+                        },
+                        onChanged: (v) async {
+                          controller.clearFileDataUri();
+                        },
                       ),
-                      IconButton(
-                          icon: const Icon(Icons.folder_open),
-                          onPressed: () async {
-                            var pr = await FilePicker.platform.pickFiles(
-                                type: FileType.custom,
-                                allowedExtensions: ["torrent"]);
-                            if (pr != null) {
-                              if (!Util.isWeb()) {
-                                _urlController.text = pr.files[0].path ?? "";
-                                return;
-                              }
-                              _urlController.text = pr.files[0].name;
-                              controller.setFileDataUri(pr.files[0].bytes!);
-                            }
-                          }),
-                    ]
-                        //.where((e) => e != null).map((e) => e!).toList(),
-                        ),
-                    Obx(() => Visibility(
-                        visible: controller.showAdvanced.value,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 40, top: 15),
-                          child: Column(
-                            children: [
-                              TabBar(
-                                controller: controller.advancedTabController,
-                                tabs: const [
-                                  Tab(
-                                    text: 'HTTP',
-                                  ),
-                                  Tab(
-                                    text: 'BitTorrent',
-                                  )
-                                ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: () async {
+                        var pr = await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ["torrent"]);
+                        if (pr != null) {
+                          if (!Util.isWeb()) {
+                            _urlController.text = pr.files[0].path ?? "";
+                            return;
+                          }
+                          _urlController.text = pr.files[0].name;
+                          controller.setFileDataUri(pr.files[0].bytes!);
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.history),
+                      onPressed: () async {
+                        // open up popup
+                        showGeneralDialog(
+                          barrierColor: Colors.black.withOpacity(0.5),
+                          transitionBuilder: (context, a1, a2, widget) {
+                            return Transform.scale(
+                              scale: a1.value,
+                              child: Opacity(
+                                opacity: a1.value,
+                                child: HistoryView(),
                               ),
-                              AutoScaleTabBarView(
-                                controller: controller.advancedTabController,
-                                children: [
-                                  Column(
-                                    children: [
-                                      TextFormField(
-                                          controller: _httpUaController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'User-Agent',
-                                          )),
-                                      TextFormField(
-                                          controller: _httpCookieController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Cookie',
-                                          )),
-                                      TextFormField(
-                                          controller: _httpRefererController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Referer',
-                                          )),
-                                    ],
-                                  ),
-                                  Column(
-                                    children: [
-                                      TextFormField(
-                                          controller: _btTrackerController,
-                                          maxLines: 5,
-                                          decoration: InputDecoration(
-                                            labelText: 'Trakers',
-                                            hintText: 'addTrackerHit'.tr,
-                                          )),
-                                    ],
-                                  )
-                                ],
-                              )
-                            ],
-                          ),
-                        ))),
-                    Center(
-                        child: Padding(
-                      padding: const EdgeInsets.only(top: 15),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: TextButton(
-                              onPressed: () {
-                                controller.showAdvanced.value =
-                                    !controller.showAdvanced.value;
-                              },
-                              child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Obx(() => Checkbox(
-                                          value: controller.showAdvanced.value,
-                                          onChanged: (bool? value) {
-                                            controller.showAdvanced.value =
-                                                value ?? false;
-                                          },
-                                        )),
-                                    Text('advancedOptions'.tr),
-                                  ]),
-                            ),
-                          ),
-                          SizedBox(
-                            width: 150,
-                            child: RoundedLoadingButton(
-                              color: Get.theme.colorScheme.secondary,
-                              onPressed: _doResolve,
-                              controller: _confirmController,
-                              child: Text('confirm'.tr),
-                            ),
-                          ),
-                        ],
+                            );
+                          },
+                          transitionDuration: const Duration(milliseconds: 250),
+                          barrierDismissible: true,
+                          barrierLabel: '',
+                          context: context,
+                          pageBuilder: (context, animation1, animation2) {
+                            return const Text('PAGE BUILDER');
+                          },
+                        );
+                        // show list of history
+                      },
+                    ),
+                  ]
+                      //.where((e) => e != null).map((e) => e!).toList(),
                       ),
-                    )),
-                  ]))),
+                  Obx(() => Visibility(
+                      visible: controller.showAdvanced.value,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 40, top: 15),
+                        child: Column(
+                          children: [
+                            TabBar(
+                              controller: controller.advancedTabController,
+                              tabs: const [
+                                Tab(
+                                  text: 'HTTP',
+                                ),
+                                Tab(
+                                  text: 'BitTorrent',
+                                )
+                              ],
+                            ),
+                            AutoScaleTabBarView(
+                              controller: controller.advancedTabController,
+                              children: [
+                                Column(
+                                  children: [
+                                    TextFormField(
+                                        controller: _httpUaController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'User-Agent',
+                                        )),
+                                    TextFormField(
+                                        controller: _httpCookieController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Cookie',
+                                        )),
+                                    TextFormField(
+                                        controller: _httpRefererController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Referer',
+                                        )),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    TextFormField(
+                                        controller: _btTrackerController,
+                                        maxLines: 5,
+                                        decoration: InputDecoration(
+                                          labelText: 'Trakers',
+                                          hintText: 'addTrackerHit'.tr,
+                                        )),
+                                  ],
+                                )
+                              ],
+                            )
+                          ],
+                        ),
+                      ))),
+                  Center(
+                      child: Padding(
+                    padding: const EdgeInsets.only(top: 15),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: TextButton(
+                            onPressed: () {
+                              controller.showAdvanced.value =
+                                  !controller.showAdvanced.value;
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Obx(() => Checkbox(
+                                      value: controller.showAdvanced.value,
+                                      onChanged: (bool? value) {
+                                        controller.showAdvanced.value =
+                                            value ?? false;
+                                      },
+                                    )),
+                                Text('advancedOptions'.tr),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 150,
+                          child: RoundedLoadingButton(
+                            color: Get.theme.colorScheme.secondary,
+                            onPressed: _doResolve,
+                            controller: _confirmController,
+                            child: Text('confirm'.tr),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
