@@ -1,6 +1,6 @@
 gopeed.events.onResolve(async function (ctx) {
     const aaa = {};
-    gopeed.logger.info(aaa.bbb.ccc);
+    console.log(aaa.bbb.ccc);
 
     ctx.res = {
         name: "test",

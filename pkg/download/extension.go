@@ -349,7 +349,7 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, b
 					if fn, ok := gopeed.Events[event]; ok {
 						_, err = engine.CallFunction(fn, ctx)
 						if err != nil {
-							ctxLogger.logger.Error().Err(err).Msgf("[%s] call function failed: %s", event, ext.buildIdentity())
+							ctxLogger.logger.Error().Err(err).Msgf("[%s] call function failed: %s", ext.buildIdentity(), event)
 							return
 						}
 						handler(ext, gopeed, ctx)
