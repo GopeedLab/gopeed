@@ -5,9 +5,11 @@
   "scripts": [
     {
       "event": "onResolve",
-      "matches": [
-        "*://github.com/*"
-      ],
+      "match": {
+        "urls": [
+          "*://github.com/*"
+        ]
+      },
       "entry": "index.js"
     }
   ],

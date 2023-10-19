@@ -1,10 +1,12 @@
 package download
 
 import (
+	"errors"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestDownloader_InstallExtensionByFolder(t *testing.T) {
@@ -132,20 +134,52 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 	})
 }
 
-func TestDownloader_ResolveWithExtra(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/extra", false); err != nil {
-			t.Fatal(err)
-		}
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://github.com/test",
+func TestDownloader_ExtensionByOnStart(t *testing.T) {
+	downloadAndCheck := func(req *base.Request) {
+		setupDownloader(func(downloader *Downloader) {
+			if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/on_start", false); err != nil {
+				t.Fatal(err)
+			}
+			errCh := make(chan error, 1)
+			downloader.Listener(func(event *Event) {
+				if event.Key == EventKeyFinally {
+					errCh <- event.Err
+				}
+			})
+			id, err := downloader.CreateDirect(req, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case err = <-errCh:
+				break
+			case <-time.After(time.Second * 10):
+				err = errors.New("timeout")
+			}
+			if err != nil {
+				panic("extension on start download error: " + err.Error())
+			}
+			task := downloader.GetTask(id)
+			if task.Meta.Req.URL != "https://github.com" {
+				panic("extension on start modify url error")
+			}
+			if task.Meta.Req.Labels["modified"] != "true" {
+				panic("extension on start modify label error")
+			}
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rr.Res.Files) != 2 {
-			t.Fatal("resolve error")
-		}
+	}
+
+	// url match
+	downloadAndCheck(&base.Request{
+		URL: "https://github.com/gopeed/test/404",
+	})
+
+	// label match
+	downloadAndCheck(&base.Request{
+		URL: "https://xxx.com",
+		Labels: map[string]string{
+			"test": "true",
+		},
 	})
 }
 

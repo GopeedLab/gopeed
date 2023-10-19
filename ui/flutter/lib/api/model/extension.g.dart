@@ -20,6 +20,7 @@ Extension _$ExtensionFromJson(Map<String, dynamic> json) => Extension(
           : Repository.fromJson(json['repository'] as Map<String, dynamic>),
       disabled: json['disabled'] as bool,
       devMode: json['devMode'] as bool,
+      devPath: json['devPath'] as String,
     )..settings = (json['settings'] as List<dynamic>?)
         ?.map((e) => Setting.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -46,6 +47,7 @@ Map<String, dynamic> _$ExtensionToJson(Extension instance) {
   writeNotNull('settings', instance.settings?.map((e) => e.toJson()).toList());
   val['disabled'] = instance.disabled;
   val['devMode'] = instance.devMode;
+  val['devPath'] = instance.devPath;
   return val;
 }
 
