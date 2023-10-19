@@ -6,10 +6,12 @@ part 'request.g.dart';
 class Request {
   String url;
   Object? extra;
+  Map<String, String>? labels = {};
 
   Request({
     required this.url,
     this.extra,
+    this.labels,
   });
 
   factory Request.fromJson(Map<String, dynamic> json) =>

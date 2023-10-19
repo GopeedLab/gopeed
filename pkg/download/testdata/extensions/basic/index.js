@@ -7,7 +7,7 @@ gopeed.events.onResolve(async function (ctx) {
                 req: {
                     url: ctx.req.url + "/" + i,
                     labels:{
-                        "from": ctx.info.name,
+                        "from": gopeed.info.name,
                     }
                 }
             }),

@@ -1,5 +1,5 @@
 gopeed.events.onResolve(async function (ctx) {
-    if (Object.keys(ctx.settings).length > 0){
+    if (Object.keys(gopeed.settings).length > 0){
         throw new Error("settings is not empty");
     }
 

@@ -1,5 +1,5 @@
 const aaa = {};
-console.log(aaa.bbb.ccc);
+gopeed.logger.info(aaa.bbb.ccc);
 
 gopeed.events.onResolve(async function (ctx) {
     ctx.res = {

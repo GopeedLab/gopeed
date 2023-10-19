@@ -1,31 +1,31 @@
 gopeed.events.onResolve(async function (ctx) {
-    if (ctx.settings.string != null) {
+    if (gopeed.settings.string != null) {
         throw new Error("string is not null");
     }
-    if (ctx.settings.number != null) {
+    if (gopeed.settings.number != null) {
         throw new Error("number is not null");
     }
-    if (ctx.settings.boolean != null) {
+    if (gopeed.settings.boolean != null) {
         throw new Error("boolean is not null");
     }
 
-    if (ctx.settings.stringDefault !== "default") {
+    if (gopeed.settings.stringDefault !== "default") {
         throw new Error("string default value is incorrect");
     }
-    if (ctx.settings.numberDefault !== 1) {
+    if (gopeed.settings.numberDefault !== 1) {
         throw new Error("number default value is incorrect");
     }
-    if (ctx.settings.booleanDefault !== true) {
+    if (gopeed.settings.booleanDefault !== true) {
         throw new Error("boolean default value is incorrect");
     }
 
-    if (ctx.settings.stringValued !== "valued") {
+    if (gopeed.settings.stringValued !== "valued") {
         throw new Error("string value is incorrect");
     }
-    if (ctx.settings.numberValued !== 1.1) {
+    if (gopeed.settings.numberValued !== 1.1) {
         throw new Error("number value is incorrect");
     }
-    if (ctx.settings.booleanValued !== true) {
+    if (gopeed.settings.booleanValued !== true) {
         throw new Error("boolean value is incorrect");
     }
 

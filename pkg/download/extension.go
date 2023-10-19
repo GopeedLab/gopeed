@@ -233,18 +233,14 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	doTrigger(d,
 		EventOnResolve,
 		req,
-		func() (*OnResolveContext, *EventContext) {
-			ctx := &OnResolveContext{
-				Req:          req,
-				EventContext: new(EventContext),
-			}
-			return ctx, ctx.EventContext
+		&OnResolveContext{
+			Req: req,
 		},
 		func(ext *Extension, gopeed *Instance, ctx *OnResolveContext) {
 			// Validate resource structure
 			if ctx.Res != nil && len(ctx.Res.Files) > 0 {
 				if err := ctx.Res.Validate(); err != nil {
-					ctx.Logger.logger.Warn().Err(err).Msgf("[%s] resource invalid", ext.buildIdentity())
+					gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] resource invalid", ext.buildIdentity())
 					return
 				}
 				ctx.Res.CalcSize()
@@ -259,22 +255,14 @@ func (d *Downloader) triggerOnStart(task *Task) {
 	doTrigger(d,
 		EventOnStart,
 		task.Meta.Req,
-		func() (*OnStartContext, *EventContext) {
-			cloneTask := task.clone()
-			if cloneTask.Meta.Req.Labels == nil {
-				cloneTask.Meta.Req.Labels = make(map[string]string)
-			}
-			ctx := &OnStartContext{
-				Task:         task.clone(),
-				EventContext: new(EventContext),
-			}
-			return ctx, ctx.EventContext
+		&OnStartContext{
+			Task: task.clone(),
 		},
 		func(ext *Extension, gopeed *Instance, ctx *OnStartContext) {
 			// Validate request structure
 			if ctx.Task.Meta.Req != nil {
 				if err := ctx.Task.Meta.Req.Validate(); err != nil {
-					ctx.Logger.logger.Warn().Err(err).Msgf("[%s] request invalid", ext.buildIdentity())
+					gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] request invalid", ext.buildIdentity())
 					return
 				}
 				// Modify real task request
@@ -285,7 +273,7 @@ func (d *Downloader) triggerOnStart(task *Task) {
 	return
 }
 
-func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, buildCtx func() (T, *EventContext), handler func(ext *Extension, gopeed *Instance, ctx T)) {
+func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, ctx T, handler func(ext *Extension, gopeed *Instance, ctx T)) {
 	// init extension global object
 	gopeed := &Instance{
 		Events: make(InstanceEvents),
@@ -297,59 +285,52 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, b
 		}
 		for _, script := range ext.Scripts {
 			if script.match(event, req) {
-				ctxLogger := newInstanceLogger(ext, d.ExtensionLogger)
+				gopeed.Info = NewExtensionInfo(ext)
+				gopeed.Logger = newInstanceLogger(ext, d.ExtensionLogger)
+				gopeed.Settings = parseSettings(ext.Settings)
+				gopeed.Storage = &ContextStorage{
+					storage:  d.storage,
+					identity: ext.buildIdentity(),
+				}
 				scriptFilePath := filepath.Join(d.ExtensionPath(ext), script.Entry)
 				if _, err = os.Stat(scriptFilePath); os.IsNotExist(err) {
-					ctxLogger.logger.Error().Err(err).Msgf("[%s] script file not exist", ext.buildIdentity())
+					gopeed.Logger.logger.Error().Err(err).Msgf("[%s] script file not exist", ext.buildIdentity())
 					continue
 				}
 				func() {
 					var scriptFile *os.File
 					scriptFile, err = os.Open(scriptFilePath)
 					if err != nil {
-						ctxLogger.logger.Error().Err(err).Msgf("[%s] open script file failed", ext.buildIdentity())
+						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] open script file failed", ext.buildIdentity())
 						return
 					}
 					defer scriptFile.Close()
 					var scriptBuf []byte
 					scriptBuf, err = io.ReadAll(scriptFile)
 					if err != nil {
-						ctxLogger.logger.Error().Err(err).Msgf("[%s] read script file failed", ext.buildIdentity())
+						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] read script file failed", ext.buildIdentity())
 						return
+					}
+					// Init request labels
+					if req.Labels == nil {
+						req.Labels = make(map[string]string)
 					}
 					engine := engine.NewEngine()
 					defer engine.Close()
 					err = engine.Runtime.Set("gopeed", gopeed)
 					if err != nil {
-						ctxLogger.logger.Error().Err(err).Msgf("[%s] engine inject failed", ext.buildIdentity())
+						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] engine inject failed", ext.buildIdentity())
 						return
 					}
 					_, err = engine.RunString(string(scriptBuf))
 					if err != nil {
-						ctxLogger.logger.Error().Err(err).Msgf("[%s] run script failed", ext.buildIdentity())
+						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] run script failed", ext.buildIdentity())
 						return
-					}
-					ec := &EventContext{
-						Info:     NewExtensionInfo(ext),
-						Logger:   ctxLogger,
-						Settings: parseSettings(ext.Settings),
-						Storage: &ContextStorage{
-							storage:  d.storage,
-							identity: ext.buildIdentity(),
-						},
-					}
-					ctx, ec := buildCtx()
-					ec.Info = NewExtensionInfo(ext)
-					ec.Logger = ctxLogger
-					ec.Settings = parseSettings(ext.Settings)
-					ec.Storage = &ContextStorage{
-						storage:  d.storage,
-						identity: ext.buildIdentity(),
 					}
 					if fn, ok := gopeed.Events[event]; ok {
 						_, err = engine.CallFunction(fn, ctx)
 						if err != nil {
-							ctxLogger.logger.Error().Err(err).Msgf("[%s] call function failed: %s", ext.buildIdentity(), event)
+							gopeed.Logger.logger.Error().Err(err).Msgf("[%s] call function failed: %s", ext.buildIdentity(), event)
 							return
 						}
 						handler(ext, gopeed, ctx)
@@ -523,7 +504,11 @@ type Option struct {
 
 // Instance inject to js context when extension script is activated
 type Instance struct {
-	Events InstanceEvents `json:"events"`
+	Events   InstanceEvents  `json:"events"`
+	Info     *ExtensionInfo  `json:"info"`
+	Logger   *InstanceLogger `json:"logger"`
+	Settings map[string]any  `json:"settings"`
+	Storage  *ContextStorage `json:"storage"`
 }
 
 type InstanceEvents map[ActivationEvent]goja.Callable
@@ -606,22 +591,13 @@ func newInstanceLogger(extension *Extension, logger *logger.Logger) *InstanceLog
 	}
 }
 
-type EventContext struct {
-	Info     *ExtensionInfo  `json:"info"`
-	Logger   *InstanceLogger `json:"logger"`
-	Settings map[string]any  `json:"settings"`
-	Storage  *ContextStorage `json:"storage"`
-}
-
 type OnResolveContext struct {
-	*EventContext `json:",inline"`
-	Req           *base.Request  `json:"req"`
-	Res           *base.Resource `json:"res"`
+	Req *base.Request  `json:"req"`
+	Res *base.Resource `json:"res"`
 }
 
 type OnStartContext struct {
-	*EventContext `json:",inline"`
-	Task          *Task `json:"task"`
+	Task *Task `json:"task"`
 }
 
 func parseSettings(settings []*Setting) map[string]any {

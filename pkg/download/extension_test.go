@@ -1,10 +1,12 @@
 package download
 
 import (
+	"errors"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestDownloader_InstallExtensionByFolder(t *testing.T) {
@@ -148,16 +150,21 @@ func TestDownloader_ExtensionByOnStart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = <-errCh
+			select {
+			case err = <-errCh:
+				break
+			case <-time.After(time.Second * 10):
+				err = errors.New("timeout")
+			}
 			if err != nil {
-				t.Fatal("extension on start download error")
+				panic("extension on start download error: " + err.Error())
 			}
 			task := downloader.GetTask(id)
 			if task.Meta.Req.URL != "https://github.com" {
-				t.Fatal("extension on start modify url error")
+				panic("extension on start modify url error")
 			}
 			if task.Meta.Req.Labels["modified"] != "true" {
-				t.Fatal("extension on start modify label error")
+				panic("extension on start modify label error")
 			}
 		})
 	}
