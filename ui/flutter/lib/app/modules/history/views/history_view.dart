@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gopeed/api/model/history_data.dart';
 import 'package:gopeed/app/modules/history/controller/history_controller.dart';
-import 'package:isar/isar.dart';
-import 'package:path_provider/path_provider.dart';
 
 class HistoryView extends StatefulWidget {
   const HistoryView({super.key});
