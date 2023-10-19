@@ -110,14 +110,22 @@ class ExtensionView extends GetView<ExtensionController> {
                                           height: 48,
                                         )
                                       : Util.isWeb()
-                                          ? Image.network(join(
-                                              '/fs/extensions/${extension.identity}/${extension.icon}'))
+                                          ? Image.network(
+                                              join(
+                                                  '/fs/extensions/${extension.identity}/${extension.icon}'),
+                                              width: 48,
+                                              height: 48,
+                                            )
                                           : Image.file(
-                                              File(path.join(
-                                                  Util.getStorageDir(),
-                                                  "extensions",
-                                                  extension.identity,
-                                                  extension.icon)),
+                                              extension.devMode
+                                                  ? File(path.join(
+                                                      extension.devPath,
+                                                      extension.icon))
+                                                  : File(path.join(
+                                                      Util.getStorageDir(),
+                                                      "extensions",
+                                                      extension.identity,
+                                                      extension.icon)),
                                               width: 48,
                                               height: 48,
                                             ),
