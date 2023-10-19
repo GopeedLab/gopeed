@@ -15,6 +15,7 @@ func Start(cfg *C.char) (int, *C.char) {
 	if err := json.Unmarshal([]byte(C.GoString(cfg)), &config); err != nil {
 		return 0, C.CString(err.Error())
 	}
+	config.ProductionMode = true
 	realPort, err := rest.Start(&config)
 	if err != nil {
 		return 0, C.CString(err.Error())

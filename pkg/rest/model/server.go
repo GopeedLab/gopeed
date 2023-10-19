@@ -20,6 +20,8 @@ type StartConfig struct {
 	StorageDir      string  `json:"storageDir"`
 	ApiToken        string  `json:"apiToken"`
 
+	ProductionMode bool
+
 	WebEnable    bool
 	WebFS        fs.FS
 	WebBasicAuth *WebBasicAuth

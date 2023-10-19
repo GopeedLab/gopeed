@@ -9,12 +9,12 @@ part 'create_task.g.dart';
 class CreateTask {
   String? rid;
   Request? req;
-  Options? opts;
+  Options? opt;
 
   CreateTask({
     this.rid,
     this.req,
-    this.opts,
+    this.opt,
   });
 
   factory CreateTask.fromJson(

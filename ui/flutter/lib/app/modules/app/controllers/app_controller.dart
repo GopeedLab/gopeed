@@ -202,6 +202,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
         onClick: (menuItem) => {windowManager.destroy()},
       ),
     ]);
+    await trayManager.setToolTip('Gopeed');
     await trayManager.setContextMenu(menu);
     trayManager.addListener(this);
   }
@@ -334,7 +335,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
     final extra = config.extra;
     if (extra.themeMode.isEmpty) {
-      extra.themeMode = ThemeMode.system.name;
+      extra.themeMode = ThemeMode.dark.name;
     }
     if (extra.locale.isEmpty) {
       final systemLocale = getLocaleKey(PlatformDispatcher.instance.locale);

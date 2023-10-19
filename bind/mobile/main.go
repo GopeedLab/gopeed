@@ -13,6 +13,7 @@ func Start(cfg string) (int, error) {
 	if err := json.Unmarshal([]byte(cfg), &config); err != nil {
 		return 0, err
 	}
+	config.ProductionMode = true
 	return rest.Start(&config)
 }
 

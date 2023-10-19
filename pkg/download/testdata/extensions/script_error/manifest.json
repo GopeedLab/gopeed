@@ -1,0 +1,21 @@
+{
+  "name": "script-error",
+  "title": "gopeed extension script error test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onResolve",
+      "matches": [
+        "*://github.com/*"
+      ],
+      "entry": "index.js"
+    }
+  ],
+  "settings": [
+    {
+      "name": "ua",
+      "title": "User-Agent",
+      "type": "string"
+    }
+  ]
+}

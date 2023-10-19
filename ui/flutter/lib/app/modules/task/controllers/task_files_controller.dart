@@ -27,7 +27,7 @@ class TaskFilesController extends GetxController {
     final taskId = Get.rootDelegate.parameters['id'];
     final tasks = await getTasks([]);
     task.value = tasks.firstWhere((element) => element.id == taskId);
-    parseDirMap(task.value!.meta.res.files);
+    parseDirMap(task.value!.meta.res!.files);
     toDir("/");
   }
 

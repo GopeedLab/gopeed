@@ -10,7 +10,7 @@ class ResolveResult {
   Resource res;
 
   ResolveResult({
-    required this.id,
+    this.id = "",
     required this.res,
   });
 

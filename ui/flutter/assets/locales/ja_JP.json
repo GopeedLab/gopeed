@@ -56,6 +56,6 @@
   "deleteTaskTip": "ダウンロードしたファイルを保持",
   "delete": "削除",
   "newVersionTitle": "新しいバージョン @version を発見する",
-  "newVersionUpdate": "今すぐダウンロード",
+  "newVersionUpdate": "アップデート",
   "newVersionLater": "後で"
 }

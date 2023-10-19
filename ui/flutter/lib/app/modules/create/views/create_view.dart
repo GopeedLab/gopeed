@@ -4,13 +4,15 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/app/modules/history/views/history_view.dart';
-import '../../../../api/model/resolve_result.dart';
+import 'package:path/path.dart' as path;
+
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
+import '../../../../api/model/resolve_result.dart';
+import '../../../../api/model/resource.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
@@ -37,27 +39,31 @@ class CreateView extends GetView<CreateController> {
   @override
   Widget build(BuildContext context) {
     final String? filePath = Get.rootDelegate.arguments();
-    if (_urlController.text.isEmpty && filePath != null) {
-      _urlController.text = filePath;
-      _urlController.selection = TextSelection.fromPosition(
-          TextPosition(offset: _urlController.text.length));
-    }
+    if (_urlController.text.isEmpty) {
+      if (filePath?.isNotEmpty ?? false) {
+        // get file path from route arguments
+        _urlController.text = filePath!;
+        _urlController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _urlController.text.length));
+      } else {
+        // read clipboard
+        Clipboard.getData('text/plain').then((value) {
+          if (value?.text?.isNotEmpty ?? false) {
+            if (_availableSchemes
+                .where((e) =>
+                    value!.text!.startsWith(e) ||
+                    value.text!.startsWith(e.toUpperCase()))
+                .isNotEmpty) {
+              _urlController.text = value!.text!;
+              _urlController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: _urlController.text.length));
+              return;
+            }
 
-    // if no file path, read from clipboard
-    if (filePath?.isEmpty ?? true) {
-      Clipboard.getData('text/plain').then((value) {
-        if (value?.text?.isNotEmpty ?? false) {
-          if (_availableSchemes
-              .where((e) =>
-                  value!.text!.startsWith(e) ||
-                  value.text!.startsWith(e.toUpperCase()))
-              .isNotEmpty) {
-            _urlController.text = value!.text!;
-            _urlController.selection = TextSelection.fromPosition(
-                TextPosition(offset: _urlController.text.length));
+            recognizeMagnetUri(value!.text!);
           }
-        }
-      });
+        });
+      }
     }
 
     return Scaffold(
@@ -84,189 +90,175 @@ class CreateView extends GetView<CreateController> {
             FocusScope.of(context).requestFocus(FocusNode());
           },
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-            child: Form(
-              key: _resolveFormKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                children: [
-                  Row(children: [
-                    Expanded(
-                      child: TextFormField(
-                        autofocus: true,
-                        controller: _urlController,
-                        minLines: 1,
-                        maxLines: 5,
-                        decoration: InputDecoration(
-                          hintText: _hitText(),
-                          hintStyle: const TextStyle(fontSize: 12),
-                          labelText: 'downloadLink'.tr,
-                          icon: const Icon(Icons.link),
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              _urlController.clear();
-                              controller.clearFileDataUri();
-                            },
-                            icon: const Icon(Icons.clear),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+              child: Form(
+                  key: _resolveFormKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(children: [
+                    Row(children: [
+                      Expanded(
+                        child: TextFormField(
+                          autofocus: true,
+                          controller: _urlController,
+                          minLines: 1,
+                          maxLines: 5,
+                          decoration: InputDecoration(
+                            hintText: _hitText(),
+                            hintStyle: const TextStyle(fontSize: 12),
+                            labelText: 'downloadLink'.tr,
+                            icon: const Icon(Icons.link),
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                _urlController.clear();
+                                controller.clearFileDataUri();
+                              },
+                              icon: const Icon(Icons.clear),
+                            ),
                           ),
+                          validator: (v) {
+                            return v!.trim().isNotEmpty
+                                ? null
+                                : 'downloadLinkValid'.tr;
+                          },
+                          onChanged: (v) async {
+                            controller.clearFileDataUri();
+                            if (controller.oldUrl.value.isEmpty) {
+                              recognizeMagnetUri(v);
+                            }
+                            controller.oldUrl.value = v;
+                          },
                         ),
-                        validator: (v) {
-                          return v!.trim().isNotEmpty
-                              ? null
-                              : 'downloadLinkValid'.tr;
-                        },
-                        onChanged: (v) async {
-                          controller.clearFileDataUri();
-                        },
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.folder_open),
-                      onPressed: () async {
-                        var pr = await FilePicker.platform.pickFiles(
-                            type: FileType.custom,
-                            allowedExtensions: ["torrent"]);
-                        if (pr != null) {
-                          if (!Util.isWeb()) {
-                            _urlController.text = pr.files[0].path ?? "";
-                            return;
-                          }
-                          _urlController.text = pr.files[0].name;
-                          controller.setFileDataUri(pr.files[0].bytes!);
-                        }
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.history),
-                      onPressed: () async {
-                        // open up popup
-                        showGeneralDialog(
-                          barrierColor: Colors.black.withOpacity(0.5),
-                          transitionBuilder: (context, a1, a2, widget) {
-                            return Transform.scale(
-                              scale: a1.value,
-                              child: Opacity(
-                                opacity: a1.value,
-                                child: HistoryView(),
+                      IconButton(
+                          icon: const Icon(Icons.folder_open),
+                          onPressed: () async {
+                            var pr = await FilePicker.platform.pickFiles(
+                                type: FileType.custom,
+                                allowedExtensions: ["torrent"]);
+                            if (pr != null) {
+                              if (!Util.isWeb()) {
+                                _urlController.text = pr.files[0].path ?? "";
+                                return;
+                              }
+                              _urlController.text = pr.files[0].name;
+                              controller.setFileDataUri(pr.files[0].bytes!);
+                            }
+                          }),
+                    ]
+                        //.where((e) => e != null).map((e) => e!).toList(),
+                        ),
+                    Obx(() => Visibility(
+                        visible: controller.showAdvanced.value,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 40, top: 15),
+                          child: Column(
+                            children: [
+                              TabBar(
+                                controller: controller.advancedTabController,
+                                tabs: const [
+                                  Tab(
+                                    text: 'HTTP',
+                                  ),
+                                  Tab(
+                                    text: 'BitTorrent',
+                                  )
+                                ],
                               ),
-                            );
-                          },
-                          transitionDuration: const Duration(milliseconds: 250),
-                          barrierDismissible: true,
-                          barrierLabel: '',
-                          context: context,
-                          pageBuilder: (context, animation1, animation2) {
-                            return const Text('PAGE BUILDER');
-                          },
-                        );
-                        // show list of history
-                      },
-                    ),
-                  ]
-                      //.where((e) => e != null).map((e) => e!).toList(),
+                              AutoScaleTabBarView(
+                                controller: controller.advancedTabController,
+                                children: [
+                                  Column(
+                                    children: [
+                                      TextFormField(
+                                          controller: _httpUaController,
+                                          decoration: const InputDecoration(
+                                            labelText: 'User-Agent',
+                                          )),
+                                      TextFormField(
+                                          controller: _httpCookieController,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Cookie',
+                                          )),
+                                      TextFormField(
+                                          controller: _httpRefererController,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Referer',
+                                          )),
+                                    ],
+                                  ),
+                                  Column(
+                                    children: [
+                                      TextFormField(
+                                          controller: _btTrackerController,
+                                          maxLines: 5,
+                                          decoration: InputDecoration(
+                                            labelText: 'Trakers',
+                                            hintText: 'addTrackerHit'.tr,
+                                          )),
+                                    ],
+                                  )
+                                ],
+                              )
+                            ],
+                          ),
+                        ))),
+                    Center(
+                        child: Padding(
+                      padding: const EdgeInsets.only(top: 15),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: TextButton(
+                              onPressed: () {
+                                controller.showAdvanced.value =
+                                    !controller.showAdvanced.value;
+                              },
+                              child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Obx(() => Checkbox(
+                                          value: controller.showAdvanced.value,
+                                          onChanged: (bool? value) {
+                                            controller.showAdvanced.value =
+                                                value ?? false;
+                                          },
+                                        )),
+                                    Text('advancedOptions'.tr),
+                                  ]),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 150,
+                            child: RoundedLoadingButton(
+                              color: Get.theme.colorScheme.secondary,
+                              onPressed: _doResolve,
+                              controller: _confirmController,
+                              child: Text('confirm'.tr),
+                            ),
+                          ),
+                        ],
                       ),
-                  Obx(() => Visibility(
-                      visible: controller.showAdvanced.value,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 40, top: 15),
-                        child: Column(
-                          children: [
-                            TabBar(
-                              controller: controller.advancedTabController,
-                              tabs: const [
-                                Tab(
-                                  text: 'HTTP',
-                                ),
-                                Tab(
-                                  text: 'BitTorrent',
-                                )
-                              ],
-                            ),
-                            AutoScaleTabBarView(
-                              controller: controller.advancedTabController,
-                              children: [
-                                Column(
-                                  children: [
-                                    TextFormField(
-                                        controller: _httpUaController,
-                                        decoration: const InputDecoration(
-                                          labelText: 'User-Agent',
-                                        )),
-                                    TextFormField(
-                                        controller: _httpCookieController,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Cookie',
-                                        )),
-                                    TextFormField(
-                                        controller: _httpRefererController,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Referer',
-                                        )),
-                                  ],
-                                ),
-                                Column(
-                                  children: [
-                                    TextFormField(
-                                        controller: _btTrackerController,
-                                        maxLines: 5,
-                                        decoration: InputDecoration(
-                                          labelText: 'Trakers',
-                                          hintText: 'addTrackerHit'.tr,
-                                        )),
-                                  ],
-                                )
-                              ],
-                            )
-                          ],
-                        ),
-                      ))),
-                  Center(
-                      child: Padding(
-                    padding: const EdgeInsets.only(top: 15),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: TextButton(
-                            onPressed: () {
-                              controller.showAdvanced.value =
-                                  !controller.showAdvanced.value;
-                            },
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Obx(() => Checkbox(
-                                      value: controller.showAdvanced.value,
-                                      onChanged: (bool? value) {
-                                        controller.showAdvanced.value =
-                                            value ?? false;
-                                      },
-                                    )),
-                                Text('advancedOptions'.tr),
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: 150,
-                          child: RoundedLoadingButton(
-                            color: Get.theme.colorScheme.secondary,
-                            onPressed: _doResolve,
-                            controller: _confirmController,
-                            child: Text('confirm'.tr),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )),
-                ],
-              ),
-            ),
-          ),
+                    )),
+                  ]))),
         ),
       ),
     );
+  }
+
+  // recognize magnet uri, if length == 40, auto add magnet prefix
+  recognizeMagnetUri(String text) {
+    if (text.length != 40) {
+      return;
+    }
+    final exp = RegExp(r"[0-9a-fA-F]+");
+    if (exp.hasMatch(text)) {
+      final uri = "magnet:?xt=urn:btih:$text";
+      _urlController.text = uri;
+      _urlController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _urlController.text.length));
+    }
   }
 
   Future<void> _doResolve() async {
@@ -277,29 +269,29 @@ class CreateView extends GetView<CreateController> {
     try {
       _confirmController.start();
       if (_resolveFormKey.currentState!.validate()) {
-        Object? extra;
-        final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
-            ? controller.fileDataUri.value
-            : _urlController.text;
-        if (controller.showAdvanced.value) {
-          final u = Uri.parse(submitUrl);
-          if (u.scheme.startsWith("http")) {
-            extra = ReqExtraHttp()
-              ..header = {
-                "User-Agent": _httpUaController.text,
-                "Cookie": _httpCookieController.text,
-                "Referer": _httpRefererController.text,
-              };
-          } else {
-            extra = ReqExtraBt()
-              ..trackers = Util.textToLines(_btTrackerController.text);
-          }
+        // check if is multi line urls
+        final urls = Util.textToLines(_urlController.text);
+        ResolveResult rr;
+        bool isMuiltiLine = false;
+        if (urls.length > 1) {
+          isMuiltiLine = true;
+          rr = ResolveResult(
+              res: Resource(
+                  files: urls
+                      .map((u) => FileInfo(
+                          name: u,
+                          req: Request(url: u, extra: parseReqExtra(u))))
+                      .toList()));
+        } else {
+          final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
+              ? controller.fileDataUri.value
+              : _urlController.text;
+          rr = await resolve(Request(
+            url: submitUrl,
+            extra: parseReqExtra(_urlController.text),
+          ));
         }
-        final rr = await resolve(Request(
-          url: submitUrl,
-          extra: extra,
-        ));
-        await _showResolveDialog(rr);
+        await _showResolveDialog(rr, isMuiltiLine);
       }
     } catch (e) {
       showErrorMessage(e);
@@ -309,6 +301,25 @@ class CreateView extends GetView<CreateController> {
     }
   }
 
+  Object? parseReqExtra(String url) {
+    Object? reqExtra;
+    if (controller.showAdvanced.value) {
+      final u = Uri.parse(_urlController.text);
+      if (u.scheme.startsWith("http")) {
+        reqExtra = ReqExtraHttp()
+          ..header = {
+            "User-Agent": _httpUaController.text,
+            "Cookie": _httpCookieController.text,
+            "Referer": _httpRefererController.text,
+          };
+      } else {
+        reqExtra = ReqExtraBt()
+          ..trackers = Util.textToLines(_btTrackerController.text);
+      }
+    }
+    return reqExtra;
+  }
+
   String _hitText() {
     return 'downloadLinkHit'.trParams({
       'append':
@@ -316,8 +327,7 @@ class CreateView extends GetView<CreateController> {
     });
   }
 
-  Future<void> _showResolveDialog(ResolveResult rr) async {
-    final files = rr.res.files;
+  Future<void> _showResolveDialog(ResolveResult rr, bool isMuiltiLine) async {
     final appController = Get.find<AppController>();
 
     final createFormKey = GlobalKey<FormState>();
@@ -330,6 +340,7 @@ class CreateView extends GetView<CreateController> {
         context: Get.context!,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
+              title: rr.res.name.isEmpty ? null : Text(rr.res.name),
               content: Builder(
                 builder: (context) {
                   // Get available height and width of the build area of this widget. Make a choice depending on the size.
@@ -344,7 +355,7 @@ class CreateView extends GetView<CreateController> {
                         autovalidateMode: AutovalidateMode.always,
                         child: Column(
                           children: [
-                            Expanded(child: FileListView(files: files)),
+                            Expanded(child: FileListView(files: rr.res.files)),
                             TextFormField(
                               controller: nameController,
                               decoration: InputDecoration(
@@ -402,19 +413,37 @@ class CreateView extends GetView<CreateController> {
                             showMessage('tip'.tr, 'noFileSelected'.tr);
                             return;
                           }
+                          Object? optExtra = connectionsController.text.isEmpty
+                              ? null
+                              : (OptsExtraHttp()
+                                ..connections =
+                                    int.parse(connectionsController.text));
                           if (createFormKey.currentState!.validate()) {
-                            await createTask(CreateTask(
-                                rid: rr.id,
-                                opts: Options(
-                                    name: nameController.text,
-                                    path: pathController.text,
-                                    selectFiles:
-                                        controller.selectedIndexes.cast<int>(),
-                                    extra: connectionsController.text.isEmpty
-                                        ? null
-                                        : (OptsExtraHttp()
-                                          ..connections = int.parse(
-                                              connectionsController.text)))));
+                            if (rr.id.isEmpty) {
+                              // create task batch, there has two ways to batch create task
+                              // 1. from multi line urls
+                              // 2. from extension resolve result
+                              await Future.wait(
+                                  controller.selectedIndexes.map((index) {
+                                final file = rr.res.files[index];
+                                return createTask(CreateTask(
+                                    req: file.req!,
+                                    opt: Options(
+                                        name: isMuiltiLine ? "" : file.name,
+                                        path: path.join(
+                                            pathController.text, rr.res.name),
+                                        selectFiles: [],
+                                        extra: optExtra)));
+                              }));
+                            } else {
+                              await createTask(CreateTask(
+                                  rid: rr.id,
+                                  opt: Options(
+                                      name: nameController.text,
+                                      path: pathController.text,
+                                      selectFiles: controller.selectedIndexes,
+                                      extra: optExtra)));
+                            }
                             Get.back();
                             Get.rootDelegate.offNamed(Routes.TASK);
                           }

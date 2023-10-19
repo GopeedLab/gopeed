@@ -5,7 +5,7 @@ import 'util.dart';
 
 final logger = Logger(
   filter: ProductionFilter(),
-  printer: LogfmtPrinter(),
+  printer: SimplePrinter(printTime: true, colors: false),
   output: buildOutput(),
 );
 

@@ -28,8 +28,6 @@ func parse() *args {
 	cliArgs.configPath = flag.String("c", "./config.json", "Config file path")
 	flag.Parse()
 
-	fmt.Println("parse")
-
 	// args priority: config file > cli args
 	cfgArgs := loadConfig(*cliArgs.configPath)
 	if cfgArgs.Address == nil {

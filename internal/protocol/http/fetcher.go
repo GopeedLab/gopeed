@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
@@ -33,7 +34,6 @@ func (re *RequestError) Error() string {
 }
 
 type chunk struct {
-	Status     base.Status
 	Begin      int64
 	End        int64
 	Downloaded int64
@@ -41,9 +41,8 @@ type chunk struct {
 
 func newChunk(begin int64, end int64) *chunk {
 	return &chunk{
-		Status: base.DownloadStatusReady,
-		Begin:  begin,
-		End:    end,
+		Begin: begin,
+		End:   end,
 	}
 }
 
@@ -52,23 +51,20 @@ type Fetcher struct {
 	doneCh chan error
 
 	meta   *fetcher.FetcherMeta
-	status base.Status
 	chunks []*chunk
 
-	file    *os.File
-	ctx     context.Context
-	cancel  context.CancelFunc
-	pauseCh chan interface{}
+	file   *os.File
+	cancel context.CancelFunc
+	eg     *errgroup.Group
 }
 
 func (f *Fetcher) Name() string {
 	return "http"
 }
 
-func (f *Fetcher) Setup(ctl *controller.Controller) (err error) {
+func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	f.doneCh = make(chan error, 1)
-	f.pauseCh = make(chan interface{}, 1)
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
@@ -139,10 +135,9 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	}
 	// unknown file filePath
 	if file.Name == "" || file.Name == "/" || file.Name == "." {
-		file.Name = "unknown"
+		file.Name = httpReq.URL.Hostname()
 	}
 	res.Files = append(res.Files, file)
-	res.Name = file.Name
 	f.meta.Req = req
 	f.meta.Res = res
 	return nil
@@ -150,7 +145,6 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 
 func (f *Fetcher) Create(opts *base.Options) error {
 	f.meta.Opts = opts
-	f.status = base.DownloadStatusReady
 
 	if err := base.ParseReqExtra[fhttp.ReqExtra](f.meta.Req); err != nil {
 		return err
@@ -178,41 +172,35 @@ func (f *Fetcher) Create(opts *base.Options) error {
 }
 
 func (f *Fetcher) Start() (err error) {
-	// 创建文件
-	name := f.filepath()
-	f.file, err = f.ctl.Touch(name, f.meta.Res.Size)
+	name := f.meta.SingleFilepath()
+	// if file not exist, create it, else open it
+	_, err = os.Stat(name)
+	if err != nil {
+		if os.IsNotExist(err) {
+			f.file, err = f.ctl.Touch(name, f.meta.Res.Size)
+		} else {
+			return
+		}
+	} else {
+		f.file, err = os.OpenFile(name, os.O_RDWR, os.ModeAppend)
+	}
 	if err != nil {
 		return err
 	}
-	f.status = base.DownloadStatusRunning
-	f.chunks = f.splitChunk()
+	if f.chunks == nil {
+		f.chunks = f.splitChunk()
+	}
 	f.fetch()
 	return
 }
 
 func (f *Fetcher) Pause() (err error) {
-	if base.DownloadStatusRunning != f.status {
-		return
-	}
-	f.status = base.DownloadStatusPause
-
 	if f.cancel != nil {
 		f.cancel()
-		<-f.pauseCh
+		// wait for pause handle complete
+		f.eg.Wait()
+		f.file.Close()
 	}
-	return
-}
-
-func (f *Fetcher) Continue() (err error) {
-	if base.DownloadStatusRunning == f.status || base.DownloadStatusDone == f.status {
-		return
-	}
-	f.status = base.DownloadStatusRunning
-	f.file, err = os.OpenFile(f.filepath(), os.O_RDWR, os.ModeAppend)
-	if err != nil {
-		return err
-	}
-	f.fetch()
 	return
 }
 
@@ -243,41 +231,32 @@ func (f *Fetcher) Wait() (err error) {
 	return <-f.doneCh
 }
 
-func (f *Fetcher) filepath() string {
-	return f.meta.Filepath(f.meta.Res.Files[0])
-}
-
 func (f *Fetcher) fetch() {
-	f.ctx, f.cancel = context.WithCancel(context.Background())
-	eg, _ := errgroup.WithContext(f.ctx)
+	var ctx context.Context
+	ctx, f.cancel = context.WithCancel(context.Background())
+	f.eg, _ = errgroup.WithContext(ctx)
 	for i := 0; i < len(f.chunks); i++ {
 		i := i
-		eg.Go(func() error {
-			return f.fetchChunk(i)
+		f.eg.Go(func() error {
+			return f.fetchChunk(i, ctx)
 		})
 	}
 
 	go func() {
-		err := eg.Wait()
-		// 下载停止，关闭文件句柄
-		f.file.Close()
-		if f.status == base.DownloadStatusPause {
-			f.pauseCh <- nil
-		} else {
-			if err != nil {
-				f.status = base.DownloadStatusError
-			} else {
-				f.status = base.DownloadStatusDone
-			}
-			f.doneCh <- err
+		err := f.eg.Wait()
+		// check if canceled
+		if errors.Is(err, context.Canceled) {
+			return
 		}
+		f.file.Close()
+		f.doneCh <- err
 	}()
 }
 
-func (f *Fetcher) fetchChunk(index int) (err error) {
+func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	chunk := f.chunks[index]
 
-	httpReq, err := buildRequest(f.ctx, f.meta.Req)
+	httpReq, err := buildRequest(ctx, f.meta.Req)
 	if err != nil {
 		return err
 	}
@@ -287,13 +266,9 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 	)
 	// 重试5次
 	for i := 0; i < 5; i++ {
-		// 如果下载完成直接返回
-		if chunk.Status == base.DownloadStatusDone {
+		// if chunk is completed, return
+		if f.meta.Res.Range && chunk.Downloaded >= chunk.End-chunk.Begin+1 {
 			return
-		}
-		// 如果已暂停直接跳出
-		if f.status == base.DownloadStatusPause {
-			break
 		}
 		var (
 			resp  *http.Response
@@ -317,7 +292,7 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 			return nil
 		}()
 		if err != nil {
-			// 请求失败重试
+			// retry request
 			continue
 		}
 		// 请求成功就重置错误次数，连续失败5次才终止
@@ -347,19 +322,6 @@ func (f *Fetcher) fetchChunk(index int) (err error) {
 			break
 		}
 	}
-
-	if err != nil {
-		chunk.Status = base.DownloadStatusError
-		return
-	}
-
-	isComplete := f.meta.Res.Range && chunk.Downloaded >= chunk.End-chunk.Begin+1
-	if f.status == base.DownloadStatusPause && !isComplete {
-		chunk.Status = base.DownloadStatusPause
-		return
-	}
-
-	chunk.Status = base.DownloadStatusDone
 	return
 }
 
@@ -474,7 +436,6 @@ func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		fb := &FetcherBuilder{}
 		fetcher := fb.Build().(*Fetcher)
 		fetcher.meta = meta
-		fetcher.status = base.DownloadStatusPause
 		base.ParseReqExtra[fhttp.ReqExtra](fetcher.meta.Req)
 		base.ParseOptsExtra[fhttp.OptsExtra](fetcher.meta.Opts)
 		if len(fd.Chunks) == 0 {

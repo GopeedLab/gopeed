@@ -1,0 +1,21 @@
+{
+  "name": "github-release",
+  "author": "gopeed",
+  "title": "Github Release",
+  "description": "Download github release assets",
+  "version": "0.0.1",
+  "homepage": "https://gopeed.com",
+  "repository": {
+    "url": "https://github.com/GopeedLab/gopeed-extension-samples",
+    "directory": "github-release-sample"
+  },
+  "scripts": [
+    {
+      "event": "onResolve",
+      "matches": [
+        "*://github.com/*/releases/*"
+      ],
+      "entry": "index.js"
+    }
+  ]
+}

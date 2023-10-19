@@ -5,7 +5,6 @@ type EventKey string
 const (
 	EventKeyStart    = "start"
 	EventKeyPause    = "pause"
-	EventKeyContinue = "continue"
 	EventKeyProgress = "progress"
 	EventKeyError    = "error"
 	EventKeyDelete   = "delete"

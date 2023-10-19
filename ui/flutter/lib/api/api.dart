@@ -3,14 +3,19 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
-import 'model/resolve_result.dart';
+import 'package:gopeed/api/model/extension.dart';
+import 'package:gopeed/api/model/install_extension.dart';
+import 'package:gopeed/api/model/switch_extension.dart';
+
 import '../util/util.dart';
 import 'model/create_task.dart';
+import 'model/downloader_config.dart';
 import 'model/request.dart';
+import 'model/resolve_result.dart';
 import 'model/result.dart';
 import 'model/task.dart';
-
-import 'model/downloader_config.dart';
+import 'model/update_extension_settings.dart';
+import 'model/update_check_extension_resp.dart';
 
 class _Client {
   static _Client? _instance;
@@ -62,6 +67,12 @@ class _Client {
   }
 }
 
+class TimeoutException implements Exception {
+  final String message;
+
+  TimeoutException(this.message);
+}
+
 late _Client _client;
 
 void init(String network, String address, String apiToken) {
@@ -85,7 +96,7 @@ Future<T> _parse<T>(
     if (e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
         e.type == DioExceptionType.connectionTimeout) {
-      throw Exception(Result(code: 1000, msg: "request timeout"));
+      throw TimeoutException("request timeout");
     }
     throw Exception(Result(code: 1000, msg: e.message));
   }
@@ -105,8 +116,8 @@ Future<String> createTask(CreateTask createTask) async {
 
 Future<List<Task>> getTasks(List<Status> statuses) async {
   return _parse<List<Task>>(
-      () => _client.dio
-          .get("/api/v1/tasks?status=${statuses.map((e) => e.name).join(",")}"),
+      () => _client.dio.get(
+          "/api/v1/tasks?${statuses.map((e) => "status=${e.name}").join("&")}"),
       (data) => (data as List).map((e) => Task.fromJson(e)).toList());
 }
 
@@ -140,6 +151,47 @@ Future<void> putConfig(DownloaderConfig config) async {
   return _parse(() => _client.dio.put("/api/v1/config", data: config), null);
 }
 
+Future<void> installExtension(InstallExtension installExtension) async {
+  return _parse(
+      () => _client.dio.post("/api/v1/extensions", data: installExtension),
+      null);
+}
+
+Future<List<Extension>> getExtensions() async {
+  return _parse<List<Extension>>(() => _client.dio.get("/api/v1/extensions"),
+      (data) => (data as List).map((e) => Extension.fromJson(e)).toList());
+}
+
+Future<void> updateExtensionSettings(
+    String identity, UpdateExtensionSettings updateExtensionSettings) async {
+  return _parse(
+      () => _client.dio.put("/api/v1/extensions/$identity/settings",
+          data: updateExtensionSettings),
+      null);
+}
+
+Future<void> switchExtension(
+    String identity, SwitchExtension switchExtension) async {
+  return _parse(
+      () => _client.dio
+          .put("/api/v1/extensions/$identity/switch", data: switchExtension),
+      null);
+}
+
+Future<void> deleteExtension(String identity) async {
+  return _parse(() => _client.dio.delete("/api/v1/extensions/$identity"), null);
+}
+
+Future<UpdateCheckExtensionResp> upgradeCheckExtension(String identity) async {
+  return _parse(() => _client.dio.get("/api/v1/extensions/$identity/update"),
+      (data) => UpdateCheckExtensionResp.fromJson(data));
+}
+
+Future<void> updateExtension(String identity) async {
+  return _parse(
+      () => _client.dio.post("/api/v1/extensions/$identity/update"), null);
+}
+
 Future<Response<String>> proxyRequest<T>(String uri,
     {data, Options? options}) async {
   options ??= Options();
@@ -151,4 +203,8 @@ Future<Response<String>> proxyRequest<T>(String uri,
       "/api/v1/proxy?t=${DateTime.now().millisecondsSinceEpoch}",
       data: data,
       options: options);
+}
+
+String join(String path) {
+  return "${_client.dio.options.baseUrl}/${Util.cleanPath(path)}";
 }

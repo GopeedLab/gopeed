@@ -8,12 +8,11 @@ part 'meta.g.dart';
 @JsonSerializable(explicitToJson: true)
 class Meta {
   Request req;
-  Resource res;
+  Resource? res;
   Options opts;
 
   Meta({
     required this.req,
-    required this.res,
     required this.opts,
   });
 
