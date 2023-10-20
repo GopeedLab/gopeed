@@ -24,7 +24,7 @@ class HistoryController {
     );
 
     await isar.writeTxn(() async {
-      await isar.historyDatas.put(data); 
+      await isar.historyDatas.put(data);
     });
     await isar.close();
   }
