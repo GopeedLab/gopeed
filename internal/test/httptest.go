@@ -123,11 +123,15 @@ func StartTestPostServer() net.Listener {
 }
 
 func StartTestErrorServer() net.Listener {
+	counter := 0
 	return startTestServer(func() http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
-			writer.WriteHeader(500)
-			return
+			counter++
+			if counter != 1 {
+				writer.WriteHeader(500)
+				return
+			}
 		})
 		return mux
 	})

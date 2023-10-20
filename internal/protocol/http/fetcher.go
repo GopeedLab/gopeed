@@ -295,7 +295,6 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 
 		var (
 			resp *http.Response
-			done bool
 		)
 		if f.meta.Res.Range {
 			httpReq.Header.Set(base.HttpHeaderRange,
@@ -322,34 +321,34 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 		}
 		// Http request success, reset retry times
 		chunk.retryTimes = 0
-		done, err = func() (bool, error) {
+		err = func() error {
 			defer resp.Body.Close()
 			for {
 				n, err := resp.Body.Read(buf)
 				if n > 0 {
 					_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
 					if err != nil {
-						return false, err
+						return err
 					}
 					chunk.Downloaded += int64(n)
 				}
 				if err != nil {
 					if err == io.EOF {
-						return true, nil
+						return nil
 					}
-					return false, err
+					return err
 				}
 			}
 		}()
-		if done {
-			// reset other not complete chunks retry times
+		// if chunk is completed, reset other not complete chunks retry times
+		if err == nil {
 			for _, c := range f.chunks {
 				if c != chunk && c.retryTimes > 0 {
 					c.retryTimes = 0
 				}
 			}
-			break
 		}
+		break
 	}
 	return
 }
