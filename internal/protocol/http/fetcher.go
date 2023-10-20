@@ -18,6 +18,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"time"
 )
 
 type RequestError struct {
@@ -37,6 +38,8 @@ type chunk struct {
 	Begin      int64
 	End        int64
 	Downloaded int64
+
+	retryTimes int
 }
 
 func newChunk(begin int64, end int64) *chunk {
@@ -255,24 +258,43 @@ func (f *Fetcher) fetch() {
 
 func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	chunk := f.chunks[index]
+	chunk.retryTimes = 0
 
 	httpReq, err := buildRequest(ctx, f.meta.Req)
 	if err != nil {
 		return err
 	}
 	var (
-		client = buildClient()
-		buf    = make([]byte, 8192)
+		client     = buildClient()
+		buf        = make([]byte, 8192)
+		maxRetries = 3
 	)
-	// 重试5次
-	for i := 0; i < 5; i++ {
+	// retry until all remain chunks failed
+	for true {
 		// if chunk is completed, return
 		if f.meta.Res.Range && chunk.Downloaded >= chunk.End-chunk.Begin+1 {
 			return
 		}
+
+		if chunk.retryTimes >= maxRetries {
+			if !f.meta.Res.Range {
+				return
+			}
+			// check if all failed
+			allFailed := true
+			for _, c := range f.chunks {
+				if chunk.Downloaded < chunk.End-chunk.Begin+1 && c.retryTimes < maxRetries {
+					allFailed = false
+					break
+				}
+			}
+			if allFailed {
+				return
+			}
+		}
+
 		var (
-			resp  *http.Response
-			retry bool
+			resp *http.Response
 		)
 		if f.meta.Res.Range {
 			httpReq.Header.Set(base.HttpHeaderRange,
@@ -292,35 +314,41 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 			return nil
 		}()
 		if err != nil {
-			// retry request
+			// retry request after 1 second
+			chunk.retryTimes = chunk.retryTimes + 1
+			time.Sleep(time.Second)
 			continue
 		}
-		// 请求成功就重置错误次数，连续失败5次才终止
-		i = 0
-		retry, err = func() (bool, error) {
+		// Http request success, reset retry times
+		chunk.retryTimes = 0
+		err = func() error {
 			defer resp.Body.Close()
 			for {
 				n, err := resp.Body.Read(buf)
 				if n > 0 {
 					_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
 					if err != nil {
-						return false, err
+						return err
 					}
 					chunk.Downloaded += int64(n)
 				}
 				if err != nil {
-					if err != io.EOF {
-						return true, err
+					if err == io.EOF {
+						return nil
 					}
-					break
+					return err
 				}
 			}
-			return false, nil
 		}()
-		if !retry {
-			// 下载成功，跳出重试
-			break
+		// if chunk is completed, reset other not complete chunks retry times
+		if err == nil {
+			for _, c := range f.chunks {
+				if c != chunk && c.retryTimes > 0 {
+					c.retryTimes = 0
+				}
+			}
 		}
+		break
 	}
 	return
 }
