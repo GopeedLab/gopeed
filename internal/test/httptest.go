@@ -9,6 +9,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -81,7 +84,7 @@ func StartTestRetryServer() net.Listener {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
 			counter++
-			if counter != 1 && counter < 5 {
+			if counter != 1 && counter < 2 {
 				writer.WriteHeader(500)
 				return
 			}
@@ -120,14 +123,83 @@ func StartTestPostServer() net.Listener {
 }
 
 func StartTestErrorServer() net.Listener {
-	counter := 0
 	return startTestServer(func() http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
-			counter++
-			if counter != 1 {
-				writer.WriteHeader(500)
+			writer.WriteHeader(500)
+			return
+		})
+		return mux
+	})
+}
+
+// StartTestLimitServer connections limit server
+func StartTestLimitServer() net.Listener {
+	var connections atomic.Int32
+
+	return startTestServer(func() http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			defer func() {
+				connections.Add(-1)
+			}()
+			connections.Add(1)
+			if connections.Load() > 4 {
+				writer.WriteHeader(403)
 				return
+			}
+
+			r := request.Header.Get("Range")
+			if r == "" {
+				writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+				writer.WriteHeader(200)
+				file, err := os.Open(BuildFile)
+				if err != nil {
+					panic(err)
+				}
+				defer file.Close()
+				io.Copy(writer, file)
+			} else {
+				// split range
+				s := strings.Split(r, "=")
+				if len(s) != 2 {
+					writer.WriteHeader(400)
+					return
+				}
+				s = strings.Split(s[1], "-")
+				if len(s) != 2 {
+					writer.WriteHeader(400)
+					return
+				}
+				start, err := strconv.ParseInt(s[0], 10, 64)
+				if err != nil {
+					writer.WriteHeader(400)
+					return
+				}
+				end, err := strconv.ParseInt(s[1], 10, 64)
+				if err != nil {
+					writer.WriteHeader(400)
+					return
+				}
+				if start < 0 || end < 0 || start > end {
+					writer.WriteHeader(400)
+					return
+				}
+				if end >= BuildSize {
+					end = BuildSize - 1
+				}
+				writer.Header().Set("Content-Length", fmt.Sprintf("%d", end-start+1))
+				writer.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, BuildSize))
+				writer.Header().Set("Accept-Ranges", "bytes")
+				writer.WriteHeader(206)
+				file, err := os.Open(BuildFile)
+				if err != nil {
+					writer.WriteHeader(500)
+					return
+				}
+				defer file.Close()
+				file.Seek(start, 0)
+				io.CopyN(writer, file, end-start+1)
 			}
 		})
 		return mux
