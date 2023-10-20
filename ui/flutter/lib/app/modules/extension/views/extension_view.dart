@@ -97,7 +97,7 @@ class ExtensionView extends GetView<ExtensionController> {
                     itemBuilder: (context, index) {
                       final extension = controller.extensions[index];
                       return SizedBox(
-                        height: ResponsiveBuilder.isNarrow(context) ? 168 : 112,
+                        height: ResponsiveBuilder.isNarrow(context) ? 152 : 112,
                         child: Card(
                           elevation: 4.0,
                           child: Column(
