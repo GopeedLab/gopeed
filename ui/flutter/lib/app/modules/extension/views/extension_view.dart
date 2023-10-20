@@ -21,6 +21,7 @@ import '../../../../api/model/install_extension.dart';
 import '../../../../api/model/switch_extension.dart';
 import '../../../../util/util.dart';
 import '../../../views/icon_button_loading.dart';
+import '../../../views/responsive_builder.dart';
 import '../controllers/extension_controller.dart';
 
 class ExtensionView extends GetView<ExtensionController> {
@@ -96,7 +97,7 @@ class ExtensionView extends GetView<ExtensionController> {
                     itemBuilder: (context, index) {
                       final extension = controller.extensions[index];
                       return SizedBox(
-                        height: 112,
+                        height: 168,
                         child: Card(
                           elevation: 4.0,
                           child: Column(
@@ -145,23 +146,32 @@ class ExtensionView extends GetView<ExtensionController> {
                                   title: Row(
                                     children: () {
                                       final list = [
-                                        Text(extension.title),
+                                        ResponsiveBuilder.isNarrow(context)
+                                            ? Expanded(
+                                                child: Text(
+                                                  extension.title,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              )
+                                            : Text(extension.title),
                                         const SizedBox(width: 8),
-                                        Chip(
-                                          label: Text('v${extension.version}'),
-                                        )
+                                        buildChip('v${extension.version}'),
                                       ];
                                       if (extension.devMode) {
                                         list.add(const SizedBox(width: 8));
-                                        list.add(Chip(
-                                          label: Text('dev'.tr),
-                                          backgroundColor: Colors.redAccent,
-                                        ));
+                                        list.add(buildChip('dev'));
                                       }
                                       return list;
                                     }(),
                                   ),
-                                  subtitle: Text(extension.description),
+                                  subtitle: ResponsiveBuilder.isNarrow(context)
+                                      ? Text(
+                                          extension.description,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      : Text(extension.description),
                                 ),
                               ),
                               Row(
@@ -230,6 +240,13 @@ class ExtensionView extends GetView<ExtensionController> {
                   ))),
         ],
       ).paddingAll(32),
+    );
+  }
+
+  Widget buildChip(String text) {
+    return Chip(
+      padding: const EdgeInsets.all(0),
+      label: Text(text, style: const TextStyle(fontSize: 12)),
     );
   }
 
