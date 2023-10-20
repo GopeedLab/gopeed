@@ -76,7 +76,7 @@ func testResolve(startTestServer func() net.Listener, path string, want *base.Re
 func TestFetcher_DownloadNormal(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
-	// 正常下载
+
 	downloadNormal(listener, 1, t)
 	downloadNormal(listener, 5, t)
 	downloadNormal(listener, 8, t)
@@ -86,7 +86,7 @@ func TestFetcher_DownloadNormal(t *testing.T) {
 func TestFetcher_DownloadContinue(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
-	// 暂停继续
+
 	downloadContinue(listener, 1, t)
 	downloadContinue(listener, 5, t)
 	downloadContinue(listener, 8, t)
@@ -96,7 +96,7 @@ func TestFetcher_DownloadContinue(t *testing.T) {
 func TestFetcher_DownloadChunked(t *testing.T) {
 	listener := test.StartTestCustomServer()
 	defer listener.Close()
-	// chunked编码下载
+
 	downloadNormal(listener, 1, t)
 	downloadNormal(listener, 2, t)
 }
@@ -104,22 +104,31 @@ func TestFetcher_DownloadChunked(t *testing.T) {
 func TestFetcher_DownloadPost(t *testing.T) {
 	listener := test.StartTestPostServer()
 	defer listener.Close()
-	// post下载
+
 	downloadPost(listener, 1, t)
 }
 
 func TestFetcher_DownloadRetry(t *testing.T) {
 	listener := test.StartTestRetryServer()
 	defer listener.Close()
-	// chunked编码下载
+
 	downloadNormal(listener, 1, t)
 }
 
 func TestFetcher_DownloadError(t *testing.T) {
 	listener := test.StartTestErrorServer()
 	defer listener.Close()
-	// chunked编码下载
+
 	downloadError(listener, 1, t)
+}
+
+func TestFetcher_DownloadLimit(t *testing.T) {
+	listener := test.StartTestLimitServer()
+	defer listener.Close()
+
+	downloadNormal(listener, 1, t)
+	downloadNormal(listener, 2, t)
+	downloadNormal(listener, 8, t)
 }
 
 func TestFetcher_DownloadResume(t *testing.T) {
