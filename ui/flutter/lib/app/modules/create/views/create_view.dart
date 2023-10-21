@@ -4,10 +4,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/app/modules/history/controller/history_controller.dart';
+import 'package:gopeed/app/modules/history/views/history_view.dart';
 import 'package:path/path.dart' as path;
-
 import 'package:rounded_loading_button/rounded_loading_button.dart';
-
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
@@ -32,6 +32,7 @@ class CreateView extends GetView<CreateController> {
   final _httpCookieController = TextEditingController();
   final _httpRefererController = TextEditingController();
   final _btTrackerController = TextEditingController();
+  final _historyController = HistoryController();
 
   final _availableSchemes = ["http:", "https:", "magnet:"];
 
@@ -91,121 +92,200 @@ class CreateView extends GetView<CreateController> {
             FocusScope.of(context).requestFocus(FocusNode());
           },
           child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-              child: Form(
-                  key: _resolveFormKey,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  child: Column(children: [
-                    Row(children: [
-                      Expanded(
-                        child: TextFormField(
-                          autofocus: true,
-                          controller: _urlController,
-                          minLines: 1,
-                          maxLines: 5,
-                          decoration: InputDecoration(
-                            hintText: _hitText(),
-                            hintStyle: const TextStyle(fontSize: 12),
-                            labelText: 'downloadLink'.tr,
-                            icon: const Icon(Icons.link),
-                            suffixIcon: IconButton(
-                              onPressed: () {
-                                _urlController.clear();
-                                controller.clearFileDataUri();
-                              },
-                              icon: const Icon(Icons.clear),
-                            ),
+            padding:
+                const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+            child: Form(
+              key: _resolveFormKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                children: [
+                  Row(children: [
+                    Expanded(
+                      child: TextFormField(
+                        autofocus: true,
+                        controller: _urlController,
+                        minLines: 1,
+                        maxLines: 5,
+                        decoration: InputDecoration(
+                          hintText: _hitText(),
+                          hintStyle: const TextStyle(fontSize: 12),
+                          labelText: 'downloadLink'.tr,
+                          icon: const Icon(Icons.link),
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              _urlController.clear();
+                              controller.clearFileDataUri();
+                            },
+                            icon: const Icon(Icons.clear),
                           ),
-                          validator: (v) {
-                            return v!.trim().isNotEmpty
-                                ? null
-                                : 'downloadLinkValid'.tr;
-                          },
-                          onChanged: (v) async {
-                            controller.clearFileDataUri();
-                            if (controller.oldUrl.value.isEmpty) {
-                              recognizeMagnetUri(v);
-                            }
-                            controller.oldUrl.value = v;
-                          },
+                        ),
+                        validator: (v) {
+                          return v!.trim().isNotEmpty
+                              ? null
+                              : 'downloadLinkValid'.tr;
+                        },
+                        onChanged: (v) async {
+                          controller.clearFileDataUri();
+                          if (controller.oldUrl.value.isEmpty) {
+                            recognizeMagnetUri(v);
+                          }
+                          controller.oldUrl.value = v;
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: () async {
+                        var pr = await FilePicker.platform.pickFiles(
+                            type: FileType.custom,
+                            allowedExtensions: ["torrent"]);
+                        if (pr != null) {
+                          if (!Util.isWeb()) {
+                            _urlController.text = pr.files[0].path ?? "";
+                            return;
+                          }
+                          _urlController.text = pr.files[0].name;
+                          controller.setFileDataUri(pr.files[0].bytes!);
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.history_rounded),
+                      onPressed: () async {
+                        List<String> resultOfHistories =
+                            await _historyController.getAllHistory();
+                        // reversing: display last entered history first
+                        List<String> reverseResultOfHistories =
+                            resultOfHistories.reversed.toList();
+                        // show dialog box to list history
+                        if (context.mounted) {
+                          showGeneralDialog(
+                            barrierColor: Colors.black.withOpacity(0.5),
+                            transitionBuilder: (context, a1, a2, widget) {
+                              return Transform.scale(
+                                scale: a1.value,
+                                child: Opacity(
+                                  opacity: a1.value,
+                                  child: HistoryView(
+                                    isHistoryListEmpty:
+                                        reverseResultOfHistories.isEmpty,
+                                    historyList: ListView.builder(
+                                      itemCount: reverseResultOfHistories.length,
+                                      itemBuilder: (context, index) {
+                                        return GestureDetector(
+                                          onTap: () {
+                                            _urlController.text =
+                                                reverseResultOfHistories[index];
+                                            Navigator.pop(context);
+                                          },
+                                          child: MouseRegion(
+                                            cursor: SystemMouseCursors.click,
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 8.0,
+                                                vertical: 8.0,
+                                              ),
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 10.0,
+                                                vertical: 8.0,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .background,
+                                                borderRadius:
+                                                    BorderRadius.circular(10.0),
+                                              ),
+                                              child: Text(
+                                                reverseResultOfHistories[index]
+                                                    .toString(),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            transitionDuration:
+                                const Duration(milliseconds: 250),
+                            barrierDismissible: true,
+                            barrierLabel: '',
+                            context: context,
+                            pageBuilder: (context, animation1, animation2) {
+                              return const Text('PAGE BUILDER');
+                            },
+                          );
+                        }
+                      },
+                    ),
+                  ]
+                      //.where((e) => e != null).map((e) => e!).toList(),
+                      ),
+                  Obx(
+                    () => Visibility(
+                      visible: controller.showAdvanced.value,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 40, top: 15),
+                        child: Column(
+                          children: [
+                            TabBar(
+                              controller: controller.advancedTabController,
+                              tabs: const [
+                                Tab(
+                                  text: 'HTTP',
+                                ),
+                                Tab(
+                                  text: 'BitTorrent',
+                                )
+                              ],
+                            ),
+                            AutoScaleTabBarView(
+                              controller: controller.advancedTabController,
+                              children: [
+                                Column(
+                                  children: [
+                                    TextFormField(
+                                        controller: _httpUaController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'User-Agent',
+                                        )),
+                                    TextFormField(
+                                        controller: _httpCookieController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Cookie',
+                                        )),
+                                    TextFormField(
+                                        controller: _httpRefererController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Referer',
+                                        )),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    TextFormField(
+                                        controller: _btTrackerController,
+                                        maxLines: 5,
+                                        decoration: InputDecoration(
+                                          labelText: 'Trakers',
+                                          hintText: 'addTrackerHit'.tr,
+                                        )),
+                                  ],
+                                )
+                              ],
+                            )
+                          ],
                         ),
                       ),
-                      IconButton(
-                          icon: const Icon(Icons.folder_open),
-                          onPressed: () async {
-                            var pr = await FilePicker.platform.pickFiles(
-                                type: FileType.custom,
-                                allowedExtensions: ["torrent"]);
-                            if (pr != null) {
-                              if (!Util.isWeb()) {
-                                _urlController.text = pr.files[0].path ?? "";
-                                return;
-                              }
-                              _urlController.text = pr.files[0].name;
-                              controller.setFileDataUri(pr.files[0].bytes!);
-                            }
-                          }),
-                    ]
-                        //.where((e) => e != null).map((e) => e!).toList(),
-                        ),
-                    Obx(() => Visibility(
-                        visible: controller.showAdvanced.value,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 40, top: 15),
-                          child: Column(
-                            children: [
-                              TabBar(
-                                controller: controller.advancedTabController,
-                                tabs: const [
-                                  Tab(
-                                    text: 'HTTP',
-                                  ),
-                                  Tab(
-                                    text: 'BitTorrent',
-                                  )
-                                ],
-                              ),
-                              AutoScaleTabBarView(
-                                controller: controller.advancedTabController,
-                                children: [
-                                  Column(
-                                    children: [
-                                      TextFormField(
-                                          controller: _httpUaController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'User-Agent',
-                                          )),
-                                      TextFormField(
-                                          controller: _httpCookieController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Cookie',
-                                          )),
-                                      TextFormField(
-                                          controller: _httpRefererController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Referer',
-                                          )),
-                                    ],
-                                  ),
-                                  Column(
-                                    children: [
-                                      TextFormField(
-                                          controller: _btTrackerController,
-                                          maxLines: 5,
-                                          decoration: InputDecoration(
-                                            labelText: 'Trakers',
-                                            hintText: 'addTrackerHit'.tr,
-                                          )),
-                                    ],
-                                  )
-                                ],
-                              )
-                            ],
-                          ),
-                        ))),
-                    Center(
-                        child: Padding(
+                    ),
+                  ),
+                  Center(
+                    child: Padding(
                       padding: const EdgeInsets.only(top: 15),
                       child: Column(
                         children: [
@@ -241,8 +321,12 @@ class CreateView extends GetView<CreateController> {
                           ),
                         ],
                       ),
-                    )),
-                  ]))),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -273,9 +357,9 @@ class CreateView extends GetView<CreateController> {
         // check if is multi line urls
         final urls = Util.textToLines(_urlController.text);
         ResolveResult rr;
-        bool isMuiltiLine = false;
+        bool isMultiLine = false;
         if (urls.length > 1) {
-          isMuiltiLine = true;
+          isMultiLine = true;
           rr = ResolveResult(
               res: Resource(
                   files: urls
@@ -287,12 +371,14 @@ class CreateView extends GetView<CreateController> {
           final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
               ? controller.fileDataUri.value
               : _urlController.text;
+          // add final submitUrl to the history
+          _historyController.addHistory(submitUrl);
           rr = await resolve(Request(
             url: submitUrl,
             extra: parseReqExtra(_urlController.text),
           ));
         }
-        await _showResolveDialog(rr, isMuiltiLine);
+        await _showResolveDialog(rr, isMultiLine);
       }
     } catch (e) {
       showErrorMessage(e);
