@@ -73,7 +73,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
   ffigen: ^8.0.2
-  # build json model: flutter pub run build_runner build --delete-conflicting-outputs
+  # build json model: dart run build_runner build --delete-conflicting-outputs
   build_runner: ^2.2.1
   json_serializable: ^6.3.2
   flutter_launcher_icons: ^0.13.1

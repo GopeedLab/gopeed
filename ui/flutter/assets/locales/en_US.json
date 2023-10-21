@@ -65,6 +65,9 @@
   "extensionInstallSuccess": "Installed successfully",
   "extensionUpdateSuccess": "Updated successfully",
   "extensionDelete": "Delete Extension",
-  "extensionAlreadyLatest": "It's already the latest version"
+  "extensionAlreadyLatest": "It's already the latest version",
+  "history": "History",
+  "clearHistory": "Clear History",
+  "noHistoryFound": "No History Found"
 }
 
