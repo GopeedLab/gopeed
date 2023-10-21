@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:open_file/open_file.dart';
+import 'package:path/path.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../util/file_icon.dart';
@@ -52,13 +53,17 @@ class TaskFilesView extends GetView<TaskFilesController> {
                   itemBuilder: (context, index) {
                     final meta = controller.task.value!.meta;
                     final file = fileList[index];
-                    final filePath = Util.safePathJoin(
-                        [meta.opts.path, meta.res!.name, file.fullPath]);
+                    final filePath = Util.safePathJoin([
+                      meta.opts.path,
+                      meta.res!.name,
+                      file.filePath(meta.opts.name)
+                    ]);
+                    final fileName = basename(filePath);
                     return ListTile(
                       leading: file.isDirectory
                           ? const Icon(Icons.folder)
                           : Icon(FaIcons.allIcons[findIcon(file.name)]),
-                      title: Text(fileList[index].name),
+                      title: Text(fileName),
                       subtitle: file.isDirectory
                           ? Text('items'.trParams({
                               'count': controller

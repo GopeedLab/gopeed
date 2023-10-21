@@ -12,6 +12,12 @@ class FileItem {
   FileItem(this.isDirectory, this.path, this.name, this.size);
 
   String get fullPath => "${path == "/" ? path : "$path/"}$name";
+
+  String filePath(String optName) {
+    return optName.isEmpty
+        ? fullPath
+        : "${path == "/" ? path : "$path/"}$optName";
+  }
 }
 
 class TaskFilesController extends GetxController {
