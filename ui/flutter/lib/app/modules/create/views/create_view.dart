@@ -4,11 +4,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/model/history_data.dart';
 import 'package:gopeed/app/modules/history/controller/history_controller.dart';
 import 'package:gopeed/app/modules/history/views/history_view.dart';
 import 'package:path/path.dart' as path;
-
 import 'package:rounded_loading_button/rounded_loading_button.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
@@ -154,8 +152,11 @@ class CreateView extends GetView<CreateController> {
                     IconButton(
                       icon: const Icon(Icons.history_rounded),
                       onPressed: () async {
-                        List<HistoryData> resultOfHistories =
+                        List<String> resultOfHistories =
                             await _historyController.getAllHistory();
+                        // reversing: display last entered history first
+                        List<String> reverseResultOfHistories =
+                            resultOfHistories.reversed.toList();
                         // show dialog box to list history
                         if (context.mounted) {
                           showGeneralDialog(
@@ -167,14 +168,14 @@ class CreateView extends GetView<CreateController> {
                                   opacity: a1.value,
                                   child: HistoryView(
                                     isHistoryListEmpty:
-                                        resultOfHistories.isEmpty,
+                                        reverseResultOfHistories.isEmpty,
                                     historyList: ListView.builder(
-                                      itemCount: resultOfHistories.length,
+                                      itemCount: reverseResultOfHistories.length,
                                       itemBuilder: (context, index) {
                                         return GestureDetector(
                                           onTap: () {
                                             _urlController.text =
-                                                resultOfHistories[index].text!;
+                                                reverseResultOfHistories[index];
                                             Navigator.pop(context);
                                           },
                                           child: MouseRegion(
@@ -198,8 +199,7 @@ class CreateView extends GetView<CreateController> {
                                                     BorderRadius.circular(10.0),
                                               ),
                                               child: Text(
-                                                resultOfHistories[index]
-                                                    .text
+                                                reverseResultOfHistories[index]
                                                     .toString(),
                                               ),
                                             ),
@@ -372,9 +372,7 @@ class CreateView extends GetView<CreateController> {
               ? controller.fileDataUri.value
               : _urlController.text;
           // add final submitUrl to the history
-          HistoryData history = HistoryData();
-          history.text = submitUrl;
-          _historyController.addHistory(history);
+          _historyController.addHistory(submitUrl);
           rr = await resolve(Request(
             url: submitUrl,
             extra: parseReqExtra(_urlController.text),

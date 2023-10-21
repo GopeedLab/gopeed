@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:gopeed/app/modules/history/controller/history_controller.dart';
 
 class HistoryView extends StatefulWidget {
   const HistoryView({
@@ -51,16 +53,31 @@ class _HistoryViewState extends State<HistoryView> {
                         ),
                         const SizedBox(width: 8.0),
                         Text(
-                          "History",
+                          'history'.tr,
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                       ],
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close_rounded,
-                      ),
+                    Row(
+                      children: <Widget>[
+                        IconButton(
+                          onPressed: () {
+                            HistoryController _controller = HistoryController();
+                            _controller.clearHistory();
+                            Navigator.pop(context);
+                          },
+                          tooltip: "clearHistory".tr,
+                          icon: const Icon(
+                            Icons.history_toggle_off_rounded,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -70,15 +87,13 @@ class _HistoryViewState extends State<HistoryView> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: widget.isHistoryListEmpty
-                        ? const <Widget>[
-                            Icon(
+                        ? <Widget>[
+                            const Icon(
                               Icons.manage_history_rounded,
                             ),
-                            SizedBox(
-                              height: 10.0,
-                            ),
+                            const SizedBox(height: 10.0),
                             Text(
-                              "No History Found",
+                              'noHistoryFound'.tr,
                             ),
                           ]
                         : <Widget>[

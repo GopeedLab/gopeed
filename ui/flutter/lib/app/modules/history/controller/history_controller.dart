@@ -1,31 +1,26 @@
-import 'package:gopeed/api/model/history_data.dart';
-import 'package:isar/isar.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HistoryController {
-  Future<List<HistoryData>> getAllHistory() async {
-    final dir = await getApplicationDocumentsDirectory();
-
-    final isar = await Isar.open(
-      [HistoryDataSchema],
-      directory: dir.path,
-    );
-    List<HistoryData> data = await isar.historyDatas.where().findAll();
-    await isar.close();
-    return data;
+  // Get History in List<String>
+  Future<List<String>> getAllHistory() async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    List<String>? historyList = preferences.getStringList('history');
+    if(historyList == null) {
+      return [];
+    }
+    return historyList;
   }
 
-  void addHistory(HistoryData data) async {
-    final dir = await getApplicationDocumentsDirectory();
+  // Get Existing History & Add New History
+  void addHistory(String historyText) async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    List<String> existingHistoryData = await getAllHistory();
+    existingHistoryData.add(historyText);
+    preferences.setStringList('history', existingHistoryData);
+  }
 
-    final isar = await Isar.open(
-      [HistoryDataSchema],
-      directory: dir.path,
-    );
-
-    await isar.writeTxn(() async {
-      await isar.historyDatas.put(data);
-    });
-    await isar.close();
+  void clearHistory() async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    preferences.remove('history');
   }
 }

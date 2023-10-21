@@ -62,8 +62,6 @@ dependencies:
   open_file: ^3.3.2
   flutter_form_builder: ^9.1.1
   form_builder_validators: ^9.0.0
-  isar: ^3.1.0+1
-  isar_flutter_libs: ^3.1.0+1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -79,7 +77,6 @@ dev_dependencies:
   build_runner: ^2.2.1
   json_serializable: ^6.3.2
   flutter_launcher_icons: ^0.13.1
-  isar_generator: ^3.1.0+1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
