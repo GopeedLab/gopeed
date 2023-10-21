@@ -256,9 +256,32 @@ class ExtensionView extends GetView<ExtensionController> {
                       Expanded(
                         child: SingleChildScrollView(
                           child: Column(
-                              children: extension.settings!
-                                  .map((e) => _buildSettingItem(e))
-                                  .toList()),
+                              children: extension.settings!.map((e) {
+                            final settingItem = _buildSettingItem(e);
+
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                SizedBox(
+                                        width: 20,
+                                        child: e.description.isEmpty
+                                            ? null
+                                            : Tooltip(
+                                                message: e.description,
+                                                child: const CircleAvatar(
+                                                    radius: 10,
+                                                    backgroundColor:
+                                                        Colors.grey,
+                                                    child: Icon(
+                                                      Icons.question_mark,
+                                                      size: 10,
+                                                    )),
+                                              ))
+                                    .paddingOnly(right: 10),
+                                Expanded(child: settingItem),
+                              ],
+                            );
+                          }).toList()),
                         ),
                       ),
                     ]),
@@ -324,8 +347,7 @@ class ExtensionView extends GetView<ExtensionController> {
         FormFieldValidator<String>? validator, TextInputType? keyBoardType) {
       return FormBuilderTextField(
         name: setting.name,
-        decoration: InputDecoration(
-            labelText: setting.title, hintText: setting.description),
+        decoration: InputDecoration(labelText: setting.title),
         initialValue: setting.value?.toString(),
         inputFormatters: inputFormatter != null ? [inputFormatter] : null,
         keyboardType: keyBoardType,
@@ -340,7 +362,8 @@ class ExtensionView extends GetView<ExtensionController> {
       return FormBuilderDropdown<String>(
         name: setting.name,
         decoration: InputDecoration(
-            labelText: setting.title, hintText: setting.description),
+          labelText: setting.title,
+        ),
         initialValue: setting.value?.toString(),
         validator: FormBuilderValidators.compose([
           requiredValidator,
