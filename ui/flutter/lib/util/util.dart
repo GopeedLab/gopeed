@@ -94,6 +94,10 @@ class Util {
     return !kIsWeb && Platform.isMacOS;
   }
 
+  static isLinux() {
+    return !kIsWeb && Platform.isLinux;
+  }
+
   static isWeb() {
     return kIsWeb;
   }

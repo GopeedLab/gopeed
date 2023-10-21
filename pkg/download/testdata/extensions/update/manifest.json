@@ -1,13 +1,13 @@
 {
-  "name": "github-release",
+  "name": "extension-test",
   "author": "gopeed",
-  "title": "Github Release",
-  "description": "Download github release assets",
+  "title": "Gopeed Extension Test",
+  "description": "Test extension settings and upgrade",
   "version": "0.0.1",
   "homepage": "https://gopeed.com",
   "repository": {
     "url": "https://github.com/GopeedLab/gopeed-extension-samples",
-    "directory": "github-release-sample"
+    "directory": "extension-test"
   },
   "scripts": [
     {
@@ -18,6 +18,30 @@
         ]
       },
       "entry": "index.js"
+    }
+  ],
+  "settings": [
+    {
+      "name": "s1",
+      "title": "S1 old",
+      "description": "Test setting update",
+      "type": "string",
+      "required": true
+    },
+    {
+      "name": "s2",
+      "title": "s2 number old",
+      "description": "Test setting type update",
+      "type": "number",
+      "required": true,
+      "value": 1
+    },
+    {
+      "name": "d1",
+      "title": "Delete test",
+      "description": "Test setting delete",
+      "type": "string",
+      "required": true
     }
   ]
 }
