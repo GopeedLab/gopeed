@@ -95,6 +95,15 @@ func TestDownloader_InstallExtensionByGitFull(t *testing.T) {
 }
 
 func TestDownloader_UpgradeExtension(t *testing.T) {
+	getSetting := func(settings []*Setting, name string) *Setting {
+		for _, setting := range settings {
+			if setting.Name == name {
+				return setting
+			}
+		}
+		return nil
+	}
+
 	setupDownloader(func(downloader *Downloader) {
 		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/update", false)
 		if err != nil {
@@ -122,14 +131,35 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 			t.Fatal("extension update fail")
 		}
 
+		// check setting update
+		s1 := getSetting(upgradeExt.Settings, "s1")
+		if s1.Title == "S1 old" {
+			t.Fatal("setting update fail")
+		}
+		// check setting type update
+		s2 := getSetting(upgradeExt.Settings, "s2")
+		if s2.Type == "number" {
+			t.Fatal("setting type update fail")
+		}
+		// check setting remove
+		d1 := getSetting(upgradeExt.Settings, "d1")
+		if d1 != nil {
+			t.Fatal("setting remove fail")
+		}
+		// check setting add
+		s3 := getSetting(upgradeExt.Settings, "s3")
+		if s3 == nil {
+			t.Fatal("setting add fail")
+		}
+
 		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://github.com/GopeedLab/gopeed/releases",
+			URL: "https://test.com",
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(rr.Res.Files) == 1 {
-			t.Fatal("resolve error")
+		if rr.Res.Name != "test" {
+			t.Fatal("script update fail")
 		}
 	})
 }
