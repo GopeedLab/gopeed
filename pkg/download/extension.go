@@ -422,8 +422,50 @@ func (e *Extension) update(newExt *Extension) error {
 	e.Homepage = newExt.Homepage
 	e.Repository = newExt.Repository
 	e.Scripts = newExt.Scripts
-	// don't override settings
-	//e.Settings = newExt.Settings
+	// merge settings
+	// if new setting not exist in old settings, append it
+	for _, newSetting := range newExt.Settings {
+		var exist bool
+		for _, setting := range e.Settings {
+			if setting.Name == newSetting.Name {
+				exist = true
+				break
+			}
+		}
+		if !exist {
+			e.Settings = append(e.Settings, newSetting)
+		}
+	}
+	// if old setting not exist in new settings, remove it
+	for i := 0; i < len(e.Settings); i++ {
+		var exist bool
+		for _, setting := range newExt.Settings {
+			if setting.Name == e.Settings[i].Name {
+				exist = true
+				break
+			}
+		}
+		if !exist {
+			e.Settings = append(e.Settings[:i], e.Settings[i+1:]...)
+			i--
+		}
+	}
+	// if new setting exist in old settings, update it
+	for _, newSetting := range newExt.Settings {
+		for _, setting := range e.Settings {
+			if setting.Name == newSetting.Name {
+				setting.Title = newSetting.Title
+				setting.Description = newSetting.Description
+				setting.Options = newSetting.Options
+				// if type changed, reset value
+				if setting.Type != newSetting.Type {
+					setting.Type = newSetting.Type
+					setting.Value = newSetting.Value
+				}
+				break
+			}
+		}
+	}
 	e.UpdatedAt = time.Now()
 	return nil
 }
