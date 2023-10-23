@@ -160,7 +160,10 @@ class ExtensionView extends GetView<ExtensionController> {
                                       ];
                                       if (extension.devMode) {
                                         list.add(const SizedBox(width: 8));
-                                        list.add(buildChip('dev'));
+                                        list.add(buildChip(
+                                          'dev',
+                                          bgColor: Colors.blue.shade300,
+                                        ));
                                       }
                                       return list;
                                     }(),
@@ -243,9 +246,10 @@ class ExtensionView extends GetView<ExtensionController> {
     );
   }
 
-  Widget buildChip(String text) {
+  Widget buildChip(String text, {Color? bgColor}) {
     return Chip(
       padding: const EdgeInsets.all(0),
+      backgroundColor: bgColor,
       label: Text(text, style: const TextStyle(fontSize: 12)),
     );
   }

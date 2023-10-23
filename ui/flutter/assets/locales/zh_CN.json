@@ -65,5 +65,8 @@
   "extensionInstallSuccess": "安装成功",
   "extensionUpdateSuccess": "更新成功",
   "extensionDelete": "删除扩展",
-  "extensionAlreadyLatest": "已经是最新版本"
+  "extensionAlreadyLatest": "已经是最新版本",
+  "history": "历史记录",
+  "clearHistory": "清空历史记录",
+  "noHistoryFound": "暂无历史记录"
 }
