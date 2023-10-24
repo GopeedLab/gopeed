@@ -352,7 +352,7 @@ func (d *Downloader) Continue(id string) (err error) {
 		}
 	}()
 
-	go func() {
+	func() {
 		task.lock.Lock()
 		defer task.lock.Unlock()
 
@@ -360,7 +360,9 @@ func (d *Downloader) Continue(id string) (err error) {
 			return
 		}
 
-		d.doStart(task)
+		if err = d.doStart(task); err != nil {
+			return
+		}
 	}()
 	return
 }
@@ -391,13 +393,18 @@ func (d *Downloader) ContinueAll() (err error) {
 		}
 	}()
 
-	go func() {
-		for _, task := range continuedTasks {
-			if err = d.doStart(task); err != nil {
-				d.Logger.Error().Stack().Err(err).Msgf("continue task failed: %s", task.ID)
-			}
+	for _, task := range continuedTasks {
+		tt := task
+		err = func() error {
+			tt.lock.Lock()
+			defer tt.lock.Unlock()
+
+			return d.doStart(tt)
+		}()
+		if err != nil {
+			return
 		}
-	}()
+	}
 
 	return
 }
@@ -659,7 +666,7 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 			return
 		}
 
-		go d.doStart(task)
+		d.doStart(task)
 	}()
 
 	go d.watch(task)
@@ -676,17 +683,21 @@ func (d *Downloader) doPauseAll() (err error) {
 }
 
 func (d *Downloader) doStart(task *Task) (err error) {
-	err = func() error {
-		if task.Status != base.DownloadStatusRunning && task.Status != base.DownloadStatusDone {
-			err := d.restoreFetcher(task)
-			if err != nil {
-				return err
-			}
+	if task.Status != base.DownloadStatusRunning && task.Status != base.DownloadStatusDone {
+		err := d.restoreFetcher(task)
+		if err != nil {
+			d.Logger.Error().Stack().Err(err).Msgf("restore fetcher failed, task id: %s", task.ID)
+			return err
 		}
+	}
 
-		cloneTask := task.clone()
-		isCreate := task.Status == base.DownloadStatusReady
-		task.Status = base.DownloadStatusRunning
+	cloneTask := task.clone()
+	isCreate := task.Status == base.DownloadStatusReady
+	task.Status = base.DownloadStatusRunning
+
+	doStart := func() error {
+		task.lock.Lock()
+		defer task.lock.Unlock()
 
 		req := d.triggerOnStart(cloneTask)
 		if req != nil {
@@ -702,12 +713,6 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				return err
 			}
 			task.Meta.Res = task.fetcher.Meta().Res
-			isCreate = true
-		}
-
-		// task may be paused before start
-		if task.Status != base.DownloadStatusRunning {
-			return nil
 		}
 
 		if isCreate {
@@ -741,10 +746,13 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		}
 		d.emit(EventKeyStart, task)
 		return nil
-	}()
-	if err != nil {
-		d.Logger.Error().Stack().Err(err).Msgf("start task failed, task id: %s", task.ID)
 	}
+	go func() {
+		err := doStart()
+		if err != nil {
+			d.Logger.Error().Stack().Err(err).Msgf("start task failed, task id: %s", task.ID)
+		}
+	}()
 
 	return
 }
