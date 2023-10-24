@@ -222,6 +222,9 @@ func (b *BoltStorage) Pop(bucket string, key string, v any) error {
 	if err != nil {
 		return err
 	}
+	if len(data) == 0 {
+		return nil
+	}
 	return json.Unmarshal(data, v)
 }
 

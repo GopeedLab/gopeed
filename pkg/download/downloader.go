@@ -2,7 +2,6 @@ package download
 
 import (
 	"errors"
-	"fmt"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
@@ -10,7 +9,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/virtuald/go-paniclog"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -252,110 +250,21 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	return
 }
 
-type dispatchAction int
+func (d *Downloader) notifyRunning() {
+	go func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
 
-const (
-	dispatchActionCreate dispatchAction = iota
-	dispatchActionPause
-	dispatchActionContinue
-	dispatchActionDelete
-)
-
-func (d *Downloader) sync(fn func() error) error {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
-	return fn()
-}
-
-func (d *Downloader) dispatch(task *Task, action dispatchAction, cb func(task *Task)) {
-	switch action {
-	case dispatchActionCreate:
-		func() {
-			d.lock.Lock()
-			defer d.lock.Unlock()
-
-			d.tasks = append(d.tasks, task)
-			remainRunningCount := d.remainRunningCount()
-			if remainRunningCount == 0 {
-				task.Status = base.DownloadStatusWait
-				d.waitTasks = append(d.waitTasks, task)
-				return
-			}
-
-			fmt.Println("create task 111")
-
-			go func() {
-				d.lock.Lock()
-				defer d.lock.Unlock()
-
-				cb(task)
-
-				fmt.Println("create task 222")
-			}()
-		}()
-		break
-	case dispatchActionPause:
-		go func() {
-			d.lock.Lock()
-			defer d.lock.Unlock()
-
-			cb(task)
-			d.dequeue()
-		}()
-		break
-	case dispatchActionContinue:
-		go func() {
-			d.lock.Lock()
-			defer d.lock.Unlock()
-
-			remainRunningCount := d.remainRunningCount()
-			if remainRunningCount == 0 {
-				for _, t := range d.tasks {
-					if t != task && t.Status == base.DownloadStatusRunning {
-						d.doPause(t)
-						t.Status = base.DownloadStatusWait
-						d.waitTasks = append(d.waitTasks, t)
-					}
-				}
-			}
-			cb(task)
-		}()
-		break
-	case dispatchActionDelete:
-		func() {
-			d.lock.Lock()
-			defer d.lock.Unlock()
-
-			for i, t := range d.tasks {
-				if t.ID == task.ID {
-					d.tasks = append(d.tasks[:i], d.tasks[i+1:]...)
-					break
-				}
-			}
-
-			go func() {
-				d.lock.Lock()
-				defer d.lock.Unlock()
-
-				cb(task)
-				d.dequeue()
-			}()
-		}()
-		break
-	}
-}
-
-func (d *Downloader) dequeue() {
-	remainRunningCount := d.remainRunningCount()
-	if remainRunningCount == 0 {
-		return
-	}
-	if len(d.waitTasks) > 0 {
-		wt := d.waitTasks[0]
-		d.waitTasks = d.waitTasks[1:]
-		d.doStart(wt)
-	}
+		remainRunningCount := d.remainRunningCount()
+		if remainRunningCount == 0 {
+			return
+		}
+		if len(d.waitTasks) > 0 {
+			wt := d.waitTasks[0]
+			d.waitTasks = d.waitTasks[1:]
+			d.doStart(wt)
+		}
+	}()
 }
 
 func (d *Downloader) remainRunningCount() int {
@@ -401,13 +310,20 @@ func (d *Downloader) Pause(id string) (err error) {
 	if task == nil {
 		return ErrTaskNotFound
 	}
-	if task.Status == base.DownloadStatusPause {
-		return
-	}
-	task.Status = base.DownloadStatusPause
-	d.dispatch(task, dispatchActionPause, func(task *Task) {
-		d.doPause(task)
-	})
+
+	func() {
+		task.lock.Lock()
+		defer task.lock.Unlock()
+
+		if task.Status == base.DownloadStatusPause {
+			return
+		}
+		err = d.doPause(task)
+		if err != nil {
+			return
+		}
+		d.notifyRunning()
+	}()
 	return
 }
 
@@ -416,13 +332,36 @@ func (d *Downloader) Continue(id string) (err error) {
 	if task == nil {
 		return ErrTaskNotFound
 	}
-	if task.Status == base.DownloadStatusRunning {
-		return
-	}
-	task.Status = base.DownloadStatusRunning
-	d.dispatch(task, dispatchActionContinue, func(task *Task) {
-		d.doContinue(task)
-	})
+
+	func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+
+		remainRunningCount := d.remainRunningCount()
+		if remainRunningCount == 0 {
+			for _, t := range d.tasks {
+				if t.Status == base.DownloadStatusRunning {
+					if err = d.doPause(t); err != nil {
+						return
+					}
+					t.Status = base.DownloadStatusWait
+					d.waitTasks = append(d.waitTasks, t)
+					break
+				}
+			}
+		}
+	}()
+
+	go func() {
+		task.lock.Lock()
+		defer task.lock.Unlock()
+
+		if task.Status == base.DownloadStatusRunning {
+			return
+		}
+
+		d.doStart(task)
+	}()
 	return
 }
 
@@ -433,24 +372,33 @@ func (d *Downloader) PauseAll() (err error) {
 }
 
 func (d *Downloader) ContinueAll() (err error) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	runningCount := 0
-	continueTasks := make([]*Task, 0)
-	for _, task := range d.tasks {
-		if task.Status == base.DownloadStatusRunning {
-			runningCount++
-		} else if task.Status != base.DownloadStatusDone {
-			continueTasks = append(continueTasks, task)
+	continuedTasks := make([]*Task, 0)
+
+	func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+		// calculate how many tasks can be continued, can't exceed maxRunning
+		remainCount := d.remainRunningCount()
+		for _, task := range d.tasks {
+			if task.Status != base.DownloadStatusRunning && task.Status != base.DownloadStatusDone {
+				if len(continuedTasks) < remainCount {
+					continuedTasks = append(continuedTasks, task)
+				} else {
+					task.Status = base.DownloadStatusWait
+					d.waitTasks = append(d.waitTasks, task)
+				}
+			}
 		}
-	}
-	// calculate how many tasks can be continued, can't exceed maxRunning
-	continueCount := int(math.Min(float64(d.cfg.MaxRunning-runningCount), float64(len(continueTasks))))
-	for i := 0; i < continueCount; i++ {
-		if err = d.doContinue(continueTasks[i]); err != nil {
-			return
+	}()
+
+	go func() {
+		for _, task := range continuedTasks {
+			if err = d.doStart(task); err != nil {
+				d.Logger.Error().Stack().Err(err).Msgf("continue task failed: %s", task.ID)
+			}
 		}
-	}
+	}()
+
 	return
 }
 
@@ -459,9 +407,23 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 	if task == nil {
 		return ErrTaskNotFound
 	}
-	d.dispatch(task, dispatchActionDelete, func(task *Task) {
-		d.doDelete(task, force)
-	})
+
+	func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+
+		for i, t := range d.tasks {
+			if t.ID == id {
+				d.tasks = append(d.tasks[:i], d.tasks[i+1:]...)
+			}
+		}
+	}()
+
+	err = d.doDelete(task, force)
+	if err != nil {
+		return
+	}
+	d.notifyRunning()
 	return
 }
 
@@ -609,7 +571,7 @@ func (d *Downloader) watch(task *Task) {
 		d.emit(EventKeyDone, task)
 		d.emit(EventKeyFinally, task, err)
 	}
-	d.dequeue()
+	d.notifyRunning()
 }
 
 func (d *Downloader) restoreFetcher(task *Task) error {
@@ -637,6 +599,12 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 			task.fetcher = fb.Build()
 		}
 		d.setupFetcher(task.fetcher)
+		if task.fetcher.Meta().Req == nil {
+			task.fetcher.Meta().Req = task.Meta.Req
+		}
+		if task.fetcher.Meta().Res == nil {
+			task.fetcher.Meta().Res = task.Meta.Res
+		}
 		go d.watch(task)
 	}
 	task.fetcher.Create(task.Meta.Opts)
@@ -678,11 +646,23 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	}
 	taskId = task.ID
 
-	go d.watch(task)
-	d.sync(func() error {
+	func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+
 		d.tasks = append(d.tasks, task)
-		d.doStart()
-	})
+
+		remainRunningCount := d.remainRunningCount()
+		if remainRunningCount == 0 {
+			task.Status = base.DownloadStatusWait
+			d.waitTasks = append(d.waitTasks, task)
+			return
+		}
+
+		go d.doStart(task)
+	}()
+
+	go d.watch(task)
 	return
 }
 
@@ -696,11 +676,24 @@ func (d *Downloader) doPauseAll() (err error) {
 }
 
 func (d *Downloader) doStart(task *Task) (err error) {
-	d.triggerOnStart(task)
-
 	err = func() error {
+		if task.Status != base.DownloadStatusRunning && task.Status != base.DownloadStatusDone {
+			err := d.restoreFetcher(task)
+			if err != nil {
+				return err
+			}
+		}
+
+		cloneTask := task.clone()
 		isCreate := task.Status == base.DownloadStatusReady
 		task.Status = base.DownloadStatusRunning
+
+		req := d.triggerOnStart(cloneTask)
+		if req != nil {
+			task.Meta.Req = req
+			task.fetcher.Meta().Req = req
+		}
+
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req)
 			if err != nil {
@@ -708,7 +701,13 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				d.emit(EventKeyError, task, err)
 				return err
 			}
+			task.Meta.Res = task.fetcher.Meta().Res
 			isCreate = true
+		}
+
+		// task may be paused before start
+		if task.Status != base.DownloadStatusRunning {
+			return nil
 		}
 
 		if isCreate {
@@ -755,8 +754,10 @@ func (d *Downloader) doPause(task *Task) (err error) {
 		if task.Status != base.DownloadStatusDone {
 			task.Status = base.DownloadStatusPause
 			task.timer.Pause()
-			if err := task.fetcher.Pause(); err != nil {
-				return err
+			if task.fetcher != nil {
+				if err := task.fetcher.Pause(); err != nil {
+					return err
+				}
 			}
 			if err := d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
 				return err
@@ -770,26 +771,6 @@ func (d *Downloader) doPause(task *Task) (err error) {
 		return
 	}
 
-	return
-}
-
-func (d *Downloader) doContinue(task *Task) (err error) {
-	err = func() error {
-		if task.Status != base.DownloadStatusRunning && task.Status != base.DownloadStatusDone {
-			err := d.restoreFetcher(task)
-			if err != nil {
-				return err
-			}
-		}
-		if err := d.doStart(task); err != nil {
-			return err
-		}
-		return nil
-	}()
-	if err != nil {
-		d.Logger.Error().Stack().Err(err).Msgf("continue task failed, task id: %s", task.ID)
-		return
-	}
 	return
 }
 
