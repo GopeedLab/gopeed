@@ -516,7 +516,7 @@ func doTest(handler func()) {
 		handler()
 	}
 	testFunc(model.StorageMem)
-	//testFunc(model.StorageBolt)
+	testFunc(model.StorageBolt)
 }
 
 func doStart(cfg *model.StartConfig) net.Listener {
