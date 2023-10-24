@@ -368,9 +368,27 @@ func (d *Downloader) Continue(id string) (err error) {
 }
 
 func (d *Downloader) PauseAll() (err error) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	return d.doPauseAll()
+	func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+
+		// Clear wait tasks
+		d.waitTasks = d.waitTasks[:0]
+	}()
+
+	for _, task := range d.tasks {
+		err = func() error {
+			task.lock.Lock()
+			defer task.lock.Unlock()
+
+			return d.doPause(task)
+		}()
+		if err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 func (d *Downloader) ContinueAll() (err error) {
@@ -470,10 +488,8 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 }
 
 func (d *Downloader) Close() error {
-	d.lock.Lock()
-	defer d.lock.Unlock()
 	d.closed.Store(true)
-	if err := d.doPauseAll(); err != nil {
+	if err := d.PauseAll(); err != nil {
 		return err
 	}
 	return d.storage.Close()
@@ -670,15 +686,6 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	}()
 
 	go d.watch(task)
-	return
-}
-
-func (d *Downloader) doPauseAll() (err error) {
-	for _, task := range d.tasks {
-		if err = d.doPause(task); err != nil {
-			return
-		}
-	}
 	return
 }
 
