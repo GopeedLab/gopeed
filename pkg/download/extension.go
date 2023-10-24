@@ -251,12 +251,12 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	return
 }
 
-func (d *Downloader) triggerOnStart(task *Task) {
+func (d *Downloader) triggerOnStart(task *Task) (req *base.Request) {
 	doTrigger(d,
 		EventOnStart,
 		task.Meta.Req,
 		&OnStartContext{
-			Task: task.clone(),
+			Task: task,
 		},
 		func(ext *Extension, gopeed *Instance, ctx *OnStartContext) {
 			// Validate request structure
@@ -265,8 +265,7 @@ func (d *Downloader) triggerOnStart(task *Task) {
 					gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] request invalid", ext.buildIdentity())
 					return
 				}
-				// Modify real task request
-				task.Meta.Req = ctx.Task.Meta.Req
+				req = ctx.Task.Meta.Req
 			}
 		},
 	)

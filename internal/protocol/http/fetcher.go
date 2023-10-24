@@ -314,6 +314,10 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 			return nil
 		}()
 		if err != nil {
+			// If canceled, do not retry
+			if errors.Is(err, context.Canceled) {
+				return
+			}
 			// retry request after 1 second
 			chunk.retryTimes = chunk.retryTimes + 1
 			time.Sleep(time.Second)
@@ -466,9 +470,7 @@ func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		fetcher.meta = meta
 		base.ParseReqExtra[fhttp.ReqExtra](fetcher.meta.Req)
 		base.ParseOptsExtra[fhttp.OptsExtra](fetcher.meta.Opts)
-		if len(fd.Chunks) == 0 {
-			fetcher.chunks = fetcher.splitChunk()
-		} else {
+		if len(fd.Chunks) > 0 {
 			fetcher.chunks = fd.Chunks
 		}
 		return fetcher
