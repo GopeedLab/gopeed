@@ -36,7 +36,31 @@ class ExtensionView extends GetView<ExtensionController> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  launchUrl(
+                      Uri.parse(
+                          'https://github.com/search?q=topic%3Agopeed-extension&type=repositories'),
+                      mode: LaunchMode.externalApplication);
+                },
+                icon: const Icon(Icons.search),
+                label: Text('extensionFind'.tr),
+              ),
+              const SizedBox(width: 16),
+              TextButton.icon(
+                onPressed: () {
+                  launchUrl(
+                      Uri.parse('https://docs.gopeed.com/dev-extension.html'),
+                      mode: LaunchMode.externalApplication);
+                },
+                icon: const Icon(Icons.edit),
+                label: Text('extensionDevelop'.tr),
+              ),
+            ],
+          ),
           Obx(() => Row(
                 children: [
                   Expanded(
@@ -90,7 +114,7 @@ class ExtensionView extends GetView<ExtensionController> {
                       : Container()
                 ],
               )),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           Expanded(
               child: Obx(() => ListView.builder(
                     itemCount: controller.extensions.length,

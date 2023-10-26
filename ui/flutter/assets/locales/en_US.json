@@ -66,6 +66,8 @@
   "extensionUpdateSuccess": "Updated successfully",
   "extensionDelete": "Delete Extension",
   "extensionAlreadyLatest": "It's already the latest version",
+  "extensionFind": "Find Extensions",
+  "extensionDevelop": "Develop Extensions",
   "history": "History",
   "clearHistory": "Clear History",
   "noHistoryFound": "No History Found"
