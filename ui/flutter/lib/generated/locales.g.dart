@@ -82,6 +82,8 @@ class LocaleKeys {
   static const extensionUpdateSuccess = 'extensionUpdateSuccess';
   static const extensionDelete = 'extensionDelete';
   static const extensionAlreadyLatest = 'extensionAlreadyLatest';
+  static const extensionFind = 'extensionFind';
+  static const extensionDevelop = 'extensionDevelop';
   static const history = 'history';
   static const clearHistory = 'clearHistory';
   static const noHistoryFound = 'noHistoryFound';
@@ -158,6 +160,8 @@ class Locales {
     'extensionUpdateSuccess': 'Updated successfully',
     'extensionDelete': 'Delete Extension',
     'extensionAlreadyLatest': 'It\'s already the latest version',
+    'extensionFind': 'Find Extensions',
+    'extensionDevelop': 'Develop Extensions',
     'history': 'History',
     'clearHistory': 'Clear History',
     'noHistoryFound': 'No History Found',
@@ -413,9 +417,11 @@ class Locales {
     'extensionUpdateSuccess': '更新成功',
     'extensionDelete': '删除扩展',
     'extensionAlreadyLatest': '已经是最新版本',
+    'extensionFind': '获取扩展',
+    'extensionDevelop': '开发扩展',
     'history': '历史记录',
     'clearHistory': '清空历史记录',
-    'noHistoryFound': '没有历史记录',
+    'noHistoryFound': '暂无历史记录',
   };
   static const zh_TW = {
     'label': '中文 (正體) ',
