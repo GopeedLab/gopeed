@@ -217,13 +217,16 @@ jobs:
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
           flutter build linux
+          mkdir -p build/dist
+          
+          # Build deb package
           mkdir -p debian/gui
           cp assets/icon/icon_1024.png debian/gui/gopeed.png
           cat>debian/debian.yaml<<EOF
           flutter_app:
             command: gopeed
             arch: x64
-            parent: /usr/local/lib
+            parent: /usr/local/bin
           control:
             Package: gopeed
             Version: ${VERSION:1}
@@ -249,12 +252,73 @@ jobs:
 
           dart pub global activate flutter_to_debian
           flutter_to_debian
-          mv debian/packages/gopeed*.deb debian/packages/Gopeed-$VERSION-linux-amd64.deb
+          mv debian/packages/gopeed*.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
+          
+          
+          # Build AppImage
+          mkdir AppDir
+          cp -r build/linux/x64/release/bundle/* AppDir
+          mkdir -p AppDir/usr/share/icons
+          cp assets/icon/icon_1024.png AppDir/usr/share/icons/gopeed.png
+          cat>AppImageBuilder.yml<<EOF
+          version: 1
+          AppDir:
+            path: ${PWD}/AppDir
+            app_info:
+              id: com.gopeed
+              name: Gopeed
+              icon: gopeed.png
+              version: ${VERSION:1}
+              exec: gopeed
+              exec_args: \$@
+            apt:
+              arch: amd64
+              allow_unauthenticated: true
+              sources:
+                - sourceline: deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted
+                    universe multiverse
+                - sourceline: deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main
+                    restricted universe multiverse
+                - sourceline: deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports
+                    main restricted universe multiverse
+                - sourceline: deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted
+                    universe multiverse
+              include: []
+            files:
+              include: []
+              exclude:
+                - usr/share/man
+                - usr/share/doc/*/README.*
+                - usr/share/doc/*/changelog.*
+                - usr/share/doc/*/NEWS.*
+                - usr/share/doc/*/TODO.*
+            test:
+              fedora-30:
+                image: appimagecrafters/tests-env:fedora-30
+                command: ./AppRun
+              debian-stable:
+                image: appimagecrafters/tests-env:debian-stable
+                command: ./AppRun
+              archlinux-latest:
+                image: appimagecrafters/tests-env:archlinux-latest
+                command: ./AppRun
+              centos-7:
+                image: appimagecrafters/tests-env:centos-7
+                command: ./AppRun
+              ubuntu-xenial:
+                image: appimagecrafters/tests-env:ubuntu-xenial
+                command: ./AppRun
+          AppImage:
+            arch: x86_64
+            update-information: guess
+          EOF
+          appimage-builder --recipe AppImageBuilder.yml
+          mv Gopeed-*-x86_64.AppImage build/dist/Gopeed-$VERSION-linux-amd64.AppImage
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: ui/flutter/debian/packages/*
+          asset_path: ui/flutter/build/dist/*
           overwrite: true
   build-android:
     runs-on: ubuntu-latest
