@@ -230,6 +230,7 @@ jobs:
       - uses: whywaita/setup-lxd@v1
       - name: Build snap
         run: |
+          cd ui/flutter
           sudo snap install snapcraft --classic
           mkdir -p snap/gui
           cp assets/icon/icon_1024.png snap/gui/gopeed.png
