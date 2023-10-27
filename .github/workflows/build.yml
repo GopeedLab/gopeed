@@ -229,6 +229,8 @@ jobs:
           mkdir -p build/dist
       - uses: whywaita/setup-lxd@v1
       - name: Build snap
+        env:
+          VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           cd ui/flutter
           sudo snap install snapcraft --classic
