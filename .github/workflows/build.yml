@@ -227,7 +227,8 @@ jobs:
           cd ui/flutter
           flutter build linux
           mkdir -p build/dist
-          
+      - uses: whywaita/setup-lxd@v1
+        run: |
           # Build snap
           sudo snap install snapcraft --classic
           sudo snap install lxd
@@ -285,6 +286,7 @@ jobs:
           
           sudo snapcraft --use-lxd
           mv gopeed_*_amd64.snap build/dist/Gopeed-$VERSION-linux-amd64.snap
+
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
