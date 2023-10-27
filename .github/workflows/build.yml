@@ -6,7 +6,7 @@ on:
       platform:
         description: 'Build platform'
         required: true
-        default: 'all'
+        default: 'linux'
 
 env:
   GO_VERSION: "1.19"
