@@ -231,8 +231,6 @@ jobs:
         run: |
           # Build snap
           sudo snap install snapcraft --classic
-          sudo snap install lxd
-          sudo lxd init --auto
           mkdir -p snap/gui
           cp assets/icon/icon_1024.png snap/gui/gopeed.png
           cat>snap/snapcraft.yaml<<EOF
@@ -284,7 +282,7 @@ jobs:
           Keywords=Flutter;Downloader;
           EOF
           
-          sudo snapcraft --use-lxd
+          snapcraft --use-lxd
           mv gopeed_*_amd64.snap build/dist/Gopeed-$VERSION-linux-amd64.snap
 
       - name: Upload
