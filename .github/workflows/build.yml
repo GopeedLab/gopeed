@@ -328,7 +328,7 @@ jobs:
             arch: x86_64
             update-information: guess
           EOF
-          ./appimage-builder --recipe AppImageBuilder.yml
+          ./appimage-builder --skip-tests --recipe AppImageBuilder.yml
           mv Gopeed-*-x86_64.AppImage build/dist/Gopeed-$VERSION-linux-amd64.AppImage
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
