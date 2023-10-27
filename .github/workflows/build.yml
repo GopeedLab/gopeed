@@ -227,7 +227,7 @@ jobs:
           cd ui/flutter
           flutter build linux
           mkdir -p build/dist
-      - uses: whywaita/setup-lxd@v1
+      - uses: canonical/setup-lxd
       - name: Build snap
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
