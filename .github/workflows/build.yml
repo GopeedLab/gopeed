@@ -269,6 +269,8 @@ jobs:
           
           
           # Build AppImage
+          wget -O appimage-builder https://github.com/AppImageCrafters/appimage-builder/releases/download/v1.1.0/appimage-builder-1.1.0-x86_64.AppImage
+          chmod +x appimage-builder
           mkdir AppDir
           cp -r build/linux/x64/release/bundle/* AppDir
           mkdir -p AppDir/usr/share/icons
