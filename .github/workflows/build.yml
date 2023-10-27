@@ -269,6 +269,7 @@ jobs:
           
           
           # Build AppImage
+          sudo apt-get -y install libfuse2
           wget -O appimage-builder https://github.com/AppImageCrafters/appimage-builder/releases/download/v1.1.0/appimage-builder-1.1.0-x86_64.AppImage
           chmod +x appimage-builder
           mkdir AppDir
