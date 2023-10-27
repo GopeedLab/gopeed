@@ -227,7 +227,10 @@ jobs:
           cd ui/flutter
           flutter build linux
           mkdir -p build/dist
-      - uses: canonical/setup-lxd
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v0.1.1
+        with:
+          channel: latest/stable
       - name: Build snap
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
