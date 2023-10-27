@@ -228,8 +228,8 @@ jobs:
           flutter build linux
           mkdir -p build/dist
       - uses: whywaita/setup-lxd@v1
+      - name: Build snap
         run: |
-          # Build snap
           sudo snap install snapcraft --classic
           mkdir -p snap/gui
           cp assets/icon/icon_1024.png snap/gui/gopeed.png
