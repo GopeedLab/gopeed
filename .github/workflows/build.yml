@@ -230,8 +230,8 @@ jobs:
           
           # Build snap
           sudo snap install snapcraft --classic
-          # sudo snap install lxd
-          # sudo lxd init --auto
+          sudo snap install lxd
+          sudo lxd init --auto
           mkdir -p snap/gui
           cp assets/icon/icon_1024.png snap/gui/gopeed.png
           cat>snap/snapcraft.yaml<<EOF
