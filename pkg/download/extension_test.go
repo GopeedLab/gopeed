@@ -1,10 +1,12 @@
 package download
 
 import (
+	"errors"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestDownloader_InstallExtensionByFolder(t *testing.T) {
@@ -93,6 +95,15 @@ func TestDownloader_InstallExtensionByGitFull(t *testing.T) {
 }
 
 func TestDownloader_UpgradeExtension(t *testing.T) {
+	getSetting := func(settings []*Setting, name string) *Setting {
+		for _, setting := range settings {
+			if setting.Name == name {
+				return setting
+			}
+		}
+		return nil
+	}
+
 	setupDownloader(func(downloader *Downloader) {
 		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/update", false)
 		if err != nil {
@@ -120,14 +131,116 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 			t.Fatal("extension update fail")
 		}
 
+		// check setting update
+		s1 := getSetting(upgradeExt.Settings, "s1")
+		if s1.Title == "S1 old" {
+			t.Fatal("setting update fail")
+		}
+		// check setting type update
+		s2 := getSetting(upgradeExt.Settings, "s2")
+		if s2.Type == "number" {
+			t.Fatal("setting type update fail")
+		}
+		// check setting remove
+		d1 := getSetting(upgradeExt.Settings, "d1")
+		if d1 != nil {
+			t.Fatal("setting remove fail")
+		}
+		// check setting add
+		s3 := getSetting(upgradeExt.Settings, "s3")
+		if s3 == nil {
+			t.Fatal("setting add fail")
+		}
+
 		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://github.com/GopeedLab/gopeed/releases",
+			URL: "https://test.com",
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(rr.Res.Files) == 1 {
-			t.Fatal("resolve error")
+		if rr.Res.Name != "test" {
+			t.Fatal("script update fail")
+		}
+	})
+}
+
+func TestDownloader_ExtensionByOnStart(t *testing.T) {
+	downloadAndCheck := func(req *base.Request) {
+		setupDownloader(func(downloader *Downloader) {
+			if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/on_start", false); err != nil {
+				t.Fatal(err)
+			}
+			errCh := make(chan error, 1)
+			downloader.Listener(func(event *Event) {
+				if event.Key == EventKeyFinally {
+					errCh <- event.Err
+				}
+			})
+			id, err := downloader.CreateDirect(req, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case err = <-errCh:
+				break
+			case <-time.After(time.Second * 10):
+				err = errors.New("timeout")
+			}
+			if err != nil {
+				panic("extension on start download error: " + err.Error())
+			}
+			task := downloader.GetTask(id)
+			if task.Meta.Req.URL != "https://github.com" {
+				panic("extension on start modify url error")
+			}
+			if task.Meta.Req.Labels["modified"] != "true" {
+				panic("extension on start modify label error")
+			}
+		})
+	}
+
+	// url match
+	downloadAndCheck(&base.Request{
+		URL: "https://github.com/gopeed/test/404",
+	})
+
+	// label match
+	downloadAndCheck(&base.Request{
+		URL: "https://xxx.com",
+		Labels: map[string]string{
+			"test": "true",
+		},
+	})
+}
+
+func TestDownloader_Extension_Errors(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/script_error", false); err != nil {
+			t.Fatal(err)
+		}
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) == 2 {
+			t.Fatal("script error catch failed")
+		}
+	})
+
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/function_error", false); err != nil {
+			t.Fatal(err)
+		}
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) == 2 {
+			t.Fatal("function error catch failed")
 		}
 	})
 }
@@ -166,6 +279,23 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 		}
 		if len(rr.Res.Files) == 1 {
 			t.Fatal("settings parse error")
+		}
+	})
+}
+
+func TestDownloader_ExtensionStorage(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/storage", false); err != nil {
+			t.Fatal(err)
+		}
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/test",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) == 1 {
+			t.Fatal("resolve error")
 		}
 	})
 }

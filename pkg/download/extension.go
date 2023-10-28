@@ -33,6 +33,7 @@ type ActivationEvent string
 
 const (
 	EventOnResolve ActivationEvent = "onResolve"
+	EventOnStart   ActivationEvent = "onStart"
 	//EventOnError   ActivationEvent = "onError"
 	//EventOnDone    ActivationEvent = "onDone"
 )
@@ -47,7 +48,7 @@ func (d *Downloader) InstallExtensionByFolder(path string, devMode bool) (*Exten
 		return nil, err
 	}
 
-	// if dev mode, don't copy the extension to the extensions' directory
+	// if dev mode, don't copy to the extensions' directory
 	if devMode {
 		ext.DevMode = true
 		ext.DevPath, _ = filepath.Abs(path)
@@ -229,12 +230,52 @@ func (d *Downloader) parseExtensionByPath(path string) (*Extension, error) {
 }
 
 func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
+	doTrigger(d,
+		EventOnResolve,
+		req,
+		&OnResolveContext{
+			Req: req,
+		},
+		func(ext *Extension, gopeed *Instance, ctx *OnResolveContext) {
+			// Validate resource structure
+			if ctx.Res != nil && len(ctx.Res.Files) > 0 {
+				if err := ctx.Res.Validate(); err != nil {
+					gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] resource invalid", ext.buildIdentity())
+					return
+				}
+				ctx.Res.CalcSize()
+			}
+			res = ctx.Res
+		},
+	)
+	return
+}
+
+func (d *Downloader) triggerOnStart(task *Task) (req *base.Request) {
+	doTrigger(d,
+		EventOnStart,
+		task.Meta.Req,
+		&OnStartContext{
+			Task: task,
+		},
+		func(ext *Extension, gopeed *Instance, ctx *OnStartContext) {
+			// Validate request structure
+			if ctx.Task.Meta.Req != nil {
+				if err := ctx.Task.Meta.Req.Validate(); err != nil {
+					gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] request invalid", ext.buildIdentity())
+					return
+				}
+				req = ctx.Task.Meta.Req
+			}
+		},
+	)
+	return
+}
+
+func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, ctx T, handler func(ext *Extension, gopeed *Instance, ctx T)) {
 	// init extension global object
 	gopeed := &Instance{
 		Events: make(InstanceEvents),
-	}
-	ctx := &Context{
-		Req: req,
 	}
 	var err error
 	for _, ext := range d.extensions {
@@ -242,10 +283,17 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 			continue
 		}
 		for _, script := range ext.Scripts {
-			if script.match(EventOnResolve, req.URL) {
+			if script.match(event, req) {
+				gopeed.Info = NewExtensionInfo(ext)
 				gopeed.Logger = newInstanceLogger(ext, d.ExtensionLogger)
+				gopeed.Settings = parseSettings(ext.Settings)
+				gopeed.Storage = &ContextStorage{
+					storage:  d.storage,
+					identity: ext.buildIdentity(),
+				}
 				scriptFilePath := filepath.Join(d.ExtensionPath(ext), script.Entry)
 				if _, err = os.Stat(scriptFilePath); os.IsNotExist(err) {
+					gopeed.Logger.logger.Error().Err(err).Msgf("[%s] script file not exist", ext.buildIdentity())
 					continue
 				}
 				func() {
@@ -256,12 +304,15 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 						return
 					}
 					defer scriptFile.Close()
-					ctx.Settings = parseSettings(ext.Settings)
 					var scriptBuf []byte
 					scriptBuf, err = io.ReadAll(scriptFile)
 					if err != nil {
 						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] read script file failed", ext.buildIdentity())
 						return
+					}
+					// Init request labels
+					if req.Labels == nil {
+						req.Labels = make(map[string]string)
 					}
 					engine := engine.NewEngine()
 					defer engine.Close()
@@ -275,21 +326,13 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] run script failed", ext.buildIdentity())
 						return
 					}
-					if fn, ok := gopeed.Events[EventOnResolve]; ok {
+					if fn, ok := gopeed.Events[event]; ok {
 						_, err = engine.CallFunction(fn, ctx)
 						if err != nil {
-							gopeed.Logger.logger.Error().Err(err).Msgf("[%s] call function failed: %s", EventOnResolve, ext.buildIdentity())
+							gopeed.Logger.logger.Error().Err(err).Msgf("[%s] call function failed: %s", ext.buildIdentity(), event)
 							return
 						}
-						// calculate resource total size
-						if ctx.Res != nil && len(ctx.Res.Files) > 0 {
-							if err = ctx.Res.Validate(); err != nil {
-								gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] resource invalid", ext.buildIdentity())
-								return
-							}
-							ctx.Res.CalcSize()
-						}
-						res = ctx.Res
+						handler(ext, gopeed, ctx)
 					}
 				}()
 			}
@@ -378,8 +421,50 @@ func (e *Extension) update(newExt *Extension) error {
 	e.Homepage = newExt.Homepage
 	e.Repository = newExt.Repository
 	e.Scripts = newExt.Scripts
-	// don't override settings
-	//e.Settings = newExt.Settings
+	// merge settings
+	// if new setting not exist in old settings, append it
+	for _, newSetting := range newExt.Settings {
+		var exist bool
+		for _, setting := range e.Settings {
+			if setting.Name == newSetting.Name {
+				exist = true
+				break
+			}
+		}
+		if !exist {
+			e.Settings = append(e.Settings, newSetting)
+		}
+	}
+	// if old setting not exist in new settings, remove it
+	for i := 0; i < len(e.Settings); i++ {
+		var exist bool
+		for _, setting := range newExt.Settings {
+			if setting.Name == e.Settings[i].Name {
+				exist = true
+				break
+			}
+		}
+		if !exist {
+			e.Settings = append(e.Settings[:i], e.Settings[i+1:]...)
+			i--
+		}
+	}
+	// if new setting exist in old settings, update it
+	for _, newSetting := range newExt.Settings {
+		for _, setting := range e.Settings {
+			if setting.Name == newSetting.Name {
+				setting.Title = newSetting.Title
+				setting.Description = newSetting.Description
+				setting.Options = newSetting.Options
+				// if type changed, reset value
+				if setting.Type != newSetting.Type {
+					setting.Type = newSetting.Type
+					setting.Value = newSetting.Value
+				}
+				break
+			}
+		}
+	}
 	e.UpdatedAt = time.Now()
 	return nil
 }
@@ -392,28 +477,44 @@ type Repository struct {
 type Script struct {
 	// Event active event name
 	Event string `json:"event"`
-	// Matches match request url pattern list
-	Matches []string `json:"matches"`
+	// Match rules
+	Match *Match `json:"match"`
 	// Entry js script file path
 	Entry string `json:"entry"`
 }
 
-func (s *Script) match(event ActivationEvent, url string) bool {
+func (s *Script) match(event ActivationEvent, req *base.Request) bool {
 	if s.Event == "" {
 		return false
 	}
 	if s.Event != string(event) {
 		return false
 	}
-	if len(s.Matches) == 0 {
+	if s.Match == nil || (len(s.Match.Urls) == 0 && len(s.Match.Labels) == 0) {
 		return false
 	}
-	for _, match := range s.Matches {
-		if util.Match(match, url) {
+
+	// match url
+	for _, url := range s.Match.Urls {
+		if util.Match(url, req.URL) {
+			return true
+		}
+	}
+
+	// match label
+	for _, label := range s.Match.Labels {
+		if _, ok := req.Labels[label]; ok {
 			return true
 		}
 	}
 	return false
+}
+
+type Match struct {
+	// Urls match expression, refer to https://developer.chrome.com/docs/extensions/mv3/match_patterns/
+	Urls []string `json:"urls"`
+	// Labels match request labels
+	Labels []string `json:"labels"`
 }
 
 type SettingType string
@@ -442,10 +543,13 @@ type Option struct {
 	Value any    `json:"value"`
 }
 
-// Instance inject to js context
+// Instance inject to js context when extension script is activated
 type Instance struct {
-	Events InstanceEvents  `json:"events"`
-	Logger *InstanceLogger `json:"logger"`
+	Events   InstanceEvents  `json:"events"`
+	Info     *ExtensionInfo  `json:"info"`
+	Logger   *InstanceLogger `json:"logger"`
+	Settings map[string]any  `json:"settings"`
+	Storage  *ContextStorage `json:"storage"`
 }
 
 type InstanceEvents map[ActivationEvent]goja.Callable
@@ -458,6 +562,10 @@ func (h InstanceEvents) OnResolve(fn goja.Callable) {
 	h.register(EventOnResolve, fn)
 }
 
+func (h InstanceEvents) OnStart(fn goja.Callable) {
+	h.register(EventOnStart, fn)
+}
+
 //func (h InstanceEvents) OnError(fn goja.Callable) {
 //	h.register(HookEventOnError, fn)
 //}
@@ -465,6 +573,24 @@ func (h InstanceEvents) OnResolve(fn goja.Callable) {
 //func (h InstanceEvents) OnDone(fn goja.Callable) {
 //	h.register(HookEventOnDone, fn)
 //}
+
+type ExtensionInfo struct {
+	Identity string `json:"identity"`
+	Name     string `json:"name"`
+	Author   string `json:"author"`
+	Title    string `json:"title"`
+	Version  string `json:"version"`
+}
+
+func NewExtensionInfo(ext *Extension) *ExtensionInfo {
+	return &ExtensionInfo{
+		Identity: ext.buildIdentity(),
+		Name:     ext.Name,
+		Author:   ext.Author,
+		Title:    ext.Title,
+		Version:  ext.Version,
+	}
+}
 
 type InstanceLogger struct {
 	identity string
@@ -506,10 +632,13 @@ func newInstanceLogger(extension *Extension, logger *logger.Logger) *InstanceLog
 	}
 }
 
-type Context struct {
-	Req      *base.Request  `json:"req"`
-	Res      *base.Resource `json:"res"`
-	Settings map[string]any `json:"settings"`
+type OnResolveContext struct {
+	Req *base.Request  `json:"req"`
+	Res *base.Resource `json:"res"`
+}
+
+type OnStartContext struct {
+	Task *Task `json:"task"`
 }
 
 func parseSettings(settings []*Setting) map[string]any {
@@ -546,4 +675,51 @@ func tryParse(val any, settingType SettingType) any {
 	default:
 		return nil
 	}
+}
+
+type ContextStorage struct {
+	storage  Storage
+	identity string
+}
+
+func (s *ContextStorage) Get(key string) any {
+	raw := s.getRawData()
+	if v, ok := raw[key]; ok {
+		return v
+	}
+	return nil
+}
+
+func (s *ContextStorage) Set(key string, value string) {
+	raw := s.getRawData()
+	raw[key] = value
+	s.storage.Put(bucketExtensionStorage, s.identity, raw)
+}
+
+func (s *ContextStorage) Remove(key string) {
+	raw := s.getRawData()
+	delete(raw, key)
+	s.storage.Put(bucketExtensionStorage, s.identity, raw)
+}
+
+func (s *ContextStorage) Keys() []string {
+	raw := s.getRawData()
+	keys := make([]string, 0)
+	for k := range raw {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func (s *ContextStorage) Clear() {
+	s.storage.Delete(bucketExtensionStorage, s.identity)
+}
+
+func (s *ContextStorage) getRawData() map[string]string {
+	var data map[string]string
+	s.storage.Get(bucketExtensionStorage, s.identity, &data)
+	if data == nil {
+		data = make(map[string]string)
+	}
+	return data
 }

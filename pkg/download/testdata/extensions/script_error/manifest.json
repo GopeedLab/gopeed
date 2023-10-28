@@ -1,6 +1,6 @@
 {
-  "name": "basic",
-  "title": "gopeed extension basic test",
+  "name": "script-error",
+  "title": "gopeed extension script error test",
   "version": "0.0.1",
   "scripts": [
     {

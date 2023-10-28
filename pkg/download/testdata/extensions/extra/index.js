@@ -6,8 +6,10 @@ gopeed.events.onResolve(async function (ctx) {
                 size: 1024,
                 req: {
                     url: ctx.req.url + "/" + i,
-                    labels:{
-                        "from": gopeed.info.name,
+                    extra: {
+                        headers: {
+                            'User-Agent': ctx.settings.ua,
+                        },
                     }
                 }
             }),

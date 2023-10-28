@@ -13,7 +13,7 @@
 
 ## はじめに
 
-Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された高速ダウンローダーで、(HTTP、BitTorrent、Magnet) プロトコルをサポートし、すべてのプラットフォームをサポートします。
+Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された高速ダウンローダーで、(HTTP、BitTorrent、Magnet) プロトコルをサポートし、すべてのプラットフォームをサポートします。基本的なダウンロード機能に加え、[APIs](https://docs.gopeed.com/dev-api.html)との連動や[拡張機能](https://docs.gopeed.com/dev-extension.html)のインストール・開発による追加機能にも対応した、カスタマイズ性の高いダウンローダーです。
 
 見て下さい ✈ [公式ウェブサイト](https://gopeed.com) | 📖 [開発ドキュメント](https://docs.gopeed.com)
 

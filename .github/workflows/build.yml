@@ -44,7 +44,7 @@ jobs:
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
           flutter build windows
-          $mingw = "C:\ProgramData\Chocolatey\lib\mingw\tools\install\mingw64\bin"
+          $mingw = "C:\Program Files\Git\mingw64\bin"
           $system = "C:\Windows\System32"
           $release = "build\windows\runner\Release\"
           cp $mingw\libstdc++-6.dll $release

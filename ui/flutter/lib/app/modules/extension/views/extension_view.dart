@@ -21,6 +21,7 @@ import '../../../../api/model/install_extension.dart';
 import '../../../../api/model/switch_extension.dart';
 import '../../../../util/util.dart';
 import '../../../views/icon_button_loading.dart';
+import '../../../views/responsive_builder.dart';
 import '../controllers/extension_controller.dart';
 
 class ExtensionView extends GetView<ExtensionController> {
@@ -35,7 +36,31 @@ class ExtensionView extends GetView<ExtensionController> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  launchUrl(
+                      Uri.parse(
+                          'https://github.com/search?q=topic%3Agopeed-extension&type=repositories'),
+                      mode: LaunchMode.externalApplication);
+                },
+                icon: const Icon(Icons.search),
+                label: Text('extensionFind'.tr),
+              ),
+              const SizedBox(width: 16),
+              TextButton.icon(
+                onPressed: () {
+                  launchUrl(
+                      Uri.parse('https://docs.gopeed.com/dev-extension.html'),
+                      mode: LaunchMode.externalApplication);
+                },
+                icon: const Icon(Icons.edit),
+                label: Text('extensionDevelop'.tr),
+              ),
+            ],
+          ),
           Obx(() => Row(
                 children: [
                   Expanded(
@@ -89,14 +114,14 @@ class ExtensionView extends GetView<ExtensionController> {
                       : Container()
                 ],
               )),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           Expanded(
               child: Obx(() => ListView.builder(
                     itemCount: controller.extensions.length,
                     itemBuilder: (context, index) {
                       final extension = controller.extensions[index];
                       return SizedBox(
-                        height: 112,
+                        height: ResponsiveBuilder.isNarrow(context) ? 152 : 112,
                         child: Card(
                           elevation: 4.0,
                           child: Column(
@@ -110,14 +135,22 @@ class ExtensionView extends GetView<ExtensionController> {
                                           height: 48,
                                         )
                                       : Util.isWeb()
-                                          ? Image.network(join(
-                                              '/fs/extensions/${extension.identity}/${extension.icon}'))
+                                          ? Image.network(
+                                              join(
+                                                  '/fs/extensions/${extension.identity}/${extension.icon}'),
+                                              width: 48,
+                                              height: 48,
+                                            )
                                           : Image.file(
-                                              File(path.join(
-                                                  Util.getStorageDir(),
-                                                  "extensions",
-                                                  extension.identity,
-                                                  extension.icon)),
+                                              extension.devMode
+                                                  ? File(path.join(
+                                                      extension.devPath,
+                                                      extension.icon))
+                                                  : File(path.join(
+                                                      Util.getStorageDir(),
+                                                      "extensions",
+                                                      extension.identity,
+                                                      extension.icon)),
                                               width: 48,
                                               height: 48,
                                             ),
@@ -137,23 +170,35 @@ class ExtensionView extends GetView<ExtensionController> {
                                   title: Row(
                                     children: () {
                                       final list = [
-                                        Text(extension.title),
+                                        ResponsiveBuilder.isNarrow(context)
+                                            ? Expanded(
+                                                child: Text(
+                                                  extension.title,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              )
+                                            : Text(extension.title),
                                         const SizedBox(width: 8),
-                                        Chip(
-                                          label: Text('v${extension.version}'),
-                                        )
+                                        buildChip('v${extension.version}'),
                                       ];
                                       if (extension.devMode) {
                                         list.add(const SizedBox(width: 8));
-                                        list.add(Chip(
-                                          label: Text('dev'.tr),
-                                          backgroundColor: Colors.redAccent,
+                                        list.add(buildChip(
+                                          'dev',
+                                          bgColor: Colors.blue.shade300,
                                         ));
                                       }
                                       return list;
                                     }(),
                                   ),
-                                  subtitle: Text(extension.description),
+                                  subtitle: ResponsiveBuilder.isNarrow(context)
+                                      ? Text(
+                                          extension.description,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      : Text(extension.description),
                                 ),
                               ),
                               Row(
@@ -225,6 +270,14 @@ class ExtensionView extends GetView<ExtensionController> {
     );
   }
 
+  Widget buildChip(String text, {Color? bgColor}) {
+    return Chip(
+      padding: const EdgeInsets.all(0),
+      backgroundColor: bgColor,
+      label: Text(text, style: const TextStyle(fontSize: 12)),
+    );
+  }
+
   Future<void> _showSettingDialog(Extension extension) async {
     final formKey = GlobalKey<FormBuilderState>();
     final confrimController = RoundedLoadingButtonController();
@@ -248,9 +301,32 @@ class ExtensionView extends GetView<ExtensionController> {
                       Expanded(
                         child: SingleChildScrollView(
                           child: Column(
-                              children: extension.settings!
-                                  .map((e) => _buildSettingItem(e))
-                                  .toList()),
+                              children: extension.settings!.map((e) {
+                            final settingItem = _buildSettingItem(e);
+
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                SizedBox(
+                                        width: 20,
+                                        child: e.description.isEmpty
+                                            ? null
+                                            : Tooltip(
+                                                message: e.description,
+                                                child: const CircleAvatar(
+                                                    radius: 10,
+                                                    backgroundColor:
+                                                        Colors.grey,
+                                                    child: Icon(
+                                                      Icons.question_mark,
+                                                      size: 10,
+                                                    )),
+                                              ))
+                                    .paddingOnly(right: 10),
+                                Expanded(child: settingItem),
+                              ],
+                            );
+                          }).toList()),
                         ),
                       ),
                     ]),
@@ -316,8 +392,7 @@ class ExtensionView extends GetView<ExtensionController> {
         FormFieldValidator<String>? validator, TextInputType? keyBoardType) {
       return FormBuilderTextField(
         name: setting.name,
-        decoration: InputDecoration(
-            labelText: setting.title, hintText: setting.description),
+        decoration: InputDecoration(labelText: setting.title),
         initialValue: setting.value?.toString(),
         inputFormatters: inputFormatter != null ? [inputFormatter] : null,
         keyboardType: keyBoardType,
@@ -332,7 +407,8 @@ class ExtensionView extends GetView<ExtensionController> {
       return FormBuilderDropdown<String>(
         name: setting.name,
         decoration: InputDecoration(
-            labelText: setting.title, hintText: setting.description),
+          labelText: setting.title,
+        ),
         initialValue: setting.value?.toString(),
         validator: FormBuilderValidators.compose([
           requiredValidator,

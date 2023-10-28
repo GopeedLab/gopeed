@@ -29,6 +29,7 @@ class Util {
 
   static String safePathJoin(List<String> paths) {
     return paths
+        .where((e) => e.isNotEmpty)
         .map((e) => safeDir(e))
         .join("/")
         .replaceAll(RegExp(r'//'), "/");
@@ -91,6 +92,10 @@ class Util {
 
   static isMacos() {
     return !kIsWeb && Platform.isMacOS;
+  }
+
+  static isLinux() {
+    return !kIsWeb && Platform.isLinux;
   }
 
   static isWeb() {

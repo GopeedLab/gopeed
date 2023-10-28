@@ -1,6 +1,6 @@
 {
-  "name": "settings-empty",
-  "title": "gopeed extension settings empty test",
+  "name": "storage",
+  "title": "gopeed extension storage test",
   "version": "0.0.1",
   "scripts": [
     {
@@ -11,6 +11,13 @@
         ]
       },
       "entry": "index.js"
+    }
+  ],
+  "settings": [
+    {
+      "name": "ua",
+      "title": "User-Agent",
+      "type": "string"
     }
   ]
 }
