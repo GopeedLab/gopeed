@@ -289,8 +289,9 @@ jobs:
           EOF
           
           snapcraft --use-lxd
-          mv gopeed_*_amd64.snap build/dist/Gopeed-$VERSION-linux-amd64.snap
-
+          # Snapcraft login
+          export SNAPCRAFT_LOGIN_TOKEN=${{ secrets.SNAP_STORE_LOGIN }}
+          snapcraft upload --release=edge gopeed_${VERSION:1}_amd64.snap
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
