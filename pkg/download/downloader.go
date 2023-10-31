@@ -848,12 +848,11 @@ func (b *boot) Listener(listener Listener) *boot {
 }
 
 func (b *boot) Create(opts *base.Options) (string, error) {
-	rr, err := b.Resolve()
-	if err != nil {
-		return "", err
-	}
 	defaultDownloader.Listener(b.listener)
-	return defaultDownloader.Create(rr.ID, opts)
+	return defaultDownloader.CreateDirect(&base.Request{
+		URL:   b.url,
+		Extra: b.extra,
+	}, opts)
 }
 
 func Boot() *boot {
