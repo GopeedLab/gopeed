@@ -244,7 +244,7 @@ jobs:
           description: High speed downloader that supports all platforms.
           
           confinement: strict
-          base: core18
+          base: core22
           grade: stable
           
           architectures:
@@ -260,7 +260,7 @@ jobs:
           apps:
             gopeed:
               command: gopeed
-              extensions: [flutter-stable]
+              extensions: [gnome]
               plugs:
                 - network
               slots:
