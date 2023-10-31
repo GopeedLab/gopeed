@@ -249,7 +249,7 @@ jobs:
           
           architectures:
             - build-on: amd64
-              build-for: arm64
+              build-for: amd64
           
           slots:
             dbus-gopeed:
