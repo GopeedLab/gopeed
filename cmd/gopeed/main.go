@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
@@ -47,16 +48,28 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	printProgress(emptyTask, "downloading...")
 	wg.Wait()
 }
 
 var (
 	lastLineLen = 0
 	sb          = new(strings.Builder)
+	emptyTask   = &download.Task{
+		Progress: &download.Progress{},
+		Meta: &fetcher.FetcherMeta{
+			Res: &base.Resource{},
+		},
+	}
 )
 
 func printProgress(task *download.Task, title string) {
-	rate := float64(task.Progress.Downloaded) / float64(task.Meta.Res.Size)
+	var rate float64
+	if task.Meta.Res.Size <= 0 {
+		rate = 0
+	} else {
+		rate = float64(task.Progress.Downloaded) / float64(task.Meta.Res.Size)
+	}
 	completeWidth := int(progressWidth * rate)
 	speed := util.ByteFmt(task.Progress.Speed)
 	totalSize := util.ByteFmt(task.Meta.Res.Size)
