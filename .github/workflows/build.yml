@@ -288,11 +288,12 @@ jobs:
           Keywords=Flutter;Downloader;
           EOF
           
-          snapcraft --use-lxd
+          # snapcraft --use-lxd
           # Snapcraft login
           sudo apt install gnome-keyring -y
           export SNAPCRAFT_LOGIN_TOKEN=${{ secrets.SNAP_STORE_LOGIN }}
-          snapcraft upload --release=edge gopeed_${VERSION:1}_amd64.snap
+          snapcraft whoami
+          # snapcraft upload --release=edge gopeed_${VERSION:1}_amd64.snap
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
