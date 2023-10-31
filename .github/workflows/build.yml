@@ -249,7 +249,7 @@ jobs:
           
           architectures:
             - build-on: amd64
-              run-on: [amd64]
+              build-for: arm64
           
           slots:
             dbus-gopeed:
@@ -269,6 +269,8 @@ jobs:
             gopeed:
               source: .
               plugin: flutter
+              stage-packages:
+                - libayatana-appindicator3-dev
               flutter-target: lib/main.dart
           EOF
           
