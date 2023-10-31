@@ -290,7 +290,7 @@ jobs:
           
           snapcraft --use-lxd
           # Snapcraft login
-          apt install gnome-keyring -y
+          sudo apt install gnome-keyring -y
           export SNAPCRAFT_LOGIN_TOKEN=${{ secrets.SNAP_STORE_LOGIN }}
           snapcraft upload --release=edge gopeed_${VERSION:1}_amd64.snap
       - name: Upload
