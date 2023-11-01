@@ -237,6 +237,7 @@ jobs:
           sudo snap install snapcraft --classic
           mkdir -p snap/gui
           cp assets/icon/icon_1024.png snap/gui/gopeed.png
+          
           cat>snap/snapcraft.yaml<<EOF
           name: gopeed
           version: ${VERSION:1}
@@ -255,7 +256,7 @@ jobs:
             dbus-gopeed:
               interface: dbus
               bus: session
-              name: com.gopeed.Gopeed
+              name: com.gopeed.gopeed
           
           apps:
             gopeed:
@@ -281,7 +282,7 @@ jobs:
           GenericName=Gopeed
           Comment=High speed downloader that supports all platforms.
           Exec=gopeed
-          Icon=${SNAP}/meta/gui/gopeed.png
+          Icon=\${SNAP}/meta/gui/gopeed.png
           Terminal=false
           Type=Application
           Categories=Utility
@@ -292,7 +293,6 @@ jobs:
           
           # Snapcraft login
           export SNAPCRAFT_STORE_CREDENTIALS=${{ secrets.SNAP_STORE_LOGIN }}
-          snapcraft whoami
           snapcraft upload --release=edge gopeed_${VERSION:1}_amd64.snap
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
