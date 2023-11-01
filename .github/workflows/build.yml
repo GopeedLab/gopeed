@@ -232,6 +232,110 @@ jobs:
           # flutter build linux
           mkdir -p build/dist
           
+          # Build portable
+          tar -czaf build/dist/Gopeed-$VERSION-linux-amd64-portable.tar.gz build/linux/x64/release/bundle
+          
+          
+          # Build deb package
+          mkdir -p debian/gui
+          cp assets/icon/icon_1024.png debian/gui/gopeed.png
+          cat>debian/debian.yaml<<EOF
+          flutter_app:
+            command: gopeed
+            arch: x64
+            parent: /usr/local/bin
+          control:
+            Package: gopeed
+            Version: ${VERSION:1}
+            Architecture: amd64
+            Essential: no
+            Priority: optional
+            Depends:
+            Maintainer: monkeyWie
+            Description: High speed downloader that supports all platforms.
+          EOF
+
+          cat>debian/gui/gopeed.desktop<<EOF
+          [Desktop Entry]
+          Version=${VERSION:1}
+          Name=Gopeed
+          GenericName=Gopeed
+          Comment=High speed downloader that supports all platforms.
+          Exec=gopeed
+          Icon=gopeed.png
+          Terminal=false
+          Type=Application
+          Categories=Utility
+          Keywords=Flutter;Downloader;
+          EOF
+
+          dart pub global activate flutter_to_debian
+          flutter_to_debian
+          mv debian/packages/gopeed*.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
+          
+          
+          # Build AppImage
+          sudo apt-get -y install libfuse2
+          wget -O appimage-builder https://github.com/AppImageCrafters/appimage-builder/releases/download/v1.1.0/appimage-builder-1.1.0-x86_64.AppImage
+          chmod +x appimage-builder
+          mkdir AppDir
+          cp -r build/linux/x64/release/bundle/* AppDir
+          mkdir -p AppDir/usr/share/icons
+          cp assets/icon/icon_1024.png AppDir/usr/share/icons/gopeed.png
+          cat>AppImageBuilder.yml<<EOF
+          version: 1
+          AppDir:
+            path: ${PWD}/AppDir
+            app_info:
+              id: com.gopeed.gopeed
+              name: Gopeed
+              icon: gopeed.png
+              version: ${VERSION:1}
+              exec: gopeed
+              exec_args: \$@
+            apt:
+              arch: amd64
+              allow_unauthenticated: true
+              sources:
+                - sourceline: deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted
+                    universe multiverse
+                - sourceline: deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main
+                    restricted universe multiverse
+                - sourceline: deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports
+                    main restricted universe multiverse
+                - sourceline: deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted
+                    universe multiverse
+              include: []
+            files:
+              include: []
+              exclude:
+                - usr/share/man
+                - usr/share/doc/*/README.*
+                - usr/share/doc/*/changelog.*
+                - usr/share/doc/*/NEWS.*
+                - usr/share/doc/*/TODO.*
+            test:
+              fedora-30:
+                image: appimagecrafters/tests-env:fedora-30
+                command: ./AppRun
+              debian-stable:
+                image: appimagecrafters/tests-env:debian-stable
+                command: ./AppRun
+              archlinux-latest:
+                image: appimagecrafters/tests-env:archlinux-latest
+                command: ./AppRun
+              centos-7:
+                image: appimagecrafters/tests-env:centos-7
+                command: ./AppRun
+              ubuntu-xenial:
+                image: appimagecrafters/tests-env:ubuntu-xenial
+                command: ./AppRun
+          AppImage:
+            arch: x86_64
+            update-information: guess
+          EOF
+          ./appimage-builder --skip-tests --recipe AppImageBuilder.yml
+          mv Gopeed-*-x86_64.AppImage build/dist/Gopeed-$VERSION-linux-amd64.AppImage
           
           # Build snap
           sudo snap install snapcraft --classic
