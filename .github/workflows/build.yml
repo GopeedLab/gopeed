@@ -229,7 +229,7 @@ jobs:
         run: |
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
-          # flutter build linux
+          flutter build linux
           mkdir -p build/dist
           
           # Build portable
