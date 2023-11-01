@@ -87,7 +87,6 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 	if f.meta.Res != nil {
 		torrentDirMap[f.meta.Res.Hash] = f.meta.FolderPath()
 	}
-	f.progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))
 	return nil
 }
 
@@ -101,6 +100,14 @@ func (f *Fetcher) Start() (err error) {
 		ft.setTorrentDir(f.meta.FolderPath())
 	}
 	files := f.torrent.Files()
+	// If the user does not specify the file to download, all files will be downloaded by default
+	if len(f.meta.Opts.SelectFiles) == 0 {
+		f.meta.Opts.SelectFiles = make([]int, len(files))
+		for i := range files {
+			f.meta.Opts.SelectFiles[i] = i
+		}
+	}
+	f.progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))
 	if len(f.meta.Opts.SelectFiles) == len(files) {
 		f.torrent.DownloadAll()
 	} else {
@@ -134,7 +141,7 @@ func (f *Fetcher) safeDrop() {
 
 func (f *Fetcher) Wait() (err error) {
 	for {
-		if f.torrentReady.Load() {
+		if f.torrentReady.Load() && len(f.meta.Opts.SelectFiles) > 0 {
 			done := true
 			for _, selectIndex := range f.meta.Opts.SelectFiles {
 				file := f.torrent.Files()[selectIndex]
