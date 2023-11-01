@@ -32,6 +32,10 @@ version-resolver:
       - 'patch'
   default: patch
 template: |
-  ## Changes
+  # Changes
+
+  $CHANGES
+  
+  # 更新日志
 
   $CHANGES
