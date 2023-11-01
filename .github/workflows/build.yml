@@ -339,6 +339,7 @@ jobs:
           
           # Build snap
           sudo snap install snapcraft --classic
+          rm -rf build/linux
           mkdir -p snap/gui
           cp assets/icon/icon_1024.png snap/gui/gopeed.png
           
