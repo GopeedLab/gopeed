@@ -70,6 +70,7 @@
   "extensionDevelop": "Develop Extensions",
   "history": "History",
   "clearHistory": "Clear History",
-  "noHistoryFound": "No History Found"
+  "noHistoryFound": "No History Found",
+  "serviceTitle": "Download Service",
+  "serviceText": "Running"
 }
-

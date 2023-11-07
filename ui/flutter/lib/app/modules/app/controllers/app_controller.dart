@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -79,21 +80,18 @@ class AppController extends GetxController with WindowListener, TrayListener {
   @override
   void onReady() {
     super.onReady();
-    try {
-      _initDeepLinks();
-    } catch (e) {
-      logger.w("initDeepLinks error", e);
-    }
-    try {
-      _initWindows();
-    } catch (e) {
-      logger.w("initWindows error", e);
-    }
-    try {
-      _initTray();
-    } catch (e) {
-      logger.w("initTray error", e);
-    }
+
+    _initDeepLinks().onError((error, stackTrace) =>
+        logger.w("initDeepLinks error", error, stackTrace));
+
+    _initWindows().onError((error, stackTrace) =>
+        logger.w("initWindows error", error, stackTrace));
+
+    _initTray().onError(
+        (error, stackTrace) => logger.w("initTray error", error, stackTrace));
+
+    _initForegroundTask().onError((error, stackTrace) =>
+        logger.w("initForegroundTask error", error, stackTrace));
   }
 
   @override
@@ -208,6 +206,42 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
     await trayManager.setContextMenu(menu);
     trayManager.addListener(this);
+  }
+
+  Future<void> _initForegroundTask() async {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+          channelId: 'gopeed_service',
+          channelName: 'Gopeed Background Service',
+          channelImportance: NotificationChannelImportance.LOW,
+          showWhen: true,
+          priority: NotificationPriority.LOW,
+          iconData: const NotificationIconData(
+            resType: ResourceType.mipmap,
+            resPrefix: ResourcePrefix.ic,
+            name: 'launcher',
+          )),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: true,
+        playSound: false,
+      ),
+      foregroundTaskOptions: const ForegroundTaskOptions(
+        interval: 5000,
+        isOnceEvent: false,
+        autoRunOnBoot: true,
+        allowWakeLock: true,
+        allowWifiLock: true,
+      ),
+    );
+
+    if (await FlutterForegroundTask.isRunningService) {
+      FlutterForegroundTask.restartService();
+    } else {
+      FlutterForegroundTask.startService(
+        notificationTitle: "serviceTitle".tr,
+        notificationText: "serviceText".tr,
+      );
+    }
   }
 
   Future<void> _toCreate(Uri uri) async {

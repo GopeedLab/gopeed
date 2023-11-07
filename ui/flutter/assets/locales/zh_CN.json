@@ -70,5 +70,7 @@
   "extensionDevelop": "开发扩展",
   "history": "历史记录",
   "clearHistory": "清空历史记录",
-  "noHistoryFound": "暂无历史记录"
+  "noHistoryFound": "暂无历史记录",
+  "serviceTitle": "下载服务",
+  "serviceText": "运行中"
 }
