@@ -41,3 +41,7 @@ import Libgopeed
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 }
+
+func registerPlugins(registry: FlutterPluginRegistry) {
+  GeneratedPluginRegistrant.register(with: registry)
+}
