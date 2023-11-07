@@ -87,6 +87,8 @@ class LocaleKeys {
   static const history = 'history';
   static const clearHistory = 'clearHistory';
   static const noHistoryFound = 'noHistoryFound';
+  static const serviceTitle = 'serviceTitle';
+  static const serviceText = 'serviceText';
 }
 
 class Locales {
@@ -165,6 +167,8 @@ class Locales {
     'history': 'History',
     'clearHistory': 'Clear History',
     'noHistoryFound': 'No History Found',
+    'serviceTitle': 'Download Service',
+    'serviceText': 'Running',
   };
   static const fa_IR = {
     'label': 'فارسی',
@@ -434,6 +438,8 @@ class Locales {
     'history': '历史记录',
     'clearHistory': '清空历史记录',
     'noHistoryFound': '暂无历史记录',
+    'serviceTitle': '下载服务',
+    'serviceText': '运行中',
   };
   static const zh_TW = {
     'label': '中文 (正體) ',
