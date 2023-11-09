@@ -12,6 +12,7 @@
   "donate": "斗內",
   "exit": "離開",
   "create": "新增任務",
+  "directDownload": "直接下載",
   "advancedOptions": "進階選項",
   "downloadLink": "下載鏈接",
   "downloadLinkValid": "請輸入下載鏈接",
@@ -71,4 +72,6 @@
   "history": "歷史記錄",
   "clearHistory": "清空記錄",
   "noHistoryFound": "還沒有記錄"
+  "serviceTitle": "下載服務",
+  "serviceText": "執行中"
 }
