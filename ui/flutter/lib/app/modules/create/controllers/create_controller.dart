@@ -10,8 +10,9 @@ class CreateController extends GetxController
   final RxList fileInfos = [].obs;
   final RxList openedFolders = [].obs;
   final selectedIndexes = <int>[].obs;
-  final isResolving = false.obs;
+  final isConfirming = false.obs;
   final showAdvanced = false.obs;
+  final directDownload = false.obs;
   late TabController advancedTabController;
   final oldUrl = "".obs;
   final fileDataUri = "".obs;

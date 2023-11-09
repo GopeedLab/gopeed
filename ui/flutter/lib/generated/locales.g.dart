@@ -28,6 +28,7 @@ class LocaleKeys {
   static const donate = 'donate';
   static const exit = 'exit';
   static const create = 'create';
+  static const directDownload = 'directDownload';
   static const advancedOptions = 'advancedOptions';
   static const downloadLink = 'downloadLink';
   static const downloadLinkValid = 'downloadLinkValid';
@@ -106,6 +107,7 @@ class Locales {
     'donate': 'Donate',
     'exit': 'Exit',
     'create': 'Create Task',
+    'directDownload': 'Direct Download',
     'advancedOptions': 'Advanced Options',
     'downloadLink': 'Download Link',
     'downloadLinkValid': 'Please enter the download link',
@@ -379,6 +381,7 @@ class Locales {
     'donate': '打赏',
     'exit': '退出',
     'create': '创建任务',
+    'directDownload': '直接下载',
     'advancedOptions': '高级选项',
     'downloadLink': '下载链接',
     'downloadLinkValid': '请输入下载链接',
