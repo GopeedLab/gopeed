@@ -163,7 +163,9 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Install appdmg
-        run: npm install -g appdmg
+        run: |
+          python3 -m pip install setuptools
+          npm install -g appdmg
       - uses: actions/download-artifact@v3
         with:
           name: macos-arm64-lib

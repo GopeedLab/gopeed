@@ -973,10 +973,11 @@ packages:
   tray_manager:
     dependency: "direct main"
     description:
-      name: tray_manager
-      sha256: b1975a05e0c6999e983cf9a58a6a098318c896040ccebac5398a3cc9e43b9c69
-      url: "https://pub.flutter-io.cn"
-    source: hosted
+      path: "."
+      ref: "fix/libayatana-set-icon-deprecation"
+      resolved-ref: "056da3fef20e75877e8d2a4ae73d93f51a0f77cc"
+      url: "https://github.com/provokateurin/tray_manager.git"
+    source: git
     version: "0.2.0"
   typed_data:
     dependency: transitive
