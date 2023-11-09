@@ -12,7 +12,6 @@ class Task {
   Meta meta;
   Status status;
   Progress progress;
-  int size;
   DateTime createdAt;
 
   Task({
@@ -20,7 +19,6 @@ class Task {
     required this.meta,
     required this.status,
     required this.progress,
-    required this.size,
     required this.createdAt,
   });
 

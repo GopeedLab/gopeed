@@ -22,7 +22,6 @@ type Task struct {
 	Meta      *fetcher.FetcherMeta `json:"meta"`
 	Status    base.Status          `json:"status"`
 	Progress  *Progress            `json:"progress"`
-	Size      int64                `json:"size"`
 	CreatedAt time.Time            `json:"createdAt"`
 
 	fetcherBuilder fetcher.FetcherBuilder
@@ -50,7 +49,6 @@ func (t *Task) clone() *Task {
 		Meta:      t.Meta,
 		Status:    t.Status,
 		Progress:  t.Progress,
-		Size:      t.Size,
 		CreatedAt: t.CreatedAt,
 	}
 }

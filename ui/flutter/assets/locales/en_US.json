@@ -12,6 +12,7 @@
   "donate": "Donate",
   "exit": "Exit",
   "create": "Create Task",
+  "directDownload": "Direct Download",
   "advancedOptions": "Advanced Options",
   "downloadLink": "Download Link",
   "downloadLinkValid": "Please enter the download link",
