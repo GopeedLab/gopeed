@@ -3,6 +3,7 @@ package base
 import (
 	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/util"
+	"golang.org/x/exp/slices"
 )
 
 // Request download request
@@ -47,10 +48,12 @@ func (r *Resource) Validate() error {
 	return nil
 }
 
-func (r *Resource) CalcSize() {
+func (r *Resource) CalcSize(selectFiles []int) {
 	var size int64
-	for _, file := range r.Files {
-		size += file.Size
+	for i, file := range r.Files {
+		if len(selectFiles) == 0 || slices.Contains(selectFiles, i) {
+			size += file.Size
+		}
 	}
 	r.Size = size
 }

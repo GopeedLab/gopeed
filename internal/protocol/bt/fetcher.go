@@ -161,7 +161,7 @@ func (f *Fetcher) Wait() (err error) {
 						}
 					}
 					if !selected {
-						util.SafeRemove(filepath.Join(f.meta.Opts.Path, file.Path()))
+						util.SafeRemove(filepath.Join(f.meta.Opts.Path, f.meta.Res.Name, file.Path()))
 					}
 				}
 				break
@@ -202,7 +202,7 @@ func (f *Fetcher) updateRes() {
 			Size: file.Length(),
 		}
 	}
-	res.CalcSize()
+	res.CalcSize(nil)
 	f.meta.Res = res
 	if f.meta.Opts != nil {
 		f.meta.Opts.InitSelectFiles(len(res.Files))

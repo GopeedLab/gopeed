@@ -24,9 +24,12 @@ import '../../app/controllers/app_controller.dart';
 import '../controllers/create_controller.dart';
 
 class CreateView extends GetView<CreateController> {
-  final _resolveFormKey = GlobalKey<FormState>();
+  final _confirmFormKey = GlobalKey<FormState>();
 
   final _urlController = TextEditingController();
+  final _renameController = TextEditingController();
+  final _connectionsController = TextEditingController();
+  final _pathController = TextEditingController();
   final _confirmController = RoundedLoadingButtonController();
   final _httpUaController = TextEditingController();
   final _httpCookieController = TextEditingController();
@@ -40,6 +43,17 @@ class CreateView extends GetView<CreateController> {
 
   @override
   Widget build(BuildContext context) {
+    final appController = Get.find<AppController>();
+
+    if (_connectionsController.text.isEmpty) {
+      _connectionsController.text = appController
+          .downloaderConfig.value.protocolConfig.http.connections
+          .toString();
+    }
+    if (_pathController.text.isEmpty) {
+      _pathController.text = appController.downloaderConfig.value.downloadDir;
+    }
+
     final String? filePath = Get.rootDelegate.arguments();
     if (_urlController.text.isEmpty) {
       if (filePath?.isNotEmpty ?? false) {
@@ -91,214 +105,253 @@ class CreateView extends GetView<CreateController> {
           onTap: () {
             FocusScope.of(context).requestFocus(FocusNode());
           },
-          child: Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
-            child: Form(
-              key: _resolveFormKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                children: [
-                  Row(children: [
-                    Expanded(
-                      child: TextFormField(
-                        autofocus: true,
-                        controller: _urlController,
-                        minLines: 1,
-                        maxLines: 5,
-                        decoration: InputDecoration(
-                          hintText: _hitText(),
-                          hintStyle: const TextStyle(fontSize: 12),
-                          labelText: 'downloadLink'.tr,
-                          icon: const Icon(Icons.link),
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              _urlController.clear();
-                              controller.clearFileDataUri();
-                            },
-                            icon: const Icon(Icons.clear),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+              child: Form(
+                key: _confirmFormKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
+                  children: [
+                    Row(children: [
+                      Expanded(
+                        child: TextFormField(
+                          autofocus: true,
+                          controller: _urlController,
+                          minLines: 1,
+                          maxLines: 5,
+                          decoration: InputDecoration(
+                            hintText: _hitText(),
+                            hintStyle: const TextStyle(fontSize: 12),
+                            labelText: 'downloadLink'.tr,
+                            icon: const Icon(Icons.link),
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                _urlController.clear();
+                                controller.clearFileDataUri();
+                              },
+                              icon: const Icon(Icons.clear),
+                            ),
                           ),
+                          validator: (v) {
+                            return v!.trim().isNotEmpty
+                                ? null
+                                : 'downloadLinkValid'.tr;
+                          },
+                          onChanged: (v) async {
+                            controller.clearFileDataUri();
+                            if (controller.oldUrl.value.isEmpty) {
+                              recognizeMagnetUri(v);
+                            }
+                            controller.oldUrl.value = v;
+                          },
                         ),
-                        validator: (v) {
-                          return v!.trim().isNotEmpty
-                              ? null
-                              : 'downloadLinkValid'.tr;
-                        },
-                        onChanged: (v) async {
-                          controller.clearFileDataUri();
-                          if (controller.oldUrl.value.isEmpty) {
-                            recognizeMagnetUri(v);
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.folder_open),
+                        onPressed: () async {
+                          var pr = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ["torrent"]);
+                          if (pr != null) {
+                            if (!Util.isWeb()) {
+                              _urlController.text = pr.files[0].path ?? "";
+                              return;
+                            }
+                            _urlController.text = pr.files[0].name;
+                            controller.setFileDataUri(pr.files[0].bytes!);
                           }
-                          controller.oldUrl.value = v;
                         },
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.folder_open),
-                      onPressed: () async {
-                        var pr = await FilePicker.platform.pickFiles(
-                            type: FileType.custom,
-                            allowedExtensions: ["torrent"]);
-                        if (pr != null) {
-                          if (!Util.isWeb()) {
-                            _urlController.text = pr.files[0].path ?? "";
-                            return;
-                          }
-                          _urlController.text = pr.files[0].name;
-                          controller.setFileDataUri(pr.files[0].bytes!);
-                        }
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.history_rounded),
-                      onPressed: () async {
-                        List<String> resultOfHistories =
-                            await _historyController.getAllHistory();
-                        // reversing: display last entered history first
-                        List<String> reverseResultOfHistories =
-                            resultOfHistories.reversed.toList();
-                        // show dialog box to list history
-                        if (context.mounted) {
-                          showGeneralDialog(
-                            barrierColor: Colors.black.withOpacity(0.5),
-                            transitionBuilder: (context, a1, a2, widget) {
-                              return Transform.scale(
-                                scale: a1.value,
-                                child: Opacity(
-                                  opacity: a1.value,
-                                  child: HistoryView(
-                                    isHistoryListEmpty:
-                                        reverseResultOfHistories.isEmpty,
-                                    historyList: ListView.builder(
-                                      itemCount: reverseResultOfHistories.length,
-                                      itemBuilder: (context, index) {
-                                        return GestureDetector(
-                                          onTap: () {
-                                            _urlController.text =
-                                                reverseResultOfHistories[index];
-                                            Navigator.pop(context);
-                                          },
-                                          child: MouseRegion(
-                                            cursor: SystemMouseCursors.click,
-                                            child: Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 8.0,
-                                                vertical: 8.0,
-                                              ),
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 10.0,
-                                                vertical: 8.0,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .background,
-                                                borderRadius:
-                                                    BorderRadius.circular(10.0),
-                                              ),
-                                              child: Text(
-                                                reverseResultOfHistories[index]
-                                                    .toString(),
+                      IconButton(
+                        icon: const Icon(Icons.history_rounded),
+                        onPressed: () async {
+                          List<String> resultOfHistories =
+                              await _historyController.getAllHistory();
+                          // reversing: display last entered history first
+                          List<String> reverseResultOfHistories =
+                              resultOfHistories.reversed.toList();
+                          // show dialog box to list history
+                          if (context.mounted) {
+                            showGeneralDialog(
+                              barrierColor: Colors.black.withOpacity(0.5),
+                              transitionBuilder: (context, a1, a2, widget) {
+                                return Transform.scale(
+                                  scale: a1.value,
+                                  child: Opacity(
+                                    opacity: a1.value,
+                                    child: HistoryView(
+                                      isHistoryListEmpty:
+                                          reverseResultOfHistories.isEmpty,
+                                      historyList: ListView.builder(
+                                        itemCount:
+                                            reverseResultOfHistories.length,
+                                        itemBuilder: (context, index) {
+                                          return GestureDetector(
+                                            onTap: () {
+                                              _urlController.text =
+                                                  reverseResultOfHistories[
+                                                      index];
+                                              Navigator.pop(context);
+                                            },
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.click,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 8.0,
+                                                  vertical: 8.0,
+                                                ),
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 10.0,
+                                                  vertical: 8.0,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .background,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          10.0),
+                                                ),
+                                                child: Text(
+                                                  reverseResultOfHistories[
+                                                          index]
+                                                      .toString(),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        );
-                                      },
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
-                            transitionDuration:
-                                const Duration(milliseconds: 250),
-                            barrierDismissible: true,
-                            barrierLabel: '',
-                            context: context,
-                            pageBuilder: (context, animation1, animation2) {
-                              return const Text('PAGE BUILDER');
-                            },
-                          );
-                        }
-                      },
-                    ),
-                  ]
-                      //.where((e) => e != null).map((e) => e!).toList(),
+                                );
+                              },
+                              transitionDuration:
+                                  const Duration(milliseconds: 250),
+                              barrierDismissible: true,
+                              barrierLabel: '',
+                              context: context,
+                              pageBuilder: (context, animation1, animation2) {
+                                return const Text('PAGE BUILDER');
+                              },
+                            );
+                          }
+                        },
                       ),
-                  Obx(
-                    () => Visibility(
-                      visible: controller.showAdvanced.value,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 40, top: 15),
-                        child: Column(
-                          children: [
-                            TabBar(
-                              controller: controller.advancedTabController,
-                              tabs: const [
-                                Tab(
-                                  text: 'HTTP',
-                                ),
-                                Tab(
-                                  text: 'BitTorrent',
-                                )
-                              ],
-                            ),
-                            AutoScaleTabBarView(
-                              controller: controller.advancedTabController,
-                              children: [
-                                Column(
-                                  children: [
-                                    TextFormField(
-                                        controller: _httpUaController,
-                                        decoration: const InputDecoration(
-                                          labelText: 'User-Agent',
-                                        )),
-                                    TextFormField(
-                                        controller: _httpCookieController,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Cookie',
-                                        )),
-                                    TextFormField(
-                                        controller: _httpRefererController,
-                                        decoration: const InputDecoration(
-                                          labelText: 'Referer',
-                                        )),
-                                  ],
-                                ),
-                                Column(
-                                  children: [
-                                    TextFormField(
-                                        controller: _btTrackerController,
-                                        maxLines: 5,
-                                        decoration: InputDecoration(
-                                          labelText: 'Trakers',
-                                          hintText: 'addTrackerHit'.tr,
-                                        )),
-                                  ],
-                                )
-                              ],
-                            )
+                    ]),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 40),
+                      child: Column(children: [
+                        TextField(
+                          controller: _renameController,
+                          decoration: InputDecoration(labelText: 'rename'.tr),
+                        ),
+                        TextField(
+                          controller: _connectionsController,
+                          decoration: InputDecoration(
+                            labelText: 'connections'.tr,
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            NumericalRangeFormatter(min: 1, max: 256),
                           ],
                         ),
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 15),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: TextButton(
-                              onPressed: () {
-                                controller.showAdvanced.value =
-                                    !controller.showAdvanced.value;
-                              },
-                              child: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                        DirectorySelector(
+                          controller: _pathController,
+                        ),
+                        Obx(
+                          () => Visibility(
+                            visible: controller.showAdvanced.value,
+                            child: Column(
+                              children: [
+                                TabBar(
+                                  controller: controller.advancedTabController,
+                                  tabs: const [
+                                    Tab(
+                                      text: 'HTTP',
+                                    ),
+                                    Tab(
+                                      text: 'BitTorrent',
+                                    )
+                                  ],
+                                ),
+                                AutoScaleTabBarView(
+                                  controller: controller.advancedTabController,
                                   children: [
+                                    Column(
+                                      children: [
+                                        TextFormField(
+                                            controller: _httpUaController,
+                                            decoration: const InputDecoration(
+                                              labelText: 'User-Agent',
+                                            )),
+                                        TextFormField(
+                                            controller: _httpCookieController,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Cookie',
+                                            )),
+                                        TextFormField(
+                                            controller: _httpRefererController,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Referer',
+                                            )),
+                                      ],
+                                    ),
+                                    Column(
+                                      children: [
+                                        TextFormField(
+                                            controller: _btTrackerController,
+                                            maxLines: 5,
+                                            decoration: InputDecoration(
+                                              labelText: 'Trakers',
+                                              hintText: 'addTrackerHit'.tr,
+                                            )),
+                                      ],
+                                    )
+                                  ],
+                                )
+                              ],
+                            ).paddingOnly(top: 16),
+                          ),
+                        ),
+                      ]),
+                    ),
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 15),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextButton(
+                                  onPressed: () {
+                                    controller.directDownload.value =
+                                        !controller.directDownload.value;
+                                  },
+                                  child: Row(children: [
+                                    Obx(() => Checkbox(
+                                          value:
+                                              controller.directDownload.value,
+                                          onChanged: (bool? value) {
+                                            controller.directDownload.value =
+                                                value ?? false;
+                                          },
+                                        )),
+                                    Text('directDownload'.tr),
+                                  ]),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    controller.showAdvanced.value =
+                                        !controller.showAdvanced.value;
+                                  },
+                                  child: Row(children: [
                                     Obx(() => Checkbox(
                                           value: controller.showAdvanced.value,
                                           onChanged: (bool? value) {
@@ -308,22 +361,24 @@ class CreateView extends GetView<CreateController> {
                                         )),
                                     Text('advancedOptions'.tr),
                                   ]),
+                                ),
+                              ],
                             ),
-                          ),
-                          SizedBox(
-                            width: 150,
-                            child: RoundedLoadingButton(
-                              color: Get.theme.colorScheme.secondary,
-                              onPressed: _doResolve,
-                              controller: _confirmController,
-                              child: Text('confirm'.tr),
+                            SizedBox(
+                              width: 150,
+                              child: RoundedLoadingButton(
+                                color: Get.theme.colorScheme.secondary,
+                                onPressed: _doConfirm,
+                                controller: _confirmController,
+                                child: Text('confirm'.tr),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -346,45 +401,54 @@ class CreateView extends GetView<CreateController> {
     }
   }
 
-  Future<void> _doResolve() async {
-    if (controller.isResolving.value) {
+  Future<void> _doConfirm() async {
+    if (controller.isConfirming.value) {
       return;
     }
-    controller.isResolving.value = true;
+    controller.isConfirming.value = true;
     try {
       _confirmController.start();
-      if (_resolveFormKey.currentState!.validate()) {
-        // check if is multi line urls
-        final urls = Util.textToLines(_urlController.text);
-        ResolveResult rr;
-        bool isMultiLine = false;
-        if (urls.length > 1) {
-          isMultiLine = true;
-          rr = ResolveResult(
-              res: Resource(
-                  files: urls
-                      .map((u) => FileInfo(
-                          name: u,
-                          req: Request(url: u, extra: parseReqExtra(u))))
-                      .toList()));
+      if (_confirmFormKey.currentState!.validate()) {
+        final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
+            ? controller.fileDataUri.value
+            : _urlController.text;
+
+        final urls = Util.textToLines(submitUrl);
+        // Add url to the history
+        for (final url in urls) {
+          _historyController.addHistory(url);
+        }
+        /* 
+        Check if is direct download, there has two ways to direct download
+        1. Direct download option is checked
+        2. Muli line urls
+        */
+        final isMultiLine = urls.length > 1;
+        final isDirect = controller.directDownload.value || isMultiLine;
+        if (isDirect) {
+          await Future.wait(urls.map((url) {
+            return createTask(CreateTask(
+                req: Request(url: url, extra: parseReqExtra(url)),
+                opt: Options(
+                    name: isMultiLine ? "" : _renameController.text,
+                    path: _pathController.text,
+                    selectFiles: [],
+                    extra: parseReqOpts())));
+          }));
+          Get.rootDelegate.offNamed(Routes.TASK);
         } else {
-          final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
-              ? controller.fileDataUri.value
-              : _urlController.text;
-          // add final submitUrl to the history
-          _historyController.addHistory(submitUrl);
-          rr = await resolve(Request(
+          final rr = await resolve(Request(
             url: submitUrl,
             extra: parseReqExtra(_urlController.text),
           ));
+          await _showResolveDialog(rr);
         }
-        await _showResolveDialog(rr, isMultiLine);
       }
     } catch (e) {
       showErrorMessage(e);
     } finally {
       _confirmController.reset();
-      controller.isResolving.value = false;
+      controller.isConfirming.value = false;
     }
   }
 
@@ -407,6 +471,13 @@ class CreateView extends GetView<CreateController> {
     return reqExtra;
   }
 
+  Object? parseReqOpts() {
+    return _connectionsController.text.isEmpty
+        ? null
+        : (OptsExtraHttp()
+          ..connections = int.parse(_connectionsController.text));
+  }
+
   String _hitText() {
     return 'downloadLinkHit'.trParams({
       'append':
@@ -414,14 +485,8 @@ class CreateView extends GetView<CreateController> {
     });
   }
 
-  Future<void> _showResolveDialog(ResolveResult rr, bool isMuiltiLine) async {
-    final appController = Get.find<AppController>();
-
+  Future<void> _showResolveDialog(ResolveResult rr) async {
     final createFormKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final connectionsController = TextEditingController();
-    final pathController = TextEditingController(
-        text: appController.downloaderConfig.value.downloadDir);
     final downloadController = RoundedLoadingButtonController();
     return showDialog<void>(
         context: Get.context!,
@@ -440,31 +505,7 @@ class CreateView extends GetView<CreateController> {
                     child: Form(
                         key: createFormKey,
                         autovalidateMode: AutovalidateMode.always,
-                        child: Column(
-                          children: [
-                            Expanded(child: FileListView(files: rr.res.files)),
-                            TextFormField(
-                              controller: nameController,
-                              decoration: InputDecoration(
-                                labelText: 'rename'.tr,
-                              ),
-                            ),
-                            TextFormField(
-                              controller: connectionsController,
-                              decoration: InputDecoration(
-                                labelText: 'connections'.tr,
-                              ),
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                NumericalRangeFormatter(min: 1, max: 256),
-                              ],
-                            ),
-                            DirectorySelector(
-                              controller: pathController,
-                            ),
-                          ],
-                        )),
+                        child: FileListView(files: rr.res.files)),
                   );
                 },
               ),
@@ -500,25 +541,19 @@ class CreateView extends GetView<CreateController> {
                             showMessage('tip'.tr, 'noFileSelected'.tr);
                             return;
                           }
-                          Object? optExtra = connectionsController.text.isEmpty
-                              ? null
-                              : (OptsExtraHttp()
-                                ..connections =
-                                    int.parse(connectionsController.text));
+                          final optExtra = parseReqOpts();
                           if (createFormKey.currentState!.validate()) {
                             if (rr.id.isEmpty) {
-                              // create task batch, there has two ways to batch create task
-                              // 1. from multi line urls
-                              // 2. from extension resolve result
+                              // from extension resolve result
                               await Future.wait(
                                   controller.selectedIndexes.map((index) {
                                 final file = rr.res.files[index];
                                 return createTask(CreateTask(
                                     req: file.req!,
                                     opt: Options(
-                                        name: isMuiltiLine ? "" : file.name,
+                                        name: file.name,
                                         path: path.join(
-                                            pathController.text, rr.res.name),
+                                            _pathController.text, rr.res.name),
                                         selectFiles: [],
                                         extra: optExtra)));
                               }));
@@ -526,8 +561,8 @@ class CreateView extends GetView<CreateController> {
                               await createTask(CreateTask(
                                   rid: rr.id,
                                   opt: Options(
-                                      name: nameController.text,
-                                      path: pathController.text,
+                                      name: _renameController.text,
+                                      path: _pathController.text,
                                       selectFiles: controller.selectedIndexes,
                                       extra: optExtra)));
                             }

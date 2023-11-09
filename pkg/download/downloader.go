@@ -540,11 +540,17 @@ func (d *Downloader) GetTask(id string) *Task {
 }
 
 func (d *Downloader) GetTasks() []*Task {
-	// reverse tasks, so that the latest task is in the front
 	tasks := make([]*Task, len(d.tasks))
 	for i := 0; i < len(d.tasks); i++ {
-		tasks[i] = d.tasks[len(d.tasks)-i-1]
+		tasks[i] = d.tasks[i]
 	}
+	// sort tasks by status, order by Status(if(running,1,0)) desc, CreatedAt desc
+	sort.Slice(tasks, func(i, j int) bool {
+		if tasks[i].Status != tasks[j].Status {
+			return tasks[i].Status == base.DownloadStatusRunning
+		}
+		return tasks[i].CreatedAt.After(tasks[j].CreatedAt)
+	})
 	return tasks
 }
 
@@ -579,16 +585,16 @@ func (d *Downloader) watch(task *Task) {
 		d.emit(EventKeyError, task, err)
 	} else {
 		task.Progress.Used = task.timer.Used()
-		if task.Size == 0 {
-			task.Size = task.fetcher.Progress().TotalDownloaded()
-			task.Meta.Res.Size = task.Size
+		if task.Meta.Res.Size == 0 {
+			task.Meta.Res.Size = task.fetcher.Progress().TotalDownloaded()
 		}
 		used := task.Progress.Used / int64(time.Second)
 		if used == 0 {
 			used = 1
 		}
-		task.Progress.Speed = task.Size / used
-		task.Progress.Downloaded = task.Size
+		totalSize := task.Meta.Res.Size
+		task.Progress.Speed = totalSize / used
+		task.Progress.Downloaded = totalSize
 		task.Status = base.DownloadStatusDone
 		d.storage.Put(bucketTask, task.ID, task.clone())
 		d.emit(EventKeyDone, task)
@@ -741,6 +747,8 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				}
 				task.Meta.Opts.Name = newName
 			}
+
+			task.Meta.Res.CalcSize(task.Meta.Opts.SelectFiles)
 		}
 
 		task.Progress.Speed = 0

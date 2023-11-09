@@ -243,7 +243,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 					gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] resource invalid", ext.buildIdentity())
 					return
 				}
-				ctx.Res.CalcSize()
+				ctx.Res.CalcSize(nil)
 			}
 			res = ctx.Res
 		},

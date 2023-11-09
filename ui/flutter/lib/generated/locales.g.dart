@@ -28,6 +28,7 @@ class LocaleKeys {
   static const donate = 'donate';
   static const exit = 'exit';
   static const create = 'create';
+  static const directDownload = 'directDownload';
   static const advancedOptions = 'advancedOptions';
   static const downloadLink = 'downloadLink';
   static const downloadLinkValid = 'downloadLinkValid';
@@ -87,6 +88,8 @@ class LocaleKeys {
   static const history = 'history';
   static const clearHistory = 'clearHistory';
   static const noHistoryFound = 'noHistoryFound';
+  static const serviceTitle = 'serviceTitle';
+  static const serviceText = 'serviceText';
 }
 
 class Locales {
@@ -104,6 +107,7 @@ class Locales {
     'donate': 'Donate',
     'exit': 'Exit',
     'create': 'Create Task',
+    'directDownload': 'Direct Download',
     'advancedOptions': 'Advanced Options',
     'downloadLink': 'Download Link',
     'downloadLinkValid': 'Please enter the download link',
@@ -165,6 +169,8 @@ class Locales {
     'history': 'History',
     'clearHistory': 'Clear History',
     'noHistoryFound': 'No History Found',
+    'serviceTitle': 'Download Service',
+    'serviceText': 'Running',
   };
   static const fa_IR = {
     'label': 'فارسی',
@@ -375,6 +381,7 @@ class Locales {
     'donate': '打赏',
     'exit': '退出',
     'create': '创建任务',
+    'directDownload': '直接下载',
     'advancedOptions': '高级选项',
     'downloadLink': '下载链接',
     'downloadLinkValid': '请输入下载链接',
@@ -434,6 +441,8 @@ class Locales {
     'history': '历史记录',
     'clearHistory': '清空历史记录',
     'noHistoryFound': '暂无历史记录',
+    'serviceTitle': '下载服务',
+    'serviceText': '运行中',
   };
   static const zh_TW = {
     'label': '中文 (正體) ',

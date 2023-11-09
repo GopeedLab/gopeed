@@ -33,6 +33,15 @@ import Libgopeed
         })
         
         GeneratedPluginRegistrant.register(with: self)
+
+        SwiftFlutterForegroundTaskPlugin.setPluginRegistrantCallback(registerPlugins)
+        if #available(iOS 10.0, *) {
+            UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
+        }
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
+}
+
+func registerPlugins(registry: FlutterPluginRegistry) {
+  GeneratedPluginRegistrant.register(with: registry)
 }
