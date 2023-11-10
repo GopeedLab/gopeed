@@ -263,8 +263,6 @@ jobs:
           Name=Gopeed
           GenericName=Gopeed
           Comment=High speed downloader that supports all platforms.
-          Exec=gopeed
-          Icon=gopeed.png
           Terminal=false
           Type=Application
           Categories=Utility
