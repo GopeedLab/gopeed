@@ -2,7 +2,7 @@
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
 [![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://docs.gopeed.com/zh/donate.html)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://docs.gopeed.com/donate.html)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
 ![](_docs/img/banner.png)
@@ -11,31 +11,31 @@
 
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md)
 
-## 介绍
+## 簡介
 
-Gopeed（全称 Go Speed），是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。除了基本的下载功能外，Gopeed 还是一款高度可定制化的下载器，支持通过对接[APIs](https://docs.gopeed.com/zh/dev-api.html)或者安装和开发[扩展](https://docs.gopeed.com/zh/dev-extension.html)来实现更多的功能。
+Gopeed（全稱 Go Speed），是一款使用`Golang`+`Flutter`編寫的高速下載軟體，支援（HTTP、BitTorrent、Magnet）協定，同時支援所有的平台。
 
-访问 ✈ [官方网站](https://gopeed.com/zh-CN) | 📖 [开发文档](https://docs.gopeed.com/zh/)
+前往 ✈ [主頁](https://gopeed.com/zh-CN) | 📖 [文檔](https://docs.gopeed.com/zh/)
 
-## 安装
+## 安裝
 
-**已支持平台**
+**已支援的平台**
 
-- [x] windows
-- [x] macos
-- [x] linux
-- [x] android
-- [x] ios
-- [x] web
-- [x] docker
+- [x] Windows
+- [x] MacOS
+- [x] Linux
+- [x] Android
+- [x] iOS
+- [x] Web
+- [x] Docker
 
-[前往下载](https://github.com/GopeedLab/gopeed/releases/latest)
+[下載](https://github.com/GopeedLab/gopeed/releases/latest)
 
-> 注：macos 版本运行如果提示损坏，请在终端执行 `xattr -d com.apple.quarantine /Applications/Gopeed.app` 命令
+> 註：MacOS 版運行時若提示損壞，請在終端中執行 `xattr -d com.apple.quarantine /Applications/Gopeed.app`
 
-### 命令行工具
+### 使用CLI安裝
 
-使用`go install`安装：
+使用`go install`安裝：
 
 ```bash
 go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
@@ -43,7 +43,7 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 
 ### Docker
 
-#### 直接运行
+#### 直接執行
 
 ```bash
 docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads liwei2633/gopeed
@@ -55,46 +55,46 @@ docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads liwei2633/gopeed
 docker-compose up -d
 ```
 
-#### 访问服务
+#### 訪問服務
 
-当 docker 容器运行时，可以通过 `http://localhost:9999` 访问 web 页面。
+當 docker 容器運作時，可以通過 `http://localhost:9999` 訪問 web 頁面。
 
-## 赞助
+## 贊助
 
-如果觉得项目对你有帮助，请考虑[赞助](https://docs.gopeed.com/zh/donate)以支持这个项目的发展，非常感谢！
+如果你認為該項目對你有所幫助，請考慮[贊助](https://docs.gopeed.com/zh/donate)以支持該項目的持續發展，謝謝！
 
-## 界面展示
+## 軟體介面
 
 ![](_docs/img/ui-demo.png)
 
-## 开发
+## 開發
 
-本项目分为前端和后端两个部分，前端使用`flutter`，后端使用`Golang`，两边通过`http`协议进行通讯，在 unix 系统下，使用的是`unix socket`，在 windows 系统下，使用的是`tcp`协议。
+該項目分為前端與後端，前端使用`flutter`編寫，後端使用`Golang`編寫，兩邊通過`http`協定進行通訊，在 unix 系統下，則使用`unix socket`，在 windows 系統下，則使用`tcp`協定。
 
-> 前端代码位于`ui/flutter`目录下。
+> 前端代碼位於`ui/flutter`目錄內。
 
-### 环境要求
+### 開發環境
 
 1. Golang 1.19+
 2. Flutter 3.10+
 
-### 克隆项目
+### 克隆項目
 
 ```bash
 git clone git@github.com:GopeedLab/gopeed.git
 ```
 
-### 贡献代码
+### 協助開發
 
-请参考[贡献指南](CONTRIBUTING_zh-CN.md)
+請參考[協助指南](CONTRIBUTING_zh-TW.md)
 
-### 编译
+### 編譯
 
 #### 桌面端
 
-首先需要按照[flutter desktop 官网文档](https://docs.flutter.dev/development/platform-integration/desktop)进行环境配置，然后需要准备好`cgo`环境，具体可以自行搜索。
+首先需要按照[flutter desktop 官方文檔](https://docs.flutter.dev/development/platform-integration/desktop)配置開發環境，並準備好`cgo`環境，具體方法可以自行搜索。
 
-构建命令：
+組建指令：
 
 - windows
 
@@ -120,9 +120,9 @@ cd ui/flutter
 flutter build linux
 ```
 
-#### 移动端
+#### 移動設備
 
-同样的也是需要准备好`cgo`环境，接着安装`gomobile`：
+需要`cgo`環境，並安裝`gomobile`：
 
 ```bash
 go install golang.org/x/mobile/cmd/gomobile@latest
@@ -130,7 +130,7 @@ go get golang.org/x/mobile/bind
 gomobile init
 ```
 
-构建命令：
+組建指令：
 
 - android
 
@@ -148,9 +148,9 @@ cd ui/flutter
 flutter build ios --no-codesign
 ```
 
-#### Web 端
+#### 網頁端
 
-构建命令：
+組建指令：
 
 ```bash
 cd ui/flutter
@@ -162,9 +162,9 @@ go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed
 go run cmd/web/main.go
 ```
 
-## 感谢
+## 感謝
 
-### 贡献者
+### 貢獻者
 
 <a href="https://github.com/GopeedLab/gopeed/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=GopeedLab/gopeed" />
@@ -174,6 +174,6 @@ go run cmd/web/main.go
 
 [![goland](_docs/img/goland.svg)](https://www.jetbrains.com/?from=gopeed)
 
-## 开源许可
+## 軟體許可
 
-基于 [GPLv3](LICENSE) 协议开源。
+該軟體遵循 [GPLv3](LICENSE) 。
