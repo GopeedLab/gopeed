@@ -259,12 +259,9 @@ jobs:
 
           cat>debian/gui/gopeed.desktop<<EOF
           [Desktop Entry]
-          Version=${VERSION:1}
           Name=Gopeed
-          GenericName=Gopeed
+          GenericName=Downloader
           Comment=High speed downloader that supports all platforms.
-          Exec=gopeed
-          Icon=gopeed.png
           Terminal=false
           Type=Application
           Categories=Utility
