@@ -57,6 +57,14 @@ class Util {
       storageDir = (await getLibraryDirectory()).path;
     } else if (Util.isDesktop()) {
       storageDir = File(Platform.resolvedExecutable).parent.path;
+      // check has write permission, if not, fallback to application support dir
+      try {
+        final testFile = File(path.join(storageDir, ".test"));
+        await testFile.writeAsString("test");
+        await testFile.delete();
+      } catch (e) {
+        storageDir = (await getApplicationSupportDirectory()).path;
+      }
     }
     _storageDir = storageDir;
   }
