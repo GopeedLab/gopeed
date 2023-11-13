@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
+import 'log_util.dart';
+
 class Util {
   static String? _storageDir;
 
@@ -57,6 +59,7 @@ class Util {
       storageDir = (await getLibraryDirectory()).path;
     } else if (Util.isDesktop()) {
       storageDir = File(Platform.resolvedExecutable).parent.path;
+      logger.i("storage dir 111: $storageDir");
       // check has write permission, if not, fallback to application support dir
       try {
         final testFile = File(path.join(storageDir, ".test"));
@@ -65,6 +68,7 @@ class Util {
       } catch (e) {
         storageDir = (await getApplicationSupportDirectory()).path;
       }
+      logger.i("storage dir 222: $storageDir");
     }
     _storageDir = storageDir;
   }

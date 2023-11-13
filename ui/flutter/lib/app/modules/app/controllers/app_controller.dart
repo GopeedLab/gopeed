@@ -269,13 +269,8 @@ class AppController extends GetxController with WindowListener, TrayListener {
       _defaultStartConfig!.address = "127.0.0.1:0";
     } else {
       _defaultStartConfig!.network = "unix";
-      if (Util.isDesktop()) {
-        _defaultStartConfig!.address = unixSocketPath;
-      }
-      if (Util.isMobile()) {
-        _defaultStartConfig!.address =
-            "${(await getTemporaryDirectory()).path}/$unixSocketPath";
-      }
+      _defaultStartConfig!.address =
+          "${(await getTemporaryDirectory()).path}/$unixSocketPath";
     }
     _defaultStartConfig!.apiToken = '';
     return _defaultStartConfig!;
