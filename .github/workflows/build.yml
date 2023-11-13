@@ -235,7 +235,7 @@ jobs:
           mkdir -p build/dist
           
           # Build portable
-          tar -czaf build/dist/Gopeed-$VERSION-linux-amd64-portable.tar.gz build/linux/x64/release/bundle
+          tar -C build/linux/x64/release/bundle -czaf build/dist/Gopeed-$VERSION-linux-amd64-portable.tar.gz ./
           
           
           # Build deb package

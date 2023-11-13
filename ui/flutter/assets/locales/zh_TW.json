@@ -66,12 +66,12 @@
   "extensionInstallSuccess": "安裝成功",
   "extensionUpdateSuccess": "更新完成",
   "extensionDelete": "解除安裝",
-  "extensionAlreadyLatest": "已是最新版本"
+  "extensionAlreadyLatest": "已是最新版本",
   "extensionFind": "取得外掛",
   "extensionDevelop": "開發外掛",
   "history": "歷史記錄",
   "clearHistory": "清空記錄",
-  "noHistoryFound": "還沒有記錄"
+  "noHistoryFound": "還沒有記錄",
   "serviceTitle": "下載服務",
   "serviceText": "執行中"
 }
