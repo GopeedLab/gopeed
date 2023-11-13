@@ -55,16 +55,14 @@ class Util {
       storageDir = (await getExternalStorageDirectory())?.path ?? storageDir;
     } else if (Platform.isIOS) {
       storageDir = (await getLibraryDirectory()).path;
+    } else if (Util.isDesktop()) {
+      storageDir = File(Platform.resolvedExecutable).parent.path;
     }
     _storageDir = storageDir;
   }
 
   static String getStorageDir() {
     return _storageDir!;
-  }
-
-  static String getStorageAsset(String asset) {
-    return path.join(getStorageDir(), asset);
   }
 
   static isAndroid() {
