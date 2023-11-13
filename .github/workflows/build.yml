@@ -260,12 +260,12 @@ jobs:
           cat>debian/gui/gopeed.desktop<<EOF
           [Desktop Entry]
           Name=Gopeed
-          GenericName=Downloader
+          GenericName=Downloader Manager
           Comment=High speed downloader that supports all platforms.
           Terminal=false
           Type=Application
           Categories=Utility
-          Keywords=Flutter;Downloader;
+          Keywords=HTTP;Bittorrent;Downloader;
           EOF
 
           dart pub global activate flutter_to_debian
@@ -381,16 +381,15 @@ jobs:
           
           cat>snap/gui/gopeed.desktop<<EOF
           [Desktop Entry]
-          Version=${VERSION:1}
           Name=Gopeed
-          GenericName=Gopeed
+          GenericName=Downloader Manager
           Comment=High speed downloader that supports all platforms.
           Exec=gopeed
           Icon=\${SNAP}/meta/gui/gopeed.png
           Terminal=false
           Type=Application
           Categories=Utility
-          Keywords=Flutter;Downloader;
+          Keywords=HTTP;Bittorrent;Downloader;
           EOF
           
           snapcraft --use-lxd
