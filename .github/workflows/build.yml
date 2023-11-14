@@ -289,8 +289,6 @@ jobs:
           EOF
 
           dpkg-deb --build debian/gopeed
-          ls -a
-          ls -a debian
           mv debian/gopeed.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
           
           
