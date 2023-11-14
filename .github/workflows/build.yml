@@ -251,11 +251,14 @@ jobs:
           #!/bin/bash
           ln -sf /opt/gopeed /usr/bin/gopeed
           EOF
-          
+
           cat>debian/gopeed/DEBIAN/postrm<<EOF
           #!/bin/bash
           rm -rf /usr/bin/gopeed
           EOF
+
+          chmod 0755 debian/gopeed/DEBIAN/postinst
+          chmod 0755 debian/gopeed/DEBIAN/postrm
 
           cat>debian/gopeed/DEBIAN/control<<EOF
           Package: gopeed
