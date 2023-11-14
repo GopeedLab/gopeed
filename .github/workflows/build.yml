@@ -275,8 +275,8 @@ jobs:
           #!/bin/sh
           echo "Removing Gopeed..."
           rm -f /usr/local/bin/gopeed
-          echo "Removing Gopeed data..."
-          rm -rf ~/.local/share/com.gopeed
+          echo "Removing Gopeed data... $HOME"
+          rm -rf $HOME/.local/share/com.gopeed
           echo "Removing Gopeed Done..."
           EOF
           chmod 755 debian/scripts/postrm
