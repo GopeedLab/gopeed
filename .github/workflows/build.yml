@@ -277,7 +277,7 @@ jobs:
           rm -f /usr/local/bin/gopeed
           echo "Removing Gopeed data... \$HOME"
           current_user=\$(logname)
-          current_user_home=\$(getent passwd $current_user | cut -d: -f6)
+          current_user_home=\$(getent passwd \$current_user | cut -d: -f6)
           echo "The current user's home directory is: \$current_user_home"
           rm -rf \$current_user_home/.local/share/com.gopeed
           echo "Removing Gopeed Done..."
