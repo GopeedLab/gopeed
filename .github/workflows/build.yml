@@ -247,17 +247,13 @@ jobs:
           cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/
           cp -r assets/icon/icon.svg debian/gopeed/usr/share/icons/hicolor/scalable/apps/
 
-          cat >debian/DEBIAN/postinst <<EOF
-          #!/bin/bash
-          ln -sf /opt/gopeed /usr/bin/gopeed
-          EOF
+          echo "#!/bin/bash" > debian/DEBIAN/postinst
+          echo "ln -sf /opt/gopeed /usr/bin/gopeed" >> debian/DEBIAN/postinst
           
-          cat >debian/gopeed/DEBIAN/postrm <<EOF
-          #!/bin/bash
-          rm -rf /usr/bin/gopeed
-          EOF
+          echo "#!/bin/bash" > debian/DEBIAN/postrm
+          echo "rm -rf /usr/bin/gopeed" >> debian/DEBIAN/postrm
 
-          cat >debian/gopeed/DEBIAN/control <<EOF
+          cat>debian/gopeed/DEBIAN/control<<EOF
           Package: gopeed
           Version: ${VERSION:1}
           Architecture: amd64
@@ -268,7 +264,7 @@ jobs:
           Description: High speed downloader that supports all platforms.
           EOF
 
-          cat >debian/gopeed/usr/share/applications/gopeed.desktop <<EOF
+          cat>debian/gopeed/usr/share/applications/gopeed.desktop<<EOF
           [Desktop Entry]
           Name=Gopeed
           GenericName=Download Manager
