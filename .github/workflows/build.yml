@@ -276,6 +276,8 @@ jobs:
           echo "Removing Gopeed..."
           rm -f /usr/local/bin/gopeed
           echo "Removing Gopeed data... \$HOME"
+          current_user=\$(logname)
+          echo "The current user is: \$current_user"
           rm -rf \$HOME/.local/share/com.gopeed
           echo "Removing Gopeed Done..."
           EOF
