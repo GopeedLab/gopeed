@@ -239,17 +239,17 @@ jobs:
           
           
           # Build deb package
-          mkdir -p debian/gopeed/opt
+          mkdir -p debian/gopeed/opt/gopeed
           mkdir -p debian/gopeed/usr/share/applications
           mkdir -p debian/gopeed/usr/share/icons/hicolor/scalable/apps
           mkdir -p debian/gopeed/DEBIAN
 
-          cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/
+          cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/gopeed/
           cp -r assets/icon/icon.svg debian/gopeed/usr/share/icons/hicolor/scalable/apps/
           
           cat>debian/gopeed/DEBIAN/postinst<<EOF
           #!/bin/bash
-          ln -sf /opt/gopeed /usr/bin/gopeed
+          ln -sf /opt/gopeed/gopeed /usr/bin/gopeed
           EOF
 
           cat>debian/gopeed/DEBIAN/postrm<<EOF
