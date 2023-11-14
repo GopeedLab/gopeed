@@ -249,7 +249,7 @@ jobs:
           flutter_app:
             command: gopeed
             arch: x64
-            parent: /usr/local/lib
+            parent: /opt
             nonInteractive: false
           control:
             Package: gopeed
@@ -266,7 +266,12 @@ jobs:
           cat>debian/scripts/postinst<<EOF
           #!/bin/sh
           # Link binary to /usr/local/bin
-          sudo ln -s /usr/local/lib/gopeed/gopeed /usr/local/bin/gopeed
+          sudo ln -s /opt/gopeed/gopeed /usr/local/bin/gopeed
+          EOF
+          cat>debian/scripts/postrm<<EOF
+          #!/bin/sh
+          # Remove all data
+          rm -rf ~/.local/share/com.gopeed
           EOF
 
           cp linux/gopeed.desktop debian/gui/gopeed.desktop

@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'api/api.dart' as api;
@@ -43,6 +46,12 @@ Future<void> init() async {
       await Util.initStorageDir();
     }
     initLogger();
+
+    // TODO remove
+    logger.i("path 111: ${File(Platform.resolvedExecutable).parent.path}");
+    logger.i("path 222: ${(await getApplicationSupportDirectory()).path}");
+    logger.i("path 333: ${(await getTemporaryDirectory()).path}");
+
     await controller.loadStartConfig();
     final startCfg = controller.startConfig.value;
     controller.runningPort.value = await LibgopeedBoot.instance.start(startCfg);
