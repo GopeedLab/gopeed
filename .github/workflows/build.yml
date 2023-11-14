@@ -280,7 +280,7 @@ jobs:
           
           dart pub global activate https://github.com/jeffrey0606/flutter_to_debian.git --source git 
           flutter_to_debian
-          mv debian/packages/gopeed*.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
+          mv build/linux/x64/release/debian/gopeed*.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
           
           
           # Build AppImage
