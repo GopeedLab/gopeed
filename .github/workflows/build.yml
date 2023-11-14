@@ -266,7 +266,7 @@ jobs:
           Architecture: amd64
           Essential: no
           Priority: optional
-          Depends: libayatana-appindicator3
+          Depends: 
           Maintainer: monkeyWie
           Description: High speed downloader that supports all platforms.
           EOF
