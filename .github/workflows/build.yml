@@ -265,13 +265,33 @@ jobs:
           mkdir -p debian/scripts
           cat>debian/scripts/postinst<<EOF
           #!/bin/sh
-          # Link binary to /usr/local/bin
-          sudo ln -s /opt/gopeed/gopeed /usr/local/bin/gopeed
+          set -e
+  
+          case "$1" in
+            configure)
+              ln -s /opt/gopeed/gopeed /usr/local/bin/gopeed
+            ;;
+          esac
+          
+          #DEBHELPER#
+          
+          exit 0
           EOF
+          
           cat>debian/scripts/postrm<<EOF
           #!/bin/sh
-          # Remove all data
-          rm -rf ~/.local/share/com.gopeed
+          set -e
+  
+          case "$1" in
+            remove|purge|disappear)
+              sudo rm -f /usr/local/bin/gopeed
+              rm -rf ~/.local/share/com.gopeed
+          ;;
+          esac
+          
+          #DEBHELPER#
+          
+          exit 0
           EOF
 
           cp linux/gopeed.desktop debian/gui/gopeed.desktop
