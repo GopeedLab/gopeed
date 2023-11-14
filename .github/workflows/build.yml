@@ -265,38 +265,18 @@ jobs:
           mkdir -p debian/scripts
           cat>debian/scripts/postinst<<EOF
           #!/bin/sh
-          set -e
-  
-          case "$1" in
-            configure)
-              ln -s /opt/gopeed/gopeed /usr/local/bin/gopeed
-            ;;
-          esac
-          
-          #DEBHELPER#
-          
-          exit 0
+          sudo ln -s /opt/gopeed/gopeed /usr/local/bin/gopeed
           EOF
           
           cat>debian/scripts/postrm<<EOF
           #!/bin/sh
-          set -e
-  
-          case "$1" in
-            remove|purge|disappear)
-              sudo rm -f /usr/local/bin/gopeed
-              rm -rf ~/.local/share/com.gopeed
-          ;;
-          esac
-          
-          #DEBHELPER#
-          
-          exit 0
+          sudo rm -f /usr/local/bin/gopeed
+          rm -rf ~/.local/share/com.gopeed
           EOF
 
           cp linux/gopeed.desktop debian/gui/gopeed.desktop
           
-          dart pub global activate flutter_to_debian
+          dart pub global activate https://github.com/jeffrey0606/flutter_to_debian.git --source git 
           flutter_to_debian
           mv debian/packages/gopeed*.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
           
