@@ -289,7 +289,7 @@ jobs:
           EOF
 
           dpkg-deb --build debian/gopeed
-          mv gopeed*.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
+          mv *.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
           
           
           # Build AppImage
