@@ -259,7 +259,7 @@ jobs:
 
           cat>debian/gopeed/DEBIAN/control<<EOF
           Package: gopeed
-          Version: $VERSION
+          Version: ${VERSION:1}
           Architecture: amd64
           Essential: no
           Priority: optional
