@@ -209,6 +209,10 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _initForegroundTask() async {
+    if (!Util.isMobile()) {
+      return;
+    }
+
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
           channelId: 'gopeed_service',

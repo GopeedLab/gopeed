@@ -40,18 +40,13 @@ Future<void> init() async {
     });
   }
 
+  if (!Util.isWeb()) {
+    await Util.initStorageDir();
+  }
+  initLogger();
+
   final controller = Get.put(AppController());
   try {
-    if (!Util.isWeb()) {
-      await Util.initStorageDir();
-    }
-    initLogger();
-
-    // TODO remove
-    logger.i("path 111: ${File(Platform.resolvedExecutable).parent.path}");
-    logger.i("path 222: ${(await getApplicationSupportDirectory()).path}");
-    logger.i("path 333: ${(await getTemporaryDirectory()).path}");
-
     await controller.loadStartConfig();
     final startCfg = controller.startConfig.value;
     controller.runningPort.value = await LibgopeedBoot.instance.start(startCfg);

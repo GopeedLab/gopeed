@@ -265,14 +265,19 @@ jobs:
           mkdir -p debian/scripts
           cat>debian/scripts/postinst<<EOF
           #!/bin/sh
+          echo "Installing Gopeed..."
           ln -s /opt/gopeed/gopeed /usr/local/bin/gopeed
+          echo "Installing Gopeed Done..."
           EOF
           chmod 755 debian/scripts/postinst
           
           cat>debian/scripts/postrm<<EOF
           #!/bin/sh
+          echo "Removing Gopeed..."
           rm -f /usr/local/bin/gopeed
+          echo "Removing Gopeed data..."
           rm -rf ~/.local/share/com.gopeed
+          echo "Removing Gopeed Done..."
           EOF
           chmod 755 debian/scripts/postrm
 
