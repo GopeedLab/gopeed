@@ -249,7 +249,8 @@ jobs:
           flutter_app:
             command: gopeed
             arch: x64
-            parent: /usr/local/bin
+            parent: /usr/local/lib
+            nonInteractive: false
           control:
             Package: gopeed
             Version: ${VERSION:1}
@@ -259,6 +260,14 @@ jobs:
             Depends:
             Maintainer: monkeyWie
             Description: High speed downloader that supports all platforms.
+          EOF
+          
+          mkdir -p debian/scripts
+          cat>debian/scripts/postinst<<EOF
+          #!/bin/sh
+          set -e
+          # Link binary to /usr/local/bin
+          ln -s /usr/local/lib/gopeed/gopeed /usr/local/bin/gopeed
           EOF
 
           cat>debian/gui/gopeed.desktop<<EOF
