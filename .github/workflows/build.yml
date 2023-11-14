@@ -267,12 +267,14 @@ jobs:
           #!/bin/sh
           sudo ln -s /opt/gopeed/gopeed /usr/local/bin/gopeed
           EOF
+          chmod 755 debian/scripts/postinst
           
           cat>debian/scripts/postrm<<EOF
           #!/bin/sh
           sudo rm -f /usr/local/bin/gopeed
           rm -rf ~/.local/share/com.gopeed
           EOF
+          chmod 755 debian/scripts/postrm
 
           cp linux/gopeed.desktop debian/gui/gopeed.desktop
           
