@@ -57,9 +57,8 @@ class Util {
       storageDir = (await getExternalStorageDirectory())?.path ?? storageDir;
     } else if (Platform.isIOS) {
       storageDir = (await getLibraryDirectory()).path;
-    } else if (Util.isDesktop()) {
+    } else if (Util.isLinux()) {
       storageDir = File(Platform.resolvedExecutable).parent.path;
-      logger.i("storage dir 111: $storageDir");
       // check has write permission, if not, fallback to application support dir
       try {
         final testFile = File(path.join(storageDir, ".test"));
@@ -68,7 +67,6 @@ class Util {
       } catch (e) {
         storageDir = (await getApplicationSupportDirectory()).path;
       }
-      logger.i("storage dir 222: $storageDir");
     }
     _storageDir = storageDir;
   }
