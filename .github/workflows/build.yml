@@ -246,11 +246,8 @@ jobs:
 
           cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/
           cp -r assets/icon/icon.svg debian/gopeed/usr/share/icons/hicolor/scalable/apps/
-
-          ls -a
-          ls -a debian/gopeed
           
-          cat>debian/DEBIAN/postinst<<EOF
+          cat>debian/gopeed/DEBIAN/postinst<<EOF
           #!/bin/bash
           ln -sf /opt/gopeed /usr/bin/gopeed
           EOF
