@@ -8,7 +8,7 @@ on:
         required: true
         default: 'all'
       channel:
-        description: 'Publish channel'
+        description: 'Snap channel'
         required: true
         default: 'stable'
 
@@ -237,48 +237,45 @@ jobs:
           # Build portable
           tar -C build/linux/x64/release/bundle -czaf build/dist/Gopeed-$VERSION-linux-amd64-portable.tar.gz ./
           
-          
           # Build deb package
-          mkdir -p debian/gui
-          cp assets/icon/icon_1024.png debian/gui/gopeed.png
-          cat>debian/debian.yaml<<EOF
-          flutter_app:
-            command: gopeed
-            arch: x64
-            parent: /opt
-            nonInteractive: false
-          control:
-            Package: gopeed
-            Version: ${VERSION:1}
-            Architecture: amd64
-            Essential: no
-            Priority: optional
-            Depends: libgtk-3-dev,libayatana-appindicator3-dev
-            Maintainer: monkeyWie
-            Description: High speed downloader that supports all platforms.
+          mkdir -p debian/gopeed/opt/gopeed
+          mkdir -p debian/gopeed/usr/share/applications
+          mkdir -p debian/gopeed/usr/share/icons/hicolor/scalable/apps
+          mkdir -p debian/gopeed/DEBIAN
+          
+          cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/gopeed/
+          cp  assets/icon/icon_512.png debian/gopeed/usr/share/icons/hicolor/512x512/apps/gopeed.png
+          
+          cat>debian/gopeed/DEBIAN/postinst<<EOF
+          #!/bin/bash
+          ln -sf /opt/gopeed/gopeed /usr/local/bin/gopeed
           EOF
           
-          mkdir -p debian/scripts
-          cat>debian/scripts/postinst<<EOF
-          #!/bin/sh
-          ln -s /opt/gopeed/gopeed /usr/local/bin/gopeed
-          EOF
-          chmod 755 debian/scripts/postinst
-          
-          cat>debian/scripts/postrm<<EOF
-          #!/bin/sh
+          cat>debian/gopeed/DEBIAN/postrm<<EOF
+          #!/bin/bash
           rm -f /usr/local/bin/gopeed
           current_user=\$(logname)
           rm -rf /home/\$current_user/.local/share/com.gopeed
           EOF
-          chmod 755 debian/scripts/postrm
-
-          cp linux/gopeed.desktop debian/gui/gopeed.desktop
           
-          dart pub global activate https://github.com/jeffrey0606/flutter_to_debian.git --source git 
-          flutter_to_debian
-          mv build/linux/x64/release/debian/gopeed*.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
+          chmod 0755 debian/gopeed/DEBIAN/postinst
+          chmod 0755 debian/gopeed/DEBIAN/postrm
           
+          cat>debian/gopeed/DEBIAN/control<<EOF
+          Package: gopeed
+          Version: ${VERSION:1}
+          Architecture: amd64
+          Essential: no
+          Priority: optional
+          Depends: libgtk-3-dev,libayatana-appindicator3-dev
+          Maintainer: monkeyWie
+          Description: High speed downloader that supports all platforms.
+          EOF
+          
+          cp linux/gopeed.desktop debian/gopeed/usr/share/applications/gopeed.desktop
+          
+          dpkg-deb --build debian/gopeed
+          mv debian/gopeed.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
           
           # Build AppImage
           sudo apt-get -y install libfuse2
@@ -373,7 +370,7 @@ jobs:
           
           sudo snap install snapcraft --classic
           mkdir -p snap/gui
-          cp assets/icon/icon_1024.png snap/gui/gopeed.png
+          cp assets/icon/icon_512.png snap/gui/gopeed.png
           
           cat>snap/snapcraft.yaml<<EOF
           name: gopeed
@@ -408,13 +405,13 @@ jobs:
               source: .
               plugin: flutter
               stage-packages:
+                - libgtk-3-dev
                 - libayatana-appindicator3-dev
               flutter-target: lib/main.dart
           EOF
           
           cp linux/gopeed.desktop snap/gui/gopeed.desktop
-          echo 'Icon=\${SNAP}/meta/gui/gopeed.png' >> snap/gui/gopeed.desktop
-          echo 'Exec=gopeed' >> snap/gui/gopeed.desktop
+          sed -i 's/Icon=gopeed/Icon=\${SNAP}\/meta\/gui\/gopeed.png/g' snap/gui/gopeed.desktop
     
           snapcraft --use-lxd
 
