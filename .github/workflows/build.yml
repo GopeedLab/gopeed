@@ -299,7 +299,7 @@ jobs:
           mkdir AppDir
           cp -r build/linux/x64/release/bundle/* AppDir
           mkdir -p AppDir/usr/share/icons/hicolor/scalable/apps/
-          cp -r assets/icon/icon.svg AppDir/usr/share/icons/hicolor/scalable/apps/gopeed.svg
+          cp assets/icon/icon.svg AppDir/usr/share/icons/hicolor/scalable/apps/gopeed.svg
           cat>AppImageBuilder.yml<<EOF
           version: 1
           AppDir:
