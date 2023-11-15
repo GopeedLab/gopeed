@@ -240,7 +240,7 @@ jobs:
           # Build deb package
           mkdir -p debian/gopeed/opt/gopeed
           mkdir -p debian/gopeed/usr/share/applications
-          mkdir -p debian/gopeed/usr/share/icons/hicolor/scalable/apps
+          mkdir -p debian/gopeed/usr/share/icons/hicolor/512x512/apps
           mkdir -p debian/gopeed/DEBIAN
 
           cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/gopeed/
@@ -281,7 +281,7 @@ jobs:
           chmod +x appimage-builder
           mkdir AppDir
           cp -r build/linux/x64/release/bundle/* AppDir
-          mkdir -p AppDir/usr/share/icons/hicolor/scalable/apps/
+          mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps/
           cp assets/icon/icon_512.png AppDir/usr/share/icons/hicolor/512x512/apps/gopeed.png
           cat>AppImageBuilder.yml<<EOF
           version: 1
