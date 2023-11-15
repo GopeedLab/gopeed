@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Gopeed
+GenericName=Downloader Manager
+Comment=High speed downloader that supports all platforms.
+Exec=gopeed
+Icon=gopeed
+Terminal=false
+Type=Application
+Categories=Utility
+Keywords=HTTP;Bittorrent;Downloader;

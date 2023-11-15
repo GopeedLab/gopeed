@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
+import 'log_util.dart';
+
 class Util {
   static String? _storageDir;
 
@@ -55,16 +57,22 @@ class Util {
       storageDir = (await getExternalStorageDirectory())?.path ?? storageDir;
     } else if (Platform.isIOS) {
       storageDir = (await getLibraryDirectory()).path;
+    } else if (Util.isLinux()) {
+      storageDir = File(Platform.resolvedExecutable).parent.path;
+      // check has write permission, if not, fallback to application support dir
+      try {
+        final testFile = File(path.join(storageDir, ".test"));
+        await testFile.writeAsString("test");
+        await testFile.delete();
+      } catch (e) {
+        storageDir = (await getApplicationSupportDirectory()).path;
+      }
     }
     _storageDir = storageDir;
   }
 
   static String getStorageDir() {
     return _storageDir!;
-  }
-
-  static String getStorageAsset(String asset) {
-    return path.join(getStorageDir(), asset);
   }
 
   static isAndroid() {
