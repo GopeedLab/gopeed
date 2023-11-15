@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.gopeed.Gopeed</id>
+  
+  <name>Gopeed</name>
+  <summary>High speed downloader that supports all platforms.</summary>
+  <url type="homepage">https://gopeed.com</url>
+  <url type="bugtracker">https://github.com/GopeedLab/gopeed/issues</url>
+  <url type="donation">https://docs.gopeed.com/donate.html</url>
+  <url type="translate">https://github.com/GopeedLab/gopeed/blob/main/CONTRIBUTING.md#translation</url>
+
+  
+  <metadata_license>MIT</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <developer_name>monkeyWie</developer_name>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  
+  <description>
+    <p>
+      Gopeed (full name Go Speed), a high-speed downloader developed by <code>Golang</code> + <code>Flutter</code>, supports (HTTP, BitTorrent, Magnet) protocol, and supports all platforms.
+    </p>
+  </description>
+
+  <content_rating type="oars-1.1"/>
+  
+  <launchable type="desktop-id">com.gopeed.Gopeed.desktop</launchable>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/GopeedLab/gopeed/v1.4.4/_docs/img/ui-demo.png</image>
+    </screenshot>
+  </screenshots>
+
+  <releases>
+    <release version="1.4.4" date="2023-11-09"/>
+  </releases>
+</component>

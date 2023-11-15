@@ -37,11 +37,13 @@ Future<void> init() async {
     });
   }
 
+  if (!Util.isWeb()) {
+    await Util.initStorageDir();
+  }
+  initLogger();
+
   final controller = Get.put(AppController());
   try {
-    if (!Util.isWeb()) {
-      await Util.initStorageDir();
-    }
     await controller.loadStartConfig();
     final startCfg = controller.startConfig.value;
     controller.runningPort.value = await LibgopeedBoot.instance.start(startCfg);
