@@ -298,7 +298,7 @@ jobs:
           chmod +x appimage-builder
           mkdir AppDir
           cp -r build/linux/x64/release/bundle/* AppDir
-          cp -r assets/icon/icon.svg AppDir/gopeed.svg
+          cp -r assets/icon/icon.svg AppDir/usr/share/icons/hicolor/scalable/apps/gopeed.svg
           cat>AppImageBuilder.yml<<EOF
           version: 1
           AppDir:
@@ -306,7 +306,7 @@ jobs:
             app_info:
               id: com.gopeed.gopeed
               name: Gopeed
-              icon: gopeed.svg
+              icon: gopeed
               version: ${VERSION:1}
               exec: gopeed
               exec_args: \$@
