@@ -267,7 +267,7 @@ jobs:
           Architecture: amd64
           Essential: no
           Priority: optional
-          Depends: libgtk-3-dev,libayatana-appindicator3-dev
+          Depends:
           Maintainer: monkeyWie
           Description: High speed downloader that supports all platforms.
           EOF
