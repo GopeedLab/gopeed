@@ -245,7 +245,7 @@ jobs:
           mkdir -p debian/gopeed/DEBIAN
 
           cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/gopeed/
-          cp -r assets/icon/icon.svg debian/gopeed/usr/share/icons/hicolor/scalable/apps/gopeed.svg
+          cp -r assets/icon/icon.svg debian/gopeed/usr/share/icons/hicolor/scalable/apps/com.gopeed.Gopeed.svg
           
           cat>debian/gopeed/DEBIAN/postinst<<EOF
           #!/bin/bash
@@ -271,22 +271,7 @@ jobs:
           Description: High speed downloader that supports all platforms.
           EOF
 
-          cat>debian/gopeed/usr/share/applications/gopeed.desktop<<EOF
-          [Desktop Entry]
-          Name=Gopeed
-          GenericName=Download Manager
-          GenericName[zh_CN]=下载器
-          GenericName[zh_TW]=下載器
-          Comment=High speed downloader that supports all platforms.
-          Comment[zh_CN]=支持全平台的高速下载器
-          Comment[zh_TW]=支持全平臺的高速下載器
-          Terminal=false
-          Exec=gopeed
-          Icon=gopeed
-          Type=Application
-          Categories=Utility;Internet
-          Keywords=Bittorrent;Downloader;
-          EOF
+          cp linux/assets/com.gopeed.Gopeed.desktop debian/gopeed/usr/share/applications/gopeed.desktop
 
           dpkg-deb --build debian/gopeed
           mv debian/gopeed.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
@@ -359,7 +344,7 @@ jobs:
           sudo snap install snapcraft --classic
           rm -rf build/linux
           mkdir -p snap/gui
-          cp assets/icon/icon_1024.png snap/gui/gopeed.png
+          cp assets/icon/icon.svg snap/gui/gopeed.png
           
           cat>snap/snapcraft.yaml<<EOF
           name: gopeed
@@ -394,22 +379,13 @@ jobs:
               source: .
               plugin: flutter
               stage-packages:
+                - libgtk-3-dev
                 - libayatana-appindicator3-dev
               flutter-target: lib/main.dart
           EOF
           
-          cat>snap/gui/gopeed.desktop<<EOF
-          [Desktop Entry]
-          Name=Gopeed
-          GenericName=Downloader Manager
-          Comment=High speed downloader that supports all platforms.
-          Exec=gopeed
-          Icon=\${SNAP}/meta/gui/gopeed.png
-          Terminal=false
-          Type=Application
-          Categories=Utility
-          Keywords=HTTP;Bittorrent;Downloader;
-          EOF
+          cp linux/assets/com.gopeed.Gopeed.desktop snap/gui/gopeed.desktop
+          sed -i 's/Icon=gopeed/Icon=\${SNAP}\/meta\/gui\/gopeed.png/g' snap/gui/gopeed.desktop
           
           snapcraft --use-lxd
           
