@@ -244,7 +244,7 @@ jobs:
           mkdir -p debian/gopeed/DEBIAN
           
           cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/gopeed/
-          cp  assets/icon/icon_512.png debian/gopeed/usr/share/icons/hicolor/512x512/apps/gopeed.png
+          cp  assets/icon/icon_512.png debian/gopeed/usr/share/icons/hicolor/scalable/apps/gopeed.png
           
           cat>debian/gopeed/DEBIAN/postinst<<EOF
           #!/bin/bash
