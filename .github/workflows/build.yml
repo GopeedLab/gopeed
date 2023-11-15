@@ -244,7 +244,7 @@ jobs:
           mkdir -p debian/gopeed/DEBIAN
 
           cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/gopeed/
-          cp assets/icon/icon.svg debian/gopeed/usr/share/icons/hicolor/scalable/apps/com.gopeed.Gopeed.svg
+          cp assets/icon/icon_512.png debian/gopeed/usr/share/icons/hicolor/512x512/apps/com.gopeed.Gopeed.png
           
           cat>debian/gopeed/DEBIAN/postinst<<EOF
           #!/bin/bash
@@ -282,7 +282,7 @@ jobs:
           mkdir AppDir
           cp -r build/linux/x64/release/bundle/* AppDir
           mkdir -p AppDir/usr/share/icons/hicolor/scalable/apps/
-          cp assets/icon/icon.svg AppDir/usr/share/icons/hicolor/scalable/apps/gopeed.svg
+          cp assets/icon/icon_512.png AppDir/usr/share/icons/hicolor/512x512/apps/gopeed.png
           cat>AppImageBuilder.yml<<EOF
           version: 1
           AppDir:
@@ -369,7 +369,7 @@ jobs:
           
           sudo snap install snapcraft --classic
           mkdir -p snap/gui
-          cp assets/icon/icon.svg snap/gui/gopeed.svg
+          cp assets/icon/icon_512.png snap/gui/gopeed.png
           
           cat>snap/snapcraft.yaml<<EOF
           name: gopeed
@@ -410,7 +410,7 @@ jobs:
           EOF
           
           cp linux/assets/com.gopeed.Gopeed.desktop snap/gui/gopeed.desktop
-          sed -i 's/Icon=com.gopeed.Gopeed/Icon=\${SNAP}\/meta\/gui\/gopeed.svg/g' snap/gui/gopeed.desktop
+          sed -i 's/Icon=com.gopeed.Gopeed/Icon=\${SNAP}\/meta\/gui\/gopeed.png/g' snap/gui/gopeed.desktop
           
           snapcraft --use-lxd
 
