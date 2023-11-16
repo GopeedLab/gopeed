@@ -4,8 +4,6 @@ import "libgopeed_boot_stub.dart"
     if (dart.library.io) 'entry/libgopeed_boot_native.dart';
 
 abstract class LibgopeedBoot {
-  static const unixSocketPath = 'gopeed.sock';
-
   static LibgopeedBoot? _instance;
 
   static LibgopeedBoot get instance {

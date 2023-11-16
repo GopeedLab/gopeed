@@ -7,6 +7,10 @@ on:
         description: 'Build platform'
         required: true
         default: 'all'
+      channel:
+        description: 'Snap channel'
+        required: true
+        default: 'stable'
 
 env:
   GO_VERSION: "1.19"
@@ -208,7 +212,7 @@ jobs:
           overwrite: true
   build-linux:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
@@ -221,10 +225,6 @@ jobs:
       - run: |
           sudo apt-get update -y
           sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev
-      - name: Setup LXD
-        uses: canonical/setup-lxd@v0.1.1
-        with:
-          channel: latest/stable
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
@@ -235,43 +235,45 @@ jobs:
           mkdir -p build/dist
           
           # Build portable
-          tar -czaf build/dist/Gopeed-$VERSION-linux-amd64-portable.tar.gz build/linux/x64/release/bundle
-          
+          tar -C build/linux/x64/release/bundle -czaf build/dist/Gopeed-$VERSION-linux-amd64-portable.tar.gz ./
           
           # Build deb package
-          mkdir -p debian/gui
-          cp assets/icon/icon_1024.png debian/gui/gopeed.png
-          cat>debian/debian.yaml<<EOF
-          flutter_app:
-            command: gopeed
-            arch: x64
-            parent: /usr/local/bin
-          control:
-            Package: gopeed
-            Version: ${VERSION:1}
-            Architecture: amd64
-            Essential: no
-            Priority: optional
-            Depends:
-            Maintainer: monkeyWie
-            Description: High speed downloader that supports all platforms.
-          EOF
+          mkdir -p debian/gopeed/opt/gopeed
+          mkdir -p debian/gopeed/usr/share/applications
+          mkdir -p debian/gopeed/usr/share/icons/hicolor/scalable/apps
+          mkdir -p debian/gopeed/DEBIAN
 
-          cat>debian/gui/gopeed.desktop<<EOF
-          [Desktop Entry]
-          Name=Gopeed
-          GenericName=Downloader
-          Comment=High speed downloader that supports all platforms.
-          Terminal=false
-          Type=Application
-          Categories=Utility
-          Keywords=Flutter;Downloader;
-          EOF
-
-          dart pub global activate flutter_to_debian
-          flutter_to_debian
-          mv debian/packages/gopeed*.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
+          cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/gopeed/
+          cp assets/icon/icon.svg debian/gopeed/usr/share/icons/hicolor/scalable/apps/com.gopeed.Gopeed.svg
           
+          cat>debian/gopeed/DEBIAN/postinst<<EOF
+          #!/bin/bash
+          ln -sf /opt/gopeed/gopeed /usr/bin/gopeed
+          EOF
+
+          cat>debian/gopeed/DEBIAN/postrm<<EOF
+          #!/bin/bash
+          rm -rf /usr/bin/gopeed
+          EOF
+
+          chmod 0755 debian/gopeed/DEBIAN/postinst
+          chmod 0755 debian/gopeed/DEBIAN/postrm
+
+          cat>debian/gopeed/DEBIAN/control<<EOF
+          Package: gopeed
+          Version: ${VERSION:1}
+          Architecture: amd64
+          Essential: no
+          Priority: optional
+          Depends: 
+          Maintainer: monkeyWie
+          Description: High speed downloader that supports all platforms.
+          EOF
+
+          cp linux/assets/com.gopeed.Gopeed.desktop debian/gopeed/usr/share/applications/gopeed.desktop
+
+          dpkg-deb --build debian/gopeed
+          mv debian/gopeed.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
           
           # Build AppImage
           sudo apt-get -y install libfuse2
@@ -279,8 +281,8 @@ jobs:
           chmod +x appimage-builder
           mkdir AppDir
           cp -r build/linux/x64/release/bundle/* AppDir
-          mkdir -p AppDir/usr/share/icons
-          cp assets/icon/icon_1024.png AppDir/usr/share/icons/gopeed.png
+          mkdir -p AppDir/usr/share/icons/hicolor/scalable/apps/
+          cp assets/icon/icon.svg AppDir/usr/share/icons/hicolor/scalable/apps/gopeed.svg
           cat>AppImageBuilder.yml<<EOF
           version: 1
           AppDir:
@@ -288,7 +290,7 @@ jobs:
             app_info:
               id: com.gopeed.gopeed
               name: Gopeed
-              icon: gopeed.png
+              icon: gopeed
               version: ${VERSION:1}
               exec: gopeed
               exec_args: \$@
@@ -335,12 +337,39 @@ jobs:
           EOF
           ./appimage-builder --skip-tests --recipe AppImageBuilder.yml
           mv Gopeed-*-x86_64.AppImage build/dist/Gopeed-$VERSION-linux-amd64.AppImage
+
+      - name: Upload
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.get-release.outputs.upload_url }}
+          asset_path: ui/flutter/build/dist/*
+          overwrite: true
+  build-snap:
+    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'snap' }}
+    runs-on: ubuntu-latest
+    needs: [ get-release ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v0.1.1
+        with:
+          channel: latest/stable
+      - name: Build
+        env:
+          VERSION: ${{ needs.get-release.outputs.tag_name }}
+        run: |
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
+          cd ui/flutter
           
-          # Build snap
           sudo snap install snapcraft --classic
-          rm -rf build/linux
           mkdir -p snap/gui
-          cp assets/icon/icon_1024.png snap/gui/gopeed.png
+          cp assets/icon/icon.svg snap/gui/gopeed.svg
           
           cat>snap/snapcraft.yaml<<EOF
           name: gopeed
@@ -375,35 +404,19 @@ jobs:
               source: .
               plugin: flutter
               stage-packages:
+                - libgtk-3-dev
                 - libayatana-appindicator3-dev
               flutter-target: lib/main.dart
           EOF
           
-          cat>snap/gui/gopeed.desktop<<EOF
-          [Desktop Entry]
-          Version=${VERSION:1}
-          Name=Gopeed
-          GenericName=Gopeed
-          Comment=High speed downloader that supports all platforms.
-          Exec=gopeed
-          Icon=\${SNAP}/meta/gui/gopeed.png
-          Terminal=false
-          Type=Application
-          Categories=Utility
-          Keywords=Flutter;Downloader;
-          EOF
+          cp linux/assets/com.gopeed.Gopeed.desktop snap/gui/gopeed.desktop
+          sed -i 's/Icon=com.gopeed.Gopeed/Icon=\${SNAP}\/meta\/gui\/gopeed.svg/g' snap/gui/gopeed.desktop
           
           snapcraft --use-lxd
-          
+
           # Snapcraft login
           export SNAPCRAFT_STORE_CREDENTIALS=${{ secrets.SNAP_STORE_LOGIN }}
-          snapcraft upload --release=stable gopeed_${VERSION:1}_amd64.snap
-      - name: Upload
-        uses: shogo82148/actions-upload-release-asset@v1
-        with:
-          upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: ui/flutter/build/dist/*
-          overwrite: true
+          snapcraft upload --release=${{ github.event.inputs.channel }} gopeed_${VERSION:1}_amd64.snap
   build-android:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android' }}
     runs-on: ubuntu-latest
