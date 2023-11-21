@@ -552,8 +552,8 @@ class CreateView extends GetView<CreateController> {
                                     req: file.req!,
                                     opt: Options(
                                         name: file.name,
-                                        path: path.join(
-                                            _pathController.text, rr.res.name),
+                                        path: path.join(_pathController.text,
+                                            rr.res.name, file.path),
                                         selectFiles: [],
                                         extra: optExtra)));
                               }));
