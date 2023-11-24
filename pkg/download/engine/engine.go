@@ -9,7 +9,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/xhr"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
-	"github.com/dop251/goja_nodejs/process"
 	"github.com/dop251/goja_nodejs/url"
 	"sync"
 	"time"
@@ -128,7 +127,6 @@ func NewEngine() *Engine {
 		runtime.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 		vm.Enable(runtime)
 		url.Enable(runtime)
-		process.Enable(runtime)
 		if err := file.Enable(runtime); err != nil {
 			return
 		}
