@@ -75,7 +75,7 @@ func (e *Engine) CallFunction(fn goja.Callable, args ...any) (value any, err err
 }
 
 // loop.Run will hang if the script result has a non-stop code, such as setInterval.
-// Therefore, a trick must be used to run the script and wait for it to complete
+// This method will stop the event loop when the promise result is resolved.
 func (e *Engine) await(value any) {
 	if value == nil {
 		return
@@ -84,11 +84,14 @@ func (e *Engine) await(value any) {
 	if v, ok := value.(goja.Value); ok {
 		// if result is promise, wait for it to be resolved
 		if p, ok := v.Export().(*goja.Promise); ok {
+			if p.State() != goja.PromiseStatePending {
+				return
+			}
 
 			// check promise state every 100 milliseconds, until it is resolved
 			for {
+				time.Sleep(time.Millisecond * 100)
 				if p.State() == goja.PromiseStatePending {
-					time.Sleep(time.Second)
 					continue
 				}
 				break
