@@ -220,6 +220,37 @@ out
 	}
 }
 
+func TestNonStopLoop(t *testing.T) {
+	engine := NewEngine()
+
+	_, err := engine.RunString(`
+function leak(){
+	setInterval(() => {
+	},500)
+}
+
+function test(){
+	leak()
+	return new Promise((resolve, reject) => {
+		setTimeout(() => {
+			resolve('done')
+		}, 1000)	
+	})
+}
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	val, err := callTestFun(engine, "test")
+	if err != nil {
+		panic(err)
+	}
+	if val != "done" {
+		t.Fatalf("infinite loop test failed, want %s, got %s", "done", val)
+	}
+}
+
 func doTestPolyfill(t *testing.T, module string) {
 	value, err := Run(fmt.Sprintf(`
 !!globalThis['%s']

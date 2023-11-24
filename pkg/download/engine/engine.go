@@ -10,7 +10,6 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
 	"github.com/dop251/goja_nodejs/url"
-	"sync"
 	"time"
 )
 
@@ -33,8 +32,11 @@ func (e *Engine) RunString(script string) (value any, err error) {
 	}()
 
 	var result goja.Value
-	result, err = e.runAndDone(func(runtime *goja.Runtime) (goja.Value, error) {
-		return runtime.RunString(script)
+	e.loop.Run(func(runtime *goja.Runtime) {
+		result, err = runtime.RunString(script)
+		if err == nil {
+			go e.await(result)
+		}
 	})
 	if err != nil {
 		return
@@ -52,65 +54,50 @@ func (e *Engine) CallFunction(fn goja.Callable, args ...any) (value any, err err
 	}()
 
 	var result goja.Value
-	result, err = e.runAndDone(func(runtime *goja.Runtime) (goja.Value, error) {
+	e.loop.Run(func(runtime *goja.Runtime) {
 		if args == nil {
-			return fn(nil)
+			result, err = fn(nil)
 		} else {
 			var jsArgs []goja.Value
 			for _, arg := range args {
 				jsArgs = append(jsArgs, runtime.ToValue(arg))
 			}
-			return fn(nil, jsArgs...)
+			result, err = fn(nil, jsArgs...)
+		}
+		if err == nil {
+			go e.await(result)
 		}
 	})
 	if err != nil {
-		return nil, err
+		return
 	}
 	return resolveResult(result)
 }
 
 // loop.Run will hang if the script result has a non-stop code, such as setInterval.
 // Therefore, a trick must be used to run the script and wait for it to complete
-func (e *Engine) runAndDone(fn func(runtime *goja.Runtime) (goja.Value, error)) (result goja.Value, err error) {
-	var finished sync.WaitGroup
-	finished.Add(1)
-	go func() {
-		e.loop.Run(func(runtime *goja.Runtime) {
-			result, err = fn(runtime)
-			finished.Done()
-		})
-	}()
-	finished.Wait()
-
-	if err != nil {
+func (e *Engine) await(value any) {
+	if value == nil {
 		return
 	}
 
-	// if result is promise, wait for it to be resolved
-	if p, ok := result.Export().(*goja.Promise); ok {
-		waitCh := make(chan struct{})
+	if v, ok := value.(goja.Value); ok {
+		// if result is promise, wait for it to be resolved
+		if p, ok := v.Export().(*goja.Promise); ok {
 
-		// check promise state every 100 milliseconds, until it is resolved
-		go func() {
-			defer close(waitCh)
+			// check promise state every 100 milliseconds, until it is resolved
 			for {
 				if p.State() == goja.PromiseStatePending {
-					time.Sleep(time.Millisecond * 100)
+					time.Sleep(time.Second)
 					continue
 				}
 				break
 			}
-		}()
 
-		// if the promise is not resolved within 120 seconds, it will be forced to resolve
-		select {
-		case <-waitCh:
-		case <-time.After(time.Second * 120):
-			err = errors.New("promise timeout")
+			// stop the event loop
+			e.loop.StopNoWait()
 		}
 	}
-
-	return
 }
 
 func (e *Engine) Close() {
