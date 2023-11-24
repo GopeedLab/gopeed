@@ -598,28 +598,28 @@ type InstanceLogger struct {
 	logger   *logger.Logger
 }
 
-func (l *InstanceLogger) Debug(msg ...any) {
+func (l *InstanceLogger) Debug(msg ...goja.Value) {
 	if l.devMode {
 		l.logger.Debug().Msg(l.append(msg...))
 	}
 }
 
-func (l *InstanceLogger) Info(msg ...any) {
+func (l *InstanceLogger) Info(msg ...goja.Value) {
 	l.logger.Info().Msg(l.append(msg...))
 }
 
-func (l *InstanceLogger) Warn(msg ...any) {
+func (l *InstanceLogger) Warn(msg ...goja.Value) {
 	l.logger.Warn().Msg(l.append(msg...))
 }
 
-func (l *InstanceLogger) Error(msg ...any) {
+func (l *InstanceLogger) Error(msg ...goja.Value) {
 	l.logger.Error().Msg(l.append(msg...))
 }
 
-func (l *InstanceLogger) append(msg ...any) string {
+func (l *InstanceLogger) append(msg ...goja.Value) string {
 	strMsg := make([]string, len(msg))
 	for i, m := range msg {
-		strMsg[i] = fmt.Sprint(m)
+		strMsg[i] = m.String()
 	}
 	return fmt.Sprintf("[%s] %s", l.identity, strings.Join(strMsg, " "))
 }

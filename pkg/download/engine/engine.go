@@ -3,14 +3,14 @@ package engine
 import (
 	_ "embed"
 	"errors"
-	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/vm"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/xhr"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
-	"github.com/dop251/goja_nodejs/process"
 	"github.com/dop251/goja_nodejs/url"
+	"time"
 )
 
 //go:embed polyfill/out/index.js
@@ -27,12 +27,16 @@ type Engine struct {
 func (e *Engine) RunString(script string) (value any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("%v", r)
+			err = r.(error)
 		}
 	}()
+
 	var result goja.Value
 	e.loop.Run(func(runtime *goja.Runtime) {
 		result, err = runtime.RunString(script)
+		if err == nil {
+			go e.await(result)
+		}
 	})
 	if err != nil {
 		return
@@ -45,9 +49,10 @@ func (e *Engine) RunString(script string) (value any, err error) {
 func (e *Engine) CallFunction(fn goja.Callable, args ...any) (value any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("%v", r)
+			err = r.(error)
 		}
 	}()
+
 	var result goja.Value
 	e.loop.Run(func(runtime *goja.Runtime) {
 		if args == nil {
@@ -59,11 +64,40 @@ func (e *Engine) CallFunction(fn goja.Callable, args ...any) (value any, err err
 			}
 			result, err = fn(nil, jsArgs...)
 		}
+		if err == nil {
+			go e.await(result)
+		}
 	})
 	if err != nil {
-		return nil, err
+		return
 	}
 	return resolveResult(result)
+}
+
+// loop.Run will hang if the script result has a non-stop code, such as setInterval.
+// Therefore, a trick must be used to run the script and wait for it to complete
+func (e *Engine) await(value any) {
+	if value == nil {
+		return
+	}
+
+	if v, ok := value.(goja.Value); ok {
+		// if result is promise, wait for it to be resolved
+		if p, ok := v.Export().(*goja.Promise); ok {
+
+			// check promise state every 100 milliseconds, until it is resolved
+			for {
+				if p.State() == goja.PromiseStatePending {
+					time.Sleep(time.Second)
+					continue
+				}
+				break
+			}
+
+			// stop the event loop
+			e.loop.StopNoWait()
+		}
+	}
 }
 
 func (e *Engine) Close() {
@@ -78,8 +112,8 @@ func NewEngine() *Engine {
 	loop.Run(func(runtime *goja.Runtime) {
 		engine.Runtime = runtime
 		runtime.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
+		vm.Enable(runtime)
 		url.Enable(runtime)
-		process.Enable(runtime)
 		if err := file.Enable(runtime); err != nil {
 			return
 		}
@@ -94,6 +128,10 @@ func NewEngine() *Engine {
 		}
 		// polyfill global
 		if err := runtime.Set("global", runtime.GlobalObject()); err != nil {
+			return
+		}
+		// polyfill window.location
+		if _, err := runtime.RunString("global.location = new URL('http://localhost');"); err != nil {
 			return
 		}
 		return

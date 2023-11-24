@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/dop251/goja"
 	"os"
 	"testing"
 	"time"
@@ -356,10 +357,10 @@ func TestDownloader_Extension_Logger(t *testing.T) {
 	il := newInstanceLogger(&Extension{
 		Name: "test",
 	}, logger)
-	il.Debug("msg1", "msg2")
-	il.Info("msg1", "msg2")
-	il.Warn("msg1", "msg2")
-	il.Error("msg1", "msg2")
+	il.Debug(goja.NaN(), goja.Undefined())
+	il.Info(goja.NaN(), goja.Undefined())
+	il.Warn(goja.NaN(), goja.Undefined())
+	il.Error(goja.NaN(), goja.Undefined())
 }
 
 func setupDownloader(fn func(downloader *Downloader)) {
