@@ -23,6 +23,7 @@ func TestPolyfill(t *testing.T) {
 	doTestPolyfill(t, "Blob")
 	doTestPolyfill(t, "FormData")
 	doTestPolyfill(t, "fetch")
+	doTestPolyfill(t, "__gopeed_create_vm")
 }
 
 func TestFetch(t *testing.T) {
@@ -188,6 +189,34 @@ function testTimeout(){
 	_, err = callTestFun(engine, "testTimeout")
 	if err == nil || err.Error() != "timeout" {
 		t.Fatalf("timeout test failed, want %s, got %s", "timeout", err)
+	}
+}
+
+func TestVm(t *testing.T) {
+	engine := NewEngine()
+
+	value, err := engine.RunString(`
+const vm = __gopeed_create_vm()
+vm.set('a', 1)
+vm.set('b', 2)
+const result = vm.runString('a=a+1;b=b+1;a+b;')
+const out = {
+	"a": vm.get('a'),
+	"b": vm.get('b'),
+	"result": result
+}
+out
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]any{
+		"a":      2,
+		"b":      3,
+		"result": 5,
+	}
+	if !test.JsonEqual(value, want) {
+		t.Fatalf("vm test failed, want %v, got %v", want, value)
 	}
 }
 
