@@ -123,7 +123,7 @@ func TestFetcher_DownloadError(t *testing.T) {
 }
 
 func TestFetcher_DownloadLimit(t *testing.T) {
-	listener := test.StartTestLimitServer()
+	listener := test.StartTestLimitServer(4, 0)
 	defer listener.Close()
 
 	downloadNormal(listener, 1, t)
