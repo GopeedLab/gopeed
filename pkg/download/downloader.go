@@ -635,6 +635,8 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 			task.fetcher.Meta().Res = task.Meta.Res
 		}
 		go d.watch(task)
+	} else if task.Status == base.DownloadStatusError {
+		go d.watch(task)
 	}
 	task.fetcher.Create(task.Meta.Opts)
 	return nil
