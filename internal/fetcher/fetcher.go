@@ -57,6 +57,15 @@ func (m *FetcherMeta) SingleFilepath() string {
 	return path.Join(m.Opts.Path, file.Path, fileName)
 }
 
+// RootDirPath return the root dir path of the task file.
+func (m *FetcherMeta) RootDirPath() string {
+	if m.Res.Name != "" {
+		return m.FolderPath()
+	} else {
+		return m.Opts.Path
+	}
+}
+
 // FetcherBuilder defines the interface for a fetcher builder.
 type FetcherBuilder interface {
 	// Schemes returns the schemes supported by the fetcher.

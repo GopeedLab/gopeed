@@ -110,19 +110,17 @@ class BuildTaskListView extends GetView {
     List<Widget> buildActions() {
       final list = <Widget>[];
       if (isDone()) {
-        if (Util.isDesktop() || Util.isMobile()) {
-          list.add(IconButton(
-            icon: const Icon(Icons.folder_open),
-            onPressed: () {
-              if (Util.isDesktop()) {
-                FileExplorer.openAndSelectFile(buildExplorerUrl(task));
-              } else {
-                Get.rootDelegate
-                    .toNamed(Routes.TASK_FILES, parameters: {'id': task.id});
-              }
-            },
-          ));
-        }
+        list.add(IconButton(
+          icon: const Icon(Icons.folder_open),
+          onPressed: () {
+            if (Util.isDesktop()) {
+              FileExplorer.openAndSelectFile(buildExplorerUrl(task));
+            } else {
+              Get.rootDelegate
+                  .toNamed(Routes.TASK_FILES, parameters: {'id': task.id});
+            }
+          },
+        ));
       } else {
         if (isRunning()) {
           list.add(IconButton(

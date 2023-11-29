@@ -540,18 +540,7 @@ func (d *Downloader) GetTask(id string) *Task {
 }
 
 func (d *Downloader) GetTasks() []*Task {
-	tasks := make([]*Task, len(d.tasks))
-	for i := 0; i < len(d.tasks); i++ {
-		tasks[i] = d.tasks[i]
-	}
-	// sort tasks by status, order by Status(if(running,1,0)) desc, CreatedAt desc
-	sort.Slice(tasks, func(i, j int) bool {
-		if tasks[i].Status != tasks[j].Status {
-			return tasks[i].Status == base.DownloadStatusRunning
-		}
-		return tasks[i].CreatedAt.After(tasks[j].CreatedAt)
-	})
-	return tasks
+	return d.tasks
 }
 
 func (d *Downloader) GetConfig() (*DownloaderStoreConfig, error) {
