@@ -110,7 +110,7 @@ jobs:
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
           [Files]
-          Source: ".\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+          Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
           ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
           [UninstallDelete]
