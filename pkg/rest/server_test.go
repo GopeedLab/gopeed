@@ -491,6 +491,7 @@ func doTest(handler func()) {
 		cfg.Init()
 		cfg.Storage = storage
 		cfg.StorageDir = ".test_storage"
+		cfg.WebEnable = true
 		fileListener := doStart(cfg)
 		defer func() {
 			if err := fileListener.Close(); err != nil {

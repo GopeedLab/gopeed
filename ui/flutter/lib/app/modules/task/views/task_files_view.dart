@@ -3,7 +3,10 @@ import 'package:get/get.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path/path.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../api/api.dart' as api;
+import '../../../../util/browser_download/browser_download.dart';
 import '../../../../util/file_icon.dart';
 import '../../../../util/icons.dart';
 import '../../../../util/util.dart';
@@ -21,7 +24,7 @@ class TaskFilesView extends GetView<TaskFilesController> {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Get.rootDelegate.popRoute()),
           // actions: [],
-          title: Obx(() => Text(controller.task.value!.meta.res!.name)),
+          title: Obx(() => Text(controller.task.value?.meta.res?.name ?? "")),
         ),
         body: Obx(() {
           final fileList = controller.fileList;
@@ -53,11 +56,12 @@ class TaskFilesView extends GetView<TaskFilesController> {
                   itemBuilder: (context, index) {
                     final meta = controller.task.value!.meta;
                     final file = fileList[index];
-                    final filePath = Util.safePathJoin([
-                      meta.opts.path,
-                      meta.res!.name,
-                      file.filePath(meta.opts.name)
-                    ]);
+                    // if resource is single file, use opts.name as file name
+                    final realFileName =
+                        meta.res!.name.isEmpty ? file.name : "";
+                    final fileRelativePath = file.filePath(realFileName);
+                    final filePath = Util.safePathJoin(
+                        [meta.opts.path, meta.res!.name, fileRelativePath]);
                     final fileName = basename(filePath);
                     return ListTile(
                       leading: file.isDirectory
@@ -77,19 +81,39 @@ class TaskFilesView extends GetView<TaskFilesController> {
                               width: 100,
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  IconButton(
-                                      icon: const Icon(Icons.play_circle),
-                                      onPressed: () {
-                                        OpenFile.open(filePath);
-                                      }),
-                                  IconButton(
-                                      icon: const Icon(Icons.share),
-                                      onPressed: () {
-                                        final xfile = XFile(filePath);
-                                        Share.shareXFiles([xfile]);
-                                      })
-                                ],
+                                children: Util.isWeb()
+                                    ? () {
+                                        final accessUrl = api.join(
+                                            "/fs/tasks/${controller.task.value!.id}$fileRelativePath");
+                                        return [
+                                          IconButton(
+                                              icon:
+                                                  const Icon(Icons.play_circle),
+                                              onPressed: () {
+                                                launchUrl(Uri.parse(accessUrl),
+                                                    webOnlyWindowName:
+                                                        "_blank");
+                                              }),
+                                          IconButton(
+                                              icon: const Icon(Icons.download),
+                                              onPressed: () {
+                                                download(accessUrl, fileName);
+                                              })
+                                        ];
+                                      }()
+                                    : [
+                                        IconButton(
+                                            icon: const Icon(Icons.play_circle),
+                                            onPressed: () {
+                                              OpenFile.open(filePath);
+                                            }),
+                                        IconButton(
+                                            icon: const Icon(Icons.share),
+                                            onPressed: () {
+                                              final xfile = XFile(filePath);
+                                              Share.shareXFiles([xfile]);
+                                            })
+                                      ],
                               ),
                             ),
                       onTap: () {
