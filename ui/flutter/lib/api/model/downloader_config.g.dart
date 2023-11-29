@@ -33,19 +33,23 @@ Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) =>
       'bt': instance.bt.toJson(),
     };
 
-HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) =>
-    HttpConfig()..connections = json['connections'] as int;
+HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig()
+  ..userAgent = json['userAgent'] as String
+  ..connections = json['connections'] as int;
 
 Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
     <String, dynamic>{
+      'userAgent': instance.userAgent,
       'connections': instance.connections,
     };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig()
+  ..listenPort = json['listenPort'] as int
   ..trackers =
       (json['trackers'] as List<dynamic>).map((e) => e as String).toList();
 
 Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
+      'listenPort': instance.listenPort,
       'trackers': instance.trackers,
     };
 

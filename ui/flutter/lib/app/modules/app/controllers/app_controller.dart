@@ -315,6 +315,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
         result.addAll(trackers);
       } catch (e) {
         logger.w("subscribe trackers fail, url: $u", e);
+        return;
       }
     }
     btExtConfig.subscribeTrackers.clear();
