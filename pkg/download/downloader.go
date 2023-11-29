@@ -212,7 +212,7 @@ func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
 
 func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
 	ctl := controller.NewController()
-	ctl.GetConfig = func(v any) (bool, error) {
+	ctl.GetConfig = func(v any) bool {
 		return d.getProtocolConfig(fetcher.Name(), v)
 	}
 	fetcher.Setup(ctl)
@@ -563,18 +563,19 @@ func (d *Downloader) PutConfig(v *DownloaderStoreConfig) error {
 	return d.storage.Put(bucketConfig, "config", v)
 }
 
-func (d *Downloader) getProtocolConfig(name string, v any) (bool, error) {
+func (d *Downloader) getProtocolConfig(name string, v any) bool {
 	cfg, err := d.GetConfig()
 	if err != nil {
-		return false, err
+		return false
 	}
 	if cfg.ProtocolConfig == nil || cfg.ProtocolConfig[name] == nil {
-		return false, nil
+		return false
 	}
 	if err := util.MapToStruct(cfg.ProtocolConfig[name], v); err != nil {
-		return false, err
+		d.Logger.Warn().Err(err).Msgf("get protocol config failed")
+		return false
 	}
-	return true, nil
+	return true
 }
 
 // wait task done

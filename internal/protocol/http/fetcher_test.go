@@ -314,11 +314,11 @@ func buildConfigFetcher() fetcher.Fetcher {
 	mockCfg := config{
 		Connections: 16,
 	}
-	newController.GetConfig = func(v any) (bool, error) {
+	newController.GetConfig = func(v any) bool {
 		if err := json.Unmarshal([]byte(test.ToJson(mockCfg)), v); err != nil {
-			return false, err
+			return false
 		}
-		return true, nil
+		return true
 	}
 	fetcher.Setup(newController)
 	return fetcher
