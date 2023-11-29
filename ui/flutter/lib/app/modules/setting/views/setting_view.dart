@@ -96,6 +96,24 @@ class SettingView extends GetView<SettingController> {
 
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;
+    final buildHttpUa =
+        _buildConfigItem('User-Agent', () => httpConfig.userAgent, (Key key) {
+      final uaController = TextEditingController(text: httpConfig.userAgent);
+      uaController.addListener(() async {
+        if (uaController.text.isNotEmpty &&
+            uaController.text != httpConfig.userAgent) {
+          httpConfig.userAgent = uaController.text;
+
+          await debounceSave();
+        }
+      });
+
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: uaController,
+      );
+    });
     final buildHttpConnections = _buildConfigItem(
         'connections', () => httpConfig.connections.toString(), (Key key) {
       final connectionsController =
@@ -122,8 +140,32 @@ class SettingView extends GetView<SettingController> {
     });
 
     // bt config items start
+    final btConfig = downloaderCfg.value.protocolConfig.bt;
     final btExtConfig = downloaderCfg.value.extra.bt;
+    final buildBtListenPort = _buildConfigItem(
+        'port', () => btConfig.listenPort.toString(), (Key key) {
+      final listenPortController =
+          TextEditingController(text: btConfig.listenPort.toString());
+      listenPortController.addListener(() async {
+        if (listenPortController.text.isNotEmpty &&
+            listenPortController.text != btConfig.listenPort.toString()) {
+          btConfig.listenPort = int.parse(listenPortController.text);
 
+          await debounceSave();
+        }
+      });
+
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: listenPortController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          NumericalRangeFormatter(min: 0, max: 65535),
+        ],
+      );
+    });
     final buildBtTrackerSubscribeUrls = _buildConfigItem(
         'subscribeTracker',
         () => 'items'.trParams(
@@ -479,6 +521,7 @@ class SettingView extends GetView<SettingController> {
                         Card(
                             child: Column(
                           children: _addDivider([
+                            buildHttpUa(),
                             buildHttpConnections(),
                           ]),
                         )),
@@ -486,6 +529,7 @@ class SettingView extends GetView<SettingController> {
                         Card(
                             child: Column(
                           children: _addDivider([
+                            buildBtListenPort(),
                             buildBtTrackerSubscribeUrls(),
                             buildBtTrackers(),
                           ]),

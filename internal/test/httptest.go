@@ -138,7 +138,7 @@ func StartTestErrorServer() net.Listener {
 }
 
 // StartTestLimitServer connections limit server
-func StartTestLimitServer() net.Listener {
+func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 	var connections atomic.Int32
 
 	return startTestServer(func() http.Handler {
@@ -148,7 +148,7 @@ func StartTestLimitServer() net.Listener {
 				connections.Add(-1)
 			}()
 			connections.Add(1)
-			if connections.Load() > 4 {
+			if maxConnections != 0 && connections.Load() > maxConnections {
 				writer.WriteHeader(403)
 				return
 			}
@@ -162,7 +162,7 @@ func StartTestLimitServer() net.Listener {
 					panic(err)
 				}
 				defer file.Close()
-				io.Copy(writer, file)
+				slowCopy(writer, file, delay)
 			} else {
 				// split range
 				s := strings.Split(r, "=")
@@ -203,11 +203,55 @@ func StartTestLimitServer() net.Listener {
 				}
 				defer file.Close()
 				file.Seek(start, 0)
-				io.CopyN(writer, file, end-start+1)
+				slowCopyN(writer, file, end-start+1, delay)
 			}
 		})
 		return mux
 	})
+}
+
+// slowCopyN copies n bytes from src to dst, speed limit is bytes per second
+func slowCopy(dst io.Writer, src io.Reader, delay int64) (written int64, err error) {
+	buf := make([]byte, 32*1024)
+	for {
+		nr, er := src.Read(buf)
+		if nr > 0 {
+			nw, ew := dst.Write(buf[0:nr])
+			if nw > 0 {
+				written += int64(nw)
+			}
+			if ew != nil {
+				err = ew
+				break
+			}
+			if nr != nw {
+				err = io.ErrShortWrite
+				break
+			}
+		}
+		if er != nil {
+			if er != io.EOF {
+				err = er
+			}
+			break
+		}
+		if delay > 0 {
+			time.Sleep(time.Millisecond * time.Duration(delay))
+		}
+	}
+	return written, err
+}
+
+func slowCopyN(dst io.Writer, src io.Reader, n int64, delay int64) (written int64, err error) {
+	written, err = slowCopy(dst, io.LimitReader(src, n), delay)
+	if written == n {
+		return n, nil
+	}
+	if written < n && err == nil {
+		// src stopped early; must have been EOF.
+		err = io.EOF
+	}
+	return
 }
 
 func startTestServer(serverHandle func() http.Handler) net.Listener {

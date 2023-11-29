@@ -205,10 +205,7 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 	defer downloader.Clear()
 
 	var httpCfg map[string]any
-	exits, err := downloader.getProtocolConfig("http", &httpCfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	exits := downloader.getProtocolConfig("http", &httpCfg)
 	if exits {
 		t.Errorf("getProtocolConfig() got = %v, want %v", exits, false)
 	}
@@ -234,7 +231,7 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 		},
 	}
 
-	if err = downloader.PutConfig(storeCfg); err != nil {
+	if err := downloader.PutConfig(storeCfg); err != nil {
 		t.Fatal(err)
 	}
 

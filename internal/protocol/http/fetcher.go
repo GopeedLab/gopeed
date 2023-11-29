@@ -51,6 +51,7 @@ func newChunk(begin int64, end int64) *chunk {
 
 type Fetcher struct {
 	ctl    *controller.Controller
+	config *config
 	doneCh chan error
 
 	meta   *fetcher.FetcherMeta
@@ -71,6 +72,13 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
+	exist := f.ctl.GetConfig(&f.config)
+	if !exist {
+		f.config = &config{
+			UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+			Connections: 1,
+		}
+	}
 	return
 }
 
@@ -78,7 +86,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
 		return err
 	}
-	httpReq, err := buildRequest(nil, req)
+	httpReq, err := f.buildRequest(nil, req)
 	if err != nil {
 		return err
 	}
@@ -160,16 +168,7 @@ func (f *Fetcher) Create(opts *base.Options) error {
 	}
 	extra := opts.Extra.(*fhttp.OptsExtra)
 	if extra.Connections == 0 {
-		var cfg config
-		exist, err := f.ctl.GetConfig(&cfg)
-		if err != nil {
-			return err
-		}
-		if exist {
-			extra.Connections = cfg.Connections
-		} else {
-			extra.Connections = 1
-		}
+		extra.Connections = f.config.Connections
 	}
 	return nil
 }
@@ -260,7 +259,7 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	chunk := f.chunks[index]
 	chunk.retryTimes = 0
 
-	httpReq, err := buildRequest(ctx, f.meta.Req)
+	httpReq, err := f.buildRequest(ctx, f.meta.Req)
 	if err != nil {
 		return err
 	}
@@ -357,6 +356,52 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	return
 }
 
+func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request, err error) {
+	url, err := url.Parse(req.URL)
+	if err != nil {
+		return
+	}
+
+	var (
+		method string
+		body   io.Reader
+	)
+	headers := make(map[string][]string)
+	if req.Extra == nil {
+		method = http.MethodGet
+	} else {
+		extra := req.Extra.(*fhttp.ReqExtra)
+		if extra.Method != "" {
+			method = extra.Method
+		} else {
+			method = http.MethodGet
+		}
+		if len(extra.Header) > 0 {
+			for k, v := range extra.Header {
+				headers[k] = []string{v}
+			}
+		}
+		if extra.Body != "" {
+			body = bytes.NewBufferString(extra.Body)
+		}
+	}
+	if _, ok := headers[base.HttpHeaderUserAgent]; !ok {
+		// load user agent from config
+		headers[base.HttpHeaderUserAgent] = []string{f.config.UserAgent}
+	}
+
+	if ctx != nil {
+		httpReq, err = http.NewRequestWithContext(ctx, method, url.String(), body)
+	} else {
+		httpReq, err = http.NewRequest(method, url.String(), body)
+	}
+	if err != nil {
+		return
+	}
+	httpReq.Header = headers
+	return httpReq, nil
+}
+
 func (f *Fetcher) splitChunk() (chunks []*chunk) {
 	if f.meta.Res.Range {
 		connections := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
@@ -391,51 +436,6 @@ func buildClient() *http.Client {
 	return &http.Client{
 		Jar: jar,
 	}
-}
-
-func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request, err error) {
-	url, err := url.Parse(req.URL)
-	if err != nil {
-		return
-	}
-
-	var (
-		method string
-		body   io.Reader
-	)
-	headers := make(map[string][]string)
-	if req.Extra == nil {
-		method = http.MethodGet
-	} else {
-		extra := req.Extra.(*fhttp.ReqExtra)
-		if extra.Method != "" {
-			method = extra.Method
-		} else {
-			method = http.MethodGet
-		}
-		if len(extra.Header) > 0 {
-			for k, v := range extra.Header {
-				headers[k] = []string{v}
-			}
-		}
-		if extra.Body != "" {
-			body = bytes.NewBufferString(extra.Body)
-		}
-	}
-	if _, ok := headers[base.HttpHeaderUserAgent]; !ok {
-		headers[base.HttpHeaderUserAgent] = []string{base.AgentName}
-	}
-
-	if ctx != nil {
-		httpReq, err = http.NewRequestWithContext(ctx, method, url.String(), body)
-	} else {
-		httpReq, err = http.NewRequest(method, url.String(), body)
-	}
-	if err != nil {
-		return
-	}
-	httpReq.Header = headers
-	return httpReq, nil
 }
 
 type fetcherData struct {

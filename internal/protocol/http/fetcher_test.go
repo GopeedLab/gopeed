@@ -123,7 +123,7 @@ func TestFetcher_DownloadError(t *testing.T) {
 }
 
 func TestFetcher_DownloadLimit(t *testing.T) {
-	listener := test.StartTestLimitServer()
+	listener := test.StartTestLimitServer(4, 0)
 	defer listener.Close()
 
 	downloadNormal(listener, 1, t)
@@ -314,11 +314,11 @@ func buildConfigFetcher() fetcher.Fetcher {
 	mockCfg := config{
 		Connections: 16,
 	}
-	newController.GetConfig = func(v any) (bool, error) {
+	newController.GetConfig = func(v any) bool {
 		if err := json.Unmarshal([]byte(test.ToJson(mockCfg)), v); err != nil {
-			return false, err
+			return false
 		}
-		return true, nil
+		return true
 	}
 	fetcher.Setup(newController)
 	return fetcher
