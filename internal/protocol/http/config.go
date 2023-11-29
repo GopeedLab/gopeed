@@ -1,5 +1,6 @@
 package http
 
 type config struct {
-	Connections int `json:"connections"`
+	UserAgent   string `json:"userAgent"`
+	Connections int    `json:"connections"`
 }
