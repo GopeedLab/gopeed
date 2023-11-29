@@ -6,10 +6,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../api/api.dart' as api;
+import '../../../../util/browser_download/browser_download.dart';
 import '../../../../util/file_icon.dart';
 import '../../../../util/icons.dart';
 import '../../../../util/util.dart';
-import '../../../../util/browser_download/browser_download.dart';
 import '../../../views/breadcrumb_view.dart';
 import '../controllers/task_files_controller.dart';
 

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/model/meta.dart';
 import 'package:path/path.dart' as path;
 import 'package:styled_widget/styled_widget.dart';
 
 import '../../api/api.dart';
+import '../../api/model/meta.dart';
 import '../../api/model/task.dart';
 import '../../util/file_explorer.dart';
 import '../../util/file_icon.dart';

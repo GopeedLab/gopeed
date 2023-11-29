@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/app/modules/task/controllers/task_downloading_controller.dart';
-import '../controllers/task_downloaded_controller.dart';
-import 'task_downloading_view.dart';
 
-import 'task_downloaded_view.dart';
 import '../controllers/task_controller.dart';
+import '../controllers/task_downloaded_controller.dart';
+import '../controllers/task_downloading_controller.dart';
+import 'task_downloaded_view.dart';
+import 'task_downloading_view.dart';
 
 class TaskView extends GetView<TaskController> {
   const TaskView({Key? key}) : super(key: key);
