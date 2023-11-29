@@ -56,7 +56,7 @@ jobs:
           flutter build windows
           $mingw = "C:\Program Files\Git\mingw64\bin"
           $system = "C:\Windows\System32"
-          $release = "build\windows\runner\Release\"
+          $release = "build\windows\x64\runner\Release\"
           cp $mingw\libstdc++-6.dll $release
           cp $mingw\libgcc_s_seh-1.dll $release
           cp $mingw\libwinpthread-1.dll $release
