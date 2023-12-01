@@ -205,9 +205,11 @@ class BuildTaskListView extends GetView {
                       )),
                 ],
               ),
-              LinearProgressIndicator(
-                value: getProgress(),
-              ),
+              isDone()
+                  ? Container()
+                  : LinearProgressIndicator(
+                      value: getProgress(),
+                    ),
             ],
           ),
         )).padding(horizontal: 14, top: 8);
