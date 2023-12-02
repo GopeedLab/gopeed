@@ -84,6 +84,82 @@ func TestDownloader_Create(t *testing.T) {
 	}
 }
 
+func TestDownloader_CreateWithProxy(t *testing.T) {
+	// No proxy
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+		return nil
+	})
+	// Disable proxy
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+		proxyCfg.Enable = false
+		return proxyCfg
+	})
+	// Invalid proxy scheme
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+		proxyCfg.Scheme = ""
+		return proxyCfg
+	})
+	// Invalid proxy host
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+		proxyCfg.Host = ""
+		return proxyCfg
+	})
+	// Use proxy without auth
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+		return proxyCfg
+	})
+	// Use proxy with auth
+	doTestDownloaderCreateWithProxy(t, true, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+		return proxyCfg
+	})
+}
+
+func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig) {
+	httpListener := test.StartTestFileServer()
+	defer httpListener.Close()
+	usr, pwd := "", ""
+	if auth {
+		usr, pwd = "admin", "123"
+	}
+	proxyListener := test.StartSocks5Server(usr, pwd)
+	defer proxyListener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	downloader.cfg.DownloaderStoreConfig.Proxy = buildProxyConfig(&DownloaderProxyConfig{
+		Enable: true,
+		Scheme: "socks5",
+		Host:   proxyListener.Addr().String(),
+		Usr:    usr,
+		Pwd:    pwd,
+	})
+
+	req := &base.Request{
+		URL: "http://" + httpListener.Addr().String() + "/" + test.BuildName,
+	}
+	rr, err := downloader.Resolve(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := &base.Resource{
+		Size:  test.BuildSize,
+		Range: true,
+		Files: []*base.FileInfo{
+			{
+				Name: test.BuildName,
+				Path: "",
+				Size: test.BuildSize,
+			},
+		},
+	}
+	if !reflect.DeepEqual(want, rr.Res) {
+		t.Errorf("Resolve() got = %v, want %v", rr.Res, want)
+	}
+}
+
 func TestDownloader_CreateRename(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()

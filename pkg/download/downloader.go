@@ -215,6 +215,7 @@ func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
 	ctl.GetConfig = func(v any) bool {
 		return d.getProtocolConfig(fetcher.Name(), v)
 	}
+	ctl.ProxyUrl = d.cfg.ProxyUrl()
 	fetcher.Setup(ctl)
 }
 

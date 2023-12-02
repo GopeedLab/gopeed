@@ -27,7 +27,7 @@ var (
 		Extra: map[string]any{
 			"method": "",
 			"header": map[string]string{
-				"User-Agent": "gopeed",
+				"Usr-Agent": "gopeed",
 			},
 			"body": "",
 		},

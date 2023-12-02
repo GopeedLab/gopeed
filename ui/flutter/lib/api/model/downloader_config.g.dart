@@ -12,7 +12,8 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..maxRunning = json['maxRunning'] as int
       ..protocolConfig = ProtocolConfig.fromJson(
           json['protocolConfig'] as Map<String, dynamic>?)
-      ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?);
+      ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
+      ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
@@ -20,6 +21,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'maxRunning': instance.maxRunning,
       'protocolConfig': instance.protocolConfig.toJson(),
       'extra': instance.extra.toJson(),
+      'proxy': instance.proxy.toJson(),
     };
 
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>
@@ -63,6 +65,22 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'themeMode': instance.themeMode,
       'locale': instance.locale,
       'bt': instance.bt.toJson(),
+    };
+
+ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig()
+  ..enable = json['enable'] as bool
+  ..scheme = json['scheme'] as String
+  ..host = json['host'] as String
+  ..usr = json['usr'] as String
+  ..pwd = json['pwd'] as String;
+
+Map<String, dynamic> _$ProxyConfigToJson(ProxyConfig instance) =>
+    <String, dynamic>{
+      'enable': instance.enable,
+      'scheme': instance.scheme,
+      'host': instance.host,
+      'usr': instance.usr,
+      'pwd': instance.pwd,
     };
 
 ExtraConfigBt _$ExtraConfigBtFromJson(Map<String, dynamic> json) =>

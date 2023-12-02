@@ -90,7 +90,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if err != nil {
 		return err
 	}
-	client := buildClient()
+	client := f.buildClient()
 	// send Range request to check whether the server supports breakpoint continuation
 	// just test one byte, Range: bytes=0-0
 	httpReq.Header.Set(base.HttpHeaderRange, fmt.Sprintf(base.HttpHeaderRangeFormat, 0, 0))
@@ -264,7 +264,7 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 		return err
 	}
 	var (
-		client     = buildClient()
+		client     = f.buildClient()
 		buf        = make([]byte, 8192)
 		maxRetries = 3
 	)
@@ -430,11 +430,16 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 	return
 }
 
-func buildClient() *http.Client {
+func (f *Fetcher) buildClient() *http.Client {
+	transport := &http.Transport{}
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)
+	if f.ctl.ProxyUrl != nil {
+		transport.Proxy = http.ProxyURL(f.ctl.ProxyUrl)
+	}
 	return &http.Client{
-		Jar: jar,
+		Transport: transport,
+		Jar:       jar,
 	}
 }
 

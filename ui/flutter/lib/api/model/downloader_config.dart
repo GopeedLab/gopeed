@@ -8,6 +8,7 @@ class DownloaderConfig {
   int maxRunning = 0;
   ProtocolConfig protocolConfig = ProtocolConfig();
   ExtraConfig extra = ExtraConfig();
+  ProxyConfig proxy = ProxyConfig();
 
   DownloaderConfig();
 
@@ -64,6 +65,22 @@ class ExtraConfig {
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ExtraConfig() : _$ExtraConfigFromJson(json);
   Map<String, dynamic> toJson() => _$ExtraConfigToJson(this);
+}
+
+@JsonSerializable()
+class ProxyConfig {
+  bool enable = false;
+  String scheme = '';
+  String host = '';
+  String usr = '';
+  String pwd = '';
+
+  ProxyConfig();
+
+  factory ProxyConfig.fromJson(Map<String, dynamic> json) =>
+      _$ProxyConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ProxyConfigToJson(this);
 }
 
 @JsonSerializable()

@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -119,6 +120,7 @@ type XMLHttpRequest struct {
 	requestHeaders  map[string]string
 	responseHeaders map[string]string
 	aborted         bool
+	proxyUrl        *url.URL
 
 	Upload       *XMLHttpRequestUpload `json:"upload"`
 	Timeout      int                   `json:"timeout"`
@@ -200,8 +202,13 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	for k, v := range xhr.requestHeaders {
 		req.Header.Set(k, v)
 	}
+	transport := &http.Transport{}
+	if xhr.proxyUrl != nil {
+		transport.Proxy = http.ProxyURL(xhr.proxyUrl)
+	}
 	client := &http.Client{
-		Timeout: time.Duration(xhr.Timeout) * time.Millisecond,
+		Transport: transport,
+		Timeout:   time.Duration(xhr.Timeout) * time.Millisecond,
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -306,7 +313,7 @@ func (xhr *XMLHttpRequest) parseData(data goja.Value) any {
 	return data.String()
 }
 
-func Enable(runtime *goja.Runtime) error {
+func Enable(runtime *goja.Runtime, proxyUrl *url.URL) error {
 	progressEvent := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
 		if len(call.Arguments) < 1 {
 			inject.ThrowTypeError(runtime, "Failed to construct 'ProgressEvent': 1 argument required, but only 0 present.")
@@ -320,6 +327,7 @@ func Enable(runtime *goja.Runtime) error {
 	})
 	xhr := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
 		instance := &XMLHttpRequest{
+			proxyUrl: proxyUrl,
 			Upload: &XMLHttpRequestUpload{
 				EventProp: &EventProp{
 					eventListeners: make(map[string]func(event *ProgressEvent)),
