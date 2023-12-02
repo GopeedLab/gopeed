@@ -208,20 +208,15 @@ class ExtensionView extends GetView<ExtensionController> {
                                       ? IconButton(
                                           onPressed: () {
                                             launchUrl(
-                                                Uri.parse(extension.homepage),
-                                                mode: LaunchMode
-                                                    .externalApplication);
+                                                Uri.parse(extension.homepage));
                                           },
                                           icon: const Icon(Icons.home))
                                       : null,
                                   extension.repository?.url.isNotEmpty == true
                                       ? IconButton(
                                           onPressed: () {
-                                            launchUrl(
-                                                Uri.parse(
-                                                    extension.repository!.url),
-                                                mode: LaunchMode
-                                                    .externalApplication);
+                                            launchUrl(Uri.parse(
+                                                extension.repository!.url));
                                           },
                                           icon: const Icon(Icons.code))
                                       : null,

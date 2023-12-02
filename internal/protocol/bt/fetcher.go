@@ -9,6 +9,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
+	"net/http"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -63,6 +64,9 @@ func (f *Fetcher) initClient() (err error) {
 
 	cfg := torrent.NewDefaultClientConfig()
 	cfg.ListenPort = f.config.ListenPort
+	if f.ctl.ProxyUrl != nil {
+		cfg.HTTPProxy = http.ProxyURL(f.ctl.ProxyUrl)
+	}
 	cfg.DefaultStorage = newFileOpts(newFileClientOpts{
 		ClientBaseDir: cfg.DataDir,
 		HandleFileTorrent: func(infoHash metainfo.Hash, ft *fileTorrentImpl) {

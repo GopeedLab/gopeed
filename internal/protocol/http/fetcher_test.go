@@ -8,6 +8,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	"net"
 	"reflect"
 	"testing"
@@ -139,6 +140,15 @@ func TestFetcher_DownloadResume(t *testing.T) {
 	downloadResume(listener, 5, t)
 	downloadResume(listener, 8, t)
 	downloadResume(listener, 16, t)
+}
+
+func TestFetcher_DownloadWithProxy(t *testing.T) {
+	httpListener := test.StartTestFileServer()
+	defer httpListener.Close()
+	proxyListener := test.StartSocks5Server("", "")
+	defer proxyListener.Close()
+
+	downloadWithProxy(httpListener, proxyListener, t)
 }
 
 func TestFetcher_Config(t *testing.T) {
@@ -291,6 +301,26 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 	fetcher.Setup(controller.NewController())
 	fetcher.Start()
 
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
+func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t *testing.T) {
+	fetcher := downloadReady(httpListener, 4, t)
+	ctl := controller.NewController()
+	ctl.ProxyUrl = util.BuildProxyUrl("socks5", proxyListener.Addr().String(), "", "")
+	fetcher.Setup(ctl)
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = fetcher.Wait()
 	if err != nil {
 		t.Fatal(err)

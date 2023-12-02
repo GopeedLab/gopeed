@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/dop251/goja"
 	"io"
 	"net"
@@ -29,7 +30,7 @@ func TestPolyfill(t *testing.T) {
 func TestFetch(t *testing.T) {
 	server := startServer()
 	defer server.Close()
-	engine := NewEngine()
+	engine := NewEngine(nil)
 	if _, err := engine.RunString(fmt.Sprintf("var host = 'http://%s';", server.Addr().String())); err != nil {
 		t.Fatal(err)
 	}
@@ -192,8 +193,40 @@ function testTimeout(){
 	}
 }
 
+func TestFetchWithProxy(t *testing.T) {
+	doTestFetchWithProxy(t, "", "")
+	doTestFetchWithProxy(t, "admin", "123")
+}
+
+func doTestFetchWithProxy(t *testing.T, usr, pwd string) {
+	httpListener := startServer()
+	defer httpListener.Close()
+
+	proxyListener := test.StartSocks5Server(usr, pwd)
+	defer proxyListener.Close()
+
+	engine := NewEngine(&Config{ProxyURL: util.BuildProxyUrl("socks5", proxyListener.Addr().String(), usr, pwd)})
+
+	if _, err := engine.RunString(fmt.Sprintf("var host = 'http://%s';", httpListener.Addr().String())); err != nil {
+		t.Fatal(err)
+	}
+
+	respCode, err := engine.RunString(`
+(async function(){
+	const resp = await fetch(host+'/get');
+	return resp.status;
+})()
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if respCode != int64(200) {
+		t.Fatalf("fetch with proxy failed, want %d, got %d", 200, respCode)
+	}
+}
+
 func TestVm(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(nil)
 
 	value, err := engine.RunString(`
 const vm = __gopeed_create_vm()
@@ -221,7 +254,7 @@ out
 }
 
 func TestNonStopLoop(t *testing.T) {
-	engine := NewEngine()
+	engine := NewEngine(nil)
 
 	_, err := engine.RunString(`
 function leak(){

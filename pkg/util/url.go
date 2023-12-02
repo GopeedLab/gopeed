@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/base64"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -36,4 +37,17 @@ func ParseDataUri(uri string) (string, []byte) {
 		return "", nil
 	}
 	return mime, data
+}
+
+// BuildProxyUrl builds a proxy url with given host, username and password.
+func BuildProxyUrl(scheme, host, usr, pwd string) *url.URL {
+	var user *url.Userinfo
+	if usr != "" && pwd != "" {
+		user = url.UserPassword(usr, pwd)
+	}
+	return &url.URL{
+		Scheme: scheme,
+		User:   user,
+		Host:   host,
+	}
 }

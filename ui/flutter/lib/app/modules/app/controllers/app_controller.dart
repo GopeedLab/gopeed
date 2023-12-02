@@ -16,7 +16,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../core/common/start_config.dart';
-import '../../../../generated/locales.g.dart';
+import '../../../../i18n/message.dart';
 import '../../../../util/locale_manager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
@@ -185,9 +185,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       MenuItem(
         label: 'donate'.tr,
         onClick: (menuItem) => {
-          launchUrl(
-              Uri.parse(
-                  "https://github.com/GopeedLab/gopeed/blob/main/.donate/index.md#donate"),
+          launchUrl(Uri.parse("https://docs.gopeed.com/donate.html"),
               mode: LaunchMode.externalApplication)
         },
       ),
@@ -376,13 +374,17 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
     if (extra.locale.isEmpty) {
       final systemLocale = getLocaleKey(PlatformDispatcher.instance.locale);
-      extra.locale = AppTranslation.translations.containsKey(systemLocale)
+      extra.locale = messages.keys.containsKey(systemLocale)
           ? systemLocale
           : getLocaleKey(fallbackLocale);
     }
     if (extra.bt.trackerSubscribeUrls.isEmpty) {
       // default select all tracker subscribe urls
       extra.bt.trackerSubscribeUrls.addAll(allTrackerSubscribeUrls);
+    }
+    final proxy = config.proxy;
+    if (proxy.scheme.isEmpty) {
+      proxy.scheme = 'http';
     }
 
     if (config.downloadDir.isEmpty) {

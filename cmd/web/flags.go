@@ -23,7 +23,7 @@ func parse() *args {
 	cliArgs.Address = flag.String("A", "0.0.0.0", "Bind Address")
 	cliArgs.Port = flag.Int("P", 9999, "Bind Port")
 	cliArgs.Username = flag.String("u", "gopeed", "HTTP Basic Auth Username")
-	cliArgs.Password = flag.String("p", "", "HTTP Basic Auth Password")
+	cliArgs.Password = flag.String("p", "", "HTTP Basic Auth Pwd")
 	cliArgs.ApiToken = flag.String("T", "", "API token, that can only be used when basic authentication is enabled.")
 	cliArgs.configPath = flag.String("c", "./config.json", "Config file path")
 	flag.Parse()

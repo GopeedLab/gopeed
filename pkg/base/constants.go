@@ -19,7 +19,7 @@ const (
 	HttpHeaderContentLength      = "Content-Length"
 	HttpHeaderContentRange       = "Content-Range"
 	HttpHeaderContentDisposition = "Content-Disposition"
-	HttpHeaderUserAgent          = "User-Agent"
+	HttpHeaderUserAgent          = "Usr-Agent"
 
 	HttpHeaderRangeFormat = "bytes=%d-%d"
 )

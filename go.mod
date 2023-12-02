@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/anacrolix/missinggo/v2 v2.7.2-0.20230527121029-a582b4f397b9
 	github.com/anacrolix/torrent v1.52.5
+	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/dop251/goja v0.0.0-20231027120936-b396bb4c349d
 	github.com/dop251/goja_nodejs v0.0.0-20231122114759-e84d9a924c5c
 	github.com/go-git/go-git/v5 v5.8.1
