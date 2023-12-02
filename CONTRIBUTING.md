@@ -17,16 +17,8 @@ start the front-end flutter project in `debug` mode to run.
 
 ## Translation
 
-The internationalization files of Gopeed are located in the `ui/flutter/assets/locales` directory.
+The internationalization files of Gopeed are located in the `ui/flutter/lib/i18n/langs` directory.
 You only need to add the corresponding language file in this directory.
-
-
-Generate locales after you edit locales:
-
-
-```
-get generate locales 
-```
 
 Please refer to `en_us.dart` for translation.
 
@@ -38,17 +30,4 @@ Turn on build_runner watcher if you want to edit api/models:
 
 ```
 flutter pub run build_runner watch
-```
-
-
-get-cli commands usages:
-
-```
- create:  
-    controller:  Generate controller
-    page:  Use to generate pages
-    view:  Generate view
-  generate:
-    locales:  Generate translation file from json files
-    model:  generate Class model from json
 ```

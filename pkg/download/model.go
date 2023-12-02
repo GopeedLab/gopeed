@@ -8,6 +8,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -101,15 +102,37 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 type DownloaderStoreConfig struct {
 	FirstLoad bool `json:"-"` // FirstLoad is the flag that the config is first time init and not from store
 
-	DownloadDir    string         `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
-	MaxRunning     int            `json:"maxRunning"`     // MaxRunning is the max running download count
-	ProtocolConfig map[string]any `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
-	Extra          map[string]any `json:"extra"`          // Extra is the extra config
+	DownloadDir    string                 `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
+	MaxRunning     int                    `json:"maxRunning"`     // MaxRunning is the max running download count
+	ProtocolConfig map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
+	Extra          map[string]any         `json:"extra"`
+	Proxy          *DownloaderProxyConfig `json:"proxy"`
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	if cfg.MaxRunning == 0 {
 		cfg.MaxRunning = 5
 	}
+	if cfg.Proxy == nil {
+		cfg.Proxy = &DownloaderProxyConfig{}
+	}
 	return cfg
+}
+
+func (cfg *DownloaderStoreConfig) ProxyUrl() *url.URL {
+	if cfg.Proxy == nil {
+		return nil
+	}
+	if cfg.Proxy.Enable == false || cfg.Proxy.Scheme == "" || cfg.Proxy.Host == "" {
+		return nil
+	}
+	return util.BuildProxyUrl(cfg.Proxy.Scheme, cfg.Proxy.Host, cfg.Proxy.Usr, cfg.Proxy.Pwd)
+}
+
+type DownloaderProxyConfig struct {
+	Enable bool   `json:"enable"`
+	Scheme string `json:"scheme"`
+	Host   string `json:"host"`
+	Usr    string `json:"usr"`
+	Pwd    string `json:"pwd"`
 }

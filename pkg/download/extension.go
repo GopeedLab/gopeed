@@ -9,6 +9,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/dop251/goja"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"io"
 	"os"
 	"path"
@@ -195,11 +196,19 @@ func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath st
 	if err := util.RmAndMkDirAll(tempExtDir); err != nil {
 		return nil, err
 	}
+	proxyOptions := transport.ProxyOptions{}
+	proxyUrl := d.cfg.ProxyUrl()
+	if proxyUrl != nil {
+		proxyOptions.URL = proxyUrl.Scheme + "://" + proxyUrl.Host
+		proxyOptions.Username = proxyUrl.User.Username()
+		proxyOptions.Password, _ = proxyUrl.User.Password()
+	}
 	// clone project to extension temp dir
 	gitUrl := parentPath + projectPath + gitSuffix
 	if _, err := git.PlainClone(tempExtDir, false, &git.CloneOptions{
-		URL:   gitUrl,
-		Depth: 1,
+		URL:          gitUrl,
+		Depth:        1,
+		ProxyOptions: proxyOptions,
 	}); err != nil {
 		return nil, err
 	}
@@ -314,7 +323,9 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					if req.Labels == nil {
 						req.Labels = make(map[string]string)
 					}
-					engine := engine.NewEngine()
+					engine := engine.NewEngine(&engine.Config{
+						ProxyURL: d.cfg.ProxyUrl(),
+					})
 					defer engine.Close()
 					err = engine.Runtime.Set("gopeed", gopeed)
 					if err != nil {

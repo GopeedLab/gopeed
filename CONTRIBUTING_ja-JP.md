@@ -17,16 +17,8 @@
 
 ## 翻訳
 
-Gopeed の国際化ファイルは `ui/flutter/assets/locales` ディレクトリにあります。
+Gopeed の国際化ファイルは `ui/flutter/lib/i18n/langs` ディレクトリにあります。
 このディレクトリに対応する言語ファイルを追加するだけでよいです。
-
-
-ロケール編集後にロケールを生成:
-
-
-```
-get generate locales
-```
 
 翻訳については `en_us.dart` を参照してください。
 
@@ -38,17 +30,4 @@ api/models を編集したい場合は build_runner watcher をオンにしま�
 
 ```
 flutter pub run build_runner watch
-```
-
-
-get-cli コマンドの使用法:
-
-```
- create:
-    controller:  Generate controller
-    page:  Use to generate pages
-    view:  Generate view
-  generate:
-    locales:  Generate translation file from json files
-    model:  generate Class model from json
 ```

@@ -1,12 +1,14 @@
 package controller
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
 )
 
 type Controller struct {
 	GetConfig func(v any) bool
+	ProxyUrl  *url.URL
 	FileController
 	//ContextDialer() (proxy.Dialer, error)
 }

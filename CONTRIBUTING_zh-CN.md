@@ -14,13 +14,7 @@ flutter 项目即可运行。
 
 ## 翻译
  
-Gopeed 的国际化文件位于 `ui/flutter/assets/locales` 目录下，只需要在该目录下添加对应的语言文件即可。
-
-编辑locales后请运行以下命令:
-
-```
-get generate locales 
-```
+Gopeed 的国际化文件位于 `ui/flutter/lib/i18n/langs` 目录下，只需要在该目录下添加对应的语言文件即可。
 
 请注意以 `en_US.json` 为参照进行翻译。
 
@@ -32,17 +26,5 @@ get generate locales
 
 ```
 flutter pub run build_runner watch
-```
-
-适用get-cli 命令:
-
-```
- create:  
-    controller:  Generate controller
-    page:  Use to generate pages
-    view:  Generate view
-  generate:
-    locales:  Generate translation file from json files
-    model:  generate Class model from json
 ```
 
