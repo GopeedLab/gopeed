@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -67,7 +67,7 @@ class TaskFilesView extends GetView<TaskFilesController> {
                     return ListTile(
                       leading: file.isDirectory
                           ? const Icon(Icons.folder)
-                          : Icon(FaIcons.allIcons[findIcon(file.name)]),
+                          : Icon(FaIcons.allIcons[findIcon(fileName)]),
                       title: Text(fileName),
                       subtitle: file.isDirectory
                           ? Text('items'.trParams({
@@ -105,8 +105,13 @@ class TaskFilesView extends GetView<TaskFilesController> {
                                     : [
                                         IconButton(
                                             icon: const Icon(Icons.play_circle),
-                                            onPressed: () {
-                                              OpenFile.open(filePath);
+                                            onPressed: () async {
+                                              print(filePath);
+                                              try {
+                                                await OpenFilex.open(filePath);
+                                              } catch (e) {
+                                                print(e);
+                                              }
                                             }),
                                         IconButton(
                                             icon: const Icon(Icons.share),

@@ -41,10 +41,8 @@ class ExtensionView extends GetView<ExtensionController> {
             children: [
               TextButton.icon(
                 onPressed: () {
-                  launchUrl(
-                      Uri.parse(
-                          'https://github.com/search?q=topic%3Agopeed-extension&type=repositories'),
-                      mode: LaunchMode.externalApplication);
+                  launchUrl(Uri.parse(
+                      'https://github.com/search?q=topic%3Agopeed-extension&type=repositories'));
                 },
                 icon: const Icon(Icons.search),
                 label: Text('extensionFind'.tr),
@@ -53,8 +51,7 @@ class ExtensionView extends GetView<ExtensionController> {
               TextButton.icon(
                 onPressed: () {
                   launchUrl(
-                      Uri.parse('https://docs.gopeed.com/dev-extension.html'),
-                      mode: LaunchMode.externalApplication);
+                      Uri.parse('https://docs.gopeed.com/dev-extension.html'));
                 },
                 icon: const Icon(Icons.edit),
                 label: Text('extensionDevelop'.tr),
