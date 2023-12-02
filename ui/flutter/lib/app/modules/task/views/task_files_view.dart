@@ -57,8 +57,9 @@ class TaskFilesView extends GetView<TaskFilesController> {
                     final meta = controller.task.value!.meta;
                     final file = fileList[index];
                     // if resource is single file, use opts.name as file name
-                    final realFileName =
-                        meta.res!.name.isEmpty ? file.name : "";
+                    final realFileName = meta.res!.name.isEmpty
+                        ? (meta.opts.name.isEmpty ? file.name : meta.opts.name)
+                        : "";
                     final fileRelativePath = file.filePath(realFileName);
                     final filePath = Util.safePathJoin(
                         [meta.opts.path, meta.res!.name, fileRelativePath]);
