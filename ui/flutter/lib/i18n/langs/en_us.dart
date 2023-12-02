@@ -77,6 +77,7 @@ const enUS = {
     'noHistoryFound': 'No History Found',
     'serviceTitle': 'Download Service',
     'serviceText': 'Running',
+    'network': 'Network',
     'proxy': 'Proxy',
     'username': 'Username',
     'password': 'Password',

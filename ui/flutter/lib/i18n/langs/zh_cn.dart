@@ -75,8 +75,9 @@ const zhCN = {
     'noHistoryFound': '暂无历史记录',
     'serviceTitle': '下载服务',
     'serviceText': '运行中',
+    'network': '网络',
     'proxy': '代理',
     'username': '用户名',
-    'password': '密码'
+    'password': '密码',
   }
 };
