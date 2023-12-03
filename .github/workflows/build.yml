@@ -405,7 +405,7 @@ jobs:
               plugin: flutter
               stage-packages:
                 - libgtk-3-dev
-                - libayatana-appindicator3-dev
+                - libappindicator3-dev
               flutter-target: lib/main.dart
           EOF
           
