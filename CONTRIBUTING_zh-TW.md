@@ -15,7 +15,7 @@
 Gopeed 的翻譯文件位於 `ui/flutter/lib/i18n/langs` 目錄中，只需要修改或新建翻譯文件即可。
 
 
-請以 `en_US.json` 作為參照。
+請以 `en_us.dart` 作為參照。
 
 ## flutter開發
 

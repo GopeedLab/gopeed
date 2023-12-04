@@ -16,7 +16,7 @@ flutter 项目即可运行。
  
 Gopeed 的国际化文件位于 `ui/flutter/lib/i18n/langs` 目录下，只需要在该目录下添加对应的语言文件即可。
 
-请注意以 `en_US.json` 为参照进行翻译。
+请注意以 `en_us.dart` 为参照进行翻译。
 
 ## flutter开发
 
