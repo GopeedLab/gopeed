@@ -1,4 +1,4 @@
-FROM instrumentisto/flutter:3.10.6 AS flutter
+FROM instrumentisto/flutter:3.16.1 AS flutter
 WORKDIR /app
 COPY ./ui/flutter/pubspec.yaml ./ui/flutter/pubspec.lock ./
 RUN flutter pub get

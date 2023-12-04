@@ -1,12 +1,14 @@
 package controller
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
 )
 
 type Controller struct {
-	GetConfig func(v any) (bool, error)
+	GetConfig func(v any) bool
+	ProxyUrl  *url.URL
 	FileController
 	//ContextDialer() (proxy.Dialer, error)
 }
@@ -21,8 +23,8 @@ type DefaultFileController struct {
 func NewController() *Controller {
 	return &Controller{
 		FileController: &DefaultFileController{},
-		GetConfig: func(v any) (bool, error) {
-			return false, nil
+		GetConfig: func(v any) bool {
+			return false
 		},
 	}
 }

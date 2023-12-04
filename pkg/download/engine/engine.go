@@ -9,7 +9,8 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/xhr"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
-	"github.com/dop251/goja_nodejs/url"
+	gojaurl "github.com/dop251/goja_nodejs/url"
+	"net/url"
 	"time"
 )
 
@@ -107,7 +108,14 @@ func (e *Engine) Close() {
 	e.loop.Stop()
 }
 
-func NewEngine() *Engine {
+type Config struct {
+	ProxyURL *url.URL
+}
+
+func NewEngine(cfg *Config) *Engine {
+	if cfg == nil {
+		cfg = &Config{}
+	}
 	loop := eventloop.NewEventLoop()
 	engine := &Engine{
 		loop: loop,
@@ -116,14 +124,14 @@ func NewEngine() *Engine {
 		engine.Runtime = runtime
 		runtime.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 		vm.Enable(runtime)
-		url.Enable(runtime)
+		gojaurl.Enable(runtime)
 		if err := file.Enable(runtime); err != nil {
 			return
 		}
 		if err := formdata.Enable(runtime); err != nil {
 			return
 		}
-		if err := xhr.Enable(runtime); err != nil {
+		if err := xhr.Enable(runtime, cfg.ProxyURL); err != nil {
 			return
 		}
 		if _, err := runtime.RunString(polyfillScript); err != nil {
@@ -143,7 +151,7 @@ func NewEngine() *Engine {
 }
 
 func Run(script string) (value any, err error) {
-	engine := NewEngine()
+	engine := NewEngine(nil)
 	return engine.RunString(script)
 }
 

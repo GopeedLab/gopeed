@@ -8,6 +8,8 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
+	"github.com/GopeedLab/gopeed/pkg/util"
+	"net/url"
 	"os"
 	"reflect"
 	"testing"
@@ -50,7 +52,15 @@ func TestFetcher_Resolve_DataUri_Torrent(t *testing.T) {
 }
 
 func TestFetcher_Config(t *testing.T) {
-	doResolve(t, buildConfigFetcher())
+	doResolve(t, buildConfigFetcher(nil))
+}
+
+func TestFetcher_ResolveWithProxy(t *testing.T) {
+	usr, pwd := "admin", "123"
+	proxyListener := test.StartSocks5Server(usr, pwd)
+	defer proxyListener.Close()
+
+	doResolve(t, buildConfigFetcher(util.BuildProxyUrl("socks5", proxyListener.Addr().String(), usr, pwd)))
 }
 
 func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
@@ -90,7 +100,7 @@ func buildFetcher() fetcher.Fetcher {
 	return fetcher
 }
 
-func buildConfigFetcher() fetcher.Fetcher {
+func buildConfigFetcher(proxyUrl *url.URL) fetcher.Fetcher {
 	fetcher := new(FetcherBuilder).Build()
 	newController := controller.NewController()
 	mockCfg := config{
@@ -98,12 +108,13 @@ func buildConfigFetcher() fetcher.Fetcher {
 			"udp://tracker.birkenwald.de:6969/announce",
 			"udp://tracker.bitsearch.to:1337/announce",
 		}}
-	newController.GetConfig = func(v any) (bool, error) {
+	newController.GetConfig = func(v any) bool {
 		if err := json.Unmarshal([]byte(test.ToJson(mockCfg)), v); err != nil {
-			return false, err
+			return false
 		}
-		return true, nil
+		return true
 	}
+	newController.ProxyUrl = proxyUrl
 	fetcher.Setup(newController)
 	return fetcher
 }

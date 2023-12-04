@@ -105,9 +105,10 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodDelete).Path("/api/v1/extensions/{identity}").HandlerFunc(DeleteExtension)
 	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateCheckExtension)
 	r.Methods(http.MethodPost).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateExtension)
-	r.PathPrefix("/fs/extensions").Handler(http.FileServer(new(extensionFileSystem)))
 	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
 	if startCfg.WebEnable {
+		r.PathPrefix("/fs/tasks").Handler(http.FileServer(new(taskFileSystem)))
+		r.PathPrefix("/fs/extensions").Handler(http.FileServer(new(extensionFileSystem)))
 		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))
 	}
 
@@ -138,30 +139,56 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	return srv, listener, nil
 }
 
+func resolvePath(urlPath string, prefix string) (identity string, path string, err error) {
+	// remove prefix
+	clearPath := strings.TrimPrefix(urlPath, prefix)
+	// match extension identity, eg: /fs/extensions/identity/xxx
+	reg := regexp.MustCompile(`^/([^/]+)/(.*)$`)
+	if !reg.MatchString(clearPath) {
+		err = os.ErrNotExist
+		return
+	}
+	matched := reg.FindStringSubmatch(clearPath)
+	if len(matched) != 3 {
+		err = os.ErrNotExist
+		return
+	}
+	return matched[1], matched[2], nil
+}
+
+// handle task file resource
+type taskFileSystem struct {
+}
+
+func (e *taskFileSystem) Open(name string) (http.File, error) {
+	// get extension identity
+	identity, path, err := resolvePath(name, "/fs/tasks")
+	if err != nil {
+		return nil, err
+	}
+	task := Downloader.GetTask(identity)
+	if task == nil {
+		return nil, os.ErrNotExist
+	}
+	return os.Open(filepath.Join(task.Meta.RootDirPath(), path))
+}
+
 // handle extension file resource
 type extensionFileSystem struct {
 }
 
 func (e *extensionFileSystem) Open(name string) (http.File, error) {
-	// remove prefix
-	path := strings.TrimPrefix(name, "/fs/extensions")
-	// match extension identity, eg: /fs/extensions/identity/xxx
-	reg := regexp.MustCompile(`^/([^/]+)/(.*)$`)
-	if !reg.MatchString(path) {
-		return nil, os.ErrNotExist
-	}
-	matched := reg.FindStringSubmatch(path)
-	if len(matched) != 3 {
-		return nil, os.ErrNotExist
-	}
 	// get extension identity
-	identity := matched[1]
+	identity, path, err := resolvePath(name, "/fs/extensions")
+	if err != nil {
+		return nil, err
+	}
 	extension, err := Downloader.GetExtension(identity)
 	if err != nil {
 		return nil, os.ErrNotExist
 	}
 	extensionPath := Downloader.ExtensionPath(extension)
-	return os.Open(filepath.Join(extensionPath, matched[2]))
+	return os.Open(filepath.Join(extensionPath, path))
 }
 
 func ReadJson(r *http.Request, w http.ResponseWriter, v any) bool {

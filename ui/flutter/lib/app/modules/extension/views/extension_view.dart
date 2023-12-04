@@ -41,10 +41,8 @@ class ExtensionView extends GetView<ExtensionController> {
             children: [
               TextButton.icon(
                 onPressed: () {
-                  launchUrl(
-                      Uri.parse(
-                          'https://github.com/search?q=topic%3Agopeed-extension&type=repositories'),
-                      mode: LaunchMode.externalApplication);
+                  launchUrl(Uri.parse(
+                      'https://github.com/search?q=topic%3Agopeed-extension&type=repositories'));
                 },
                 icon: const Icon(Icons.search),
                 label: Text('extensionFind'.tr),
@@ -53,8 +51,7 @@ class ExtensionView extends GetView<ExtensionController> {
               TextButton.icon(
                 onPressed: () {
                   launchUrl(
-                      Uri.parse('https://docs.gopeed.com/dev-extension.html'),
-                      mode: LaunchMode.externalApplication);
+                      Uri.parse('https://docs.gopeed.com/dev-extension.html'));
                 },
                 icon: const Icon(Icons.edit),
                 label: Text('extensionDevelop'.tr),
@@ -208,20 +205,15 @@ class ExtensionView extends GetView<ExtensionController> {
                                       ? IconButton(
                                           onPressed: () {
                                             launchUrl(
-                                                Uri.parse(extension.homepage),
-                                                mode: LaunchMode
-                                                    .externalApplication);
+                                                Uri.parse(extension.homepage));
                                           },
                                           icon: const Icon(Icons.home))
                                       : null,
                                   extension.repository?.url.isNotEmpty == true
                                       ? IconButton(
                                           onPressed: () {
-                                            launchUrl(
-                                                Uri.parse(
-                                                    extension.repository!.url),
-                                                mode: LaunchMode
-                                                    .externalApplication);
+                                            launchUrl(Uri.parse(
+                                                extension.repository!.url));
                                           },
                                           icon: const Icon(Icons.code))
                                       : null,

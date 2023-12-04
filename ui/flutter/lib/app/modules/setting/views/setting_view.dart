@@ -7,7 +7,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../generated/locales.g.dart';
+import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
 import '../../../../util/message.dart';
@@ -96,6 +96,24 @@ class SettingView extends GetView<SettingController> {
 
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;
+    final buildHttpUa =
+        _buildConfigItem('User-Agent', () => httpConfig.userAgent, (Key key) {
+      final uaController = TextEditingController(text: httpConfig.userAgent);
+      uaController.addListener(() async {
+        if (uaController.text.isNotEmpty &&
+            uaController.text != httpConfig.userAgent) {
+          httpConfig.userAgent = uaController.text;
+
+          await debounceSave();
+        }
+      });
+
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: uaController,
+      );
+    });
     final buildHttpConnections = _buildConfigItem(
         'connections', () => httpConfig.connections.toString(), (Key key) {
       final connectionsController =
@@ -122,8 +140,32 @@ class SettingView extends GetView<SettingController> {
     });
 
     // bt config items start
+    final btConfig = downloaderCfg.value.protocolConfig.bt;
     final btExtConfig = downloaderCfg.value.extra.bt;
+    final buildBtListenPort = _buildConfigItem(
+        'port', () => btConfig.listenPort.toString(), (Key key) {
+      final listenPortController =
+          TextEditingController(text: btConfig.listenPort.toString());
+      listenPortController.addListener(() async {
+        if (listenPortController.text.isNotEmpty &&
+            listenPortController.text != btConfig.listenPort.toString()) {
+          btConfig.listenPort = int.parse(listenPortController.text);
 
+          await debounceSave();
+        }
+      });
+
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: listenPortController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          NumericalRangeFormatter(min: 0, max: 65535),
+        ],
+      );
+    });
     final buildBtTrackerSubscribeUrls = _buildConfigItem(
         'subscribeTracker',
         () => 'items'.trParams(
@@ -230,8 +272,7 @@ class SettingView extends GetView<SettingController> {
             ));
     final buildLocale = _buildConfigItem(
         'locale',
-        () => AppTranslation
-            .translations[downloaderCfg.value.extra.locale]!['label']!,
+        () => messages.keys[downloaderCfg.value.extra.locale]!['label']!,
         (Key key) => DropdownButton<String>(
               key: key,
               value: downloaderCfg.value.extra.locale,
@@ -245,23 +286,26 @@ class SettingView extends GetView<SettingController> {
 
                 await debounceSave();
               },
-              items: AppTranslation.translations.keys
+              items: messages.keys.keys
                   .map((e) => DropdownMenuItem<String>(
                         value: e,
-                        child: Text(AppTranslation.translations[e]!['label']!),
+                        child: Text(messages.keys[e]!['label']!),
                       ))
                   .toList(),
             ));
 
     // about config items start
-    buildHomepage() => ListTile(
-          title: Text('homepage'.tr),
-          subtitle: const Text('https://github.com/GopeedLab/gopeed'),
-          onTap: () {
-            launchUrl(Uri.parse('https://github.com/GopeedLab/gopeed'),
-                mode: LaunchMode.externalApplication);
-          },
-        );
+    buildHomepage() {
+      const homePage = 'https://gopeed.com';
+      return ListTile(
+        title: Text('homepage'.tr),
+        subtitle: const Text(homePage),
+        onTap: () {
+          launchUrl(Uri.parse(homePage), mode: LaunchMode.externalApplication);
+        },
+      );
+    }
+
     buildVersion() {
       bool isNewVersion(String current, String latest) {
         if (latest == "") {
@@ -321,7 +365,167 @@ class SettingView extends GetView<SettingController> {
       );
     }
 
-    // advanced config items start
+    // advanced config proxy items start
+    final buildProxy = _buildConfigItem(
+      'proxy',
+      () => downloaderCfg.value.proxy.enable
+          ? '${downloaderCfg.value.proxy.scheme}://${downloaderCfg.value.proxy.host}'
+          : 'notSet'.tr,
+      (Key key) {
+        final proxy = downloaderCfg.value.proxy;
+
+        final switcher = Switch(
+          value: proxy.enable,
+          onChanged: (bool value) async {
+            if (value != proxy.enable) {
+              downloaderCfg.update((val) {
+                val!.proxy.enable = value;
+              });
+
+              await debounceSave();
+            }
+          },
+        );
+
+        final items = <Widget>[
+          SizedBox(
+            width: 150,
+            child: DropdownButtonFormField<String>(
+              value: proxy.scheme,
+              onChanged: (value) async {
+                if (value != null && value != proxy.scheme) {
+                  proxy.scheme = value;
+
+                  await debounceSave();
+                }
+              },
+              items: const [
+                DropdownMenuItem<String>(
+                  value: 'http',
+                  child: Text('HTTP'),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'https',
+                  child: Text('HTTPS'),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'socks5',
+                  child: Text('SOCKS5'),
+                ),
+              ],
+            ),
+          )
+        ];
+
+        final arr = proxy.host.split(':');
+        var ip = '';
+        var port = '';
+        if (arr.length > 1) {
+          ip = arr[0];
+          port = arr[1];
+        }
+
+        final ipController = TextEditingController(text: ip);
+        final portController = TextEditingController(text: port);
+        updateAddress() async {
+          final newAddress = '${ipController.text}:${portController.text}';
+          if (newAddress != startCfg.value.address) {
+            proxy.host = newAddress;
+
+            await debounceSave();
+          }
+        }
+
+        ipController.addListener(updateAddress);
+        portController.addListener(updateAddress);
+        items.addAll([
+          const Padding(padding: EdgeInsets.only(left: 20)),
+          SizedBox(
+            width: 150,
+            child: TextFormField(
+              controller: ipController,
+              decoration: const InputDecoration(
+                labelText: 'IP',
+                contentPadding: EdgeInsets.all(0.0),
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
+              ],
+            ),
+          ),
+          const Padding(padding: EdgeInsets.only(left: 10)),
+          SizedBox(
+            width: 150,
+            child: TextFormField(
+              controller: portController,
+              decoration: InputDecoration(
+                labelText: 'port'.tr,
+                contentPadding: const EdgeInsets.all(0.0),
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                NumericalRangeFormatter(min: 0, max: 65535),
+              ],
+            ),
+          ),
+        ]);
+
+        final usrController = TextEditingController(text: proxy.usr);
+        final pwdController = TextEditingController(text: proxy.pwd);
+
+        final auth = [
+          SizedBox(
+            width: 150,
+            child: TextFormField(
+              controller: usrController,
+              decoration: InputDecoration(
+                labelText: 'username'.tr,
+                contentPadding: const EdgeInsets.all(0.0),
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
+              ],
+            ),
+          ),
+          const Padding(padding: EdgeInsets.only(left: 10)),
+          SizedBox(
+            width: 150,
+            child: TextFormField(
+              controller: pwdController,
+              decoration: InputDecoration(
+                labelText: 'password'.tr,
+                contentPadding: const EdgeInsets.all(0.0),
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                NumericalRangeFormatter(min: 0, max: 65535),
+              ],
+            ),
+          ),
+        ];
+
+        return Form(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: _addPadding([
+              switcher,
+              Row(
+                children: items,
+              ),
+              Row(
+                children: auth,
+              ),
+            ]),
+          ),
+        );
+      },
+    );
+
+    // advanced config API items start
     final buildApiProtocol = _buildConfigItem(
       'protocol',
       () => startCfg.value.network == 'tcp'
@@ -382,7 +586,7 @@ class SettingView extends GetView<SettingController> {
           items.addAll([
             const Padding(padding: EdgeInsets.only(left: 20)),
             SizedBox(
-              width: 200,
+              width: 150,
               child: TextFormField(
                 controller: ipController,
                 decoration: const InputDecoration(
@@ -397,7 +601,7 @@ class SettingView extends GetView<SettingController> {
             ),
             const Padding(padding: EdgeInsets.only(left: 10)),
             SizedBox(
-              width: 200,
+              width: 150,
               child: TextFormField(
                 controller: portController,
                 decoration: InputDecoration(
@@ -479,6 +683,7 @@ class SettingView extends GetView<SettingController> {
                         Card(
                             child: Column(
                           children: _addDivider([
+                            buildHttpUa(),
                             buildHttpConnections(),
                           ]),
                         )),
@@ -486,6 +691,7 @@ class SettingView extends GetView<SettingController> {
                         Card(
                             child: Column(
                           children: _addDivider([
+                            buildBtListenPort(),
                             buildBtTrackerSubscribeUrls(),
                             buildBtTrackers(),
                           ]),
@@ -509,21 +715,42 @@ class SettingView extends GetView<SettingController> {
                       ]),
                     ),
                   ),
-                  Column(
-                    children: [
+                  // Column(
+                  //   children: [
+                  //     Card(
+                  //         child: Column(
+                  //       children: [
+                  //         ..._addDivider([
+                  //           buildApiProtocol(),
+                  //           Util.isDesktop() && startCfg.value.network == 'tcp'
+                  //               ? buildApiToken()
+                  //               : null,
+                  //         ]),
+                  //       ],
+                  //     )),
+                  //   ],
+                  // ),
+                  SingleChildScrollView(
+                      child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _addPadding([
+                      Text('network'.tr),
                       Card(
                           child: Column(
-                        children: [
-                          ..._addDivider([
-                            buildApiProtocol(),
-                            Util.isDesktop() && startCfg.value.network == 'tcp'
-                                ? buildApiToken()
-                                : null,
-                          ]),
-                        ],
+                        children: _addDivider([buildProxy()]),
                       )),
-                    ],
-                  ),
+                      const Text('API'),
+                      Card(
+                          child: Column(
+                        children: _addDivider([
+                          buildApiProtocol(),
+                          Util.isDesktop() && startCfg.value.network == 'tcp'
+                              ? buildApiToken()
+                              : null,
+                        ]),
+                      )),
+                    ]),
+                  ))
                 ],
               ).paddingOnly(left: 16, right: 16, top: 16, bottom: 16)),
         ),

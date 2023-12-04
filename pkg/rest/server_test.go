@@ -27,7 +27,7 @@ var (
 		Extra: map[string]any{
 			"method": "",
 			"header": map[string]string{
-				"User-Agent": "gopeed",
+				"Usr-Agent": "gopeed",
 			},
 			"body": "",
 		},
@@ -491,6 +491,7 @@ func doTest(handler func()) {
 		cfg.Init()
 		cfg.Storage = storage
 		cfg.StorageDir = ".test_storage"
+		cfg.WebEnable = true
 		fileListener := doStart(cfg)
 		defer func() {
 			if err := fileListener.Close(); err != nil {

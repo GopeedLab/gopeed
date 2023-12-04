@@ -7,7 +7,7 @@ import 'api/api.dart' as api;
 import 'app/modules/app/controllers/app_controller.dart';
 import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
-import 'generated/locales.g.dart';
+import 'i18n/message.dart';
 import 'util/locale_manager.dart';
 import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
@@ -72,12 +72,10 @@ Future<void> onStart() async {
 
   // if is debug mode, check language message is complete,change debug locale to your comfortable language if you want
   if (kDebugMode) {
-    final mainLang = getLocaleKey(debugLocale);
-    final fullMessages = AppTranslation.translations[mainLang];
-    AppTranslation.translations.keys
-        .where((e) => e != mainLang)
-        .forEach((lang) {
-      final langMessages = AppTranslation.translations[lang];
+    final debugLang = getLocaleKey(debugLocale);
+    final fullMessages = messages.keys[debugLang];
+    messages.keys.keys.where((e) => e != debugLang).forEach((lang) {
+      final langMessages = messages.keys[lang];
       if (langMessages == null) {
         logger.w("missing language: $lang");
         return;

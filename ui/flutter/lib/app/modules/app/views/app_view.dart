@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 
-import '../../../../generated/locales.g.dart';
+import '../../../../i18n/message.dart';
 import '../../../../theme/theme.dart';
 import '../../../../util/locale_manager.dart';
 import '../../../routes/app_pages.dart';
@@ -20,8 +20,7 @@ class AppView extends GetView<AppController> {
       theme: GopeedTheme.light,
       darkTheme: GopeedTheme.dark,
       themeMode: ThemeMode.values.byName(config.extra.themeMode),
-      // translations: messages,
-      translationsKeys: AppTranslation.translations,
+      translations: messages,
       locale: toLocale(config.extra.locale),
       fallbackLocale: fallbackLocale,
       localizationsDelegates: const [
@@ -29,8 +28,7 @@ class AppView extends GetView<AppController> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales:
-          AppTranslation.translations.keys.map((e) => toLocale(e)).toList(),
+      supportedLocales: messages.keys.keys.map((e) => toLocale(e)).toList(),
       getPages: AppPages.routes,
     );
   }

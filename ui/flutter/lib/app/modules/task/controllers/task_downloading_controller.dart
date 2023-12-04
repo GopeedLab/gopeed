@@ -9,5 +9,5 @@ class TaskDownloadingController extends TaskListController {
           Status.pause,
           Status.wait,
           Status.error
-        ]);
+        ], SortDirection.desc);
 }

@@ -8,6 +8,7 @@ class DownloaderConfig {
   int maxRunning = 0;
   ProtocolConfig protocolConfig = ProtocolConfig();
   ExtraConfig extra = ExtraConfig();
+  ProxyConfig proxy = ProxyConfig();
 
   DownloaderConfig();
 
@@ -30,6 +31,8 @@ class ProtocolConfig {
 
 @JsonSerializable()
 class HttpConfig {
+  String userAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36';
   int connections = 0;
 
   HttpConfig();
@@ -41,6 +44,7 @@ class HttpConfig {
 
 @JsonSerializable()
 class BtConfig {
+  int listenPort = 0;
   List<String> trackers = [];
 
   BtConfig();
@@ -61,6 +65,22 @@ class ExtraConfig {
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ExtraConfig() : _$ExtraConfigFromJson(json);
   Map<String, dynamic> toJson() => _$ExtraConfigToJson(this);
+}
+
+@JsonSerializable()
+class ProxyConfig {
+  bool enable = false;
+  String scheme = '';
+  String host = '';
+  String usr = '';
+  String pwd = '';
+
+  ProxyConfig();
+
+  factory ProxyConfig.fromJson(Map<String, dynamic> json) =>
+      _$ProxyConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ProxyConfigToJson(this);
 }
 
 @JsonSerializable()

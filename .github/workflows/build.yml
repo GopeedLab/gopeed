@@ -14,7 +14,7 @@ on:
 
 env:
   GO_VERSION: "1.19"
-  FLUTTER_VERSION: "3.10.6"
+  FLUTTER_VERSION: "3.16.1"
 
 permissions:
   contents: write
@@ -56,7 +56,7 @@ jobs:
           flutter build windows
           $mingw = "C:\Program Files\Git\mingw64\bin"
           $system = "C:\Windows\System32"
-          $release = "build\windows\runner\Release\"
+          $release = "build\windows\x64\runner\Release\"
           cp $mingw\libstdc++-6.dll $release
           cp $mingw\libgcc_s_seh-1.dll $release
           cp $mingw\libwinpthread-1.dll $release
@@ -110,7 +110,7 @@ jobs:
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
           [Files]
-          Source: ".\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+          Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
           ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
           [UninstallDelete]
@@ -224,7 +224,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - run: |
           sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev libappindicator3-dev
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
@@ -405,7 +405,7 @@ jobs:
               plugin: flutter
               stage-packages:
                 - libgtk-3-dev
-                - libayatana-appindicator3-dev
+                - libappindicator3-dev
               flutter-target: lib/main.dart
           EOF
           

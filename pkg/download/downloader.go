@@ -212,9 +212,10 @@ func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
 
 func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
 	ctl := controller.NewController()
-	ctl.GetConfig = func(v any) (bool, error) {
+	ctl.GetConfig = func(v any) bool {
 		return d.getProtocolConfig(fetcher.Name(), v)
 	}
+	ctl.ProxyUrl = d.cfg.ProxyUrl()
 	fetcher.Setup(ctl)
 }
 
@@ -540,18 +541,7 @@ func (d *Downloader) GetTask(id string) *Task {
 }
 
 func (d *Downloader) GetTasks() []*Task {
-	tasks := make([]*Task, len(d.tasks))
-	for i := 0; i < len(d.tasks); i++ {
-		tasks[i] = d.tasks[i]
-	}
-	// sort tasks by status, order by Status(if(running,1,0)) desc, CreatedAt desc
-	sort.Slice(tasks, func(i, j int) bool {
-		if tasks[i].Status != tasks[j].Status {
-			return tasks[i].Status == base.DownloadStatusRunning
-		}
-		return tasks[i].CreatedAt.After(tasks[j].CreatedAt)
-	})
-	return tasks
+	return d.tasks
 }
 
 func (d *Downloader) GetConfig() (*DownloaderStoreConfig, error) {
@@ -563,18 +553,19 @@ func (d *Downloader) PutConfig(v *DownloaderStoreConfig) error {
 	return d.storage.Put(bucketConfig, "config", v)
 }
 
-func (d *Downloader) getProtocolConfig(name string, v any) (bool, error) {
+func (d *Downloader) getProtocolConfig(name string, v any) bool {
 	cfg, err := d.GetConfig()
 	if err != nil {
-		return false, err
+		return false
 	}
 	if cfg.ProtocolConfig == nil || cfg.ProtocolConfig[name] == nil {
-		return false, nil
+		return false
 	}
 	if err := util.MapToStruct(cfg.ProtocolConfig[name], v); err != nil {
-		return false, err
+		d.Logger.Warn().Err(err).Msgf("get protocol config failed")
+		return false
 	}
-	return true, nil
+	return true
 }
 
 // wait task done

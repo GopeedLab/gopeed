@@ -9,6 +9,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
+	"net/http"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -23,7 +24,8 @@ var (
 )
 
 type Fetcher struct {
-	ctl *controller.Controller
+	ctl    *controller.Controller
+	config *config
 
 	torrent *torrent.Torrent
 	meta    *fetcher.FetcherMeta
@@ -42,6 +44,13 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
+	exist := f.ctl.GetConfig(&f.config)
+	if !exist {
+		f.config = &config{
+			ListenPort: 0,
+			Trackers:   []string{},
+		}
+	}
 	return
 }
 
@@ -54,7 +63,10 @@ func (f *Fetcher) initClient() (err error) {
 	}
 
 	cfg := torrent.NewDefaultClientConfig()
-	cfg.ListenPort = 0
+	cfg.ListenPort = f.config.ListenPort
+	if f.ctl.ProxyUrl != nil {
+		cfg.HTTPProxy = http.ProxyURL(f.ctl.ProxyUrl)
+	}
 	cfg.DefaultStorage = newFileOpts(newFileClientOpts{
 		ClientBaseDir: cfg.DataDir,
 		HandleFileTorrent: func(infoHash metainfo.Hash, ft *fileTorrentImpl) {
@@ -231,11 +243,6 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	if err != nil {
 		return
 	}
-	var cfg config
-	exist, err := f.ctl.GetConfig(&cfg)
-	if err != nil {
-		return
-	}
 
 	// use map to deduplicate
 	trackers := make(map[string]bool)
@@ -247,8 +254,8 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 			}
 		}
 	}
-	if exist && len(cfg.Trackers) > 0 {
-		for _, tracker := range cfg.Trackers {
+	if len(f.config.Trackers) > 0 {
+		for _, tracker := range f.config.Trackers {
 			trackers[tracker] = true
 		}
 	}

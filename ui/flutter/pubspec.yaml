@@ -15,7 +15,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.4.4+1
+version: 1.5.1+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -62,10 +62,10 @@ dependencies:
       ref: fix/libayatana-set-icon-deprecation
   autoscale_tabbarview: ^1.0.2
   share_plus: ^7.1.0
-  open_file: ^3.3.2
   flutter_form_builder: ^9.1.1
   form_builder_validators: ^9.0.0
   flutter_foreground_task: ^6.1.2
+  open_filex: ^4.3.4
 dev_dependencies:
   flutter_test:
     sdk: flutter

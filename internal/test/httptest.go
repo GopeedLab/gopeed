@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/armon/go-socks5"
 	"io"
 	"math/rand"
 	"net"
@@ -314,4 +315,25 @@ func ifExistAndRemove(name string) error {
 		return os.Remove(name)
 	}
 	return nil
+}
+
+func StartSocks5Server(usr, pwd string) net.Listener {
+	conf := &socks5.Config{}
+	if usr != "" && pwd != "" {
+		conf.Credentials = socks5.StaticCredentials{
+			usr: pwd,
+		}
+	}
+
+	server, err := socks5.New(conf)
+	if err != nil {
+		panic(err)
+	}
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0") // 你可以根据需要更改监听地址
+	if err != nil {
+		panic(err)
+	}
+	go server.Serve(listener)
+	return listener
 }

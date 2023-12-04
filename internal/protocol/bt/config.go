@@ -1,5 +1,6 @@
 package bt
 
 type config struct {
-	Trackers []string `json:"trackers"`
+	ListenPort int      `json:"listenPort"`
+	Trackers   []string `json:"trackers"`
 }

@@ -51,6 +51,7 @@ func newChunk(begin int64, end int64) *chunk {
 
 type Fetcher struct {
 	ctl    *controller.Controller
+	config *config
 	doneCh chan error
 
 	meta   *fetcher.FetcherMeta
@@ -71,6 +72,13 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
+	exist := f.ctl.GetConfig(&f.config)
+	if !exist {
+		f.config = &config{
+			UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+			Connections: 1,
+		}
+	}
 	return
 }
 
@@ -78,11 +86,11 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
 		return err
 	}
-	httpReq, err := buildRequest(nil, req)
+	httpReq, err := f.buildRequest(nil, req)
 	if err != nil {
 		return err
 	}
-	client := buildClient()
+	client := f.buildClient()
 	// send Range request to check whether the server supports breakpoint continuation
 	// just test one byte, Range: bytes=0-0
 	httpReq.Header.Set(base.HttpHeaderRange, fmt.Sprintf(base.HttpHeaderRangeFormat, 0, 0))
@@ -160,16 +168,7 @@ func (f *Fetcher) Create(opts *base.Options) error {
 	}
 	extra := opts.Extra.(*fhttp.OptsExtra)
 	if extra.Connections == 0 {
-		var cfg config
-		exist, err := f.ctl.GetConfig(&cfg)
-		if err != nil {
-			return err
-		}
-		if exist {
-			extra.Connections = cfg.Connections
-		} else {
-			extra.Connections = 1
-		}
+		extra.Connections = f.config.Connections
 	}
 	return nil
 }
@@ -260,12 +259,12 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	chunk := f.chunks[index]
 	chunk.retryTimes = 0
 
-	httpReq, err := buildRequest(ctx, f.meta.Req)
+	httpReq, err := f.buildRequest(ctx, f.meta.Req)
 	if err != nil {
 		return err
 	}
 	var (
-		client     = buildClient()
+		client     = f.buildClient()
 		buf        = make([]byte, 8192)
 		maxRetries = 3
 	)
@@ -357,43 +356,7 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	return
 }
 
-func (f *Fetcher) splitChunk() (chunks []*chunk) {
-	if f.meta.Res.Range {
-		connections := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
-		// 每个连接平均需要下载的分块大小
-		chunkSize := f.meta.Res.Size / int64(connections)
-		chunks = make([]*chunk, connections)
-		for i := 0; i < connections; i++ {
-			var (
-				begin = chunkSize * int64(i)
-				end   int64
-			)
-			if i == connections-1 {
-				// 最后一个分块需要保证把文件下载完
-				end = f.meta.Res.Size - 1
-			} else {
-				end = begin + chunkSize - 1
-			}
-			chunk := newChunk(begin, end)
-			chunks[i] = chunk
-		}
-	} else {
-		// 只支持单连接下载
-		chunks = make([]*chunk, 1)
-		chunks[0] = newChunk(0, 0)
-	}
-	return
-}
-
-func buildClient() *http.Client {
-	// Cookie handle
-	jar, _ := cookiejar.New(nil)
-	return &http.Client{
-		Jar: jar,
-	}
-}
-
-func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request, err error) {
+func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request, err error) {
 	url, err := url.Parse(req.URL)
 	if err != nil {
 		return
@@ -423,7 +386,8 @@ func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request
 		}
 	}
 	if _, ok := headers[base.HttpHeaderUserAgent]; !ok {
-		headers[base.HttpHeaderUserAgent] = []string{base.AgentName}
+		// load user agent from config
+		headers[base.HttpHeaderUserAgent] = []string{f.config.UserAgent}
 	}
 
 	if ctx != nil {
@@ -436,6 +400,47 @@ func buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request
 	}
 	httpReq.Header = headers
 	return httpReq, nil
+}
+
+func (f *Fetcher) splitChunk() (chunks []*chunk) {
+	if f.meta.Res.Range {
+		connections := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
+		// 每个连接平均需要下载的分块大小
+		chunkSize := f.meta.Res.Size / int64(connections)
+		chunks = make([]*chunk, connections)
+		for i := 0; i < connections; i++ {
+			var (
+				begin = chunkSize * int64(i)
+				end   int64
+			)
+			if i == connections-1 {
+				// 最后一个分块需要保证把文件下载完
+				end = f.meta.Res.Size - 1
+			} else {
+				end = begin + chunkSize - 1
+			}
+			chunk := newChunk(begin, end)
+			chunks[i] = chunk
+		}
+	} else {
+		// 只支持单连接下载
+		chunks = make([]*chunk, 1)
+		chunks[0] = newChunk(0, 0)
+	}
+	return
+}
+
+func (f *Fetcher) buildClient() *http.Client {
+	transport := &http.Transport{}
+	// Cookie handle
+	jar, _ := cookiejar.New(nil)
+	if f.ctl.ProxyUrl != nil {
+		transport.Proxy = http.ProxyURL(f.ctl.ProxyUrl)
+	}
+	return &http.Client{
+		Transport: transport,
+		Jar:       jar,
+	}
 }
 
 type fetcherData struct {

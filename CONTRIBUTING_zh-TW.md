@@ -12,15 +12,10 @@
 
 ## 翻譯
  
-Gopeed 的翻譯文件位於 `ui/flutter/assets/locales` 目錄中，只需要修改或新建翻譯文件即可。
+Gopeed 的翻譯文件位於 `ui/flutter/lib/i18n/langs` 目錄中，只需要修改或新建翻譯文件即可。
 
-修改locales後請執行一下指令:
 
-```
-get generate locales 
-```
-
-請以 `en_US.json` 作為參照。
+請以 `en_us.dart` 作為參照。
 
 ## flutter開發
 
@@ -31,16 +26,3 @@ get generate locales
 ```
 flutter pub run build_runner watch
 ```
-
-適用於 get-cli 的指令:
-
-```
- create:  
-    controller:  Generate controller
-    page:  Use to generate pages
-    view:  Generate view
-  generate:
-    locales:  Generate translation file from json files
-    model:  generate Class model from json
-```
-
