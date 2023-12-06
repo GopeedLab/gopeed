@@ -9,6 +9,8 @@ import (
 	"github.com/GopeedLab/gopeed/cmd"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"io/fs"
+	"os"
+	"path/filepath"
 )
 
 //go:embed dist/*
@@ -29,10 +31,17 @@ func main() {
 		}
 	}
 
+	exe, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	dir := filepath.Dir(exe)
+
 	cfg := &model.StartConfig{
 		Network:        "tcp",
 		Address:        fmt.Sprintf("%s:%d", *args.Address, *args.Port),
 		Storage:        model.StorageBolt,
+		StorageDir:     filepath.Join(dir, "storage"),
 		ApiToken:       *args.ApiToken,
 		ProductionMode: true,
 		WebEnable:      true,

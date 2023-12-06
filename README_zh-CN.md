@@ -15,7 +15,7 @@
 
 Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不是狗屁下载器！），是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。除了基本的下载功能外，Gopeed 还是一款高度可定制化的下载器，支持通过对接[APIs](https://docs.gopeed.com/zh/dev-api.html)或者安装和开发[扩展](https://docs.gopeed.com/zh/dev-extension.html)来实现更多的功能。
 
-访问 ✈ [官方网站](https://gopeed.com/zh-CN) | 📖 [开发文档](https://docs.gopeed.com/zh/)
+访问 ✈ [官方网站](https://gopeed.com/zh-CN) | 📖 [官方文档](https://docs.gopeed.com/zh/)
 
 ## 安装
 
@@ -48,6 +48,8 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```bash
 docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads liwei2633/gopeed
 ```
+
+[更多关于 Docker 的使用](https://docs.gopeed.com/zh/install.html#docker-%E5%AE%89%E8%A3%85)
 
 #### 使用 Docker Compose
 
@@ -159,7 +161,6 @@ cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
-go run cmd/web/main.go
 ```
 
 ## 感谢

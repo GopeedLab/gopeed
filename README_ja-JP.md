@@ -49,6 +49,8 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads liwei2633/gopeed
 ```
 
+[Dockerの使用については](https://docs.gopeed.com/install.html#docker-installation)
+
 #### Docker Compose の使用
 
 ```bash
@@ -159,7 +161,6 @@ cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
-go run cmd/web/main.go
 ```
 
 ## 感謝
