@@ -178,3 +178,50 @@ func TestIsExistsFile(t *testing.T) {
 		})
 	}
 }
+
+func TestReplaceInvalidFilename(t *testing.T) {
+	type args struct {
+		path string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "blank",
+			args: args{
+				path: "",
+			},
+			want: "",
+		},
+		{
+			name: "normal",
+			args: args{
+				path: "test.txt",
+			},
+			want: "test.txt",
+		},
+		{
+			name: "case1",
+			args: args{
+				path: "te/st.txt",
+			},
+			want: "te_st.txt",
+		},
+		{
+			name: "case2",
+			args: args{
+				path: "te/st:.txt",
+			},
+			want: "te_st_.txt",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ReplaceInvalidFilename(tt.args.path); got != tt.want {
+				t.Errorf("ReplaceInvalidFilename() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
