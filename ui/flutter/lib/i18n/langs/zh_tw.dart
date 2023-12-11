@@ -75,5 +75,9 @@ const zhTW = {
     'noHistoryFound': '還沒有記錄',
     'serviceTitle': '下載服務',
     'serviceText': '執行中',
+    'network': '網路',
+    'proxy': '代理',
+    'username': '名稱',
+    'password': '密碼',
   }
 };
