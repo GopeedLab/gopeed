@@ -572,7 +572,8 @@ func (d *Downloader) getProtocolConfig(name string, v any) bool {
 func (d *Downloader) watch(task *Task) {
 	err := task.fetcher.Wait()
 	if err != nil {
-		task.Status = base.DownloadStatusError
+		task.updateStatus(base.DownloadStatusError)
+		d.storage.Put(bucketTask, task.ID, task.clone())
 		d.emit(EventKeyError, task, err)
 	} else {
 		task.Progress.Used = task.timer.Used()
@@ -586,7 +587,7 @@ func (d *Downloader) watch(task *Task) {
 		totalSize := task.Meta.Res.Size
 		task.Progress.Speed = totalSize / used
 		task.Progress.Downloaded = totalSize
-		task.Status = base.DownloadStatusDone
+		task.updateStatus(base.DownloadStatusDone)
 		d.storage.Put(bucketTask, task.ID, task.clone())
 		d.emit(EventKeyDone, task)
 		d.emit(EventKeyFinally, task, err)
@@ -658,7 +659,6 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	task.fetcher = fetcher
 	task.Meta = fetcher.Meta()
 	task.Progress = &Progress{}
-	task.Status = base.DownloadStatusReady
 	initTask(task)
 	if err = fetcher.Create(opts); err != nil {
 		return
@@ -699,7 +699,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 
 	cloneTask := task.clone()
 	isCreate := task.Status == base.DownloadStatusReady
-	task.Status = base.DownloadStatusRunning
+	task.updateStatus(base.DownloadStatusRunning)
 
 	doStart := func() error {
 		task.lock.Lock()
@@ -714,7 +714,8 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req)
 			if err != nil {
-				task.Status = base.DownloadStatusError
+				task.updateStatus(base.DownloadStatusError)
+				d.storage.Put(bucketTask, task.ID, task.clone())
 				d.emit(EventKeyError, task, err)
 				return err
 			}
@@ -771,7 +772,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 func (d *Downloader) doPause(task *Task) (err error) {
 	err = func() error {
 		if task.Status != base.DownloadStatusDone {
-			task.Status = base.DownloadStatusPause
+			task.updateStatus(base.DownloadStatusPause)
 			task.timer.Pause()
 			if task.fetcher != nil {
 				if err := task.fetcher.Pause(); err != nil {
