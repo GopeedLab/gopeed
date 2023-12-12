@@ -1,0 +1,16 @@
+{
+  "name": "message-error",
+  "title": "gopeed extension message error test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onResolve",
+      "match": {
+        "urls": [
+          "*://github.com/*"
+        ]
+      },
+      "entry": "index.js"
+    }
+  ]
+}
