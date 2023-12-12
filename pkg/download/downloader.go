@@ -586,7 +586,7 @@ func (d *Downloader) watch(task *Task) {
 	totalSize := task.Meta.Res.Size
 	task.Progress.Speed = totalSize / used
 	task.Progress.Downloaded = totalSize
-	task.Status = base.DownloadStatusDone
+	task.updateStatus(base.DownloadStatusDone)
 	d.storage.Put(bucketTask, task.ID, task.clone())
 	d.emit(EventKeyDone, task)
 	d.emit(EventKeyFinally, task, err)
@@ -668,7 +668,6 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	task.fetcher = fetcher
 	task.Meta = fetcher.Meta()
 	task.Progress = &Progress{}
-	task.Status = base.DownloadStatusReady
 	initTask(task)
 	if err = fetcher.Create(opts); err != nil {
 		return
@@ -714,7 +713,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		defer task.lock.Unlock()
 
 		d.triggerOnStart(task)
-		task.Status = base.DownloadStatusRunning
+		task.updateStatus(base.DownloadStatusRunning)
 
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req)
@@ -727,8 +726,10 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		if isCreate {
 			d.checkDuplicateLock.Lock()
 			defer d.checkDuplicateLock.Unlock()
+			task.Meta.Opts.Name = util.ReplaceInvalidFilename(task.Meta.Opts.Name)
 			// check if the download file is duplicated and rename it automatically.
 			if task.Meta.Res.Name != "" {
+				task.Meta.Res.Name = util.ReplaceInvalidFilename(task.Meta.Res.Name)
 				fullDirPath := task.Meta.FolderPath()
 				newName, err := util.CheckDuplicateAndRename(fullDirPath)
 				if err != nil {
@@ -736,6 +737,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				}
 				task.Meta.Opts.Name = newName
 			} else {
+				task.Meta.Res.Files[0].Name = util.ReplaceInvalidFilename(task.Meta.Res.Files[0].Name)
 				fullFilePath := task.Meta.SingleFilepath()
 				newName, err := util.CheckDuplicateAndRename(fullFilePath)
 				if err != nil {
@@ -771,7 +773,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 func (d *Downloader) doPause(task *Task) (err error) {
 	err = func() error {
 		if task.Status != base.DownloadStatusDone {
-			task.Status = base.DownloadStatusPause
+			task.updateStatus(base.DownloadStatusPause)
 			task.timer.Pause()
 			if task.fetcher != nil {
 				if err := task.fetcher.Pause(); err != nil {

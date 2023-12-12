@@ -256,6 +256,10 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, er
 				}
 				ctx.Res.CalcSize(nil)
 			}
+			ctx.Res.Name = util.ReplaceInvalidFilename(ctx.Res.Name)
+			for _, file := range ctx.Res.Files {
+				file.Name = util.ReplaceInvalidFilename(file.Name)
+			}
 			res = ctx.Res
 		},
 	)

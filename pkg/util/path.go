@@ -183,3 +183,14 @@ func IsExistsFile(path string) bool {
 	}
 	return false
 }
+
+// ReplaceInvalidFilename replace invalid path characters
+func ReplaceInvalidFilename(path string) string {
+	if path == "" {
+		return ""
+	}
+	for _, char := range invalidPathChars {
+		path = strings.ReplaceAll(path, char, "_")
+	}
+	return path
+}
