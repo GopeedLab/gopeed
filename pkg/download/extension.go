@@ -6,6 +6,8 @@ import (
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
+	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
+	gojautil "github.com/GopeedLab/gopeed/pkg/download/engine/util"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/dop251/goja"
 	"github.com/go-git/go-git/v5"
@@ -35,7 +37,7 @@ type ActivationEvent string
 const (
 	EventOnResolve ActivationEvent = "onResolve"
 	EventOnStart   ActivationEvent = "onStart"
-	//EventOnError   ActivationEvent = "onError"
+	EventOnError   ActivationEvent = "onError"
 	//EventOnDone    ActivationEvent = "onDone"
 )
 
@@ -238,8 +240,8 @@ func (d *Downloader) parseExtensionByPath(path string) (*Extension, error) {
 	return &ext, nil
 }
 
-func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
-	doTrigger(d,
+func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, err error) {
+	err = doTrigger(d,
 		EventOnResolve,
 		req,
 		&OnResolveContext{
@@ -264,12 +266,12 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource) {
 	return
 }
 
-func (d *Downloader) triggerOnStart(task *Task) (req *base.Request) {
+func (d *Downloader) triggerOnStart(task *Task) {
 	doTrigger(d,
 		EventOnStart,
 		task.Meta.Req,
 		&OnStartContext{
-			Task: task,
+			Task: NewExtensionTask(d, task),
 		},
 		func(ext *Extension, gopeed *Instance, ctx *OnStartContext) {
 			// Validate request structure
@@ -278,14 +280,25 @@ func (d *Downloader) triggerOnStart(task *Task) (req *base.Request) {
 					gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] request invalid", ext.buildIdentity())
 					return
 				}
-				req = ctx.Task.Meta.Req
 			}
 		},
 	)
 	return
 }
 
-func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, ctx T, handler func(ext *Extension, gopeed *Instance, ctx T)) {
+func (d *Downloader) triggerOnError(task *Task, err error) {
+	doTrigger(d,
+		EventOnError,
+		task.Meta.Req,
+		&OnErrorContext{
+			Task:  NewExtensionTask(d, task),
+			Error: err,
+		},
+		nil,
+	)
+}
+
+func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, ctx T, handler func(ext *Extension, gopeed *Instance, ctx T)) error {
 	// init extension global object
 	gopeed := &Instance{
 		Events: make(InstanceEvents),
@@ -347,13 +360,20 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 							gopeed.Logger.logger.Error().Err(err).Msgf("[%s] call function failed: %s", ext.buildIdentity(), event)
 							return
 						}
-						handler(ext, gopeed, ctx)
+						if handler != nil {
+							handler(ext, gopeed, ctx)
+						}
 					}
 				}()
 			}
 		}
 	}
-	return
+
+	// Only return MessageError
+	if me, ok := gojautil.AssertError[*gojaerror.MessageError](err); ok {
+		return me
+	}
+	return nil
 }
 
 func (d *Downloader) ExtensionPath(ext *Extension) string {
@@ -581,10 +601,10 @@ func (h InstanceEvents) OnStart(fn goja.Callable) {
 	h.register(EventOnStart, fn)
 }
 
-//func (h InstanceEvents) OnError(fn goja.Callable) {
-//	h.register(HookEventOnError, fn)
-//}
-//
+func (h InstanceEvents) OnError(fn goja.Callable) {
+	h.register(EventOnError, fn)
+}
+
 //func (h InstanceEvents) OnDone(fn goja.Callable) {
 //	h.register(HookEventOnDone, fn)
 //}
@@ -653,7 +673,33 @@ type OnResolveContext struct {
 }
 
 type OnStartContext struct {
-	Task *Task `json:"task"`
+	Task *ExtensionTask `json:"task"`
+}
+
+type OnErrorContext struct {
+	Task  *ExtensionTask `json:"task"`
+	Error error          `json:"error"`
+}
+
+type ExtensionTask struct {
+	*Task
+
+	download *Downloader
+}
+
+func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
+	return &ExtensionTask{
+		Task:     task.clone(),
+		download: download,
+	}
+}
+
+func (t *ExtensionTask) Continue() error {
+	return t.download.Continue(t.ID)
+}
+
+func (t *ExtensionTask) Pause() error {
+	return t.download.Pause(t.ID)
 }
 
 func parseSettings(settings []*Setting) map[string]any {

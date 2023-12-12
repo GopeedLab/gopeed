@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/test"
+	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
+	gojautil "github.com/GopeedLab/gopeed/pkg/download/engine/util"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/dop251/goja"
 	"io"
@@ -20,11 +22,22 @@ import (
 )
 
 func TestPolyfill(t *testing.T) {
+	doTestPolyfill(t, "MessageError")
 	doTestPolyfill(t, "XMLHttpRequest")
 	doTestPolyfill(t, "Blob")
 	doTestPolyfill(t, "FormData")
 	doTestPolyfill(t, "fetch")
 	doTestPolyfill(t, "__gopeed_create_vm")
+}
+
+func TestError(t *testing.T) {
+	engine := NewEngine(nil)
+	_, err := engine.RunString(`
+      throw new MessageError('test');
+	`)
+	if me, ok := gojautil.AssertError[*gojaerror.MessageError](err); !ok {
+		t.Fatalf("expect MessageError, but got %v", me)
+	}
 }
 
 func TestFetch(t *testing.T) {
