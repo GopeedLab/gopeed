@@ -24,6 +24,7 @@ type Task struct {
 	Status    base.Status          `json:"status"`
 	Progress  *Progress            `json:"progress"`
 	CreatedAt time.Time            `json:"createdAt"`
+	UpdatedAt time.Time            `json:"updatedAt"`
 
 	fetcherBuilder fetcher.FetcherBuilder
 	fetcher        fetcher.Fetcher
@@ -41,7 +42,13 @@ func NewTask() *Task {
 		ID:        id,
 		Status:    base.DownloadStatusReady,
 		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
+}
+
+func (t *Task) updateStatus(status base.Status) {
+	t.UpdatedAt = time.Now()
+	t.Status = status
 }
 
 func (t *Task) clone() *Task {
@@ -51,6 +58,7 @@ func (t *Task) clone() *Task {
 		Status:    t.Status,
 		Progress:  t.Progress,
 		CreatedAt: t.CreatedAt,
+		UpdatedAt: t.UpdatedAt,
 	}
 }
 

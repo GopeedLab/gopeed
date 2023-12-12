@@ -5,13 +5,11 @@ import 'package:get/get.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/task.dart';
 
-enum SortDirection { asc, desc }
-
 abstract class TaskListController extends GetxController {
   List<Status> statuses;
-  SortDirection sortDirection;
+  int Function(Task a, Task b) compare;
 
-  TaskListController(this.statuses, this.sortDirection);
+  TaskListController(this.statuses, this.compare);
 
   final tasks = <Task>[].obs;
   final isRunning = false.obs;
@@ -48,13 +46,7 @@ abstract class TaskListController extends GetxController {
   getTasksState() async {
     final tasks = await getTasks(statuses);
     // sort tasks by create time
-    tasks.sort((a, b) {
-      if (sortDirection == SortDirection.asc) {
-        return a.createdAt.compareTo(b.createdAt);
-      } else {
-        return b.createdAt.compareTo(a.createdAt);
-      }
-    });
+    tasks.sort(compare);
     this.tasks.value = tasks;
   }
 }
