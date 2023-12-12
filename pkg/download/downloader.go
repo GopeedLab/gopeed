@@ -595,7 +595,7 @@ func (d *Downloader) watch(task *Task) {
 
 func (d *Downloader) doOnError(task *Task, err error) {
 	d.Logger.Warn().Err(err).Msgf("task download failed, task id: %s", task.ID)
-	task.Status = base.DownloadStatusError
+	task.updateStatus(base.DownloadStatusError)
 	d.triggerOnError(task, err)
 	if task.Status == base.DownloadStatusError {
 		d.emit(EventKeyError, task, err)
