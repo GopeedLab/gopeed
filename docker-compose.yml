@@ -4,8 +4,9 @@ services:
   gopeed:
     container_name: gopeed
     ports:
-      - 9999:9999 # HTTP port (host:container)
+      - "9999:9999" # HTTP port (host:container)
     image: liwei2633/gopeed
     volumes:
-      - ~/Downloads:/root/Downloads # replace with your prefer path
+      - ~/gopeed/Downloads:/root/Downloads # mount download path
+      #- ~/gopeed/storage:/app/storage # if you need to mount storage path, uncomment this line
     restart: unless-stopped
