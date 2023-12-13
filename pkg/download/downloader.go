@@ -225,7 +225,10 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 		return
 	}
 
-	res := d.triggerOnResolve(req)
+	res, err := d.triggerOnResolve(req)
+	if err != nil {
+		return
+	}
 	if res != nil && len(res.Files) > 0 {
 		rr = &ResolveResult{
 			Res: res,
@@ -525,9 +528,6 @@ func (d *Downloader) emit(eventKey EventKey, task *Task, errs ...error) {
 			Task: task,
 			Err:  err,
 		})
-		if eventKey == EventKeyError {
-			d.emit(EventKeyFinally, task, err)
-		}
 	}
 }
 
@@ -572,26 +572,36 @@ func (d *Downloader) getProtocolConfig(name string, v any) bool {
 func (d *Downloader) watch(task *Task) {
 	err := task.fetcher.Wait()
 	if err != nil {
-		task.Status = base.DownloadStatusError
-		d.emit(EventKeyError, task, err)
-	} else {
-		task.Progress.Used = task.timer.Used()
-		if task.Meta.Res.Size == 0 {
-			task.Meta.Res.Size = task.fetcher.Progress().TotalDownloaded()
-		}
-		used := task.Progress.Used / int64(time.Second)
-		if used == 0 {
-			used = 1
-		}
-		totalSize := task.Meta.Res.Size
-		task.Progress.Speed = totalSize / used
-		task.Progress.Downloaded = totalSize
-		task.Status = base.DownloadStatusDone
-		d.storage.Put(bucketTask, task.ID, task.clone())
-		d.emit(EventKeyDone, task)
-		d.emit(EventKeyFinally, task, err)
+		d.doOnError(task, err)
+		return
 	}
+	task.Progress.Used = task.timer.Used()
+	if task.Meta.Res.Size == 0 {
+		task.Meta.Res.Size = task.fetcher.Progress().TotalDownloaded()
+	}
+	used := task.Progress.Used / int64(time.Second)
+	if used == 0 {
+		used = 1
+	}
+	totalSize := task.Meta.Res.Size
+	task.Progress.Speed = totalSize / used
+	task.Progress.Downloaded = totalSize
+	task.updateStatus(base.DownloadStatusDone)
+	d.storage.Put(bucketTask, task.ID, task.clone())
+	d.emit(EventKeyDone, task)
+	d.emit(EventKeyFinally, task, err)
 	d.notifyRunning()
+}
+
+func (d *Downloader) doOnError(task *Task, err error) {
+	d.Logger.Warn().Err(err).Msgf("task download failed, task id: %s", task.ID)
+	task.updateStatus(base.DownloadStatusError)
+	d.triggerOnError(task, err)
+	if task.Status == base.DownloadStatusError {
+		d.emit(EventKeyError, task, err)
+		d.emit(EventKeyFinally, task, err)
+		d.notifyRunning()
+	}
 }
 
 func (d *Downloader) restoreFetcher(task *Task) error {
@@ -658,7 +668,6 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	task.fetcher = fetcher
 	task.Meta = fetcher.Meta()
 	task.Progress = &Progress{}
-	task.Status = base.DownloadStatusReady
 	initTask(task)
 	if err = fetcher.Create(opts); err != nil {
 		return
@@ -697,25 +706,18 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		}
 	}
 
-	cloneTask := task.clone()
 	isCreate := task.Status == base.DownloadStatusReady
-	task.Status = base.DownloadStatusRunning
 
 	doStart := func() error {
 		task.lock.Lock()
 		defer task.lock.Unlock()
 
-		req := d.triggerOnStart(cloneTask)
-		if req != nil {
-			task.Meta.Req = req
-			task.fetcher.Meta().Req = req
-		}
+		d.triggerOnStart(task)
+		task.updateStatus(base.DownloadStatusRunning)
 
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req)
 			if err != nil {
-				task.Status = base.DownloadStatusError
-				d.emit(EventKeyError, task, err)
 				return err
 			}
 			task.Meta.Res = task.fetcher.Meta().Res
@@ -724,8 +726,10 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		if isCreate {
 			d.checkDuplicateLock.Lock()
 			defer d.checkDuplicateLock.Unlock()
+			task.Meta.Opts.Name = util.ReplaceInvalidFilename(task.Meta.Opts.Name)
 			// check if the download file is duplicated and rename it automatically.
 			if task.Meta.Res.Name != "" {
+				task.Meta.Res.Name = util.ReplaceInvalidFilename(task.Meta.Res.Name)
 				fullDirPath := task.Meta.FolderPath()
 				newName, err := util.CheckDuplicateAndRename(fullDirPath)
 				if err != nil {
@@ -733,6 +737,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				}
 				task.Meta.Opts.Name = newName
 			} else {
+				task.Meta.Res.Files[0].Name = util.ReplaceInvalidFilename(task.Meta.Res.Files[0].Name)
 				fullFilePath := task.Meta.SingleFilepath()
 				newName, err := util.CheckDuplicateAndRename(fullFilePath)
 				if err != nil {
@@ -758,7 +763,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 	go func() {
 		err := doStart()
 		if err != nil {
-			d.Logger.Error().Stack().Err(err).Msgf("start task failed, task id: %s", task.ID)
+			d.doOnError(task, err)
 		}
 	}()
 
@@ -768,7 +773,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 func (d *Downloader) doPause(task *Task) (err error) {
 	err = func() error {
 		if task.Status != base.DownloadStatusDone {
-			task.Status = base.DownloadStatusPause
+			task.updateStatus(base.DownloadStatusPause)
 			task.timer.Pause()
 			if task.fetcher != nil {
 				if err := task.fetcher.Pause(); err != nil {

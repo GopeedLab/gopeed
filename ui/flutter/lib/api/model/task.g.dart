@@ -12,6 +12,7 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
       status: $enumDecode(_$StatusEnumMap, json['status']),
       progress: Progress.fromJson(json['progress'] as Map<String, dynamic>),
       createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
 
 Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
@@ -20,6 +21,7 @@ Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
       'status': _$StatusEnumMap[instance.status]!,
       'progress': instance.progress.toJson(),
       'createdAt': instance.createdAt.toIso8601String(),
+      'updatedAt': instance.updatedAt.toIso8601String(),
     };
 
 const _$StatusEnumMap = {
