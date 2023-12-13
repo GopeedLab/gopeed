@@ -46,7 +46,7 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 #### 直接始める
 
 ```bash
-docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads liwei2633/gopeed
+docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads -v /path/to/storage:/app/storage liwei2633/gopeed
 ```
 
 [Dockerの使用については](https://docs.gopeed.com/install.html#docker-installation)
