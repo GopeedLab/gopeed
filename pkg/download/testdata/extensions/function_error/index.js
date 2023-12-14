@@ -1,5 +1,6 @@
 gopeed.events.onResolve(async function (ctx) {
     const aaa = {};
+    // access undefined property
     gopeed.logger.info(aaa.bbb.ccc);
 
     ctx.res = {

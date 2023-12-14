@@ -46,8 +46,10 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 #### 直接執行
 
 ```bash
-docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads liwei2633/gopeed
+docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads -v /path/to/storage:/app/storage liwei2633/gopeed
 ```
+
+[更多關於 Docker 的使用](https://docs.gopeed.com/zh/install.html#docker-%E5%AE%89%E8%A3%85)
 
 #### 使用 Docker Compose
 
@@ -159,7 +161,6 @@ cd ../../
 rm -rf cmd/web/dist
 cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
-go run cmd/web/main.go
 ```
 
 ## 感謝

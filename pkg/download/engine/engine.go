@@ -3,6 +3,7 @@ package engine
 import (
 	_ "embed"
 	"errors"
+	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/vm"
@@ -125,6 +126,9 @@ func NewEngine(cfg *Config) *Engine {
 		runtime.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 		vm.Enable(runtime)
 		gojaurl.Enable(runtime)
+		if err := gojaerror.Enable(runtime); err != nil {
+			return
+		}
 		if err := file.Enable(runtime); err != nil {
 			return
 		}
@@ -167,7 +171,11 @@ func resolveResult(value goja.Value) (any, error) {
 		case goja.PromiseStateFulfilled:
 			return p.Result().Export(), nil
 		case goja.PromiseStateRejected:
-			return nil, errors.New(p.Result().String())
+			if err, ok := p.Result().Export().(error); ok {
+				return nil, err
+			} else {
+				return nil, errors.New(p.Result().String())
+			}
 		}
 	}
 	return export, nil

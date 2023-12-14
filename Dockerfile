@@ -17,5 +17,6 @@ FROM alpine:3.14.2
 LABEL maintainer="monkeyWie"
 WORKDIR /app
 COPY --from=go /app/dist/gopeed ./
+VOLUME ["/app/storage"]
 EXPOSE 9999
 ENTRYPOINT ["./gopeed"]

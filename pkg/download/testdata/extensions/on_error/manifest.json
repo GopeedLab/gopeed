@@ -1,0 +1,16 @@
+{
+  "name": "on-error",
+  "title": "gopeed extension on error event test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onError",
+      "match": {
+        "labels": [
+          "test"
+        ]
+      },
+      "entry": "index.js"
+    }
+  ]
+}

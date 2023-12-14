@@ -19,6 +19,8 @@ categories:
     label: 'doc'
   - title: '🚀 CI/CD'
     label: 'ci'
+  - title: '🌎 Internationalization'
+    label: 'translation'
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 version-resolver:
   major:

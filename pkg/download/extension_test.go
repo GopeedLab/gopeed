@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	"github.com/dop251/goja"
 	"os"
 	"testing"
@@ -165,7 +166,7 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 	})
 }
 
-func TestDownloader_ExtensionByOnStart(t *testing.T) {
+func TestDownloader_Extension_OnStart(t *testing.T) {
 	downloadAndCheck := func(req *base.Request) {
 		setupDownloader(func(downloader *Downloader) {
 			if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/on_start", false); err != nil {
@@ -192,10 +193,10 @@ func TestDownloader_ExtensionByOnStart(t *testing.T) {
 			}
 			task := downloader.GetTask(id)
 			if task.Meta.Req.URL != "https://github.com" {
-				panic("extension on start modify url error")
+				t.Fatalf("except url: https://github.com, actual: %s", task.Meta.Req.URL)
 			}
 			if task.Meta.Req.Labels["modified"] != "true" {
-				panic("extension on start modify label error")
+				t.Fatalf("except label: modified=true, actual: %s", task.Meta.Req.Labels["modified"])
 			}
 		})
 	}
@@ -207,10 +208,51 @@ func TestDownloader_ExtensionByOnStart(t *testing.T) {
 
 	// label match
 	downloadAndCheck(&base.Request{
-		URL: "https://xxx.com",
+		URL: "https://test.com",
 		Labels: map[string]string{
 			"test": "true",
 		},
+	})
+}
+
+func TestDownloader_Extension_OnError(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/on_error", false); err != nil {
+			t.Fatal(err)
+		}
+		errCh := make(chan error, 1)
+		downloader.Listener(func(event *Event) {
+			if event.Key == EventKeyFinally {
+				errCh <- event.Err
+			}
+		})
+		id, err := downloader.CreateDirect(&base.Request{
+			URL: "https://github.com/gopeed/test/404",
+			Labels: map[string]string{
+				"test": "true",
+			},
+		}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case err = <-errCh:
+			break
+		case <-time.After(time.Second * 10):
+			err = errors.New("timeout")
+		}
+
+		if err != nil {
+			panic("extension on error download error: " + err.Error())
+		}
+		// extension on error modify url and continue download
+		task := downloader.GetTask(id)
+		if task.Meta.Req.URL != "https://github.com" {
+			t.Fatalf("except url: https://github.com, actual: %s", task.Meta.Req.URL)
+		}
+		if task.Status != base.DownloadStatusDone {
+			t.Fatalf("except status is done, actual: %s", task.Status)
+		}
 	})
 }
 
@@ -242,6 +284,26 @@ func TestDownloader_Extension_Errors(t *testing.T) {
 		}
 		if len(rr.Res.Files) == 2 {
 			t.Fatal("function error catch failed")
+		}
+	})
+
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/message_error", false); err != nil {
+			t.Fatal(err)
+		}
+		_, err := downloader.Resolve(&base.Request{
+			URL: "https://github.com/test",
+		})
+		if err == nil {
+			t.Fatalf("except error, but got nil")
+		}
+		me, ok := err.(*gojaerror.MessageError)
+		if !ok {
+			t.Fatalf("except MessageError type, but got %s", err)
+		}
+		want := "test"
+		if me.Error() != want {
+			t.Fatalf("except MessageError message %s, but got %s", want, me.Message)
 		}
 	})
 }
@@ -330,22 +392,6 @@ func TestDownloader_DeleteExtension(t *testing.T) {
 			t.Fatal(err)
 		}
 		extensions = downloader.GetExtensions()
-		if len(extensions) != 0 {
-			t.Fatal("extension delete fail")
-		}
-	})
-}
-
-func TestDownloader_Extension_OnResolve(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		installedExt, err := downloader.InstallExtensionByFolder("./testdata/extensions/settings_all", false)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := downloader.DeleteExtension(installedExt.Identity); err != nil {
-			t.Fatal(err)
-		}
-		extensions := downloader.GetExtensions()
 		if len(extensions) != 0 {
 			t.Fatal("extension delete fail")
 		}

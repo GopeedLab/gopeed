@@ -2,9 +2,9 @@ package xhr
 
 import (
 	"bytes"
-	"github.com/GopeedLab/gopeed/pkg/download/engine/inject"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/util"
 	"github.com/dop251/goja"
 	"io"
 	"mime/multipart"
@@ -316,7 +316,7 @@ func (xhr *XMLHttpRequest) parseData(data goja.Value) any {
 func Enable(runtime *goja.Runtime, proxyUrl *url.URL) error {
 	progressEvent := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
 		if len(call.Arguments) < 1 {
-			inject.ThrowTypeError(runtime, "Failed to construct 'ProgressEvent': 1 argument required, but only 0 present.")
+			util.ThrowTypeError(runtime, "Failed to construct 'ProgressEvent': 1 argument required, but only 0 present.")
 		}
 		instance := &ProgressEvent{
 			Type: call.Argument(0).String(),
