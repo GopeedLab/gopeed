@@ -3,11 +3,13 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"net"
 	"net/http"
 	"os"
@@ -130,6 +132,20 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 			})
 		})
 	}
+
+	// recover panic
+	r.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if v := recover(); v != nil {
+					err := errors.WithStack(fmt.Errorf("%v", v))
+					Downloader.Logger.Error().Stack().Err(err).Msg("http server panic")
+					WriteJson(w, model.NewErrorResult(err.Error(), model.CodeError))
+				}
+			}()
+			h.ServeHTTP(w, r)
+		})
+	})
 
 	srv = &http.Server{Handler: handlers.CORS(
 		handlers.AllowedHeaders([]string{"Content-Type", "X-Api-Token", "X-Target-Uri"}),

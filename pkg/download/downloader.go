@@ -8,6 +8,8 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 	"github.com/virtuald/go-paniclog"
 	"os"
 	"path/filepath"
@@ -91,6 +93,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		}
 	}
 
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	d.Logger = logger.NewLogger(cfg.ProductionMode, filepath.Join(cfg.StorageDir, "logs", "core.log"))
 	d.ExtensionLogger = logger.NewLogger(cfg.ProductionMode, filepath.Join(cfg.StorageDir, "logs", "extension.log"))
 	if cfg.ProductionMode {
