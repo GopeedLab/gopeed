@@ -387,35 +387,33 @@ class SettingView extends GetView<SettingController> {
           },
         );
 
-        final items = <Widget>[
-          SizedBox(
-            width: 150,
-            child: DropdownButtonFormField<String>(
-              value: proxy.scheme,
-              onChanged: (value) async {
-                if (value != null && value != proxy.scheme) {
-                  proxy.scheme = value;
+        final scheme = SizedBox(
+          width: 100,
+          child: DropdownButtonFormField<String>(
+            value: proxy.scheme,
+            onChanged: (value) async {
+              if (value != null && value != proxy.scheme) {
+                proxy.scheme = value;
 
-                  await debounceSave();
-                }
-              },
-              items: const [
-                DropdownMenuItem<String>(
-                  value: 'http',
-                  child: Text('HTTP'),
-                ),
-                DropdownMenuItem<String>(
-                  value: 'https',
-                  child: Text('HTTPS'),
-                ),
-                DropdownMenuItem<String>(
-                  value: 'socks5',
-                  child: Text('SOCKS5'),
-                ),
-              ],
-            ),
-          )
-        ];
+                await debounceSave();
+              }
+            },
+            items: const [
+              DropdownMenuItem<String>(
+                value: 'http',
+                child: Text('HTTP'),
+              ),
+              DropdownMenuItem<String>(
+                value: 'https',
+                child: Text('HTTPS'),
+              ),
+              DropdownMenuItem<String>(
+                value: 'socks5',
+                child: Text('SOCKS5'),
+              ),
+            ],
+          ),
+        );
 
         final arr = proxy.host.split(':');
         var ip = '';
@@ -438,10 +436,8 @@ class SettingView extends GetView<SettingController> {
 
         ipController.addListener(updateAddress);
         portController.addListener(updateAddress);
-        items.addAll([
-          const Padding(padding: EdgeInsets.only(left: 20)),
-          SizedBox(
-            width: 150,
+        final host = [
+          Flexible(
             child: TextFormField(
               controller: ipController,
               decoration: const InputDecoration(
@@ -455,8 +451,7 @@ class SettingView extends GetView<SettingController> {
             ),
           ),
           const Padding(padding: EdgeInsets.only(left: 10)),
-          SizedBox(
-            width: 150,
+          Flexible(
             child: TextFormField(
               controller: portController,
               decoration: InputDecoration(
@@ -470,14 +465,13 @@ class SettingView extends GetView<SettingController> {
               ],
             ),
           ),
-        ]);
+        ];
 
         final usrController = TextEditingController(text: proxy.usr);
         final pwdController = TextEditingController(text: proxy.pwd);
 
         final auth = [
-          SizedBox(
-            width: 150,
+          Flexible(
             child: TextFormField(
               controller: usrController,
               decoration: InputDecoration(
@@ -491,8 +485,7 @@ class SettingView extends GetView<SettingController> {
             ),
           ),
           const Padding(padding: EdgeInsets.only(left: 10)),
-          SizedBox(
-            width: 150,
+          Flexible(
             child: TextFormField(
               controller: pwdController,
               decoration: InputDecoration(
@@ -513,8 +506,9 @@ class SettingView extends GetView<SettingController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: _addPadding([
               switcher,
+              scheme,
               Row(
-                children: items,
+                children: host,
               ),
               Row(
                 children: auth,
@@ -534,7 +528,7 @@ class SettingView extends GetView<SettingController> {
       (Key key) {
         final items = <Widget>[
           SizedBox(
-            width: 150,
+            width: 80,
             child: DropdownButtonFormField<String>(
               value: startCfg.value.network,
               onChanged: Util.isDesktop()
@@ -585,8 +579,7 @@ class SettingView extends GetView<SettingController> {
           portController.addListener(updateAddress);
           items.addAll([
             const Padding(padding: EdgeInsets.only(left: 20)),
-            SizedBox(
-              width: 150,
+            Flexible(
               child: TextFormField(
                 controller: ipController,
                 decoration: const InputDecoration(
@@ -600,8 +593,7 @@ class SettingView extends GetView<SettingController> {
               ),
             ),
             const Padding(padding: EdgeInsets.only(left: 10)),
-            SizedBox(
-              width: 150,
+            Flexible(
               child: TextFormField(
                 controller: portController,
                 decoration: InputDecoration(
