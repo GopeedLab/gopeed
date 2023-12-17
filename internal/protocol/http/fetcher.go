@@ -306,26 +306,13 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 			if err != nil {
 				return err
 			}
+			defer resp.Body.Close()
 			if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
 				err = NewRequestError(resp.StatusCode, resp.Status)
 				return err
 			}
-			return nil
-		}()
-		if err != nil {
-			// If canceled, do not retry
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-			// retry request after 1 second
-			chunk.retryTimes = chunk.retryTimes + 1
-			time.Sleep(time.Second)
-			continue
-		}
-		// Http request success, reset retry times
-		chunk.retryTimes = 0
-		err = func() error {
-			defer resp.Body.Close()
+			// Http request success, reset retry times
+			chunk.retryTimes = 0
 			for {
 				n, err := resp.Body.Read(buf)
 				if n > 0 {
@@ -342,7 +329,18 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 					return err
 				}
 			}
+			return nil
 		}()
+		if err != nil {
+			// If canceled, do not retry
+			if errors.Is(err, context.Canceled) {
+				return
+			}
+			// retry request after 1 second
+			chunk.retryTimes = chunk.retryTimes + 1
+			time.Sleep(time.Second)
+			continue
+		}
 		// if chunk is completed, reset other not complete chunks retry times
 		if err == nil {
 			for _, c := range f.chunks {
