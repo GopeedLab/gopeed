@@ -265,7 +265,7 @@ jobs:
           Architecture: amd64
           Essential: no
           Priority: optional
-          Depends: 
+          Depends: libappindicator3-1
           Maintainer: monkeyWie
           Description: High speed downloader that supports all platforms.
           EOF
