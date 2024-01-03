@@ -10,5 +10,5 @@ Terminal=false
 Exec=gopeed
 Icon=com.gopeed.Gopeed
 Type=Application
-Categories=Utility;Internet
+Categories=Utility;Network
 Keywords=Bittorrent;Downloader;
