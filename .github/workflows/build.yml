@@ -223,126 +223,31 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev libappindicator3-dev
+          sudo apt update -y
+          # flutter build dependencies
+          sudo apt install -y ninja-build libgtk-3-dev libappindicator3-dev
+          # rpm build dependencies
+          sudo apt install rpm patchelf
+          # zip build dependencies
+          sudo apt install p7zip
+          # appimage build dependencies
+          sudo apt install libfuse2 locate
+          wget -O appimagetool "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          sudo mv appimagetool /usr/local/bin/
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.tag_name }}
         run: |
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
-          flutter build linux
-          mkdir -p build/dist
-          
-          # Build portable
-          tar -C build/linux/x64/release/bundle -czaf build/dist/Gopeed-$VERSION-linux-amd64-portable.tar.gz ./
-          
-          # Build deb package
-          mkdir -p debian/gopeed/opt/gopeed
-          mkdir -p debian/gopeed/usr/share/applications
-          mkdir -p debian/gopeed/usr/share/icons/hicolor/scalable/apps
-          mkdir -p debian/gopeed/DEBIAN
-
-          cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/gopeed/
-          cp assets/icon/icon.svg debian/gopeed/usr/share/icons/hicolor/scalable/apps/com.gopeed.Gopeed.svg
-          
-          cat>debian/gopeed/DEBIAN/postinst<<EOF
-          #!/bin/bash
-          ln -sf /opt/gopeed/gopeed /usr/bin/gopeed
-          EOF
-
-          cat>debian/gopeed/DEBIAN/postrm<<EOF
-          #!/bin/bash
-          rm -rf /usr/bin/gopeed
-          EOF
-
-          chmod 0755 debian/gopeed/DEBIAN/postinst
-          chmod 0755 debian/gopeed/DEBIAN/postrm
-
-          cat>debian/gopeed/DEBIAN/control<<EOF
-          Package: gopeed
-          Version: ${VERSION:1}
-          Architecture: amd64
-          Essential: no
-          Priority: optional
-          Depends: 
-          Maintainer: monkeyWie
-          Description: High speed downloader that supports all platforms.
-          EOF
-
-          cp linux/assets/com.gopeed.Gopeed.desktop debian/gopeed/usr/share/applications/gopeed.desktop
-
-          dpkg-deb --build debian/gopeed
-          mv debian/gopeed.deb build/dist/Gopeed-$VERSION-linux-amd64.deb
-          
-          # Build AppImage
-          sudo apt-get -y install libfuse2
-          wget -O appimage-builder https://github.com/AppImageCrafters/appimage-builder/releases/download/v1.1.0/appimage-builder-1.1.0-x86_64.AppImage
-          chmod +x appimage-builder
-          mkdir AppDir
-          cp -r build/linux/x64/release/bundle/* AppDir
-          mkdir -p AppDir/usr/share/icons/hicolor/scalable/apps/
-          cp assets/icon/icon.svg AppDir/usr/share/icons/hicolor/scalable/apps/gopeed.svg
-          cat>AppImageBuilder.yml<<EOF
-          version: 1
-          AppDir:
-            path: ${PWD}/AppDir
-            app_info:
-              id: com.gopeed.gopeed
-              name: Gopeed
-              icon: gopeed
-              version: ${VERSION:1}
-              exec: gopeed
-              exec_args: \$@
-            apt:
-              arch: amd64
-              allow_unauthenticated: true
-              sources:
-                - sourceline: deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted
-                    universe multiverse
-                - sourceline: deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main
-                    restricted universe multiverse
-                - sourceline: deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports
-                    main restricted universe multiverse
-                - sourceline: deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted
-                    universe multiverse
-              include: []
-            files:
-              include: []
-              exclude:
-                - usr/share/man
-                - usr/share/doc/*/README.*
-                - usr/share/doc/*/changelog.*
-                - usr/share/doc/*/NEWS.*
-                - usr/share/doc/*/TODO.*
-            test:
-              fedora-30:
-                image: appimagecrafters/tests-env:fedora-30
-                command: ./AppRun
-              debian-stable:
-                image: appimagecrafters/tests-env:debian-stable
-                command: ./AppRun
-              archlinux-latest:
-                image: appimagecrafters/tests-env:archlinux-latest
-                command: ./AppRun
-              centos-7:
-                image: appimagecrafters/tests-env:centos-7
-                command: ./AppRun
-              ubuntu-xenial:
-                image: appimagecrafters/tests-env:ubuntu-xenial
-                command: ./AppRun
-          AppImage:
-            arch: x86_64
-            update-information: guess
-          EOF
-          ./appimage-builder --skip-tests --recipe AppImageBuilder.yml
-          mv Gopeed-*-x86_64.AppImage build/dist/Gopeed-$VERSION-linux-amd64.AppImage
-
+          dart pub global activate flutter_distributor
+          flutter_distributor package --platform linux --targets deb,rpm,zip,appimage
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: ui/flutter/build/dist/*
+          asset_path: ui/flutter/dist/{*.deb,*.rpm,*.appimage}
           overwrite: true
   build-snap:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'snap' }}
