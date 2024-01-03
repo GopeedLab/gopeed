@@ -242,7 +242,7 @@ jobs:
           mkdir -p debian/gopeed/usr/share/applications
           mkdir -p debian/gopeed/usr/share/icons/hicolor/scalable/apps
           mkdir -p debian/gopeed/DEBIAN
-
+          mkdir -p debian/gopeed/usr/bin
           cp -r build/linux/x64/release/bundle/* debian/gopeed/opt/gopeed/
           cp assets/icon/icon.svg debian/gopeed/usr/share/icons/hicolor/scalable/apps/com.gopeed.Gopeed.svg
           ln -sf /opt/gopeed/gopeed debian/gopeed/usr/bin/gopeed
