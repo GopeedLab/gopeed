@@ -241,9 +241,10 @@ jobs:
           cd ui/flutter
           dart pub global activate flutter_distributor
           flutter_distributor package --platform linux --targets appimage,deb,rpm
-          mv gopeed-*-linux.appimage Gopeed-${VERSION}-linux-amd64.appimage
+          cd dist/*
+          mv gopeed-*-linux.AppImage Gopeed-${VERSION}-linux-x86_64.AppImage
           mv gopeed-*-linux.deb Gopeed-${VERSION}-linux-amd64.deb
-          mv gopeed-*-linux.rpm Gopeed-${VERSION}-linux-amd64.rpm
+          mv gopeed-*-linux.rpm Gopeed-${VERSION}-linux-x86_64.rpm
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
