@@ -1,0 +1,30 @@
+display_name: Gopeed
+package_name: gopeed
+maintainer:
+  name: monkeyWie
+  email: liwei-8466@qq.com
+co_authors:
+  - name: madoka773
+    email: valigarmanda55@gmail.com
+priority: optional
+section: x11
+installed_size: 6604
+essential: false
+icon: assets/icon/icon.svg
+
+dependencies:
+  - libappindicator3-1
+
+keywords:
+  - Application
+  - DownloadManager
+  - Network
+  - Utility
+
+generic_name: Download Manager
+
+categories:
+  - Network
+  - Utility
+
+startup_notify: true

@@ -1,0 +1,17 @@
+display_name: Gopeed
+
+icon: assets/icon/icon.svg
+
+keywords:
+  - Application
+  - DownloadManager
+  - Network
+  - Utility
+
+generic_name: Download Manager
+
+categories:
+  - Network
+  - Utility
+
+startup_notify: true
