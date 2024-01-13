@@ -128,6 +128,8 @@ func (f *Fetcher) Start() (err error) {
 			file.Download()
 		}
 	}
+
+	f.refreshHealth()
 	return
 }
 
@@ -185,7 +187,16 @@ func (f *Fetcher) Wait() (err error) {
 }
 
 func (f *Fetcher) Meta() *fetcher.FetcherMeta {
+	f.refreshHealth()
 	return f.meta
+}
+
+// refreshHealth update torrent health metrics
+func (f *Fetcher) refreshHealth() {
+	stats := f.torrent.Stats()
+	f.meta.Res.TotalPeers = stats.TotalPeers
+	f.meta.Res.ActivePeers = stats.ActivePeers
+	f.meta.Res.ConnectedSeeders = stats.ConnectedSeeders
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {

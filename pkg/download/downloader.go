@@ -195,6 +195,10 @@ func (d *Downloader) Setup() error {
 							d.Logger.Error().Stack().Err(err).Msgf("persist task failed: %s", task.ID)
 							return
 						}
+
+						if task.Meta.Res.Hash != "" {
+							task.fetcher.Meta()
+						}
 					}()
 				}
 			}
