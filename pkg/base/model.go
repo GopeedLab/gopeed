@@ -31,10 +31,6 @@ type Resource struct {
 	// file list
 	Files []*FileInfo `json:"files"`
 	Hash  string      `json:"hash"`
-	// health indicators of torrents, from large to small, ConnectedSeeders are also the key to the health of seed resources
-	TotalPeers       int `json:"totalPeers"`
-	ActivePeers      int `json:"activePeers"`
-	ConnectedSeeders int `json:"connectedSeeders"`
 }
 
 func (r *Resource) Validate() error {
@@ -80,6 +76,17 @@ type Options struct {
 	SelectFiles []int `json:"selectFiles"`
 	// Extra info for specific fetcher
 	Extra any `json:"extra"`
+}
+
+// Stats for download
+type Stats struct {
+	// http stats
+	// TODO
+	// bt stats
+	// health indicators of torrents, from large to small, ConnectedSeeders are also the key to the health of seed resources
+	TotalPeers       int `json:"totalPeers"`
+	ActivePeers      int `json:"activePeers"`
+	ConnectedSeeders int `json:"connectedSeeders"`
 }
 
 func (o *Options) InitSelectFiles(fileSize int) {

@@ -21,6 +21,8 @@ type Fetcher interface {
 	Pause() error
 	Close() error
 
+	// Stats refreshes health statistics and returns the latest information
+	Stats() *base.Stats
 	// Meta returns the meta information of the download.
 	Meta() *FetcherMeta
 	// Progress returns the progress of the download.
@@ -31,9 +33,10 @@ type Fetcher interface {
 
 // FetcherMeta defines the meta information of a fetcher.
 type FetcherMeta struct {
-	Req  *base.Request  `json:"req"`
-	Res  *base.Resource `json:"res"`
-	Opts *base.Options  `json:"opts"`
+	Req   *base.Request  `json:"req"`
+	Res   *base.Resource `json:"res"`
+	Opts  *base.Options  `json:"opts"`
+	Stats *base.Stats    `json:"stats"`
 }
 
 // FolderPath return the folder path of the meta info.

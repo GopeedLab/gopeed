@@ -18,6 +18,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -104,7 +105,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		Range: false,
 		Files: []*base.FileInfo{},
 	}
-	if base.HttpCodePartialContent == httpResp.StatusCode || (httpResp.Header.Get(base.HttpHeaderAcceptRanges) == base.HttpHeaderBytes && httpResp.StatusCode == base.HttpCodeOK) {
+	if base.HttpCodePartialContent == httpResp.StatusCode || (base.HttpCodeOK == httpResp.StatusCode && httpResp.Header.Get(base.HttpHeaderAcceptRanges) == base.HttpHeaderBytes && strings.HasPrefix(httpResp.Header.Get(base.HttpHeaderContentRange), base.HttpHeaderBytes)) {
 		// 1.返回206响应码表示支持断点下载 2.不返回206但是Accept-Ranges首部并且等于bytes也表示支持断点下载
 		res.Range = true
 		// 解析资源大小: bytes 0-1000/1001 => 1001
@@ -214,7 +215,21 @@ func (f *Fetcher) Close() (err error) {
 }
 
 func (f *Fetcher) Meta() *fetcher.FetcherMeta {
+	f.refreshStats()
 	return f.meta
+}
+
+func (f *Fetcher) Stats() *base.Stats {
+	f.refreshStats()
+	// todo http download health
+	return f.meta.Stats
+}
+
+// refreshStats update http/https health metrics
+func (f *Fetcher) refreshStats() {
+	if f.meta.Stats == nil {
+		f.meta.Stats = &base.Stats{}
+	}
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {
