@@ -59,5 +59,7 @@ const jaJP = {
     'newVersionTitle': '新しいバージョン @version を発見する',
     'newVersionUpdate': 'アップデート',
     'newVersionLater': '後で',
+    'thanks': '感謝',
+    'thanksDesc': 'Gopeedコミュニティの建設に協力してくださったすべての貢献者の方々に感謝します！',
   }
 };
