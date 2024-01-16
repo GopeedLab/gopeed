@@ -79,5 +79,7 @@ const zhTW = {
     'proxy': '代理',
     'username': '名稱',
     'password': '密碼',
+    'thanks': '鳴謝',
+    'thanksDesc': '感謝所有為 Gopeed 社群建設添磚加瓦的貢獻者們！'
   }
 };

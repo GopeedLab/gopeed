@@ -365,6 +365,18 @@ class SettingView extends GetView<SettingController> {
       );
     }
 
+    buildThanks() {
+      const thankPage =
+          'https://github.com/GopeedLab/gopeed/graphs/contributors';
+      return ListTile(
+        title: Text('thanks'.tr),
+        subtitle: Text('thanksDesc'.tr),
+        onTap: () {
+          launchUrl(Uri.parse(thankPage), mode: LaunchMode.externalApplication);
+        },
+      );
+    }
+
     // advanced config proxy items start
     final buildProxy = _buildConfigItem(
       'proxy',
@@ -702,6 +714,7 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildHomepage(),
                             buildVersion(),
+                            buildThanks(),
                           ]),
                         )),
                       ]),

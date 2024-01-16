@@ -196,9 +196,7 @@ func (d *Downloader) Setup() error {
 							return
 						}
 
-						if task.Meta.Res.Hash != "" {
-							task.fetcher.Meta()
-						}
+						task.fetcher.Stats()
 					}()
 				}
 			}

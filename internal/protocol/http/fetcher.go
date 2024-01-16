@@ -219,7 +219,7 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 	return f.meta
 }
 
-func (f *Fetcher) Stats() *base.Stats {
+func (f *Fetcher) Stats() any {
 	f.refreshStats()
 	// todo http download health
 	return f.meta.Stats
@@ -228,7 +228,7 @@ func (f *Fetcher) Stats() *base.Stats {
 // refreshStats update http/https health metrics
 func (f *Fetcher) refreshStats() {
 	if f.meta.Stats == nil {
-		f.meta.Stats = &base.Stats{}
+		f.meta.Stats = &fhttp.Stats{}
 	}
 }
 

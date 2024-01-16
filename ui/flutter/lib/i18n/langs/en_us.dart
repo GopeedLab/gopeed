@@ -81,5 +81,8 @@ const enUS = {
     'proxy': 'Proxy',
     'username': 'Username',
     'password': 'Password',
+    'thanks': 'Thanks',
+    'thanksDesc':
+        'Thanks to all the contributors who have helped build and develop the Gopeed community!',
   },
 };

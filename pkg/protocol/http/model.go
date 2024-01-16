@@ -9,3 +9,9 @@ type ReqExtra struct {
 type OptsExtra struct {
 	Connections int `json:"connections"`
 }
+
+// Stats for download
+type Stats struct {
+	// http stats
+	// health indicators of http
+}

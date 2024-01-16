@@ -57,5 +57,8 @@ const faIR = {
     'newVersionTitle': '@version عنوان: کشف نسخه جدید',
     'newVersionUpdate': 'بروزرسانی',
     'newVersionLater': 'بعداً',
+    'thanks': 'تشکر',
+    'thanksDesc':
+        'از تمامی افرادی که در ساخت و توسعه‌ی جامعه‌ی Gopeed مشارکت کرده‌اند، سپاسگزاری می‌کنیم!',
   }
 };
