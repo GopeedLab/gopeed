@@ -49,7 +49,12 @@ const allTrackerCdns = [
   [
     "https://ghproxy.com/https://raw.githubusercontent.com",
     r".*github.com(/.*)/raw(/.*)"
-  ]
+  ],
+  // mirror.ghproxy.com: https://mirror.ghproxy.com/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
+  [
+    "https://mirror.ghproxy.com/https://raw.githubusercontent.com",
+    r".*github.com(/.*)/raw(/.*)"
+  ],
 ];
 final allTrackerSubscribeUrlCdns = Map.fromIterable(allTrackerSubscribeUrls,
     key: (v) => v as String,
