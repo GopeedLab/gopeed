@@ -21,6 +21,8 @@ type Fetcher interface {
 	Pause() error
 	Close() error
 
+	// Stats refreshes health statistics and returns the latest information
+	Stats() any
 	// Meta returns the meta information of the download.
 	Meta() *FetcherMeta
 	// Progress returns the progress of the download.
