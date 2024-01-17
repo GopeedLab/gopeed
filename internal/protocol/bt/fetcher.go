@@ -191,21 +191,12 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 
 func (f *Fetcher) Stats() any {
 	stats := f.torrent.Stats()
-	if f.meta.Stats == nil {
-		baseStats := &bt.Stats{
-			TotalPeers:       stats.TotalPeers,
-			ActivePeers:      stats.ActivePeers,
-			ConnectedSeeders: stats.ConnectedSeeders,
-		}
-		f.meta.Stats = baseStats
-	} else {
-		if baseStats, ok := f.meta.Stats.(*bt.Stats); ok {
-			baseStats.TotalPeers = stats.TotalPeers
-			baseStats.ActivePeers = stats.ActivePeers
-			baseStats.ConnectedSeeders = stats.ConnectedSeeders
-		}
+	baseStats := &bt.Stats{
+		TotalPeers:       stats.TotalPeers,
+		ActivePeers:      stats.ActivePeers,
+		ConnectedSeeders: stats.ConnectedSeeders,
 	}
-	return f.meta.Stats
+	return baseStats
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {
