@@ -218,6 +218,11 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 	return f.meta
 }
 
+func (f *Fetcher) Stats() any {
+	// todo http download health
+	return &fhttp.Stats{}
+}
+
 func (f *Fetcher) Progress() fetcher.Progress {
 	p := make(fetcher.Progress, 0)
 	if len(f.chunks) > 0 {
