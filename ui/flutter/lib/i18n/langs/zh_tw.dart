@@ -24,7 +24,7 @@ const zhTW = {
     'noStoragePermission': '沒有存儲權限',
     'selectFile': '選擇文件',
     'rename': '重命名',
-    'basic': '基礎',
+    'basic': '一般',
     'advanced': '進階',
     'general': '通用設定',
     'downloadDir': '下載目録',
