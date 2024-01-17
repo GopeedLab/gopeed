@@ -33,9 +33,10 @@ type Fetcher interface {
 
 // FetcherMeta defines the meta information of a fetcher.
 type FetcherMeta struct {
-	Req  *base.Request  `json:"req"`
-	Res  *base.Resource `json:"res"`
-	Opts *base.Options  `json:"opts"`
+	Req   *base.Request  `json:"req"`
+	Res   *base.Resource `json:"res"`
+	Opts  *base.Options  `json:"opts"`
+	Stats any            `json:"stats"`
 }
 
 // FolderPath return the folder path of the meta info.
