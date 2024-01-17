@@ -128,6 +128,7 @@ func (f *Fetcher) Start() (err error) {
 			file.Download()
 		}
 	}
+
 	return
 }
 
@@ -186,6 +187,16 @@ func (f *Fetcher) Wait() (err error) {
 
 func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 	return f.meta
+}
+
+func (f *Fetcher) Stats() any {
+	stats := f.torrent.Stats()
+	baseStats := &bt.Stats{
+		TotalPeers:       stats.TotalPeers,
+		ActivePeers:      stats.ActivePeers,
+		ConnectedSeeders: stats.ConnectedSeeders,
+	}
+	return baseStats
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {
