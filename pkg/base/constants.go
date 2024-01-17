@@ -16,10 +16,12 @@ const (
 	HttpCodePartialContent = 206
 
 	HttpHeaderRange              = "Range"
+	HttpHeaderAcceptRanges       = "Accept-Ranges"
 	HttpHeaderContentLength      = "Content-Length"
 	HttpHeaderContentRange       = "Content-Range"
 	HttpHeaderContentDisposition = "Content-Disposition"
 	HttpHeaderUserAgent          = "Usr-Agent"
 
+	HttpHeaderBytes       = "bytes"
 	HttpHeaderRangeFormat = "bytes=%d-%d"
 )
