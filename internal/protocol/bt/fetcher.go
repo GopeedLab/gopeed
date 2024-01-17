@@ -129,7 +129,6 @@ func (f *Fetcher) Start() (err error) {
 		}
 	}
 
-	f.refreshStats()
 	return
 }
 
@@ -187,17 +186,10 @@ func (f *Fetcher) Wait() (err error) {
 }
 
 func (f *Fetcher) Meta() *fetcher.FetcherMeta {
-	f.refreshStats()
 	return f.meta
 }
 
 func (f *Fetcher) Stats() any {
-	f.refreshStats()
-	return f.meta.Stats
-}
-
-// refreshStats update torrent health metrics
-func (f *Fetcher) refreshStats() {
 	stats := f.torrent.Stats()
 	if f.meta.Stats == nil {
 		baseStats := &bt.Stats{
@@ -213,6 +205,7 @@ func (f *Fetcher) refreshStats() {
 			baseStats.ConnectedSeeders = stats.ConnectedSeeders
 		}
 	}
+	return f.meta.Stats
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {

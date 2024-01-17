@@ -215,21 +215,15 @@ func (f *Fetcher) Close() (err error) {
 }
 
 func (f *Fetcher) Meta() *fetcher.FetcherMeta {
-	f.refreshStats()
 	return f.meta
 }
 
 func (f *Fetcher) Stats() any {
-	f.refreshStats()
-	// todo http download health
-	return f.meta.Stats
-}
-
-// refreshStats update http/https health metrics
-func (f *Fetcher) refreshStats() {
 	if f.meta.Stats == nil {
 		f.meta.Stats = &fhttp.Stats{}
 	}
+	// todo http download health
+	return f.meta.Stats
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {
