@@ -428,14 +428,14 @@ class SettingView extends GetView<SettingController> {
         );
 
         final arr = proxy.host.split(':');
-        var ip = '';
+        var host = '';
         var port = '';
         if (arr.length > 1) {
-          ip = arr[0];
+          host = arr[0];
           port = arr[1];
         }
 
-        final ipController = TextEditingController(text: ip);
+        final ipController = TextEditingController(text: host);
         final portController = TextEditingController(text: port);
         updateAddress() async {
           final newAddress = '${ipController.text}:${portController.text}';
@@ -448,18 +448,14 @@ class SettingView extends GetView<SettingController> {
 
         ipController.addListener(updateAddress);
         portController.addListener(updateAddress);
-        final host = [
+        final server = [
           Flexible(
             child: TextFormField(
               controller: ipController,
-              decoration: const InputDecoration(
-                labelText: 'IP',
-                contentPadding: EdgeInsets.all(0.0),
+              decoration: InputDecoration(
+                labelText: 'server'.tr,
+                contentPadding: const EdgeInsets.all(0.0),
               ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
-              ],
             ),
           ),
           const Padding(padding: EdgeInsets.only(left: 10)),
@@ -490,10 +486,6 @@ class SettingView extends GetView<SettingController> {
                 labelText: 'username'.tr,
                 contentPadding: const EdgeInsets.all(0.0),
               ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
-              ],
             ),
           ),
           const Padding(padding: EdgeInsets.only(left: 10)),
@@ -504,11 +496,6 @@ class SettingView extends GetView<SettingController> {
                 labelText: 'password'.tr,
                 contentPadding: const EdgeInsets.all(0.0),
               ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                NumericalRangeFormatter(min: 0, max: 65535),
-              ],
             ),
           ),
         ];
@@ -520,7 +507,7 @@ class SettingView extends GetView<SettingController> {
               switcher,
               scheme,
               Row(
-                children: host,
+                children: server,
               ),
               Row(
                 children: auth,
