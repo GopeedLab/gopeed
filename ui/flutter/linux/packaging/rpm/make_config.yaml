@@ -1,5 +1,5 @@
 display_name: Gopeed
-icon: assets/icon/icon_1024.png
+icon: assets/icon/icon.svg
 summary: A modern download manager that supports all platforms. Built with Golang and Flutter.
 group: Applications/Internet
 vendor: monkeyWie

@@ -8,12 +8,13 @@ co_authors:
     email: valigarmanda55@gmail.com
 priority: optional
 section: x11
-installed_size: 6604
+installed_size: 15138700
 essential: false
 icon: assets/icon/icon.svg
 
 dependencies:
-  - libappindicator3-1
+  - libappindicator3-1 | libayatana-appindicator3-1
+  - gir1.2-appindicator3-0.1 | gir1.2-ayatanaappindicator3-0.1
 
 keywords:
   - Application
