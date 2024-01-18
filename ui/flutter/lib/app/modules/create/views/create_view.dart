@@ -409,15 +409,20 @@ class CreateView extends GetView<CreateController> {
     try {
       _confirmController.start();
       if (_confirmFormKey.currentState!.validate()) {
-        final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
+        final isWebFileChosen =
+            Util.isWeb() && controller.fileDataUri.isNotEmpty;
+        final submitUrl = isWebFileChosen
             ? controller.fileDataUri.value
             : _urlController.text;
 
         final urls = Util.textToLines(submitUrl);
         // Add url to the history
-        for (final url in urls) {
-          _historyController.addHistory(url);
+        if (!isWebFileChosen) {
+          for (final url in urls) {
+            _historyController.addHistory(url);
+          }
         }
+
         /* 
         Check if is direct download, there has two ways to direct download
         1. Direct download option is checked
@@ -433,7 +438,7 @@ class CreateView extends GetView<CreateController> {
                     name: isMultiLine ? "" : _renameController.text,
                     path: _pathController.text,
                     selectFiles: [],
-                    extra: parseReqOpts())));
+                    extra: parseReqOptsExtra())));
           }));
           Get.rootDelegate.offNamed(Routes.TASK);
         } else {
@@ -471,11 +476,10 @@ class CreateView extends GetView<CreateController> {
     return reqExtra;
   }
 
-  Object? parseReqOpts() {
-    return _connectionsController.text.isEmpty
-        ? null
-        : (OptsExtraHttp()
-          ..connections = int.parse(_connectionsController.text));
+  Object? parseReqOptsExtra() {
+    return OptsExtraHttp()
+      ..connections = int.tryParse(_connectionsController.text) ?? 0
+      ..autoTorrent = true;
   }
 
   String _hitText() {
@@ -541,7 +545,7 @@ class CreateView extends GetView<CreateController> {
                             showMessage('tip'.tr, 'noFileSelected'.tr);
                             return;
                           }
-                          final optExtra = parseReqOpts();
+                          final optExtra = parseReqOptsExtra();
                           if (createFormKey.currentState!.validate()) {
                             if (rr.id.isEmpty) {
                               // from extension resolve result
