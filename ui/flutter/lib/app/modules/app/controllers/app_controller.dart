@@ -21,6 +21,7 @@ import '../../../../util/locale_manager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
+import '../../../../util/window_util.dart' as windows_util;
 import '../../../routes/app_pages.dart';
 
 const _startConfigNetwork = "start.network";
@@ -121,6 +122,26 @@ class AppController extends GetxController with WindowListener, TrayListener {
   @override
   void onTrayIconRightMouseDown() {
     trayManager.popUpContextMenu();
+  }
+
+  @override
+  void onWindowMaximize() {
+    windows_util.saveState(isMaximized: true);
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    windows_util.saveState(isMaximized: false);
+  }
+
+  final _windowsResizeSave = Util.debounce(() async {
+    final size = await windowManager.getSize();
+    windows_util.saveState(width: size.width, height: size.height);
+  }, 500);
+
+  @override
+  void onWindowResize() {
+    _windowsResizeSave();
   }
 
   Future<void> _initDeepLinks() async {

@@ -4,16 +4,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/app/modules/history/controller/history_controller.dart';
-import 'package:gopeed/app/modules/history/views/history_view.dart';
 import 'package:path/path.dart' as path;
 import 'package:rounded_loading_button/rounded_loading_button.dart';
+
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
-import '../../../../api/model/resource.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
@@ -21,6 +19,8 @@ import '../../../routes/app_pages.dart';
 import '../../../views/directory_selector.dart';
 import '../../../views/file_list_view.dart';
 import '../../app/controllers/app_controller.dart';
+import '../../history/controller/history_controller.dart';
+import '../../history/views/history_view.dart';
 import '../controllers/create_controller.dart';
 
 class CreateView extends GetView<CreateController> {
