@@ -77,6 +77,7 @@ const zhTW = {
     'serviceText': '執行中',
     'network': '網路',
     'proxy': '代理',
+    'server': '伺服器',
     'username': '名稱',
     'password': '密碼',
     'thanks': '鳴謝',
