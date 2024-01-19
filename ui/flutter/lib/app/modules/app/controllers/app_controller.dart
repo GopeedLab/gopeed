@@ -417,13 +417,16 @@ class AppController extends GetxController with WindowListener, TrayListener {
     if (config.downloadDir.isEmpty) {
       if (Util.isDesktop()) {
         config.downloadDir = (await getDownloadsDirectory())?.path ?? "./";
-      } else if (Util.isMobile()) {
+      } else if (Util.isAndroid()) {
         final downloadDir = (await DownloadsPath.downloadsDirectory())?.path;
         if (downloadDir != null) {
           config.downloadDir = '$downloadDir/Gopeed';
         } else {
           config.downloadDir = (await getApplicationDocumentsDirectory()).path;
         }
+      } else if (Util.isIOS()) {
+        config.downloadDir = (await DownloadsPath.downloadsDirectory())?.path ??
+            (await getApplicationDocumentsDirectory()).path;
       } else {
         config.downloadDir = './';
       }
