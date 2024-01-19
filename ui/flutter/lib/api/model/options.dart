@@ -25,6 +25,7 @@ class Options {
 @JsonSerializable()
 class OptsExtraHttp {
   int connections = 0;
+  bool autoTorrent = false;
 
   OptsExtraHttp();
 

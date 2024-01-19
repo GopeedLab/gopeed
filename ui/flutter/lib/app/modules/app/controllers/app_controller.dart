@@ -6,6 +6,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
+import 'package:lecle_downloads_path_provider/lecle_downloads_path_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -21,6 +22,7 @@ import '../../../../util/locale_manager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
+import '../../../../util/window_util.dart' as windows_util;
 import '../../../routes/app_pages.dart';
 
 const _startConfigNetwork = "start.network";
@@ -121,6 +123,26 @@ class AppController extends GetxController with WindowListener, TrayListener {
   @override
   void onTrayIconRightMouseDown() {
     trayManager.popUpContextMenu();
+  }
+
+  @override
+  void onWindowMaximize() {
+    windows_util.saveState(isMaximized: true);
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    windows_util.saveState(isMaximized: false);
+  }
+
+  final _windowsResizeSave = Util.debounce(() async {
+    final size = await windowManager.getSize();
+    windows_util.saveState(width: size.width, height: size.height);
+  }, 500);
+
+  @override
+  void onWindowResize() {
+    _windowsResizeSave();
   }
 
   Future<void> _initDeepLinks() async {
@@ -396,9 +418,12 @@ class AppController extends GetxController with WindowListener, TrayListener {
       if (Util.isDesktop()) {
         config.downloadDir = (await getDownloadsDirectory())?.path ?? "./";
       } else if (Util.isAndroid()) {
-        config.downloadDir = (await getExternalStorageDirectory())?.path ??
-            (await getApplicationDocumentsDirectory()).path;
-        return;
+        final downloadDir = (await DownloadsPath.downloadsDirectory())?.path;
+        if (downloadDir != null) {
+          config.downloadDir = '$downloadDir/Gopeed';
+        } else {
+          config.downloadDir = (await getApplicationDocumentsDirectory()).path;
+        }
       } else if (Util.isIOS()) {
         config.downloadDir = (await getApplicationDocumentsDirectory()).path;
       } else {

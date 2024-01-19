@@ -6,6 +6,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/rs/zerolog"
@@ -594,6 +595,26 @@ func (d *Downloader) watch(task *Task) {
 	d.emit(EventKeyDone, task)
 	d.emit(EventKeyFinally, task, err)
 	d.notifyRunning()
+
+	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
+		downloadFilePath := task.Meta.SingleFilepath()
+		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
+			go func() {
+				_, err2 := d.CreateDirect(
+					&base.Request{
+						URL: downloadFilePath,
+					},
+					&base.Options{
+						Path:        task.Meta.Opts.Path,
+						SelectFiles: make([]int, 0),
+					})
+				if err2 != nil {
+					d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
+				}
+
+			}()
+		}
+	}
 }
 
 func (d *Downloader) doOnError(task *Task, err error) {

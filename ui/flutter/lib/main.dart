@@ -13,6 +13,7 @@ import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
 import 'util/util.dart';
+import 'util/window_util.dart' as windows_util;
 
 void main() async {
   await init();
@@ -25,15 +26,21 @@ Future<void> init() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (Util.isDesktop()) {
     await windowManager.ensureInitialized();
-    const windowOptions = WindowOptions(
-      size: Size(800, 600),
+    final windowState = await windows_util.loadState();
+    final windowOptions = WindowOptions(
+      size: Size(windowState.width, windowState.height),
       center: true,
       skipTaskbar: false,
     );
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
       await windowManager.focus();
       await windowManager.setPreventClose(true);
+      // windows_manager has a bug where when window to be maximized, it will be unmaximized immediately, so can't implement this feature currently.
+      // https://github.com/leanflutter/window_manager/issues/412
+      // if (windowState.isMaximized) {
+      //   await windowManager.maximize();
+      // }
     });
   }
 
