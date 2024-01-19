@@ -35,7 +35,7 @@ class _DirectorySelectorState extends State<DirectorySelector> {
             return v!.trim().isNotEmpty ? null : 'downloadDirValid'.tr;
           },
         )),
-        !Util.isWeb() && !Util.isIOS()
+        !Util.isWeb() && !Util.isAndroid() && !Util.isIOS()
             ? IconButton(
                 icon: const Icon(Icons.folder_open),
                 onPressed: () async {
