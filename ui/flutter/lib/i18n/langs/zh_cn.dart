@@ -77,6 +77,7 @@ const zhCN = {
     'serviceText': '运行中',
     'network': '网络',
     'proxy': '代理',
+    'server': '服务器',
     'username': '用户名',
     'password': '密码',
     'thanks': '鸣谢',

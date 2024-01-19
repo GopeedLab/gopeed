@@ -79,6 +79,7 @@ const enUS = {
     'serviceText': 'Running',
     'network': 'Network',
     'proxy': 'Proxy',
+    'server': 'Server',
     'username': 'Username',
     'password': 'Password',
     'thanks': 'Thanks',

@@ -239,12 +239,11 @@ jobs:
         run: |
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
-          dart pub global activate flutter_distributor
-          flutter_distributor package --platform linux --targets appimage,deb,rpm
+          dart pub global activate -sgit https://github.com/GopeedLab/flutter_distributor.git --git-path packages/flutter_distributor
+          flutter_distributor package --platform linux --targets appimage,deb
           cd dist/*
           mv gopeed-*-linux.AppImage Gopeed-${VERSION}-linux-x86_64.AppImage
           mv gopeed-*-linux.deb Gopeed-${VERSION}-linux-amd64.deb
-          mv gopeed-*-linux.rpm Gopeed-${VERSION}-linux-x86_64.rpm
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
