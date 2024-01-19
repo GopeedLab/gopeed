@@ -6,6 +6,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/rs/zerolog"
@@ -447,6 +448,13 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 		for i, t := range d.tasks {
 			if t.ID == id {
 				d.tasks = append(d.tasks[:i], d.tasks[i+1:]...)
+				break
+			}
+		}
+		for i, t := range d.waitTasks {
+			if t.ID == id {
+				d.waitTasks = append(d.waitTasks[:i], d.waitTasks[i+1:]...)
+				break
 			}
 		}
 	}()
@@ -455,6 +463,47 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 	if err != nil {
 		return
 	}
+	d.notifyRunning()
+	return
+}
+
+func (d *Downloader) DeleteByStatues(statues []base.Status, force bool) (err error) {
+	deleteTasks := d.GetTasksByStatues(statues)
+	if len(deleteTasks) == 0 {
+		return
+	}
+
+	deleteIds := make([]string, 0)
+	for _, task := range deleteTasks {
+		deleteIds = append(deleteIds, task.ID)
+	}
+	func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+
+		for _, id := range deleteIds {
+			for i, t := range d.tasks {
+				if t.ID == id {
+					d.tasks = append(d.tasks[:i], d.tasks[i+1:]...)
+					break
+				}
+			}
+			for i, t := range d.waitTasks {
+				if t.ID == id {
+					d.waitTasks = append(d.waitTasks[:i], d.waitTasks[i+1:]...)
+					break
+				}
+			}
+		}
+	}()
+
+	for _, task := range deleteTasks {
+		err = d.doDelete(task, force)
+		if err != nil {
+			return
+		}
+	}
+
 	d.notifyRunning()
 	return
 }
@@ -547,6 +596,22 @@ func (d *Downloader) GetTasks() []*Task {
 	return d.tasks
 }
 
+func (d *Downloader) GetTasksByStatues(statues []base.Status) []*Task {
+	if len(statues) == 0 {
+		return d.tasks
+	}
+	tasks := make([]*Task, 0)
+	for _, task := range d.tasks {
+		for _, status := range statues {
+			if task.Status == status {
+				tasks = append(tasks, task)
+				break
+			}
+		}
+	}
+	return tasks
+}
+
 func (d *Downloader) GetConfig() (*DownloaderStoreConfig, error) {
 	return d.cfg.DownloaderStoreConfig, nil
 }
@@ -594,6 +659,26 @@ func (d *Downloader) watch(task *Task) {
 	d.emit(EventKeyDone, task)
 	d.emit(EventKeyFinally, task, err)
 	d.notifyRunning()
+
+	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
+		downloadFilePath := task.Meta.SingleFilepath()
+		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
+			go func() {
+				_, err2 := d.CreateDirect(
+					&base.Request{
+						URL: downloadFilePath,
+					},
+					&base.Options{
+						Path:        task.Meta.Opts.Path,
+						SelectFiles: make([]int, 0),
+					})
+				if err2 != nil {
+					d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
+				}
+
+			}()
+		}
+	}
 }
 
 func (d *Downloader) doOnError(task *Task, err error) {

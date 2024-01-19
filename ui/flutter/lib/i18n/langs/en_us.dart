@@ -79,7 +79,11 @@ const enUS = {
     'serviceText': 'Running',
     'network': 'Network',
     'proxy': 'Proxy',
+    'server': 'Server',
     'username': 'Username',
     'password': 'Password',
+    'thanks': 'Thanks',
+    'thanksDesc':
+        'Thanks to all the contributors who have helped build and develop the Gopeed community!',
   },
 };

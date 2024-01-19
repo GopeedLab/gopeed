@@ -32,9 +32,12 @@ Map<String, dynamic> _$OptionsToJson(Options instance) {
 }
 
 OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) =>
-    OptsExtraHttp()..connections = json['connections'] as int;
+    OptsExtraHttp()
+      ..connections = json['connections'] as int
+      ..autoTorrent = json['autoTorrent'] as bool;
 
 Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) =>
     <String, dynamic>{
       'connections': instance.connections,
+      'autoTorrent': instance.autoTorrent,
     };

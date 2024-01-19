@@ -143,4 +143,12 @@ class Util {
     }
     return completer.future;
   }
+
+  static void Function() debounce(Function() fn, int ms) {
+    Timer? timer;
+    return () {
+      timer?.cancel();
+      timer = Timer(Duration(milliseconds: ms), fn);
+    };
+  }
 }

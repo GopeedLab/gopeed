@@ -24,7 +24,7 @@ const zhTW = {
     'noStoragePermission': '沒有存儲權限',
     'selectFile': '選擇文件',
     'rename': '重命名',
-    'basic': '基礎',
+    'basic': '一般',
     'advanced': '進階',
     'general': '通用設定',
     'downloadDir': '下載目録',
@@ -77,7 +77,10 @@ const zhTW = {
     'serviceText': '執行中',
     'network': '網路',
     'proxy': '代理',
+    'server': '伺服器',
     'username': '名稱',
     'password': '密碼',
+    'thanks': '鳴謝',
+    'thanksDesc': '感謝所有為 Gopeed 社群建設添磚加瓦的貢獻者們！'
   }
 };

@@ -104,6 +104,17 @@ func DeleteTask(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewNilResult())
 }
 
+func DeleteTasks(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	status := r.Form["status"]
+	force := r.FormValue("force")
+	if err := Downloader.DeleteByStatues(convertStatues(status), force == "true"); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
 func GetTask(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	taskId := vars["id"]
@@ -122,20 +133,8 @@ func GetTask(w http.ResponseWriter, r *http.Request) {
 func GetTasks(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	status := r.Form["status"]
-	tasks := Downloader.GetTasks()
-	if len(status) == 0 {
-		WriteJson(w, model.NewOkResult(tasks))
-		return
-	}
-	result := make([]*download.Task, 0)
-	for _, task := range tasks {
-		for _, s := range status {
-			if task.Status == base.Status(s) {
-				result = append(result, task)
-			}
-		}
-	}
-	WriteJson(w, model.NewOkResult(result))
+	tasks := Downloader.GetTasksByStatues(convertStatues(status))
+	WriteJson(w, model.NewOkResult(tasks))
 }
 
 func GetConfig(w http.ResponseWriter, r *http.Request) {
@@ -280,6 +279,14 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(buf)
+}
+
+func convertStatues(statues []string) []base.Status {
+	result := make([]base.Status, 0)
+	for _, status := range statues {
+		result = append(result, base.Status(status))
+	}
+	return result
 }
 
 func writeError(w http.ResponseWriter, msg string) {

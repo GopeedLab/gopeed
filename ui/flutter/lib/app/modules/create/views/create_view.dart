@@ -4,16 +4,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/app/modules/history/controller/history_controller.dart';
-import 'package:gopeed/app/modules/history/views/history_view.dart';
 import 'package:path/path.dart' as path;
 import 'package:rounded_loading_button/rounded_loading_button.dart';
+
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
-import '../../../../api/model/resource.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
@@ -21,6 +19,8 @@ import '../../../routes/app_pages.dart';
 import '../../../views/directory_selector.dart';
 import '../../../views/file_list_view.dart';
 import '../../app/controllers/app_controller.dart';
+import '../../history/controller/history_controller.dart';
+import '../../history/views/history_view.dart';
 import '../controllers/create_controller.dart';
 
 class CreateView extends GetView<CreateController> {
@@ -117,7 +117,7 @@ class CreateView extends GetView<CreateController> {
                     Row(children: [
                       Expanded(
                         child: TextFormField(
-                          autofocus: true,
+                          autofocus: !Util.isMobile(),
                           controller: _urlController,
                           minLines: 1,
                           maxLines: 5,
@@ -409,15 +409,20 @@ class CreateView extends GetView<CreateController> {
     try {
       _confirmController.start();
       if (_confirmFormKey.currentState!.validate()) {
-        final submitUrl = Util.isWeb() && controller.fileDataUri.isNotEmpty
+        final isWebFileChosen =
+            Util.isWeb() && controller.fileDataUri.isNotEmpty;
+        final submitUrl = isWebFileChosen
             ? controller.fileDataUri.value
             : _urlController.text;
 
         final urls = Util.textToLines(submitUrl);
         // Add url to the history
-        for (final url in urls) {
-          _historyController.addHistory(url);
+        if (!isWebFileChosen) {
+          for (final url in urls) {
+            _historyController.addHistory(url);
+          }
         }
+
         /* 
         Check if is direct download, there has two ways to direct download
         1. Direct download option is checked
@@ -433,7 +438,7 @@ class CreateView extends GetView<CreateController> {
                     name: isMultiLine ? "" : _renameController.text,
                     path: _pathController.text,
                     selectFiles: [],
-                    extra: parseReqOpts())));
+                    extra: parseReqOptsExtra())));
           }));
           Get.rootDelegate.offNamed(Routes.TASK);
         } else {
@@ -471,11 +476,10 @@ class CreateView extends GetView<CreateController> {
     return reqExtra;
   }
 
-  Object? parseReqOpts() {
-    return _connectionsController.text.isEmpty
-        ? null
-        : (OptsExtraHttp()
-          ..connections = int.parse(_connectionsController.text));
+  Object? parseReqOptsExtra() {
+    return OptsExtraHttp()
+      ..connections = int.tryParse(_connectionsController.text) ?? 0
+      ..autoTorrent = true;
   }
 
   String _hitText() {
@@ -541,7 +545,7 @@ class CreateView extends GetView<CreateController> {
                             showMessage('tip'.tr, 'noFileSelected'.tr);
                             return;
                           }
-                          final optExtra = parseReqOpts();
+                          final optExtra = parseReqOptsExtra();
                           if (createFormKey.currentState!.validate()) {
                             if (rr.id.isEmpty) {
                               // from extension resolve result
