@@ -448,6 +448,13 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 		for i, t := range d.tasks {
 			if t.ID == id {
 				d.tasks = append(d.tasks[:i], d.tasks[i+1:]...)
+				break
+			}
+		}
+		for i, t := range d.waitTasks {
+			if t.ID == id {
+				d.waitTasks = append(d.waitTasks[:i], d.waitTasks[i+1:]...)
+				break
 			}
 		}
 	}()
@@ -456,6 +463,47 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 	if err != nil {
 		return
 	}
+	d.notifyRunning()
+	return
+}
+
+func (d *Downloader) DeleteByStatues(statues []base.Status, force bool) (err error) {
+	deleteTasks := d.GetTasksByStatues(statues)
+	if len(deleteTasks) == 0 {
+		return
+	}
+
+	deleteIds := make([]string, 0)
+	for _, task := range deleteTasks {
+		deleteIds = append(deleteIds, task.ID)
+	}
+	func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+
+		for _, id := range deleteIds {
+			for i, t := range d.tasks {
+				if t.ID == id {
+					d.tasks = append(d.tasks[:i], d.tasks[i+1:]...)
+					break
+				}
+			}
+			for i, t := range d.waitTasks {
+				if t.ID == id {
+					d.waitTasks = append(d.waitTasks[:i], d.waitTasks[i+1:]...)
+					break
+				}
+			}
+		}
+	}()
+
+	for _, task := range deleteTasks {
+		err = d.doDelete(task, force)
+		if err != nil {
+			return
+		}
+	}
+
 	d.notifyRunning()
 	return
 }
@@ -546,6 +594,22 @@ func (d *Downloader) GetTask(id string) *Task {
 
 func (d *Downloader) GetTasks() []*Task {
 	return d.tasks
+}
+
+func (d *Downloader) GetTasksByStatues(statues []base.Status) []*Task {
+	if len(statues) == 0 {
+		return d.tasks
+	}
+	tasks := make([]*Task, 0)
+	for _, task := range d.tasks {
+		for _, status := range statues {
+			if task.Status == status {
+				tasks = append(tasks, task)
+				break
+			}
+		}
+	}
+	return tasks
 }
 
 func (d *Downloader) GetConfig() (*DownloaderStoreConfig, error) {
