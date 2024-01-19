@@ -117,7 +117,7 @@ class CreateView extends GetView<CreateController> {
                     Row(children: [
                       Expanded(
                         child: TextFormField(
-                          autofocus: true,
+                          autofocus: !Util.isMobile(),
                           controller: _urlController,
                           minLines: 1,
                           maxLines: 5,
