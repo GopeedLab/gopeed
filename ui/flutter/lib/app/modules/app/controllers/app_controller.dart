@@ -425,8 +425,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
           config.downloadDir = (await getApplicationDocumentsDirectory()).path;
         }
       } else if (Util.isIOS()) {
-        config.downloadDir = (await DownloadsPath.downloadsDirectory())?.path ??
-            (await getApplicationDocumentsDirectory()).path;
+        config.downloadDir = (await getApplicationDocumentsDirectory()).path;
       } else {
         config.downloadDir = './';
       }
