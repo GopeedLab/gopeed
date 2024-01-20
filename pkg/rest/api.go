@@ -281,6 +281,21 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 	w.Write(buf)
 }
 
+func GetStats(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	taskId := vars["id"]
+	if taskId == "" {
+		WriteJson(w, model.NewErrorResult("param invalid: id", model.CodeInvalidParam))
+		return
+	}
+	statsResult, err := Downloader.Stats(taskId)
+	if err != nil {
+		writeError(w, err.Error())
+		return
+	}
+	WriteJson(w, model.NewOkResult(statsResult))
+}
+
 func convertStatues(statues []string) []base.Status {
 	result := make([]base.Status, 0)
 	for _, status := range statues {

@@ -191,7 +191,7 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 
 func (f *Fetcher) Stats() any {
 	stats := f.torrent.Stats()
-	baseStats := &bt.Stats{
+	baseStats := &bt.StatsBt{
 		TotalPeers:       stats.TotalPeers,
 		ActivePeers:      stats.ActivePeers,
 		ConnectedSeeders: stats.ConnectedSeeders,
