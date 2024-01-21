@@ -23,6 +23,7 @@ type Task struct {
 	ID        string               `json:"id"`
 	Meta      *fetcher.FetcherMeta `json:"meta"`
 	Status    base.Status          `json:"status"`
+	Protocol  string               `json:"protocol"`
 	Progress  *Progress            `json:"progress"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`

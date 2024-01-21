@@ -765,6 +765,7 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	task := NewTask()
 	task.fetcherBuilder = fb
 	task.fetcher = fetcher
+	task.Protocol = fetcher.Name()
 	task.Meta = fetcher.Meta()
 	task.Progress = &Progress{}
 	initTask(task)
