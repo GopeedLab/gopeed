@@ -6,12 +6,8 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
-	protocolBt "github.com/GopeedLab/gopeed/pkg/protocol/bt"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
-	protocolHttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
-	"github.com/jinzhu/copier"
-
 	//"github.com/jinzhu/copier"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/rs/zerolog"
@@ -514,25 +510,12 @@ func (d *Downloader) DeleteByStatues(statues []base.Status, force bool) (err err
 	return
 }
 
-func (d *Downloader) Stats(id string) (sr *StatsResult, err error) {
+func (d *Downloader) Stats(id string) (sr any, err error) {
 	task := d.GetTask(id)
 	if task == nil {
 		return sr, ErrTaskNotFound
 	}
-
-	sr = &StatsResult{
-		BtStats:   new(protocolBt.StatsBt),
-		HttpStats: new(protocolHttp.StatsHttp),
-	}
-	stats := task.fetcher.Stats()
-	switch task.fetcher.Name() {
-	case "http":
-		err = copier.Copy(sr.HttpStats, stats)
-	case "bt":
-		err = copier.Copy(sr.BtStats, stats)
-	default:
-		err = ErrUnSupportedProtocol
-	}
+	sr = task.fetcher.Stats()
 	return
 }
 

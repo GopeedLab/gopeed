@@ -12,8 +12,8 @@ type OptsExtra struct {
 	AutoTorrent bool `json:"autoTorrent"`
 }
 
-// StatsHttp for download
-type StatsHttp struct {
+// Stats for download
+type Stats struct {
 	// http stats
 	// health indicators of http
 }

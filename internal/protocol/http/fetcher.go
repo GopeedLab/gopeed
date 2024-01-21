@@ -221,7 +221,7 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 
 func (f *Fetcher) Stats() any {
 	// todo http download health
-	return &fhttp.StatsHttp{}
+	return &fhttp.Stats{}
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {

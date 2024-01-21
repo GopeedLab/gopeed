@@ -6,8 +6,6 @@ import (
 	"github.com/GopeedLab/gopeed/internal/protocol/bt"
 	"github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/base"
-	protocolBt "github.com/GopeedLab/gopeed/pkg/protocol/bt"
-	protocolHttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -15,11 +13,6 @@ import (
 	"sync"
 	"time"
 )
-
-type StatsResult struct {
-	BtStats   *protocolBt.StatsBt     `json:"btStats"`
-	HttpStats *protocolHttp.StatsHttp `json:"httpStats"`
-}
 
 type ResolveResult struct {
 	ID  string         `json:"id"`
