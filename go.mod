@@ -11,7 +11,6 @@ require (
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/jinzhu/copier v0.4.0
 	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.31.0
