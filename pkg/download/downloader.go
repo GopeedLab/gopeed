@@ -35,7 +35,8 @@ const (
 )
 
 var (
-	ErrTaskNotFound = errors.New("task not found")
+	ErrTaskNotFound        = errors.New("task not found")
+	ErrUnSupportedProtocol = errors.New("unsupported protocol")
 )
 
 type Listener func(event *Event)
@@ -211,7 +212,7 @@ func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
 	if ok {
 		return fetchBuilder, nil
 	}
-	return nil, errors.New("unsupported protocol")
+	return nil, ErrUnSupportedProtocol
 }
 
 func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
@@ -508,6 +509,15 @@ func (d *Downloader) DeleteByStatues(statues []base.Status, force bool) (err err
 	return
 }
 
+func (d *Downloader) Stats(id string) (sr any, err error) {
+	task := d.GetTask(id)
+	if task == nil {
+		return sr, ErrTaskNotFound
+	}
+	sr = task.fetcher.Stats()
+	return
+}
+
 func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 	err = func() error {
 		if task.fetcher != nil {
@@ -754,6 +764,7 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	task := NewTask()
 	task.fetcherBuilder = fb
 	task.fetcher = fetcher
+	task.Protocol = fetcher.Name()
 	task.Meta = fetcher.Meta()
 	task.Progress = &Progress{}
 	initTask(task)
