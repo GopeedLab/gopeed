@@ -27,7 +27,7 @@ jobs:
       upload_url: ${{ steps.get-release.outputs.upload_url }}
 
     steps:
-      - uses: monkeyWie/get-latest-release@v2
+      - uses: monkeyWie/get-latest-release@v2.1
         id: get-release
         with:
           myToken: ${{ github.token }}
@@ -477,8 +477,8 @@ jobs:
             linux/386
             linux/amd64
             linux/arm64
-            linux/arm/v6
             linux/arm/v7
+            linux/arm64/v8
           tags: |
             liwei2633/gopeed:latest
             liwei2633/gopeed:v${{ env.VERSION }}
