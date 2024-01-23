@@ -7,10 +7,10 @@ on:
         description: 'Build platform'
         required: true
         default: 'all'
-      channel:
-        description: 'Snap channel'
+      test:
+        description: 'Test mode'
         required: true
-        default: 'stable'
+        default: "false"
 
 env:
   GO_VERSION: "1.21"
@@ -326,7 +326,7 @@ jobs:
 
           # Snapcraft login
           export SNAPCRAFT_STORE_CREDENTIALS=${{ secrets.SNAP_STORE_LOGIN }}
-          snapcraft upload --release=${{ github.event.inputs.channel }} gopeed_$VERSION_amd64.snap
+          snapcraft upload --release=${{ github.event.inputs.test == 'true' && 'edge' || 'stable' }} gopeed_$VERSION_amd64.snap
   build-android:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android' }}
     runs-on: ubuntu-latest
@@ -471,7 +471,7 @@ jobs:
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         with:
-          push: true
+          push: ${{ github.event.inputs.test == 'true' && 'false' || 'true' }}
           build-args: VERSION=${{ env.VERSION }}
           platforms: |
             linux/386
