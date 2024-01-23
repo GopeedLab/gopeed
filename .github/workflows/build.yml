@@ -123,9 +123,8 @@ jobs:
           [Run]
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
-          Get-Content setup.iss
           iscc.exe setup.iss
-          TAG=v$env:VERSION
+          $TAG = "v$env:VERSION"
           mv "Output\gopeed.exe" "Output\Gopeed-$TAG-windows-amd64.exe"
           Compress-Archive -Path "Output\Gopeed-$TAG-windows-amd64.exe" -DestinationPath "Output\Gopeed-$TAG-windows-amd64.zip"
           Remove-Item -Path "Output\Gopeed-$TAG-windows-amd64.exe"
@@ -326,7 +325,7 @@ jobs:
 
           # Snapcraft login
           export SNAPCRAFT_STORE_CREDENTIALS=${{ secrets.SNAP_STORE_LOGIN }}
-          snapcraft upload --release=${{ github.event.inputs.test == 'true' && 'edge' || 'stable' }} gopeed_$VERSION_amd64.snap
+          snapcraft upload --release=${{ github.event.inputs.test == 'true' && 'edge' || 'stable' }} gopeed_${VERSION}_amd64.snap
   build-android:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android' }}
     runs-on: ubuntu-latest
@@ -384,7 +383,7 @@ jobs:
           go install golang.org/x/mobile/cmd/gomobile@latest
           go get golang.org/x/mobile/bind
           gomobile init
-          gomobile bind -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+          gomobile bind -tags nosqlite,netgo -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
           flutter build ios --no-codesign
           mkdir Payload
