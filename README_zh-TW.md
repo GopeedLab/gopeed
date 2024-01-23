@@ -77,8 +77,8 @@ docker-compose up -d
 
 ### 開發環境
 
-1. Golang 1.19+
-2. Flutter 3.10+
+1. Golang 1.21+
+2. Flutter 3.16+
 
 ### 克隆項目
 

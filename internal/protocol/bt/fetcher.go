@@ -2,6 +2,7 @@ package bt
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -11,6 +12,7 @@ import (
 	"github.com/anacrolix/torrent/metainfo"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -63,6 +65,8 @@ func (f *Fetcher) initClient() (err error) {
 	}
 
 	cfg := torrent.NewDefaultClientConfig()
+	cfg.Bep20 = fmt.Sprintf("-GP%s-", parseBep20())
+	cfg.ExtendedHandshakeClientVersion = fmt.Sprintf("Gopeed %s", base.Version)
 	cfg.ListenPort = f.config.ListenPort
 	if f.ctl.ProxyUrl != nil {
 		cfg.HTTPProxy = http.ProxyURL(f.ctl.ProxyUrl)
@@ -218,6 +222,7 @@ func (f *Fetcher) updateRes() {
 		Files: make([]*base.FileInfo, len(f.torrent.Files())),
 		Hash:  f.torrent.InfoHash().String(),
 	}
+	f.torrent.PeerConns()
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
 			Name: filepath.Base(file.DisplayPath()),
@@ -305,4 +310,13 @@ func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 			meta: meta,
 		}
 	}
+}
+
+// parse version to bep20 format, fixed length 4, if not enough, fill 0
+func parseBep20() string {
+	s := strings.ReplaceAll(base.Version, ".", "")
+	if len(s) < 4 {
+		s += strings.Repeat("0", 4-len(s))
+	}
+	return s
 }
