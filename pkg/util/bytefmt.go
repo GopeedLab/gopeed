@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-var unitArr = []string{"B", "KB", "MB", "GB", "TB", "EB"}
+var unitArr = []string{"B", "KB", "MB", "GB", "TB", "PB", "EB"}
 
 func ByteFmt(size int64) string {
 	if size == 0 {
