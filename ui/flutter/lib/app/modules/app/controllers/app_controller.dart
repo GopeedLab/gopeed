@@ -6,9 +6,9 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/database/entity.dart';
 import 'package:lecle_downloads_path_provider/lecle_downloads_path_provider.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:uri_to_file/uri_to_file.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,17 +17,13 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../core/common/start_config.dart';
+import '../../../../database/database.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/locale_manager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
-import '../../../../util/window_util.dart' as windows_util;
 import '../../../routes/app_pages.dart';
-
-const _startConfigNetwork = "start.network";
-const _startConfigAddress = "start.address";
-const _startConfigApiToken = "start.apiToken";
 
 const unixSocketPath = 'gopeed.sock';
 
@@ -127,17 +123,18 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
   @override
   void onWindowMaximize() {
-    windows_util.saveState(isMaximized: true);
+    Database.instance.saveWindowState(WindowStateEntity(isMaximized: true));
   }
 
   @override
   void onWindowUnmaximize() {
-    windows_util.saveState(isMaximized: false);
+    Database.instance.saveWindowState(WindowStateEntity(isMaximized: false));
   }
 
   final _windowsResizeSave = Util.debounce(() async {
     final size = await windowManager.getSize();
-    windows_util.saveState(width: size.width, height: size.height);
+    Database.instance.saveWindowState(
+        WindowStateEntity(width: size.width, height: size.height));
   }, 500);
 
   @override
@@ -307,13 +304,10 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
   Future<void> loadStartConfig() async {
     final defaultCfg = await _initDefaultStartConfig();
-    final prefs = await SharedPreferences.getInstance();
-    startConfig.value.network =
-        prefs.getString(_startConfigNetwork) ?? defaultCfg.network;
-    startConfig.value.address =
-        prefs.getString(_startConfigAddress) ?? defaultCfg.address;
-    startConfig.value.apiToken =
-        prefs.getString(_startConfigApiToken) ?? defaultCfg.apiToken;
+    final saveCfg = Database.instance.getStartConfig();
+    startConfig.value.network = saveCfg?.network ?? defaultCfg.network;
+    startConfig.value.address = saveCfg?.address ?? defaultCfg.address;
+    startConfig.value.apiToken = saveCfg?.apiToken ?? defaultCfg.apiToken;
   }
 
   Future<void> loadDownloaderConfig() async {
@@ -433,10 +427,10 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> saveConfig() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_startConfigNetwork, startConfig.value.network);
-    await prefs.setString(_startConfigAddress, startConfig.value.address);
-    await prefs.setString(_startConfigApiToken, startConfig.value.apiToken);
+    Database.instance.saveStartConfig(StartConfigEntity(
+        network: startConfig.value.network,
+        address: startConfig.value.address,
+        apiToken: startConfig.value.apiToken));
     await putConfig(downloaderConfig.value);
   }
 }

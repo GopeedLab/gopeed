@@ -50,19 +50,21 @@ class Util {
   }
 
   static Future<void> initStorageDir() async {
-    var storageDir = "./";
-    if (Platform.isAndroid) {
-      storageDir = (await getExternalStorageDirectory())?.path ?? storageDir;
-    } else if (Platform.isIOS) {
-      storageDir = (await getLibraryDirectory()).path;
-    } else if (Util.isLinux()) {
-      storageDir = File(Platform.resolvedExecutable).parent.path;
-      // check has write permission, if not, fallback to application support dir
-      try {
-        final testFile = File(path.join(storageDir, ".test"));
-        await testFile.writeAsString("test");
-        await testFile.delete();
-      } catch (e) {
+    var storageDir = "";
+    if (Util.isWindows()) {
+      storageDir = "./";
+    } else if (!Util.isWeb()) {
+      if (Util.isLinux()) {
+        storageDir = File(Platform.resolvedExecutable).parent.path;
+        // check has write permission, if not, fallback to application support dir
+        try {
+          final testFile = File(path.join(storageDir, ".test"));
+          await testFile.writeAsString("test");
+          await testFile.delete();
+        } catch (e) {
+          storageDir = (await getApplicationSupportDirectory()).path;
+        }
+      } else {
         storageDir = (await getApplicationSupportDirectory()).path;
       }
     }
