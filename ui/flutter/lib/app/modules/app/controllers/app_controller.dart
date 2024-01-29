@@ -95,6 +95,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
     _initForegroundTask().onError((error, stackTrace) =>
         logger.w("initForegroundTask error", error, stackTrace));
+
+    _initTrackerUpdate().onError((error, stackTrace) =>
+        logger.w("initTrackerUpdate error", error, stackTrace));
   }
 
   @override
@@ -357,12 +360,13 @@ class AppController extends GetxController with WindowListener, TrayListener {
     btConfig.trackers.toSet().toList();
   }
 
-  Future<void> trackerUpdateOnStart() async {
+  Future<void> _initTrackerUpdate() async {
     final btExtConfig = downloaderConfig.value.extra.bt;
     final lastUpdateTime = btExtConfig.lastTrackerUpdateTime;
     // if last update time is null or more than 1 day, update trackers
-    if (lastUpdateTime == null ||
-        lastUpdateTime.difference(DateTime.now()).inDays < 0) {
+    if (btExtConfig.autoUpdateTrackers &&
+        (lastUpdateTime == null ||
+            lastUpdateTime.difference(DateTime.now()).inDays < 0)) {
       try {
         await trackerUpdate();
       } catch (e) {
@@ -386,9 +390,6 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
   _initDownloaderConfig() async {
     final config = downloaderConfig.value;
-    if (config.protocolConfig.http.connections == 0) {
-      config.protocolConfig.http.connections = 16;
-    }
     final extra = config.extra;
     if (extra.themeMode.isEmpty) {
       extra.themeMode = ThemeMode.dark.name;

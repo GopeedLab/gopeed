@@ -53,6 +53,7 @@ jobs:
 
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
+          $TAG = "v$env:VERSION"
           flutter build windows
           $mingw = "C:\Program Files\Git\mingw64\bin"
           $system = "C:\Windows\System32"
@@ -65,7 +66,7 @@ jobs:
           cp $system\vcruntime140_1.dll $release
 
           New-Item -Path build\windows\Output -ItemType Directory
-          Compress-Archive -Path "$release*" -DestinationPath "build\windows\Output\Gopeed-$env:TAG-windows-amd64-portable.zip"
+          Compress-Archive -Path "$release*" -DestinationPath "build\windows\Output\Gopeed-$TAG-windows-amd64-portable.zip"
 
           cd build/windows
           echo @"
@@ -124,7 +125,6 @@ jobs:
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
           iscc.exe setup.iss
-          $TAG = "v$env:VERSION"
           mv "Output\gopeed.exe" "Output\Gopeed-$TAG-windows-amd64.exe"
           Compress-Archive -Path "Output\Gopeed-$TAG-windows-amd64.exe" -DestinationPath "Output\Gopeed-$TAG-windows-amd64.zip"
           Remove-Item -Path "Output\Gopeed-$TAG-windows-amd64.exe"

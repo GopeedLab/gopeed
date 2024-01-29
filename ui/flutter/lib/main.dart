@@ -73,9 +73,6 @@ Future<void> init() async {
 }
 
 Future<void> onStart() async {
-  final appController = Get.find<AppController>();
-  await appController.trackerUpdateOnStart();
-
   // if is debug mode, check language message is complete,change debug locale to your comfortable language if you want
   if (kDebugMode) {
     final debugLang = getLocaleKey(debugLocale);
