@@ -21,8 +21,9 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: true,
 		Files: []*base.FileInfo{
 			{
-				Name: test.BuildName,
-				Size: test.BuildSize,
+				Name:  test.BuildName,
+				Size:  test.BuildSize,
+				Ctime: &test.BuildFileCtime,
 			},
 		},
 	}, t)
@@ -31,8 +32,9 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: false,
 		Files: []*base.FileInfo{
 			{
-				Name: test.BuildName,
-				Size: test.BuildSize,
+				Name:  test.BuildName,
+				Size:  test.BuildSize,
+				Ctime: &test.BuildFileCtime,
 			},
 		},
 	}, t)
@@ -69,6 +71,8 @@ func testResolve(startTestServer func() net.Listener, path string, want *base.Re
 	if err != nil {
 		t.Fatal(err)
 	}
+	// ignore ctime
+	fetcher.meta.Res.Files[0].Ctime = nil
 	if !reflect.DeepEqual(want, fetcher.meta.Res) {
 		t.Errorf("Resolve() got = %v, want %v", fetcher.meta.Res, want)
 	}

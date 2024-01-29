@@ -37,6 +37,8 @@ func TestDownloader_Resolve(t *testing.T) {
 			},
 		},
 	}
+	// ignore ctime
+	rr.Res.Files[0].Ctime = nil
 	if !reflect.DeepEqual(want, rr.Res) {
 		t.Errorf("Resolve() got = %v, want %v", rr.Res, want)
 	}
