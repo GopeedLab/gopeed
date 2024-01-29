@@ -10,7 +10,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"net"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -69,9 +68,7 @@ func testResolve(startTestServer func() net.Listener, path string, want *base.Re
 	if err != nil {
 		t.Fatal(err)
 	}
-	// ignore ctime
-	fetcher.meta.Res.Files[0].Ctime = nil
-	if !reflect.DeepEqual(want, fetcher.meta.Res) {
+	if !test.AssertResourceEqual(want, fetcher.meta.Res) {
 		t.Errorf("Resolve() got = %v, want %v", fetcher.meta.Res, want)
 	}
 }

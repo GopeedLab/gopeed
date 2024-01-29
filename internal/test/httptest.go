@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/armon/go-socks5"
 	"io"
 	"math/rand"
 	"net"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -336,4 +338,12 @@ func StartSocks5Server(usr, pwd string) net.Listener {
 	}
 	go server.Serve(listener)
 	return listener
+}
+
+func AssertResourceEqual(want, got *base.Resource) bool {
+	// Ignore ctime
+	if got != nil && len(got.Files) > 0 {
+		got.Files[0].Ctime = nil
+	}
+	return reflect.DeepEqual(want, got)
 }

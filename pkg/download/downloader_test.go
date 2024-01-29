@@ -4,7 +4,6 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -37,9 +36,7 @@ func TestDownloader_Resolve(t *testing.T) {
 			},
 		},
 	}
-	// ignore ctime
-	rr.Res.Files[0].Ctime = nil
-	if !reflect.DeepEqual(want, rr.Res) {
+	if !test.AssertResourceEqual(want, rr.Res) {
 		t.Errorf("Resolve() got = %v, want %v", rr.Res, want)
 	}
 }
@@ -157,7 +154,7 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig f
 			},
 		},
 	}
-	if !reflect.DeepEqual(want, rr.Res) {
+	if !test.AssertResourceEqual(want, rr.Res) {
 		t.Errorf("Resolve() got = %v, want %v", rr.Res, want)
 	}
 }
