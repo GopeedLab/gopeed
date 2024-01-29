@@ -21,9 +21,8 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: true,
 		Files: []*base.FileInfo{
 			{
-				Name:  test.BuildName,
-				Size:  test.BuildSize,
-				Ctime: &test.BuildFileCtime,
+				Name: test.BuildName,
+				Size: test.BuildSize,
 			},
 		},
 	}, t)
@@ -32,9 +31,8 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: false,
 		Files: []*base.FileInfo{
 			{
-				Name:  test.BuildName,
-				Size:  test.BuildSize,
-				Ctime: &test.BuildFileCtime,
+				Name: test.BuildName,
+				Size: test.BuildSize,
 			},
 		},
 	}, t)
