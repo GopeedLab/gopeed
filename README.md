@@ -15,24 +15,74 @@
 
 Gopeed (full name Go Speed), a high-speed downloader developed by `Golang` + `Flutter`, supports (HTTP, BitTorrent, Magnet) protocol, and supports all platforms. In addition to basic download functions, Gopeed is also a highly customizable downloader that supports implementing more features through integration with [APIs](https://docs.gopeed.com/dev-api.html) or installation and development of [extensions](https://docs.gopeed.com/dev-extension.html).
 
-
 Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://docs.gopeed.com)
 
-## Install
+## Download
 
-**Supported platforms**
+<table>
+    <thead>
+        <tr>
+            <th>Platform</th>
+            <th>Package Type</th>
+            <th>Download Link</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td rowspan=2>Windows</td>
+            <td><code>EXE Installer</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">Link</a></td>
+        </tr>
+        <tr>
+            <td><code>Portable ZIP</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">Link</a></td>
+        </tr>
+        <tr>
+            <td>MacOS</td>
+            <td><code>DMG Installer</code></td>          
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">Link</a></td>
+        </tr>
+        <tr>
+            <td rowspan=4>Linux</td>
+            <td><code>SNAP</code></td>
+            <td><a href="https://snapcraft.io/gopeed">Link</a></td>
+        </tr>
+        <tr>
+            <td><code>DEB</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux.deb">Link</a></td>
+        </tr>
+        <tr>
+            <td><code>AppImage</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">Link</a></td>
+        </tr>
+        <tr>
+            <td><code>Portable TAR</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64-portable.tar.gz">Link</a></td>
+        </tr>
+        <tr>
+            <td>Android</td>
+            <td><code>APK</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android.apk">Link</a></td>
+        </tr>
+        <tr>
+            <td>iOS</td>
+            <td><code>IPA</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">Link</a></td>
+        </tr>
+        <tr>
+            <td>Web</td>
+            <td></td>
+            <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">Link</a></td>
+        </tr>
+        <tr>
+            <td>Docker</td>
+            <td></td>
+            <td><a href="https://hub.docker.com/r/liwei2633/gopeed">Link</a></td>
+        </tr>
+    </tbody>
+</table>
 
-- [x] windows
-- [x] macos
-- [x] linux
-- [x] android
-- [x] ios
-- [x] web
-- [x] docker
-
-[Download](https://github.com/GopeedLab/gopeed/releases/latest)
-
-> Tips: If the macos open failed, please execute the `xattr -d com.apple.quarantine /Applications/Gopeed.app` command in the terminal
+More about installation, please refer to [Installation](https://docs.gopeed.com/install.html)
 
 ### Command tool
 
@@ -41,26 +91,6 @@ use `go install`:
 ```bash
 go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
-
-### Docker
-
-#### Start directly
-
-```bash
-docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads -v /path/to/storage:/app/storage liwei2633/gopeed
-```
-
-[More details for docker](https://docs.gopeed.com/install.html#docker-installation)
-
-#### Using Docker Compose
-
-```bash
-docker-compose up -d
-```
-
-#### Access Gopeed
-
-When the docker container is running, you can access the web page through `http://localhost:9999`.
 
 ## Donate
 
