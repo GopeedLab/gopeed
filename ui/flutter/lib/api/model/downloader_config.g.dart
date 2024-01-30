@@ -90,24 +90,20 @@ Map<String, dynamic> _$ProxyConfigToJson(ProxyConfig instance) =>
     };
 
 ExtraConfigBt _$ExtraConfigBtFromJson(Map<String, dynamic> json) =>
-    ExtraConfigBt(
-      trackerSubscribeUrls: (json['trackerSubscribeUrls'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      subscribeTrackers: (json['subscribeTrackers'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      autoUpdateTrackers: json['autoUpdateTrackers'] as bool? ?? true,
-      lastTrackerUpdateTime: json['lastTrackerUpdateTime'] == null
+    ExtraConfigBt()
+      ..trackerSubscribeUrls = (json['trackerSubscribeUrls'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList()
+      ..subscribeTrackers = (json['subscribeTrackers'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList()
+      ..autoUpdateTrackers = json['autoUpdateTrackers'] as bool
+      ..lastTrackerUpdateTime = json['lastTrackerUpdateTime'] == null
           ? null
-          : DateTime.parse(json['lastTrackerUpdateTime'] as String),
-      customTrackers: (json['customTrackers'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-    );
+          : DateTime.parse(json['lastTrackerUpdateTime'] as String)
+      ..customTrackers = (json['customTrackers'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList();
 
 Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) {
   final val = <String, dynamic>{

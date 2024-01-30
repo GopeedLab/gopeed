@@ -138,9 +138,8 @@ class SettingView extends GetView<SettingController> {
         ],
       );
     });
-    final buildHttpUseServerCtime = _buildConfigItem(
-        'useServerCtime'.tr, () => httpConfig.useServerCtime.toString(),
-        (Key key) {
+    final buildHttpUseServerCtime = _buildConfigItem('useServerCtime'.tr,
+        () => httpConfig.useServerCtime ? 'on'.tr : 'off'.tr, (Key key) {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
