@@ -99,20 +99,14 @@ class ProxyConfig {
 
 @JsonSerializable()
 class ExtraConfigBt {
-  List<String> trackerSubscribeUrls;
-  List<String> subscribeTrackers;
-  bool autoUpdateTrackers;
+  List<String> trackerSubscribeUrls = [];
+  List<String> subscribeTrackers = [];
+  bool autoUpdateTrackers = true;
   DateTime? lastTrackerUpdateTime;
 
-  List<String> customTrackers;
+  List<String> customTrackers = [];
 
-  ExtraConfigBt({
-    this.trackerSubscribeUrls = const [],
-    this.subscribeTrackers = const [],
-    this.autoUpdateTrackers = true,
-    this.lastTrackerUpdateTime,
-    this.customTrackers = const [],
-  });
+  ExtraConfigBt();
 
   factory ExtraConfigBt.fromJson(Map<String, dynamic> json) =>
       _$ExtraConfigBtFromJson(json);
