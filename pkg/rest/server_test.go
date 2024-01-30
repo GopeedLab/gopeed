@@ -66,7 +66,7 @@ var (
 func TestResolve(t *testing.T) {
 	doTest(func() {
 		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", taskReq)
-		if !test.JsonEqual(taskRes, resp.Res) {
+		if !test.AssertResourceEqual(taskRes, resp.Res) {
 			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp.Res), test.ToJson(taskRes))
 		}
 	})

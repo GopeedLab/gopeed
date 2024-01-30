@@ -4,13 +4,16 @@ part 'downloader_config.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class DownloaderConfig {
-  String downloadDir = '';
-  int maxRunning = 0;
+  String downloadDir;
+  int maxRunning;
   ProtocolConfig protocolConfig = ProtocolConfig();
   ExtraConfig extra = ExtraConfig();
   ProxyConfig proxy = ProxyConfig();
 
-  DownloaderConfig();
+  DownloaderConfig({
+    this.downloadDir = '',
+    this.maxRunning = 0,
+  });
 
   factory DownloaderConfig.fromJson(Map<String, dynamic> json) =>
       _$DownloaderConfigFromJson(json);
@@ -31,11 +34,16 @@ class ProtocolConfig {
 
 @JsonSerializable()
 class HttpConfig {
-  String userAgent =
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36';
-  int connections = 0;
+  String userAgent;
+  int connections;
+  bool useServerCtime;
 
-  HttpConfig();
+  HttpConfig({
+    this.userAgent =
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+    this.connections = 16,
+    this.useServerCtime = false,
+  });
 
   factory HttpConfig.fromJson(Map<String, dynamic> json) =>
       _$HttpConfigFromJson(json);
@@ -69,13 +77,19 @@ class ExtraConfig {
 
 @JsonSerializable()
 class ProxyConfig {
-  bool enable = false;
-  String scheme = '';
-  String host = '';
-  String usr = '';
-  String pwd = '';
+  bool enable;
+  String scheme;
+  String host;
+  String usr;
+  String pwd;
 
-  ProxyConfig();
+  ProxyConfig({
+    this.enable = false,
+    this.scheme = '',
+    this.host = '',
+    this.usr = '',
+    this.pwd = '',
+  });
 
   factory ProxyConfig.fromJson(Map<String, dynamic> json) =>
       _$ProxyConfigFromJson(json);
@@ -85,13 +99,20 @@ class ProxyConfig {
 
 @JsonSerializable()
 class ExtraConfigBt {
-  List<String> trackerSubscribeUrls = [];
-  List<String> subscribeTrackers = [];
+  List<String> trackerSubscribeUrls;
+  List<String> subscribeTrackers;
+  bool autoUpdateTrackers;
   DateTime? lastTrackerUpdateTime;
 
-  List<String> customTrackers = [];
+  List<String> customTrackers;
 
-  ExtraConfigBt();
+  ExtraConfigBt({
+    this.trackerSubscribeUrls = const [],
+    this.subscribeTrackers = const [],
+    this.autoUpdateTrackers = true,
+    this.lastTrackerUpdateTime,
+    this.customTrackers = const [],
+  });
 
   factory ExtraConfigBt.fromJson(Map<String, dynamic> json) =>
       _$ExtraConfigBtFromJson(json);

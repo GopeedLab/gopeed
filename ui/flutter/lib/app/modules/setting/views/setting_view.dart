@@ -138,6 +138,22 @@ class SettingView extends GetView<SettingController> {
         ],
       );
     });
+    final buildHttpUseServerCtime = _buildConfigItem(
+        'useServerCtime'.tr, () => httpConfig.useServerCtime.toString(),
+        (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: httpConfig.useServerCtime,
+          onChanged: (bool value) {
+            downloaderCfg.update((val) {
+              val!.protocolConfig.http.useServerCtime = value;
+            });
+            debounceSave();
+          },
+        ),
+      );
+    });
 
     // bt config items start
     final btConfig = downloaderCfg.value.protocolConfig.bt;
@@ -207,8 +223,13 @@ class SettingView extends GetView<SettingController> {
               Expanded(
                 child: SwitchListTile(
                     controlAffinity: ListTileControlAffinity.leading,
-                    value: true,
-                    onChanged: (bool value) {},
+                    value: btExtConfig.autoUpdateTrackers,
+                    onChanged: (bool value) {
+                      downloaderCfg.update((val) {
+                        val!.extra.bt.autoUpdateTrackers = value;
+                      });
+                      debounceSave();
+                    },
                     title: Text('updateDaily'.tr)),
               ),
             ],
@@ -676,6 +697,7 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildHttpUa(),
                             buildHttpConnections(),
+                            buildHttpUseServerCtime(),
                           ]),
                         )),
                         const Text('BitTorrent'),

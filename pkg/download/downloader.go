@@ -124,6 +124,11 @@ func (d *Downloader) Setup() error {
 	}
 	// init default config
 	d.cfg.DownloaderStoreConfig.Init()
+	for _, fb := range d.fetcherBuilders {
+		f := fb.Build()
+		d.setupFetcher(f)
+
+	}
 	// load tasks from storage
 	var tasks []*Task
 	if err = d.storage.List(bucketTask, &tasks); err != nil {

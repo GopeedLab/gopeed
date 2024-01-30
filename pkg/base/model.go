@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"golang.org/x/exp/slices"
+	"time"
 )
 
 // Request download request
@@ -59,9 +60,10 @@ func (r *Resource) CalcSize(selectFiles []int) {
 }
 
 type FileInfo struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-	Size int64  `json:"size"`
+	Name  string     `json:"name"`
+	Path  string     `json:"path"`
+	Size  int64      `json:"size"`
+	Ctime *time.Time `json:"ctime"`
 
 	Req *Request `json:"req"`
 }

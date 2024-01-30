@@ -96,6 +96,7 @@ require (
 	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/tidwall/btree v1.7.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
+	github.com/xiaoqidun/setft v0.0.0-20220310121541-be86327699ad // indirect
 	go.opentelemetry.io/otel v1.22.0 // indirect
 	go.opentelemetry.io/otel/metric v1.22.0 // indirect
 	go.opentelemetry.io/otel/trace v1.22.0 // indirect
