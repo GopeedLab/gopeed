@@ -9,6 +9,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"github.com/xiaoqidun/setft"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"mime"
@@ -105,6 +106,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		Range: false,
 		Files: []*base.FileInfo{},
 	}
+
 	if base.HttpCodePartialContent == httpResp.StatusCode || (base.HttpCodeOK == httpResp.StatusCode && httpResp.Header.Get(base.HttpHeaderAcceptRanges) == base.HttpHeaderBytes && strings.HasPrefix(httpResp.Header.Get(base.HttpHeaderContentRange), base.HttpHeaderBytes)) {
 		// 1.返回206响应码表示支持断点下载 2.不返回206但是Accept-Ranges首部并且等于bytes也表示支持断点下载
 		res.Range = true
@@ -130,8 +132,17 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	} else {
 		return NewRequestError(httpResp.StatusCode, httpResp.Status)
 	}
+	// Parse last modified time
+	var lastModifiedTime *time.Time
+	lastModified := httpResp.Header.Get(base.HttpHeaderLastModified)
+	if lastModified != "" {
+		// ignore parse error
+		t, _ := time.Parse(time.RFC1123, lastModified)
+		lastModifiedTime = &t
+	}
 	file := &base.FileInfo{
-		Size: res.Size,
+		Size:  res.Size,
+		Ctime: lastModifiedTime,
 	}
 	contentDisposition := httpResp.Header.Get(base.HttpHeaderContentDisposition)
 	if contentDisposition != "" {
@@ -257,6 +268,10 @@ func (f *Fetcher) fetch() {
 			return
 		}
 		f.file.Close()
+		// Update file last modified time
+		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
+			setft.SetFileTime(f.file.Name(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
+		}
 		f.doneCh <- err
 	}()
 }
@@ -275,7 +290,7 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 		maxRetries = 3
 	)
 	// retry until all remain chunks failed
-	for true {
+	for {
 		// if chunk is completed, return
 		if f.meta.Res.Range && chunk.Downloaded >= chunk.End-chunk.Begin+1 {
 			return

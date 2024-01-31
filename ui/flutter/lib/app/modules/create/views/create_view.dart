@@ -12,6 +12,7 @@ import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
+import '../../../../database/database.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
@@ -19,7 +20,6 @@ import '../../../routes/app_pages.dart';
 import '../../../views/directory_selector.dart';
 import '../../../views/file_list_view.dart';
 import '../../app/controllers/app_controller.dart';
-import '../../history/controller/history_controller.dart';
 import '../../history/views/history_view.dart';
 import '../controllers/create_controller.dart';
 
@@ -35,7 +35,6 @@ class CreateView extends GetView<CreateController> {
   final _httpCookieController = TextEditingController();
   final _httpRefererController = TextEditingController();
   final _btTrackerController = TextEditingController();
-  final _historyController = HistoryController();
 
   final _availableSchemes = ["http:", "https:", "magnet:"];
 
@@ -168,10 +167,7 @@ class CreateView extends GetView<CreateController> {
                         icon: const Icon(Icons.history_rounded),
                         onPressed: () async {
                           List<String> resultOfHistories =
-                              await _historyController.getAllHistory();
-                          // reversing: display last entered history first
-                          List<String> reverseResultOfHistories =
-                              resultOfHistories.reversed.toList();
+                              Database.instance.getCreateHistory() ?? [];
                           // show dialog box to list history
                           if (context.mounted) {
                             showGeneralDialog(
@@ -183,16 +179,14 @@ class CreateView extends GetView<CreateController> {
                                     opacity: a1.value,
                                     child: HistoryView(
                                       isHistoryListEmpty:
-                                          reverseResultOfHistories.isEmpty,
+                                          resultOfHistories.isEmpty,
                                       historyList: ListView.builder(
-                                        itemCount:
-                                            reverseResultOfHistories.length,
+                                        itemCount: resultOfHistories.length,
                                         itemBuilder: (context, index) {
                                           return GestureDetector(
                                             onTap: () {
                                               _urlController.text =
-                                                  reverseResultOfHistories[
-                                                      index];
+                                                  resultOfHistories[index];
                                               Navigator.pop(context);
                                             },
                                             child: MouseRegion(
@@ -217,9 +211,7 @@ class CreateView extends GetView<CreateController> {
                                                           10.0),
                                                 ),
                                                 child: Text(
-                                                  reverseResultOfHistories[
-                                                          index]
-                                                      .toString(),
+                                                  resultOfHistories[index],
                                                 ),
                                               ),
                                             ),
@@ -419,7 +411,7 @@ class CreateView extends GetView<CreateController> {
         // Add url to the history
         if (!isWebFileChosen) {
           for (final url in urls) {
-            _historyController.addHistory(url);
+            Database.instance.saveCreateHistory(url);
           }
         }
 

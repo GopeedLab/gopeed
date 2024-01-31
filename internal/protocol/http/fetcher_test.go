@@ -10,7 +10,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"net"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -69,7 +68,7 @@ func testResolve(startTestServer func() net.Listener, path string, want *base.Re
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(want, fetcher.meta.Res) {
+	if !test.AssertResourceEqual(want, fetcher.meta.Res) {
 		t.Errorf("Resolve() got = %v, want %v", fetcher.meta.Res, want)
 	}
 }
@@ -151,10 +150,34 @@ func TestFetcher_DownloadWithProxy(t *testing.T) {
 	downloadWithProxy(httpListener, proxyListener, t)
 }
 
-func TestFetcher_Config(t *testing.T) {
+func TestFetcher_ConfigConnections(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
-	fetcher := doDownloadReady(buildConfigFetcher(), listener, 0, t)
+	fetcher := doDownloadReady(buildConfigFetcher(config{
+		Connections: 16,
+	}), listener, 0, t)
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
+func TestFetcher_ConfigUseServerCtime(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+	fetcher := doDownloadReady(buildConfigFetcher(config{
+		Connections:    16,
+		UseServerCtime: true,
+	}), listener, 0, t)
 	err := fetcher.Start()
 	if err != nil {
 		t.Fatal(err)
@@ -338,14 +361,11 @@ func buildFetcher() *Fetcher {
 	return fetcher.(*Fetcher)
 }
 
-func buildConfigFetcher() fetcher.Fetcher {
+func buildConfigFetcher(cfg config) fetcher.Fetcher {
 	fetcher := new(FetcherBuilder).Build()
 	newController := controller.NewController()
-	mockCfg := config{
-		Connections: 16,
-	}
 	newController.GetConfig = func(v any) bool {
-		if err := json.Unmarshal([]byte(test.ToJson(mockCfg)), v); err != nil {
+		if err := json.Unmarshal([]byte(test.ToJson(cfg)), v); err != nil {
 			return false
 		}
 		return true

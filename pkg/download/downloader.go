@@ -35,7 +35,8 @@ const (
 )
 
 var (
-	ErrTaskNotFound = errors.New("task not found")
+	ErrTaskNotFound        = errors.New("task not found")
+	ErrUnSupportedProtocol = errors.New("unsupported protocol")
 )
 
 type Listener func(event *Event)
@@ -123,6 +124,11 @@ func (d *Downloader) Setup() error {
 	}
 	// init default config
 	d.cfg.DownloaderStoreConfig.Init()
+	for _, fb := range d.fetcherBuilders {
+		f := fb.Build()
+		d.setupFetcher(f)
+
+	}
 	// load tasks from storage
 	var tasks []*Task
 	if err = d.storage.List(bucketTask, &tasks); err != nil {
@@ -211,7 +217,7 @@ func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
 	if ok {
 		return fetchBuilder, nil
 	}
-	return nil, errors.New("unsupported protocol")
+	return nil, ErrUnSupportedProtocol
 }
 
 func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
@@ -448,6 +454,13 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 		for i, t := range d.tasks {
 			if t.ID == id {
 				d.tasks = append(d.tasks[:i], d.tasks[i+1:]...)
+				break
+			}
+		}
+		for i, t := range d.waitTasks {
+			if t.ID == id {
+				d.waitTasks = append(d.waitTasks[:i], d.waitTasks[i+1:]...)
+				break
 			}
 		}
 	}()
@@ -457,6 +470,56 @@ func (d *Downloader) Delete(id string, force bool) (err error) {
 		return
 	}
 	d.notifyRunning()
+	return
+}
+
+func (d *Downloader) DeleteByStatues(statues []base.Status, force bool) (err error) {
+	deleteTasks := d.GetTasksByStatues(statues)
+	if len(deleteTasks) == 0 {
+		return
+	}
+
+	deleteIds := make([]string, 0)
+	for _, task := range deleteTasks {
+		deleteIds = append(deleteIds, task.ID)
+	}
+	func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+
+		for _, id := range deleteIds {
+			for i, t := range d.tasks {
+				if t.ID == id {
+					d.tasks = append(d.tasks[:i], d.tasks[i+1:]...)
+					break
+				}
+			}
+			for i, t := range d.waitTasks {
+				if t.ID == id {
+					d.waitTasks = append(d.waitTasks[:i], d.waitTasks[i+1:]...)
+					break
+				}
+			}
+		}
+	}()
+
+	for _, task := range deleteTasks {
+		err = d.doDelete(task, force)
+		if err != nil {
+			return
+		}
+	}
+
+	d.notifyRunning()
+	return
+}
+
+func (d *Downloader) Stats(id string) (sr any, err error) {
+	task := d.GetTask(id)
+	if task == nil {
+		return sr, ErrTaskNotFound
+	}
+	sr = task.fetcher.Stats()
 	return
 }
 
@@ -546,6 +609,22 @@ func (d *Downloader) GetTask(id string) *Task {
 
 func (d *Downloader) GetTasks() []*Task {
 	return d.tasks
+}
+
+func (d *Downloader) GetTasksByStatues(statues []base.Status) []*Task {
+	if len(statues) == 0 {
+		return d.tasks
+	}
+	tasks := make([]*Task, 0)
+	for _, task := range d.tasks {
+		for _, status := range statues {
+			if task.Status == status {
+				tasks = append(tasks, task)
+				break
+			}
+		}
+	}
+	return tasks
 }
 
 func (d *Downloader) GetConfig() (*DownloaderStoreConfig, error) {
@@ -690,6 +769,7 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 	task := NewTask()
 	task.fetcherBuilder = fb
 	task.fetcher = fetcher
+	task.Protocol = fetcher.Name()
 	task.Meta = fetcher.Meta()
 	task.Progress = &Progress{}
 	initTask(task)

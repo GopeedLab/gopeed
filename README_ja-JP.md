@@ -19,51 +19,74 @@ Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された
 
 ## インストール
 
-**サポートするプラットフォーム**
+<table>
+    <thead>
+        <tr>
+            <th>Platform</th>
+            <th>Package Type</th>
+            <th>Download Link</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td rowspan=2>Windows</td>
+            <td><code>EXE Installer</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">Link</a></td>
+        </tr>
+        <tr>
+            <td><code>Portable ZIP</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">Link</a></td>
+        </tr>
+        <tr>
+            <td>MacOS</td>
+            <td><code>DMG Installer</code></td>          
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">Link</a></td>
+        </tr>
+        <tr>
+            <td rowspan=4>Linux</td>
+            <td><code>SNAP</code></td>
+            <td><a href="https://snapcraft.io/gopeed">Link</a></td>
+        </tr>
+        <tr>
+            <td><code>DEB</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux.deb">Link</a></td>
+        </tr>
+        <tr>
+            <td><code>AppImage</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">Link</a></td>
+        </tr>
+        <tr>
+            <td><code>Portable TAR</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64-portable.tar.gz">Link</a></td>
+        </tr>
+        <tr>
+            <td>Android</td>
+            <td><code>APK</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android.apk">Link</a></td>
+        </tr>
+        <tr>
+            <td>iOS</td>
+            <td><code>IPA</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">Link</a></td>
+        </tr>
+        <tr>
+            <td>Web</td>
+            <td></td>
+            <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">Link</a></td>
+        </tr>
+        <tr>
+            <td>Docker</td>
+            <td></td>
+            <td><a href="https://hub.docker.com/r/liwei2633/gopeed">Link</a></td>
+        </tr>
+    </tbody>
+</table>
 
-- [x] windows
-- [x] macos
-- [x] linux
-- [x] android
-- [x] ios
-- [x] web
-- [x] docker
-
-[ダウンロード](https://github.com/GopeedLab/gopeed/releases/latest)
-
-> ヒント: macos を開くのに失敗した場合は、ターミナルで `xattr -d com.apple.quarantine /Applications/Gopeed.app` コマンドを実行してください
-
-### コマンドツール
-
-`go install` を使用:
-
-```bash
-go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
-```
-
-### Docker
-
-#### 直接始める
-
-```bash
-docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads -v /path/to/storage:/app/storage liwei2633/gopeed
-```
-
-[Dockerの使用については](https://docs.gopeed.com/install.html#docker-installation)
-
-#### Docker Compose の使用
-
-```bash
-docker-compose up -d
-```
-
-#### Gopeed へのアクセス
-
-docker コンテナが起動しているときは、`http://localhost:9999` からウェブページにアクセスできます。
+インストールについての詳細は、[インストール](https://docs.gopeed.com/install.html)を参照してください。
 
 ## 寄付
 
-もしこのプロジェクトがお気に召しましたら、このプロジェクトの発展を支援するために[寄付](/.donate/index.md#donate)をご検討ください！
+もしこのプロジェクトがお気に召しましたら、このプロジェクトの発展を支援するために[寄付](https://docs.gopeed.com/donate.html)をご検討ください！
 
 ## ショーケース
 
@@ -77,8 +100,8 @@ docker コンテナが起動しているときは、`http://localhost:9999` か�
 
 ### 環境
 
-1. Go 言語 1.19+
-2. Flutter 3.10+
+1. Go 言語 1.21+
+2. Flutter 3.16+
 
 ### クローン
 

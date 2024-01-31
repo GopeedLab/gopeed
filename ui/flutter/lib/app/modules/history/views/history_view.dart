@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/app/modules/history/controller/history_controller.dart';
+import 'package:gopeed/database/database.dart';
 
 class HistoryView extends StatefulWidget {
   const HistoryView({
@@ -62,8 +62,7 @@ class _HistoryViewState extends State<HistoryView> {
                       children: <Widget>[
                         IconButton(
                           onPressed: () {
-                            HistoryController _controller = HistoryController();
-                            _controller.clearHistory();
+                            Database.instance.clearCreateHistory();
                             Navigator.pop(context);
                           },
                           tooltip: "clearHistory".tr,

@@ -7,13 +7,13 @@ import 'api/api.dart' as api;
 import 'app/modules/app/controllers/app_controller.dart';
 import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
+import 'database/database.dart';
 import 'i18n/message.dart';
 import 'util/locale_manager.dart';
 import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
 import 'util/util.dart';
-import 'util/window_util.dart' as windows_util;
 
 void main() async {
   await init();
@@ -24,11 +24,13 @@ void main() async {
 
 Future<void> init() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Util.initStorageDir();
+  await Database.instance.init();
   if (Util.isDesktop()) {
     await windowManager.ensureInitialized();
-    final windowState = await windows_util.loadState();
+    final windowState = Database.instance.getWindowState();
     final windowOptions = WindowOptions(
-      size: Size(windowState.width, windowState.height),
+      size: Size(windowState?.width ?? 800, windowState?.height ?? 600),
       center: true,
       skipTaskbar: false,
     );
@@ -44,9 +46,6 @@ Future<void> init() async {
     });
   }
 
-  if (!Util.isWeb()) {
-    await Util.initStorageDir();
-  }
   initLogger();
 
   final controller = Get.put(AppController());
@@ -74,9 +73,6 @@ Future<void> init() async {
 }
 
 Future<void> onStart() async {
-  final appController = Get.find<AppController>();
-  await appController.trackerUpdateOnStart();
-
   // if is debug mode, check language message is complete,change debug locale to your comfortable language if you want
   if (kDebugMode) {
     final debugLang = getLocaleKey(debugLocale);

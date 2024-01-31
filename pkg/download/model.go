@@ -7,6 +7,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/util"
+
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"net/url"
 	"sync"
@@ -22,6 +23,7 @@ type Task struct {
 	ID        string               `json:"id"`
 	Meta      *fetcher.FetcherMeta `json:"meta"`
 	Status    base.Status          `json:"status"`
+	Protocol  string               `json:"protocol"`
 	Progress  *Progress            `json:"progress"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`

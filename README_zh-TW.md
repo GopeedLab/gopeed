@@ -17,21 +17,72 @@ Gopeed（全稱 Go Speed），是一款使用`Golang`+`Flutter`編寫的高速�
 
 前往 ✈ [主頁](https://gopeed.com/zh-CN) | 📖 [文檔](https://docs.gopeed.com/zh/)
 
-## 安裝
+## 下載
 
-**已支援的平台**
+<table>
+    <thead>
+        <tr>
+            <th>運行平台</th>
+            <th>安裝包類型</th>
+            <th>下載鏈接</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td rowspan=2>Windows</td>
+            <td><code>EXE Installer</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">前往</a></td>
+        </tr>
+        <tr>
+            <td><code>Portable ZIP</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">前往</a></td>
+        </tr>
+        <tr>
+            <td>MacOS</td>
+            <td><code>DMG Installer</code></td>          
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">前往</a></td>
+        </tr>
+        <tr>
+            <td rowspan=4>Linux</td>
+            <td><code>SNAP</code></td>
+            <td><a href="https://snapcraft.io/gopeed">前往</a></td>
+        </tr>
+        <tr>
+            <td><code>DEB</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux.deb">前往</a></td>
+        </tr>
+        <tr>
+            <td><code>AppImage</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">前往</a></td>
+        </tr>
+        <tr>
+            <td><code>Portable TAR</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64-portable.tar.gz">前往</a></td>
+        </tr>
+        <tr>
+            <td>Android</td>
+            <td><code>APK</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android.apk">前往</a></td>
+        </tr>
+        <tr>
+            <td>iOS</td>
+            <td><code>IPA</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">前往</a></td>
+        </tr>
+        <tr>
+            <td>Web</td>
+            <td></td>
+            <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">前往</a></td>
+        </tr>
+        <tr>
+            <td>Docker</td>
+            <td></td>
+            <td><a href="https://hub.docker.com/r/liwei2633/gopeed">前往</a></td>
+        </tr>
+    </tbody>
+</table>
 
-- [x] Windows
-- [x] MacOS
-- [x] Linux
-- [x] Android
-- [x] iOS
-- [x] Web
-- [x] Docker
-
-[下載](https://github.com/GopeedLab/gopeed/releases/latest)
-
-> 註：MacOS 版運行時若提示損壞，請在終端中執行 `xattr -d com.apple.quarantine /Applications/Gopeed.app`
+更多關於安裝的內容請參考[安裝文檔](https://docs.gopeed.com/zh/install.html)
 
 ### 使用CLI安裝
 
@@ -40,26 +91,6 @@ Gopeed（全稱 Go Speed），是一款使用`Golang`+`Flutter`編寫的高速�
 ```bash
 go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
-
-### Docker
-
-#### 直接執行
-
-```bash
-docker run -d -p 9999:9999 -v /path/to/download:/root/Downloads -v /path/to/storage:/app/storage liwei2633/gopeed
-```
-
-[更多關於 Docker 的使用](https://docs.gopeed.com/zh/install.html#docker-%E5%AE%89%E8%A3%85)
-
-#### 使用 Docker Compose
-
-```bash
-docker-compose up -d
-```
-
-#### 訪問服務
-
-當 docker 容器運作時，可以通過 `http://localhost:9999` 訪問 web 頁面。
 
 ## 贊助
 
@@ -77,8 +108,8 @@ docker-compose up -d
 
 ### 開發環境
 
-1. Golang 1.19+
-2. Flutter 3.10+
+1. Golang 1.21+
+2. Flutter 3.16+
 
 ### 克隆項目
 

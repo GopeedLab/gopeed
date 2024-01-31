@@ -7,9 +7,10 @@ part of 'downloader_config.dart';
 // **************************************************************************
 
 DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
-    DownloaderConfig()
-      ..downloadDir = json['downloadDir'] as String
-      ..maxRunning = json['maxRunning'] as int
+    DownloaderConfig(
+      downloadDir: json['downloadDir'] as String? ?? '',
+      maxRunning: json['maxRunning'] as int? ?? 0,
+    )
       ..protocolConfig = ProtocolConfig.fromJson(
           json['protocolConfig'] as Map<String, dynamic>?)
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
@@ -35,14 +36,18 @@ Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) =>
       'bt': instance.bt.toJson(),
     };
 
-HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig()
-  ..userAgent = json['userAgent'] as String
-  ..connections = json['connections'] as int;
+HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
+      userAgent: json['userAgent'] as String? ??
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+      connections: json['connections'] as int? ?? 16,
+      useServerCtime: json['useServerCtime'] as bool? ?? false,
+    );
 
 Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
     <String, dynamic>{
       'userAgent': instance.userAgent,
       'connections': instance.connections,
+      'useServerCtime': instance.useServerCtime,
     };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig()
@@ -67,12 +72,13 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'bt': instance.bt.toJson(),
     };
 
-ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig()
-  ..enable = json['enable'] as bool
-  ..scheme = json['scheme'] as String
-  ..host = json['host'] as String
-  ..usr = json['usr'] as String
-  ..pwd = json['pwd'] as String;
+ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig(
+      enable: json['enable'] as bool? ?? false,
+      scheme: json['scheme'] as String? ?? '',
+      host: json['host'] as String? ?? '',
+      usr: json['usr'] as String? ?? '',
+      pwd: json['pwd'] as String? ?? '',
+    );
 
 Map<String, dynamic> _$ProxyConfigToJson(ProxyConfig instance) =>
     <String, dynamic>{
@@ -91,6 +97,7 @@ ExtraConfigBt _$ExtraConfigBtFromJson(Map<String, dynamic> json) =>
       ..subscribeTrackers = (json['subscribeTrackers'] as List<dynamic>)
           .map((e) => e as String)
           .toList()
+      ..autoUpdateTrackers = json['autoUpdateTrackers'] as bool
       ..lastTrackerUpdateTime = json['lastTrackerUpdateTime'] == null
           ? null
           : DateTime.parse(json['lastTrackerUpdateTime'] as String)
@@ -102,6 +109,7 @@ Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) {
   final val = <String, dynamic>{
     'trackerSubscribeUrls': instance.trackerSubscribeUrls,
     'subscribeTrackers': instance.subscribeTrackers,
+    'autoUpdateTrackers': instance.autoUpdateTrackers,
   };
 
   void writeNotNull(String key, dynamic value) {

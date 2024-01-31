@@ -66,7 +66,7 @@ var (
 func TestResolve(t *testing.T) {
 	doTest(func() {
 		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", taskReq)
-		if !test.JsonEqual(taskRes, resp.Res) {
+		if !test.AssertResourceEqual(taskRes, resp.Res) {
 			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp.Res), test.ToJson(taskRes))
 		}
 	})
@@ -238,6 +238,58 @@ func TestDeleteTaskForce(t *testing.T) {
 		checkCode(code, model.CodeTaskNotFound)
 		if _, err := os.Stat(test.DownloadFile); !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("DeleteTaskForce() got = %v, want %v", err, os.ErrNotExist)
+		}
+	})
+}
+
+func TestDeleteAllTasks(t *testing.T) {
+	doTest(func() {
+		taskCount := 3
+
+		var wg sync.WaitGroup
+		wg.Add(taskCount)
+		Downloader.Listener(func(event *download.Event) {
+			if event.Key == download.EventKeyFinally {
+				wg.Done()
+			}
+		})
+
+		for i := 0; i < taskCount; i++ {
+			httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+		}
+
+		wg.Wait()
+
+		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks?force=true", nil)
+		tasks := httpRequestCheckOk[[]*download.Task](http.MethodGet, "/api/v1/tasks", nil)
+		if len(tasks) != 0 {
+			t.Errorf("DeleteTasks() got = %v, want %v", len(tasks), 0)
+		}
+	})
+}
+
+func TestDeleteTasksByStatues(t *testing.T) {
+	doTest(func() {
+		taskCount := 3
+
+		var wg sync.WaitGroup
+		wg.Add(taskCount)
+		Downloader.Listener(func(event *download.Event) {
+			if event.Key == download.EventKeyFinally {
+				wg.Done()
+			}
+		})
+
+		for i := 0; i < taskCount; i++ {
+			httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+		}
+
+		wg.Wait()
+
+		httpRequestCheckOk[any](http.MethodDelete, fmt.Sprintf("/api/v1/tasks?status=%s&force=true", base.DownloadStatusDone), nil)
+		tasks := httpRequestCheckOk[[]*download.Task](http.MethodGet, "/api/v1/tasks", nil)
+		if len(tasks) != 0 {
+			t.Errorf("DeleteTasks() got = %v, want %v", len(tasks), 0)
 		}
 	})
 }
