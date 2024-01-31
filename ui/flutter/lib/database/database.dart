@@ -6,6 +6,7 @@ import 'package:hive/hive.dart';
 import 'entity.dart';
 
 const String _startConfig = 'startConfig';
+const String _lastRunningConfig = 'lastRunningConfig';
 const String _windowState = 'windowState';
 const String _bookmark = 'bookmark';
 const String _createHistory = 'createHistory';
@@ -51,6 +52,15 @@ class Database {
   StartConfigEntity? getStartConfig() {
     return get<StartConfigEntity>(
         _startConfig, (json) => StartConfigEntity.fromJson(json));
+  }
+
+  void saveLastRunningConfig(StartConfigEntity entity) {
+    save<StartConfigEntity>(_lastRunningConfig, entity);
+  }
+
+  StartConfigEntity? getLastRunningConfig() {
+    return get<StartConfigEntity>(
+        _lastRunningConfig, (json) => StartConfigEntity.fromJson(json));
   }
 
   /// Patch non-null fields with the original value
