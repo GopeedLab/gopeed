@@ -43,7 +43,7 @@ Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">Link</a></td>
         </tr>
         <tr>
-            <td rowspan=4>Linux</td>
+            <td rowspan=3>Linux</td>
             <td><code>SNAP</code></td>
             <td><a href="https://snapcraft.io/gopeed">Link</a></td>
         </tr>
@@ -54,10 +54,6 @@ Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された
         <tr>
             <td><code>AppImage</code></td>
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">Link</a></td>
-        </tr>
-        <tr>
-            <td><code>Portable TAR</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64-portable.tar.gz">Link</a></td>
         </tr>
         <tr>
             <td>Android</td>
