@@ -302,9 +302,6 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 }
 
 func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err error) {
-	if opts == nil {
-		opts = &base.Options{}
-	}
 	d.fetcherMapLock.RLock()
 	fetcher, ok := d.fetcherCache[rrId]
 	d.fetcherMapLock.RUnlock()
@@ -749,6 +746,9 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (taskId string, err error) {
 	if opts == nil {
 		opts = &base.Options{}
+	}
+	if opts.SelectFiles == nil {
+		opts.SelectFiles = make([]int, 0)
 	}
 
 	meta := fetcher.Meta()
