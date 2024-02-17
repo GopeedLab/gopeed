@@ -40,7 +40,7 @@ Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不
         <tr>
             <td>MacOS</td>
             <td><code>DMG Installer</code></td>          
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">前往</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">前往</a></td>
         </tr>
         <tr>
             <td rowspan=3>Linux</td>
