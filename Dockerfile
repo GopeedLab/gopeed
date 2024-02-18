@@ -25,5 +25,6 @@ RUN apk update && \
     chmod +x ./entrypoint.sh && \
     rm -rf /var/cache/apk/*
 VOLUME ["/app/storage"]
+ENV PUID=0 PGID=0 UMASK=022
 EXPOSE 9999
 ENTRYPOINT ["./entrypoint.sh"]
