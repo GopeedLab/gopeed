@@ -40,7 +40,7 @@ Gopeed（全稱 Go Speed），是一款使用`Golang`+`Flutter`編寫的高速�
         <tr>
             <td>MacOS</td>
             <td><code>DMG Installer</code></td>          
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">前往</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">前往</a></td>
         </tr>
         <tr>
             <td rowspan=3>Linux</td>
