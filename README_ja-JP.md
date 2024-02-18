@@ -31,7 +31,7 @@ Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された
         <tr>
             <td rowspan=2>Windows</td>
             <td><code>EXE Installer</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.exe">Link</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">Link</a></td>
         </tr>
         <tr>
             <td><code>Portable ZIP</code></td>

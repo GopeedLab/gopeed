@@ -40,7 +40,7 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://
         <tr>
             <td>MacOS</td>
             <td><code>DMG Installer</code></td>          
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">Link</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">Link</a></td>
         </tr>
         <tr>
             <td rowspan=3>Linux</td>
