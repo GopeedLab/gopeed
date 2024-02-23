@@ -43,7 +43,11 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">Link</a></td>
         </tr>
         <tr>
-            <td rowspan=3>Linux</td>
+            <td rowspan=4>Linux</td>
+            <td><code>Flathub</code></td>
+            <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">Link</a></td>
+        </tr>
+        <tr>
             <td><code>SNAP</code></td>
             <td><a href="https://snapcraft.io/gopeed">Link</a></td>
         </tr>

@@ -43,7 +43,11 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">Liên kết</a></td>
         </tr>
         <tr>
-            <td rowspan=3>Linux</td>
+            <td rowspan=4>Linux</td>
+            <td><code>Flathub</code></td>
+            <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">Liên kết</a></td>
+        </tr>
+        <tr>
             <td><code>SNAP</code></td>
             <td><a href="https://snapcraft.io/gopeed">Liên kết</a></td>
         </tr>

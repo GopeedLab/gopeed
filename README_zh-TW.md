@@ -43,7 +43,11 @@ Gopeed（全稱 Go Speed），是一款使用`Golang`+`Flutter`編寫的高速�
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">前往</a></td>
         </tr>
         <tr>
-            <td rowspan=3>Linux</td>
+            <td rowspan=4>Linux</td>
+            <td><code>Flathub</code></td>
+            <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">前往</a></td>
+        </tr>
+        <tr>
             <td><code>SNAP</code></td>
             <td><a href="https://snapcraft.io/gopeed">前往</a></td>
         </tr>
