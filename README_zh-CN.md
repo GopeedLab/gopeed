@@ -9,7 +9,7 @@
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R6IJGN6)
 
-[English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md)
+[English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
 ## 介绍
 
@@ -43,7 +43,11 @@ Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">前往</a></td>
         </tr>
         <tr>
-            <td rowspan=3>Linux</td>
+            <td rowspan=4>Linux</td>
+            <td><code>Flathub</code></td>
+            <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">前往</a></td>
+        </tr>
+        <tr>
             <td><code>SNAP</code></td>
             <td><a href="https://snapcraft.io/gopeed">前往</a></td>
         </tr>

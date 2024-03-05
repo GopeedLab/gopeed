@@ -6,6 +6,7 @@ import 'package:gopeed/i18n/langs/zh_tw.dart';
 import 'langs/en_us.dart';
 import 'langs/ru_ru.dart';
 import 'langs/zh_cn.dart';
+import 'langs/vi_vn.dart';
 
 final messages = _Messages();
 
@@ -19,5 +20,6 @@ class _Messages extends Translations {
         ...zhTW,
         ...faIR,
         ...jaJP,
+        ...viVN,
       };
 }
