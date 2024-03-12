@@ -21,5 +21,6 @@ class _Messages extends Translations {
         ...faIR,
         ...jaJP,
         ...viVN,
+        ...trTR,
       };
 }
