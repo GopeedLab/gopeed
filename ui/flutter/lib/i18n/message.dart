@@ -7,6 +7,7 @@ import 'langs/en_us.dart';
 import 'langs/ru_ru.dart';
 import 'langs/zh_cn.dart';
 import 'langs/vi_vn.dart';
+import 'langs/tr_tr.dart';
 
 final messages = _Messages();
 
@@ -21,5 +22,6 @@ class _Messages extends Translations {
         ...faIR,
         ...jaJP,
         ...viVN,
+        ...trTR,
       };
 }
