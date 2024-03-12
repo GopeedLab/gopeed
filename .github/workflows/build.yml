@@ -471,7 +471,9 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.version }}
         with:
           push: ${{ github.event.inputs.test == 'true' && 'false' || 'true' }}
-          build-args: VERSION=${{ env.VERSION }}
+          build-args:
+            - VERSION=${{ env.VERSION }}
+            - IN_DOCKER=true
           platforms: |
             linux/386
             linux/amd64
