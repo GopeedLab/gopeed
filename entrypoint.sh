@@ -1,6 +1,6 @@
 #!/bin/bash
 
-chown -R ${PUID}:${PGID} /app /Downloads
+chown -R ${PUID}:${PGID} /app/Download
 
 umask ${UMASK}
 
