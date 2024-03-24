@@ -12,7 +12,10 @@ RUN go mod download
 COPY . .
 COPY --from=flutter /app/build/web ./cmd/web/dist
 ARG VERSION=dev
-RUN CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w -X github.com/GopeedLab/gopeed/pkg/base.Version=${VERSION}" -o dist/gopeed github.com/GopeedLab/gopeed/cmd/web
+RUN CGO_ENABLED=0 go build -tags nosqlite,web -ldflags="-s -w \
+      -X github.com/GopeedLab/gopeed/pkg/base.Version=${VERSION}" \
+      -X github.com/GopeedLab/gopeed/pkg/base.InDocker=${IN_DOCKER}" \
+      -o dist/gopeed github.com/GopeedLab/gopeed/cmd/web
 
 FROM alpine:3.14.2
 LABEL maintainer="monkeyWie"
