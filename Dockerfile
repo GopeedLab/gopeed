@@ -21,6 +21,13 @@ FROM alpine:3.14.2
 LABEL maintainer="monkeyWie"
 WORKDIR /app
 COPY --from=go /app/dist/gopeed ./
+COPY entrypoint.sh ./entrypoint.sh
+RUN apk update && \
+    apk upgrade --no-cache && \
+    apk add --no-cache bash su-exec; \
+    chmod +x ./entrypoint.sh && \
+    rm -rf /var/cache/apk/*
 VOLUME ["/app/storage"]
+ENV PUID=0 PGID=0 UMASK=022
 EXPOSE 9999
-ENTRYPOINT ["./gopeed"]
+ENTRYPOINT ["./entrypoint.sh"]
