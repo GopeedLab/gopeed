@@ -355,9 +355,11 @@ jobs:
           gomobile bind -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
           echo $APK_KEYSTORE | base64 -di > android/app/upload-keystore.jks
-          flutter build apk
+          flutter build apk --split-per-abi
           mkdir dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/Gopeed-v$VERSION-android.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/Gopeed-v$VERSION-android-armeabi-v7a.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/Gopeed-v$VERSION-android-arm64-v8a.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk dist/Gopeed-v$VERSION-android-x86_64.apk
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
