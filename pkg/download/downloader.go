@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/virtuald/go-paniclog"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -126,6 +127,7 @@ func (d *Downloader) Setup() error {
 	d.cfg.DownloaderStoreConfig.Init()
 	for _, fb := range d.fetcherBuilders {
 		f := fb.Build()
+		log.Print("restore fetcher 3333")
 		d.setupFetcher(f)
 
 	}
@@ -276,7 +278,7 @@ func (d *Downloader) notifyRunning() {
 		if len(d.waitTasks) > 0 {
 			wt := d.waitTasks[0]
 			d.waitTasks = d.waitTasks[1:]
-			d.doStart(wt)
+			d.doStartWithLock(wt)
 		}
 	}()
 }
@@ -728,6 +730,7 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 		if task.fetcher == nil {
 			task.fetcher = fb.Build()
 		}
+		log.Print("restore fetcher 2222")
 		d.setupFetcher(task.fetcher)
 		if task.fetcher.Meta().Req == nil {
 			task.fetcher.Meta().Req = task.Meta.Req
@@ -794,7 +797,7 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 			return
 		}
 
-		d.doStart(task)
+		d.doStartWithLock(task)
 	}()
 
 	go d.watch(task)
@@ -816,6 +819,9 @@ func (d *Downloader) doStart(task *Task) (err error) {
 	task.updateStatus(base.DownloadStatusRunning)
 
 	handler := func() error {
+		task.startLock.Lock()
+		defer task.startLock.Unlock()
+
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req)
 			if err != nil {
@@ -870,6 +876,13 @@ func (d *Downloader) doStart(task *Task) (err error) {
 	return
 }
 
+func (d *Downloader) doStartWithLock(task *Task) (err error) {
+	task.lock.Lock()
+	defer task.lock.Unlock()
+
+	return d.doStart(task)
+}
+
 func (d *Downloader) doPause(task *Task) (err error) {
 	err = func() error {
 		if task.Status != base.DownloadStatusDone {
@@ -913,12 +926,15 @@ func (d *Downloader) buildFetcher(url string) (fetcher.Fetcher, error) {
 		return nil, err
 	}
 	fetcher := fb.Build()
+	log.Print("restore fetcher 1111")
 	d.setupFetcher(fetcher)
 	return fetcher, nil
 }
 
 func initTask(task *Task) {
 	task.timer = util.NewTimer(task.Progress.Used)
+
+	task.startLock = &sync.Mutex{}
 	task.lock = &sync.Mutex{}
 	task.speedArr = make([]int64, 0)
 }
