@@ -85,5 +85,6 @@ const zhCN = {
     'password': '密码',
     'thanks': '鸣谢',
     'thanksDesc': '感谢所有为 Gopeed 社区建设添砖加瓦的贡献者们！',
+    'browserExtension': '浏览器扩展',
   }
 };

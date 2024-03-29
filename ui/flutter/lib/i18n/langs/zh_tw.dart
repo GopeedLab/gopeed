@@ -84,6 +84,7 @@ const zhTW = {
     'username': '名稱',
     'password': '密碼',
     'thanks': '感謝',
-    'thanksDesc': '感謝所有為 Gopeed 社區建設添磚加瓦的貢獻者們！'
+    'thanksDesc': '感謝所有為 Gopeed 社區建設添磚加瓦的貢獻者們！',
+    'browserExtension': '瀏覽器擴充程式',
   }
 };

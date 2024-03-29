@@ -15,6 +15,7 @@ import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
 import '../../../views/check_list_view.dart';
 import '../../../views/directory_selector.dart';
+import '../../../views/open_in_new.dart';
 import '../../../views/outlined_button_loading.dart';
 import '../../app/controllers/app_controller.dart';
 import '../controllers/setting_controller.dart';
@@ -93,6 +94,15 @@ class SettingView extends GetView<SettingController> {
         ],
       );
     });
+    buildBrowserExtension() {
+      return ListTile(
+          title: Text('browserExtension'.tr),
+          subtitle: const OpenInNew(
+            text: "Chrome",
+            url:
+                "https://chromewebstore.google.com/detail/gopeed/mijpgljlfcapndmchhjffkpckknofcnd",
+          ));
+    }
 
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;
@@ -687,8 +697,11 @@ class SettingView extends GetView<SettingController> {
                         Text('general'.tr),
                         Card(
                             child: Column(
-                          children: _addDivider(
-                              [buildDownloadDir(), buildMaxRunning()]),
+                          children: _addDivider([
+                            buildDownloadDir(),
+                            buildMaxRunning(),
+                            buildBrowserExtension()
+                          ]),
                         )),
                         const Text('HTTP'),
                         Card(

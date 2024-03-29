@@ -21,7 +21,8 @@ const trTR = {
     'downloadLinkValid': 'Lütfen indirme bağlantısını girin',
     'downloadLinkHit':
         'Lütfen indirme bağlantısını girin, HTTP/HTTPS/MAGNET supported@append',
-    'downloadLinkHitDesktop': ', veya torrent dosyasını doğrudan buraya sürükleyin',
+    'downloadLinkHitDesktop':
+        ', veya torrent dosyasını doğrudan buraya sürükleyin',
     'download': 'İndir',
     'noFileSelected': 'Devam etmek için lütfen en az bir dosya seçin.',
     'noStoragePermission': 'Depolama izni gerekli',
@@ -43,7 +44,8 @@ const trTR = {
     'updateDaily': 'Günlük güncelleme',
     'lastUpdate': 'Son güncelleme: @time',
     'addTracker': 'İzleyici ekle',
-    'addTrackerHit': 'Lütfen her satıra bir tane olmak üzere izleyici sunucusu bağlantısını girin',
+    'addTrackerHit':
+        'Lütfen her satıra bir tane olmak üzere izleyici sunucusu bağlantısını girin',
     'ui': 'UI',
     'theme': 'Tema',
     'themeSystem': 'Sistem',
@@ -88,5 +90,6 @@ const trTR = {
     'thanks': 'Teşekkürler',
     'thanksDesc':
         'Gopeed topluluğunun oluşmasına ve gelişmesine yardımcı olan tüm katılımcılara teşekkürler!',
+    'browserExtension': 'Tarayıcı Uzantısı',
   },
 };
