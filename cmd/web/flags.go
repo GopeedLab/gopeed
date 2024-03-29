@@ -9,11 +9,12 @@ import (
 )
 
 type args struct {
-	Address  *string `json:"address"`
-	Port     *int    `json:"port"`
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	ApiToken *string `json:"apiToken"`
+	Address    *string `json:"address"`
+	Port       *int    `json:"port"`
+	Username   *string `json:"username"`
+	Password   *string `json:"password"`
+	ApiToken   *string `json:"apiToken"`
+	StorageDir *string `json:"storageDir"`
 
 	configPath *string
 }
@@ -25,6 +26,7 @@ func parse() *args {
 	cliArgs.Username = flag.String("u", "gopeed", "HTTP Basic Auth Username")
 	cliArgs.Password = flag.String("p", "", "HTTP Basic Auth Pwd")
 	cliArgs.ApiToken = flag.String("T", "", "API token, that can only be used when basic authentication is enabled.")
+	cliArgs.StorageDir = flag.String("d", "", "Storage directory")
 	cliArgs.configPath = flag.String("c", "./config.json", "Config file path")
 	flag.Parse()
 
@@ -44,6 +46,9 @@ func parse() *args {
 	}
 	if cfgArgs.ApiToken == nil {
 		cfgArgs.ApiToken = cliArgs.ApiToken
+	}
+	if cfgArgs.StorageDir == nil {
+		cfgArgs.StorageDir = cliArgs.StorageDir
 	}
 	return cfgArgs
 }
