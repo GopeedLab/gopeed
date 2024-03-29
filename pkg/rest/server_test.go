@@ -11,7 +11,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -157,24 +156,20 @@ func TestPauseAndContinueTask(t *testing.T) {
 		Downloader.Listener(func(event *download.Event) {
 			switch event.Key {
 			case download.EventKeyFinally:
-				fmt.Printf("finally: %v\n", event.Err)
 				wg.Done()
 			}
 		})
 
-		log.Print("create task")
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
 		t1 := httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
 		if t1.Status != base.DownloadStatusRunning {
 			t.Errorf("CreateTask() got = %v, want %v", t1.Status, base.DownloadStatusRunning)
 		}
-		log.Print("pause task")
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/"+taskId+"/pause", nil)
 		t2 := httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
 		if t2.Status != base.DownloadStatusPause {
 			t.Errorf("PauseTask() got = %v, want %v", t2.Status, base.DownloadStatusPause)
 		}
-		log.Print("continue task")
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/"+taskId+"/continue", nil)
 		t3 := httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
 		if t3.Status != base.DownloadStatusRunning {
@@ -576,7 +571,7 @@ func doTest(handler func()) {
 		handler()
 	}
 	testFunc(model.StorageMem)
-	//testFunc(model.StorageBolt)
+	testFunc(model.StorageBolt)
 }
 
 func doStart(cfg *model.StartConfig) net.Listener {

@@ -3,7 +3,6 @@ package http
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/controller"
@@ -13,7 +12,6 @@ import (
 	"github.com/xiaoqidun/setft"
 	"golang.org/x/sync/errgroup"
 	"io"
-	"log"
 	"mime"
 	"net/http"
 	"net/http/cookiejar"
@@ -61,10 +59,9 @@ type Fetcher struct {
 	meta   *fetcher.FetcherMeta
 	chunks []*chunk
 
-	file     *os.File
-	fetchCtx context.Context
-	cancel   context.CancelFunc
-	eg       *errgroup.Group
+	file   *os.File
+	cancel context.CancelFunc
+	eg     *errgroup.Group
 }
 
 func (f *Fetcher) Name() string {
@@ -72,7 +69,6 @@ func (f *Fetcher) Name() string {
 }
 
 func (f *Fetcher) Setup(ctl *controller.Controller) {
-	log.Print("http fetcher Setup")
 	f.ctl = ctl
 	f.doneCh = make(chan error, 1)
 	if f.meta == nil {
@@ -89,7 +85,6 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 }
 
 func (f *Fetcher) Resolve(req *base.Request) error {
-	log.Print("http fetcher resolve")
 	if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
 		return err
 	}
@@ -172,8 +167,6 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 }
 
 func (f *Fetcher) Create(opts *base.Options) error {
-	buf, _ := json.Marshal(opts)
-	log.Print("http fetcher Create", string(buf))
 	f.meta.Opts = opts
 
 	if err := base.ParseReqExtra[fhttp.ReqExtra](f.meta.Req); err != nil {
@@ -189,13 +182,10 @@ func (f *Fetcher) Create(opts *base.Options) error {
 	if extra.Connections == 0 {
 		extra.Connections = f.config.Connections
 	}
-	f.fetchCtx, f.cancel = context.WithCancel(context.Background())
-	f.eg, _ = errgroup.WithContext(f.fetchCtx)
 	return nil
 }
 
 func (f *Fetcher) Start() (err error) {
-	log.Print("http fetcher Start")
 	name := f.meta.SingleFilepath()
 	// if file not exist, create it, else open it
 	_, err = os.Stat(name)
@@ -219,13 +209,11 @@ func (f *Fetcher) Start() (err error) {
 }
 
 func (f *Fetcher) Pause() (err error) {
-	log.Print("http fetcher Pause ", f.cancel != nil)
 	if f.cancel != nil {
 		f.cancel()
 		// wait for pause handle complete
 		f.eg.Wait()
 		f.file.Close()
-		log.Print("http fetcher Pause complete")
 	}
 	return
 }
@@ -263,10 +251,13 @@ func (f *Fetcher) Wait() (err error) {
 }
 
 func (f *Fetcher) fetch() {
+	var ctx context.Context
+	ctx, f.cancel = context.WithCancel(context.Background())
+	f.eg, _ = errgroup.WithContext(ctx)
 	for i := 0; i < len(f.chunks); i++ {
 		i := i
 		f.eg.Go(func() error {
-			return f.fetchChunk(i, f.fetchCtx)
+			return f.fetchChunk(i, ctx)
 		})
 	}
 
