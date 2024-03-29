@@ -12,7 +12,7 @@ class Options {
   Options({
     required this.name,
     required this.path,
-    required this.selectFiles,
+    this.selectFiles = const [],
     this.extra,
   });
 

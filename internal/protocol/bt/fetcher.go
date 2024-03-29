@@ -33,6 +33,7 @@ type Fetcher struct {
 	meta    *fetcher.FetcherMeta
 
 	torrentReady atomic.Bool
+	torrentDrop  atomic.Bool
 	create       atomic.Bool
 	progress     fetcher.Progress
 }
@@ -143,6 +144,7 @@ func (f *Fetcher) Pause() (err error) {
 }
 
 func (f *Fetcher) Close() (err error) {
+	f.torrentDrop.Store(false)
 	f.safeDrop()
 	return nil
 }
@@ -158,6 +160,9 @@ func (f *Fetcher) safeDrop() {
 
 func (f *Fetcher) Wait() (err error) {
 	for {
+		if f.torrentDrop.Load() {
+			break
+		}
 		if f.torrentReady.Load() && len(f.meta.Opts.SelectFiles) > 0 {
 			done := true
 			for _, selectIndex := range f.meta.Opts.SelectFiles {
