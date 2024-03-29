@@ -31,6 +31,7 @@ type Task struct {
 	fetcherBuilder fetcher.FetcherBuilder
 	fetcher        fetcher.Fetcher
 	timer          *util.Timer
+	statusLock     *sync.Mutex
 	lock           *sync.Mutex
 	speedArr       []int64
 }
