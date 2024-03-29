@@ -500,16 +500,17 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 		d.lock.Lock()
 		defer d.lock.Unlock()
 
-		if task.fetcher != nil {
-			if err := task.fetcher.Close(); err != nil {
-				return err
-			}
-		}
 		if err := d.storage.Delete(bucketTask, task.ID); err != nil {
 			return err
 		}
 		if err := d.storage.Delete(bucketSave, task.ID); err != nil {
 			return err
+		}
+
+		if task.fetcher != nil {
+			if err := task.fetcher.Close(); err != nil {
+				return err
+			}
 		}
 		if force && task.Meta.Res != nil {
 			if task.Meta.Res.Name != "" {
