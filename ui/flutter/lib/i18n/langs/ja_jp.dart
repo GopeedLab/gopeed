@@ -61,5 +61,6 @@ const jaJP = {
     'newVersionLater': '後で',
     'thanks': '感謝',
     'thanksDesc': 'Gopeedコミュニティの建設に協力してくださったすべての貢献者の方々に感謝します！',
+    'browserExtension': 'ブラウザ拡張機能',
   }
 };

@@ -88,5 +88,6 @@ const enUS = {
     'thanks': 'Thanks',
     'thanksDesc':
         'Thanks to all the contributors who have helped build and develop the Gopeed community!',
+    'browserExtension': 'Browser Extension',
   },
 };
