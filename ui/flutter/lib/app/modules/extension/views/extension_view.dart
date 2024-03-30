@@ -7,21 +7,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/app/views/text_button_loading.dart';
-import '../../../../api/model/update_extension_settings.dart';
-import '../../../../util/mac_secure_util.dart';
-import '../../../../util/message.dart';
 import 'package:path/path.dart' as path;
-import 'package:rounded_loading_button/rounded_loading_button.dart';
+import 'package:rounded_loading_button_plus/rounded_loading_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/extension.dart';
 import '../../../../api/model/install_extension.dart';
 import '../../../../api/model/switch_extension.dart';
+import '../../../../api/model/update_extension_settings.dart';
+import '../../../../util/mac_secure_util.dart';
+import '../../../../util/message.dart';
 import '../../../../util/util.dart';
 import '../../../views/icon_button_loading.dart';
 import '../../../views/responsive_builder.dart';
+import '../../../views/text_button_loading.dart';
 import '../controllers/extension_controller.dart';
 
 class ExtensionView extends GetView<ExtensionController> {
