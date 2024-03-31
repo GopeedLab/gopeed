@@ -42,7 +42,7 @@ const trTR = {
         'Abone olunamadı, lütfen ağı kontrol edin veya daha sonra tekrar deneyin',
     'update': 'Güncelle',
     'updateDaily': 'Günlük olarak güncelle',
-    'lastUpdate': 'Son güncelleme: @time',
+    'lastUpdate': 'Son güncellenme tarihi: @time',
     'addTracker': 'İzleyici ekle',
     'addTrackerHit':
         'Lütfen her satıra bir tane olmak üzere izleyici sunucusu bağlantısını girin',
