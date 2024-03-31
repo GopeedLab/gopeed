@@ -20,7 +20,7 @@ const trTR = {
     'downloadLink': 'İndirme bağlantısı',
     'downloadLinkValid': 'Lütfen indirme bağlantısını girin',
     'downloadLinkHit':
-        'Lütfen indirme bağlantısını girin, HTTP/HTTPS/MAGNET supported@append',
+        'Lütfen indirme bağlantısını girin, HTTP/HTTPS/MAGNET desteklenir@append',
     'downloadLinkHitDesktop':
         ', veya torrent dosyasını doğrudan buraya sürükleyin',
     'download': 'İndir',
