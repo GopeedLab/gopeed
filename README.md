@@ -92,6 +92,10 @@ use `go install`:
 go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
 
+## Browser Extension
+
+Gopeed also provides a browser extension to take over browser downloads, supporting browsers such as Chrome, Edge, Firefox, etc., please refer to: [https://github.com/GopeedLab/browser-extension](https://github.com/GopeedLab/browser-extension)
+
 ## Donate
 
 If you like this project, please consider [donating](https://docs.gopeed.com/donate.html) to support the development of this project, thank you!
