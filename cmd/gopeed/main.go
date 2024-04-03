@@ -65,6 +65,9 @@ var (
 
 func printProgress(task *download.Task, title string) {
 	var rate float64
+	if task.Meta.Res == nil {
+		task = emptyTask
+	}
 	if task.Meta.Res.Size <= 0 {
 		rate = 0
 	} else {
