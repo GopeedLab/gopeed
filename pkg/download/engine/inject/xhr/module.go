@@ -2,9 +2,11 @@ package xhr
 
 import (
 	"bytes"
+	"errors"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/util"
+	urlUtil "github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/dop251/goja"
 	"io"
 	"mime/multipart"
@@ -203,9 +205,7 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 		req.Header.Set(k, v)
 	}
 	transport := &http.Transport{}
-	if xhr.proxyUrl != nil {
-		transport.Proxy = http.ProxyURL(xhr.proxyUrl)
-	}
+	transport.Proxy = urlUtil.ProxyUrlToHandler(xhr.proxyUrl)
 	client := &http.Client{
 		Transport: transport,
 		Timeout:   time.Duration(xhr.Timeout) * time.Millisecond,
@@ -213,7 +213,8 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	resp, err := client.Do(req)
 	if err != nil {
 		// handle timeout error
-		if err, ok := err.(net.Error); ok && err.Timeout() {
+		var ne net.Error
+		if errors.As(err, &ne) && ne.Timeout() {
 			if xhr.Timeout > 0 {
 				xhr.Upload.callOntimeout()
 				xhr.callOntimeout()

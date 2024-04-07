@@ -141,7 +141,8 @@ func (cfg *DownloaderStoreConfig) ProxyUrl() *url.URL {
 }
 
 type DownloaderProxyConfig struct {
-	Enable bool   `json:"enable"`
+	Enable bool `json:"enable"`
+	// Scheme is the proxy scheme, e.g. http, https, socks5, but there is a special scheme "system" that means use system proxy
 	Scheme string `json:"scheme"`
 	Host   string `json:"host"`
 	Usr    string `json:"usr"`
