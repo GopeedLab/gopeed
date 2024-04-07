@@ -10,7 +10,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
-	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -69,9 +68,7 @@ func (f *Fetcher) initClient() (err error) {
 	cfg.Bep20 = fmt.Sprintf("-GP%s-", parseBep20())
 	cfg.ExtendedHandshakeClientVersion = fmt.Sprintf("Gopeed %s", base.Version)
 	cfg.ListenPort = f.config.ListenPort
-	if f.ctl.ProxyUrl != nil {
-		cfg.HTTPProxy = http.ProxyURL(f.ctl.ProxyUrl)
-	}
+	cfg.HTTPProxy = util.ProxyUrlToHandler(f.ctl.ProxyUrl)
 	cfg.DefaultStorage = newFileOpts(newFileClientOpts{
 		ClientBaseDir: cfg.DataDir,
 		HandleFileTorrent: func(infoHash metainfo.Hash, ft *fileTorrentImpl) {

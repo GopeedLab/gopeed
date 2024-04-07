@@ -93,6 +93,11 @@ func TestDownloader_CreateWithProxy(t *testing.T) {
 		proxyCfg.Enable = false
 		return proxyCfg
 	})
+	// System proxy
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+		proxyCfg.Scheme = "system"
+		return proxyCfg
+	})
 	// Invalid proxy scheme
 	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
 		proxyCfg.Scheme = ""
