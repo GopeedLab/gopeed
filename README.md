@@ -53,11 +53,11 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://
         </tr>
         <tr>
             <td><code>DEB</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux.deb">Link</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">Link</a></td>
         </tr>
         <tr>
             <td><code>AppImage</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">Link</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-x86_64.AppImage">Link</a></td>
         </tr>
         <tr>
             <td>Android</td>
