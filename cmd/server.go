@@ -27,7 +27,7 @@ func Start(cfg *model.StartConfig) {
 	if downloadCfg.FirstLoad {
 		// Set default download dir, in docker, it will be ${exe}/Downloads, else it will be ${user}/Downloads
 		var downloadDir string
-		if base.InDocker {
+		if base.InDocker == "true" {
 			downloadDir = filepath.Join(filepath.Dir(cfg.StorageDir), "Downloads")
 		} else {
 			userDir, err := os.UserHomeDir()

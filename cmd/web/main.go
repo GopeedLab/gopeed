@@ -31,11 +31,16 @@ func main() {
 		}
 	}
 
-	exe, err := os.Executable()
-	if err != nil {
-		panic(err)
+	var dir string
+	if args.StorageDir != nil && *args.StorageDir != "" {
+		dir = *args.StorageDir
+	} else {
+		exe, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		dir = filepath.Dir(exe)
 	}
-	dir := filepath.Dir(exe)
 
 	cfg := &model.StartConfig{
 		Network:        "tcp",

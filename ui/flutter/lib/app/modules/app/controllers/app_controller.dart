@@ -274,7 +274,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _toCreate(Uri uri) async {
-    final path = uri.scheme == "magnet"
+    final path = (uri.scheme == "magnet" || uri.scheme == "http" || uri.scheme == "https")
         ? uri.toString()
         : (await toFile(uri.toString())).path;
     await Get.rootDelegate.offAndToNamed(Routes.CREATE, arguments: path);

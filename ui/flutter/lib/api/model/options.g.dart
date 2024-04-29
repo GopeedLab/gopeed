@@ -9,8 +9,10 @@ part of 'options.dart';
 Options _$OptionsFromJson(Map<String, dynamic> json) => Options(
       name: json['name'] as String,
       path: json['path'] as String,
-      selectFiles:
-          (json['selectFiles'] as List<dynamic>).map((e) => e as int).toList(),
+      selectFiles: (json['selectFiles'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toList() ??
+          const [],
       extra: json['extra'],
     );
 
