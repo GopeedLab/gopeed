@@ -6,7 +6,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/util"
-	urlUtil "github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/dop251/goja"
 	"io"
 	"mime/multipart"
@@ -122,7 +121,7 @@ type XMLHttpRequest struct {
 	requestHeaders  map[string]string
 	responseHeaders map[string]string
 	aborted         bool
-	proxyUrl        *url.URL
+	proxyHandler    func(r *http.Request) (*url.URL, error)
 
 	Upload       *XMLHttpRequestUpload `json:"upload"`
 	Timeout      int                   `json:"timeout"`
@@ -204,8 +203,12 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	for k, v := range xhr.requestHeaders {
 		req.Header.Set(k, v)
 	}
-	transport := &http.Transport{}
-	transport.Proxy = urlUtil.ProxyUrlToHandler(xhr.proxyUrl)
+	var transport *http.Transport
+	if xhr.proxyHandler != nil {
+		transport = &http.Transport{
+			Proxy: xhr.proxyHandler,
+		}
+	}
 	client := &http.Client{
 		Transport: transport,
 		Timeout:   time.Duration(xhr.Timeout) * time.Millisecond,
@@ -314,7 +317,7 @@ func (xhr *XMLHttpRequest) parseData(data goja.Value) any {
 	return data.String()
 }
 
-func Enable(runtime *goja.Runtime, proxyUrl *url.URL) error {
+func Enable(runtime *goja.Runtime, proxyHandler func(r *http.Request) (*url.URL, error)) error {
 	progressEvent := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
 		if len(call.Arguments) < 1 {
 			util.ThrowTypeError(runtime, "Failed to construct 'ProgressEvent': 1 argument required, but only 0 present.")
@@ -328,7 +331,7 @@ func Enable(runtime *goja.Runtime, proxyUrl *url.URL) error {
 	})
 	xhr := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
 		instance := &XMLHttpRequest{
-			proxyUrl: proxyUrl,
+			proxyHandler: proxyHandler,
 			Upload: &XMLHttpRequestUpload{
 				EventProp: &EventProp{
 					eventListeners: make(map[string]func(event *ProgressEvent)),

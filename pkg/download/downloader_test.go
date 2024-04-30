@@ -4,6 +4,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -85,42 +86,58 @@ func TestDownloader_Create(t *testing.T) {
 
 func TestDownloader_CreateWithProxy(t *testing.T) {
 	// No proxy
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		return nil
-	})
+	}, nil)
 	// Disable proxy
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		proxyCfg.Enable = false
 		return proxyCfg
-	})
-	// System proxy
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
-		proxyCfg.Scheme = "system"
+	}, nil)
+	// Enable system proxy but not set proxy environment variable
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		proxyCfg.System = true
 		return proxyCfg
+	}, nil)
+	// Enable proxy but error proxy environment variable
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		os.Setenv("HTTP_PROXY", "http://127.0.0.1:1234")
+		os.Setenv("HTTPS_PROXY", "http://127.0.0.1:1234")
+		proxyCfg.System = true
+		return proxyCfg
+	}, func(err error) {
+		if err == nil {
+			t.Fatal("doTestDownloaderCreateWithProxy() got = nil, want error")
+		}
 	})
+	// Enable system proxy and set proxy environment variable
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		os.Setenv("HTTP_PROXY", proxyCfg.ToUrl().String())
+		os.Setenv("HTTPS_PROXY", proxyCfg.ToUrl().String())
+		proxyCfg.System = true
+		return proxyCfg
+	}, nil)
 	// Invalid proxy scheme
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		proxyCfg.Scheme = ""
 		return proxyCfg
-	})
+	}, nil)
 	// Invalid proxy host
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		proxyCfg.Host = ""
 		return proxyCfg
-	})
+	}, nil)
 	// Use proxy without auth
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		return proxyCfg
-	})
+	}, nil)
 	// Use proxy with auth
-	doTestDownloaderCreateWithProxy(t, true, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, true, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		return proxyCfg
-	})
+	}, nil)
 }
 
-func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig) {
-	httpListener := test.StartTestFileServer()
-	defer httpListener.Close()
+func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig, errHandler func(err error)) {
 	usr, pwd := "", ""
 	if auth {
 		usr, pwd = "admin", "123"
@@ -133,7 +150,7 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig f
 		t.Fatal(err)
 	}
 	defer downloader.Clear()
-	downloader.cfg.DownloaderStoreConfig.Proxy = buildProxyConfig(&DownloaderProxyConfig{
+	downloader.cfg.DownloaderStoreConfig.Proxy = buildProxyConfig(&base.DownloaderProxyConfig{
 		Enable: true,
 		Scheme: "socks5",
 		Host:   proxyListener.Addr().String(),
@@ -142,20 +159,24 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig f
 	})
 
 	req := &base.Request{
-		URL: "http://" + httpListener.Addr().String() + "/" + test.BuildName,
+		URL: test.ExternalDownloadUrl,
 	}
 	rr, err := downloader.Resolve(req)
 	if err != nil {
-		t.Fatal(err)
+		if errHandler == nil {
+			t.Fatal(err)
+		}
+		errHandler(err)
+		return
 	}
 	want := &base.Resource{
-		Size:  test.BuildSize,
+		Size:  test.ExternalDownloadSize,
 		Range: true,
 		Files: []*base.FileInfo{
 			{
-				Name: test.BuildName,
+				Name: test.ExternalDownloadName,
 				Path: "",
-				Size: test.BuildSize,
+				Size: test.ExternalDownloadSize,
 			},
 		},
 	}
@@ -290,7 +311,7 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 		t.Errorf("getProtocolConfig() got = %v, want %v", exits, false)
 	}
 
-	storeCfg := &DownloaderStoreConfig{
+	storeCfg := &base.DownloaderStoreConfig{
 		DownloadDir: "./downloads",
 		ProtocolConfig: map[string]any{
 			"http": map[string]any{

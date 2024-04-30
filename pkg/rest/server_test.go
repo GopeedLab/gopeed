@@ -324,7 +324,7 @@ func TestGetTasks(t *testing.T) {
 
 func TestGetAndPutConfig(t *testing.T) {
 	doTest(func() {
-		cfg := httpRequestCheckOk[*download.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
+		cfg := httpRequestCheckOk[*base.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
 		cfg.DownloadDir = "./download"
 		cfg.Extra = map[string]any{
 			"serverConfig": &Config{
@@ -335,7 +335,7 @@ func TestGetAndPutConfig(t *testing.T) {
 		}
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/config", cfg)
 
-		newCfg := httpRequestCheckOk[*download.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
+		newCfg := httpRequestCheckOk[*base.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
 		if !test.JsonEqual(cfg, newCfg) {
 			t.Errorf("GetAndPutConfig() got = %v, want %v", test.ToJson(newCfg), test.ToJson(cfg))
 		}

@@ -1,14 +1,14 @@
 package controller
 
 import (
-	"net/url"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	"os"
 	"path/filepath"
 )
 
 type Controller struct {
-	GetConfig func(v any) bool
-	ProxyUrl  *url.URL
+	GetConfig   func(v any) bool
+	ProxyConfig *base.DownloaderProxyConfig
 	FileController
 	//ContextDialer() (proxy.Dialer, error)
 }

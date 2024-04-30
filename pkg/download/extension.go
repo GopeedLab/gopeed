@@ -199,7 +199,7 @@ func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath st
 		return nil, err
 	}
 	proxyOptions := transport.ProxyOptions{}
-	proxyUrl := d.cfg.ProxyUrl()
+	proxyUrl := d.cfg.DownloaderStoreConfig.Proxy.ToUrl()
 	if proxyUrl != nil {
 		proxyOptions.URL = proxyUrl.Scheme + "://" + proxyUrl.Host
 		proxyOptions.Username = proxyUrl.User.Username()
@@ -341,7 +341,7 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 						req.Labels = make(map[string]string)
 					}
 					engine := engine.NewEngine(&engine.Config{
-						ProxyURL: d.cfg.ProxyUrl(),
+						ProxyConfig: d.cfg.Proxy,
 					})
 					defer engine.Close()
 					err = engine.Runtime.Set("gopeed", gopeed)

@@ -24,6 +24,11 @@ const (
 	Dir       = "./"
 	BuildFile = Dir + BuildName
 
+	ExternalDownloadUrl  = "https://raw.githubusercontent.com/GopeedLab/gopeed/v1.5.6/_docs/img/banner.png"
+	ExternalDownloadName = "banner.png"
+	ExternalDownloadSize = 26416
+	//ExternalDownloadMd5 = "c67c6e3cae79a95342485676571e8a5c"
+
 	DownloadName       = "download.data"
 	DownloadRename     = "download (1).data"
 	DownloadFile       = Dir + DownloadName

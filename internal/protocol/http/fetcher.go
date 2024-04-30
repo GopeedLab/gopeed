@@ -9,7 +9,6 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
-	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/xiaoqidun/setft"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -455,7 +454,7 @@ func (f *Fetcher) buildClient() *http.Client {
 	transport := &http.Transport{}
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)
-	transport.Proxy = util.ProxyUrlToHandler(f.ctl.ProxyUrl)
+	transport.Proxy = f.ctl.ProxyConfig.ToHandler()
 	return &http.Client{
 		Transport: transport,
 		Jar:       jar,
