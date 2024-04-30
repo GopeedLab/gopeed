@@ -142,7 +142,7 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func PutConfig(w http.ResponseWriter, r *http.Request) {
-	var cfg download.DownloaderStoreConfig
+	var cfg base.DownloaderStoreConfig
 	if ReadJson(r, w, &cfg) {
 		if err := Downloader.PutConfig(&cfg); err != nil {
 			WriteJson(w, model.NewErrorResult(err.Error()))
@@ -309,7 +309,7 @@ func writeError(w http.ResponseWriter, msg string) {
 	w.Write([]byte(msg))
 }
 
-func getServerConfig() *download.DownloaderStoreConfig {
+func getServerConfig() *base.DownloaderStoreConfig {
 	cfg, _ := Downloader.GetConfig()
 	return cfg
 }

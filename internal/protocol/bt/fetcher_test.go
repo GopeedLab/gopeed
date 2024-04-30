@@ -114,7 +114,7 @@ func buildConfigFetcher(proxyUrl *url.URL) fetcher.Fetcher {
 		}
 		return true
 	}
-	newController.ProxyUrl = proxyUrl
+	newController.ToUrl = proxyUrl
 	fetcher.Setup(newController)
 	return fetcher
 }

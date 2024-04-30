@@ -68,7 +68,7 @@ func (f *Fetcher) initClient() (err error) {
 	cfg.Bep20 = fmt.Sprintf("-GP%s-", parseBep20())
 	cfg.ExtendedHandshakeClientVersion = fmt.Sprintf("Gopeed %s", base.Version)
 	cfg.ListenPort = f.config.ListenPort
-	cfg.HTTPProxy = util.ProxyUrlToHandler(f.ctl.ProxyUrl)
+	cfg.HTTPProxy = f.ctl.ProxyConfig.ToHandler()
 	cfg.DefaultStorage = newFileOpts(newFileClientOpts{
 		ClientBaseDir: cfg.DataDir,
 		HandleFileTorrent: func(infoHash metainfo.Hash, ft *fileTorrentImpl) {
