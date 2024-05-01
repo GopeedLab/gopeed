@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../api/model/downloader_config.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
@@ -408,29 +409,53 @@ class SettingView extends GetView<SettingController> {
     }
 
     // advanced config proxy items start
+    final proxy = downloaderCfg.value.proxy;
     final buildProxy = _buildConfigItem(
       'proxy',
-      () => downloaderCfg.value.proxy.enable
-          ? '${downloaderCfg.value.proxy.scheme}://${downloaderCfg.value.proxy.host}'
-          : 'notSet'.tr,
+      () {
+        switch (proxy.proxyMode) {
+          case ProxyModeEnum.noProxy:
+            return 'noProxy'.tr;
+          case ProxyModeEnum.systemProxy:
+            return 'systemProxy'.tr;
+          case ProxyModeEnum.customProxy:
+            return '${downloaderCfg.value.proxy.scheme}://${downloaderCfg.value.proxy.host}';
+        }
+      },
       (Key key) {
-        final proxy = downloaderCfg.value.proxy;
+        final mode = SizedBox(
+          width: 150,
+          child: DropdownButtonFormField<ProxyModeEnum>(
+            value: proxy.proxyMode,
+            onChanged: (value) async {
+              if (value != null && value != proxy.proxyMode) {
+                proxy.proxyMode = value;
+                downloaderCfg.update((val) {
+                  val!.proxy = proxy;
+                });
 
-        final switcher = Switch(
-          value: proxy.enable,
-          onChanged: (bool value) async {
-            if (value != proxy.enable) {
-              downloaderCfg.update((val) {
-                val!.proxy.enable = value;
-              });
-
-              await debounceSave();
-            }
-          },
+                await debounceSave();
+              }
+            },
+            items: [
+              DropdownMenuItem<ProxyModeEnum>(
+                value: ProxyModeEnum.noProxy,
+                child: Text('noProxy'.tr),
+              ),
+              DropdownMenuItem<ProxyModeEnum>(
+                value: ProxyModeEnum.systemProxy,
+                child: Text('systemProxy'.tr),
+              ),
+              DropdownMenuItem<ProxyModeEnum>(
+                value: ProxyModeEnum.customProxy,
+                child: Text('customProxy'.tr),
+              ),
+            ],
+          ),
         );
 
         final scheme = SizedBox(
-          width: 100,
+          width: 150,
           child: DropdownButtonFormField<String>(
             value: proxy.scheme,
             onChanged: (value) async {
@@ -478,7 +503,7 @@ class SettingView extends GetView<SettingController> {
 
         ipController.addListener(updateAddress);
         portController.addListener(updateAddress);
-        final server = [
+        final server = Row(children: [
           Flexible(
             child: TextFormField(
               controller: ipController,
@@ -503,12 +528,12 @@ class SettingView extends GetView<SettingController> {
               ],
             ),
           ),
-        ];
+        ]);
 
         final usrController = TextEditingController(text: proxy.usr);
         final pwdController = TextEditingController(text: proxy.pwd);
 
-        final auth = [
+        final auth = Row(children: [
           Flexible(
             child: TextFormField(
               controller: usrController,
@@ -528,20 +553,21 @@ class SettingView extends GetView<SettingController> {
               ),
             ),
           ),
-        ];
+        ]);
+
+        List<Widget> customView() {
+          if (proxy.proxyMode != ProxyModeEnum.customProxy) {
+            return [];
+          }
+          return [scheme, server, auth];
+        }
 
         return Form(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: _addPadding([
-              switcher,
-              scheme,
-              Row(
-                children: server,
-              ),
-              Row(
-                children: auth,
-              ),
+              mode,
+              ...customView(),
             ]),
           ),
         );
@@ -854,6 +880,40 @@ class SettingView extends GetView<SettingController> {
         return 'themeDark'.tr;
       default:
         return 'themeSystem'.tr;
+    }
+  }
+}
+
+enum ProxyModeEnum {
+  noProxy,
+  systemProxy,
+  customProxy,
+}
+
+extension ProxyMode on ProxyConfig {
+  ProxyModeEnum get proxyMode {
+    if (!enable) {
+      return ProxyModeEnum.noProxy;
+    }
+    if (system) {
+      return ProxyModeEnum.systemProxy;
+    }
+    return ProxyModeEnum.customProxy;
+  }
+
+  set proxyMode(ProxyModeEnum value) {
+    switch (value) {
+      case ProxyModeEnum.noProxy:
+        enable = false;
+        break;
+      case ProxyModeEnum.systemProxy:
+        enable = true;
+        system = true;
+        break;
+      case ProxyModeEnum.customProxy:
+        enable = true;
+        system = false;
+        break;
     }
   }
 }

@@ -78,6 +78,7 @@ class ExtraConfig {
 @JsonSerializable()
 class ProxyConfig {
   bool enable;
+  bool system;
   String scheme;
   String host;
   String usr;
@@ -85,6 +86,7 @@ class ProxyConfig {
 
   ProxyConfig({
     this.enable = false,
+    this.system = false,
     this.scheme = '',
     this.host = '',
     this.usr = '',
