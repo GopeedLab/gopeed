@@ -11,7 +11,7 @@ StartConfig _$StartConfigFromJson(Map<String, dynamic> json) => StartConfig()
   ..address = json['address'] as String
   ..storage = json['storage'] as String
   ..storageDir = json['storageDir'] as String
-  ..refreshInterval = json['refreshInterval'] as int
+  ..refreshInterval = (json['refreshInterval'] as num).toInt()
   ..apiToken = json['apiToken'] as String;
 
 Map<String, dynamic> _$StartConfigToJson(StartConfig instance) =>

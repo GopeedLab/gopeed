@@ -168,6 +168,7 @@ func (cfg *DownloaderProxyConfig) ToHandler() func(r *http.Request) (*url.URL, e
 		return nil
 	}
 	if cfg.System {
+		ieproxy.ReloadConf()
 		return ieproxy.GetProxyFunc()
 	}
 	if cfg.Scheme == "" || cfg.Host == "" {
@@ -182,6 +183,7 @@ func (cfg *DownloaderProxyConfig) ToUrl() *url.URL {
 		return nil
 	}
 	if cfg.System {
+		ieproxy.ReloadConf()
 		static := ieproxy.GetConf().Static
 		if static.Active && len(static.Protocols) > 0 {
 			// If only one protocol, use it
