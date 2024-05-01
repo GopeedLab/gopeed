@@ -53,11 +53,11 @@ Gopeed（全稱 Go Speed），是一款使用`Golang`+`Flutter`編寫的高速�
         </tr>
         <tr>
             <td><code>DEB</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">前往</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux.deb">前往</a></td>
         </tr>
         <tr>
             <td><code>AppImage</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-x86_64.AppImage">前往</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">前往</a></td>
         </tr>
         <tr>
             <td>Android</td>

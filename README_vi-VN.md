@@ -53,11 +53,11 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
         </tr>
         <tr>
             <td><code>DEB</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">Liên kết</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux.deb">Liên kết</a></td>
         </tr>
         <tr>
             <td><code>AppImage</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-x86_64.AppImage">Liên kết</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">Liên kết</a></td>
         </tr>
         <tr>
             <td>Android</td>
