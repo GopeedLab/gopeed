@@ -451,10 +451,11 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 }
 
 func (f *Fetcher) buildClient() *http.Client {
-	transport := &http.Transport{}
+	transport := &http.Transport{
+		Proxy: f.ctl.ProxyConfig.ToHandler(),
+	}
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)
-	transport.Proxy = f.ctl.ProxyConfig.ToHandler()
 	return &http.Client{
 		Transport: transport,
 		Jar:       jar,

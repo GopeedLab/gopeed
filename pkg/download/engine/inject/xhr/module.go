@@ -203,11 +203,8 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	for k, v := range xhr.requestHeaders {
 		req.Header.Set(k, v)
 	}
-	var transport *http.Transport
-	if xhr.proxyHandler != nil {
-		transport = &http.Transport{
-			Proxy: xhr.proxyHandler,
-		}
+	transport := &http.Transport{
+		Proxy: xhr.proxyHandler,
 	}
 	client := &http.Client{
 		Transport: transport,
