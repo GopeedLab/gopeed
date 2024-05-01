@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/test"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	gojautil "github.com/GopeedLab/gopeed/pkg/download/engine/util"
-	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/dop251/goja"
 	"io"
 	"net"
@@ -217,8 +217,16 @@ func doTestFetchWithProxy(t *testing.T, usr, pwd string) {
 
 	proxyListener := test.StartSocks5Server(usr, pwd)
 	defer proxyListener.Close()
-
-	engine := NewEngine(&Config{ProxyURL: util.BuildProxyUrl("socks5", proxyListener.Addr().String(), usr, pwd)})
+	engine := NewEngine(&Config{
+		ProxyConfig: &base.DownloaderProxyConfig{
+			Enable: true,
+			System: false,
+			Scheme: "socks5",
+			Host:   proxyListener.Addr().String(),
+			Usr:    usr,
+			Pwd:    pwd,
+		},
+	})
 
 	if _, err := engine.RunString(fmt.Sprintf("var host = 'http://%s';", httpListener.Addr().String())); err != nil {
 		t.Fatal(err)

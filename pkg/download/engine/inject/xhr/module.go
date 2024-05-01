@@ -2,6 +2,7 @@ package xhr
 
 import (
 	"bytes"
+	"errors"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/util"
@@ -120,7 +121,7 @@ type XMLHttpRequest struct {
 	requestHeaders  map[string]string
 	responseHeaders map[string]string
 	aborted         bool
-	proxyUrl        *url.URL
+	proxyHandler    func(r *http.Request) (*url.URL, error)
 
 	Upload       *XMLHttpRequestUpload `json:"upload"`
 	Timeout      int                   `json:"timeout"`
@@ -202,9 +203,8 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	for k, v := range xhr.requestHeaders {
 		req.Header.Set(k, v)
 	}
-	transport := &http.Transport{}
-	if xhr.proxyUrl != nil {
-		transport.Proxy = http.ProxyURL(xhr.proxyUrl)
+	transport := &http.Transport{
+		Proxy: xhr.proxyHandler,
 	}
 	client := &http.Client{
 		Transport: transport,
@@ -213,7 +213,8 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	resp, err := client.Do(req)
 	if err != nil {
 		// handle timeout error
-		if err, ok := err.(net.Error); ok && err.Timeout() {
+		var ne net.Error
+		if errors.As(err, &ne) && ne.Timeout() {
 			if xhr.Timeout > 0 {
 				xhr.Upload.callOntimeout()
 				xhr.callOntimeout()
@@ -313,7 +314,7 @@ func (xhr *XMLHttpRequest) parseData(data goja.Value) any {
 	return data.String()
 }
 
-func Enable(runtime *goja.Runtime, proxyUrl *url.URL) error {
+func Enable(runtime *goja.Runtime, proxyHandler func(r *http.Request) (*url.URL, error)) error {
 	progressEvent := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
 		if len(call.Arguments) < 1 {
 			util.ThrowTypeError(runtime, "Failed to construct 'ProgressEvent': 1 argument required, but only 0 present.")
@@ -327,7 +328,7 @@ func Enable(runtime *goja.Runtime, proxyUrl *url.URL) error {
 	})
 	xhr := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
 		instance := &XMLHttpRequest{
-			proxyUrl: proxyUrl,
+			proxyHandler: proxyHandler,
 			Upload: &XMLHttpRequestUpload{
 				EventProp: &EventProp{
 					eventListeners: make(map[string]func(event *ProgressEvent)),
