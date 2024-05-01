@@ -3,7 +3,10 @@ package base
 import (
 	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/util"
+	"github.com/mattn/go-ieproxy"
 	"golang.org/x/exp/slices"
+	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -127,4 +130,89 @@ func ParseOptsExtra[E any](opts *Options) error {
 	}
 	opts.Extra = &t
 	return nil
+}
+
+// DownloaderStoreConfig is the config that can restore the downloader.
+type DownloaderStoreConfig struct {
+	FirstLoad bool `json:"-"` // FirstLoad is the flag that the config is first time init and not from store
+
+	DownloadDir    string                 `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
+	MaxRunning     int                    `json:"maxRunning"`     // MaxRunning is the max running download count
+	ProtocolConfig map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
+	Extra          map[string]any         `json:"extra"`
+	Proxy          *DownloaderProxyConfig `json:"proxy"`
+}
+
+func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
+	if cfg.MaxRunning == 0 {
+		cfg.MaxRunning = 5
+	}
+	if cfg.Proxy == nil {
+		cfg.Proxy = &DownloaderProxyConfig{}
+	}
+	return cfg
+}
+
+type DownloaderProxyConfig struct {
+	Enable bool `json:"enable"`
+	// System is the flag that use system proxy
+	System bool   `json:"system"`
+	Scheme string `json:"scheme"`
+	Host   string `json:"host"`
+	Usr    string `json:"usr"`
+	Pwd    string `json:"pwd"`
+}
+
+func (cfg *DownloaderProxyConfig) ToHandler() func(r *http.Request) (*url.URL, error) {
+	if cfg == nil || cfg.Enable == false {
+		return nil
+	}
+	if cfg.System {
+		ieproxy.ReloadConf()
+		return ieproxy.GetProxyFunc()
+	}
+	if cfg.Scheme == "" || cfg.Host == "" {
+		return nil
+	}
+	return http.ProxyURL(util.BuildProxyUrl(cfg.Scheme, cfg.Host, cfg.Usr, cfg.Pwd))
+}
+
+// ToUrl returns the proxy url, just for git clone
+func (cfg *DownloaderProxyConfig) ToUrl() *url.URL {
+	if cfg == nil || cfg.Enable == false {
+		return nil
+	}
+	if cfg.System {
+		ieproxy.ReloadConf()
+		static := ieproxy.GetConf().Static
+		if static.Active && len(static.Protocols) > 0 {
+			// If only one protocol, use it
+			if len(static.Protocols) == 1 {
+				for _, v := range static.Protocols {
+					return parseUrlSafe(v)
+				}
+			}
+			// Check https
+			if v, ok := static.Protocols["https"]; ok {
+				return parseUrlSafe(v)
+			}
+			// Check http
+			if v, ok := static.Protocols["http"]; ok {
+				return parseUrlSafe(v)
+			}
+		}
+		return nil
+	}
+	if cfg.Scheme == "" || cfg.Host == "" {
+		return nil
+	}
+	return util.BuildProxyUrl(cfg.Scheme, cfg.Host, cfg.Usr, cfg.Pwd)
+}
+
+func parseUrlSafe(rawUrl string) *url.URL {
+	u, err := url.Parse(rawUrl)
+	if err != nil {
+		return nil
+	}
+	return u
 }
