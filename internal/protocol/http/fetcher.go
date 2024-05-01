@@ -280,10 +280,6 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	chunk := f.chunks[index]
 	chunk.retryTimes = 0
 
-	httpReq, err := f.buildRequest(ctx, f.meta.Req)
-	if err != nil {
-		return err
-	}
 	var (
 		client     = f.buildClient()
 		buf        = make([]byte, 8192)
@@ -314,8 +310,13 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 		}
 
 		var (
-			resp *http.Response
+			httpReq *http.Request
+			resp    *http.Response
 		)
+		httpReq, err = f.buildRequest(ctx, f.meta.Req)
+		if err != nil {
+			return
+		}
 		if f.meta.Res.Range {
 			httpReq.Header.Set(base.HttpHeaderRange,
 				fmt.Sprintf(base.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
