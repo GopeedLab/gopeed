@@ -53,11 +53,11 @@ Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不
         </tr>
         <tr>
             <td><code>DEB</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux.deb">前往</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">前往</a></td>
         </tr>
         <tr>
             <td><code>AppImage</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">前往</a></td>
+            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-x86_64.AppImage">前往</a></td>
         </tr>
         <tr>
             <td>Android</td>
