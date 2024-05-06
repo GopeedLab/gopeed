@@ -98,11 +98,28 @@ class SettingView extends GetView<SettingController> {
     buildBrowserExtension() {
       return ListTile(
           title: Text('browserExtension'.tr),
-          subtitle: const OpenInNew(
-            text: "Chrome",
-            url:
-                "https://chromewebstore.google.com/detail/gopeed/mijpgljlfcapndmchhjffkpckknofcnd",
-          ));
+          subtitle: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              OpenInNew(
+                text: "Chrome",
+                url:
+                    "https://chromewebstore.google.com/detail/gopeed/mijpgljlfcapndmchhjffkpckknofcnd",
+              ),
+              SizedBox(width: 10),
+              OpenInNew(
+                text: "Edge",
+                url:
+                    "https://microsoftedge.microsoft.com/addons/detail/dkajnckekendchdleoaenoophcobooce",
+              ),
+              SizedBox(width: 10),
+              OpenInNew(
+                text: "Firefox",
+                url:
+                    "https://addons.mozilla.org/zh-CN/firefox/addon/gopeed-extension",
+              ),
+            ],
+          ).paddingOnly(top: 5, bottom: 5));
     }
 
     // http config items start
