@@ -29,11 +29,6 @@ class CreateController extends GetxController
     super.onClose();
   }
 
-  void setFileDataUri(Uint8List bytes) {
-    fileDataUri.value =
-        "data:application/x-bittorrent;base64,${base64.encode(bytes)}";
-  }
-
   void clearFileDataUri() {
     fileDataUri.value = "";
   }

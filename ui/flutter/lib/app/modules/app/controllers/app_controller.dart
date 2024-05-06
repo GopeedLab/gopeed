@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:app_links/app_links.dart';
@@ -79,6 +80,11 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
+
+  //url controller turned *global* for usage in Multiple Views
+  final urlController = TextEditingController();
+
+  final fileDataUri = "".obs;
 
   @override
   void onReady() {
@@ -274,7 +280,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _toCreate(Uri uri) async {
-    final path = (uri.scheme == "magnet" || uri.scheme == "http" || uri.scheme == "https")
+    final path = (uri.scheme == "magnet" ||
+            uri.scheme == "http" ||
+            uri.scheme == "https")
         ? uri.toString()
         : (await toFile(uri.toString())).path;
     await Get.rootDelegate.offAndToNamed(Routes.CREATE, arguments: path);
@@ -433,5 +441,10 @@ class AppController extends GetxController with WindowListener, TrayListener {
         address: startConfig.value.address,
         apiToken: startConfig.value.apiToken));
     await putConfig(downloaderConfig.value);
+  }
+
+  void setFileDataUri(Uint8List bytes) {
+    fileDataUri.value =
+        "data:application/x-bittorrent;base64,${base64.encode(bytes)}";
   }
 }

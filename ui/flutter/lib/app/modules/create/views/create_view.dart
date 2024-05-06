@@ -26,7 +26,6 @@ import '../controllers/create_controller.dart';
 class CreateView extends GetView<CreateController> {
   final _confirmFormKey = GlobalKey<FormState>();
 
-  final _urlController = TextEditingController();
   final _renameController = TextEditingController();
   final _connectionsController = TextEditingController();
   final _pathController = TextEditingController();
@@ -54,12 +53,12 @@ class CreateView extends GetView<CreateController> {
     }
 
     final String? filePath = Get.rootDelegate.arguments();
-    if (_urlController.text.isEmpty) {
+    if (appController.urlController.text.isEmpty) {
       if (filePath?.isNotEmpty ?? false) {
         // get file path from route arguments
-        _urlController.text = filePath!;
-        _urlController.selection = TextSelection.fromPosition(
-            TextPosition(offset: _urlController.text.length));
+        appController.urlController.text = filePath!;
+        appController.urlController.selection = TextSelection.fromPosition(
+            TextPosition(offset: appController.urlController.text.length));
       } else {
         // read clipboard
         Clipboard.getData('text/plain').then((value) {
@@ -69,13 +68,14 @@ class CreateView extends GetView<CreateController> {
                     value!.text!.startsWith(e) ||
                     value.text!.startsWith(e.toUpperCase()))
                 .isNotEmpty) {
-              _urlController.text = value!.text!;
-              _urlController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: _urlController.text.length));
+              appController.urlController.text = value!.text!;
+              appController.urlController.selection =
+                  TextSelection.fromPosition(TextPosition(
+                      offset: appController.urlController.text.length));
               return;
             }
 
-            recognizeMagnetUri(value!.text!);
+            recognizeMagnetUri(value!.text!, appController.urlController);
           }
         });
       }
@@ -92,12 +92,12 @@ class CreateView extends GetView<CreateController> {
       body: DropTarget(
         onDragDone: (details) async {
           if (!Util.isWeb()) {
-            _urlController.text = details.files[0].path;
+            appController.urlController.text = details.files[0].path;
             return;
           }
-          _urlController.text = details.files[0].name;
+          appController.urlController.text = details.files[0].name;
           final bytes = await details.files[0].readAsBytes();
-          controller.setFileDataUri(bytes);
+          appController.setFileDataUri(bytes);
         },
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -117,7 +117,7 @@ class CreateView extends GetView<CreateController> {
                       Expanded(
                         child: TextFormField(
                           autofocus: !Util.isMobile(),
-                          controller: _urlController,
+                          controller: appController.urlController,
                           minLines: 1,
                           maxLines: 5,
                           decoration: InputDecoration(
@@ -127,7 +127,7 @@ class CreateView extends GetView<CreateController> {
                             icon: const Icon(Icons.link),
                             suffixIcon: IconButton(
                               onPressed: () {
-                                _urlController.clear();
+                                appController.urlController.clear();
                                 controller.clearFileDataUri();
                               },
                               icon: const Icon(Icons.clear),
@@ -141,7 +141,8 @@ class CreateView extends GetView<CreateController> {
                           onChanged: (v) async {
                             controller.clearFileDataUri();
                             if (controller.oldUrl.value.isEmpty) {
-                              recognizeMagnetUri(v);
+                              recognizeMagnetUri(
+                                  v, appController.urlController);
                             }
                             controller.oldUrl.value = v;
                           },
@@ -155,11 +156,12 @@ class CreateView extends GetView<CreateController> {
                               allowedExtensions: ["torrent"]);
                           if (pr != null) {
                             if (!Util.isWeb()) {
-                              _urlController.text = pr.files[0].path ?? "";
+                              appController.urlController.text =
+                                  pr.files[0].path ?? "";
                               return;
                             }
-                            _urlController.text = pr.files[0].name;
-                            controller.setFileDataUri(pr.files[0].bytes!);
+                            appController.urlController.text = pr.files[0].name;
+                            appController.setFileDataUri(pr.files[0].bytes!);
                           }
                         },
                       ),
@@ -185,7 +187,7 @@ class CreateView extends GetView<CreateController> {
                                         itemBuilder: (context, index) {
                                           return GestureDetector(
                                             onTap: () {
-                                              _urlController.text =
+                                              appController.urlController.text =
                                                   resultOfHistories[index];
                                               Navigator.pop(context);
                                             },
@@ -360,7 +362,8 @@ class CreateView extends GetView<CreateController> {
                               width: 150,
                               child: RoundedLoadingButton(
                                 color: Get.theme.colorScheme.secondary,
-                                onPressed: _doConfirm,
+                                onPressed: futureToVoidConfirm(
+                                    appController.urlController),
                                 controller: _confirmController,
                                 child: Text('confirm'.tr),
                               ),
@@ -380,20 +383,24 @@ class CreateView extends GetView<CreateController> {
   }
 
   // recognize magnet uri, if length == 40, auto add magnet prefix
-  recognizeMagnetUri(String text) {
+  recognizeMagnetUri(String text, TextEditingController urlController) {
     if (text.length != 40) {
       return;
     }
     final exp = RegExp(r"[0-9a-fA-F]+");
     if (exp.hasMatch(text)) {
       final uri = "magnet:?xt=urn:btih:$text";
-      _urlController.text = uri;
-      _urlController.selection = TextSelection.fromPosition(
-          TextPosition(offset: _urlController.text.length));
+      urlController.text = uri;
+      urlController.selection = TextSelection.fromPosition(
+          TextPosition(offset: urlController.text.length));
     }
   }
 
-  Future<void> _doConfirm() async {
+  futureToVoidConfirm(TextEditingController urlController) {
+    _doConfirm(urlController);
+  }
+
+  Future<void> _doConfirm(TextEditingController urlController) async {
     if (controller.isConfirming.value) {
       return;
     }
@@ -403,9 +410,8 @@ class CreateView extends GetView<CreateController> {
       if (_confirmFormKey.currentState!.validate()) {
         final isWebFileChosen =
             Util.isWeb() && controller.fileDataUri.isNotEmpty;
-        final submitUrl = isWebFileChosen
-            ? controller.fileDataUri.value
-            : _urlController.text;
+        final submitUrl =
+            isWebFileChosen ? controller.fileDataUri.value : urlController.text;
 
         final urls = Util.textToLines(submitUrl);
         // Add url to the history
@@ -425,7 +431,8 @@ class CreateView extends GetView<CreateController> {
         if (isDirect) {
           await Future.wait(urls.map((url) {
             return createTask(CreateTask(
-                req: Request(url: url, extra: parseReqExtra(url)),
+                req:
+                    Request(url: url, extra: parseReqExtra(url, urlController)),
                 opt: Options(
                     name: isMultiLine ? "" : _renameController.text,
                     path: _pathController.text,
@@ -436,7 +443,7 @@ class CreateView extends GetView<CreateController> {
         } else {
           final rr = await resolve(Request(
             url: submitUrl,
-            extra: parseReqExtra(_urlController.text),
+            extra: parseReqExtra(urlController.text, urlController),
           ));
           await _showResolveDialog(rr);
         }
@@ -449,10 +456,10 @@ class CreateView extends GetView<CreateController> {
     }
   }
 
-  Object? parseReqExtra(String url) {
+  Object? parseReqExtra(String url, TextEditingController urlController) {
     Object? reqExtra;
     if (controller.showAdvanced.value) {
-      final u = Uri.parse(_urlController.text);
+      final u = Uri.parse(urlController.text);
       if (u.scheme.startsWith("http")) {
         reqExtra = ReqExtraHttp()
           ..header = {
