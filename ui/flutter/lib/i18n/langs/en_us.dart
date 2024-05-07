@@ -58,6 +58,7 @@ const enUS = {
     'apiToken': 'API Token',
     'notSet': 'NS',
     'set': 'SET',
+    'portInUse': 'Port [@port] is in use, please change the port',
     'effectAfterRestart': 'Effect after restart',
     'startAll': 'Start All',
     'pauseAll': 'Pause All',

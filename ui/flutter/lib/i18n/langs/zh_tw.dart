@@ -56,6 +56,7 @@ const zhTW = {
     'apiToken': 'API令牌',
     'notSet': '未設定',
     'set': '已設定',
+    'portInUse': '端口[@port]已被占用，請更換端口',
     'effectAfterRestart': '重啟後生效',
     'startAll': '全部開始',
     'pauseAll': '全部暫停',

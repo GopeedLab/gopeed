@@ -274,7 +274,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _toCreate(Uri uri) async {
-    final path = (uri.scheme == "magnet" || uri.scheme == "http" || uri.scheme == "https")
+    final path = (uri.scheme == "magnet" ||
+            uri.scheme == "http" ||
+            uri.scheme == "https")
         ? uri.toString()
         : (await toFile(uri.toString())).path;
     await Get.rootDelegate.offAndToNamed(Routes.CREATE, arguments: path);
@@ -305,15 +307,16 @@ class AppController extends GetxController with WindowListener, TrayListener {
     return _defaultStartConfig!;
   }
 
-  Future<void> loadStartConfig() async {
+  Future<StartConfig> loadStartConfig() async {
     final defaultCfg = await _initDefaultStartConfig();
     final saveCfg = Database.instance.getStartConfig();
     startConfig.value.network = saveCfg?.network ?? defaultCfg.network;
     startConfig.value.address = saveCfg?.address ?? defaultCfg.address;
     startConfig.value.apiToken = saveCfg?.apiToken ?? defaultCfg.apiToken;
+    return startConfig.value;
   }
 
-  Future<void> loadDownloaderConfig() async {
+  Future<DownloaderConfig> loadDownloaderConfig() async {
     try {
       downloaderConfig.value = await getConfig();
     } catch (e) {
@@ -321,6 +324,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       downloaderConfig.value = DownloaderConfig();
     }
     await _initDownloaderConfig();
+    return downloaderConfig.value;
   }
 
   Future<void> trackerUpdate() async {
