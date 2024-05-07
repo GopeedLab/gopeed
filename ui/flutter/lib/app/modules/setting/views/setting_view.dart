@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../api/model/downloader_config.dart';
+import '../../../../database/database.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
@@ -34,13 +36,22 @@ class SettingView extends GetView<SettingController> {
     final startCfg = appController.startConfig;
 
     Timer? timer;
-    debounceSave({bool needRestart = false}) {
-      var completer = Completer<void>();
+    Future<bool> debounceSave(
+        {Future<String> Function()? check, bool needRestart = false}) {
+      var completer = Completer<bool>();
       timer?.cancel();
-      timer = Timer(const Duration(milliseconds: 1000), () {
+      timer = Timer(const Duration(milliseconds: 1000), () async {
+        if (check != null) {
+          final checkResult = await check();
+          if (checkResult.isNotEmpty) {
+            showErrorMessage(checkResult);
+            completer.complete(false);
+            return;
+          }
+        }
         appController
             .saveConfig()
-            .then(completer.complete)
+            .then((_) => completer.complete(true))
             .onError(completer.completeError);
         if (needRestart) {
           showMessage('tip'.tr, 'effectAfterRestart'.tr);
@@ -639,11 +650,41 @@ class SettingView extends GetView<SettingController> {
           final ipController = TextEditingController(text: ip);
           final portController = TextEditingController(text: port);
           updateAddress() async {
+            if (ipController.text.isEmpty || portController.text.isEmpty) {
+              return;
+            }
             final newAddress = '${ipController.text}:${portController.text}';
             if (newAddress != startCfg.value.address) {
               startCfg.value.address = newAddress;
 
-              await debounceSave(needRestart: true);
+              final saved = await debounceSave(
+                  check: () async {
+                    // Check if address already in use
+                    final configIp = ipController.text;
+                    final configPort = int.parse(portController.text);
+                    if (configPort == 0) {
+                      return '';
+                    }
+                    try {
+                      final socket = await Socket.connect(configIp, configPort,
+                          timeout: const Duration(seconds: 3));
+                      socket.close();
+                      return 'portInUse'
+                          .trParams({'port': configPort.toString()});
+                    } catch (e) {
+                      return '';
+                    }
+                  },
+                  needRestart: true);
+
+              // If save failed, restore the old address
+              if (!saved) {
+                final oldAddress =
+                    (await appController.loadStartConfig()).address;
+                startCfg.update((val) async {
+                  val!.address = oldAddress;
+                });
+              }
             }
           }
 
