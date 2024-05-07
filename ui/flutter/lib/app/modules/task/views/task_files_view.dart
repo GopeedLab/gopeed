@@ -89,7 +89,7 @@ class TaskFilesView extends GetView<TaskFilesController> {
                                         return [
                                           IconButton(
                                               icon:
-                                                  const Icon(Icons.play_circle),
+                                                  const Icon(Icons.open_in_new),
                                               onPressed: () {
                                                 launchUrl(Uri.parse(accessUrl),
                                                     webOnlyWindowName:
@@ -106,12 +106,7 @@ class TaskFilesView extends GetView<TaskFilesController> {
                                         IconButton(
                                             icon: const Icon(Icons.play_circle),
                                             onPressed: () async {
-                                              print(filePath);
-                                              try {
-                                                await OpenFilex.open(filePath);
-                                              } catch (e) {
-                                                print(e);
-                                              }
+                                              await OpenFilex.open(filePath);
                                             }),
                                         IconButton(
                                             icon: const Icon(Icons.share),

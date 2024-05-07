@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/base64"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -50,4 +51,15 @@ func BuildProxyUrl(scheme, host, usr, pwd string) *url.URL {
 		User:   user,
 		Host:   host,
 	}
+}
+
+// ProxyUrlToHandler gets the proxy handler from the proxy url.
+func ProxyUrlToHandler(proxyUrl *url.URL) func(*http.Request) (*url.URL, error) {
+	if proxyUrl == nil {
+		return nil
+	}
+	if proxyUrl.Scheme == "system" {
+		return http.ProxyFromEnvironment
+	}
+	return http.ProxyURL(proxyUrl)
 }
