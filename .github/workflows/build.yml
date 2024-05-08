@@ -136,7 +136,7 @@ jobs:
           overwrite: true
   build-macos-arm64-lib:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
-    runs-on: macos-large
+    runs-on: macos-latest
     needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
