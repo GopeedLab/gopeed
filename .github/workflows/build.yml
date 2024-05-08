@@ -171,7 +171,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Install appdmg
         run: |
-          python3 -m pip install setuptools
+          python3 -m pip install setuptools --break-system-packages
           npm install -g appdmg
       - uses: actions/download-artifact@v3
         with:
