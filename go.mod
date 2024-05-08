@@ -116,3 +116,5 @@ require (
 	modernc.org/sqlite v1.28.0 // indirect
 	zombiezen.com/go/sqlite v1.1.0 // indirect
 )
+
+replace github.com/mattn/go-ieproxy => github.com/GopeedLab/go-ieproxy v0.0.0-20240508024204-7f663e7be65e
