@@ -136,7 +136,7 @@ jobs:
           overwrite: true
   build-macos-arm64-lib:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
-    runs-on: ubuntu-latest
+    runs-on: macos-large
     needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
@@ -147,9 +147,7 @@ jobs:
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
-          go install src.techknowlogick.com/xgo@latest
-          xgo -go go-$GO_VERSION.x --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
-          mv libgopeed-*.dylib libgopeed.dylib
+          go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
       - uses: actions/upload-artifact@v3
         with:
           name: macos-arm64-lib
