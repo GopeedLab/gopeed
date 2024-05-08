@@ -381,7 +381,7 @@ jobs:
           gomobile init
           gomobile bind -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
-          flutter build ios --no-codesign
+          flutter build ios --no-codesign -v
           mkdir Payload
           cp -r build/ios/iphoneos/Runner.app Payload
           zip -r -y Payload.zip Payload/Runner.app
