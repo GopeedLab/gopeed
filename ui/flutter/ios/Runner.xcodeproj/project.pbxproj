@@ -13,6 +13,7 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		B44F54F47E581A39546303C9 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 029EF293EAA92EB3D18BBF19 /* libresolv.tbd */; };
 		D081C25C294826C0006EB10B /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D081C25B294826C0006EB10B /* libc++.tbd */; };
 		D0E623A929482D160001185E /* Libgopeed.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0E623A729482D030001185E /* Libgopeed.xcframework */; };
 		D0E623AA29482D160001185E /* Libgopeed.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D0E623A729482D030001185E /* Libgopeed.xcframework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -34,6 +35,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		029EF293EAA92EB3D18BBF19 /* libresolv.tbd */ = {isa = PBXFileReference; includeInIndex = 1; name = libresolv.tbd; path = usr/lib/libresolv.tbd; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		25B61E78A388C87913468FD6 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
@@ -63,6 +65,7 @@
 				D0E623A929482D160001185E /* Libgopeed.xcframework in Frameworks */,
 				D081C25C294826C0006EB10B /* libc++.tbd in Frameworks */,
 				DCA5B0FA95A8007ADEDACA1B /* Pods_Runner.framework in Frameworks */,
+				B44F54F47E581A39546303C9 /* libresolv.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -130,6 +133,7 @@
 				D0E623A729482D030001185E /* Libgopeed.xcframework */,
 				D081C25B294826C0006EB10B /* libc++.tbd */,
 				70BC8D37FAC641C7F20125E8 /* Pods_Runner.framework */,
+				029EF293EAA92EB3D18BBF19 /* libresolv.tbd */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

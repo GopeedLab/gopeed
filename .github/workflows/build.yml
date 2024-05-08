@@ -136,7 +136,7 @@ jobs:
           overwrite: true
   build-macos-arm64-lib:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
@@ -147,16 +147,14 @@ jobs:
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
-          go install src.techknowlogick.com/xgo@latest
-          xgo -go go-$GO_VERSION.x --targets=darwin/arm64 -tags="nosqlite" -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -pkg=bind/desktop -out=libgopeed .
-          mv libgopeed-*.dylib libgopeed.dylib
+          go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
       - uses: actions/upload-artifact@v3
         with:
           name: macos-arm64-lib
           path: libgopeed.dylib
   build-macos:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
-    runs-on: macos-latest
+    runs-on: macos-13
     needs: [ get-release, build-macos-arm64-lib ]
     steps:
       - uses: actions/checkout@v3
@@ -171,7 +169,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Install appdmg
         run: |
-          python3 -m pip install setuptools
+          python3 -m pip install setuptools --break-system-packages
           npm install -g appdmg
       - uses: actions/download-artifact@v3
         with:
@@ -381,7 +379,7 @@ jobs:
           go install golang.org/x/mobile/cmd/gomobile@latest
           go get golang.org/x/mobile/bind
           gomobile init
-          gomobile bind -tags nosqlite,netgo -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+          gomobile bind -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
           flutter build ios --no-codesign
           mkdir Payload
