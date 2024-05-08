@@ -376,10 +376,30 @@ jobs:
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
+          gem install xcodeproj
+          cat <<EOF > temp.rb
+          require 'xcodeproj'
+          project_path = 'ui/flutter/ios/Runner.xcodeproj/project.pbxproj'
+          project = Xcodeproj::Project.open(project_path)
+          target = project.targets.first
+          
+          # 添加系统库
+          lib_name = 'libresolv.tbd'
+          framework = 'usr/lib/' + lib_name
+          target.frameworks_build_phase.add_file_reference(project.frameworks_group.new_file(framework))
+          
+          project.save
+          EOF
+          ruby temp.rb
+          
+          echo "==========edit project.pbxproj============"
+          cat ui/flutter/ios/Runner.xcodeproj/project.pbxproj
+          echo "==========edit project.pbxproj============"
+          
           go install golang.org/x/mobile/cmd/gomobile@latest
           go get golang.org/x/mobile/bind
           gomobile init
-          gomobile bind -tags nosqlite -ldflags='-w -s -extldflags "-lresolv" -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION' -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+          gomobile bind -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
           flutter build ios --no-codesign
           mkdir Payload
