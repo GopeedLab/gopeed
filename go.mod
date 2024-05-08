@@ -117,4 +117,4 @@ require (
 	zombiezen.com/go/sqlite v1.1.0 // indirect
 )
 
-replace github.com/mattn/go-ieproxy => github.com/GopeedLab/go-ieproxy v0.0.0-20240508032124-d18aee1b071f
+replace github.com/mattn/go-ieproxy => github.com/GopeedLab/go-ieproxy v0.0.0-20240508033154-86b7091da074

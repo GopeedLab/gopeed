@@ -11,6 +11,7 @@ github.com/GopeedLab/go-ieproxy v0.0.0-20240508024204-7f663e7be65e h1:Rx+vwCJ1ln
 github.com/GopeedLab/go-ieproxy v0.0.0-20240508024204-7f663e7be65e/go.mod h1:/NsJd+kxZBmjMc5hrJCKMbP57B84rvq9BiDRbtO9AS0=
 github.com/GopeedLab/go-ieproxy v0.0.0-20240508030358-70b34a37729d/go.mod h1:/NsJd+kxZBmjMc5hrJCKMbP57B84rvq9BiDRbtO9AS0=
 github.com/GopeedLab/go-ieproxy v0.0.0-20240508032124-d18aee1b071f/go.mod h1:/NsJd+kxZBmjMc5hrJCKMbP57B84rvq9BiDRbtO9AS0=
+github.com/GopeedLab/go-ieproxy v0.0.0-20240508033154-86b7091da074/go.mod h1:/NsJd+kxZBmjMc5hrJCKMbP57B84rvq9BiDRbtO9AS0=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
 github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migciow=
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
