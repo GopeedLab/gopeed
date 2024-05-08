@@ -379,7 +379,7 @@ jobs:
           gem install xcodeproj
           cat <<EOF > temp.rb
           require 'xcodeproj'
-          project_path = 'ui/flutter/ios/Runner.xcodeproj/project.pbxproj'
+          project_path = 'ui/flutter/ios/Runner.xcodeproj'
           project = Xcodeproj::Project.open(project_path)
           target = project.targets.first
           
