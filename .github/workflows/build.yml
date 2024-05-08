@@ -154,7 +154,7 @@ jobs:
           path: libgopeed.dylib
   build-macos:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
-    runs-on: macos-latest-large
+    runs-on: macos-13
     needs: [ get-release, build-macos-arm64-lib ]
     steps:
       - uses: actions/checkout@v3
