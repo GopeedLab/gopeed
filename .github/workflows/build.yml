@@ -381,7 +381,7 @@ jobs:
           go install golang.org/x/mobile/cmd/gomobile@latest
           go get golang.org/x/mobile/bind
           gomobile init
-          gomobile bind -tags nosqlite,netgo -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+          gomobile bind -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
           flutter build ios --no-codesign
           mkdir Payload
