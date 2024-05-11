@@ -50,6 +50,12 @@ Future<void> init() async {
 
   initLogger();
 
+  try {
+    await initPackageInfo();
+  } catch (e) {
+    logger.e("init package info fail", e);
+  }
+
   final controller = Get.put(AppController());
   try {
     await controller.loadStartConfig();
@@ -80,12 +86,6 @@ Future<void> init() async {
     MacSecureUtil.loadBookmark();
   } catch (e) {
     logger.e("load config fail", e);
-  }
-
-  try {
-    await initPackageInfo();
-  } catch (e) {
-    logger.e("init package info fail", e);
   }
 }
 

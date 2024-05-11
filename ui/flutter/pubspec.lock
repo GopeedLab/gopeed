@@ -493,6 +493,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.7.1"
+  launch_at_startup:
+    dependency: "direct main"
+    description:
+      name: launch_at_startup
+      sha256: "93fc5638e088290004fae358bae691486673d469957d461d9dae5b12248593eb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.2"
   lecle_downloads_path_provider:
     dependency: "direct main"
     description:
@@ -1130,6 +1138,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.4"
+  win32_registry:
+    dependency: transitive
+    description:
+      name: win32_registry
+      sha256: "1c52f994bdccb77103a6231ad4ea331a244dbcef5d1f37d8462f713143b0bfae"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   window_manager:
     dependency: "direct main"
     description:
