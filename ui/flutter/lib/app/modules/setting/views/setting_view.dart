@@ -13,6 +13,7 @@ import '../../../../api/model/downloader_config.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
+import '../../../../util/log_util.dart';
 import '../../../../util/message.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
@@ -130,31 +131,35 @@ class SettingView extends GetView<SettingController> {
                     "https://addons.mozilla.org/zh-CN/firefox/addon/gopeed-extension",
               ),
             ],
-          ).paddingOnly(top: 5, bottom: 5));
+          ).paddingOnly(top: 5));
     }
 
-    final buildAutoStartup = _buildConfigItem('autoStartup', () {
-      return appController.autoStartup.value ? 'on'.tr : 'off'.tr;
-    }, (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value: appController.autoStartup.value,
-          onChanged: (bool value) async {
-            try {
-              if (value) {
-                await launchAtStartup.enable();
-              } else {
-                await launchAtStartup.disable();
-              }
-              appController.autoStartup.value = value;
-            } catch (e) {
-              showErrorMessage('autoStartupFail'.tr);
-            }
-          },
-        ),
-      );
-    });
+    // Currently auto startup only support Windows and Linux
+    final buildAutoStartup = !Util.isWindows() && !Util.isLinux()
+        ? () => null
+        : _buildConfigItem('launchAtStartup'.tr, () {
+            return appController.autoStartup.value ? 'on'.tr : 'off'.tr;
+          }, (Key key) {
+            return Container(
+              alignment: Alignment.centerLeft,
+              child: Switch(
+                value: appController.autoStartup.value,
+                onChanged: (bool value) async {
+                  try {
+                    if (value) {
+                      await launchAtStartup.enable();
+                    } else {
+                      await launchAtStartup.disable();
+                    }
+                    appController.autoStartup.value = value;
+                  } catch (e) {
+                    showErrorMessage(e);
+                    logger.e('launchAtStartup fail', e);
+                  }
+                },
+              ),
+            );
+          });
 
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;

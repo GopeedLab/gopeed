@@ -7,7 +7,6 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/database/entity.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:lecle_downloads_path_provider/lecle_downloads_path_provider.dart';
 import 'package:path_provider/path_provider.dart';
@@ -20,7 +19,9 @@ import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../database/database.dart';
+import '../../../../database/entity.dart';
 import '../../../../i18n/message.dart';
+import '../../../../main.dart';
 import '../../../../util/locale_manager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
@@ -118,6 +119,12 @@ class AppController extends GetxController with WindowListener, TrayListener {
     if (isPreventClose) {
       windowManager.hide();
     }
+  }
+
+  // According to the system_manager document, make sure to call setState once on the onWindowFocus event.
+  @override
+  void onWindowFocus() {
+    refresh();
   }
 
   @override
@@ -442,9 +449,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
       return;
     }
     launchAtStartup.setup(
-      appName: packageInfo.appName,
-      appPath: Platform.resolvedExecutable,
-    );
+        appName: packageInfo.appName,
+        appPath: Platform.resolvedExecutable,
+        args: ['--${Args.flagHidden}']);
     autoStartup.value = await launchAtStartup.isEnabled();
   }
 

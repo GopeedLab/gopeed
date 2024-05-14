@@ -1,3 +1,4 @@
+import 'package:args/args.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
@@ -17,14 +18,28 @@ import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
 import 'util/util.dart';
 
-void main() async {
-  await init();
+class Args {
+  static const flagHidden = "hidden";
+
+  bool hidden = false;
+
+  Args.parse(List<String> args) {
+    final parser = ArgParser();
+    parser.addFlag(flagHidden);
+    final results = parser.parse(args);
+    hidden = results.flag(flagHidden);
+  }
+}
+
+void main(List<String> arguments) async {
+  final args = Args.parse(arguments);
+  await init(args);
   onStart();
 
   runApp(const AppView());
 }
 
-Future<void> init() async {
+Future<void> init(Args args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await Util.initStorageDir();
   await Database.instance.init();
@@ -37,8 +52,10 @@ Future<void> init() async {
       skipTaskbar: false,
     );
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
+      if (!args.hidden) {
+        await windowManager.show();
+        await windowManager.focus();
+      }
       await windowManager.setPreventClose(true);
       // windows_manager has a bug where when window to be maximized, it will be unmaximized immediately, so can't implement this feature currently.
       // https://github.com/leanflutter/window_manager/issues/412

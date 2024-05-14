@@ -93,5 +93,6 @@ const enUS = {
     'thanksDesc':
         'Thanks to all the contributors who have helped build and develop the Gopeed community!',
     'browserExtension': 'Browser Extension',
+    'launchAtStartup': 'Launch at Startup',
   },
 };
