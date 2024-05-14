@@ -90,5 +90,6 @@ const zhCN = {
     'thanks': '鸣谢',
     'thanksDesc': '感谢所有为 Gopeed 社区建设添砖加瓦的贡献者们！',
     'browserExtension': '浏览器扩展',
+    'launchAtStartup': '开机自动运行',
   }
 };
