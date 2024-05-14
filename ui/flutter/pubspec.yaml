@@ -64,6 +64,8 @@ dependencies:
   tray_manager: ^0.2.1
   lecle_downloads_path_provider: ^0.0.2+8
   hive: ^2.2.3
+  launch_at_startup: ^0.2.2
+  args: ^2.5.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
