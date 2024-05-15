@@ -23,5 +23,6 @@ class _Messages extends Translations {
         ...jaJP,
         ...viVN,
         ...trTR,
+        ...plPL,
       };
 }
