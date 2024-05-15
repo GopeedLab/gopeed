@@ -60,6 +60,7 @@ const enUS = {
     'set': 'SET',
     'portInUse': 'Port [@port] is in use, please change the port',
     'effectAfterRestart': 'Effect after restart',
+    'show': 'Show',
     'startAll': 'Start All',
     'pauseAll': 'Pause All',
     'deleteTask': 'Delete Task',
