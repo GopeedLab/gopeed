@@ -199,13 +199,19 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
     final menu = Menu(items: [
       MenuItem(
+        label: "show".tr,
+        onClick: (menuItem) async => {
+          await windowManager.show(),
+        },
+      ),
+      MenuItem.separator(),
+      MenuItem(
         label: "create".tr,
         onClick: (menuItem) async => {
           await windowManager.show(),
           await Get.rootDelegate.offAndToNamed(Routes.CREATE),
         },
       ),
-      MenuItem.separator(),
       MenuItem(
         label: "startAll".tr,
         onClick: (menuItem) async => {continueAllTasks()},
