@@ -1,5 +1,5 @@
-const pl_PL = {
-  'en_US': {
+const plPL = {
+  'pl_PL': {
     'label': 'Polski',
     'error': 'Błąd',
     'tip': 'Tip',
@@ -37,8 +37,7 @@ const pl_PL = {
     'maxRunning': 'Maksymalna liczba zadań',
     'items': '@count items',
     'subscribeTracker': 'Subskrybuj tracker',
-    'subscribeFail':
-        'Błąd subskrypcji, sprawdź łączność z internetem',
+    'subscribeFail': 'Błąd subskrypcji, sprawdź łączność z internetem',
     'update': 'Aktualizacja',
     'updateDaily': 'Aktualizuj codziennie',
     'lastUpdate': 'Ostatnia aktualizacja: @time',
