@@ -1,4 +1,4 @@
-const plPL = {
+const pl_PL = {
   'en_US': {
     'label': 'Polski',
     'error': 'Błąd',
