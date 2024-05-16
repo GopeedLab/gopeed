@@ -84,6 +84,41 @@ func TestDownloader_Create(t *testing.T) {
 	}
 }
 
+func TestDownloader_CreateDirectBatch(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	reqs := make([]*base.Request, 0)
+	for i := 0; i < 6; i++ {
+		req := &base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}
+		reqs = append(reqs, req)
+	}
+
+	_, err := downloader.CreateDirectBatch(reqs, &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tasks := downloader.GetTasks()
+	if len(tasks) != len(reqs) {
+		t.Errorf("CreateDirectBatch() got = %v, want %v", len(tasks), len(reqs))
+	}
+}
+
 func TestDownloader_CreateWithProxy(t *testing.T) {
 	// No proxy
 	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
