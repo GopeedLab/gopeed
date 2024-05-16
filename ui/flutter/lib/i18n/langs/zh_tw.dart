@@ -58,6 +58,7 @@ const zhTW = {
     'set': '已設定',
     'portInUse': '端口[@port]已被占用，請更換端口',
     'effectAfterRestart': '重啟後生效',
+    'show': '顯示',
     'startAll': '全部開始',
     'pauseAll': '全部暫停',
     'deleteTask': '刪除任務',
