@@ -1,13 +1,14 @@
 import 'package:get/get.dart';
-import 'package:gopeed/i18n/langs/fa_ir.dart';
-import 'package:gopeed/i18n/langs/ja_jp.dart';
-import 'package:gopeed/i18n/langs/zh_tw.dart';
 
 import 'langs/en_us.dart';
+import 'langs/fa_ir.dart';
+import 'langs/ja_jp.dart';
+import 'langs/pl_pl.dart';
 import 'langs/ru_ru.dart';
-import 'langs/zh_cn.dart';
-import 'langs/vi_vn.dart';
 import 'langs/tr_tr.dart';
+import 'langs/vi_vn.dart';
+import 'langs/zh_cn.dart';
+import 'langs/zh_tw.dart';
 
 final messages = _Messages();
 
@@ -23,5 +24,6 @@ class _Messages extends Translations {
         ...jaJP,
         ...viVN,
         ...trTR,
+        ...plPL,
       };
 }
