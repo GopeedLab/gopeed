@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
-import 'package:lecle_downloads_path_provider/lecle_downloads_path_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:uri_to_file/uri_to_file.dart';
@@ -436,12 +435,8 @@ class AppController extends GetxController with WindowListener, TrayListener {
       if (Util.isDesktop()) {
         config.downloadDir = (await getDownloadsDirectory())?.path ?? "./";
       } else if (Util.isAndroid()) {
-        final downloadDir = (await DownloadsPath.downloadsDirectory())?.path;
-        if (downloadDir != null) {
-          config.downloadDir = '$downloadDir/Gopeed';
-        } else {
-          config.downloadDir = (await getApplicationDocumentsDirectory()).path;
-        }
+        config.downloadDir = (await getExternalStorageDirectory())?.path ??
+            (await getApplicationDocumentsDirectory()).path;
       } else if (Util.isIOS()) {
         config.downloadDir = (await getApplicationDocumentsDirectory()).path;
       } else {
