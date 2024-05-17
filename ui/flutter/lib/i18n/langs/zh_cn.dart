@@ -58,6 +58,7 @@ const zhCN = {
     'set': '已设置',
     'portInUse': '端口[@port]已被占用，请更换端口',
     'effectAfterRestart': '此配置项将在重启应用后生效',
+    'show': '显示',
     'startAll': '全部开始',
     'pauseAll': '全部暂停',
     'deleteTask': '删除任务',
@@ -90,5 +91,6 @@ const zhCN = {
     'thanks': '鸣谢',
     'thanksDesc': '感谢所有为 Gopeed 社区建设添砖加瓦的贡献者们！',
     'browserExtension': '浏览器扩展',
+    'launchAtStartup': '开机自动运行',
   }
 };

@@ -34,9 +34,9 @@ const _$StatusEnumMap = {
 };
 
 Progress _$ProgressFromJson(Map<String, dynamic> json) => Progress(
-      used: (json['used'] as num).toInt(),
-      speed: (json['speed'] as num).toInt(),
-      downloaded: (json['downloaded'] as num).toInt(),
+      used: json['used'] as int,
+      speed: json['speed'] as int,
+      downloaded: json['downloaded'] as int,
     );
 
 Map<String, dynamic> _$ProgressToJson(Progress instance) => <String, dynamic>{

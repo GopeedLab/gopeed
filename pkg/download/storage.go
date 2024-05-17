@@ -69,7 +69,9 @@ func (n *MemStorage) Setup(buckets []string) error {
 func (n *MemStorage) Put(bucket string, key string, v any) error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	memData[bucket][key] = v
+	if bucketData, ok := memData[bucket]; ok {
+		bucketData[key] = v
+	}
 	return nil
 }
 
