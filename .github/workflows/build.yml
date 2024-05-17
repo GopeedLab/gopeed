@@ -305,9 +305,32 @@ jobs:
               slots:
                 - dbus-gopeed
           parts:
+            flutter-git:
+              source: https://github.com/flutter/flutter.git
+              source-tag: $FLUTTER_VERSION
+              source-depth: 1
+              plugin: nil
+              override-build: |
+                mkdir -p \$CRAFT_PART_INSTALL/usr/bin
+                mkdir -p \$CRAFT_PART_INSTALL/usr/libexec
+                cp -r \$CRAFT_PART_SRC \$CRAFT_PART_INSTALL/usr/libexec/flutter
+                ln -s \$CRAFT_PART_INSTALL/usr/libexec/flutter/bin/flutter \$CRAFT_PART_INSTALL/usr/bin/flutter
+                ln -s \$SNAPCRAFT_PART_INSTALL/usr/libexec/flutter/bin/dart \$SNAPCRAFT_PART_INSTALL/usr/bin/dart
+                \$CRAFT_PART_INSTALL/usr/bin/flutter doctor
+              build-packages:
+                - clang
+                - cmake
+                - curl
+                - libgtk-3-dev
+                - ninja-build
+                - unzip
+                - xz-utils
+                - zip
+              override-prime: ''
             gopeed:
+              after: [flutter-git]
               source: .
-              plugin: flutter
+              plugin: nil
               stage-packages:
                 - libgtk-3-dev
                 - libappindicator3-dev
