@@ -339,7 +339,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     try {
       downloaderConfig.value = await getConfig();
     } catch (e) {
-      logger.w("load downloader config fail", e);
+      logger.w("load downloader config fail", e, StackTrace.current);
       downloaderConfig.value = DownloaderConfig();
     }
     await _initDownloaderConfig();
