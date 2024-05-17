@@ -295,7 +295,7 @@ jobs:
           
           apps:
             gopeed:
-              command: gopeed
+              command: bin/gopeed
               extensions: [gnome]
               plugs:
                 - network
