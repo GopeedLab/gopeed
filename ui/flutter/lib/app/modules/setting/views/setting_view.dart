@@ -79,6 +79,7 @@ class SettingView extends GetView<SettingController> {
       return DirectorySelector(
         controller: downloadDirController,
         showLabel: false,
+        showAndoirdToggle: true,
       );
     });
     final buildMaxRunning = _buildConfigItem(
