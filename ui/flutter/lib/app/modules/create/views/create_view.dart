@@ -17,6 +17,7 @@ import '../../../../util/input_formatter.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
+import '../../../views/compact_checkbox.dart';
 import '../../../views/directory_selector.dart';
 import '../../../views/file_list_view.dart';
 import '../../app/controllers/app_controller.dart';
@@ -321,23 +322,13 @@ class CreateView extends GetView<CreateController> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                TextButton(
-                                  onPressed: () {
-                                    controller.directDownload.value =
-                                        !controller.directDownload.value;
-                                  },
-                                  child: Row(children: [
-                                    Obx(() => Checkbox(
-                                          value:
-                                              controller.directDownload.value,
-                                          onChanged: (bool? value) {
-                                            controller.directDownload.value =
-                                                value ?? false;
-                                          },
-                                        )),
-                                    Text('directDownload'.tr),
-                                  ]),
-                                ),
+                                CompactCheckbox(
+                                    label: 'directDownload'.tr,
+                                    value: controller.directDownload.value,
+                                    onChanged: (bool? value) {
+                                      controller.directDownload.value =
+                                          value ?? false;
+                                    }),
                                 TextButton(
                                   onPressed: () {
                                     controller.showAdvanced.value =
@@ -415,7 +406,7 @@ class CreateView extends GetView<CreateController> {
           }
         }
 
-        /* 
+        /*
         Check if is direct download, there has two ways to direct download
         1. Direct download option is checked
         2. Muli line urls
