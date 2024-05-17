@@ -301,6 +301,18 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	return d.doCreate(fetcher, opts)
 }
 
+func (d *Downloader) CreateDirectBatch(reqs []*base.Request, opts *base.Options) (taskId []string, err error) {
+	taskIds := make([]string, 0)
+	for _, req := range reqs {
+		taskId, err := d.CreateDirect(req, opts)
+		if err != nil {
+			return nil, err
+		}
+		taskIds = append(taskIds, taskId)
+	}
+	return taskIds, nil
+}
+
 func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err error) {
 	d.fetcherMapLock.RLock()
 	fetcher, ok := d.fetcherCache[rrId]
