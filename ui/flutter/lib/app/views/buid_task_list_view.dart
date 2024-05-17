@@ -12,6 +12,7 @@ import '../../util/file_icon.dart';
 import '../../util/icons.dart';
 import '../../util/message.dart';
 import '../../util/util.dart';
+import '../modules/app/controllers/app_controller.dart';
 import '../routes/app_pages.dart';
 
 class BuildTaskListView extends GetView {
@@ -73,7 +74,7 @@ class BuildTaskListView extends GetView {
     }
 
     Future<void> showDeleteDialog(String id) {
-      final keep = true.obs;
+      final appController = Get.find<AppController>();
 
       final context = Get.context!;
 
@@ -83,11 +84,14 @@ class BuildTaskListView extends GetView {
           builder: (_) => AlertDialog(
                 title: Text('deleteTask'.tr),
                 content: Obx(() => CheckboxListTile(
-                    value: keep.value,
+                    value: appController
+                        .downloaderConfig.value.extra.lastDeleteTaskKeep,
                     title: Text('deleteTaskTip'.tr,
                         style: context.textTheme.bodyLarge),
                     onChanged: (v) {
-                      keep.value = v!;
+                      appController.downloaderConfig.update((val) {
+                        val!.extra.lastDeleteTaskKeep = v!;
+                      });
                     })),
                 actions: [
                   TextButton(
@@ -101,7 +105,10 @@ class BuildTaskListView extends GetView {
                     ),
                     onPressed: () async {
                       try {
-                        await deleteTask(id, !keep.value);
+                        final force = !appController
+                            .downloaderConfig.value.extra.lastDeleteTaskKeep;
+                        await appController.saveConfig();
+                        await deleteTask(id, force);
                         Get.back();
                       } catch (e) {
                         showErrorMessage(e);

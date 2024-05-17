@@ -9,7 +9,7 @@ part of 'downloader_config.dart';
 DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
     DownloaderConfig(
       downloadDir: json['downloadDir'] as String? ?? '',
-      maxRunning: (json['maxRunning'] as num?)?.toInt() ?? 0,
+      maxRunning: json['maxRunning'] as int? ?? 0,
     )
       ..protocolConfig = ProtocolConfig.fromJson(
           json['protocolConfig'] as Map<String, dynamic>?)
@@ -39,7 +39,7 @@ Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) =>
 HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
       userAgent: json['userAgent'] as String? ??
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
-      connections: (json['connections'] as num?)?.toInt() ?? 16,
+      connections: json['connections'] as int? ?? 16,
       useServerCtime: json['useServerCtime'] as bool? ?? false,
     );
 
@@ -51,7 +51,7 @@ Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
     };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig()
-  ..listenPort = (json['listenPort'] as num).toInt()
+  ..listenPort = json['listenPort'] as int
   ..trackers =
       (json['trackers'] as List<dynamic>).map((e) => e as String).toList();
 
@@ -60,15 +60,17 @@ Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
       'trackers': instance.trackers,
     };
 
-ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig()
-  ..themeMode = json['themeMode'] as String
-  ..locale = json['locale'] as String
-  ..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>);
+ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
+      themeMode: json['themeMode'] as String? ?? '',
+      locale: json['locale'] as String? ?? '',
+      lastDeleteTaskKeep: json['lastDeleteTaskKeep'] as bool? ?? false,
+    )..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>);
 
 Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
     <String, dynamic>{
       'themeMode': instance.themeMode,
       'locale': instance.locale,
+      'lastDeleteTaskKeep': instance.lastDeleteTaskKeep,
       'bt': instance.bt.toJson(),
     };
 

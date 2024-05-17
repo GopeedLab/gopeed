@@ -11,7 +11,7 @@ Result<T> _$ResultFromJson<T>(
   T Function(Object? json) fromJsonT,
 ) =>
     Result<T>(
-      code: (json['code'] as num).toInt(),
+      code: json['code'] as int,
       msg: json['msg'] as String?,
       data: _$nullableGenericFromJson(json['data'], fromJsonT),
     );
