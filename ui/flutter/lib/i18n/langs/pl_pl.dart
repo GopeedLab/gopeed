@@ -20,10 +20,10 @@ const plPL = {
     'downloadLink': 'Pobierz z linku',
     'downloadLinkValid': 'Otwórz link pobierania',
     'downloadLinkHit':
-        'Otwórz link pobierania, HTTP/HTTPS/MAGNET supported@append',
+        'Otwórz link pobierania, HTTP/HTTPS/MAGNET wspierane@append',
     'downloadLinkHitDesktop': ', lub przenieś bezpośrednio plik torrent',
-    'download': 'Pobiers',
-    'noFileSelected': 'Wybierz conajmniej jeden plik aby kontynuować.',
+    'download': 'Pobierz',
+    'noFileSelected': 'Wybierz co najmniej jeden plik aby kontynuować.',
     'noStoragePermission': 'Przyznaj uprawnienia do zapisu',
     'selectFile': 'Wybierz plik',
     'rename': 'Zmień nazwę',
