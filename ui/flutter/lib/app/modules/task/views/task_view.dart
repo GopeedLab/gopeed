@@ -1,5 +1,8 @@
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/app/routes/app_pages.dart';
+import 'package:gopeed/util/util.dart';
 
 import '../controllers/task_controller.dart';
 import '../controllers/task_downloaded_controller.dart';
@@ -48,11 +51,21 @@ class TaskView extends GetView<TaskController> {
                 },
               ),
             )),
-        body: const TabBarView(
-          children: [
-            TaskDownloadingView(),
-            TaskDownloadedView(),
-          ],
+        body: DropTarget(
+          onDragDone: (details) {
+            final args = {
+              'web': details.files[0].path,
+              'other': details.files[0].name
+            };
+            Get.rootDelegate.offNamed(Routes.CREATE,
+                arguments: !Util.isWeb() ? args['web'] : args['other']);
+          },
+          child: const TabBarView(
+            children: [
+              TaskDownloadingView(),
+              TaskDownloadedView(),
+            ],
+          ),
         ),
       ),
     );
