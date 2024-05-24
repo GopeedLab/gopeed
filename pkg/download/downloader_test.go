@@ -4,6 +4,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -83,39 +84,95 @@ func TestDownloader_Create(t *testing.T) {
 	}
 }
 
-func TestDownloader_CreateWithProxy(t *testing.T) {
-	// No proxy
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
-		return nil
+func TestDownloader_CreateDirectBatch(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	reqs := make([]*base.Request, 0)
+	for i := 0; i < 6; i++ {
+		req := &base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}
+		reqs = append(reqs, req)
+	}
+
+	_, err := downloader.CreateDirectBatch(reqs, &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
 	})
-	// Disable proxy
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
-		proxyCfg.Enable = false
-		return proxyCfg
-	})
-	// Invalid proxy scheme
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
-		proxyCfg.Scheme = ""
-		return proxyCfg
-	})
-	// Invalid proxy host
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
-		proxyCfg.Host = ""
-		return proxyCfg
-	})
-	// Use proxy without auth
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
-		return proxyCfg
-	})
-	// Use proxy with auth
-	doTestDownloaderCreateWithProxy(t, true, func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig {
-		return proxyCfg
-	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tasks := downloader.GetTasks()
+	if len(tasks) != len(reqs) {
+		t.Errorf("CreateDirectBatch() got = %v, want %v", len(tasks), len(reqs))
+	}
 }
 
-func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig func(proxyCfg *DownloaderProxyConfig) *DownloaderProxyConfig) {
-	httpListener := test.StartTestFileServer()
-	defer httpListener.Close()
+func TestDownloader_CreateWithProxy(t *testing.T) {
+	// No proxy
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		return nil
+	}, nil)
+	// Disable proxy
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		proxyCfg.Enable = false
+		return proxyCfg
+	}, nil)
+	// Enable system proxy but not set proxy environment variable
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		proxyCfg.System = true
+		return proxyCfg
+	}, nil)
+	// Enable proxy but error proxy environment variable
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		os.Setenv("HTTP_PROXY", "http://127.0.0.1:1234")
+		os.Setenv("HTTPS_PROXY", "http://127.0.0.1:1234")
+		proxyCfg.System = true
+		return proxyCfg
+	}, func(err error) {
+		if err == nil {
+			t.Fatal("doTestDownloaderCreateWithProxy() got = nil, want error")
+		}
+	})
+	// Enable system proxy and set proxy environment variable
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		os.Setenv("HTTP_PROXY", proxyCfg.ToUrl().String())
+		os.Setenv("HTTPS_PROXY", proxyCfg.ToUrl().String())
+		proxyCfg.System = true
+		return proxyCfg
+	}, nil)
+	// Invalid proxy scheme
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		proxyCfg.Scheme = ""
+		return proxyCfg
+	}, nil)
+	// Invalid proxy host
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		proxyCfg.Host = ""
+		return proxyCfg
+	}, nil)
+	// Use proxy without auth
+	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		return proxyCfg
+	}, nil)
+	// Use proxy with auth
+	doTestDownloaderCreateWithProxy(t, true, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+		return proxyCfg
+	}, nil)
+}
+
+func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig, errHandler func(err error)) {
 	usr, pwd := "", ""
 	if auth {
 		usr, pwd = "admin", "123"
@@ -128,7 +185,7 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig f
 		t.Fatal(err)
 	}
 	defer downloader.Clear()
-	downloader.cfg.DownloaderStoreConfig.Proxy = buildProxyConfig(&DownloaderProxyConfig{
+	downloader.cfg.DownloaderStoreConfig.Proxy = buildProxyConfig(&base.DownloaderProxyConfig{
 		Enable: true,
 		Scheme: "socks5",
 		Host:   proxyListener.Addr().String(),
@@ -137,20 +194,24 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig f
 	})
 
 	req := &base.Request{
-		URL: "http://" + httpListener.Addr().String() + "/" + test.BuildName,
+		URL: test.ExternalDownloadUrl,
 	}
 	rr, err := downloader.Resolve(req)
 	if err != nil {
-		t.Fatal(err)
+		if errHandler == nil {
+			t.Fatal(err)
+		}
+		errHandler(err)
+		return
 	}
 	want := &base.Resource{
-		Size:  test.BuildSize,
+		Size:  test.ExternalDownloadSize,
 		Range: true,
 		Files: []*base.FileInfo{
 			{
-				Name: test.BuildName,
+				Name: test.ExternalDownloadName,
 				Path: "",
-				Size: test.BuildSize,
+				Size: test.ExternalDownloadSize,
 			},
 		},
 	}
@@ -285,7 +346,7 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 		t.Errorf("getProtocolConfig() got = %v, want %v", exits, false)
 	}
 
-	storeCfg := &DownloaderStoreConfig{
+	storeCfg := &base.DownloaderStoreConfig{
 		DownloadDir: "./downloads",
 		ProtocolConfig: map[string]any{
 			"http": map[string]any{

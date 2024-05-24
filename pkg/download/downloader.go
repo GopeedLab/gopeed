@@ -110,7 +110,7 @@ func (d *Downloader) Setup() error {
 		return err
 	}
 	// load config from storage
-	var cfg DownloaderStoreConfig
+	var cfg base.DownloaderStoreConfig
 	exist, err := d.storage.Get(bucketConfig, "config", &cfg)
 	if err != nil {
 		return err
@@ -118,7 +118,7 @@ func (d *Downloader) Setup() error {
 	if exist {
 		d.cfg.DownloaderStoreConfig = &cfg
 	} else {
-		d.cfg.DownloaderStoreConfig = &DownloaderStoreConfig{
+		d.cfg.DownloaderStoreConfig = &base.DownloaderStoreConfig{
 			FirstLoad: true,
 		}
 	}
@@ -225,7 +225,7 @@ func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
 	ctl.GetConfig = func(v any) bool {
 		return d.getProtocolConfig(fetcher.Name(), v)
 	}
-	ctl.ProxyUrl = d.cfg.ProxyUrl()
+	ctl.ProxyConfig = d.cfg.Proxy
 	fetcher.Setup(ctl)
 }
 
@@ -299,6 +299,18 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	}
 	fetcher.Meta().Req = req
 	return d.doCreate(fetcher, opts)
+}
+
+func (d *Downloader) CreateDirectBatch(reqs []*base.Request, opts *base.Options) (taskId []string, err error) {
+	taskIds := make([]string, 0)
+	for _, req := range reqs {
+		taskId, err := d.CreateDirect(req, opts)
+		if err != nil {
+			return nil, err
+		}
+		taskIds = append(taskIds, taskId)
+	}
+	return taskIds, nil
 }
 
 func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err error) {
@@ -603,11 +615,11 @@ func (d *Downloader) GetTasksByStatues(statues []base.Status) []*Task {
 	return tasks
 }
 
-func (d *Downloader) GetConfig() (*DownloaderStoreConfig, error) {
+func (d *Downloader) GetConfig() (*base.DownloaderStoreConfig, error) {
 	return d.cfg.DownloaderStoreConfig, nil
 }
 
-func (d *Downloader) PutConfig(v *DownloaderStoreConfig) error {
+func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
 	d.cfg.DownloaderStoreConfig = v
 	return d.storage.Put(bucketConfig, "config", v)
 }

@@ -17,6 +17,7 @@ class DownloaderConfig {
 
   factory DownloaderConfig.fromJson(Map<String, dynamic> json) =>
       _$DownloaderConfigFromJson(json);
+
   Map<String, dynamic> toJson() => _$DownloaderConfigToJson(this);
 }
 
@@ -29,6 +30,7 @@ class ProtocolConfig {
 
   factory ProtocolConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ProtocolConfig() : _$ProtocolConfigFromJson(json);
+
   Map<String, dynamic> toJson() => _$ProtocolConfigToJson(this);
 }
 
@@ -47,6 +49,7 @@ class HttpConfig {
 
   factory HttpConfig.fromJson(Map<String, dynamic> json) =>
       _$HttpConfigFromJson(json);
+
   Map<String, dynamic> toJson() => _$HttpConfigToJson(this);
 }
 
@@ -59,25 +62,34 @@ class BtConfig {
 
   factory BtConfig.fromJson(Map<String, dynamic> json) =>
       _$BtConfigFromJson(json);
+
   Map<String, dynamic> toJson() => _$BtConfigToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true)
 class ExtraConfig {
-  String themeMode = '';
-  String locale = '';
+  String themeMode;
+  String locale;
+  bool lastDeleteTaskKeep;
+
   ExtraConfigBt bt = ExtraConfigBt();
 
-  ExtraConfig();
+  ExtraConfig({
+    this.themeMode = '',
+    this.locale = '',
+    this.lastDeleteTaskKeep = false,
+  });
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ExtraConfig() : _$ExtraConfigFromJson(json);
+
   Map<String, dynamic> toJson() => _$ExtraConfigToJson(this);
 }
 
 @JsonSerializable()
 class ProxyConfig {
   bool enable;
+  bool system;
   String scheme;
   String host;
   String usr;
@@ -85,6 +97,7 @@ class ProxyConfig {
 
   ProxyConfig({
     this.enable = false,
+    this.system = false,
     this.scheme = '',
     this.host = '',
     this.usr = '',
@@ -110,5 +123,6 @@ class ExtraConfigBt {
 
   factory ExtraConfigBt.fromJson(Map<String, dynamic> json) =>
       _$ExtraConfigBtFromJson(json);
+
   Map<String, dynamic> toJson() => _$ExtraConfigBtToJson(this);
 }

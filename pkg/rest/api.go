@@ -8,7 +8,19 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime"
 )
+
+func Info(w http.ResponseWriter, r *http.Request) {
+	info := map[string]any{
+		"version": base.Version,
+		"runtime": runtime.Version(),
+		"os":      runtime.GOOS,
+		"arch":    runtime.GOARCH,
+	}
+	info["inDocker"] = base.InDocker == "true"
+	WriteJson(w, model.NewOkResult(info))
+}
 
 func Resolve(w http.ResponseWriter, r *http.Request) {
 	var req base.Request
@@ -42,6 +54,22 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		WriteJson(w, model.NewOkResult(taskId))
+	}
+}
+
+func CreateTaskBatch(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateTaskBatch
+	if ReadJson(r, w, &req) {
+		if len(req.Reqs) == 0 {
+			WriteJson(w, model.NewErrorResult("param invalid: reqs", model.CodeInvalidParam))
+			return
+		}
+		taskIds, err := Downloader.CreateDirectBatch(req.Reqs, req.Opt)
+		if err != nil {
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
+		WriteJson(w, model.NewOkResult(taskIds))
 	}
 }
 
@@ -142,7 +170,7 @@ func GetConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func PutConfig(w http.ResponseWriter, r *http.Request) {
-	var cfg download.DownloaderStoreConfig
+	var cfg base.DownloaderStoreConfig
 	if ReadJson(r, w, &cfg) {
 		if err := Downloader.PutConfig(&cfg); err != nil {
 			WriteJson(w, model.NewErrorResult(err.Error()))
@@ -309,7 +337,7 @@ func writeError(w http.ResponseWriter, msg string) {
 	w.Write([]byte(msg))
 }
 
-func getServerConfig() *download.DownloaderStoreConfig {
+func getServerConfig() *base.DownloaderStoreConfig {
 	cfg, _ := Downloader.GetConfig()
 	return cfg
 }

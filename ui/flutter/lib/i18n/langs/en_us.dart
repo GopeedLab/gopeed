@@ -58,7 +58,9 @@ const enUS = {
     'apiToken': 'API Token',
     'notSet': 'NS',
     'set': 'SET',
+    'portInUse': 'Port [@port] is in use, please change the port',
     'effectAfterRestart': 'Effect after restart',
+    'show': 'Show',
     'startAll': 'Start All',
     'pauseAll': 'Pause All',
     'deleteTask': 'Delete Task',
@@ -82,6 +84,9 @@ const enUS = {
     'serviceText': 'Running',
     'network': 'Network',
     'proxy': 'Proxy',
+    'noProxy': 'No Proxy',
+    'systemProxy': 'System Proxy',
+    'customProxy': 'Custom Proxy',
     'server': 'Server',
     'username': 'Username',
     'password': 'Password',
@@ -89,5 +94,6 @@ const enUS = {
     'thanksDesc':
         'Thanks to all the contributors who have helped build and develop the Gopeed community!',
     'browserExtension': 'Browser Extension',
+    'launchAtStartup': 'Launch at Startup',
   },
 };

@@ -8,8 +8,6 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
-	"github.com/GopeedLab/gopeed/pkg/util"
-	"net/url"
 	"os"
 	"reflect"
 	"testing"
@@ -60,7 +58,14 @@ func TestFetcher_ResolveWithProxy(t *testing.T) {
 	proxyListener := test.StartSocks5Server(usr, pwd)
 	defer proxyListener.Close()
 
-	doResolve(t, buildConfigFetcher(util.BuildProxyUrl("socks5", proxyListener.Addr().String(), usr, pwd)))
+	doResolve(t, buildConfigFetcher(&base.DownloaderProxyConfig{
+		Enable: true,
+		System: false,
+		Scheme: "socks5",
+		Host:   proxyListener.Addr().String(),
+		Usr:    usr,
+		Pwd:    pwd,
+	}))
 }
 
 func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
@@ -100,7 +105,7 @@ func buildFetcher() fetcher.Fetcher {
 	return fetcher
 }
 
-func buildConfigFetcher(proxyUrl *url.URL) fetcher.Fetcher {
+func buildConfigFetcher(proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher {
 	fetcher := new(FetcherBuilder).Build()
 	newController := controller.NewController()
 	mockCfg := config{
@@ -114,7 +119,7 @@ func buildConfigFetcher(proxyUrl *url.URL) fetcher.Fetcher {
 		}
 		return true
 	}
-	newController.ProxyUrl = proxyUrl
+	newController.ProxyConfig = proxyConfig
 	fetcher.Setup(newController)
 	return fetcher
 }

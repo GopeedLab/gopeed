@@ -8,7 +8,6 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
-	"github.com/GopeedLab/gopeed/pkg/util"
 	"net"
 	"testing"
 	"time"
@@ -338,7 +337,11 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t *testing.T) {
 	fetcher := downloadReady(httpListener, 4, t)
 	ctl := controller.NewController()
-	ctl.ProxyUrl = util.BuildProxyUrl("socks5", proxyListener.Addr().String(), "", "")
+	ctl.ProxyConfig = &base.DownloaderProxyConfig{
+		Enable: true,
+		Scheme: "socks5",
+		Host:   proxyListener.Addr().String(),
+	}
 	fetcher.Setup(ctl)
 	err := fetcher.Start()
 	if err != nil {

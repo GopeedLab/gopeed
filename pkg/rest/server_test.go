@@ -63,6 +63,18 @@ var (
 	}
 )
 
+func TestInfo(t *testing.T) {
+	matchKeys := []string{"version", "runtime", "os", "arch", "inDocker"}
+	doTest(func() {
+		resp := httpRequestCheckOk[map[string]any](http.MethodGet, "/api/v1/info", nil)
+		for _, key := range matchKeys {
+			if _, ok := resp[key]; !ok {
+				t.Errorf("Info() missing key = %v", key)
+			}
+		}
+	})
+}
+
 func TestResolve(t *testing.T) {
 	doTest(func() {
 		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", taskReq)
@@ -121,6 +133,21 @@ func TestCreateDirectTask(t *testing.T) {
 		got := test.FileMd5(test.DownloadFile)
 		if want != got {
 			t.Errorf("CreateDirectTask() got = %v, want %v", got, want)
+		}
+	})
+}
+
+func TestCreateDirectTaskBatch(t *testing.T) {
+	doTest(func() {
+		reqs := make([]*base.Request, 0)
+		for i := 0; i < 6; i++ {
+			reqs = append(reqs, createReq.Req)
+		}
+		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &model.CreateTaskBatch{
+			Reqs: reqs,
+		})
+		if len(taskIds) != len(reqs) {
+			t.Errorf("CreateDirectTaskBatch() got = %v, want %v", len(taskIds), len(reqs))
 		}
 	})
 }
@@ -324,7 +351,7 @@ func TestGetTasks(t *testing.T) {
 
 func TestGetAndPutConfig(t *testing.T) {
 	doTest(func() {
-		cfg := httpRequestCheckOk[*download.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
+		cfg := httpRequestCheckOk[*base.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
 		cfg.DownloadDir = "./download"
 		cfg.Extra = map[string]any{
 			"serverConfig": &Config{
@@ -335,7 +362,7 @@ func TestGetAndPutConfig(t *testing.T) {
 		}
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/config", cfg)
 
-		newCfg := httpRequestCheckOk[*download.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
+		newCfg := httpRequestCheckOk[*base.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
 		if !test.JsonEqual(cfg, newCfg) {
 			t.Errorf("GetAndPutConfig() got = %v, want %v", test.ToJson(newCfg), test.ToJson(cfg))
 		}

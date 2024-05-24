@@ -3,6 +3,7 @@ package engine
 import (
 	_ "embed"
 	"errors"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
@@ -11,7 +12,6 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
 	gojaurl "github.com/dop251/goja_nodejs/url"
-	"net/url"
 	"time"
 )
 
@@ -110,7 +110,7 @@ func (e *Engine) Close() {
 }
 
 type Config struct {
-	ProxyURL *url.URL
+	ProxyConfig *base.DownloaderProxyConfig
 }
 
 func NewEngine(cfg *Config) *Engine {
@@ -135,7 +135,7 @@ func NewEngine(cfg *Config) *Engine {
 		if err := formdata.Enable(runtime); err != nil {
 			return
 		}
-		if err := xhr.Enable(runtime, cfg.ProxyURL); err != nil {
+		if err := xhr.Enable(runtime, cfg.ProxyConfig.ToHandler()); err != nil {
 			return
 		}
 		if _, err := runtime.RunString(polyfillScript); err != nil {

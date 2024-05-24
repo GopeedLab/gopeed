@@ -60,20 +60,23 @@ Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
       'trackers': instance.trackers,
     };
 
-ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig()
-  ..themeMode = json['themeMode'] as String
-  ..locale = json['locale'] as String
-  ..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>);
+ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
+      themeMode: json['themeMode'] as String? ?? '',
+      locale: json['locale'] as String? ?? '',
+      lastDeleteTaskKeep: json['lastDeleteTaskKeep'] as bool? ?? false,
+    )..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>);
 
 Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
     <String, dynamic>{
       'themeMode': instance.themeMode,
       'locale': instance.locale,
+      'lastDeleteTaskKeep': instance.lastDeleteTaskKeep,
       'bt': instance.bt.toJson(),
     };
 
 ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig(
       enable: json['enable'] as bool? ?? false,
+      system: json['system'] as bool? ?? false,
       scheme: json['scheme'] as String? ?? '',
       host: json['host'] as String? ?? '',
       usr: json['usr'] as String? ?? '',
@@ -83,6 +86,7 @@ ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig(
 Map<String, dynamic> _$ProxyConfigToJson(ProxyConfig instance) =>
     <String, dynamic>{
       'enable': instance.enable,
+      'system': instance.system,
       'scheme': instance.scheme,
       'host': instance.host,
       'usr': instance.usr,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as path;
 import 'package:styled_widget/styled_widget.dart';
 
@@ -11,6 +12,7 @@ import '../../util/file_icon.dart';
 import '../../util/icons.dart';
 import '../../util/message.dart';
 import '../../util/util.dart';
+import '../modules/app/controllers/app_controller.dart';
 import '../routes/app_pages.dart';
 
 class BuildTaskListView extends GetView {
@@ -57,8 +59,12 @@ class BuildTaskListView extends GetView {
       return task.status == Status.running;
     }
 
+    bool isFolderTask() {
+      return task.meta.res?.name.isNotEmpty ?? false;
+    }
+
     String buildExplorerUrl(Task task) {
-      if (task.meta.res!.name.isEmpty) {
+      if (!isFolderTask()) {
         return path.join(Util.safeDir(task.meta.opts.path),
             Util.safeDir(task.meta.res!.files[0].path), fileName(task.meta));
       } else {
@@ -68,7 +74,7 @@ class BuildTaskListView extends GetView {
     }
 
     Future<void> showDeleteDialog(String id) {
-      final keep = true.obs;
+      final appController = Get.find<AppController>();
 
       final context = Get.context!;
 
@@ -78,11 +84,14 @@ class BuildTaskListView extends GetView {
           builder: (_) => AlertDialog(
                 title: Text('deleteTask'.tr),
                 content: Obx(() => CheckboxListTile(
-                    value: keep.value,
+                    value: appController
+                        .downloaderConfig.value.extra.lastDeleteTaskKeep,
                     title: Text('deleteTaskTip'.tr,
                         style: context.textTheme.bodyLarge),
                     onChanged: (v) {
-                      keep.value = v!;
+                      appController.downloaderConfig.update((val) {
+                        val!.extra.lastDeleteTaskKeep = v!;
+                      });
                     })),
                 actions: [
                   TextButton(
@@ -96,7 +105,10 @@ class BuildTaskListView extends GetView {
                     ),
                     onPressed: () async {
                       try {
-                        await deleteTask(id, !keep.value);
+                        final force = !appController
+                            .downloaderConfig.value.extra.lastDeleteTaskKeep;
+                        await appController.saveConfig();
+                        await deleteTask(id, force);
                         Get.back();
                       } catch (e) {
                         showErrorMessage(e);
@@ -107,18 +119,22 @@ class BuildTaskListView extends GetView {
               ));
     }
 
+    toTaskFilesView() {
+      if (Util.isDesktop()) {
+        FileExplorer.openAndSelectFile(buildExplorerUrl(task));
+      } else {
+        Get.rootDelegate
+            .toNamed(Routes.TASK_FILES, parameters: {'id': task.id});
+      }
+    }
+
     List<Widget> buildActions() {
       final list = <Widget>[];
       if (isDone()) {
         list.add(IconButton(
           icon: const Icon(Icons.folder_open),
           onPressed: () {
-            if (Util.isDesktop()) {
-              FileExplorer.openAndSelectFile(buildExplorerUrl(task));
-            } else {
-              Get.rootDelegate
-                  .toNamed(Routes.TASK_FILES, parameters: {'id': task.id});
-            }
+            toTaskFilesView();
           },
         ));
       } else {
@@ -176,14 +192,23 @@ class BuildTaskListView extends GetView {
         elevation: 4.0,
         child: InkWell(
           onTap: () {},
+          onDoubleTap: () {
+            if (isDone()) {
+              if (isFolderTask()) {
+                toTaskFilesView();
+              } else {
+                OpenFilex.open(buildExplorerUrl(task));
+              }
+            }
+          },
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                   title: Text(fileName(task.meta)),
-                  leading: (task.meta.res?.name.isNotEmpty ?? false
+                  leading: isFolderTask()
                       ? const Icon(FaIcons.folder)
-                      : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))]))),
+                      : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))])),
               Row(
                 children: [
                   Expanded(

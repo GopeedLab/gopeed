@@ -280,10 +280,6 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	chunk := f.chunks[index]
 	chunk.retryTimes = 0
 
-	httpReq, err := f.buildRequest(ctx, f.meta.Req)
-	if err != nil {
-		return err
-	}
 	var (
 		client     = f.buildClient()
 		buf        = make([]byte, 8192)
@@ -314,8 +310,13 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 		}
 
 		var (
-			resp *http.Response
+			httpReq *http.Request
+			resp    *http.Response
 		)
+		httpReq, err = f.buildRequest(ctx, f.meta.Req)
+		if err != nil {
+			return
+		}
 		if f.meta.Res.Range {
 			httpReq.Header.Set(base.HttpHeaderRange,
 				fmt.Sprintf(base.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
@@ -450,12 +451,11 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 }
 
 func (f *Fetcher) buildClient() *http.Client {
-	transport := &http.Transport{}
+	transport := &http.Transport{
+		Proxy: f.ctl.ProxyConfig.ToHandler(),
+	}
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)
-	if f.ctl.ProxyUrl != nil {
-		transport.Proxy = http.ProxyURL(f.ctl.ProxyUrl)
-	}
 	return &http.Client{
 		Transport: transport,
 		Jar:       jar,
