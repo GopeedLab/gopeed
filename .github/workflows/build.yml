@@ -299,6 +299,7 @@ jobs:
               extensions: [gnome]
               plugs:
                 - network
+                - home
               slots:
                 - dbus-gopeed
           parts:
@@ -324,8 +325,12 @@ jobs:
                 - xz-utils
                 - zip
               override-prime: ''
+            zenity:
+              plugin: nil
+              stage-packages:
+                - zenity
             gopeed:
-              after: [flutter-git]
+              after: [flutter-git,zenity]
               source: .
               plugin: nil
               stage-packages:
