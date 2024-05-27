@@ -301,7 +301,7 @@ class CreateView extends GetView<CreateController> {
                                             controller: _btTrackerController,
                                             maxLines: 5,
                                             decoration: InputDecoration(
-                                              labelText: 'Trakers',
+                                              labelText: 'Trackers',
                                               hintText: 'addTrackerHit'.tr,
                                             )),
                                       ],
