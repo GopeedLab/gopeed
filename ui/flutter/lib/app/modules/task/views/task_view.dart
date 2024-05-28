@@ -54,11 +54,10 @@ class TaskView extends GetView<TaskController> {
         body: DropTarget(
           onDragDone: (details) {
             final args = {
-              'web': details.files[0].path,
               'other': details.files[0].name
             };
             Get.rootDelegate.offNamed(Routes.CREATE,
-                arguments: !Util.isWeb() ? args['web'] : args['other']);
+                arguments: args['other']);
           },
           child: const TabBarView(
             children: [
