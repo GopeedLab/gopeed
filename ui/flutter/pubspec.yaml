@@ -58,7 +58,7 @@ dependencies:
   autoscale_tabbarview: ^1.0.2
   share_plus: ^7.1.0
   flutter_form_builder: ^9.1.1
-  form_builder_validators: ^9.0.0
+  form_builder_validators: ^10.0.0
   flutter_foreground_task: ^6.1.2
   open_filex: ^4.3.4
   tray_manager: ^0.2.1
