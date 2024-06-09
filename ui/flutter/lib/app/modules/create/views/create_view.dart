@@ -206,7 +206,7 @@ class CreateView extends GetView<CreateController> {
                                                 decoration: BoxDecoration(
                                                   color: Theme.of(context)
                                                       .colorScheme
-                                                      .background,
+                                                      .surface,
                                                   borderRadius:
                                                       BorderRadius.circular(
                                                           10.0),
@@ -506,8 +506,8 @@ class CreateView extends GetView<CreateController> {
                     style:
                         ElevatedButton.styleFrom(shape: const StadiumBorder())
                             .copyWith(
-                                backgroundColor: MaterialStateProperty.all(
-                                    Get.theme.colorScheme.background)),
+                                backgroundColor: WidgetStateProperty.all(
+                                    Get.theme.colorScheme.surface)),
                     onPressed: () {
                       Get.back();
                     },
