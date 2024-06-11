@@ -21,10 +21,11 @@ const itIT = {
     'downloadLinkValid': 'Inserisci il collegamento per lo scaricamento',
     'downloadLinkHit':
         'Inserisci il collegamento per il download, HTTP/HTTPS/MAGNET supported@append',
-    'downloadLinkHitDesktop': ', oppure trascina qui direttamente il file torrent',
+    'downloadLinkHitDesktop':
+        ', oppure trascina qui direttamente il file torrent',
     'download': 'Download',
     'noFileSelected': 'Seleziona almeno un file per continuare.',
-    'noStoragePermission': 'È richiesta l'autorizzazione di archiviazione',
+    'noStoragePermission': "È richiesta l'autorizzazione di archiviazione",
     'selectFile': 'Selezione file',
     'rename': 'Rinomina',
     'basic': 'Basico',
@@ -33,7 +34,7 @@ const itIT = {
     'downloadDir': 'Directory di scaricamento',
     'downloadDirValid': 'Seleziona la directory di scaricamento',
     'connections': 'Connessioni',
-    'useServerCtime': 'Utilizza l'ora del server per la creazione dei file',
+    'useServerCtime': "Utilizza l'ora del server per la creazione dei file",
     'maxRunning': 'Numero massimo di attività in esecuzione',
     'items': '@count elementi',
     'subscribeTracker': 'Iscriviti al tracker',
@@ -43,7 +44,7 @@ const itIT = {
     'updateDaily': 'Aggiornamento quotidiano',
     'lastUpdate': 'Ultimo aggiornamento: @time',
     'addTracker': 'Aggiungi Tracker',
-    'addTrackerHit': 'Inserisci l'URL del server del tracker, uno per riga',
+    'addTrackerHit': "Inserisci l'URL del server del tracker, uno per riga",
     'ui': 'UI',
     'theme': 'Tema',
     'themeSystem': 'Sistema',
@@ -74,7 +75,7 @@ const itIT = {
     'extensionInstallSuccess': 'Installato con successo',
     'extensionUpdateSuccess': 'Aggiornato con successo',
     'extensionDelete': 'Elimina estensione',
-    'extensionAlreadyLatest': 'È già l'ultima versione',
+    'extensionAlreadyLatest': "È già l'ultima versione",
     'extensionFind': 'Trova estensioni',
     'extensionDevelop': 'Sviluppare estensioni',
     'history': 'Cronologia',
@@ -94,6 +95,6 @@ const itIT = {
     'thanksDesc':
         'Grazie a tutti i contributori che hanno contribuito a costruire e sviluppare la comunità Gopeed!',
     'browserExtension': 'Estensione del browser',
-    'launchAtStartup': 'Lancia all'avvio',
+    'launchAtStartup': "Lancia all'avvio",
   },
 };
