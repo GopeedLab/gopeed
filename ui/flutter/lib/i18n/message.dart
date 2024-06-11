@@ -10,6 +10,7 @@ import 'langs/tr_tr.dart';
 import 'langs/vi_vn.dart';
 import 'langs/zh_cn.dart';
 import 'langs/zh_tw.dart';
+import 'langs/it_it.dart';
 
 final messages = _Messages();
 
@@ -27,5 +28,6 @@ class _Messages extends Translations {
         ...taTA,
         ...trTR,
         ...plPL,
+        ...itIT,
       };
 }
