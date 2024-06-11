@@ -21,6 +21,7 @@ The internationalization files of Gopeed are located in the `ui/flutter/lib/i18n
 You only need to add the corresponding language file in this directory.
 
 Please refer to `en_us.dart` for translation.
+words prefixed with `@` are not meant to be translated.
 
 ## flutter development
 
