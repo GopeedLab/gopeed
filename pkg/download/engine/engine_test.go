@@ -80,6 +80,30 @@ async function testFormData(file){
 	return await resp.json();
 }
 
+function testHeader(){
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest();
+		xhr.open('GET', host+'/header');
+		xhr.setRequestHeader('X-Gopeed-Test', 'test1');
+		xhr.setRequestHeader('x-gopeed-test', 'test2');
+		xhr.setRequestHeader('x-Gopeed-test', 'test3');
+		xhr.onload = function(){
+			const testHeader1 = xhr.getResponseHeader("X-Gopeed-Test");
+		    const testHeader2 = xhr.getResponseHeader("x-gopeed-test");
+		    const testHeader3 = xhr.getResponseHeader("x-Gopeed-test");
+			const expect = 'test1, test2, test3';
+			const all = xhr.getAllResponseHeaders();
+			if(testHeader1 === expect && testHeader2 === expect && testHeader3 === expect 
+				&& all.includes('X-Gopeed-Test: '+expect)){
+				resolve();
+			}else{
+				reject();
+			}
+		};
+		xhr.send();
+	});
+}
+
 function testProgress(){
 	return new Promise((resolve, reject) => {
 		const xhr = new XMLHttpRequest();
@@ -190,14 +214,19 @@ function testTimeout(){
 		}
 	}()
 
+	_, err = callTestFun(engine, "testHeader")
+	if err != nil {
+		t.Fatal("header test failed", err)
+	}
+
 	_, err = callTestFun(engine, "testProgress")
 	if err != nil {
-		t.Fatal("progress test failed")
+		t.Fatal("progress test failed", err)
 	}
 
 	_, err = callTestFun(engine, "testAbort")
 	if err != nil {
-		t.Fatal("abort test failed")
+		t.Fatal("abort test failed", err)
 	}
 
 	_, err = callTestFun(engine, "testTimeout")
@@ -325,6 +354,15 @@ func startServer() net.Listener {
 	server := &http.Server{}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+	mux.HandleFunc("/header", func(w http.ResponseWriter, r *http.Request) {
+		for k, v := range r.Header {
+			if strings.HasPrefix(k, "X-Gopeed") {
+				w.Header().Set(k, strings.Join(v, ", "))
+			}
+		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
