@@ -56,7 +56,9 @@ const zhTW = {
     'apiToken': 'API令牌',
     'notSet': '未設定',
     'set': '已設定',
+    'portInUse': '端口[@port]已被占用，請更換端口',
     'effectAfterRestart': '重啟後生效',
+    'show': '顯示',
     'startAll': '全部開始',
     'pauseAll': '全部暫停',
     'deleteTask': '刪除任務',
@@ -89,5 +91,6 @@ const zhTW = {
     'thanks': '感謝',
     'thanksDesc': '感謝所有為 Gopeed 社區建設添磚加瓦的貢獻者們！',
     'browserExtension': '瀏覽器擴充程式',
+    'launchAtStartup': '開機自動運行',
   }
 };

@@ -1,16 +1,19 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../api/model/downloader_config.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
+import '../../../../util/log_util.dart';
 import '../../../../util/message.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
@@ -34,13 +37,22 @@ class SettingView extends GetView<SettingController> {
     final startCfg = appController.startConfig;
 
     Timer? timer;
-    debounceSave({bool needRestart = false}) {
-      var completer = Completer<void>();
+    Future<bool> debounceSave(
+        {Future<String> Function()? check, bool needRestart = false}) {
+      var completer = Completer<bool>();
       timer?.cancel();
-      timer = Timer(const Duration(milliseconds: 1000), () {
+      timer = Timer(const Duration(milliseconds: 1000), () async {
+        if (check != null) {
+          final checkResult = await check();
+          if (checkResult.isNotEmpty) {
+            showErrorMessage(checkResult);
+            completer.complete(false);
+            return;
+          }
+        }
         appController
             .saveConfig()
-            .then(completer.complete)
+            .then((_) => completer.complete(true))
             .onError(completer.completeError);
         if (needRestart) {
           showMessage('tip'.tr, 'effectAfterRestart'.tr);
@@ -67,6 +79,7 @@ class SettingView extends GetView<SettingController> {
       return DirectorySelector(
         controller: downloadDirController,
         showLabel: false,
+        showAndoirdToggle: true,
       );
     });
     final buildMaxRunning = _buildConfigItem(
@@ -98,12 +111,56 @@ class SettingView extends GetView<SettingController> {
     buildBrowserExtension() {
       return ListTile(
           title: Text('browserExtension'.tr),
-          subtitle: const OpenInNew(
-            text: "Chrome",
-            url:
-                "https://chromewebstore.google.com/detail/gopeed/mijpgljlfcapndmchhjffkpckknofcnd",
-          ));
+          subtitle: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              OpenInNew(
+                text: "Chrome",
+                url:
+                    "https://chromewebstore.google.com/detail/gopeed/mijpgljlfcapndmchhjffkpckknofcnd",
+              ),
+              SizedBox(width: 10),
+              OpenInNew(
+                text: "Edge",
+                url:
+                    "https://microsoftedge.microsoft.com/addons/detail/dkajnckekendchdleoaenoophcobooce",
+              ),
+              SizedBox(width: 10),
+              OpenInNew(
+                text: "Firefox",
+                url:
+                    "https://addons.mozilla.org/zh-CN/firefox/addon/gopeed-extension",
+              ),
+            ],
+          ).paddingOnly(top: 5));
     }
+
+    // Currently auto startup only support Windows and Linux
+    final buildAutoStartup = !Util.isWindows() && !Util.isLinux()
+        ? () => null
+        : _buildConfigItem('launchAtStartup'.tr, () {
+            return appController.autoStartup.value ? 'on'.tr : 'off'.tr;
+          }, (Key key) {
+            return Container(
+              alignment: Alignment.centerLeft,
+              child: Switch(
+                value: appController.autoStartup.value,
+                onChanged: (bool value) async {
+                  try {
+                    if (value) {
+                      await launchAtStartup.enable();
+                    } else {
+                      await launchAtStartup.disable();
+                    }
+                    appController.autoStartup.value = value;
+                  } catch (e) {
+                    showErrorMessage(e);
+                    logger.e('launchAtStartup fail', e);
+                  }
+                },
+              ),
+            );
+          });
 
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;
@@ -622,11 +679,41 @@ class SettingView extends GetView<SettingController> {
           final ipController = TextEditingController(text: ip);
           final portController = TextEditingController(text: port);
           updateAddress() async {
+            if (ipController.text.isEmpty || portController.text.isEmpty) {
+              return;
+            }
             final newAddress = '${ipController.text}:${portController.text}';
             if (newAddress != startCfg.value.address) {
               startCfg.value.address = newAddress;
 
-              await debounceSave(needRestart: true);
+              final saved = await debounceSave(
+                  check: () async {
+                    // Check if address already in use
+                    final configIp = ipController.text;
+                    final configPort = int.parse(portController.text);
+                    if (configPort == 0) {
+                      return '';
+                    }
+                    try {
+                      final socket = await Socket.connect(configIp, configPort,
+                          timeout: const Duration(seconds: 3));
+                      socket.close();
+                      return 'portInUse'
+                          .trParams({'port': configPort.toString()});
+                    } catch (e) {
+                      return '';
+                    }
+                  },
+                  needRestart: true);
+
+              // If save failed, restore the old address
+              if (!saved) {
+                final oldAddress =
+                    (await appController.loadStartConfig()).address;
+                startCfg.update((val) async {
+                  val!.address = oldAddress;
+                });
+              }
             }
           }
 
@@ -726,7 +813,8 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildDownloadDir(),
                             buildMaxRunning(),
-                            buildBrowserExtension()
+                            buildBrowserExtension(),
+                            buildAutoStartup(),
                           ]),
                         )),
                         const Text('HTTP'),
