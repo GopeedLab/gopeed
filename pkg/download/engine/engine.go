@@ -145,6 +145,10 @@ func NewEngine(cfg *Config) *Engine {
 		if err := runtime.Set("global", runtime.GlobalObject()); err != nil {
 			return
 		}
+		// polyfill window
+		if err := runtime.Set("window", runtime.GlobalObject()); err != nil {
+			return
+		}
 		// polyfill window.location
 		if _, err := runtime.RunString("global.location = new URL('http://localhost');"); err != nil {
 			return
