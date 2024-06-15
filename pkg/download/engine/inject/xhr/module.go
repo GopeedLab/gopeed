@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -118,8 +119,8 @@ type XMLHttpRequestUpload struct {
 type XMLHttpRequest struct {
 	method          string
 	url             string
-	requestHeaders  map[string]string
-	responseHeaders map[string]string
+	requestHeaders  http.Header
+	responseHeaders http.Header
 	aborted         bool
 	proxyHandler    func(r *http.Request) (*url.URL, error)
 
@@ -137,13 +138,13 @@ type XMLHttpRequest struct {
 func (xhr *XMLHttpRequest) Open(method, url string) {
 	xhr.method = method
 	xhr.url = url
-	xhr.requestHeaders = make(map[string]string)
-	xhr.responseHeaders = make(map[string]string)
+	xhr.requestHeaders = make(http.Header)
+	xhr.responseHeaders = make(http.Header)
 	xhr.doReadystatechange(1)
 }
 
 func (xhr *XMLHttpRequest) SetRequestHeader(key, value string) {
-	xhr.requestHeaders[key] = value
+	xhr.requestHeaders.Add(key, value)
 }
 
 func (xhr *XMLHttpRequest) Send(data goja.Value) {
@@ -194,14 +195,12 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 		xhr.callOnerror()
 		return
 	}
+	req.Header = xhr.requestHeaders
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
 	if contentLength > 0 {
 		req.ContentLength = contentLength
-	}
-	for k, v := range xhr.requestHeaders {
-		req.Header.Set(k, v)
 	}
 	transport := &http.Transport{
 		Proxy: xhr.proxyHandler,
@@ -230,9 +229,7 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	if !xhr.aborted {
 		xhr.Upload.callOnload()
 	}
-	for k, v := range resp.Header {
-		xhr.responseHeaders[k] = v[0]
-	}
+	xhr.responseHeaders = resp.Header
 	xhr.Status = resp.StatusCode
 	xhr.StatusText = resp.Status
 	xhr.doReadystatechange(2)
@@ -261,7 +258,7 @@ func (xhr *XMLHttpRequest) Abort() {
 }
 
 func (xhr *XMLHttpRequest) GetResponseHeader(key string) string {
-	return xhr.responseHeaders[key]
+	return strings.Join(xhr.responseHeaders.Values(key), ", ")
 }
 
 func (xhr *XMLHttpRequest) GetAllResponseHeaders() string {
@@ -269,7 +266,7 @@ func (xhr *XMLHttpRequest) GetAllResponseHeaders() string {
 	for k, v := range xhr.responseHeaders {
 		buf.WriteString(k)
 		buf.WriteString(": ")
-		buf.WriteString(v)
+		buf.WriteString(strings.Join(v, ", "))
 		buf.WriteString("\r\n")
 	}
 	return buf.String()
