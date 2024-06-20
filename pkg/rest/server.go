@@ -53,7 +53,6 @@ func Start(startCfg *model.StartConfig) (port int, err error) {
 func Stop() {
 	defer func() {
 		srv = nil
-		Downloader = nil
 	}()
 
 	if srv != nil {
