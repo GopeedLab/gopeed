@@ -54,15 +54,6 @@ class Database {
         _startConfig, (json) => StartConfigEntity.fromJson(json));
   }
 
-  void saveLastRunningConfig(StartConfigEntity entity) {
-    save<StartConfigEntity>(_lastRunningConfig, entity);
-  }
-
-  StartConfigEntity? getLastRunningConfig() {
-    return get<StartConfigEntity>(
-        _lastRunningConfig, (json) => StartConfigEntity.fromJson(json));
-  }
-
   /// Patch non-null fields with the original value
   void saveWindowState(WindowStateEntity entity) {
     final state = getWindowState();
