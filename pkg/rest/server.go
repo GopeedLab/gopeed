@@ -19,31 +19,42 @@ import (
 )
 
 var (
-	srv *http.Server
+	srv         *http.Server
+	runningPort int
 
 	Downloader *download.Downloader
 )
 
-func Start(startCfg *model.StartConfig) (int, error) {
-	srv, listener, err := BuildServer(startCfg)
+func Start(startCfg *model.StartConfig) (port int, err error) {
+	// avoid repeat start
+	if srv != nil {
+		return runningPort, nil
+	}
+
+	var listener net.Listener
+	srv, listener, err = BuildServer(startCfg)
 	if err != nil {
-		return 0, err
+		return
 	}
 
 	go func() {
-		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
+		if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()
 
-	port := 0
 	if addr, ok := listener.Addr().(*net.TCPAddr); ok {
 		port = addr.Port
+		runningPort = port
 	}
-	return port, nil
+	return
 }
 
 func Stop() {
+	defer func() {
+		srv = nil
+	}()
+
 	if srv != nil {
 		if err := srv.Shutdown(context.TODO()); err != nil {
 			Downloader.Logger.Warn().Err(err).Msg("shutdown server failed")
