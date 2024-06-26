@@ -1,7 +1,6 @@
 import 'package:args/args.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -10,7 +9,6 @@ import 'app/modules/app/controllers/app_controller.dart';
 import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
 import 'database/database.dart';
-import 'database/entity.dart';
 import 'i18n/message.dart';
 import 'util/locale_manager.dart';
 import 'util/log_util.dart';
@@ -77,23 +75,8 @@ Future<void> init(Args args) async {
   try {
     await controller.loadStartConfig();
     final startCfg = controller.startConfig.value;
-    // When the app is closed by swiping on the mobile, the backend server is actually still running, don't need to start again.
-    final isRunning =
-        Util.isMobile() && (await FlutterForegroundTask.isRunningService);
-    if (!isRunning) {
-      controller.runningPort.value =
-          await LibgopeedBoot.instance.start(startCfg);
-      api.init(
-          startCfg.network, controller.runningAddress(), startCfg.apiToken);
-      Database.instance.saveLastRunningConfig(StartConfigEntity(
-          network: startCfg.network,
-          address: controller.runningAddress(),
-          apiToken: startCfg.apiToken));
-    } else {
-      final lastRunningConfig = Database.instance.getLastRunningConfig()!;
-      api.init(lastRunningConfig.network, lastRunningConfig.address,
-          lastRunningConfig.apiToken);
-    }
+    controller.runningPort.value = await LibgopeedBoot.instance.start(startCfg);
+    api.init(startCfg.network, controller.runningAddress(), startCfg.apiToken);
   } catch (e) {
     logger.e("libgopeed init fail", e);
   }
