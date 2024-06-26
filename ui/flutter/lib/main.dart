@@ -55,7 +55,7 @@ Future<void> init(Args args) async {
         await windowManager.focus();
       }
       await windowManager.setPreventClose(true);
-      // windows_manager has a bug where when window to be maximized, it will be unmaximized immediately, so can't implement this feature currently.
+      // windows_manager has a bug where when window to be maximized, it will be unmaximized immediately, so can't implement this feature currently..
       // https://github.com/leanflutter/window_manager/issues/412
       // if (windowState.isMaximized) {
       //   await windowManager.maximize();
