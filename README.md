@@ -213,3 +213,5 @@ go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed
 ## License
 
 [GPLv3](LICENSE)
+
+test
