@@ -21,8 +21,7 @@ const trTR = {
     'downloadLinkValid': 'Lütfen indirme bağlantısını girin',
     'downloadLinkHit':
         'Lütfen indirme bağlantısını girin, HTTP/HTTPS/MAGNET desteklenir@append',
-    'downloadLinkHitDesktop':
-        ', veya torrent dosyasını doğrudan buraya sürükleyin',
+    'downloadLinkHitDesktop': ', veya torrent dosyasını doğrudan buraya sürükleyin',
     'download': 'İndir',
     'noFileSelected': 'Devam etmek için lütfen en az bir dosya seçin.',
     'noStoragePermission': 'Depolama izni gerekli',
@@ -44,8 +43,7 @@ const trTR = {
     'updateDaily': 'Günlük olarak güncelle',
     'lastUpdate': 'Son güncellenme tarihi: @time',
     'addTracker': 'İzleyici ekle',
-    'addTrackerHit':
-        'Lütfen her satıra bir tane olmak üzere izleyici sunucusu bağlantısını girin',
+    'addTrackerHit': 'Lütfen her satıra bir tane olmak üzere izleyici sunucusu bağlantısını girin',
     'ui': 'Arayüz',
     'theme': 'Tema',
     'themeSystem': 'Sistem',
