@@ -21,8 +21,7 @@ const trTR = {
     'downloadLinkValid': 'Lütfen indirme bağlantısını girin',
     'downloadLinkHit':
         'Lütfen indirme bağlantısını girin, HTTP/HTTPS/MAGNET desteklenir@append',
-    'downloadLinkHitDesktop':
-        ', veya torrent dosyasını doğrudan buraya sürükleyin',
+    'downloadLinkHitDesktop': ', veya torrent dosyasını doğrudan buraya sürükleyin',
     'download': 'İndir',
     'noFileSelected': 'Devam etmek için lütfen en az bir dosya seçin.',
     'noStoragePermission': 'Depolama izni gerekli',
@@ -44,8 +43,7 @@ const trTR = {
     'updateDaily': 'Günlük olarak güncelle',
     'lastUpdate': 'Son güncellenme tarihi: @time',
     'addTracker': 'İzleyici ekle',
-    'addTrackerHit':
-        'Lütfen her satıra bir tane olmak üzere izleyici sunucusu bağlantısını girin',
+    'addTrackerHit': 'Lütfen her satıra bir tane olmak üzere izleyici sunucusu bağlantısını girin',
     'ui': 'Arayüz',
     'theme': 'Tema',
     'themeSystem': 'Sistem',
@@ -58,9 +56,11 @@ const trTR = {
     'protocol': 'Protokol',
     'port': 'Bağlantı noktası',
     'apiToken': 'API anahtarı',
-    'notSet': 'AYARLI',
-    'set': 'AYARLI DEĞİL',
+    'notSet': 'AYARLI DEĞİL',
+    'set': 'AYARLI',
+    'portInUse': 'Bağlantı noktası [@port] kullanımda, lütfen bağlantı noktasını değiştirin',
     'effectAfterRestart': 'Yeniden başlatma sonrası etki edecektir',
+    'show': 'Göster',
     'startAll': 'Hepsini başlat',
     'pauseAll': 'Hepsini durdur',
     'deleteTask': 'Görevleri sil',
@@ -84,6 +84,9 @@ const trTR = {
     'serviceText': 'Çalışıyor',
     'network': 'Ağ',
     'proxy': 'Vekil',
+    'noProxy': 'Vekil yok',
+    'systemProxy': 'Sistem vekili',
+    'customProxy': 'Özel vekil',
     'server': 'Sunucu',
     'username': 'Kullanıcı adı',
     'password': 'Şifre',
@@ -91,5 +94,6 @@ const trTR = {
     'thanksDesc':
         'Gopeed topluluğunun oluşmasına ve gelişmesine yardımcı olan tüm katılımcılara teşekkürler!',
     'browserExtension': 'Tarayıcı uzantısı',
+    'launchAtStartup': 'Başlangıçta başlat',
   },
 };
