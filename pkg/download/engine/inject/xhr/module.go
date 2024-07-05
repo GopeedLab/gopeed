@@ -154,6 +154,7 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	var (
 		contentType   string
 		contentLength int64
+		isStringBody  bool
 	)
 	if d == nil || xhr.method == "GET" || xhr.method == "HEAD" {
 		req, err = http.NewRequest(xhr.method, xhr.url, nil)
@@ -163,6 +164,7 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 			req, err = http.NewRequest(xhr.method, xhr.url, bytes.NewBufferString(d.(string)))
 			contentType = "text/plain;charset=UTF-8"
 			contentLength = int64(len(d.(string)))
+			isStringBody = true
 		case *file.File:
 			req, err = http.NewRequest(xhr.method, xhr.url, d.(*file.File).Reader)
 			contentType = "application/octet-stream"
@@ -196,7 +198,8 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 		return
 	}
 	req.Header = xhr.requestHeaders
-	if contentType != "" {
+	// Only string body can specify Content-Type header by user
+	if contentType != "" && (!isStringBody || req.Header.Get("Content-Type") == "") {
 		req.Header.Set("Content-Type", contentType)
 	}
 	if contentLength > 0 {
