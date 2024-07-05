@@ -225,6 +225,10 @@ func (f *Fetcher) Close() (err error) {
 	return
 }
 
+func (f *Fetcher) ReUpload() (err error) {
+	return
+}
+
 func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 	return f.meta
 }
@@ -473,6 +477,10 @@ var schemes = []string{"HTTP", "HTTPS"}
 
 func (fb *FetcherBuilder) Schemes() []string {
 	return schemes
+}
+
+func (fb *FetcherBuilder) Upload() bool {
+	return false
 }
 
 func (fb *FetcherBuilder) Build() fetcher.Fetcher {

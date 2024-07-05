@@ -2,6 +2,7 @@ package bt
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
@@ -35,6 +36,7 @@ type Fetcher struct {
 	torrentDrop  atomic.Bool
 	create       atomic.Bool
 	progress     fetcher.Progress
+	data         *fetcherData
 }
 
 func (f *Fetcher) Name() string {
@@ -51,6 +53,8 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 		f.config = &config{
 			ListenPort: 0,
 			Trackers:   []string{},
+			SeedRatio:  1.0,
+			SeedTime:   120 * 60,
 		}
 	}
 	return
@@ -65,6 +69,7 @@ func (f *Fetcher) initClient() (err error) {
 	}
 
 	cfg := torrent.NewDefaultClientConfig()
+	cfg.Seed = true
 	cfg.Bep20 = fmt.Sprintf("-GP%s-", parseBep20())
 	cfg.ExtendedHandshakeClientVersion = fmt.Sprintf("Gopeed %s", base.Version)
 	cfg.ListenPort = f.config.ListenPort
@@ -96,6 +101,9 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 	f.meta.Opts = opts
 	if f.meta.Res != nil {
 		torrentDirMap[f.meta.Res.Hash] = f.meta.FolderPath()
+	}
+	if f.data == nil {
+		f.data = &fetcherData{}
 	}
 	return nil
 }
@@ -137,9 +145,13 @@ func (f *Fetcher) Pause() (err error) {
 }
 
 func (f *Fetcher) Close() (err error) {
-	f.torrentDrop.Store(false)
+	f.torrentDrop.Store(true)
 	f.safeDrop()
 	return nil
+}
+
+func (f *Fetcher) ReUpload() (err error) {
+	return f.addTorrent(f.meta.Req)
 }
 
 func (f *Fetcher) safeDrop() {
@@ -157,15 +169,7 @@ func (f *Fetcher) Wait() (err error) {
 			break
 		}
 		if f.torrentReady.Load() && len(f.meta.Opts.SelectFiles) > 0 {
-			done := true
-			for _, selectIndex := range f.meta.Opts.SelectFiles {
-				file := f.torrent.Files()[selectIndex]
-				if file.BytesCompleted() < file.Length() {
-					done = false
-					break
-				}
-			}
-			if done {
+			if f.isDone() {
 				// remove unselected files
 				for i, file := range f.torrent.Files() {
 					selected := false
@@ -211,6 +215,16 @@ func (f *Fetcher) Progress() fetcher.Progress {
 		f.progress[i] = file.BytesCompleted()
 	}
 	return f.progress
+}
+
+func (f *Fetcher) isDone() bool {
+	for _, selectIndex := range f.meta.Opts.SelectFiles {
+		file := f.torrent.Files()[selectIndex]
+		if file.BytesCompleted() < file.Length() {
+			return false
+		}
+	}
+	return true
 }
 
 func (f *Fetcher) updateRes() {
@@ -285,7 +299,61 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	}
 	<-f.torrent.GotInfo()
 	f.torrentReady.Store(true)
+
+	// Check and update seed data
+	go func() {
+		lastData := &fetcherData{
+			BytesRead:  f.data.BytesRead,
+			BytesWrite: f.data.BytesWrite,
+			SeedTime:   f.data.SeedTime,
+		}
+		t := time.Now().Unix()
+		for {
+			time.Sleep(time.Second)
+
+			if f.torrentDrop.Load() {
+				break
+			}
+
+			b, _ := json.Marshal(f.data)
+			fmt.Printf("seed state: %s\n", string(b))
+
+			stats := f.torrent.Stats()
+			f.data.BytesRead = lastData.BytesRead + stats.BytesReadData.Int64()
+			f.data.BytesWrite = lastData.BytesWrite + stats.BytesWrittenData.Int64()
+			f.data.SeedTime = lastData.SeedTime + time.Now().Unix() - t
+
+			// Check is download complete, if not don't check and stop seeding
+			if !f.isDone() {
+				continue
+			}
+
+			// If the seed ratio is reached, stop seeding
+			if f.config.SeedRatio > 0 && f.data.BytesRead > 0 {
+				seedRadio := float64(f.data.BytesWrite) / float64(f.data.BytesRead)
+				if seedRadio >= f.config.SeedRatio {
+					f.Close()
+					break
+				}
+			}
+
+			// If the seed time is reached, stop seeding
+			if f.config.SeedTime > 0 {
+				if f.data.SeedTime >= f.config.SeedTime {
+					f.Close()
+					break
+				}
+			}
+		}
+	}()
 	return
+}
+
+type fetcherData struct {
+	BytesRead  int64
+	BytesWrite int64
+	// SeedTime is the time in seconds to seed after downloading is complete.
+	SeedTime int64
 }
 
 type FetcherBuilder struct {
@@ -297,18 +365,24 @@ func (fb *FetcherBuilder) Schemes() []string {
 	return schemes
 }
 
+func (fb *FetcherBuilder) Upload() bool {
+	return true
+}
+
 func (fb *FetcherBuilder) Build() fetcher.Fetcher {
 	return &Fetcher{}
 }
 
 func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {
-	return nil, nil
+	_f := f.(*Fetcher)
+	return _f.data, nil
 }
 
 func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
-	return nil, func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher {
+	return &fetcherData{}, func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher {
 		return &Fetcher{
 			meta: meta,
+			data: v.(*fetcherData),
 		}
 	}
 }

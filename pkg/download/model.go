@@ -57,6 +57,7 @@ func (t *Task) clone() *Task {
 		ID:        t.ID,
 		Meta:      t.Meta,
 		Status:    t.Status,
+		Protocol:  t.Protocol,
 		Progress:  t.Progress,
 		CreatedAt: t.CreatedAt,
 		UpdatedAt: t.UpdatedAt,

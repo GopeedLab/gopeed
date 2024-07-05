@@ -20,6 +20,7 @@ type Fetcher interface {
 	Start() error
 	Pause() error
 	Close() error
+	ReUpload() error
 
 	// Stats refreshes health statistics and returns the latest information
 	Stats() any
@@ -72,6 +73,8 @@ func (m *FetcherMeta) RootDirPath() string {
 type FetcherBuilder interface {
 	// Schemes returns the schemes supported by the fetcher.
 	Schemes() []string
+	// Upload returns whether the fetcher supports upload.
+	Upload() bool
 	// Build returns a new fetcher.
 	Build() Fetcher
 

@@ -124,11 +124,6 @@ func (d *Downloader) Setup() error {
 	}
 	// init default config
 	d.cfg.DownloaderStoreConfig.Init()
-	for _, fb := range d.fetcherBuilders {
-		f := fb.Build()
-		d.setupFetcher(f)
-
-	}
 	// load tasks from storage
 	var tasks []*Task
 	if err = d.storage.List(bucketTask, &tasks); err != nil {
@@ -165,6 +160,28 @@ func (d *Downloader) Setup() error {
 		extensions = make([]*Extension, 0)
 	}
 	d.extensions = extensions
+
+	// handle upload
+	go func() {
+		for _, task := range d.tasks {
+			if task.Status == base.DownloadStatusDone {
+				fb, err := d.parseFb(task.Meta.Req.URL)
+				if err != nil {
+					d.Logger.Warn().Stack().Err(err).Msgf("task upload parse fetcher failed, task id: %s", task.ID)
+					continue
+				}
+				if !fb.Upload() {
+					continue
+				}
+				if err := d.restoreFetcher(task); err != nil {
+					d.Logger.Error().Stack().Err(err).Msgf("task upload restore fetcher failed, task id: %s", task.ID)
+				}
+				if err := task.fetcher.ReUpload(); err != nil {
+					d.Logger.Error().Stack().Err(err).Msgf("task re-upload failed, task id: %s", task.ID)
+				}
+			}
+		}
+	}()
 
 	// calculate download speed every tick
 	go func() {
@@ -641,6 +658,10 @@ func (d *Downloader) getProtocolConfig(name string, v any) bool {
 
 // wait task done
 func (d *Downloader) watch(task *Task) {
+	if task.Status == base.DownloadStatusDone {
+		return
+	}
+
 	err := task.fetcher.Wait()
 	if err != nil {
 		d.doOnError(task, err)
