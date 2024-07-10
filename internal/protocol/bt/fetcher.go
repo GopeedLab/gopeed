@@ -2,7 +2,6 @@ package bt
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
@@ -31,12 +30,12 @@ type Fetcher struct {
 
 	torrent *torrent.Torrent
 	meta    *fetcher.FetcherMeta
+	data    *fetcherData
 
-	torrentReady atomic.Bool
-	torrentDrop  atomic.Bool
-	create       atomic.Bool
-	progress     fetcher.Progress
-	data         *fetcherData
+	torrentReady  atomic.Bool
+	torrentDrop   atomic.Bool
+	torrentUpload atomic.Bool
+	uploadDoneCh  chan any
 }
 
 func (f *Fetcher) Name() string {
@@ -97,7 +96,6 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 }
 
 func (f *Fetcher) Create(opts *base.Options) (err error) {
-	f.create.Store(true)
 	f.meta.Opts = opts
 	if f.meta.Res != nil {
 		torrentDirMap[f.meta.Res.Hash] = f.meta.FolderPath()
@@ -105,6 +103,7 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 	if f.data == nil {
 		f.data = &fetcherData{}
 	}
+	f.uploadDoneCh = make(chan any, 1)
 	return nil
 }
 
@@ -119,13 +118,15 @@ func (f *Fetcher) Start() (err error) {
 	}
 	files := f.torrent.Files()
 	// If the user does not specify the file to download, all files will be downloaded by default
-	if len(f.meta.Opts.SelectFiles) == 0 {
-		f.meta.Opts.SelectFiles = make([]int, len(files))
-		for i := range files {
-			f.meta.Opts.SelectFiles[i] = i
+	if f.data.Progress == nil {
+		if len(f.meta.Opts.SelectFiles) == 0 {
+			f.meta.Opts.SelectFiles = make([]int, len(files))
+			for i := range files {
+				f.meta.Opts.SelectFiles[i] = i
+			}
 		}
+		f.data.Progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))
 	}
-	f.progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))
 	if len(f.meta.Opts.SelectFiles) == len(files) {
 		f.torrent.DownloadAll()
 	} else {
@@ -134,7 +135,6 @@ func (f *Fetcher) Start() (err error) {
 			file.Download()
 		}
 	}
-
 	return
 }
 
@@ -147,11 +147,8 @@ func (f *Fetcher) Pause() (err error) {
 func (f *Fetcher) Close() (err error) {
 	f.torrentDrop.Store(true)
 	f.safeDrop()
+	f.uploadDoneCh <- nil
 	return nil
-}
-
-func (f *Fetcher) ReUpload() (err error) {
-	return f.addTorrent(f.meta.Req)
 }
 
 func (f *Fetcher) safeDrop() {
@@ -161,6 +158,34 @@ func (f *Fetcher) safeDrop() {
 	}()
 
 	f.torrent.Drop()
+}
+
+func (f *Fetcher) Meta() *fetcher.FetcherMeta {
+	return f.meta
+}
+
+func (f *Fetcher) Stats() any {
+	stats := f.torrent.Stats()
+	return &bt.Stats{
+		TotalPeers:       stats.TotalPeers,
+		ActivePeers:      stats.ActivePeers,
+		ConnectedSeeders: stats.ConnectedSeeders,
+		SeedBytes:        f.data.SeedBytes,
+		SeedRatio:        f.seedRadio(),
+		SeedTime:         f.data.SeedTime,
+	}
+}
+
+func (f *Fetcher) Progress() fetcher.Progress {
+	if !f.torrentReady.Load() {
+		return f.data.Progress
+	}
+	for i := range f.data.Progress {
+		selectIndex := f.meta.Opts.SelectFiles[i]
+		file := f.torrent.Files()[selectIndex]
+		f.data.Progress[i] = file.BytesCompleted()
+	}
+	return f.data.Progress
 }
 
 func (f *Fetcher) Wait() (err error) {
@@ -189,32 +214,6 @@ func (f *Fetcher) Wait() (err error) {
 		time.Sleep(time.Millisecond * 500)
 	}
 	return nil
-}
-
-func (f *Fetcher) Meta() *fetcher.FetcherMeta {
-	return f.meta
-}
-
-func (f *Fetcher) Stats() any {
-	stats := f.torrent.Stats()
-	baseStats := &bt.Stats{
-		TotalPeers:       stats.TotalPeers,
-		ActivePeers:      stats.ActivePeers,
-		ConnectedSeeders: stats.ConnectedSeeders,
-	}
-	return baseStats
-}
-
-func (f *Fetcher) Progress() fetcher.Progress {
-	if !f.torrentReady.Load() {
-		return f.progress
-	}
-	for i := range f.progress {
-		selectIndex := f.meta.Opts.SelectFiles[i]
-		file := f.torrent.Files()[selectIndex]
-		f.progress[i] = file.BytesCompleted()
-	}
-	return f.progress
 }
 
 func (f *Fetcher) isDone() bool {
@@ -247,6 +246,73 @@ func (f *Fetcher) updateRes() {
 	if f.meta.Opts != nil {
 		f.meta.Opts.InitSelectFiles(len(res.Files))
 	}
+}
+
+func (f *Fetcher) Upload() (err error) {
+	return f.addTorrent(f.meta.Req)
+}
+
+func (f *Fetcher) doUpload() {
+	if f.torrentUpload.Load() {
+		return
+	}
+	f.torrentUpload.Store(true)
+
+	// Check and update seed data
+	lastData := &fetcherData{
+		SeedBytes: f.data.SeedBytes,
+		SeedTime:  f.data.SeedTime,
+	}
+	var doneTime int64 = 0
+	for {
+		time.Sleep(time.Second)
+
+		if f.torrentDrop.Load() {
+			break
+		}
+
+		if !f.torrentReady.Load() {
+			continue
+		}
+
+		stats := f.torrent.Stats()
+		f.data.SeedBytes = lastData.SeedBytes + stats.BytesWrittenData.Int64()
+
+		// Check is download complete, if not don't check and stop seeding
+		if !f.isDone() {
+			continue
+		}
+		if doneTime == 0 {
+			doneTime = time.Now().Unix()
+		}
+		f.data.SeedTime = lastData.SeedTime + time.Now().Unix() - doneTime
+
+		// If the seed ratio is reached, stop seeding
+		if f.config.SeedRatio > 0 {
+			seedRadio := f.seedRadio()
+			if seedRadio >= f.config.SeedRatio {
+				f.Close()
+				break
+			}
+		}
+
+		// If the seed time is reached, stop seeding
+		if f.config.SeedTime > 0 {
+			if f.data.SeedTime >= f.config.SeedTime {
+				f.Close()
+				break
+			}
+		}
+	}
+}
+
+func (f *Fetcher) UploadedBytes() int64 {
+	return f.data.SeedBytes
+}
+
+func (f *Fetcher) WaitUpload() (err error) {
+	<-f.uploadDoneCh
+	return nil
 }
 
 func (f *Fetcher) addTorrent(req *base.Request) (err error) {
@@ -300,58 +366,22 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	<-f.torrent.GotInfo()
 	f.torrentReady.Store(true)
 
-	// Check and update seed data
-	go func() {
-		lastData := &fetcherData{
-			BytesRead:  f.data.BytesRead,
-			BytesWrite: f.data.BytesWrite,
-			SeedTime:   f.data.SeedTime,
-		}
-		t := time.Now().Unix()
-		for {
-			time.Sleep(time.Second)
-
-			if f.torrentDrop.Load() {
-				break
-			}
-
-			b, _ := json.Marshal(f.data)
-			fmt.Printf("seed state: %s\n", string(b))
-
-			stats := f.torrent.Stats()
-			f.data.BytesRead = lastData.BytesRead + stats.BytesReadData.Int64()
-			f.data.BytesWrite = lastData.BytesWrite + stats.BytesWrittenData.Int64()
-			f.data.SeedTime = lastData.SeedTime + time.Now().Unix() - t
-
-			// Check is download complete, if not don't check and stop seeding
-			if !f.isDone() {
-				continue
-			}
-
-			// If the seed ratio is reached, stop seeding
-			if f.config.SeedRatio > 0 && f.data.BytesRead > 0 {
-				seedRadio := float64(f.data.BytesWrite) / float64(f.data.BytesRead)
-				if seedRadio >= f.config.SeedRatio {
-					f.Close()
-					break
-				}
-			}
-
-			// If the seed time is reached, stop seeding
-			if f.config.SeedTime > 0 {
-				if f.data.SeedTime >= f.config.SeedTime {
-					f.Close()
-					break
-				}
-			}
-		}
-	}()
+	go f.doUpload()
 	return
 }
 
+func (f *Fetcher) seedRadio() float64 {
+	bytesRead := f.data.Progress.TotalDownloaded()
+	if bytesRead <= 0 {
+		return 0
+	}
+
+	return float64(f.data.SeedBytes) / float64(bytesRead)
+}
+
 type fetcherData struct {
-	BytesRead  int64
-	BytesWrite int64
+	Progress  fetcher.Progress
+	SeedBytes int64
 	// SeedTime is the time in seconds to seed after downloading is complete.
 	SeedTime int64
 }
@@ -363,10 +393,6 @@ var schemes = []string{"FILE", "MAGNET", "APPLICATION/X-BITTORRENT"}
 
 func (fb *FetcherBuilder) Schemes() []string {
 	return schemes
-}
-
-func (fb *FetcherBuilder) Upload() bool {
-	return true
 }
 
 func (fb *FetcherBuilder) Build() fetcher.Fetcher {

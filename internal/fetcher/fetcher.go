@@ -7,7 +7,7 @@ import (
 )
 
 // Fetcher defines the interface for a download protocol.
-// One fetcher for each download task
+// Each download task will have a corresponding Fetcher instance for the management of the download task
 type Fetcher interface {
 	// Name return the name of the protocol.
 	Name() string
@@ -20,7 +20,6 @@ type Fetcher interface {
 	Start() error
 	Pause() error
 	Close() error
-	ReUpload() error
 
 	// Stats refreshes health statistics and returns the latest information
 	Stats() any
@@ -30,6 +29,12 @@ type Fetcher interface {
 	Progress() Progress
 	// Wait for the download to complete, this method will block until the download is done.
 	Wait() error
+}
+
+type Uploader interface {
+	Upload() error
+	UploadedBytes() int64
+	WaitUpload() error
 }
 
 // FetcherMeta defines the meta information of a fetcher.
@@ -73,8 +78,6 @@ func (m *FetcherMeta) RootDirPath() string {
 type FetcherBuilder interface {
 	// Schemes returns the schemes supported by the fetcher.
 	Schemes() []string
-	// Upload returns whether the fetcher supports upload.
-	Upload() bool
 	// Build returns a new fetcher.
 	Build() Fetcher
 

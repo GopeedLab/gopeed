@@ -42,12 +42,16 @@ var (
 type Listener func(event *Event)
 
 type Progress struct {
-	// 下载耗时(纳秒)
+	// Total download time(ns)
 	Used int64 `json:"used"`
-	// 每秒下载字节数
+	// Download speed(bytes/s)
 	Speed int64 `json:"speed"`
-	// 已下载的字节数
+	// Downloaded size(bytes)
 	Downloaded int64 `json:"downloaded"`
+	// Uploaded speed(bytes/s)
+	UploadSpeed int64 `json:"uploadSpeed"`
+	// Uploaded size(bytes)
+	Uploaded int64 `json:"uploaded"`
 }
 
 type Downloader struct {
@@ -164,20 +168,14 @@ func (d *Downloader) Setup() error {
 	// handle upload
 	go func() {
 		for _, task := range d.tasks {
-			if task.Status == base.DownloadStatusDone {
-				fb, err := d.parseFb(task.Meta.Req.URL)
-				if err != nil {
-					d.Logger.Warn().Stack().Err(err).Msgf("task upload parse fetcher failed, task id: %s", task.ID)
-					continue
-				}
-				if !fb.Upload() {
-					continue
-				}
+			if task.Status == base.DownloadStatusDone && task.Uploading {
 				if err := d.restoreFetcher(task); err != nil {
 					d.Logger.Error().Stack().Err(err).Msgf("task upload restore fetcher failed, task id: %s", task.ID)
 				}
-				if err := task.fetcher.ReUpload(); err != nil {
-					d.Logger.Error().Stack().Err(err).Msgf("task re-upload failed, task id: %s", task.ID)
+				if uploader, ok := task.fetcher.(fetcher.Uploader); ok {
+					if err := uploader.Upload(); err != nil {
+						d.Logger.Error().Stack().Err(err).Msgf("task upload failed, task id: %s", task.ID)
+					}
 				}
 			}
 		}
@@ -191,18 +189,27 @@ func (d *Downloader) Setup() error {
 					func() {
 						task.statusLock.Lock()
 						defer task.statusLock.Unlock()
-						if task.Status != base.DownloadStatusRunning {
+						if task.Status != base.DownloadStatusRunning && !task.Uploading {
 							return
 						}
 						// check if task is deleted
-						if d.GetTask(task.ID) == nil {
+						if d.GetTask(task.ID) == nil || task.fetcher == nil {
 							return
 						}
 
 						current := task.fetcher.Progress().TotalDownloaded()
-						task.Progress.Used = task.timer.Used()
-						task.Progress.Speed = task.calcSpeed(current-task.Progress.Downloaded, float64(d.cfg.RefreshInterval)/1000)
-						task.Progress.Downloaded = current
+						tick := float64(d.cfg.RefreshInterval) / 1000
+						if task.Status == base.DownloadStatusRunning {
+							task.Progress.Used = task.timer.Used()
+							task.Progress.Speed = task.calcSpeed(current-task.Progress.Downloaded, tick)
+							task.Progress.Downloaded = current
+						}
+						if task.Uploading {
+							uploader := task.fetcher.(fetcher.Uploader)
+							currentUploaded := uploader.UploadedBytes()
+							task.Progress.UploadSpeed = task.calcSpeed(currentUploaded-task.Progress.Uploaded, tick)
+							task.Progress.Uploaded = currentUploaded
+						}
 						d.emit(EventKeyProgress, task)
 
 						// store fetcher progress
@@ -658,6 +665,26 @@ func (d *Downloader) getProtocolConfig(name string, v any) bool {
 
 // wait task done
 func (d *Downloader) watch(task *Task) {
+	// wait task upload done
+	if task.Uploading {
+		if uploader, ok := task.fetcher.(fetcher.Uploader); ok {
+			go func() {
+				err := uploader.WaitUpload()
+				if err != nil {
+					d.Logger.Warn().Err(err).Msgf("task wait upload failed, task id: %s", task.ID)
+				}
+				d.lock.Lock()
+				defer d.lock.Unlock()
+
+				// Check if the task is deleted
+				if d.GetTask(task.ID) != nil {
+					task.Uploading = false
+					d.storage.Put(bucketTask, task.ID, task.clone())
+				}
+			}()
+		}
+	}
+
 	if task.Status == base.DownloadStatusDone {
 		return
 	}
@@ -755,7 +782,7 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 	return nil
 }
 
-func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (taskId string, err error) {
+func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId string, err error) {
 	if opts == nil {
 		opts = &base.Options{}
 	}
@@ -763,7 +790,7 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 		opts.SelectFiles = make([]int, 0)
 	}
 
-	meta := fetcher.Meta()
+	meta := f.Meta()
 	meta.Opts = opts
 	if opts.Path == "" {
 		storeConfig, err := d.GetConfig()
@@ -773,19 +800,20 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 		opts.Path = storeConfig.DownloadDir
 	}
 
-	fb, err := d.parseFb(fetcher.Meta().Req.URL)
+	fb, err := d.parseFb(f.Meta().Req.URL)
 	if err != nil {
 		return
 	}
 
 	task := NewTask()
 	task.fetcherBuilder = fb
-	task.fetcher = fetcher
-	task.Protocol = fetcher.Name()
-	task.Meta = fetcher.Meta()
+	task.fetcher = f
+	task.Protocol = f.Name()
+	task.Meta = f.Meta()
 	task.Progress = &Progress{}
+	_, task.Uploading = f.(fetcher.Uploader)
 	initTask(task)
-	if err = fetcher.Create(opts); err != nil {
+	if err = f.Create(opts); err != nil {
 		return
 	}
 	if err = d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
@@ -888,10 +916,10 @@ func (d *Downloader) doStart(task *Task) (err error) {
 
 		task.Progress.Speed = 0
 		task.timer.Start()
-		if err := d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
+		if err := task.fetcher.Start(); err != nil {
 			return err
 		}
-		if err := task.fetcher.Start(); err != nil {
+		if err := d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
 			return err
 		}
 		d.emit(EventKeyStart, task)

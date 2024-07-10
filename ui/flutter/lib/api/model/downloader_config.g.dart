@@ -53,11 +53,15 @@ Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig()
   ..listenPort = json['listenPort'] as int
   ..trackers =
-      (json['trackers'] as List<dynamic>).map((e) => e as String).toList();
+      (json['trackers'] as List<dynamic>).map((e) => e as String).toList()
+  ..seedRatio = (json['seedRatio'] as num).toDouble()
+  ..seedTime = json['seedTime'] as int;
 
 Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
       'listenPort': instance.listenPort,
       'trackers': instance.trackers,
+      'seedRatio': instance.seedRatio,
+      'seedTime': instance.seedTime,
     };
 
 ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(

@@ -57,6 +57,8 @@ class HttpConfig {
 class BtConfig {
   int listenPort = 0;
   List<String> trackers = [];
+  double seedRatio = 0;
+  int seedTime = 0;
 
   BtConfig();
 
