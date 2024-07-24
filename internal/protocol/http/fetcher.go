@@ -405,7 +405,7 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 			body = bytes.NewBufferString(extra.Body)
 		}
 	}
-	if _, ok := headers[base.HttpHeaderUserAgent]; !ok {
+	if v := headers[base.HttpHeaderUserAgent]; len(v) == 0 || v[0] == "" {
 		// load user agent from config
 		headers[base.HttpHeaderUserAgent] = []string{f.config.UserAgent}
 	}
