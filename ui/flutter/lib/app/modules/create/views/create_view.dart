@@ -396,7 +396,7 @@ class CreateView extends GetView<CreateController> {
             Util.isWeb() && controller.fileDataUri.isNotEmpty;
         final submitUrl = isWebFileChosen
             ? controller.fileDataUri.value
-            : _urlController.text;
+            : _urlController.text.trim();
 
         final urls = Util.textToLines(submitUrl);
         // Add url to the history
@@ -443,17 +443,24 @@ class CreateView extends GetView<CreateController> {
   Object? parseReqExtra(String url) {
     Object? reqExtra;
     if (controller.showAdvanced.value) {
-      final u = Uri.parse(_urlController.text);
-      if (u.scheme.startsWith("http")) {
-        reqExtra = ReqExtraHttp()
-          ..header = {
+      switch (controller.advancedTabController.index) {
+        case 0:
+          final header = {
             "User-Agent": _httpUaController.text,
             "Cookie": _httpCookieController.text,
             "Referer": _httpRefererController.text,
           };
-      } else {
-        reqExtra = ReqExtraBt()
-          ..trackers = Util.textToLines(_btTrackerController.text);
+          header.removeWhere((key, value) => value.trim().isEmpty);
+          if (header.isNotEmpty) {
+            reqExtra = ReqExtraHttp()..header = header;
+          }
+          break;
+        case 1:
+          if (_btTrackerController.text.trim().isNotEmpty) {
+            reqExtra = ReqExtraBt()
+              ..trackers = Util.textToLines(_btTrackerController.text);
+          }
+          break;
       }
     }
     return reqExtra;
