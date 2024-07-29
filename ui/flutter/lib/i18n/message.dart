@@ -2,6 +2,8 @@ import 'package:get/get.dart';
 
 import 'langs/en_us.dart';
 import 'langs/fa_ir.dart';
+import 'langs/fr_fr.dart';
+import 'langs/id_id.dart';
 import 'langs/it_it.dart';
 import 'langs/ja_jp.dart';
 import 'langs/pl_pl.dart';
@@ -29,5 +31,7 @@ class _Messages extends Translations {
         ...trTR,
         ...plPL,
         ...itIT,
+        ...idID,
+        ...frFR,
       };
 }
