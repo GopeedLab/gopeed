@@ -4,6 +4,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"path"
+	"strings"
 )
 
 // Fetcher defines the interface for a download protocol.
@@ -71,12 +72,42 @@ func (m *FetcherMeta) RootDirPath() string {
 	}
 }
 
-// FetcherBuilder defines the interface for a fetcher builder.
-type FetcherBuilder interface {
+type FilterType int
+
+const (
+	// FilterTypeUrl url type, pattern is the scheme, e.g. http://github.com -> http
+	FilterTypeUrl FilterType = iota
+	// FilterTypeFile file type, pattern is the file extension name, e.g. test.torrent -> torrent
+	FilterTypeFile
+	// FilterTypeBase64 base64 data type, pattern is the data mime type, e.g. data:application/x-bittorrent;base64 -> application/x-bittorrent
+	FilterTypeBase64
+)
+
+type SchemeFilter struct {
+	Type    FilterType
+	Pattern string
+}
+
+func (s *SchemeFilter) Match(uri string) bool {
+	uriUpper := strings.ToUpper(uri)
+	patternUpper := strings.ToUpper(s.Pattern)
+	switch s.Type {
+	case FilterTypeUrl:
+		return strings.HasPrefix(uriUpper, patternUpper+":")
+	case FilterTypeFile:
+		return strings.HasSuffix(uriUpper, "."+patternUpper)
+	case FilterTypeBase64:
+		return strings.HasPrefix(uriUpper, "DATA:"+patternUpper+";BASE64,")
+	}
+	return false
+}
+
+// FetcherManager manage and control the fetcher
+type FetcherManager interface {
 	// Name return the name of the protocol.
 	Name() string
-	// Schemes returns the schemes supported by the fetcher.
-	Schemes() []string
+	// Filters registers the supported schemes.
+	Filters() []*SchemeFilter
 	// Build returns a new fetcher.
 	Build() Fetcher
 
@@ -86,6 +117,8 @@ type FetcherBuilder interface {
 	Store(fetcher Fetcher) (any, error)
 	// Restore fetcher
 	Restore() (v any, f func(meta *FetcherMeta, v any) Fetcher)
+	// Close the fetcher manager, release resources.
+	Close() error
 }
 
 type DefaultFetcher struct {

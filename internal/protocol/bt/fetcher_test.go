@@ -100,7 +100,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 }
 
 func buildFetcher() fetcher.Fetcher {
-	fb := new(FetcherBuilder)
+	fb := new(FetcherManager)
 	fetcher := fb.Build()
 	newController := controller.NewController()
 	newController.GetConfig = func(v any) {
@@ -111,7 +111,7 @@ func buildFetcher() fetcher.Fetcher {
 }
 
 func buildConfigFetcher(proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher {
-	fetcher := new(FetcherBuilder).Build()
+	fetcher := new(FetcherManager).Build()
 	newController := controller.NewController()
 	mockCfg := config{
 		Trackers: []string{

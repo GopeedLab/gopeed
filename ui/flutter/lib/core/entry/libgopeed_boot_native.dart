@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
-import 'dart:isolate';
 
 import '../../util/util.dart';
 import '../common/libgopeed_channel.dart';
@@ -17,7 +16,19 @@ class LibgopeedBootNative implements LibgopeedBoot {
   late LibgopeedInterface _libgopeed;
 
   LibgopeedBootNative() {
-    if (!Util.isDesktop()) {
+    if (Util.isDesktop()) {
+      var libName = "libgopeed.";
+      if (Platform.isWindows) {
+        libName += "dll";
+      }
+      if (Platform.isMacOS) {
+        libName += "dylib";
+      }
+      if (Platform.isLinux) {
+        libName += "so";
+      }
+      _libgopeed = LibgopeedFFi(LibgopeedBind(DynamicLibrary.open(libName)));
+    } else {
       _libgopeed = LibgopeedChannel();
     }
   }
@@ -27,35 +38,12 @@ class LibgopeedBootNative implements LibgopeedBoot {
     cfg.storage = 'bolt';
     cfg.storageDir = Util.getStorageDir();
     cfg.refreshInterval = 0;
-    var port =
-        Util.isDesktop() ? await _ffiStart(cfg) : await _libgopeed.start(cfg);
+    var port = await _libgopeed.start(cfg);
     return port;
   }
 
   @override
   Future<void> stop() async {
     await _libgopeed.stop();
-  }
-
-  _ffiInit() {
-    var libName = "libgopeed.";
-    if (Platform.isWindows) {
-      libName += "dll";
-    }
-    if (Platform.isMacOS) {
-      libName += "dylib";
-    }
-    if (Platform.isLinux) {
-      libName += "so";
-    }
-    _libgopeed = LibgopeedFFi(LibgopeedBind(DynamicLibrary.open(libName)));
-  }
-
-  // FFI run in isolate
-  Future<int> _ffiStart(StartConfig cfg) async {
-    return await Isolate.run(() async {
-      _ffiInit();
-      return await _libgopeed.start(cfg);
-    });
   }
 }

@@ -306,7 +306,7 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fb := new(FetcherBuilder)
+	fb := new(FetcherManager)
 	time.Sleep(time.Millisecond * 50)
 	data, err := fb.Store(fetcher)
 	if err != nil {
@@ -359,7 +359,7 @@ func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t 
 }
 
 func buildFetcher() *Fetcher {
-	fb := new(FetcherBuilder)
+	fb := new(FetcherManager)
 	fetcher := fb.Build()
 	newController := controller.NewController()
 	newController.GetConfig = func(v any) {
@@ -370,7 +370,7 @@ func buildFetcher() *Fetcher {
 }
 
 func buildConfigFetcher(cfg config) fetcher.Fetcher {
-	fetcher := new(FetcherBuilder).Build()
+	fetcher := new(FetcherManager).Build()
 	newController := controller.NewController()
 	newController.GetConfig = func(v any) {
 		json.Unmarshal([]byte(test.ToJson(cfg)), v)
