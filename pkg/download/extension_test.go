@@ -222,7 +222,6 @@ func TestDownloader_Extension_OnError(t *testing.T) {
 		}
 		errCh := make(chan error, 1)
 		downloader.Listener(func(event *Event) {
-			downloader.Logger.Info().Msgf("event: %s", event.Key)
 			if event.Key == EventKeyFinally {
 				errCh <- event.Err
 			}
