@@ -43,6 +43,9 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
+	if f.data == nil {
+		f.data = &fetcherData{}
+	}
 	f.ctl.GetConfig(&f.config)
 	return
 }
@@ -87,9 +90,6 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 	f.meta.Opts = opts
 	if f.meta.Res != nil {
 		torrentDirMap[f.meta.Res.Hash] = f.meta.FolderPath()
-	}
-	if f.data == nil {
-		f.data = &fetcherData{}
 	}
 	f.uploadDoneCh = make(chan any, 1)
 	return nil
