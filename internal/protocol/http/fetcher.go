@@ -64,23 +64,13 @@ type Fetcher struct {
 	eg     *errgroup.Group
 }
 
-func (f *Fetcher) Name() string {
-	return "http"
-}
-
 func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	f.doneCh = make(chan error, 1)
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
-	exist := f.ctl.GetConfig(&f.config)
-	if !exist {
-		f.config = &config{
-			UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
-			Connections: 1,
-		}
-	}
+	f.ctl.GetConfig(&f.config)
 	return
 }
 
@@ -471,12 +461,23 @@ type FetcherBuilder struct {
 
 var schemes = []string{"HTTP", "HTTPS"}
 
+func (fb *FetcherBuilder) Name() string {
+	return "http"
+}
+
 func (fb *FetcherBuilder) Schemes() []string {
 	return schemes
 }
 
 func (fb *FetcherBuilder) Build() fetcher.Fetcher {
 	return &Fetcher{}
+}
+
+func (fb *FetcherBuilder) DefaultConfig() any {
+	return &config{
+		UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+		Connections: 16,
+	}
 }
 
 func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {

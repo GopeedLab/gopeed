@@ -41,9 +41,8 @@ class HttpConfig {
   bool useServerCtime;
 
   HttpConfig({
-    this.userAgent =
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
-    this.connections = 16,
+    this.userAgent = '',
+    this.connections = 0,
     this.useServerCtime = false,
   });
 
@@ -55,10 +54,19 @@ class HttpConfig {
 
 @JsonSerializable()
 class BtConfig {
-  int listenPort = 0;
-  List<String> trackers = [];
+  int listenPort;
+  List<String> trackers;
+  bool seedKeep;
+  double seedRatio;
+  int seedTime;
 
-  BtConfig();
+  BtConfig({
+    this.listenPort = 0,
+    this.trackers = const [],
+    this.seedKeep = false,
+    this.seedRatio = 0,
+    this.seedTime = 0,
+  });
 
   factory BtConfig.fromJson(Map<String, dynamic> json) =>
       _$BtConfigFromJson(json);
