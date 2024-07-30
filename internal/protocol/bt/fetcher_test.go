@@ -113,11 +113,8 @@ func buildConfigFetcher(proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher
 			"udp://tracker.birkenwald.de:6969/announce",
 			"udp://tracker.bitsearch.to:1337/announce",
 		}}
-	newController.GetConfig = func(v any) bool {
-		if err := json.Unmarshal([]byte(test.ToJson(mockCfg)), v); err != nil {
-			return false
-		}
-		return true
+	newController.GetConfig = func(v any) {
+		json.Unmarshal([]byte(test.ToJson(mockCfg)), v)
 	}
 	newController.ProxyConfig = proxyConfig
 	fetcher.Setup(newController)
