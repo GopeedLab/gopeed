@@ -228,7 +228,7 @@ func TestDownloader_Extension_OnError(t *testing.T) {
 			}
 		})
 		id, err := downloader.CreateDirect(&base.Request{
-			URL: "https://google.com/gopeed/test/404",
+			URL: "https://github.com/gopeed/test/404",
 			Labels: map[string]string{
 				"test": "true",
 			},
