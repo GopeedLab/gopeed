@@ -37,9 +37,8 @@ Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) =>
     };
 
 HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
-      userAgent: json['userAgent'] as String? ??
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
-      connections: json['connections'] as int? ?? 16,
+      userAgent: json['userAgent'] as String? ?? '',
+      connections: json['connections'] as int? ?? 0,
       useServerCtime: json['useServerCtime'] as bool? ?? false,
     );
 
@@ -50,14 +49,23 @@ Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
       'useServerCtime': instance.useServerCtime,
     };
 
-BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig()
-  ..listenPort = json['listenPort'] as int
-  ..trackers =
-      (json['trackers'] as List<dynamic>).map((e) => e as String).toList();
+BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
+      listenPort: json['listenPort'] as int? ?? 0,
+      trackers: (json['trackers'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      seedKeep: json['seedKeep'] as bool? ?? false,
+      seedRatio: (json['seedRatio'] as num?)?.toDouble() ?? 0,
+      seedTime: json['seedTime'] as int? ?? 0,
+    );
 
 Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
       'listenPort': instance.listenPort,
       'trackers': instance.trackers,
+      'seedKeep': instance.seedKeep,
+      'seedRatio': instance.seedRatio,
+      'seedTime': instance.seedTime,
     };
 
 ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(

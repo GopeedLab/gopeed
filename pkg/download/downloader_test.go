@@ -342,8 +342,8 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 
 	var httpCfg map[string]any
 	exits := downloader.getProtocolConfig("http", &httpCfg)
-	if exits {
-		t.Errorf("getProtocolConfig() got = %v, want %v", exits, false)
+	if !exits {
+		t.Errorf("getProtocolConfig() got = %v, want %v", exits, true)
 	}
 
 	storeCfg := &base.DownloaderStoreConfig{

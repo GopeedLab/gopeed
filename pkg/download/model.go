@@ -19,9 +19,10 @@ type ResolveResult struct {
 
 type Task struct {
 	ID        string               `json:"id"`
+	Protocol  string               `json:"protocol"`
 	Meta      *fetcher.FetcherMeta `json:"meta"`
 	Status    base.Status          `json:"status"`
-	Protocol  string               `json:"protocol"`
+	Uploading bool                 `json:"uploading"`
 	Progress  *Progress            `json:"progress"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`
@@ -55,8 +56,10 @@ func (t *Task) updateStatus(status base.Status) {
 func (t *Task) clone() *Task {
 	return &Task{
 		ID:        t.ID,
+		Protocol:  t.Protocol,
 		Meta:      t.Meta,
 		Status:    t.Status,
+		Uploading: t.Uploading,
 		Progress:  t.Progress,
 		CreatedAt: t.CreatedAt,
 		UpdatedAt: t.UpdatedAt,

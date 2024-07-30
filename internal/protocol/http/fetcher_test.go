@@ -359,19 +359,21 @@ func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t 
 }
 
 func buildFetcher() *Fetcher {
-	fetcher := new(FetcherBuilder).Build()
-	fetcher.Setup(controller.NewController())
+	fb := new(FetcherBuilder)
+	fetcher := fb.Build()
+	newController := controller.NewController()
+	newController.GetConfig = func(v any) {
+		json.Unmarshal([]byte(test.ToJson(fb.DefaultConfig())), v)
+	}
+	fetcher.Setup(newController)
 	return fetcher.(*Fetcher)
 }
 
 func buildConfigFetcher(cfg config) fetcher.Fetcher {
 	fetcher := new(FetcherBuilder).Build()
 	newController := controller.NewController()
-	newController.GetConfig = func(v any) bool {
-		if err := json.Unmarshal([]byte(test.ToJson(cfg)), v); err != nil {
-			return false
-		}
-		return true
+	newController.GetConfig = func(v any) {
+		json.Unmarshal([]byte(test.ToJson(cfg)), v)
 	}
 	fetcher.Setup(newController)
 	return fetcher
