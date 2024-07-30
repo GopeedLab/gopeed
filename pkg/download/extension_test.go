@@ -227,7 +227,7 @@ func TestDownloader_Extension_OnError(t *testing.T) {
 			}
 		})
 		id, err := downloader.CreateDirect(&base.Request{
-			URL: "https://github.com/gopeed/test/404",
+			URL: "https://google.com/gopeed/test/404",
 			Labels: map[string]string{
 				"test": "true",
 			},
@@ -238,7 +238,7 @@ func TestDownloader_Extension_OnError(t *testing.T) {
 		select {
 		case err = <-errCh:
 			break
-		case <-time.After(time.Second * 60):
+		case <-time.After(time.Second * 10):
 			err = errors.New("timeout")
 		}
 
