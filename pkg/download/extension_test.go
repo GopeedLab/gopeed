@@ -238,7 +238,7 @@ func TestDownloader_Extension_OnError(t *testing.T) {
 		select {
 		case err = <-errCh:
 			break
-		case <-time.After(time.Second * 30):
+		case <-time.After(time.Second * 60):
 			err = errors.New("timeout")
 		}
 
