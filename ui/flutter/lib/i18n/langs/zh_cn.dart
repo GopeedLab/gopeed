@@ -92,5 +92,9 @@ const zhCN = {
     'thanksDesc': '感谢所有为 Gopeed 社区建设添砖加瓦的贡献者们！',
     'browserExtension': '浏览器扩展',
     'launchAtStartup': '开机自动运行',
+    'seedConfig': '做种设置',
+    'seedKeep': '持续做种',
+    'seedRatio': '做种分享率',
+    'seedTime': '做种时间（分钟）',
   }
 };

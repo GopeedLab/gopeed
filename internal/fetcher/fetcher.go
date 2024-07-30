@@ -9,9 +9,6 @@ import (
 // Fetcher defines the interface for a download protocol.
 // Each download task will have a corresponding Fetcher instance for the management of the download task
 type Fetcher interface {
-	// Name return the name of the protocol.
-	Name() string
-
 	Setup(ctl *controller.Controller)
 	// Resolve resource info from request
 	Resolve(req *base.Request) error
@@ -76,11 +73,15 @@ func (m *FetcherMeta) RootDirPath() string {
 
 // FetcherBuilder defines the interface for a fetcher builder.
 type FetcherBuilder interface {
+	// Name return the name of the protocol.
+	Name() string
 	// Schemes returns the schemes supported by the fetcher.
 	Schemes() []string
 	// Build returns a new fetcher.
 	Build() Fetcher
 
+	// DefaultConfig returns the default configuration of the protocol.
+	DefaultConfig() any
 	// Store fetcher
 	Store(fetcher Fetcher) (any, error)
 	// Restore fetcher

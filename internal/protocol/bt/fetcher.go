@@ -38,24 +38,12 @@ type Fetcher struct {
 	uploadDoneCh  chan any
 }
 
-func (f *Fetcher) Name() string {
-	return "bt"
-}
-
 func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
-	exist := f.ctl.GetConfig(&f.config)
-	if !exist {
-		f.config = &config{
-			ListenPort: 0,
-			Trackers:   []string{},
-			SeedRatio:  1.0,
-			SeedTime:   120 * 60,
-		}
-	}
+	f.ctl.GetConfig(&f.config)
 	return
 }
 
@@ -287,6 +275,11 @@ func (f *Fetcher) doUpload() {
 		}
 		f.data.SeedTime = lastData.SeedTime + time.Now().Unix() - doneTime
 
+		// If the seed forever is true, keep seeding
+		if f.config.SeedKeep {
+			continue
+		}
+
 		// If the seed ratio is reached, stop seeding
 		if f.config.SeedRatio > 0 {
 			seedRadio := f.seedRadio()
@@ -391,12 +384,26 @@ type FetcherBuilder struct {
 
 var schemes = []string{"FILE", "MAGNET", "APPLICATION/X-BITTORRENT"}
 
+func (fb *FetcherBuilder) Name() string {
+	return "bt"
+}
+
 func (fb *FetcherBuilder) Schemes() []string {
 	return schemes
 }
 
 func (fb *FetcherBuilder) Build() fetcher.Fetcher {
 	return &Fetcher{}
+}
+
+func (fb *FetcherBuilder) DefaultConfig() any {
+	return &config{
+		ListenPort: 0,
+		Trackers:   []string{},
+		SeedKeep:   false,
+		SeedRatio:  1.0,
+		SeedTime:   120 * 60,
+	}
 }
 
 func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {

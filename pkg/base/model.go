@@ -150,6 +150,9 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	if cfg.Proxy == nil {
 		cfg.Proxy = &DownloaderProxyConfig{}
 	}
+	if cfg.ProtocolConfig == nil {
+		cfg.ProtocolConfig = make(map[string]any)
+	}
 	return cfg
 }
 

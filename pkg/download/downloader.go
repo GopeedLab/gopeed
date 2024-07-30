@@ -128,6 +128,14 @@ func (d *Downloader) Setup() error {
 	}
 	// init default config
 	d.cfg.DownloaderStoreConfig.Init()
+	// init protocol config, if not exist, use default config
+	for _, fb := range d.fetcherBuilders {
+		protocol := fb.Name()
+		if _, ok := d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol]; !ok {
+			d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol] = fb.DefaultConfig()
+		}
+	}
+
 	// load tasks from storage
 	var tasks []*Task
 	if err = d.storage.List(bucketTask, &tasks); err != nil {
@@ -244,10 +252,10 @@ func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
 	return nil, ErrUnSupportedProtocol
 }
 
-func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
+func (d *Downloader) setupFetcher(fb fetcher.FetcherBuilder, fetcher fetcher.Fetcher) {
 	ctl := controller.NewController()
-	ctl.GetConfig = func(v any) bool {
-		return d.getProtocolConfig(fetcher.Name(), v)
+	ctl.GetConfig = func(v any) {
+		d.getProtocolConfig(fb.Name(), v)
 	}
 	ctl.ProxyConfig = d.cfg.Proxy
 	fetcher.Setup(ctl)
@@ -767,7 +775,7 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 		if task.fetcher == nil {
 			task.fetcher = fb.Build()
 		}
-		d.setupFetcher(task.fetcher)
+		d.setupFetcher(fb, task.fetcher)
 		if task.fetcher.Meta().Req == nil {
 			task.fetcher.Meta().Req = task.Meta.Req
 		}
@@ -808,7 +816,7 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	task := NewTask()
 	task.fetcherBuilder = fb
 	task.fetcher = f
-	task.Protocol = f.Name()
+	task.Protocol = fb.Name()
 	task.Meta = f.Meta()
 	task.Progress = &Progress{}
 	_, task.Uploading = f.(fetcher.Uploader)
@@ -994,7 +1002,7 @@ func (d *Downloader) buildFetcher(url string) (fetcher.Fetcher, error) {
 		return nil, err
 	}
 	fetcher := fb.Build()
-	d.setupFetcher(fetcher)
+	d.setupFetcher(fb, fetcher)
 	return fetcher, nil
 }
 
