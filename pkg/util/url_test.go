@@ -41,21 +41,21 @@ func TestParseSchema(t *testing.T) {
 			args: args{
 				url: "./url.go",
 			},
-			want: "FILE",
+			want: "",
 		},
 		{
 			name: "data-uri",
 			args: args{
 				url: "data:application/x-bittorrent;base64,test",
 			},
-			want: "APPLICATION/X-BITTORRENT",
+			want: "DATA",
 		},
 		{
 			name: "windows-path",
 			args: args{
 				url: "D:\\bt.torrent",
 			},
-			want: "FILE",
+			want: "",
 		},
 	}
 	for _, tt := range tests {

@@ -102,7 +102,7 @@ Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された
 
 ### 環境
 
-1. Go 言語 1.21+
+1. Go 言語 1.22+
 2. Flutter 3.16+
 
 ### クローン

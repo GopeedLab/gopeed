@@ -205,6 +205,9 @@ func (f *Fetcher) Wait() (err error) {
 }
 
 func (f *Fetcher) isDone() bool {
+	if f.meta.Opts == nil {
+		return false
+	}
 	for _, selectIndex := range f.meta.Opts.SelectFiles {
 		file := f.torrent.Files()[selectIndex]
 		if file.BytesCompleted() < file.Length() {
@@ -318,7 +321,7 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	schema := util.ParseSchema(req.URL)
 	if schema == "MAGNET" {
 		f.torrent, err = client.AddMagnet(req.URL)
-	} else if schema == "APPLICATION/X-BITTORRENT" {
+	} else if schema == "DATA" {
 		_, data := util.ParseDataUri(req.URL)
 		buf := bytes.NewBuffer(data)
 		var metaInfo *metainfo.MetaInfo
@@ -379,24 +382,35 @@ type fetcherData struct {
 	SeedTime int64
 }
 
-type FetcherBuilder struct {
+type FetcherManager struct {
 }
 
-var schemes = []string{"FILE", "MAGNET", "APPLICATION/X-BITTORRENT"}
-
-func (fb *FetcherBuilder) Name() string {
+func (fm *FetcherManager) Name() string {
 	return "bt"
 }
 
-func (fb *FetcherBuilder) Schemes() []string {
-	return schemes
+func (fm *FetcherManager) Filters() []*fetcher.SchemeFilter {
+	return []*fetcher.SchemeFilter{
+		{
+			Type:    fetcher.FilterTypeUrl,
+			Pattern: "MAGNET",
+		},
+		{
+			Type:    fetcher.FilterTypeFile,
+			Pattern: "TORRENT",
+		},
+		{
+			Type:    fetcher.FilterTypeBase64,
+			Pattern: "APPLICATION/X-BITTORRENT",
+		},
+	}
 }
 
-func (fb *FetcherBuilder) Build() fetcher.Fetcher {
+func (fm *FetcherManager) Build() fetcher.Fetcher {
 	return &Fetcher{}
 }
 
-func (fb *FetcherBuilder) DefaultConfig() any {
+func (fm *FetcherManager) DefaultConfig() any {
 	return &config{
 		ListenPort: 0,
 		Trackers:   []string{},
@@ -406,18 +420,31 @@ func (fb *FetcherBuilder) DefaultConfig() any {
 	}
 }
 
-func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {
+func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
 	return _f.data, nil
 }
 
-func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
+func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
 	return &fetcherData{}, func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher {
 		return &Fetcher{
 			meta: meta,
 			data: v.(*fetcherData),
 		}
 	}
+}
+
+func (fm *FetcherManager) Close() error {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if client != nil {
+		errs := client.Close()
+		if len(errs) > 0 {
+			return errs[0]
+		}
+	}
+	return nil
 }
 
 // parse version to bep20 format, fixed length 4, if not enough, fill 0

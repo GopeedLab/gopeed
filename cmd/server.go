@@ -8,7 +8,9 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 )
 
 //go:embed banner.txt
@@ -40,8 +42,21 @@ func Start(cfg *model.StartConfig) {
 			rest.Downloader.PutConfig(downloadCfg)
 		}
 	}
+	watchExit()
+
 	fmt.Printf("Server start success on http://%s\n", listener.Addr().String())
 	if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
 		panic(err)
 	}
+}
+
+func watchExit() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigs
+		fmt.Printf("Server is shutting down due to signal: %s\n", sig)
+		rest.Downloader.Close()
+		os.Exit(0)
+	}()
 }

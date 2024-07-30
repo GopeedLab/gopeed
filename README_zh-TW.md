@@ -110,7 +110,7 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 
 ### 開發環境
 
-1. Golang 1.21+
+1. Golang 1.22+
 2. Flutter 3.16+
 
 ### 克隆項目

@@ -110,7 +110,7 @@ Dự án này được chia thành hai phần, phần giao diện sử dụng `f
 
 ### Environment
 
-1. Golang 1.21+
+1. Golang 1.22+
 2. Flutter 3.16+
 
 ### Clone
