@@ -17,6 +17,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../core/common/start_config.dart';
+import '../../../../core/libgopeed_boot.dart';
 import '../../../../database/database.dart';
 import '../../../../database/entity.dart';
 import '../../../../i18n/message.dart';
@@ -110,6 +111,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
   void onClose() {
     _linkSubscription?.cancel();
     trayManager.removeListener(this);
+    LibgopeedBoot.instance.stop();
   }
 
   @override
@@ -242,7 +244,14 @@ class AppController extends GetxController with WindowListener, TrayListener {
       MenuItem.separator(),
       MenuItem(
         label: 'exit'.tr,
-        onClick: (menuItem) => {windowManager.destroy()},
+        onClick: (menuItem) async {
+          try {
+            await LibgopeedBoot.instance.stop();
+          } catch (e) {
+            logger.w("libgopeed stop fail", e);
+          }
+          windowManager.destroy();
+        },
       ),
     ]);
     if (!Util.isLinux()) {

@@ -64,23 +64,13 @@ type Fetcher struct {
 	eg     *errgroup.Group
 }
 
-func (f *Fetcher) Name() string {
-	return "http"
-}
-
 func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	f.doneCh = make(chan error, 1)
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
-	exist := f.ctl.GetConfig(&f.config)
-	if !exist {
-		f.config = &config{
-			UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
-			Connections: 1,
-		}
-	}
+	f.ctl.GetConfig(&f.config)
 	return
 }
 
@@ -466,30 +456,48 @@ type fetcherData struct {
 	Chunks []*chunk
 }
 
-type FetcherBuilder struct {
+type FetcherManager struct {
 }
 
-var schemes = []string{"HTTP", "HTTPS"}
-
-func (fb *FetcherBuilder) Schemes() []string {
-	return schemes
+func (fm *FetcherManager) Name() string {
+	return "http"
 }
 
-func (fb *FetcherBuilder) Build() fetcher.Fetcher {
+func (fm *FetcherManager) Filters() []*fetcher.SchemeFilter {
+	return []*fetcher.SchemeFilter{
+		{
+			Type:    fetcher.FilterTypeUrl,
+			Pattern: "HTTP",
+		},
+		{
+			Type:    fetcher.FilterTypeUrl,
+			Pattern: "HTTPS",
+		},
+	}
+}
+
+func (fm *FetcherManager) Build() fetcher.Fetcher {
 	return &Fetcher{}
 }
 
-func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {
+func (fm *FetcherManager) DefaultConfig() any {
+	return &config{
+		UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+		Connections: 16,
+	}
+}
+
+func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
 	return &fetcherData{
 		Chunks: _f.chunks,
 	}, nil
 }
 
-func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
+func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
 	return &fetcherData{}, func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher {
 		fd := v.(*fetcherData)
-		fb := &FetcherBuilder{}
+		fb := &FetcherManager{}
 		fetcher := fb.Build().(*Fetcher)
 		fetcher.meta = meta
 		base.ParseReqExtra[fhttp.ReqExtra](fetcher.meta.Req)
@@ -499,4 +507,8 @@ func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		}
 		return fetcher
 	}
+}
+
+func (fm *FetcherManager) Close() error {
+	return nil
 }

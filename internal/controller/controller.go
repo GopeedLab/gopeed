@@ -7,7 +7,7 @@ import (
 )
 
 type Controller struct {
-	GetConfig   func(v any) bool
+	GetConfig   func(v any)
 	ProxyConfig *base.DownloaderProxyConfig
 	FileController
 	//ContextDialer() (proxy.Dialer, error)
@@ -22,10 +22,8 @@ type DefaultFileController struct {
 
 func NewController() *Controller {
 	return &Controller{
+		GetConfig:      func(v any) {},
 		FileController: &DefaultFileController{},
-		GetConfig: func(v any) bool {
-			return false
-		},
 	}
 }
 

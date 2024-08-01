@@ -95,5 +95,9 @@ const enUS = {
         'Thanks to all the contributors who have helped build and develop the Gopeed community!',
     'browserExtension': 'Browser Extension',
     'launchAtStartup': 'Launch at Startup',
+    'seedConfig': 'Seed Config',
+    'seedKeep': 'Keep seeding',
+    'seedRatio': 'Seed ratio',
+    'seedTime': 'Seed time (minutes)',
   },
 };

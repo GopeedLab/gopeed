@@ -19,8 +19,7 @@ const zhTW = {
     'advancedOptions': '進階選項',
     'downloadLink': '下載連結',
     'downloadLinkValid': '請輸入下載連結',
-    'downloadLinkHit':
-        '請輸入下載連結，支援 HTTP/HTTPS/MAGNET@append',
+    'downloadLinkHit': '請輸入下載連結，支援 HTTP/HTTPS/MAGNET@append',
     'downloadLinkHitDesktop': '，或直接拖曳種子檔到此處',
     'download': '下載',
     'noFileSelected': '請至少選擇一個檔案以繼續。',
@@ -93,5 +92,9 @@ const zhTW = {
     'thanksDesc': '感謝所有幫助建立和發展 Gopeed 社群的貢獻者！',
     'browserExtension': '瀏覽器擴充功能',
     'launchAtStartup': '開機自動執行',
+    'seedConfig': '做種設定',
+    'seedKeep': '持續做種',
+    'seedRatio': '做種分享率',
+    'seedTime': '做種時間（分鐘）',
   }
 };

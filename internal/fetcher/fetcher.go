@@ -4,14 +4,12 @@ import (
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"path"
+	"strings"
 )
 
 // Fetcher defines the interface for a download protocol.
-// One fetcher for each download task
+// Each download task will have a corresponding Fetcher instance for the management of the download task
 type Fetcher interface {
-	// Name return the name of the protocol.
-	Name() string
-
 	Setup(ctl *controller.Controller)
 	// Resolve resource info from request
 	Resolve(req *base.Request) error
@@ -29,6 +27,12 @@ type Fetcher interface {
 	Progress() Progress
 	// Wait for the download to complete, this method will block until the download is done.
 	Wait() error
+}
+
+type Uploader interface {
+	Upload() error
+	UploadedBytes() int64
+	WaitUpload() error
 }
 
 // FetcherMeta defines the meta information of a fetcher.
@@ -68,17 +72,53 @@ func (m *FetcherMeta) RootDirPath() string {
 	}
 }
 
-// FetcherBuilder defines the interface for a fetcher builder.
-type FetcherBuilder interface {
-	// Schemes returns the schemes supported by the fetcher.
-	Schemes() []string
+type FilterType int
+
+const (
+	// FilterTypeUrl url type, pattern is the scheme, e.g. http://github.com -> http
+	FilterTypeUrl FilterType = iota
+	// FilterTypeFile file type, pattern is the file extension name, e.g. test.torrent -> torrent
+	FilterTypeFile
+	// FilterTypeBase64 base64 data type, pattern is the data mime type, e.g. data:application/x-bittorrent;base64 -> application/x-bittorrent
+	FilterTypeBase64
+)
+
+type SchemeFilter struct {
+	Type    FilterType
+	Pattern string
+}
+
+func (s *SchemeFilter) Match(uri string) bool {
+	uriUpper := strings.ToUpper(uri)
+	patternUpper := strings.ToUpper(s.Pattern)
+	switch s.Type {
+	case FilterTypeUrl:
+		return strings.HasPrefix(uriUpper, patternUpper+":")
+	case FilterTypeFile:
+		return strings.HasSuffix(uriUpper, "."+patternUpper)
+	case FilterTypeBase64:
+		return strings.HasPrefix(uriUpper, "DATA:"+patternUpper+";BASE64,")
+	}
+	return false
+}
+
+// FetcherManager manage and control the fetcher
+type FetcherManager interface {
+	// Name return the name of the protocol.
+	Name() string
+	// Filters registers the supported schemes.
+	Filters() []*SchemeFilter
 	// Build returns a new fetcher.
 	Build() Fetcher
 
+	// DefaultConfig returns the default configuration of the protocol.
+	DefaultConfig() any
 	// Store fetcher
 	Store(fetcher Fetcher) (any, error)
 	// Restore fetcher
 	Restore() (v any, f func(meta *FetcherMeta, v any) Fetcher)
+	// Close the fetcher manager, release resources.
+	Close() error
 }
 
 type DefaultFetcher struct {

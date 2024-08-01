@@ -42,25 +42,28 @@ var (
 type Listener func(event *Event)
 
 type Progress struct {
-	// 下载耗时(纳秒)
+	// Total download time(ns)
 	Used int64 `json:"used"`
-	// 每秒下载字节数
+	// Download speed(bytes/s)
 	Speed int64 `json:"speed"`
-	// 已下载的字节数
+	// Downloaded size(bytes)
 	Downloaded int64 `json:"downloaded"`
+	// Uploaded speed(bytes/s)
+	UploadSpeed int64 `json:"uploadSpeed"`
+	// Uploaded size(bytes)
+	Uploaded int64 `json:"uploaded"`
 }
 
 type Downloader struct {
 	Logger          *logger.Logger
 	ExtensionLogger *logger.Logger
 
-	cfg             *DownloaderConfig
-	fetcherBuilders map[string]fetcher.FetcherBuilder
-	fetcherCache    map[string]fetcher.Fetcher
-	storage         Storage
-	tasks           []*Task
-	waitTasks       []*Task
-	listener        Listener
+	cfg          *DownloaderConfig
+	fetcherCache map[string]fetcher.Fetcher
+	storage      Storage
+	tasks        []*Task
+	waitTasks    []*Task
+	listener     Listener
 
 	lock               *sync.Mutex
 	fetcherMapLock     *sync.RWMutex
@@ -77,22 +80,16 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 	cfg.Init()
 
 	d := &Downloader{
-		cfg:             cfg,
-		fetcherBuilders: make(map[string]fetcher.FetcherBuilder),
-		fetcherCache:    make(map[string]fetcher.Fetcher),
-		waitTasks:       make([]*Task, 0),
-		storage:         cfg.Storage,
+		cfg:          cfg,
+		fetcherCache: make(map[string]fetcher.Fetcher),
+		waitTasks:    make([]*Task, 0),
+		storage:      cfg.Storage,
 
 		lock:               &sync.Mutex{},
 		fetcherMapLock:     &sync.RWMutex{},
 		checkDuplicateLock: &sync.Mutex{},
 
 		extensions: make([]*Extension, 0),
-	}
-	for _, f := range cfg.FetchBuilders {
-		for _, p := range f.Schemes() {
-			d.fetcherBuilders[strings.ToUpper(p)] = f
-		}
 	}
 
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
@@ -124,11 +121,14 @@ func (d *Downloader) Setup() error {
 	}
 	// init default config
 	d.cfg.DownloaderStoreConfig.Init()
-	for _, fb := range d.fetcherBuilders {
-		f := fb.Build()
-		d.setupFetcher(f)
-
+	// init protocol config, if not exist, use default config
+	for _, fm := range d.cfg.FetchManagers {
+		protocol := fm.Name()
+		if _, ok := d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol]; !ok {
+			d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol] = fm.DefaultConfig()
+		}
 	}
+
 	// load tasks from storage
 	var tasks []*Task
 	if err = d.storage.List(bucketTask, &tasks); err != nil {
@@ -166,6 +166,22 @@ func (d *Downloader) Setup() error {
 	}
 	d.extensions = extensions
 
+	// handle upload
+	go func() {
+		for _, task := range d.tasks {
+			if task.Status == base.DownloadStatusDone && task.Uploading {
+				if err := d.restoreFetcher(task); err != nil {
+					d.Logger.Error().Stack().Err(err).Msgf("task upload restore fetcher failed, task id: %s", task.ID)
+				}
+				if uploader, ok := task.fetcher.(fetcher.Uploader); ok {
+					if err := uploader.Upload(); err != nil {
+						d.Logger.Error().Stack().Err(err).Msgf("task upload failed, task id: %s", task.ID)
+					}
+				}
+			}
+		}
+	}()
+
 	// calculate download speed every tick
 	go func() {
 		for !d.closed.Load() {
@@ -174,22 +190,31 @@ func (d *Downloader) Setup() error {
 					func() {
 						task.statusLock.Lock()
 						defer task.statusLock.Unlock()
-						if task.Status != base.DownloadStatusRunning {
+						if task.Status != base.DownloadStatusRunning && !task.Uploading {
 							return
 						}
 						// check if task is deleted
-						if d.GetTask(task.ID) == nil {
+						if d.GetTask(task.ID) == nil || task.fetcher == nil {
 							return
 						}
 
 						current := task.fetcher.Progress().TotalDownloaded()
-						task.Progress.Used = task.timer.Used()
-						task.Progress.Speed = task.calcSpeed(current-task.Progress.Downloaded, float64(d.cfg.RefreshInterval)/1000)
-						task.Progress.Downloaded = current
+						tick := float64(d.cfg.RefreshInterval) / 1000
+						if task.Status == base.DownloadStatusRunning {
+							task.Progress.Used = task.timer.Used()
+							task.Progress.Speed = task.calcSpeed(task.speedArr, current-task.Progress.Downloaded, tick)
+							task.Progress.Downloaded = current
+						}
+						if task.Uploading {
+							uploader := task.fetcher.(fetcher.Uploader)
+							currentUploaded := uploader.UploadedBytes()
+							task.Progress.UploadSpeed = task.calcSpeed(task.uploadSpeedArr, currentUploaded-task.Progress.Uploaded, tick)
+							task.Progress.Uploaded = currentUploaded
+						}
 						d.emit(EventKeyProgress, task)
 
 						// store fetcher progress
-						data, err := task.fetcherBuilder.Store(task.fetcher)
+						data, err := task.fetcherManager.Store(task.fetcher)
 						if err != nil {
 							d.Logger.Error().Stack().Err(err).Msgf("serialize fetcher failed: %s", task.ID)
 							return
@@ -211,19 +236,21 @@ func (d *Downloader) Setup() error {
 	return nil
 }
 
-func (d *Downloader) parseFb(url string) (fetcher.FetcherBuilder, error) {
-	schema := util.ParseSchema(url)
-	fetchBuilder, ok := d.fetcherBuilders[schema]
-	if ok {
-		return fetchBuilder, nil
+func (d *Downloader) parseFm(url string) (fetcher.FetcherManager, error) {
+	for _, fm := range d.cfg.FetchManagers {
+		for _, filter := range fm.Filters() {
+			if filter.Match(url) {
+				return fm, nil
+			}
+		}
 	}
 	return nil, ErrUnSupportedProtocol
 }
 
-func (d *Downloader) setupFetcher(fetcher fetcher.Fetcher) {
+func (d *Downloader) setupFetcher(fm fetcher.FetcherManager, fetcher fetcher.Fetcher) {
 	ctl := controller.NewController()
-	ctl.GetConfig = func(v any) bool {
-		return d.getProtocolConfig(fetcher.Name(), v)
+	ctl.GetConfig = func(v any) {
+		d.getProtocolConfig(fm.Name(), v)
 	}
 	ctl.ProxyConfig = d.cfg.Proxy
 	fetcher.Setup(ctl)
@@ -548,10 +575,23 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 
 func (d *Downloader) Close() error {
 	d.closed.Store(true)
-	if err := d.PauseAll(); err != nil {
-		return err
+
+	closeArr := []func() error{
+		d.PauseAll,
+		d.storage.Close,
 	}
-	return d.storage.Close()
+	for _, fm := range d.cfg.FetchManagers {
+		closeArr = append(closeArr, fm.Close)
+	}
+	// Make sure all resources are released, if had error, return the last error
+	var lastErr error
+	for i, close := range closeArr {
+		if err := close(); err != nil {
+			lastErr = err
+			d.Logger.Error().Stack().Err(err).Msgf("downloader close failed, index: %d", i)
+		}
+	}
+	return lastErr
 }
 
 func (d *Downloader) Clear() error {
@@ -641,6 +681,30 @@ func (d *Downloader) getProtocolConfig(name string, v any) bool {
 
 // wait task done
 func (d *Downloader) watch(task *Task) {
+	// wait task upload done
+	if task.Uploading {
+		if uploader, ok := task.fetcher.(fetcher.Uploader); ok {
+			go func() {
+				err := uploader.WaitUpload()
+				if err != nil {
+					d.Logger.Warn().Err(err).Msgf("task wait upload failed, task id: %s", task.ID)
+				}
+				d.lock.Lock()
+				defer d.lock.Unlock()
+
+				// Check if the task is deleted
+				if d.GetTask(task.ID) != nil {
+					task.Uploading = false
+					d.storage.Put(bucketTask, task.ID, task.clone())
+				}
+			}()
+		}
+	}
+
+	if task.Status == base.DownloadStatusDone {
+		return
+	}
+
 	err := task.fetcher.Wait()
 	if err != nil {
 		d.doOnError(task, err)
@@ -697,13 +761,13 @@ func (d *Downloader) doOnError(task *Task, err error) {
 
 func (d *Downloader) restoreFetcher(task *Task) error {
 	if task.fetcher == nil {
-		fb, err := d.parseFb(task.Meta.Req.URL)
+		fm, err := d.parseFm(task.Meta.Req.URL)
 		if err != nil {
 			return err
 		}
-		task.fetcherBuilder = fb
+		task.fetcherManager = fm
 		err = func() error {
-			v, f := fb.Restore()
+			v, f := fm.Restore()
 			if v != nil {
 				err := d.storage.Pop(bucketSave, task.ID, v)
 				if err != nil {
@@ -717,9 +781,9 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 			d.Logger.Error().Stack().Err(err).Msgf("deserialize fetcher failed, task id: %s", task.ID)
 		}
 		if task.fetcher == nil {
-			task.fetcher = fb.Build()
+			task.fetcher = fm.Build()
 		}
-		d.setupFetcher(task.fetcher)
+		d.setupFetcher(fm, task.fetcher)
 		if task.fetcher.Meta().Req == nil {
 			task.fetcher.Meta().Req = task.Meta.Req
 		}
@@ -734,7 +798,7 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 	return nil
 }
 
-func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (taskId string, err error) {
+func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId string, err error) {
 	if opts == nil {
 		opts = &base.Options{}
 	}
@@ -742,7 +806,7 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 		opts.SelectFiles = make([]int, 0)
 	}
 
-	meta := fetcher.Meta()
+	meta := f.Meta()
 	meta.Opts = opts
 	if opts.Path == "" {
 		storeConfig, err := d.GetConfig()
@@ -752,19 +816,20 @@ func (d *Downloader) doCreate(fetcher fetcher.Fetcher, opts *base.Options) (task
 		opts.Path = storeConfig.DownloadDir
 	}
 
-	fb, err := d.parseFb(fetcher.Meta().Req.URL)
+	fm, err := d.parseFm(f.Meta().Req.URL)
 	if err != nil {
 		return
 	}
 
 	task := NewTask()
-	task.fetcherBuilder = fb
-	task.fetcher = fetcher
-	task.Protocol = fetcher.Name()
-	task.Meta = fetcher.Meta()
+	task.fetcherManager = fm
+	task.fetcher = f
+	task.Protocol = fm.Name()
+	task.Meta = f.Meta()
 	task.Progress = &Progress{}
+	_, task.Uploading = f.(fetcher.Uploader)
 	initTask(task)
-	if err = fetcher.Create(opts); err != nil {
+	if err = f.Create(opts); err != nil {
 		return
 	}
 	if err = d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
@@ -867,10 +932,10 @@ func (d *Downloader) doStart(task *Task) (err error) {
 
 		task.Progress.Speed = 0
 		task.timer.Start()
-		if err := d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
+		if err := task.fetcher.Start(); err != nil {
 			return err
 		}
-		if err := task.fetcher.Start(); err != nil {
+		if err := d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
 			return err
 		}
 		d.emit(EventKeyStart, task)
@@ -940,12 +1005,12 @@ func logPanic(logDir string) {
 }
 
 func (d *Downloader) buildFetcher(url string) (fetcher.Fetcher, error) {
-	fb, err := d.parseFb(url)
+	fm, err := d.parseFm(url)
 	if err != nil {
 		return nil, err
 	}
-	fetcher := fb.Build()
-	d.setupFetcher(fetcher)
+	fetcher := fm.Build()
+	d.setupFetcher(fm, fetcher)
 	return fetcher, nil
 }
 
@@ -955,6 +1020,7 @@ func initTask(task *Task) {
 	task.statusLock = &sync.Mutex{}
 	task.lock = &sync.Mutex{}
 	task.speedArr = make([]int64, 0)
+	task.uploadSpeedArr = make([]int64, 0)
 }
 
 var defaultDownloader = NewDownloader(nil)

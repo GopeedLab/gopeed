@@ -334,6 +334,69 @@ class SettingView extends GetView<SettingController> {
         },
       );
     });
+    final buildBtSeedConfig = _buildConfigItem('seedConfig',
+        () => 'seedKeep'.tr + (btConfig.seedKeep ? 'on'.tr : 'off'.tr),
+        (Key key) {
+      final seedRatioController =
+          TextEditingController(text: btConfig.seedRatio.toString());
+      seedRatioController.addListener(() {
+        if (seedRatioController.text.isNotEmpty) {
+          btConfig.seedRatio = double.parse(seedRatioController.text);
+          debounceSave();
+        }
+      });
+      final seedTimeController =
+          TextEditingController(text: (btConfig.seedTime ~/ 60).toString());
+      seedTimeController.addListener(() {
+        if (seedTimeController.text.isNotEmpty) {
+          btConfig.seedTime = int.parse(seedTimeController.text) * 60;
+          debounceSave();
+        }
+      });
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SwitchListTile(
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              value: btConfig.seedKeep,
+              onChanged: (bool value) {
+                downloaderCfg.update((val) {
+                  val!.protocolConfig.bt.seedKeep = value;
+                });
+                debounceSave();
+              },
+              title: Text('seedKeep'.tr)),
+          btConfig.seedKeep
+              ? null
+              : TextField(
+                  controller: seedRatioController,
+                  decoration: InputDecoration(
+                    labelText: 'seedRatio'.tr,
+                  ),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
+                ),
+          btConfig.seedKeep
+              ? null
+              : TextField(
+                  controller: seedTimeController,
+                  decoration: InputDecoration(
+                    labelText: 'seedTime'.tr,
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    NumericalRangeFormatter(min: 0, max: 100000000),
+                  ],
+                ),
+        ].where((e) => e != null).map((e) => e!).toList(),
+      );
+    });
 
     // ui config items start
     final buildTheme = _buildConfigItem(
@@ -833,6 +896,7 @@ class SettingView extends GetView<SettingController> {
                             buildBtListenPort(),
                             buildBtTrackerSubscribeUrls(),
                             buildBtTrackers(),
+                            buildBtSeedConfig(),
                           ]),
                         )),
                         Text('ui'.tr),
