@@ -124,13 +124,14 @@ type XMLHttpRequest struct {
 	aborted         bool
 	proxyHandler    func(r *http.Request) (*url.URL, error)
 
-	Upload       *XMLHttpRequestUpload `json:"upload"`
-	Timeout      int                   `json:"timeout"`
-	ReadyState   int                   `json:"readyState"`
-	Status       int                   `json:"status"`
-	StatusText   string                `json:"statusText"`
-	Response     string                `json:"response"`
-	ResponseText string                `json:"responseText"`
+	WithCredentials bool                  `json:"withCredentials"`
+	Upload          *XMLHttpRequestUpload `json:"upload"`
+	Timeout         int                   `json:"timeout"`
+	ReadyState      int                   `json:"readyState"`
+	Status          int                   `json:"status"`
+	StatusText      string                `json:"statusText"`
+	Response        string                `json:"response"`
+	ResponseText    string                `json:"responseText"`
 	*EventProp
 	Onreadystatechange func(event *ProgressEvent) `json:"onreadystatechange"`
 }
