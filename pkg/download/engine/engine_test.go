@@ -27,6 +27,8 @@ func TestPolyfill(t *testing.T) {
 	doTestPolyfill(t, "XMLHttpRequest")
 	doTestPolyfill(t, "Blob")
 	doTestPolyfill(t, "FormData")
+	doTestPolyfill(t, "TextDecoder")
+	doTestPolyfill(t, "TextEncoder")
 	doTestPolyfill(t, "fetch")
 	doTestPolyfill(t, "__gopeed_create_vm")
 }
