@@ -233,10 +233,10 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 			if xhr.Redirect == redirectError {
 				return errors.New("redirect failed")
 			}
-			if len(via) < 20 {
-				return nil
+			if len(via) > 20 {
+				return errors.New("too many redirects")
 			}
-			return errors.New("too many redirects")
+			return nil
 		},
 	}
 	resp, err := client.Do(req)
