@@ -1,0 +1,46 @@
+diff --git a/node_modules/whatwg-fetch/dist/fetch.umd.js b/node_modules/whatwg-fetch/dist/fetch.umd.js
+index 7a0d852..604691e 100644
+--- a/node_modules/whatwg-fetch/dist/fetch.umd.js
++++ b/node_modules/whatwg-fetch/dist/fetch.umd.js
+@@ -394,6 +394,7 @@
+       }
+     }());
+     this.referrer = null;
++    this.redirect = options.redirect || 'follow'
+ 
+     if ((this.method === 'GET' || this.method === 'HEAD') && body) {
+       throw new TypeError('Body not allowed for GET or HEAD requests')
+@@ -606,6 +607,10 @@
+         }
+       }
+ 
++      if ('redirect' in xhr) {
++        xhr.redirect = request.redirect
++      }
++
+       if (init && typeof init.headers === 'object' && !(init.headers instanceof Headers || (g.Headers && init.headers instanceof g.Headers))) {
+         var names = [];
+         Object.getOwnPropertyNames(init.headers).forEach(function(name) {
+diff --git a/node_modules/whatwg-fetch/fetch.js b/node_modules/whatwg-fetch/fetch.js
+index f39a983..d1fc903 100644
+--- a/node_modules/whatwg-fetch/fetch.js
++++ b/node_modules/whatwg-fetch/fetch.js
+@@ -388,6 +388,7 @@ export function Request(input, options) {
+     }
+   }());
+   this.referrer = null
++  this.redirect = options.redirect || 'follow'
+ 
+   if ((this.method === 'GET' || this.method === 'HEAD') && body) {
+     throw new TypeError('Body not allowed for GET or HEAD requests')
+@@ -600,6 +601,10 @@ export function fetch(input, init) {
+       }
+     }
+ 
++    if ('redirect' in xhr) {
++      xhr.redirect = request.redirect
++    }
++
+     if (init && typeof init.headers === 'object' && !(init.headers instanceof Headers || (g.Headers && init.headers instanceof g.Headers))) {
+       var names = [];
+       Object.getOwnPropertyNames(init.headers).forEach(function(name) {
