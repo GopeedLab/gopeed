@@ -5,12 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/GopeedLab/gopeed/internal/controller"
-	"github.com/GopeedLab/gopeed/internal/fetcher"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
-	"github.com/xiaoqidun/setft"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"mime"
 	"net/http"
@@ -21,6 +15,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"github.com/xiaoqidun/setft"
+	"golang.org/x/sync/errgroup"
 )
 
 type RequestError struct {
@@ -376,7 +377,8 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		method string
 		body   io.Reader
 	)
-	headers := make(map[string][]string)
+
+	headers := http.Header{}
 	if req.Extra == nil {
 		method = http.MethodGet
 	} else {
@@ -388,16 +390,15 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		}
 		if len(extra.Header) > 0 {
 			for k, v := range extra.Header {
-				headers[k] = []string{v}
+				headers.Set(k, v)
 			}
 		}
 		if extra.Body != "" {
 			body = bytes.NewBufferString(extra.Body)
 		}
 	}
-	if v := headers[base.HttpHeaderUserAgent]; len(v) == 0 || v[0] == "" {
-		// load user agent from config
-		headers[base.HttpHeaderUserAgent] = []string{f.config.UserAgent}
+	if _, ok := headers[base.HttpHeaderUserAgent]; !ok {
+		headers.Set(base.HttpHeaderUserAgent, f.config.UserAgent)
 	}
 
 	if ctx != nil {

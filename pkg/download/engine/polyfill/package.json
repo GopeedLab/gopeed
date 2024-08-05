@@ -7,16 +7,19 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "webpack --mode production --watch",
-    "build": "webpack --mode production"
+    "build": "webpack --mode production",
+    "postinstall": "patch-package"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "patch-package": "^8.0.0",
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.1"
   },
   "dependencies": {
     "blob-polyfill": "^7.0.20220408",
-    "whatwg-fetch": "^3.6.2"
+    "fastestsmallesttextencoderdecoder": "^1.0.22",
+    "whatwg-fetch": "^3.6.20"
   }
 }
