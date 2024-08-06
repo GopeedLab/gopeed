@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/app/modules/task/controllers/task_controller.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as path;
 import 'package:styled_widget/styled_widget.dart';
@@ -188,10 +189,15 @@ class BuildTaskListView extends GetView {
           (total > 0 ? " / ${Util.fmtByte(total)}" : "");
     }
 
+    final taskController = Get.find<TaskController>();
+
     return Card(
         elevation: 4.0,
         child: InkWell(
-          onTap: () {},
+          onTap: () {
+            taskController.selectTask.value = task;
+            taskController.scaffoldKey.currentState?.openEndDrawer();
+          },
           onDoubleTap: () {
             if (isDone()) {
               if (isFolderTask()) {

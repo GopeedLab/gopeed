@@ -12,9 +12,12 @@ class TaskView extends GetView<TaskController> {
 
   @override
   Widget build(BuildContext context) {
+    final selectTask = controller.selectTask;
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        key: controller.scaffoldKey,
         appBar: PreferredSize(
             preferredSize: const Size.fromHeight(56),
             child: AppBar(
@@ -53,6 +56,67 @@ class TaskView extends GetView<TaskController> {
             TaskDownloadingView(),
             TaskDownloadedView(),
           ],
+        ),
+        endDrawer: Drawer(
+          // Add a ListView to the drawer. This ensures the user can scroll
+          // through the options in the drawer if there isn't enough vertical
+          // space to fit everything.
+          child: Obx(() => ListView(
+                // Important: Remove any padding from the ListView.
+                padding: EdgeInsets.zero,
+                children: [
+                  SizedBox(
+                    height: 65,
+                    child: DrawerHeader(
+                        child: Text(
+                      '任务详情',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    )),
+                  ),
+                  ListTile(
+                    title: const Text('任务名称'),
+                    subtitle: Text(
+                      '${selectTask.value?.status.name}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.copy),
+                      onPressed: () {
+                        Get.snackbar('复制成功', '任务链接已复制到剪贴板');
+                      },
+                    ),
+                  ),
+                  ListTile(
+                      title: Text('任务状态'),
+                      subtitle: Text('${selectTask.value?.status.name}')),
+                  ListTile(
+                    title: const Text('任务链接'),
+                    subtitle: const Text(
+                      "https://www.baidu.com/asssssssssssssssssssssssssssssssssssssssss",
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.copy),
+                      onPressed: () {
+                        Get.snackbar('复制成功', '任务链接已复制到剪贴板');
+                      },
+                    ),
+                  ),
+                  ListTile(
+                    title: const Text('下载目录'),
+                    subtitle: const Text(
+                      "index.html",
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: () {
+                        Get.snackbar('复制成功', '任务链接已复制到剪贴板');
+                      },
+                    ),
+                  ),
+                ],
+              )),
         ),
       ),
     );
