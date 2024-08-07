@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../../api/model/task.dart';
 import '../../../../util/file_explorer.dart';
-import '../../../../util/message.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
+import '../../../views/copy_button.dart';
 import '../controllers/task_controller.dart';
 import '../controllers/task_downloaded_controller.dart';
 import '../controllers/task_downloading_controller.dart';
@@ -89,26 +88,7 @@ class TaskView extends GetView<TaskController> {
                     title: Text('taskUrl'.tr),
                     subtitle:
                         buildTooltipSubtitle(selectTask.value?.meta.req.url),
-                    trailing: IconButton(
-                      icon: controller.copyUrlDone.value
-                          ? const Icon(Icons.check_circle)
-                          : const Icon(Icons.copy),
-                      onPressed: () async {
-                        final url = selectTask.value?.meta.req.url;
-                        if (url != null) {
-                          try {
-                            await Clipboard.setData(ClipboardData(text: url));
-                            controller.copyUrlDone.value = true;
-                            Future.delayed(const Duration(milliseconds: 300),
-                                () {
-                              controller.copyUrlDone.value = false;
-                            });
-                          } catch (e) {
-                            showErrorMessage(e);
-                          }
-                        }
-                      },
-                    ),
+                    trailing: CopyButton(selectTask.value?.meta.req.url),
                   ),
                   ListTile(
                     title: Text('downloadPath'.tr),
