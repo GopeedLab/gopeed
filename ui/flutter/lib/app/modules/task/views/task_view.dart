@@ -74,7 +74,7 @@ class TaskView extends GetView<TaskController> {
                 padding: EdgeInsets.zero,
                 children: [
                   SizedBox(
-                    height: 65,
+                    height: MediaQuery.of(context).padding.top + 65,
                     child: DrawerHeader(
                         child: Text(
                       'taskDetail'.tr,
