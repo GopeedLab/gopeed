@@ -155,7 +155,13 @@ func (d *Downloader) DeleteExtension(identity string) error {
 			break
 		}
 	}
-	return d.storage.Delete(bucketExtension, identity)
+	if err = d.storage.Delete(bucketExtension, identity); err != nil {
+		return err
+	}
+	if err = d.storage.Delete(bucketExtensionStorage, identity); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *Downloader) GetExtensions() []*Extension {
