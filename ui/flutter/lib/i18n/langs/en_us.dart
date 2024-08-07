@@ -99,5 +99,9 @@ const enUS = {
     'seedKeep': 'Keep seeding',
     'seedRatio': 'Seed ratio',
     'seedTime': 'Seed time (minutes)',
+    'taskDetail': 'Task Detail',
+    'taskName': 'Task Name',
+    'taskUrl': 'Task URL',
+    'downloadPath': 'Download Path',
   },
 };

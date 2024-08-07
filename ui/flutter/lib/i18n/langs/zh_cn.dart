@@ -96,5 +96,9 @@ const zhCN = {
     'seedKeep': '持续做种',
     'seedRatio': '做种分享率',
     'seedTime': '做种时间（分钟）',
+    'taskDetail': '任务详情',
+    'taskName': '任务名称',
+    'taskUrl': '任务链接',
+    'downloadPath': '下载路径',
   }
 };

@@ -96,5 +96,15 @@ const zhTW = {
     'seedKeep': '持續做種',
     'seedRatio': '做種分享率',
     'seedTime': '做種時間（分鐘）',
+    /*
+    'taskDetail': '任务详情',
+    'taskName': '任务名称',
+    'taskUrl': '任务链接',
+    'downloadPath': '下载路径',
+    */
+    'taskDetail': '任務詳情',
+    'taskName': '任務名稱',
+    'taskUrl': '任務連結',
+    'downloadPath': '下載路徑',
   }
 };

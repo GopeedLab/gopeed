@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as path;
 
+import '../../../../api/model/task.dart';
+import '../../../../util/file_explorer.dart';
+import '../../../../util/message.dart';
+import '../../../../util/util.dart';
+import '../../../routes/app_pages.dart';
 import '../controllers/task_controller.dart';
 import '../controllers/task_downloaded_controller.dart';
 import '../controllers/task_downloading_controller.dart';
@@ -69,49 +77,47 @@ class TaskView extends GetView<TaskController> {
                     height: 65,
                     child: DrawerHeader(
                         child: Text(
-                      '任务详情',
+                      'taskDetail'.tr,
                       style: Theme.of(context).textTheme.titleLarge,
                     )),
                   ),
                   ListTile(
-                    title: const Text('任务名称'),
-                    subtitle: Text(
-                      '${selectTask.value?.status.name}',
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      title: Text('taskName'.tr),
+                      subtitle:
+                          buildTooltipSubtitle(selectTask.value?.showName)),
+                  ListTile(
+                    title: Text('taskUrl'.tr),
+                    subtitle:
+                        buildTooltipSubtitle(selectTask.value?.meta.req.url),
                     trailing: IconButton(
-                      icon: const Icon(Icons.copy),
-                      onPressed: () {
-                        Get.snackbar('复制成功', '任务链接已复制到剪贴板');
+                      icon: controller.copyUrlDone.value
+                          ? const Icon(Icons.check_circle)
+                          : const Icon(Icons.copy),
+                      onPressed: () async {
+                        final url = selectTask.value?.meta.req.url;
+                        if (url != null) {
+                          try {
+                            await Clipboard.setData(ClipboardData(text: url));
+                            controller.copyUrlDone.value = true;
+                            Future.delayed(const Duration(milliseconds: 300),
+                                () {
+                              controller.copyUrlDone.value = false;
+                            });
+                          } catch (e) {
+                            showErrorMessage(e);
+                          }
+                        }
                       },
                     ),
                   ),
                   ListTile(
-                      title: Text('任务状态'),
-                      subtitle: Text('${selectTask.value?.status.name}')),
-                  ListTile(
-                    title: const Text('任务链接'),
-                    subtitle: const Text(
-                      "https://www.baidu.com/asssssssssssssssssssssssssssssssssssssssss",
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.copy),
-                      onPressed: () {
-                        Get.snackbar('复制成功', '任务链接已复制到剪贴板');
-                      },
-                    ),
-                  ),
-                  ListTile(
-                    title: const Text('下载目录'),
-                    subtitle: const Text(
-                      "index.html",
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    title: Text('downloadPath'.tr),
+                    subtitle:
+                        buildTooltipSubtitle(selectTask.value?.explorerUrl),
                     trailing: IconButton(
                       icon: const Icon(Icons.folder_open),
                       onPressed: () {
-                        Get.snackbar('复制成功', '任务链接已复制到剪贴板');
+                        selectTask.value?.explorer();
                       },
                     ),
                   ),
@@ -120,5 +126,80 @@ class TaskView extends GetView<TaskController> {
         ),
       ),
     );
+  }
+
+  Widget buildTooltipSubtitle(String? text) {
+    final showText = text ?? "";
+    return Tooltip(
+      message: showText,
+      child: Text(
+        showText,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+extension TaskEnhance on Task {
+  String get showName {
+    if (meta.opts.name.isNotEmpty) {
+      return meta.opts.name;
+    }
+    if (meta.res == null) {
+      final u = Uri.parse(meta.req.url);
+      if (u.scheme.startsWith("http")) {
+        return u.path.isNotEmpty
+            ? u.path.substring(u.path.lastIndexOf("/") + 1)
+            : u.host;
+      } else {
+        final params = u.queryParameters;
+        if (params.containsKey("dn")) {
+          return params["dn"]!;
+        } else {
+          return params["xt"]!.split(":").last;
+        }
+      }
+    }
+    if (meta.res!.name.isNotEmpty) {
+      return meta.res!.name;
+    }
+    return meta.res!.files[0].name;
+  }
+
+  bool get isFolder {
+    return meta.res?.name.isNotEmpty ?? false;
+  }
+
+  String get explorerUrl {
+    if (isFolder) {
+      return path.join(Util.safeDir(meta.opts.path),
+          Util.safeDir(meta.res!.files[0].path), showName);
+    } else {
+      return path.join(Util.safeDir(meta.opts.path), Util.safeDir(showName));
+    }
+  }
+
+  Future<void> explorer() async {
+    if (status != Status.done) {
+      return;
+    }
+
+    if (Util.isDesktop()) {
+      await FileExplorer.openAndSelectFile(explorerUrl);
+    } else {
+      Get.rootDelegate.toNamed(Routes.TASK_FILES, parameters: {'id': id});
+    }
+  }
+
+  Future<void> open() async {
+    if (status != Status.done) {
+      return;
+    }
+
+    if (isFolder) {
+      await explorer();
+    } else {
+      await OpenFilex.open(explorerUrl);
+    }
   }
 }
