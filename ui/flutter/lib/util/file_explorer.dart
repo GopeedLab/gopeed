@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class FileExplorer {
   static Future<void> openAndSelectFile(String filePath) async {
@@ -12,7 +12,7 @@ class FileExplorer {
   }
 
   static Future<void> _openDirectory(String directoryPath) async {
-    await launchUrl(Uri.file(directoryPath));
+    await launchUrlString("file://$directoryPath");
   }
 
   static Future<void> _openFile(String filePath) async {

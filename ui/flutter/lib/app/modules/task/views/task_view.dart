@@ -160,10 +160,6 @@ extension TaskEnhance on Task {
   }
 
   Future<void> explorer() async {
-    if (status != Status.done) {
-      return;
-    }
-
     if (Util.isDesktop()) {
       await FileExplorer.openAndSelectFile(explorerUrl);
     } else {
