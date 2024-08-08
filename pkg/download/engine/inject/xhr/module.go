@@ -131,13 +131,14 @@ type XMLHttpRequest struct {
 	aborted         bool
 	proxyHandler    func(r *http.Request) (*url.URL, error)
 
-	Upload       *XMLHttpRequestUpload `json:"upload"`
-	Timeout      int                   `json:"timeout"`
-	ReadyState   int                   `json:"readyState"`
-	Status       int                   `json:"status"`
-	StatusText   string                `json:"statusText"`
-	Response     string                `json:"response"`
-	ResponseText string                `json:"responseText"`
+	WithCredentials bool                  `json:"withCredentials"`
+	Upload          *XMLHttpRequestUpload `json:"upload"`
+	Timeout         int                   `json:"timeout"`
+	ReadyState      int                   `json:"readyState"`
+	Status          int                   `json:"status"`
+	StatusText      string                `json:"statusText"`
+	Response        string                `json:"response"`
+	ResponseText    string                `json:"responseText"`
 	// https://developer.mozilla.org/zh-CN/docs/Web/API/XMLHttpRequest/responseURL
 	// https://xhr.spec.whatwg.org/#the-responseurl-attribute
 	ResponseUrl string `json:"responseURL"`
@@ -145,7 +146,6 @@ type XMLHttpRequest struct {
 	// https://developer.mozilla.org/en-US/docs/Web/API/RequestInit#redirect
 	// https://fetch.spec.whatwg.org/#concept-request-redirect-mode
 	Redirect string `json:"redirect"`
-
 	*EventProp
 	Onreadystatechange func(event *ProgressEvent) `json:"onreadystatechange"`
 }
