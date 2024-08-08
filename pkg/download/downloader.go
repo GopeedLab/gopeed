@@ -63,7 +63,7 @@ type Downloader struct {
 	storage      Storage
 	tasks        []*Task
 	waitTasks    []*Task
-	watchedTasks map[string]bool
+	watchedTasks sync.Map
 	listener     Listener
 
 	lock               *sync.Mutex
@@ -84,7 +84,6 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		cfg:          cfg,
 		fetcherCache: make(map[string]fetcher.Fetcher),
 		waitTasks:    make([]*Task, 0),
-		watchedTasks: make(map[string]bool),
 		storage:      cfg.Storage,
 
 		lock:               &sync.Mutex{},
@@ -694,14 +693,13 @@ func (d *Downloader) getProtocolConfig(name string, v any) bool {
 
 // wait task done
 func (d *Downloader) watch(task *Task) {
-	defer func() {
-		delete(d.watchedTasks, task.ID)
-	}()
-
-	if d.watchedTasks[task.ID] {
+	if _, loaded := d.watchedTasks.LoadOrStore(task.ID, true); loaded {
 		return
 	}
-	d.watchedTasks[task.ID] = true
+
+	defer func() {
+		d.watchedTasks.Delete(task.ID)
+	}()
 
 	// wait task upload done
 	if task.Uploading {
