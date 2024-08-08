@@ -50,6 +50,8 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	if f.data == nil {
 		f.data = &fetcherData{}
 	}
+	f.uploadDoneCh = make(chan any, 1)
+	f.torrentDropCtx, f.torrentDropFunc = context.WithCancel(context.Background())
 	f.ctl.GetConfig(&f.config)
 	return
 }
@@ -108,8 +110,6 @@ func (f *Fetcher) Create(opts *base.Options) (err error) {
 	if f.meta.Res != nil {
 		torrentDirMap[f.meta.Res.Hash] = f.meta.FolderPath()
 	}
-	f.torrentDropCtx, f.torrentDropFunc = context.WithCancel(context.Background())
-	f.uploadDoneCh = make(chan any, 1)
 	return nil
 }
 
