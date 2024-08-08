@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path/path.dart' as path;
 import 'package:styled_widget/styled_widget.dart';
 
 import '../../api/api.dart';
-import '../../api/model/meta.dart';
 import '../../api/model/task.dart';
-import '../../util/file_explorer.dart';
 import '../../util/file_icon.dart';
 import '../../util/icons.dart';
 import '../../util/message.dart';
 import '../../util/util.dart';
 import '../modules/app/controllers/app_controller.dart';
+import '../modules/task/controllers/task_controller.dart';
+import '../modules/task/views/task_view.dart';
 import '../routes/app_pages.dart';
 
 class BuildTaskListView extends GetView {
@@ -60,17 +58,7 @@ class BuildTaskListView extends GetView {
     }
 
     bool isFolderTask() {
-      return task.meta.res?.name.isNotEmpty ?? false;
-    }
-
-    String buildExplorerUrl(Task task) {
-      if (!isFolderTask()) {
-        return path.join(Util.safeDir(task.meta.opts.path),
-            Util.safeDir(task.meta.res!.files[0].path), fileName(task.meta));
-      } else {
-        return path.join(Util.safeDir(task.meta.opts.path),
-            Util.safeDir(fileName(task.meta)));
-      }
+      return task.isFolder;
     }
 
     Future<void> showDeleteDialog(String id) {
@@ -119,22 +107,13 @@ class BuildTaskListView extends GetView {
               ));
     }
 
-    toTaskFilesView() {
-      if (Util.isDesktop()) {
-        FileExplorer.openAndSelectFile(buildExplorerUrl(task));
-      } else {
-        Get.rootDelegate
-            .toNamed(Routes.TASK_FILES, parameters: {'id': task.id});
-      }
-    }
-
     List<Widget> buildActions() {
       final list = <Widget>[];
       if (isDone()) {
         list.add(IconButton(
           icon: const Icon(Icons.folder_open),
           onPressed: () {
-            toTaskFilesView();
+            task.explorer();
           },
         ));
       } else {
@@ -188,27 +167,26 @@ class BuildTaskListView extends GetView {
           (total > 0 ? " / ${Util.fmtByte(total)}" : "");
     }
 
+    final taskController = Get.find<TaskController>();
+
     return Card(
         elevation: 4.0,
         child: InkWell(
-          onTap: () {},
+          onTap: () {
+            taskController.scaffoldKey.currentState?.openEndDrawer();
+            taskController.selectTask.value = task;
+          },
           onDoubleTap: () {
-            if (isDone()) {
-              if (isFolderTask()) {
-                toTaskFilesView();
-              } else {
-                OpenFilex.open(buildExplorerUrl(task));
-              }
-            }
+            task.open();
           },
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                  title: Text(fileName(task.meta)),
+                  title: Text(task.showName),
                   leading: isFolderTask()
                       ? const Icon(FaIcons.folder)
-                      : Icon(FaIcons.allIcons[findIcon(fileName(task.meta))])),
+                      : Icon(FaIcons.allIcons[findIcon(task.showName)])),
               Row(
                 children: [
                   Expanded(
@@ -238,30 +216,5 @@ class BuildTaskListView extends GetView {
             ],
           ),
         )).padding(horizontal: 14, top: 8);
-  }
-
-  String fileName(Meta meta) {
-    if (meta.opts.name.isNotEmpty) {
-      return meta.opts.name;
-    }
-    if (meta.res == null) {
-      final u = Uri.parse(meta.req.url);
-      if (u.scheme.startsWith("http")) {
-        return u.path.isNotEmpty
-            ? u.path.substring(u.path.lastIndexOf("/") + 1)
-            : u.host;
-      } else {
-        final params = u.queryParameters;
-        if (params.containsKey("dn")) {
-          return params["dn"]!;
-        } else {
-          return params["xt"]!.split(":").last;
-        }
-      }
-    }
-    if (meta.res!.name.isNotEmpty) {
-      return meta.res!.name;
-    }
-    return meta.res!.files[0].name;
   }
 }
