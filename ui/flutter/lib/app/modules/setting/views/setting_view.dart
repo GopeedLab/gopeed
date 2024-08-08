@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/app/views/copy_button.dart';
 import 'package:intl/intl.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -842,6 +844,32 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
+    // advanced config log items start
+    buildLogsDir() {
+      return ListTile(
+          title: Text("日志目录"),
+          subtitle: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: TextEditingController(text: logsDir()),
+                  enabled: false,
+                  readOnly: true,
+                ),
+              ),
+              Util.isDesktop()
+                  ? IconButton(
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: () {
+                        launchUrl(Uri.file(logsDir()));
+                      },
+                    )
+                  : CopyButton(logsDir()),
+            ],
+          ));
+    }
+
     return Obx(() {
       return GestureDetector(
         onTap: () {
@@ -951,6 +979,13 @@ class SettingView extends GetView<SettingController> {
                           Util.isDesktop() && startCfg.value.network == 'tcp'
                               ? buildApiToken()
                               : null,
+                        ]),
+                      )),
+                      const Text('开发者'),
+                      Card(
+                          child: Column(
+                        children: _addDivider([
+                          buildLogsDir(),
                         ]),
                       )),
                     ]),

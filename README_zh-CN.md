@@ -174,7 +174,7 @@ gomobile init
 - android
 
 ```bash
-gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg="com.gopeed" github.com/GopeedLab/gopeed/bind/mobile
+gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 21 -javapkg="com.gopeed" github.com/GopeedLab/gopeed/bind/mobile
 cd ui/flutter
 flutter build apk
 ```

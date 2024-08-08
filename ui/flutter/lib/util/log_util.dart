@@ -15,11 +15,15 @@ initLogger() {
   );
 }
 
+String logsDir() {
+  return path.join(Util.getStorageDir(), 'logs');
+}
+
 _buildOutput() {
   // if is debug mode, don't log to file
   if (!kDebugMode && Util.isDesktop()) {
-    final logDirPath = path.join(Util.getStorageDir(), 'logs');
-    var logDir = Directory(logDirPath);
+    final logDirPath = logsDir();
+    var logDir = Directory(logsDir());
     if (!logDir.existsSync()) {
       logDir.createSync();
     }
