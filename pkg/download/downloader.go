@@ -63,6 +63,7 @@ type Downloader struct {
 	storage      Storage
 	tasks        []*Task
 	waitTasks    []*Task
+	watchedTasks map[string]bool
 	listener     Listener
 
 	lock               *sync.Mutex
@@ -83,6 +84,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		cfg:          cfg,
 		fetcherCache: make(map[string]fetcher.Fetcher),
 		waitTasks:    make([]*Task, 0),
+		watchedTasks: make(map[string]bool),
 		storage:      cfg.Storage,
 
 		lock:               &sync.Mutex{},
@@ -170,7 +172,7 @@ func (d *Downloader) Setup() error {
 	go func() {
 		for _, task := range d.tasks {
 			if task.Status == base.DownloadStatusDone && task.Uploading {
-				if err := d.restoreFetcher(task); err != nil {
+				if err := d.restoreTask(task); err != nil {
 					d.Logger.Error().Stack().Err(err).Msgf("task upload restore fetcher failed, task id: %s", task.ID)
 				}
 				if uploader, ok := task.fetcher.(fetcher.Uploader); ok {
@@ -530,6 +532,17 @@ func (d *Downloader) Stats(id string) (sr any, err error) {
 	if task == nil {
 		return sr, ErrTaskNotFound
 	}
+	if task.fetcher == nil {
+		err = func() error {
+			task.statusLock.Lock()
+			defer task.statusLock.Unlock()
+
+			return d.restoreFetcher(task)
+		}()
+		if err != nil {
+			return
+		}
+	}
 	sr = task.fetcher.Stats()
 	return
 }
@@ -681,6 +694,15 @@ func (d *Downloader) getProtocolConfig(name string, v any) bool {
 
 // wait task done
 func (d *Downloader) watch(task *Task) {
+	defer func() {
+		delete(d.watchedTasks, task.ID)
+	}()
+
+	if d.watchedTasks[task.ID] {
+		return
+	}
+	d.watchedTasks[task.ID] = true
+
 	// wait task upload done
 	if task.Uploading {
 		if uploader, ok := task.fetcher.(fetcher.Uploader); ok {
@@ -759,42 +781,47 @@ func (d *Downloader) doOnError(task *Task, err error) {
 	}
 }
 
-func (d *Downloader) restoreFetcher(task *Task) error {
+func (d *Downloader) restoreTask(task *Task) error {
 	if task.fetcher == nil {
-		fm, err := d.parseFm(task.Meta.Req.URL)
+		if err := d.restoreFetcher(task); err != nil {
+			return err
+		}
+	}
+	go d.watch(task)
+	task.fetcher.Create(task.Meta.Opts)
+	return nil
+}
+
+func (d *Downloader) restoreFetcher(task *Task) error {
+	var fm fetcher.FetcherManager
+	for _, f := range d.cfg.FetchManagers {
+		if f.Name() == task.Protocol {
+			fm = f
+			break
+		}
+	}
+	if fm == nil {
+		return ErrUnSupportedProtocol
+	}
+	task.fetcherManager = fm
+	v, f := fm.Restore()
+	if v != nil {
+		err := d.storage.Pop(bucketSave, task.ID, v)
 		if err != nil {
 			return err
 		}
-		task.fetcherManager = fm
-		err = func() error {
-			v, f := fm.Restore()
-			if v != nil {
-				err := d.storage.Pop(bucketSave, task.ID, v)
-				if err != nil {
-					return err
-				}
-			}
-			task.fetcher = f(task.Meta, v)
-			return nil
-		}()
-		if err != nil {
-			d.Logger.Error().Stack().Err(err).Msgf("deserialize fetcher failed, task id: %s", task.ID)
-		}
-		if task.fetcher == nil {
-			task.fetcher = fm.Build()
-		}
-		d.setupFetcher(fm, task.fetcher)
-		if task.fetcher.Meta().Req == nil {
-			task.fetcher.Meta().Req = task.Meta.Req
-		}
-		if task.fetcher.Meta().Res == nil {
-			task.fetcher.Meta().Res = task.Meta.Res
-		}
-		go d.watch(task)
-	} else if task.Status == base.DownloadStatusError {
-		go d.watch(task)
 	}
-	task.fetcher.Create(task.Meta.Opts)
+	task.fetcher = f(task.Meta, v)
+	if task.fetcher == nil {
+		task.fetcher = task.fetcherManager.Build()
+	}
+	d.setupFetcher(task.fetcherManager, task.fetcher)
+	if task.fetcher.Meta().Req == nil {
+		task.fetcher.Meta().Req = task.Meta.Req
+	}
+	if task.fetcher.Meta().Res == nil {
+		task.fetcher.Meta().Res = task.Meta.Res
+	}
 	return nil
 }
 
@@ -872,7 +899,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			return
 		}
 
-		err = d.restoreFetcher(task)
+		err = d.restoreTask(task)
 		if err != nil {
 			d.Logger.Error().Stack().Err(err).Msgf("restore fetcher failed, task id: %s", task.ID)
 			return

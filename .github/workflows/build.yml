@@ -213,7 +213,7 @@ jobs:
           overwrite: true
   build-linux:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux' }}
-    runs-on: ubuntu-20.04-arm
+    runs-on: ubuntu-latest
     needs: [ get-release ]
     steps:
       - uses: actions/checkout@v3
