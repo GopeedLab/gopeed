@@ -11,6 +11,9 @@ categories:
       - 'fix'
       - 'bugfix'
       - 'bug'
+  - title: '🔧 Performance Improvements'
+    labels:
+      - 'perf'
   - title: '🧪 Tests'
     label: 'test'
   - title: '🧰 Maintenance'
