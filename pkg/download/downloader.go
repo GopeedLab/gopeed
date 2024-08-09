@@ -332,7 +332,7 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 func (d *Downloader) CreateDirectBatch(reqs []*base.Request, opts *base.Options) (taskId []string, err error) {
 	taskIds := make([]string, 0)
 	for _, req := range reqs {
-		taskId, err := d.CreateDirect(req, opts)
+		taskId, err := d.CreateDirect(req, opts.Clone())
 		if err != nil {
 			return nil, err
 		}
@@ -492,8 +492,10 @@ func (d *Downloader) DeleteByStatues(statues []base.Status, force bool) (err err
 	}
 
 	deleteIds := make([]string, 0)
+	deleteTasksPtr := make([]*Task, 0)
 	for _, task := range deleteTasks {
 		deleteIds = append(deleteIds, task.ID)
+		deleteTasksPtr = append(deleteTasksPtr, task)
 	}
 	func() {
 		d.lock.Lock()
@@ -515,7 +517,7 @@ func (d *Downloader) DeleteByStatues(statues []base.Status, force bool) (err err
 		}
 	}()
 
-	for _, task := range deleteTasks {
+	for _, task := range deleteTasksPtr {
 		err = d.doDelete(task, force)
 		if err != nil {
 			return
