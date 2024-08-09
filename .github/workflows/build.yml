@@ -483,6 +483,9 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - uses: actions/checkout@v3
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -493,6 +496,13 @@ jobs:
         with:
           username: liwei2633
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build flutter web
+        run: |
+          cd ui/flutter
+          flutter build web --web-renderer html
+          cd ../../
+          rm -rf cmd/web/dist
+          cp -r ui/flutter/build/web cmd/web/dist
       - name: Build and push
         uses: docker/build-push-action@v2
         env:
@@ -507,7 +517,6 @@ jobs:
             linux/amd64
             linux/arm64
             linux/arm/v7
-            linux/arm64/v8
           tags: |
             liwei2633/gopeed:latest
             liwei2633/gopeed:v${{ env.VERSION }}
