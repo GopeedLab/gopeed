@@ -5,6 +5,8 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -92,15 +94,33 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 	if err := downloader.Setup(); err != nil {
 		t.Fatal(err)
 	}
-	defer downloader.Clear()
+	defer func() {
+		downloader.DeleteByStatues(nil, true)
+		downloader.Clear()
+	}()
 
 	reqs := make([]*base.Request, 0)
-	for i := 0; i < 6; i++ {
+	fileNames := make([]string, 0)
+	for i := 0; i < 5; i++ {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
 		reqs = append(reqs, req)
+		if i == 0 {
+			fileNames = append(fileNames, test.DownloadName)
+		} else {
+			arr := strings.Split(test.DownloadName, ".")
+			fileNames = append(fileNames, arr[0]+" ("+strconv.Itoa(i)+")."+arr[1])
+		}
 	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(reqs))
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
 
 	_, err := downloader.CreateDirectBatch(reqs, &base.Options{
 		Path: test.Dir,
@@ -113,10 +133,28 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	wg.Wait()
+
 	tasks := downloader.GetTasks()
 	if len(tasks) != len(reqs) {
-		t.Errorf("CreateDirectBatch() got = %v, want %v", len(tasks), len(reqs))
+		t.Errorf("CreateDirectBatch() task got = %v, want %v", len(tasks), len(reqs))
 	}
+
+	nameMatchMap := make(map[string]bool)
+	for _, name := range fileNames {
+		if _, err := os.Stat(test.Dir + "/" + name); os.IsNotExist(err) {
+			t.Errorf("CreateDirectBatch() file not exist: %v", name)
+		}
+		for _, task := range tasks {
+			if name == task.Meta.Opts.Name {
+				nameMatchMap[task.Meta.Opts.Name] = true
+			}
+		}
+	}
+	if len(nameMatchMap) != len(reqs) {
+		t.Errorf("CreateDirectBatch() names got = %v, want %v", len(nameMatchMap), len(reqs))
+	}
+
 }
 
 func TestDownloader_CreateWithProxy(t *testing.T) {

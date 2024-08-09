@@ -2,12 +2,12 @@ package test
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/armon/go-socks5"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"

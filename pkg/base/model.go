@@ -94,6 +94,9 @@ func (o *Options) InitSelectFiles(fileSize int) {
 }
 
 func (o *Options) Clone() *Options {
+	if o == nil {
+		return nil
+	}
 	return &Options{
 		Name:        o.Name,
 		Path:        o.Path,
