@@ -508,6 +508,7 @@ jobs:
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         with:
+          context: .
           push: ${{ github.event.inputs.test == 'true' && 'false' || 'true' }}
           build-args: |
             VERSION=${{ env.VERSION }}
