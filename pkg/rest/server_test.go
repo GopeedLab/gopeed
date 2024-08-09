@@ -140,7 +140,7 @@ func TestCreateDirectTask(t *testing.T) {
 func TestCreateDirectTaskBatch(t *testing.T) {
 	doTest(func() {
 		reqs := make([]*base.Request, 0)
-		for i := 0; i < 6; i++ {
+		for i := 0; i < 5; i++ {
 			reqs = append(reqs, createReq.Req)
 		}
 		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &model.CreateTaskBatch{
@@ -583,15 +583,7 @@ func doTest(handler func()) {
 		}()
 		defer func() {
 			Downloader.PauseAll()
-
-			tasks := Downloader.GetTasks()
-			taskIds := make([]string, len(tasks))
-			for i, task := range tasks {
-				taskIds[i] = task.ID
-			}
-			for _, id := range taskIds {
-				Downloader.Delete(id, true)
-			}
+			Downloader.DeleteByStatues(nil, true)
 			os.RemoveAll(cfg.StorageDir)
 		}()
 		taskReq.URL = "http://" + fileListener.Addr().String() + "/" + test.BuildName
