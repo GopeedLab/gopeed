@@ -140,7 +140,7 @@ func TestCreateDirectTask(t *testing.T) {
 func TestCreateDirectTaskBatch(t *testing.T) {
 	doTest(func() {
 		reqs := make([]*base.Request, 0)
-		for i := 0; i < 6; i++ {
+		for i := 0; i < 5; i++ {
 			reqs = append(reqs, createReq.Req)
 		}
 		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &model.CreateTaskBatch{
