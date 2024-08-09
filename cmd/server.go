@@ -27,19 +27,29 @@ func Start(cfg *model.StartConfig) {
 		panic(err)
 	}
 	if downloadCfg.FirstLoad {
-		// Set default download dir, in docker, it will be ${exe}/Downloads, else it will be ${user}/Downloads
-		var downloadDir string
-		if base.InDocker == "true" {
-			downloadDir = filepath.Join(filepath.Dir(cfg.StorageDir), "Downloads")
-		} else {
-			userDir, err := os.UserHomeDir()
-			if err == nil {
-				downloadDir = filepath.Join(userDir, "Downloads")
-			}
+		// Set default download config
+		if cfg.DownloadConfig != nil {
+			cfg.DownloadConfig.Merge(downloadCfg)
+			// TODO Use PatchConfig
+			rest.Downloader.PutConfig(cfg.DownloadConfig)
+			downloadCfg = cfg.DownloadConfig
 		}
-		if downloadDir != "" {
-			downloadCfg.DownloadDir = downloadDir
-			rest.Downloader.PutConfig(downloadCfg)
+
+		downloadDir := downloadCfg.DownloadDir
+		// Set default download dir, in docker, it will be ${exe}/Downloads, else it will be ${user}/Downloads
+		if downloadDir == "" {
+			if base.InDocker == "true" {
+				downloadDir = filepath.Join(filepath.Dir(cfg.StorageDir), "Downloads")
+			} else {
+				userDir, err := os.UserHomeDir()
+				if err == nil {
+					downloadDir = filepath.Join(userDir, "Downloads")
+				}
+			}
+			if downloadDir != "" {
+				downloadCfg.DownloadDir = downloadDir
+				rest.Downloader.PutConfig(downloadCfg)
+			}
 		}
 	}
 	watchExit()
