@@ -150,11 +150,33 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	if cfg.MaxRunning == 0 {
 		cfg.MaxRunning = 5
 	}
+	if cfg.ProtocolConfig == nil {
+		cfg.ProtocolConfig = make(map[string]any)
+	}
 	if cfg.Proxy == nil {
 		cfg.Proxy = &DownloaderProxyConfig{}
 	}
+	return cfg
+}
+
+func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *DownloaderStoreConfig {
+	if beforeCfg == nil {
+		return cfg
+	}
+	if cfg.DownloadDir == "" {
+		cfg.DownloadDir = beforeCfg.DownloadDir
+	}
+	if cfg.MaxRunning == 0 {
+		cfg.MaxRunning = beforeCfg.MaxRunning
+	}
 	if cfg.ProtocolConfig == nil {
-		cfg.ProtocolConfig = make(map[string]any)
+		cfg.ProtocolConfig = beforeCfg.ProtocolConfig
+	}
+	if cfg.Extra == nil {
+		cfg.Extra = beforeCfg.Extra
+	}
+	if cfg.Proxy == nil {
+		cfg.Proxy = beforeCfg.Proxy
 	}
 	return cfg
 }

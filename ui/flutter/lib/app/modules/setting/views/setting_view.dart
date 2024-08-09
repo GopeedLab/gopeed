@@ -337,7 +337,7 @@ class SettingView extends GetView<SettingController> {
       );
     });
     final buildBtSeedConfig = _buildConfigItem('seedConfig',
-        () => 'seedKeep'.tr + (btConfig.seedKeep ? 'on'.tr : 'off'.tr),
+        () => '${'seedKeep'.tr}(${btConfig.seedKeep ? 'on'.tr : 'off'.tr})',
         (Key key) {
       final seedRatioController =
           TextEditingController(text: btConfig.seedRatio.toString());
