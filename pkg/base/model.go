@@ -94,15 +94,7 @@ func (o *Options) InitSelectFiles(fileSize int) {
 }
 
 func (o *Options) Clone() *Options {
-	if o == nil {
-		return nil
-	}
-	return &Options{
-		Name:        o.Name,
-		Path:        o.Path,
-		SelectFiles: o.SelectFiles,
-		Extra:       o.Extra,
-	}
+	return util.DeepClone(o)
 }
 
 func ParseReqExtra[E any](req *Request) error {

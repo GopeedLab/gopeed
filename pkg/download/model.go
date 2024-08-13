@@ -55,16 +55,7 @@ func (t *Task) updateStatus(status base.Status) {
 }
 
 func (t *Task) clone() *Task {
-	return &Task{
-		ID:        t.ID,
-		Protocol:  t.Protocol,
-		Meta:      t.Meta,
-		Status:    t.Status,
-		Uploading: t.Uploading,
-		Progress:  t.Progress,
-		CreatedAt: t.CreatedAt,
-		UpdatedAt: t.UpdatedAt,
-	}
+	return util.DeepClone(t)
 }
 
 func (t *Task) calcSpeed(speedArr []int64, downloaded int64, usedTime float64) int64 {
