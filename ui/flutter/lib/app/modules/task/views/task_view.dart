@@ -151,12 +151,7 @@ extension TaskEnhance on Task {
   }
 
   String get explorerUrl {
-    if (isFolder) {
-      return path.join(Util.safeDir(meta.opts.path),
-          Util.safeDir(meta.res!.files[0].path), showName);
-    } else {
-      return path.join(Util.safeDir(meta.opts.path), Util.safeDir(showName));
-    }
+    return path.join(Util.safeDir(meta.opts.path), Util.safeDir(showName));
   }
 
   Future<void> explorer() async {
