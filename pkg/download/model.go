@@ -1,6 +1,7 @@
 package download
 
 import (
+	"encoding/json"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/protocol/bt"
@@ -47,6 +48,47 @@ func NewTask() *Task {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
+}
+
+// Name returns the display name of the task.
+func (t *Task) Name() string {
+	// Custom name first
+	if t.Meta.Opts.Name != "" {
+		return t.Meta.Opts.Name
+	}
+
+	// Task is not resolved, parse the name from the URL
+	if t.Meta.Res == nil {
+		fallbackName := "unknown"
+		if t.fetcherManager == nil {
+			return fallbackName
+		}
+		parseName := t.fetcherManager.ParseName(t.Meta.Req.URL)
+		if parseName == "" {
+			return fallbackName
+		}
+		return parseName
+	}
+
+	// Task is a folder
+	if t.Meta.Res.Name != "" {
+		return t.Meta.Res.Name
+	}
+
+	// Get the name of the first file
+	return t.Meta.Res.Files[0].Name
+}
+
+func (t *Task) MarshalJSON() ([]byte, error) {
+	type rawTaskType Task
+	jsonTask := struct {
+		rawTaskType
+		Name string `json:"name"`
+	}{
+		rawTaskType(*t),
+		t.Name(),
+	}
+	return json.Marshal(jsonTask)
 }
 
 func (t *Task) updateStatus(status base.Status) {

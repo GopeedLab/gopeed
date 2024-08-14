@@ -9,7 +9,7 @@ part of 'downloader_config.dart';
 DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
     DownloaderConfig(
       downloadDir: json['downloadDir'] as String? ?? '',
-      maxRunning: json['maxRunning'] as int? ?? 0,
+      maxRunning: (json['maxRunning'] as num?)?.toInt() ?? 0,
     )
       ..protocolConfig = ProtocolConfig.fromJson(
           json['protocolConfig'] as Map<String, dynamic>?)
@@ -38,7 +38,7 @@ Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) =>
 
 HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
       userAgent: json['userAgent'] as String? ?? '',
-      connections: json['connections'] as int? ?? 0,
+      connections: (json['connections'] as num?)?.toInt() ?? 0,
       useServerCtime: json['useServerCtime'] as bool? ?? false,
     );
 
@@ -50,14 +50,14 @@ Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
     };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
-      listenPort: json['listenPort'] as int? ?? 0,
+      listenPort: (json['listenPort'] as num?)?.toInt() ?? 0,
       trackers: (json['trackers'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           const [],
       seedKeep: json['seedKeep'] as bool? ?? false,
       seedRatio: (json['seedRatio'] as num?)?.toDouble() ?? 0,
-      seedTime: json['seedTime'] as int? ?? 0,
+      seedTime: (json['seedTime'] as num?)?.toInt() ?? 0,
     );
 
 Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
