@@ -8,6 +8,7 @@ part of 'task.dart';
 
 Task _$TaskFromJson(Map<String, dynamic> json) => Task(
       id: json['id'] as String,
+      name: json['name'] as String,
       meta: Meta.fromJson(json['meta'] as Map<String, dynamic>),
       status: $enumDecode(_$StatusEnumMap, json['status']),
       uploading: json['uploading'] as bool,
@@ -19,6 +20,7 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
 Map<String, dynamic> _$TaskToJson(Task instance) {
   final val = <String, dynamic>{
     'id': instance.id,
+    'name': instance.name,
   };
 
   void writeNotNull(String key, dynamic value) {
@@ -52,11 +54,11 @@ const _$ProtocolEnumMap = {
 };
 
 Progress _$ProgressFromJson(Map<String, dynamic> json) => Progress(
-      used: json['used'] as int,
-      speed: json['speed'] as int,
-      downloaded: json['downloaded'] as int,
-      uploadSpeed: json['uploadSpeed'] as int,
-      uploaded: json['uploaded'] as int,
+      used: (json['used'] as num).toInt(),
+      speed: (json['speed'] as num).toInt(),
+      downloaded: (json['downloaded'] as num).toInt(),
+      uploadSpeed: (json['uploadSpeed'] as num).toInt(),
+      uploaded: (json['uploaded'] as num).toInt(),
     );
 
 Map<String, dynamic> _$ProgressToJson(Progress instance) => <String, dynamic>{

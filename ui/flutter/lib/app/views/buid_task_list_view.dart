@@ -183,10 +183,10 @@ class BuildTaskListView extends GetView {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                  title: Text(task.showName),
+                  title: Text(task.name),
                   leading: isFolderTask()
                       ? const Icon(FaIcons.folder)
-                      : Icon(FaIcons.allIcons[findIcon(task.showName)])),
+                      : Icon(FaIcons.allIcons[findIcon(task.name)])),
               Row(
                 children: [
                   Expanded(

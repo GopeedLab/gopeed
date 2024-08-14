@@ -192,6 +192,54 @@ func TestFetcher_ConfigUseServerCtime(t *testing.T) {
 	}
 }
 
+func TestFetcherManager_ParseName(t *testing.T) {
+	type args struct {
+		u string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "broken url",
+			args: args{
+				u: "https://!@#%github.com",
+			},
+			want: "",
+		},
+		{
+			name: "file path",
+			args: args{
+				u: "https://github.com/index.html",
+			},
+			want: "index.html",
+		},
+		{
+			name: "file path with query and hash",
+			args: args{
+				u: "https://github.com/a/b/index.html/#list?name=1",
+			},
+			want: "index.html",
+		},
+		{
+			name: "no file path",
+			args: args{
+				u: "https://github.com",
+			},
+			want: "github.com",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm := &FetcherManager{}
+			if got := fm.ParseName(tt.args.u); got != tt.want {
+				t.Errorf("ParseName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func downloadReady(listener net.Listener, connections int, t *testing.T) fetcher.Fetcher {
 	return doDownloadReady(buildFetcher(), listener, connections, t)
 }
@@ -359,11 +407,11 @@ func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t 
 }
 
 func buildFetcher() *Fetcher {
-	fb := new(FetcherManager)
-	fetcher := fb.Build()
+	fm := new(FetcherManager)
+	fetcher := fm.Build()
 	newController := controller.NewController()
 	newController.GetConfig = func(v any) {
-		json.Unmarshal([]byte(test.ToJson(fb.DefaultConfig())), v)
+		json.Unmarshal([]byte(test.ToJson(fm.DefaultConfig())), v)
 	}
 	fetcher.Setup(newController)
 	return fetcher.(*Fetcher)

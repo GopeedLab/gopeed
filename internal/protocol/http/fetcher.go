@@ -99,7 +99,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	}
 
 	if base.HttpCodePartialContent == httpResp.StatusCode || (base.HttpCodeOK == httpResp.StatusCode && httpResp.Header.Get(base.HttpHeaderAcceptRanges) == base.HttpHeaderBytes && strings.HasPrefix(httpResp.Header.Get(base.HttpHeaderContentRange), base.HttpHeaderBytes)) {
-		// 1.返回206响应码表示支持断点下载 2.不返回206但是Accept-Ranges首部并且等于bytes也表示支持断点下载
+		// response 206 status code, support breakpoint continuation
 		res.Range = true
 		// 解析资源大小: bytes 0-1000/1001 => 1001
 		contentTotal := path.Base(httpResp.Header.Get(base.HttpHeaderContentRange))
@@ -111,7 +111,8 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 			res.Size = parse
 		}
 	} else if base.HttpCodeOK == httpResp.StatusCode {
-		// 返回200响应码，不支持断点下载，通过Content-Length头获取文件大小，获取不到的话可能是chunked编码
+		// response 200 status code, not support breakpoint continuation, get file size by Content-Length header
+		// if not found, maybe chunked encoding
 		contentLength := httpResp.Header.Get(base.HttpHeaderContentLength)
 		if contentLength != "" {
 			parse, err := strconv.ParseInt(contentLength, 10, 64)
@@ -479,6 +480,25 @@ func (fm *FetcherManager) Filters() []*fetcher.SchemeFilter {
 
 func (fm *FetcherManager) Build() fetcher.Fetcher {
 	return &Fetcher{}
+}
+
+func (fm *FetcherManager) ParseName(u string) string {
+	var name string
+	url, err := url.Parse(u)
+	if err != nil {
+		return ""
+	}
+	// Get filePath by URL
+	name = path.Base(url.Path)
+	// If file name is empty, use host name
+	if name == "" || name == "/" || name == "." {
+		name = url.Hostname()
+	}
+	return name
+}
+
+func (fm *FetcherManager) AutoRename() bool {
+	return true
 }
 
 func (fm *FetcherManager) DefaultConfig() any {

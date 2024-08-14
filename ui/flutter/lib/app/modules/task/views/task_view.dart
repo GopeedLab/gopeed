@@ -82,8 +82,7 @@ class TaskView extends GetView<TaskController> {
                   ),
                   ListTile(
                       title: Text('taskName'.tr),
-                      subtitle:
-                          buildTooltipSubtitle(selectTask.value?.showName)),
+                      subtitle: buildTooltipSubtitle(selectTask.value?.name)),
                   ListTile(
                     title: Text('taskUrl'.tr),
                     subtitle:
@@ -121,31 +120,6 @@ class TaskView extends GetView<TaskController> {
 }
 
 extension TaskEnhance on Task {
-  String get showName {
-    if (meta.opts.name.isNotEmpty) {
-      return meta.opts.name;
-    }
-    if (meta.res == null) {
-      final u = Uri.parse(meta.req.url);
-      if (u.scheme.startsWith("http")) {
-        return u.path.isNotEmpty
-            ? u.path.substring(u.path.lastIndexOf("/") + 1)
-            : u.host;
-      } else {
-        final params = u.queryParameters;
-        if (params.containsKey("dn")) {
-          return params["dn"]!;
-        } else {
-          return params["xt"]!.split(":").last;
-        }
-      }
-    }
-    if (meta.res!.name.isNotEmpty) {
-      return meta.res!.name;
-    }
-    return meta.res!.files[0].name;
-  }
-
   bool get isFolder {
     return meta.res?.name.isNotEmpty ?? false;
   }
@@ -153,9 +127,9 @@ extension TaskEnhance on Task {
   String get explorerUrl {
     if (isFolder) {
       return path.join(Util.safeDir(meta.opts.path),
-          Util.safeDir(meta.res!.files[0].path), showName);
+          Util.safeDir(meta.res!.files[0].path), name);
     } else {
-      return path.join(Util.safeDir(meta.opts.path), Util.safeDir(showName));
+      return path.join(Util.safeDir(meta.opts.path), Util.safeDir(name));
     }
   }
 
