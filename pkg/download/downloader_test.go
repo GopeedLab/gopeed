@@ -159,21 +159,21 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 
 func TestDownloader_CreateWithProxy(t *testing.T) {
 	// No proxy
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, nil, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		return nil
 	}, nil)
 	// Disable proxy
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, nil, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		proxyCfg.Enable = false
 		return proxyCfg
 	}, nil)
 	// Enable system proxy but not set proxy environment variable
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, nil, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		proxyCfg.System = true
 		return proxyCfg
 	}, nil)
 	// Enable proxy but error proxy environment variable
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, nil, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		os.Setenv("HTTP_PROXY", "http://127.0.0.1:1234")
 		os.Setenv("HTTPS_PROXY", "http://127.0.0.1:1234")
 		proxyCfg.System = true
@@ -184,33 +184,50 @@ func TestDownloader_CreateWithProxy(t *testing.T) {
 		}
 	})
 	// Enable system proxy and set proxy environment variable
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, nil, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		os.Setenv("HTTP_PROXY", proxyCfg.ToUrl().String())
 		os.Setenv("HTTPS_PROXY", proxyCfg.ToUrl().String())
 		proxyCfg.System = true
 		return proxyCfg
 	}, nil)
 	// Invalid proxy scheme
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, nil, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		proxyCfg.Scheme = ""
 		return proxyCfg
 	}, nil)
 	// Invalid proxy host
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, nil, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		proxyCfg.Host = ""
 		return proxyCfg
 	}, nil)
 	// Use proxy without auth
-	doTestDownloaderCreateWithProxy(t, false, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, false, nil, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		return proxyCfg
 	}, nil)
 	// Use proxy with auth
-	doTestDownloaderCreateWithProxy(t, true, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
+	doTestDownloaderCreateWithProxy(t, true, nil, func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig {
 		return proxyCfg
 	}, nil)
+
+	// Request proxy mode none
+	doTestDownloaderCreateWithProxy(t, false, func(reqProxy *base.RequestProxy) *base.RequestProxy {
+		reqProxy.Mode = base.RequestProxyModeNone
+		return reqProxy
+	}, nil, nil)
+
+	// Request proxy mode global
+	doTestDownloaderCreateWithProxy(t, false, func(reqProxy *base.RequestProxy) *base.RequestProxy {
+		reqProxy.Mode = base.RequestProxyModeGlobal
+		return reqProxy
+	}, nil, nil)
+
+	// Request proxy mode custom
+	doTestDownloaderCreateWithProxy(t, false, func(reqProxy *base.RequestProxy) *base.RequestProxy {
+		return reqProxy
+	}, nil, nil)
 }
 
-func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig, errHandler func(err error)) {
+func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildReqProxy func(reqProxy *base.RequestProxy) *base.RequestProxy, buildProxyConfig func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig, errHandler func(err error)) {
 	usr, pwd := "", ""
 	if auth {
 		usr, pwd = "admin", "123"
@@ -223,16 +240,28 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildProxyConfig f
 		t.Fatal(err)
 	}
 	defer downloader.Clear()
-	downloader.cfg.DownloaderStoreConfig.Proxy = buildProxyConfig(&base.DownloaderProxyConfig{
+	globalProxyCfg := &base.DownloaderProxyConfig{
 		Enable: true,
 		Scheme: "socks5",
 		Host:   proxyListener.Addr().String(),
 		Usr:    usr,
 		Pwd:    pwd,
-	})
+	}
+	if buildProxyConfig != nil {
+		globalProxyCfg = buildProxyConfig(globalProxyCfg)
+	}
+	downloader.cfg.DownloaderStoreConfig.Proxy = globalProxyCfg
 
 	req := &base.Request{
 		URL: test.ExternalDownloadUrl,
+	}
+	if buildReqProxy != nil {
+		req.Proxy = buildReqProxy(&base.RequestProxy{
+			Scheme: "socks5",
+			Host:   proxyListener.Addr().String(),
+			Usr:    usr,
+			Pwd:    pwd,
+		})
 	}
 	rr, err := downloader.Resolve(req)
 	if err != nil {

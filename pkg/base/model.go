@@ -16,6 +16,8 @@ type Request struct {
 	Extra any    `json:"extra"`
 	// Labels is used to mark the download task
 	Labels map[string]string `json:"labels"`
+	// Proxy is special proxy config for request
+	Proxy *RequestProxy `json:"proxy"`
 }
 
 func (r *Request) Validate() error {
@@ -23,6 +25,34 @@ func (r *Request) Validate() error {
 		return fmt.Errorf("invalid request url")
 	}
 	return nil
+}
+
+type RequestProxyMode int
+
+const (
+	RequestProxyModeNone RequestProxyMode = iota
+	RequestProxyModeGlobal
+	RequestProxyModeCustom
+)
+
+type RequestProxy struct {
+	Mode   RequestProxyMode `json:"mode"`
+	Scheme string           `json:"scheme"`
+	Host   string           `json:"host"`
+	Usr    string           `json:"usr"`
+	Pwd    string           `json:"pwd"`
+}
+
+func (p *RequestProxy) ToHandler() func(r *http.Request) (*url.URL, error) {
+	if p == nil || p.Mode != RequestProxyModeCustom {
+		return nil
+	}
+
+	if p.Scheme == "" || p.Host == "" {
+		return nil
+	}
+
+	return http.ProxyURL(util.BuildProxyUrl(p.Scheme, p.Host, p.Usr, p.Pwd))
 }
 
 // Resource download resource
