@@ -11,6 +11,7 @@ enum Protocol { http, bt }
 @JsonSerializable(explicitToJson: true)
 class Task {
   String id;
+  String name;
   Protocol? protocol;
   Meta meta;
   Status status;
@@ -21,6 +22,7 @@ class Task {
 
   Task({
     required this.id,
+    required this.name,
     required this.meta,
     required this.status,
     required this.uploading,

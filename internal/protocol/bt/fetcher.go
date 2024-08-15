@@ -11,6 +11,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -108,7 +109,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 func (f *Fetcher) Create(opts *base.Options) (err error) {
 	f.meta.Opts = opts
 	if f.meta.Res != nil {
-		torrentDirMap[f.meta.Res.Hash] = f.meta.FolderPath()
+		torrentDirMap[f.meta.Res.Hash] = opts.Path
 	}
 	return nil
 }
@@ -120,7 +121,7 @@ func (f *Fetcher) Start() (err error) {
 		}
 	}
 	if ft, ok := ftMap[f.meta.Res.Hash]; ok {
-		ft.setTorrentDir(f.meta.FolderPath())
+		ft.setTorrentDir(f.meta.Opts.Path)
 	}
 	files := f.torrent.Files()
 	// If the user does not specify the file to download, all files will be downloaded by default
@@ -245,16 +246,18 @@ func (f *Fetcher) isDone() bool {
 
 func (f *Fetcher) updateRes() {
 	res := &base.Resource{
-		Name:  f.torrent.Name(),
 		Range: true,
 		Files: make([]*base.FileInfo, len(f.torrent.Files())),
 		Hash:  f.torrent.InfoHash().String(),
 	}
-	f.torrent.PeerConns()
+	// Directory torrent
+	if f.torrent.Info().Length == 0 {
+		res.Name = f.torrent.Name()
+	}
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
 			Name: filepath.Base(file.DisplayPath()),
-			Path: util.Dir(file.Path()),
+			Path: util.Dir(file.DisplayPath()),
 			Size: file.Length(),
 		}
 	}
@@ -456,6 +459,28 @@ func (fm *FetcherManager) Filters() []*fetcher.SchemeFilter {
 
 func (fm *FetcherManager) Build() fetcher.Fetcher {
 	return &Fetcher{}
+}
+
+func (fm *FetcherManager) ParseName(u string) string {
+	var name string
+	url, err := url.Parse(u)
+	if err != nil {
+		return ""
+	}
+
+	params := url.Query()
+	if params.Get("dn") != "" {
+		return params.Get("dn")
+	}
+	if params.Get("xt") != "" {
+		xt := strings.Split(params.Get("xt"), ":")
+		return xt[len(xt)-1]
+	}
+	return name
+}
+
+func (fm *FetcherManager) AutoRename() bool {
+	return false
 }
 
 func (fm *FetcherManager) DefaultConfig() any {

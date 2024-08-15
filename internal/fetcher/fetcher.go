@@ -110,6 +110,10 @@ type FetcherManager interface {
 	Filters() []*SchemeFilter
 	// Build returns a new fetcher.
 	Build() Fetcher
+	// ParseName name displayed when the task is not yet resolved, parsed from the request URL
+	ParseName(u string) string
+	// AutoRename returns whether the fetcher need renaming the download file when has the same name file.
+	AutoRename() bool
 
 	// DefaultConfig returns the default configuration of the protocol.
 	DefaultConfig() any

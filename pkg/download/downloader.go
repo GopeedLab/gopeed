@@ -362,18 +362,10 @@ func (d *Downloader) Pause(id string) (err error) {
 		return ErrTaskNotFound
 	}
 
-	func() {
-		task.lock.Lock()
-		defer task.lock.Unlock()
-
-		if task.Status == base.DownloadStatusPause {
-			return
-		}
-		if err = d.doPause(task); err != nil {
-			return
-		}
-		d.notifyRunning()
-	}()
+	if err = d.doPause(task); err != nil {
+		return
+	}
+	d.notifyRunning()
 	return
 }
 
@@ -592,11 +584,11 @@ func (d *Downloader) Close() error {
 
 	closeArr := []func() error{
 		d.PauseAll,
-		d.storage.Close,
 	}
 	for _, fm := range d.cfg.FetchManagers {
 		closeArr = append(closeArr, fm.Close)
 	}
+	closeArr = append(closeArr, d.storage.Close)
 	// Make sure all resources are released, if had error, return the last error
 	var lastErr error
 	for i, close := range closeArr {
@@ -732,6 +724,12 @@ func (d *Downloader) watch(task *Task) {
 		d.doOnError(task, err)
 		return
 	}
+
+	// When delete a not resolved task, need check if the task resource is nil
+	if task.Meta.Res == nil {
+		return
+	}
+
 	task.Progress.Used = task.timer.Used()
 	if task.Meta.Res.Size == 0 {
 		task.Meta.Res.Size = task.fetcher.Progress().TotalDownloaded()
@@ -932,26 +930,28 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		}
 
 		if isCreate {
-			d.checkDuplicateLock.Lock()
-			defer d.checkDuplicateLock.Unlock()
-			task.Meta.Opts.Name = util.ReplaceInvalidFilename(task.Meta.Opts.Name)
-			// check if the download file is duplicated and rename it automatically.
-			if task.Meta.Res.Name != "" {
-				task.Meta.Res.Name = util.ReplaceInvalidFilename(task.Meta.Res.Name)
-				fullDirPath := task.Meta.FolderPath()
-				newName, err := util.CheckDuplicateAndRename(fullDirPath)
-				if err != nil {
-					return err
+			if task.fetcherManager.AutoRename() {
+				d.checkDuplicateLock.Lock()
+				defer d.checkDuplicateLock.Unlock()
+				task.Meta.Opts.Name = util.ReplaceInvalidFilename(task.Meta.Opts.Name)
+				// check if the download file is duplicated and rename it automatically.
+				if task.Meta.Res.Name != "" {
+					task.Meta.Res.Name = util.ReplaceInvalidFilename(task.Meta.Res.Name)
+					fullDirPath := task.Meta.FolderPath()
+					newName, err := util.CheckDuplicateAndRename(fullDirPath)
+					if err != nil {
+						return err
+					}
+					task.Meta.Opts.Name = newName
+				} else {
+					task.Meta.Res.Files[0].Name = util.ReplaceInvalidFilename(task.Meta.Res.Files[0].Name)
+					fullFilePath := task.Meta.SingleFilepath()
+					newName, err := util.CheckDuplicateAndRename(fullFilePath)
+					if err != nil {
+						return err
+					}
+					task.Meta.Opts.Name = newName
 				}
-				task.Meta.Opts.Name = newName
-			} else {
-				task.Meta.Res.Files[0].Name = util.ReplaceInvalidFilename(task.Meta.Res.Files[0].Name)
-				fullFilePath := task.Meta.SingleFilepath()
-				newName, err := util.CheckDuplicateAndRename(fullFilePath)
-				if err != nil {
-					return err
-				}
-				task.Meta.Opts.Name = newName
 			}
 
 			task.Meta.Res.CalcSize(task.Meta.Opts.SelectFiles)
