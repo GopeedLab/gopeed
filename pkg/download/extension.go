@@ -709,8 +709,12 @@ type ExtensionTask struct {
 }
 
 func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
+	newTask := task.clone()
+	// Assign the pointer of the properties that the extension supports modification
+	newTask.Meta = task.Meta
+	newTask.Status = task.Status
 	return &ExtensionTask{
-		Task:     task.clone(),
+		Task:     newTask,
 		download: download,
 	}
 }

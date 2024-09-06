@@ -79,6 +79,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
 		return err
 	}
+	f.meta.Req = req
 	httpReq, err := f.buildRequest(nil, req)
 	if err != nil {
 		return err
@@ -153,7 +154,6 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		file.Name = httpReq.URL.Hostname()
 	}
 	res.Files = append(res.Files, file)
-	f.meta.Req = req
 	f.meta.Res = res
 	return nil
 }
@@ -444,7 +444,7 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 
 func (f *Fetcher) buildClient() *http.Client {
 	transport := &http.Transport{
-		Proxy: f.ctl.ProxyConfig.ToHandler(),
+		Proxy: f.ctl.GetProxy(f.meta.Req.Proxy),
 	}
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)

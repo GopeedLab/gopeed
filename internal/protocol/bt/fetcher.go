@@ -73,7 +73,7 @@ func (f *Fetcher) initClient() (err error) {
 	cfg.Bep20 = fmt.Sprintf("-GP%s-", parseBep20())
 	cfg.ExtendedHandshakeClientVersion = fmt.Sprintf("Gopeed %s", base.Version)
 	cfg.ListenPort = f.config.ListenPort
-	cfg.HTTPProxy = f.ctl.ProxyConfig.ToHandler()
+	cfg.HTTPProxy = f.ctl.GetProxy(f.meta.Req.Proxy)
 	cfg.DefaultStorage = newFileOpts(newFileClientOpts{
 		ClientBaseDir: cfg.DataDir,
 		HandleFileTorrent: func(infoHash metainfo.Hash, ft *fileTorrentImpl) {
@@ -98,11 +98,14 @@ func (f *Fetcher) initClient() (err error) {
 }
 
 func (f *Fetcher) Resolve(req *base.Request) error {
+	if err := base.ParseReqExtra[bt.ReqExtra](req); err != nil {
+		return err
+	}
+	f.meta.Req = req
 	if err := f.addTorrent(req, false); err != nil {
 		return err
 	}
 	f.updateRes()
-	f.meta.Req = req
 	return nil
 }
 
@@ -339,9 +342,6 @@ func (f *Fetcher) WaitUpload() (err error) {
 }
 
 func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
-	if err = base.ParseReqExtra[bt.ReqExtra](req); err != nil {
-		return
-	}
 	if err = f.initClient(); err != nil {
 		return
 	}

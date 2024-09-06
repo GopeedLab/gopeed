@@ -847,7 +847,7 @@ class SettingView extends GetView<SettingController> {
     // advanced config log items start
     buildLogsDir() {
       return ListTile(
-          title: Text("日志目录"),
+          title: Text("logDirectory".tr),
           subtitle: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -981,7 +981,7 @@ class SettingView extends GetView<SettingController> {
                               : null,
                         ]),
                       )),
-                      const Text('开发者'),
+                      Text('developer'.tr),
                       Card(
                           child: Column(
                         children: _addDivider([
