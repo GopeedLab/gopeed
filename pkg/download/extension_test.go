@@ -256,6 +256,47 @@ func TestDownloader_Extension_OnError(t *testing.T) {
 	})
 }
 
+func TestDownloader_Extension_OnDone(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/on_error", false); err != nil {
+			t.Fatal(err)
+		}
+		errCh := make(chan error, 1)
+		downloader.Listener(func(event *Event) {
+			if event.Key == EventKeyFinally {
+				errCh <- event.Err
+			}
+		})
+		id, err := downloader.CreateDirect(&base.Request{
+			URL: "https://github.com/gopeed/test/404",
+			Labels: map[string]string{
+				"test": "true",
+			},
+		}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case err = <-errCh:
+			break
+		case <-time.After(time.Second * 10):
+			err = errors.New("timeout")
+		}
+
+		if err != nil {
+			panic("extension on error download error: " + err.Error())
+		}
+		// extension on error modify url and continue download
+		task := downloader.GetTask(id)
+		if task.Meta.Req.URL != "https://github.com" {
+			t.Fatalf("except url: https://github.com, actual: %s", task.Meta.Req.URL)
+		}
+		if task.Status != base.DownloadStatusDone {
+			t.Fatalf("except status is done, actual: %s", task.Status)
+		}
+	})
+}
+
 func TestDownloader_Extension_Errors(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/script_error", false); err != nil {
