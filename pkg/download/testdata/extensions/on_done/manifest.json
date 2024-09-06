@@ -6,8 +6,8 @@
     {
       "event": "onDone",
       "match": {
-        "labels": [
-          "test"
+        "urls": [
+          "*://github.com/*"
         ]
       },
       "entry": "index.js"

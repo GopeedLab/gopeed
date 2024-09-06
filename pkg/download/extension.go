@@ -306,7 +306,7 @@ func (d *Downloader) triggerOnError(task *Task, err error) {
 
 func (d *Downloader) triggerOnDone(task *Task) {
 	doTrigger(d,
-		EventKeyDone,
+		EventOnDone,
 		task.Meta.Req,
 		&OnErrorContext{
 			Task: NewExtensionTask(d, task),
@@ -623,7 +623,7 @@ func (h InstanceEvents) OnError(fn goja.Callable) {
 }
 
 func (h InstanceEvents) OnDone(fn goja.Callable) {
-	h.register(EventKeyDone, fn)
+	h.register(EventOnDone, fn)
 }
 
 type ExtensionInfo struct {
