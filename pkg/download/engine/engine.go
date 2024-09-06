@@ -106,7 +106,7 @@ func (e *Engine) await(value any) {
 }
 
 func (e *Engine) Close() {
-	e.loop.Stop()
+	e.loop.StopNoWait()
 }
 
 type Config struct {

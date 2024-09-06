@@ -9,6 +9,8 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"net"
+	gohttp "net/http"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -385,10 +387,12 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t *testing.T) {
 	fetcher := downloadReady(httpListener, 4, t)
 	ctl := controller.NewController()
-	ctl.ProxyConfig = &base.DownloaderProxyConfig{
-		Enable: true,
-		Scheme: "socks5",
-		Host:   proxyListener.Addr().String(),
+	ctl.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
+		return (&base.DownloaderProxyConfig{
+			Enable: true,
+			Scheme: "socks5",
+			Host:   proxyListener.Addr().String(),
+		}).ToHandler()
 	}
 	fetcher.Setup(ctl)
 	err := fetcher.Start()

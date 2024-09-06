@@ -12,6 +12,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/virtuald/go-paniclog"
+	gohttp "net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -253,7 +255,20 @@ func (d *Downloader) setupFetcher(fm fetcher.FetcherManager, fetcher fetcher.Fet
 	ctl.GetConfig = func(v any) {
 		d.getProtocolConfig(fm.Name(), v)
 	}
-	ctl.ProxyConfig = d.cfg.Proxy
+	// Get proxy config, task request proxy config has higher priority, then use global proxy config
+	ctl.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
+		if requestProxy == nil {
+			return d.cfg.Proxy.ToHandler()
+		}
+		switch requestProxy.Mode {
+		case base.RequestProxyModeNone:
+			return nil
+		case base.RequestProxyModeCustom:
+			return requestProxy.ToHandler()
+		default:
+			return d.cfg.Proxy.ToHandler()
+		}
+	}
 	fetcher.Setup(ctl)
 }
 

@@ -8,6 +8,8 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
+	gohttp "net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"testing"
@@ -210,7 +212,9 @@ func buildConfigFetcher(proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher
 	newController.GetConfig = func(v any) {
 		json.Unmarshal([]byte(test.ToJson(mockCfg)), v)
 	}
-	newController.ProxyConfig = proxyConfig
+	newController.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
+		return proxyConfig.ToHandler()
+	}
 	fetcher.Setup(newController)
 	return fetcher
 }
