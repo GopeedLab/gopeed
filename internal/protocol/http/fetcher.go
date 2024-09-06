@@ -171,8 +171,12 @@ func (f *Fetcher) Create(opts *base.Options) error {
 		opts.Extra = &fhttp.OptsExtra{}
 	}
 	extra := opts.Extra.(*fhttp.OptsExtra)
-	if extra.Connections == 0 {
+	if extra.Connections <= 0 {
 		extra.Connections = f.config.Connections
+		// Avoid zero connections configuration
+		if extra.Connections <= 0 {
+			extra.Connections = 1
+		}
 	}
 	return nil
 }
