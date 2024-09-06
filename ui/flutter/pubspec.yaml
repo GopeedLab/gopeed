@@ -67,6 +67,8 @@ dependencies:
   launch_at_startup: ^0.2.2
   args: ^2.5.0
   toggle_switch: ^2.3.0
+  permission_handler: ^11.3.1
+  device_info_plus: ^9.1.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
