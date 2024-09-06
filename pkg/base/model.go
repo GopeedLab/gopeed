@@ -27,12 +27,15 @@ func (r *Request) Validate() error {
 	return nil
 }
 
-type RequestProxyMode int
+type RequestProxyMode string
 
 const (
-	RequestProxyModeNone RequestProxyMode = iota
-	RequestProxyModeGlobal
-	RequestProxyModeCustom
+	// RequestProxyModeFollow follow setting proxy
+	RequestProxyModeFollow RequestProxyMode = "follow"
+	// RequestProxyModeNone not use proxy
+	RequestProxyModeNone RequestProxyMode = "none"
+	// RequestProxyModeCustom custom proxy
+	RequestProxyModeCustom RequestProxyMode = "custom"
 )
 
 type RequestProxy struct {

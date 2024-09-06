@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/api/model/request.dart';
 
 class CreateController extends GetxController
     with GetSingleTickerProviderStateMixin {
@@ -13,6 +14,7 @@ class CreateController extends GetxController
   final isConfirming = false.obs;
   final showAdvanced = false.obs;
   final directDownload = false.obs;
+  final proxyConfig = Rx<RequestProxy?>(null);
   late TabController advancedTabController;
   final oldUrl = "".obs;
   final fileDataUri = "".obs;

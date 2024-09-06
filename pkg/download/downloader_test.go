@@ -209,15 +209,15 @@ func TestDownloader_CreateWithProxy(t *testing.T) {
 		return proxyCfg
 	}, nil)
 
-	// Request proxy mode none
+	// Request proxy mode follow
 	doTestDownloaderCreateWithProxy(t, false, func(reqProxy *base.RequestProxy) *base.RequestProxy {
-		reqProxy.Mode = base.RequestProxyModeNone
+		reqProxy.Mode = base.RequestProxyModeFollow
 		return reqProxy
 	}, nil, nil)
 
-	// Request proxy mode global
+	// Request proxy mode none
 	doTestDownloaderCreateWithProxy(t, false, func(reqProxy *base.RequestProxy) *base.RequestProxy {
-		reqProxy.Mode = base.RequestProxyModeGlobal
+		reqProxy.Mode = base.RequestProxyModeNone
 		return reqProxy
 	}, nil, nil)
 
