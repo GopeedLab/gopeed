@@ -13,12 +13,12 @@ import (
 
 func Info(w http.ResponseWriter, r *http.Request) {
 	info := map[string]any{
-		"version": base.Version,
-		"runtime": runtime.Version(),
-		"os":      runtime.GOOS,
-		"arch":    runtime.GOARCH,
+		"version":  base.Version,
+		"runtime":  runtime.Version(),
+		"os":       runtime.GOOS,
+		"arch":     runtime.GOARCH,
+		"inDocker": base.InDocker == "true",
 	}
-	info["inDocker"] = base.InDocker == "true"
 	WriteJson(w, model.NewOkResult(info))
 }
 

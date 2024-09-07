@@ -38,7 +38,7 @@ const (
 	EventOnResolve ActivationEvent = "onResolve"
 	EventOnStart   ActivationEvent = "onStart"
 	EventOnError   ActivationEvent = "onError"
-	//EventOnDone    ActivationEvent = "onDone"
+	EventOnDone    ActivationEvent = "onDone"
 )
 
 func (d *Downloader) InstallExtensionByGit(url string) (*Extension, error) {
@@ -155,7 +155,13 @@ func (d *Downloader) DeleteExtension(identity string) error {
 			break
 		}
 	}
-	return d.storage.Delete(bucketExtension, identity)
+	if err = d.storage.Delete(bucketExtension, identity); err != nil {
+		return err
+	}
+	if err = d.storage.Delete(bucketExtensionStorage, identity); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *Downloader) GetExtensions() []*Extension {
@@ -293,6 +299,17 @@ func (d *Downloader) triggerOnError(task *Task, err error) {
 		&OnErrorContext{
 			Task:  NewExtensionTask(d, task),
 			Error: err,
+		},
+		nil,
+	)
+}
+
+func (d *Downloader) triggerOnDone(task *Task) {
+	doTrigger(d,
+		EventOnDone,
+		task.Meta.Req,
+		&OnErrorContext{
+			Task: NewExtensionTask(d, task),
 		},
 		nil,
 	)
@@ -605,9 +622,9 @@ func (h InstanceEvents) OnError(fn goja.Callable) {
 	h.register(EventOnError, fn)
 }
 
-//func (h InstanceEvents) OnDone(fn goja.Callable) {
-//	h.register(HookEventOnDone, fn)
-//}
+func (h InstanceEvents) OnDone(fn goja.Callable) {
+	h.register(EventOnDone, fn)
+}
 
 type ExtensionInfo struct {
 	Identity string `json:"identity"`
@@ -681,6 +698,10 @@ type OnErrorContext struct {
 	Error error          `json:"error"`
 }
 
+type OnDoneContext struct {
+	Task *Task `json:"task"`
+}
+
 type ExtensionTask struct {
 	*Task
 
@@ -688,8 +709,12 @@ type ExtensionTask struct {
 }
 
 func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
+	newTask := task.clone()
+	// Assign the pointer of the properties that the extension supports modification
+	newTask.Meta = task.Meta
+	newTask.Status = task.Status
 	return &ExtensionTask{
-		Task:     task.clone(),
+		Task:     newTask,
 		download: download,
 	}
 }

@@ -48,6 +48,7 @@ func main() {
 		Storage:        model.StorageBolt,
 		StorageDir:     filepath.Join(dir, "storage"),
 		ApiToken:       *args.ApiToken,
+		DownloadConfig: args.DownloadConfig,
 		ProductionMode: true,
 		WebEnable:      true,
 		WebFS:          sub,

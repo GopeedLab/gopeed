@@ -16,6 +16,8 @@ type Request struct {
 	Extra any    `json:"extra"`
 	// Labels is used to mark the download task
 	Labels map[string]string `json:"labels"`
+	// Proxy is special proxy config for request
+	Proxy *RequestProxy `json:"proxy"`
 }
 
 func (r *Request) Validate() error {
@@ -23,6 +25,37 @@ func (r *Request) Validate() error {
 		return fmt.Errorf("invalid request url")
 	}
 	return nil
+}
+
+type RequestProxyMode string
+
+const (
+	// RequestProxyModeFollow follow setting proxy
+	RequestProxyModeFollow RequestProxyMode = "follow"
+	// RequestProxyModeNone not use proxy
+	RequestProxyModeNone RequestProxyMode = "none"
+	// RequestProxyModeCustom custom proxy
+	RequestProxyModeCustom RequestProxyMode = "custom"
+)
+
+type RequestProxy struct {
+	Mode   RequestProxyMode `json:"mode"`
+	Scheme string           `json:"scheme"`
+	Host   string           `json:"host"`
+	Usr    string           `json:"usr"`
+	Pwd    string           `json:"pwd"`
+}
+
+func (p *RequestProxy) ToHandler() func(r *http.Request) (*url.URL, error) {
+	if p == nil || p.Mode != RequestProxyModeCustom {
+		return nil
+	}
+
+	if p.Scheme == "" || p.Host == "" {
+		return nil
+	}
+
+	return http.ProxyURL(util.BuildProxyUrl(p.Scheme, p.Host, p.Usr, p.Pwd))
 }
 
 // Resource download resource
@@ -94,12 +127,7 @@ func (o *Options) InitSelectFiles(fileSize int) {
 }
 
 func (o *Options) Clone() *Options {
-	return &Options{
-		Name:        o.Name,
-		Path:        o.Path,
-		SelectFiles: o.SelectFiles,
-		Extra:       o.Extra,
-	}
+	return util.DeepClone(o)
 }
 
 func ParseReqExtra[E any](req *Request) error {
@@ -147,8 +175,33 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	if cfg.MaxRunning == 0 {
 		cfg.MaxRunning = 5
 	}
+	if cfg.ProtocolConfig == nil {
+		cfg.ProtocolConfig = make(map[string]any)
+	}
 	if cfg.Proxy == nil {
 		cfg.Proxy = &DownloaderProxyConfig{}
+	}
+	return cfg
+}
+
+func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *DownloaderStoreConfig {
+	if beforeCfg == nil {
+		return cfg
+	}
+	if cfg.DownloadDir == "" {
+		cfg.DownloadDir = beforeCfg.DownloadDir
+	}
+	if cfg.MaxRunning == 0 {
+		cfg.MaxRunning = beforeCfg.MaxRunning
+	}
+	if cfg.ProtocolConfig == nil {
+		cfg.ProtocolConfig = beforeCfg.ProtocolConfig
+	}
+	if cfg.Extra == nil {
+		cfg.Extra = beforeCfg.Extra
+	}
+	if cfg.Proxy == nil {
+		cfg.Proxy = beforeCfg.Proxy
 	}
 	return cfg
 }

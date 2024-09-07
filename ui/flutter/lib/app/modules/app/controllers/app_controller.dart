@@ -17,6 +17,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../core/common/start_config.dart';
+import '../../../../core/libgopeed_boot.dart';
 import '../../../../database/database.dart';
 import '../../../../database/entity.dart';
 import '../../../../i18n/message.dart';
@@ -110,6 +111,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
   void onClose() {
     _linkSubscription?.cancel();
     trayManager.removeListener(this);
+    LibgopeedBoot.instance.stop();
   }
 
   @override
@@ -193,6 +195,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
     } else if (Util.isMacos()) {
       await trayManager.setIcon('assets/tray_icon/icon_mac.png',
           isTemplate: true);
+    } else if (Platform.environment.containsKey('FLATPAK_ID') ||
+        Platform.environment.containsKey('SNAP')) {
+      await trayManager.setIcon('com.gopeed.Gopeed');
     } else {
       await trayManager.setIcon('assets/tray_icon/icon.png');
     }
@@ -240,7 +245,14 @@ class AppController extends GetxController with WindowListener, TrayListener {
       MenuItem.separator(),
       MenuItem(
         label: 'exit'.tr,
-        onClick: (menuItem) => {windowManager.destroy()},
+        onClick: (menuItem) async {
+          try {
+            await LibgopeedBoot.instance.stop();
+          } catch (e) {
+            logger.w("libgopeed stop fail", e);
+          }
+          windowManager.destroy();
+        },
       ),
     ]);
     if (!Util.isLinux()) {
@@ -258,16 +270,12 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
-          channelId: 'gopeed_service',
-          channelName: 'Gopeed Background Service',
-          channelImportance: NotificationChannelImportance.LOW,
-          showWhen: true,
-          priority: NotificationPriority.LOW,
-          iconData: const NotificationIconData(
-            resType: ResourceType.mipmap,
-            resPrefix: ResourcePrefix.ic,
-            name: 'launcher',
-          )),
+        channelId: 'gopeed_service',
+        channelName: 'Gopeed Background Service',
+        channelImportance: NotificationChannelImportance.LOW,
+        showWhen: true,
+        priority: NotificationPriority.LOW,
+      ),
       iosNotificationOptions: const IOSNotificationOptions(
         showNotification: true,
         playSound: false,
@@ -287,6 +295,11 @@ class AppController extends GetxController with WindowListener, TrayListener {
       FlutterForegroundTask.startService(
         notificationTitle: "serviceTitle".tr,
         notificationText: "serviceText".tr,
+        notificationIcon: const NotificationIconData(
+          resType: ResourceType.mipmap,
+          resPrefix: ResourcePrefix.ic,
+          name: 'launcher',
+        ),
       );
     }
   }

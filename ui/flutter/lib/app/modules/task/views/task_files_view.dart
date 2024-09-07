@@ -104,7 +104,7 @@ class TaskFilesView extends GetView<TaskFilesController> {
                                       }()
                                     : [
                                         IconButton(
-                                            icon: const Icon(Icons.play_circle),
+                                            icon: const Icon(Icons.open_in_new),
                                             onPressed: () async {
                                               await OpenFilex.open(filePath);
                                             }),

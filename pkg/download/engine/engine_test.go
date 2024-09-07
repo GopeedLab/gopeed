@@ -6,12 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/GopeedLab/gopeed/internal/test"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
-	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
-	gojautil "github.com/GopeedLab/gopeed/pkg/download/engine/util"
-	"github.com/dop251/goja"
 	"io"
 	"net"
 	"net/http"
@@ -19,6 +13,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/GopeedLab/gopeed/internal/test"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
+	gojautil "github.com/GopeedLab/gopeed/pkg/download/engine/util"
+	"github.com/dop251/goja"
 )
 
 func TestPolyfill(t *testing.T) {
@@ -26,6 +27,8 @@ func TestPolyfill(t *testing.T) {
 	doTestPolyfill(t, "XMLHttpRequest")
 	doTestPolyfill(t, "Blob")
 	doTestPolyfill(t, "FormData")
+	doTestPolyfill(t, "TextDecoder")
+	doTestPolyfill(t, "TextEncoder")
 	doTestPolyfill(t, "fetch")
 	doTestPolyfill(t, "__gopeed_create_vm")
 }
@@ -67,6 +70,44 @@ async function testOctetStream(file){
 		body: file
 	});
 	return await resp.text();
+}
+
+async function testRedirect() {
+    const url = host + '/redirect?num=3'
+    return await new Promise((resolve, reject) => {
+        fetch(url, {
+            method: 'HEAD',
+            redirect: 'error',
+        }).then(()=>reject())
+
+        fetch(url, {
+            method: 'HEAD',
+            redirect: 'follow',
+        }).then((res) =>res.headers.has('location') && reject()).catch(() => reject())
+
+        fetch(url, {
+            method: 'HEAD',
+            redirect: 'manual',
+        }).then((res) => {
+			const location = res.headers.get('location');
+			location ? resolve(location) : reject()
+        }).catch(() => reject())
+    })
+}
+
+async function testResponseUrl() {
+    return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest();
+		xhr.open('GET', host+'/redirect?num=3');
+		xhr.onload = function(){
+            if (xhr.responseURL.includes('/redirect?num=0')){
+                resolve();
+            }else{
+                reject();
+            }
+		};
+		xhr.send();
+	});
 }
 
 async function testFormData(file){
@@ -195,6 +236,20 @@ function testTimeout(){
 			t.Fatalf("testOctetStream failed, want %s, got %s", md5, result)
 		}
 	}()
+
+	t.Run("testRedirect", func(t *testing.T) {
+		_, err := callTestFun(engine, "testRedirect")
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("testResponseUrl", func(t *testing.T) {
+		_, err = callTestFun(engine, "testResponseUrl")
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
 
 	func() {
 		jsFile, goFile, md5 := buildFile(t, engine.Runtime)
@@ -404,6 +459,16 @@ func startServer() net.Listener {
 		time.Sleep(time.Duration(t) * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
+	})
+	mux.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) {
+		num := r.URL.Query().Get("num")
+		n, _ := strconv.Atoi(num)
+		if n > 0 {
+			http.Redirect(w, r, fmt.Sprintf("/redirect?num=%d", n-1), http.StatusFound)
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+		}
 	})
 	server.Handler = mux
 	go server.Serve(listener)

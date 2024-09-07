@@ -17,6 +17,7 @@ const enUS = {
     'create': 'Create Task',
     'directDownload': 'Direct Download',
     'advancedOptions': 'Advanced Options',
+    'followSettings': 'Follow Settings',
     'downloadLink': 'Download Link',
     'downloadLinkValid': 'Please enter the download link',
     'downloadLinkHit':
@@ -35,6 +36,7 @@ const enUS = {
     'connections': 'Connections',
     'useServerCtime': 'Use server time for file creation',
     'maxRunning': 'Max Running Tasks',
+    'defaultDirectDownload': 'Check direct download by default',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':
@@ -60,6 +62,8 @@ const enUS = {
     'set': 'SET',
     'portInUse': 'Port [@port] is in use, please change the port',
     'effectAfterRestart': 'Effect after restart',
+    'developer': 'Developer',
+    'logDirectory': 'Log Directory',
     'show': 'Show',
     'startAll': 'Start All',
     'pauseAll': 'Pause All',
@@ -95,5 +99,13 @@ const enUS = {
         'Thanks to all the contributors who have helped build and develop the Gopeed community!',
     'browserExtension': 'Browser Extension',
     'launchAtStartup': 'Launch at Startup',
+    'seedConfig': 'Seed Config',
+    'seedKeep': 'Keep seeding until manually stopped',
+    'seedRatio': 'Seed ratio',
+    'seedTime': 'Seed time (minutes)',
+    'taskDetail': 'Task Detail',
+    'taskName': 'Task Name',
+    'taskUrl': 'Task URL',
+    'downloadPath': 'Download Path',
   },
 };

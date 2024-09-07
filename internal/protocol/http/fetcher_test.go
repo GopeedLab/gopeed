@@ -9,6 +9,8 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"net"
+	gohttp "net/http"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -192,6 +194,54 @@ func TestFetcher_ConfigUseServerCtime(t *testing.T) {
 	}
 }
 
+func TestFetcherManager_ParseName(t *testing.T) {
+	type args struct {
+		u string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "broken url",
+			args: args{
+				u: "https://!@#%github.com",
+			},
+			want: "",
+		},
+		{
+			name: "file path",
+			args: args{
+				u: "https://github.com/index.html",
+			},
+			want: "index.html",
+		},
+		{
+			name: "file path with query and hash",
+			args: args{
+				u: "https://github.com/a/b/index.html/#list?name=1",
+			},
+			want: "index.html",
+		},
+		{
+			name: "no file path",
+			args: args{
+				u: "https://github.com",
+			},
+			want: "github.com",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm := &FetcherManager{}
+			if got := fm.ParseName(tt.args.u); got != tt.want {
+				t.Errorf("ParseName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func downloadReady(listener net.Listener, connections int, t *testing.T) fetcher.Fetcher {
 	return doDownloadReady(buildFetcher(), listener, connections, t)
 }
@@ -306,7 +356,7 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fb := new(FetcherBuilder)
+	fb := new(FetcherManager)
 	time.Sleep(time.Millisecond * 50)
 	data, err := fb.Store(fetcher)
 	if err != nil {
@@ -337,10 +387,12 @@ func downloadResume(listener net.Listener, connections int, t *testing.T) {
 func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t *testing.T) {
 	fetcher := downloadReady(httpListener, 4, t)
 	ctl := controller.NewController()
-	ctl.ProxyConfig = &base.DownloaderProxyConfig{
-		Enable: true,
-		Scheme: "socks5",
-		Host:   proxyListener.Addr().String(),
+	ctl.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
+		return (&base.DownloaderProxyConfig{
+			Enable: true,
+			Scheme: "socks5",
+			Host:   proxyListener.Addr().String(),
+		}).ToHandler()
 	}
 	fetcher.Setup(ctl)
 	err := fetcher.Start()
@@ -359,19 +411,21 @@ func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t 
 }
 
 func buildFetcher() *Fetcher {
-	fetcher := new(FetcherBuilder).Build()
-	fetcher.Setup(controller.NewController())
+	fm := new(FetcherManager)
+	fetcher := fm.Build()
+	newController := controller.NewController()
+	newController.GetConfig = func(v any) {
+		json.Unmarshal([]byte(test.ToJson(fm.DefaultConfig())), v)
+	}
+	fetcher.Setup(newController)
 	return fetcher.(*Fetcher)
 }
 
 func buildConfigFetcher(cfg config) fetcher.Fetcher {
-	fetcher := new(FetcherBuilder).Build()
+	fetcher := new(FetcherManager).Build()
 	newController := controller.NewController()
-	newController.GetConfig = func(v any) bool {
-		if err := json.Unmarshal([]byte(test.ToJson(cfg)), v); err != nil {
-			return false
-		}
-		return true
+	newController.GetConfig = func(v any) {
+		json.Unmarshal([]byte(test.ToJson(cfg)), v)
 	}
 	fetcher.Setup(newController)
 	return fetcher

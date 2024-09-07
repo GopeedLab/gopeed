@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	"os"
 	"path/filepath"
 )
@@ -15,6 +16,8 @@ type args struct {
 	Password   *string `json:"password"`
 	ApiToken   *string `json:"apiToken"`
 	StorageDir *string `json:"storageDir"`
+	// DownloadConfig when the first time to start the server, it will be configured as initial value
+	DownloadConfig *base.DownloaderStoreConfig `json:"downloadConfig"`
 
 	configPath *string
 }
@@ -25,7 +28,7 @@ func parse() *args {
 	cliArgs.Port = flag.Int("P", 9999, "Bind Port")
 	cliArgs.Username = flag.String("u", "gopeed", "HTTP Basic Auth Username")
 	cliArgs.Password = flag.String("p", "", "HTTP Basic Auth Pwd")
-	cliArgs.ApiToken = flag.String("T", "", "API token, that can only be used when basic authentication is enabled.")
+	cliArgs.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling basic authentication")
 	cliArgs.StorageDir = flag.String("d", "", "Storage directory")
 	cliArgs.configPath = flag.String("c", "./config.json", "Config file path")
 	flag.Parse()
@@ -57,8 +60,9 @@ func loadConfig(path string) *args {
 	var args args
 
 	if !filepath.IsAbs(path) {
-		dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+		dir, err := os.Getwd()
 		if err != nil {
+			fmt.Println("config dir get failed, reason:" + err.Error())
 			return &args
 		}
 		path = filepath.Join(dir, path)

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 chown -R ${PUID}:${PGID} /app
 

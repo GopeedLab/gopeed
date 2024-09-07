@@ -5,6 +5,7 @@ import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/app/views/copy_button.dart';
 import 'package:intl/intl.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -108,6 +109,28 @@ class SettingView extends GetView<SettingController> {
         ],
       );
     });
+
+    final buildDefaultDirectDownload =
+        _buildConfigItem('defaultDirectDownload'.tr, () {
+      return appController.downloaderConfig.value.extra.defaultDirectDownload
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value:
+              appController.downloaderConfig.value.extra.defaultDirectDownload,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.extra.defaultDirectDownload = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
     buildBrowserExtension() {
       return ListTile(
           title: Text('browserExtension'.tr),
@@ -332,6 +355,69 @@ class SettingView extends GetView<SettingController> {
 
           await debounceSave();
         },
+      );
+    });
+    final buildBtSeedConfig = _buildConfigItem('seedConfig',
+        () => '${'seedKeep'.tr}(${btConfig.seedKeep ? 'on'.tr : 'off'.tr})',
+        (Key key) {
+      final seedRatioController =
+          TextEditingController(text: btConfig.seedRatio.toString());
+      seedRatioController.addListener(() {
+        if (seedRatioController.text.isNotEmpty) {
+          btConfig.seedRatio = double.parse(seedRatioController.text);
+          debounceSave();
+        }
+      });
+      final seedTimeController =
+          TextEditingController(text: (btConfig.seedTime ~/ 60).toString());
+      seedTimeController.addListener(() {
+        if (seedTimeController.text.isNotEmpty) {
+          btConfig.seedTime = int.parse(seedTimeController.text) * 60;
+          debounceSave();
+        }
+      });
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SwitchListTile(
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              value: btConfig.seedKeep,
+              onChanged: (bool value) {
+                downloaderCfg.update((val) {
+                  val!.protocolConfig.bt.seedKeep = value;
+                });
+                debounceSave();
+              },
+              title: Text('seedKeep'.tr)),
+          btConfig.seedKeep
+              ? null
+              : TextField(
+                  controller: seedRatioController,
+                  decoration: InputDecoration(
+                    labelText: 'seedRatio'.tr,
+                  ),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
+                ),
+          btConfig.seedKeep
+              ? null
+              : TextField(
+                  controller: seedTimeController,
+                  decoration: InputDecoration(
+                    labelText: 'seedTime'.tr,
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    NumericalRangeFormatter(min: 0, max: 100000000),
+                  ],
+                ),
+        ].where((e) => e != null).map((e) => e!).toList(),
       );
     });
 
@@ -779,6 +865,32 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
+    // advanced config log items start
+    buildLogsDir() {
+      return ListTile(
+          title: Text("logDirectory".tr),
+          subtitle: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: TextEditingController(text: logsDir()),
+                  enabled: false,
+                  readOnly: true,
+                ),
+              ),
+              Util.isDesktop()
+                  ? IconButton(
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: () {
+                        launchUrl(Uri.file(logsDir()));
+                      },
+                    )
+                  : CopyButton(logsDir()),
+            ],
+          ));
+    }
+
     return Obx(() {
       return GestureDetector(
         onTap: () {
@@ -813,6 +925,7 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildDownloadDir(),
                             buildMaxRunning(),
+                            buildDefaultDirectDownload(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
                           ]),
@@ -833,6 +946,7 @@ class SettingView extends GetView<SettingController> {
                             buildBtListenPort(),
                             buildBtTrackerSubscribeUrls(),
                             buildBtTrackers(),
+                            buildBtSeedConfig(),
                           ]),
                         )),
                         Text('ui'.tr),
@@ -887,6 +1001,13 @@ class SettingView extends GetView<SettingController> {
                           Util.isDesktop() && startCfg.value.network == 'tcp'
                               ? buildApiToken()
                               : null,
+                        ]),
+                      )),
+                      Text('developer'.tr),
+                      Card(
+                          child: Column(
+                        children: _addDivider([
+                          buildLogsDir(),
                         ]),
                       )),
                     ]),

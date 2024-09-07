@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:url_launcher/url_launcher_string.dart';
+
 class FileExplorer {
   static Future<void> openAndSelectFile(String filePath) async {
     if (await FileSystemEntity.isFile(filePath)) {
@@ -10,17 +12,7 @@ class FileExplorer {
   }
 
   static Future<void> _openDirectory(String directoryPath) async {
-    if (Platform.isWindows) {
-      Process.run('explorer.exe', [directoryPath]);
-    } else if (Platform.isMacOS) {
-      Process.run('open', [directoryPath]);
-    } else if (Platform.isLinux) {
-      if (await _isUbuntuOrDebian()) {
-        Process.run('xdg-open', [directoryPath]);
-      } else if (await _isCentOS()) {
-        Process.run('nautilus', [directoryPath]);
-      }
-    }
+    await launchUrlString("file://$directoryPath");
   }
 
   static Future<void> _openFile(String filePath) async {

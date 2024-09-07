@@ -5,12 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/GopeedLab/gopeed/internal/controller"
-	"github.com/GopeedLab/gopeed/internal/fetcher"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
-	"github.com/xiaoqidun/setft"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"mime"
 	"net/http"
@@ -21,6 +15,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"github.com/xiaoqidun/setft"
+	"golang.org/x/sync/errgroup"
 )
 
 type RequestError struct {
@@ -64,23 +65,13 @@ type Fetcher struct {
 	eg     *errgroup.Group
 }
 
-func (f *Fetcher) Name() string {
-	return "http"
-}
-
 func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	f.doneCh = make(chan error, 1)
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
-	exist := f.ctl.GetConfig(&f.config)
-	if !exist {
-		f.config = &config{
-			UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
-			Connections: 1,
-		}
-	}
+	f.ctl.GetConfig(&f.config)
 	return
 }
 
@@ -88,6 +79,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
 		return err
 	}
+	f.meta.Req = req
 	httpReq, err := f.buildRequest(nil, req)
 	if err != nil {
 		return err
@@ -108,7 +100,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	}
 
 	if base.HttpCodePartialContent == httpResp.StatusCode || (base.HttpCodeOK == httpResp.StatusCode && httpResp.Header.Get(base.HttpHeaderAcceptRanges) == base.HttpHeaderBytes && strings.HasPrefix(httpResp.Header.Get(base.HttpHeaderContentRange), base.HttpHeaderBytes)) {
-		// 1.返回206响应码表示支持断点下载 2.不返回206但是Accept-Ranges首部并且等于bytes也表示支持断点下载
+		// response 206 status code, support breakpoint continuation
 		res.Range = true
 		// 解析资源大小: bytes 0-1000/1001 => 1001
 		contentTotal := path.Base(httpResp.Header.Get(base.HttpHeaderContentRange))
@@ -120,7 +112,8 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 			res.Size = parse
 		}
 	} else if base.HttpCodeOK == httpResp.StatusCode {
-		// 返回200响应码，不支持断点下载，通过Content-Length头获取文件大小，获取不到的话可能是chunked编码
+		// response 200 status code, not support breakpoint continuation, get file size by Content-Length header
+		// if not found, maybe chunked encoding
 		contentLength := httpResp.Header.Get(base.HttpHeaderContentLength)
 		if contentLength != "" {
 			parse, err := strconv.ParseInt(contentLength, 10, 64)
@@ -161,7 +154,6 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		file.Name = httpReq.URL.Hostname()
 	}
 	res.Files = append(res.Files, file)
-	f.meta.Req = req
 	f.meta.Res = res
 	return nil
 }
@@ -179,8 +171,12 @@ func (f *Fetcher) Create(opts *base.Options) error {
 		opts.Extra = &fhttp.OptsExtra{}
 	}
 	extra := opts.Extra.(*fhttp.OptsExtra)
-	if extra.Connections == 0 {
+	if extra.Connections <= 0 {
 		extra.Connections = f.config.Connections
+		// Avoid zero connections configuration
+		if extra.Connections <= 0 {
+			extra.Connections = 1
+		}
 	}
 	return nil
 }
@@ -386,7 +382,8 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		method string
 		body   io.Reader
 	)
-	headers := make(map[string][]string)
+
+	headers := http.Header{}
 	if req.Extra == nil {
 		method = http.MethodGet
 	} else {
@@ -398,7 +395,7 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		}
 		if len(extra.Header) > 0 {
 			for k, v := range extra.Header {
-				headers[k] = []string{v}
+				headers.Set(k, v)
 			}
 		}
 		if extra.Body != "" {
@@ -406,8 +403,7 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		}
 	}
 	if _, ok := headers[base.HttpHeaderUserAgent]; !ok {
-		// load user agent from config
-		headers[base.HttpHeaderUserAgent] = []string{f.config.UserAgent}
+		headers.Set(base.HttpHeaderUserAgent, f.config.UserAgent)
 	}
 
 	if ctx != nil {
@@ -452,7 +448,7 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 
 func (f *Fetcher) buildClient() *http.Client {
 	transport := &http.Transport{
-		Proxy: f.ctl.ProxyConfig.ToHandler(),
+		Proxy: f.ctl.GetProxy(f.meta.Req.Proxy),
 	}
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)
@@ -466,30 +462,67 @@ type fetcherData struct {
 	Chunks []*chunk
 }
 
-type FetcherBuilder struct {
+type FetcherManager struct {
 }
 
-var schemes = []string{"HTTP", "HTTPS"}
-
-func (fb *FetcherBuilder) Schemes() []string {
-	return schemes
+func (fm *FetcherManager) Name() string {
+	return "http"
 }
 
-func (fb *FetcherBuilder) Build() fetcher.Fetcher {
+func (fm *FetcherManager) Filters() []*fetcher.SchemeFilter {
+	return []*fetcher.SchemeFilter{
+		{
+			Type:    fetcher.FilterTypeUrl,
+			Pattern: "HTTP",
+		},
+		{
+			Type:    fetcher.FilterTypeUrl,
+			Pattern: "HTTPS",
+		},
+	}
+}
+
+func (fm *FetcherManager) Build() fetcher.Fetcher {
 	return &Fetcher{}
 }
 
-func (fb *FetcherBuilder) Store(f fetcher.Fetcher) (data any, err error) {
+func (fm *FetcherManager) ParseName(u string) string {
+	var name string
+	url, err := url.Parse(u)
+	if err != nil {
+		return ""
+	}
+	// Get filePath by URL
+	name = path.Base(url.Path)
+	// If file name is empty, use host name
+	if name == "" || name == "/" || name == "." {
+		name = url.Hostname()
+	}
+	return name
+}
+
+func (fm *FetcherManager) AutoRename() bool {
+	return true
+}
+
+func (fm *FetcherManager) DefaultConfig() any {
+	return &config{
+		UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
+		Connections: 16,
+	}
+}
+
+func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
 	return &fetcherData{
 		Chunks: _f.chunks,
 	}, nil
 }
 
-func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
+func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
 	return &fetcherData{}, func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher {
 		fd := v.(*fetcherData)
-		fb := &FetcherBuilder{}
+		fb := &FetcherManager{}
 		fetcher := fb.Build().(*Fetcher)
 		fetcher.meta = meta
 		base.ParseReqExtra[fhttp.ReqExtra](fetcher.meta.Req)
@@ -499,4 +532,8 @@ func (fb *FetcherBuilder) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		}
 		return fetcher
 	}
+}
+
+func (fm *FetcherManager) Close() error {
+	return nil
 }

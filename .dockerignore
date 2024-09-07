@@ -1,0 +1,16 @@
+.git
+
+*.data
+*.log
+
+node_modules
+**/node_modules
+
+Dockerfile
+.dockerignore
+
+.github
+_docs
+_examples
+bin
+ui

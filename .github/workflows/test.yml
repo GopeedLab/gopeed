@@ -27,7 +27,7 @@ on:
       - "go.sum"
 
 env:
-  GO_VERSION: "1.21"
+  GO_VERSION: "1.22"
   FLUTTER_VERSION: "3.16.8"
 
 jobs:
@@ -54,9 +54,10 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - name: Run Unit tests.
         run: go test $(go list ./... | grep -v /cmd/ | grep -v /bind/ ) -v -covermode=count -coverprofile=coverage.txt
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           files: ./coverage.txt
+          token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
   build:
     name: Build check
     runs-on: ubuntu-latest

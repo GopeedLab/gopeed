@@ -6,19 +6,26 @@ part 'task.g.dart';
 
 enum Status { ready, running, pause, wait, error, done }
 
+enum Protocol { http, bt }
+
 @JsonSerializable(explicitToJson: true)
 class Task {
   String id;
+  String name;
+  Protocol? protocol;
   Meta meta;
   Status status;
+  bool uploading;
   Progress progress;
   DateTime createdAt;
   DateTime updatedAt;
 
   Task({
     required this.id,
+    required this.name,
     required this.meta,
     required this.status,
+    required this.uploading,
     required this.progress,
     required this.createdAt,
     required this.updatedAt,
@@ -34,11 +41,15 @@ class Progress {
   int used;
   int speed;
   int downloaded;
+  int uploadSpeed;
+  int uploaded;
 
   Progress({
     required this.used,
     required this.speed,
     required this.downloaded,
+    required this.uploadSpeed,
+    required this.uploaded,
   });
 
   factory Progress.fromJson(Map<String, dynamic> json) =>

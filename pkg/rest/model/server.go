@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/base64"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	"io/fs"
 )
 
@@ -13,12 +14,13 @@ const (
 )
 
 type StartConfig struct {
-	Network         string  `json:"network"`
-	Address         string  `json:"address"`
-	RefreshInterval int     `json:"refreshInterval"`
-	Storage         Storage `json:"storage"`
-	StorageDir      string  `json:"storageDir"`
-	ApiToken        string  `json:"apiToken"`
+	Network         string                      `json:"network"`
+	Address         string                      `json:"address"`
+	RefreshInterval int                         `json:"refreshInterval"`
+	Storage         Storage                     `json:"storage"`
+	StorageDir      string                      `json:"storageDir"`
+	ApiToken        string                      `json:"apiToken"`
+	DownloadConfig  *base.DownloaderStoreConfig `json:"downloadConfig"`
 
 	ProductionMode bool
 

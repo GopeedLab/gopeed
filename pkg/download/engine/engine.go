@@ -106,7 +106,7 @@ func (e *Engine) await(value any) {
 }
 
 func (e *Engine) Close() {
-	e.loop.Stop()
+	e.loop.StopNoWait()
 }
 
 type Config struct {
@@ -178,7 +178,15 @@ func resolveResult(value goja.Value) (any, error) {
 			if err, ok := p.Result().Export().(error); ok {
 				return nil, err
 			} else {
-				return nil, errors.New(p.Result().String())
+				stack := p.Result().String()
+				result := p.Result()
+				if ro, ok := result.(*goja.Object); ok {
+					stackVal := ro.Get("stack")
+					if stackVal != nil && stackVal.String() != "" {
+						stack = stackVal.String()
+					}
+				}
+				return nil, errors.New(stack)
 			}
 		}
 	}

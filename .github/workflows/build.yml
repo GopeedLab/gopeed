@@ -13,7 +13,7 @@ on:
         default: "false"
 
 env:
-  GO_VERSION: "1.21"
+  GO_VERSION: "1.22"
   FLUTTER_VERSION: "3.16.8"
 
 permissions:
@@ -380,7 +380,7 @@ jobs:
           go install golang.org/x/mobile/cmd/gomobile@latest
           go get golang.org/x/mobile/bind
           gomobile init
-          gomobile bind -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 19 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
+          gomobile bind -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 21 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
           echo $APK_KEYSTORE | base64 -di > android/app/upload-keystore.jks
           flutter build apk
@@ -483,6 +483,9 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - uses: actions/checkout@v3
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -493,11 +496,19 @@ jobs:
         with:
           username: liwei2633
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build flutter web
+        run: |
+          cd ui/flutter
+          flutter build web --web-renderer html
+          cd ../../
+          rm -rf cmd/web/dist
+          cp -r ui/flutter/build/web cmd/web/dist
       - name: Build and push
         uses: docker/build-push-action@v2
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         with:
+          context: .
           push: ${{ github.event.inputs.test == 'true' && 'false' || 'true' }}
           build-args: |
             VERSION=${{ env.VERSION }}
@@ -507,7 +518,6 @@ jobs:
             linux/amd64
             linux/arm64
             linux/arm/v7
-            linux/arm64/v8
           tags: |
             liwei2633/gopeed:latest
             liwei2633/gopeed:v${{ env.VERSION }}

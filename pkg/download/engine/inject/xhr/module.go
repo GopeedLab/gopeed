@@ -3,10 +3,6 @@ package xhr
 import (
 	"bytes"
 	"errors"
-	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
-	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
-	"github.com/GopeedLab/gopeed/pkg/download/engine/util"
-	"github.com/dop251/goja"
 	"io"
 	"mime/multipart"
 	"net"
@@ -14,6 +10,11 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/util"
+	"github.com/dop251/goja"
 )
 
 const (
@@ -23,6 +24,12 @@ const (
 	eventAbort            = "abort"
 	eventError            = "error"
 	eventTimeout          = "timeout"
+)
+
+const (
+	redirectError  = "error"
+	redirectFollow = "follow"
+	redirectManual = "manual"
 )
 
 type ProgressEvent struct {
@@ -124,13 +131,21 @@ type XMLHttpRequest struct {
 	aborted         bool
 	proxyHandler    func(r *http.Request) (*url.URL, error)
 
-	Upload       *XMLHttpRequestUpload `json:"upload"`
-	Timeout      int                   `json:"timeout"`
-	ReadyState   int                   `json:"readyState"`
-	Status       int                   `json:"status"`
-	StatusText   string                `json:"statusText"`
-	Response     string                `json:"response"`
-	ResponseText string                `json:"responseText"`
+	WithCredentials bool                  `json:"withCredentials"`
+	Upload          *XMLHttpRequestUpload `json:"upload"`
+	Timeout         int                   `json:"timeout"`
+	ReadyState      int                   `json:"readyState"`
+	Status          int                   `json:"status"`
+	StatusText      string                `json:"statusText"`
+	Response        string                `json:"response"`
+	ResponseText    string                `json:"responseText"`
+	// https://developer.mozilla.org/zh-CN/docs/Web/API/XMLHttpRequest/responseURL
+	// https://xhr.spec.whatwg.org/#the-responseurl-attribute
+	ResponseUrl string `json:"responseURL"`
+	// extend fetch redirect
+	// https://developer.mozilla.org/en-US/docs/Web/API/RequestInit#redirect
+	// https://fetch.spec.whatwg.org/#concept-request-redirect-mode
+	Redirect string `json:"redirect"`
 	*EventProp
 	Onreadystatechange func(event *ProgressEvent) `json:"onreadystatechange"`
 }
@@ -159,28 +174,28 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	if d == nil || xhr.method == "GET" || xhr.method == "HEAD" {
 		req, err = http.NewRequest(xhr.method, xhr.url, nil)
 	} else {
-		switch d.(type) {
+		switch v := d.(type) {
 		case string:
-			req, err = http.NewRequest(xhr.method, xhr.url, bytes.NewBufferString(d.(string)))
+			req, err = http.NewRequest(xhr.method, xhr.url, bytes.NewBufferString(v))
 			contentType = "text/plain;charset=UTF-8"
-			contentLength = int64(len(d.(string)))
+			contentLength = int64(len(v))
 			isStringBody = true
 		case *file.File:
-			req, err = http.NewRequest(xhr.method, xhr.url, d.(*file.File).Reader)
+			req, err = http.NewRequest(xhr.method, xhr.url, v.Reader)
 			contentType = "application/octet-stream"
-			contentLength = d.(*file.File).Size
+			contentLength = v.Size
 		case *formdata.FormData:
 			pr, pw := io.Pipe()
 			mw := NewMultipart(pw)
-			for _, e := range d.(*formdata.FormData).Entries() {
+			for _, e := range v.Entries() {
 				arr := e.([]any)
 				k := arr[0].(string)
 				v := arr[1]
-				switch v.(type) {
+				switch v := v.(type) {
 				case string:
-					mw.WriteField(k, v.(string))
+					mw.WriteField(k, v)
 				case *file.File:
-					mw.WriteFile(k, v.(*file.File))
+					mw.WriteFile(k, v)
 				}
 			}
 			go func() {
@@ -211,6 +226,18 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	client := &http.Client{
 		Transport: transport,
 		Timeout:   time.Duration(xhr.Timeout) * time.Millisecond,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if xhr.Redirect == redirectManual {
+				return http.ErrUseLastResponse
+			}
+			if xhr.Redirect == redirectError {
+				return errors.New("redirect failed")
+			}
+			if len(via) > 20 {
+				return errors.New("too many redirects")
+			}
+			return nil
+		},
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -232,6 +259,11 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 	if !xhr.aborted {
 		xhr.Upload.callOnload()
 	}
+
+	responseUrl := resp.Request.URL
+	responseUrl.Fragment = ""
+	xhr.ResponseUrl = responseUrl.String()
+
 	xhr.responseHeaders = resp.Header
 	xhr.Status = resp.StatusCode
 	xhr.StatusText = resp.Status
@@ -387,10 +419,9 @@ func (w *multipartWrapper) Size() int64 {
 	w.statWriter.Close()
 	size := int64(w.statBuffer.Len())
 	for _, v := range w.fields {
-		switch v.(type) {
+		switch v := v.(type) {
 		case *file.File:
-			f := v.(*file.File)
-			size += f.Size
+			size += v.Size
 		}
 	}
 	return size
@@ -398,18 +429,17 @@ func (w *multipartWrapper) Size() int64 {
 
 func (w *multipartWrapper) Send() error {
 	for k, v := range w.fields {
-		switch v.(type) {
+		switch v := v.(type) {
 		case string:
-			if err := w.writer.WriteField(k, v.(string)); err != nil {
+			if err := w.writer.WriteField(k, v); err != nil {
 				return err
 			}
 		case *file.File:
-			f := v.(*file.File)
-			fw, err := w.writer.CreateFormFile(k, f.Name)
+			fw, err := w.writer.CreateFormFile(k, v.Name)
 			if err != nil {
 				return err
 			}
-			if _, err = io.Copy(fw, f); err != nil {
+			if _, err = io.Copy(fw, v); err != nil {
 				return err
 			}
 		}

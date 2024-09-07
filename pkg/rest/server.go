@@ -154,7 +154,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 			defer func() {
 				if v := recover(); v != nil {
 					err := errors.WithStack(fmt.Errorf("%v", v))
-					Downloader.Logger.Error().Stack().Err(err).Msg("http server panic")
+					Downloader.Logger.Error().Stack().Err(err).Msgf("http server panic: %s %s", r.Method, r.RequestURI)
 					WriteJson(w, model.NewErrorResult(err.Error(), model.CodeError))
 				}
 			}()

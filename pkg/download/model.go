@@ -1,6 +1,7 @@
 package download
 
 import (
+	"encoding/json"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/protocol/bt"
@@ -19,19 +20,21 @@ type ResolveResult struct {
 
 type Task struct {
 	ID        string               `json:"id"`
+	Protocol  string               `json:"protocol"`
 	Meta      *fetcher.FetcherMeta `json:"meta"`
 	Status    base.Status          `json:"status"`
-	Protocol  string               `json:"protocol"`
+	Uploading bool                 `json:"uploading"`
 	Progress  *Progress            `json:"progress"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`
 
-	fetcherBuilder fetcher.FetcherBuilder
+	fetcherManager fetcher.FetcherManager
 	fetcher        fetcher.Fetcher
 	timer          *util.Timer
 	statusLock     *sync.Mutex
 	lock           *sync.Mutex
 	speedArr       []int64
+	uploadSpeedArr []int64
 }
 
 func NewTask() *Task {
@@ -47,37 +50,71 @@ func NewTask() *Task {
 	}
 }
 
+// Name returns the display name of the task.
+func (t *Task) Name() string {
+	// Custom name first
+	if t.Meta.Opts.Name != "" {
+		return t.Meta.Opts.Name
+	}
+
+	// Task is not resolved, parse the name from the URL
+	if t.Meta.Res == nil {
+		fallbackName := "unknown"
+		if t.fetcherManager == nil {
+			return fallbackName
+		}
+		parseName := t.fetcherManager.ParseName(t.Meta.Req.URL)
+		if parseName == "" {
+			return fallbackName
+		}
+		return parseName
+	}
+
+	// Task is a folder
+	if t.Meta.Res.Name != "" {
+		return t.Meta.Res.Name
+	}
+
+	// Get the name of the first file
+	return t.Meta.Res.Files[0].Name
+}
+
+func (t *Task) MarshalJSON() ([]byte, error) {
+	type rawTaskType Task
+	jsonTask := struct {
+		rawTaskType
+		Name string `json:"name"`
+	}{
+		rawTaskType(*t),
+		t.Name(),
+	}
+	return json.Marshal(jsonTask)
+}
+
 func (t *Task) updateStatus(status base.Status) {
 	t.UpdatedAt = time.Now()
 	t.Status = status
 }
 
 func (t *Task) clone() *Task {
-	return &Task{
-		ID:        t.ID,
-		Meta:      t.Meta,
-		Status:    t.Status,
-		Progress:  t.Progress,
-		CreatedAt: t.CreatedAt,
-		UpdatedAt: t.UpdatedAt,
-	}
+	return util.DeepClone(t)
 }
 
-func (t *Task) calcSpeed(downloaded int64, usedTime float64) int64 {
-	t.speedArr = append(t.speedArr, downloaded)
-	if len(t.speedArr) > 6 {
-		t.speedArr = t.speedArr[1:]
+func (t *Task) calcSpeed(speedArr []int64, downloaded int64, usedTime float64) int64 {
+	speedArr = append(speedArr, downloaded)
+	if len(speedArr) > 6 {
+		speedArr = speedArr[1:]
 	}
 	var total int64
-	for _, v := range t.speedArr {
+	for _, v := range speedArr {
 		total += v
 	}
-	return int64(float64(total) / float64(len(t.speedArr)) / usedTime)
+	return int64(float64(total) / float64(len(speedArr)) / usedTime)
 }
 
 type DownloaderConfig struct {
 	Controller    *controller.Controller
-	FetchBuilders []fetcher.FetcherBuilder
+	FetchManagers []fetcher.FetcherManager
 
 	RefreshInterval int `json:"refreshInterval"` // RefreshInterval time duration to refresh task progress(ms)
 	Storage         Storage
@@ -92,10 +129,10 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 	if cfg.Controller == nil {
 		cfg.Controller = controller.NewController()
 	}
-	if len(cfg.FetchBuilders) == 0 {
-		cfg.FetchBuilders = []fetcher.FetcherBuilder{
-			new(http.FetcherBuilder),
-			new(bt.FetcherBuilder),
+	if len(cfg.FetchManagers) == 0 {
+		cfg.FetchManagers = []fetcher.FetcherManager{
+			new(http.FetcherManager),
+			new(bt.FetcherManager),
 		}
 	}
 	if cfg.RefreshInterval == 0 {

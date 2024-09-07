@@ -8,6 +8,8 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
+	gohttp "net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"testing"
@@ -33,7 +35,6 @@ func TestFetcher_Resolve_DataUri_Torrent(t *testing.T) {
 	}
 
 	want := &base.Resource{
-		Name:  "ubuntu-22.04-live-server-amd64.iso",
 		Size:  1466714112,
 		Range: true,
 		Files: []*base.FileInfo{
@@ -69,57 +70,151 @@ func TestFetcher_ResolveWithProxy(t *testing.T) {
 }
 
 func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
-	err := fetcher.Resolve(&base.Request{
-		URL: "./testdata/ubuntu-22.04-live-server-amd64.iso.torrent",
-		Extra: bt.ReqExtra{
-			Trackers: []string{
-				"udp://tracker.birkenwald.de:6969/announce",
-				"udp://tracker.bitsearch.to:1337/announce",
+	t.Run("Resolve Single File", func(t *testing.T) {
+		err := fetcher.Resolve(&base.Request{
+			URL: "./testdata/ubuntu-22.04-live-server-amd64.iso.torrent",
+			Extra: bt.ReqExtra{
+				Trackers: []string{
+					"udp://tracker.birkenwald.de:6969/announce",
+					"udp://tracker.bitsearch.to:1337/announce",
+				},
 			},
-		},
-	})
-	if err != nil {
-		panic(err)
-	}
+		})
+		if err != nil {
+			panic(err)
+		}
 
-	want := &base.Resource{
-		Name:  "ubuntu-22.04-live-server-amd64.iso",
-		Size:  1466714112,
-		Range: true,
-		Files: []*base.FileInfo{
-			{
-				Name: "ubuntu-22.04-live-server-amd64.iso",
-				Size: 1466714112,
+		want := &base.Resource{
+			Size:  1466714112,
+			Range: true,
+			Files: []*base.FileInfo{
+				{
+					Name: "ubuntu-22.04-live-server-amd64.iso",
+					Size: 1466714112,
+				},
 			},
-		},
-		Hash: "8a55cfbd5ca5d11507364765936c4f9e55b253ed",
+			Hash: "8a55cfbd5ca5d11507364765936c4f9e55b253ed",
+		}
+		if !reflect.DeepEqual(want, fetcher.Meta().Res) {
+			t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, want)
+		}
+	})
+
+	t.Run("Resolve Multi Files", func(t *testing.T) {
+		err := fetcher.Resolve(&base.Request{
+			URL: "./testdata/test.torrent",
+			Extra: bt.ReqExtra{
+				Trackers: []string{
+					"udp://tracker.birkenwald.de:6969/announce",
+					"udp://tracker.bitsearch.to:1337/announce",
+				},
+			},
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		want := &base.Resource{
+			Name:  "test",
+			Size:  107484864,
+			Range: true,
+			Files: []*base.FileInfo{
+				{
+					Name: "c.txt",
+					Path: "path",
+					Size: 98501754,
+				},
+				{
+					Name: "b.txt",
+					Size: 8904996,
+				},
+				{
+					Name: "a.txt",
+					Size: 78114,
+				},
+			},
+			Hash: "ccbc92b0cd8deec16a2ef4be242a8c9243b1cedb",
+		}
+		if !reflect.DeepEqual(want, fetcher.Meta().Res) {
+			t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, want)
+		}
+	})
+
+}
+
+func TestFetcherManager_ParseName(t *testing.T) {
+	type args struct {
+		u string
 	}
-	if !reflect.DeepEqual(want, fetcher.Meta().Res) {
-		t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, want)
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "broken url",
+			args: args{
+				u: "magnet://!@#%github.com",
+			},
+			want: "",
+		},
+		{
+			name: "dn",
+			args: args{
+				u: "magnet:?xt=urn:btih:8a55cfbd5ca5d11507364765936c4f9e55b253ed&dn=ubuntu-22.04-live-server-amd64.iso",
+			},
+			want: "ubuntu-22.04-live-server-amd64.iso",
+		},
+		{
+			name: "no dn",
+			args: args{
+				u: "magnet:?xt=urn:btih:8a55cfbd5ca5d11507364765936c4f9e55b253ed",
+			},
+			want: "8a55cfbd5ca5d11507364765936c4f9e55b253ed",
+		},
+		{
+			name: "non standard magnet",
+			args: args{
+				u: "magnet:?xxt=abcd",
+			},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fm := &FetcherManager{}
+			if got := fm.ParseName(tt.args.u); got != tt.want {
+				t.Errorf("ParseName() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
 func buildFetcher() fetcher.Fetcher {
-	fetcher := new(FetcherBuilder).Build()
-	fetcher.Setup(controller.NewController())
+	fb := new(FetcherManager)
+	fetcher := fb.Build()
+	newController := controller.NewController()
+	newController.GetConfig = func(v any) {
+		json.Unmarshal([]byte(test.ToJson(fb.DefaultConfig())), v)
+	}
+	fetcher.Setup(newController)
 	return fetcher
 }
 
 func buildConfigFetcher(proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher {
-	fetcher := new(FetcherBuilder).Build()
+	fetcher := new(FetcherManager).Build()
 	newController := controller.NewController()
 	mockCfg := config{
 		Trackers: []string{
 			"udp://tracker.birkenwald.de:6969/announce",
 			"udp://tracker.bitsearch.to:1337/announce",
 		}}
-	newController.GetConfig = func(v any) bool {
-		if err := json.Unmarshal([]byte(test.ToJson(mockCfg)), v); err != nil {
-			return false
-		}
-		return true
+	newController.GetConfig = func(v any) {
+		json.Unmarshal([]byte(test.ToJson(mockCfg)), v)
 	}
-	newController.ProxyConfig = proxyConfig
+	newController.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
+		return proxyConfig.ToHandler()
+	}
 	fetcher.Setup(newController)
 	return fetcher
 }
