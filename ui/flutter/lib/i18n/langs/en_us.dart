@@ -36,6 +36,7 @@ const enUS = {
     'connections': 'Connections',
     'useServerCtime': 'Use server time for file creation',
     'maxRunning': 'Max Running Tasks',
+    'defaultDirectDownload': 'Check direct download by default',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':

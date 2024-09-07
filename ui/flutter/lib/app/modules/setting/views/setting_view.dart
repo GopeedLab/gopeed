@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/app/views/copy_button.dart';
@@ -110,6 +109,28 @@ class SettingView extends GetView<SettingController> {
         ],
       );
     });
+
+    final buildDefaultDirectDownload =
+        _buildConfigItem('defaultDirectDownload'.tr, () {
+      return appController.downloaderConfig.value.extra.defaultDirectDownload
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value:
+              appController.downloaderConfig.value.extra.defaultDirectDownload,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.extra.defaultDirectDownload = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
     buildBrowserExtension() {
       return ListTile(
           title: Text('browserExtension'.tr),
@@ -904,6 +925,7 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildDownloadDir(),
                             buildMaxRunning(),
+                            buildDefaultDirectDownload(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
                           ]),

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/api/model/request.dart';
 
+import '../../app/controllers/app_controller.dart';
+
 class CreateController extends GetxController
     with GetSingleTickerProviderStateMixin {
   // final files = [].obs;
@@ -23,6 +25,11 @@ class CreateController extends GetxController
   void onInit() {
     super.onInit();
     advancedTabController = TabController(length: 2, vsync: this);
+    directDownload.value = Get.find<AppController>()
+        .downloaderConfig
+        .value
+        .extra
+        .defaultDirectDownload;
   }
 
   @override

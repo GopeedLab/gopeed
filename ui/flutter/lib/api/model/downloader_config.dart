@@ -79,6 +79,7 @@ class ExtraConfig {
   String themeMode;
   String locale;
   bool lastDeleteTaskKeep;
+  bool defaultDirectDownload;
 
   ExtraConfigBt bt = ExtraConfigBt();
 
@@ -86,6 +87,7 @@ class ExtraConfig {
     this.themeMode = '',
     this.locale = '',
     this.lastDeleteTaskKeep = false,
+    this.defaultDirectDownload = false,
   });
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>

@@ -35,6 +35,7 @@ const zhTW = {
     'connections': '連接數',
     'useServerCtime': '使用伺服器時間作為檔案建立時間',
     'maxRunning': '最大執行任務數',
+    'defaultDirectDownload': '預設勾選直接下載',
     'items': '@count 個項目',
     'subscribeTracker': '訂閱 Tracker',
     'subscribeFail': '訂閱失敗，請檢查網路或稍後再試',
