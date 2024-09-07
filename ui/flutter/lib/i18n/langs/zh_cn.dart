@@ -35,6 +35,7 @@ const zhCN = {
     'connections': '连接数',
     'useServerCtime': '创建文件使用服务器时间',
     'maxRunning': '最大下载数',
+    'defaultDirectDownload': '默认勾选直接下载',
     'items': '@count 项',
     'subscribeTracker': '订阅 Tracker',
     'subscribeFail': '订阅失败，请检查网络或稍后重试',

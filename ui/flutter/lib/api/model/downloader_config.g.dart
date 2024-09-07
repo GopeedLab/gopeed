@@ -72,6 +72,7 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
       themeMode: json['themeMode'] as String? ?? '',
       locale: json['locale'] as String? ?? '',
       lastDeleteTaskKeep: json['lastDeleteTaskKeep'] as bool? ?? false,
+      defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
     )..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>);
 
 Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
@@ -79,6 +80,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'themeMode': instance.themeMode,
       'locale': instance.locale,
       'lastDeleteTaskKeep': instance.lastDeleteTaskKeep,
+      'defaultDirectDownload': instance.defaultDirectDownload,
       'bt': instance.bt.toJson(),
     };
 
