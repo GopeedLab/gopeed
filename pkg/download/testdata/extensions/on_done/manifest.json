@@ -1,0 +1,16 @@
+{
+  "name": "on-done",
+  "title": "gopeed extension on done event test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onDone",
+      "match": {
+        "urls": [
+          "*://github.com/*"
+        ]
+      },
+      "entry": "index.js"
+    }
+  ]
+}
