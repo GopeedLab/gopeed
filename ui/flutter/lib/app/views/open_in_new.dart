@@ -17,7 +17,7 @@ class OpenInNew extends StatelessWidget {
             launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Get.theme.colorScheme.background,
+            backgroundColor: Get.theme.colorScheme.surface,
           ),
           child: Row(
             mainAxisSize: MainAxisSize

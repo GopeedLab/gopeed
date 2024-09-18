@@ -4,7 +4,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:path/path.dart' as path;
 import 'package:rounded_loading_button_plus/rounded_loading_button.dart';
 
@@ -211,7 +210,7 @@ class CreateView extends GetView<CreateController> {
                                                 decoration: BoxDecoration(
                                                   color: Theme.of(context)
                                                       .colorScheme
-                                                      .background,
+                                                      .surface,
                                                   borderRadius:
                                                       BorderRadius.circular(
                                                           10.0),
@@ -690,8 +689,8 @@ class CreateView extends GetView<CreateController> {
                     style:
                         ElevatedButton.styleFrom(shape: const StadiumBorder())
                             .copyWith(
-                                backgroundColor: MaterialStateProperty.all(
-                                    Get.theme.colorScheme.background)),
+                                backgroundColor: WidgetStateProperty.all(
+                                    Get.theme.colorScheme.surface)),
                     onPressed: () {
                       Get.back();
                     },
