@@ -14,13 +14,14 @@ const (
 )
 
 type StartConfig struct {
-	Network         string                      `json:"network"`
-	Address         string                      `json:"address"`
-	RefreshInterval int                         `json:"refreshInterval"`
-	Storage         Storage                     `json:"storage"`
-	StorageDir      string                      `json:"storageDir"`
-	ApiToken        string                      `json:"apiToken"`
-	DownloadConfig  *base.DownloaderStoreConfig `json:"downloadConfig"`
+	Network           string                      `json:"network"`
+	Address           string                      `json:"address"`
+	RefreshInterval   int                         `json:"refreshInterval"`
+	Storage           Storage                     `json:"storage"`
+	StorageDir        string                      `json:"storageDir"`
+	WhiteDownloadDirs []string                    `json:"whiteDownloadDirs"`
+	ApiToken          string                      `json:"apiToken"`
+	DownloadConfig    *base.DownloaderStoreConfig `json:"downloadConfig"`
 
 	ProductionMode bool
 

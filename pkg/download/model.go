@@ -116,9 +116,10 @@ type DownloaderConfig struct {
 	Controller    *controller.Controller
 	FetchManagers []fetcher.FetcherManager
 
-	RefreshInterval int `json:"refreshInterval"` // RefreshInterval time duration to refresh task progress(ms)
-	Storage         Storage
-	StorageDir      string
+	RefreshInterval      int `json:"refreshInterval"` // RefreshInterval time duration to refresh task progress(ms)
+	Storage              Storage
+	StorageDir           string
+	DownloadDirWhiteList []string `json:"downloadDirWhiteList"`
 
 	ProductionMode bool
 
