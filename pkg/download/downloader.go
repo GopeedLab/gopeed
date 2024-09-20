@@ -514,7 +514,7 @@ func (d *Downloader) ContinueBatch(filter *TaskFilter) (err error) {
 
 func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 	if filter == nil || filter.IsEmpty() {
-		return d.DeleteAll()
+		return d.deleteAll()
 	}
 
 	deleteTasks := d.GetTasksByFilter(filter)
@@ -559,10 +559,7 @@ func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 	return
 }
 
-func (d *Downloader) DeleteAll() (err error) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
+func (d *Downloader) deleteAll() (err error) {
 	for _, task := range d.tasks {
 		if err = d.doDelete(task, true); err != nil {
 			return
