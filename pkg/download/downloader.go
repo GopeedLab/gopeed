@@ -565,6 +565,14 @@ func (d *Downloader) deleteAll() (err error) {
 			return
 		}
 	}
+
+	func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+
+		d.tasks = make([]*Task, 0)
+		d.waitTasks = make([]*Task, 0)
+	}()
 	return
 }
 
