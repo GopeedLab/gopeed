@@ -82,7 +82,45 @@ func TestDownloader_Create(t *testing.T) {
 	want := test.FileMd5(test.BuildFile)
 	got := test.FileMd5(test.DownloadFile)
 	if want != got {
-		t.Errorf("Download() got = %v, want %v", got, want)
+		t.Errorf("Downloader_Create() got = %v, want %v", got, want)
+	}
+}
+
+func TestDownloader_CreateNotInWhite(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(&DownloaderConfig{
+		DownloadDirWhiteList: []string{"./downloads"},
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}
+	rr, err := downloader.Resolve(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
+	_, err = downloader.Create(rr.ID, &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	})
+	if !strings.Contains(err.Error(), "white") {
+		t.Errorf("TestDownloader_CreateNotInWhite() got = %v, want %v", err.Error(), "not in white list")
 	}
 }
 
