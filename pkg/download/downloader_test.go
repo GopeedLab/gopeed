@@ -95,7 +95,7 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		downloader.DeleteByStatues(nil, true)
+		downloader.Delete(nil, true)
 		downloader.Clear()
 	}()
 
@@ -362,7 +362,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 1001)
-	err = downloader.Pause(id)
+	err = downloader.Pause(&TaskFilter{IDs: []string{id}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +386,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 			wg.Done()
 		}
 	})
-	err = downloader.Continue(id)
+	err = downloader.Continue(&TaskFilter{IDs: []string{id}})
 	wg.Wait()
 	if err != nil {
 		t.Fatal(err)
