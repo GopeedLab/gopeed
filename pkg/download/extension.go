@@ -720,11 +720,15 @@ func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
 }
 
 func (t *ExtensionTask) Continue() error {
-	return t.download.Continue(t.ID)
+	return t.download.Continue(&TaskFilter{
+		IDs: []string{t.ID},
+	})
 }
 
 func (t *ExtensionTask) Pause() error {
-	return t.download.Pause(t.ID)
+	return t.download.Pause(&TaskFilter{
+		IDs: []string{t.ID},
+	})
 }
 
 func parseSettings(settings []*Setting) map[string]any {
