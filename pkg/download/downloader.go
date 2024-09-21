@@ -560,12 +560,6 @@ func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 }
 
 func (d *Downloader) deleteAll() (err error) {
-	for _, task := range d.tasks {
-		if err = d.doDelete(task, true); err != nil {
-			return
-		}
-	}
-
 	func() {
 		d.lock.Lock()
 		defer d.lock.Unlock()
@@ -573,6 +567,12 @@ func (d *Downloader) deleteAll() (err error) {
 		d.tasks = make([]*Task, 0)
 		d.waitTasks = make([]*Task, 0)
 	}()
+
+	for _, task := range d.tasks {
+		if err = d.doDelete(task, true); err != nil {
+			return
+		}
+	}
 	return
 }
 
@@ -598,9 +598,6 @@ func (d *Downloader) Stats(id string) (sr any, err error) {
 
 func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 	err = func() error {
-		d.lock.Lock()
-		defer d.lock.Unlock()
-
 		if err := d.storage.Delete(bucketTask, task.ID); err != nil {
 			return err
 		}
@@ -628,10 +625,10 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 		task = nil
 		return nil
 	}()
+
 	if err != nil {
 		d.Logger.Error().Stack().Err(err).Msgf("delete task failed, task id: %s", task.ID)
 	}
-
 	return
 }
 
