@@ -21,29 +21,26 @@ class FileExplorer {
     } else if (Platform.isMacOS) {
       Process.run('open', ['-R', filePath]);
     } else if (Platform.isLinux) {
-      if (await _isUbuntuOrDebian()) {
-        Process.run('xdg-open', [filePath]);
-      } else if (await _isCentOS()) {
+      _linuxOpen(filePath);
+    }
+  }
+
+  static Future<void> _linuxOpen(String filePath) async {
+    if (await Process.run('which', ['xdg-open'])
+        .then((value) => value.exitCode == 0)) {
+      Process.run('xdg-open', [filePath]);
+    } else {
+      final desktop = Platform.environment['XDG_CURRENT_DESKTOP'];
+      if (desktop == null) {
+        throw Exception('XDG_CURRENT_DESKTOP is not set');
+      }
+      if (desktop == 'GNOME') {
         Process.run('nautilus', ['--select', filePath]);
+      } else if (desktop == 'KDE') {
+        Process.run('dolphin', ['--select', filePath]);
+      } else {
+        throw Exception('Unsupported desktop environment');
       }
     }
-  }
-
-  static Future<bool> _isUbuntuOrDebian() async {
-    final result = await Process.run('lsb_release', ['-i']);
-    if (result.exitCode != 0) {
-      return false;
-    }
-    final output = result.stdout.toString().toLowerCase();
-    return output.contains('ubuntu') || output.contains('debian');
-  }
-
-  static Future<bool> _isCentOS() async {
-    final result = await Process.run('cat', ['/etc/os-release']);
-    if (result.exitCode != 0) {
-      return false;
-    }
-    final output = result.stdout.toString().toLowerCase();
-    return output.contains('centos');
   }
 }
