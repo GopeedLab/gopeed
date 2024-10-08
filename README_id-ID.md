@@ -1,10 +1,10 @@
 # [![](_docs/img/banner.png)](https://gopeed.com)
 
-[![Test Status](https://github.com/GopeedLab/gopeed/workflows/test/badge.svg)](https://github.com/GopeedLab/gopeed/actions?query=workflow%3Atest)
+[![Status Tes](https://github.com/GopeedLab/gopeed/workflows/test/badge.svg)](https://github.com/GopeedLab/gopeed/actions?query=workflow%3Atest)
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
-[![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://docs.gopeed.com/donate.html)
+[![Rilis](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
+[![Unduh](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
+[![Donasi](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://docs.gopeed.com/donate.html)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -13,35 +13,35 @@
 
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md) | [Indonesia](/README_id-ID.md)
 
-## Introduction
+## Pengantar
 
-Gopeed (full name Go Speed), a high-speed downloader developed by `Golang` + `Flutter`, supports (HTTP, BitTorrent, Magnet) protocol, and supports all platforms. In addition to basic download functions, Gopeed is also a highly customizable downloader that supports implementing more features through integration with [APIs](https://docs.gopeed.com/dev-api.html) or installation and development of [extensions](https://docs.gopeed.com/dev-extension.html).
+Gopeed (nama lengkap Go Speed), merupakan pengunduh berkecepatan tinggi yang dikembangkan menggunakan Golang + Flutter. Gopeed mendukung protokol (HTTP, BitTorrent, Magnet), dan dapat digunakan di semua platform. Selain fungsi pengunduhan dasar, Gopeed juga merupakan pengunduh yang sangat dapat disesuaikan, memungkinkan penambahan fitur melalui integrasi dengan [APIs](https://docs.gopeed.com/dev-api.html) atau pemasangan dan pengembangan [Ekstensi](https://docs.gopeed.com/dev-extension.html).
 
-Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://docs.gopeed.com)
+Kunjungi ✈ [Situs Web Resmi](https://gopeed.com) | 📖 [Dokumentasi Resmi](https://docs.gopeed.com)
 
-## Download
+## Unduh
 
 <table>
     <thead>
         <tr>
             <th>Platform</th>
-            <th>Package Type</th>
-            <th>Download Link</th>
+            <th>Jenis Paket</th>
+            <th>Tautan Unduh</th>
         </tr>
     </thead>
     <tbody>
         <tr>
             <td rowspan=2>Windows</td>
-            <td><code>EXE Installer</code></td>
+            <td><code>Penginstal EXE</code></td>
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">Link</a></td>
         </tr>
         <tr>
-            <td><code>Portable ZIP</code></td>
+            <td><code>ZIP Portabel</code></td>
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">Link</a></td>
         </tr>
         <tr>
             <td>MacOS</td>
-            <td><code>DMG Installer</code></td>          
+            <td><code>Penginstal DMG</code></td>          
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">Link</a></td>
         </tr>
         <tr>
@@ -84,9 +84,9 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://
     </tbody>
 </table>
 
-More about installation, please refer to [Installation](https://docs.gopeed.com/install.html)
+Untuk informasi lebih lanjut tentang instalasi, silakan lihat [Instalasi](https://docs.gopeed.com/install.html)
 
-### Command tool
+### Perintah Terminal
 
 use `go install`:
 
@@ -94,23 +94,23 @@ use `go install`:
 go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
 
-## Browser Extension
+## Ekstensi Peramban
 
-Gopeed also provides a browser extension to take over browser downloads, supporting browsers such as Chrome, Edge, Firefox, etc., please refer to: [https://github.com/GopeedLab/browser-extension](https://github.com/GopeedLab/browser-extension)
+Gopeed juga menyediakan ekstensi peramban untuk mengambil alih unduhan peramban, mendukung peramban seperti Chrome, Edge, Firefox, dll. Silakan lihat informasi lebih lanjut di: [https://github.com/GopeedLab/browser-extension](https://github.com/GopeedLab/browser-extension)
 
 ## Donate
 
-If you like this project, please consider [donating](https://docs.gopeed.com/donate.html) to support the development of this project, thank you!
+Jika Anda menyukai proyek ini, silakan pertimbangkan untuk [mendonasikan](https://docs.gopeed.com/donate.html) untuk mendukung pengembangan proyek ini, terima kasih!
 
-## Showcase
+## Mempertunjukkan
 
 ![](_docs/img/ui-demo.png)
 
-## Development
+## Pengembangan
 
-This project is divided into two parts, the front end uses `flutter`, the back end uses `Golang`, and the two sides communicate through the `http` protocol. On the unix system, `unix socket` is used, and on the windows system, `tcp` protocol is used.
+Proyek ini dibagi menjadi dua bagian. Bagian frontend menggunakan `flutter`, bagian backend menggunakan `Golang`, dan kedua sisi berkomunikasi melalui protokol `http`. Pada sistem unix, digunakan `unix socket`, sedangkan pada sistem windows, digunakan protokol `tcp`.
 
-> The front code is located in the `ui/flutter` directory.
+> Kode frontend terletak di direktori `ui/flutter`.
 
 ### Environment
 
@@ -123,15 +123,15 @@ This project is divided into two parts, the front end uses `flutter`, the back e
 git clone git@github.com:GopeedLab/gopeed.git
 ```
 
-### Contributing
+### Kontribusi
 
-Please refer to [CONTRIBUTING.md](/CONTRIBUTING.md)
+Silakan lihat [CONTRIBUTING.md](/CONTRIBUTING.md)
 
-### Build
+### Membangun
 
 #### Desktop
 
-First, you need to configure the environment according to the official [Flutter desktop website documention](https://docs.flutter.dev/development/platform-integration/desktop), then you will need to ensure the cgo environment is set up accordingly. For detailed instructions on setting up the cgo environment, please refer to relevant resources available online.
+Pertama, Anda perlu mengkonfigurasi lingkungan sesuai dengan dokumentasi resmi [Flutter desktop website](https://docs.flutter.dev/development/platform-integration/desktop), Kemudian, Anda perlu memastikan lingkungan cgo telah dikonfigurasi dengan benar. Untuk petunjuk terperinci tentang pengaturan lingkungan cgo, silakan merujuk ke sumber daya yang relevan yang tersedia secara online.
 
 command:
 
@@ -161,7 +161,7 @@ flutter build linux
 
 #### Mobile
 
-Same as before, you also need to prepare the `cgo` environment, and then install `gomobile`:
+Sama seperti sebelumnya, Anda juga perlu menyiapkan lingkungan `cgo`, dan kemudian menginstal `gomobile`:
 
 ```bash
 go install golang.org/x/mobile/cmd/gomobile@latest
@@ -200,9 +200,9 @@ cp -r ui/flutter/build/web cmd/web/dist
 go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed/cmd/web
 ```
 
-## Credits
+## Atribusi
 
-### Contributors
+### Kontributor
 
 <a href="https://github.com/GopeedLab/gopeed/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=GopeedLab/gopeed" />
@@ -212,6 +212,6 @@ go build -tags nosqlite,web -ldflags="-s -w" -o bin/ github.com/GopeedLab/gopeed
 
 [![goland](_docs/img/goland.svg)](https://www.jetbrains.com/?from=gopeed)
 
-## License
+## Lisensi
 
 [GPLv3](LICENSE)
