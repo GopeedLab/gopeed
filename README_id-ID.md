@@ -88,7 +88,7 @@ Untuk informasi lebih lanjut tentang instalasi, silakan lihat [Instalasi](https:
 
 ### Perintah Terminal
 
-use `go install`:
+Gunakan `go install`:
 
 ```bash
 go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
