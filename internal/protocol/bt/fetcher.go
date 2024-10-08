@@ -295,7 +295,7 @@ func (f *Fetcher) doUpload(fromUpload bool) {
 				continue
 			}
 
-			stats := f.torrent.Stats()
+			stats := f.torrentStats()
 			f.data.SeedBytes = lastData.SeedBytes + stats.BytesWrittenData.Int64()
 
 			// Check is download complete, if not don't check and stop seeding
@@ -330,6 +330,17 @@ func (f *Fetcher) doUpload(fromUpload bool) {
 			}
 		}
 	}
+}
+
+// Get torrent stats maybe panic, see https://github.com/anacrolix/torrent/issues/972
+func (f *Fetcher) torrentStats() torrent.TorrentStats {
+	defer func() {
+		if r := recover(); r != nil {
+			// ignore panic
+		}
+	}()
+
+	return f.torrent.Stats()
 }
 
 func (f *Fetcher) UploadedBytes() int64 {
