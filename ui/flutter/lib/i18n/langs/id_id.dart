@@ -17,6 +17,7 @@ const idID = {
     'create': 'Membuat Tugas',
     'directDownload': 'Unduhan Langsung',
     'advancedOptions': 'Pengaturan Lanjutan',
+    'followSettings': 'Mengikuti Pengaturan',
     'downloadLink': 'Tautan Unduhan',
     'downloadLinkValid': 'Silakan masukkan tautan unduhan',
     'downloadLinkHit':
@@ -35,6 +36,7 @@ const idID = {
     'connections': 'Koneksi',
     'useServerCtime': 'Gunakan waktu server untuk pembuatan file',
     'maxRunning': 'Tugas Maksimum yang Berjalan',
+    'defaultDirectDownload': 'Pilih unduhan langsung sebagai opsi standar',
     'items': '@count items',
     'subscribeTracker': 'Berlangganan Tracker',
     'subscribeFail':
@@ -60,6 +62,8 @@ const idID = {
     'set': 'ATUR',
     'portInUse': 'Port [@port] sedang digunakan, silakan ubah port',
     'effectAfterRestart': 'Berlaku setelah restart',
+    'developer': 'Pengembang',
+    'logDirectory': 'Direktori Log',
     'show': 'Tampilkan',
     'startAll': 'Mulai Semua',
     'pauseAll': 'Jeda Semua',
@@ -95,5 +99,13 @@ const idID = {
         'Terima kasih kepada semua kontributor yang telah membantu membangun dan mengembangkan komunitas Gopeed!',
     'browserExtension': 'Ekstensi Perambanan',
     'launchAtStartup': 'Luncurkan saat Startup',
+    'seedConfig': 'Konfigurasi Seed',
+    'seedKeep': 'Terus seeding hingga dihentikan secara manual',
+    'seedRatio': 'Rasio Seed',
+    'seedTime': 'Waktu Seed (menit)',
+    'taskDetail': 'Detail Tugas',
+    'taskName': 'Nama Tugas',
+    'taskUrl': 'URL Tugas',
+    'downloadPath': 'Direktori Unduhan',
   },
 };
