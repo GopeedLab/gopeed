@@ -18,7 +18,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.6.1+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -58,7 +58,7 @@ dependencies:
   autoscale_tabbarview: ^1.0.2
   share_plus: ^7.1.0
   flutter_form_builder: ^9.1.1
-  form_builder_validators: ^9.0.0
+  form_builder_validators: ^11.0.0
   flutter_foreground_task: ^8.2.0
   open_filex: ^4.3.4
   tray_manager: ^0.2.3
@@ -67,7 +67,11 @@ dependencies:
   launch_at_startup: ^0.2.2
   args: ^2.5.0
   toggle_switch: ^2.3.0
-  permission_handler: ^11.3.1
+  permission_handler:
+    git:
+      url: https://github.com/reqable/flutter-permission-handler.git
+      ref: c4180f95fe12e921d422c9ccc10e2d1b1b2ef9db
+      path: permission_handler
   device_info_plus: ^9.1.2
 dev_dependencies:
   flutter_test:
@@ -144,7 +148,7 @@ flutter_icons:
 ffigen:
   name: LibgopeedBind
   description: Bindings to gopeed library.
-  output: 'lib/core/ffi/libgopeed_bind.dart'
+  output: "lib/core/ffi/libgopeed_bind.dart"
   headers:
     entry-points:
-      - 'include/libgopeed.h'
+      - "include/libgopeed.h"
