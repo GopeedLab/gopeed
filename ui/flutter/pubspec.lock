@@ -781,10 +781,11 @@ packages:
   permission_handler:
     dependency: "direct main"
     description:
-      name: permission_handler
-      sha256: "18bf33f7fefbd812f37e72091a15575e72d5318854877e0e4035a24ac1113ecb"
-      url: "https://pub.dev"
-    source: hosted
+      path: permission_handler
+      ref: "35fc72c30262b9b49e1965b48a7524b44ba9daa7"
+      resolved-ref: "35fc72c30262b9b49e1965b48a7524b44ba9daa7"
+      url: "https://github.com/monkeyWie/flutter-permission-handler.git"
+    source: git
     version: "11.3.1"
   permission_handler_android:
     dependency: transitive

@@ -67,7 +67,11 @@ dependencies:
   launch_at_startup: ^0.3.1
   args: ^2.5.0
   toggle_switch: ^2.3.0
-  permission_handler: ^11.3.1
+  permission_handler:
+    git:
+      url: https://github.com/monkeyWie/flutter-permission-handler.git
+      ref: 35fc72c30262b9b49e1965b48a7524b44ba9daa7
+      path: permission_handler
   device_info_plus: ^11.1.0
 dev_dependencies:
   flutter_test:
