@@ -28,7 +28,7 @@ on:
 
 env:
   GO_VERSION: "1.22"
-  FLUTTER_VERSION: "3.16.8"
+  FLUTTER_VERSION: "3.24.3"
 
 jobs:
   #  lint:
