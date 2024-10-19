@@ -4,17 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 'Build platform'
+        description: "Build platform"
         required: true
-        default: 'all'
+        default: "all"
       test:
-        description: 'Test mode'
+        description: "Test mode"
         required: true
         default: "false"
 
 env:
   GO_VERSION: "1.22"
-  FLUTTER_VERSION: "3.16.8"
+  FLUTTER_VERSION: "3.24.3"
 
 permissions:
   contents: write
@@ -35,7 +35,7 @@ jobs:
   build-windows:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows' }}
     runs-on: windows-latest
-    needs: [ get-release ]
+    needs: [get-release]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -137,7 +137,7 @@ jobs:
   build-macos-arm64-lib:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-latest
-    needs: [ get-release ]
+    needs: [get-release]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -155,7 +155,7 @@ jobs:
   build-macos:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-13
-    needs: [ get-release, build-macos-arm64-lib ]
+    needs: [get-release, build-macos-arm64-lib]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -214,7 +214,7 @@ jobs:
   build-linux:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux' }}
     runs-on: ubuntu-latest
-    needs: [ get-release ]
+    needs: [get-release]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -252,7 +252,7 @@ jobs:
   build-snap:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'snap' }}
     runs-on: ubuntu-latest
-    needs: [ get-release ]
+    needs: [get-release]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -268,31 +268,31 @@ jobs:
         run: |
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
-          
+
           sudo snap install snapcraft --classic
           mkdir -p snap/gui
           cp assets/icon/icon.svg snap/gui/gopeed.svg
-          
+
           cat>snap/snapcraft.yaml<<EOF
           name: gopeed
           version: $VERSION
           summary: A modern download manager
           description: High speed downloader that supports all platforms.
-          
+
           confinement: strict
           base: core22
           grade: stable
-          
+
           architectures:
             - build-on: amd64
               build-for: amd64
-          
+
           slots:
             dbus-gopeed:
               interface: dbus
               bus: session
               name: com.gopeed.gopeed
-          
+
           apps:
             gopeed:
               command: bin/gopeed
@@ -345,10 +345,10 @@ jobs:
                 mkdir -p \$CRAFT_PART_INSTALL/bin/
                 cp -r build/linux/*/release/bundle/* \$CRAFT_PART_INSTALL/bin/
           EOF
-          
+
           cp linux/assets/com.gopeed.Gopeed.desktop snap/gui/gopeed.desktop
           sed -i 's/Icon=com.gopeed.Gopeed/Icon=\${SNAP}\/meta\/gui\/gopeed.svg/g' snap/gui/gopeed.desktop
-          
+
           snapcraft --use-lxd
 
           # Snapcraft login
@@ -357,7 +357,7 @@ jobs:
   build-android:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'android' }}
     runs-on: ubuntu-latest
-    needs: [ get-release ]
+    needs: [get-release]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -366,7 +366,7 @@ jobs:
       - uses: actions/setup-java@v3
         with:
           distribution: "zulu"
-          java-version: "11"
+          java-version: "17"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -395,7 +395,7 @@ jobs:
   build-ios:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios' }}
     runs-on: macos-latest
-    needs: [ get-release ]
+    needs: [get-release]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -428,7 +428,7 @@ jobs:
   build-web:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'web' }}
     runs-on: ubuntu-latest
-    needs: [ get-release ]
+    needs: [get-release]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -446,7 +446,7 @@ jobs:
           cd ../../
           cp -r ui/flutter/build/web cmd/web/dist
           mkdir -p dist/zip
-          
+
           goos_arr=(windows darwin linux)
           goarch_arr=(386 amd64 arm64)
           export CGO_ENABLED=0
@@ -477,7 +477,7 @@ jobs:
   build-docker:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'docker' }}
     runs-on: ubuntu-latest
-    needs: [ get-release ]
+    needs: [get-release]
     steps:
       - name: Remove unnecessary files
         run: |

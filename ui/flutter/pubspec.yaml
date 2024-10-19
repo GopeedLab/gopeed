@@ -36,43 +36,39 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
   get: ^4.6.5
-  lottie: ^1.4.2
+  # lottie: ^1.4.2
   styled_widget: ^0.4.0+3
-  context_menus: ^1.0.2
+  context_menus: ^1.2.0
   json_annotation: ^4.8.1
   dio: ^5.2.1
-  path_provider: ^2.1.1
-  file_picker: 5.3.1
+  path_provider: ^2.1.4
+  file_picker: ^8.1.2
   macos_secure_bookmarks: ^0.2.1
   rounded_loading_button_plus: ^3.0.1
-  url_launcher: ^6.1.6
-  logger: ^1.3.0
-  desktop_drop: ^0.4.3
-  package_info_plus: ^4.0.0
-  fluent_ui: ^4.4.0
-  path: any
+  url_launcher: ^6.3.1
+  logger: ^1.4.0
+  desktop_drop: ^0.4.4
+  package_info_plus: ^8.1.0
+  fluent_ui: ^4.9.2
+  path: ^1.9.0
   badges: ^3.0.3
-  app_links: ^3.4.2
-  uri_to_file: ^0.2.0
-  window_manager: ^0.3.4
+  app_links: ^6.3.2
+  uri_to_file: ^1.0.0
+  window_manager: ^0.4.2
   autoscale_tabbarview: ^1.0.2
-  share_plus: ^7.1.0
-  flutter_form_builder: ^9.1.1
+  share_plus: ^10.1.0
+  flutter_form_builder: ^9.5.0
   form_builder_validators: ^11.0.0
   flutter_foreground_task: ^8.2.0
-  open_filex: ^4.3.4
-  tray_manager: ^0.2.3
+  open_filex: ^4.5.0
+  tray_manager: ^0.2.4
   lecle_downloads_path_provider: ^0.0.2+8
   hive: ^2.2.3
-  launch_at_startup: ^0.2.2
+  launch_at_startup: ^0.3.1
   args: ^2.5.0
   toggle_switch: ^2.3.0
-  permission_handler:
-    git:
-      url: https://github.com/reqable/flutter-permission-handler.git
-      ref: c4180f95fe12e921d422c9ccc10e2d1b1b2ef9db
-      path: permission_handler
-  device_info_plus: ^9.1.2
+  permission_handler: ^11.3.1
+  device_info_plus: ^11.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
