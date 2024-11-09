@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -449,6 +450,9 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 func (f *Fetcher) buildClient() *http.Client {
 	transport := &http.Transport{
 		Proxy: f.ctl.GetProxy(f.meta.Req.Proxy),
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: f.meta.Req.SkipVerifyCert,
+		},
 	}
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)

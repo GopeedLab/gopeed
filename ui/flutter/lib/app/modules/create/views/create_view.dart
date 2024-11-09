@@ -43,6 +43,8 @@ class CreateView extends GetView<CreateController> {
 
   final _availableSchemes = ["http:", "https:", "magnet:"];
 
+  final _skipVerifyCertController = false.obs;
+
   CreateView({Key? key}) : super(key: key);
 
   @override
@@ -454,6 +456,23 @@ class CreateView extends GetView<CreateController> {
                                             decoration: const InputDecoration(
                                               labelText: 'Referer',
                                             )),
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 10),
+                                          child: CompactCheckbox(
+                                            label:
+                                                'Skip Certificate Verification',
+                                            value:
+                                                _skipVerifyCertController.value,
+                                            onChanged: (bool? value) {
+                                              _skipVerifyCertController.value =
+                                                  value ?? false;
+                                            },
+                                            textStyle: const TextStyle(
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                     Column(
@@ -578,7 +597,11 @@ class CreateView extends GetView<CreateController> {
           await Future.wait(urls.map((url) {
             return createTask(CreateTask(
                 req: Request(
-                    url: url, extra: parseReqExtra(url), proxy: parseProxy()),
+                  url: url,
+                  extra: parseReqExtra(url),
+                  proxy: parseProxy(),
+                  skipVerifyCert: _skipVerifyCertController.value,
+                ),
                 opt: Options(
                   name: isMultiLine ? "" : _renameController.text,
                   path: _pathController.text,
@@ -592,6 +615,7 @@ class CreateView extends GetView<CreateController> {
             url: submitUrl,
             extra: parseReqExtra(_urlController.text),
             proxy: parseProxy(),
+            skipVerifyCert: _skipVerifyCertController.value,
           ));
           await _showResolveDialog(rr);
         }

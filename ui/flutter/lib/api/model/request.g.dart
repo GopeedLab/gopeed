@@ -15,6 +15,7 @@ Request _$RequestFromJson(Map<String, dynamic> json) => Request(
       proxy: json['proxy'] == null
           ? null
           : RequestProxy.fromJson(json['proxy'] as Map<String, dynamic>),
+      skipVerifyCert: json['skipVerifyCert'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$RequestToJson(Request instance) {
@@ -31,6 +32,7 @@ Map<String, dynamic> _$RequestToJson(Request instance) {
   writeNotNull('extra', instance.extra);
   writeNotNull('labels', instance.labels);
   writeNotNull('proxy', instance.proxy?.toJson());
+  val['skipVerifyCert'] = instance.skipVerifyCert;
   return val;
 }
 
