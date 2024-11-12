@@ -96,5 +96,6 @@ const itIT = {
         'Grazie a tutti i contributori che hanno contribuito a costruire e sviluppare la comunità Gopeed!',
     'browserExtension': 'Estensione del browser',
     'launchAtStartup': "Lancia all'avvio",
+    'skipVerifyCert': 'Salta la verifica del certificato',
   },
 };

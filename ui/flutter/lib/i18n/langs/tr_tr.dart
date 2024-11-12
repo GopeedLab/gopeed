@@ -104,5 +104,6 @@ const trTR = {
     'taskName': 'Görev adı',
     'taskUrl': 'Görev URL',
     'downloadPath': 'İndirme yolu',
+    'skipVerifyCert': 'Sertifika doğrulamasını atla',
   },
 };

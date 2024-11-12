@@ -8,12 +8,14 @@ class Request {
   Object? extra;
   Map<String, String>? labels = {};
   RequestProxy? proxy;
+  bool skipVerifyCert = false;
 
   Request({
     required this.url,
     this.extra,
     this.labels,
     this.proxy,
+    this.skipVerifyCert = false,
   });
 
   factory Request.fromJson(Map<String, dynamic> json) =>

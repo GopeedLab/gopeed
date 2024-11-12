@@ -18,6 +18,8 @@ type Request struct {
 	Labels map[string]string `json:"labels"`
 	// Proxy is special proxy config for request
 	Proxy *RequestProxy `json:"proxy"`
+	// SkipVerifyCert is the flag that skip verify cert
+	SkipVerifyCert bool `json:"skipVerifyCert"`
 }
 
 func (r *Request) Validate() error {

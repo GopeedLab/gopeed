@@ -62,5 +62,6 @@ const jaJP = {
     'thanks': '感謝',
     'thanksDesc': 'Gopeedコミュニティの建設に協力してくださったすべての貢献者の方々に感謝します！',
     'browserExtension': 'ブラウザ拡張機能',
+    'skipVerifyCert': '証明書の検証をスキップ',
   }
 };

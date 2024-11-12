@@ -104,5 +104,6 @@ const zhTW = {
     'taskName': '任務名稱',
     'taskUrl': '任務連結',
     'downloadPath': '下載路徑',
+    'skipVerifyCert': '跳過憑證驗證',
   }
 };

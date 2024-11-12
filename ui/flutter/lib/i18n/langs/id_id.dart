@@ -107,5 +107,6 @@ const idID = {
     'taskName': 'Nama Tugas',
     'taskUrl': 'URL Tugas',
     'downloadPath': 'Direktori Unduhan',
+    'skipVerifyCert': 'Lupakan verifikasi sertifikat',
   },
 };
