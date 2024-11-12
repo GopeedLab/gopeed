@@ -94,5 +94,6 @@ const plPL = {
         'Dziękuję wszystkim za pomoc przy powstawaniu aplikacji Gopeed!',
     'browserExtension': 'Wtyczka dla przeglądarki',
     'launchAtStartup': 'Uruchom na starcie',
+    'skipVerifyCert': 'Pomiń weryfikację certyfikatu',
   },
 };

@@ -92,5 +92,6 @@ const frFR = {
     'thanksDesc': 'Merci à tous les contributeurs qui ont aidé à construire et développer la communauté Gopeed !',
     'browserExtension': 'Extension du navigateur',
     'launchAtStartup': 'Lancer au démarrage',
+    'skipVerifyCert': 'Bypass Verifikasi Sertifikat',
   },
 };

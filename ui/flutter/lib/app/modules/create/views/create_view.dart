@@ -460,8 +460,7 @@ class CreateView extends GetView<CreateController> {
                                           padding:
                                               const EdgeInsets.only(top: 10),
                                           child: CompactCheckbox(
-                                            label:
-                                                'Skip Certificate Verification',
+                                            label: 'skipVerifyCert'.tr,
                                             value:
                                                 _skipVerifyCertController.value,
                                             onChanged: (bool? value) {

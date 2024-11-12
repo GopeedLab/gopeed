@@ -104,5 +104,6 @@ const zhCN = {
     'taskName': '任务名称',
     'taskUrl': '任务链接',
     'downloadPath': '下载路径',
+    'skipVerifyCert': '跳过证书验证',
   }
 };

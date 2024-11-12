@@ -103,5 +103,6 @@ const esES = {
     'taskName': 'Nombre de la Tarea',
     'taskUrl': 'URL de la Tarea',
     'downloadPath': 'Ruta de Descarga',
+    'skipVerifyCert': 'Omitir Verificación de Certificado',
   },
 };

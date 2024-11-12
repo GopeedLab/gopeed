@@ -89,5 +89,6 @@ const viVN = {
     'thanksDesc':
         'Cảm ơn tất cả những người đóng góp đã giúp xây dựng và phát triển cộng đồng Gopeed!',
     'browserExtension': 'Tiện ích mở rộng trình duyệt',
+    'skipVerifyCert': 'Bỏ qua xác thực chứng chỉ',
   },
 };

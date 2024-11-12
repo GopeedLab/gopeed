@@ -107,5 +107,6 @@ const enUS = {
     'taskName': 'Task Name',
     'taskUrl': 'Task URL',
     'downloadPath': 'Download Path',
+    'skipVerifyCert': 'Skip Certificate Verification',
   },
 };
