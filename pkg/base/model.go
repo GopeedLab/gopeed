@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/slices"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -223,7 +224,7 @@ func (cfg *DownloaderProxyConfig) ToHandler() func(r *http.Request) (*url.URL, e
 		return nil
 	}
 	if cfg.System {
-		ieproxy.ReloadConf()
+		safeProxyReloadConf()
 		return ieproxy.GetProxyFunc()
 	}
 	if cfg.Scheme == "" || cfg.Host == "" {
@@ -238,7 +239,7 @@ func (cfg *DownloaderProxyConfig) ToUrl() *url.URL {
 		return nil
 	}
 	if cfg.System {
-		ieproxy.ReloadConf()
+		safeProxyReloadConf()
 		static := ieproxy.GetConf().Static
 		if static.Active && len(static.Protocols) > 0 {
 			// If only one protocol, use it
@@ -262,6 +263,15 @@ func (cfg *DownloaderProxyConfig) ToUrl() *url.URL {
 		return nil
 	}
 	return util.BuildProxyUrl(cfg.Scheme, cfg.Host, cfg.Usr, cfg.Pwd)
+}
+
+var prcLock sync.Mutex
+
+func safeProxyReloadConf() {
+	prcLock.Lock()
+	defer prcLock.Unlock()
+
+	ieproxy.ReloadConf()
 }
 
 func parseUrlSafe(rawUrl string) *url.URL {
