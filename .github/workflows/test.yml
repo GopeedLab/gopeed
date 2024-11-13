@@ -27,7 +27,7 @@ on:
       - "go.sum"
 
 env:
-  GO_VERSION: "1.22"
+  GO_VERSION: "1.23"
   FLUTTER_VERSION: "3.24.3"
 
 jobs:

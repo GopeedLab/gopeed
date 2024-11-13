@@ -1,6 +1,6 @@
 module github.com/GopeedLab/gopeed
 
-go 1.22
+go 1.23
 
 require (
 	github.com/anacrolix/missinggo/v2 v2.7.3
@@ -16,7 +16,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529
 	github.com/rs/zerolog v1.31.0
-	github.com/virtuald/go-paniclog v0.0.0-20190812204905-43a7fa316459
 	github.com/xiaoqidun/setft v0.0.0-20220310121541-be86327699ad
 	go.etcd.io/bbolt v1.3.10
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56

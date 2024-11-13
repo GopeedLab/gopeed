@@ -11,12 +11,12 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
-	"github.com/virtuald/go-paniclog"
 	"math"
 	gohttp "net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -1130,7 +1130,7 @@ func logPanic(logDir string) {
 	if err != nil {
 		return
 	}
-	paniclog.RedirectStderr(f)
+	debug.SetCrashOutput(f, debug.CrashOptions{})
 }
 
 func (d *Downloader) buildFetcher(url string) (fetcher.Fetcher, error) {
