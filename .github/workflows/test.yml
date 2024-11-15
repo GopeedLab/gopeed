@@ -58,11 +58,13 @@ jobs:
         with:
           files: ./coverage.txt
           token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
-  build:
-    name: Build check
-    runs-on: ubuntu-latest
-    #    needs: [lint, test]
-    needs: [test]
+  build-desktop:
+    name: Build desktop check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ windows-latest, macos-latest, ubuntu-latest ]
+    needs: [ test ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -71,11 +73,89 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-      - run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev
       - name: Build
         run: |
-          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
+            cd ui/flutter
+            flutter build windows
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
+            cd ui/flutter
+            flutter build macos
+          elif [ "${{ runner.os }}" == "Linux" ]; then
+            sudo apt-get update -y
+            sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev
+            go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
+            cd ui/flutter
+            flutter build linux
+          fi
+  build-mobile:
+    name: Build mobile check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ macos-latest, ubuntu-latest ]
+    needs: [ test ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Build
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go get golang.org/x/mobile/bind
+          gomobile init
+          if [ "${{ runner.os }}" == "macOS" ]; then
+            gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+            cd ui/flutter
+            flutter build ipa
+          elif [ "${{ runner.os }}" == "Linux" ]; then
+            gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 21 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
+            cd ui/flutter
+            flutter build apk
+          fi
+  build-web:
+    name: Build web check
+    runs-on: ubuntu-latest
+    needs: [ test ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Build
+        run: |
           cd ui/flutter
-          flutter build linux
+          flutter build web --web-renderer html
+          cd ../../
+          rm -rf cmd/web/dist
+          cp -r ui/flutter/build/web cmd/web/dist
+          go build -tags nosqlite,web -ldflags="-s -w" github.com/GopeedLab/gopeed/cmd/web
+  build-docker:
+    name: Build docker check
+    runs-on: ubuntu-latest
+    needs: [ test ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Build
+        run: |
+          cd ui/flutter
+          flutter build web --web-renderer html
+          cd ../../
+          rm -rf cmd/web/dist
+          cp -r ui/flutter/build/web cmd/web/dist
+          docker build -t gopeed .
