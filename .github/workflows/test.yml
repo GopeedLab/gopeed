@@ -113,10 +113,15 @@ jobs:
         run: |
           gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
-          flutter build ipa
+          flutter build ipa --no-codesign
+      - if: runner.os == 'Linux'
+        uses: actions/setup-java@v3
+        with:
+          distribution: "zulu"
+          java-version: "17"
       - if: runner.os == 'Linux'
         run: |
-          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 21 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
+          gomobile bind -tags nosqlite -ldflags="-w -s -checklinkname=0" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 21 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
           flutter build apk
 
