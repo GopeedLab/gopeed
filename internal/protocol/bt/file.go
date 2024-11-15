@@ -3,6 +3,7 @@
 package bt
 
 import (
+	"context"
 	"fmt"
 	"github.com/anacrolix/torrent/storage"
 	"io"
@@ -53,7 +54,7 @@ func (fs fileClientImpl) Close() error {
 	return fs.opts.PieceCompletion.Close()
 }
 
-func (fs fileClientImpl) OpenTorrent(info *metainfo.Info, infoHash metainfo.Hash) (_ storage.TorrentImpl, err error) {
+func (fs fileClientImpl) OpenTorrent(ctx context.Context, info *metainfo.Info, infoHash metainfo.Hash) (_ storage.TorrentImpl, err error) {
 	upvertedFiles := info.UpvertedFiles()
 	files := make([]file, 0, len(upvertedFiles))
 	for _, fileInfo := range upvertedFiles {
