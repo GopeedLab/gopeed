@@ -73,23 +73,23 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-      - name: Build
+      - if: runner.os == 'windows-latest'
         run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
-            cd ui/flutter
-            flutter build windows
-          elif [ "${{ runner.os }}" == "macOS" ]; then
-            go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
-            cd ui/flutter
-            flutter build macos
-          elif [ "${{ runner.os }}" == "Linux" ]; then
-            sudo apt-get update -y
-            sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev
-            go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
-            cd ui/flutter
-            flutter build linux
-          fi
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
+          cd ui/flutter
+          flutter build windows
+      - if: runner.os == 'macos-latest'
+        run: |
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
+          cd ui/flutter
+          flutter build macos
+      - if: runner.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
+          cd ui/flutter
+          flutter build linux
   build-mobile:
     name: Build mobile check
     runs-on: ${{ matrix.os }}
@@ -105,20 +105,21 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-      - name: Build
-        run: |
+      - run: |
           go install golang.org/x/mobile/cmd/gomobile@latest
           go get golang.org/x/mobile/bind
           gomobile init
-          if [ "${{ runner.os }}" == "macOS" ]; then
-            gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
-            cd ui/flutter
-            flutter build ipa
-          elif [ "${{ runner.os }}" == "Linux" ]; then
-            gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 21 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
-            cd ui/flutter
-            flutter build apk
-          fi
+      - if: runner.os == 'macOS'
+        run: |
+          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/ios/Frameworks/Libgopeed.xcframework -target=ios github.com/GopeedLab/gopeed/bind/mobile
+          cd ui/flutter
+          flutter build ipa
+      - if: runner.os == 'Linux'
+        run: |
+          gomobile bind -tags nosqlite -ldflags="-w -s" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 21 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
+          cd ui/flutter
+          flutter build apk
+
   build-web:
     name: Build web check
     runs-on: ubuntu-latest
