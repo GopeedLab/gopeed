@@ -90,7 +90,7 @@ More about installation, please refer to [Installation](https://docs.gopeed.com/
 
 use `go install`:
 
-```bash 1
+```bash
 go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ```
 
