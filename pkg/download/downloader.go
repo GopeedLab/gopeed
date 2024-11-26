@@ -256,7 +256,7 @@ func (d *Downloader) setupFetcher(fm fetcher.FetcherManager, fetcher fetcher.Fet
 	ctl.GetConfig = func(v any) {
 		d.getProtocolConfig(fm.Name(), v)
 	}
-	// Get proxy config, task request proxy config has higher priority, then use global proxy config
+	// get proxy config, task request proxy config has higher priority, then use global proxy config
 	ctl.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
 		if requestProxy == nil {
 			return d.cfg.Proxy.ToHandler()
@@ -576,7 +576,7 @@ func (d *Downloader) deleteAll() (err error) {
 	return
 }
 
-func (d *Downloader) Stats(id string) (sr any, err error) {
+func (d *Downloader) GetTaskStats(id string) (sr any, err error) {
 	task := d.GetTask(id)
 	if task == nil {
 		return sr, ErrTaskNotFound

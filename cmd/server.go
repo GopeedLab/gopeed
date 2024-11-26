@@ -3,10 +3,9 @@ package cmd
 import (
 	_ "embed"
 	"fmt"
+	"github.com/GopeedLab/gopeed/pkg/api"
+	"github.com/GopeedLab/gopeed/pkg/api/model"
 	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/rest"
-	"github.com/GopeedLab/gopeed/pkg/rest/model"
-	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -18,20 +17,21 @@ var banner string
 
 func Start(cfg *model.StartConfig) {
 	fmt.Println(banner)
-	srv, listener, err := rest.BuildServer(cfg)
+	instance, err := api.Create(cfg)
 	if err != nil {
 		panic(err)
 	}
-	downloadCfg, err := rest.Downloader.GetConfig()
-	if err != nil {
-		panic(err)
+	downloadCfgResult := instance.GetConfig()
+	if downloadCfgResult.HasError() {
+		panic(downloadCfgResult.Msg)
 	}
+	downloadCfg := downloadCfgResult.Data
 	if downloadCfg.FirstLoad {
 		// Set default download config
 		if cfg.DownloadConfig != nil {
 			cfg.DownloadConfig.Merge(downloadCfg)
 			// TODO Use PatchConfig
-			rest.Downloader.PutConfig(cfg.DownloadConfig)
+			instance.PutConfig(cfg.DownloadConfig)
 			downloadCfg = cfg.DownloadConfig
 		}
 
@@ -48,25 +48,26 @@ func Start(cfg *model.StartConfig) {
 			}
 			if downloadDir != "" {
 				downloadCfg.DownloadDir = downloadDir
-				rest.Downloader.PutConfig(downloadCfg)
+				instance.PutConfig(downloadCfg)
 			}
 		}
 	}
-	watchExit()
-
-	fmt.Printf("Server start success on http://%s\n", listener.Addr().String())
-	if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
-		panic(err)
+	startResult := instance.Start()
+	if startResult.HasError() {
+		panic(startResult.Msg)
 	}
+	fmt.Printf("Server start success on http://%s:%s\n", startResult.Data.Host, startResult.Data.Port)
+
+	watchExit(instance)
 }
 
-func watchExit() {
+func watchExit(instance *api.Instance) {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
 		fmt.Printf("Server is shutting down due to signal: %s\n", sig)
-		rest.Downloader.Close()
+		instance.Stop()
 		os.Exit(0)
 	}()
 }

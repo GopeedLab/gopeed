@@ -3,20 +3,15 @@ package libgopeed
 // #cgo LDFLAGS: -static-libstdc++
 import "C"
 import (
-	"encoding/json"
-	"github.com/GopeedLab/gopeed/pkg/rest"
-	"github.com/GopeedLab/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/bind"
+	"github.com/GopeedLab/gopeed/pkg/api"
+	"github.com/GopeedLab/gopeed/pkg/api/model"
 )
 
-func Start(cfg string) (int, error) {
-	var config model.StartConfig
-	if err := json.Unmarshal([]byte(cfg), &config); err != nil {
-		return 0, err
-	}
-	config.ProductionMode = true
-	return rest.Start(&config)
+func Create(config *model.StartConfig) string {
+	return bind.Create(config)
 }
 
-func Stop() {
-	rest.Stop()
+func Invoke(index int, request *api.Request) string {
+	return bind.Invoke(index, request)
 }

@@ -332,7 +332,7 @@ func (f *Fetcher) doUpload(fromUpload bool) {
 	}
 }
 
-// Get torrent stats maybe panic, see https://github.com/anacrolix/torrent/issues/972
+// get torrent stats maybe panic, see https://github.com/anacrolix/torrent/issues/972
 func (f *Fetcher) torrentStats() torrent.TorrentStats {
 	defer func() {
 		if r := recover(); r != nil {

@@ -1,0 +1,414 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/GopeedLab/gopeed/pkg/api/model"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/pkg/errors"
+	"net"
+	"net/http"
+	"reflect"
+	"runtime"
+	"sync"
+)
+
+type Instance struct {
+	startCfg   *model.StartConfig
+	downloader *download.Downloader
+	running    bool
+
+	httpLock    sync.Mutex
+	srv         *http.Server
+	listener    net.Listener
+	runningPort int
+}
+
+func Create(startCfg *model.StartConfig) (*Instance, error) {
+	if startCfg == nil {
+		startCfg = &model.StartConfig{}
+	}
+	startCfg.Init()
+
+	i := &Instance{
+		startCfg: startCfg,
+	}
+
+	return i, nil
+}
+
+func (i *Instance) Start() *model.Result[*model.StartResult] {
+	// avoid repeat start
+	if i.running {
+		// If the http server is not enabled, return nil
+		if i.runningPort == 0 {
+			return model.NewOkResult[*model.StartResult](nil)
+		}
+		host, _, _ := net.SplitHostPort(i.listener.Addr().String())
+		return model.NewOkResult(&model.StartResult{
+			Host: host,
+			Port: i.runningPort,
+		})
+	}
+
+	startCfg := i.startCfg
+	downloadCfg := &download.DownloaderConfig{
+		ProductionMode:  startCfg.ProductionMode,
+		RefreshInterval: startCfg.RefreshInterval,
+	}
+	if startCfg.Storage == model.StorageBolt {
+		downloadCfg.Storage = download.NewBoltStorage(startCfg.StorageDir)
+	} else {
+		downloadCfg.Storage = download.NewMemStorage()
+	}
+	downloadCfg.StorageDir = startCfg.StorageDir
+	downloadCfg.Init()
+	downloader := download.NewDownloader(downloadCfg)
+	if err := downloader.Setup(); err != nil {
+		return model.NewErrorResult[*model.StartResult](err.Error())
+	}
+	i.downloader = downloader
+	i.running = true
+
+	config, err := i.downloader.GetConfig()
+	if err != nil {
+		return model.NewErrorResult[*model.StartResult](err.Error())
+	}
+	httpCfg := config.Http
+	if httpCfg == nil || !httpCfg.Enable {
+		return model.NewOkResult[*model.StartResult](nil)
+	}
+
+	i.httpLock = sync.Mutex{}
+	startResult := i.StartHttp(httpCfg)
+	if startResult.HasError() {
+		i.downloader.Logger.Error().Err(err).Msgf("listen http failed: %s", startResult.Msg)
+		return model.NewOkResult[*model.StartResult](nil)
+	}
+
+	go func() {
+		if err := i.srv.Serve(i.listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic(err)
+		}
+	}()
+
+	addr, _ := i.listener.Addr().(*net.TCPAddr)
+	i.runningPort = addr.Port
+	return model.NewOkResult(&model.StartResult{
+		Host: httpCfg.Host,
+		Port: i.runningPort,
+	})
+}
+
+func (i *Instance) Stop() *model.Result[any] {
+	i.StopHttp()
+	if i.downloader != nil {
+		if err := i.downloader.Close(); err != nil {
+			i.downloader.Logger.Warn().Err(err).Msg("close downloader failed")
+		}
+		i.downloader = nil
+		i.running = false
+	}
+
+	return model.NewNilResult()
+}
+
+func (i *Instance) StartHttp(httpCfg *base.DownloaderHttpConfig) *model.Result[int] {
+	i.httpLock.Lock()
+	defer i.httpLock.Unlock()
+
+	return i.startHttp(httpCfg)
+}
+
+func (i *Instance) startHttp(httpCfg *base.DownloaderHttpConfig) *model.Result[int] {
+	if i.srv != nil {
+		return model.NewErrorResult[int]("server already started")
+	}
+	if err := ListenHttp(httpCfg, i); err != nil {
+		return model.NewErrorResult[int](err.Error())
+	}
+	return model.NewOkResult(i.runningPort)
+}
+
+func (i *Instance) StopHttp() *model.Result[any] {
+	i.httpLock.Lock()
+	defer i.httpLock.Unlock()
+
+	return i.stopHttp()
+}
+
+func (i *Instance) stopHttp() *model.Result[any] {
+	if i.srv != nil {
+		if err := i.srv.Shutdown(context.Background()); err != nil {
+			i.downloader.Logger.Warn().Err(err).Msg("shutdown http server failed")
+		}
+		i.srv = nil
+		i.listener = nil
+		i.runningPort = 0
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) RestartHttp(httpCfg *base.DownloaderHttpConfig) *model.Result[int] {
+	i.httpLock.Lock()
+	defer i.httpLock.Unlock()
+
+	return i.restartHttp(httpCfg)
+}
+
+func (i *Instance) restartHttp(httpCfg *base.DownloaderHttpConfig) *model.Result[int] {
+	i.stopHttp()
+	return i.startHttp(httpCfg)
+}
+
+func (i *Instance) Info() *model.Result[map[string]any] {
+	return model.NewOkResult(map[string]any{
+		"version":  base.Version,
+		"runtime":  runtime.Version(),
+		"os":       runtime.GOOS,
+		"arch":     runtime.GOARCH,
+		"inDocker": base.InDocker == "true",
+	})
+}
+
+func (i *Instance) Resolve(req *base.Request) *model.Result[*download.ResolveResult] {
+	rr, err := i.downloader.Resolve(req)
+	if err != nil {
+		return model.NewErrorResult[*download.ResolveResult](err.Error())
+	}
+	return model.NewOkResult(rr)
+}
+
+func (i *Instance) CreateTask(req *model.CreateTask) *model.Result[string] {
+	var (
+		taskId string
+		err    error
+	)
+	if req.Rid != "" {
+		taskId, err = i.downloader.Create(req.Rid, req.Opt)
+	} else if req.Req != nil {
+		taskId, err = i.downloader.CreateDirect(req.Req, req.Opt)
+	} else {
+		return model.NewErrorResult[string]("param invalid: rid or req", model.CodeInvalidParam)
+	}
+	if err != nil {
+		return model.NewErrorResult[string](err.Error())
+	}
+	return model.NewOkResult(taskId)
+}
+
+func (i *Instance) CreateTaskBatch(req *model.CreateTaskBatch) *model.Result[[]string] {
+	if len(req.Reqs) == 0 {
+		return model.NewErrorResult[[]string]("param invalid: reqs", model.CodeInvalidParam)
+	}
+	taskIds, err := i.downloader.CreateDirectBatch(req.Reqs, req.Opt)
+	if err != nil {
+		return model.NewErrorResult[[]string](err.Error())
+	}
+	return model.NewOkResult(taskIds)
+}
+
+func (i *Instance) PauseTask(taskId string) *model.Result[any] {
+	err := i.downloader.Pause(&download.TaskFilter{
+		IDs: []string{taskId},
+	})
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) PauseTasks(filter *download.TaskFilter) *model.Result[any] {
+	err := i.downloader.Pause(filter)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) ContinueTask(taskId string) *model.Result[any] {
+	err := i.downloader.Continue(&download.TaskFilter{
+		IDs: []string{taskId},
+	})
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) ContinueTasks(filter *download.TaskFilter) *model.Result[any] {
+	err := i.downloader.Continue(filter)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) DeleteTask(taskId string, force bool) *model.Result[any] {
+	err := i.downloader.Delete(&download.TaskFilter{
+		IDs: []string{taskId},
+	}, force)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) DeleteTasks(filter *download.TaskFilter, force bool) *model.Result[any] {
+	err := i.downloader.Delete(filter, force)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) GetTask(taskId string) *model.Result[*download.Task] {
+	if taskId == "" {
+		return model.NewErrorResult[*download.Task]("param invalid: id", model.CodeInvalidParam)
+	}
+	task := i.downloader.GetTask(taskId)
+	if task == nil {
+		return model.NewErrorResult[*download.Task]("task not found", model.CodeTaskNotFound)
+	}
+	return model.NewOkResult(task)
+}
+
+func (i *Instance) GetTasks(filter *download.TaskFilter) *model.Result[[]*download.Task] {
+	return model.NewOkResult(i.downloader.GetTasksByFilter(filter))
+}
+
+func (i *Instance) GetTaskStats(taskId string) *model.Result[any] {
+	stats, err := i.downloader.GetTaskStats(taskId)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewOkResult(stats)
+}
+
+func (i *Instance) GetConfig() *model.Result[*base.DownloaderStoreConfig] {
+	config, err := i.downloader.GetConfig()
+	if err != nil {
+		return model.NewErrorResult[*base.DownloaderStoreConfig](err.Error())
+	}
+	return model.NewOkResult(config)
+}
+
+func (i *Instance) PutConfig(cfg *base.DownloaderStoreConfig) *model.Result[any] {
+	err := i.downloader.PutConfig(cfg)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) InstallExtension(req *model.InstallExtension) *model.Result[string] {
+	var (
+		installedExt *download.Extension
+		err          error
+	)
+	if req.DevMode {
+		installedExt, err = i.downloader.InstallExtensionByFolder(req.URL, true)
+	} else {
+		installedExt, err = i.downloader.InstallExtensionByGit(req.URL)
+	}
+	if err != nil {
+		return model.NewErrorResult[string](err.Error())
+	}
+
+	return model.NewOkResult(installedExt.Identity)
+}
+
+func (i *Instance) GetExtension(identity string) *model.Result[*download.Extension] {
+	extension, err := i.downloader.GetExtension(identity)
+	if err != nil {
+		return model.NewErrorResult[*download.Extension](err.Error())
+	}
+	return model.NewOkResult(extension)
+}
+
+func (i *Instance) GetExtensions() *model.Result[[]*download.Extension] {
+	return model.NewOkResult(i.downloader.GetExtensions())
+}
+
+func (i *Instance) UpdateExtensionSettings(identity string, req *model.UpdateExtensionSettings) *model.Result[any] {
+	err := i.downloader.UpdateExtensionSettings(identity, req.Settings)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) SwitchExtension(identity string, req *model.SwitchExtension) *model.Result[any] {
+	err := i.downloader.SwitchExtension(identity, req.Status)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) DeleteExtension(identity string) *model.Result[any] {
+	err := i.downloader.DeleteExtension(identity)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) UpgradeCheckExtension(identity string) *model.Result[*model.UpgradeCheckExtensionResp] {
+	newVersion, err := i.downloader.UpgradeCheckExtension(identity)
+	if err != nil {
+		return model.NewErrorResult[*model.UpgradeCheckExtensionResp](err.Error())
+	}
+
+	return model.NewOkResult(&model.UpgradeCheckExtensionResp{
+		NewVersion: newVersion,
+	})
+}
+
+func (i *Instance) UpgradeExtension(identity string) *model.Result[any] {
+	err := i.downloader.UpgradeExtension(identity)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	return model.NewNilResult()
+}
+
+type Request struct {
+	Method string   `json:"method"`
+	Params []string `json:"params"`
+}
+
+// Invoke support dynamic call method
+func Invoke(server *Instance, request *Request) (ret any) {
+	defer func() {
+		if err := recover(); err != nil {
+			ret = model.NewErrorResult[any](fmt.Sprintf("%v", err))
+		}
+	}()
+
+	method, args := request.Method, request.Params
+	dsType := reflect.ValueOf(server)
+	fn := dsType.MethodByName(method)
+	numIn := fn.Type().NumIn()
+	in := make([]reflect.Value, numIn)
+	for i := 0; i < numIn; i++ {
+		paramType := fn.Type().In(i)
+		var param reflect.Value
+		var paramPtr any
+		if paramType.Kind() == reflect.Ptr {
+			param = reflect.New(paramType.Elem())
+			paramPtr = param.Interface()
+		} else {
+			param = reflect.New(paramType).Elem()
+			paramPtr = param.Addr().Interface()
+		}
+		if err := json.Unmarshal([]byte(args[i]), paramPtr); err != nil {
+			panic(err)
+		}
+		in[i] = param
+	}
+	retVals := fn.Call(in)
+	return retVals[0]
+}

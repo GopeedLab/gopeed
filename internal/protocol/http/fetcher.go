@@ -146,7 +146,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 			file.Name = filename
 		}
 	}
-	// Get file filePath by URL
+	// get file filePath by URL
 	if file.Name == "" {
 		file.Name = path.Base(httpReq.URL.Path)
 	}
@@ -496,7 +496,7 @@ func (fm *FetcherManager) ParseName(u string) string {
 	if err != nil {
 		return ""
 	}
-	// Get filePath by URL
+	// get filePath by URL
 	name = path.Base(url.Path)
 	// If file name is empty, use host name
 	if name == "" || name == "/" || name == "." {

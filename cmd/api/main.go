@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/GopeedLab/gopeed/cmd"
-	"github.com/GopeedLab/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/pkg/api/model"
 )
 
 // only for local development

@@ -1,4 +1,4 @@
-package rest
+package api
 
 import (
 	"bytes"
@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/GopeedLab/gopeed/internal/test"
+	"github.com/GopeedLab/gopeed/pkg/api/model"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
-	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"io"
 	"net"
 	"net/http"
@@ -354,7 +354,10 @@ func TestGetAndPutConfig(t *testing.T) {
 		cfg := httpRequestCheckOk[*base.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
 		cfg.DownloadDir = "./download"
 		cfg.Extra = map[string]any{
-			"serverConfig": &Config{
+			"serverConfig": &struct {
+				Host string `json:"host"`
+				Port int    `json:"port"`
+			}{
 				Host: "127.0.0.1",
 				Port: 8080,
 			},
@@ -449,10 +452,10 @@ func TestDeleteExtension(t *testing.T) {
 func TestUpdateCheckExtension(t *testing.T) {
 	doTest(func() {
 		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
-		resp := httpRequestCheckOk[*model.UpdateCheckExtensionResp](http.MethodGet, "/api/v1/extensions/"+identity+"/update", nil)
+		resp := httpRequestCheckOk[*model.UpgradeCheckExtensionResp](http.MethodGet, "/api/v1/extensions/"+identity+"/update", nil)
 		// no new version
 		if resp.NewVersion != "" {
-			t.Errorf("UpdateCheckExtension() got = %v, want %v", resp.NewVersion, "")
+			t.Errorf("UpgradeCheckExtension() got = %v, want %v", resp.NewVersion, "")
 		}
 		// force update
 		httpRequestCheckOk[any](http.MethodPost, "/api/v1/extensions/"+identity+"/update", nil)

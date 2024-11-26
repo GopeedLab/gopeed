@@ -75,7 +75,7 @@ func (t *Task) Name() string {
 		return t.Meta.Res.Name
 	}
 
-	// Get the name of the first file
+	// get the name of the first file
 	return t.Meta.Res.Files[0].Name
 }
 

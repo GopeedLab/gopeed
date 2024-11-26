@@ -13,6 +13,6 @@ type SwitchExtension struct {
 	Status bool `json:"status"`
 }
 
-type UpdateCheckExtensionResp struct {
+type UpgradeCheckExtensionResp struct {
 	NewVersion string `json:"newVersion"`
 }
