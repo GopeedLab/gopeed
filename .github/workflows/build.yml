@@ -441,6 +441,7 @@ jobs:
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
+          VERSION=${VERSION:-$(date +%Y%m%d%H%M%S)}
           cd ui/flutter
           flutter build web --web-renderer html
           cd ../../
@@ -461,13 +462,34 @@ jobs:
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o $dir github.com/GopeedLab/gopeed/cmd/web \
               && cd $dir \
               && file=$(ls -AU | head -1) \
+              && echo ">>> name=[${name}], dir=[${dir}], file=[${file}, pwd=$(pwd)]" \
               && mkdir $name \
+              && echo ">>> run [mv $file $name/$(echo $file | sed -e "s/web/gopeed/g")]" \
               && mv $file $name/$(echo $file | sed -e "s/web/gopeed/g") \
               && zip -r ../zip/$name.zip * \
               && cd ../..) \
               || true
             done
           done
+          wget -O qbuild_2.3.13.tar.gz "https://github.com/WHJWNAVY/QpkgBuildTools/releases/download/qbuild_2.3.13/qbuild_2.3.13.tar.gz"
+          tar -xzf qbuild_2.3.13.tar.gz
+          [[ -d qbuild ]] || exit 1
+          export PATH=$(pwd)/qbuild/bin:${PATH}
+          echo ">>> PATH=[${PATH}]"
+          wget -O Gopeed.template.tar.gz "https://github.com/WHJWNAVY/QpkgBuildTools/releases/download/qbuild_2.3.13/Gopeed.template.tar.gz"
+          tar -xzf Gopeed.template.tar.gz
+          [[ -d Gopeed ]] || exit 1
+          name=gopeed-web-v${VERSION}-linux-amd64
+          echo ">>> name=[${name}]"
+          cp dist/${name}/${name}/* Gopeed/x86_64/
+          name=gopeed-web-v${VERSION}-linux-arm64
+          echo ">>> name=[${name}]"
+          cp dist/${name}/${name}/* Gopeed/arm_64/
+          cd Gopeed
+          echo ">>> pwd=[$(pwd)]"
+          sed -i -e 's/__QPKG_VER__/${VERSION}/g' qpkg.cfg
+          qbuild && cp -ra build/*.qpkg ../dist/zip/
+          cd ..
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
