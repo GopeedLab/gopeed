@@ -462,7 +462,6 @@ jobs:
               (GOOS=$goos GOARCH=$goarch go build -tags nosqlite,web -ldflags="-s -w -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o $dir github.com/GopeedLab/gopeed/cmd/web \
               && cd $dir \
               && file=$(ls -AU | head -1) \
-              && echo ">>> name=[${name}], dir=[${dir}], file=[${file}]" \
               && mkdir $name \
               && mv $file $name/$(echo $file | sed -e "s/web/gopeed/g") \
               && zip -r ../zip/$name.zip * \
@@ -474,9 +473,7 @@ jobs:
           wget -O qbuild_2.3.13.tar.gz "https://github.com/WHJWNAVY/QpkgBuildTools/releases/download/qbuild_2.3.13/qbuild_2.3.13.tar.gz"
           tar -zxf qbuild_2.3.13.tar.gz
           [[ -d qbuild ]] || exit 1
-          echo ">>> qbuild_dir=[$(ls -al qbuild/bin)]"
           export PATH=$(pwd)/qbuild/bin:${PATH}
-          echo ">>> PATH=[${PATH}]"
           wget -O Gopeed.template.tar.gz "https://github.com/WHJWNAVY/QpkgBuildTools/releases/download/qbuild_2.3.13/Gopeed.template.tar.gz"
           tar -zxf Gopeed.template.tar.gz
           [[ -d Gopeed ]] || exit 1
@@ -494,17 +491,12 @@ jobs:
                 continue
               fi
               name=gopeed-web-v${VERSION}-${goos}-${goarch}
-              echo ">>> name=[${name}]"
               cp dist/${name}/${name}/* Gopeed/${qarch}/
-              echo ">>> ${qarch}=[$(ls -al Gopeed/${qarch}/)]"
             done
           done
           cd Gopeed
           sed -i -e 's/__QPKG_VER__/${VERSION}/g' qpkg.cfg
           qbuild && cp -ra build/*.qpkg ../dist/zip/
-          for f in ../dist/zip/*; do
-            echo ">>> dist=[${f}]"
-          done
           cd ..
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
