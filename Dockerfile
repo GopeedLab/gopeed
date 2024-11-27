@@ -8,15 +8,15 @@ RUN CGO_ENABLED=0 go build -tags nosqlite,web \
       -ldflags="-s -w -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION -X github.com/GopeedLab/gopeed/pkg/base.InDocker=true" \
       -o dist/gopeed github.com/GopeedLab/gopeed/cmd/web
 
-FROM alpine:3.14.2
+FROM alpine:3.18
 LABEL maintainer="monkeyWie"
 WORKDIR /app
 COPY --from=go /app/dist/gopeed ./
 COPY entrypoint.sh ./entrypoint.sh
 RUN apk update && \
-    apk upgrade --no-cache && \
-    apk add --no-cache bash su-exec; \
+    apk add --no-cache --virtual .build-deps su-exec ; \
     chmod +x ./entrypoint.sh && \
+    apk del .build-deps && \
     rm -rf /var/cache/apk/*
 VOLUME ["/app/storage"]
 ENV PUID=0 PGID=0 UMASK=022
