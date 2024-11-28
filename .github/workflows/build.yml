@@ -475,7 +475,7 @@ jobs:
           dpkg -X qdk2_0.32.bionic_amd64.deb qdk2 # Direct installs will fail due to missing dependencies!
           [[ -d qdk2 ]] || exit 1
           export PATH=$(pwd)/qdk2/usr/bin:$(pwd)/qdk2/usr/share/qdk2/QDK/bin:${PATH}
-          wget -O Gopeed.template.tar.gz "https://github.com/WHJWNAVY/QpkgBuildTools/releases/download/qbuild_2.3.13/Gopeed.template.tar.gz"
+          wget -O Gopeed.template.tar.gz "https://github.com/GopeedLab/QpkgBuild/raw/refs/heads/master/template/Gopeed.template.tar.gz"
           tar -zxf Gopeed.template.tar.gz
           [[ -d Gopeed ]] || exit 1
           goos_arr=(linux)
