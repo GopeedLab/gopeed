@@ -496,7 +496,7 @@ jobs:
             qarch=x86_64
             [[ "${goarch}" == "arm64" ]] && qarch=arm_64
             sname=Gopeed_${VERSION}_${qarch}.qpkg
-            dname=gopeed-web-v${VERSION}-${goos}-${goarch}.qpkg
+            dname=gopeed-${goos}-v${VERSION}-${goarch}.qpkg
             echo "sname=${sname}, dname=${dname}"
             [[ -f build/${sname} ]] && cp -ra build/${sname} ../dist/zip/${dname}
           done
