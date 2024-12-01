@@ -51,7 +51,7 @@ func (cfg *WebBasicAuth) Authorization() string {
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte(userId))
 }
 
-type StartResult struct {
+type HttpListenResult struct {
 	Host string `json:"host"`
 	// Port is the http server real listen port.
 	Port int `json:"port"`

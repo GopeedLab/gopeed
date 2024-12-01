@@ -21,9 +21,11 @@ const esES = {
     'downloadLinkValid': 'Por favor, introduce el enlace de descarga',
     'downloadLinkHit':
         'Por favor, introduce el enlace de descarga, se admite HTTP/HTTPS/MAGNET@append',
-    'downloadLinkHitDesktop': ', o arrastra el archivo torrent aquí directamente',
+    'downloadLinkHitDesktop':
+        ', o arrastra el archivo torrent aquí directamente',
     'download': 'Descargar',
-    'noFileSelected': 'Por favor, selecciona al menos un archivo para continuar.',
+    'noFileSelected':
+        'Por favor, selecciona al menos un archivo para continuar.',
     'noStoragePermission': 'Se requiere permiso de almacenamiento',
     'selectFile': 'Seleccionar Archivo',
     'rename': 'Renombrar',
@@ -43,7 +45,8 @@ const esES = {
     'updateDaily': 'Actualizar diariamente',
     'lastUpdate': 'Última actualización: @time',
     'addTracker': 'Añadir Tracker',
-    'addTrackerHit': 'Por favor, introduce la URL del servidor tracker, una por línea',
+    'addTrackerHit':
+        'Por favor, introduce la URL del servidor tracker, una por línea',
     'ui': 'Interfaz',
     'theme': 'Tema',
     'themeSystem': 'Sistema',
@@ -67,12 +70,12 @@ const esES = {
     'deleteTaskTip': 'Mantener archivos descargados',
     'delete': 'Eliminar',
     'newVersionTitle': 'Nueva versión @version disponible',
-    'newVersionUpdate': 'Actualizar Ahora',
+    'newVersionUpgrade': 'Actualizar Ahora',
     'newVersionLater': 'Más tarde',
     'extensions': 'Extensiones',
     'extensionInstallUrl': 'URL de instalación',
     'extensionInstallSuccess': 'Instalado con éxito',
-    'extensionUpdateSuccess': 'Actualizado con éxito',
+    'extensionUpgradeSuccess': 'Actualizado con éxito',
     'extensionDelete': 'Eliminar Extensión',
     'extensionAlreadyLatest': 'Ya es la versión más reciente',
     'extensionFind': 'Buscar Extensiones',

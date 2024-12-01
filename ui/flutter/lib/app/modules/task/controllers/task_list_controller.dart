@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:get/get.dart';
 
-import '../../../../api/api.dart';
+import '../../../../api/libgopeed_boot.dart';
 import '../../../../api/model/task.dart';
+import '../../../../api/model/task_filter.dart';
 
 abstract class TaskListController extends GetxController {
   List<Status> statuses;
@@ -44,7 +45,8 @@ abstract class TaskListController extends GetxController {
   }
 
   getTasksState() async {
-    final tasks = await getTasks(statuses);
+    final tasks =
+        await LibgopeedBoot.instance.getTasks(TaskFilter(statuses: statuses));
     // sort tasks by create time
     tasks.sort(compare);
     this.tasks.value = tasks;

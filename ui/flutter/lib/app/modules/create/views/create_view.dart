@@ -7,7 +7,7 @@ import 'package:get/get.dart';
 import 'package:path/path.dart' as path;
 import 'package:rounded_loading_button_plus/rounded_loading_button.dart';
 
-import '../../../../api/api.dart';
+import '../../../../api/libgopeed_boot.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
@@ -594,7 +594,7 @@ class CreateView extends GetView<CreateController> {
         final isDirect = controller.directDownload.value || isMultiLine;
         if (isDirect) {
           await Future.wait(urls.map((url) {
-            return createTask(CreateTask(
+            return LibgopeedBoot.instance.createTask(CreateTask(
                 req: Request(
                   url: url,
                   extra: parseReqExtra(url),
@@ -610,7 +610,7 @@ class CreateView extends GetView<CreateController> {
           }));
           Get.rootDelegate.offNamed(Routes.TASK);
         } else {
-          final rr = await resolve(Request(
+          final rr = await LibgopeedBoot.instance.resolve(Request(
             url: submitUrl,
             extra: parseReqExtra(_urlController.text),
             proxy: parseProxy(),
@@ -741,23 +741,28 @@ class CreateView extends GetView<CreateController> {
                               await Future.wait(
                                   controller.selectedIndexes.map((index) {
                                 final file = rr.res.files[index];
-                                return createTask(CreateTask(
-                                    req: file.req!..proxy = parseProxy(),
-                                    opt: Options(
-                                        name: file.name,
-                                        path: path.join(_pathController.text,
-                                            rr.res.name, file.path),
-                                        selectFiles: [],
-                                        extra: optExtra)));
+                                return LibgopeedBoot.instance.createTask(
+                                    CreateTask(
+                                        req: file.req!..proxy = parseProxy(),
+                                        opt: Options(
+                                            name: file.name,
+                                            path: path.join(
+                                                _pathController.text,
+                                                rr.res.name,
+                                                file.path),
+                                            selectFiles: [],
+                                            extra: optExtra)));
                               }));
                             } else {
-                              await createTask(CreateTask(
-                                  rid: rr.id,
-                                  opt: Options(
-                                      name: _renameController.text,
-                                      path: _pathController.text,
-                                      selectFiles: controller.selectedIndexes,
-                                      extra: optExtra)));
+                              await LibgopeedBoot.instance.createTask(
+                                  CreateTask(
+                                      rid: rr.id,
+                                      opt: Options(
+                                          name: _renameController.text,
+                                          path: _pathController.text,
+                                          selectFiles:
+                                              controller.selectedIndexes,
+                                          extra: optExtra)));
                             }
                             Get.back();
                             Get.rootDelegate.offNamed(Routes.TASK);

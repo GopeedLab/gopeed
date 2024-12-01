@@ -46,6 +46,7 @@ func main() {
 		args.DownloadConfig = &base.DownloaderStoreConfig{}
 	}
 	args.DownloadConfig.Http = &base.DownloaderHttpConfig{
+		Enable:   true,
 		Host:     *args.Host,
 		Port:     *args.Port,
 		ApiToken: *args.ApiToken,

@@ -14,10 +14,8 @@ import 'package:uri_to_file/uri_to_file.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
-import '../../../../api/api.dart';
+import '../../../../api/libgopeed_boot.dart';
 import '../../../../api/model/downloader_config.dart';
-import '../../../../core/common/start_config.dart';
-import '../../../../core/libgopeed_boot.dart';
 import '../../../../database/database.dart';
 import '../../../../database/entity.dart';
 import '../../../../i18n/message.dart';
@@ -74,12 +72,9 @@ final allTrackerSubscribeUrlCdns = Map.fromIterable(allTrackerSubscribeUrls,
     });
 
 class AppController extends GetxController with WindowListener, TrayListener {
-  static StartConfig? _defaultStartConfig;
-
   final autoStartup = false.obs;
-  final startConfig = StartConfig().obs;
-  final runningPort = 0.obs;
   final downloaderConfig = DownloaderConfig().obs;
+  final httpRunningPort = 0.obs;
 
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
@@ -111,7 +106,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
   void onClose() {
     _linkSubscription?.cancel();
     trayManager.removeListener(this);
-    LibgopeedBoot.instance.stop();
+    LibgopeedBoot.instance.close();
   }
 
   @override
@@ -218,11 +213,12 @@ class AppController extends GetxController with WindowListener, TrayListener {
       ),
       MenuItem(
         label: "startAll".tr,
-        onClick: (menuItem) async => {continueAllTasks()},
+        onClick: (menuItem) async =>
+            {LibgopeedBoot.instance.continueTasks(null)},
       ),
       MenuItem(
         label: "pauseAll".tr,
-        onClick: (menuItem) async => {pauseAllTasks()},
+        onClick: (menuItem) async => {LibgopeedBoot.instance.pauseTasks(null)},
       ),
       MenuItem(
         label: 'setting'.tr,
@@ -247,7 +243,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
         label: 'exit'.tr,
         onClick: (menuItem) async {
           try {
-            await LibgopeedBoot.instance.stop();
+            await LibgopeedBoot.instance.close();
           } catch (e) {
             logger.w("libgopeed stop fail", e);
           }
@@ -313,43 +309,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
     await Get.rootDelegate.offAndToNamed(Routes.CREATE, arguments: path);
   }
 
-  String runningAddress() {
-    if (startConfig.value.network == 'unix') {
-      return startConfig.value.address;
-    }
-    return '${startConfig.value.address.split(':').first}:$runningPort';
-  }
-
-  Future<StartConfig> _initDefaultStartConfig() async {
-    if (_defaultStartConfig != null) {
-      return _defaultStartConfig!;
-    }
-    _defaultStartConfig = StartConfig();
-    if (!Util.supportUnixSocket()) {
-      // not support unix socket, use tcp
-      _defaultStartConfig!.network = "tcp";
-      _defaultStartConfig!.address = "127.0.0.1:0";
-    } else {
-      _defaultStartConfig!.network = "unix";
-      _defaultStartConfig!.address =
-          "${(await getTemporaryDirectory()).path}/$unixSocketPath";
-    }
-    _defaultStartConfig!.apiToken = '';
-    return _defaultStartConfig!;
-  }
-
-  Future<StartConfig> loadStartConfig() async {
-    final defaultCfg = await _initDefaultStartConfig();
-    final saveCfg = Database.instance.getStartConfig();
-    startConfig.value.network = saveCfg?.network ?? defaultCfg.network;
-    startConfig.value.address = saveCfg?.address ?? defaultCfg.address;
-    startConfig.value.apiToken = saveCfg?.apiToken ?? defaultCfg.apiToken;
-    return startConfig.value;
-  }
-
   Future<DownloaderConfig> loadDownloaderConfig() async {
     try {
-      downloaderConfig.value = await getConfig();
+      downloaderConfig.value = await LibgopeedBoot.instance.getConfig();
     } catch (e) {
       logger.w("load downloader config fail", e, StackTrace.current);
       downloaderConfig.value = DownloaderConfig();
@@ -382,7 +344,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     });
     refreshTrackers();
 
-    await saveConfig();
+    await LibgopeedBoot.instance.putConfig(downloaderConfig.value);
   }
 
   refreshTrackers() {
@@ -411,7 +373,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<List<String>> _fetchTrackers(String subscribeUrl) async {
-    final resp = await proxyRequest(subscribeUrl);
+    final resp = await LibgopeedBoot.instance.proxyRequest(subscribeUrl);
     if (resp.statusCode != 200) {
       throw Exception(
           'Failed to get trackers, status code: ${resp.statusCode}');
@@ -467,13 +429,5 @@ class AppController extends GetxController with WindowListener, TrayListener {
         appPath: Platform.resolvedExecutable,
         args: ['--${Args.flagHidden}']);
     autoStartup.value = await launchAtStartup.isEnabled();
-  }
-
-  Future<void> saveConfig() async {
-    Database.instance.saveStartConfig(StartConfigEntity(
-        network: startConfig.value.network,
-        address: startConfig.value.address,
-        apiToken: startConfig.value.apiToken));
-    await putConfig(downloaderConfig.value);
   }
 }

@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
-import 'package:gopeed/api/api.dart';
 
+import '../../../../api/libgopeed_boot.dart';
 import '../../../../api/model/extension.dart';
 
 class ExtensionController extends GetxController {
@@ -17,12 +17,13 @@ class ExtensionController extends GetxController {
   }
 
   Future<void> load() async {
-    extensions.value = await getExtensions();
+    extensions.value = await LibgopeedBoot.instance.getExtensions();
   }
 
   Future<void> checkUpdate() async {
     for (final ext in extensions) {
-      final resp = await upgradeCheckExtension(ext.identity);
+      final resp =
+          await LibgopeedBoot.instance.upgradeCheckExtension(ext.identity);
       if (resp.newVersion.isNotEmpty) {
         updateFlags[ext.identity] = resp.newVersion;
       }

@@ -51,7 +51,7 @@ func Invoke(index int, request *api.Request) string {
 	if !ok {
 		return BuildResult(errors.New("instance not found"))
 	}
-	return BuildResult(api.Invoke(instance, request))
+	return jsonEncode(api.Invoke(instance, request))
 }
 
 func BuildResult(data any) string {
@@ -59,6 +59,10 @@ func BuildResult(data any) string {
 		buf, _ := json.Marshal(model.NewErrorResult[any](err.Error()))
 		return string(buf)
 	}
-	buf, _ := json.Marshal(model.NewOkResult(data))
+	return jsonEncode(model.NewOkResult(data))
+}
+
+func jsonEncode(data any) string {
+	buf, _ := json.Marshal(data)
 	return string(buf)
 }

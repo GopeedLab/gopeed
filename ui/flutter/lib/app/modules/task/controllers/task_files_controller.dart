@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import '../../../../api/api.dart';
+import '../../../../api/libgopeed_boot.dart';
 import '../../../../api/model/resource.dart';
 import '../../../../api/model/task.dart';
 
@@ -31,7 +31,7 @@ class TaskFilesController extends GetxController {
     super.onInit();
 
     final taskId = Get.rootDelegate.parameters['id'];
-    final tasks = await getTasks([]);
+    final tasks = await LibgopeedBoot.instance.getTasks(null);
     task.value = tasks.firstWhere((element) => element.id == taskId);
     parseDirMap(task.value!.meta.res!.files);
     toDir("/");

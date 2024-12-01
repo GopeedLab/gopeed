@@ -21,6 +21,7 @@ func Start(cfg *model.StartConfig) {
 	if err != nil {
 		panic(err)
 	}
+
 	downloadCfgResult := instance.GetConfig()
 	if downloadCfgResult.HasError() {
 		panic(downloadCfgResult.Msg)
@@ -52,13 +53,15 @@ func Start(cfg *model.StartConfig) {
 			}
 		}
 	}
-	startResult := instance.Start()
-	if startResult.HasError() {
-		panic(startResult.Msg)
-	}
-	fmt.Printf("Server start success on http://%s:%s\n", startResult.Data.Host, startResult.Data.Port)
 
 	watchExit(instance)
+
+	result, start, err := api.ListenHttp(cfg.DownloadConfig.Http, instance)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Server start success on http://%s:%d\n", result.Host, result.Port)
+	start()
 }
 
 func watchExit(instance *api.Instance) {
@@ -67,7 +70,7 @@ func watchExit(instance *api.Instance) {
 	go func() {
 		sig := <-sigs
 		fmt.Printf("Server is shutting down due to signal: %s\n", sig)
-		instance.Stop()
+		instance.Close()
 		os.Exit(0)
 	}()
 }

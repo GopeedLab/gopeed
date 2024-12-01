@@ -55,7 +55,7 @@ const faIR = {
     'deleteTaskTip': 'فایل های دانلود شده را نگه دارد',
     'delete': 'پاک کردن',
     'newVersionTitle': '@version عنوان: کشف نسخه جدید',
-    'newVersionUpdate': 'بروزرسانی',
+    'newVersionUpgrade': 'بروزرسانی',
     'newVersionLater': 'بعداً',
     'thanks': 'تشکر',
     'thanksDesc':

@@ -35,8 +35,8 @@ func parse() *args {
 
 	// args priority: config file > cli args
 	cfgArgs := loadConfig(*cliArgs.configPath)
-	if cfgArgs.Address == nil {
-		cfgArgs.Address = cliArgs.Address
+	if cfgArgs.Host == nil {
+		cfgArgs.Host = cliArgs.Host
 	}
 	if cfgArgs.Port == nil {
 		cfgArgs.Port = cliArgs.Port

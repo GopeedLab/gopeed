@@ -7,7 +7,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/api/model"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
-	"github.com/pkg/errors"
 	"net"
 	"net/http"
 	"reflect"
@@ -36,24 +35,6 @@ func Create(startCfg *model.StartConfig) (*Instance, error) {
 		startCfg: startCfg,
 	}
 
-	return i, nil
-}
-
-func (i *Instance) Start() *model.Result[*model.StartResult] {
-	// avoid repeat start
-	if i.running {
-		// If the http server is not enabled, return nil
-		if i.runningPort == 0 {
-			return model.NewOkResult[*model.StartResult](nil)
-		}
-		host, _, _ := net.SplitHostPort(i.listener.Addr().String())
-		return model.NewOkResult(&model.StartResult{
-			Host: host,
-			Port: i.runningPort,
-		})
-	}
-
-	startCfg := i.startCfg
 	downloadCfg := &download.DownloaderConfig{
 		ProductionMode:  startCfg.ProductionMode,
 		RefreshInterval: startCfg.RefreshInterval,
@@ -67,69 +48,47 @@ func (i *Instance) Start() *model.Result[*model.StartResult] {
 	downloadCfg.Init()
 	downloader := download.NewDownloader(downloadCfg)
 	if err := downloader.Setup(); err != nil {
-		return model.NewErrorResult[*model.StartResult](err.Error())
+		return nil, err
 	}
 	i.downloader = downloader
 	i.running = true
-
-	config, err := i.downloader.GetConfig()
-	if err != nil {
-		return model.NewErrorResult[*model.StartResult](err.Error())
-	}
-	httpCfg := config.Http
-	if httpCfg == nil || !httpCfg.Enable {
-		return model.NewOkResult[*model.StartResult](nil)
-	}
-
 	i.httpLock = sync.Mutex{}
-	startResult := i.StartHttp(httpCfg)
-	if startResult.HasError() {
-		i.downloader.Logger.Error().Err(err).Msgf("listen http failed: %s", startResult.Msg)
-		return model.NewOkResult[*model.StartResult](nil)
-	}
 
-	go func() {
-		if err := i.srv.Serve(i.listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			panic(err)
-		}
-	}()
-
-	addr, _ := i.listener.Addr().(*net.TCPAddr)
-	i.runningPort = addr.Port
-	return model.NewOkResult(&model.StartResult{
-		Host: httpCfg.Host,
-		Port: i.runningPort,
-	})
+	return i, nil
 }
 
-func (i *Instance) Stop() *model.Result[any] {
-	i.StopHttp()
-	if i.downloader != nil {
-		if err := i.downloader.Close(); err != nil {
-			i.downloader.Logger.Warn().Err(err).Msg("close downloader failed")
-		}
-		i.downloader = nil
-		i.running = false
-	}
-
-	return model.NewNilResult()
-}
-
-func (i *Instance) StartHttp(httpCfg *base.DownloaderHttpConfig) *model.Result[int] {
+func (i *Instance) StartHttp() *model.Result[*model.HttpListenResult] {
 	i.httpLock.Lock()
 	defer i.httpLock.Unlock()
 
-	return i.startHttp(httpCfg)
+	return i.startHttp()
 }
 
-func (i *Instance) startHttp(httpCfg *base.DownloaderHttpConfig) *model.Result[int] {
+func (i *Instance) startHttp() *model.Result[*model.HttpListenResult] {
+	var httpCfg *base.DownloaderHttpConfig
+	// if startCfg has http config, first use it
+	if i.startCfg.DownloadConfig != nil && i.startCfg.DownloadConfig.Http != nil {
+		httpCfg = i.startCfg.DownloadConfig.Http
+	} else {
+		cfg, err := i.downloader.GetConfig()
+		if err != nil {
+			return model.NewErrorResult[*model.HttpListenResult](err.Error())
+		}
+		httpCfg = cfg.Http
+	}
+
+	if httpCfg == nil || !httpCfg.Enable {
+		return model.NewErrorResult[*model.HttpListenResult]("HTTP API server not enabled")
+	}
 	if i.srv != nil {
-		return model.NewErrorResult[int]("server already started")
+		return model.NewErrorResult[*model.HttpListenResult]("HTTP API server already started")
 	}
-	if err := ListenHttp(httpCfg, i); err != nil {
-		return model.NewErrorResult[int](err.Error())
+	result, start, err := ListenHttp(httpCfg, i)
+	if err != nil {
+		return model.NewErrorResult[*model.HttpListenResult](err.Error())
 	}
-	return model.NewOkResult(i.runningPort)
+	go start()
+	return model.NewOkResult[*model.HttpListenResult](result)
 }
 
 func (i *Instance) StopHttp() *model.Result[any] {
@@ -151,16 +110,12 @@ func (i *Instance) stopHttp() *model.Result[any] {
 	return model.NewNilResult()
 }
 
-func (i *Instance) RestartHttp(httpCfg *base.DownloaderHttpConfig) *model.Result[int] {
+func (i *Instance) RestartHttp() *model.Result[*model.HttpListenResult] {
 	i.httpLock.Lock()
 	defer i.httpLock.Unlock()
 
-	return i.restartHttp(httpCfg)
-}
-
-func (i *Instance) restartHttp(httpCfg *base.DownloaderHttpConfig) *model.Result[int] {
 	i.stopHttp()
-	return i.startHttp(httpCfg)
+	return i.startHttp()
 }
 
 func (i *Instance) Info() *model.Result[map[string]any] {
@@ -372,6 +327,19 @@ func (i *Instance) UpgradeExtension(identity string) *model.Result[any] {
 	if err != nil {
 		return model.NewErrorResult[any](err.Error())
 	}
+	return model.NewNilResult()
+}
+
+func (i *Instance) Close() *model.Result[any] {
+	i.StopHttp()
+	if i.downloader != nil {
+		if err := i.downloader.Close(); err != nil {
+			i.downloader.Logger.Warn().Err(err).Msg("close downloader failed")
+		}
+		i.downloader = nil
+		i.running = false
+	}
+
 	return model.NewNilResult()
 }
 

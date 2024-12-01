@@ -113,9 +113,9 @@ func (t *Task) calcSpeed(speedArr []int64, downloaded int64, usedTime float64) i
 }
 
 type TaskFilter struct {
-	IDs         []string
-	Statuses    []base.Status
-	NotStatuses []base.Status
+	IDs         []string      `json:"ids"`
+	Statuses    []base.Status `json:"statuses"`
+	NotStatuses []base.Status `json:"notStatuses"`
 }
 
 func (f *TaskFilter) IsEmpty() bool {
