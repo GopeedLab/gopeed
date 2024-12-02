@@ -8,10 +8,10 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/api/model"
 )
 
-func Create(cfg *model.StartConfig) string {
-	return bind.Create(cfg)
+func Init(cfg *model.StartConfig) error {
+	return bind.Init(cfg)
 }
 
-func Invoke(index int, request *api.Request) string {
-	return bind.Invoke(index, request)
+func Invoke(request *api.Request) string {
+	return bind.Invoke(request)
 }

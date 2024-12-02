@@ -33,9 +33,10 @@ import 'libgopeed_boot_base.dart';
 
 LibgopeedBoot create() => LibgopeedBootNative();
 
-class LibgopeedBootNative with LibgopeedBootBase implements LibgopeedBoot {
+class LibgopeedBootNative
+    with LibgopeedBootBase
+    implements LibgopeedBoot, LibgopeedApi {
   late LibgopeedAbi _libgopeedAbi;
-  late int _apiInstance;
   late Dio _dio;
 
   LibgopeedBootNative() {
@@ -69,8 +70,7 @@ class LibgopeedBootNative with LibgopeedBootBase implements LibgopeedBoot {
           }
           return jsonEncode(e);
         }).toList());
-    final resp =
-        await _libgopeedAbi.invoke(_apiInstance, jsonEncode(invokeRequest));
+    final resp = await _libgopeedAbi.invoke(jsonEncode(invokeRequest));
     final result =
         Result<T>.fromJson(jsonDecode(resp), fromJsonT ??= (json) => null as T);
     return handleResult(result);
@@ -78,87 +78,86 @@ class LibgopeedBootNative with LibgopeedBootBase implements LibgopeedBoot {
 
   List<dynamic> _parseTaskFilter(TaskFilter? filter) {
     if (filter == null) {
-      return [];
+      return [null];
     }
     return [filter];
   }
 
   @override
-  Future<void> init(StartConfig cfg) async {
-    final result = await _libgopeedAbi.create(jsonEncode(cfg.toJson()));
-    _apiInstance =
-        Result.fromJson(jsonDecode(result), (data) => data as int).data!;
+  Future<LibgopeedApi> init(StartConfig cfg) async {
+    await _libgopeedAbi.init(jsonEncode(cfg.toJson()));
     _dio = createDio();
+    return this;
   }
 
   @override
   Future<HttpListenResult> startHttp() async {
     return _invoke<HttpListenResult>(
-        "startHttp", [], (json) => HttpListenResult.fromJson(json));
+        "StartHttp", [], (json) => HttpListenResult.fromJson(json));
   }
 
   @override
   Future<void> stopHttp() async {
-    await _invoke<void>("stopHttp", [], null);
+    await _invoke<void>("StopHttp", [], null);
   }
 
   @override
   Future<void> restartHttp() async {
-    await _invoke<void>("restartHttp", [], null);
+    await _invoke<void>("RestartHttp", [], null);
   }
 
   @override
   Future<Info> info() async {
-    return _invoke<Info>("info", [], (json) => Info.fromJson(json));
+    return _invoke<Info>("Info", [], (json) => Info.fromJson(json));
   }
 
   @override
   Future<ResolveResult> resolve(Request request) async {
     return _invoke<ResolveResult>(
-        "resolve", [request], (json) => ResolveResult.fromJson(json));
+        "Resolve", [request], (json) => ResolveResult.fromJson(json));
   }
 
   @override
   Future<String> createTask(CreateTask createTask) async {
     return _invoke<String>(
-        "createTask", [createTask], (json) => json as String);
+        "CreateTask", [createTask], (json) => json as String);
   }
 
   @override
   Future<String> createTaskBatch(CreateTaskBatch createTask) async {
     return _invoke<String>(
-        "createTaskBatch", [createTask], (json) => json as String);
+        "CreateTaskBatch", [createTask], (json) => json as String);
   }
 
   @override
   Future<void> pauseTask(String id) async {
-    await _invoke<void>("pauseTask", [id], null);
+    await _invoke<void>("PauseTask", [id], null);
   }
 
   @override
   Future<void> pauseTasks(TaskFilter? filter) async {
-    await _invoke<void>("pauseTasks", _parseTaskFilter(filter), null);
+    await _invoke<void>("PauseTasks", _parseTaskFilter(filter), null);
   }
 
   @override
   Future<void> continueTask(String id) async {
-    await _invoke<void>("continueTask", [id], null);
+    await _invoke<void>("ContinueTask", [id], null);
   }
 
   @override
   Future<void> continueTasks(TaskFilter? filter) async {
-    await _invoke<void>("continueTasks", _parseTaskFilter(filter), null);
+    await _invoke<void>("ContinueTasks", _parseTaskFilter(filter), null);
   }
 
   @override
   Future<void> deleteTask(String id, bool force) async {
-    await _invoke<void>("deleteTask", [id, force], null);
+    await _invoke<void>("DeleteTask", [id, force], null);
   }
 
   @override
   Future<void> deleteTasks(TaskFilter? filter, bool force) async {
     await _invoke<void>(
-        "deleteTasks",
+        "DeleteTasks",
         _parseTaskFilter(filter).apply((it) {
           it.add(force);
         }),
@@ -167,40 +166,40 @@ class LibgopeedBootNative with LibgopeedBootBase implements LibgopeedBoot {
 
   @override
   Future<Task> getTask(String id) async {
-    return _invoke<Task>("getTask", [id], (json) => Task.fromJson(json));
+    return _invoke<Task>("GetTask", [id], (json) => Task.fromJson(json));
   }
 
   @override
   Future<List<Task>> getTasks(TaskFilter? filter) async {
-    return _invoke<List<Task>>("getTasks", _parseTaskFilter(filter),
+    return _invoke<List<Task>>("GetTasks", _parseTaskFilter(filter),
         (json) => json.map((e) => Task.fromJson(e)).toList());
   }
 
   @override
   Future<Map<String, dynamic>> getTaskStats(String id) async {
     return _invoke<Map<String, dynamic>>(
-        "getTaskStats", [id], (json) => json as Map<String, dynamic>);
+        "GetTaskStats", [id], (json) => json as Map<String, dynamic>);
   }
 
   @override
   Future<DownloaderConfig> getConfig() async {
     return _invoke<DownloaderConfig>(
-        "getConfig", [], (json) => DownloaderConfig.fromJson(json));
+        "GetConfig", [], (json) => DownloaderConfig.fromJson(json));
   }
 
   @override
   Future<void> putConfig(DownloaderConfig config) async {
-    await _invoke<void>("putConfig", [config], null);
+    await _invoke<void>("PutConfig", [config], null);
   }
 
   @override
   Future<void> installExtension(InstallExtension installExtension) async {
-    await _invoke<void>("installExtension", [installExtension], null);
+    await _invoke<void>("InstallExtension", [installExtension], null);
   }
 
   @override
   Future<List<Extension>> getExtensions() async {
-    return _invoke<List<Extension>>("getExtensions", [],
+    return _invoke<List<Extension>>("GetExtensions", [],
         (json) => json.map((e) => Extension.fromJson(e)).toList());
   }
 
@@ -208,33 +207,35 @@ class LibgopeedBootNative with LibgopeedBootBase implements LibgopeedBoot {
   Future<void> updateExtensionSettings(
       String identity, UpdateExtensionSettings updateExtensionSettings) async {
     await _invoke<void>(
-        "updateExtensionSettings", [identity, updateExtensionSettings], null);
+        "UpdateExtensionSettings", [identity, updateExtensionSettings], null);
   }
 
   @override
   Future<void> switchExtension(
-      String identity, SwitchExtension switchExtension) async {}
+      String identity, SwitchExtension switchExtension) async {
+    await _invoke<void>("SwitchExtension", [identity, switchExtension], null);
+  }
 
   @override
   Future<void> deleteExtension(String identity) async {
-    await _invoke<void>("deleteExtension", [identity], null);
+    await _invoke<void>("DeleteExtension", [identity], null);
   }
 
   @override
   Future<UpdateCheckExtensionResp> upgradeCheckExtension(
       String identity) async {
-    return _invoke<UpdateCheckExtensionResp>("upgradeCheckExtension",
+    return _invoke<UpdateCheckExtensionResp>("UpgradeCheckExtension",
         [identity], (json) => UpdateCheckExtensionResp.fromJson(json));
   }
 
   @override
   Future<void> upgradeExtension(String identity) async {
-    await _invoke<void>("upgradeExtension", [identity], null);
+    await _invoke<void>("UpgradeExtension", [identity], null);
   }
 
   @override
   Future<void> close() async {
-    await _invoke<void>("close", [], null);
+    await _invoke<void>("Close", [], null);
   }
 
   @override

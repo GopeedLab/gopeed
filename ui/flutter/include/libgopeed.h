@@ -2,6 +2,7 @@
 
 /* package github.com/GopeedLab/gopeed/bind/desktop */
 
+
 #line 1 "cgo-builtin-export-prolog"
 
 #include <stddef.h>
@@ -10,23 +11,18 @@
 #define GO_CGO_EXPORT_PROLOGUE_H
 
 #ifndef GO_CGO_GOSTRING_TYPEDEF
-typedef struct {
-    const char *p;
-    ptrdiff_t n;
-} _GoString_;
+typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 #endif
 
 #endif
 
 /* Start of preamble from import "C" comments.  */
 
-#line 3 "main.go"
 
-#include <stdlib.h>
 
-#line 1 "cgo-generated-wrapper"
 
 /* End of preamble from import "C" comments.  */
+
 
 /* Start of boilerplate cgo prologue.  */
 #line 1 "cgo-gcc-export-header-prolog"
@@ -60,22 +56,15 @@ typedef double _Complex GoComplex128;
   static assertion to make sure the file is being used on architecture
   at least with matching size of GoInt.
 */
-typedef char _check_for_64_bit_pointer_matching_GoInt[sizeof(void *) == 64 / 8 ? 1 : -1];
+typedef char _check_for_64_bit_pointer_matching_GoInt[sizeof(void*)==64/8 ? 1:-1];
 
 #ifndef GO_CGO_GOSTRING_TYPEDEF
 typedef _GoString_ GoString;
 #endif
 typedef void *GoMap;
 typedef void *GoChan;
-typedef struct {
-    void *t;
-    void *v;
-} GoInterface;
-typedef struct {
-    void *data;
-    GoInt len;
-    GoInt cap;
-} GoSlice;
+typedef struct { void *t; void *v; } GoInterface;
+typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 
 #endif
 
@@ -85,8 +74,8 @@ typedef struct {
 extern "C" {
 #endif
 
-extern __declspec(dllexport) char *Create(char *cfg);
-extern __declspec(dllexport) char *Invoke(GoInt index, char *req);
+extern __declspec(dllexport) char* Init(char* cfg);
+extern __declspec(dllexport) char* Invoke(char* req);
 
 #ifdef __cplusplus
 }

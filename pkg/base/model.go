@@ -228,6 +228,8 @@ type DownloaderHttpConfig struct {
 	Port int `json:"port"`
 	// ApiToken is the auth token for http API
 	ApiToken string `json:"apiToken"`
+	// RunningPort is the http server real listen port.
+	RunningPort int `json:"runningPort"`
 }
 
 type DownloaderProxyConfig struct {

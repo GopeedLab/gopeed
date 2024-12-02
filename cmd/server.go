@@ -60,7 +60,7 @@ func Start(cfg *model.StartConfig) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Server start success on http://%s:%d\n", result.Host, result.Port)
+	fmt.Printf("Server start success on http://%s:%d\n", cfg.DownloadConfig.Http.Host, result)
 	start()
 }
 

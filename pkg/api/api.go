@@ -17,12 +17,10 @@ import (
 type Instance struct {
 	startCfg   *model.StartConfig
 	downloader *download.Downloader
-	running    bool
 
-	httpLock    sync.Mutex
-	srv         *http.Server
-	listener    net.Listener
-	runningPort int
+	httpLock sync.Mutex
+	srv      *http.Server
+	listener net.Listener
 }
 
 func Create(startCfg *model.StartConfig) (*Instance, error) {
@@ -51,44 +49,45 @@ func Create(startCfg *model.StartConfig) (*Instance, error) {
 		return nil, err
 	}
 	i.downloader = downloader
-	i.running = true
 	i.httpLock = sync.Mutex{}
 
 	return i, nil
 }
 
-func (i *Instance) StartHttp() *model.Result[*model.HttpListenResult] {
+func (i *Instance) StartHttp() *model.Result[any] {
 	i.httpLock.Lock()
 	defer i.httpLock.Unlock()
 
 	return i.startHttp()
 }
 
-func (i *Instance) startHttp() *model.Result[*model.HttpListenResult] {
+func (i *Instance) startHttp() *model.Result[any] {
+	httpCfg := i.getHttpConfig()
+	if httpCfg == nil || !httpCfg.Enable {
+		return model.NewErrorResult[any]("HTTP API server not enabled")
+	}
+	if i.srv != nil {
+		return model.NewErrorResult[any]("HTTP API server already started")
+	}
+
+	port, start, err := ListenHttp(httpCfg, i)
+	if err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
+	httpCfg.RunningPort = port
+	go start()
+	return model.NewNilResult()
+}
+
+func (i *Instance) getHttpConfig() *base.DownloaderHttpConfig {
 	var httpCfg *base.DownloaderHttpConfig
-	// if startCfg has http config, first use it
 	if i.startCfg.DownloadConfig != nil && i.startCfg.DownloadConfig.Http != nil {
 		httpCfg = i.startCfg.DownloadConfig.Http
 	} else {
-		cfg, err := i.downloader.GetConfig()
-		if err != nil {
-			return model.NewErrorResult[*model.HttpListenResult](err.Error())
-		}
+		cfg, _ := i.downloader.GetConfig()
 		httpCfg = cfg.Http
 	}
-
-	if httpCfg == nil || !httpCfg.Enable {
-		return model.NewErrorResult[*model.HttpListenResult]("HTTP API server not enabled")
-	}
-	if i.srv != nil {
-		return model.NewErrorResult[*model.HttpListenResult]("HTTP API server already started")
-	}
-	result, start, err := ListenHttp(httpCfg, i)
-	if err != nil {
-		return model.NewErrorResult[*model.HttpListenResult](err.Error())
-	}
-	go start()
-	return model.NewOkResult[*model.HttpListenResult](result)
+	return httpCfg
 }
 
 func (i *Instance) StopHttp() *model.Result[any] {
@@ -105,12 +104,15 @@ func (i *Instance) stopHttp() *model.Result[any] {
 		}
 		i.srv = nil
 		i.listener = nil
-		i.runningPort = 0
+	}
+	httpCfg := i.getHttpConfig()
+	if httpCfg != nil {
+		httpCfg.RunningPort = 0
 	}
 	return model.NewNilResult()
 }
 
-func (i *Instance) RestartHttp() *model.Result[*model.HttpListenResult] {
+func (i *Instance) RestartHttp() *model.Result[any] {
 	i.httpLock.Lock()
 	defer i.httpLock.Unlock()
 
@@ -337,7 +339,6 @@ func (i *Instance) Close() *model.Result[any] {
 			i.downloader.Logger.Warn().Err(err).Msg("close downloader failed")
 		}
 		i.downloader = nil
-		i.running = false
 	}
 
 	return model.NewNilResult()
@@ -349,7 +350,7 @@ type Request struct {
 }
 
 // Invoke support dynamic call method
-func Invoke(server *Instance, request *Request) (ret any) {
+func Invoke(instance *Instance, request *Request) (ret any) {
 	defer func() {
 		if err := recover(); err != nil {
 			ret = model.NewErrorResult[any](fmt.Sprintf("%v", err))
@@ -357,7 +358,7 @@ func Invoke(server *Instance, request *Request) (ret any) {
 	}()
 
 	method, args := request.Method, request.Params
-	dsType := reflect.ValueOf(server)
+	dsType := reflect.ValueOf(instance)
 	fn := dsType.MethodByName(method)
 	numIn := fn.Type().NumIn()
 	in := make([]reflect.Value, numIn)
@@ -378,5 +379,5 @@ func Invoke(server *Instance, request *Request) (ret any) {
 		in[i] = param
 	}
 	retVals := fn.Call(in)
-	return retVals[0]
+	return retVals[0].Interface()
 }

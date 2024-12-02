@@ -17,13 +17,15 @@ import '../model/update_extension_settings.dart';
 import 'model/start_config.dart';
 
 abstract class LibgopeedAbi {
-  Future<String> create(String cfg);
-  Future<String> invoke(int instance, String params);
+  Future<void> init(String cfg);
+  Future<String> invoke(String params);
+}
+
+abstract class LibgopeedApiSingleton {
+  Future<LibgopeedApi> init(StartConfig config);
 }
 
 abstract class LibgopeedApi {
-  Future<void> init(StartConfig cfg);
-
   Future<HttpListenResult> startHttp();
 
   Future<void> stopHttp();

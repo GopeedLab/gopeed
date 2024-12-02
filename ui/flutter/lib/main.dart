@@ -73,10 +73,11 @@ Future<void> init(Args args) async {
 
   final controller = Get.put(AppController());
   try {
-    await LibgopeedBoot.instance.init(StartConfig(
+    final instance = await LibgopeedBoot().init(StartConfig(
       storage: "bolt",
       storageDir: Util.getStorageDir(),
     ));
+    LibgopeedBoot.singleton(instance);
   } catch (e) {
     logger.e("libgopeed init fail", e);
   }

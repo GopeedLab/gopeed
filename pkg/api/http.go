@@ -22,7 +22,7 @@ import (
 
 const instanceKey string = "apiInstance"
 
-func ListenHttp(httpCfg *base.DownloaderHttpConfig, ai *Instance) (*model.HttpListenResult, func(), error) {
+func ListenHttp(httpCfg *base.DownloaderHttpConfig, ai *Instance) (int, func(), error) {
 	var r = mux.NewRouter()
 	r.Methods(http.MethodGet).Path("/api/v1/info").HandlerFunc(Info)
 	r.Methods(http.MethodPost).Path("/api/v1/resolve").HandlerFunc(Resolve)
@@ -106,19 +106,16 @@ func ListenHttp(httpCfg *base.DownloaderHttpConfig, ai *Instance) (*model.HttpLi
 
 	listener, err := net.Listen("tcp", net.JoinHostPort(httpCfg.Host, fmt.Sprintf("%d", httpCfg.Port)))
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 	ai.srv = srv
 	ai.listener = listener
 
-	return &model.HttpListenResult{
-			Host: httpCfg.Host,
-			Port: listener.Addr().(*net.TCPAddr).Port,
-		}, func() {
-			if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				ai.downloader.Logger.Error().Err(err).Msg("http server listen error")
-			}
-		}, nil
+	return listener.Addr().(*net.TCPAddr).Port, func() {
+		if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			ai.downloader.Logger.Error().Err(err).Msg("http server listen error")
+		}
+	}, nil
 }
 
 func getInstance(r *http.Request) *Instance {

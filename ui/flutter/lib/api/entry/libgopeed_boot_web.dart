@@ -20,12 +20,15 @@ import '../../util/extensions.dart';
 import '../../util/util.dart';
 import '../api_exception.dart';
 import '../libgopeed_boot.dart';
+import '../native/libgopeed_interface.dart';
 import '../native/model/start_config.dart';
 import 'libgopeed_boot_base.dart';
 
 LibgopeedBoot create() => LibgopeedBootWeb();
 
-class LibgopeedBootWeb with LibgopeedBootBase implements LibgopeedBoot {
+class LibgopeedBootWeb
+    with LibgopeedBootBase
+    implements LibgopeedBoot, LibgopeedApi {
   late Dio _dio;
   static const String _apiPrefix = '/api/v1';
 
@@ -72,9 +75,10 @@ class LibgopeedBootWeb with LibgopeedBootBase implements LibgopeedBoot {
   }
 
   @override
-  Future<void> init(StartConfig cfg) async {
+  Future<LibgopeedApi> init(StartConfig cfg) async {
     _dio = createDio();
     _dio.options.baseUrl = kDebugMode ? 'http://127.0.0.1:9999' : '';
+    return this;
   }
 
   @override
