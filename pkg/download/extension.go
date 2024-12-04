@@ -703,31 +703,37 @@ type OnDoneContext struct {
 }
 
 type ExtensionTask struct {
-	*Task
-
 	download *Downloader
+	task     *Task
+
+	Meta *ExtensionTaskMeta `json:"meta"`
+}
+
+// ExtensionTaskMeta restricts extension scripts to only modify request info
+type ExtensionTaskMeta struct {
+	Req *base.Request `json:"req"`
 }
 
 func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
 	newTask := task.clone()
-	// Assign the pointer of the properties that the extension supports modification
-	newTask.Meta = task.Meta
-	newTask.Status = task.Status
 	return &ExtensionTask{
-		Task:     newTask,
+		task:     newTask,
 		download: download,
+		Meta: &ExtensionTaskMeta{
+			Req: task.Meta.Req,
+		},
 	}
 }
 
 func (t *ExtensionTask) Continue() error {
 	return t.download.Continue(&TaskFilter{
-		IDs: []string{t.ID},
+		IDs: []string{t.task.ID},
 	})
 }
 
 func (t *ExtensionTask) Pause() error {
 	return t.download.Pause(&TaskFilter{
-		IDs: []string{t.ID},
+		IDs: []string{t.task.ID},
 	})
 }
 
