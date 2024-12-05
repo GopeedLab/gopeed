@@ -62,14 +62,7 @@ class LibgopeedBootNative
     List<dynamic> params,
     T Function(dynamic json)? fromJsonT,
   ) async {
-    final invokeRequest = InvokeRequest(
-        method: method,
-        params: params.map((e) {
-          if (e.toJson != null) {
-            return jsonEncode(e.toJson());
-          }
-          return jsonEncode(e);
-        }).toList());
+    final invokeRequest = InvokeRequest(method: method, params: params);
     final resp = await _libgopeedAbi.invoke(jsonEncode(invokeRequest));
     final result =
         Result<T>.fromJson(jsonDecode(resp), fromJsonT ??= (json) => null as T);
@@ -172,7 +165,7 @@ class LibgopeedBootNative
   @override
   Future<List<Task>> getTasks(TaskFilter? filter) async {
     return _invoke<List<Task>>("GetTasks", _parseTaskFilter(filter),
-        (json) => json.map((e) => Task.fromJson(e)).toList());
+        (json) => (json as List).map((e) => Task.fromJson(e)).toList());
   }
 
   @override
@@ -200,7 +193,7 @@ class LibgopeedBootNative
   @override
   Future<List<Extension>> getExtensions() async {
     return _invoke<List<Extension>>("GetExtensions", [],
-        (json) => json.map((e) => Extension.fromJson(e)).toList());
+        (json) => (json as List).map((e) => Extension.fromJson(e)).toList());
   }
 
   @override

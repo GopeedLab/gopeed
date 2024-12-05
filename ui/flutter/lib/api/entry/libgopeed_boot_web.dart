@@ -125,8 +125,7 @@ class LibgopeedBootWeb
 
   @override
   Future<void> pauseTask(String id) async {
-    await _fetch<void>(
-        () => _dio.put("$_apiPrefix/tasks/$id/pause", data: {}), null);
+    await _fetch<void>(() => _dio.put("$_apiPrefix/tasks/$id/pause"), null);
   }
 
   @override
@@ -139,8 +138,7 @@ class LibgopeedBootWeb
 
   @override
   Future<void> continueTask(String id) async {
-    await _fetch<void>(
-        () => _dio.put("$_apiPrefix/tasks/$id/continue", data: {}), null);
+    await _fetch<void>(() => _dio.put("$_apiPrefix/tasks/$id/continue"), null);
   }
 
   @override

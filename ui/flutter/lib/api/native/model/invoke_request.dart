@@ -5,7 +5,7 @@ part 'invoke_request.g.dart';
 @JsonSerializable()
 class InvokeRequest {
   String method;
-  List<String> params;
+  List<dynamic> params;
 
   InvokeRequest({
     this.method = '',

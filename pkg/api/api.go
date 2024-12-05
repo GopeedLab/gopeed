@@ -2,11 +2,11 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/api/model"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	"net"
 	"net/http"
 	"reflect"
@@ -345,8 +345,8 @@ func (i *Instance) Close() *model.Result[any] {
 }
 
 type Request struct {
-	Method string   `json:"method"`
-	Params []string `json:"params"`
+	Method string `json:"method"`
+	Params []any  `json:"params"`
 }
 
 // Invoke support dynamic call method
@@ -364,6 +364,11 @@ func Invoke(instance *Instance, request *Request) (ret any) {
 	in := make([]reflect.Value, numIn)
 	for i := 0; i < numIn; i++ {
 		paramType := fn.Type().In(i)
+		arg := args[i]
+		if arg == nil {
+			in[i] = reflect.Zero(fn.Type().In(i))
+			continue
+		}
 		var param reflect.Value
 		var paramPtr any
 		if paramType.Kind() == reflect.Ptr {
@@ -373,7 +378,7 @@ func Invoke(instance *Instance, request *Request) (ret any) {
 			param = reflect.New(paramType).Elem()
 			paramPtr = param.Addr().Interface()
 		}
-		if err := json.Unmarshal([]byte(args[i]), paramPtr); err != nil {
+		if err := util.MapToStruct(arg, paramPtr); err != nil {
 			panic(err)
 		}
 		in[i] = param
