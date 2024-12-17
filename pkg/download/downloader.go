@@ -1018,8 +1018,6 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			return
 		}
 		isCreate = task.Status == base.DownloadStatusReady
-
-		d.triggerOnStart(task)
 		task.updateStatus(base.DownloadStatusRunning)
 
 		return
@@ -1036,6 +1034,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		task.lock.Lock()
 		defer task.lock.Unlock()
 
+		d.triggerOnStart(task)
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req)
 			if err != nil {
