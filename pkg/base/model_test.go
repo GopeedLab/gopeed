@@ -17,6 +17,8 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 			&DownloaderStoreConfig{
 				MaxRunning:     5,
 				ProtocolConfig: map[string]any{},
+				Extra:          make(map[string]any),
+				Http:           &DownloaderHttpConfig{},
 				Proxy:          &DownloaderProxyConfig{},
 			},
 		},
@@ -28,6 +30,8 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 			&DownloaderStoreConfig{
 				MaxRunning:     10,
 				ProtocolConfig: map[string]any{},
+				Extra:          make(map[string]any),
+				Http:           &DownloaderHttpConfig{},
 				Proxy:          &DownloaderProxyConfig{},
 			},
 		},
@@ -43,6 +47,8 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{
 					"key": "value",
 				},
+				Extra: make(map[string]any),
+				Http:  &DownloaderHttpConfig{},
 				Proxy: &DownloaderProxyConfig{},
 			},
 		},
@@ -56,6 +62,8 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 			&DownloaderStoreConfig{
 				MaxRunning:     5,
 				ProtocolConfig: map[string]any{},
+				Extra:          make(map[string]any),
+				Http:           &DownloaderHttpConfig{},
 				Proxy: &DownloaderProxyConfig{
 					Enable: true,
 				},
