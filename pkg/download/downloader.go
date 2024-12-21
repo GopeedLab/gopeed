@@ -204,33 +204,29 @@ func (d *Downloader) Setup() error {
 
 						current := task.fetcher.Progress().TotalDownloaded()
 						tick := float64(d.cfg.RefreshInterval) / 1000
+						downloadDataChanged := false
 						if task.Status == base.DownloadStatusRunning {
+							downloadDataChanged = current != task.Progress.Downloaded
 							task.Progress.Used = task.timer.Used()
 							task.Progress.Speed = task.calcSpeed(task.speedArr, current-task.Progress.Downloaded, tick)
 							task.Progress.Downloaded = current
 						}
+
+						uploadDataChanged := false
 						if task.Uploading {
 							uploader := task.fetcher.(fetcher.Uploader)
 							currentUploaded := uploader.UploadedBytes()
+							uploadDataChanged = currentUploaded != task.Progress.Uploaded
 							task.Progress.UploadSpeed = task.calcSpeed(task.uploadSpeedArr, currentUploaded-task.Progress.Uploaded, tick)
 							task.Progress.Uploaded = currentUploaded
 						}
 						d.emit(EventKeyProgress, task)
 
-						// store fetcher progress
-						data, err := task.fetcherManager.Store(task.fetcher)
-						if err != nil {
-							d.Logger.Error().Stack().Err(err).Msgf("serialize fetcher failed: %s", task.ID)
+						// store fetcher progress when download/upload data changed
+						if !downloadDataChanged && !uploadDataChanged {
 							return
 						}
-						if err := d.storage.Put(bucketSave, task.ID, data); err != nil {
-							d.Logger.Error().Stack().Err(err).Msgf("persist fetcher failed: %s", task.ID)
-							return
-						}
-						if err := d.storage.Put(bucketTask, task.ID, task); err != nil {
-							d.Logger.Error().Stack().Err(err).Msgf("persist task failed: %s", task.ID)
-							return
-						}
+						d.saveTask(task)
 					}()
 				}
 			}
@@ -271,6 +267,23 @@ func (d *Downloader) setupFetcher(fm fetcher.FetcherManager, fetcher fetcher.Fet
 		}
 	}
 	fetcher.Setup(ctl)
+}
+
+func (d *Downloader) saveTask(task *Task) error {
+	data, err := task.fetcherManager.Store(task.fetcher)
+	if err != nil {
+		d.Logger.Error().Stack().Err(err).Msgf("serialize fetcher failed: %s", task.ID)
+		return err
+	}
+	if err := d.storage.Put(bucketSave, task.ID, data); err != nil {
+		d.Logger.Error().Stack().Err(err).Msgf("persist fetcher failed: %s", task.ID)
+		return err
+	}
+	if err := d.storage.Put(bucketTask, task.ID, task); err != nil {
+		d.Logger.Error().Stack().Err(err).Msgf("persist task failed: %s", task.ID)
+		return err
+	}
+	return nil
 }
 
 func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
@@ -1008,8 +1021,6 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			return
 		}
 		isCreate = task.Status == base.DownloadStatusReady
-
-		d.triggerOnStart(task)
 		task.updateStatus(base.DownloadStatusRunning)
 
 		return
@@ -1026,6 +1037,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		task.lock.Lock()
 		defer task.lock.Unlock()
 
+		d.triggerOnStart(task)
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req)
 			if err != nil {
@@ -1067,7 +1079,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		if err := task.fetcher.Start(); err != nil {
 			return err
 		}
-		if err := d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
+		if err := d.saveTask(task); err != nil {
 			return err
 		}
 		d.emit(EventKeyStart, task)

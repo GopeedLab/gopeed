@@ -162,9 +162,6 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 func (f *Fetcher) Create(opts *base.Options) error {
 	f.meta.Opts = opts
 
-	if err := base.ParseReqExtra[fhttp.ReqExtra](f.meta.Req); err != nil {
-		return err
-	}
 	if err := base.ParseOptsExtra[fhttp.OptsExtra](f.meta.Opts); err != nil {
 		return err
 	}
@@ -198,6 +195,12 @@ func (f *Fetcher) Start() (err error) {
 	if err != nil {
 		return err
 	}
+
+	// Avoid request extra modified by extension
+	if err = base.ParseReqExtra[fhttp.ReqExtra](f.meta.Req); err != nil {
+		return err
+	}
+
 	if f.chunks == nil {
 		f.chunks = f.splitChunk()
 	}
