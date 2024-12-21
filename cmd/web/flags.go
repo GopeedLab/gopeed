@@ -10,7 +10,7 @@ import (
 )
 
 type args struct {
-	Address    *string `json:"address"`
+	Host       *string `json:"host"`
 	Port       *int    `json:"port"`
 	Username   *string `json:"username"`
 	Password   *string `json:"password"`
@@ -24,7 +24,7 @@ type args struct {
 
 func parse() *args {
 	var cliArgs args
-	cliArgs.Address = flag.String("A", "0.0.0.0", "Bind Address")
+	cliArgs.Host = flag.String("H", "0.0.0.0", "Bind Host")
 	cliArgs.Port = flag.Int("P", 9999, "Bind Port")
 	cliArgs.Username = flag.String("u", "gopeed", "HTTP Basic Auth Username")
 	cliArgs.Password = flag.String("p", "", "HTTP Basic Auth Pwd")
@@ -35,8 +35,8 @@ func parse() *args {
 
 	// args priority: config file > cli args
 	cfgArgs := loadConfig(*cliArgs.configPath)
-	if cfgArgs.Address == nil {
-		cfgArgs.Address = cliArgs.Address
+	if cfgArgs.Host == nil {
+		cfgArgs.Host = cliArgs.Host
 	}
 	if cfgArgs.Port == nil {
 		cfgArgs.Port = cliArgs.Port

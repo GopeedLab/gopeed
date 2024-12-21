@@ -5,9 +5,9 @@ package main
 
 import (
 	"embed"
-	"fmt"
 	"github.com/GopeedLab/gopeed/cmd"
-	"github.com/GopeedLab/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/pkg/api/model"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -42,12 +42,19 @@ func main() {
 		dir = filepath.Dir(exe)
 	}
 
+	if args.DownloadConfig == nil {
+		args.DownloadConfig = &base.DownloaderStoreConfig{}
+	}
+	args.DownloadConfig.Http = &base.DownloaderHttpConfig{
+		Enable:   true,
+		Host:     *args.Host,
+		Port:     *args.Port,
+		ApiToken: *args.ApiToken,
+	}
+
 	cfg := &model.StartConfig{
-		Network:        "tcp",
-		Address:        fmt.Sprintf("%s:%d", *args.Address, *args.Port),
 		Storage:        model.StorageBolt,
 		StorageDir:     filepath.Join(dir, "storage"),
-		ApiToken:       *args.ApiToken,
 		DownloadConfig: args.DownloadConfig,
 		ProductionMode: true,
 		WebEnable:      true,

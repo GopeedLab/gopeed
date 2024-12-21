@@ -14,13 +14,10 @@ const (
 )
 
 type StartConfig struct {
-	Network           string                      `json:"network"`
-	Address           string                      `json:"address"`
 	RefreshInterval   int                         `json:"refreshInterval"`
 	Storage           Storage                     `json:"storage"`
 	StorageDir        string                      `json:"storageDir"`
 	WhiteDownloadDirs []string                    `json:"whiteDownloadDirs"`
-	ApiToken          string                      `json:"apiToken"`
 	DownloadConfig    *base.DownloaderStoreConfig `json:"downloadConfig"`
 
 	ProductionMode bool
@@ -31,12 +28,6 @@ type StartConfig struct {
 }
 
 func (cfg *StartConfig) Init() *StartConfig {
-	if cfg.Network == "" {
-		cfg.Network = "tcp"
-	}
-	if cfg.Address == "" {
-		cfg.Address = "127.0.0.1:0"
-	}
 	if cfg.RefreshInterval == 0 {
 		cfg.RefreshInterval = 350
 	}
@@ -58,4 +49,10 @@ type WebBasicAuth struct {
 func (cfg *WebBasicAuth) Authorization() string {
 	userId := cfg.Username + ":" + cfg.Password
 	return "Basic " + base64.StdEncoding.EncodeToString([]byte(userId))
+}
+
+type HttpListenResult struct {
+	Host string `json:"host"`
+	// Port is the http server real listen port.
+	Port int `json:"port"`
 }

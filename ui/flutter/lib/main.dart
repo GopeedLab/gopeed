@@ -2,12 +2,12 @@ import 'package:args/args.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:gopeed/api/native/model/start_config.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'api/api.dart' as api;
 import 'app/modules/app/controllers/app_controller.dart';
 import 'app/modules/app/views/app_view.dart';
-import 'core/libgopeed_boot.dart';
+import 'api/libgopeed_boot.dart';
 import 'database/database.dart';
 import 'i18n/message.dart';
 import 'util/locale_manager.dart';
@@ -73,10 +73,11 @@ Future<void> init(Args args) async {
 
   final controller = Get.put(AppController());
   try {
-    await controller.loadStartConfig();
-    final startCfg = controller.startConfig.value;
-    controller.runningPort.value = await LibgopeedBoot.instance.start(startCfg);
-    api.init(startCfg.network, controller.runningAddress(), startCfg.apiToken);
+    final instance = await LibgopeedBoot().init(StartConfig(
+      storage: "bolt",
+      storageDir: Util.getStorageDir(),
+    ));
+    LibgopeedBoot.singleton(instance);
   } catch (e) {
     logger.e("libgopeed init fail", e);
   }

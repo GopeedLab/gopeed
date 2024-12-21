@@ -11,7 +11,8 @@ import 'package:path/path.dart' as path;
 import 'package:rounded_loading_button_plus/rounded_loading_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../api/api.dart';
+import '../../../../api/entry/libgopeed_boot_web.dart';
+import '../../../../api/libgopeed_boot.dart';
 import '../../../../api/model/extension.dart';
 import '../../../../api/model/install_extension.dart';
 import '../../../../api/model/switch_extension.dart';
@@ -78,8 +79,9 @@ class ExtensionView extends GetView<ExtensionController> {
                         }
                         _installBtnController.start();
                         try {
-                          await installExtension(InstallExtension(
-                              url: _installUrlController.text));
+                          await LibgopeedBoot.instance.installExtension(
+                              InstallExtension(
+                                  url: _installUrlController.text));
                           Get.snackbar('tip'.tr, 'extensionInstallSuccess'.tr);
                           await controller.load();
                         } catch (e) {
@@ -98,7 +100,7 @@ class ExtensionView extends GetView<ExtensionController> {
                             if (dir != null) {
                               MacSecureUtil.saveBookmark(dir);
                               try {
-                                await installExtension(
+                                await LibgopeedBoot.instance.installExtension(
                                     InstallExtension(devMode: true, url: dir));
                                 Get.snackbar(
                                     'tip'.tr, 'extensionInstallSuccess'.tr);
@@ -133,8 +135,10 @@ class ExtensionView extends GetView<ExtensionController> {
                                         )
                                       : Util.isWeb()
                                           ? Image.network(
-                                              join(
-                                                  '/fs/extensions/${extension.identity}/${extension.icon}'),
+                                              (LibgopeedBoot.instance
+                                                      as LibgopeedBootWeb)
+                                                  .join(
+                                                      '/fs/extensions/${extension.identity}/${extension.icon}'),
                                               width: 48,
                                               height: 48,
                                             )
@@ -155,9 +159,9 @@ class ExtensionView extends GetView<ExtensionController> {
                                     value: !extension.disabled,
                                     onChanged: (value) async {
                                       try {
-                                        await switchExtension(
-                                            extension.identity,
-                                            SwitchExtension(status: value));
+                                        await LibgopeedBoot.instance
+                                            .switchExtension(extension.identity,
+                                                SwitchExtension(status: value));
                                         await controller.load();
                                       } catch (e) {
                                         showErrorMessage(e);
@@ -354,10 +358,11 @@ class ExtensionView extends GetView<ExtensionController> {
                         try {
                           confrimController.start();
                           if (formKey.currentState?.saveAndValidate() == true) {
-                            await updateExtensionSettings(
-                                extension.identity,
-                                UpdateExtensionSettings(
-                                    settings: formKey.currentState!.value));
+                            await LibgopeedBoot.instance
+                                .updateExtensionSettings(
+                                    extension.identity,
+                                    UpdateExtensionSettings(
+                                        settings: formKey.currentState!.value));
                             await controller.load();
                             Get.back();
                           }
@@ -454,7 +459,8 @@ class ExtensionView extends GetView<ExtensionController> {
                   ),
                   onPressed: () async {
                     try {
-                      await deleteExtension(extension.identity);
+                      await LibgopeedBoot.instance
+                          .deleteExtension(extension.identity);
                       await controller.load();
                       Get.back();
                     } catch (e) {
@@ -487,18 +493,19 @@ class ExtensionView extends GetView<ExtensionController> {
                   onPressed: () async {
                     confrimController.start();
                     try {
-                      await updateExtension(extension.identity);
+                      await LibgopeedBoot.instance
+                          .upgradeExtension(extension.identity);
                       await controller.load();
                       controller.updateFlags.remove(extension.identity);
                       Get.back();
-                      showMessage('tip'.tr, 'extensionUpdateSuccess'.tr);
+                      showMessage('tip'.tr, 'extensionUpgradeSuccess'.tr);
                     } catch (e) {
                       showErrorMessage(e);
                     } finally {
                       confrimController.stop();
                     }
                   },
-                  child: Text('newVersionUpdate'.tr),
+                  child: Text('newVersionUpgrade'.tr),
                 ),
               ],
             ));

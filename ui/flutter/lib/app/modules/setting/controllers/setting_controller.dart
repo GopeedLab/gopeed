@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 import 'package:get/get.dart';
-import 'package:gopeed/api/api.dart';
+
+import '../../../../api/libgopeed_boot.dart';
 
 class SettingController extends GetxController {
   final tapStatues = <String, bool>{}.obs;
@@ -28,12 +29,13 @@ class SettingController extends GetxController {
   void fetchLatestVersion() async {
     String? releaseDataStr;
     try {
-      releaseDataStr = (await proxyRequest(
+      releaseDataStr = (await LibgopeedBoot.instance.proxyRequest(
               "https://api.github.com/repos/GopeedLab/gopeed/releases/latest"))
           .data;
     } catch (e) {
-      releaseDataStr =
-          (await proxyRequest("https://gopeed.com/api/release")).data;
+      releaseDataStr = (await LibgopeedBoot.instance
+              .proxyRequest("https://gopeed.com/api/release"))
+          .data;
     }
     if (releaseDataStr == null) {
       return;

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:styled_widget/styled_widget.dart';
 
-import '../../api/api.dart';
+import '../../api/libgopeed_boot.dart';
 import '../../api/model/task.dart';
 import '../../util/file_icon.dart';
 import '../../util/icons.dart';
@@ -95,8 +95,9 @@ class BuildTaskListView extends GetView {
                       try {
                         final force = !appController
                             .downloaderConfig.value.extra.lastDeleteTaskKeep;
-                        await appController.saveConfig();
-                        await deleteTask(id, force);
+                        LibgopeedBoot.instance
+                            .putConfig(appController.downloaderConfig.value);
+                        await LibgopeedBoot.instance.deleteTask(id, force);
                         Get.back();
                       } catch (e) {
                         showErrorMessage(e);
@@ -122,7 +123,7 @@ class BuildTaskListView extends GetView {
             icon: const Icon(Icons.pause),
             onPressed: () async {
               try {
-                await pauseTask(task.id);
+                await LibgopeedBoot.instance.pauseTask(task.id);
               } catch (e) {
                 showErrorMessage(e);
               }
@@ -133,7 +134,7 @@ class BuildTaskListView extends GetView {
             icon: const Icon(Icons.play_arrow),
             onPressed: () async {
               try {
-                await continueTask(task.id);
+                await LibgopeedBoot.instance.continueTask(task.id);
               } catch (e) {
                 showErrorMessage(e);
               }

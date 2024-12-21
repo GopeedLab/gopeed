@@ -18,7 +18,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.6.4+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -85,7 +85,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
-  ffigen: ^8.0.2
+  ffigen: ^11.0.0
   # build json model: dart run build_runner build --delete-conflicting-outputs
   build_runner: ^2.2.1
   json_serializable: ^6.3.2
@@ -150,7 +150,7 @@ flutter_icons:
 ffigen:
   name: LibgopeedBind
   description: Bindings to gopeed library.
-  output: 'lib/core/ffi/libgopeed_bind.dart'
+  output: "lib/api/native/ffi/libgopeed_bind.dart"
   headers:
     entry-points:
-      - 'include/libgopeed.h'
+      - "include/libgopeed.h"

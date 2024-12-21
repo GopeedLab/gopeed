@@ -3,27 +3,32 @@ package main
 import "C"
 import (
 	"encoding/json"
-	"github.com/GopeedLab/gopeed/pkg/rest"
-	"github.com/GopeedLab/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/bind"
+	"github.com/GopeedLab/gopeed/pkg/api"
+	"github.com/GopeedLab/gopeed/pkg/api/model"
 )
 
 func main() {}
 
-//export Start
-func Start(cfg *C.char) (int, *C.char) {
+//export Init
+func Init(cfg *C.char) *C.char {
 	var config model.StartConfig
 	if err := json.Unmarshal([]byte(C.GoString(cfg)), &config); err != nil {
-		return 0, C.CString(err.Error())
+		return C.CString(err.Error())
 	}
-	config.ProductionMode = true
-	realPort, err := rest.Start(&config)
-	if err != nil {
-		return 0, C.CString(err.Error())
+	if err := bind.Init(&config); err != nil {
+		return C.CString(err.Error())
 	}
-	return realPort, nil
+
+	return nil
 }
 
-//export Stop
-func Stop() {
-	rest.Stop()
+//export Invoke
+func Invoke(req *C.char) *C.char {
+	var request api.Request
+	if err := json.Unmarshal([]byte(C.GoString(req)), &request); err != nil {
+		return C.CString(bind.BuildResult(err))
+	}
+
+	return C.CString(bind.Invoke(&request))
 }

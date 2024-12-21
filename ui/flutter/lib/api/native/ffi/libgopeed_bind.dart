@@ -857,27 +857,33 @@ class LibgopeedBind {
   late final __FCmulcr =
       __FCmulcrPtr.asFunction<_Fcomplex Function(_Fcomplex, double)>();
 
-  Start_return Start(
+  ffi.Pointer<ffi.Char> Init(
     ffi.Pointer<ffi.Char> cfg,
   ) {
-    return _Start(
+    return _Init(
       cfg,
     );
   }
 
-  late final _StartPtr =
-      _lookup<ffi.NativeFunction<Start_return Function(ffi.Pointer<ffi.Char>)>>(
-          'Start');
-  late final _Start =
-      _StartPtr.asFunction<Start_return Function(ffi.Pointer<ffi.Char>)>();
+  late final _InitPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)>>('Init');
+  late final _Init = _InitPtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)>();
 
-  void Stop() {
-    return _Stop();
+  ffi.Pointer<ffi.Char> Invoke(
+    ffi.Pointer<ffi.Char> req,
+  ) {
+    return _Invoke(
+      req,
+    );
   }
 
-  late final _StopPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function()>>('Stop');
-  late final _Stop = _StopPtr.asFunction<void Function()>();
+  late final _InvokePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)>>('Invoke');
+  late final _Invoke = _InvokePtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)>();
 }
 
 typedef va_list = ffi.Pointer<ffi.Char>;
@@ -914,6 +920,7 @@ final class _Mbstatet extends ffi.Struct {
 }
 
 typedef errno_t = ffi.Int;
+typedef Darterrno_t = int;
 
 final class _GoString_ extends ffi.Struct {
   external ffi.Pointer<ffi.Char> p;
@@ -923,6 +930,7 @@ final class _GoString_ extends ffi.Struct {
 }
 
 typedef ptrdiff_t = ffi.LongLong;
+typedef Dartptrdiff_t = int;
 
 final class _C_double_complex extends ffi.Struct {
   @ffi.Array.multi([2])
@@ -957,13 +965,7 @@ final class GoSlice extends ffi.Struct {
 
 typedef GoInt = GoInt64;
 typedef GoInt64 = ffi.LongLong;
-
-final class Start_return extends ffi.Struct {
-  @GoInt()
-  external int r0;
-
-  external ffi.Pointer<ffi.Char> r1;
-}
+typedef DartGoInt64 = int;
 
 const int _VCRT_COMPILER_PREPROCESSOR = 1;
 
@@ -993,6 +995,10 @@ const int _HAS_CXX23 = 0;
 
 const int _HAS_NODISCARD = 1;
 
+const int _ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE = 1;
+
+const int _CRT_BUILD_DESKTOP_APP = 1;
+
 const int _UCRT_DISABLED_WARNINGS = 4324;
 
 const int _ARGMAX = 100;
@@ -1009,9 +1015,7 @@ const int _CRT_FUNCTIONS_REQUIRED = 1;
 
 const int _CRT_HAS_CXX17 = 0;
 
-const int _ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE = 1;
-
-const int _CRT_BUILD_DESKTOP_APP = 1;
+const int _CRT_HAS_C11 = 0;
 
 const int _CRT_INTERNAL_NONSTDC_NAMES = 1;
 

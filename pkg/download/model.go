@@ -75,7 +75,7 @@ func (t *Task) Name() string {
 		return t.Meta.Res.Name
 	}
 
-	// Get the name of the first file
+	// get the name of the first file
 	return t.Meta.Res.Files[0].Name
 }
 
@@ -113,13 +113,13 @@ func (t *Task) calcSpeed(speedArr []int64, downloaded int64, usedTime float64) i
 }
 
 type TaskFilter struct {
-	IDs         []string
-	Statuses    []base.Status
-	NotStatuses []base.Status
+	ID        []string      `json:"id"`
+	Status    []base.Status `json:"status"`
+	NotStatus []base.Status `json:"notStatus"`
 }
 
 func (f *TaskFilter) IsEmpty() bool {
-	return len(f.IDs) == 0 && len(f.Statuses) == 0 && len(f.NotStatuses) == 0
+	return len(f.ID) == 0 && len(f.Status) == 0 && len(f.NotStatus) == 0
 }
 
 type DownloaderConfig struct {

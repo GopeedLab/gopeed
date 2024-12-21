@@ -57,7 +57,7 @@ const jaJP = {
     'deleteTaskTip': 'ダウンロードしたファイルを保持',
     'delete': '削除',
     'newVersionTitle': '新しいバージョン @version を発見する',
-    'newVersionUpdate': 'アップデート',
+    'newVersionUpgrade': 'アップデート',
     'newVersionLater': '後で',
     'thanks': '感謝',
     'thanksDesc': 'Gopeedコミュニティの建設に協力してくださったすべての貢献者の方々に感謝します！',

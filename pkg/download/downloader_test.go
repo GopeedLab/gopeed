@@ -400,7 +400,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 1001)
-	err = downloader.Pause(&TaskFilter{IDs: []string{id}})
+	err = downloader.Pause(&TaskFilter{ID: []string{id}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -424,7 +424,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 			wg.Done()
 		}
 	})
-	err = downloader.Continue(&TaskFilter{IDs: []string{id}})
+	err = downloader.Continue(&TaskFilter{ID: []string{id}})
 	wg.Wait()
 	if err != nil {
 		t.Fatal(err)
@@ -551,7 +551,7 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	t.Run("GetTasksByFilter ids", func(t *testing.T) {
 		tasks := downloader.GetTasksByFilter(&TaskFilter{
-			IDs: taskIds,
+			ID: taskIds,
 		})
 		if len(tasks) != len(reqs) {
 			t.Errorf("GetTasksByFilter ids task got = %v, want %v", len(tasks), len(reqs))
@@ -560,7 +560,7 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	t.Run("GetTasksByFilter match ids", func(t *testing.T) {
 		tasks := downloader.GetTasksByFilter(&TaskFilter{
-			IDs: []string{taskIds[0]},
+			ID: []string{taskIds[0]},
 		})
 		if len(tasks) != 1 {
 			t.Errorf("GetTasksByFilter ids task got = %v, want %v", len(tasks), 1)
@@ -569,7 +569,7 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	t.Run("GetTasksByFilter not match ids", func(t *testing.T) {
 		tasks := downloader.GetTasksByFilter(&TaskFilter{
-			IDs: []string{"xxx"},
+			ID: []string{"xxx"},
 		})
 		if len(tasks) != 0 {
 			t.Errorf("GetTasksByFilter ids task got = %v, want %v", len(tasks), 0)
@@ -578,7 +578,7 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	t.Run("GetTasksByFilter status", func(t *testing.T) {
 		tasks := downloader.GetTasksByFilter(&TaskFilter{
-			Statuses: []base.Status{base.DownloadStatusDone},
+			Status: []base.Status{base.DownloadStatusDone},
 		})
 		if len(tasks) != len(reqs) {
 			t.Errorf("GetTasksByFilter status task got = %v, want %v", len(tasks), len(reqs))
@@ -587,7 +587,7 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	t.Run("GetTasksByFilter not match status", func(t *testing.T) {
 		tasks := downloader.GetTasksByFilter(&TaskFilter{
-			Statuses: []base.Status{base.DownloadStatusError},
+			Status: []base.Status{base.DownloadStatusError},
 		})
 		if len(tasks) != 0 {
 			t.Errorf("GetTasksByFilter status task got = %v, want %v", len(tasks), 0)
@@ -596,7 +596,7 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	t.Run("GetTasksByFilter match notStatus", func(t *testing.T) {
 		tasks := downloader.GetTasksByFilter(&TaskFilter{
-			NotStatuses: []base.Status{base.DownloadStatusRunning, base.DownloadStatusPause},
+			NotStatus: []base.Status{base.DownloadStatusRunning, base.DownloadStatusPause},
 		})
 		if len(tasks) != len(reqs) {
 			t.Errorf("GetTasksByFilter match notStatus task got = %v, want %v", len(tasks), len(reqs))
@@ -605,7 +605,7 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	t.Run("GetTasksByFilter not match notStatus", func(t *testing.T) {
 		tasks := downloader.GetTasksByFilter(&TaskFilter{
-			NotStatuses: []base.Status{base.DownloadStatusDone},
+			NotStatus: []base.Status{base.DownloadStatusDone},
 		})
 		if len(tasks) != 0 {
 			t.Errorf("GetTasksByFilter not match notStatus task got = %v, want %v", len(tasks), 0)
@@ -614,8 +614,8 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	t.Run("GetTasksByFilter match ids and status", func(t *testing.T) {
 		tasks := downloader.GetTasksByFilter(&TaskFilter{
-			IDs:      []string{taskIds[0]},
-			Statuses: []base.Status{base.DownloadStatusDone},
+			ID:     []string{taskIds[0]},
+			Status: []base.Status{base.DownloadStatusDone},
 		})
 		if len(tasks) != 1 {
 			t.Errorf("GetTasksByFilter match ids and status task got = %v, want %v", len(tasks), 1)
@@ -624,8 +624,8 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	t.Run("GetTasksByFilter not match ids and status", func(t *testing.T) {
 		tasks := downloader.GetTasksByFilter(&TaskFilter{
-			IDs:      []string{taskIds[0]},
-			Statuses: []base.Status{base.DownloadStatusError},
+			ID:     []string{taskIds[0]},
+			Status: []base.Status{base.DownloadStatusError},
 		})
 		if len(tasks) != 0 {
 			t.Errorf("GetTasksByFilter not match ids and status task got = %v, want %v", len(tasks), 0)

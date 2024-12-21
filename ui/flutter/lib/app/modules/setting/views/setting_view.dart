@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../api/libgopeed_boot.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
@@ -35,7 +36,6 @@ class SettingView extends GetView<SettingController> {
   Widget build(BuildContext context) {
     final appController = Get.find<AppController>();
     final downloaderCfg = appController.downloaderConfig;
-    final startCfg = appController.startConfig;
 
     Timer? timer;
     Future<bool> debounceSave(
@@ -51,8 +51,8 @@ class SettingView extends GetView<SettingController> {
             return;
           }
         }
-        appController
-            .saveConfig()
+        LibgopeedBoot.instance
+            .putConfig(downloaderCfg.value)
             .then((_) => completer.complete(true))
             .onError(completer.completeError);
         if (needRestart) {
@@ -530,7 +530,7 @@ class SettingView extends GetView<SettingController> {
                             launchUrl(Uri.parse('https://gopeed.com'),
                                 mode: LaunchMode.externalApplication);
                           },
-                          child: Text('newVersionUpdate'.tr),
+                          child: Text('newVersionUpgrade'.tr),
                         ),
                       ],
                     ));
@@ -637,7 +637,7 @@ class SettingView extends GetView<SettingController> {
         final portController = TextEditingController(text: port);
         updateAddress() async {
           final newAddress = '${ipController.text}:${portController.text}';
-          if (newAddress != startCfg.value.address) {
+          if (newAddress != proxy.host) {
             proxy.host = newAddress;
 
             await debounceSave();
@@ -718,152 +718,152 @@ class SettingView extends GetView<SettingController> {
     );
 
     // advanced config API items start
-    final buildApiProtocol = _buildConfigItem(
-      'protocol',
-      () => startCfg.value.network == 'tcp'
-          ? 'TCP ${startCfg.value.address}'
-          : 'Unix',
-      (Key key) {
-        final items = <Widget>[
-          SizedBox(
-            width: 80,
-            child: DropdownButtonFormField<String>(
-              value: startCfg.value.network,
-              onChanged: Util.isDesktop()
-                  ? (value) async {
-                      startCfg.update((val) {
-                        val!.network = value!;
-                      });
+    // final buildApiProtocol = _buildConfigItem(
+    //   'protocol',
+    //   () => startCfg.value.host == 'tcp'
+    //       ? 'TCP ${startCfg.value.address}'
+    //       : 'Unix',
+    //   (Key key) {
+    //     final items = <Widget>[
+    //       SizedBox(
+    //         width: 80,
+    //         child: DropdownButtonFormField<String>(
+    //           value: startCfg.value.host,
+    //           onChanged: Util.isDesktop()
+    //               ? (value) async {
+    //                   startCfg.update((val) {
+    //                     val!.host = value!;
+    //                   });
 
-                      await debounceSave(needRestart: true);
-                    }
-                  : null,
-              items: [
-                const DropdownMenuItem<String>(
-                  value: 'tcp',
-                  child: Text('TCP'),
-                ),
-                Util.supportUnixSocket()
-                    ? const DropdownMenuItem<String>(
-                        value: 'unix',
-                        child: Text('Unix'),
-                      )
-                    : null,
-              ].where((e) => e != null).map((e) => e!).toList(),
-            ),
-          )
-        ];
-        if (Util.isDesktop() && startCfg.value.network == 'tcp') {
-          final arr = startCfg.value.address.split(':');
-          var ip = '127.0.0.1';
-          var port = '0';
-          if (arr.length > 1) {
-            ip = arr[0];
-            port = arr[1];
-          }
+    //                   await debounceSave(needRestart: true);
+    //                 }
+    //               : null,
+    //           items: [
+    //             const DropdownMenuItem<String>(
+    //               value: 'tcp',
+    //               child: Text('TCP'),
+    //             ),
+    //             Util.supportUnixSocket()
+    //                 ? const DropdownMenuItem<String>(
+    //                     value: 'unix',
+    //                     child: Text('Unix'),
+    //                   )
+    //                 : null,
+    //           ].where((e) => e != null).map((e) => e!).toList(),
+    //         ),
+    //       )
+    //     ];
+    //     if (Util.isDesktop() && startCfg.value.host == 'tcp') {
+    //       final arr = startCfg.value.address.split(':');
+    //       var ip = '127.0.0.1';
+    //       var port = '0';
+    //       if (arr.length > 1) {
+    //         ip = arr[0];
+    //         port = arr[1];
+    //       }
 
-          final ipController = TextEditingController(text: ip);
-          final portController = TextEditingController(text: port);
-          updateAddress() async {
-            if (ipController.text.isEmpty || portController.text.isEmpty) {
-              return;
-            }
-            final newAddress = '${ipController.text}:${portController.text}';
-            if (newAddress != startCfg.value.address) {
-              startCfg.value.address = newAddress;
+    //       final ipController = TextEditingController(text: ip);
+    //       final portController = TextEditingController(text: port);
+    //       updateAddress() async {
+    //         if (ipController.text.isEmpty || portController.text.isEmpty) {
+    //           return;
+    //         }
+    //         final newAddress = '${ipController.text}:${portController.text}';
+    //         if (newAddress != startCfg.value.address) {
+    //           startCfg.value.address = newAddress;
 
-              final saved = await debounceSave(
-                  check: () async {
-                    // Check if address already in use
-                    final configIp = ipController.text;
-                    final configPort = int.parse(portController.text);
-                    if (configPort == 0) {
-                      return '';
-                    }
-                    try {
-                      final socket = await Socket.connect(configIp, configPort,
-                          timeout: const Duration(seconds: 3));
-                      socket.close();
-                      return 'portInUse'
-                          .trParams({'port': configPort.toString()});
-                    } catch (e) {
-                      return '';
-                    }
-                  },
-                  needRestart: true);
+    //           final saved = await debounceSave(
+    //               check: () async {
+    //                 // Check if address already in use
+    //                 final configIp = ipController.text;
+    //                 final configPort = int.parse(portController.text);
+    //                 if (configPort == 0) {
+    //                   return '';
+    //                 }
+    //                 try {
+    //                   final socket = await Socket.connect(configIp, configPort,
+    //                       timeout: const Duration(seconds: 3));
+    //                   socket.close();
+    //                   return 'portInUse'
+    //                       .trParams({'port': configPort.toString()});
+    //                 } catch (e) {
+    //                   return '';
+    //                 }
+    //               },
+    //               needRestart: true);
 
-              // If save failed, restore the old address
-              if (!saved) {
-                final oldAddress =
-                    (await appController.loadStartConfig()).address;
-                startCfg.update((val) async {
-                  val!.address = oldAddress;
-                });
-              }
-            }
-          }
+    //           // If save failed, restore the old address
+    //           if (!saved) {
+    //             // final oldAddress =
+    //             //     (await appController.loadStartConfig()).address;
+    //             // startCfg.update((val) async {
+    //             //   val!.address = oldAddress;
+    //             // });
+    //           }
+    //         }
+    //       }
 
-          ipController.addListener(updateAddress);
-          portController.addListener(updateAddress);
-          items.addAll([
-            const Padding(padding: EdgeInsets.only(left: 20)),
-            Flexible(
-              child: TextFormField(
-                controller: ipController,
-                decoration: const InputDecoration(
-                  labelText: 'IP',
-                  contentPadding: EdgeInsets.all(0.0),
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
-                ],
-              ),
-            ),
-            const Padding(padding: EdgeInsets.only(left: 10)),
-            Flexible(
-              child: TextFormField(
-                controller: portController,
-                decoration: InputDecoration(
-                  labelText: 'port'.tr,
-                  contentPadding: const EdgeInsets.all(0.0),
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  NumericalRangeFormatter(min: 0, max: 65535),
-                ],
-              ),
-            ),
-          ]);
-        }
+    //       ipController.addListener(updateAddress);
+    //       portController.addListener(updateAddress);
+    //       items.addAll([
+    //         const Padding(padding: EdgeInsets.only(left: 20)),
+    //         Flexible(
+    //           child: TextFormField(
+    //             controller: ipController,
+    //             decoration: const InputDecoration(
+    //               labelText: 'IP',
+    //               contentPadding: EdgeInsets.all(0.0),
+    //             ),
+    //             keyboardType: TextInputType.number,
+    //             inputFormatters: [
+    //               FilteringTextInputFormatter.allow(RegExp('[0-9.]')),
+    //             ],
+    //           ),
+    //         ),
+    //         const Padding(padding: EdgeInsets.only(left: 10)),
+    //         Flexible(
+    //           child: TextFormField(
+    //             controller: portController,
+    //             decoration: InputDecoration(
+    //               labelText: 'port'.tr,
+    //               contentPadding: const EdgeInsets.all(0.0),
+    //             ),
+    //             keyboardType: TextInputType.number,
+    //             inputFormatters: [
+    //               FilteringTextInputFormatter.digitsOnly,
+    //               NumericalRangeFormatter(min: 0, max: 65535),
+    //             ],
+    //           ),
+    //         ),
+    //       ]);
+    //     }
 
-        return Form(
-          child: Row(
-            children: items,
-          ),
-        );
-      },
-    );
-    final buildApiToken = _buildConfigItem('apiToken',
-        () => startCfg.value.apiToken.isEmpty ? 'notSet'.tr : 'set'.tr,
-        (Key key) {
-      final apiTokenController =
-          TextEditingController(text: startCfg.value.apiToken);
-      apiTokenController.addListener(() async {
-        if (apiTokenController.text != startCfg.value.apiToken) {
-          startCfg.value.apiToken = apiTokenController.text;
+    //     return Form(
+    //       child: Row(
+    //         children: items,
+    //       ),
+    //     );
+    //   },
+    // );
+    // final buildApiToken = _buildConfigItem('apiToken',
+    //     () => startCfg.value.apiToken.isEmpty ? 'notSet'.tr : 'set'.tr,
+    //     (Key key) {
+    //   final apiTokenController =
+    //       TextEditingController(text: startCfg.value.apiToken);
+    //   apiTokenController.addListener(() async {
+    //     if (apiTokenController.text != startCfg.value.apiToken) {
+    //       startCfg.value.apiToken = apiTokenController.text;
 
-          await debounceSave(needRestart: true);
-        }
-      });
-      return TextField(
-        key: key,
-        obscureText: true,
-        controller: apiTokenController,
-        focusNode: FocusNode(),
-      );
-    });
+    //       await debounceSave(needRestart: true);
+    //     }
+    //   });
+    //   return TextField(
+    //     key: key,
+    //     obscureText: true,
+    //     controller: apiTokenController,
+    //     focusNode: FocusNode(),
+    //   );
+    // });
 
     // advanced config log items start
     buildLogsDir() {
@@ -993,16 +993,16 @@ class SettingView extends GetView<SettingController> {
                           child: Column(
                         children: _addDivider([buildProxy()]),
                       )),
-                      const Text('API'),
-                      Card(
-                          child: Column(
-                        children: _addDivider([
-                          buildApiProtocol(),
-                          Util.isDesktop() && startCfg.value.network == 'tcp'
-                              ? buildApiToken()
-                              : null,
-                        ]),
-                      )),
+                      // const Text('API'),
+                      // Card(
+                      //     child: Column(
+                      //   children: _addDivider([
+                      //     buildApiProtocol(),
+                      //     Util.isDesktop() && startCfg.value.host == 'tcp'
+                      //         ? buildApiToken()
+                      //         : null,
+                      //   ]),
+                      // )),
                       Text('developer'.tr),
                       Card(
                           child: Column(

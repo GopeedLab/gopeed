@@ -171,6 +171,7 @@ type DownloaderStoreConfig struct {
 	MaxRunning     int                    `json:"maxRunning"`     // MaxRunning is the max running download count
 	ProtocolConfig map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
 	Extra          map[string]any         `json:"extra"`
+	Http           *DownloaderHttpConfig  `json:"http"`
 	Proxy          *DownloaderProxyConfig `json:"proxy"`
 }
 
@@ -180,6 +181,12 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	}
 	if cfg.ProtocolConfig == nil {
 		cfg.ProtocolConfig = make(map[string]any)
+	}
+	if cfg.Extra == nil {
+		cfg.Extra = make(map[string]any)
+	}
+	if cfg.Http == nil {
+		cfg.Http = &DownloaderHttpConfig{}
 	}
 	if cfg.Proxy == nil {
 		cfg.Proxy = &DownloaderProxyConfig{}
@@ -203,10 +210,26 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	if cfg.Extra == nil {
 		cfg.Extra = beforeCfg.Extra
 	}
+	if cfg.Http == nil {
+		cfg.Http = beforeCfg.Http
+	}
 	if cfg.Proxy == nil {
 		cfg.Proxy = beforeCfg.Proxy
 	}
 	return cfg
+}
+
+type DownloaderHttpConfig struct {
+	// Enable is the flag that enable http server
+	Enable bool `json:"Enable"`
+	// Host is the http server listen address.
+	Host string `json:"host"`
+	// Port is the http server listen port.
+	Port int `json:"port"`
+	// ApiToken is the auth token for http API
+	ApiToken string `json:"apiToken"`
+	// RunningPort is the http server real listen port.
+	RunningPort int `json:"runningPort"`
 }
 
 type DownloaderProxyConfig struct {

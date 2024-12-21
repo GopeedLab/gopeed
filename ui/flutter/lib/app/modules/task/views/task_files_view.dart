@@ -5,7 +5,8 @@ import 'package:path/path.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../api/api.dart' as api;
+import '../../../../api/entry/libgopeed_boot_web.dart';
+import '../../../../api/libgopeed_boot.dart';
 import '../../../../util/browser_download/browser_download.dart';
 import '../../../../util/file_icon.dart';
 import '../../../../util/icons.dart';
@@ -84,8 +85,10 @@ class TaskFilesView extends GetView<TaskFilesController> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: Util.isWeb()
                                     ? () {
-                                        final accessUrl = api.join(
-                                            "/fs/tasks/${controller.task.value!.id}$fileRelativePath");
+                                        final accessUrl = (LibgopeedBoot
+                                                .instance as LibgopeedBootWeb)
+                                            .join(
+                                                "/fs/tasks/${controller.task.value!.id}$fileRelativePath");
                                         return [
                                           IconButton(
                                               icon:

@@ -74,14 +74,8 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-
-/* Return type for Start */
-struct Start_return {
-	GoInt r0;
-	char* r1;
-};
-extern struct Start_return Start(char* cfg);
-extern void Stop();
+extern __declspec(dllexport) char* Init(char* cfg);
+extern __declspec(dllexport) char* Invoke(char* req);
 
 #ifdef __cplusplus
 }

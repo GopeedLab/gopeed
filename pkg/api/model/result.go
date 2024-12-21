@@ -1,5 +1,7 @@
 package model
 
+import "encoding/json"
+
 type RespCode int
 
 const (
@@ -20,6 +22,15 @@ type Result[T any] struct {
 	Data T        `json:"data"`
 }
 
+func (r *Result[T]) Json() string {
+	buf, _ := json.Marshal(r)
+	return string(buf)
+}
+
+func (r *Result[T]) HasError() bool {
+	return r.Code != CodeOk
+}
+
 func NewOkResult[T any](data T) *Result[T] {
 	return &Result[T]{
 		Code: CodeOk,
@@ -33,14 +44,14 @@ func NewNilResult() *Result[any] {
 	}
 }
 
-func NewErrorResult(msg string, code ...RespCode) *Result[any] {
+func NewErrorResult[T any](msg string, code ...RespCode) *Result[T] {
 	// if code is not provided, the default code is CodeError
 	c := CodeError
 	if len(code) > 0 {
 		c = code[0]
 	}
 
-	return &Result[any]{
+	return &Result[T]{
 		Code: c,
 		Msg:  msg,
 	}

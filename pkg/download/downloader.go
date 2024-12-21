@@ -252,7 +252,7 @@ func (d *Downloader) setupFetcher(fm fetcher.FetcherManager, fetcher fetcher.Fet
 	ctl.GetConfig = func(v any) {
 		d.getProtocolConfig(fm.Name(), v)
 	}
-	// Get proxy config, task request proxy config has higher priority, then use global proxy config
+	// get proxy config, task request proxy config has higher priority, then use global proxy config
 	ctl.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
 		if requestProxy == nil {
 			return d.cfg.Proxy.ToHandler()
@@ -390,7 +390,7 @@ func (d *Downloader) Pause(filter *TaskFilter) (err error) {
 		return d.pauseAll()
 	}
 
-	filter.NotStatuses = []base.Status{base.DownloadStatusPause, base.DownloadStatusError, base.DownloadStatusDone}
+	filter.NotStatus = []base.Status{base.DownloadStatusPause, base.DownloadStatusError, base.DownloadStatusDone}
 	pauseTasks := d.GetTasksByFilter(filter)
 	if len(pauseTasks) == 0 {
 		return ErrTaskNotFound
@@ -430,7 +430,7 @@ func (d *Downloader) Continue(filter *TaskFilter) (err error) {
 		return d.continueAll()
 	}
 
-	filter.NotStatuses = []base.Status{base.DownloadStatusRunning, base.DownloadStatusDone}
+	filter.NotStatus = []base.Status{base.DownloadStatusRunning, base.DownloadStatusDone}
 	continueTasks := d.GetTasksByFilter(filter)
 	if len(continueTasks) == 0 {
 		return ErrTaskNotFound
@@ -527,7 +527,7 @@ func (d *Downloader) ContinueBatch(filter *TaskFilter) (err error) {
 
 func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 	if filter == nil || filter.IsEmpty() {
-		return d.deleteAll()
+		return d.deleteAll(force)
 	}
 
 	deleteTasks := d.GetTasksByFilter(filter)
@@ -572,24 +572,27 @@ func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 	return
 }
 
-func (d *Downloader) deleteAll() (err error) {
+func (d *Downloader) deleteAll(force bool) (err error) {
+	deleteTasksPtr := make([]*Task, 0)
+
 	func() {
 		d.lock.Lock()
 		defer d.lock.Unlock()
 
+		deleteTasksPtr = append(deleteTasksPtr, d.tasks...)
 		d.tasks = make([]*Task, 0)
 		d.waitTasks = make([]*Task, 0)
 	}()
 
-	for _, task := range d.tasks {
-		if err = d.doDelete(task, true); err != nil {
+	for _, task := range deleteTasksPtr {
+		if err = d.doDelete(task, force); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (d *Downloader) Stats(id string) (sr any, err error) {
+func (d *Downloader) GetTaskStats(id string) (sr any, err error) {
 	task := d.GetTask(id)
 	if task == nil {
 		return sr, ErrTaskNotFound
@@ -719,10 +722,10 @@ func (d *Downloader) GetTasksByFilter(filter *TaskFilter) []*Task {
 	}
 
 	idMatch := func(task *Task) bool {
-		if len(filter.IDs) == 0 {
+		if len(filter.ID) == 0 {
 			return true
 		}
-		for _, id := range filter.IDs {
+		for _, id := range filter.ID {
 			if task.ID == id {
 				return true
 			}
@@ -730,10 +733,10 @@ func (d *Downloader) GetTasksByFilter(filter *TaskFilter) []*Task {
 		return false
 	}
 	statusMatch := func(task *Task) bool {
-		if len(filter.Statuses) == 0 {
+		if len(filter.Status) == 0 {
 			return true
 		}
-		for _, status := range filter.Statuses {
+		for _, status := range filter.Status {
 			if task.Status == status {
 				return true
 			}
@@ -741,10 +744,10 @@ func (d *Downloader) GetTasksByFilter(filter *TaskFilter) []*Task {
 		return false
 	}
 	notStatusMatch := func(task *Task) bool {
-		if len(filter.NotStatuses) == 0 {
+		if len(filter.NotStatus) == 0 {
 			return true
 		}
-		for _, status := range filter.NotStatuses {
+		for _, status := range filter.NotStatus {
 			if task.Status == status {
 				return false
 			}
