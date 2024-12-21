@@ -8,9 +8,16 @@ void showErrorMessage(msg) {
     Get.snackbar(title, msg.msg!);
     return;
   }
-  if (msg is Exception && (msg as dynamic).message is Result) {
-    Get.snackbar(title, ((msg as dynamic).message as Result).msg!);
-    return;
+  if (msg is Exception) {
+    final message = (msg as dynamic).message;
+    if (message is Result) {
+      Get.snackbar(title, ((msg as dynamic).message as Result).msg!);
+      return;
+    }
+    if (message is String) {
+      Get.snackbar(title, message);
+      return;
+    }
   }
   Get.snackbar(title, msg.toString());
 }
