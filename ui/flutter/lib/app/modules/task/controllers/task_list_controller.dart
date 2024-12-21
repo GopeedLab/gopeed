@@ -46,7 +46,7 @@ abstract class TaskListController extends GetxController {
 
   getTasksState() async {
     final tasks =
-        await LibgopeedBoot.instance.getTasks(TaskFilter(statuses: statuses));
+        await LibgopeedBoot.instance.getTasks(TaskFilter(status: statuses));
     // sort tasks by create time
     tasks.sort(compare);
     this.tasks.value = tasks;

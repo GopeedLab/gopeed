@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-var instance, _ = Create(nil)
-
 func TestInvoke(t *testing.T) {
 	doTestInvoke(t, "Info", []any{}, model.CodeOk)
 	doTestInvoke(t, "Info1", []any{}, model.CodeError)
@@ -21,6 +19,9 @@ func TestInvoke(t *testing.T) {
 }
 
 func doTestInvoke(t *testing.T, method string, params []any, expectCode model.RespCode) {
+	instance, _ := Create(nil)
+	defer instance.Close()
+
 	result := Invoke(instance, &Request{
 		Method: method,
 		Params: params,

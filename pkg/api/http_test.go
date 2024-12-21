@@ -21,8 +21,8 @@ import (
 )
 
 var (
-	instance, _ = Create(nil)
-	restPort    int
+	httpInstance *Instance
+	restPort     int
 
 	taskReq = &base.Request{
 		Extra: map[string]any{
@@ -91,7 +91,7 @@ func TestCreateTask(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(1)
-		Downloader.Listener(func(event *download.Event) {
+		httpInstance.Listener(func(event *download.Event) {
 			if event.Key == download.EventKeyFinally {
 				wg.Done()
 			}
@@ -118,7 +118,7 @@ func TestCreateDirectTask(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup
 		wg.Add(1)
-		Downloader.Listener(func(event *download.Event) {
+		httpInstance.Listener(func(event *download.Event) {
 			if event.Key == download.EventKeyFinally {
 				wg.Done()
 			}
@@ -157,7 +157,7 @@ func TestCreateDirectTaskWithResoled(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup
 		wg.Add(1)
-		Downloader.Listener(func(event *download.Event) {
+		httpInstance.Listener(func(event *download.Event) {
 			if event.Key == download.EventKeyFinally {
 				wg.Done()
 			}
@@ -181,7 +181,7 @@ func TestPauseAndContinueTask(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup
 		wg.Add(1)
-		Downloader.Listener(func(event *download.Event) {
+		httpInstance.Listener(func(event *download.Event) {
 			switch event.Key {
 			case download.EventKeyFinally:
 				wg.Done()
@@ -215,10 +215,7 @@ func TestPauseAndContinueTask(t *testing.T) {
 
 func TestPauseAllAndContinueALLTasks(t *testing.T) {
 	doTest(func() {
-		cfg, err := Downloader.GetConfig()
-		if err != nil {
-			t.Fatal(err)
-		}
+		cfg := UnwrapResult(httpInstance.GetConfig())
 
 		createAndPause := func() {
 			taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
@@ -276,7 +273,7 @@ func TestDeleteAllTasks(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(taskCount)
-		Downloader.Listener(func(event *download.Event) {
+		httpInstance.Listener(func(event *download.Event) {
 			if event.Key == download.EventKeyFinally {
 				wg.Done()
 			}
@@ -302,7 +299,7 @@ func TestDeleteTasksByStatues(t *testing.T) {
 
 		var wg sync.WaitGroup
 		wg.Add(taskCount)
-		Downloader.Listener(func(event *download.Event) {
+		httpInstance.Listener(func(event *download.Event) {
 			if event.Key == download.EventKeyFinally {
 				wg.Done()
 			}
@@ -326,7 +323,7 @@ func TestGetTasks(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup
 		wg.Add(1)
-		Downloader.Listener(func(event *download.Event) {
+		httpInstance.Listener(func(event *download.Event) {
 			if event.Key == download.EventKeyFinally {
 				wg.Done()
 			}
@@ -450,16 +447,16 @@ func TestDeleteExtension(t *testing.T) {
 	})
 }
 
-func TestUpdateCheckExtension(t *testing.T) {
+func TestUpgradeCheckExtension(t *testing.T) {
 	doTest(func() {
 		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
-		resp := httpRequestCheckOk[*model.UpgradeCheckExtensionResp](http.MethodGet, "/api/v1/extensions/"+identity+"/update", nil)
+		resp := httpRequestCheckOk[*model.UpgradeCheckExtensionResp](http.MethodGet, "/api/v1/extensions/"+identity+"/upgrade", nil)
 		// no new version
 		if resp.NewVersion != "" {
 			t.Errorf("UpgradeCheckExtension() got = %v, want %v", resp.NewVersion, "")
 		}
 		// force update
-		httpRequestCheckOk[any](http.MethodPost, "/api/v1/extensions/"+identity+"/update", nil)
+		httpRequestCheckOk[any](http.MethodPost, "/api/v1/extensions/"+identity+"/upgrade", nil)
 	})
 }
 
@@ -510,13 +507,19 @@ func TestDoProxy(t *testing.T) {
 func TestApiToken(t *testing.T) {
 	var cfg = &model.StartConfig{}
 	cfg.Init()
-	cfg.ApiToken = "123456"
-	fileListener := doStart(cfg)
+	cfg.DownloadConfig = &base.DownloaderStoreConfig{
+		Http: &base.DownloaderHttpConfig{
+			Enable:   true,
+			ApiToken: "123456",
+		},
+	}
+	httpInstance, _ = Create(cfg)
+	fileListener := doStart()
 	defer func() {
 		if err := fileListener.Close(); err != nil {
 			panic(err)
 		}
-		Stop()
+		httpInstance.Close()
 	}()
 
 	status, _ := doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
@@ -525,7 +528,7 @@ func TestApiToken(t *testing.T) {
 	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"X-Api-Token": cfg.ApiToken,
+		"X-Api-Token": cfg.DownloadConfig.Http.ApiToken,
 	}, nil)
 	if status != http.StatusOK {
 		t.Errorf("TestApiToken() got = %v, want %v", status, http.StatusOK)
@@ -536,18 +539,24 @@ func TestApiToken(t *testing.T) {
 func TestAuthorization(t *testing.T) {
 	var cfg = &model.StartConfig{}
 	cfg.Init()
-	cfg.ApiToken = "123456"
+	cfg.DownloadConfig = &base.DownloaderStoreConfig{
+		Http: &base.DownloaderHttpConfig{
+			Enable:   true,
+			ApiToken: "123456",
+		},
+	}
 	cfg.WebEnable = true
 	cfg.WebBasicAuth = &model.WebBasicAuth{
 		Username: "admin",
 		Password: "123456",
 	}
-	fileListener := doStart(cfg)
+	httpInstance, _ = Create(cfg)
+	fileListener := doStart()
 	defer func() {
 		if err := fileListener.Close(); err != nil {
 			panic(err)
 		}
-		Stop()
+		httpInstance.Close()
 	}()
 
 	status, _ := doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
@@ -563,7 +572,7 @@ func TestAuthorization(t *testing.T) {
 	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"X-Api-Token": cfg.ApiToken,
+		"X-Api-Token": cfg.DownloadConfig.Http.ApiToken,
 	}, nil)
 	if status != http.StatusOK {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
@@ -577,17 +586,23 @@ func doTest(handler func()) {
 		cfg.Storage = storage
 		cfg.StorageDir = ".test_storage"
 		cfg.WebEnable = true
-		fileListener := doStart(cfg)
+		cfg.DownloadConfig = &base.DownloaderStoreConfig{
+			Http: &base.DownloaderHttpConfig{
+				Enable: true,
+			},
+		}
+		httpInstance, _ = Create(cfg)
+		fileListener := doStart()
 		defer func() {
 			if err := fileListener.Close(); err != nil {
 				panic(err)
 			}
-			Stop()
-			Downloader.Clear()
+			httpInstance.StopHttp()
+			httpInstance.Clear()
 		}()
 		defer func() {
-			Downloader.Pause(nil)
-			Downloader.Delete(nil, true)
+			httpInstance.PauseTasks(nil)
+			httpInstance.DeleteTasks(nil, true)
 			os.RemoveAll(cfg.StorageDir)
 		}()
 		taskReq.URL = "http://" + fileListener.Addr().String() + "/" + test.BuildName
@@ -597,13 +612,17 @@ func doTest(handler func()) {
 	testFunc(model.StorageBolt)
 }
 
-func doStart(cfg *model.StartConfig) net.Listener {
-	port, err := Start(cfg)
-	if err != nil {
-		panic(err)
-	}
+func doStart() net.Listener {
+	port := UnwrapResult(httpInstance.StartHttp())
 	restPort = port
 	return test.StartTestFileServer()
+}
+
+func UnwrapResult[T any](result *model.Result[T]) T {
+	if result.HasError() {
+		panic(result.Msg)
+	}
+	return result.Data
 }
 
 func doHttpRequest0(method string, path string, headers map[string]string, body any) (int, []byte) {

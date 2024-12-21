@@ -721,13 +721,13 @@ func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
 
 func (t *ExtensionTask) Continue() error {
 	return t.download.Continue(&TaskFilter{
-		IDs: []string{t.ID},
+		ID: []string{t.ID},
 	})
 }
 
 func (t *ExtensionTask) Pause() error {
 	return t.download.Pause(&TaskFilter{
-		IDs: []string{t.ID},
+		ID: []string{t.ID},
 	})
 }
 

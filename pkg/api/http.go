@@ -47,8 +47,8 @@ func ListenHttp(httpCfg *base.DownloaderHttpConfig, ai *Instance) (int, func(), 
 	r.Methods(http.MethodDelete).Path("/api/v1/extensions/{identity}").HandlerFunc(DeleteExtension)
 	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/upgrade").HandlerFunc(UpgradeCheckExtension)
 	r.Methods(http.MethodPost).Path("/api/v1/extensions/{identity}/upgrade").HandlerFunc(UpgradeExtension)
-	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
 	if ai.startCfg.WebEnable {
+		r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
 		r.PathPrefix("/fs/tasks").Handler(http.FileServer(&taskFileSystem{
 			downloader: ai.downloader,
 		}))
@@ -359,9 +359,9 @@ func parseFilter(r *http.Request, w http.ResponseWriter, filter *download.TaskFi
 		return false
 	}
 
-	filter.IDs = r.Form["id"]
-	filter.Statuses = convertStatues(r.Form["status"])
-	filter.NotStatuses = convertStatues(r.Form["notStatus"])
+	filter.ID = r.Form["id"]
+	filter.Status = convertStatues(r.Form["status"])
+	filter.NotStatus = convertStatues(r.Form["notStatus"])
 	return true
 }
 

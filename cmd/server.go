@@ -56,11 +56,11 @@ func Start(cfg *model.StartConfig) {
 
 	watchExit(instance)
 
-	result, start, err := api.ListenHttp(cfg.DownloadConfig.Http, instance)
+	port, start, err := api.ListenHttp(cfg.DownloadConfig.Http, instance)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Server start success on http://%s:%d\n", cfg.DownloadConfig.Http.Host, result)
+	fmt.Printf("Server start success on http://%s:%d\n", cfg.DownloadConfig.Http.Host, port)
 	start()
 }
 

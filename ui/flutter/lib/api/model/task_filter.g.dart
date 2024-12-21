@@ -7,11 +7,11 @@ part of 'task_filter.dart';
 // **************************************************************************
 
 TaskFilter _$TaskFilterFromJson(Map<String, dynamic> json) => TaskFilter(
-      ids: (json['ids'] as List<dynamic>?)?.map((e) => e as String).toList(),
-      statuses: (json['statuses'] as List<dynamic>?)
+      id: (json['ids'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      status: (json['statuses'] as List<dynamic>?)
           ?.map((e) => $enumDecode(_$StatusEnumMap, e))
           .toList(),
-      notStatuses: (json['notStatuses'] as List<dynamic>?)
+      notStatus: (json['notStatuses'] as List<dynamic>?)
           ?.map((e) => $enumDecode(_$StatusEnumMap, e))
           .toList(),
     );
@@ -25,11 +25,11 @@ Map<String, dynamic> _$TaskFilterToJson(TaskFilter instance) {
     }
   }
 
-  writeNotNull('ids', instance.ids);
+  writeNotNull('ids', instance.id);
   writeNotNull(
-      'statuses', instance.statuses?.map((e) => _$StatusEnumMap[e]!).toList());
+      'statuses', instance.status?.map((e) => _$StatusEnumMap[e]!).toList());
   writeNotNull('notStatuses',
-      instance.notStatuses?.map((e) => _$StatusEnumMap[e]!).toList());
+      instance.notStatus?.map((e) => _$StatusEnumMap[e]!).toList());
   return val;
 }
 

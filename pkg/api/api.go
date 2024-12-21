@@ -54,29 +54,34 @@ func Create(startCfg *model.StartConfig) (*Instance, error) {
 	return i, nil
 }
 
-func (i *Instance) StartHttp() *model.Result[any] {
+func (i *Instance) Listener(listener download.Listener) *model.Result[any] {
+	i.downloader.Listener(listener)
+	return model.NewNilResult()
+}
+
+func (i *Instance) StartHttp() *model.Result[int] {
 	i.httpLock.Lock()
 	defer i.httpLock.Unlock()
 
 	return i.startHttp()
 }
 
-func (i *Instance) startHttp() *model.Result[any] {
+func (i *Instance) startHttp() *model.Result[int] {
 	httpCfg := i.getHttpConfig()
 	if httpCfg == nil || !httpCfg.Enable {
-		return model.NewErrorResult[any]("HTTP API server not enabled")
+		return model.NewErrorResult[int]("HTTP API server not enabled")
 	}
 	if i.srv != nil {
-		return model.NewErrorResult[any]("HTTP API server already started")
+		return model.NewErrorResult[int]("HTTP API server already started")
 	}
 
 	port, start, err := ListenHttp(httpCfg, i)
 	if err != nil {
-		return model.NewErrorResult[any](err.Error())
+		return model.NewErrorResult[int](err.Error())
 	}
 	httpCfg.RunningPort = port
 	go start()
-	return model.NewNilResult()
+	return model.NewOkResult(port)
 }
 
 func (i *Instance) getHttpConfig() *base.DownloaderHttpConfig {
@@ -112,7 +117,7 @@ func (i *Instance) stopHttp() *model.Result[any] {
 	return model.NewNilResult()
 }
 
-func (i *Instance) RestartHttp() *model.Result[any] {
+func (i *Instance) RestartHttp() *model.Result[int] {
 	i.httpLock.Lock()
 	defer i.httpLock.Unlock()
 
@@ -169,7 +174,7 @@ func (i *Instance) CreateTaskBatch(req *model.CreateTaskBatch) *model.Result[[]s
 
 func (i *Instance) PauseTask(taskId string) *model.Result[any] {
 	err := i.downloader.Pause(&download.TaskFilter{
-		IDs: []string{taskId},
+		ID: []string{taskId},
 	})
 	if err != nil {
 		return model.NewErrorResult[any](err.Error())
@@ -187,7 +192,7 @@ func (i *Instance) PauseTasks(filter *download.TaskFilter) *model.Result[any] {
 
 func (i *Instance) ContinueTask(taskId string) *model.Result[any] {
 	err := i.downloader.Continue(&download.TaskFilter{
-		IDs: []string{taskId},
+		ID: []string{taskId},
 	})
 	if err != nil {
 		return model.NewErrorResult[any](err.Error())
@@ -205,7 +210,7 @@ func (i *Instance) ContinueTasks(filter *download.TaskFilter) *model.Result[any]
 
 func (i *Instance) DeleteTask(taskId string, force bool) *model.Result[any] {
 	err := i.downloader.Delete(&download.TaskFilter{
-		IDs: []string{taskId},
+		ID: []string{taskId},
 	}, force)
 	if err != nil {
 		return model.NewErrorResult[any](err.Error())
@@ -341,6 +346,13 @@ func (i *Instance) Close() *model.Result[any] {
 		i.downloader = nil
 	}
 
+	return model.NewNilResult()
+}
+
+func (i *Instance) Clear() *model.Result[any] {
+	if err := i.downloader.Clear(); err != nil {
+		return model.NewErrorResult[any](err.Error())
+	}
 	return model.NewNilResult()
 }
 

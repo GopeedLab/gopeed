@@ -5,11 +5,11 @@ part 'task_filter.g.dart';
 
 @JsonSerializable()
 class TaskFilter {
-  List<String>? ids;
-  List<Status>? statuses;
-  List<Status>? notStatuses;
+  List<String>? id;
+  List<Status>? status;
+  List<Status>? notStatus;
 
-  TaskFilter({this.ids, this.statuses, this.notStatuses});
+  TaskFilter({this.id, this.status, this.notStatus});
 
   factory TaskFilter.fromJson(Map<String, dynamic> json) =>
       _$TaskFilterFromJson(json);

@@ -59,14 +59,14 @@ class LibgopeedBootWeb
     }
 
     Map<String, dynamic> params = {};
-    if (filter.ids != null) {
-      params['ids'] = filter.ids;
+    if (filter.id != null) {
+      params['id'] = filter.id;
     }
-    if (filter.statuses != null) {
-      params['statuses'] = filter.statuses;
+    if (filter.status != null) {
+      params['status'] = filter.status;
     }
-    if (filter.notStatuses != null) {
-      params['notStatuses'] = filter.notStatuses;
+    if (filter.notStatus != null) {
+      params['notStatus'] = filter.notStatus;
     }
     if (params.isEmpty) {
       return null;
