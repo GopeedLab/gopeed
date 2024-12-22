@@ -702,38 +702,34 @@ type OnDoneContext struct {
 	Task *Task `json:"task"`
 }
 
+// ExtensionTask is a wrapper of Task, it's used to interact with extension scripts.
+// Avoid extension scripts modifying task directly, use ExtensionTask to encapsulate task,
+// only some fields can be modified, such as request info.
 type ExtensionTask struct {
 	download *Downloader
-	task     *Task
 
-	Meta *ExtensionTaskMeta `json:"meta"`
-}
-
-// ExtensionTaskMeta restricts extension scripts to only modify request info
-type ExtensionTaskMeta struct {
-	Req *base.Request `json:"req"`
+	*Task
 }
 
 func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
+	// restricts extension scripts to only modify request info
 	newTask := task.clone()
+	newTask.Meta.Req = task.Meta.Req
 	return &ExtensionTask{
-		task:     newTask,
 		download: download,
-		Meta: &ExtensionTaskMeta{
-			Req: task.Meta.Req,
-		},
+		Task:     newTask,
 	}
 }
 
 func (t *ExtensionTask) Continue() error {
 	return t.download.Continue(&TaskFilter{
-		IDs: []string{t.task.ID},
+		IDs: []string{t.ID},
 	})
 }
 
 func (t *ExtensionTask) Pause() error {
 	return t.download.Pause(&TaskFilter{
-		IDs: []string{t.task.ID},
+		IDs: []string{t.ID},
 	})
 }
 
