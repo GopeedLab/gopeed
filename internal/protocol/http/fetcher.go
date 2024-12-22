@@ -333,10 +333,18 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 				err = NewRequestError(resp.StatusCode, resp.Status)
 				return err
 			}
-			// Http request success, reset retry times
-			chunk.retryTimes = 0
+			reader := NewTimeoutReader(resp.Body, 30*time.Second)
 			for {
-				n, err := resp.Body.Read(buf)
+				n, err := reader.Read(buf)
+				if err != nil {
+					if err == io.EOF {
+						return nil
+					}
+					return err
+				}
+
+				// download success, reset retry times
+				chunk.retryTimes = 0
 				if n > 0 {
 					_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
 					if err != nil {
@@ -344,14 +352,7 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 					}
 					chunk.Downloaded += int64(n)
 				}
-				if err != nil {
-					if err == io.EOF {
-						return nil
-					}
-					return err
-				}
 			}
-			return nil
 		}()
 		if err != nil {
 			// If canceled, do not retry

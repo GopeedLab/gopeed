@@ -165,6 +165,8 @@ func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 			if r == "" {
 				writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
 				writer.WriteHeader(200)
+				(writer.(http.Flusher)).Flush()
+
 				file, err := os.Open(BuildFile)
 				if err != nil {
 					panic(err)
@@ -204,6 +206,8 @@ func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 				writer.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, BuildSize))
 				writer.Header().Set("Accept-Ranges", "bytes")
 				writer.WriteHeader(206)
+				(writer.(http.Flusher)).Flush()
+
 				file, err := os.Open(BuildFile)
 				if err != nil {
 					writer.WriteHeader(500)
