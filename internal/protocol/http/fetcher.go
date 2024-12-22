@@ -299,7 +299,7 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 			// check if all failed
 			allFailed := true
 			for _, c := range f.chunks {
-				if chunk.Downloaded < chunk.End-chunk.Begin+1 && c.retryTimes < maxRetries {
+				if c.Downloaded < c.End-c.Begin+1 && c.retryTimes < maxRetries {
 					allFailed = false
 					break
 				}
@@ -336,15 +336,6 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 			reader := NewTimeoutReader(resp.Body, 30*time.Second)
 			for {
 				n, err := reader.Read(buf)
-				if err != nil {
-					if err == io.EOF {
-						return nil
-					}
-					return err
-				}
-
-				// download success, reset retry times
-				chunk.retryTimes = 0
 				if n > 0 {
 					_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
 					if err != nil {
@@ -352,6 +343,14 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 					}
 					chunk.Downloaded += int64(n)
 				}
+				if err != nil {
+					if err == io.EOF {
+						return nil
+					}
+					return err
+				}
+				// download success, reset retry times
+				chunk.retryTimes = 0
 			}
 		}()
 		if err != nil {
