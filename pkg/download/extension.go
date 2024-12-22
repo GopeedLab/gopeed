@@ -702,38 +702,57 @@ type OnDoneContext struct {
 	Task *Task `json:"task"`
 }
 
+// ExtensionTask is a wrapper of Task, it's used to interact with extension scripts.
+// Avoid extension scripts modifying task directly, use ExtensionTask to encapsulate task,
+// only some fields can be modified, such as request info.
 type ExtensionTask struct {
 	download *Downloader
-	task     *Task
 
-	Meta *ExtensionTaskMeta `json:"meta"`
+	ID        string             `json:"id"`
+	Protocol  string             `json:"protocol"`
+	Meta      *ExtensionTaskMeta `json:"meta"` // restrict extension scripts to only modify request info
+	Status    base.Status        `json:"status"`
+	Uploading bool               `json:"uploading"`
+	Progress  *Progress          `json:"progress"`
+	CreatedAt time.Time          `json:"createdAt"`
+	UpdatedAt time.Time          `json:"updatedAt"`
 }
 
 // ExtensionTaskMeta restricts extension scripts to only modify request info
 type ExtensionTaskMeta struct {
-	Req *base.Request `json:"req"`
+	Req  *base.Request  `json:"req"`
+	Res  *base.Resource `json:"res"`
+	Opts *base.Options  `json:"opts"`
 }
 
 func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
 	newTask := task.clone()
 	return &ExtensionTask{
-		task:     newTask,
 		download: download,
+		ID:       newTask.ID,
+		Protocol: newTask.Protocol,
 		Meta: &ExtensionTaskMeta{
-			Req: task.Meta.Req,
+			Req:  task.Meta.Req,
+			Res:  newTask.Meta.Res,
+			Opts: newTask.Meta.Opts,
 		},
+		Status:    newTask.Status,
+		Uploading: newTask.Uploading,
+		Progress:  newTask.Progress,
+		CreatedAt: newTask.CreatedAt,
+		UpdatedAt: newTask.UpdatedAt,
 	}
 }
 
 func (t *ExtensionTask) Continue() error {
 	return t.download.Continue(&TaskFilter{
-		IDs: []string{t.task.ID},
+		IDs: []string{t.ID},
 	})
 }
 
 func (t *ExtensionTask) Pause() error {
 	return t.download.Pause(&TaskFilter{
-		IDs: []string{t.task.ID},
+		IDs: []string{t.ID},
 	})
 }
 
