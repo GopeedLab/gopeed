@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -333,7 +334,7 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 				err = NewRequestError(resp.StatusCode, resp.Status)
 				return err
 			}
-			reader := NewTimeoutReader(resp.Body, 30*time.Second)
+			reader := NewTimeoutReader(resp.Body, 15*time.Second)
 			for {
 				n, err := reader.Read(buf)
 				if n > 0 {
@@ -452,6 +453,9 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 
 func (f *Fetcher) buildClient() *http.Client {
 	transport := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: 15 * time.Second,
+		}).DialContext,
 		Proxy: f.ctl.GetProxy(f.meta.Req.Proxy),
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: f.meta.Req.SkipVerifyCert,
