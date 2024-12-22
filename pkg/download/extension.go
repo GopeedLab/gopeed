@@ -708,39 +708,16 @@ type OnDoneContext struct {
 type ExtensionTask struct {
 	download *Downloader
 
-	ID        string             `json:"id"`
-	Protocol  string             `json:"protocol"`
-	Meta      *ExtensionTaskMeta `json:"meta"` // restrict extension scripts to only modify request info
-	Status    base.Status        `json:"status"`
-	Uploading bool               `json:"uploading"`
-	Progress  *Progress          `json:"progress"`
-	CreatedAt time.Time          `json:"createdAt"`
-	UpdatedAt time.Time          `json:"updatedAt"`
-}
-
-// ExtensionTaskMeta restricts extension scripts to only modify request info
-type ExtensionTaskMeta struct {
-	Req  *base.Request  `json:"req"`
-	Res  *base.Resource `json:"res"`
-	Opts *base.Options  `json:"opts"`
+	*Task
 }
 
 func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
+	// restricts extension scripts to only modify request info
 	newTask := task.clone()
+	newTask.Meta.Req = task.Meta.Req
 	return &ExtensionTask{
 		download: download,
-		ID:       newTask.ID,
-		Protocol: newTask.Protocol,
-		Meta: &ExtensionTaskMeta{
-			Req:  task.Meta.Req,
-			Res:  newTask.Meta.Res,
-			Opts: newTask.Meta.Opts,
-		},
-		Status:    newTask.Status,
-		Uploading: newTask.Uploading,
-		Progress:  newTask.Progress,
-		CreatedAt: newTask.CreatedAt,
-		UpdatedAt: newTask.UpdatedAt,
+		Task:     newTask,
 	}
 }
 
