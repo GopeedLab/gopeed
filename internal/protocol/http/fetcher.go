@@ -266,8 +266,13 @@ func (f *Fetcher) fetch() {
 	for i := 0; i < len(f.chunks); i++ {
 		i := i
 		f.eg.Go(func() error {
+			err := f.fetchChunk(i, ctx)
+			// if canceled, fail fast
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
 			fr := &fetchResult{
-				err: f.fetchChunk(i, ctx),
+				err: err,
 			}
 			fetchResults[i] = fr
 			return nil
@@ -275,16 +280,16 @@ func (f *Fetcher) fetch() {
 	}
 
 	go func() {
-		f.eg.Wait()
-		var err error
+		err := f.eg.Wait()
+		// error returned only if canceled, just return
+		if err != nil {
+			return
+		}
+		// check all fetch results, if any error, return
 		for _, fr := range fetchResults {
-			// check if canceled
-			if errors.Is(fr.err, context.Canceled) {
-				return
-			}
-			// return first error
-			if err == nil && fr.err != nil {
+			if fr.err != nil {
 				err = fr.err
+				break
 			}
 		}
 
