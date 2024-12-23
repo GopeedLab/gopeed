@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/armon/go-socks5"
@@ -36,7 +37,7 @@ const (
 )
 
 func StartTestFileServer() net.Listener {
-	return startTestServer(func() http.Handler {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
 		return http.FileServer(http.Dir(Dir))
 	})
 }
@@ -52,7 +53,7 @@ func (s *SlowFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func StartTestSlowFileServer(delay time.Duration) net.Listener {
-	return startTestServer(func() http.Handler {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
 		return &SlowFileServer{
 			delay:   delay,
 			handler: http.FileServer(http.Dir(Dir)),
@@ -61,7 +62,7 @@ func StartTestSlowFileServer(delay time.Duration) net.Listener {
 }
 
 func StartTestCustomServer() net.Listener {
-	return startTestServer(func() http.Handler {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
 			file, err := os.Open(BuildFile)
@@ -88,7 +89,7 @@ func StartTestCustomServer() net.Listener {
 
 func StartTestRetryServer() net.Listener {
 	counter := 0
-	return startTestServer(func() http.Handler {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
 			counter++
@@ -108,7 +109,7 @@ func StartTestRetryServer() net.Listener {
 }
 
 func StartTestPostServer() net.Listener {
-	return startTestServer(func() http.Handler {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
 			if request.Method == "POST" && request.Header.Get("Authorization") != "" {
@@ -132,7 +133,7 @@ func StartTestPostServer() net.Listener {
 
 func StartTestErrorServer() net.Listener {
 	counter := 0
-	return startTestServer(func() http.Handler {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
 			counter++
@@ -149,7 +150,7 @@ func StartTestErrorServer() net.Listener {
 func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 	var connections atomic.Int32
 
-	return startTestServer(func() http.Handler {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
 			defer func() {
@@ -172,7 +173,7 @@ func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 					panic(err)
 				}
 				defer file.Close()
-				slowCopy(writer, file, delay)
+				slowCopy(sl, writer, file, delay)
 			} else {
 				// split range
 				s := strings.Split(r, "=")
@@ -215,7 +216,7 @@ func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 				}
 				defer file.Close()
 				file.Seek(start, 0)
-				slowCopyN(writer, file, end-start+1, delay)
+				slowCopyN(sl, writer, file, end-start+1, delay)
 			}
 		})
 		return mux
@@ -223,9 +224,12 @@ func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 }
 
 // slowCopyN copies n bytes from src to dst, speed limit is bytes per second
-func slowCopy(dst io.Writer, src io.Reader, delay int64) (written int64, err error) {
+func slowCopy(sl *shutdownListener, dst io.Writer, src io.Reader, delay int64) (written int64, err error) {
 	buf := make([]byte, 32*1024)
 	for {
+		if sl.isShutdown {
+			return 0, errors.New("server shutdown")
+		}
 		nr, er := src.Read(buf)
 		if nr > 0 {
 			nw, ew := dst.Write(buf[0:nr])
@@ -254,8 +258,8 @@ func slowCopy(dst io.Writer, src io.Reader, delay int64) (written int64, err err
 	return written, err
 }
 
-func slowCopyN(dst io.Writer, src io.Reader, n int64, delay int64) (written int64, err error) {
-	written, err = slowCopy(dst, io.LimitReader(src, n), delay)
+func slowCopyN(sl *shutdownListener, dst io.Writer, src io.Reader, n int64, delay int64) (written int64, err error) {
+	written, err = slowCopy(sl, dst, io.LimitReader(src, n), delay)
 	if written == n {
 		return n, nil
 	}
@@ -266,7 +270,7 @@ func slowCopyN(dst io.Writer, src io.Reader, n int64, delay int64) (written int6
 	return
 }
 
-func startTestServer(serverHandle func() http.Handler) net.Listener {
+func startTestServer(serverHandle func(sl *shutdownListener) http.Handler) net.Listener {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		panic(err)
@@ -276,7 +280,7 @@ func startTestServer(serverHandle func() http.Handler) net.Listener {
 		panic(err)
 	}
 	defer file.Close()
-	// 随机生成一个文件
+	// Write random data
 	l := int64(8192)
 	buf := make([]byte, l)
 	size := int64(0)
@@ -293,21 +297,24 @@ func startTestServer(serverHandle func() http.Handler) net.Listener {
 		size += l
 	}
 	server := &http.Server{}
-	server.Handler = serverHandle()
-	go server.Serve(listener)
-
-	return &shutdownListener{
+	sl := &shutdownListener{
 		server:   server,
 		Listener: listener,
 	}
+	server.Handler = serverHandle(sl)
+	go server.Serve(listener)
+
+	return sl
 }
 
 type shutdownListener struct {
-	server *http.Server
+	server     *http.Server
+	isShutdown bool
 	net.Listener
 }
 
 func (c *shutdownListener) Close() error {
+	c.isShutdown = true
 	closeErr := c.server.Shutdown(context.Background())
 	if err := ifExistAndRemove(BuildFile); err != nil {
 		fmt.Println(err)

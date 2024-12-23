@@ -26,6 +26,9 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const connectTimeout = 15 * time.Second
+const readTimeout = 15 * time.Second
+
 type RequestError struct {
 	Code int
 	Msg  string
@@ -104,7 +107,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if base.HttpCodePartialContent == httpResp.StatusCode || (base.HttpCodeOK == httpResp.StatusCode && httpResp.Header.Get(base.HttpHeaderAcceptRanges) == base.HttpHeaderBytes && strings.HasPrefix(httpResp.Header.Get(base.HttpHeaderContentRange), base.HttpHeaderBytes)) {
 		// response 206 status code, support breakpoint continuation
 		res.Range = true
-		// 解析资源大小: bytes 0-1000/1001 => 1001
+		// parse content length from Content-Range header, eg: bytes 0-1000/1001
 		contentTotal := path.Base(httpResp.Header.Get(base.HttpHeaderContentRange))
 		if contentTotal != "" {
 			parse, err := strconv.ParseInt(contentTotal, 10, 64)
@@ -147,7 +150,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 			file.Name = filename
 		}
 	}
-	// Get file filePath by URL
+	// get file filePath by URL
 	if file.Name == "" {
 		file.Name = path.Base(httpReq.URL.Path)
 	}
@@ -251,23 +254,40 @@ func (f *Fetcher) Wait() (err error) {
 	return <-f.doneCh
 }
 
+type fetchResult struct {
+	err error
+}
+
 func (f *Fetcher) fetch() {
 	var ctx context.Context
 	ctx, f.cancel = context.WithCancel(context.Background())
 	f.eg, _ = errgroup.WithContext(ctx)
+	fetchResults := make([]*fetchResult, len(f.chunks))
 	for i := 0; i < len(f.chunks); i++ {
 		i := i
 		f.eg.Go(func() error {
-			return f.fetchChunk(i, ctx)
+			fr := &fetchResult{
+				err: f.fetchChunk(i, ctx),
+			}
+			fetchResults[i] = fr
+			return nil
 		})
 	}
 
 	go func() {
-		err := f.eg.Wait()
-		// check if canceled
-		if errors.Is(err, context.Canceled) {
-			return
+		f.eg.Wait()
+		var err error
+		for _, fr := range fetchResults {
+			// check if canceled
+			if errors.Is(fr.err, context.Canceled) {
+				return
+			}
+			// return first error
+			if err == nil && fr.err != nil {
+				err = fr.err
+			}
 		}
+
 		f.file.Close()
 		// Update file last modified time
 		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
@@ -290,24 +310,11 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	for {
 		// if chunk is completed, return
 		if f.meta.Res.Range && chunk.Downloaded >= chunk.End-chunk.Begin+1 {
-			return
+			return nil
 		}
 
 		if chunk.retryTimes >= maxRetries {
-			if !f.meta.Res.Range {
-				return
-			}
-			// check if all failed
-			allFailed := true
-			for _, c := range f.chunks {
-				if c.Downloaded < c.End-c.Begin+1 && c.retryTimes < maxRetries {
-					allFailed = false
-					break
-				}
-			}
-			if allFailed {
-				return
-			}
+			return
 		}
 
 		var (
@@ -334,7 +341,7 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 				err = NewRequestError(resp.StatusCode, resp.Status)
 				return err
 			}
-			reader := NewTimeoutReader(resp.Body, 15*time.Second)
+			reader := NewTimeoutReader(resp.Body, readTimeout)
 			for {
 				n, err := reader.Read(buf)
 				if n > 0 {
@@ -350,8 +357,6 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 					}
 					return err
 				}
-				// download success, reset retry times
-				chunk.retryTimes = 0
 			}
 		}()
 		if err != nil {
@@ -454,7 +459,7 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 func (f *Fetcher) buildClient() *http.Client {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout: 15 * time.Second,
+			Timeout: connectTimeout,
 		}).DialContext,
 		Proxy: f.ctl.GetProxy(f.meta.Req.Proxy),
 		TLSClientConfig: &tls.Config{

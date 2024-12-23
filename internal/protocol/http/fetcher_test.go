@@ -133,10 +133,11 @@ func TestFetcher_DownloadLimit(t *testing.T) {
 }
 
 func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
-	listener := test.StartTestLimitServer(16, 10000)
+	listener := test.StartTestLimitServer(16, readTimeout.Milliseconds()+5000)
 	defer listener.Close()
 
 	downloadError(listener, 1, t)
+	downloadError(listener, 4, t)
 }
 
 func TestFetcher_DownloadResume(t *testing.T) {
