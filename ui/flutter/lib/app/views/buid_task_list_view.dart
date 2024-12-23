@@ -4,14 +4,13 @@ import 'package:styled_widget/styled_widget.dart';
 
 import '../../api/api.dart';
 import '../../api/model/task.dart';
-import '../../util/file_icon.dart';
-import '../../util/icons.dart';
 import '../../util/message.dart';
 import '../../util/util.dart';
 import '../modules/app/controllers/app_controller.dart';
 import '../modules/task/controllers/task_controller.dart';
 import '../modules/task/views/task_view.dart';
 import '../routes/app_pages.dart';
+import 'file_icon.dart';
 
 class BuildTaskListView extends GetView {
   final List<Task> tasks;
@@ -185,8 +184,8 @@ class BuildTaskListView extends GetView {
               ListTile(
                   title: Text(task.name),
                   leading: isFolderTask()
-                      ? const Icon(FaIcons.folder)
-                      : Icon(FaIcons.allIcons[findIcon(task.name)])),
+                      ? const Icon(folderIcon)
+                      : Icon(fileIcon(task.name))),
               Row(
                 children: [
                   Expanded(

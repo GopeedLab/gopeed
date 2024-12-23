@@ -18,7 +18,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.6.4+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -49,7 +49,6 @@ dependencies:
   logger: ^1.3.0
   desktop_drop: ^0.4.3
   package_info_plus: ^4.0.0
-  fluent_ui: ^4.4.0
   path: any
   badges: ^3.0.3
   app_links: ^3.4.2
@@ -69,6 +68,7 @@ dependencies:
   toggle_switch: ^2.3.0
   permission_handler: ^11.3.1
   device_info_plus: ^9.1.2
+  checkable_treeview: ^1.0.0
 dependency_overrides:
   permission_handler_windows:
     git:
@@ -118,9 +118,9 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
-    - family: FontAwesome
+    - family: Gopeed
       fonts:
-        - asset: assets/fonts/FontAwesome.ttf
+        - asset: assets/fonts/Gopeed.ttf
   #   - family: Trajan Pro
   #     fonts:
   #       - asset: fonts/TrajanPro.ttf
@@ -150,7 +150,7 @@ flutter_icons:
 ffigen:
   name: LibgopeedBind
   description: Bindings to gopeed library.
-  output: 'lib/core/ffi/libgopeed_bind.dart'
+  output: "lib/core/ffi/libgopeed_bind.dart"
   headers:
     entry-points:
-      - 'include/libgopeed.h'
+      - "include/libgopeed.h"
