@@ -826,7 +826,7 @@ func (d *Downloader) watch(task *Task) {
 	}
 
 	// When delete a not resolved task, need check if the task resource is nil
-	if task.Meta.Res == nil {
+	if task.Meta.Res == nil || d.GetTask(task.ID) == nil {
 		return
 	}
 
