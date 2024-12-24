@@ -262,7 +262,7 @@ func (f *Fetcher) fetch() {
 	var ctx context.Context
 	ctx, f.cancel = context.WithCancel(context.Background())
 	f.eg, _ = errgroup.WithContext(ctx)
-	fetchResults := make([]*fetchResult, len(f.chunks))
+	chunkErrs := make([]error, len(f.chunks))
 	for i := 0; i < len(f.chunks); i++ {
 		i := i
 		f.eg.Go(func() error {
@@ -271,10 +271,7 @@ func (f *Fetcher) fetch() {
 			if errors.Is(err, context.Canceled) {
 				return err
 			}
-			fr := &fetchResult{
-				err: err,
-			}
-			fetchResults[i] = fr
+			chunkErrs[i] = err
 			return nil
 		})
 	}
@@ -286,9 +283,9 @@ func (f *Fetcher) fetch() {
 			return
 		}
 		// check all fetch results, if any error, return
-		for _, fr := range fetchResults {
-			if fr.err != nil {
-				err = fr.err
+		for _, chunkErr := range chunkErrs {
+			if chunkErr != nil {
+				err = chunkErr
 				break
 			}
 		}
