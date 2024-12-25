@@ -3,55 +3,74 @@ import 'package:checkable_treeview/checkable_treeview.dart';
 import 'package:flutter/material.dart';
 import '../api/model/resource.dart';
 import '../app/views/file_icon.dart';
+import 'util.dart';
 
 extension ListFileInfoExtension on List<FileInfo> {
   List<TreeNode<int>> toTreeNodes() {
-    final rootNodes = <String, TreeNode<int>>{};
+    final List<TreeNode<int>> rootNodes = [];
+    final Map<String, TreeNode<int>> dirNodes = {};
+    var nodeIndex = 0;
 
     for (var i = 0; i < length; i++) {
-      _addFileToTree(rootNodes, this[i], i);
-    }
+      final file = this[i];
+      final parts = file.path.split('/');
+      String currentPath = '';
+      TreeNode<int>? parentNode;
 
-    return rootNodes.values.toList();
-  }
+      // Create or get directory nodes
+      for (final part in parts) {
+        if (part.isEmpty) continue;
 
-  void _addFileToTree(
-      Map<String, TreeNode<int>> rootNodes, FileInfo file, int index) {
-    final pathParts = _getPathParts(file);
-    var currentNodes = rootNodes;
+        currentPath += '/$part';
+        if (!dirNodes.containsKey(currentPath)) {
+          final node = TreeNode<int>(
+            value: nodeIndex++,
+            label: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(file.name),
+                Text(Util.fmtByte(file.size)),
+              ],
+            ),
+            icon: Icon(
+              fileIcon(part, isFolder: true),
+              size: 18,
+            ),
+            children: [],
+          );
+          dirNodes[currentPath] = node;
 
-    final fullPath = <String>[];
-
-    for (var i = 0; i < pathParts.length; i++) {
-      final part = pathParts[i];
-      fullPath.add(part);
-      final isLastPart = i == pathParts.length - 1;
-
-      if (!currentNodes.containsKey(part)) {
-        currentNodes[part] = TreeNode(
-          label: Text(part),
-          value: isLastPart ? index : -1,
-          icon: isLastPart ? fileIcon(part) : folderIcon,
-          isSelected: true,
-          children: [],
-        );
+          if (parentNode == null) {
+            rootNodes.add(node);
+          } else {
+            parentNode.children.add(node);
+          }
+        }
+        parentNode = dirNodes[currentPath];
       }
 
-      if (!isLastPart) {
-        final nodeChildren = currentNodes[part]!.children;
-        currentNodes = Map.fromEntries(
-          nodeChildren.map((node) => MapEntry(
-                (node.label as Text).data!,
-                node,
-              )),
-        );
+      // Create file node using file.name
+      final fileNode = TreeNode<int>(
+        value: nodeIndex++,
+        label: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(file.name),
+            Text(Util.fmtByte(file.size)),
+          ],
+        ),
+        icon: Icon(fileIcon(file.name, isFolder: false), size: 18),
+        children: [],
+      );
+
+      // Add file node to parent or root
+      if (parentNode != null) {
+        parentNode.children.add(fileNode);
+      } else {
+        rootNodes.add(fileNode);
       }
     }
-  }
 
-  List<String> _getPathParts(FileInfo file) {
-    final fullPath =
-        file.path.isEmpty ? file.name : '${file.path}/${file.name}';
-    return fullPath.split('/')..removeWhere((part) => part.isEmpty);
+    return rootNodes;
   }
 }

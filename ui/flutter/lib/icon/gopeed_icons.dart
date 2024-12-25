@@ -36,8 +36,13 @@ class Gopeed {
   static const IconData install = IconData(0xe800, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData android = IconData(0xe801, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData cd = IconData(0xe802, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData folder_bt = IconData(0xe803, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_bt = IconData(0xe804, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData folder = IconData(0xf07b, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData sort = IconData(0xf0dc, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData html5 = IconData(0xf13b, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file = IconData(0xf15b, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_alt = IconData(0xf15c, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData file_pdf = IconData(0xf1c1, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData file_word = IconData(0xf1c2, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData file_excel = IconData(0xf1c3, fontFamily: _kFontFam, fontPackage: _kFontPkg);
@@ -48,5 +53,4 @@ class Gopeed {
   static const IconData file_video = IconData(0xf1c8, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData file_code = IconData(0xf1c9, fontFamily: _kFontFam, fontPackage: _kFontPkg);
   static const IconData app_store_ios = IconData(0xf370, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_download = IconData(0xf56d, fontFamily: _kFontFam, fontPackage: _kFontPkg);
 }

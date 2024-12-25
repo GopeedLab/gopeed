@@ -21,6 +21,7 @@ import '../../../../util/extensions.dart';
 import '../../../routes/app_pages.dart';
 import '../../../views/compact_checkbox.dart';
 import '../../../views/directory_selector.dart';
+import '../../../views/file_tree_view.dart';
 import '../../app/controllers/app_controller.dart';
 import '../../history/views/history_view.dart';
 import '../controllers/create_controller.dart';
@@ -700,10 +701,13 @@ class CreateView extends GetView<CreateController> {
                     child: Form(
                         key: createFormKey,
                         autovalidateMode: AutovalidateMode.always,
-                        child: TreeView(
-                            key: _fileTreeViewKey,
-                            nodes: rr.res.files.toTreeNodes(),
-                            onSelectionChanged: (e) {})),
+                        child: FileTreeView(
+                          files: rr.res.files,
+                          initialValues: rr.res.files.asMap().keys.toList(),
+                          onSelectionChanged: (List<int> values) {
+                            controller.selectedIndexes.value = values;
+                          },
+                        )),
                   );
                 },
               ),
