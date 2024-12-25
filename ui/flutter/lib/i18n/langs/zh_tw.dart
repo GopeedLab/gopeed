@@ -107,6 +107,8 @@ const zhTW = {
     'skipVerifyCert': '跳過憑證驗證',
     'name': '名稱',
     'size': '大小',
-    'fileSelectTip': '已選擇 @count 項，共 @size',
+    'unknown': '未知',
+    'fileSelectedCount': '文件數：',
+    'fileSelectedSize': '大小：',
   }
 };

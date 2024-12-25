@@ -47,6 +47,11 @@ class _FileTreeViewState extends State<FileTreeView> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedFileCount =
+        key.currentState?.getSelectedValues().where((e) => e != null).length ??
+            widget.files.length;
+    final selectdFileSize = calcSelectedSize(null);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -59,6 +64,8 @@ class _FileTreeViewState extends State<FileTreeView> {
             child: TreeView(
               key: key,
               nodes: buildTreeNodes(),
+              showExpandCollapseButton: true,
+              showSelectAll: true,
               onSelectionChanged: (selectedValues) {
                 setState(() {});
                 widget.onSelectionChanged(selectedValues
@@ -66,7 +73,6 @@ class _FileTreeViewState extends State<FileTreeView> {
                     .map((e) => e!)
                     .toList());
               },
-              showSelectAll: true,
               selectAllTrailing: (context) {
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -130,7 +136,6 @@ class _FileTreeViewState extends State<FileTreeView> {
                   ],
                 );
               },
-              showExpandCollapseButton: true,
             ),
           ),
         ),
@@ -169,15 +174,23 @@ class _FileTreeViewState extends State<FileTreeView> {
                 },
               ),
             ),
-            Text('fileSelectTip'.trParams({
-              'count': (key.currentState
-                          ?.getSelectedValues()
-                          .where((e) => e != null)
-                          .length ??
-                      widget.files.length)
-                  .toString(),
-              'size': Util.fmtByte(calcSelectedSize(null)),
-            })),
+            Row(
+              children: [
+                Text('fileSelectedCount'.tr),
+                Text(
+                  selectedFileCount.toString(),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(width: 16),
+                Text('fileSelectedSize'.tr),
+                Text(
+                  selectedFileCount > 0 && selectdFileSize == 0
+                      ? 'unknown'.tr
+                      : Util.fmtByte(selectdFileSize),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
           ],
         ),
       ],

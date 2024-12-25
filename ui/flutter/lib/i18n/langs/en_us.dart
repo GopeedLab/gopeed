@@ -110,6 +110,8 @@ const enUS = {
     'skipVerifyCert': 'Skip Certificate Verification',
     'name': 'Name',
     'size': 'Size',
-    'fileSelectTip': 'Selected @count items, total @size',
+    'unknown': 'Unknown',
+    'fileSelectedCount': 'Files: ',
+    'fileSelectedSize': 'Size: ',
   },
 };
