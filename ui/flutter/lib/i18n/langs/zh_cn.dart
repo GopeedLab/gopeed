@@ -105,5 +105,10 @@ const zhCN = {
     'taskUrl': '任务链接',
     'downloadPath': '下载路径',
     'skipVerifyCert': '跳过证书验证',
+    'name': '名称',
+    'size': '大小',
+    'unknown': '未知',
+    'fileSelectedCount': '文件数：',
+    'fileSelectedSize': '大小：',
   }
 };

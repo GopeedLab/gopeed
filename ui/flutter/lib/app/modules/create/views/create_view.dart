@@ -1,4 +1,5 @@
 import 'package:autoscale_tabbarview/autoscale_tabbarview.dart';
+import 'package:checkable_treeview/checkable_treeview.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -16,10 +17,11 @@ import '../../../../database/database.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
+import '../../../../util/extensions.dart';
 import '../../../routes/app_pages.dart';
 import '../../../views/compact_checkbox.dart';
 import '../../../views/directory_selector.dart';
-import '../../../views/file_list_view.dart';
+import '../../../views/file_tree_view.dart';
 import '../../app/controllers/app_controller.dart';
 import '../../history/views/history_view.dart';
 import '../controllers/create_controller.dart';
@@ -40,6 +42,7 @@ class CreateView extends GetView<CreateController> {
   final _httpCookieController = TextEditingController();
   final _httpRefererController = TextEditingController();
   final _btTrackerController = TextEditingController();
+  final _fileTreeViewKey = GlobalKey<TreeViewState<int>>();
 
   final _availableSchemes = ["http:", "https:", "magnet:"];
 
@@ -698,7 +701,13 @@ class CreateView extends GetView<CreateController> {
                     child: Form(
                         key: createFormKey,
                         autovalidateMode: AutovalidateMode.always,
-                        child: FileListView(files: rr.res.files)),
+                        child: FileTreeView(
+                          files: rr.res.files,
+                          initialValues: rr.res.files.asMap().keys.toList(),
+                          onSelectionChanged: (List<int> values) {
+                            controller.selectedIndexes.value = values;
+                          },
+                        )),
                   );
                 },
               ),

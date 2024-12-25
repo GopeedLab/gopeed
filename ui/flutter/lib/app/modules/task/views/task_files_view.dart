@@ -7,10 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../api/api.dart' as api;
 import '../../../../util/browser_download/browser_download.dart';
-import '../../../../util/file_icon.dart';
-import '../../../../util/icons.dart';
 import '../../../../util/util.dart';
 import '../../../views/breadcrumb_view.dart';
+import '../../../views/file_icon.dart';
 import '../controllers/task_files_controller.dart';
 
 class TaskFilesView extends GetView<TaskFilesController> {
@@ -66,8 +65,8 @@ class TaskFilesView extends GetView<TaskFilesController> {
                     final fileName = basename(filePath);
                     return ListTile(
                       leading: file.isDirectory
-                          ? const Icon(Icons.folder)
-                          : Icon(FaIcons.allIcons[findIcon(fileName)]),
+                          ? const Icon(folderIcon)
+                          : Icon(fileIcon(fileName)),
                       title: Text(fileName),
                       subtitle: file.isDirectory
                           ? Text('items'.trParams({

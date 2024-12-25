@@ -105,5 +105,10 @@ const zhTW = {
     'taskUrl': '任務連結',
     'downloadPath': '下載路徑',
     'skipVerifyCert': '跳過憑證驗證',
+    'name': '名稱',
+    'size': '大小',
+    'unknown': '未知',
+    'fileSelectedCount': '文件數：',
+    'fileSelectedSize': '大小：',
   }
 };
