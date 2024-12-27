@@ -61,7 +61,7 @@ const frFR = {
     'show': 'Afficher',
     'startAll': 'Tout démarrer',
     'pauseAll': 'Tout suspendre',
-    'deleteTask': 'Supprimer la tâche',
+    'deleteTask': 'Supprimer @count tâches',
     'deleteTaskTip': 'Conserver les fichiers téléchargés',
     'delete': 'Supprimer',
     'newVersionTitle': 'Nouvelle version @version disponible',

@@ -129,17 +129,34 @@ Future<void> continueTask(String id) async {
   return _parse(() => _client.dio.put("/api/v1/tasks/$id/continue"), null);
 }
 
-Future<void> pauseAllTasks() async {
-  return _parse(() => _client.dio.put("/api/v1/tasks/pause"), null);
+Future<void> pauseAllTasks(List<String>? ids) async {
+  return _parse(
+      () => _client.dio.put("/api/v1/tasks/pause", queryParameters: {
+            "id": ids,
+          }),
+      null);
 }
 
-Future<void> continueAllTasks() async {
-  return _parse(() => _client.dio.put("/api/v1/tasks/continue"), null);
+Future<void> continueAllTasks(List<String>? ids) async {
+  return _parse(
+      () => _client.dio.put("/api/v1/tasks/continue", queryParameters: {
+            "id": ids,
+          }),
+      null);
 }
 
 Future<void> deleteTask(String id, bool force) async {
   return _parse(
       () => _client.dio.delete("/api/v1/tasks/$id?force=$force"), null);
+}
+
+Future<void> deleteTasks(List<String>? ids, bool force) async {
+  return _parse(
+      () => _client.dio.delete("/api/v1/tasks", queryParameters: {
+            "id": ids,
+            "force": force,
+          }),
+      null);
 }
 
 Future<DownloaderConfig> getConfig() async {

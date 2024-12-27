@@ -64,7 +64,7 @@ const itIT = {
     'show': 'Mostra',
     'startAll': 'Avvia tutti',
     'pauseAll': 'Mtti in pausa tutti',
-    'deleteTask': 'Elimina attività',
+    'deleteTask': 'Elimina @count attività',
     'deleteTaskTip': 'Conserva i file scaricati',
     'delete': 'Elimina',
     'newVersionTitle': 'Scopri la nuova versione @version',
