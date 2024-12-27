@@ -183,9 +183,11 @@ class BuildTaskListView extends GetView {
             children: [
               ListTile(
                   title: Text(task.name),
-                  leading: isFolderTask()
-                      ? const Icon(folderIcon)
-                      : Icon(fileIcon(task.name))),
+                  leading: Icon(
+                    fileIcon(task.name,
+                        isFolder: isFolderTask(),
+                        isBitTorrent: task.protocol == Protocol.bt),
+                  )),
               Row(
                 children: [
                   Expanded(

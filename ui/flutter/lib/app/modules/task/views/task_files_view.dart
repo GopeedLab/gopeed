@@ -64,9 +64,8 @@ class TaskFilesView extends GetView<TaskFilesController> {
                         [meta.opts.path, meta.res!.name, fileRelativePath]);
                     final fileName = basename(filePath);
                     return ListTile(
-                      leading: file.isDirectory
-                          ? const Icon(folderIcon)
-                          : Icon(fileIcon(fileName)),
+                      leading:
+                          Icon(fileIcon(fileName, isFolder: file.isDirectory)),
                       title: Text(fileName),
                       subtitle: file.isDirectory
                           ? Text('items'.trParams({
