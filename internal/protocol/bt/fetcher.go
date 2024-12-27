@@ -371,7 +371,9 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 	} else {
 		f.torrent, err = client.AddTorrentFromFile(req.URL)
 	}
-	if err != nil {
+	// Hotfix for https://github.com/anacrolix/torrent/issues/992, ignore "expected EOF" error
+	// TODO remove this hotfix after the issue is fixed
+	if err != nil && strings.Contains(err.Error(), "EOF") {
 		return
 	}
 
