@@ -14,6 +14,7 @@ const _toggleSwitchIcons = [
   Gopeed.file_audio,
   Gopeed.file_image,
 ];
+const _sizeGapWidth = 72.0;
 
 class FileTreeView extends StatefulWidget {
   final List<FileInfo> files;
@@ -50,7 +51,7 @@ class _FileTreeViewState extends State<FileTreeView> {
     final selectedFileCount =
         key.currentState?.getSelectedValues().where((e) => e != null).length ??
             widget.files.length;
-    final selectdFileSize = calcSelectedSize(null);
+    final selectedFileSize = calcSelectedSize(null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,52 +145,59 @@ class _FileTreeViewState extends State<FileTreeView> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            InkWell(
-              onTap: () {},
-              child: ToggleSwitch(
-                minHeight: 32,
-                cornerRadius: 8,
-                doubleTapDisable: true,
-                inactiveBgColor: Theme.of(context).dividerColor,
-                activeBgColor: [Theme.of(context).colorScheme.primary],
-                initialLabelIndex: toggleSwitchIndex,
-                icons: _toggleSwitchIcons,
-                onToggle: (index) {
-                  toggleSwitchIndex = index;
-                  if (index == null) {
-                    key.currentState?.setSelectedValues(List.empty());
-                    return;
-                  }
+            Flexible(
+              flex: 4,
+              child: InkWell(
+                onTap: () {},
+                child: ToggleSwitch(
+                  minHeight: 32,
+                  cornerRadius: 8,
+                  doubleTapDisable: true,
+                  inactiveBgColor: Theme.of(context).dividerColor,
+                  activeBgColor: [Theme.of(context).colorScheme.primary],
+                  initialLabelIndex: toggleSwitchIndex,
+                  icons: _toggleSwitchIcons,
+                  onToggle: (index) {
+                    toggleSwitchIndex = index;
+                    if (index == null) {
+                      key.currentState?.setSelectedValues(List.empty());
+                      return;
+                    }
 
-                  final iconFileExtArr =
-                      iconConfigMap[_toggleSwitchIcons[index]] ?? [];
-                  final selectedFileIndexes = widget.files
-                      .asMap()
-                      .entries
-                      .where(
-                          (e) => iconFileExtArr.contains(fileExt(e.value.name)))
-                      .map((e) => e.key)
-                      .toList();
-                  key.currentState?.setSelectedValues(selectedFileIndexes);
-                },
+                    final iconFileExtArr =
+                        iconConfigMap[_toggleSwitchIcons[index]] ?? [];
+                    final selectedFileIndexes = widget.files
+                        .asMap()
+                        .entries
+                        .where((e) =>
+                            iconFileExtArr.contains(fileExt(e.value.name)))
+                        .map((e) => e.key)
+                        .toList();
+                    key.currentState?.setSelectedValues(selectedFileIndexes);
+                  },
+                ),
               ),
             ),
-            Row(
-              children: [
-                Text('fileSelectedCount'.tr),
-                Text(
-                  selectedFileCount.toString(),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(width: 16),
-                Text('fileSelectedSize'.tr),
-                Text(
-                  selectedFileCount > 0 && selectdFileSize == 0
-                      ? 'unknown'.tr
-                      : Util.fmtByte(selectdFileSize),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+            Flexible(
+              flex: 6,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text('fileSelectedCount'.tr),
+                  Text(
+                    selectedFileCount.toString(),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(width: 12),
+                  Text('fileSelectedSize'.tr),
+                  Text(
+                    selectedFileCount > 0 && selectedFileSize == 0
+                        ? 'unknown'.tr
+                        : Util.fmtByte(selectedFileSize),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -241,7 +249,7 @@ class _FileTreeViewState extends State<FileTreeView> {
               return size > 0
                   ? Text(Util.fmtByte(calcSelectedSize(node)),
                       style: Theme.of(context).textTheme.bodySmall)
-                  : const SizedBox();
+                  : const SizedBox(width: _sizeGapWidth);
             },
             children: [],
           );
@@ -265,7 +273,7 @@ class _FileTreeViewState extends State<FileTreeView> {
           return file.size > 0
               ? Text(Util.fmtByte(file.size),
                   style: Theme.of(context).textTheme.bodySmall)
-              : const SizedBox();
+              : const SizedBox(width: _sizeGapWidth);
         },
         isSelected: widget.initialValues.contains(i),
         children: [],
