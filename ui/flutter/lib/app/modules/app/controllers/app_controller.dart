@@ -218,11 +218,11 @@ class AppController extends GetxController with WindowListener, TrayListener {
       ),
       MenuItem(
         label: "startAll".tr,
-        onClick: (menuItem) async => {continueAllTasks()},
+        onClick: (menuItem) async => {continueAllTasks(null)},
       ),
       MenuItem(
         label: "pauseAll".tr,
-        onClick: (menuItem) async => {pauseAllTasks()},
+        onClick: (menuItem) async => {pauseAllTasks(null)},
       ),
       MenuItem(
         label: 'setting'.tr,

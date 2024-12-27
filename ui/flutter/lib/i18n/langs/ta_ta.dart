@@ -63,7 +63,7 @@ const taTA = {
     'show': 'காட்டு',
     'startAll': 'அனைத்தையும் தொடங்கு',
     'pauseAll': 'அனைத்தையும் நிறுத்திவை',
-    'deleteTask': 'பணியை நீக்கு',
+    'deleteTask': 'பணிகளை நீக்கு @count',
     'deleteTaskTip': 'பதிவிறக்கம் செய்யப்பட்ட கோப்புகளை வைத்திரு',
     'delete': 'நீக்கு',
     'newVersionTitle': 'புதிய பதிப்பைக் கண்டறியவும் @version',

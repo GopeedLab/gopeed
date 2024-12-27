@@ -67,7 +67,7 @@ const idID = {
     'show': 'Tampilkan',
     'startAll': 'Mulai Semua',
     'pauseAll': 'Jeda Semua',
-    'deleteTask': 'Hapus Tugas',
+    'deleteTask': 'Hapus @count Tugas',
     'deleteTaskTip': 'Simpan file yang terunduh',
     'delete': 'Hapus',
     'newVersionTitle': 'Temukan versi batu @version',

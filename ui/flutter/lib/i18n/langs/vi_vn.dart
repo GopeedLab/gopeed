@@ -61,7 +61,7 @@ const viVN = {
     'effectAfterRestart': 'Hiệu lực sau khi khởi động lại',
     'startAll': 'Bắt đầu tất cả',
     'pauseAll': 'Tạm dừng tất cả',
-    'deleteTask': 'Xóa nhiệm vụ',
+    'deleteTask': 'Xóa @count nhiệm vụ',
     'deleteTaskTip': 'Giữ các tệp đã tải về',
     'delete': 'Xóa',
     'newVersionTitle': 'Khám phá phiên bản mới @version',

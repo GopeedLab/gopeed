@@ -53,7 +53,7 @@ const jaJP = {
     'effectAfterRestart': '再起動後の効果',
     'startAll': 'すべてを開始',
     'pauseAll': 'すべてを一時停止',
-    'deleteTask': 'タスクを削除',
+    'deleteTask': '@count タスクを削除',
     'deleteTaskTip': 'ダウンロードしたファイルを保持',
     'delete': '削除',
     'newVersionTitle': '新しいバージョン @version を発見する',
