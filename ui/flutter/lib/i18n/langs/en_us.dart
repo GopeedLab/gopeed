@@ -20,8 +20,7 @@ const enUS = {
     'followSettings': 'Follow Settings',
     'downloadLink': 'Download Link',
     'downloadLinkValid': 'Please enter the download link',
-    'downloadLinkHit':
-        'Please enter the download link, HTTP/HTTPS/MAGNET supported@append',
+    'downloadLinkHit': 'Please enter the download link, one per line@append',
     'downloadLinkHitDesktop': ', or drag the torrent file here directly',
     'download': 'Download',
     'noFileSelected': 'Please select at least one file to continue.',
