@@ -11,7 +11,9 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
+	"io"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -359,17 +361,27 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 	schema := util.ParseSchema(req.URL)
 	if schema == "MAGNET" {
 		f.torrent, err = client.AddMagnet(req.URL)
-	} else if schema == "DATA" {
-		_, data := util.ParseDataUri(req.URL)
-		buf := bytes.NewBuffer(data)
+	} else {
+		var reader io.Reader
+		if schema == "DATA" {
+			_, data := util.ParseDataUri(req.URL)
+			reader = bytes.NewBuffer(data)
+		} else {
+			reader, err = os.Open(req.URL)
+			if err != nil {
+				return
+			}
+			defer reader.(io.Closer).Close()
+		}
+
 		var metaInfo *metainfo.MetaInfo
-		metaInfo, err = metainfo.Load(buf)
-		if err != nil {
+		metaInfo, err = metainfo.Load(reader)
+		// Hotfix for https://github.com/anacrolix/torrent/issues/992, ignore "expected EOF" error
+		// TODO remove this after the issue is fixed
+		if err != nil && !strings.Contains(err.Error(), "expected EOF") {
 			return err
 		}
 		f.torrent, err = client.AddTorrent(metaInfo)
-	} else {
-		f.torrent, err = client.AddTorrentFromFile(req.URL)
 	}
 	if err != nil {
 		return
