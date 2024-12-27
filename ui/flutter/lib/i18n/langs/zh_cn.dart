@@ -20,7 +20,7 @@ const zhCN = {
     'followSettings': '跟随设置',
     'downloadLink': '下载链接',
     'downloadLinkValid': '请输入下载链接',
-    'downloadLinkHit': '请输入下载链接，支持 HTTP/HTTPS/MAGNET@append',
+    'downloadLinkHit': '请输入下载链接，支持批量下载，每行一个链接@append',
     'downloadLinkHitDesktop': '，也可以直接拖拽种子文件到此处',
     'download': '下载',
     'noFileSelected': '请至少选择一个文件下载',

@@ -20,7 +20,7 @@ const zhTW = {
     'followSettings': '跟隨設定',
     'downloadLink': '下載連結',
     'downloadLinkValid': '請輸入下載連結',
-    'downloadLinkHit': '請輸入下載連結，支援 HTTP/HTTPS/MAGNET@append',
+    'downloadLinkHit': '請輸入下載連結，支援批量下載，每行一個連結@append',
     'downloadLinkHitDesktop': '，或直接拖曳種子檔到此處',
     'download': '下載',
     'noFileSelected': '請至少選擇一個檔案以繼續。',
