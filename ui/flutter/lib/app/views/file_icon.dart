@@ -52,9 +52,6 @@ final Map<String, IconData> _iconCache = Map.fromEntries(
   ),
 );
 
-const folderIcon = Gopeed.folder;
-const folderBtIcon = Gopeed.folder_bt;
-
 String fileExt(String? name) {
   if (name == null) {
     return '';
@@ -71,7 +68,7 @@ String fileExt(String? name) {
 IconData fileIcon(String? name,
     {bool isFolder = false, bool isBitTorrent = false}) {
   if (isFolder) {
-    return isBitTorrent ? folderBtIcon : folderIcon;
+    return isBitTorrent ? Gopeed.folder_bt : Gopeed.folder;
   }
 
   final ext = fileExt(name);

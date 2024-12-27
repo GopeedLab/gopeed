@@ -63,7 +63,7 @@ const esES = {
     'show': 'Mostrar',
     'startAll': 'Iniciar Todo',
     'pauseAll': 'Pausar Todo',
-    'deleteTask': 'Eliminar Tarea',
+    'deleteTask': 'Eliminar @count tareas',
     'deleteTaskTip': 'Mantener archivos descargados',
     'delete': 'Eliminar',
     'newVersionTitle': 'Nueva versión @version disponible',

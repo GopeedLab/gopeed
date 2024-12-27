@@ -51,7 +51,7 @@ const faIR = {
     'effectAfterRestart': 'Effect after restart',
     'startAll': 'شروع همه',
     'pauseAll': 'توقف همه',
-    'deleteTask': 'پاک کردن کار',
+    'deleteTask': 'حذف @count کار',
     'deleteTaskTip': 'فایل های دانلود شده را نگه دارد',
     'delete': 'پاک کردن',
     'newVersionTitle': '@version عنوان: کشف نسخه جدید',

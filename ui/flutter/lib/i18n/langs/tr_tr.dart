@@ -65,7 +65,7 @@ const trTR = {
     'show': 'Göster',
     'startAll': 'Hepsini başlat',
     'pauseAll': 'Hepsini durdur',
-    'deleteTask': 'Görevleri sil',
+    'deleteTask': '@count görevi sil',
     'deleteTaskTip': 'İndirilen dosyaları sakla',
     'delete': 'Sil',
     'newVersionTitle': 'Yeni sürümü keşfet @version',
