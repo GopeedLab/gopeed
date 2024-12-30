@@ -217,14 +217,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.0"
-  contextmenu:
+  contextmenu_plus:
     dependency: "direct main"
     description:
-      name: contextmenu
-      sha256: e0c7d60e2fc9f316f5b03f5fe2c0f977d65125345d1a1f77eea02be612e32d0c
+      name: contextmenu_plus
+      sha256: c4c3a11633ba98b6e325e80942cd6ca29269b246e307b0a43514ae4f9c8bcc7f
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.0"
+    version: "1.0.1"
   convert:
     dependency: transitive
     description:
