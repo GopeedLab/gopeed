@@ -7,6 +7,7 @@ import '../../api/model/resource.dart';
 import '../../icon/gopeed_icons.dart';
 import '../../util/util.dart';
 import 'file_icon.dart';
+import 'responsive_builder.dart';
 import 'sort_icon_button.dart';
 
 const _toggleSwitchIcons = [
@@ -52,6 +53,52 @@ class _FileTreeViewState extends State<FileTreeView> {
         key.currentState?.getSelectedValues().where((e) => e != null).length ??
             widget.files.length;
     final selectedFileSize = calcSelectedSize(null);
+
+    final filterRow = InkWell(
+      onTap: () {},
+      child: ToggleSwitch(
+        minHeight: 32,
+        cornerRadius: 8,
+        doubleTapDisable: true,
+        inactiveBgColor: Theme.of(context).dividerColor,
+        activeBgColor: [Theme.of(context).colorScheme.primary],
+        initialLabelIndex: toggleSwitchIndex,
+        icons: _toggleSwitchIcons,
+        onToggle: (index) {
+          toggleSwitchIndex = index;
+          if (index == null) {
+            key.currentState?.setSelectedValues(List.empty());
+            return;
+          }
+
+          final iconFileExtArr = iconConfigMap[_toggleSwitchIcons[index]] ?? [];
+          final selectedFileIndexes = widget.files
+              .asMap()
+              .entries
+              .where((e) => iconFileExtArr.contains(fileExt(e.value.name)))
+              .map((e) => e.key)
+              .toList();
+          key.currentState?.setSelectedValues(selectedFileIndexes);
+        },
+      ),
+    );
+    final countRow = Row(
+      children: [
+        Text('fileSelectedCount'.tr),
+        Text(
+          selectedFileCount.toString(),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(width: 12),
+        Text('fileSelectedSize'.tr),
+        Text(
+          selectedFileCount > 0 && selectedFileSize == 0
+              ? 'unknown'.tr
+              : Util.fmtByte(selectedFileSize),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,66 +188,23 @@ class _FileTreeViewState extends State<FileTreeView> {
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Flexible(
-              flex: 4,
-              child: InkWell(
-                onTap: () {},
-                child: ToggleSwitch(
-                  minHeight: 32,
-                  cornerRadius: 8,
-                  doubleTapDisable: true,
-                  inactiveBgColor: Theme.of(context).dividerColor,
-                  activeBgColor: [Theme.of(context).colorScheme.primary],
-                  initialLabelIndex: toggleSwitchIndex,
-                  icons: _toggleSwitchIcons,
-                  onToggle: (index) {
-                    toggleSwitchIndex = index;
-                    if (index == null) {
-                      key.currentState?.setSelectedValues(List.empty());
-                      return;
-                    }
-
-                    final iconFileExtArr =
-                        iconConfigMap[_toggleSwitchIcons[index]] ?? [];
-                    final selectedFileIndexes = widget.files
-                        .asMap()
-                        .entries
-                        .where((e) =>
-                            iconFileExtArr.contains(fileExt(e.value.name)))
-                        .map((e) => e.key)
-                        .toList();
-                    key.currentState?.setSelectedValues(selectedFileIndexes);
-                  },
-                ),
-              ),
-            ),
-            Flexible(
-              flex: 6,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+        !ResponsiveBuilder.isNarrow(context)
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text('fileSelectedCount'.tr),
-                  Text(
-                    selectedFileCount.toString(),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(width: 12),
-                  Text('fileSelectedSize'.tr),
-                  Text(
-                    selectedFileCount > 0 && selectedFileSize == 0
-                        ? 'unknown'.tr
-                        : Util.fmtByte(selectedFileSize),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  filterRow,
+                  countRow,
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  filterRow,
+                  const SizedBox(height: 8),
+                  countRow,
                 ],
               ),
-            ),
-          ],
-        ),
       ],
     );
   }
