@@ -72,6 +72,11 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">Liên kết</a></td>
         </tr>
         <tr>
+            <td>Qnap</td>
+            <td><code>QPKG</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=gopeed-qnap-$version-amd64.qpkg">Liên kết</a></td>
+        </tr>
+        <tr>
             <td>Web</td>
             <td></td>
             <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">Liên kết</a></td>

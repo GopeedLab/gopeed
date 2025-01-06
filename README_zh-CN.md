@@ -72,6 +72,11 @@ Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">前往</a></td>
         </tr>
         <tr>
+            <td>Qnap</td>
+            <td><code>QPKG</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=gopeed-qnap-$version-amd64.qpkg">前往</a></td>
+        </tr>
+        <tr>
             <td>Web</td>
             <td></td>
             <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">前往</a></td>

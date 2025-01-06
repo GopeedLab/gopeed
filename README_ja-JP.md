@@ -72,6 +72,11 @@ Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">Link</a></td>
         </tr>
         <tr>
+            <td>Qnap</td>
+            <td><code>QPKG</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=gopeed-qnap-$version-amd64.qpkg">Link</a></td>
+        </tr>
+        <tr>
             <td>Web</td>
             <td></td>
             <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">Link</a></td>
