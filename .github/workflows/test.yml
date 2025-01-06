@@ -140,7 +140,7 @@ jobs:
       - name: Build
         run: |
           cd ui/flutter
-          flutter build web --web-renderer html
+          flutter build web --no-web-resources-cdn
           cd ../../
           rm -rf cmd/web/dist
           cp -r ui/flutter/build/web cmd/web/dist
@@ -160,7 +160,7 @@ jobs:
       - name: Build
         run: |
           cd ui/flutter
-          flutter build web --web-renderer html
+          flutter build web --no-web-resources-cdn
           cd ../../
           rm -rf cmd/web/dist
           cp -r ui/flutter/build/web cmd/web/dist

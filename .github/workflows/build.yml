@@ -443,7 +443,7 @@ jobs:
         run: |
           VERSION=${VERSION:-$(date +%y%m%d%H%M)} # Use current time as version if not specified
           cd ui/flutter
-          flutter build web --web-renderer html
+          flutter build web --no-web-resources-cdn
           cd ../../
           cp -r ui/flutter/build/web cmd/web/dist
           mkdir -p dist/zip
@@ -533,7 +533,7 @@ jobs:
       - name: Build flutter web
         run: |
           cd ui/flutter
-          flutter build web --web-renderer html
+          flutter build web --no-web-resources-cdn
           cd ../../
           rm -rf cmd/web/dist
           cp -r ui/flutter/build/web cmd/web/dist
