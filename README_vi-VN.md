@@ -72,6 +72,11 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">Liên kết</a></td>
         </tr>
         <tr>
+            <td>Qnap</td>
+            <td><code>QPKG</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=gopeed-qnap-$version-amd64.qpkg">Liên kết</a></td>
+        </tr>
+        <tr>
             <td>Web</td>
             <td></td>
             <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">Liên kết</a></td>
@@ -111,7 +116,7 @@ Dự án này được chia thành hai phần, phần giao diện sử dụng `f
 ### Environment
 
 1. Golang 1.23+
-2. Flutter 3.16+
+2. Flutter 3.24+
 
 ### Clone
 

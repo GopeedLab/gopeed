@@ -72,6 +72,11 @@ Gopeed（全稱 Go Speed），是一款使用`Golang`+`Flutter`編寫的高速�
             <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">前往</a></td>
         </tr>
         <tr>
+            <td>Qnap</td>
+            <td><code>QPKG</code></td>
+            <td><a href="https://gopeed.com/api/download?tpl=gopeed-qnap-$version-amd64.qpkg">前往</a></td>
+        </tr>
+        <tr>
             <td>Web</td>
             <td></td>
             <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">前往</a></td>
@@ -86,7 +91,7 @@ Gopeed（全稱 Go Speed），是一款使用`Golang`+`Flutter`編寫的高速�
 
 更多關於安裝的內容請參考[安裝文檔](https://docs.gopeed.com/zh/install.html)
 
-### 使用CLI安裝
+### 使用 CLI 安裝
 
 使用`go install`安裝：
 
@@ -111,7 +116,7 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ### 開發環境
 
 1. Golang 1.23+
-2. Flutter 3.16+
+2. Flutter 3.24+
 
 ### 克隆項目
 

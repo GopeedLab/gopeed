@@ -173,7 +173,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     });
 
     // Check initial link if app was in cold state (terminated)
-    final uri = await _appLinks.getInitialAppLink();
+    final uri = await _appLinks.getInitialLink();
     if (uri != null) {
       await _toCreate(uri);
     }
