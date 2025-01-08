@@ -14,6 +14,7 @@ import 'util/locale_manager.dart';
 import 'util/log_util.dart';
 import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
+import 'util/scheme_util.dart';
 import 'util/util.dart';
 
 class Args {
@@ -79,6 +80,15 @@ Future<void> init(Args args) async {
     api.init(startCfg.network, controller.runningAddress(), startCfg.apiToken);
   } catch (e) {
     logger.e("libgopeed init fail", e);
+  }
+
+  try {
+    registerUrlScheme("gopeed");
+    if (controller.downloaderConfig.value.extra.defaultBtClient) {
+      registerDefaultTorrentClient();
+    }
+  } catch (e) {
+    logger.e("register scheme fail", e);
   }
 
   try {
