@@ -15,6 +15,7 @@ const (
 	HttpCodeOK             = 200
 	HttpCodePartialContent = 206
 
+	HttpHeaderHost               = "Host"
 	HttpHeaderRange              = "Range"
 	HttpHeaderAcceptRanges       = "Accept-Ranges"
 	HttpHeaderContentLength      = "Content-Length"

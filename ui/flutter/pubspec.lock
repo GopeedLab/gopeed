@@ -94,14 +94,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.11.0"
-  autoscale_tabbarview:
-    dependency: "direct main"
-    description:
-      name: autoscale_tabbarview
-      sha256: "29449e8876185acc4763cc6cf26ffcc3f842f42f1502d5964c6d85f489ee1bc4"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.2"
   badges:
     dependency: "direct main"
     description:
@@ -238,6 +230,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.18.0"
+  contentsize_tabbarview:
+    dependency: "direct main"
+    description:
+      name: contentsize_tabbarview
+      sha256: "4a3cf5e3a17bb5ebe5ee56d55c518f4dde7db639334b79f874f03ecea4755b22"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.2"
   context_menus:
     dependency: "direct main"
     description:
@@ -334,6 +334,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.0"
+  expandable_page_view:
+    dependency: transitive
+    description:
+      name: expandable_page_view
+      sha256: "210dc6961cfc29f7ed42867824eb699c9a4b9b198a7c04b8bdc1c05844969dc6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.17"
   fake_async:
     dependency: transitive
     description:

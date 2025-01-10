@@ -113,5 +113,7 @@ const zhCN = {
     'unknown': '未知',
     'fileSelectedCount': '文件数：',
     'fileSelectedSize': '大小：',
+    'httpHeaderName': '请求头名称',
+    'httpHeaderValue': '请求头值',
   }
 };
