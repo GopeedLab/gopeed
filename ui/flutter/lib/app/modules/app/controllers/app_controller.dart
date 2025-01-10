@@ -161,8 +161,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _initDeepLinks() async {
-    // currently only support android
-    if (!Util.isAndroid() && !Util.isWindows()) {
+    if (Util.isWeb()) {
       return;
     }
 

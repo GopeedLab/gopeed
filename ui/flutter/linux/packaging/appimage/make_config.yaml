@@ -15,6 +15,7 @@ categories:
   - Utility
 
 supported_mime_type:
+  - x-scheme-handler/gopeed
   - x-scheme-handler/magnet
   - application/x-bittorrent
 
