@@ -47,5 +47,24 @@
 				</array>
 			</dict>
 		</array>
+		<key>CFBundleDocumentTypes</key>
+        <array>
+            <dict>
+                <key>CFBundleTypeName</key>
+                <string>Torrent File</string>
+                <key>CFBundleTypeRole</key>
+                <string>Viewer</string>
+                <key>LSHandlerRank</key>
+                <string>Owner</string>
+                <key>LSItemContentTypes</key>
+                <array>
+                    <string>org.bittorrent.torrent</string>
+                </array>
+                <key>CFBundleTypeExtensions</key>
+                <array>
+                    <string>torrent</string>
+                </array>
+            </dict>
+        </array>
 	</dict>
 </plist>

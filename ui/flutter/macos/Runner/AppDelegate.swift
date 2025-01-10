@@ -33,4 +33,10 @@ class AppDelegate: FlutterAppDelegate {
     }
     return true
   }
+
+  override func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+    let url = URL(fileURLWithPath: filename)
+    AppLinks.shared.handleLink(link: url.absoluteString)
+    return false;
+  }
 }
