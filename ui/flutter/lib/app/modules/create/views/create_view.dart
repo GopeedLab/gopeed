@@ -1,4 +1,4 @@
-import 'package:autoscale_tabbarview/autoscale_tabbarview.dart';
+import 'package:contentsize_tabbarview/contentsize_tabbarview.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -36,9 +36,20 @@ class CreateView extends GetView<CreateController> {
   final _proxyPortController = TextEditingController();
   final _proxyUsrController = TextEditingController();
   final _proxyPwdController = TextEditingController();
-  final _httpUaController = TextEditingController();
-  final _httpCookieController = TextEditingController();
-  final _httpRefererController = TextEditingController();
+  final _httpHeaderControllers = [
+    (
+      name: TextEditingController(text: "User-Agent"),
+      value: TextEditingController()
+    ),
+    (
+      name: TextEditingController(text: "Cookie"),
+      value: TextEditingController()
+    ),
+    (
+      name: TextEditingController(text: "Referer"),
+      value: TextEditingController()
+    ),
+  ];
   final _btTrackerController = TextEditingController();
 
   final _availableSchemes = ["http:", "https:", "magnet:"];
@@ -436,56 +447,105 @@ class CreateView extends GetView<CreateController> {
                                     )
                                   ],
                                 ),
-                                AutoScaleTabBarView(
-                                  controller: controller.advancedTabController,
-                                  children: [
-                                    Column(
-                                      children: [
-                                        TextFormField(
-                                            controller: _httpUaController,
-                                            decoration: const InputDecoration(
-                                              labelText: 'User-Agent',
-                                            )),
-                                        TextFormField(
-                                            controller: _httpCookieController,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Cookie',
-                                            )),
-                                        TextFormField(
-                                            controller: _httpRefererController,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Referer',
-                                            )),
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 10),
-                                          child: CompactCheckbox(
-                                            label: 'skipVerifyCert'.tr,
-                                            value:
-                                                _skipVerifyCertController.value,
-                                            onChanged: (bool? value) {
-                                              _skipVerifyCertController.value =
-                                                  value ?? false;
-                                            },
-                                            textStyle: const TextStyle(
-                                              color: Colors.grey,
+                                DefaultTabController(
+                                  length: 2,
+                                  child: ContentSizeTabBarView(
+                                    controller:
+                                        controller.advancedTabController,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          ..._httpHeaderControllers.map((e) {
+                                            return Row(
+                                              children: [
+                                                Flexible(
+                                                  child: TextFormField(
+                                                    controller: e.name,
+                                                    decoration: InputDecoration(
+                                                      hintText:
+                                                          'httpHeaderName'.tr,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const Padding(
+                                                    padding: EdgeInsets.only(
+                                                        left: 10)),
+                                                Flexible(
+                                                  child: TextFormField(
+                                                    controller: e.value,
+                                                    decoration: InputDecoration(
+                                                      hintText:
+                                                          'httpHeaderValue'.tr,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const Padding(
+                                                    padding: EdgeInsets.only(
+                                                        left: 10)),
+                                                IconButton(
+                                                  icon: const Icon(Icons.add),
+                                                  onPressed: () {
+                                                    _httpHeaderControllers.add(
+                                                      (
+                                                        name:
+                                                            TextEditingController(),
+                                                        value:
+                                                            TextEditingController(),
+                                                      ),
+                                                    );
+                                                    controller.showAdvanced
+                                                        .update((val) => val);
+                                                  },
+                                                ),
+                                                IconButton(
+                                                  icon:
+                                                      const Icon(Icons.remove),
+                                                  onPressed: () {
+                                                    if (_httpHeaderControllers
+                                                            .length <=
+                                                        1) {
+                                                      return;
+                                                    }
+                                                    _httpHeaderControllers
+                                                        .remove(e);
+                                                    controller.showAdvanced
+                                                        .update((val) => val);
+                                                  },
+                                                ),
+                                              ],
+                                            );
+                                          }),
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 10),
+                                            child: CompactCheckbox(
+                                              label: 'skipVerifyCert'.tr,
+                                              value: _skipVerifyCertController
+                                                  .value,
+                                              onChanged: (bool? value) {
+                                                _skipVerifyCertController
+                                                    .value = value ?? false;
+                                              },
+                                              textStyle: const TextStyle(
+                                                color: Colors.grey,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    Column(
-                                      children: [
-                                        TextFormField(
-                                            controller: _btTrackerController,
-                                            maxLines: 5,
-                                            decoration: InputDecoration(
-                                              labelText: 'Trackers',
-                                              hintText: 'addTrackerHit'.tr,
-                                            )),
-                                      ],
-                                    )
-                                  ],
+                                        ],
+                                      ),
+                                      Column(
+                                        children: [
+                                          TextFormField(
+                                              controller: _btTrackerController,
+                                              maxLines: 5,
+                                              decoration: InputDecoration(
+                                                labelText: 'Trackers',
+                                                hintText: 'addTrackerHit'.tr,
+                                              )),
+                                        ],
+                                      )
+                                    ],
+                                  ),
                                 )
                               ],
                             ).paddingOnly(top: 16),
@@ -644,12 +704,10 @@ class CreateView extends GetView<CreateController> {
     if (controller.showAdvanced.value) {
       switch (controller.advancedTabController.index) {
         case 0:
-          final header = {
-            "User-Agent": _httpUaController.text,
-            "Cookie": _httpCookieController.text,
-            "Referer": _httpRefererController.text,
-          };
-          header.removeWhere((key, value) => value.trim().isEmpty);
+          final header = Map<String, String>.fromEntries(_httpHeaderControllers
+              .map((e) => MapEntry(e.name.text, e.value.text)));
+          header.removeWhere(
+              (key, value) => key.trim().isEmpty || value.trim().isEmpty);
           if (header.isNotEmpty) {
             reqExtra = ReqExtraHttp()..header = header;
           }
