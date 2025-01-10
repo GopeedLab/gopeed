@@ -422,9 +422,9 @@ class SettingView extends GetView<SettingController> {
         ].where((e) => e != null).map((e) => e!).toList(),
       );
     });
-    final buildBtDefaultClientConfig = !Util.isDesktop()
+    final buildBtDefaultClientConfig = !Util.isWindows()
         ? () => null
-        : _buildConfigItem('设为系统默认 BT 客户端', () {
+        : _buildConfigItem('setAsDefaultBtClient', () {
             return appController.downloaderConfig.value.extra.defaultBtClient
                 ? 'on'.tr
                 : 'off'.tr;
