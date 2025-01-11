@@ -10,7 +10,6 @@ import (
 
 func ParseSchema(url string) string {
 	index := strings.Index(url, ":")
-	// if no schema or windows path like C:\a.txt, return FILE
 	if index == -1 || index == 1 {
 		return ""
 	}

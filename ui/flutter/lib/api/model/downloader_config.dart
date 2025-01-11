@@ -80,6 +80,7 @@ class ExtraConfig {
   String locale;
   bool lastDeleteTaskKeep;
   bool defaultDirectDownload;
+  bool defaultBtClient;
 
   ExtraConfigBt bt = ExtraConfigBt();
 
@@ -88,6 +89,7 @@ class ExtraConfig {
     this.locale = '',
     this.lastDeleteTaskKeep = false,
     this.defaultDirectDownload = false,
+    this.defaultBtClient = true,
   });
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>

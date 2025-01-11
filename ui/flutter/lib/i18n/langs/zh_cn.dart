@@ -103,6 +103,7 @@ const zhCN = {
     'seedKeep': '持续做种直到手动停止',
     'seedRatio': '做种分享率',
     'seedTime': '做种时间（分钟）',
+    'setAsDefaultBtClient': '设为系统默认 BT 客户端',
     'taskDetail': '任务详情',
     'taskName': '任务名称',
     'taskUrl': '任务链接',

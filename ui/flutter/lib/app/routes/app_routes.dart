@@ -3,6 +3,7 @@ part of 'app_pages.dart';
 
 abstract class Routes {
   Routes._();
+
   static const ROOT = _Paths.ROOT;
   static const HOME = _Paths.HOME;
   static const CREATE = _Paths.CREATE;
@@ -10,10 +11,12 @@ abstract class Routes {
   static const TASK_FILES = TASK + _Paths.TASK_FILES;
   static const EXTENSION = _Paths.HOME + _Paths.EXTENSION;
   static const SETTING = _Paths.HOME + _Paths.SETTING;
+  static const REDIRECT = _Paths.REDIRECT;
 }
 
 abstract class _Paths {
   _Paths._();
+
   static const ROOT = '/';
   static const HOME = '/home';
   static const CREATE = '/create';
@@ -21,4 +24,5 @@ abstract class _Paths {
   static const TASK_FILES = '/files';
   static const EXTENSION = '/extension';
   static const SETTING = '/setting';
+  static const REDIRECT = '/redirect';
 }

@@ -1,6 +1,4 @@
 import 'package:get/get.dart';
-import 'package:gopeed/app/modules/task/views/task_files_view.dart';
-import 'package:gopeed/app/modules/task/views/task_view.dart';
 
 import '../modules/create/bindings/create_binding.dart';
 import '../modules/create/views/create_view.dart';
@@ -8,12 +6,16 @@ import '../modules/extension/bindings/extension_binding.dart';
 import '../modules/extension/views/extension_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
+import '../modules/redirect/bindings/redirect_binding.dart';
+import '../modules/redirect/views/redirect_view.dart';
 import '../modules/root/bindings/root_binding.dart';
 import '../modules/root/views/root_view.dart';
 import '../modules/setting/bindings/setting_binding.dart';
 import '../modules/setting/views/setting_view.dart';
 import '../modules/task/bindings/task_binding.dart';
 import '../modules/task/bindings/task_files_binding.dart';
+import '../modules/task/views/task_files_view.dart';
+import '../modules/task/views/task_view.dart';
 
 part 'app_routes.dart';
 
@@ -67,6 +69,11 @@ class AppPages {
             // preventDuplicates: true,
             page: () => CreateView(),
             binding: CreateBinding(),
+          ),
+          GetPage(
+            name: _Paths.REDIRECT,
+            page: () => const RedirectView(),
+            binding: RedirectBinding(),
           ),
         ]),
   ];

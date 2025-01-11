@@ -363,7 +363,14 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 		f.torrent, err = client.AddMagnet(req.URL)
 	} else {
 		var reader io.Reader
-		if schema == "DATA" {
+		if schema == "FILE" {
+			fileUrl, _ := url.Parse(req.URL)
+			filePath := fileUrl.Path[1:]
+			reader, err = os.Open(filePath)
+			if err != nil {
+				return
+			}
+		} else if schema == "DATA" {
 			_, data := util.ParseDataUri(req.URL)
 			reader = bytes.NewBuffer(data)
 		} else {

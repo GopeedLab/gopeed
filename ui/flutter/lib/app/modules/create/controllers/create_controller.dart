@@ -9,7 +9,6 @@ import '../../app/controllers/app_controller.dart';
 
 class CreateController extends GetxController
     with GetSingleTickerProviderStateMixin {
-  // final files = [].obs;
   final RxList fileInfos = [].obs;
   final RxList openedFolders = [].obs;
   final selectedIndexes = <int>[].obs;
