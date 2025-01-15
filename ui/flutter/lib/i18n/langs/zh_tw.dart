@@ -114,5 +114,7 @@ const zhTW = {
     'unknown': '未知',
     'fileSelectedCount': '文件數：',
     'fileSelectedSize': '大小：',
+    'httpHeaderName': '標頭名稱',
+    'httpHeaderValue': '標頭值',
   }
 };

@@ -116,5 +116,7 @@ const enUS = {
     'unknown': 'Unknown',
     'fileSelectedCount': 'Files: ',
     'fileSelectedSize': 'Size: ',
+    'httpHeaderName': 'Header Name',
+    'httpHeaderValue': 'Header Value',
   },
 };

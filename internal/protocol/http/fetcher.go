@@ -427,6 +427,10 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		return
 	}
 	httpReq.Header = headers
+	// Override Host header
+	if host := headers.Get(base.HttpHeaderHost); host != "" {
+		httpReq.Host = host
+	}
 	return httpReq, nil
 }
 
