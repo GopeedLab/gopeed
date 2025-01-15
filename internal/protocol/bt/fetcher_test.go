@@ -11,6 +11,7 @@ import (
 	gohttp "net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -149,6 +150,16 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 		}
 	})
 
+	t.Run("Resolve file scheme Torrent", func(t *testing.T) {
+		file, _ := filepath.Abs("./testdata/test.unclean.torrent")
+		uri := "file:///" + file
+		err := fetcher.Resolve(&base.Request{
+			URL: uri,
+		})
+		if err != nil {
+			t.Errorf("Resolve file scheme Torrent Resolve() got = %v, want nil", err)
+		}
+	})
 }
 
 func TestFetcherManager_ParseName(t *testing.T) {

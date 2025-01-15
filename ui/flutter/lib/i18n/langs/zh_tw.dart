@@ -103,6 +103,7 @@ const zhTW = {
     'seedKeep': '持續做種直到手動停止',
     'seedRatio': '做種分享率',
     'seedTime': '做種時間（分鐘）',
+    'setAsDefaultBtClient': '設為系統預設 BT 客戶端',
     'taskDetail': '任務詳情',
     'taskName': '任務名稱',
     'taskUrl': '任務連結',
