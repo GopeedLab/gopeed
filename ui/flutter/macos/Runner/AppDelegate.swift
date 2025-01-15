@@ -40,9 +40,11 @@ class AppDelegate: FlutterAppDelegate {
     return false;
   }
 
-  override func application(_ sender: NSApplication, openFiles filenames: [String]) {
+  override func application(_ application: NSApplication, open urls: [URL]) {
     // Only handle the first file
-    let url = URL(fileURLWithPath: filenames[0])
-    AppLinks.shared.handleLink(link: url.absoluteString)
+    if(urls.isEmpty) {
+      return
+    }
+    AppLinks.shared.handleLink(link: urls.first!.absoluteString)
   }
 }
