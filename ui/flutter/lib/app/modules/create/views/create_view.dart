@@ -61,31 +61,29 @@ class CreateView extends GetView<CreateController> {
     }
 
     final String? filePath = Get.rootDelegate.arguments();
-    if (_urlController.text.isEmpty) {
-      if (filePath?.isNotEmpty ?? false) {
-        // get file path from route arguments
-        _urlController.text = filePath!;
-        _urlController.selection = TextSelection.fromPosition(
-            TextPosition(offset: _urlController.text.length));
-      } else {
-        // read clipboard
-        Clipboard.getData('text/plain').then((value) {
-          if (value?.text?.isNotEmpty ?? false) {
-            if (_availableSchemes
-                .where((e) =>
-                    value!.text!.startsWith(e) ||
-                    value.text!.startsWith(e.toUpperCase()))
-                .isNotEmpty) {
-              _urlController.text = value!.text!;
-              _urlController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: _urlController.text.length));
-              return;
-            }
-
-            recognizeMagnetUri(value!.text!);
+    if (filePath?.isNotEmpty ?? false) {
+      // get file path from route arguments
+      _urlController.text = filePath!;
+      _urlController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _urlController.text.length));
+    } else if (_urlController.text.isEmpty) {
+      // read clipboard
+      Clipboard.getData('text/plain').then((value) {
+        if (value?.text?.isNotEmpty ?? false) {
+          if (_availableSchemes
+              .where((e) =>
+                  value!.text!.startsWith(e) ||
+                  value.text!.startsWith(e.toUpperCase()))
+              .isNotEmpty) {
+            _urlController.text = value!.text!;
+            _urlController.selection = TextSelection.fromPosition(
+                TextPosition(offset: _urlController.text.length));
+            return;
           }
-        });
-      }
+
+          recognizeMagnetUri(value!.text!);
+        }
+      });
     }
 
     return Scaffold(
