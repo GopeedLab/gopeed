@@ -50,19 +50,23 @@
 		<key>CFBundleDocumentTypes</key>
 		<array>
 			<dict>
+				<key>CFBundleTypeExtensions</key>
+				<array>
+					<string>torrent</string>
+				</array>
+				<key>CFBundleTypeIconFile</key>
+				<string>icon</string>
 				<key>CFBundleTypeName</key>
-				<string>Torrent File</string>
+				<string>BitTorrent Document</string>
 				<key>CFBundleTypeRole</key>
 				<string>Viewer</string>
+				<key>LSTypeIsPackage</key>
+				<false />
 				<key>LSHandlerRank</key>
 				<string>Owner</string>
 				<key>LSItemContentTypes</key>
 				<array>
 					<string>org.bittorrent.torrent</string>
-				</array>
-				<key>CFBundleTypeExtensions</key>
-				<array>
-					<string>torrent</string>
 				</array>
 			</dict>
 		</array>
@@ -70,7 +74,7 @@
 		<array>
 			<dict>
 				<key>UTTypeIdentifier</key>
-				<string>com.example.torrentfile</string>
+				<string>org.bittorrent.torrent</string>
 				<key>UTTypeDescription</key>
 				<string>Torrent File</string>
 				<key>UTTypeConformsTo</key>
