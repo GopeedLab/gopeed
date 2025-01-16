@@ -103,6 +103,7 @@ jobs:
           WizardStyle=modern
           LanguageDetectionMethod=uilanguage
           ShowLanguageDialog=yes
+          CloseApplications=force
 
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
