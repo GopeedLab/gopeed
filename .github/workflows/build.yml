@@ -103,7 +103,7 @@ jobs:
           WizardStyle=modern
           LanguageDetectionMethod=uilanguage
           ShowLanguageDialog=yes
-          CloseApplications=no
+          CloseApplications=force
 
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -113,17 +113,8 @@ jobs:
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
           [Files]
-          Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; \
-              BeforeInstall: TaskKill('{#MyAppExeName}')
+          Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs;
           ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
-          
-          [Code]
-          procedure TaskKill(FileName: String);
-          var
-            ResultCode: Integer;
-          begin
-            Exec('taskkill.exe', '/f /im ' + '"' + FileName + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-          end;
 
           [UninstallDelete]
           Type: filesandordirs; Name: "{app}"
