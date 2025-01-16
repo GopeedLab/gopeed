@@ -97,12 +97,13 @@ jobs:
           PrivilegesRequired=lowest
           OutputBaseFilename=gopeed
           SetupIconFile=..\..\assets\icon\icon.ico
-          UninstallDisplayIcon={app}\{#MyAppName}
+          UninstallDisplayIcon={app}\{#MyAppExeName}
           Compression=lzma
           SolidCompression=yes
           WizardStyle=modern
           LanguageDetectionMethod=uilanguage
           ShowLanguageDialog=yes
+          CloseApplications=force
 
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -113,7 +114,7 @@ jobs:
 
           [Files]
           Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; \
-              BeforeInstall: TaskKill('{#MyAppName}')
+              BeforeInstall: TaskKill('{#MyAppExeName}')
           ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
           
           [Code]
