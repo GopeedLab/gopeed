@@ -126,7 +126,6 @@ jobs:
           [Run]
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
-          Get-Content setup.iss
           iscc.exe setup.iss
           mv "Output\gopeed.exe" "Output\Gopeed-$TAG-windows-amd64.exe"
           Compress-Archive -Path "Output\Gopeed-$TAG-windows-amd64.exe" -DestinationPath "Output\Gopeed-$TAG-windows-amd64.zip"
