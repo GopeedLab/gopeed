@@ -73,7 +73,6 @@ class AppPages {
           GetPage(
             name: _Paths.REDIRECT,
             page: () => const RedirectView(),
-            transition: Transition.upToDown,
             binding: RedirectBinding(),
           ),
         ]),
