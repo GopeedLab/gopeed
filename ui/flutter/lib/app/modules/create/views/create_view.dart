@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:contentsize_tabbarview/contentsize_tabbarview.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
@@ -12,6 +14,7 @@ import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
+import '../../../../api/model/task.dart';
 import '../../../../database/database.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/message.dart';
@@ -23,6 +26,7 @@ import '../../../views/file_tree_view.dart';
 import '../../app/controllers/app_controller.dart';
 import '../../history/views/history_view.dart';
 import '../controllers/create_controller.dart';
+import '../dto/create_router_params.dart';
 
 class CreateView extends GetView<CreateController> {
   final _confirmFormKey = GlobalKey<FormState>();
@@ -71,12 +75,73 @@ class CreateView extends GetView<CreateController> {
       _pathController.text = appController.downloaderConfig.value.downloadDir;
     }
 
-    final String? filePath = Get.rootDelegate.arguments();
-    if (filePath?.isNotEmpty ?? false) {
-      // get file path from route arguments
-      _urlController.text = filePath!;
+    final CreateRouterParams? routerParams = Get.rootDelegate.arguments();
+    if (routerParams?.req?.url.isNotEmpty ?? false) {
+      // get url from route arguments
+      final url = routerParams!.req!.url;
+      _urlController.text = url;
       _urlController.selection = TextSelection.fromPosition(
           TextPosition(offset: _urlController.text.length));
+      final uppercaseUrl = url.toUpperCase();
+      Protocol? protocol;
+      if (uppercaseUrl.startsWith("HTTP:") ||
+          uppercaseUrl.startsWith("HTTPS:")) {
+        protocol = Protocol.http;
+      }
+      if (uppercaseUrl.startsWith("MAGNET:") ||
+          uppercaseUrl.endsWith(".TORRENT")) {
+        protocol = Protocol.bt;
+      }
+      if (protocol != null) {
+        final extraHandlers = {
+          Protocol.http: () {
+            final reqExtra = ReqExtraHttp.fromJson(
+                jsonDecode(jsonEncode(routerParams.req!.extra)));
+            _httpHeaderControllers.clear();
+            reqExtra.header.forEach((key, value) {
+              _httpHeaderControllers.add(
+                (
+                  name: TextEditingController(text: key),
+                  value: TextEditingController(text: value),
+                ),
+              );
+            });
+            _skipVerifyCertController.value = routerParams.req!.skipVerifyCert;
+          },
+          Protocol.bt: () {
+            final reqExtra = ReqExtraBt.fromJson(
+                jsonDecode(jsonEncode(routerParams.req!.extra)));
+            _btTrackerController.text = reqExtra.trackers.join("\n");
+          },
+        };
+        if (routerParams.req?.extra != null) {
+          extraHandlers[protocol]?.call();
+        }
+
+        // handle options
+        if (routerParams.opt != null) {
+          _renameController.text = routerParams.opt!.name;
+          _pathController.text = routerParams.opt!.path;
+
+          final optionsHandlers = {
+            Protocol.http: () {
+              final opt = routerParams.opt!;
+              _renameController.text = opt.name;
+              _pathController.text = opt.path;
+              if (opt.extra != null) {
+                final optsExtraHttp =
+                    OptsExtraHttp.fromJson(jsonDecode(jsonEncode(opt.extra)));
+                _connectionsController.text =
+                    optsExtraHttp.connections.toString();
+              }
+            },
+            Protocol.bt: null,
+          };
+          if (routerParams.opt?.extra != null) {
+            optionsHandlers[protocol]?.call();
+          }
+        }
+      }
     } else if (_urlController.text.isEmpty) {
       // read clipboard
       Clipboard.getData('text/plain').then((value) {

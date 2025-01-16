@@ -36,10 +36,14 @@ Map<String, dynamic> _$RequestToJson(Request instance) {
   return val;
 }
 
-ReqExtraHttp _$ReqExtraHttpFromJson(Map<String, dynamic> json) => ReqExtraHttp()
-  ..method = json['method'] as String
-  ..header = Map<String, String>.from(json['header'] as Map)
-  ..body = json['body'] as String;
+ReqExtraHttp _$ReqExtraHttpFromJson(Map<String, dynamic> json) => ReqExtraHttp(
+      method: json['method'] as String? ?? 'GET',
+      header: (json['header'] as Map<String, dynamic>?)?.map(
+            (k, e) => MapEntry(k, e as String),
+          ) ??
+          const {},
+      body: json['body'] as String? ?? '',
+    );
 
 Map<String, dynamic> _$ReqExtraHttpToJson(ReqExtraHttp instance) =>
     <String, dynamic>{
@@ -48,21 +52,26 @@ Map<String, dynamic> _$ReqExtraHttpToJson(ReqExtraHttp instance) =>
       'body': instance.body,
     };
 
-ReqExtraBt _$ReqExtraBtFromJson(Map<String, dynamic> json) => ReqExtraBt()
-  ..trackers =
-      (json['trackers'] as List<dynamic>).map((e) => e as String).toList();
+ReqExtraBt _$ReqExtraBtFromJson(Map<String, dynamic> json) => ReqExtraBt(
+      trackers: (json['trackers'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+    );
 
 Map<String, dynamic> _$ReqExtraBtToJson(ReqExtraBt instance) =>
     <String, dynamic>{
       'trackers': instance.trackers,
     };
 
-RequestProxy _$RequestProxyFromJson(Map<String, dynamic> json) => RequestProxy()
-  ..mode = $enumDecode(_$RequestProxyModeEnumMap, json['mode'])
-  ..scheme = json['scheme'] as String
-  ..host = json['host'] as String
-  ..usr = json['usr'] as String
-  ..pwd = json['pwd'] as String;
+RequestProxy _$RequestProxyFromJson(Map<String, dynamic> json) => RequestProxy(
+      mode: $enumDecodeNullable(_$RequestProxyModeEnumMap, json['mode']) ??
+          RequestProxyMode.follow,
+      scheme: json['scheme'] as String? ?? 'http',
+      host: json['host'] as String? ?? '',
+      usr: json['usr'] as String? ?? '',
+      pwd: json['pwd'] as String? ?? '',
+    );
 
 Map<String, dynamic> _$RequestProxyToJson(RequestProxy instance) =>
     <String, dynamic>{

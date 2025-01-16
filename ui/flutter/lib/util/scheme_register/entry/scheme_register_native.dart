@@ -1,7 +1,8 @@
 import 'dart:io';
 
-import 'package:gopeed/util/util.dart';
 import 'package:win32_registry/win32_registry.dart';
+
+import '../../util.dart';
 
 doRegisterUrlScheme(String scheme) {
   if (Util.isWindows()) {
