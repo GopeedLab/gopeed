@@ -97,13 +97,12 @@ jobs:
           PrivilegesRequired=lowest
           OutputBaseFilename=gopeed
           SetupIconFile=..\..\assets\icon\icon.ico
-          UninstallDisplayIcon=..\..\assets\icon\icon.ico
+          UninstallDisplayIcon={app}\{#MyAppName}
           Compression=lzma
           SolidCompression=yes
           WizardStyle=modern
           LanguageDetectionMethod=uilanguage
           ShowLanguageDialog=yes
-          CloseApplications=force
 
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -113,8 +112,18 @@ jobs:
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
           [Files]
-          Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+          Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; \
+              BeforeInstall: TaskKill('{#MyAppName}')
           ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+          
+          [Code]
+          procedure TaskKill(FileName: String);
+          var
+            ResultCode: Integer;
+          begin
+              Exec('taskkill.exe', '/f /im ' + '"' + FileName + '"', '', SW_HIDE,
+               ewWaitUntilTerminated, ResultCode);
+          end;
 
           [UninstallDelete]
           Type: filesandordirs; Name: "{app}"
