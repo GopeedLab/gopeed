@@ -97,6 +97,7 @@ jobs:
           PrivilegesRequired=lowest
           OutputBaseFilename=gopeed
           SetupIconFile=..\..\assets\icon\icon.ico
+          UninstallDisplayIcon=..\..\assets\icon\icon.ico
           Compression=lzma
           SolidCompression=yes
           WizardStyle=modern
@@ -120,7 +121,7 @@ jobs:
           [Icons]
           Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
           Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-
+          
           [Run]
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
