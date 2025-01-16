@@ -97,11 +97,13 @@ jobs:
           PrivilegesRequired=lowest
           OutputBaseFilename=gopeed
           SetupIconFile=..\..\assets\icon\icon.ico
+          UninstallDisplayIcon={app}\{#MyAppExeName}
           Compression=lzma
           SolidCompression=yes
           WizardStyle=modern
           LanguageDetectionMethod=uilanguage
           ShowLanguageDialog=yes
+          CloseApplications=force
 
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -111,7 +113,7 @@ jobs:
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
           [Files]
-          Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+          Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs;
           ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
           [UninstallDelete]
@@ -120,7 +122,7 @@ jobs:
           [Icons]
           Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
           Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-
+          
           [Run]
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
