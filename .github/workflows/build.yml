@@ -103,6 +103,7 @@ jobs:
           WizardStyle=modern
           LanguageDetectionMethod=uilanguage
           ShowLanguageDialog=yes
+          CloseApplications=no
 
           [Languages]
           Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -121,8 +122,7 @@ jobs:
           var
             ResultCode: Integer;
           begin
-              Exec('taskkill.exe', '/f /im ' + '"' + FileName + '"', '', SW_HIDE,
-               ewWaitUntilTerminated, ResultCode);
+            Exec('taskkill.exe', '/f /im ' + '"' + FileName + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
           end;
 
           [UninstallDelete]
