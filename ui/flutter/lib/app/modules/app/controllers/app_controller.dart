@@ -16,6 +16,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
+import '../../../../api/model/request.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../core/libgopeed_boot.dart';
 import '../../../../database/database.dart';
@@ -27,6 +28,8 @@ import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
+import '../../create/controllers/create_controller.dart';
+import '../../create/dto/create_router_params.dart';
 import '../../redirect/views/redirect_view.dart';
 
 const unixSocketPath = 'gopeed.sock';
@@ -305,8 +308,20 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _handleDeepLink(Uri uri) async {
-    // Wake up application only
     if (uri.scheme == "gopeed") {
+      if (uri.path == "/create") {
+        final params = uri.queryParameters["params"];
+        if (params?.isNotEmpty == true) {
+          final paramsJson = String.fromCharCodes(base64Decode(params!));
+          Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
+              arguments: RedirectArgs(Routes.CREATE,
+                  arguments:
+                      CreateRouterParams.fromJson(jsonDecode(paramsJson))));
+          return;
+        }
+        Get.rootDelegate.offAndToNamed(Routes.CREATE);
+        return;
+      }
       Get.rootDelegate.offAndToNamed(Routes.HOME);
       return;
     }
@@ -322,7 +337,8 @@ class AppController extends GetxController with WindowListener, TrayListener {
       path = (await toFile(uri.toString())).path;
     }
     Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
-        arguments: RedirectArgs(Routes.CREATE, arguments: path));
+        arguments: RedirectArgs(Routes.CREATE,
+            arguments: CreateRouterParams(req: Request(url: path))));
   }
 
   String runningAddress() {

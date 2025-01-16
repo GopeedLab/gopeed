@@ -6,9 +6,9 @@ part 'request.g.dart';
 class Request {
   String url;
   Object? extra;
-  Map<String, String>? labels = {};
+  Map<String, String>? labels;
   RequestProxy? proxy;
-  bool skipVerifyCert = false;
+  bool skipVerifyCert;
 
   Request({
     required this.url,
@@ -26,11 +26,15 @@ class Request {
 
 @JsonSerializable()
 class ReqExtraHttp {
-  String method = 'GET';
-  Map<String, String> header = {};
-  String body = '';
+  String method;
+  Map<String, String> header;
+  String body;
 
-  ReqExtraHttp();
+  ReqExtraHttp({
+    this.method = 'GET',
+    this.header = const {},
+    this.body = '',
+  });
 
   factory ReqExtraHttp.fromJson(Map<String, dynamic> json) =>
       _$ReqExtraHttpFromJson(json);
@@ -40,9 +44,11 @@ class ReqExtraHttp {
 
 @JsonSerializable()
 class ReqExtraBt {
-  List<String> trackers = [];
+  List<String> trackers;
 
-  ReqExtraBt();
+  ReqExtraBt({
+    this.trackers = const [],
+  });
 
   factory ReqExtraBt.fromJson(Map<String, dynamic> json) =>
       _$ReqExtraBtFromJson(json);
@@ -58,15 +64,22 @@ enum RequestProxyMode {
 
 @JsonSerializable()
 class RequestProxy {
-  RequestProxyMode mode = RequestProxyMode.follow;
-  String scheme = 'http';
-  String host = '';
-  String usr = '';
-  String pwd = '';
+  RequestProxyMode mode;
+  String scheme;
+  String host;
+  String usr;
+  String pwd;
 
-  RequestProxy();
+  RequestProxy({
+    this.mode = RequestProxyMode.follow,
+    this.scheme = 'http',
+    this.host = '',
+    this.usr = '',
+    this.pwd = '',
+  });
 
   factory RequestProxy.fromJson(Map<String, dynamic> json) =>
       _$RequestProxyFromJson(json);
+
   Map<String, dynamic> toJson() => _$RequestProxyToJson(this);
 }

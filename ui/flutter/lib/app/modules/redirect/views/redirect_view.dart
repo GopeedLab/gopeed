@@ -16,8 +16,12 @@ class RedirectView extends GetView<RedirectController> {
   @override
   Widget build(BuildContext context) {
     final redirectArgs = Get.rootDelegate.arguments() as RedirectArgs;
-    Get.rootDelegate
-        .offAndToNamed(redirectArgs.page, arguments: redirectArgs.arguments);
+    // Waiting for previous page controller to delete, avoid deleting controller that route page after redirect
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 350));
+      Get.rootDelegate
+          .offAndToNamed(redirectArgs.page, arguments: redirectArgs.arguments);
+    });
     return const SizedBox();
   }
 }
