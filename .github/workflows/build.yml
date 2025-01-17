@@ -484,7 +484,7 @@ jobs:
   build-qnap:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'qnap' }}
     runs-on: ubuntu-latest
-    needs: [build-web]
+    needs: [get-release, build-web]
     steps:
       - uses: actions/setup-python@v5
         with:
