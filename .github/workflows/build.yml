@@ -512,6 +512,7 @@ jobs:
             qarch=x86_64
             [[ "${goarch}" == "arm64" ]] && qarch=arm_64
             name=gopeed-web-v${VERSION}-${goos}-${goarch}
+            unzip dist/zip/${name}.zip -d dist/${name}
             cp dist/${name}/${name}/* Gopeed/${qarch}/
           done
           cd Gopeed
