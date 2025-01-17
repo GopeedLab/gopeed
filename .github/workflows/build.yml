@@ -521,20 +521,20 @@ jobs:
           sed -i -e 's/__QPKG_VER__/${VERSION}/g' qpkg.cfg
           qbuild || exit 1
           
-          mkdir -p ../dist/qnap/zip
+          mkdir -p dist/qnap
           goos=qnap
           for goarch in "${goarch_arr[@]}"; do
             qarch=x86_64
             [[ "${goarch}" == "arm64" ]] && qarch=arm_64
             sname=Gopeed_${VERSION}_${qarch}.qpkg
             dname=gopeed-${goos}-v${VERSION}-${goarch}.qpkg
-            [[ -f build/${sname} ]] && cp -ra build/${sname} ../dist/qnap/zip/${dname}
+            [[ -f build/${sname} ]] && cp -ra build/${sname} dist/qnap/${dname}
           done
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: dist/qnap/zip/*
+          asset_path: dist/qnap/*
           overwrite: true
   build-docker:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'docker' }}
