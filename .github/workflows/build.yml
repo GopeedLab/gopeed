@@ -471,8 +471,34 @@ jobs:
               || true
             done
           done
+      - uses: actions/upload-artifact@v3
+        with:
+          name: web-dist
+          path: dist/zip/
+      - name: Upload
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.get-release.outputs.upload_url }}
+          asset_path: dist/zip/*
+          overwrite: true
+  build-qnap:
+    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'qnap' }}
+    runs-on: ubuntu-latest
+    needs: [build-web]
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8.10'
+      - uses: actions/download-artifact@v3
+        with:
+          name: web-dist
+          path: dist/zip/
+      - name: Build
+        env:
+          VERSION: ${{ needs.get-release.outputs.version }}
+        run: |
           sudo apt update -y
-          sudo apt install -y pv python bsdmainutils
+          sudo apt install -y pv bsdmainutils
           wget -O qdk2_0.32.bionic_amd64.deb "https://github.com/qnap-dev/qdk2/releases/download/v0.32/qdk2_0.32.bionic_amd64.deb"
           dpkg -X qdk2_0.32.bionic_amd64.deb qdk2 # Direct installs will fail due to missing dependencies!
           [[ -d qdk2 ]] || exit 1
@@ -491,7 +517,7 @@ jobs:
           cd Gopeed
           sed -i -e 's/__QPKG_VER__/${VERSION}/g' qpkg.cfg
           qbuild || exit 1
-          for f in build/*; do echo ">>> build=[${f}]"; done
+          
           goos=qnap
           goarch_arr=(amd64 arm64)
           for goarch in "${goarch_arr[@]}"; do
@@ -502,8 +528,6 @@ jobs:
             echo "sname=${sname}, dname=${dname}"
             [[ -f build/${sname} ]] && cp -ra build/${sname} ../dist/zip/${dname}
           done
-          for f in ../dist/zip/*; do echo ">>> dist=[${f}]"; done
-          cd ..
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
