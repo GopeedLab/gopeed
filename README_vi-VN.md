@@ -22,71 +22,80 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
 ## Tải về
 
 <table>
-    <thead>
-        <tr>
-            <th>Nền tảng</th>
-            <th>Loại gói</th>
-            <th>Liên kết tải xuống</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td rowspan=2>Windows</td>
-            <td><code>Bộ cài đặt EXE</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td><code>ZIP Portable</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td>MacOS</td>
-            <td><code>Bộ cài đặt DMG</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td rowspan=4>Linux</td>
-            <td><code>Flathub</code></td>
-            <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td><code>SNAP</code></td>
-            <td><a href="https://snapcraft.io/gopeed">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td><code>DEB</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td><code>AppImage</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-x86_64.AppImage">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td>Android</td>
-            <td><code>APK</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android.apk">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td>iOS</td>
-            <td><code>IPA</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td>Qnap</td>
-            <td><code>QPKG</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=gopeed-qnap-$version-amd64.qpkg">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td>Web</td>
-            <td></td>
-            <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">Liên kết</a></td>
-        </tr>
-        <tr>
-            <td>Docker</td>
-            <td></td>
-            <td><a href="https://hub.docker.com/r/liwei2633/gopeed">Liên kết</a></td>
-        </tr>
-    </tbody>
+  <thead>
+    <tr>
+      <th colspan="2">Windows</th>
+      <th>MacOS</th>
+      <th colspan="4">Linux</th>
+      <th>Android</th>
+      <th>iOS</th>
+      <th>Docker</th>
+      <th colspan="2">Qnap</th>
+      <th colspan="8">Web</th>
+    </tr>
+    <tr>
+      <td><code>EXE</code></td>
+      <td><code>Portable</code></td>
+      <td><code>DMG</code></td>
+      <td><code>Flathub</code></td>
+      <td><code>SNAP</code></td>
+      <td><code>DEB</code></td>
+      <td><code>AppImage</code></td>
+      <td><code>APK</code></td>
+      <td><code>IPA</code></td>
+      <td>-</td>
+      <td colspan="2"><code>QPKG</code></td>
+      <td colspan="3"><code>Windows</code></td>
+      <td colspan="2"><code>MacOS</code></td>
+      <td colspan="3"><code>Linux</code></td>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>-</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>amd64</td>
+      <td>arm64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>386</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>386</td>
+    </tr>
+    <tr>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">Liên kết</a></td>
+      <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">Liên kết</a></td>
+      <td><a href="https://snapcraft.io/gopeed">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-x86_64.AppImage">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android.apk">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">Liên kết</a></td>
+      <td><a href="https://hub.docker.com/r/liwei2633/gopeed">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-$version-qnap-amd64.qpkg">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-$version-qnap-arm64.qpkg">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-windows-amd64.zip">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-windows-arm64.zip">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-windows-386.zip">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-macos-amd64.zip">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-macos-arm64.zip">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-linux-amd64.zip">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-linux-arm64.zip">Liên kết</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-linux-386.zip">Liên kết</a></td>
+    </tr>
+  </tbody>
 </table>
 
 Thêm thông tin về cài đặt, vui lòng tham khảo [Cài đặt](https://docs.gopeed.com/install.html)
