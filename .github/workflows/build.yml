@@ -527,7 +527,7 @@ jobs:
             qarch=x86_64
             [[ "${goarch}" == "arm64" ]] && qarch=arm_64
             sname=Gopeed_${VERSION}_${qarch}.qpkg
-            dname=gopeed-${goos}-v${VERSION}-${goarch}.qpkg
+            dname=gopeed-v${VERSION}-${goos}-${goarch}.qpkg
             [[ -f build/${sname} ]] && cp -ra build/${sname} ../dist/qnap/${dname}
           done
       - name: Upload
