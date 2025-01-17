@@ -428,7 +428,7 @@ jobs:
           asset_path: ui/flutter/dist/*
           overwrite: true
   build-web:
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'web' }}
+    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'web' || github.event.inputs.platform == 'qnap' }}
     runs-on: ubuntu-latest
     needs: [get-release]
     steps:
@@ -471,44 +471,70 @@ jobs:
               || true
             done
           done
+      - uses: actions/upload-artifact@v3
+        with:
+          name: web-dist
+          path: dist/zip/
+      - name: Upload
+        uses: shogo82148/actions-upload-release-asset@v1
+        with:
+          upload_url: ${{ needs.get-release.outputs.upload_url }}
+          asset_path: dist/zip/*
+          overwrite: true
+  build-qnap:
+    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'qnap' }}
+    runs-on: ubuntu-latest
+    needs: [get-release, build-web]
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8.18'
+      - uses: actions/download-artifact@v3
+        with:
+          name: web-dist
+          path: dist/zip/
+      - name: Build
+        env:
+          VERSION: ${{ needs.get-release.outputs.version }}
+        run: |
           sudo apt update -y
-          sudo apt install -y pv python2 bsdmainutils
+          sudo apt install -y pv bsdmainutils
           wget -O qdk2_0.32.bionic_amd64.deb "https://github.com/qnap-dev/qdk2/releases/download/v0.32/qdk2_0.32.bionic_amd64.deb"
           dpkg -X qdk2_0.32.bionic_amd64.deb qdk2 # Direct installs will fail due to missing dependencies!
           [[ -d qdk2 ]] || exit 1
+          
           export PATH=$(pwd)/qdk2/usr/bin:$(pwd)/qdk2/usr/share/qdk2/QDK/bin:${PATH}
           wget -O Gopeed.template.tar.gz "https://github.com/GopeedLab/QpkgBuild/raw/refs/heads/master/template/Gopeed.template.tar.gz"
           tar -zxf Gopeed.template.tar.gz
           [[ -d Gopeed ]] || exit 1
+          
           goos=linux
           goarch_arr=(amd64 arm64)
           for goarch in "${goarch_arr[@]}"; do
             qarch=x86_64
             [[ "${goarch}" == "arm64" ]] && qarch=arm_64
             name=gopeed-web-v${VERSION}-${goos}-${goarch}
+            unzip dist/zip/${name}.zip -d dist/${name}
             cp dist/${name}/${name}/* Gopeed/${qarch}/
           done
           cd Gopeed
           sed -i -e 's/__QPKG_VER__/${VERSION}/g' qpkg.cfg
           qbuild || exit 1
-          for f in build/*; do echo ">>> build=[${f}]"; done
+          
+          mkdir -p ../dist/qnap
           goos=qnap
-          goarch_arr=(amd64 arm64)
           for goarch in "${goarch_arr[@]}"; do
             qarch=x86_64
             [[ "${goarch}" == "arm64" ]] && qarch=arm_64
             sname=Gopeed_${VERSION}_${qarch}.qpkg
-            dname=gopeed-${goos}-v${VERSION}-${goarch}.qpkg
-            echo "sname=${sname}, dname=${dname}"
-            [[ -f build/${sname} ]] && cp -ra build/${sname} ../dist/zip/${dname}
+            dname=gopeed-v${VERSION}-${goos}-${goarch}.qpkg
+            [[ -f build/${sname} ]] && cp -ra build/${sname} ../dist/qnap/${dname}
           done
-          for f in ../dist/zip/*; do echo ">>> dist=[${f}]"; done
-          cd ..
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: dist/zip/*
+          asset_path: dist/qnap/*
           overwrite: true
   build-docker:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'docker' }}
