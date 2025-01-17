@@ -428,7 +428,7 @@ jobs:
           asset_path: ui/flutter/dist/*
           overwrite: true
   build-web:
-    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'web' }}
+    if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'web' || github.event.inputs.platform == 'qnap' }}
     runs-on: ubuntu-latest
     needs: [get-release]
     steps:
