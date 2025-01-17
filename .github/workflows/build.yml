@@ -472,7 +472,7 @@ jobs:
             done
           done
           sudo apt update -y
-          sudo apt install -y pv python2 bsdmainutils
+          sudo apt install -y pv python bsdmainutils
           wget -O qdk2_0.32.bionic_amd64.deb "https://github.com/qnap-dev/qdk2/releases/download/v0.32/qdk2_0.32.bionic_amd64.deb"
           dpkg -X qdk2_0.32.bionic_amd64.deb qdk2 # Direct installs will fail due to missing dependencies!
           [[ -d qdk2 ]] || exit 1
