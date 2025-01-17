@@ -521,14 +521,14 @@ jobs:
           sed -i -e 's/__QPKG_VER__/${VERSION}/g' qpkg.cfg
           qbuild || exit 1
           
-          mkdir -p dist/qnap
+          mkdir -p ../dist/qnap
           goos=qnap
           for goarch in "${goarch_arr[@]}"; do
             qarch=x86_64
             [[ "${goarch}" == "arm64" ]] && qarch=arm_64
             sname=Gopeed_${VERSION}_${qarch}.qpkg
             dname=gopeed-${goos}-v${VERSION}-${goarch}.qpkg
-            [[ -f build/${sname} ]] && cp -ra build/${sname} dist/qnap/${dname}
+            [[ -f build/${sname} ]] && cp -ra build/${sname} ../dist/qnap/${dname}
           done
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
