@@ -107,9 +107,9 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if base.HttpCodePartialContent == httpResp.StatusCode || (base.HttpCodeOK == httpResp.StatusCode && httpResp.Header.Get(base.HttpHeaderAcceptRanges) == base.HttpHeaderBytes && strings.HasPrefix(httpResp.Header.Get(base.HttpHeaderContentRange), base.HttpHeaderBytes)) {
 		// response 206 status code, support breakpoint continuation
 		res.Range = true
-		// parse content length from Content-Range header, eg: bytes 0-1000/1001
+		// parse content length from Content-Range header, eg: bytes 0-1000/1001 or bytes 0-0/*
 		contentTotal := path.Base(httpResp.Header.Get(base.HttpHeaderContentRange))
-		if contentTotal != "" {
+		if contentTotal != "" && contentTotal != "*" {
 			parse, err := strconv.ParseInt(contentTotal, 10, 64)
 			if err != nil {
 				return err
@@ -427,6 +427,10 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		return
 	}
 	httpReq.Header = headers
+	// Override Host header
+	if host := headers.Get(base.HttpHeaderHost); host != "" {
+		httpReq.Host = host
+	}
 	return httpReq, nil
 }
 

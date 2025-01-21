@@ -105,6 +105,7 @@ const enUS = {
     'seedKeep': 'Keep seeding until manually stopped',
     'seedRatio': 'Seed ratio',
     'seedTime': 'Seed time (minutes)',
+    'setAsDefaultBtClient': 'Set as the default BT client',
     'taskDetail': 'Task Detail',
     'taskName': 'Task Name',
     'taskUrl': 'Task URL',
@@ -115,5 +116,7 @@ const enUS = {
     'unknown': 'Unknown',
     'fileSelectedCount': 'Files: ',
     'fileSelectedSize': 'Size: ',
+    'httpHeaderName': 'Header Name',
+    'httpHeaderValue': 'Header Value',
   },
 };

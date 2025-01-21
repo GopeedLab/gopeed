@@ -12,3 +12,4 @@ Icon=com.gopeed.Gopeed
 Type=Application
 Categories=Utility;Internet
 Keywords=Bittorrent;Downloader;
+MimeType=x-scheme-handler/gopeed;x-scheme-handler/magnet;application/x-bittorrent;

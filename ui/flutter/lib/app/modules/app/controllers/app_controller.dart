@@ -16,6 +16,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
+import '../../../../api/model/request.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../core/libgopeed_boot.dart';
 import '../../../../database/database.dart';
@@ -27,6 +28,9 @@ import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
+import '../../create/controllers/create_controller.dart';
+import '../../create/dto/create_router_params.dart';
+import '../../redirect/views/redirect_view.dart';
 
 const unixSocketPath = 'gopeed.sock';
 
@@ -160,8 +164,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _initDeepLinks() async {
-    // currently only support android
-    if (!Util.isAndroid()) {
+    if (Util.isWeb()) {
       return;
     }
 
@@ -169,13 +172,13 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
     // Handle link when app is in warm state (front or background)
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
-      await _toCreate(uri);
+      await _handleDeepLink(uri);
     });
 
     // Check initial link if app was in cold state (terminated)
     final uri = await _appLinks.getInitialLink();
     if (uri != null) {
-      await _toCreate(uri);
+      await _handleDeepLink(uri);
     }
   }
 
@@ -304,13 +307,38 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
   }
 
-  Future<void> _toCreate(Uri uri) async {
-    final path = (uri.scheme == "magnet" ||
-            uri.scheme == "http" ||
-            uri.scheme == "https")
-        ? uri.toString()
-        : (await toFile(uri.toString())).path;
-    await Get.rootDelegate.offAndToNamed(Routes.CREATE, arguments: path);
+  Future<void> _handleDeepLink(Uri uri) async {
+    if (uri.scheme == "gopeed") {
+      if (uri.path == "/create") {
+        final params = uri.queryParameters["params"];
+        if (params?.isNotEmpty == true) {
+          final paramsJson = String.fromCharCodes(base64Decode(params!));
+          Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
+              arguments: RedirectArgs(Routes.CREATE,
+                  arguments:
+                      CreateRouterParams.fromJson(jsonDecode(paramsJson))));
+          return;
+        }
+        Get.rootDelegate.offAndToNamed(Routes.CREATE);
+        return;
+      }
+      Get.rootDelegate.offAndToNamed(Routes.HOME);
+      return;
+    }
+
+    String path;
+    if (uri.scheme == "magnet" ||
+        uri.scheme == "http" ||
+        uri.scheme == "https") {
+      path = uri.toString();
+    } else if (uri.scheme == "file") {
+      path = Util.isWindows() ? uri.path.substring(1) : uri.path;
+    } else {
+      path = (await toFile(uri.toString())).path;
+    }
+    Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
+        arguments: RedirectArgs(Routes.CREATE,
+            arguments: CreateRouterParams(req: Request(url: path))));
   }
 
   String runningAddress() {

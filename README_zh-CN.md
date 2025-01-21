@@ -22,71 +22,80 @@ Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不
 ## 下载
 
 <table>
-    <thead>
-        <tr>
-            <th>运行平台</th>
-            <th>安装包类型</th>
-            <th>下载链接</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td rowspan=2>Windows</td>
-            <td><code>EXE Installer</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">前往</a></td>
-        </tr>
-        <tr>
-            <td><code>Portable ZIP</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">前往</a></td>
-        </tr>
-        <tr>
-            <td>MacOS</td>
-            <td><code>DMG Installer</code></td>          
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">前往</a></td>
-        </tr>
-        <tr>
-            <td rowspan=4>Linux</td>
-            <td><code>Flathub</code></td>
-            <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">前往</a></td>
-        </tr>
-        <tr>
-            <td><code>SNAP</code></td>
-            <td><a href="https://snapcraft.io/gopeed">前往</a></td>
-        </tr>
-        <tr>
-            <td><code>DEB</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">前往</a></td>
-        </tr>
-        <tr>
-            <td><code>AppImage</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-x86_64.AppImage">前往</a></td>
-        </tr>
-        <tr>
-            <td>Android</td>
-            <td><code>APK</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android.apk">前往</a></td>
-        </tr>
-        <tr>
-            <td>iOS</td>
-            <td><code>IPA</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">前往</a></td>
-        </tr>
-        <tr>
-            <td>Qnap</td>
-            <td><code>QPKG</code></td>
-            <td><a href="https://gopeed.com/api/download?tpl=gopeed-qnap-$version-amd64.qpkg">前往</a></td>
-        </tr>
-        <tr>
-            <td>Web</td>
-            <td></td>
-            <td><a href="https://github.com/GopeedLab/gopeed/releases/latest">前往</a></td>
-        </tr>
-        <tr>
-            <td>Docker</td>
-            <td></td>
-            <td><a href="https://hub.docker.com/r/liwei2633/gopeed">前往</a></td>
-        </tr>
-    </tbody>
+  <thead>
+    <tr>
+      <th colspan="2">Windows</th>
+      <th>MacOS</th>
+      <th colspan="4">Linux</th>
+      <th>Android</th>
+      <th>iOS</th>
+      <th>Docker</th>
+      <th colspan="2">Qnap</th>
+      <th colspan="8">Web</th>
+    </tr>
+    <tr>
+      <td><code>EXE</code></td>
+      <td><code>Portable</code></td>
+      <td><code>DMG</code></td>
+      <td><code>Flathub</code></td>
+      <td><code>SNAP</code></td>
+      <td><code>DEB</code></td>
+      <td><code>AppImage</code></td>
+      <td><code>APK</code></td>
+      <td><code>IPA</code></td>
+      <td>-</td>
+      <td colspan="2"><code>QPKG</code></td>
+      <td colspan="3"><code>Windows</code></td>
+      <td colspan="2"><code>MacOS</code></td>
+      <td colspan="3"><code>Linux</code></td>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>-</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>-</td>
+      <td>-</td>
+      <td>-</td>
+      <td>amd64</td>
+      <td>arm64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>386</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>amd64</td>
+      <td>386</td>
+    </tr>
+    <tr>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">前往</a></td>
+      <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">前往</a></td>
+      <td><a href="https://snapcraft.io/gopeed">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-x86_64.AppImage">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android.apk">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">前往</a></td>
+      <td><a href="https://hub.docker.com/r/liwei2633/gopeed">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-$version-qnap-amd64.qpkg">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-$version-qnap-arm64.qpkg">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-windows-amd64.zip">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-windows-arm64.zip">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-windows-386.zip">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-macos-amd64.zip">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-macos-arm64.zip">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-linux-amd64.zip">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-linux-arm64.zip">前往</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-linux-386.zip">前往</a></td>
+    </tr>
+  </tbody>
 </table>
 
 更多关于安装的内容请参考[安装文档](https://docs.gopeed.com/zh/install.html)

@@ -1,4 +1,6 @@
-import 'package:autoscale_tabbarview/autoscale_tabbarview.dart';
+import 'dart:convert';
+
+import 'package:contentsize_tabbarview/contentsize_tabbarview.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +14,7 @@ import '../../../../api/model/create_task.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
+import '../../../../api/model/task.dart';
 import '../../../../database/database.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/message.dart';
@@ -23,6 +26,7 @@ import '../../../views/file_tree_view.dart';
 import '../../app/controllers/app_controller.dart';
 import '../../history/views/history_view.dart';
 import '../controllers/create_controller.dart';
+import '../dto/create_router_params.dart';
 
 class CreateView extends GetView<CreateController> {
   final _confirmFormKey = GlobalKey<FormState>();
@@ -36,9 +40,20 @@ class CreateView extends GetView<CreateController> {
   final _proxyPortController = TextEditingController();
   final _proxyUsrController = TextEditingController();
   final _proxyPwdController = TextEditingController();
-  final _httpUaController = TextEditingController();
-  final _httpCookieController = TextEditingController();
-  final _httpRefererController = TextEditingController();
+  final _httpHeaderControllers = [
+    (
+      name: TextEditingController(text: "User-Agent"),
+      value: TextEditingController()
+    ),
+    (
+      name: TextEditingController(text: "Cookie"),
+      value: TextEditingController()
+    ),
+    (
+      name: TextEditingController(text: "Referer"),
+      value: TextEditingController()
+    ),
+  ];
   final _btTrackerController = TextEditingController();
 
   final _availableSchemes = ["http:", "https:", "magnet:"];
@@ -60,32 +75,91 @@ class CreateView extends GetView<CreateController> {
       _pathController.text = appController.downloaderConfig.value.downloadDir;
     }
 
-    final String? filePath = Get.rootDelegate.arguments();
-    if (_urlController.text.isEmpty) {
-      if (filePath?.isNotEmpty ?? false) {
-        // get file path from route arguments
-        _urlController.text = filePath!;
-        _urlController.selection = TextSelection.fromPosition(
-            TextPosition(offset: _urlController.text.length));
-      } else {
-        // read clipboard
-        Clipboard.getData('text/plain').then((value) {
-          if (value?.text?.isNotEmpty ?? false) {
-            if (_availableSchemes
-                .where((e) =>
-                    value!.text!.startsWith(e) ||
-                    value.text!.startsWith(e.toUpperCase()))
-                .isNotEmpty) {
-              _urlController.text = value!.text!;
-              _urlController.selection = TextSelection.fromPosition(
-                  TextPosition(offset: _urlController.text.length));
-              return;
-            }
-
-            recognizeMagnetUri(value!.text!);
-          }
-        });
+    final CreateRouterParams? routerParams = Get.rootDelegate.arguments();
+    if (routerParams?.req?.url.isNotEmpty ?? false) {
+      // get url from route arguments
+      final url = routerParams!.req!.url;
+      _urlController.text = url;
+      _urlController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _urlController.text.length));
+      final uppercaseUrl = url.toUpperCase();
+      Protocol? protocol;
+      if (uppercaseUrl.startsWith("HTTP:") ||
+          uppercaseUrl.startsWith("HTTPS:")) {
+        protocol = Protocol.http;
       }
+      if (uppercaseUrl.startsWith("MAGNET:") ||
+          uppercaseUrl.endsWith(".TORRENT")) {
+        protocol = Protocol.bt;
+      }
+      if (protocol != null) {
+        final extraHandlers = {
+          Protocol.http: () {
+            final reqExtra = ReqExtraHttp.fromJson(
+                jsonDecode(jsonEncode(routerParams.req!.extra)));
+            _httpHeaderControllers.clear();
+            reqExtra.header.forEach((key, value) {
+              _httpHeaderControllers.add(
+                (
+                  name: TextEditingController(text: key),
+                  value: TextEditingController(text: value),
+                ),
+              );
+            });
+            _skipVerifyCertController.value = routerParams.req!.skipVerifyCert;
+          },
+          Protocol.bt: () {
+            final reqExtra = ReqExtraBt.fromJson(
+                jsonDecode(jsonEncode(routerParams.req!.extra)));
+            _btTrackerController.text = reqExtra.trackers.join("\n");
+          },
+        };
+        if (routerParams.req?.extra != null) {
+          extraHandlers[protocol]?.call();
+        }
+
+        // handle options
+        if (routerParams.opt != null) {
+          _renameController.text = routerParams.opt!.name;
+          _pathController.text = routerParams.opt!.path;
+
+          final optionsHandlers = {
+            Protocol.http: () {
+              final opt = routerParams.opt!;
+              _renameController.text = opt.name;
+              _pathController.text = opt.path;
+              if (opt.extra != null) {
+                final optsExtraHttp =
+                    OptsExtraHttp.fromJson(jsonDecode(jsonEncode(opt.extra)));
+                _connectionsController.text =
+                    optsExtraHttp.connections.toString();
+              }
+            },
+            Protocol.bt: null,
+          };
+          if (routerParams.opt?.extra != null) {
+            optionsHandlers[protocol]?.call();
+          }
+        }
+      }
+    } else if (_urlController.text.isEmpty) {
+      // read clipboard
+      Clipboard.getData('text/plain').then((value) {
+        if (value?.text?.isNotEmpty ?? false) {
+          if (_availableSchemes
+              .where((e) =>
+                  value!.text!.startsWith(e) ||
+                  value.text!.startsWith(e.toUpperCase()))
+              .isNotEmpty) {
+            _urlController.text = value!.text!;
+            _urlController.selection = TextSelection.fromPosition(
+                TextPosition(offset: _urlController.text.length));
+            return;
+          }
+
+          recognizeMagnetUri(value!.text!);
+        }
+      });
     }
 
     return Scaffold(
@@ -436,56 +510,105 @@ class CreateView extends GetView<CreateController> {
                                     )
                                   ],
                                 ),
-                                AutoScaleTabBarView(
-                                  controller: controller.advancedTabController,
-                                  children: [
-                                    Column(
-                                      children: [
-                                        TextFormField(
-                                            controller: _httpUaController,
-                                            decoration: const InputDecoration(
-                                              labelText: 'User-Agent',
-                                            )),
-                                        TextFormField(
-                                            controller: _httpCookieController,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Cookie',
-                                            )),
-                                        TextFormField(
-                                            controller: _httpRefererController,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Referer',
-                                            )),
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 10),
-                                          child: CompactCheckbox(
-                                            label: 'skipVerifyCert'.tr,
-                                            value:
-                                                _skipVerifyCertController.value,
-                                            onChanged: (bool? value) {
-                                              _skipVerifyCertController.value =
-                                                  value ?? false;
-                                            },
-                                            textStyle: const TextStyle(
-                                              color: Colors.grey,
+                                DefaultTabController(
+                                  length: 2,
+                                  child: ContentSizeTabBarView(
+                                    controller:
+                                        controller.advancedTabController,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          ..._httpHeaderControllers.map((e) {
+                                            return Row(
+                                              children: [
+                                                Flexible(
+                                                  child: TextFormField(
+                                                    controller: e.name,
+                                                    decoration: InputDecoration(
+                                                      hintText:
+                                                          'httpHeaderName'.tr,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const Padding(
+                                                    padding: EdgeInsets.only(
+                                                        left: 10)),
+                                                Flexible(
+                                                  child: TextFormField(
+                                                    controller: e.value,
+                                                    decoration: InputDecoration(
+                                                      hintText:
+                                                          'httpHeaderValue'.tr,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const Padding(
+                                                    padding: EdgeInsets.only(
+                                                        left: 10)),
+                                                IconButton(
+                                                  icon: const Icon(Icons.add),
+                                                  onPressed: () {
+                                                    _httpHeaderControllers.add(
+                                                      (
+                                                        name:
+                                                            TextEditingController(),
+                                                        value:
+                                                            TextEditingController(),
+                                                      ),
+                                                    );
+                                                    controller.showAdvanced
+                                                        .update((val) => val);
+                                                  },
+                                                ),
+                                                IconButton(
+                                                  icon:
+                                                      const Icon(Icons.remove),
+                                                  onPressed: () {
+                                                    if (_httpHeaderControllers
+                                                            .length <=
+                                                        1) {
+                                                      return;
+                                                    }
+                                                    _httpHeaderControllers
+                                                        .remove(e);
+                                                    controller.showAdvanced
+                                                        .update((val) => val);
+                                                  },
+                                                ),
+                                              ],
+                                            );
+                                          }),
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 10),
+                                            child: CompactCheckbox(
+                                              label: 'skipVerifyCert'.tr,
+                                              value: _skipVerifyCertController
+                                                  .value,
+                                              onChanged: (bool? value) {
+                                                _skipVerifyCertController
+                                                    .value = value ?? false;
+                                              },
+                                              textStyle: const TextStyle(
+                                                color: Colors.grey,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    Column(
-                                      children: [
-                                        TextFormField(
-                                            controller: _btTrackerController,
-                                            maxLines: 5,
-                                            decoration: InputDecoration(
-                                              labelText: 'Trackers',
-                                              hintText: 'addTrackerHit'.tr,
-                                            )),
-                                      ],
-                                    )
-                                  ],
+                                        ],
+                                      ),
+                                      Column(
+                                        children: [
+                                          TextFormField(
+                                              controller: _btTrackerController,
+                                              maxLines: 5,
+                                              decoration: InputDecoration(
+                                                labelText: 'Trackers',
+                                                hintText: 'addTrackerHit'.tr,
+                                              )),
+                                        ],
+                                      )
+                                    ],
+                                  ),
                                 )
                               ],
                             ).paddingOnly(top: 16),
@@ -644,12 +767,10 @@ class CreateView extends GetView<CreateController> {
     if (controller.showAdvanced.value) {
       switch (controller.advancedTabController.index) {
         case 0:
-          final header = {
-            "User-Agent": _httpUaController.text,
-            "Cookie": _httpCookieController.text,
-            "Referer": _httpRefererController.text,
-          };
-          header.removeWhere((key, value) => value.trim().isEmpty);
+          final header = Map<String, String>.fromEntries(_httpHeaderControllers
+              .map((e) => MapEntry(e.name.text, e.value.text)));
+          header.removeWhere(
+              (key, value) => key.trim().isEmpty || value.trim().isEmpty);
           if (header.isNotEmpty) {
             reqExtra = ReqExtraHttp()..header = header;
           }
