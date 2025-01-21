@@ -201,10 +201,8 @@ class AppController extends GetxController with WindowListener, TrayListener {
     } else if (Platform.environment.containsKey('FLATPAK_ID') ||
         Platform.environment.containsKey('SNAP')) {
       await trayManager.setIcon('com.gopeed.Gopeed');
-      Get.snackbar('tip'.tr, 'sandbox');
     } else {
       await trayManager.setIcon('assets/tray_icon/icon.png');
-      Get.snackbar('tip'.tr, 'ohter');
     }
     final menu = Menu(items: [
       MenuItem(
