@@ -253,7 +253,7 @@ jobs:
           overwrite: true
   build-snap:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'snap' }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
