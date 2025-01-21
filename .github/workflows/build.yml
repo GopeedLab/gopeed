@@ -302,11 +302,10 @@ jobs:
                 - bin/gpu-2404-wrapper
               command: bin/gopeed
               extensions: [gnome]
+              common-id: com.gopeed.Gopeed
               plugs:
                 - network
                 - home
-              slots:
-                - dbus-gopeed
           parts:
             flutter-git:
               source: https://github.com/flutter/flutter.git
