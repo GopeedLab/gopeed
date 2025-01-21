@@ -215,7 +215,7 @@ jobs:
           overwrite: true
   build-linux:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
@@ -253,7 +253,7 @@ jobs:
           overwrite: true
   build-snap:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'snap' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
