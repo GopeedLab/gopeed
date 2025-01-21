@@ -198,9 +198,10 @@ class AppController extends GetxController with WindowListener, TrayListener {
     } else if (Util.isMacos()) {
       await trayManager.setIcon('assets/tray_icon/icon_mac.png',
           isTemplate: true);
-    } else if (Platform.environment.containsKey('FLATPAK_ID') ||
-        Platform.environment.containsKey('SNAP')) {
+    } else if (Platform.environment.containsKey('FLATPAK_ID')) {
       await trayManager.setIcon('com.gopeed.Gopeed');
+    } else if (Platform.environment.containsKey('SNAP')) {
+      await trayManager.setIcon('com.gopeed.gopeed');
     } else {
       await trayManager.setIcon('assets/tray_icon/icon.png');
     }
