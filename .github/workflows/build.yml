@@ -273,7 +273,7 @@ jobs:
 
           sudo snap install snapcraft --classic
           mkdir -p snap/gui
-          cp assets/icon/icon.svg snap/gui/gopeed.svg
+          cp assets/icon/icon_512.png snap/gui/gopeed.png
 
           cat>snap/snapcraft.yaml<<EOF
           name: gopeed
@@ -374,7 +374,7 @@ jobs:
           EOF
 
           cp linux/assets/com.gopeed.Gopeed.desktop snap/gui/gopeed.desktop
-          sed -i 's/Icon=com.gopeed.Gopeed/Icon=\${SNAP}\/meta\/gui\/gopeed.svg/g' snap/gui/gopeed.desktop
+          sed -i 's/Icon=com.gopeed.Gopeed/Icon=\${SNAP}\/meta\/gui\/gopeed.png/g' snap/gui/gopeed.desktop
 
           snapcraft --use-lxd
 
