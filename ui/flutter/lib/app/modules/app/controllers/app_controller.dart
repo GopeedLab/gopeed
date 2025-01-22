@@ -9,6 +9,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_handler/share_handler.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:uri_to_file/uri_to_file.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -28,7 +29,6 @@ import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
-import '../../create/controllers/create_controller.dart';
 import '../../create/dto/create_router_params.dart';
 import '../../redirect/views/redirect_view.dart';
 
@@ -168,17 +168,42 @@ class AppController extends GetxController with WindowListener, TrayListener {
       return;
     }
 
-    _appLinks = AppLinks();
+    // Handle deep link
+    () async {
+      _appLinks = AppLinks();
 
-    // Handle link when app is in warm state (front or background)
-    _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
-      await _handleDeepLink(uri);
-    });
+      // Handle link when app is in warm state (front or background)
+      _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
+        await _handleDeepLink(uri);
+      });
 
-    // Check initial link if app was in cold state (terminated)
-    final uri = await _appLinks.getInitialLink();
-    if (uri != null) {
-      await _handleDeepLink(uri);
+      // Check initial link if app was in cold state (terminated)
+      final uri = await _appLinks.getInitialLink();
+      if (uri != null) {
+        await _handleDeepLink(uri);
+      }
+    }();
+
+    // Handle shared media, e.g. shared link from browser
+    if (Util.isMobile()) {
+      () async {
+        final handler = ShareHandlerPlatform.instance;
+
+        handler.sharedMediaStream.listen((SharedMedia media) {
+          if (media.content?.isNotEmpty == true) {
+            final uri = Uri.parse(media.content!);
+            // content uri will be handled by the app_links plugin
+            if (uri.scheme != "content") {
+              _handleDeepLink(uri);
+            }
+          }
+        });
+
+        final media = await handler.getInitialSharedMedia();
+        if (media?.content?.isNotEmpty == true) {
+          _handleDeepLink(Uri.parse(media!.content!));
+        }
+      }();
     }
   }
 

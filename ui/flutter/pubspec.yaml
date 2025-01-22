@@ -71,6 +71,7 @@ dependencies:
   contextmenu_plus: ^1.0.1
   contentsize_tabbarview: ^0.0.2
   win32_registry: ^1.1.5
+  share_handler: ^0.0.22
 dependency_overrides:
   permission_handler_windows:
     git:
