@@ -32,14 +32,14 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-end
 
-# share_handler addition start
-target 'ShareExtension' do
-  inherit! :search_paths
-  pod "share_handler_ios_models", :path => ".symlinks/plugins/share_handler_ios/ios/Models"
+  # share_handler addition start
+  target 'ShareExtension' do
+    inherit! :search_paths
+    pod "share_handler_ios_models", :path => ".symlinks/plugins/share_handler_ios/ios/Models"
+  end
+  # share_handler addition end
 end
-# share_handler addition end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
