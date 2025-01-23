@@ -215,7 +215,7 @@ jobs:
           overwrite: true
   build-linux:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'linux' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
@@ -282,11 +282,12 @@ jobs:
           description: High speed downloader that supports all platforms.
 
           confinement: strict
-          base: core22
+          base: core24
           grade: stable
 
-          architectures:
-            - build-on: amd64
+          platforms:
+            amd64:
+              build-on: amd64
               build-for: amd64
 
           slots:
@@ -297,13 +298,14 @@ jobs:
 
           apps:
             gopeed:
+              command-chain:
+                - bin/gpu-2404-wrapper
               command: bin/gopeed
               extensions: [gnome]
+              common-id: com.gopeed.Gopeed
               plugs:
                 - network
                 - home
-              slots:
-                - dbus-gopeed
           parts:
             flutter-git:
               source: https://github.com/flutter/flutter.git
@@ -346,6 +348,29 @@ jobs:
                 flutter build linux --release -v
                 mkdir -p \$CRAFT_PART_INSTALL/bin/
                 cp -r build/linux/*/release/bundle/* \$CRAFT_PART_INSTALL/bin/
+            gpu-2404:
+              after: [gopeed]
+              source: https://github.com/canonical/gpu-snap.git
+              plugin: dump
+              override-prime: |
+                craftctl default
+                \${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
+              prime:
+                - bin/gpu-2404-wrapper
+          
+          plugs:
+            gpu-2404:
+              interface: content
+              target: \$SNAP/gpu-2404
+              default-provider: mesa-2404
+          
+          layout:
+            /usr/share/libdrm:
+              bind: \$SNAP/gpu-2404/libdrm
+            /usr/share/drirc.d:
+              symlink: \$SNAP/gpu-2404/drirc.d
+            /usr/share/X11/XErrorDB:
+              symlink: \$SNAP/gpu-2404/X11/XErrorDB
           EOF
 
           cp linux/assets/com.gopeed.Gopeed.desktop snap/gui/gopeed.desktop
