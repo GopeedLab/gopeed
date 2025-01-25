@@ -1,4 +1,4 @@
-package com.gopeed
+package com.gopeed.gopeed
 
 import androidx.annotation.NonNull
 import com.gopeed.libgopeed.Libgopeed
