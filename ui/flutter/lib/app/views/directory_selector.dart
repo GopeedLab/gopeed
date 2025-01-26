@@ -9,7 +9,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 
-import '../../util/mac_secure_util.dart';
 import '../../util/message.dart';
 import '../../util/util.dart';
 
@@ -42,7 +41,6 @@ class _DirectorySelectorState extends State<DirectorySelector> {
               var dir = await FilePicker.platform.getDirectoryPath();
               if (dir != null) {
                 widget.controller.text = dir;
-                MacSecureUtil.saveBookmark(dir);
               }
             });
       }

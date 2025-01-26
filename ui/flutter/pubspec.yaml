@@ -42,7 +42,6 @@ dependencies:
   dio: ^5.2.1
   path_provider: ^2.1.4
   file_picker: ^8.1.2
-  macos_secure_bookmarks: ^0.2.1
   rounded_loading_button_plus: ^3.0.1
   url_launcher: ^6.3.1
   logger: ^1.4.0
