@@ -52,6 +52,7 @@ jobs:
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
 
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$env:VERSION" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
+          go build -ldflags="-w -s" -o ui/flutter/assets/host/host.exe github.com/GopeedLab/gopeed/cmd/host
           cd ui/flutter
           $TAG = "v$env:VERSION"
           flutter build windows
@@ -122,7 +123,7 @@ jobs:
           [Icons]
           Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
           Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-          
+
           [Run]
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
@@ -150,10 +151,13 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
+          go build -ldflags="-w -s" github.com/GopeedLab/gopeed/cmd/host
       - uses: actions/upload-artifact@v3
         with:
           name: macos-arm64-lib
-          path: libgopeed.dylib
+          path: |
+            libgopeed.dylib
+            host
   build-macos:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-13
@@ -185,12 +189,18 @@ jobs:
 
           # amd64 lib
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/lib-amd64/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
+          go build -ldflags="-w -s" -o ui/flutter/lib-amd64/host github.com/GopeedLab/gopeed/cmd/host
           # universal binary
           mkdir -p ui/flutter/macos/Frameworks
           cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/macos/Frameworks/amd64-lib
           cp ui/flutter/lib-arm64/libgopeed.dylib ui/flutter/macos/Frameworks/arm64-lib
+          cp ui/flutter/lib-amd64/host ui/flutter/macos/Frameworks/amd64-host
+          cp ui/flutter/lib-arm64/host ui/flutter/macos/Frameworks/arm64-host
           cd ui/flutter/macos/Frameworks
           lipo -create -output libgopeed.dylib amd64-lib arm64-lib
+          lipo -create -output host amd64-host arm64-host
+          rm -rf amd64-lib arm64-lib amd64-host arm64-host
+          mv host ui/flutter/assets/host/host
 
           cd $PROJECT_DIR/ui/flutter
           flutter build macos
@@ -239,6 +249,7 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
+          go build -ldflags="-w -s" -o ui/flutter/assets/host/host github.com/GopeedLab/gopeed/cmd/host
           cd ui/flutter
           dart pub global activate -sgit https://github.com/GopeedLab/flutter_distributor.git --git-path packages/flutter_distributor
           flutter_distributor package --platform linux --targets appimage,deb
@@ -269,6 +280,7 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
+          go build -ldflags="-w -s" -o ui/flutter/assets/host/host github.com/GopeedLab/gopeed/cmd/host
           cd ui/flutter
 
           sudo snap install snapcraft --classic
@@ -357,13 +369,13 @@ jobs:
                 \${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
               prime:
                 - bin/gpu-2404-wrapper
-          
+
           plugs:
             gpu-2404:
               interface: content
               target: \$SNAP/gpu-2404
               default-provider: mesa-2404
-          
+
           layout:
             /usr/share/libdrm:
               bind: \$SNAP/gpu-2404/libdrm
@@ -513,7 +525,7 @@ jobs:
     steps:
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.8.18'
+          python-version: "3.8.18"
       - uses: actions/download-artifact@v3
         with:
           name: web-dist
@@ -527,12 +539,12 @@ jobs:
           wget -O qdk2_0.32.bionic_amd64.deb "https://github.com/qnap-dev/qdk2/releases/download/v0.32/qdk2_0.32.bionic_amd64.deb"
           dpkg -X qdk2_0.32.bionic_amd64.deb qdk2 # Direct installs will fail due to missing dependencies!
           [[ -d qdk2 ]] || exit 1
-          
+
           export PATH=$(pwd)/qdk2/usr/bin:$(pwd)/qdk2/usr/share/qdk2/QDK/bin:${PATH}
           wget -O Gopeed.template.tar.gz "https://github.com/GopeedLab/QpkgBuild/raw/refs/heads/master/template/Gopeed.template.tar.gz"
           tar -zxf Gopeed.template.tar.gz
           [[ -d Gopeed ]] || exit 1
-          
+
           goos=linux
           goarch_arr=(amd64 arm64)
           for goarch in "${goarch_arr[@]}"; do
@@ -545,7 +557,7 @@ jobs:
           cd Gopeed
           sed -i -e 's/__QPKG_VER__/${VERSION}/g' qpkg.cfg
           qbuild || exit 1
-          
+
           mkdir -p ../dist/qnap
           goos=qnap
           for goarch in "${goarch_arr[@]}"; do

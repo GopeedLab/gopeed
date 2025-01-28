@@ -1,20 +1,52 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:win32_registry/win32_registry.dart';
 
 import '../../win32.dart';
 import '../browser_extension_host.dart';
 
+final _hostExecName = 'host${Platform.isWindows ? '.exe' : ''}';
+
 const _hostName = 'com.gopeed.gopeed';
 const _chromeExtensionId = 'mijpgljlfcapndmchhjffkpckknofcnd';
 const _edgeExtensionId = 'dkajnckekendchdleoaenoophcobooce';
 const _firefoxExtensionId = '{c5d69a8f-2ed0-46a7-afa4-b3a00dc58088}';
+const _debugExtensionIds = ['gjddllnejledbfaeondocjpejpamclkk'];
 
 // Windows NativeMessagingHosts registry constants
 const _chromeNativeHostsKey = r'Software\Google\Chrome\NativeMessagingHosts';
 const _edgeNativeHostsKey = r'Software\Microsoft\Edge\NativeMessagingHosts';
 const _firefoxNativeHostsKey = r'Software\Mozilla\NativeMessagingHosts';
+
+/// Install host binary for browser extension
+Future<void> doInstallHost() async {
+  final hostPath =
+      path.join((await getApplicationSupportDirectory()).path, _hostExecName);
+
+  Future<List<int>> getHostAssetData() async {
+    final hostAsset = await rootBundle.load('assets/host/$_hostExecName');
+    return hostAsset.buffer
+        .asUint8List(hostAsset.offsetInBytes, hostAsset.lengthInBytes);
+  }
+
+  // Check if host binary is not installed
+  if (!await File(hostPath).exists()) {
+    final hostData = await getHostAssetData();
+    await File(hostPath).writeAsBytes(hostData);
+    return;
+  }
+  // Check if host binary is outdated
+  final hostAssetData = await getHostAssetData();
+  final hostFileData = await File(hostPath).readAsBytes();
+  if (hostAssetData.length != hostFileData.length) {
+    await File(hostPath).writeAsBytes(hostAssetData);
+    return;
+  }
+}
 
 /// Check if specified browser is installed
 Future<bool> doCheckBrowserInstalled(Browser browser) async {
@@ -62,7 +94,7 @@ Future<bool> doCheckManifestInstalled(Browser browser) async {
   }
 
   final existingContent = await File(manifestPath).readAsString();
-  final expectedContent = _getManifestContent();
+  final expectedContent = await _getManifestContent();
   return existingContent == expectedContent;
 }
 
@@ -72,7 +104,7 @@ Future<void> doInstallManifest(Browser browser) async {
   if (await checkManifestInstalled(browser)) return;
 
   final manifestPath = _getManifestPath(browser)!;
-  final manifestContent = _getManifestContent();
+  final manifestContent = await _getManifestContent();
   final manifestDir = path.dirname(manifestPath);
   await Directory(manifestDir).create(recursive: true);
   await File(manifestPath).writeAsString(manifestContent);
@@ -243,20 +275,18 @@ Future<bool> _checkWindowsRegistry(String keyPath) async {
   }
 }
 
-String _getManifestContent() {
-  final execPath = Platform.resolvedExecutable;
-  final execDir = path.dirname(execPath);
+Future<String> _getManifestContent() async {
   final hostPath =
-      path.join(execDir, 'host') + (Platform.isWindows ? '.exe' : '');
+      path.join((await getApplicationSupportDirectory()).path, _hostExecName);
   final manifest = {
     'name': _hostName,
     'description': 'Gopeed browser extension host',
     'path': hostPath,
     'type': 'stdio',
     'allowed_origins': [
-      'chrome-extension://gjddllnejledbfaeondocjpejpamclkk/',
       'chrome-extension://$_chromeExtensionId/',
       'chrome-extension://$_edgeExtensionId/',
+      ..._debugExtensionIds.map((id) => 'chrome-extension://$id/'),
     ],
     'allowed_extensions': [_firefoxExtensionId],
   };

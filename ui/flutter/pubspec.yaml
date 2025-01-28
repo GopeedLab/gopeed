@@ -107,6 +107,8 @@ flutter:
   assets:
     - assets/tray_icon/
     - assets/extension/
+    # Browser extension native host binary, see https://github.com/GopeedLab/gopeed/tree/main/cmd/host
+    - assets/host/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
