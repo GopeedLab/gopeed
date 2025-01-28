@@ -200,7 +200,7 @@ jobs:
           lipo -create -output libgopeed.dylib amd64-lib arm64-lib
           lipo -create -output host amd64-host arm64-host
           rm -rf amd64-lib arm64-lib amd64-host arm64-host
-          mv host ui/flutter/assets/host/host
+          mv host ../../ui/flutter/assets/host/host
 
           cd $PROJECT_DIR/ui/flutter
           flutter build macos
