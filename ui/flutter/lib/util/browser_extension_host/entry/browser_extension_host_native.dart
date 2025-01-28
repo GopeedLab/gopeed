@@ -36,7 +36,12 @@ Future<void> doInstallHost() async {
   // Check if host binary is not installed
   if (!await File(hostPath).exists()) {
     final hostData = await getHostAssetData();
-    await File(hostPath).writeAsBytes(hostData);
+    final file = File(hostPath);
+    await file.writeAsBytes(hostData);
+    // Add execute permission
+    if (!Platform.isWindows) {
+      await Process.run('chmod', ['+x', hostPath]);
+    }
     return;
   }
   // Check if host binary is outdated

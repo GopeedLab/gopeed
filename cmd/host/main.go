@@ -46,7 +46,11 @@ var apiMap = map[string]func(params json.RawMessage) (data any, err error){
 		return false, nil
 	},
 	"create": func(params json.RawMessage) (data any, err error) {
-		err = browser.OpenURL(fmt.Sprintf("%s:///create?params=%s", identifier, string(params)))
+		var strParams string
+		if err = json.Unmarshal(params, &strParams); err != nil {
+			return
+		}
+		err = browser.OpenURL(fmt.Sprintf("%s:///create?params=%s", identifier, strParams))
 		return
 	},
 }
