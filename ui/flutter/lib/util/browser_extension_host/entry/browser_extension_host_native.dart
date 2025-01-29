@@ -15,7 +15,10 @@ const _hostName = 'com.gopeed.gopeed';
 const _chromeExtensionId = 'mijpgljlfcapndmchhjffkpckknofcnd';
 const _edgeExtensionId = 'dkajnckekendchdleoaenoophcobooce';
 const _firefoxExtensionId = '{c5d69a8f-2ed0-46a7-afa4-b3a00dc58088}';
-const _debugExtensionIds = ['gjddllnejledbfaeondocjpejpamclkk'];
+const _debugExtensionIds = [
+  'gjddllnejledbfaeondocjpejpamclkk',
+  'goaohdfiokcjapgonhofgljfccoccief'
+];
 
 // Windows NativeMessagingHosts registry constants
 const _chromeNativeHostsKey = r'Software\Google\Chrome\NativeMessagingHosts';
