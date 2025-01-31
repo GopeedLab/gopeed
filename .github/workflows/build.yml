@@ -152,7 +152,7 @@ jobs:
         run: |
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" github.com/GopeedLab/gopeed/cmd/host
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: macos-arm64-lib
           path: |
@@ -508,7 +508,7 @@ jobs:
               || true
             done
           done
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: web-dist
           path: dist/zip/
