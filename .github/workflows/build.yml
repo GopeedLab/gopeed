@@ -177,7 +177,7 @@ jobs:
         run: |
           python3 -m pip install setuptools --break-system-packages
           npm install -g appdmg
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: macos-arm64-lib
           path: ui/flutter/lib-arm64
@@ -526,7 +526,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.8.18"
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: web-dist
           path: dist/zip/
