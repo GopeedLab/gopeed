@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:win32_registry/win32_registry.dart';
 
 import '../../win32.dart';
@@ -234,8 +233,10 @@ List<String> _getUnixExecutablePaths(Browser browser) {
 }
 
 String? _getManifestPath(Browser browser) {
+  final manifestName =
+      browser == Browser.firefox ? '$_hostName.mz.json' : '$_hostName.json';
   if (Platform.isWindows) {
-    return _joinExePath('$_hostName.json');
+    return _joinExePath(manifestName);
   }
 
   final home =
@@ -246,25 +247,25 @@ String? _getManifestPath(Browser browser) {
     switch (browser) {
       case Browser.chrome:
         return path.join(home, 'Library', 'Application Support', 'Google',
-            'Chrome', 'NativeMessagingHosts', '$_hostName.json');
+            'Chrome', 'NativeMessagingHosts', manifestName);
       case Browser.edge:
         return path.join(home, 'Library', 'Application Support',
-            'Microsoft Edge', 'NativeMessagingHosts', '$_hostName.json');
+            'Microsoft Edge', 'NativeMessagingHosts', manifestName);
       case Browser.firefox:
         return path.join(home, 'Library', 'Application Support', 'Mozilla',
-            'NativeMessagingHosts', '$_hostName.json');
+            'NativeMessagingHosts', manifestName);
     }
   } else if (Platform.isLinux) {
     switch (browser) {
       case Browser.chrome:
         return path.join(home, '.config', 'google-chrome',
-            'NativeMessagingHosts', '$_hostName.json');
+            'NativeMessagingHosts', manifestName);
       case Browser.edge:
         return path.join(home, '.config', 'microsoft-edge',
-            'NativeMessagingHosts', '$_hostName.json');
+            'NativeMessagingHosts', manifestName);
       case Browser.firefox:
         return path.join(
-            home, '.mozilla', 'native-messaging-hosts', '$_hostName.json');
+            home, '.mozilla', 'native-messaging-hosts', manifestName);
     }
   }
   return null;
@@ -281,8 +282,7 @@ Future<bool> _checkWindowsRegistry(String keyPath) async {
 }
 
 Future<String> _getManifestContent(Browser browser) async {
-  final hostPath =
-      path.join((await getApplicationSupportDirectory()).path, _hostExecName);
+  final hostPath = _joinExePath(_hostExecName);
   final manifest = {
     'name': _hostName,
     'description': 'Gopeed browser extension host',
