@@ -27,8 +27,7 @@ const _firefoxNativeHostsKey = r'Software\Mozilla\NativeMessagingHosts';
 
 /// Install host binary for browser extension
 Future<void> doInstallHost() async {
-  final hostPath =
-      path.join((await getApplicationSupportDirectory()).path, _hostExecName);
+  final hostPath = _joinExePath(_hostExecName);
 
   Future<List<int>> getHostAssetData() async {
     final hostAsset = await rootBundle.load('assets/host/$_hostExecName');
@@ -102,7 +101,7 @@ Future<bool> doCheckManifestInstalled(Browser browser) async {
   }
 
   final existingContent = await File(manifestPath).readAsString();
-  final expectedContent = await _getManifestContent();
+  final expectedContent = await _getManifestContent(browser);
   return existingContent == expectedContent;
 }
 
@@ -112,7 +111,7 @@ Future<void> doInstallManifest(Browser browser) async {
   if (await checkManifestInstalled(browser)) return;
 
   final manifestPath = _getManifestPath(browser)!;
-  final manifestContent = await _getManifestContent();
+  final manifestContent = await _getManifestContent(browser);
   final manifestDir = path.dirname(manifestPath);
   await Directory(manifestDir).create(recursive: true);
   await File(manifestPath).writeAsString(manifestContent);
@@ -236,9 +235,7 @@ List<String> _getUnixExecutablePaths(Browser browser) {
 
 String? _getManifestPath(Browser browser) {
   if (Platform.isWindows) {
-    final execPath = Platform.resolvedExecutable;
-    final execDir = path.dirname(execPath);
-    return path.join(execDir, '$_hostName.json');
+    return _joinExePath('$_hostName.json');
   }
 
   final home =
@@ -283,7 +280,7 @@ Future<bool> _checkWindowsRegistry(String keyPath) async {
   }
 }
 
-Future<String> _getManifestContent() async {
+Future<String> _getManifestContent(Browser browser) async {
   final hostPath =
       path.join((await getApplicationSupportDirectory()).path, _hostExecName);
   final manifest = {
@@ -291,12 +288,13 @@ Future<String> _getManifestContent() async {
     'description': 'Gopeed browser extension host',
     'path': hostPath,
     'type': 'stdio',
-    'allowed_origins': [
-      'chrome-extension://$_chromeExtensionId/',
-      'chrome-extension://$_edgeExtensionId/',
-      ..._debugExtensionIds.map((id) => 'chrome-extension://$id/'),
-    ],
-    'allowed_extensions': [_firefoxExtensionId],
+    if (browser != Browser.firefox)
+      'allowed_origins': [
+        'chrome-extension://$_chromeExtensionId/',
+        'chrome-extension://$_edgeExtensionId/',
+        ..._debugExtensionIds.map((id) => 'chrome-extension://$id/'),
+      ],
+    if (browser == Browser.firefox) 'allowed_extensions': [_firefoxExtensionId],
   };
   return const JsonEncoder.withIndent('  ').convert(manifest);
 }
@@ -310,4 +308,10 @@ String _getWindowsRegistryKey(Browser browser) {
     case Browser.firefox:
       return _firefoxNativeHostsKey;
   }
+}
+
+String _joinExePath(String fileName) {
+  final execPath = Platform.resolvedExecutable;
+  final execDir = path.dirname(execPath);
+  return path.join(execDir, fileName);
 }
