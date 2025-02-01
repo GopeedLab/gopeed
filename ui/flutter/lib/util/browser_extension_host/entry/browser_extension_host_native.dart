@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:win32_registry/win32_registry.dart';
 
 import '../../win32.dart';
@@ -27,8 +26,7 @@ const _firefoxNativeHostsKey = r'Software\Mozilla\NativeMessagingHosts';
 
 /// Install host binary for browser extension
 Future<void> doInstallHost() async {
-  final hostPath =
-      path.join((await getApplicationSupportDirectory()).path, _hostExecName);
+  final hostPath = _joinExePath(_hostExecName);
 
   Future<List<int>> getHostAssetData() async {
     final hostAsset = await rootBundle.load('assets/host/$_hostExecName');
@@ -102,7 +100,7 @@ Future<bool> doCheckManifestInstalled(Browser browser) async {
   }
 
   final existingContent = await File(manifestPath).readAsString();
-  final expectedContent = await _getManifestContent();
+  final expectedContent = await _getManifestContent(browser);
   return existingContent == expectedContent;
 }
 
@@ -112,7 +110,7 @@ Future<void> doInstallManifest(Browser browser) async {
   if (await checkManifestInstalled(browser)) return;
 
   final manifestPath = _getManifestPath(browser)!;
-  final manifestContent = await _getManifestContent();
+  final manifestContent = await _getManifestContent(browser);
   final manifestDir = path.dirname(manifestPath);
   await Directory(manifestDir).create(recursive: true);
   await File(manifestPath).writeAsString(manifestContent);
@@ -235,10 +233,10 @@ List<String> _getUnixExecutablePaths(Browser browser) {
 }
 
 String? _getManifestPath(Browser browser) {
+  final manifestName =
+      browser == Browser.firefox ? '$_hostName.moz.json' : '$_hostName.json';
   if (Platform.isWindows) {
-    final execPath = Platform.resolvedExecutable;
-    final execDir = path.dirname(execPath);
-    return path.join(execDir, '$_hostName.json');
+    return _joinExePath(manifestName);
   }
 
   final home =
@@ -249,25 +247,25 @@ String? _getManifestPath(Browser browser) {
     switch (browser) {
       case Browser.chrome:
         return path.join(home, 'Library', 'Application Support', 'Google',
-            'Chrome', 'NativeMessagingHosts', '$_hostName.json');
+            'Chrome', 'NativeMessagingHosts', manifestName);
       case Browser.edge:
         return path.join(home, 'Library', 'Application Support',
-            'Microsoft Edge', 'NativeMessagingHosts', '$_hostName.json');
+            'Microsoft Edge', 'NativeMessagingHosts', manifestName);
       case Browser.firefox:
         return path.join(home, 'Library', 'Application Support', 'Mozilla',
-            'NativeMessagingHosts', '$_hostName.json');
+            'NativeMessagingHosts', manifestName);
     }
   } else if (Platform.isLinux) {
     switch (browser) {
       case Browser.chrome:
         return path.join(home, '.config', 'google-chrome',
-            'NativeMessagingHosts', '$_hostName.json');
+            'NativeMessagingHosts', manifestName);
       case Browser.edge:
         return path.join(home, '.config', 'microsoft-edge',
-            'NativeMessagingHosts', '$_hostName.json');
+            'NativeMessagingHosts', manifestName);
       case Browser.firefox:
         return path.join(
-            home, '.mozilla', 'native-messaging-hosts', '$_hostName.json');
+            home, '.mozilla', 'native-messaging-hosts', manifestName);
     }
   }
   return null;
@@ -283,20 +281,20 @@ Future<bool> _checkWindowsRegistry(String keyPath) async {
   }
 }
 
-Future<String> _getManifestContent() async {
-  final hostPath =
-      path.join((await getApplicationSupportDirectory()).path, _hostExecName);
+Future<String> _getManifestContent(Browser browser) async {
+  final hostPath = _joinExePath(_hostExecName);
   final manifest = {
     'name': _hostName,
     'description': 'Gopeed browser extension host',
     'path': hostPath,
     'type': 'stdio',
-    'allowed_origins': [
-      'chrome-extension://$_chromeExtensionId/',
-      'chrome-extension://$_edgeExtensionId/',
-      ..._debugExtensionIds.map((id) => 'chrome-extension://$id/'),
-    ],
-    'allowed_extensions': [_firefoxExtensionId],
+    if (browser != Browser.firefox)
+      'allowed_origins': [
+        'chrome-extension://$_chromeExtensionId/',
+        'chrome-extension://$_edgeExtensionId/',
+        ..._debugExtensionIds.map((id) => 'chrome-extension://$id/'),
+      ],
+    if (browser == Browser.firefox) 'allowed_extensions': [_firefoxExtensionId],
   };
   return const JsonEncoder.withIndent('  ').convert(manifest);
 }
@@ -310,4 +308,10 @@ String _getWindowsRegistryKey(Browser browser) {
     case Browser.firefox:
       return _firefoxNativeHostsKey;
   }
+}
+
+String _joinExePath(String fileName) {
+  final execPath = Platform.resolvedExecutable;
+  final execDir = path.dirname(execPath);
+  return path.join(execDir, fileName);
 }
