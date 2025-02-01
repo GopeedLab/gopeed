@@ -234,7 +234,7 @@ List<String> _getUnixExecutablePaths(Browser browser) {
 
 String? _getManifestPath(Browser browser) {
   final manifestName =
-      browser == Browser.firefox ? '$_hostName.mz.json' : '$_hostName.json';
+      browser == Browser.firefox ? '$_hostName.moz.json' : '$_hostName.json';
   if (Platform.isWindows) {
     return _joinExePath(manifestName);
   }
