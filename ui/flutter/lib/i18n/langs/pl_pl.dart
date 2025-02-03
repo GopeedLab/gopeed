@@ -62,7 +62,7 @@ const plPL = {
     'show': 'Pokaż',
     'startAll': 'Zacznij wszystkie',
     'pauseAll': 'Zatrzymaj wszystkie',
-    'deleteTask': 'Usuń zadanie',
+    'deleteTask': 'Usuń @count zadania',
     'deleteTaskTip': 'Zachowaj pobrane pliki',
     'delete': 'Usuń',
     'newVersionTitle': 'Sprawdź aktualizację @version',
@@ -94,5 +94,6 @@ const plPL = {
         'Dziękuję wszystkim za pomoc przy powstawaniu aplikacji Gopeed!',
     'browserExtension': 'Wtyczka dla przeglądarki',
     'launchAtStartup': 'Uruchom na starcie',
+    'skipVerifyCert': 'Pomiń weryfikację certyfikatu',
   },
 };

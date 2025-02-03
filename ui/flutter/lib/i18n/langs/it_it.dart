@@ -64,7 +64,7 @@ const itIT = {
     'show': 'Mostra',
     'startAll': 'Avvia tutti',
     'pauseAll': 'Mtti in pausa tutti',
-    'deleteTask': 'Elimina attività',
+    'deleteTask': 'Elimina @count attività',
     'deleteTaskTip': 'Conserva i file scaricati',
     'delete': 'Elimina',
     'newVersionTitle': 'Scopri la nuova versione @version',
@@ -96,5 +96,6 @@ const itIT = {
         'Grazie a tutti i contributori che hanno contribuito a costruire e sviluppare la comunità Gopeed!',
     'browserExtension': 'Estensione del browser',
     'launchAtStartup': "Lancia all'avvio",
+    'skipVerifyCert': 'Salta la verifica del certificato',
   },
 };

@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/slices"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,8 @@ type Request struct {
 	Labels map[string]string `json:"labels"`
 	// Proxy is special proxy config for request
 	Proxy *RequestProxy `json:"proxy"`
+	// SkipVerifyCert is the flag that skip verify cert
+	SkipVerifyCert bool `json:"skipVerifyCert"`
 }
 
 func (r *Request) Validate() error {
@@ -27,12 +30,15 @@ func (r *Request) Validate() error {
 	return nil
 }
 
-type RequestProxyMode int
+type RequestProxyMode string
 
 const (
-	RequestProxyModeNone RequestProxyMode = iota
-	RequestProxyModeGlobal
-	RequestProxyModeCustom
+	// RequestProxyModeFollow follow setting proxy
+	RequestProxyModeFollow RequestProxyMode = "follow"
+	// RequestProxyModeNone not use proxy
+	RequestProxyModeNone RequestProxyMode = "none"
+	// RequestProxyModeCustom custom proxy
+	RequestProxyModeCustom RequestProxyMode = "custom"
 )
 
 type RequestProxy struct {
@@ -218,7 +224,7 @@ func (cfg *DownloaderProxyConfig) ToHandler() func(r *http.Request) (*url.URL, e
 		return nil
 	}
 	if cfg.System {
-		ieproxy.ReloadConf()
+		safeProxyReloadConf()
 		return ieproxy.GetProxyFunc()
 	}
 	if cfg.Scheme == "" || cfg.Host == "" {
@@ -233,7 +239,7 @@ func (cfg *DownloaderProxyConfig) ToUrl() *url.URL {
 		return nil
 	}
 	if cfg.System {
-		ieproxy.ReloadConf()
+		safeProxyReloadConf()
 		static := ieproxy.GetConf().Static
 		if static.Active && len(static.Protocols) > 0 {
 			// If only one protocol, use it
@@ -257,6 +263,15 @@ func (cfg *DownloaderProxyConfig) ToUrl() *url.URL {
 		return nil
 	}
 	return util.BuildProxyUrl(cfg.Scheme, cfg.Host, cfg.Usr, cfg.Pwd)
+}
+
+var prcLock sync.Mutex
+
+func safeProxyReloadConf() {
+	prcLock.Lock()
+	defer prcLock.Unlock()
+
+	ieproxy.ReloadConf()
 }
 
 func parseUrlSafe(rawUrl string) *url.URL {

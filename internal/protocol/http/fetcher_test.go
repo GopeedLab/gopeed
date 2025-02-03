@@ -11,6 +11,7 @@ import (
 	"net"
 	gohttp "net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 )
@@ -56,6 +57,21 @@ func TestFetcher_Resolve(t *testing.T) {
 	}
 	if fetcher.Meta().Res.Files[0].Name != "github.com" {
 		t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, "github.com")
+	}
+}
+
+func TestFetcher_ResolveWithHostHeader(t *testing.T) {
+	fetcher := buildFetcher()
+	err := fetcher.Resolve(&base.Request{
+		URL: "https://bing.com",
+		Extra: &http.ReqExtra{
+			Header: map[string]string{
+				"Host": "test",
+			},
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "400") {
+		t.Errorf("Resolve() got = %v, want %v", err, "400")
 	}
 }
 
@@ -130,6 +146,14 @@ func TestFetcher_DownloadLimit(t *testing.T) {
 	downloadNormal(listener, 1, t)
 	downloadNormal(listener, 2, t)
 	downloadNormal(listener, 8, t)
+}
+
+func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
+	listener := test.StartTestLimitServer(16, readTimeout.Milliseconds()+5000)
+	defer listener.Close()
+
+	downloadError(listener, 1, t)
+	downloadError(listener, 4, t)
 }
 
 func TestFetcher_DownloadResume(t *testing.T) {

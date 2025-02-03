@@ -11,10 +11,11 @@ import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
 import 'database/database.dart';
 import 'i18n/message.dart';
+import 'util/browser_extension_host/browser_extension_host.dart';
 import 'util/locale_manager.dart';
 import 'util/log_util.dart';
-import 'util/mac_secure_util.dart';
 import 'util/package_info.dart';
+import 'util/scheme_register/scheme_register.dart';
 import 'util/util.dart';
 
 class Args {
@@ -85,10 +86,34 @@ Future<void> init(Args args) async {
 
   try {
     await controller.loadDownloaderConfig();
-    MacSecureUtil.loadBookmark();
   } catch (e) {
     logger.e("load config fail", e);
   }
+
+  () async {
+    try {
+      registerUrlScheme("gopeed");
+      if (controller.downloaderConfig.value.extra.defaultBtClient) {
+        registerDefaultTorrentClient();
+      }
+    } catch (e) {
+      logger.e("register scheme fail", e);
+    }
+
+    try {
+      await installHost();
+    } catch (e) {
+      logger.e("browser extension host binary install fail", e);
+    }
+    for (final browser in Browser.values) {
+      try {
+        await installManifest(browser);
+      } catch (e) {
+        logger.e(
+            "browser [${browser.name}] extension host integration fail", e);
+      }
+    }
+  }();
 }
 
 Future<void> onStart() async {

@@ -582,8 +582,8 @@ func doTest(handler func()) {
 			Downloader.Clear()
 		}()
 		defer func() {
-			Downloader.PauseAll()
-			Downloader.DeleteByStatues(nil, true)
+			Downloader.Pause(nil)
+			Downloader.Delete(nil, true)
 			os.RemoveAll(cfg.StorageDir)
 		}()
 		taskReq.URL = "http://" + fileListener.Addr().String() + "/" + test.BuildName

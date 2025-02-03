@@ -11,6 +11,7 @@ import (
 	gohttp "net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -96,7 +97,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 			Hash: "8a55cfbd5ca5d11507364765936c4f9e55b253ed",
 		}
 		if !reflect.DeepEqual(want, fetcher.Meta().Res) {
-			t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, want)
+			t.Errorf("Resolve Single File Resolve() got = %v, want %v", fetcher.Meta().Res, want)
 		}
 	})
 
@@ -136,10 +137,29 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 			Hash: "ccbc92b0cd8deec16a2ef4be242a8c9243b1cedb",
 		}
 		if !reflect.DeepEqual(want, fetcher.Meta().Res) {
-			t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, want)
+			t.Errorf("Resolve Multi Files Resolve() got = %v, want %v", fetcher.Meta().Res, want)
 		}
 	})
 
+	t.Run("Resolve Unclean Torrent", func(t *testing.T) {
+		err := fetcher.Resolve(&base.Request{
+			URL: "./testdata/test.unclean.torrent",
+		})
+		if err != nil {
+			t.Errorf("Resolve Unclean Torrent Resolve() got = %v, want nil", err)
+		}
+	})
+
+	t.Run("Resolve file scheme Torrent", func(t *testing.T) {
+		file, _ := filepath.Abs("./testdata/test.unclean.torrent")
+		uri := "file:///" + file
+		err := fetcher.Resolve(&base.Request{
+			URL: uri,
+		})
+		if err != nil {
+			t.Errorf("Resolve file scheme Torrent Resolve() got = %v, want nil", err)
+		}
+	})
 }
 
 func TestFetcherManager_ParseName(t *testing.T) {

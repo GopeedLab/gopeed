@@ -53,7 +53,7 @@ const jaJP = {
     'effectAfterRestart': '再起動後の効果',
     'startAll': 'すべてを開始',
     'pauseAll': 'すべてを一時停止',
-    'deleteTask': 'タスクを削除',
+    'deleteTask': '@count タスクを削除',
     'deleteTaskTip': 'ダウンロードしたファイルを保持',
     'delete': '削除',
     'newVersionTitle': '新しいバージョン @version を発見する',
@@ -62,5 +62,6 @@ const jaJP = {
     'thanks': '感謝',
     'thanksDesc': 'Gopeedコミュニティの建設に協力してくださったすべての貢献者の方々に感謝します！',
     'browserExtension': 'ブラウザ拡張機能',
+    'skipVerifyCert': '証明書の検証をスキップ',
   }
 };

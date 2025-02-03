@@ -15,10 +15,10 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.5.8+1
+version: 1.6.8+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -35,38 +35,48 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
-  get: ^4.6.5
-  lottie: ^1.4.2
+  get: ^4.6.6
   styled_widget: ^0.4.0+3
-  context_menus: ^1.0.2
+  context_menus: ^1.2.0
   json_annotation: ^4.8.1
   dio: ^5.2.1
-  path_provider: ^2.1.1
-  file_picker: 5.3.1
-  macos_secure_bookmarks: ^0.2.1
+  path_provider: ^2.1.4
+  file_picker: ^8.1.2
   rounded_loading_button_plus: ^3.0.1
-  url_launcher: ^6.1.6
-  logger: ^1.3.0
-  desktop_drop: ^0.4.3
-  package_info_plus: ^4.0.0
-  fluent_ui: ^4.4.0
-  path: any
+  url_launcher: ^6.3.1
+  logger: ^1.4.0
+  desktop_drop: ^0.4.4
+  package_info_plus: ^8.1.0
+  fluent_ui: ^4.9.2
+  path: ^1.9.0
   badges: ^3.0.3
-  app_links: ^3.4.2
-  uri_to_file: ^0.2.0
-  window_manager: ^0.3.4
-  autoscale_tabbarview: ^1.0.2
-  share_plus: ^7.1.0
-  flutter_form_builder: ^9.1.1
-  form_builder_validators: ^9.0.0
+  app_links: ^6.3.3
+  uri_to_file: ^1.0.0
+  window_manager: ^0.4.2
+  share_plus: ^10.1.0
+  flutter_form_builder: ^9.5.0
+  form_builder_validators: ^11.0.0
   flutter_foreground_task: ^8.2.0
-  open_filex: ^4.3.4
-  tray_manager: ^0.2.3
+  open_filex: ^4.5.0
+  tray_manager: ^0.2.4
   lecle_downloads_path_provider: ^0.0.2+8
   hive: ^2.2.3
-  launch_at_startup: ^0.2.2
+  launch_at_startup: ^0.3.1
   args: ^2.5.0
   toggle_switch: ^2.3.0
+  permission_handler: ^11.3.1
+  device_info_plus: ^11.1.0
+  checkable_treeview: ^1.3.1
+  contextmenu_plus: ^1.0.1
+  contentsize_tabbarview: ^0.0.2
+  win32_registry: ^1.1.5
+  share_handler: ^0.0.22
+dependency_overrides:
+  permission_handler_windows:
+    git:
+      url: https://github.com/monkeyWie/flutter-permission-handler.git
+      ref: 35fc72c30262b9b49e1965b48a7524b44ba9daa7
+      path: permission_handler_windows
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -97,6 +107,8 @@ flutter:
   assets:
     - assets/tray_icon/
     - assets/extension/
+    # Browser extension native host binary, see https://github.com/GopeedLab/gopeed/tree/main/cmd/host
+    - assets/host/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
@@ -110,9 +122,9 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
-    - family: FontAwesome
+    - family: Gopeed
       fonts:
-        - asset: assets/fonts/FontAwesome.ttf
+        - asset: assets/fonts/Gopeed.ttf
   #   - family: Trajan Pro
   #     fonts:
   #       - asset: fonts/TrajanPro.ttf
@@ -142,7 +154,7 @@ flutter_icons:
 ffigen:
   name: LibgopeedBind
   description: Bindings to gopeed library.
-  output: 'lib/core/ffi/libgopeed_bind.dart'
+  output: "lib/core/ffi/libgopeed_bind.dart"
   headers:
     entry-points:
-      - 'include/libgopeed.h'
+      - "include/libgopeed.h"

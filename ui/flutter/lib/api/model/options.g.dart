@@ -7,10 +7,10 @@ part of 'options.dart';
 // **************************************************************************
 
 Options _$OptionsFromJson(Map<String, dynamic> json) => Options(
-      name: json['name'] as String,
-      path: json['path'] as String,
+      name: json['name'] as String? ?? '',
+      path: json['path'] as String? ?? '',
       selectFiles: (json['selectFiles'] as List<dynamic>?)
-              ?.map((e) => e as int)
+              ?.map((e) => (e as num).toInt())
               .toList() ??
           const [],
       extra: json['extra'],
@@ -34,9 +34,10 @@ Map<String, dynamic> _$OptionsToJson(Options instance) {
 }
 
 OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) =>
-    OptsExtraHttp()
-      ..connections = json['connections'] as int
-      ..autoTorrent = json['autoTorrent'] as bool;
+    OptsExtraHttp(
+      connections: (json['connections'] as num?)?.toInt() ?? 0,
+      autoTorrent: json['autoTorrent'] as bool? ?? false,
+    );
 
 Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) =>
     <String, dynamic>{

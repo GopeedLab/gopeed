@@ -3,10 +3,12 @@ package http
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"mime"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -23,6 +25,9 @@ import (
 	"github.com/xiaoqidun/setft"
 	"golang.org/x/sync/errgroup"
 )
+
+const connectTimeout = 15 * time.Second
+const readTimeout = 15 * time.Second
 
 type RequestError struct {
 	Code int
@@ -102,9 +107,9 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	if base.HttpCodePartialContent == httpResp.StatusCode || (base.HttpCodeOK == httpResp.StatusCode && httpResp.Header.Get(base.HttpHeaderAcceptRanges) == base.HttpHeaderBytes && strings.HasPrefix(httpResp.Header.Get(base.HttpHeaderContentRange), base.HttpHeaderBytes)) {
 		// response 206 status code, support breakpoint continuation
 		res.Range = true
-		// 解析资源大小: bytes 0-1000/1001 => 1001
+		// parse content length from Content-Range header, eg: bytes 0-1000/1001 or bytes 0-0/*
 		contentTotal := path.Base(httpResp.Header.Get(base.HttpHeaderContentRange))
-		if contentTotal != "" {
+		if contentTotal != "" && contentTotal != "*" {
 			parse, err := strconv.ParseInt(contentTotal, 10, 64)
 			if err != nil {
 				return err
@@ -145,7 +150,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 			file.Name = filename
 		}
 	}
-	// Get file filePath by URL
+	// get file filePath by URL
 	if file.Name == "" {
 		file.Name = path.Base(httpReq.URL.Path)
 	}
@@ -161,9 +166,6 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 func (f *Fetcher) Create(opts *base.Options) error {
 	f.meta.Opts = opts
 
-	if err := base.ParseReqExtra[fhttp.ReqExtra](f.meta.Req); err != nil {
-		return err
-	}
 	if err := base.ParseOptsExtra[fhttp.OptsExtra](f.meta.Opts); err != nil {
 		return err
 	}
@@ -171,8 +173,12 @@ func (f *Fetcher) Create(opts *base.Options) error {
 		opts.Extra = &fhttp.OptsExtra{}
 	}
 	extra := opts.Extra.(*fhttp.OptsExtra)
-	if extra.Connections == 0 {
+	if extra.Connections <= 0 {
 		extra.Connections = f.config.Connections
+		// Avoid zero connections configuration
+		if extra.Connections <= 0 {
+			extra.Connections = 1
+		}
 	}
 	return nil
 }
@@ -193,6 +199,12 @@ func (f *Fetcher) Start() (err error) {
 	if err != nil {
 		return err
 	}
+
+	// Avoid request extra modified by extension
+	if err = base.ParseReqExtra[fhttp.ReqExtra](f.meta.Req); err != nil {
+		return err
+	}
+
 	if f.chunks == nil {
 		f.chunks = f.splitChunk()
 	}
@@ -242,23 +254,42 @@ func (f *Fetcher) Wait() (err error) {
 	return <-f.doneCh
 }
 
+type fetchResult struct {
+	err error
+}
+
 func (f *Fetcher) fetch() {
 	var ctx context.Context
 	ctx, f.cancel = context.WithCancel(context.Background())
 	f.eg, _ = errgroup.WithContext(ctx)
+	chunkErrs := make([]error, len(f.chunks))
 	for i := 0; i < len(f.chunks); i++ {
 		i := i
 		f.eg.Go(func() error {
-			return f.fetchChunk(i, ctx)
+			err := f.fetchChunk(i, ctx)
+			// if canceled, fail fast
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
+			chunkErrs[i] = err
+			return nil
 		})
 	}
 
 	go func() {
 		err := f.eg.Wait()
-		// check if canceled
-		if errors.Is(err, context.Canceled) {
+		// error returned only if canceled, just return
+		if err != nil {
 			return
 		}
+		// check all fetch results, if any error, return
+		for _, chunkErr := range chunkErrs {
+			if chunkErr != nil {
+				err = chunkErr
+				break
+			}
+		}
+
 		f.file.Close()
 		// Update file last modified time
 		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
@@ -281,24 +312,11 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	for {
 		// if chunk is completed, return
 		if f.meta.Res.Range && chunk.Downloaded >= chunk.End-chunk.Begin+1 {
-			return
+			return nil
 		}
 
 		if chunk.retryTimes >= maxRetries {
-			if !f.meta.Res.Range {
-				return
-			}
-			// check if all failed
-			allFailed := true
-			for _, c := range f.chunks {
-				if chunk.Downloaded < chunk.End-chunk.Begin+1 && c.retryTimes < maxRetries {
-					allFailed = false
-					break
-				}
-			}
-			if allFailed {
-				return
-			}
+			return
 		}
 
 		var (
@@ -325,10 +343,9 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 				err = NewRequestError(resp.StatusCode, resp.Status)
 				return err
 			}
-			// Http request success, reset retry times
-			chunk.retryTimes = 0
+			reader := NewTimeoutReader(resp.Body, readTimeout)
 			for {
-				n, err := resp.Body.Read(buf)
+				n, err := reader.Read(buf)
 				if n > 0 {
 					_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
 					if err != nil {
@@ -343,7 +360,6 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 					return err
 				}
 			}
-			return nil
 		}()
 		if err != nil {
 			// If canceled, do not retry
@@ -411,6 +427,10 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		return
 	}
 	httpReq.Header = headers
+	// Override Host header
+	if host := headers.Get(base.HttpHeaderHost); host != "" {
+		httpReq.Host = host
+	}
 	return httpReq, nil
 }
 
@@ -444,7 +464,13 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 
 func (f *Fetcher) buildClient() *http.Client {
 	transport := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: connectTimeout,
+		}).DialContext,
 		Proxy: f.ctl.GetProxy(f.meta.Req.Proxy),
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: f.meta.Req.SkipVerifyCert,
+		},
 	}
 	// Cookie handle
 	jar, _ := cookiejar.New(nil)

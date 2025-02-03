@@ -12,6 +12,7 @@ abstract class TaskListController extends GetxController {
   TaskListController(this.statuses, this.compare);
 
   final tasks = <Task>[].obs;
+  final selectedTaskIds = <String>[].obs;
   final isRunning = false.obs;
 
   late final Timer _timer;

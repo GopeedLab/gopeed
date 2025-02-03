@@ -61,7 +61,7 @@ const frFR = {
     'show': 'Afficher',
     'startAll': 'Tout démarrer',
     'pauseAll': 'Tout suspendre',
-    'deleteTask': 'Supprimer la tâche',
+    'deleteTask': 'Supprimer @count tâches',
     'deleteTaskTip': 'Conserver les fichiers téléchargés',
     'delete': 'Supprimer',
     'newVersionTitle': 'Nouvelle version @version disponible',
@@ -92,5 +92,6 @@ const frFR = {
     'thanksDesc': 'Merci à tous les contributeurs qui ont aidé à construire et développer la communauté Gopeed !',
     'browserExtension': 'Extension du navigateur',
     'launchAtStartup': 'Lancer au démarrage',
+    'skipVerifyCert': 'Bypass Verifikasi Sertifikat',
   },
 };

@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:badges/badges.dart' as badges;
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/app/views/copy_button.dart';
@@ -18,6 +17,7 @@ import '../../../../util/locale_manager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/message.dart';
 import '../../../../util/package_info.dart';
+import '../../../../util/scheme_register/scheme_register.dart';
 import '../../../../util/util.dart';
 import '../../../views/check_list_view.dart';
 import '../../../views/directory_selector.dart';
@@ -110,6 +110,28 @@ class SettingView extends GetView<SettingController> {
         ],
       );
     });
+
+    final buildDefaultDirectDownload =
+        _buildConfigItem('defaultDirectDownload', () {
+      return appController.downloaderConfig.value.extra.defaultDirectDownload
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value:
+              appController.downloaderConfig.value.extra.defaultDirectDownload,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.extra.defaultDirectDownload = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
     buildBrowserExtension() {
       return ListTile(
           title: Text('browserExtension'.tr),
@@ -140,7 +162,7 @@ class SettingView extends GetView<SettingController> {
     // Currently auto startup only support Windows and Linux
     final buildAutoStartup = !Util.isWindows() && !Util.isLinux()
         ? () => null
-        : _buildConfigItem('launchAtStartup'.tr, () {
+        : _buildConfigItem('launchAtStartup', () {
             return appController.autoStartup.value ? 'on'.tr : 'off'.tr;
           }, (Key key) {
             return Container(
@@ -208,8 +230,9 @@ class SettingView extends GetView<SettingController> {
         ],
       );
     });
-    final buildHttpUseServerCtime = _buildConfigItem('useServerCtime'.tr,
-        () => httpConfig.useServerCtime ? 'on'.tr : 'off'.tr, (Key key) {
+    final buildHttpUseServerCtime = _buildConfigItem(
+        'useServerCtime', () => httpConfig.useServerCtime ? 'on'.tr : 'off'.tr,
+        (Key key) {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
@@ -399,6 +422,37 @@ class SettingView extends GetView<SettingController> {
         ].where((e) => e != null).map((e) => e!).toList(),
       );
     });
+    final buildBtDefaultClientConfig = !Util.isWindows()
+        ? () => null
+        : _buildConfigItem('setAsDefaultBtClient', () {
+            return appController.downloaderConfig.value.extra.defaultBtClient
+                ? 'on'.tr
+                : 'off'.tr;
+          }, (Key key) {
+            return Container(
+              alignment: Alignment.centerLeft,
+              child: Switch(
+                value:
+                    appController.downloaderConfig.value.extra.defaultBtClient,
+                onChanged: (bool value) async {
+                  try {
+                    if (value) {
+                      registerDefaultTorrentClient();
+                    } else {
+                      unregisterDefaultTorrentClient();
+                    }
+                    appController.downloaderConfig.update((val) {
+                      val!.extra.defaultBtClient = value;
+                    });
+                    await debounceSave();
+                  } catch (e) {
+                    showErrorMessage(e);
+                    logger.e('register default torrent client fail', e);
+                  }
+                },
+              ),
+            );
+          });
 
     // ui config items start
     final buildTheme = _buildConfigItem(
@@ -847,7 +901,7 @@ class SettingView extends GetView<SettingController> {
     // advanced config log items start
     buildLogsDir() {
       return ListTile(
-          title: Text("日志目录"),
+          title: Text("logDirectory".tr),
           subtitle: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -904,6 +958,7 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildDownloadDir(),
                             buildMaxRunning(),
+                            buildDefaultDirectDownload(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
                           ]),
@@ -925,6 +980,7 @@ class SettingView extends GetView<SettingController> {
                             buildBtTrackerSubscribeUrls(),
                             buildBtTrackers(),
                             buildBtSeedConfig(),
+                            buildBtDefaultClientConfig(),
                           ]),
                         )),
                         Text('ui'.tr),
@@ -981,7 +1037,7 @@ class SettingView extends GetView<SettingController> {
                               : null,
                         ]),
                       )),
-                      const Text('开发者'),
+                      Text('developer'.tr),
                       Card(
                           child: Column(
                         children: _addDivider([

@@ -57,7 +57,7 @@ const ruRU = {
     'effectAfterRestart': 'Эффект после перезагрузки',
     'startAll': 'Запустить все',
     'pauseAll': 'Приостановить все',
-    'deleteTask': 'Удалить задачу',
+    'deleteTask': 'Удалить @count задач',
     'deleteTaskTip': 'Сохранить загруженные файлы',
     'delete': 'Удалить',
     'newVersionTitle': 'Обнаружена новая версия @version',
@@ -77,5 +77,6 @@ const ruRU = {
     'thanksDesc':
         'Благодарим всех участников за их вклад в строительство и развитие сообщества Gopeed!',
     'browserExtension': 'Расширение браузера',
+    'skipVerifyCert': 'Пропустить проверку сертификата',
   }
 };

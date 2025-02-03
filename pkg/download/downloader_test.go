@@ -82,7 +82,45 @@ func TestDownloader_Create(t *testing.T) {
 	want := test.FileMd5(test.BuildFile)
 	got := test.FileMd5(test.DownloadFile)
 	if want != got {
-		t.Errorf("Download() got = %v, want %v", got, want)
+		t.Errorf("Downloader_Create() got = %v, want %v", got, want)
+	}
+}
+
+func TestDownloader_CreateNotInWhite(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(&DownloaderConfig{
+		DownloadDirWhiteList: []string{"./downloads"},
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}
+	rr, err := downloader.Resolve(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
+	_, err = downloader.Create(rr.ID, &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	})
+	if !strings.Contains(err.Error(), "white") {
+		t.Errorf("TestDownloader_CreateNotInWhite() got = %v, want %v", err.Error(), "not in white list")
 	}
 }
 
@@ -95,7 +133,7 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		downloader.DeleteByStatues(nil, true)
+		downloader.Delete(nil, true)
 		downloader.Clear()
 	}()
 
@@ -209,15 +247,15 @@ func TestDownloader_CreateWithProxy(t *testing.T) {
 		return proxyCfg
 	}, nil)
 
-	// Request proxy mode none
+	// Request proxy mode follow
 	doTestDownloaderCreateWithProxy(t, false, func(reqProxy *base.RequestProxy) *base.RequestProxy {
-		reqProxy.Mode = base.RequestProxyModeNone
+		reqProxy.Mode = base.RequestProxyModeFollow
 		return reqProxy
 	}, nil, nil)
 
-	// Request proxy mode global
+	// Request proxy mode none
 	doTestDownloaderCreateWithProxy(t, false, func(reqProxy *base.RequestProxy) *base.RequestProxy {
-		reqProxy.Mode = base.RequestProxyModeGlobal
+		reqProxy.Mode = base.RequestProxyModeNone
 		return reqProxy
 	}, nil, nil)
 
@@ -362,7 +400,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 1001)
-	err = downloader.Pause(id)
+	err = downloader.Pause(&TaskFilter{IDs: []string{id}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +424,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 			wg.Done()
 		}
 	})
-	err = downloader.Continue(id)
+	err = downloader.Continue(&TaskFilter{IDs: []string{id}})
 	wg.Wait()
 	if err != nil {
 		t.Fatal(err)
@@ -446,4 +484,152 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 	if !test.JsonEqual(storeCfg, newStoreCfg) {
 		t.Errorf("GetConfig() got = %v, want %v", test.ToJson(storeCfg), test.ToJson(newStoreCfg))
 	}
+}
+
+func TestDownloader_GetTasksByFilter(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		downloader.Delete(nil, true)
+		downloader.Clear()
+	}()
+
+	reqs := make([]*base.Request, 0)
+	fileNames := make([]string, 0)
+	for i := 0; i < 10; i++ {
+		req := &base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}
+		reqs = append(reqs, req)
+		if i == 0 {
+			fileNames = append(fileNames, test.DownloadName)
+		} else {
+			arr := strings.Split(test.DownloadName, ".")
+			fileNames = append(fileNames, arr[0]+" ("+strconv.Itoa(i)+")."+arr[1])
+		}
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(reqs))
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
+
+	taskIds, err := downloader.CreateDirectBatch(reqs, &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wg.Wait()
+
+	t.Run("GetTasksByFilter nil", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(nil)
+		if len(tasks) != len(reqs) {
+			t.Errorf("GetTasksByFilter nil task got = %v, want %v", len(tasks), len(reqs))
+		}
+	})
+
+	t.Run("GetTasksByFilter empty", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{})
+		if len(tasks) != len(reqs) {
+			t.Errorf("GetTasksByFilter empty task got = %v, want %v", len(tasks), len(reqs))
+		}
+	})
+
+	t.Run("GetTasksByFilter ids", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{
+			IDs: taskIds,
+		})
+		if len(tasks) != len(reqs) {
+			t.Errorf("GetTasksByFilter ids task got = %v, want %v", len(tasks), len(reqs))
+		}
+	})
+
+	t.Run("GetTasksByFilter match ids", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{
+			IDs: []string{taskIds[0]},
+		})
+		if len(tasks) != 1 {
+			t.Errorf("GetTasksByFilter ids task got = %v, want %v", len(tasks), 1)
+		}
+	})
+
+	t.Run("GetTasksByFilter not match ids", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{
+			IDs: []string{"xxx"},
+		})
+		if len(tasks) != 0 {
+			t.Errorf("GetTasksByFilter ids task got = %v, want %v", len(tasks), 0)
+		}
+	})
+
+	t.Run("GetTasksByFilter status", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{
+			Statuses: []base.Status{base.DownloadStatusDone},
+		})
+		if len(tasks) != len(reqs) {
+			t.Errorf("GetTasksByFilter status task got = %v, want %v", len(tasks), len(reqs))
+		}
+	})
+
+	t.Run("GetTasksByFilter not match status", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{
+			Statuses: []base.Status{base.DownloadStatusError},
+		})
+		if len(tasks) != 0 {
+			t.Errorf("GetTasksByFilter status task got = %v, want %v", len(tasks), 0)
+		}
+	})
+
+	t.Run("GetTasksByFilter match notStatus", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{
+			NotStatuses: []base.Status{base.DownloadStatusRunning, base.DownloadStatusPause},
+		})
+		if len(tasks) != len(reqs) {
+			t.Errorf("GetTasksByFilter match notStatus task got = %v, want %v", len(tasks), len(reqs))
+		}
+	})
+
+	t.Run("GetTasksByFilter not match notStatus", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{
+			NotStatuses: []base.Status{base.DownloadStatusDone},
+		})
+		if len(tasks) != 0 {
+			t.Errorf("GetTasksByFilter not match notStatus task got = %v, want %v", len(tasks), 0)
+		}
+	})
+
+	t.Run("GetTasksByFilter match ids and status", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{
+			IDs:      []string{taskIds[0]},
+			Statuses: []base.Status{base.DownloadStatusDone},
+		})
+		if len(tasks) != 1 {
+			t.Errorf("GetTasksByFilter match ids and status task got = %v, want %v", len(tasks), 1)
+		}
+	})
+
+	t.Run("GetTasksByFilter not match ids and status", func(t *testing.T) {
+		tasks := downloader.GetTasksByFilter(&TaskFilter{
+			IDs:      []string{taskIds[0]},
+			Statuses: []base.Status{base.DownloadStatusError},
+		})
+		if len(tasks) != 0 {
+			t.Errorf("GetTasksByFilter not match ids and status task got = %v, want %v", len(tasks), 0)
+		}
+	})
+
 }

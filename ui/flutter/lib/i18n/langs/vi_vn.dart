@@ -61,7 +61,7 @@ const viVN = {
     'effectAfterRestart': 'Hiệu lực sau khi khởi động lại',
     'startAll': 'Bắt đầu tất cả',
     'pauseAll': 'Tạm dừng tất cả',
-    'deleteTask': 'Xóa nhiệm vụ',
+    'deleteTask': 'Xóa @count nhiệm vụ',
     'deleteTaskTip': 'Giữ các tệp đã tải về',
     'delete': 'Xóa',
     'newVersionTitle': 'Khám phá phiên bản mới @version',
@@ -89,5 +89,6 @@ const viVN = {
     'thanksDesc':
         'Cảm ơn tất cả những người đóng góp đã giúp xây dựng và phát triển cộng đồng Gopeed!',
     'browserExtension': 'Tiện ích mở rộng trình duyệt',
+    'skipVerifyCert': 'Bỏ qua xác thực chứng chỉ',
   },
 };

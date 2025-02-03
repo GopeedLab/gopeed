@@ -51,7 +51,7 @@ const faIR = {
     'effectAfterRestart': 'Effect after restart',
     'startAll': 'شروع همه',
     'pauseAll': 'توقف همه',
-    'deleteTask': 'پاک کردن کار',
+    'deleteTask': 'حذف @count کار',
     'deleteTaskTip': 'فایل های دانلود شده را نگه دارد',
     'delete': 'پاک کردن',
     'newVersionTitle': '@version عنوان: کشف نسخه جدید',
@@ -61,5 +61,6 @@ const faIR = {
     'thanksDesc':
         'از تمامی افرادی که در ساخت و توسعه‌ی جامعه‌ی Gopeed مشارکت کرده‌اند، سپاسگزاری می‌کنیم!',
     'browserExtension': 'فایل های دانلود شده را نگه دارد',
+    'skipVerifyCert': 'رد کردن تأیید گواهینامه',
   }
 };

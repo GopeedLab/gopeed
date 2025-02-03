@@ -112,13 +112,24 @@ func (t *Task) calcSpeed(speedArr []int64, downloaded int64, usedTime float64) i
 	return int64(float64(total) / float64(len(speedArr)) / usedTime)
 }
 
+type TaskFilter struct {
+	IDs         []string
+	Statuses    []base.Status
+	NotStatuses []base.Status
+}
+
+func (f *TaskFilter) IsEmpty() bool {
+	return len(f.IDs) == 0 && len(f.Statuses) == 0 && len(f.NotStatuses) == 0
+}
+
 type DownloaderConfig struct {
 	Controller    *controller.Controller
 	FetchManagers []fetcher.FetcherManager
 
-	RefreshInterval int `json:"refreshInterval"` // RefreshInterval time duration to refresh task progress(ms)
-	Storage         Storage
-	StorageDir      string
+	RefreshInterval      int `json:"refreshInterval"` // RefreshInterval time duration to refresh task progress(ms)
+	Storage              Storage
+	StorageDir           string
+	DownloadDirWhiteList []string `json:"downloadDirWhiteList"`
 
 	ProductionMode bool
 

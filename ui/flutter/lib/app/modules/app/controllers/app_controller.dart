@@ -9,6 +9,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_handler/share_handler.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:uri_to_file/uri_to_file.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -16,6 +17,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/downloader_config.dart';
+import '../../../../api/model/request.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../core/libgopeed_boot.dart';
 import '../../../../database/database.dart';
@@ -27,6 +29,8 @@ import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
+import '../../create/dto/create_router_params.dart';
+import '../../redirect/views/redirect_view.dart';
 
 const unixSocketPath = 'gopeed.sock';
 
@@ -160,22 +164,46 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _initDeepLinks() async {
-    // currently only support android
-    if (!Util.isAndroid()) {
+    if (Util.isWeb()) {
       return;
     }
 
-    _appLinks = AppLinks();
+    // Handle deep link
+    () async {
+      _appLinks = AppLinks();
 
-    // Handle link when app is in warm state (front or background)
-    _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
-      await _toCreate(uri);
-    });
+      // Handle link when app is in warm state (front or background)
+      _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
+        await _handleDeepLink(uri);
+      });
 
-    // Check initial link if app was in cold state (terminated)
-    final uri = await _appLinks.getInitialAppLink();
-    if (uri != null) {
-      await _toCreate(uri);
+      // Check initial link if app was in cold state (terminated)
+      final uri = await _appLinks.getInitialLink();
+      if (uri != null) {
+        await _handleDeepLink(uri);
+      }
+    }();
+
+    // Handle shared media, e.g. shared link from browser
+    if (Util.isMobile()) {
+      () async {
+        final handler = ShareHandlerPlatform.instance;
+
+        handler.sharedMediaStream.listen((SharedMedia media) {
+          if (media.content?.isNotEmpty == true) {
+            final uri = Uri.parse(media.content!);
+            // content uri will be handled by the app_links plugin
+            if (uri.scheme != "content") {
+              _handleDeepLink(uri);
+            }
+          }
+        });
+
+        final media = await handler.getInitialSharedMedia();
+        if (media?.content?.isNotEmpty == true) {
+          _handleDeepLink(Uri.parse(media!.content!));
+        }
+      }();
     }
   }
 
@@ -218,11 +246,11 @@ class AppController extends GetxController with WindowListener, TrayListener {
       ),
       MenuItem(
         label: "startAll".tr,
-        onClick: (menuItem) async => {continueAllTasks()},
+        onClick: (menuItem) async => {continueAllTasks(null)},
       ),
       MenuItem(
         label: "pauseAll".tr,
-        onClick: (menuItem) async => {pauseAllTasks()},
+        onClick: (menuItem) async => {pauseAllTasks(null)},
       ),
       MenuItem(
         label: 'setting'.tr,
@@ -268,8 +296,6 @@ class AppController extends GetxController with WindowListener, TrayListener {
       return;
     }
 
-    await _requestPermissions();
-
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'gopeed_service',
@@ -306,47 +332,39 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
   }
 
-  Future<void> _requestPermissions() async {
-    // Android 13+, you need to allow notification permission to display foreground service notification.
-    //
-    // iOS: If you need notification, ask for permission.
-    final NotificationPermission notificationPermissionStatus =
-        await FlutterForegroundTask.checkNotificationPermission();
-    if (notificationPermissionStatus != NotificationPermission.granted) {
-      await FlutterForegroundTask.requestNotificationPermission();
+  Future<void> _handleDeepLink(Uri uri) async {
+    if (uri.scheme == "gopeed") {
+      if (uri.path == "/create") {
+        final params = uri.queryParameters["params"];
+        if (params?.isNotEmpty == true) {
+          final paramsJson =
+              String.fromCharCodes(base64Decode(base64.normalize(params!)));
+          Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
+              arguments: RedirectArgs(Routes.CREATE,
+                  arguments:
+                      CreateRouterParams.fromJson(jsonDecode(paramsJson))));
+          return;
+        }
+        Get.rootDelegate.offAndToNamed(Routes.CREATE);
+        return;
+      }
+      Get.rootDelegate.offAndToNamed(Routes.HOME);
+      return;
     }
 
-    if (Platform.isAndroid) {
-      // "android.permission.SYSTEM_ALERT_WINDOW" permission must be granted for
-      // onNotificationPressed function to be called.
-      //
-      // When the notification is pressed while permission is denied,
-      // the onNotificationPressed function is not called and the app opens.
-      //
-      // If you do not use the onNotificationPressed or launchApp function,
-      // you do not need to write this code.
-      if (!await FlutterForegroundTask.canDrawOverlays) {
-        // This function requires `android.permission.SYSTEM_ALERT_WINDOW` permission.
-        await FlutterForegroundTask.openSystemAlertWindowSettings();
-      }
-
-      // Android 12+, there are restrictions on starting a foreground service.
-      //
-      // To restart the service on device reboot or unexpected problem, you need to allow below permission.
-      if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
-        // This function requires `android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission.
-        await FlutterForegroundTask.requestIgnoreBatteryOptimization();
-      }
+    String path;
+    if (uri.scheme == "magnet" ||
+        uri.scheme == "http" ||
+        uri.scheme == "https") {
+      path = uri.toString();
+    } else if (uri.scheme == "file") {
+      path = Util.isWindows() ? uri.path.substring(1) : uri.path;
+    } else {
+      path = (await toFile(uri.toString())).path;
     }
-  }
-
-  Future<void> _toCreate(Uri uri) async {
-    final path = (uri.scheme == "magnet" ||
-            uri.scheme == "http" ||
-            uri.scheme == "https")
-        ? uri.toString()
-        : (await toFile(uri.toString())).path;
-    await Get.rootDelegate.offAndToNamed(Routes.CREATE, arguments: path);
+    Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
+        arguments: RedirectArgs(Routes.CREATE,
+            arguments: CreateRouterParams(req: Request(url: path))));
   }
 
   String runningAddress() {

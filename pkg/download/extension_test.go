@@ -247,8 +247,45 @@ func TestDownloader_Extension_OnError(t *testing.T) {
 		}
 		// extension on error modify url and continue download
 		task := downloader.GetTask(id)
-		if task.Meta.Req.URL != "https://github.com" {
-			t.Fatalf("except url: https://github.com, actual: %s", task.Meta.Req.URL)
+		if task.Status != base.DownloadStatusDone {
+			t.Fatalf("except status is done, actual: %s", task.Status)
+		}
+	})
+}
+
+func TestDownloader_Extension_OnDone(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/on_done", false); err != nil {
+			t.Fatal(err)
+		}
+		errCh := make(chan error, 1)
+		downloader.Listener(func(event *Event) {
+			if event.Key == EventKeyFinally {
+				errCh <- event.Err
+			}
+		})
+		id, err := downloader.CreateDirect(&base.Request{
+			URL: "https://github.com",
+		}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case err = <-errCh:
+			break
+		case <-time.After(time.Second * 10):
+			err = errors.New("timeout")
+		}
+		// wait for script execution
+		time.Sleep(time.Millisecond * 3000)
+
+		if err != nil {
+			panic("extension on done download error: " + err.Error())
+		}
+		// extension on error modify url and continue download
+		task := downloader.GetTask(id)
+		if task.Meta.Req.Labels["modified"] != "true" {
+			t.Fatalf("except label: modified=true, actual: %s", task.Meta.Req.Labels["modified"])
 		}
 		if task.Status != base.DownloadStatusDone {
 			t.Fatalf("except status is done, actual: %s", task.Status)

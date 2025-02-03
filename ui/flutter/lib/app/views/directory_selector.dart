@@ -1,15 +1,18 @@
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lecle_downloads_path_provider/lecle_downloads_path_provider.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:toggle_switch/toggle_switch.dart';
 
-import '../../util/mac_secure_util.dart';
 import '../../util/message.dart';
 import '../../util/util.dart';
+
+final deviceInfo = DeviceInfoPlugin();
 
 class DirectorySelector extends StatefulWidget {
   final TextEditingController controller;
@@ -38,7 +41,6 @@ class _DirectorySelectorState extends State<DirectorySelector> {
               var dir = await FilePicker.platform.getDirectoryPath();
               if (dir != null) {
                 widget.controller.text = dir;
-                MacSecureUtil.saveBookmark(dir);
               }
             });
       }
@@ -68,12 +70,26 @@ class _DirectorySelectorState extends State<DirectorySelector> {
             if (index == 0) {
               return false;
             }
-            // Check write permission
+
             final downloadDir =
                 (await DownloadsPath.downloadsDirectory())?.path;
             if (downloadDir == null) {
               return true;
             }
+
+            // Check and request external storage permission when sdk version < 30 (android 11)
+            if ((await deviceInfo.androidInfo).version.sdkInt < 30) {
+              var status = await Permission.storage.status;
+              if (!status.isGranted) {
+                status = await Permission.storage.request();
+                if (!status.isGranted) {
+                  showErrorMessage('noStoragePermission'.tr);
+                  return true;
+                }
+              }
+            }
+
+            // Check write permission
             final fileRandomeName =
                 "test_${DateTime.now().millisecondsSinceEpoch}.tmp";
             final testFile = File('$downloadDir/Gopeed/$fileRandomeName');

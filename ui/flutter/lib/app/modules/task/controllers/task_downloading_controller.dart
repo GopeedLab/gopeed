@@ -9,5 +9,13 @@ class TaskDownloadingController extends TaskListController {
           Status.pause,
           Status.wait,
           Status.error
-        ], (a, b) => b.createdAt.compareTo(a.createdAt));
+        ], (a, b) {
+          if (a.status == Status.running && b.status != Status.running) {
+            return -1;
+          } else if (a.status != Status.running && b.status == Status.running) {
+            return 1;
+          } else {
+            return b.updatedAt.compareTo(a.updatedAt);
+          }
+        });
 }
