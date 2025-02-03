@@ -762,7 +762,7 @@ class SettingView extends GetView<SettingController> {
             width: 80,
             child: DropdownButtonFormField<String>(
               value: startCfg.value.network,
-              onChanged: Util.isDesktop()
+              onChanged: Util.isDesktop() || Util.isAndroid()
                   ? (value) async {
                       startCfg.update((val) {
                         val!.network = value!;
@@ -786,7 +786,8 @@ class SettingView extends GetView<SettingController> {
             ),
           )
         ];
-        if (Util.isDesktop() && startCfg.value.network == 'tcp') {
+        if ((Util.isDesktop() || Util.isAndroid()) &&
+            startCfg.value.network == 'tcp') {
           final arr = startCfg.value.address.split(':');
           var ip = '127.0.0.1';
           var port = '0';
