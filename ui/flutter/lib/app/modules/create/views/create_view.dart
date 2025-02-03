@@ -82,16 +82,7 @@ class CreateView extends GetView<CreateController> {
       _urlController.text = url;
       _urlController.selection = TextSelection.fromPosition(
           TextPosition(offset: _urlController.text.length));
-      final uppercaseUrl = url.toUpperCase();
-      Protocol? protocol;
-      if (uppercaseUrl.startsWith("HTTP:") ||
-          uppercaseUrl.startsWith("HTTPS:")) {
-        protocol = Protocol.http;
-      }
-      if (uppercaseUrl.startsWith("MAGNET:") ||
-          uppercaseUrl.endsWith(".TORRENT")) {
-        protocol = Protocol.bt;
-      }
+      final protocol = parseProtocol(url);
       if (protocol != null) {
         final extraHandlers = {
           Protocol.http: () {
@@ -672,6 +663,20 @@ class CreateView extends GetView<CreateController> {
     );
   }
 
+  // parse protocol from url
+  parseProtocol(String url) {
+    final uppercaseUrl = url.toUpperCase();
+    Protocol? protocol;
+    if (uppercaseUrl.startsWith("HTTP:") || uppercaseUrl.startsWith("HTTPS:")) {
+      protocol = Protocol.http;
+    }
+    if (uppercaseUrl.startsWith("MAGNET:") ||
+        uppercaseUrl.endsWith(".TORRENT")) {
+      protocol = Protocol.bt;
+    }
+    return protocol;
+  }
+
   // recognize magnet uri, if length == 40, auto add magnet prefix
   recognizeMagnetUri(String text) {
     if (text.length != 40) {
@@ -764,24 +769,23 @@ class CreateView extends GetView<CreateController> {
 
   Object? parseReqExtra(String url) {
     Object? reqExtra;
-    if (controller.showAdvanced.value) {
-      switch (controller.advancedTabController.index) {
-        case 0:
-          final header = Map<String, String>.fromEntries(_httpHeaderControllers
-              .map((e) => MapEntry(e.name.text, e.value.text)));
-          header.removeWhere(
-              (key, value) => key.trim().isEmpty || value.trim().isEmpty);
-          if (header.isNotEmpty) {
-            reqExtra = ReqExtraHttp()..header = header;
-          }
-          break;
-        case 1:
-          if (_btTrackerController.text.trim().isNotEmpty) {
-            reqExtra = ReqExtraBt()
-              ..trackers = Util.textToLines(_btTrackerController.text);
-          }
-          break;
-      }
+    final protocol = parseProtocol(url);
+    switch (protocol) {
+      case Protocol.http:
+        final header = Map<String, String>.fromEntries(_httpHeaderControllers
+            .map((e) => MapEntry(e.name.text, e.value.text)));
+        header.removeWhere(
+            (key, value) => key.trim().isEmpty || value.trim().isEmpty);
+        if (header.isNotEmpty) {
+          reqExtra = ReqExtraHttp()..header = header;
+        }
+        break;
+      case Protocol.bt:
+        if (_btTrackerController.text.trim().isNotEmpty) {
+          reqExtra = ReqExtraBt()
+            ..trackers = Util.textToLines(_btTrackerController.text);
+        }
+        break;
     }
     return reqExtra;
   }
