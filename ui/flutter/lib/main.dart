@@ -1,6 +1,7 @@
 import 'package:args/args.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -40,6 +41,7 @@ void main(List<String> arguments) async {
 
 Future<void> init(Args args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterForegroundTask.initCommunicationPort();
   await Util.initStorageDir();
   await Database.instance.init();
   if (Util.isDesktop()) {
