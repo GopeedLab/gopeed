@@ -14,6 +14,7 @@ import 'langs/vi_vn.dart';
 import 'langs/zh_cn.dart';
 import 'langs/zh_tw.dart';
 import 'langs/es_es.dart';
+import 'langs/uk_ua.dart';
 
 final messages = _Messages();
 
@@ -35,5 +36,6 @@ class _Messages extends Translations {
         ...idID,
         ...frFR,
         ...esES,
+        ...ukUA,
       };
 }
