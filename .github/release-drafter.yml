@@ -57,7 +57,7 @@ template: |
       </tr>
       <tr>
         <td><code>Portable</code></td>
-        <td>arm64</td>
+        <td>amd64</td>
         <td><a href="https://github.com/GopeedLab/gopeed/releases/download/v$NEXT_PATCH_VERSION/Gopeed-v$NEXT_PATCH_VERSION-windows-amd64-portable.zip">📥</a></td>
       </tr>
       <tr>
