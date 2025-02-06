@@ -31,7 +31,7 @@ Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不
     </tr>
     <tr>
       <td><code>Portable</code></td>
-      <td>arm64</td>
+      <td>amd64</td>
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">📥</a></td>
     </tr>
     <tr>

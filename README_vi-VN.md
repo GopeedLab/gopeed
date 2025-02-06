@@ -31,7 +31,7 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
     </tr>
     <tr>
       <td><code>Portable</code></td>
-      <td>arm64</td>
+      <td>amd64</td>
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">📥</a></td>
     </tr>
     <tr>
