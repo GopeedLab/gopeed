@@ -37,16 +37,6 @@ version-resolver:
       - "patch"
   default: patch
 template: |
-  # Release notes
-
-  $CHANGES
-
-  # 更新日志
-
-  $CHANGES
-
-  # Download
-
   <table>
     <tbody>
       <tr>
@@ -153,3 +143,11 @@ template: |
       </tr>
     </tbody>
   </table>
+
+  # Release notes
+
+  $CHANGES
+
+  # 更新日志
+
+  $CHANGES
