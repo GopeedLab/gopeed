@@ -273,7 +273,9 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2
         with:
+          channel: master
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          git-source: https://github.com/flutter/flutter.git
       - name: Install dependencies
         run: |
           sudo apt update -y
