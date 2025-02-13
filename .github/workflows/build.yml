@@ -306,7 +306,7 @@ jobs:
             dbus-gopeed:
               interface: dbus
               bus: session
-              name: com.gopeed.gopeed
+              name: com.gopeed.Gopeed
 
           apps:
             gopeed:
