@@ -275,7 +275,6 @@ jobs:
         with:
           channel: master
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          git-source: https://github.com/flutter/flutter.git
       - name: Install dependencies
         run: |
           sudo apt update -y
