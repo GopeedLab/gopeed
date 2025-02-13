@@ -15,7 +15,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.6.9+1
+version: 1.6.8+1
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -71,6 +71,8 @@ dependencies:
   contentsize_tabbarview: ^0.0.2
   win32_registry: ^1.1.5
   share_handler: ^0.0.22
+  crypto: ^3.0.6
+  install_plugin: ^2.1.0
 dependency_overrides:
   permission_handler_windows:
     git:
@@ -108,7 +110,7 @@ flutter:
     - assets/tray_icon/
     - assets/extension/
     # Browser extension native host binary, see https://github.com/GopeedLab/gopeed/tree/main/cmd/host
-    - assets/host/
+    - assets/exec/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

@@ -18,6 +18,7 @@ import '../../../../util/log_util.dart';
 import '../../../../util/message.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/scheme_register/scheme_register.dart';
+import '../../../../util/updater.dart';
 import '../../../../util/util.dart';
 import '../../../views/check_list_view.dart';
 import '../../../views/directory_selector.dart';
