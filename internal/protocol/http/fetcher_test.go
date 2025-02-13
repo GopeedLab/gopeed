@@ -37,6 +37,16 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
+	testResolve(test.StartTestCustomServer, "encoded-word", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "测试.zip",
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
 	testResolve(test.StartTestCustomServer, test.BuildName, &base.Resource{
 		Size:  0,
 		Range: false,

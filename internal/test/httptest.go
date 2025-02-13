@@ -83,6 +83,17 @@ func StartTestCustomServer() net.Listener {
 			defer file.Close()
 			io.Copy(writer, file)
 		})
+		mux.HandleFunc("/encoded-word", func(writer http.ResponseWriter, request *http.Request) {
+			writer.Header().Set("Content-Disposition", "attachment; filename=\"=?UTF8?B?5rWL6K+VLnppcA==?=\"")
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
 		return mux
 	})
 }

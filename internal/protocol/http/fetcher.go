@@ -147,7 +147,14 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		_, params, _ := mime.ParseMediaType(contentDisposition)
 		filename := params["filename"]
 		if filename != "" {
-			file.Name = filename
+			// Check if the filename is MIME encoded-word
+			if strings.HasPrefix(filename, "=?") {
+				decoder := new(mime.WordDecoder)
+				filename = strings.Replace(filename, "UTF8", "UTF-8", 1)
+				file.Name, _ = decoder.Decode(filename)
+			} else {
+				file.Name = filename
+			}
 		}
 	}
 	// get file filePath by URL
