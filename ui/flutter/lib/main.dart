@@ -41,7 +41,9 @@ void main(List<String> arguments) async {
 
 Future<void> init(Args args) async {
   WidgetsFlutterBinding.ensureInitialized();
-  FlutterForegroundTask.initCommunicationPort();
+  if (Util.isMobile()) {
+    FlutterForegroundTask.initCommunicationPort();
+  }
   await Util.initStorageDir();
   await Database.instance.init();
   if (Util.isDesktop()) {
