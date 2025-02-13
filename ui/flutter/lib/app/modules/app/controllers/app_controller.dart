@@ -337,8 +337,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
       if (uri.path == "/create") {
         final params = uri.queryParameters["params"];
         if (params?.isNotEmpty == true) {
+          final safeParams = params!.replaceAll(" ", "+");
           final paramsJson =
-              String.fromCharCodes(base64Decode(base64.normalize(params!)));
+              String.fromCharCodes(base64Decode(base64.normalize(safeParams)));
           Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
               arguments: RedirectArgs(Routes.CREATE,
                   arguments:
