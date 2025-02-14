@@ -60,10 +60,10 @@ jobs:
           token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
   build-desktop:
     name: Build desktop check
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ windows-latest, macos-latest, ubuntu-22.04 ]
-    runs-on: ${{ matrix.os }}
     needs: [ test ]
     steps:
       - uses: actions/checkout@v3

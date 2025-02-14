@@ -529,7 +529,10 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _initCheckUpdate() async {
-    await checkUpdate();
+    final versionInfo = await checkUpdate();
+    if (versionInfo != null) {
+      await showUpdateDialog(Get.context!, versionInfo);
+    }
   }
 
   Future<void> saveConfig() async {
