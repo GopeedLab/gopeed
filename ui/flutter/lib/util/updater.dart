@@ -85,6 +85,12 @@ Future<void> checkUpdate() async {
     }
   }
   if (isNewVersion) {
+    final fullChangeLog = releaseData["body"];
+    final isZh = Get.locale?.languageCode == "zh";
+    final changeLogRegex = isZh
+        ? RegExp(r"(#\s+更新日志.*)",multiLine: true)
+        : RegExp(r"(# Release notes.*)#\s+更新日志",multiLine: true);
+    final changeLog = changeLogRegex.firstMatch(fullChangeLog)?.group(1) ?? "";
     await showDialog(
       context: Get.context!,
       builder: (context) {
@@ -100,11 +106,9 @@ Future<void> checkUpdate() async {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('更新日志：asdasda'),
+                  Text(changeLog),
                   if (isDownloading)
                     LinearProgressIndicator(value: progress.toDouble())
-                  else
-                    Container(),
                 ],
               ),
               actions: [
