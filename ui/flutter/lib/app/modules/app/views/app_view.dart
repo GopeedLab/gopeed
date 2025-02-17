@@ -35,18 +35,14 @@ class AppView extends GetView<AppController> {
         supportedLocales: messages.keys.keys.map((e) => toLocale(e)).toList(),
         getPages: AppPages.routes,
 
-        // Add listening to theme changes, set the title bar color according to the current system theme, only in the case of following the system theme.
+        // Add listening to theme changes, set the title bar color according to the current system theme.
         builder: (context, child) {
           // if platform is desktop
           if (Util.isDesktop()){
-            // current theme setting
-            ThemeMode currentThemeSetting = ThemeMode.values.byName(config.extra.themeMode);
             // actual brightness of the UI
             Brightness brightness = Theme.of(context).brightness;
-            // If the theme is set to follow the system, the title bar will use UI brightness
-            if (currentThemeSetting == ThemeMode.system){
-              windowManager.setBrightness(brightness);
-            }
+            // Set the title bar to use the actual brightness of the UI
+            windowManager.setBrightness(brightness);
           }
           return child!;
         },
