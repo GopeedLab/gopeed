@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
-import 'package:flutter/services.dart';  // 导包
-import 'package:window_manager/window_manager.dart';  // 导包
+import 'package:window_manager/window_manager.dart';  // Import the required packages
 
 import '../../../../i18n/message.dart';
 import '../../../../theme/theme.dart';
 import '../../../../util/locale_manager.dart';
-import '../../../../util/util.dart';  // 导包
+import '../../../../util/util.dart';  // Import the required packages
 import '../../../routes/app_pages.dart';
 import '../controllers/app_controller.dart';
 
@@ -36,14 +35,17 @@ class AppView extends GetView<AppController> {
         supportedLocales: messages.keys.keys.map((e) => toLocale(e)).toList(),
         getPages: AppPages.routes,
 
-        // 增加监听主题变化,根据当前主题设置窗口标题栏颜色
+        // Add listening to theme changes, set the title bar color according to the current system theme, only in the case of following the system theme.
         builder: (context, child) {
-          final brightness = Theme.of(context).brightness;
-          if (Util.isDesktop()) {
-            if (brightness == Brightness.dark) {
-              windowManager.setBrightness(Brightness.dark);
-            } else {
-              windowManager.setBrightness(Brightness.light);
+          // if platform is desktop
+          if (Util.isDesktop()){
+            // current theme setting
+            ThemeMode currentThemeSetting = ThemeMode.values.byName(config.extra.themeMode);
+            // actual brightness of the UI
+            Brightness brightness = Theme.of(context).brightness;
+            // If the theme is set to follow the system, the title bar will use UI brightness
+            if (currentThemeSetting == ThemeMode.system){
+              windowManager.setBrightness(brightness);
             }
           }
           return child!;
