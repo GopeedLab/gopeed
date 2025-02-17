@@ -10,6 +10,6 @@ Terminal=false
 Exec=gopeed %U
 Icon=com.gopeed.Gopeed
 Type=Application
-Categories=Utility;Internet
+Categories=Utility;Network;
 Keywords=Bittorrent;Downloader;
 MimeType=x-scheme-handler/gopeed;x-scheme-handler/magnet;application/x-bittorrent;
