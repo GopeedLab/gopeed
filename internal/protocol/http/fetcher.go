@@ -160,6 +160,10 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	// get file filePath by URL
 	if file.Name == "" {
 		file.Name = path.Base(httpReq.URL.Path)
+		// Url decode
+		if file.Name != "" {
+			file.Name, _ = url.QueryUnescape(file.Name)
+		}
 	}
 	// unknown file filePath
 	if file.Name == "" || file.Name == "/" || file.Name == "." {
