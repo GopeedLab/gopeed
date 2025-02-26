@@ -359,7 +359,8 @@ class AppController extends GetxController with WindowListener, TrayListener {
         uri.scheme == "https") {
       path = uri.toString();
     } else if (uri.scheme == "file") {
-      path = Util.isWindows() ? uri.path.substring(1) : uri.path;
+      path =
+          Util.isWindows() ? Uri.decodeFull(uri.path.substring(1)) : uri.path;
     } else {
       path = (await toFile(uri.toString())).path;
     }
