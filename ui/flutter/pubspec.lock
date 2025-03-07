@@ -549,10 +549,11 @@ packages:
   install_plugin:
     dependency: "direct main"
     description:
-      name: install_plugin
-      sha256: "6fb67ba0781e75de4f2f2266ed25e835bfd277c5bfc2ed034af52774355857c6"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: cf08af829f4a4145634f8a047108f505fdbe5eaa
+      resolved-ref: cf08af829f4a4145634f8a047108f505fdbe5eaa
+      url: "https://github.com/hui-z/flutter_install_plugin.git"
+    source: git
     version: "2.1.0"
   intl:
     dependency: transitive
