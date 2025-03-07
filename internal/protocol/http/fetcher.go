@@ -47,6 +47,7 @@ type chunk struct {
 	End        int64
 	Downloaded int64
 
+	failed     bool
 	retryTimes int
 }
 
@@ -160,6 +161,10 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	// get file filePath by URL
 	if file.Name == "" {
 		file.Name = path.Base(httpReq.URL.Path)
+		// Url decode
+		if file.Name != "" {
+			file.Name, _ = url.QueryUnescape(file.Name)
+		}
 	}
 	// unknown file filePath
 	if file.Name == "" || file.Name == "/" || file.Name == "." {
@@ -261,10 +266,6 @@ func (f *Fetcher) Wait() (err error) {
 	return <-f.doneCh
 }
 
-type fetchResult struct {
-	err error
-}
-
 func (f *Fetcher) fetch() {
 	var ctx context.Context
 	ctx, f.cancel = context.WithCancel(context.Background())
@@ -308,12 +309,12 @@ func (f *Fetcher) fetch() {
 
 func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	chunk := f.chunks[index]
+	chunk.failed = false
 	chunk.retryTimes = 0
 
 	var (
-		client     = f.buildClient()
-		buf        = make([]byte, 8192)
-		maxRetries = 3
+		client = f.buildClient()
+		buf    = make([]byte, 8192)
 	)
 	// retry until all remain chunks failed
 	for {
@@ -321,9 +322,22 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 		if f.meta.Res.Range && chunk.Downloaded >= chunk.End-chunk.Begin+1 {
 			return nil
 		}
-
-		if chunk.retryTimes >= maxRetries {
-			return
+		// if all chunks failed, return
+		if chunk.failed {
+			allFailed := true
+			for _, c := range f.chunks {
+				if !c.failed {
+					allFailed = false
+					break
+				}
+			}
+			if allFailed {
+				if chunk.retryTimes >= 3 {
+					return
+				} else {
+					chunk.retryTimes++
+				}
+			}
 		}
 
 		var (
@@ -374,17 +388,9 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 				return
 			}
 			// retry request after 1 second
-			chunk.retryTimes = chunk.retryTimes + 1
+			chunk.failed = true
 			time.Sleep(time.Second)
 			continue
-		}
-		// if chunk is completed, reset other not complete chunks retry times
-		if err == nil {
-			for _, c := range f.chunks {
-				if c != chunk && c.retryTimes > 0 {
-					c.retryTimes = 0
-				}
-			}
 		}
 		break
 	}

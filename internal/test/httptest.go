@@ -94,6 +94,14 @@ func StartTestCustomServer() net.Listener {
 			defer file.Close()
 			io.Copy(writer, file)
 		})
+		mux.HandleFunc("/%E6%B5%8B%E8%AF%95.zip", func(writer http.ResponseWriter, request *http.Request) {
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
 		return mux
 	})
 }
