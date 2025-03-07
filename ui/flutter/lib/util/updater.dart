@@ -18,7 +18,8 @@ import 'package_info.dart';
 import 'util.dart';
 
 enum Channel {
-  windows,
+  windowsInstaller,
+  windowsPortable,
   macos,
   linuxFlathub,
   linuxSnap,
@@ -34,7 +35,7 @@ final _channel =
     Channel.values.where((e) => e.name == _channelEnv).firstOrNull ??
         () {
           if (Util.isWindows()) {
-            return Channel.windows;
+            return Channel.windowsPortable;
           } else if (Util.isMacos()) {
             return Channel.macos;
           } else if (Util.isAndroid()) {
@@ -318,24 +319,48 @@ List<Widget> _parseMarkdown(String markdown, BuildContext context) {
 }
 
 Future<void> _update(String version, Function(int, int) onProgress) async {
-  final downloadUrl =
-      'https://github.com/GopeedLab/gopeed/releases/download/v$version/${_getAssetName(version)}';
-  final newVersionAssetPath = await _getAssetPath(version);
+  var newVersionAssetPath = "";
+  final newVersionAssetName = _getAssetName(version);
 
-  if (downloadUrl.isNotEmpty) {
-    final downloadClient = Dio();
-    await downloadClient.download(downloadUrl, newVersionAssetPath,
-        onReceiveProgress: onProgress);
+  // Need to download the asset
+  if (newVersionAssetName.isNotEmpty) {
+    final downloadUrl =
+        'https://github.com/GopeedLab/gopeed/releases/download/v$version/$newVersionAssetName';
+    newVersionAssetPath = await _getAssetPath(version);
+
+    if (downloadUrl.isNotEmpty) {
+      final downloadClient = Dio();
+      await downloadClient.download(downloadUrl, newVersionAssetPath,
+          onReceiveProgress: onProgress);
+    }
   }
 
   switch (_channel) {
-    case Channel.windows:
+    case Channel.windowsInstaller:
+    case Channel.windowsPortable:
     case Channel.macos:
+    case Channel.linuxFlathub:
+    case Channel.linuxSnap:
     case Channel.linuxDeb:
-      // updater <pid> <asset> [log]
+      /**
+      Usage of updater command:
+        -pid int
+              PID of the process to update
+        -channel string
+              Update channel
+        -asset string
+              Path to the package asset
+        -log string
+              Log file path
+       */
       await Process.start(Util.homePathJoin(_updaterBin), [
+        "-pid",
         pid.toString(),
+        "-channel",
+        _channel!.name,
+        "-asset",
         newVersionAssetPath,
+        "-log",
         path.join(logsDir(), "updater.log")
       ]);
       break;
@@ -353,7 +378,9 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
 
 String _getAssetName(String version) {
   switch (_channel) {
-    case Channel.windows:
+    case Channel.windowsInstaller:
+      return 'Gopeed-v$version-windows-amd64.zip';
+    case Channel.windowsPortable:
       return 'Gopeed-v$version-windows-amd64-portable.zip';
     case Channel.macos:
       return 'Gopeed-v$version-macos.dmg';

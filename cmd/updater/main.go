@@ -1,11 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -13,54 +13,65 @@ import (
 	"github.com/pkg/errors"
 )
 
+// go build -ldflags="-s -w" -o ui/flutter/assets/exec/ github.com/GopeedLab/gopeed/cmd/updater
+
 func main() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: updater <pid> <asset> [log]")
+	pid := flag.Int("pid", 0, "PID of the process to update")
+	updateChannel := flag.String("channel", "", "Update channel")
+	packagePath := flag.String("asset", "", "Path to the package asset")
+	logPath := flag.String("log", "", "Log file path")
+	flag.Parse()
+
+	if *pid == 0 {
+		log.Println("Invalid PID")
+		os.Exit(1)
+	}
+	if *updateChannel == "" {
+		log.Println("Invalid update channel")
 		os.Exit(1)
 	}
 
-	if len(os.Args) > 3 {
-		logFile, err := os.OpenFile(os.Args[3], os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if *logPath != "" {
+		logFile, err := os.OpenFile(*logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 		if err == nil {
 			defer logFile.Close()
 			log.SetOutput(logFile)
 		}
 	}
 
-	pid, err := strconv.Atoi(os.Args[1])
-	if err != nil {
-		log.Printf("Invalid PID: %v\n", err)
-		os.Exit(1)
-	}
-
-	packagePath := os.Args[2]
-	if err := update(pid, packagePath); err != nil {
+	var (
+		restart bool
+		err     error
+	)
+	if restart, err = update(*pid, *updateChannel, *packagePath); err != nil {
 		log.Printf("Update failed: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Restart the application
-	browser.OpenURL("gopeed:///")
+	if restart {
+		browser.OpenURL("gopeed:///")
+	}
 
 	os.Exit(0)
 }
 
-func update(pid int, packagePath string) error {
-	if err := killProcess(pid); err != nil {
-		return errors.Wrap(err, "failed to kill process")
+func update(pid int, updateChannel, packagePath string) (restart bool, err error) {
+	if err = killProcess(pid); err != nil {
+		return false, errors.Wrap(err, "failed to kill process")
 	}
 
-	if err := waitForProcessExit(pid); err != nil {
-		return errors.Wrap(err, "failed to wait for process exit")
+	if err = waitForProcessExit(pid); err != nil {
+		return false, errors.Wrap(err, "failed to wait for process exit")
 	}
 
 	appDir := filepath.Dir(os.Args[0])
 
-	if err := extract(packagePath, appDir); err != nil {
-		return errors.Wrap(err, "failed to extract package")
+	if restart, err = install(updateChannel, packagePath, appDir); err != nil {
+		return false, errors.Wrap(err, "failed to install package")
 	}
 
-	return nil
+	return
 }
 
 func waitForProcessExit(pid int) error {
