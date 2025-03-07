@@ -55,6 +55,8 @@ var apiMap = map[string]func(params json.RawMessage) (data any, err error){
 	},
 }
 
+// go build -ldflags="-s -w" -o ui/flutter/assets/exec/ github.com/GopeedLab/gopeed/cmd/host
+
 func main() {
 	for {
 		// Read message length (first 4 bytes)
