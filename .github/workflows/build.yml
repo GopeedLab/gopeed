@@ -53,6 +53,7 @@ jobs:
 
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$env:VERSION" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" -o ui/flutter/assets/exec/host.exe github.com/GopeedLab/gopeed/cmd/host
+          go build -ldflags="-w -s" -o ui/flutter/assets/exec/updater.exe github.com/GopeedLab/gopeed/cmd/updater
           cd ui/flutter
           $TAG = "v$env:VERSION"
           flutter build windows
@@ -152,12 +153,14 @@ jobs:
         run: |
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" github.com/GopeedLab/gopeed/cmd/host
+          go build -ldflags="-w -s" github.com/GopeedLab/gopeed/cmd/updater
       - uses: actions/upload-artifact@v4
         with:
           name: macos-arm64-lib
           path: |
             libgopeed.dylib
             host
+            updater
   build-macos:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-13
@@ -190,16 +193,20 @@ jobs:
           # amd64 lib
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/lib-amd64/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" -o ui/flutter/lib-amd64/host github.com/GopeedLab/gopeed/cmd/host
+          go build -ldflags="-w -s" -o ui/flutter/lib-amd64/updater github.com/GopeedLab/gopeed/cmd/updater
           # universal binary
           mkdir -p ui/flutter/macos/Frameworks
           cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/macos/Frameworks/amd64-lib
           cp ui/flutter/lib-arm64/libgopeed.dylib ui/flutter/macos/Frameworks/arm64-lib
           cp ui/flutter/lib-amd64/host ui/flutter/macos/Frameworks/amd64-host
           cp ui/flutter/lib-arm64/host ui/flutter/macos/Frameworks/arm64-host
+          cp ui/flutter/lib-amd64/updater ui/flutter/macos/Frameworks/amd64-updater
+          cp ui/flutter/lib-arm64/updater ui/flutter/macos/Frameworks/arm64-updater
           cd ui/flutter/macos/Frameworks
           lipo -create -output libgopeed.dylib amd64-lib arm64-lib
           lipo -create -output host amd64-host arm64-host
-          rm -rf amd64-lib arm64-lib amd64-host arm64-host
+          lipo -create -output updater amd64-updater arm64-updater
+          rm -rf amd64-lib arm64-lib amd64-host arm64-host amd64-updater arm64-updater
           mv host ../../assets/exec/host
 
           cd $PROJECT_DIR/ui/flutter
@@ -250,6 +257,7 @@ jobs:
         run: |
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" -o ui/flutter/assets/exec/host github.com/GopeedLab/gopeed/cmd/host
+          go build -ldflags="-w -s" -o ui/flutter/assets/exec/updater github.com/GopeedLab/gopeed/cmd/updater
           cd ui/flutter
           dart pub global activate -sgit https://github.com/GopeedLab/flutter_distributor.git --git-path packages/flutter_distributor
           flutter_distributor package --platform linux --targets appimage,deb
@@ -281,6 +289,7 @@ jobs:
         run: |
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" -o ui/flutter/assets/exec/host github.com/GopeedLab/gopeed/cmd/host
+          go build -ldflags="-w -s" -o ui/flutter/assets/exec/updater github.com/GopeedLab/gopeed/cmd/updater
           cd ui/flutter
 
           sudo snap install snapcraft --classic

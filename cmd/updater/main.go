@@ -53,6 +53,11 @@ func main() {
 		browser.OpenURL("gopeed:///")
 	}
 
+	// Delete package asset
+	if *packagePath != "" {
+		os.Remove(*packagePath)
+	}
+
 	os.Exit(0)
 }
 
