@@ -9,12 +9,12 @@ import (
 	"strings"
 )
 
-func install(updateChannel, packagePath, destDir string) (bool, error) {
-	return true, installByDmg(packagePath, destDir)
+func install(killSignalChan chan<- any, updateChannel, packagePath, destDir string) (bool, error) {
+	return true, installByDmg(killSignalChan, packagePath, destDir)
 }
 
-// installByDmg handles macOS dmg doUpdateion and installation
-func installByDmg(packagePath, destDir string) error {
+// installByDmg handles macOS dmg package installation
+func installByDmg(killSignalChan chan<- any, packagePath, destDir string) error {
 	output, err := exec.Command("hdiutil", "attach", packagePath, "-nobrowse", "-quiet").Output()
 	if err != nil {
 		return err
@@ -43,13 +43,7 @@ func installByDmg(packagePath, destDir string) error {
 		return fmt.Errorf("no .app found in dmg")
 	}
 
-	// Remove existing app if present
-	existingApp, _ := filepath.Glob(filepath.Join(destDir, "*.app"))
-	if len(existingApp) > 0 {
-		if err := exec.Command("rm", "-rf", existingApp[0]).Run(); err != nil {
-			return fmt.Errorf("failed to remove existing app: %w", err)
-		}
-	}
+	killSignalChan <- nil
 
 	// Copy the new app to the destination
 	if err := exec.Command("cp", "-Rf", matches[0], destDir).Run(); err != nil {

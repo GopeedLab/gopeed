@@ -7,7 +7,8 @@ import (
 	"os/exec"
 )
 
-func install(updateChannel, packagePath, destDir string) (bool, error) {
+func install(killSignalChan chan<- any, updateChannel, packagePath, destDir string) (bool, error) {
+	killSignalChan <- nil
 	switch updateChannel {
 	case "linuxDeb":
 		return true, installByDeb(packagePath)

@@ -62,17 +62,23 @@ func main() {
 }
 
 func update(pid int, updateChannel, packagePath string) (restart bool, err error) {
-	if err = killProcess(pid); err != nil {
-		return false, errors.Wrap(err, "failed to kill process")
-	}
+	killSignalChan := make(chan any, 1)
 
-	if err = waitForProcessExit(pid); err != nil {
-		return false, errors.Wrap(err, "failed to wait for process exit")
-	}
+	go func() {
+		<-killSignalChan
+
+		if err = killProcess(pid); err != nil {
+			log.Printf("Failed to kill process: %v\n", err)
+		}
+
+		if err = waitForProcessExit(pid); err != nil {
+			log.Printf("Failed to wait for process exit: %v\n", err)
+		}
+	}()
 
 	appDir := filepath.Dir(os.Args[0])
 
-	if restart, err = install(updateChannel, packagePath, appDir); err != nil {
+	if restart, err = install(killSignalChan, updateChannel, packagePath, appDir); err != nil {
 		return false, errors.Wrap(err, "failed to install package")
 	}
 

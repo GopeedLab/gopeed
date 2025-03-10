@@ -12,17 +12,17 @@ import (
 	"strings"
 )
 
-func install(updateChannel, packagePath, destDir string) (bool, error) {
+func install(killSignalChan chan<- any, updateChannel, packagePath, destDir string) (bool, error) {
 	switch updateChannel {
 	case "windowsInstaller":
-		return false, installByInstaller(packagePath, destDir)
+		return false, installByInstaller(killSignalChan, packagePath, destDir)
 	default:
-		return true, installByPortable(packagePath, destDir)
+		return true, installByPortable(killSignalChan, packagePath, destDir)
 	}
 }
 
 // installByInstaller extracts the installer from the zip file and runs it
-func installByInstaller(packagePath, destDir string) error {
+func installByInstaller(killSignalChan chan<- any, packagePath, destDir string) error {
 	// Create a temp directory for extraction
 	tempDir, err := os.MkdirTemp("", "gopeed_update")
 	if err != nil {
@@ -82,11 +82,18 @@ func installByInstaller(packagePath, destDir string) error {
 
 	// Run the installer
 	cmd := exec.Command(installerPath)
-	return cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	killSignalChan <- nil
+	return nil
 }
 
 // installByPortable extracts the portable version to the destination directory
-func installByPortable(packagePath, destDir string) error {
+func installByPortable(killSignalChan chan<- any, packagePath, destDir string) error {
+	killSignalChan <- nil
+
 	reader, err := zip.OpenReader(packagePath)
 	if err != nil {
 		return err
