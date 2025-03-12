@@ -37,6 +37,9 @@ func installByDmg(killSignalChan chan<- any, packagePath, destDir string) error 
 		return fmt.Errorf("failed to get mount point")
 	}
 
+	// Detach the mounted DMG
+	defer exec.Command("hdiutil", "detach", mountPoint, "-quiet").Run()
+
 	matches, err := filepath.Glob(filepath.Join(mountPoint, "*.app"))
 	if err != nil {
 		return err
@@ -53,8 +56,7 @@ func installByDmg(killSignalChan chan<- any, packagePath, destDir string) error 
 		return err
 	}
 
-	// Detach the mounted DMG
-	return exec.Command("hdiutil", "detach", mountPoint, "-quiet").Run()
+	return nil
 }
 
 // Get parent directory safely, handling trailing separators
