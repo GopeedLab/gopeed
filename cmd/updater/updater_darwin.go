@@ -15,7 +15,9 @@ func install(killSignalChan chan<- any, updateChannel, packagePath, destDir stri
 
 // installByDmg handles macOS dmg package installation
 func installByDmg(killSignalChan chan<- any, packagePath, destDir string) error {
-	output, err := exec.Command("hdiutil", "attach", packagePath, "-nobrowse", "-quiet").Output()
+	// /Applications/Gopeed.app/Contents/MacOS -> /Applications
+	appPath := getParentDir(getParentDir(getParentDir(destDir)))
+	output, err := exec.Command("hdiutil", "attach", packagePath, "-nobrowse").Output()
 	if err != nil {
 		return err
 	}
@@ -46,10 +48,19 @@ func installByDmg(killSignalChan chan<- any, packagePath, destDir string) error 
 	killSignalChan <- nil
 
 	// Copy the new app to the destination
-	if err := exec.Command("cp", "-Rf", matches[0], destDir).Run(); err != nil {
+	// cp -Rf /Volumes/GoPeed/GoPeed.app /Applications
+	if err := exec.Command("cp", "-Rf", matches[0], appPath).Run(); err != nil {
 		return err
 	}
 
 	// Detach the mounted DMG
 	return exec.Command("hdiutil", "detach", mountPoint, "-quiet").Run()
+}
+
+// Get parent directory safely, handling trailing separators
+func getParentDir(path string) string {
+	// Remove trailing separators if they exist
+	path = strings.TrimRight(path, string(filepath.Separator))
+	// Now get the parent directory
+	return filepath.Dir(path)
 }

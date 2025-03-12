@@ -353,7 +353,7 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
         -log string
               Log file path
        */
-      await Process.start(Util.homePathJoin(_updaterBin), [
+      await Process.run(Util.homePathJoin(_updaterBin), [
         "-pid",
         pid.toString(),
         "-channel",

@@ -77,7 +77,7 @@ func update(pid int, updateChannel, packagePath string) (restart bool, err error
 	}()
 
 	appDir := filepath.Dir(os.Args[0])
-
+	log.Printf("Updating process updateChannel=%s packagePath=%s appDir=%s\n", updateChannel, packagePath, appDir)
 	if restart, err = install(killSignalChan, updateChannel, packagePath, appDir); err != nil {
 		return false, errors.Wrap(err, "failed to install package")
 	}
