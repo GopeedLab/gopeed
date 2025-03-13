@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart';
 import '../app/views/outlined_button_loading.dart';
+import 'github_mirror.dart';
 import 'log_util.dart';
 import 'message.dart';
 import 'package_info.dart';
@@ -329,8 +330,10 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
     newVersionAssetPath = await _getAssetPath(version);
 
     if (downloadUrl.isNotEmpty) {
+      final fastDownloadUrl =
+          await githubAutoMirror(downloadUrl, MirrorType.githubRelease);
       final downloadClient = Dio();
-      await downloadClient.download(downloadUrl, newVersionAssetPath,
+      await downloadClient.download(fastDownloadUrl, newVersionAssetPath,
           onReceiveProgress: onProgress);
     }
   }
@@ -343,16 +346,16 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
     case Channel.linuxSnap:
     case Channel.linuxDeb:
       /**
-      Usage of updater command:
+        Usage of updater command:
         -pid int
-              PID of the process to update
+        PID of the process to update
         -channel string
-              Update channel
+        Update channel
         -asset string
-              Path to the package asset
+        Path to the package asset
         -log string
-              Log file path
-       */
+        Log file path
+     */
       await Process.start(Util.homePathJoin(_updaterBin), [
         "-pid",
         pid.toString(),

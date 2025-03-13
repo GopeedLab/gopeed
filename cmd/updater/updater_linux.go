@@ -30,6 +30,8 @@ func executeInTerminal(command string) error {
 		"xterm",          // X11
 	}
 
+	command = fmt.Sprintf(`echo "Starting update..." && echo "[CMD] %s" && %s`, command, command)
+
 	for _, term := range terminals {
 		if _, err := exec.LookPath(term); err == nil {
 			var cmd *exec.Cmd

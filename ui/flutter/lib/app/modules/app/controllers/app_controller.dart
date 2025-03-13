@@ -24,6 +24,7 @@ import '../../../../database/database.dart';
 import '../../../../database/entity.dart';
 import '../../../../i18n/message.dart';
 import '../../../../main.dart';
+import '../../../../util/github_mirror.dart';
 import '../../../../util/locale_manager.dart';
 import '../../../../util/log_util.dart';
 import '../../../../util/package_info.dart';
@@ -36,47 +37,22 @@ import '../../redirect/views/redirect_view.dart';
 const unixSocketPath = 'gopeed.sock';
 
 const allTrackerSubscribeUrls = [
-  'https://github.com/ngosang/trackerslist/raw/master/trackers_all.txt',
-  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_http.txt',
-  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_https.txt',
-  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_ip.txt',
-  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_udp.txt',
-  'https://github.com/ngosang/trackerslist/raw/master/trackers_all_ws.txt',
-  'https://github.com/ngosang/trackerslist/raw/master/trackers_best.txt',
-  'https://github.com/ngosang/trackerslist/raw/master/trackers_best_ip.txt',
-  'https://github.com/XIU2/TrackersListCollection/raw/master/all.txt',
-  'https://github.com/XIU2/TrackersListCollection/raw/master/best.txt',
-  'https://github.com/XIU2/TrackersListCollection/raw/master/http.txt',
+  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt',
+  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_http.txt',
+  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_https.txt',
+  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_ip.txt',
+  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_udp.txt',
+  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_ws.txt',
+  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt',
+  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt',
+  'https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all.txt',
+  'https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt',
+  'https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/http.txt',
 ];
-const allTrackerCdns = [
-  // jsdelivr: https://fastly.jsdelivr.net/gh/ngosang/trackerslist/trackers_all.txt
-  ["https://fastly.jsdelivr.net/gh", r".*github.com(/.*)/raw/master(/.*)"],
-  // ghproxy: https://ghproxy.com/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
-  [
-    "https://ghproxy.com/https://raw.githubusercontent.com",
-    r".*github.com(/.*)/raw(/.*)"
-  ],
-  // mirror.ghproxy.com: https://mirror.ghproxy.com/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
-  [
-    "https://mirror.ghproxy.com/https://raw.githubusercontent.com",
-    r".*github.com(/.*)/raw(/.*)"
-  ],
-];
-final allTrackerSubscribeUrlCdns = Map.fromIterable(allTrackerSubscribeUrls,
-    key: (v) => v as String,
-    value: (v) {
-      final ret = [v as String];
-      for (final cdn in allTrackerCdns) {
-        final reg = RegExp(cdn[1]);
-        final match = reg.firstMatch(v.toString());
-        var matchStr = "";
-        for (var i = 1; i <= match!.groupCount; i++) {
-          matchStr += match.group(i)!;
-        }
-        ret.add("${cdn[0]}$matchStr");
-      }
-      return ret;
-    });
+final allTrackerSubscribeUrlCdns = {
+  for (var v in allTrackerSubscribeUrls)
+    v: githubMirrorUrls(v, MirrorType.githubSource)
+};
 
 class AppController extends GetxController with WindowListener, TrayListener {
   static StartConfig? _defaultStartConfig;
