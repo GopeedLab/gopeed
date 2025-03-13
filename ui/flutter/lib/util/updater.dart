@@ -346,18 +346,27 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
     case Channel.linuxFlathub:
     case Channel.linuxSnap:
     case Channel.linuxDeb:
+      final updaterPath = Util.homePathJoin(_updaterBin);
+      // Check the updater binary is exists
+      if (!await File(updaterPath).exists()) {
+        await launchUrl(
+            Uri.parse(
+                'https://github.com/GopeedLab/gopeed/releases/tag/v$version'),
+            mode: LaunchMode.externalApplication);
+        break;
+      }
       /**
-        Usage of updater command:
-        -pid int
-        PID of the process to update
-        -channel string
-        Update channel
-        -asset string
-        Path to the package asset
-        -log string
-        Log file path
-     */
-      await Process.run(Util.homePathJoin(_updaterBin), [
+       *Usage of updater command:
+          -pid int
+          PID of the process to update
+          -channel string
+          Update channel
+          -asset string
+          Path to the package asset
+          -log string
+          Log file path
+       */
+      await Process.run(updaterPath, [
         "-pid",
         pid.toString(),
         "-channel",
