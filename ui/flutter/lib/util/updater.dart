@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart';
 import '../app/views/outlined_button_loading.dart';
+import 'arch/arch.dart';
 import 'github_mirror.dart';
 import 'log_util.dart';
 import 'message.dart';
@@ -21,7 +22,7 @@ import 'util.dart';
 enum Channel {
   windowsInstaller,
   windowsPortable,
-  macos,
+  macosDmg,
   linuxFlathub,
   linuxSnap,
   linuxDeb,
@@ -38,7 +39,7 @@ final _channel =
           if (Util.isWindows()) {
             return Channel.windowsPortable;
           } else if (Util.isMacos()) {
-            return Channel.macos;
+            return Channel.macosDmg;
           } else if (Util.isAndroid()) {
             return Channel.androidApk;
           } else if (Util.isIOS()) {
@@ -47,7 +48,7 @@ final _channel =
             return null;
           }
         }();
-final _updaterBin = Util.isWindows() ? "updater.exe" : "updater";
+final _updaterBin = "updater${Util.isWindows() ? ".exe" : ""}";
 
 Future<void> installUpdater() async {
   await Util.installAsset(
@@ -341,7 +342,7 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
   switch (_channel) {
     case Channel.windowsInstaller:
     case Channel.windowsPortable:
-    case Channel.macos:
+    case Channel.macosDmg:
     case Channel.linuxFlathub:
     case Channel.linuxSnap:
     case Channel.linuxDeb:
@@ -380,17 +381,37 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
 }
 
 String _getAssetName(String version) {
+  final arch = getArch();
+
+  String commonArchName() {
+    return switch (arch) {
+      Architecture.ia32 => "386",
+      Architecture.x64 => "amd64",
+      _ => arch.name
+    };
+  }
+
   switch (_channel) {
     case Channel.windowsInstaller:
-      return 'Gopeed-v$version-windows-amd64.zip';
+      return 'Gopeed-v$version-windows-${commonArchName()}.zip';
     case Channel.windowsPortable:
-      return 'Gopeed-v$version-windows-amd64-portable.zip';
-    case Channel.macos:
+      return 'Gopeed-v$version-windows-${commonArchName()}-portable.zip';
+    case Channel.macosDmg:
       return 'Gopeed-v$version-macos.dmg';
     case Channel.linuxDeb:
-      return 'Gopeed-v$version-linux-amd64.deb';
+      return 'Gopeed-v$version-linux-${commonArchName()}.deb';
     case Channel.androidApk:
-      return 'Gopeed-v$version-android.apk';
+      final apkArchName = switch (arch) {
+        Architecture.arm => "armeabi-v7a",
+        Architecture.arm64 => "arm64-v8a",
+        Architecture.x64 => "x86_64",
+        _ => null
+      };
+      var apkNamePrefix = "Gopeed-v$version-android";
+      if (apkArchName != null) {
+        apkNamePrefix += "-$apkArchName";
+      }
+      return "$apkNamePrefix.apk";
     default:
       return "";
   }
