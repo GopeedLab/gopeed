@@ -298,7 +298,7 @@ jobs:
           
           # Get current running architecture, x86_64 -> amd64 and aarch64 -> arm64
           ARCH="amd64"
-          if [[ "{{ matrix.os }}" == "*-arm" ]]; then
+          if [[ "${{ matrix.os }}" == "*-arm" ]]; then
             ARCH="arm64"
           fi
           
