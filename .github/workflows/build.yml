@@ -243,11 +243,11 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
-      - if: runner.os == 'ubuntu-22.04'
+      - if: matrix.os == 'ubuntu-22.04'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-      - if: runner.os == 'ubuntu-22.04-arm'
+      - if: matrix.os == 'ubuntu-22.04-arm'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -296,7 +296,7 @@ jobs:
           
           # Get current running architecture, x86_64 -> amd64 and aarch64 -> arm64
           ARCH="amd64"
-          if [[ "{{ runner.os }}" == "*-arm" ]]; then
+          if [[ "{{ matrix.os }}" == "*-arm" ]]; then
             ARCH="arm64"
           fi
           
