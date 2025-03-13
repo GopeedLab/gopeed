@@ -41,7 +41,7 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">📥</a></td>
     </tr>
     <tr>
-      <td rowspan="4">🐧 Linux</td>
+      <td rowspan="6">🐧 Linux</td>
       <td><code>Flathub</code></td>
       <td>amd64</td>
       <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">📥</a></td>
@@ -52,14 +52,22 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
       <td><a href="https://snapcraft.io/gopeed">📥</a></td>
     </tr>
     <tr>
-      <td><code>DEB</code></td>
+      <td rowspan="2"><code>DEB</code></td>
       <td>amd64</td>
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">📥</a></td>
     </tr>
     <tr>
-      <td><code>AppImage</code></td>
+      <td>arm64</td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-arm64.deb">📥</a></td>
+    </tr>
+    <tr>
+      <td rowspan="2"><code>AppImage</code></td>
       <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-x86_64.AppImage">📥</a></td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">📥</a></td>
+    </tr>
+    <tr>
+      <td>arm64</td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-arm64.AppImage">📥</a></td>
     </tr>
     <tr>
       <td>🤖 Android</td>
