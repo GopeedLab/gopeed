@@ -243,9 +243,15 @@ jobs:
       - uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
-      - uses: subosito/flutter-action@v2
+      - if: runner.os == 'ubuntu-22.04'
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+      - if: runner.os == 'ubuntu-22.04-arm'
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: master
       - run: |
           sudo apt update -y
           # flutter build dependencies
