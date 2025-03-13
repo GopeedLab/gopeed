@@ -44,6 +44,8 @@ Future<String> githubAutoMirror(String rawUrl, MirrorType type) async {
       }
     } catch (e) {
       // ignore
+    } finally {
+      client.close();
     }
     return (e, -1);
   }));
