@@ -51,6 +51,11 @@ type chunk struct {
 	retryTimes int
 }
 
+// get remain to download bytes
+func (c *chunk) remain() int64 {
+	return c.End - c.Begin + 1 - c.Downloaded
+}
+
 func newChunk(begin int64, end int64) *chunk {
 	return &chunk{
 		Begin: begin,
@@ -319,7 +324,7 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 	// retry until all remain chunks failed
 	for {
 		// if chunk is completed, return
-		if f.meta.Res.Range && chunk.Downloaded >= chunk.End-chunk.Begin+1 {
+		if f.meta.Res.Range && chunk.remain() <= 0 {
 			return nil
 		}
 		// if all chunks failed, return
@@ -364,15 +369,30 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 				err = NewRequestError(resp.StatusCode, resp.Status)
 				return err
 			}
+			chunk.failed = false
 			reader := NewTimeoutReader(resp.Body, readTimeout)
 			for {
 				n, err := reader.Read(buf)
 				if n > 0 {
+					finished := false
+					if f.meta.Res.Range {
+						remain := chunk.remain()
+						// If downloaded bytes exceed the remain bytes, only write remain bytes
+						if remain < int64(n) {
+							n = int(remain)
+							finished = true
+						}
+					}
+
 					_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
 					if err != nil {
 						return err
 					}
 					chunk.Downloaded += int64(n)
+
+					if finished {
+						return nil
+					}
 				}
 				if err != nil {
 					if err == io.EOF {

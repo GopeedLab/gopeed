@@ -176,6 +176,14 @@ func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
 	downloadError(listener, 4, t)
 }
 
+func TestFetcher_DownloadOnBugFileServer(t *testing.T) {
+	listener := test.StartTestRangeBugServer()
+	defer listener.Close()
+
+	downloadNormal(listener, 1, t)
+	downloadNormal(listener, 4, t)
+}
+
 func TestFetcher_DownloadResume(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
