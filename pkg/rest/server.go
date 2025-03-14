@@ -10,12 +10,14 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var (
@@ -126,16 +128,28 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	if startCfg.WebEnable {
 		r.PathPrefix("/fs/tasks").Handler(http.FileServer(new(taskFileSystem)))
 		r.PathPrefix("/fs/extensions").Handler(http.FileServer(new(extensionFileSystem)))
-		r.PathPrefix("/").Handler(http.FileServer(http.FS(startCfg.WebFS)))
+		r.PathPrefix("/").Handler(gzipMiddleware(http.FileServer(newEmbedCacheFileSystem(http.FS(startCfg.WebFS)))))
 	}
 
-	if startCfg.ApiToken != "" || (startCfg.WebEnable && startCfg.WebBasicAuth != nil) {
+	enableApiToken := startCfg.ApiToken != ""
+	enableBasicAuth := startCfg.WebEnable && startCfg.WebBasicAuth != nil
+	if enableApiToken || enableBasicAuth {
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if startCfg.ApiToken != "" && r.Header.Get("X-Api-Token") == startCfg.ApiToken {
-					h.ServeHTTP(w, r)
-					return
+				if enableApiToken {
+					apiTokenHeader := r.Header["X-Api-Token"]
+					// If api token header is set, only check api token ignore basic auth
+					if len(apiTokenHeader) > 0 {
+						if apiTokenHeader[0] == startCfg.ApiToken {
+							h.ServeHTTP(w, r)
+							return
+						}
+
+						WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
+						return
+					}
 				}
+
 				if startCfg.WebEnable && startCfg.WebBasicAuth != nil {
 					if r.Header.Get("Authorization") == startCfg.WebBasicAuth.Authorization() {
 						h.ServeHTTP(w, r)
@@ -220,6 +234,68 @@ func (e *extensionFileSystem) Open(name string) (http.File, error) {
 	}
 	extensionPath := Downloader.ExtensionPath(extension)
 	return os.Open(filepath.Join(extensionPath, path))
+}
+
+type embedCacheFileSystem struct {
+	fs          http.FileSystem
+	lastModTime time.Time
+}
+
+func newEmbedCacheFileSystem(fs http.FileSystem) *embedCacheFileSystem {
+	efs := &embedCacheFileSystem{
+		fs:          fs,
+		lastModTime: time.Now(),
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return efs
+	}
+
+	fi, err := os.Stat(exe)
+	if err != nil {
+		return efs
+	}
+
+	efs.lastModTime = fi.ModTime()
+	return efs
+}
+
+func (e *embedCacheFileSystem) Open(name string) (http.File, error) {
+	file, err := e.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &embedFile{
+		File:        file,
+		lastModTime: e.lastModTime,
+	}, nil
+}
+
+type embedFile struct {
+	http.File
+	lastModTime time.Time
+}
+
+type embedFileInfo struct {
+	fs.FileInfo
+	lastModTime time.Time
+}
+
+func (e *embedFileInfo) ModTime() time.Time {
+	return e.lastModTime
+}
+
+func (e *embedFile) Stat() (fs.FileInfo, error) {
+	fi, err := e.File.Stat()
+	if err != nil {
+		return nil, err
+	}
+	return &embedFileInfo{
+		FileInfo:    fi,
+		lastModTime: e.lastModTime,
+	}, nil
 }
 
 func ReadJson(r *http.Request, w http.ResponseWriter, v any) bool {
