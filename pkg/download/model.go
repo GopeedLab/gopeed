@@ -100,16 +100,27 @@ func (t *Task) clone() *Task {
 	return util.DeepClone(t)
 }
 
-func (t *Task) calcSpeed(speedArr []int64, downloaded int64, usedTime float64) int64 {
-	speedArr = append(speedArr, downloaded)
-	if len(speedArr) > 6 {
-		speedArr = speedArr[1:]
+func (t *Task) updateSpeed(downloaded int64, usedTime float64) int64 {
+	return calcSpeed(&t.speedArr, downloaded, usedTime)
+}
+
+func (t *Task) updateUploadSpeed(downloaded int64, usedTime float64) int64 {
+	return calcSpeed(&t.uploadSpeedArr, downloaded, usedTime)
+}
+
+func calcSpeed(speedArr *[]int64, downloaded int64, usedTime float64) int64 {
+	*speedArr = append(*speedArr, downloaded)
+	// Record last 5 seconds of download speed to calculate the average speed
+	if len(*speedArr) > int(5.0/usedTime) {
+		*speedArr = (*speedArr)[1:]
 	}
+
 	var total int64
-	for _, v := range speedArr {
+	for _, v := range *speedArr {
 		total += v
 	}
-	return int64(float64(total) / float64(len(speedArr)) / usedTime)
+
+	return int64(float64(total) / float64(len(*speedArr)) / usedTime)
 }
 
 type TaskFilter struct {

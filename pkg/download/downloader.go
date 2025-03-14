@@ -208,7 +208,7 @@ func (d *Downloader) Setup() error {
 						if task.Status == base.DownloadStatusRunning {
 							downloadDataChanged = current != task.Progress.Downloaded
 							task.Progress.Used = task.timer.Used()
-							task.Progress.Speed = task.calcSpeed(task.speedArr, current-task.Progress.Downloaded, tick)
+							task.Progress.Speed = task.updateSpeed(current-task.Progress.Downloaded, tick)
 							task.Progress.Downloaded = current
 						}
 
@@ -217,7 +217,7 @@ func (d *Downloader) Setup() error {
 							uploader := task.fetcher.(fetcher.Uploader)
 							currentUploaded := uploader.UploadedBytes()
 							uploadDataChanged = currentUploaded != task.Progress.Uploaded
-							task.Progress.UploadSpeed = task.calcSpeed(task.uploadSpeedArr, currentUploaded-task.Progress.Uploaded, tick)
+							task.Progress.UploadSpeed = task.updateUploadSpeed(currentUploaded-task.Progress.Uploaded, tick)
 							task.Progress.Uploaded = currentUploaded
 						}
 						d.emit(EventKeyProgress, task)
