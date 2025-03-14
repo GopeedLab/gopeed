@@ -53,7 +53,9 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Run Unit tests.
-        run: go test $(go list ./... | grep -v /cmd/ | grep -v /bind/ | grep -v /internal/test/ ) -v -covermode=count -coverprofile=coverage.txt
+        run: |
+          go test $(go list ./... | grep -v /cmd/ | grep -v /bind/) -v -covermode=count -coverprofile=coverage.txt.tmp \
+            && cat coverage.txt.tmp | grep -v /internal/test/ > coverage.txt
       - uses: codecov/codecov-action@v4
         with:
           files: ./coverage.txt
