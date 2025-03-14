@@ -131,13 +131,25 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		r.PathPrefix("/").Handler(gzipMiddleware(http.FileServer(newEmbedCacheFileSystem(http.FS(startCfg.WebFS)))))
 	}
 
-	if startCfg.ApiToken != "" || (startCfg.WebEnable && startCfg.WebBasicAuth != nil) {
+	enableApiToken := startCfg.ApiToken != ""
+	enableBasicAuth := startCfg.WebEnable && startCfg.WebBasicAuth != nil
+	if enableApiToken || enableBasicAuth {
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if startCfg.ApiToken != "" && r.Header.Get("X-Api-Token") == startCfg.ApiToken {
-					h.ServeHTTP(w, r)
-					return
+				if enableApiToken {
+					apiTokenHeader := r.Header["X-Api-Token"]
+					// If api token header is set, only check api token ignore basic auth
+					if len(apiTokenHeader) > 0 {
+						if apiTokenHeader[0] == startCfg.ApiToken {
+							h.ServeHTTP(w, r)
+							return
+						}
+
+						WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
+						return
+					}
 				}
+
 				if startCfg.WebEnable && startCfg.WebBasicAuth != nil {
 					if r.Header.Get("Authorization") == startCfg.WebBasicAuth.Authorization() {
 						h.ServeHTTP(w, r)

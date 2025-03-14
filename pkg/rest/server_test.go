@@ -625,6 +625,22 @@ func TestAuthorization(t *testing.T) {
 	if status != http.StatusOK {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
 	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": cfg.WebBasicAuth.Authorization(),
+		"X-Api-Token":   cfg.ApiToken,
+	}, nil)
+	if status != http.StatusOK {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": cfg.WebBasicAuth.Authorization(),
+		"X-Api-Token":   "",
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
 }
 
 func doTest(handler func()) {
