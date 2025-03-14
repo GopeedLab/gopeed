@@ -507,15 +507,15 @@ func TestWebFsEnhance(t *testing.T) {
 			"Accept-Encoding": "gzip",
 		}, nil)
 		if code != http.StatusOK {
-			t.Errorf("TestWebFsEng() got = %v, want %v", code, http.StatusOK)
+			t.Errorf("TestWebFsEnhance() got = %v, want %v", code, http.StatusOK)
 		}
 		// Check header last-modified
 		if _, ok := header["Last-Modified"]; !ok {
-			t.Errorf("TestWebFsEng() missing key = %v", "Last-Modified")
+			t.Errorf("TestWebFsEnhance() missing key = %v", "Last-Modified")
 		}
 		// Check gzip compress
 		if _, ok := header["Content-Encoding"]; !ok || header["Content-Encoding"] != "gzip" {
-			t.Errorf("TestWebFsEng() no gzip compress")
+			t.Errorf("TestWebFsEnhance() no gzip compress")
 		}
 
 		// Request with If-Modified-Since
@@ -524,7 +524,17 @@ func TestWebFsEnhance(t *testing.T) {
 			"If-Modified-Since": ifModifiedSince,
 		}, nil)
 		if code != http.StatusNotModified {
-			t.Errorf("TestWebFsEng() got = %v, want %v", code, http.StatusNotModified)
+			t.Errorf("TestWebFsEnhance() got = %v, want %v", code, http.StatusNotModified)
+		}
+
+		// Request with un gzip
+		code, header, _ = doHttpRequest1(http.MethodGet, "/index.html?t=123", nil, nil)
+		if code != http.StatusOK {
+			t.Errorf("TestWebFsEnhance() got = %v, want %v", code, http.StatusOK)
+		}
+		// Check no gzip compress
+		if _, ok := header["Content-Encoding"]; ok && header["Content-Encoding"] == "gzip" {
+			t.Errorf("TestWebFsEnhance() has gzip compress")
 		}
 	})
 }
