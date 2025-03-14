@@ -529,7 +529,6 @@ jobs:
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
-          VERSION=${VERSION:-$(date +%y%m%d%H%M)} # Use current time as version if not specified
           cd ui/flutter
           flutter build web --no-web-resources-cdn
           cd ../../

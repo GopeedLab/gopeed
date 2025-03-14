@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
@@ -478,6 +479,66 @@ func TestFsExtensionFail(t *testing.T) {
 	})
 }
 
+func TestWebFsEnhance(t *testing.T) {
+	indexHtml := `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>index</title>
+</head>
+<body>
+	<h1>index</h1>
+</body>
+</html>
+`
+	webDistPath := "dist"
+	os.MkdirAll("dist", os.ModePerm)
+	if err := os.WriteFile(filepath.Join(webDistPath, "index.html"), []byte(indexHtml), os.ModePerm); err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(webDistPath)
+
+	doTest0(func(cfg *model.StartConfig) {
+		cfg.WebFS = os.DirFS(webDistPath)
+	}, func() {
+		// First request no cache
+		code, header, _ := doHttpRequest1(http.MethodGet, "/index.html", map[string]string{
+			"Accept-Encoding": "gzip",
+		}, nil)
+		if code != http.StatusOK {
+			t.Errorf("TestWebFsEnhance() got = %v, want %v", code, http.StatusOK)
+		}
+		// Check header last-modified
+		if _, ok := header["Last-Modified"]; !ok {
+			t.Errorf("TestWebFsEnhance() missing key = %v", "Last-Modified")
+		}
+		// Check gzip compress
+		if _, ok := header["Content-Encoding"]; !ok || header["Content-Encoding"] != "gzip" {
+			t.Errorf("TestWebFsEnhance() no gzip compress")
+		}
+
+		// Request with If-Modified-Since
+		ifModifiedSince := header["Last-Modified"]
+		code, _, _ = doHttpRequest1(http.MethodGet, "/index.html", map[string]string{
+			"If-Modified-Since": ifModifiedSince,
+		}, nil)
+		if code != http.StatusNotModified {
+			t.Errorf("TestWebFsEnhance() got = %v, want %v", code, http.StatusNotModified)
+		}
+
+		// Request with un gzip
+		code, header, _ = doHttpRequest1(http.MethodGet, "/index.html?t=123", nil, nil)
+		if code != http.StatusOK {
+			t.Errorf("TestWebFsEnhance() got = %v, want %v", code, http.StatusOK)
+		}
+		// Check no gzip compress
+		if _, ok := header["Content-Encoding"]; ok && header["Content-Encoding"] == "gzip" {
+			t.Errorf("TestWebFsEnhance() has gzip compress")
+		}
+	})
+}
+
 func TestDoProxy(t *testing.T) {
 	doTest(func() {
 		code, respBody := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
@@ -567,12 +628,19 @@ func TestAuthorization(t *testing.T) {
 }
 
 func doTest(handler func()) {
+	doTest0(nil, handler)
+}
+
+func doTest0(onStart func(cfg *model.StartConfig), handler func()) {
 	testFunc := func(storage model.Storage) {
 		var cfg = &model.StartConfig{}
 		cfg.Init()
 		cfg.Storage = storage
 		cfg.StorageDir = ".test_storage"
 		cfg.WebEnable = true
+		if onStart != nil {
+			onStart(cfg)
+		}
 		fileListener := doStart(cfg)
 		defer func() {
 			if err := fileListener.Close(); err != nil {
@@ -603,6 +671,11 @@ func doStart(cfg *model.StartConfig) net.Listener {
 }
 
 func doHttpRequest0(method string, path string, headers map[string]string, body any) (int, []byte) {
+	r1, _, r3 := doHttpRequest1(method, path, headers, body)
+	return r1, r3
+}
+
+func doHttpRequest1(method string, path string, headers map[string]string, body any) (int, map[string]string, []byte) {
 	var reader io.Reader
 	if body != nil {
 		buf, _ := json.Marshal(body)
@@ -623,12 +696,18 @@ func doHttpRequest0(method string, path string, headers map[string]string, body 
 		panic(err)
 	}
 	defer response.Body.Close()
+
+	respHeader := make(map[string]string)
+	for k, vv := range response.Header {
+		respHeader[k] = vv[0]
+	}
+
 	respBody, err := io.ReadAll(response.Body)
 	if err != nil {
 		panic(err)
 	}
 
-	return response.StatusCode, respBody
+	return response.StatusCode, respHeader, respBody
 }
 
 func doHttpRequest[T any](method string, path string, headers map[string]string, body any) (int, *model.Result[T]) {
