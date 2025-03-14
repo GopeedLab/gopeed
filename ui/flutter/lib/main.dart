@@ -14,6 +14,7 @@ import 'i18n/message.dart';
 import 'util/browser_extension_host/browser_extension_host.dart';
 import 'util/locale_manager.dart';
 import 'util/log_util.dart';
+import 'util/mac_bookmarks.dart';
 import 'util/package_info.dart';
 import 'util/scheme_register/scheme_register.dart';
 import 'util/updater.dart';
@@ -89,6 +90,7 @@ Future<void> init(Args args) async {
 
   try {
     await controller.loadDownloaderConfig();
+    MacBookmarks.loadBookmark();
   } catch (e) {
     logger.e("load config fail", e);
   }

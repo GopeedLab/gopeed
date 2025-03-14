@@ -16,6 +16,7 @@ import '../../../../api/model/extension.dart';
 import '../../../../api/model/install_extension.dart';
 import '../../../../api/model/switch_extension.dart';
 import '../../../../api/model/update_extension_settings.dart';
+import '../../../../util/mac_bookmarks.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
 import '../../../views/icon_button_loading.dart';
@@ -95,6 +96,7 @@ class ExtensionView extends GetView<ExtensionController> {
                             var dir =
                                 await FilePicker.platform.getDirectoryPath();
                             if (dir != null) {
+                              MacBookmarks.saveBookmark(dir);
                               try {
                                 await installExtension(
                                     InstallExtension(devMode: true, url: dir));

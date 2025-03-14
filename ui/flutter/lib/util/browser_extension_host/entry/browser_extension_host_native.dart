@@ -216,8 +216,17 @@ String? _getManifestPath(Browser browser) {
     return Util.homePathJoin(manifestName);
   }
 
-  final home =
-      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  String? home;
+  if (Platform.isMacOS) {
+    try {
+      final user = Process.runSync("id", ["-un"]).stdout.trim();
+      home = '/Users/$user';
+    } catch (e) {
+      // ignore
+    }
+  }
+  home ??= Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+
   if (home == null) return null;
 
   if (Platform.isMacOS) {

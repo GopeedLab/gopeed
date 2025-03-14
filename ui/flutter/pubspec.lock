@@ -667,6 +667,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
+  logging_appenders:
+    dependency: transitive
+    description:
+      name: logging_appenders
+      sha256: e329e7472f99416d0edaaf6451fe6c02dec91d34535bd252e284a0b94ab23d79
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.3.1"
+  macos_secure_bookmarks:
+    dependency: "direct main"
+    description:
+      name: macos_secure_bookmarks
+      sha256: c3163875f8fd530a1654a7cf8aa426e6e208d28bf05724a1d4960e4b7d2ca1c6
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
   macros:
     dependency: transitive
     description:

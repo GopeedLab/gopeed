@@ -6,7 +6,6 @@ import 'package:hive/hive.dart';
 import 'entity.dart';
 
 const String _startConfig = 'startConfig';
-const String _lastRunningConfig = 'lastRunningConfig';
 const String _windowState = 'windowState';
 const String _bookmark = 'bookmark';
 const String _createHistory = 'createHistory';
