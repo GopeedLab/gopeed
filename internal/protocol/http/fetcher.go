@@ -374,25 +374,28 @@ func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
 			for {
 				n, err := reader.Read(buf)
 				if n > 0 {
+					finished := false
 					if f.meta.Res.Range {
 						remain := chunk.remain()
 						// If downloaded bytes exceed the remain bytes, only write remain bytes
 						if remain < int64(n) {
 							n = int(remain)
+							finished = true
 						}
 					}
+
 					_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
 					if err != nil {
 						return err
 					}
 					chunk.Downloaded += int64(n)
+
+					if finished {
+						return nil
+					}
 				}
 				if err != nil {
 					if err == io.EOF {
-						return nil
-					}
-					// Sometimes chunk is fully downloaded, but no EOF was received even after the timeout, mark as success
-					if f.meta.Res.Range && chunk.remain() <= 0 {
 						return nil
 					}
 					return err
