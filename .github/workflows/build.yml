@@ -236,7 +236,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-22.04, ubuntu-22.04-arm ]
+        os: [ubuntu-22.04, ubuntu-22.04-arm]
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
@@ -270,7 +270,7 @@ jobs:
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" -o ui/flutter/assets/exec/host github.com/GopeedLab/gopeed/cmd/host
           go build -ldflags="-w -s" -o ui/flutter/assets/exec/updater github.com/GopeedLab/gopeed/cmd/updater
-          
+
           cd ui/flutter
           cat << EOF > distribute_options.yaml
           output: dist/
@@ -295,13 +295,13 @@ jobs:
           dart pub global activate -sgit https://github.com/GopeedLab/flutter_distributor.git --git-path packages/flutter_distributor
           flutter_distributor release --name linux
           cd dist/*
-          
+
           # Get current running architecture, x86_64 -> amd64 and aarch64 -> arm64
           ARCH="amd64"
           if [[ "${{ matrix.os }}" == *-arm ]]; then
             ARCH="arm64"
           fi
-          
+
           mv gopeed-*-linux.AppImage Gopeed-v${VERSION}-linux-${ARCH}.AppImage
           mv gopeed-*-linux.deb Gopeed-v${VERSION}-linux-${ARCH}.deb
       - name: Upload
@@ -472,8 +472,12 @@ jobs:
           cd ui/flutter
           echo $APK_KEYSTORE | base64 -di > android/app/upload-keystore.jks
           flutter build apk --dart-define="UPDATE_CHANNEL=androidApk"
+          flutter build apk --split-per-abi --dart-define="UPDATE_CHANNEL=androidApk"
           mkdir dist
           cp build/app/outputs/flutter-apk/app-release.apk dist/Gopeed-v$VERSION-android.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/Gopeed-v$VERSION-android-armeabi-v7a.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/Gopeed-v$VERSION-android-arm64-v8a.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk dist/Gopeed-v$VERSION-android-x86_64.apk
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:

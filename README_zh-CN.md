@@ -70,10 +70,22 @@ Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-arm64.AppImage">📥</a></td>
     </tr>
     <tr>
-      <td>🤖 Android</td>
-      <td><code>APK</code></td>
+      <td rowspan="4">🤖 Android</td>
+      <td rowspan="4"><code>APK</code></td>
       <td>universal</td>
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android.apk">📥</a></td>
+    </tr>
+     <tr>
+      <td>armeabi-v7a</td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android-armeabi-v7a.apk">📥</a></td>
+    </tr>
+     <tr>
+      <td>arm64-v8a</td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android-arm64-v8a.apk">📥</a></td>
+    </tr>
+    <tr>
+      <td>x86_64</td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android-x86_64.apk">📥</a></td>
     </tr>
     <tr>
       <td>📱 iOS</td>
@@ -135,7 +147,6 @@ Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不
     </tr>
   </tbody>
 </table>
-
 更多关于安装的内容请参考[安装文档](https://docs.gopeed.com/zh/install.html)
 
 ### 🛠️ 命令行工具
