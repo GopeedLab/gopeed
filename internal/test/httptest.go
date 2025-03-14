@@ -180,63 +180,14 @@ func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 				writer.WriteHeader(403)
 				return
 			}
-
-			r := request.Header.Get("Range")
-			if r == "" {
-				writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
-				writer.WriteHeader(200)
-				(writer.(http.Flusher)).Flush()
-
-				file, err := os.Open(BuildFile)
-				if err != nil {
-					panic(err)
-				}
-				defer file.Close()
-				slowCopy(sl, writer, file, delay)
-			} else {
-				// split range
-				s := strings.Split(r, "=")
-				if len(s) != 2 {
-					writer.WriteHeader(400)
-					return
-				}
-				s = strings.Split(s[1], "-")
-				if len(s) != 2 {
-					writer.WriteHeader(400)
-					return
-				}
-				start, err := strconv.ParseInt(s[0], 10, 64)
-				if err != nil {
-					writer.WriteHeader(400)
-					return
-				}
-				end, err := strconv.ParseInt(s[1], 10, 64)
-				if err != nil {
-					writer.WriteHeader(400)
-					return
-				}
-				if start < 0 || end < 0 || start > end {
-					writer.WriteHeader(400)
-					return
-				}
-				if end >= BuildSize {
-					end = BuildSize - 1
-				}
-				writer.Header().Set("Content-Length", fmt.Sprintf("%d", end-start+1))
-				writer.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, BuildSize))
-				writer.Header().Set("Accept-Ranges", "bytes")
-				writer.WriteHeader(206)
-				(writer.(http.Flusher)).Flush()
-
-				file, err := os.Open(BuildFile)
-				if err != nil {
-					writer.WriteHeader(500)
-					return
-				}
-				defer file.Close()
-				file.Seek(start, 0)
-				slowCopyN(sl, writer, file, end-start+1, delay)
-			}
+			rangeFileHandle(
+				writer,
+				request,
+				nil,
+				func(file *os.File, n int64) {
+					slowCopyN(sl, writer, file, n, delay)
+				},
+			)
 		})
 		return mux
 	})
@@ -248,75 +199,77 @@ func StartTestRangeBugServer() net.Listener {
 	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
-
-			r := request.Header.Get("Range")
-			if r == "" {
-				writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
-				writer.WriteHeader(200)
-				(writer.(http.Flusher)).Flush()
-
-				file, err := os.Open(BuildFile)
-				if err != nil {
-					panic(err)
-				}
-				defer file.Close()
-				io.Copy(writer, file)
-			} else {
-				// split range
-				s := strings.Split(r, "=")
-				if len(s) != 2 {
-					writer.WriteHeader(400)
-					return
-				}
-				s = strings.Split(s[1], "-")
-				if len(s) != 2 {
-					writer.WriteHeader(400)
-					return
-				}
-				start, err := strconv.ParseInt(s[0], 10, 64)
-				if err != nil {
-					writer.WriteHeader(400)
-					return
-				}
-				end, err := strconv.ParseInt(s[1], 10, 64)
-				if err != nil {
-					writer.WriteHeader(400)
-					return
-				}
-				if start < 0 || end < 0 || start > end {
-					writer.WriteHeader(400)
-					return
-				}
-				if end >= BuildSize {
-					end = BuildSize - 1
-				}
-
-				var bugEnd = end
-				if end != 0 {
-					bugEnd = end + 50
-					if bugEnd >= BuildSize {
-						bugEnd = end
+			rangeFileHandle(
+				writer,
+				request,
+				func(end int64) int64 {
+					var bugEnd = end
+					if end != 0 {
+						bugEnd = end + 50
+						if bugEnd >= BuildSize {
+							bugEnd = end
+						}
 					}
-				}
-
-				writer.Header().Set("Content-Length", fmt.Sprintf("%d", bugEnd-start+1))
-				writer.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, bugEnd, BuildSize))
-				writer.Header().Set("Accept-Ranges", "bytes")
-				writer.WriteHeader(206)
-				(writer.(http.Flusher)).Flush()
-
-				file, err := os.Open(BuildFile)
-				if err != nil {
-					writer.WriteHeader(500)
-					return
-				}
-				defer file.Close()
-				file.Seek(start, 0)
-				io.CopyN(writer, file, bugEnd-start+1)
-			}
+					return bugEnd
+				},
+				func(file *os.File, n int64) {
+					io.CopyN(writer, file, n)
+				},
+			)
 		})
 		return mux
 	})
+}
+
+func rangeFileHandle(writer http.ResponseWriter, request *http.Request, modifyEnd func(end int64) int64, iocpN func(file *os.File, n int64)) {
+	r := request.Header.Get("Range")
+	// split range
+	s := strings.Split(r, "=")
+	if len(s) != 2 {
+		writer.WriteHeader(400)
+		return
+	}
+	s = strings.Split(s[1], "-")
+	if len(s) != 2 {
+		writer.WriteHeader(400)
+		return
+	}
+	start, err := strconv.ParseInt(s[0], 10, 64)
+	if err != nil {
+		writer.WriteHeader(400)
+		return
+	}
+	end, err := strconv.ParseInt(s[1], 10, 64)
+	if err != nil {
+		writer.WriteHeader(400)
+		return
+	}
+	if start < 0 || end < 0 || start > end {
+		writer.WriteHeader(400)
+		return
+	}
+	if end >= BuildSize {
+		end = BuildSize - 1
+	}
+
+	if modifyEnd != nil {
+		end = modifyEnd(end)
+	}
+
+	writer.Header().Set("Content-Length", fmt.Sprintf("%d", end-start+1))
+	writer.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, BuildSize))
+	writer.Header().Set("Accept-Ranges", "bytes")
+	writer.WriteHeader(206)
+	(writer.(http.Flusher)).Flush()
+
+	file, err := os.Open(BuildFile)
+	if err != nil {
+		writer.WriteHeader(500)
+		return
+	}
+	defer file.Close()
+	file.Seek(start, 0)
+	iocpN(file, end-start+1)
 }
 
 // slowCopyN copies n bytes from src to dst, speed limit is bytes per second
