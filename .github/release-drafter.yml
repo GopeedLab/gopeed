@@ -57,7 +57,7 @@ template: |
         <td><a href="https://github.com/GopeedLab/gopeed/releases/download/v$NEXT_PATCH_VERSION/Gopeed-v$NEXT_PATCH_VERSION-macos.dmg">📥</a></td>
       </tr>
       <tr>
-        <td rowspan="4">🐧 Linux</td>
+        <td rowspan="6">🐧 Linux</td>
         <td><code>Flathub</code></td>
         <td>amd64</td>
         <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">📥</a></td>
@@ -68,14 +68,22 @@ template: |
         <td><a href="https://snapcraft.io/gopeed">📥</a></td>
       </tr>
       <tr>
-        <td><code>DEB</code></td>
+        <td rowspan="2"><code>DEB</code></td>
         <td>amd64</td>
         <td><a href="https://github.com/GopeedLab/gopeed/releases/download/v$NEXT_PATCH_VERSION/Gopeed-v$NEXT_PATCH_VERSION-linux-amd64.deb">📥</a></td>
       </tr>
       <tr>
-        <td><code>AppImage</code></td>
+        <td>arm64</td>
+        <td><a href="https://github.com/GopeedLab/gopeed/releases/download/v$NEXT_PATCH_VERSION/Gopeed-v$NEXT_PATCH_VERSION-linux-arm64.deb">📥</a></td>
+      </tr>
+      <tr>
+        <td rowspan="2"><code>AppImage</code></td>
         <td>amd64</td>
-        <td><a href="https://github.com/GopeedLab/gopeed/releases/download/v$NEXT_PATCH_VERSION/Gopeed-v$NEXT_PATCH_VERSION-linux-x86_64.AppImage">📥</a></td>
+        <td><a href="https://github.com/GopeedLab/gopeed/releases/download/v$NEXT_PATCH_VERSION/Gopeed-v$NEXT_PATCH_VERSION-linux-amd64.AppImage">📥</a></td>
+      </tr>
+      <tr>
+        <td>arm64</td>
+        <td><a href="https://github.com/GopeedLab/gopeed/releases/download/v$NEXT_PATCH_VERSION/Gopeed-v$NEXT_PATCH_VERSION-linux-arm64.AppImage">📥</a></td>
       </tr>
       <tr>
         <td>🤖 Android</td>

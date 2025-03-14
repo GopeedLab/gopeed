@@ -71,6 +71,11 @@ dependencies:
   contentsize_tabbarview: ^0.0.2
   win32_registry: ^1.1.5
   share_handler: ^0.0.22
+  crypto: ^3.0.6
+  install_plugin:
+    git:
+      url: https://github.com/hui-z/flutter_install_plugin.git
+      ref: cf08af829f4a4145634f8a047108f505fdbe5eaa
 dependency_overrides:
   permission_handler_windows:
     git:
@@ -108,7 +113,7 @@ flutter:
     - assets/tray_icon/
     - assets/extension/
     # Browser extension native host binary, see https://github.com/GopeedLab/gopeed/tree/main/cmd/host
-    - assets/host/
+    - assets/exec/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

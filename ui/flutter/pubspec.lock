@@ -271,7 +271,7 @@ packages:
     source: hosted
     version: "0.3.4+2"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: "1e445881f28f22d6140f181e07737b22f1e099a5e1ff94b0af2f9e4a463f4855"
@@ -546,6 +546,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.3.0"
+  install_plugin:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: cf08af829f4a4145634f8a047108f505fdbe5eaa
+      resolved-ref: cf08af829f4a4145634f8a047108f505fdbe5eaa
+      url: "https://github.com/hui-z/flutter_install_plugin.git"
+    source: git
+    version: "2.1.0"
   intl:
     dependency: transitive
     description:
