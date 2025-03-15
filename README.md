@@ -168,7 +168,7 @@ If you like this project, please consider [donating](https://docs.gopeed.com/don
 
 ## 🖼️ Showcase
 
-![](_docs/img/ui-demo.png)
+![](_docs/img/DeepSeek_goopeed_download.png)
 
 ## 👨‍💻 Development
 
