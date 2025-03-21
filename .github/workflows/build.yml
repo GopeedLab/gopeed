@@ -197,12 +197,16 @@ jobs:
       - if: ${{ matrix.channel == 'amd64' }}
         name: Build Amd64 Libraries
         run: |
+          mkdir -p ui/flutter/macos/Frameworks
+          
           cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/macos/Frameworks/libgopeed.dylib
           cp ui/flutter/lib-amd64/host ui/flutter/assets/exec/host
           cp ui/flutter/lib-amd64/updater ui/flutter/assets/exec/updater
       - if: ${{ matrix.channel == 'universal' }}
         name: Build Universal Libraries
         run: |
+          mkdir -p ui/flutter/macos/Frameworks
+          
           # arm64 lib
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/.temp/libgopeed.dylib.arm64 github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" -o ui/flutter/.temp/host.arm64 github.com/GopeedLab/gopeed/cmd/host
