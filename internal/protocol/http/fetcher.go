@@ -16,6 +16,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
@@ -28,6 +29,7 @@ import (
 
 const connectTimeout = 15 * time.Second
 const readTimeout = 15 * time.Second
+const chunkHelpMinSize = 1024 * 1024 // 1MB
 
 type RequestError struct {
 	Code int
@@ -45,6 +47,11 @@ func (re *RequestError) Error() string {
 type chunk struct {
 	Begin      int64
 	End        int64
+	Downloaded int64
+}
+
+type runner struct {
+	Chunk      *chunk
 	Downloaded int64
 
 	failed     bool
@@ -68,8 +75,9 @@ type Fetcher struct {
 	config *config
 	doneCh chan error
 
-	meta   *fetcher.FetcherMeta
-	chunks []*chunk
+	meta     *fetcher.FetcherMeta
+	runners  []*runner
+	helpLock sync.Mutex
 
 	file   *os.File
 	cancel context.CancelFunc
@@ -222,8 +230,8 @@ func (f *Fetcher) Start() (err error) {
 		return err
 	}
 
-	if f.chunks == nil {
-		f.chunks = f.splitChunk()
+	if f.runners == nil {
+		f.runners = f.splitRunner()
 	}
 	f.fetch()
 	return
@@ -257,10 +265,10 @@ func (f *Fetcher) Stats() any {
 
 func (f *Fetcher) Progress() fetcher.Progress {
 	p := make(fetcher.Progress, 0)
-	if len(f.chunks) > 0 {
+	if len(f.runners) > 0 {
 		total := int64(0)
-		for _, chunk := range f.chunks {
-			total += chunk.Downloaded
+		for _, runner := range f.runners {
+			total += runner.Downloaded
 		}
 		p = append(p, total)
 	}
@@ -275,16 +283,16 @@ func (f *Fetcher) fetch() {
 	var ctx context.Context
 	ctx, f.cancel = context.WithCancel(context.Background())
 	f.eg, _ = errgroup.WithContext(ctx)
-	chunkErrs := make([]error, len(f.chunks))
-	for i := 0; i < len(f.chunks); i++ {
+	runnerErrs := make([]error, len(f.runners))
+	for i := 0; i < len(f.runners); i++ {
 		i := i
 		f.eg.Go(func() error {
-			err := f.fetchChunk(i, ctx)
+			err := f.run(i, ctx)
 			// if canceled, fail fast
 			if errors.Is(err, context.Canceled) {
 				return err
 			}
-			chunkErrs[i] = err
+			runnerErrs[i] = err
 			return nil
 		})
 	}
@@ -296,7 +304,7 @@ func (f *Fetcher) fetch() {
 			return
 		}
 		// check all fetch results, if any error, return
-		for _, chunkErr := range chunkErrs {
+		for _, chunkErr := range runnerErrs {
 			if chunkErr != nil {
 				err = chunkErr
 				break
@@ -312,109 +320,157 @@ func (f *Fetcher) fetch() {
 	}()
 }
 
-func (f *Fetcher) fetchChunk(index int, ctx context.Context) (err error) {
-	chunk := f.chunks[index]
-	chunk.failed = false
-	chunk.retryTimes = 0
-
+func (f *Fetcher) run(index int, ctx context.Context) (err error) {
+	runner := f.runners[index]
+	runner.failed = false
+	runner.retryTimes = 0
 	var (
 		client = f.buildClient()
 		buf    = make([]byte, 8192)
 	)
-	// retry until all remain chunks failed
-	for {
-		// if chunk is completed, return
-		if f.meta.Res.Range && chunk.remain() <= 0 {
-			return nil
-		}
-		// if all chunks failed, return
-		if chunk.failed {
-			allFailed := true
-			for _, c := range f.chunks {
-				if !c.failed {
-					allFailed = false
-					break
-				}
-			}
-			if allFailed {
-				if chunk.retryTimes >= 3 {
-					return
-				} else {
-					chunk.retryTimes++
-				}
-			}
-		}
 
-		var (
-			httpReq *http.Request
-			resp    *http.Response
-		)
-		httpReq, err = f.buildRequest(ctx, f.meta.Req)
-		if err != nil {
-			return
-		}
-		if f.meta.Res.Range {
-			httpReq.Header.Set(base.HttpHeaderRange,
-				fmt.Sprintf(base.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
-		} else {
-			chunk.Downloaded = 0
-		}
-		err = func() error {
-			resp, err = client.Do(httpReq)
+	downloadChunk := func(chunk *chunk) (err error) {
+		// retry until all remain chunks failed
+		for {
+			// if chunk is completed, return
+			if f.meta.Res.Range && chunk.remain() <= 0 {
+				return nil
+			}
+			// if all chunks failed, return
+			if runner.failed {
+				allFailed := true
+				for _, c := range f.runners {
+					if !c.failed {
+						allFailed = false
+						break
+					}
+				}
+				if allFailed {
+					if runner.retryTimes >= 3 {
+						return
+					} else {
+						runner.retryTimes++
+					}
+				}
+			}
+
+			var (
+				httpReq *http.Request
+				resp    *http.Response
+			)
+			httpReq, err = f.buildRequest(ctx, f.meta.Req)
 			if err != nil {
-				return err
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
-				err = NewRequestError(resp.StatusCode, resp.Status)
-				return err
-			}
-			chunk.failed = false
-			reader := NewTimeoutReader(resp.Body, readTimeout)
-			for {
-				n, err := reader.Read(buf)
-				if n > 0 {
-					finished := false
-					if f.meta.Res.Range {
-						remain := chunk.remain()
-						// If downloaded bytes exceed the remain bytes, only write remain bytes
-						if remain < int64(n) {
-							n = int(remain)
-							finished = true
-						}
-					}
-
-					_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
-					if err != nil {
-						return err
-					}
-					chunk.Downloaded += int64(n)
-
-					if finished {
-						return nil
-					}
-				}
-				if err != nil {
-					if err == io.EOF {
-						return nil
-					}
-					return err
-				}
-			}
-		}()
-		if err != nil {
-			// If canceled, do not retry
-			if errors.Is(err, context.Canceled) {
 				return
 			}
-			// retry request after 1 second
-			chunk.failed = true
-			time.Sleep(time.Second)
+			if f.meta.Res.Range {
+				httpReq.Header.Set(base.HttpHeaderRange,
+					fmt.Sprintf(base.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
+			} else {
+				chunk.Downloaded = 0
+			}
+
+			err = func() error {
+				resp, err = client.Do(httpReq)
+				if err != nil {
+					return err
+				}
+				defer resp.Body.Close()
+				if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
+					err = NewRequestError(resp.StatusCode, resp.Status)
+					return err
+				}
+				runner.failed = false
+				reader := NewTimeoutReader(resp.Body, readTimeout)
+				for {
+					n, err := reader.Read(buf)
+					if n > 0 {
+						finished := false
+						if f.meta.Res.Range {
+							remain := chunk.remain()
+							// If downloaded bytes exceed the remain bytes, only write remain bytes
+							if remain < int64(n) {
+								n = int(remain)
+								finished = true
+							}
+						}
+
+						_, err := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
+						if err != nil {
+							return err
+						}
+						chunk.Downloaded += int64(n)
+
+						if finished {
+							return nil
+						}
+					}
+					if err != nil {
+						if err == io.EOF {
+							return nil
+						}
+						return err
+					}
+				}
+			}()
+			if err != nil {
+				// If canceled, do not retry
+				if errors.Is(err, context.Canceled) {
+					return
+				}
+				// retry request after 1 second
+				runner.failed = true
+				time.Sleep(time.Second)
+				continue
+			}
+			break
+		}
+		return
+	}
+
+	for {
+		if err = downloadChunk(runner.Chunk); err != nil {
+			return
+		}
+
+		if !f.meta.Res.Range {
+			return
+		}
+
+		// If no need to help other runner, return
+		if !f.helpOtherRunner(runner) {
+			return
+		}
+	}
+}
+
+func (f *Fetcher) helpOtherRunner(helper *runner) bool {
+	f.helpLock.Lock()
+	defer f.helpLock.Unlock()
+
+	// find the slowest runner
+	var maxRemainRunner *runner
+	var maxRemain int64
+	for _, r := range f.runners {
+		if r == helper {
 			continue
 		}
-		break
+
+		remain := r.Chunk.remain()
+		if remain > maxRemain && remain > chunkHelpMinSize {
+			maxRemainRunner = r
+			maxRemain = remain
+		}
 	}
-	return
+	if maxRemainRunner == nil {
+		return false
+	}
+
+	// re-calculate the chunk range
+	helper.Chunk.Begin = maxRemainRunner.Chunk.End - maxRemainRunner.Chunk.remain()/2
+	helper.Chunk.End = maxRemainRunner.Chunk.End
+	helper.Chunk.Downloaded = 0
+	maxRemainRunner.Chunk.End = helper.Chunk.Begin - 1
+	return true
 }
 
 func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request, err error) {
@@ -467,12 +523,12 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 	return httpReq, nil
 }
 
-func (f *Fetcher) splitChunk() (chunks []*chunk) {
+func (f *Fetcher) splitRunner() (runners []*runner) {
 	if f.meta.Res.Range {
 		connections := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
 		// 每个连接平均需要下载的分块大小
 		chunkSize := f.meta.Res.Size / int64(connections)
-		chunks = make([]*chunk, connections)
+		runners = make([]*runner, connections)
 		for i := 0; i < connections; i++ {
 			var (
 				begin = chunkSize * int64(i)
@@ -484,13 +540,16 @@ func (f *Fetcher) splitChunk() (chunks []*chunk) {
 			} else {
 				end = begin + chunkSize - 1
 			}
-			chunk := newChunk(begin, end)
-			chunks[i] = chunk
+			runners[i] = &runner{
+				Chunk: newChunk(begin, end),
+			}
 		}
 	} else {
 		// 只支持单连接下载
-		chunks = make([]*chunk, 1)
-		chunks[0] = newChunk(0, 0)
+		runners = make([]*runner, 1)
+		runners[0] = &runner{
+			Chunk: newChunk(0, 0),
+		}
 	}
 	return
 }
@@ -514,7 +573,7 @@ func (f *Fetcher) buildClient() *http.Client {
 }
 
 type fetcherData struct {
-	Chunks []*chunk
+	Runners []*runner
 }
 
 type FetcherManager struct {
@@ -570,7 +629,7 @@ func (fm *FetcherManager) DefaultConfig() any {
 func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
 	return &fetcherData{
-		Chunks: _f.chunks,
+		Runners: _f.runners,
 	}, nil
 }
 
@@ -582,8 +641,8 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		fetcher.meta = meta
 		base.ParseReqExtra[fhttp.ReqExtra](fetcher.meta.Req)
 		base.ParseOptsExtra[fhttp.OptsExtra](fetcher.meta.Opts)
-		if len(fd.Chunks) > 0 {
-			fetcher.chunks = fd.Chunks
+		if len(fd.Runners) > 0 {
+			fetcher.runners = fd.Runners
 		}
 		return fetcher
 	}
