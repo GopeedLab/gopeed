@@ -168,7 +168,7 @@ jobs:
     strategy:
       matrix:
         channel: [ arm64, amd64, universal ]
-    needs: [get-release, build-macos-arm64-lib]
+    needs: [get-release, build-macos-amd64-lib]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
