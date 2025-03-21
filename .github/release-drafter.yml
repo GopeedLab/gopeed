@@ -58,7 +58,7 @@ template: |
       </tr>
       <tr>
         <td rowspan="6">🐧 Linux</td>
-        <td><code>Flathub</code></td
+        <td><code>Flathub</code></td>
         <td>amd64</td>
         <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">📥</a></td>
       </tr>
