@@ -217,7 +217,7 @@ jobs:
           cp ui/flutter/lib-amd64/host ui/flutter/.temp/host.amd64
           cp ui/flutter/lib-amd64/updater ui/flutter/.temp/updater.amd64
          
-          # universal binary
+          # universal lib
           lipo -create -output ui/flutter/macos/Frameworks/libgopeed.dylib ui/flutter/.temp/libgopeed.dylib.arm64 ui/flutter/.temp/libgopeed.dylib.amd64
           lipo -create -output ui/flutter/assets/exec/host ui/flutter/.temp/host.arm64 ui/flutter/.temp/host.amd64
           lipo -create -output ui/flutter/assets/exec/updater ui/flutter/.temp/updater.arm64 ui/flutter/.temp/updater.amd64

@@ -35,10 +35,18 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">📥</a></td>
     </tr>
     <tr>
-      <td>🍎 MacOS</td>
-      <td><code>DMG</code></td>
+      <td rowspan="3">🍎 MacOS</td>
+      <td rowspan="3"><code>DMG</code></td>
       <td>universal</td>
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">📥</a></td>
+    </tr>
+    <tr>
+      <td>amd64</td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos-amd64.dmg">📥</a></td>
+    </tr>
+    <tr>
+      <td>arm64</td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos-arm64.dmg">📥</a></td>
     </tr>
     <tr>
       <td rowspan="6">🐧 Linux</td>
