@@ -399,6 +399,7 @@ func (f *Fetcher) run(index int, ctx context.Context) (err error) {
 							return err
 						}
 						chunk.Downloaded += int64(n)
+						runner.Downloaded += int64(n)
 
 						if finished {
 							return nil
