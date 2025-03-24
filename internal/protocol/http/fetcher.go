@@ -27,9 +27,11 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const connectTimeout = 15 * time.Second
-const readTimeout = 15 * time.Second
-const chunkHelpMinSize = 1024 * 1024 // 1MB
+const (
+	connectTimeout   = 15 * time.Second
+	readTimeout      = 15 * time.Second
+	chunkHelpMinSize = 512 * 1024 // 512KB
+)
 
 type RequestError struct {
 	Code int
