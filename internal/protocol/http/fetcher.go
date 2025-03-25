@@ -383,6 +383,13 @@ func (f *Fetcher) run(index int, ctx context.Context) (err error) {
 					f.redirectLock.Unlock()
 				}
 				err := func() error {
+					defer func() {
+						if f.redirectURL == "" {
+							f.redirectURL = resp.Request.URL.String()
+							f.redirectLock.Unlock()
+						}
+					}()
+
 					httpReq, err = f.buildRequest(ctx, f.meta.Req)
 					if err != nil {
 						return err
@@ -400,12 +407,7 @@ func (f *Fetcher) run(index int, ctx context.Context) (err error) {
 					return nil
 				}()
 				if err != nil {
-					f.redirectLock.Unlock()
 					return err
-				}
-				if f.redirectURL == "" {
-					f.redirectURL = resp.Request.URL.String()
-					f.redirectLock.Unlock()
 				}
 
 				defer resp.Body.Close()
