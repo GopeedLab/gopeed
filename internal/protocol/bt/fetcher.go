@@ -100,9 +100,6 @@ func (f *Fetcher) initClient() (err error) {
 }
 
 func (f *Fetcher) Resolve(req *base.Request) error {
-	if err := base.ParseReqExtra[bt.ReqExtra](req); err != nil {
-		return err
-	}
 	f.meta.Req = req
 	if err := f.addTorrent(req, false); err != nil {
 		return err
@@ -355,6 +352,9 @@ func (f *Fetcher) WaitUpload() (err error) {
 }
 
 func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
+	if err = base.ParseReqExtra[bt.ReqExtra](req); err != nil {
+		return
+	}
 	if err = f.initClient(); err != nil {
 		return
 	}
