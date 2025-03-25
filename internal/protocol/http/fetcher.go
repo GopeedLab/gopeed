@@ -382,18 +382,25 @@ func (f *Fetcher) run(index int, ctx context.Context) (err error) {
 				if f.redirectURL != "" {
 					f.redirectLock.Unlock()
 				}
-				httpReq, err = f.buildRequest(ctx, f.meta.Req)
+				err := func() error {
+					httpReq, err = f.buildRequest(ctx, f.meta.Req)
+					if err != nil {
+						return err
+					}
+					if f.meta.Res.Range {
+						httpReq.Header.Set(base.HttpHeaderRange,
+							fmt.Sprintf(base.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
+					} else {
+						chunk.Downloaded = 0
+					}
+					resp, err = client.Do(httpReq)
+					if err != nil {
+						return err
+					}
+					return nil
+				}()
 				if err != nil {
-					return err
-				}
-				if f.meta.Res.Range {
-					httpReq.Header.Set(base.HttpHeaderRange,
-						fmt.Sprintf(base.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
-				} else {
-					chunk.Downloaded = 0
-				}
-				resp, err = client.Do(httpReq)
-				if err != nil {
+					f.redirectLock.Unlock()
 					return err
 				}
 				if f.redirectURL == "" {
