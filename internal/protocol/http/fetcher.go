@@ -382,17 +382,19 @@ func (f *Fetcher) run(index int, ctx context.Context) (err error) {
 				if f.redirectURL != "" {
 					f.redirectLock.Unlock()
 				}
-				err := func() error {
+				err = func() (err error) {
 					defer func() {
 						if f.redirectURL == "" {
-							f.redirectURL = resp.Request.URL.String()
+							if err == nil {
+								f.redirectURL = resp.Request.URL.String()
+							}
 							f.redirectLock.Unlock()
 						}
 					}()
 
 					httpReq, err = f.buildRequest(ctx, f.meta.Req)
 					if err != nil {
-						return err
+						return
 					}
 					if f.meta.Res.Range {
 						httpReq.Header.Set(base.HttpHeaderRange,
@@ -402,9 +404,9 @@ func (f *Fetcher) run(index int, ctx context.Context) (err error) {
 					}
 					resp, err = client.Do(httpReq)
 					if err != nil {
-						return err
+						return
 					}
-					return nil
+					return
 				}()
 				if err != nil {
 					return err
