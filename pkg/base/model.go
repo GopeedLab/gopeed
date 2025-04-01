@@ -163,6 +163,16 @@ func ParseOptsExtra[E any](opts *Options) error {
 	return nil
 }
 
+type CreateTaskBatch struct {
+	Reqs []*CreateTaskBatchItem `json:"reqs"`
+	Opts *Options               `json:"opts"`
+}
+
+type CreateTaskBatchItem struct {
+	Req  *Request `json:"req"`
+	Opts *Options `json:"opts"`
+}
+
 // DownloaderStoreConfig is the config that can restore the downloader.
 type DownloaderStoreConfig struct {
 	FirstLoad bool `json:"-"` // FirstLoad is the flag that the config is first time init and not from store
