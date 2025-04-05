@@ -359,10 +359,14 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	return d.doCreate(fetcher, opts)
 }
 
-func (d *Downloader) CreateDirectBatch(reqs []*base.Request, opts *base.Options) (taskId []string, err error) {
+func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []string, err error) {
 	taskIds := make([]string, 0)
-	for _, req := range reqs {
-		taskId, err := d.CreateDirect(req, opts.Clone())
+	for _, ir := range req.Reqs {
+		opts := ir.Opts
+		if opts == nil {
+			opts = req.Opts
+		}
+		taskId, err := d.CreateDirect(ir.Req, opts.Clone())
 		if err != nil {
 			return nil, err
 		}
@@ -574,15 +578,19 @@ func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 }
 
 func (d *Downloader) deleteAll() (err error) {
+	var deleteTasksTemp []*Task
 	func() {
 		d.lock.Lock()
 		defer d.lock.Unlock()
 
+		for _, task := range d.tasks {
+			deleteTasksTemp = append(deleteTasksTemp, task)
+		}
 		d.tasks = make([]*Task, 0)
 		d.waitTasks = make([]*Task, 0)
 	}()
 
-	for _, task := range d.tasks {
+	for _, task := range deleteTasksTemp {
 		if err = d.doDelete(task, true); err != nil {
 			return
 		}
