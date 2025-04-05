@@ -14,6 +14,12 @@ type OptsExtra struct {
 
 // Stats for download
 type Stats struct {
-	// http stats
-	// health indicators of http
+	Connections []*StatsConnection `json:"connections"`
+}
+
+type StatsConnection struct {
+	Downloaded int64 `json:"downloaded"`
+	Completed  bool  `json:"completed"`
+	Failed     bool  `json:"failed"`
+	RetryTimes int   `json:"retryTimes"`
 }

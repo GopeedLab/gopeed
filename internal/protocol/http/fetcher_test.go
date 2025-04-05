@@ -47,6 +47,16 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
+	testResolve(test.StartTestCustomServer, "no-encode", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "测试.zip",
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
 	testResolve(test.StartTestCustomServer, "%E6%B5%8B%E8%AF%95.zip", &base.Resource{
 		Size:  0,
 		Range: false,
@@ -243,6 +253,33 @@ func TestFetcher_ConfigUseServerCtime(t *testing.T) {
 	got := test.FileMd5(test.DownloadFile)
 	if want != got {
 		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
+func TestFetcher_Stats(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+	fetcher := doDownloadReady(buildConfigFetcher(config{
+		Connections: 16,
+	}), listener, 0, t)
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stats := fetcher.Stats().(*http.Stats)
+	if len(stats.Connections) != 16 {
+		t.Errorf("Stats() got = %v, want %v", len(stats.Connections), 16)
+	}
+	totalDownloaded := int64(0)
+	for _, conn := range stats.Connections {
+		totalDownloaded += conn.Downloaded
+	}
+	if totalDownloaded != test.BuildSize {
+		t.Errorf("Stats() got = %v, want %v", totalDownloaded, test.BuildSize)
 	}
 }
 

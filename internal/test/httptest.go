@@ -102,6 +102,17 @@ func StartTestCustomServer() net.Listener {
 			defer file.Close()
 			io.Copy(writer, file)
 		})
+		mux.HandleFunc("/no-encode", func(writer http.ResponseWriter, request *http.Request) {
+			writer.Header().Set("Content-Disposition", "attachment; filename=测试.zip")
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
 		return mux
 	})
 }
