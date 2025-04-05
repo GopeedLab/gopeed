@@ -256,6 +256,33 @@ func TestFetcher_ConfigUseServerCtime(t *testing.T) {
 	}
 }
 
+func TestFetcher_Stats(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+	fetcher := doDownloadReady(buildConfigFetcher(config{
+		Connections: 16,
+	}), listener, 0, t)
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stats := fetcher.Stats().(*http.Stats)
+	if len(stats.Connections) != 16 {
+		t.Errorf("Stats() got = %v, want %v", len(stats.Connections), 16)
+	}
+	totalDownloaded := int64(0)
+	for _, conn := range stats.Connections {
+		totalDownloaded += conn.Downloaded
+	}
+	if totalDownloaded != test.BuildSize {
+		t.Errorf("Stats() got = %v, want %v", totalDownloaded, test.BuildSize)
+	}
+}
+
 func TestFetcherManager_ParseName(t *testing.T) {
 	type args struct {
 		u string
