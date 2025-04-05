@@ -11,6 +11,7 @@ import 'package:rounded_loading_button_plus/rounded_loading_button.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
+import '../../../../api/model/create_task_batch.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
@@ -869,18 +870,20 @@ class CreateView extends GetView<CreateController> {
                           if (createFormKey.currentState!.validate()) {
                             if (rr.id.isEmpty) {
                               // from extension resolve result
-                              await Future.wait(
+                              final reqs =
                                   controller.selectedIndexes.map((index) {
                                 final file = rr.res.files[index];
-                                return createTask(CreateTask(
+                                return CreateTaskBatchItem(
                                     req: file.req!..proxy = parseProxy(),
-                                    opt: Options(
+                                    opts: Options(
                                         name: file.name,
                                         path: path.join(_pathController.text,
                                             rr.res.name, file.path),
                                         selectFiles: [],
-                                        extra: optExtra)));
-                              }));
+                                        extra: optExtra));
+                              }).toList();
+                              await createTaskBatch(
+                                  CreateTaskBatch(reqs: reqs));
                             } else {
                               await createTask(CreateTask(
                                   rid: rr.id,

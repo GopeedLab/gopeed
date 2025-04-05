@@ -24,8 +24,10 @@ type DefaultFileController struct {
 
 func NewController() *Controller {
 	return &Controller{
-		GetConfig:      func(v any) {},
-		GetProxy:       func(requestProxy *base.RequestProxy) func(*http.Request) (*url.URL, error) { return nil },
+		GetConfig: func(v any) {},
+		GetProxy: func(requestProxy *base.RequestProxy) func(*http.Request) (*url.URL, error) {
+			return requestProxy.ToHandler()
+		},
 		FileController: &DefaultFileController{},
 	}
 }

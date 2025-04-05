@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -140,15 +141,56 @@ func TestCreateDirectTask(t *testing.T) {
 
 func TestCreateDirectTaskBatch(t *testing.T) {
 	doTest(func() {
-		reqs := make([]*base.Request, 0)
+		reqs := make([]*base.CreateTaskBatchItem, 0)
 		for i := 0; i < 5; i++ {
-			reqs = append(reqs, createReq.Req)
+			reqs = append(reqs, &base.CreateTaskBatchItem{
+				Req: createReq.Req,
+			})
 		}
-		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &model.CreateTaskBatch{
+		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
 			Reqs: reqs,
 		})
 		if len(taskIds) != len(reqs) {
 			t.Errorf("CreateDirectTaskBatch() got = %v, want %v", len(taskIds), len(reqs))
+		}
+	})
+}
+
+func TestCreateDirectTaskBatchWithOpt(t *testing.T) {
+	doTest(func() {
+		reqs := make([]*base.CreateTaskBatchItem, 0)
+		for i := 0; i < 5; i++ {
+			item := &base.CreateTaskBatchItem{
+				Req: createReq.Req,
+			}
+			if i == 0 {
+				item.Opts = &base.Options{
+					Name: "spe_opt.data",
+				}
+			}
+			reqs = append(reqs, item)
+		}
+		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
+			Reqs: reqs,
+			Opts: &base.Options{
+				Name: "default_opt.data",
+			},
+		})
+		if len(taskIds) != len(reqs) {
+			t.Errorf("CreateDirectTaskBatch() got = %v, want %v", len(taskIds), len(reqs))
+		}
+
+		for i, taskId := range taskIds {
+			task := httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
+			if i == 0 {
+				if !strings.Contains(task.Name(), "spe_opt") {
+					t.Errorf("CreateDirectTaskBatch() got = %v, want %v", task.Name(), "spe_opt.data")
+				}
+			} else {
+				if !strings.Contains(task.Name(), "default_opt") {
+					t.Errorf("CreateDirectTaskBatch() got = %v, want %v", task.Name(), "default_opt.data")
+				}
+			}
 		}
 	})
 }
@@ -666,6 +708,7 @@ func doTest0(onStart func(cfg *model.StartConfig), handler func()) {
 			Downloader.Clear()
 		}()
 		defer func() {
+			time.Sleep(500 * time.Millisecond)
 			Downloader.Pause(nil)
 			Downloader.Delete(nil, true)
 			os.RemoveAll(cfg.StorageDir)
