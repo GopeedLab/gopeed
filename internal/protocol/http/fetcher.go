@@ -174,6 +174,12 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 			} else {
 				file.Name = filename
 			}
+		} else {
+			substr := "attachment; filename="
+			index := strings.Index(contentDisposition, substr)
+			if index != -1 {
+				file.Name = contentDisposition[index+len(substr):]
+			}
 		}
 	}
 	// get file filePath by URL
@@ -608,6 +614,14 @@ func (f *Fetcher) buildClient() *http.Client {
 		Transport: transport,
 		Jar:       jar,
 	}
+}
+
+func decodeMangledString(mangled string) string {
+	rawBytes := make([]byte, 0, len(mangled)*3)
+	for _, r := range mangled {
+		rawBytes = append(rawBytes, byte(r))
+	}
+	return string(rawBytes)
 }
 
 type fetcherData struct {

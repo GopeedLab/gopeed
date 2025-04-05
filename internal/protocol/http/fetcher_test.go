@@ -47,6 +47,16 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
+	testResolve(test.StartTestCustomServer, "no-encode", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "测试.zip",
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
 	testResolve(test.StartTestCustomServer, "%E6%B5%8B%E8%AF%95.zip", &base.Resource{
 		Size:  0,
 		Range: false,
