@@ -13,7 +13,7 @@ on:
         default: "false"
 
 env:
-  GO_VERSION: "1.23"
+  GO_VERSION: "1.24"
   FLUTTER_VERSION: "3.24.5"
 
 permissions:
