@@ -406,7 +406,7 @@ String _getAssetName(String version) {
     case Channel.windowsPortable:
       return 'Gopeed-v$version-windows-${commonArchName()}-portable.zip';
     case Channel.macosDmg:
-      return 'Gopeed-v$version-macos.dmg';
+      return 'Gopeed-v$version-macos-${commonArchName()}.dmg';
     case Channel.linuxDeb:
       return 'Gopeed-v$version-linux-${commonArchName()}.deb';
     case Channel.androidApk:

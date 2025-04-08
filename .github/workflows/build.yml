@@ -139,9 +139,9 @@ jobs:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: ui/flutter/build/windows/Output/*
           overwrite: true
-  build-macos-arm64-lib:
+  build-macos-amd64-lib:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
-    runs-on: macos-latest
+    runs-on: macos-13
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
@@ -157,15 +157,18 @@ jobs:
           go build -ldflags="-w -s" github.com/GopeedLab/gopeed/cmd/updater
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-arm64-lib
+          name: macos-amd64-lib
           path: |
             libgopeed.dylib
             host
             updater
   build-macos:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
-    runs-on: macos-13
-    needs: [get-release, build-macos-arm64-lib]
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        channel: [ arm64, amd64, universal ]
+    needs: [get-release, build-macos-amd64-lib]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
@@ -183,34 +186,46 @@ jobs:
           npm install -g appdmg
       - uses: actions/download-artifact@v4
         with:
-          name: macos-arm64-lib
-          path: ui/flutter/lib-arm64
+          name: macos-amd64-lib
+          path: ui/flutter/lib-amd64
+      - if: ${{ matrix.channel == 'arm64' }}
+        name: Build Arm64 Libraries
+        run: |
+          go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
+          go build -ldflags="-w -s" -o ui/flutter/assets/exec/host github.com/GopeedLab/gopeed/cmd/host
+          go build -ldflags="-w -s" -o ui/flutter/assets/exec/updater github.com/GopeedLab/gopeed/cmd/updater
+      - if: ${{ matrix.channel == 'amd64' }}
+        name: Build Amd64 Libraries
+        run: |
+          mkdir -p ui/flutter/macos/Frameworks
+          
+          cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/macos/Frameworks/libgopeed.dylib
+          cp ui/flutter/lib-amd64/host ui/flutter/assets/exec/host
+          cp ui/flutter/lib-amd64/updater ui/flutter/assets/exec/updater
+      - if: ${{ matrix.channel == 'universal' }}
+        name: Build Universal Libraries
+        run: |
+          mkdir -p ui/flutter/macos/Frameworks
+          
+          # arm64 lib
+          go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/.temp/libgopeed.dylib.arm64 github.com/GopeedLab/gopeed/bind/desktop
+          go build -ldflags="-w -s" -o ui/flutter/.temp/host.arm64 github.com/GopeedLab/gopeed/cmd/host
+          go build -ldflags="-w -s" -o ui/flutter/.temp/updater.arm64 github.com/GopeedLab/gopeed/cmd/updater
+         
+          # amd64 lib
+          cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/.temp/libgopeed.dylib.amd64
+          cp ui/flutter/lib-amd64/host ui/flutter/.temp/host.amd64
+          cp ui/flutter/lib-amd64/updater ui/flutter/.temp/updater.amd64
+         
+          # universal lib
+          lipo -create -output ui/flutter/macos/Frameworks/libgopeed.dylib ui/flutter/.temp/libgopeed.dylib.arm64 ui/flutter/.temp/libgopeed.dylib.amd64
+          lipo -create -output ui/flutter/assets/exec/host ui/flutter/.temp/host.arm64 ui/flutter/.temp/host.amd64
+          lipo -create -output ui/flutter/assets/exec/updater ui/flutter/.temp/updater.arm64 ui/flutter/.temp/updater.amd64
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
-          PROJECT_DIR=$(pwd)
-
-          # amd64 lib
-          go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/lib-amd64/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
-          go build -ldflags="-w -s" -o ui/flutter/lib-amd64/host github.com/GopeedLab/gopeed/cmd/host
-          go build -ldflags="-w -s" -o ui/flutter/lib-amd64/updater github.com/GopeedLab/gopeed/cmd/updater
-          # universal binary
-          mkdir -p ui/flutter/macos/Frameworks
-          cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/macos/Frameworks/amd64-lib
-          cp ui/flutter/lib-arm64/libgopeed.dylib ui/flutter/macos/Frameworks/arm64-lib
-          cp ui/flutter/lib-amd64/host ui/flutter/macos/Frameworks/amd64-host
-          cp ui/flutter/lib-arm64/host ui/flutter/macos/Frameworks/arm64-host
-          cp ui/flutter/lib-amd64/updater ui/flutter/macos/Frameworks/amd64-updater
-          cp ui/flutter/lib-arm64/updater ui/flutter/macos/Frameworks/arm64-updater
-          cd ui/flutter/macos/Frameworks
-          lipo -create -output libgopeed.dylib amd64-lib arm64-lib
-          lipo -create -output host amd64-host arm64-host
-          lipo -create -output updater amd64-updater arm64-updater
-          rm -rf amd64-lib arm64-lib amd64-host arm64-host amd64-updater arm64-updater
-          mv host ../../assets/exec/host
-
-          cd $PROJECT_DIR/ui/flutter
+          cd ui/flutter
           flutter build macos --dart-define="UPDATE_CHANNEL=macosDmg"
           cd build/macos/Build/Products/Release
           cat>appdmg.json<<EOF
@@ -225,6 +240,13 @@ jobs:
           EOF
           mkdir dist
           appdmg appdmg.json dist/Gopeed-v$VERSION-macos.dmg
+          
+          if [[ "${{ matrix.channel }}" == "arm64" ]]; then
+            mv dist/Gopeed-v$VERSION-macos.dmg dist/Gopeed-v$VERSION-macos-arm64.dmg
+          fi
+          if [[ "${{ matrix.channel }}" == "amd64" ]]; then
+            mv dist/Gopeed-v$VERSION-macos.dmg dist/Gopeed-v$VERSION-macos-amd64.dmg
+          fi
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
