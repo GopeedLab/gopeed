@@ -148,6 +148,7 @@ func (d *Downloader) Setup() error {
 				tasks = append(tasks[:i], tasks[i+1:]...)
 				continue
 			}
+			d.assignFetcherManager(task)
 			initTask(task)
 			if task.Status != base.DownloadStatusDone && task.Status != base.DownloadStatusError {
 				task.Status = base.DownloadStatusPause
@@ -358,10 +359,14 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	return d.doCreate(fetcher, opts)
 }
 
-func (d *Downloader) CreateDirectBatch(reqs []*base.Request, opts *base.Options) (taskId []string, err error) {
+func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []string, err error) {
 	taskIds := make([]string, 0)
-	for _, req := range reqs {
-		taskId, err := d.CreateDirect(req, opts.Clone())
+	for _, ir := range req.Reqs {
+		opts := ir.Opts
+		if opts == nil {
+			opts = req.Opts
+		}
+		taskId, err := d.CreateDirect(ir.Req, opts.Clone())
 		if err != nil {
 			return nil, err
 		}
@@ -573,15 +578,19 @@ func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 }
 
 func (d *Downloader) deleteAll() (err error) {
+	var deleteTasksTemp []*Task
 	func() {
 		d.lock.Lock()
 		defer d.lock.Unlock()
 
+		for _, task := range d.tasks {
+			deleteTasksTemp = append(deleteTasksTemp, task)
+		}
 		d.tasks = make([]*Task, 0)
 		d.waitTasks = make([]*Task, 0)
 	}()
 
-	for _, task := range d.tasks {
+	for _, task := range deleteTasksTemp {
 		if err = d.doDelete(task, true); err != nil {
 			return
 		}
@@ -892,18 +901,7 @@ func (d *Downloader) restoreTask(task *Task) error {
 }
 
 func (d *Downloader) restoreFetcher(task *Task) error {
-	var fm fetcher.FetcherManager
-	for _, f := range d.cfg.FetchManagers {
-		if f.Name() == task.Protocol {
-			fm = f
-			break
-		}
-	}
-	if fm == nil {
-		return ErrUnSupportedProtocol
-	}
-	task.fetcherManager = fm
-	v, f := fm.Restore()
+	v, f := task.fetcherManager.Restore()
 	if v != nil {
 		err := d.storage.Pop(bucketSave, task.ID, v)
 		if err != nil {
@@ -1143,6 +1141,15 @@ func logPanic(logDir string) {
 		return
 	}
 	debug.SetCrashOutput(f, debug.CrashOptions{})
+}
+
+func (d *Downloader) assignFetcherManager(task *Task) error {
+	fm, err := d.parseFm(task.Meta.Req.URL)
+	if err != nil {
+		return err
+	}
+	task.fetcherManager = fm
+	return nil
 }
 
 func (d *Downloader) buildFetcher(url string) (fetcher.Fetcher, error) {

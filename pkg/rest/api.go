@@ -58,13 +58,13 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateTaskBatch(w http.ResponseWriter, r *http.Request) {
-	var req model.CreateTaskBatch
+	var req base.CreateTaskBatch
 	if ReadJson(r, w, &req) {
 		if len(req.Reqs) == 0 {
 			WriteJson(w, model.NewErrorResult("param invalid: reqs", model.CodeInvalidParam))
 			return
 		}
-		taskIds, err := Downloader.CreateDirectBatch(req.Reqs, req.Opt)
+		taskIds, err := Downloader.CreateDirectBatch(&req)
 		if err != nil {
 			WriteJson(w, model.NewErrorResult(err.Error()))
 			return

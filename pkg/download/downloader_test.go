@@ -137,13 +137,15 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 		downloader.Clear()
 	}()
 
-	reqs := make([]*base.Request, 0)
+	reqs := make([]*base.CreateTaskBatchItem, 0)
 	fileNames := make([]string, 0)
 	for i := 0; i < 5; i++ {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		reqs = append(reqs, req)
+		reqs = append(reqs, &base.CreateTaskBatchItem{
+			Req: req,
+		})
 		if i == 0 {
 			fileNames = append(fileNames, test.DownloadName)
 		} else {
@@ -160,11 +162,14 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 		}
 	})
 
-	_, err := downloader.CreateDirectBatch(reqs, &base.Options{
-		Path: test.Dir,
-		Name: test.DownloadName,
-		Extra: http.OptsExtra{
-			Connections: 4,
+	_, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
+		Reqs: reqs,
+		Opts: &base.Options{
+			Path: test.Dir,
+			Name: test.DownloadName,
+			Extra: http.OptsExtra{
+				Connections: 4,
+			},
 		},
 	})
 	if err != nil {
@@ -499,13 +504,15 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 		downloader.Clear()
 	}()
 
-	reqs := make([]*base.Request, 0)
+	reqs := make([]*base.CreateTaskBatchItem, 0)
 	fileNames := make([]string, 0)
 	for i := 0; i < 10; i++ {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		reqs = append(reqs, req)
+		reqs = append(reqs, &base.CreateTaskBatchItem{
+			Req: req,
+		})
 		if i == 0 {
 			fileNames = append(fileNames, test.DownloadName)
 		} else {
@@ -522,11 +529,14 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 		}
 	})
 
-	taskIds, err := downloader.CreateDirectBatch(reqs, &base.Options{
-		Path: test.Dir,
-		Name: test.DownloadName,
-		Extra: http.OptsExtra{
-			Connections: 4,
+	taskIds, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
+		Reqs: reqs,
+		Opts: &base.Options{
+			Path: test.Dir,
+			Name: test.DownloadName,
+			Extra: http.OptsExtra{
+				Connections: 4,
+			},
 		},
 	})
 	if err != nil {
