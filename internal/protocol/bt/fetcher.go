@@ -390,7 +390,7 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 			return err
 		}
 
-		info, err := mi.UnmarshalInfo()
+		info, err := metaInfo.UnmarshalInfo()
 		if err != nil {
 			return err
 		}
