@@ -4,13 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/GopeedLab/gopeed/internal/controller"
-	"github.com/GopeedLab/gopeed/internal/fetcher"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
-	"github.com/GopeedLab/gopeed/pkg/util"
-	"github.com/anacrolix/torrent"
-	"github.com/anacrolix/torrent/metainfo"
 	"io"
 	"net/url"
 	"os"
@@ -19,6 +12,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
+	"github.com/GopeedLab/gopeed/pkg/util"
+	"github.com/anacrolix/torrent"
+	"github.com/anacrolix/torrent/metainfo"
 )
 
 var (
@@ -359,6 +360,7 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 		return
 	}
 	schema := util.ParseSchema(req.URL)
+	privateTorrent := false
 	if schema == "MAGNET" {
 		f.torrent, err = client.AddMagnet(req.URL)
 	} else {
@@ -388,33 +390,45 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 		if err != nil && !strings.Contains(err.Error(), "expected EOF") {
 			return err
 		}
+
+		info, er := metaInfo.UnmarshalInfo()
+		if er != nil {
+			return er
+		}
+
+		if info.Private != nil && *info.Private {
+			privateTorrent = true
+		}
 		f.torrent, err = client.AddTorrent(metaInfo)
 	}
 	if err != nil {
 		return
 	}
 
-	// use map to deduplicate
-	trackers := make(map[string]bool)
-	if req.Extra != nil {
-		extra := req.Extra.(*bt.ReqExtra)
-		if len(extra.Trackers) > 0 {
-			for _, tracker := range extra.Trackers {
+	// Do not add external tracker to a private torrent.
+	if !privateTorrent {
+		// use map to deduplicate
+		trackers := make(map[string]bool)
+		if req.Extra != nil {
+			extra := req.Extra.(*bt.ReqExtra)
+			if len(extra.Trackers) > 0 {
+				for _, tracker := range extra.Trackers {
+					trackers[tracker] = true
+				}
+			}
+		}
+		if len(f.config.Trackers) > 0 {
+			for _, tracker := range f.config.Trackers {
 				trackers[tracker] = true
 			}
 		}
-	}
-	if len(f.config.Trackers) > 0 {
-		for _, tracker := range f.config.Trackers {
-			trackers[tracker] = true
+		if len(trackers) > 0 {
+			announceList := make([][]string, 0)
+			for tracker := range trackers {
+				announceList = append(announceList, []string{tracker})
+			}
+			f.torrent.AddTrackers(announceList)
 		}
-	}
-	if len(trackers) > 0 {
-		announceList := make([][]string, 0)
-		for tracker := range trackers {
-			announceList = append(announceList, []string{tracker})
-		}
-		f.torrent.AddTrackers(announceList)
 	}
 	<-f.torrent.GotInfo()
 	f.torrentReady.Store(true)
