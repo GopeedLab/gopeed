@@ -4,13 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/GopeedLab/gopeed/internal/controller"
-	"github.com/GopeedLab/gopeed/internal/fetcher"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
-	"github.com/GopeedLab/gopeed/pkg/util"
-	"github.com/anacrolix/torrent"
-	"github.com/anacrolix/torrent/metainfo"
 	"io"
 	"net/url"
 	"os"
@@ -19,6 +12,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
+	"github.com/GopeedLab/gopeed/pkg/util"
+	"github.com/anacrolix/torrent"
+	"github.com/anacrolix/torrent/metainfo"
 )
 
 var (
@@ -390,9 +391,9 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 			return err
 		}
 
-		info, err := metaInfo.UnmarshalInfo()
-		if err != nil && !strings.Contains(err.Error(), "expected EOF") {
-			return err
+		info, er := metaInfo.UnmarshalInfo()
+		if er != nil && !strings.Contains(er.Error(), "expected EOF") {
+			return er
 		}
 
 		if info.Private != nil && *info.Private {
