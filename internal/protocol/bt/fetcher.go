@@ -392,7 +392,7 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 		}
 
 		info, er := metaInfo.UnmarshalInfo()
-		if er != nil && !strings.Contains(er.Error(), "expected EOF") {
+		if er != nil {
 			return er
 		}
 
