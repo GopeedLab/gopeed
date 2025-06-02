@@ -1,5 +1,6 @@
 import 'dart:io';
-
+import 'package:open_dir/open_dir.dart';
+import 'package:path/path.dart' as path;
 import 'package:url_launcher/url_launcher_string.dart';
 
 class FileExplorer {
@@ -17,7 +18,10 @@ class FileExplorer {
 
   static Future<void> _openFile(String filePath) async {
     if (Platform.isWindows) {
-      Process.run('explorer.exe', ['/select,', filePath]);
+      final fileName = path.basename(filePath);
+      final parentPath = path.dirname(filePath);
+      await OpenDir()
+          .openNativeDir(path: parentPath, highlightedFileName: fileName);
     } else if (Platform.isMacOS) {
       Process.run('open', ['-R', filePath]);
     } else if (Platform.isLinux) {

@@ -72,6 +72,7 @@ dependencies:
   win32_registry: ^1.1.5
   share_handler: ^0.0.22
   crypto: ^3.0.6
+  open_dir: ^0.0.2+1
   install_plugin:
     git:
       url: https://github.com/hui-z/flutter_install_plugin.git
