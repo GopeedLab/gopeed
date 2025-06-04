@@ -17,27 +17,11 @@ class FileExplorer {
   }
 
   static Future<void> _openFile(String filePath) async {
-    if (Platform.isWindows) {
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
       final fileName = path.basename(filePath);
       final parentPath = path.dirname(filePath);
       await OpenDir()
           .openNativeDir(path: parentPath, highlightedFileName: fileName);
-    } else if (Platform.isMacOS) {
-      Process.run('open', ['-R', filePath]);
-    } else if (Platform.isLinux) {
-      _linuxOpen(filePath);
-    }
-  }
-
-  static Future<void> _linuxOpen(String filePath) async {
-    if (await Process.run('which', ['xdg-open'])
-        .then((value) => value.exitCode == 0)) {
-      final result = await Process.run('xdg-open', [filePath]);
-      if (result.exitCode != 0) {
-        _openWithFileManager(filePath);
-      }
-    } else {
-      _openWithFileManager(filePath);
     }
   }
 
