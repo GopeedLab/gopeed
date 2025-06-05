@@ -13,7 +13,11 @@ class FileExplorer {
   }
 
   static Future<void> _openDirectory(String directoryPath) async {
-    await launchUrlString("file://$directoryPath");
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      await OpenDir().openNativeDir(path: directoryPath);
+    } else {
+      await launchUrlString("file://$directoryPath");
+    }
   }
 
   static Future<void> _openFile(String filePath) async {
@@ -22,20 +26,6 @@ class FileExplorer {
       final parentPath = path.dirname(filePath);
       await OpenDir()
           .openNativeDir(path: parentPath, highlightedFileName: fileName);
-    }
-  }
-
-  static Future<void> _openWithFileManager(String filePath) async {
-    final desktop = Platform.environment['XDG_CURRENT_DESKTOP'];
-    if (desktop == null) {
-      throw Exception('XDG_CURRENT_DESKTOP is not set');
-    }
-    if (desktop == 'GNOME') {
-      await Process.run('nautilus', ['--select', filePath]);
-    } else if (desktop == 'KDE') {
-      await Process.run('dolphin', ['--select', filePath]);
-    } else {
-      throw Exception('Unsupported desktop environment');
     }
   }
 }
