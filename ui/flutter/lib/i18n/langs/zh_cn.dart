@@ -116,5 +116,13 @@ const zhCN = {
     'fileSelectedSize': '大小：',
     'httpHeaderName': '请求头名称',
     'httpHeaderValue': '请求头值',
+    'login': '登录',
+    'login_to_continue': '请登录以继续',
+    'username_required': '用户名是必需的',
+    'password_required': '密码是必需的',
+    'password_too_short': '密码至少需要6个字符',
+    'login_success': '登录成功',
+    'powered_by_gopeed': '由 Gopeed 强力驱动',
+    'success': '成功',
   }
 };

@@ -26,9 +26,9 @@ func parse() *args {
 	var cliArgs args
 	cliArgs.Address = flag.String("A", "0.0.0.0", "Bind Address")
 	cliArgs.Port = flag.Int("P", 9999, "Bind Port")
-	cliArgs.Username = flag.String("u", "gopeed", "HTTP Basic Auth Username")
-	cliArgs.Password = flag.String("p", "", "HTTP Basic Auth Pwd")
-	cliArgs.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling basic authentication")
+	cliArgs.Username = flag.String("u", "gopeed", "Web Authentication Username")
+	cliArgs.Password = flag.String("p", "", "Web Authentication Password, if no password is set, web authentication will not be enabled")
+	cliArgs.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
 	cliArgs.StorageDir = flag.String("d", "", "Storage directory")
 	cliArgs.configPath = flag.String("c", "./config.json", "Config file path")
 	flag.Parse()

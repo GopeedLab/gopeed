@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"strings"
 )
 
 func Info(w http.ResponseWriter, r *http.Request) {
@@ -317,6 +318,10 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 	for k, vv := range resp.Header {
 		for _, v := range vv {
+			// Exclude cors headers
+			if strings.HasPrefix(k, "Access-Control-") {
+				continue
+			}
 			w.Header().Set(k, v)
 		}
 	}

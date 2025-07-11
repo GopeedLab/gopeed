@@ -118,5 +118,13 @@ const enUS = {
     'fileSelectedSize': 'Size: ',
     'httpHeaderName': 'Header Name',
     'httpHeaderValue': 'Header Value',
+    'login': 'Login',
+    'login_to_continue': 'Please login to continue',
+    'username_required': 'Username is required',
+    'password_required': 'Password is required',
+    'password_too_short': 'Password must be at least 6 characters',
+    'login_success': 'Login successful',
+    'powered_by_gopeed': 'Powered by Gopeed',
+    'success': 'Success',
   },
 };

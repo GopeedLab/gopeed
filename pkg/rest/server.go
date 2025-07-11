@@ -9,6 +9,8 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/securecookie"
+	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
 	"io/fs"
 	"net"
@@ -20,9 +22,15 @@ import (
 	"time"
 )
 
+const (
+	sessionIdKey   = "session"
+	sessionAuthKey = "authenticated"
+)
+
 var (
 	srv         *http.Server
 	runningPort int
+	store       = sessions.NewCookieStore(securecookie.GenerateRandomKey(32))
 
 	Downloader *download.Downloader
 )
@@ -125,14 +133,33 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateCheckExtension)
 	r.Methods(http.MethodPost).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateExtension)
 	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
+
+	enableApiToken := startCfg.ApiToken != ""
+	enableBasicAuth := startCfg.WebEnable && startCfg.WebAuth != nil
 	if startCfg.WebEnable {
+		if enableBasicAuth {
+			r.Methods(http.MethodPost).Path("/api/web/login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var loginReq model.WebAuth
+				if ReadJson(r, w, &loginReq) {
+					if loginReq.Username == startCfg.WebAuth.Username && loginReq.Password == startCfg.WebAuth.Password {
+						session, _ := store.Get(r, sessionIdKey)
+						session.Values[sessionAuthKey] = true
+						session.Options.MaxAge = 7 * 24 * 60 * 60
+						if err := session.Save(r, w); err != nil {
+							WriteJson(w, model.NewErrorResult(err.Error()))
+							return
+						}
+						WriteJson(w, model.NewNilResult())
+						return
+					}
+				}
+				WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
+			})
+		}
 		r.PathPrefix("/fs/tasks").Handler(http.FileServer(new(taskFileSystem)))
 		r.PathPrefix("/fs/extensions").Handler(http.FileServer(new(extensionFileSystem)))
 		r.PathPrefix("/").Handler(gzipMiddleware(http.FileServer(newEmbedCacheFileSystem(http.FS(startCfg.WebFS)))))
 	}
-
-	enableApiToken := startCfg.ApiToken != ""
-	enableBasicAuth := startCfg.WebEnable && startCfg.WebBasicAuth != nil
 	if enableApiToken || enableBasicAuth {
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -150,12 +177,18 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 					}
 				}
 
-				if startCfg.WebEnable && startCfg.WebBasicAuth != nil {
-					if r.Header.Get("Authorization") == startCfg.WebBasicAuth.Authorization() {
+				if enableBasicAuth {
+					if r.URL.Path == "/api/web/login" {
 						h.ServeHTTP(w, r)
 						return
 					}
-					w.Header().Set("WWW-Authenticate", "Basic realm=\"gopeed web\"")
+
+					session, _ := store.Get(r, sessionIdKey)
+					// If session is authenticated
+					if auth, ok := session.Values[sessionAuthKey].(bool); ok && auth {
+						h.ServeHTTP(w, r)
+						return
+					}
 				}
 				WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
 			})
@@ -179,7 +212,10 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	srv = &http.Server{Handler: handlers.CORS(
 		handlers.AllowedHeaders([]string{"Content-Type", "X-Api-Token", "X-Target-Uri"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
-		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedOriginValidator(func(origin string) bool {
+			return true
+		}),
+		handlers.AllowCredentials(),
 	)(r)}
 	return srv, listener, nil
 }

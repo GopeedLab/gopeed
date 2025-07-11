@@ -3,13 +3,16 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart' as getx;
 
+import '../app/routes/app_pages.dart';
 import '../util/util.dart';
 import 'model/create_task.dart';
 import 'model/create_task_batch.dart';
 import 'model/downloader_config.dart';
 import 'model/extension.dart';
 import 'model/install_extension.dart';
+import 'model/login.dart';
 import 'model/request.dart';
 import 'model/resolve_result.dart';
 import 'model/result.dart';
@@ -43,12 +46,21 @@ class _Client {
       dio.options.sendTimeout = const Duration(seconds: 5);
       dio.options.connectTimeout = const Duration(seconds: 5);
       dio.options.receiveTimeout = const Duration(seconds: 60);
-      dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
-        if (apiToken.isNotEmpty) {
-          options.headers['X-Api-Token'] = apiToken;
-        }
-        handler.next(options);
-      }));
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (apiToken.isNotEmpty) {
+            options.headers['X-Api-Token'] = apiToken;
+          }
+          handler.next(options);
+        },
+        onError: (error, handler) {
+          // Only web version has a login page
+          if (Util.isWeb() && error.response?.statusCode == 401) {
+            getx.Get.rootDelegate.offAndToNamed(Routes.LOGIN);
+          }
+          handler.next(error);
+        },
+      ));
 
       _instance!.dio = dio;
       if (isUnixSocket) {
@@ -62,6 +74,10 @@ class _Client {
           };
           return client;
         };
+      }
+      if (Util.isWeb()) {
+        // Convert to dynamic type to avoid importing dio/browser library, which causes errors when compiling non-web platforms
+        (_instance!.dio.httpClientAdapter as dynamic).withCredentials = true;
       }
     }
     return _instance!;
@@ -216,6 +232,10 @@ Future<void> updateExtension(String identity) async {
       () => _client.dio.post("api/v1/extensions/$identity/update"), null);
 }
 
+Future<void> login(LoginReq loginReq) async {
+  return _parse(() => _client.dio.post("api/web/login", data: loginReq), null);
+}
+
 Future<Response<String>> proxyRequest<T>(String uri,
     {data, Options? options}) async {
   options ??= Options();
@@ -230,5 +250,9 @@ Future<Response<String>> proxyRequest<T>(String uri,
 }
 
 String join(String path) {
-  return "${_client.dio.options.baseUrl}/${Util.cleanPath(path)}";
+  final baseUrl = _client.dio.options.baseUrl;
+  final cleanBaseUrl = baseUrl.endsWith('/')
+      ? baseUrl.substring(0, baseUrl.length - 1)
+      : baseUrl;
+  return "$cleanBaseUrl/${Util.cleanPath(path)}";
 }
