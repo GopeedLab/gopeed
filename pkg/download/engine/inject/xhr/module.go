@@ -15,6 +15,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/util"
 	"github.com/dop251/goja"
+	"github.com/imroc/req/v3"
 )
 
 const (
@@ -129,7 +130,7 @@ type XMLHttpRequest struct {
 	requestHeaders  http.Header
 	responseHeaders http.Header
 	aborted         bool
-	proxyHandler    func(r *http.Request) (*url.URL, error)
+	client          *req.Client
 
 	WithCredentials bool                  `json:"withCredentials"`
 	Upload          *XMLHttpRequestUpload `json:"upload"`
@@ -163,25 +164,39 @@ func (xhr *XMLHttpRequest) SetRequestHeader(key, value string) {
 }
 
 func (xhr *XMLHttpRequest) Send(data goja.Value) {
-	var req *http.Request
-	var err error
+	setFingerprint(xhr.client)
+
 	d := xhr.parseData(data)
 	var (
 		contentType   string
 		contentLength int64
 		isStringBody  bool
 	)
-	if d == nil || xhr.method == "GET" || xhr.method == "HEAD" {
-		req, err = http.NewRequest(xhr.method, xhr.url, nil)
-	} else {
+
+	// Create request using req library
+	reqBuilder := xhr.client.R()
+
+	// Set headers first
+	if xhr.requestHeaders != nil {
+		for key, values := range xhr.requestHeaders {
+			if len(values) > 0 {
+				// Merge multiple values with comma separator (HTTP standard)
+				mergedValue := strings.Join(values, ", ")
+				reqBuilder.SetHeader(key, mergedValue)
+			}
+		}
+	}
+
+	// Handle request body
+	if d != nil && xhr.method != "GET" && xhr.method != "HEAD" {
 		switch v := d.(type) {
 		case string:
-			req, err = http.NewRequest(xhr.method, xhr.url, bytes.NewBufferString(v))
+			reqBuilder.SetBody(v)
 			contentType = "text/plain;charset=UTF-8"
 			contentLength = int64(len(v))
 			isStringBody = true
 		case *file.File:
-			req, err = http.NewRequest(xhr.method, xhr.url, v.Reader)
+			reqBuilder.SetBody(v.Reader)
 			contentType = "application/octet-stream"
 			contentLength = v.Size
 		case *formdata.FormData:
@@ -203,43 +218,38 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 				defer mw.Close()
 				mw.Send()
 			}()
-			req, err = http.NewRequest(xhr.method, xhr.url, pr)
+			reqBuilder.SetBody(pr)
 			contentType = mw.FormDataContentType()
 			contentLength = mw.Size()
 		}
 	}
-	if err != nil {
-		xhr.callOnerror()
-		return
-	}
-	req.Header = xhr.requestHeaders
+
 	// Only string body can specify Content-Type header by user
-	if contentType != "" && (!isStringBody || req.Header.Get("Content-Type") == "") {
-		req.Header.Set("Content-Type", contentType)
+	if contentType != "" && (!isStringBody || xhr.requestHeaders.Get("Content-Type") == "") {
+		reqBuilder.SetHeader("Content-Type", contentType)
 	}
-	if contentLength > 0 {
-		req.ContentLength = contentLength
+
+	// Set timeout
+	if xhr.Timeout > 0 {
+		xhr.client.SetTimeout(time.Duration(xhr.Timeout) * time.Millisecond)
 	}
-	transport := &http.Transport{
-		Proxy: xhr.proxyHandler,
-	}
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   time.Duration(xhr.Timeout) * time.Millisecond,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if xhr.Redirect == redirectManual {
-				return http.ErrUseLastResponse
-			}
-			if xhr.Redirect == redirectError {
-				return errors.New("redirect failed")
-			}
-			if len(via) > 20 {
-				return errors.New("too many redirects")
-			}
-			return nil
-		},
-	}
-	resp, err := client.Do(req)
+
+	// Configure redirect behavior
+	xhr.client.SetRedirectPolicy(func(req *http.Request, via []*http.Request) error {
+		if xhr.Redirect == redirectManual {
+			return http.ErrUseLastResponse
+		}
+		if xhr.Redirect == redirectError {
+			return errors.New("redirect failed")
+		}
+		if len(via) > 20 {
+			return errors.New("too many redirects")
+		}
+		return nil
+	})
+
+	// Execute request
+	resp, err := reqBuilder.Send(xhr.method, xhr.url)
 	if err != nil {
 		// handle timeout error
 		var ne net.Error
@@ -254,35 +264,37 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 		xhr.callOnerror()
 		return
 	}
-	defer resp.Body.Close()
+
 	xhr.Upload.callOnprogress(contentLength, contentLength)
 	if !xhr.aborted {
 		xhr.Upload.callOnload()
 	}
 
-	responseUrl := resp.Request.URL
-	responseUrl.Fragment = ""
-	xhr.ResponseUrl = responseUrl.String()
+	// Set response URL (final URL after redirects)
+	if resp.Response != nil && resp.Response.Request != nil && resp.Response.Request.URL != nil {
+		responseUrl := resp.Response.Request.URL
+		responseUrl.Fragment = ""
+		xhr.ResponseUrl = responseUrl.String()
+	} else {
+		xhr.ResponseUrl = xhr.url
+	}
 
+	// Set response headers
 	xhr.responseHeaders = resp.Header
 	xhr.Status = resp.StatusCode
 	xhr.StatusText = resp.Status
 	xhr.doReadystatechange(2)
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil {
-		xhr.callOnerror()
-		return
-	}
+
+	bodyBytes := resp.Bytes()
 	xhr.doReadystatechange(3)
-	xhr.Response = string(buf)
+	xhr.Response = string(bodyBytes)
 	xhr.ResponseText = xhr.Response
 	xhr.doReadystatechange(4)
-	respBodyLen := int64(len(buf))
+	respBodyLen := int64(len(bodyBytes))
 	xhr.callOnprogress(respBodyLen, respBodyLen)
 	if !xhr.aborted {
 		xhr.callOnload()
 	}
-	return
 }
 
 func (xhr *XMLHttpRequest) Abort() {
@@ -293,6 +305,9 @@ func (xhr *XMLHttpRequest) Abort() {
 }
 
 func (xhr *XMLHttpRequest) GetResponseHeader(key string) string {
+	if xhr.responseHeaders == nil {
+		return ""
+	}
 	return strings.Join(xhr.responseHeaders.Values(key), ", ")
 }
 
@@ -359,8 +374,14 @@ func Enable(runtime *goja.Runtime, proxyHandler func(r *http.Request) (*url.URL,
 		return instanceValue
 	})
 	xhr := runtime.ToValue(func(call goja.ConstructorCall) *goja.Object {
+		// Create req client with proxy support
+		client := req.C()
+		if proxyHandler != nil {
+			client.SetProxy(proxyHandler)
+		}
+
 		instance := &XMLHttpRequest{
-			proxyHandler: proxyHandler,
+			client: client,
 			Upload: &XMLHttpRequestUpload{
 				EventProp: &EventProp{
 					eventListeners: make(map[string]func(event *ProgressEvent)),
@@ -374,6 +395,9 @@ func Enable(runtime *goja.Runtime, proxyHandler func(r *http.Request) (*url.URL,
 		instanceValue.SetPrototype(call.This.Prototype())
 		return instanceValue
 	})
+	xhr.ToObject(runtime).Set("__setFingerprint", func(fingerprint Fingerprint) {
+		currentFingerprint = fingerprint
+	}) // Example of setting a property
 	if err := runtime.Set("ProgressEvent", progressEvent); err != nil {
 		return err
 	}

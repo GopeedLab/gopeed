@@ -205,6 +205,31 @@ function testTimeout(){
 		xhr.send();
 	});
 }
+
+async function testFingerprint(fingerprint,ua){
+	XMLHttpRequest.__setFingerprint(fingerprint);
+	const resp = await fetch("https://tls.peet.ws/api/all");
+	const data = await resp.json();
+	if(!data.user_agent.includes(ua)){
+		throw new Error('fingerprint test failed, user agent: ' + data.user_agent);
+	}
+}
+
+async function testFingerprintDefault(){
+	await testFingerprint('', 'Go')
+}
+
+async function testFingerprintChrome(){
+	await testFingerprint('chrome', 'Chrome')
+}
+
+async function testFingerprintFirefox(){
+	await testFingerprint('firefox', 'Firefox')
+}
+
+async function testFingerprintSafari(){
+	await testFingerprint('safari', 'Safari')
+}
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -287,6 +312,19 @@ function testTimeout(){
 	_, err = callTestFun(engine, "testTimeout")
 	if err == nil || err.Error() != "timeout" {
 		t.Fatalf("timeout test failed, want %s, got %s", "timeout", err)
+	}
+
+	_, err = callTestFun(engine, "testFingerprintChrome")
+	if err != nil {
+		t.Fatal("testFingerprintChrome test failed", err)
+	}
+	_, err = callTestFun(engine, "testFingerprintFirefox")
+	if err != nil {
+		t.Fatal("testFingerprintFirefox test failed", err)
+	}
+	_, err = callTestFun(engine, "testFingerprintSafari")
+	if err != nil {
+		t.Fatal("testFingerprintSafari test failed", err)
 	}
 }
 
