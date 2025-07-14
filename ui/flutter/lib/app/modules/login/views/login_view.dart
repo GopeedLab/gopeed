@@ -20,8 +20,8 @@ class LoginView extends GetView<LoginController> {
             end: Alignment.bottomRight,
             colors: [
               Get.theme.colorScheme.surface,
-              Get.theme.colorScheme.surface.withValues(alpha: 0.8),
-              Get.theme.colorScheme.surface.withValues(alpha: 0.9),
+              Get.theme.colorScheme.surface.withOpacity(0.8),
+              Get.theme.colorScheme.surface.withOpacity(0.9),
             ],
           ),
         ),
@@ -33,7 +33,7 @@ class LoginView extends GetView<LoginController> {
             ),
             child: Card(
               elevation: 12,
-              shadowColor: Get.theme.colorScheme.shadow.withValues(alpha: 0.3),
+              shadowColor: Get.theme.colorScheme.shadow.withOpacity(0.3),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(isNarrow ? 20 : 24),
               ),
@@ -46,7 +46,7 @@ class LoginView extends GetView<LoginController> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(isNarrow ? 20 : 24),
                   border: Border.all(
-                    color: Get.theme.colorScheme.outline.withValues(alpha: 0.1),
+                    color: Get.theme.colorScheme.outline.withOpacity(0.1),
                     width: 1,
                   ),
                 ),
@@ -72,7 +72,7 @@ class LoginView extends GetView<LoginController> {
                                   boxShadow: [
                                     BoxShadow(
                                       color: Get.theme.colorScheme.primary
-                                          .withValues(alpha: 0.2),
+                                          .withOpacity(0.2),
                                       blurRadius: isNarrow ? 16 : 24,
                                       offset: Offset(0, isNarrow ? 8 : 12),
                                       spreadRadius: isNarrow ? 1 : 2,
@@ -119,7 +119,7 @@ class LoginView extends GetView<LoginController> {
                               labelText: 'username'.tr,
                               labelStyle: TextStyle(
                                 color: Get.theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.7),
+                                    .withOpacity(0.7),
                                 fontWeight: FontWeight.w500,
                                 fontSize: 16,
                               ),
@@ -128,7 +128,7 @@ class LoginView extends GetView<LoginController> {
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: Get.theme.colorScheme.primary
-                                      .withValues(alpha: 0.1),
+                                      .withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
@@ -141,7 +141,7 @@ class LoginView extends GetView<LoginController> {
                                 borderRadius: BorderRadius.circular(18),
                                 borderSide: BorderSide(
                                   color: Get.theme.colorScheme.outline
-                                      .withValues(alpha: 0.2),
+                                      .withOpacity(0.2),
                                   width: 1,
                                 ),
                               ),
@@ -149,7 +149,7 @@ class LoginView extends GetView<LoginController> {
                                 borderRadius: BorderRadius.circular(18),
                                 borderSide: BorderSide(
                                   color: Get.theme.colorScheme.outline
-                                      .withValues(alpha: 0.3),
+                                      .withOpacity(0.3),
                                   width: 1.5,
                                 ),
                               ),
@@ -177,7 +177,7 @@ class LoginView extends GetView<LoginController> {
                               filled: true,
                               fillColor: Get
                                   .theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.8),
+                                  .withOpacity(0.8),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 24,
                                 vertical: 20,
@@ -207,7 +207,7 @@ class LoginView extends GetView<LoginController> {
                                   labelText: 'password'.tr,
                                   labelStyle: TextStyle(
                                     color: Get.theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.7),
+                                        .withOpacity(0.7),
                                     fontWeight: FontWeight.w500,
                                     fontSize: 16,
                                   ),
@@ -216,7 +216,7 @@ class LoginView extends GetView<LoginController> {
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
                                       color: Get.theme.colorScheme.primary
-                                          .withValues(alpha: 0.1),
+                                          .withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Icon(
@@ -231,7 +231,7 @@ class LoginView extends GetView<LoginController> {
                                           ? Icons.visibility_off_rounded
                                           : Icons.visibility_rounded,
                                       color: Get.theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
+                                          .withOpacity(0.6),
                                     ),
                                     onPressed:
                                         controller.togglePasswordVisibility,
@@ -240,7 +240,7 @@ class LoginView extends GetView<LoginController> {
                                     borderRadius: BorderRadius.circular(18),
                                     borderSide: BorderSide(
                                       color: Get.theme.colorScheme.outline
-                                          .withValues(alpha: 0.2),
+                                          .withOpacity(0.2),
                                       width: 1,
                                     ),
                                   ),
@@ -248,7 +248,7 @@ class LoginView extends GetView<LoginController> {
                                     borderRadius: BorderRadius.circular(18),
                                     borderSide: BorderSide(
                                       color: Get.theme.colorScheme.outline
-                                          .withValues(alpha: 0.3),
+                                          .withOpacity(0.3),
                                       width: 1.5,
                                     ),
                                   ),
@@ -276,7 +276,7 @@ class LoginView extends GetView<LoginController> {
                                   filled: true,
                                   fillColor: Get
                                       .theme.colorScheme.surfaceContainerHighest
-                                      .withValues(alpha: 0.8),
+                                      .withOpacity(0.8),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 24,
                                     vertical: 20,
@@ -314,7 +314,7 @@ class LoginView extends GetView<LoginController> {
                                     Get.theme.colorScheme.onPrimary,
                                 elevation: controller.isLoading.value ? 0 : 4,
                                 shadowColor: Get.theme.colorScheme.primary
-                                    .withValues(alpha: 0.4),
+                                    .withOpacity(0.4),
                               ),
                               child: controller.isLoading.value
                                   ? SizedBox(
