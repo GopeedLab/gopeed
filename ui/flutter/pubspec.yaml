@@ -77,7 +77,7 @@ dependencies:
     git:
       url: https://github.com/hui-z/flutter_install_plugin.git
       ref: cf08af829f4a4145634f8a047108f505fdbe5eaa
-  flutter_svg: ^2.2.0
+  flutter_svg: ^2.0.17
 dependency_overrides:
   permission_handler_windows:
     git:
