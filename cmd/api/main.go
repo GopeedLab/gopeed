@@ -12,10 +12,6 @@ func main() {
 		Address:   "127.0.0.1:9999",
 		Storage:   model.StorageBolt,
 		WebEnable: true,
-		WebAuth: &model.WebAuth{
-			Username: "gopeed",
-			Password: "gopeed",
-		},
 	}
 	cmd.Start(cfg)
 }
