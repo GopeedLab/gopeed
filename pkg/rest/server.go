@@ -2,6 +2,10 @@ package rest
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/GopeedLab/gopeed/pkg/download"
@@ -9,28 +13,23 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/securecookie"
-	"github.com/gorilla/sessions"
 	"github.com/pkg/errors"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
-)
-
-const (
-	sessionIdKey   = "session"
-	sessionAuthKey = "authenticated"
 )
 
 var (
 	srv         *http.Server
 	runningPort int
-	store       = sessions.NewCookieStore(securecookie.GenerateRandomKey(32))
+	aesKey      []byte
 
 	Downloader *download.Downloader
 )
@@ -103,6 +102,13 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		util.SafeRemove(startCfg.Address)
 	}
 
+	if startCfg.WebEnable {
+		aesKey = make([]byte, 32)
+		if _, err := rand.Read(aesKey); err != nil {
+			return nil, nil, errors.Wrap(err, "generate aes key failed")
+		}
+	}
+
 	listener, err := net.Listen(startCfg.Network, startCfg.Address)
 	if err != nil {
 		return nil, nil, err
@@ -142,14 +148,16 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 				var loginReq model.WebAuth
 				if ReadJson(r, w, &loginReq) {
 					if loginReq.Username == startCfg.WebAuth.Username && loginReq.Password == startCfg.WebAuth.Password {
-						session, _ := store.Get(r, sessionIdKey)
-						session.Values[sessionAuthKey] = true
-						session.Options.MaxAge = 7 * 24 * 60 * 60
-						if err := session.Save(r, w); err != nil {
+						// Generate a login token, Username:Password:Timestamp
+						timestamp := time.Now().Unix()
+						tokenData := fmt.Sprintf("%s:%s:%d", loginReq.Username, loginReq.Password, timestamp)
+						token, err := aesEncrypt(aesKey, []byte(tokenData))
+						if err != nil {
 							WriteJson(w, model.NewErrorResult(err.Error()))
 							return
 						}
-						WriteJson(w, model.NewNilResult())
+
+						WriteJson(w, model.NewOkResult(token))
 						return
 					}
 				}
@@ -161,6 +169,10 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		r.PathPrefix("/").Handler(gzipMiddleware(http.FileServer(newEmbedCacheFileSystem(http.FS(startCfg.WebFS)))))
 	}
 	if enableApiToken || enableBasicAuth {
+		writeUnauthorized := func(w http.ResponseWriter, r *http.Request) {
+			WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
+		}
+
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if enableApiToken {
@@ -172,7 +184,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 							return
 						}
 
-						WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
+						writeUnauthorized(w, r)
 						return
 					}
 				}
@@ -183,14 +195,38 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 						return
 					}
 
-					session, _ := store.Get(r, sessionIdKey)
-					// If session is authenticated
-					if auth, ok := session.Values[sessionAuthKey].(bool); ok && auth {
-						h.ServeHTTP(w, r)
+					token := r.Header.Get("Authorization")
+					if token == "" {
+						writeUnauthorized(w, r)
 						return
 					}
+
+					token = strings.TrimPrefix(token, "Bearer ")
+					tokenData, err := aesDecrypt(aesKey, token)
+					if err != nil {
+						writeUnauthorized(w, r)
+						return
+					}
+					parts := strings.SplitN(string(tokenData), ":", 3)
+					username := parts[0]
+					password := parts[1]
+					timestamp, _ := strconv.Atoi(parts[2])
+
+					if username != startCfg.WebAuth.Username || password != startCfg.WebAuth.Password {
+						writeUnauthorized(w, r)
+						return
+					}
+
+					// Check if the token is expired (7 days)
+					if time.Now().Unix()-int64(timestamp) > 7*24*3600 {
+						writeUnauthorized(w, r)
+						return
+					}
+
+					h.ServeHTTP(w, r)
+					return
 				}
-				WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
+				writeUnauthorized(w, r)
 			})
 		})
 	}
@@ -210,11 +246,9 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	})
 
 	srv = &http.Server{Handler: handlers.CORS(
-		handlers.AllowedHeaders([]string{"Content-Type", "X-Api-Token", "X-Target-Uri"}),
+		handlers.AllowedHeaders([]string{"Content-Type", "Authorization", "X-Api-Token", "X-Target-Uri"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
-		handlers.AllowedOriginValidator(func(origin string) bool {
-			return true
-		}),
+		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowCredentials(),
 	)(r)}
 	return srv, listener, nil
@@ -350,4 +384,48 @@ func WriteStatusJson(w http.ResponseWriter, statusCode int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(v)
+}
+
+func aesEncrypt(key, data []byte) (string, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	cipherText := gcm.Seal(nonce, nonce, data, nil)
+	return base64.StdEncoding.EncodeToString(cipherText), nil
+}
+
+func aesDecrypt(key []byte, encryptedData string) ([]byte, error) {
+	cipherText, err := base64.StdEncoding.DecodeString(encryptedData)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cipherText) < gcm.NonceSize() {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce, cipherText := cipherText[:gcm.NonceSize()], cipherText[gcm.NonceSize():]
+	return gcm.Open(nil, nonce, cipherText, nil)
 }

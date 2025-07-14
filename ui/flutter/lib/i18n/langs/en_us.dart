@@ -119,12 +119,11 @@ const enUS = {
     'httpHeaderName': 'Header Name',
     'httpHeaderValue': 'Header Value',
     'login': 'Login',
-    'login_to_continue': 'Please login to continue',
-    'username_required': 'Username is required',
-    'password_required': 'Password is required',
-    'password_too_short': 'Password must be at least 6 characters',
+    'username_required': 'Please enter your username',
+    'password_required': 'Please enter your password',
     'login_success': 'Login successful',
-    'powered_by_gopeed': 'Powered by Gopeed',
-    'success': 'Success',
+    'login_failed': 'Login failed, please check your username and password',
+    'login_failed_network':
+        'Login failed, please check your network connection',
   },
 };

@@ -505,7 +505,7 @@ func TestUpdateCheckExtension(t *testing.T) {
 func TestFsExtension(t *testing.T) {
 	doTest(func() {
 		identity := httpRequestCheckOk[string](http.MethodPost, "/api/v1/extensions", installExtensionReq)
-		statusCode, _, _ := doHttpRequest0(http.MethodGet, "/fs/extensions/"+identity+"/icon.png", nil, nil)
+		statusCode, _ := doHttpRequest0(http.MethodGet, "/fs/extensions/"+identity+"/icon.png", nil, nil)
 		if statusCode != http.StatusOK {
 			t.Errorf("FsExtension() got = %v, want %v", statusCode, http.StatusOK)
 		}
@@ -514,7 +514,7 @@ func TestFsExtension(t *testing.T) {
 
 func TestFsExtensionFail(t *testing.T) {
 	doTest(func() {
-		statusCode, _, _ := doHttpRequest0(http.MethodGet, "/fs/extensions/not_exist/icon.png", nil, nil)
+		statusCode, _ := doHttpRequest0(http.MethodGet, "/fs/extensions/not_exist/icon.png", nil, nil)
 		if statusCode != http.StatusNotFound {
 			t.Errorf("TestFsExtensionFail() got = %v, want %v", statusCode, http.StatusNotFound)
 		}
@@ -583,7 +583,7 @@ func TestWebFsEnhance(t *testing.T) {
 
 func TestDoProxy(t *testing.T) {
 	doTest(func() {
-		code, respBody, _ := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
+		code, respBody := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
 			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
 		}, nil)
 		if code != http.StatusOK {
@@ -597,7 +597,7 @@ func TestDoProxy(t *testing.T) {
 	})
 
 	doTest(func() {
-		code, _, _ := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
+		code, _ := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
 			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/NOT_FOUND",
 		}, nil)
 		if code != http.StatusNotFound {
@@ -618,12 +618,12 @@ func TestApiToken(t *testing.T) {
 		Stop()
 	}()
 
-	status, _, _ := doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
+	status, _ := doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
 	if status != http.StatusUnauthorized {
 		t.Errorf("TestApiToken() got = %v, want %v", status, http.StatusUnauthorized)
 	}
 
-	status, _, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
 		"X-Api-Token": cfg.ApiToken,
 	}, nil)
 	if status != http.StatusOK {
@@ -649,53 +649,83 @@ func TestAuthorization(t *testing.T) {
 		Stop()
 	}()
 
-	status, _, cookie := doHttpRequest0(http.MethodPost, "/api/web/login", nil, &model.WebAuth{
+	status, _ := doHttpRequest0(http.MethodPost, "/api/web/login", nil, &model.WebAuth{
 		Username: "xxx",
 		Password: "xxx",
 	})
 	if status != http.StatusUnauthorized {
-		t.Errorf("TestAuthorization() login got = %v, want %v", status, http.StatusOK)
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
 	}
 
-	status, _, cookie = doHttpRequest0(http.MethodPost, "/api/web/login", nil, cfg.WebAuth)
-	if status != http.StatusOK {
-		t.Errorf("TestAuthorization() login got = %v, want %v", status, http.StatusOK)
+	token := httpRequestCheckOk[string](http.MethodPost, "/api/web/login", cfg.WebAuth)
+	authToken := fmt.Sprintf("Bearer %s", token)
+	authHeaders := map[string]string{
+		"Authorization": authToken,
 	}
 
-	cookieValue := strings.Split(cookie, ";")[0]
-	cookieHeader := map[string]string{
-		"Cookie": cookieValue,
-	}
-
-	status, _, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
 	if status != http.StatusUnauthorized {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
 	}
 
-	status, _, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", cookieHeader, nil)
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": "xxx",
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": "xxx",
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	buildToken := func(username, password string, ts int64) string {
+		token, _ := aesEncrypt(aesKey, []byte(fmt.Sprintf("%s:%s:%d", username, password, ts)))
+		return token
+	}
+
+	fakeToken := buildToken("fake", "fake", time.Now().Unix())
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", fakeToken),
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	expireToken := buildToken(cfg.WebAuth.Username, cfg.WebAuth.Password, time.Now().Add(-time.Hour*8*24).Unix())
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", expireToken),
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", authHeaders, nil)
 	if status != http.StatusOK {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
 	}
 
-	status, _, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Cookie":      cookieValue,
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
 		"X-Api-Token": cfg.ApiToken,
 	}, nil)
 	if status != http.StatusOK {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
 	}
 
-	status, _, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Cookie":      cookieValue,
-		"X-Api-Token": cfg.ApiToken,
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": authToken,
+		"X-Api-Token":   cfg.ApiToken,
 	}, nil)
 	if status != http.StatusOK {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
 	}
 
-	status, _, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Cookie":      cookieValue,
-		"X-Api-Token": "",
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": authToken,
+		"X-Api-Token":   "",
 	}, nil)
 	if status != http.StatusUnauthorized {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
@@ -746,9 +776,9 @@ func doStart(cfg *model.StartConfig) net.Listener {
 	return test.StartTestFileServer()
 }
 
-func doHttpRequest0(method string, path string, headers map[string]string, body any) (int, []byte, string) {
-	r1, r2, r3 := doHttpRequest1(method, path, headers, body)
-	return r1, r3, r2["Set-Cookie"]
+func doHttpRequest0(method string, path string, headers map[string]string, body any) (int, []byte) {
+	r1, _, r3 := doHttpRequest1(method, path, headers, body)
+	return r1, r3
 }
 
 func doHttpRequest1(method string, path string, headers map[string]string, body any) (int, map[string]string, []byte) {
@@ -787,7 +817,7 @@ func doHttpRequest1(method string, path string, headers map[string]string, body 
 }
 
 func doHttpRequest[T any](method string, path string, headers map[string]string, body any) (int, *model.Result[T]) {
-	statusCode, respBody, _ := doHttpRequest0(method, path, headers, body)
+	statusCode, respBody := doHttpRequest0(method, path, headers, body)
 	if statusCode != http.StatusOK {
 		panic(fmt.Sprintf("http request failed, status code: %d", statusCode))
 	}

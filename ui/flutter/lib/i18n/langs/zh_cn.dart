@@ -117,12 +117,10 @@ const zhCN = {
     'httpHeaderName': '请求头名称',
     'httpHeaderValue': '请求头值',
     'login': '登录',
-    'login_to_continue': '请登录以继续',
-    'username_required': '用户名是必需的',
-    'password_required': '密码是必需的',
-    'password_too_short': '密码至少需要6个字符',
+    'username_required': '请输入用户名',
+    'password_required': '请输入密码',
     'login_success': '登录成功',
-    'powered_by_gopeed': '由 Gopeed 强力驱动',
-    'success': '成功',
+    'login_failed': '登录失败，请检查用户名和密码',
+    'login_failed_network': '登录失败，请检查网络连接',
   }
 };

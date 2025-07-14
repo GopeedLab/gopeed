@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart' as getx;
 
 import '../app/routes/app_pages.dart';
+import '../database/database.dart';
 import '../util/util.dart';
 import 'model/create_task.dart';
 import 'model/create_task_batch.dart';
@@ -51,6 +52,12 @@ class _Client {
           if (apiToken.isNotEmpty) {
             options.headers['X-Api-Token'] = apiToken;
           }
+          if (Util.isWeb()) {
+            final token = Database.instance.getWebToken();
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          }
           handler.next(options);
         },
         onError: (error, handler) {
@@ -74,10 +81,6 @@ class _Client {
           };
           return client;
         };
-      }
-      if (Util.isWeb()) {
-        // Convert to dynamic type to avoid importing dio/browser library, which causes errors when compiling non-web platforms
-        (_instance!.dio.httpClientAdapter as dynamic).withCredentials = true;
       }
     }
     return _instance!;
@@ -112,7 +115,8 @@ Future<T> _parse<T>(
   } on DioException catch (e) {
     if (e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.connectionTimeout) {
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.connectionError) {
       throw TimeoutException("request timeout");
     }
     throw Exception(Result(code: 1000, msg: e.message));
@@ -232,8 +236,9 @@ Future<void> updateExtension(String identity) async {
       () => _client.dio.post("api/v1/extensions/$identity/update"), null);
 }
 
-Future<void> login(LoginReq loginReq) async {
-  return _parse(() => _client.dio.post("api/web/login", data: loginReq), null);
+Future<String> login(LoginReq loginReq) async {
+  return _parse(() => _client.dio.post("api/web/login", data: loginReq),
+      (data) => data as String);
 }
 
 Future<Response<String>> proxyRequest<T>(String uri,

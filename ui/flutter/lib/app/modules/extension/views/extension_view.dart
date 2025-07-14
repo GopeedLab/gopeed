@@ -16,6 +16,7 @@ import '../../../../api/model/extension.dart';
 import '../../../../api/model/install_extension.dart';
 import '../../../../api/model/switch_extension.dart';
 import '../../../../api/model/update_extension_settings.dart';
+import '../../../../database/database.dart';
 import '../../../../util/message.dart';
 import '../../../../util/util.dart';
 import '../../../views/icon_button_loading.dart';
@@ -135,6 +136,10 @@ class ExtensionView extends GetView<ExtensionController> {
                                                   '/fs/extensions/${extension.identity}/${extension.icon}'),
                                               width: 48,
                                               height: 48,
+                                              headers: {
+                                                'Authorization':
+                                                    'Bearer ${Database.instance.getWebToken()}'
+                                              },
                                             )
                                           : Image.file(
                                               extension.devMode

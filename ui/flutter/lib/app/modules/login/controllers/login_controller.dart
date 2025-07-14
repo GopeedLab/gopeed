@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../api/api.dart' as api;
+import '../../../../api/api.dart';
 import '../../../../api/model/login.dart';
+import '../../../../database/database.dart';
 import '../../../../util/message.dart';
 import '../../../routes/app_pages.dart';
+import '../../app/controllers/app_controller.dart';
 
 class LoginController extends GetxController {
   final formKey = GlobalKey<FormState>();
@@ -37,13 +40,20 @@ class LoginController extends GetxController {
         password: passwordController.text,
       );
 
-      await api.login(loginReq);
-
-      // 登录成功，跳转到主页
+      final token = await api.login(loginReq);
+      // Login successful, save the token
+      Database.instance.saveWebToken(token);
+      // Reload config
+      final controller = Get.put(AppController());
+      await controller.loadDownloaderConfig();
+      // Navigate to home page
       Get.rootDelegate.offAndToNamed(Routes.HOME);
-      showMessage('success'.tr, 'login_success'.tr);
     } catch (e) {
-      showErrorMessage(e);
+      if (e is TimeoutException) {
+        showMessage('error'.tr, 'login_failed_network'.tr);
+      } else {
+        showMessage('error'.tr, 'login_failed'.tr);
+      }
     } finally {
       isLoading.value = false;
     }
