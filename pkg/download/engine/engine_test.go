@@ -205,6 +205,31 @@ function testTimeout(){
 		xhr.send();
 	});
 }
+
+async function testFingerprint(fingerprint,ua){
+	__gopeed_setFingerprint(fingerprint);
+	const resp = await fetch(host+'/ua');
+	const data = await resp.json();
+	if(!data.user_agent.includes(ua)){
+		throw new Error('fingerprint test failed, user agent: ' + data.user_agent);
+	}
+}
+
+async function testFingerprintDefault(){
+	await testFingerprint('none', 'Go')
+}
+
+async function testFingerprintChrome(){
+	await testFingerprint('chrome', 'Chrome')
+}
+
+async function testFingerprintFirefox(){
+	await testFingerprint('firefox', 'Firefox')
+}
+
+async function testFingerprintSafari(){
+	await testFingerprint('safari', 'Safari')
+}
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -287,6 +312,19 @@ function testTimeout(){
 	_, err = callTestFun(engine, "testTimeout")
 	if err == nil || err.Error() != "timeout" {
 		t.Fatalf("timeout test failed, want %s, got %s", "timeout", err)
+	}
+
+	_, err = callTestFun(engine, "testFingerprintChrome")
+	if err != nil {
+		t.Fatal("testFingerprintChrome test failed", err)
+	}
+	_, err = callTestFun(engine, "testFingerprintFirefox")
+	if err != nil {
+		t.Fatal("testFingerprintFirefox test failed", err)
+	}
+	_, err = callTestFun(engine, "testFingerprintSafari")
+	if err != nil {
+		t.Fatal("testFingerprintSafari test failed", err)
 	}
 }
 
@@ -469,6 +507,15 @@ func startServer() net.Listener {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("ok"))
 		}
+	})
+	mux.HandleFunc("/ua", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		data := map[string]any{
+			"user_agent": r.UserAgent(),
+		}
+		buf, _ := json.Marshal(data)
+		w.WriteHeader(http.StatusOK)
+		w.Write(buf)
 	})
 	server.Handler = mux
 	go server.Serve(listener)
