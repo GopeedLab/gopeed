@@ -637,7 +637,7 @@ func TestAuthorization(t *testing.T) {
 	cfg.Init()
 	cfg.ApiToken = "123456"
 	cfg.WebEnable = true
-	cfg.WebBasicAuth = &model.WebBasicAuth{
+	cfg.WebAuth = &model.WebAuth{
 		Username: "admin",
 		Password: "123456",
 	}
@@ -649,14 +649,61 @@ func TestAuthorization(t *testing.T) {
 		Stop()
 	}()
 
-	status, _ := doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
+	status, _ := doHttpRequest0(http.MethodPost, "/api/web/login", nil, &model.WebAuth{
+		Username: "xxx",
+		Password: "xxx",
+	})
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	token := httpRequestCheckOk[string](http.MethodPost, "/api/web/login", cfg.WebAuth)
+	authToken := fmt.Sprintf("Bearer %s", token)
+	authHeaders := map[string]string{
+		"Authorization": authToken,
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
 	if status != http.StatusUnauthorized {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
 	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": cfg.WebBasicAuth.Authorization(),
+		"Authorization": "xxx",
 	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": "xxx",
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	buildToken := func(username, password string, ts int64) string {
+		token, _ := aesEncrypt(aesKey, []byte(fmt.Sprintf("%s:%s:%d", username, password, ts)))
+		return token
+	}
+
+	fakeToken := buildToken("fake", "fake", time.Now().Unix())
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", fakeToken),
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	expireToken := buildToken(cfg.WebAuth.Username, cfg.WebAuth.Password, time.Now().Add(-time.Hour*8*24).Unix())
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", expireToken),
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", authHeaders, nil)
 	if status != http.StatusOK {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
 	}
@@ -669,7 +716,7 @@ func TestAuthorization(t *testing.T) {
 	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": cfg.WebBasicAuth.Authorization(),
+		"Authorization": authToken,
 		"X-Api-Token":   cfg.ApiToken,
 	}, nil)
 	if status != http.StatusOK {
@@ -677,7 +724,7 @@ func TestAuthorization(t *testing.T) {
 	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": cfg.WebBasicAuth.Authorization(),
+		"Authorization": authToken,
 		"X-Api-Token":   "",
 	}, nil)
 	if status != http.StatusUnauthorized {

@@ -7,6 +7,7 @@ abstract class Routes {
   static const ROOT = _Paths.ROOT;
   static const HOME = _Paths.HOME;
   static const CREATE = _Paths.CREATE;
+  static const LOGIN = _Paths.LOGIN;
   static const TASK = _Paths.HOME + _Paths.TASK;
   static const TASK_FILES = TASK + _Paths.TASK_FILES;
   static const EXTENSION = _Paths.HOME + _Paths.EXTENSION;
@@ -20,6 +21,7 @@ abstract class _Paths {
   static const ROOT = '/';
   static const HOME = '/home';
   static const CREATE = '/create';
+  static const LOGIN = '/login';
   static const TASK = '/task';
   static const TASK_FILES = '/files';
   static const EXTENSION = '/extension';

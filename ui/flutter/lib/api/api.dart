@@ -3,13 +3,17 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart' as getx;
 
+import '../app/routes/app_pages.dart';
+import '../database/database.dart';
 import '../util/util.dart';
 import 'model/create_task.dart';
 import 'model/create_task_batch.dart';
 import 'model/downloader_config.dart';
 import 'model/extension.dart';
 import 'model/install_extension.dart';
+import 'model/login.dart';
 import 'model/request.dart';
 import 'model/resolve_result.dart';
 import 'model/result.dart';
@@ -43,12 +47,27 @@ class _Client {
       dio.options.sendTimeout = const Duration(seconds: 5);
       dio.options.connectTimeout = const Duration(seconds: 5);
       dio.options.receiveTimeout = const Duration(seconds: 60);
-      dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
-        if (apiToken.isNotEmpty) {
-          options.headers['X-Api-Token'] = apiToken;
-        }
-        handler.next(options);
-      }));
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (apiToken.isNotEmpty) {
+            options.headers['X-Api-Token'] = apiToken;
+          }
+          if (Util.isWeb()) {
+            final token = Database.instance.getWebToken();
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          }
+          handler.next(options);
+        },
+        onError: (error, handler) {
+          // Only web version has a login page
+          if (Util.isWeb() && error.response?.statusCode == 401) {
+            getx.Get.rootDelegate.offAndToNamed(Routes.LOGIN);
+          }
+          handler.next(error);
+        },
+      ));
 
       _instance!.dio = dio;
       if (isUnixSocket) {
@@ -96,7 +115,8 @@ Future<T> _parse<T>(
   } on DioException catch (e) {
     if (e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.connectionTimeout) {
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.connectionError) {
       throw TimeoutException("request timeout");
     }
     throw Exception(Result(code: 1000, msg: e.message));
@@ -216,6 +236,11 @@ Future<void> updateExtension(String identity) async {
       () => _client.dio.post("api/v1/extensions/$identity/update"), null);
 }
 
+Future<String> login(LoginReq loginReq) async {
+  return _parse(() => _client.dio.post("api/web/login", data: loginReq),
+      (data) => data as String);
+}
+
 Future<Response<String>> proxyRequest<T>(String uri,
     {data, Options? options}) async {
   options ??= Options();
@@ -230,5 +255,9 @@ Future<Response<String>> proxyRequest<T>(String uri,
 }
 
 String join(String path) {
-  return "${_client.dio.options.baseUrl}/${Util.cleanPath(path)}";
+  final baseUrl = _client.dio.options.baseUrl;
+  final cleanBaseUrl = baseUrl.endsWith('/')
+      ? baseUrl.substring(0, baseUrl.length - 1)
+      : baseUrl;
+  return "$cleanBaseUrl/${Util.cleanPath(path)}";
 }

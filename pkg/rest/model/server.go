@@ -1,7 +1,6 @@
 package model
 
 import (
-	"encoding/base64"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"io/fs"
 )
@@ -25,9 +24,9 @@ type StartConfig struct {
 
 	ProductionMode bool
 
-	WebEnable    bool
-	WebFS        fs.FS
-	WebBasicAuth *WebBasicAuth
+	WebEnable bool
+	WebFS     fs.FS
+	WebAuth   *WebAuth
 }
 
 func (cfg *StartConfig) Init() *StartConfig {
@@ -49,13 +48,7 @@ func (cfg *StartConfig) Init() *StartConfig {
 	return cfg
 }
 
-type WebBasicAuth struct {
+type WebAuth struct {
 	Username string
 	Password string
-}
-
-// Authorization returns the value of the Authorization header to be used in HTTP requests.
-func (cfg *WebBasicAuth) Authorization() string {
-	userId := cfg.Username + ":" + cfg.Password
-	return "Basic " + base64.StdEncoding.EncodeToString([]byte(userId))
 }

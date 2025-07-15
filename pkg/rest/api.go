@@ -309,6 +309,8 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 	r.RequestURI = ""
 	r.URL = targetUrl
 	r.Host = targetUrl.Host
+	r.Header.Del("Authorization")
+	r.Header.Del("X-Target-Uri")
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
 		writeError(w, err.Error())

@@ -116,5 +116,11 @@ const zhCN = {
     'fileSelectedSize': '大小：',
     'httpHeaderName': '请求头名称',
     'httpHeaderValue': '请求头值',
+    'login': '登录',
+    'username_required': '请输入用户名',
+    'password_required': '请输入密码',
+    'login_success': '登录成功',
+    'login_failed': '登录失败，请检查用户名和密码',
+    'login_failed_network': '登录失败，请检查网络连接',
   }
 };

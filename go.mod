@@ -13,6 +13,7 @@ require (
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
+	github.com/imroc/req/v3 v3.52.2
 	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/mattn/go-ieproxy v0.0.12
 	github.com/pkg/errors v0.9.1
@@ -29,11 +30,9 @@ require (
 	github.com/ebitengine/purego v0.8.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/icholy/digest v1.1.0 // indirect
-	github.com/imroc/req/v3 v3.52.2 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20220913051719-115f729f3c8c // indirect
 	github.com/onsi/ginkgo/v2 v2.23.4 // indirect
