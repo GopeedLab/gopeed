@@ -207,8 +207,8 @@ function testTimeout(){
 }
 
 async function testFingerprint(fingerprint,ua){
-	XMLHttpRequest.__setFingerprint(fingerprint);
-	const resp = await fetch("https://tls.peet.ws/api/all");
+	__gopeed_setFingerprint(fingerprint);
+	const resp = await fetch(host+'/ua');
 	const data = await resp.json();
 	if(!data.user_agent.includes(ua)){
 		throw new Error('fingerprint test failed, user agent: ' + data.user_agent);
@@ -216,7 +216,7 @@ async function testFingerprint(fingerprint,ua){
 }
 
 async function testFingerprintDefault(){
-	await testFingerprint('', 'Go')
+	await testFingerprint('none', 'Go')
 }
 
 async function testFingerprintChrome(){
@@ -507,6 +507,15 @@ func startServer() net.Listener {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("ok"))
 		}
+	})
+	mux.HandleFunc("/ua", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		data := map[string]any{
+			"user_agent": r.UserAgent(),
+		}
+		buf, _ := json.Marshal(data)
+		w.WriteHeader(http.StatusOK)
+		w.Write(buf)
 	})
 	server.Handler = mux
 	go server.Serve(listener)

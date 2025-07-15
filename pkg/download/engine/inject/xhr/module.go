@@ -395,9 +395,9 @@ func Enable(runtime *goja.Runtime, proxyHandler func(r *http.Request) (*url.URL,
 		instanceValue.SetPrototype(call.This.Prototype())
 		return instanceValue
 	})
-	xhr.ToObject(runtime).Set("__setFingerprint", func(fingerprint Fingerprint) {
+	runtime.Set("__gopeed_setFingerprint", func(fingerprint Fingerprint) {
 		currentFingerprint = fingerprint
-	}) // Example of setting a property
+	})
 	if err := runtime.Set("ProgressEvent", progressEvent); err != nil {
 		return err
 	}
