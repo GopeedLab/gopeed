@@ -105,6 +105,21 @@ func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 	}
 }
 
+func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
+	fetcher := buildFetcher()
+	err := fetcher.Resolve(&base.Request{
+		URL: "https://bing.com",
+		Extra: &http.ReqExtra{
+			Header: map[string]string{
+				"Referer": "\rtest",
+			},
+		},
+	})
+	if err != nil {
+		t.Errorf("Resolve() got = %v, want nil", err)
+	}
+}
+
 func testResolve(startTestServer func() net.Listener, path string, want *base.Resource, t *testing.T) {
 	listener := startTestServer()
 	defer listener.Close()

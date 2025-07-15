@@ -540,7 +540,7 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		}
 		if len(extra.Header) > 0 {
 			for k, v := range extra.Header {
-				headers.Set(k, v)
+				headers.Set(k, strings.TrimSpace(v))
 			}
 		}
 		if extra.Body != "" {
@@ -548,7 +548,7 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		}
 	}
 	if _, ok := headers[base.HttpHeaderUserAgent]; !ok {
-		headers.Set(base.HttpHeaderUserAgent, f.config.UserAgent)
+		headers.Set(base.HttpHeaderUserAgent, strings.TrimSpace(f.config.UserAgent))
 	}
 
 	if ctx != nil {
