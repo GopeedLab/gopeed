@@ -93,5 +93,7 @@ const frFR = {
     'browserExtension': 'Extension du navigateur',
     'launchAtStartup': 'Lancer au démarrage',
     'skipVerifyCert': 'Bypass Verifikasi Sertifikat',
+    'networkAutoControl': 'Contrôle automatique du réseau',
+    'networkAutoControlTip': 'Mettre automatiquement en pause les téléchargements lors du passage du WiFi aux données mobiles et reprendre lors du retour au WiFi',
   },
 };

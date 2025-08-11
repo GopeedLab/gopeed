@@ -104,5 +104,7 @@ const esES = {
     'taskUrl': 'URL de la Tarea',
     'downloadPath': 'Ruta de Descarga',
     'skipVerifyCert': 'Omitir Verificación de Certificado',
+    'networkAutoControl': 'Control Automático de Red',
+    'networkAutoControlTip': 'Pausar automáticamente las descargas al cambiar de WiFi a datos móviles y reanudar al volver a WiFi',
   },
 };
