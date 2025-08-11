@@ -550,18 +550,16 @@ class SettingView extends GetView<SettingController> {
         return null;
       }
       
-      return ListTile(
+      return Obx(() => ListTile(
         title: Text('networkAutoControl'.tr),
         subtitle: Text('networkAutoControlTip'.tr),
         trailing: Switch(
-          value: Database.instance.getNetworkAutoControl(),
+          value: controller.networkAutoControl.value,
           onChanged: (bool value) {
-            Database.instance.saveNetworkAutoControl(value);
-            // Trigger rebuild to update the display value
-            controller.update();
+            controller.updateNetworkAutoControl(value);
           },
         ),
-      );
+      ));
     }
 
     // advanced config proxy items start
