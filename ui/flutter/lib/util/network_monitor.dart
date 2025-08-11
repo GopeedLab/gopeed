@@ -26,8 +26,11 @@ class NetworkMonitor extends GetxService {
   Future<void> onInit() async {
     super.onInit();
     
+    logInfo('NetworkMonitor.onInit() called');
+    
     // Only monitor network on mobile platforms
     if (!Platform.isAndroid && !Platform.isIOS) {
+      logInfo('NetworkMonitor: Not on mobile platform, skipping initialization');
       return;
     }
     
@@ -35,8 +38,10 @@ class NetworkMonitor extends GetxService {
     
     // Check initial connectivity state
     final initialResult = await _connectivity.checkConnectivity();
+    logInfo('NetworkMonitor: Initial connectivity result: $initialResult');
     _updateNetworkStatus(initialResult);
     _previousNetworkType = _getNetworkType(initialResult);
+    logInfo('NetworkMonitor: Initial network type: $_previousNetworkType');
     _isInitialized = true;
     
     // Listen to connectivity changes
@@ -47,7 +52,7 @@ class NetworkMonitor extends GetxService {
       },
     );
     
-    logInfo('Network monitor initialized');
+    logInfo('Network monitor initialized successfully');
   }
 
   @override
@@ -75,11 +80,18 @@ class NetworkMonitor extends GetxService {
   }
 
   void _onConnectivityChanged(List<ConnectivityResult> result) {
-    if (!_isInitialized) return;
+    logInfo('NetworkMonitor: Connectivity changed event received: $result');
+    
+    if (!_isInitialized) {
+      logInfo('NetworkMonitor: Not initialized yet, ignoring connectivity change');
+      return;
+    }
     
     // Check if network auto control is enabled
     final isNetworkAutoControlEnabled = Database.instance.getNetworkAutoControl();
+    logInfo('NetworkMonitor: Network auto control enabled: $isNetworkAutoControlEnabled');
     if (!isNetworkAutoControlEnabled) {
+      logInfo('NetworkMonitor: Network auto control disabled, ignoring connectivity change');
       return;
     }
 
