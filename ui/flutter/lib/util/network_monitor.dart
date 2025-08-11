@@ -8,6 +8,8 @@ import '../api/api.dart';
 import '../database/database.dart';
 import '../util/log_util.dart';
 
+enum NetworkType { wifi, mobile, other, none }
+
 class NetworkMonitor extends GetxService {
   static NetworkMonitor get to => Get.find();
 
@@ -17,7 +19,7 @@ class NetworkMonitor extends GetxService {
   final _isWiFiConnected = false.obs;
   bool get isWiFiConnected => _isWiFiConnected.value;
   
-  bool _wasWiFiConnected = false;
+  NetworkType _previousNetworkType = NetworkType.none;
   bool _isInitialized = false;
 
   @override
@@ -33,8 +35,8 @@ class NetworkMonitor extends GetxService {
     
     // Check initial connectivity state
     final initialResult = await _connectivity.checkConnectivity();
-    _updateWiFiStatus(initialResult);
-    _wasWiFiConnected = _isWiFiConnected.value;
+    _updateNetworkStatus(initialResult);
+    _previousNetworkType = _getNetworkType(initialResult);
     _isInitialized = true;
     
     // Listen to connectivity changes
@@ -54,7 +56,20 @@ class NetworkMonitor extends GetxService {
     super.onClose();
   }
 
-  void _updateWiFiStatus(List<ConnectivityResult> result) {
+  NetworkType _getNetworkType(List<ConnectivityResult> result) {
+    if (result.contains(ConnectivityResult.wifi)) {
+      return NetworkType.wifi;
+    } else if (result.contains(ConnectivityResult.mobile)) {
+      return NetworkType.mobile;
+    } else if (result.contains(ConnectivityResult.none)) {
+      return NetworkType.none;
+    } else {
+      // Ethernet, Bluetooth, VPN, or other connection types
+      return NetworkType.other;
+    }
+  }
+
+  void _updateNetworkStatus(List<ConnectivityResult> result) {
     final hasWiFi = result.contains(ConnectivityResult.wifi);
     _isWiFiConnected.value = hasWiFi;
   }
@@ -68,23 +83,23 @@ class NetworkMonitor extends GetxService {
       return;
     }
 
-    _updateWiFiStatus(result);
-    final currentlyWiFi = _isWiFiConnected.value;
+    _updateNetworkStatus(result);
+    final currentNetworkType = _getNetworkType(result);
     
-    logInfo('Network changed: wasWiFi=$_wasWiFiConnected, currentlyWiFi=$currentlyWiFi');
+    logInfo('Network changed: previous=$_previousNetworkType, current=$currentNetworkType');
     
-    // WiFi to Mobile Data: pause all tasks
-    if (_wasWiFiConnected && !currentlyWiFi) {
+    // Only handle WiFi ↔ Mobile transitions, ignore other connection types
+    if (_previousNetworkType == NetworkType.wifi && currentNetworkType == NetworkType.mobile) {
       _pauseAllDownloads();
       logInfo('Switched from WiFi to mobile data - pausing all downloads');
-    }
-    // Mobile Data to WiFi: resume all tasks
-    else if (!_wasWiFiConnected && currentlyWiFi) {
+    } else if (_previousNetworkType == NetworkType.mobile && currentNetworkType == NetworkType.wifi) {
       _resumeAllDownloads();
       logInfo('Switched from mobile data to WiFi - resuming all downloads');
+    } else {
+      logInfo('Network change ignored: not a WiFi ↔ Mobile transition');
     }
     
-    _wasWiFiConnected = currentlyWiFi;
+    _previousNetworkType = currentNetworkType;
   }
 
   Future<void> _pauseAllDownloads() async {
