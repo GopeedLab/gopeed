@@ -122,5 +122,7 @@ const zhCN = {
     'login_success': '登录成功',
     'login_failed': '登录失败，请检查用户名和密码',
     'login_failed_network': '登录失败，请检查网络连接',
+    'networkAutoControl': '网络状态自动控制',
+    'networkAutoControlTip': '当网络从WiFi切换到移动数据时自动暂停下载，切换回WiFi时自动恢复下载',
   }
 };

@@ -11,6 +11,7 @@ import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../api/model/downloader_config.dart';
+import '../../../../database/database.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
@@ -543,6 +544,26 @@ class SettingView extends GetView<SettingController> {
       );
     }
 
+    // Network auto control setting (mobile only)
+    buildNetworkAutoControl() {
+      if (!Platform.isAndroid && !Platform.isIOS) {
+        return null;
+      }
+      
+      return ListTile(
+        title: Text('networkAutoControl'.tr),
+        subtitle: Text('networkAutoControlTip'.tr),
+        trailing: Switch(
+          value: Database.instance.getNetworkAutoControl(),
+          onChanged: (bool value) {
+            Database.instance.saveNetworkAutoControl(value);
+            // Trigger rebuild to update the display value
+            controller.update();
+          },
+        ),
+      );
+    }
+
     // advanced config proxy items start
     final proxy = downloaderCfg.value.proxy;
     final buildProxy = _buildConfigItem(
@@ -985,7 +1006,10 @@ class SettingView extends GetView<SettingController> {
                       Text('network'.tr),
                       Card(
                           child: Column(
-                        children: _addDivider([buildProxy()]),
+                        children: _addDivider([
+                          buildNetworkAutoControl(),
+                          buildProxy(),
+                        ].where((e) => e != null).cast<Widget>().toList()),
                       )),
                       const Text('API'),
                       Card(
