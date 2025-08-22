@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 
+import 'langs/de_de.dart';
 import 'langs/en_us.dart';
 import 'langs/fa_ir.dart';
 import 'langs/fr_fr.dart';
@@ -41,5 +42,6 @@ class _Messages extends Translations {
         ...ukUA,
         ...huHU,
         ...ptBR,
+        ...deDE
       };
 }
