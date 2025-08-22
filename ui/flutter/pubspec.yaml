@@ -66,6 +66,7 @@ dependencies:
   toggle_switch: ^2.3.0
   permission_handler: ^11.3.1
   device_info_plus: ^11.1.0
+  connectivity_plus: ^6.1.0
   checkable_treeview: ^1.3.1
   contextmenu_plus: ^1.0.1
   contentsize_tabbarview: ^0.0.2

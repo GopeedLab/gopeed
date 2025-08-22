@@ -63,5 +63,7 @@ const jaJP = {
     'thanksDesc': 'Gopeedコミュニティの建設に協力してくださったすべての貢献者の方々に感謝します！',
     'browserExtension': 'ブラウザ拡張機能',
     'skipVerifyCert': '証明書の検証をスキップ',
+    'networkAutoControl': 'ネットワーク自動制御',
+    'networkAutoControlTip': 'WiFiからモバイルデータに切り替わった時に自動的にダウンロードを一時停止し、WiFiに戻った時に自動的に再開します',
   }
 };
