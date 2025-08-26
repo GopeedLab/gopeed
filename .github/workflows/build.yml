@@ -508,7 +508,7 @@ jobs:
           overwrite: true
   build-ios:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios' }}
-    runs-on: macos-latest
+    runs-on: macos-14
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
