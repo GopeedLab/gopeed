@@ -54,7 +54,8 @@ class Util {
   static Future<void> initStorageDir() async {
     var storageDir = "";
     if (Util.isWindows()) {
-      storageDir = File(Platform.resolvedExecutable).parent.path;
+      storageDir =
+          path.join(File(Platform.resolvedExecutable).parent.path, "storage");
     } else if (!Util.isWeb()) {
       if (Util.isLinux()) {
         storageDir = File(Platform.resolvedExecutable).parent.path;
