@@ -941,9 +941,9 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	}
 
 	// if enable white download directory, check if the download directory is in the white list
-	if len(d.cfg.DownloadDirWhiteList) > 0 {
+	if len(d.cfg.WhiteDownloadDirs) > 0 {
 		inWhiteList := false
-		for _, dir := range d.cfg.DownloadDirWhiteList {
+		for _, dir := range d.cfg.WhiteDownloadDirs {
 			if match, err := filepath.Match(dir, opts.Path); match && err == nil {
 				inWhiteList = true
 				break

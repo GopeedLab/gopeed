@@ -13,12 +13,13 @@ import (
 )
 
 type args struct {
-	Address    *string `json:"address"`
-	Port       *int    `json:"port"`
-	Username   *string `json:"username"`
-	Password   *string `json:"password"`
-	ApiToken   *string `json:"apiToken"`
-	StorageDir *string `json:"storageDir"`
+	Address           *string  `json:"address"`
+	Port              *int     `json:"port"`
+	Username          *string  `json:"username"`
+	Password          *string  `json:"password"`
+	ApiToken          *string  `json:"apiToken"`
+	StorageDir        *string  `json:"storageDir"`
+	WhiteDownloadDirs []string `json:"whiteDownloadDirs"`
 	// DownloadConfig when the first time to start the server, it will be configured as initial value
 	DownloadConfig *base.DownloaderStoreConfig `json:"downloadConfig"`
 
@@ -47,8 +48,18 @@ func loadCliArgs() *args {
 	cfg.Password = flag.String("p", "", "Web Authentication Password, if no password is set, web authentication will not be enabled")
 	cfg.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
 	cfg.StorageDir = flag.String("d", "", "Storage directory")
+	whiteDownloadDirs := flag.String("w", "", "White download directories, comma-separated")
 	cfg.configPath = flag.String("c", "./config.json", "Config file path")
 	flag.Parse()
+
+	// Parse white download directories from comma-separated string
+	if whiteDownloadDirs != nil && *whiteDownloadDirs != "" {
+		dirs := strings.Split(*whiteDownloadDirs, ",")
+		for i := range dirs {
+			dirs[i] = strings.TrimSpace(dirs[i])
+		}
+		cfg.WhiteDownloadDirs = dirs
+	}
 
 	return cfg
 }
@@ -78,6 +89,10 @@ func overrideWithCliArgs(cfg *args, cliConfig *args) {
 
 	if cliConfig.StorageDir != nil && *cliConfig.StorageDir != "" {
 		cfg.StorageDir = cliConfig.StorageDir
+	}
+
+	if cliConfig.WhiteDownloadDirs != nil {
+		cfg.WhiteDownloadDirs = cliConfig.WhiteDownloadDirs
 	}
 }
 
@@ -173,6 +188,15 @@ func loadEnvVars(cfg *args) {
 						field.Set(reflect.ValueOf(&config))
 					}
 				}
+			}
+		} else if field.Kind() == reflect.Slice {
+			// Handle non-pointer slice types (like []string for WhiteDownloadDirs)
+			if field.Type().Elem().Kind() == reflect.String {
+				dirs := strings.Split(envValue, ",")
+				for i := range dirs {
+					dirs[i] = strings.TrimSpace(dirs[i])
+				}
+				field.Set(reflect.ValueOf(dirs))
 			}
 		}
 	}

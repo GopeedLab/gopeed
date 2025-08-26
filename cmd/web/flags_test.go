@@ -224,7 +224,7 @@ func TestLoadEnvVars(t *testing.T) {
 	envKeys := []string{
 		"GOPEED_ADDRESS", "GOPEED_PORT", "GOPEED_USERNAME",
 		"GOPEED_PASSWORD", "GOPEED_APITOKEN", "GOPEED_STORAGEDIR",
-		"GOPEED_DOWNLOADCONFIG",
+		"GOPEED_DOWNLOADCONFIG", "GOPEED_WHITEDOWNLOADDIRS",
 	}
 	for _, key := range envKeys {
 		originalEnv[key] = os.Getenv(key)
@@ -442,7 +442,7 @@ func TestCompleteConfigurationFlow(t *testing.T) {
 
 	// Save and set environment variables
 	originalEnv := make(map[string]string)
-	envKeys := []string{"GOPEED_ADDRESS", "GOPEED_USERNAME", "GOPEED_APITOKEN"}
+	envKeys := []string{"GOPEED_ADDRESS", "GOPEED_USERNAME", "GOPEED_APITOKEN", "GOPEED_WHITEDOWNLOADDIRS"}
 	for _, key := range envKeys {
 		originalEnv[key] = os.Getenv(key)
 	}
@@ -516,4 +516,183 @@ func stringPtr(s string) *string {
 
 func intPtr(i int) *int {
 	return &i
+}
+
+func TestWhiteDownloadDirs(t *testing.T) {
+	t.Run("overrideWithCliArgs should handle WhiteDownloadDirs", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			config    *args
+			cliConfig *args
+			expected  *args
+		}{
+			{
+				name:   "nil cli WhiteDownloadDirs should not override",
+				config: &args{WhiteDownloadDirs: []string{"/old/dir1", "/old/dir2"}},
+				cliConfig: &args{
+					WhiteDownloadDirs: nil,
+				},
+				expected: &args{WhiteDownloadDirs: []string{"/old/dir1", "/old/dir2"}},
+			},
+			{
+				name:   "non-nil cli WhiteDownloadDirs should override",
+				config: &args{WhiteDownloadDirs: []string{"/old/dir1"}},
+				cliConfig: &args{
+					WhiteDownloadDirs: []string{"/new/dir1", "/new/dir2"},
+				},
+				expected: &args{WhiteDownloadDirs: []string{"/new/dir1", "/new/dir2"}},
+			},
+			{
+				name:   "empty cli WhiteDownloadDirs should override with empty slice",
+				config: &args{WhiteDownloadDirs: []string{"/old/dir1"}},
+				cliConfig: &args{
+					WhiteDownloadDirs: []string{},
+				},
+				expected: &args{WhiteDownloadDirs: []string{}},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				overrideWithCliArgs(tt.config, tt.cliConfig)
+				if !reflect.DeepEqual(tt.config, tt.expected) {
+					t.Errorf("overrideWithCliArgs() = %+v, want %+v", tt.config, tt.expected)
+				}
+			})
+		}
+	})
+
+	t.Run("loadConfigFile should handle WhiteDownloadDirs", func(t *testing.T) {
+		// Create temporary directory for test files
+		tempDir, err := os.MkdirTemp("", "flags_test_whitedirs")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		tests := []struct {
+			name       string
+			configData string
+			fileName   string
+			expected   *args
+		}{
+			{
+				name: "config with WhiteDownloadDirs array",
+				configData: `{
+					"address": "test.example.com",
+					"whiteDownloadDirs": ["/path/to/dir1", "/path/to/dir2", "/path/to/dir3"]
+				}`,
+				fileName: "whitedirs_config.json",
+				expected: &args{
+					Address:           stringPtr("test.example.com"),
+					WhiteDownloadDirs: []string{"/path/to/dir1", "/path/to/dir2", "/path/to/dir3"},
+				},
+			},
+			{
+				name: "config with empty WhiteDownloadDirs array",
+				configData: `{
+					"address": "test.example.com",
+					"whiteDownloadDirs": []
+				}`,
+				fileName: "empty_whitedirs_config.json",
+				expected: &args{
+					Address:           stringPtr("test.example.com"),
+					WhiteDownloadDirs: []string{},
+				},
+			},
+			{
+				name: "config without WhiteDownloadDirs",
+				configData: `{
+					"address": "test.example.com",
+					"port": 8080
+				}`,
+				fileName: "no_whitedirs_config.json",
+				expected: &args{
+					Address: stringPtr("test.example.com"),
+					Port:    intPtr(8080),
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				// Create test config file
+				configPath := filepath.Join(tempDir, tt.fileName)
+				err := os.WriteFile(configPath, []byte(tt.configData), 0644)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				cfg := &args{}
+				loadConfigFile(cfg, configPath)
+
+				if !reflect.DeepEqual(cfg, tt.expected) {
+					t.Errorf("loadConfigFile() = %+v, want %+v", cfg, tt.expected)
+				}
+			})
+		}
+	})
+
+	t.Run("loadEnvVars should handle WhiteDownloadDirs", func(t *testing.T) {
+		// Save original environment
+		originalEnv := os.Getenv("GOPEED_WHITEDOWNLOADDIRS")
+		defer func() {
+			if originalEnv != "" {
+				os.Setenv("GOPEED_WHITEDOWNLOADDIRS", originalEnv)
+			} else {
+				os.Unsetenv("GOPEED_WHITEDOWNLOADDIRS")
+			}
+		}()
+
+		tests := []struct {
+			name     string
+			envValue string
+			expected *args
+		}{
+			{
+				name:     "comma-separated directories",
+				envValue: "/env/dir1,/env/dir2,/env/dir3",
+				expected: &args{
+					WhiteDownloadDirs: []string{"/env/dir1", "/env/dir2", "/env/dir3"},
+				},
+			},
+			{
+				name:     "comma-separated with spaces",
+				envValue: " /env/dir1 , /env/dir2 , /env/dir3 ",
+				expected: &args{
+					WhiteDownloadDirs: []string{"/env/dir1", "/env/dir2", "/env/dir3"},
+				},
+			},
+			{
+				name:     "single directory",
+				envValue: "/single/dir",
+				expected: &args{
+					WhiteDownloadDirs: []string{"/single/dir"},
+				},
+			},
+			{
+				name:     "empty string should create empty slice",
+				envValue: "",
+				expected: &args{},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				// Clear environment variable first
+				os.Unsetenv("GOPEED_WHITEDOWNLOADDIRS")
+
+				if tt.envValue != "" {
+					os.Setenv("GOPEED_WHITEDOWNLOADDIRS", tt.envValue)
+				}
+
+				cfg := &args{}
+				loadEnvVars(cfg)
+
+				if !reflect.DeepEqual(cfg, tt.expected) {
+					t.Errorf("loadEnvVars() = %+v, want %+v", cfg, tt.expected)
+				}
+			})
+		}
+	})
 }

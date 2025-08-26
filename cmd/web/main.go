@@ -6,11 +6,12 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/GopeedLab/gopeed/cmd"
-	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/GopeedLab/gopeed/cmd"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
 
 //go:embed dist/*
@@ -31,28 +32,29 @@ func main() {
 		}
 	}
 
-	var dir string
+	var storageDir string
 	if args.StorageDir != nil && *args.StorageDir != "" {
-		dir = *args.StorageDir
+		storageDir = *args.StorageDir
 	} else {
 		exe, err := os.Executable()
 		if err != nil {
 			panic(err)
 		}
-		dir = filepath.Dir(exe)
+		storageDir = filepath.Join(filepath.Dir(exe), "storage")
 	}
 
 	cfg := &model.StartConfig{
-		Network:        "tcp",
-		Address:        fmt.Sprintf("%s:%d", *args.Address, *args.Port),
-		Storage:        model.StorageBolt,
-		StorageDir:     filepath.Join(dir, "storage"),
-		ApiToken:       *args.ApiToken,
-		DownloadConfig: args.DownloadConfig,
-		ProductionMode: true,
-		WebEnable:      true,
-		WebFS:          sub,
-		WebAuth:        webAuth,
+		Network:           "tcp",
+		Address:           fmt.Sprintf("%s:%d", *args.Address, *args.Port),
+		Storage:           model.StorageBolt,
+		StorageDir:        storageDir,
+		WhiteDownloadDirs: args.WhiteDownloadDirs,
+		ApiToken:          *args.ApiToken,
+		DownloadConfig:    args.DownloadConfig,
+		ProductionMode:    true,
+		WebEnable:         true,
+		WebFS:             sub,
+		WebAuth:           webAuth,
 	}
 	cmd.Start(cfg)
 }
