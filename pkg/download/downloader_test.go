@@ -91,7 +91,7 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 	defer listener.Close()
 
 	downloader := NewDownloader(&DownloaderConfig{
-		DownloadDirWhiteList: []string{"./downloads"},
+		WhiteDownloadDirs: []string{"./downloads"},
 	})
 	if err := downloader.Setup(); err != nil {
 		t.Fatal(err)

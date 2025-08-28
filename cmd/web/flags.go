@@ -3,19 +3,23 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
-	"github.com/GopeedLab/gopeed/pkg/base"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
+
+	"github.com/GopeedLab/gopeed/pkg/base"
 )
 
 type args struct {
-	Address    *string `json:"address"`
-	Port       *int    `json:"port"`
-	Username   *string `json:"username"`
-	Password   *string `json:"password"`
-	ApiToken   *string `json:"apiToken"`
-	StorageDir *string `json:"storageDir"`
+	Address           *string  `json:"address"`
+	Port              *int     `json:"port"`
+	Username          *string  `json:"username"`
+	Password          *string  `json:"password"`
+	ApiToken          *string  `json:"apiToken"`
+	StorageDir        *string  `json:"storageDir"`
+	WhiteDownloadDirs []string `json:"whiteDownloadDirs"`
 	// DownloadConfig when the first time to start the server, it will be configured as initial value
 	DownloadConfig *base.DownloaderStoreConfig `json:"downloadConfig"`
 
@@ -23,62 +27,177 @@ type args struct {
 }
 
 func parse() *args {
-	var cliArgs args
-	cliArgs.Address = flag.String("A", "0.0.0.0", "Bind Address")
-	cliArgs.Port = flag.Int("P", 9999, "Bind Port")
-	cliArgs.Username = flag.String("u", "gopeed", "Web Authentication Username")
-	cliArgs.Password = flag.String("p", "", "Web Authentication Password, if no password is set, web authentication will not be enabled")
-	cliArgs.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
-	cliArgs.StorageDir = flag.String("d", "", "Storage directory")
-	cliArgs.configPath = flag.String("c", "./config.json", "Config file path")
-	flag.Parse()
+	cfg := &args{}
 
-	// args priority: config file > cli args
-	cfgArgs := loadConfig(*cliArgs.configPath)
-	if cfgArgs.Address == nil {
-		cfgArgs.Address = cliArgs.Address
-	}
-	if cfgArgs.Port == nil {
-		cfgArgs.Port = cliArgs.Port
-	}
-	if cfgArgs.Username == nil {
-		cfgArgs.Username = cliArgs.Username
-	}
-	if cfgArgs.Password == nil {
-		cfgArgs.Password = cliArgs.Password
-	}
-	if cfgArgs.ApiToken == nil {
-		cfgArgs.ApiToken = cliArgs.ApiToken
-	}
-	if cfgArgs.StorageDir == nil {
-		cfgArgs.StorageDir = cliArgs.StorageDir
-	}
-	return cfgArgs
+	cliConfig := loadCliArgs()
+	loadConfigFile(cfg, *cliConfig.configPath)
+	loadEnvVars(cfg)
+	// override with non-default command line arguments
+	overrideWithCliArgs(cfg, cliConfig)
+	// set default values for any unset fields
+	setDefaults(cfg)
+	return cfg
 }
 
-func loadConfig(path string) *args {
-	var args args
+// loadCliArgs parses command line arguments and returns initial config
+func loadCliArgs() *args {
+	cfg := &args{}
+	cfg.Address = flag.String("A", "", "Bind Address")
+	cfg.Port = flag.Int("P", 0, "Bind Port")
+	cfg.Username = flag.String("u", "", "Web Authentication Username")
+	cfg.Password = flag.String("p", "", "Web Authentication Password, if no password is set, web authentication will not be enabled")
+	cfg.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
+	cfg.StorageDir = flag.String("d", "", "Storage directory")
+	whiteDownloadDirs := flag.String("w", "", "White download directories, comma-separated")
+	cfg.configPath = flag.String("c", "./config.json", "Config file path")
+	flag.Parse()
 
-	if !filepath.IsAbs(path) {
+	// Parse white download directories from comma-separated string
+	if whiteDownloadDirs != nil && *whiteDownloadDirs != "" {
+		dirs := strings.Split(*whiteDownloadDirs, ",")
+		for i := range dirs {
+			dirs[i] = strings.TrimSpace(dirs[i])
+		}
+		cfg.WhiteDownloadDirs = dirs
+	}
+
+	return cfg
+}
+
+// overrideWithCliArgs overrides config with non-empty command line arguments
+func overrideWithCliArgs(cfg *args, cliConfig *args) {
+	// Only override if the cli value is not empty/zero
+	if cliConfig.Address != nil && *cliConfig.Address != "" {
+		cfg.Address = cliConfig.Address
+	}
+
+	if cliConfig.Port != nil && *cliConfig.Port != 0 {
+		cfg.Port = cliConfig.Port
+	}
+
+	if cliConfig.Username != nil && *cliConfig.Username != "" {
+		cfg.Username = cliConfig.Username
+	}
+
+	if cliConfig.Password != nil && *cliConfig.Password != "" {
+		cfg.Password = cliConfig.Password
+	}
+
+	if cliConfig.ApiToken != nil && *cliConfig.ApiToken != "" {
+		cfg.ApiToken = cliConfig.ApiToken
+	}
+
+	if cliConfig.StorageDir != nil && *cliConfig.StorageDir != "" {
+		cfg.StorageDir = cliConfig.StorageDir
+	}
+
+	if cliConfig.WhiteDownloadDirs != nil {
+		cfg.WhiteDownloadDirs = cliConfig.WhiteDownloadDirs
+	}
+}
+
+// setDefaults sets default values for any unset configuration fields
+func setDefaults(cfg *args) {
+	if cfg.Address == nil {
+		address := "0.0.0.0"
+		cfg.Address = &address
+	}
+
+	if cfg.Port == nil {
+		port := 9999
+		cfg.Port = &port
+	}
+
+	if cfg.Username == nil {
+		username := "gopeed"
+		cfg.Username = &username
+	}
+}
+
+// loadConfigFile loads configuration from file
+func loadConfigFile(cfg *args, configPath string) {
+	if !filepath.IsAbs(configPath) {
 		dir, err := os.Getwd()
 		if err != nil {
-			fmt.Println("config dir get failed, reason:" + err.Error())
-			return &args
+			return
 		}
-		path = filepath.Join(dir, path)
+		configPath = filepath.Join(dir, configPath)
 	}
-	file, err := os.ReadFile(path)
+
+	file, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &args
+			return
 		}
-		fmt.Println("config file read failed, reason:" + err.Error())
-		return &args
+		return
 	}
-	if err = json.Unmarshal(file, &args); err != nil {
-		fmt.Println("config file parse failed, reason:" + err.Error())
-		return &args
+
+	if err = json.Unmarshal(file, cfg); err != nil {
+		return
 	}
-	fmt.Printf("config file loaded: %s\n", path)
-	return &args
+}
+
+// loadEnvVars loads configuration from environment variables with prefix GOPEED_
+func loadEnvVars(cfg *args) {
+	v := reflect.ValueOf(cfg).Elem()
+	t := reflect.TypeOf(cfg).Elem()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+
+		// Get json tag as environment variable suffix
+		jsonTag := fieldType.Tag.Get("json")
+		if jsonTag == "" || jsonTag == "-" {
+			continue
+		}
+
+		// Remove options like omitempty
+		if commaIdx := strings.Index(jsonTag, ","); commaIdx != -1 {
+			jsonTag = jsonTag[:commaIdx]
+		}
+
+		// Convert to uppercase and add GOPEED_ prefix
+		envKey := "GOPEED_" + strings.ToUpper(jsonTag)
+		envValue := os.Getenv(envKey)
+
+		if envValue == "" {
+			continue
+		}
+
+		// Set value based on field type
+		if field.Kind() == reflect.Ptr {
+			if field.IsNil() {
+				// Create new pointer instance
+				newVal := reflect.New(field.Type().Elem())
+				field.Set(newVal)
+			}
+
+			switch field.Type().Elem().Kind() {
+			case reflect.String:
+				field.Elem().SetString(envValue)
+			case reflect.Int:
+				if intVal, err := strconv.Atoi(envValue); err == nil {
+					field.Elem().SetInt(int64(intVal))
+				}
+			default:
+				// For complex types like DownloadConfig, try JSON unmarshaling
+				if field.Type().Elem() == reflect.TypeOf(base.DownloaderStoreConfig{}) {
+					var config base.DownloaderStoreConfig
+					if err := json.Unmarshal([]byte(envValue), &config); err == nil {
+						field.Set(reflect.ValueOf(&config))
+					}
+				}
+			}
+		} else if field.Kind() == reflect.Slice {
+			// Handle non-pointer slice types (like []string for WhiteDownloadDirs)
+			if field.Type().Elem().Kind() == reflect.String {
+				dirs := strings.Split(envValue, ",")
+				for i := range dirs {
+					dirs[i] = strings.TrimSpace(dirs[i])
+				}
+				field.Set(reflect.ValueOf(dirs))
+			}
+		}
+	}
 }
