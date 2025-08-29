@@ -42,7 +42,7 @@ func parse() *args {
 // loadCliArgs parses command line arguments and returns initial config
 func loadCliArgs() *args {
 	cfg := &args{}
-	cfg.Address = flag.String("A", "127.0.0.1", "Bind Address")
+	cfg.Address = flag.String("A", "0.0.0.0", "Bind Address")
 	cfg.Port = flag.Int("P", 9999, "Bind Port")
 	cfg.Username = flag.String("u", "gopeed", "Web Authentication Username")
 	cfg.Password = flag.String("p", "123456", "Web Authentication Password, if no password is set, web authentication will not be enabled")
