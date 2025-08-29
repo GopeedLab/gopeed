@@ -191,7 +191,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 				}
 
 				if enableBasicAuth {
-					if r.URL.Path == "/api/web/login" {
+					if !strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/api/web/login" {
 						h.ServeHTTP(w, r)
 						return
 					}
