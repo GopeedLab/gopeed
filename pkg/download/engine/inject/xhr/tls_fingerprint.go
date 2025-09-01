@@ -1,21 +1,19 @@
 package xhr
 
-import (
-	"github.com/imroc/req/v3"
-)
+import "github.com/imroc/req/v3"
 
 type Fingerprint string
 
 const (
-	fingerprintChrome  Fingerprint = "chrome"
-	fingerprintFirefox Fingerprint = "firefox"
-	fingerprintSafari  Fingerprint = "safari"
+	FingerprintMagicKey = "__gopeed_xhr_fingerprint"
+
+	fingerprintChrome  = "chrome"
+	fingerprintFirefox = "firefox"
+	fingerprintSafari  = "safari"
 )
 
-var currentFingerprint Fingerprint = ""
-
-func setFingerprint(client *req.Client) {
-	switch currentFingerprint {
+func setFingerprint(client *req.Client, fingerprint string) {
+	switch fingerprint {
 	case fingerprintChrome:
 		client.ImpersonateChrome()
 	case fingerprintFirefox:

@@ -22,3 +22,16 @@ func AssertError[T error](err error) (t T, r bool) {
 	}
 	return
 }
+
+func SafeGet[T any](vm *goja.Runtime, name string) T {
+	v := vm.Get(name)
+	if v == nil {
+		var init T
+		return init
+	}
+	if e, ok := v.Export().(T); ok {
+		return e
+	}
+	var init T
+	return init
+}
