@@ -128,3 +128,24 @@ func TestParseDataUri(t *testing.T) {
 		})
 	}
 }
+
+func TestTryURLDecode(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"normal.txt", "normal.txt"},
+		{"%E7%8F%80%E5%B0%94%E8%AF%BA.zip", "珀尔诺.zip"},
+		{"hello%20world.txt", "hello world.txt"},
+		{"bad%2-text", "bad%2-text"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := TryUrlQueryUnescape(tt.input)
+			if got != tt.expected {
+				t.Errorf("TryUrlQueryUnescape(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
