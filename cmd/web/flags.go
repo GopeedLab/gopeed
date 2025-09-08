@@ -45,7 +45,7 @@ func loadCliArgs() *args {
 	cfg.Address = flag.String("A", "0.0.0.0", "Bind Address")
 	cfg.Port = flag.Int("P", 9999, "Bind Port")
 	cfg.Username = flag.String("u", "gopeed", "Web Authentication Username")
-	cfg.Password = flag.String("p", "123456", "Web Authentication Password, if no password is set, web authentication will not be enabled")
+	cfg.Password = flag.String("p", "", "Web Authentication Password, if no password is set, web authentication will not be enabled")
 	cfg.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
 	cfg.StorageDir = flag.String("d", "", "Storage directory")
 	whiteDownloadDirs := flag.String("w", "", "White download directories, comma-separated")
