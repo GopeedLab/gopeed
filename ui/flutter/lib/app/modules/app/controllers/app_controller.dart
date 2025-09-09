@@ -119,7 +119,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
   @override
   void onTrayIconRightMouseDown() {
-    trayManager.popUpContextMenu();
+    trayManager.popUpContextMenu(bringAppToFront: true);
   }
 
   @override
