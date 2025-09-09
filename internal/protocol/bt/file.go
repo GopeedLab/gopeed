@@ -34,7 +34,7 @@ func newFileOpts(opts newFileClientOpts) storage.ClientImplCloser {
 	if opts.FilePathMaker == nil {
 		opts.FilePathMaker = func(opts storage.FilePathMakerOpts) string {
 			var parts []string
-			if opts.Info.Name != metainfo.NoName {
+			if opts.Info.Length == 0 {
 				parts = append(parts, opts.Info.Name)
 			}
 			return filepath.Join(append(parts, opts.File.Path...)...)
