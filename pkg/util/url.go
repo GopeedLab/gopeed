@@ -56,3 +56,13 @@ func ProxyUrlToHandler(proxyUrl *url.URL) func(*http.Request) (*url.URL, error) 
 	}
 	return http.ProxyURL(proxyUrl)
 }
+
+// TryUrlQueryUnescape tries to unescape a URL-encoded string.
+//
+// If unescaping fails, it returns the original string.
+func TryUrlQueryUnescape(s string) string {
+	if decoded, err := url.QueryUnescape(s); err == nil {
+		return decoded
+	}
+	return s
+}
