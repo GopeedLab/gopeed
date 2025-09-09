@@ -1252,11 +1252,12 @@ packages:
   tray_manager:
     dependency: "direct main"
     description:
-      name: tray_manager
-      sha256: bdc3ac6c36f3d12d871459e4a9822705ce5a1165a17fa837103bc842719bf3f7
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.4"
+      path: "packages/tray_manager"
+      ref: main
+      resolved-ref: "91cdbdc12517d0d832aca715542b9d0329739d5d"
+      url: "https://github.com/monkeyWie/tray_manager.git"
+    source: git
+    version: "0.5.1"
   typed_data:
     dependency: transitive
     description:
