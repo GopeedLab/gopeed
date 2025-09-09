@@ -34,17 +34,17 @@ func parse() *args {
 	loadEnvVars(cfg)
 	// override with non-default command line arguments
 	overrideWithCliArgs(cfg, cliConfig)
-	// set default values for any unset fields
-	setDefaults(cfg)
+	// set default values
+	setDefaults(cfg, cliConfig)
 	return cfg
 }
 
 // loadCliArgs parses command line arguments and returns initial config
 func loadCliArgs() *args {
 	cfg := &args{}
-	cfg.Address = flag.String("A", "", "Bind Address")
-	cfg.Port = flag.Int("P", 0, "Bind Port")
-	cfg.Username = flag.String("u", "", "Web Authentication Username")
+	cfg.Address = flag.String("A", "0.0.0.0", "Bind Address")
+	cfg.Port = flag.Int("P", 9999, "Bind Port")
+	cfg.Username = flag.String("u", "gopeed", "Web Authentication Username")
 	cfg.Password = flag.String("p", "", "Web Authentication Password, if no password is set, web authentication will not be enabled")
 	cfg.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
 	cfg.StorageDir = flag.String("d", "", "Storage directory")
@@ -66,51 +66,47 @@ func loadCliArgs() *args {
 
 // overrideWithCliArgs overrides config with non-empty command line arguments
 func overrideWithCliArgs(cfg *args, cliConfig *args) {
-	// Only override if the cli value is not empty/zero
-	if cliConfig.Address != nil && *cliConfig.Address != "" {
-		cfg.Address = cliConfig.Address
-	}
-
-	if cliConfig.Port != nil && *cliConfig.Port != 0 {
-		cfg.Port = cliConfig.Port
-	}
-
-	if cliConfig.Username != nil && *cliConfig.Username != "" {
-		cfg.Username = cliConfig.Username
-	}
-
-	if cliConfig.Password != nil && *cliConfig.Password != "" {
-		cfg.Password = cliConfig.Password
-	}
-
-	if cliConfig.ApiToken != nil && *cliConfig.ApiToken != "" {
-		cfg.ApiToken = cliConfig.ApiToken
-	}
-
-	if cliConfig.StorageDir != nil && *cliConfig.StorageDir != "" {
-		cfg.StorageDir = cliConfig.StorageDir
-	}
-
-	if cliConfig.WhiteDownloadDirs != nil {
-		cfg.WhiteDownloadDirs = cliConfig.WhiteDownloadDirs
-	}
+	flag.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "A":
+			cfg.Address = cliConfig.Address
+		case "P":
+			cfg.Port = cliConfig.Port
+		case "u":
+			cfg.Username = cliConfig.Username
+		case "p":
+			cfg.Password = cliConfig.Password
+		case "T":
+			cfg.ApiToken = cliConfig.ApiToken
+		case "d":
+			cfg.StorageDir = cliConfig.StorageDir
+		case "w":
+			cfg.WhiteDownloadDirs = cliConfig.WhiteDownloadDirs
+		case "c":
+			cfg.configPath = cliConfig.configPath
+		}
+	})
 }
 
 // setDefaults sets default values for any unset configuration fields
-func setDefaults(cfg *args) {
+func setDefaults(cfg *args, cliConfig *args) {
 	if cfg.Address == nil {
-		address := "0.0.0.0"
-		cfg.Address = &address
+		cfg.Address = cliConfig.Address
 	}
-
 	if cfg.Port == nil {
-		port := 9999
-		cfg.Port = &port
+		cfg.Port = cliConfig.Port
 	}
-
 	if cfg.Username == nil {
-		username := "gopeed"
-		cfg.Username = &username
+		cfg.Username = cliConfig.Username
+	}
+	if cfg.Password == nil {
+		cfg.Password = cliConfig.Password
+	}
+	if cfg.ApiToken == nil {
+		cfg.ApiToken = cliConfig.ApiToken
+	}
+	if cfg.StorageDir == nil {
+		cfg.StorageDir = cliConfig.StorageDir
 	}
 }
 
