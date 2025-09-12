@@ -52,6 +52,7 @@ const enUS = {
     'themeLight': 'Light',
     'themeDark': 'Dark',
     'locale': 'Language',
+    'notifyWhenNewVersion': 'Notify for updates',
     'about': 'About',
     'homepage': 'Homepage',
     'version': 'Version',
