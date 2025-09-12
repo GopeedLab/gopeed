@@ -65,7 +65,9 @@ func Stop() {
 	}()
 
 	if srv != nil {
-		if err := srv.Shutdown(context.TODO()); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
 			Downloader.Logger.Warn().Err(err).Msg("shutdown server failed")
 		}
 	}
