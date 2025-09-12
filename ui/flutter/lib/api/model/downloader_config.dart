@@ -81,6 +81,7 @@ class ExtraConfig {
   bool lastDeleteTaskKeep;
   bool defaultDirectDownload;
   bool defaultBtClient;
+  bool notifyWhenNewVersion;
 
   ExtraConfigBt bt = ExtraConfigBt();
 
@@ -90,6 +91,7 @@ class ExtraConfig {
     this.lastDeleteTaskKeep = false,
     this.defaultDirectDownload = false,
     this.defaultBtClient = true,
+    this.notifyWhenNewVersion = true,
   });
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>

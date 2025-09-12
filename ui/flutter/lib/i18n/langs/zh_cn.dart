@@ -51,6 +51,7 @@ const zhCN = {
     'themeLight': '明亮主题',
     'themeDark': '暗黑主题',
     'locale': '语言',
+    'notifyWhenNewVersion': '有新版本时提醒',
     'about': '关于',
     'homepage': '主页',
     'version': '版本',
