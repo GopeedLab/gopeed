@@ -69,7 +69,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-22.04, ubuntu-22.04-arm]
+        os: [windows-latest, macos-latest, ubuntu-24.04, ubuntu-24.04-arm]
     needs: [test]
     steps:
       - uses: actions/checkout@v3
