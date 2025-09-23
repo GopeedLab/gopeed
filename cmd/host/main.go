@@ -1,16 +1,19 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
+	"net/rpc"
+	"net/rpc/jsonrpc"
 	"os"
-	"strings"
-
-	"github.com/pkg/browser"
-	"github.com/shirou/gopsutil/v4/process"
+	"time"
 )
 
 const identifier = "gopeed"
@@ -28,29 +31,32 @@ type Response struct {
 
 var apiMap = map[string]func(params json.RawMessage) (data any, err error){
 	"ping": func(params json.RawMessage) (data any, err error) {
-		processes, err := process.Processes()
+		conn, err := Dial()
 		if err != nil {
 			return false, err
 		}
-
-		for _, p := range processes {
-			name, err := p.Name()
-			if err != nil {
-				continue
-			}
-
-			if strings.Contains(strings.ToLower(name), strings.ToLower(identifier)) {
-				return true, nil
-			}
-		}
-		return false, nil
+		defer conn.Close()
+		return true, nil
 	},
 	"create": func(params json.RawMessage) (data any, err error) {
 		var strParams string
 		if err = json.Unmarshal(params, &strParams); err != nil {
 			return
 		}
-		err = browser.OpenURL(fmt.Sprintf("%s:///create?params=%s", identifier, strParams))
+
+		conn, err := Dial()
+		if err != nil {
+			return false, err
+		}
+		defer conn.Close()
+
+		client := rpc.NewClientWithCodec(jsonrpc.NewClientCodec(conn))
+		defer client.Close()
+
+		var result bool
+		err = client.Call("create", map[string]any{
+			"params": strParams,
+		}, &result)
 		return
 	},
 }
@@ -58,6 +64,30 @@ var apiMap = map[string]func(params json.RawMessage) (data any, err error){
 // go build -ldflags="-s -w" -o ui/flutter/assets/exec/ github.com/GopeedLab/gopeed/cmd/host
 
 func main() {
+	doReq := func() {
+		client := &http.Client{
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					return Dial()
+				},
+			},
+			Timeout: 10 * time.Second,
+		}
+
+		body := fmt.Sprintf(`{"id":1,"method":"register","params":{"identifier":"%s"}}`, identifier)
+		resp, err := client.Post("http://gopeed/test", "application/json", bytes.NewBufferString(body))
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+
+		fmt.Println("Response status:", resp.Status)
+	}
+
+	for i := 0; i < 10; i++ {
+		go doReq()
+	}
+
 	for {
 		// Read message length (first 4 bytes)
 		var length uint32

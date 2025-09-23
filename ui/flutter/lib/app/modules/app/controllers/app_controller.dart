@@ -31,6 +31,7 @@ import '../../../../util/package_info.dart';
 import '../../../../util/updater.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
+import '../../../rpc/rpc.dart';
 import '../../create/dto/create_router_params.dart';
 import '../../redirect/views/redirect_view.dart';
 
@@ -77,6 +78,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
     _initTray().onError(
         (error, stackTrace) => logger.w("initTray error", error, stackTrace));
+
+    _initRpcServer().onError((error, stackTrace) =>
+        logger.w("initRpcServer error", error, stackTrace));
 
     _initForegroundTask().onError((error, stackTrace) =>
         logger.w("initForegroundTask error", error, stackTrace));
@@ -269,6 +273,17 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
     await trayManager.setContextMenu(menu);
     trayManager.addListener(this);
+  }
+
+  Future<void> _initRpcServer() async {
+    if (!Util.isDesktop()) {
+      return;
+    }
+    try {
+      await startRpcServer();
+    } catch (e) {
+      logger.w("start rpc server fail", e, StackTrace.current);
+    }
   }
 
   Future<void> _initForegroundTask() async {
