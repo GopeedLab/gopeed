@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart';
+import '../../../../api/model/create_task.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/request.dart';
 import '../../../../core/common/start_config.dart';
@@ -32,7 +33,6 @@ import '../../../../util/updater.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
 import '../../../rpc/rpc.dart';
-import '../../create/dto/create_router_params.dart';
 import '../../redirect/views/redirect_view.dart';
 
 const unixSocketPath = 'gopeed.sock';
@@ -280,7 +280,34 @@ class AppController extends GetxController with WindowListener, TrayListener {
       return;
     }
     try {
-      await startRpcServer();
+      await startRpcServer({
+        "/create": (ctx) async {
+          final version =
+              ctx.request.headers["X-Gopeed-Extension-Version"]?.firstOrNull;
+          if (version?.isNotEmpty == true) {
+            final body = await ctx.readJSON();
+            final params = body['params'];
+            final silent = body['silent'] as bool? ?? false;
+            if (!silent) {
+              await windowManager.show();
+              _handleToCreate(params);
+            } else {
+              try {
+                await createTask(_decodeToCreateParams(params));
+              } catch (e) {
+                logger.w(
+                    "create task from extension fail", e, StackTrace.current);
+              }
+            }
+          } else {
+            // Compatible with old version extension
+            // TODO remove this in future
+            final params = await ctx.readText();
+            await windowManager.show();
+            _handleToCreate(params);
+          }
+        },
+      });
     } catch (e) {
       logger.w("start rpc server fail", e, StackTrace.current);
     }
@@ -332,13 +359,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       if (uri.path == "/create") {
         final params = uri.queryParameters["params"];
         if (params?.isNotEmpty == true) {
-          final safeParams = params!.replaceAll(" ", "+");
-          final paramsJson =
-              String.fromCharCodes(base64Decode(base64.normalize(safeParams)));
-          Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
-              arguments: RedirectArgs(Routes.CREATE,
-                  arguments:
-                      CreateRouterParams.fromJson(jsonDecode(paramsJson))));
+          _handleToCreate(params!);
           return;
         }
         Get.rootDelegate.offAndToNamed(Routes.CREATE);
@@ -361,7 +382,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
     Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
         arguments: RedirectArgs(Routes.CREATE,
-            arguments: CreateRouterParams(req: Request(url: path))));
+            arguments: CreateTask(req: Request(url: path))));
   }
 
   String runningAddress() {
@@ -538,5 +559,18 @@ class AppController extends GetxController with WindowListener, TrayListener {
         address: startConfig.value.address,
         apiToken: startConfig.value.apiToken));
     await putConfig(downloaderConfig.value);
+  }
+
+  CreateTask _decodeToCreateParams(String params) {
+    final safeParams = params.replaceAll('"', "").replaceAll(" ", "+");
+    final paramsJson =
+        String.fromCharCodes(base64Decode(base64.normalize(safeParams)));
+    return CreateTask.fromJson(jsonDecode(paramsJson));
+  }
+
+  _handleToCreate(String params) {
+    final createParams = _decodeToCreateParams(params);
+    Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
+        arguments: RedirectArgs(Routes.CREATE, arguments: createParams));
   }
 }
