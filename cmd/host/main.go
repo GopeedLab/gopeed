@@ -14,9 +14,8 @@ import (
 )
 
 type Message struct {
-	Method  string          `json:"method"`
-	Version string          `json:"version"`
-	Params  json.RawMessage `json:"params"`
+	Method string          `json:"method"`
+	Params json.RawMessage `json:"params"`
 }
 
 type Response struct {
@@ -52,7 +51,6 @@ var apiMap = map[string]func(message *Message) (data any, err error){
 		if err != nil {
 			return
 		}
-		req.Header.Set("X-Gopeed-Extension-Version", message.Version)
 		_, err = client.Do(req)
 		return
 	},

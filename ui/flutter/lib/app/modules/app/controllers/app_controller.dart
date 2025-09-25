@@ -282,29 +282,19 @@ class AppController extends GetxController with WindowListener, TrayListener {
     try {
       await startRpcServer({
         "/create": (ctx) async {
-          final version =
-              ctx.request.headers["X-Gopeed-Extension-Version"]?.firstOrNull;
-          if (version?.isNotEmpty == true) {
-            final body = await ctx.readJSON();
-            final params = body['params'];
-            final silent = body['silent'] as bool? ?? false;
-            if (!silent) {
-              await windowManager.show();
-              _handleToCreate(params);
-            } else {
-              try {
-                await createTask(_decodeToCreateParams(params));
-              } catch (e) {
-                logger.w(
-                    "create task from extension fail", e, StackTrace.current);
-              }
-            }
-          } else {
-            // Compatible with old version extension
-            // TODO remove this in future
-            final params = await ctx.readText();
+          final params = await ctx.readText();
+          final jsonParams = _decodeToCreateJsonParams(params);
+          final silent = jsonParams['extSilent'] as bool? ?? false;
+          if (!silent) {
             await windowManager.show();
-            _handleToCreate(params);
+            _handleToCreate0(jsonParams);
+          } else {
+            try {
+              await createTask(CreateTask.fromJson(jsonParams));
+            } catch (e) {
+              logger.w(
+                  "create task from extension fail", e, StackTrace.current);
+            }
           }
         },
       });
@@ -561,15 +551,20 @@ class AppController extends GetxController with WindowListener, TrayListener {
     await putConfig(downloaderConfig.value);
   }
 
-  CreateTask _decodeToCreateParams(String params) {
+  Map<String, dynamic> _decodeToCreateJsonParams(String params) {
     final safeParams = params.replaceAll('"', "").replaceAll(" ", "+");
     final paramsJson =
         String.fromCharCodes(base64Decode(base64.normalize(safeParams)));
-    return CreateTask.fromJson(jsonDecode(paramsJson));
+    return jsonDecode(paramsJson);
   }
 
   _handleToCreate(String params) {
-    final createParams = _decodeToCreateParams(params);
+    final createJsonParams = _decodeToCreateJsonParams(params);
+    _handleToCreate0(createJsonParams);
+  }
+
+  _handleToCreate0(Map<String, dynamic> jsonParams) {
+    final createParams = CreateTask.fromJson(jsonParams);
     Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
         arguments: RedirectArgs(Routes.CREATE, arguments: createParams));
   }
