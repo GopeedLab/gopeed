@@ -24,6 +24,8 @@ class Args {
 
   bool hidden = false;
 
+  Args();
+
   Args.parse(List<String> args) {
     final parser = ArgParser();
     parser.addFlag(flagHidden);
@@ -33,7 +35,20 @@ class Args {
 }
 
 void main(List<String> arguments) async {
-  final args = Args.parse(arguments);
+  Args args;
+  // Parse url scheme arguments, e.g. gopeed:?hidden=true
+  if (arguments.firstOrNull?.startsWith("gopeed:") == true) {
+    try {
+      final uri = Uri.parse(arguments.first);
+      args = Args()..hidden = uri.queryParameters["hidden"] == "true";
+    } catch (e) {
+      // ignore
+      args = Args.parse([]);
+    }
+  } else {
+    args = Args.parse(arguments);
+  }
+
   await init(args);
   onStart();
 
