@@ -282,15 +282,18 @@ class AppController extends GetxController with WindowListener, TrayListener {
     try {
       await startRpcServer({
         "/create": (ctx) async {
+          final meta =
+              ctx.request.headers["X-Gopeed-Host-Meta"]?.firstOrNull ?? "{}";
+          final jsonMeta = jsonDecode(meta);
+          final silent = jsonMeta['silent'] as bool? ?? false;
           final params = await ctx.readText();
-          final jsonParams = _decodeToCreateJsonParams(params);
-          final silent = jsonParams['extSilent'] as bool? ?? false;
+          final createTaskParams = _decodeToCreatTaskParams(params);
           if (!silent) {
             await windowManager.show();
-            _handleToCreate0(jsonParams);
+            _handleToCreate0(createTaskParams);
           } else {
             try {
-              await createTask(CreateTask.fromJson(jsonParams));
+              await createTask(createTaskParams);
             } catch (e) {
               logger.w(
                   "create task from extension fail", e, StackTrace.current);
@@ -551,21 +554,20 @@ class AppController extends GetxController with WindowListener, TrayListener {
     await putConfig(downloaderConfig.value);
   }
 
-  Map<String, dynamic> _decodeToCreateJsonParams(String params) {
+  CreateTask _decodeToCreatTaskParams(String params) {
     final safeParams = params.replaceAll('"', "").replaceAll(" ", "+");
     final paramsJson =
         String.fromCharCodes(base64Decode(base64.normalize(safeParams)));
-    return jsonDecode(paramsJson);
+    return CreateTask.fromJson(jsonDecode(paramsJson));
   }
 
   _handleToCreate(String params) {
-    final createJsonParams = _decodeToCreateJsonParams(params);
-    _handleToCreate0(createJsonParams);
+    final createTaskParams = _decodeToCreatTaskParams(params);
+    _handleToCreate0(createTaskParams);
   }
 
-  _handleToCreate0(Map<String, dynamic> jsonParams) {
-    final createParams = CreateTask.fromJson(jsonParams);
+  _handleToCreate0(CreateTask createTaskParams) {
     Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
-        arguments: RedirectArgs(Routes.CREATE, arguments: createParams));
+        arguments: RedirectArgs(Routes.CREATE, arguments: createTaskParams));
   }
 }

@@ -6,15 +6,19 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/pkg/browser"
 )
 
 type Message struct {
 	Method string          `json:"method"`
+	Meta   map[string]any  `json:"meta"`
 	Params json.RawMessage `json:"params"`
 }
 
@@ -24,19 +28,55 @@ type Response struct {
 	Message string `json:"message,omitempty"`
 }
 
+func check() (data bool, err error) {
+	conn, err := Dial()
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+	return true, nil
+}
+
+func wakeup(hidden bool) error {
+	running, _ := check()
+	if running {
+		return nil
+	}
+
+	uri := "gopeed:"
+	if hidden {
+		uri = uri + "?hidden=true"
+	}
+	if err := browser.OpenURL(uri); err != nil {
+		return err
+	}
+
+	for i := 0; i < 10; i++ {
+		if ok, _ := check(); ok {
+			return nil
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return fmt.Errorf("start gopeed failed")
+}
+
 var apiMap = map[string]func(message *Message) (data any, err error){
 	"ping": func(message *Message) (data any, err error) {
-		conn, err := Dial()
-		if err != nil {
-			return false, err
-		}
-		defer conn.Close()
-		return true, nil
+		return check()
 	},
 	"create": func(message *Message) (data any, err error) {
 		buf, err := message.Params.MarshalJSON()
 		if err != nil {
 			return
+		}
+
+		silent := false
+		if v, ok := message.Meta["silent"]; ok {
+			silent, _ = v.(bool)
+		}
+
+		if err := wakeup(silent); err != nil {
+			return nil, err
 		}
 
 		client := &http.Client{
@@ -50,6 +90,10 @@ var apiMap = map[string]func(message *Message) (data any, err error){
 		req, err := http.NewRequest("POST", "http://127.0.0.1/create", bytes.NewBuffer(buf))
 		if err != nil {
 			return
+		}
+		if message.Meta != nil {
+			metaJson, _ := json.Marshal(message.Meta)
+			req.Header.Set("X-Gopeed-Host-Meta", string(metaJson))
 		}
 		_, err = client.Do(req)
 		return
