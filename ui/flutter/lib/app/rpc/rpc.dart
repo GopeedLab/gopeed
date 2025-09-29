@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:dart_ipc/dart_ipc.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../util/util.dart';
 
@@ -79,9 +80,21 @@ class RouteRegistry {
 
 /// Start RPC server
 Future<void> startRpcServer([Map<String, RouteHandler>? routes]) async {
-  var path = Util.isWindows()
-      ? r'\\.\pipe\gopeed_host'
-      : Util.homePathJoin("gopeed_host.sock");
+  String path;
+  if (Util.isWindows()) {
+    path = r'\\.\pipe\gopeed_host';
+  } else {
+    path = await Util.homePathJoin("gopeed_host.sock");
+    // try to delete existing socket file
+    final socketFile = File(path);
+    if (await socketFile.exists()) {
+      try {
+        await socketFile.delete();
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
 
   // Create route registry
   final registry = RouteRegistry();

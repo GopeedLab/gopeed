@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -19,6 +18,7 @@ func main() {
 	pid := flag.Int("pid", 0, "PID of the process to update")
 	updateChannel := flag.String("channel", "", "Update channel")
 	packagePath := flag.String("asset", "", "Path to the package asset")
+	exeDir := flag.String("exeDir", "", "Directory of the entry executable")
 	logPath := flag.String("log", "", "Log file path")
 	flag.Parse()
 
@@ -43,7 +43,7 @@ func main() {
 		restart bool
 		err     error
 	)
-	if restart, err = update(*pid, *updateChannel, *packagePath); err != nil {
+	if restart, err = update(*pid, *updateChannel, *packagePath, *exeDir); err != nil {
 		log.Printf("Update failed: %v\n", err)
 		os.Exit(1)
 	}
@@ -61,7 +61,7 @@ func main() {
 	os.Exit(0)
 }
 
-func update(pid int, updateChannel, packagePath string) (restart bool, err error) {
+func update(pid int, updateChannel, packagePath, exeDir string) (restart bool, err error) {
 	killSignalChan := make(chan any, 1)
 
 	go func() {
@@ -76,9 +76,8 @@ func update(pid int, updateChannel, packagePath string) (restart bool, err error
 		}
 	}()
 
-	appDir := filepath.Dir(os.Args[0])
-	log.Printf("Updating process updateChannel=%s packagePath=%s appDir=%s\n", updateChannel, packagePath, appDir)
-	if restart, err = install(killSignalChan, updateChannel, packagePath, appDir); err != nil {
+	log.Printf("Updating process updateChannel=%s packagePath=%s exeDir=%s\n", updateChannel, packagePath, exeDir)
+	if restart, err = install(killSignalChan, updateChannel, packagePath, exeDir); err != nil {
 		return false, errors.Wrap(err, "failed to install package")
 	}
 
