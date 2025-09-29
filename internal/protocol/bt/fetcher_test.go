@@ -3,17 +3,18 @@ package bt
 import (
 	"encoding/base64"
 	"encoding/json"
-	"github.com/GopeedLab/gopeed/internal/controller"
-	"github.com/GopeedLab/gopeed/internal/fetcher"
-	"github.com/GopeedLab/gopeed/internal/test"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
 	gohttp "net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/internal/test"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
 )
 
 func TestFetcher_Resolve_Torrent(t *testing.T) {
