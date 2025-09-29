@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-class GradientButton extends StatelessWidget {
+class GpGradientButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
   final IconData? icon; // 添加可选图标参数
 
-  const GradientButton({
+  const GpGradientButton({
     super.key,
     required this.text,
     required this.onPressed,
