@@ -531,6 +531,25 @@ class SettingView extends GetView<SettingController> {
       );
     }
 
+    final buildAutoCheckUpdate = _buildConfigItem(
+        'notifyWhenNewVersion',
+        () =>
+            downloaderCfg.value.extra.notifyWhenNewVersion ? 'on'.tr : 'off'.tr,
+        (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: downloaderCfg.value.extra.notifyWhenNewVersion,
+          onChanged: (bool value) async {
+            downloaderCfg.update((val) {
+              val!.extra.notifyWhenNewVersion = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
     buildThanks() {
       const thankPage =
           'https://github.com/GopeedLab/gopeed/graphs/contributors';
@@ -957,6 +976,7 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildHomepage(),
                             buildVersion(),
+                            buildAutoCheckUpdate(),
                             buildThanks(),
                           ]),
                         )),

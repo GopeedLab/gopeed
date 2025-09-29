@@ -23,6 +23,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/xiaoqidun/setft"
 	"golang.org/x/sync/errgroup"
 )
@@ -172,13 +173,13 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 				filename = strings.Replace(filename, "UTF8", "UTF-8", 1)
 				file.Name, _ = decoder.Decode(filename)
 			} else {
-				file.Name = filename
+				file.Name = util.TryUrlQueryUnescape(filename)
 			}
 		} else {
 			substr := "attachment; filename="
 			index := strings.Index(contentDisposition, substr)
 			if index != -1 {
-				file.Name = contentDisposition[index+len(substr):]
+				file.Name = util.TryUrlQueryUnescape(contentDisposition[index+len(substr):])
 			}
 		}
 	}

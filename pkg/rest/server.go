@@ -65,7 +65,9 @@ func Stop() {
 	}()
 
 	if srv != nil {
-		if err := srv.Shutdown(context.TODO()); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
 			Downloader.Logger.Warn().Err(err).Msg("shutdown server failed")
 		}
 	}
@@ -191,7 +193,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 				}
 
 				if enableBasicAuth {
-					if r.URL.Path == "/api/web/login" {
+					if !strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/api/web/login" {
 						h.ServeHTTP(w, r)
 						return
 					}

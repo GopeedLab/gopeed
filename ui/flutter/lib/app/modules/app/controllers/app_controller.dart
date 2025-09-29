@@ -119,7 +119,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
   @override
   void onTrayIconRightMouseDown() {
-    trayManager.popUpContextMenu();
+    trayManager.popUpContextMenu(bringAppToFront: true);
   }
 
   @override
@@ -506,6 +506,11 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _initCheckUpdate() async {
+    // Check if auto check update is enabled
+    if (!downloaderConfig.value.extra.notifyWhenNewVersion) {
+      return;
+    }
+
     final versionInfo = await checkUpdate();
     if (versionInfo != null) {
       await showUpdateDialog(Get.context!, versionInfo);
