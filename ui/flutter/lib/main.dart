@@ -37,6 +37,8 @@ class Args {
 void main(List<String> arguments) async {
   Args args;
   // Parse url scheme arguments, e.g. gopeed:?hidden=true
+  // TODO: macos open url handle
+  // TODO: macos updater test
   if (arguments.firstOrNull?.startsWith("gopeed:") == true) {
     try {
       final uri = Uri.parse(arguments.first);
