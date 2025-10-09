@@ -2,15 +2,6 @@ package download
 
 import (
 	"errors"
-	"github.com/GopeedLab/gopeed/internal/controller"
-	"github.com/GopeedLab/gopeed/internal/fetcher"
-	"github.com/GopeedLab/gopeed/internal/logger"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/protocol/http"
-	"github.com/GopeedLab/gopeed/pkg/util"
-	gonanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/pkgerrors"
 	"math"
 	gohttp "net/http"
 	"net/url"
@@ -22,6 +13,16 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/internal/logger"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"github.com/GopeedLab/gopeed/pkg/util"
+	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 )
 
 const (
@@ -532,7 +533,7 @@ func (d *Downloader) ContinueBatch(filter *TaskFilter) (err error) {
 
 func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 	if filter == nil || filter.IsEmpty() {
-		return d.deleteAll()
+		return d.deleteAll(force)
 	}
 
 	deleteTasks := d.GetTasksByFilter(filter)
@@ -577,7 +578,7 @@ func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 	return
 }
 
-func (d *Downloader) deleteAll() (err error) {
+func (d *Downloader) deleteAll(force bool) (err error) {
 	var deleteTasksTemp []*Task
 	func() {
 		d.lock.Lock()
@@ -591,7 +592,7 @@ func (d *Downloader) deleteAll() (err error) {
 	}()
 
 	for _, task := range deleteTasksTemp {
-		if err = d.doDelete(task, true); err != nil {
+		if err = d.doDelete(task, force); err != nil {
 			return
 		}
 	}
