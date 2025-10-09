@@ -131,6 +131,7 @@ type XMLHttpRequest struct {
 	responseHeaders http.Header
 	aborted         bool
 	client          *req.Client
+	fingerprint     string
 
 	WithCredentials bool                  `json:"withCredentials"`
 	Upload          *XMLHttpRequestUpload `json:"upload"`
@@ -164,7 +165,7 @@ func (xhr *XMLHttpRequest) SetRequestHeader(key, value string) {
 }
 
 func (xhr *XMLHttpRequest) Send(data goja.Value) {
-	setFingerprint(xhr.client)
+	setFingerprint(xhr.client, xhr.fingerprint)
 
 	d := xhr.parseData(data)
 	var (
@@ -381,7 +382,8 @@ func Enable(runtime *goja.Runtime, proxyHandler func(r *http.Request) (*url.URL,
 		}
 
 		instance := &XMLHttpRequest{
-			client: client,
+			client:      client,
+			fingerprint: util.SafeGet[string](runtime, FingerprintMagicKey),
 			Upload: &XMLHttpRequestUpload{
 				EventProp: &EventProp{
 					eventListeners: make(map[string]func(event *ProgressEvent)),
@@ -395,8 +397,8 @@ func Enable(runtime *goja.Runtime, proxyHandler func(r *http.Request) (*url.URL,
 		instanceValue.SetPrototype(call.This.Prototype())
 		return instanceValue
 	})
-	runtime.Set("__gopeed_setFingerprint", func(fingerprint Fingerprint) {
-		currentFingerprint = fingerprint
+	runtime.Set("__gopeed_setFingerprint", func(fingerprint string) {
+		runtime.Set(FingerprintMagicKey, fingerprint)
 	})
 	if err := runtime.Set("ProgressEvent", progressEvent); err != nil {
 		return err
