@@ -2,10 +2,12 @@ import 'package:dio/dio.dart';
 
 // List of mirrors for GitHub
 const _sourceMirror = [
-  // ghfast.top: https://ghfast.top/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
-  ["https://ghfast.top/", r"(.*)"],
-  // github.moeyy.xyz: https://github.moeyy.xyz/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
-  ["https://github.moeyy.xyz/", r"(.*)"],
+  // github.tbedu.top: https://github.tbedu.top/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
+  ["https://github.tbedu.top/", r"(.*)"],
+  // fastgit.cc: https://fastgit.cc/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
+  ["https://fastgit.cc/", r"(.*)"],
+  // gitproxy.click: https://gitproxy.click/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
+  ["https://gitproxy.click/", r"(.*)"],
   // jsdelivr: https://fastly.jsdelivr.net/gh/ngosang/trackerslist/trackers_all.txt
   [
     "https://fastly.jsdelivr.net/gh",
@@ -15,10 +17,12 @@ const _sourceMirror = [
 
 // List of mirrors for GitHub release
 const _assertMirror = [
-  // ghfast.top: https://ghfast.top/https://github.com/GopeedLab/gopeed/releases/download/v1.6.10/Gopeed-v1.6.10-windows-amd64.zip
-  ["https://ghfast.top/", r"(.*)"],
-  // github.moeyy.xyz: https://github.moeyy.xyz/https://github.com/GopeedLab/gopeed/releases/download/v1.6.10/Gopeed-v1.6.10-windows-amd64.zip
-  ["https://github.moeyy.xyz/", r"(.*)"],
+  // github.tbedu.top: https://https://github.tbedu.top/https://github.com/GopeedLab/gopeed/releases/download/v1.6.10/Gopeed-v1.6.10-windows-amd64.zip
+  ["https://github.tbedu.top/", r"(.*)"],
+  // fastgit.cc: https://fastgit.cc/https://github.com/GopeedLab/gopeed/releases/download/v1.6.10/Gopeed-v1.6.10-windows-amd64.zip
+  ["https://fastgit.cc/", r"(.*)"],
+  // gitproxy.click: https://gitproxy.click/https://github.com/GopeedLab/gopeed/releases/download/v1.6.10/Gopeed-v1.6.10-windows-amd64.zip
+  ["https://gitproxy.click/", r"(.*)"],
 ];
 
 enum MirrorType {
