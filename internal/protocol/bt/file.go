@@ -5,10 +5,11 @@ package bt
 import (
 	"context"
 	"fmt"
-	"github.com/anacrolix/torrent/storage"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/anacrolix/torrent/storage"
 
 	"github.com/anacrolix/missinggo/v2"
 
@@ -34,7 +35,7 @@ func newFileOpts(opts newFileClientOpts) storage.ClientImplCloser {
 	if opts.FilePathMaker == nil {
 		opts.FilePathMaker = func(opts storage.FilePathMakerOpts) string {
 			var parts []string
-			if opts.Info.Length == 0 {
+			if opts.Info.Length == 0 || opts.File.Path == nil {
 				parts = append(parts, opts.Info.Name)
 			}
 			return filepath.Join(append(parts, opts.File.Path...)...)
