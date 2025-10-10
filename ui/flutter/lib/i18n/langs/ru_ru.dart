@@ -119,5 +119,7 @@ const ruRU = {
     'fileSelectedSize': 'Размер: ',
     'httpHeaderName': 'Название заголовка HTTP',
     'httpHeaderValue': 'Значение заголовка HTTP',
+    'networkAutoControl': 'Автоматическое управление сетью',
+    'networkAutoControlTip': 'Автоматически приостанавливать загрузки при переключении с WiFi на мобильные данные и возобновлять при возврате к WiFi',
   }
 };
