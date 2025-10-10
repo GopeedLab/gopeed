@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"

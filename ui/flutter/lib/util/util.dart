@@ -157,10 +157,15 @@ class Util {
     };
   }
 
-  static String homePathJoin(String fileName) {
-    final execPath = Platform.resolvedExecutable;
-    final execDir = path.dirname(execPath);
-    return path.join(execDir, fileName);
+  static Future<String> homePathJoin(String fileName) async {
+    if (Util.isWindows()) {
+      final execPath = Platform.resolvedExecutable;
+      final execDir = path.dirname(execPath);
+      return path.join(execDir, fileName);
+    }
+
+    final dir = await getApplicationSupportDirectory();
+    return path.join(dir.path, fileName);
   }
 
   static Future<void> installAsset(String assetPath, String targetPath,

@@ -52,7 +52,7 @@ final _updaterBin = "updater${Util.isWindows() ? ".exe" : ""}";
 
 Future<void> installUpdater() async {
   await Util.installAsset(
-      'assets/exec/$_updaterBin', Util.homePathJoin(_updaterBin),
+      'assets/exec/$_updaterBin', await Util.homePathJoin(_updaterBin),
       executable: true);
 }
 
@@ -346,7 +346,7 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
     case Channel.linuxFlathub:
     case Channel.linuxSnap:
     case Channel.linuxDeb:
-      final updaterPath = Util.homePathJoin(_updaterBin);
+      final updaterPath = await Util.homePathJoin(_updaterBin);
       // Check the updater binary is exists
       if (!await File(updaterPath).exists()) {
         await launchUrl(
@@ -363,6 +363,8 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
           Update channel
           -asset string
           Path to the package asset
+          -exeDir string
+          Directory of the entry executable
           -log string
           Log file path
        */
@@ -373,6 +375,8 @@ Future<void> _update(String version, Function(int, int) onProgress) async {
         _channel!.name,
         "-asset",
         newVersionAssetPath,
+        "-exeDir",
+        path.dirname(Platform.resolvedExecutable),
         "-log",
         path.join(logsDir(), "updater.log")
       ]);
