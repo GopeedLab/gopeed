@@ -45,7 +45,7 @@ func installByDmg(killSignalChan chan<- any, packagePath, destDir string) error 
 		return err
 	}
 	if len(matches) == 0 {
-		return fmt.Errorf("no .app found in dmg")
+		return fmt.Errorf("no .app found in dmg, mountPoint: %s", mountPoint)
 	}
 
 	killSignalChan <- nil
