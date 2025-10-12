@@ -34,7 +34,7 @@ jobs:
 
   build-windows:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows' }}
-    runs-on: windows-latest
+    runs-on: windows-2022
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
