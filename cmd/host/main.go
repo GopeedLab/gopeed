@@ -1,22 +1,24 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
-	"strings"
+	"time"
 
 	"github.com/pkg/browser"
-	"github.com/shirou/gopsutil/v4/process"
 )
-
-const identifier = "gopeed"
 
 type Message struct {
 	Method string          `json:"method"`
+	Meta   map[string]any  `json:"meta"`
 	Params json.RawMessage `json:"params"`
 }
 
@@ -26,31 +28,74 @@ type Response struct {
 	Message string `json:"message,omitempty"`
 }
 
-var apiMap = map[string]func(params json.RawMessage) (data any, err error){
-	"ping": func(params json.RawMessage) (data any, err error) {
-		processes, err := process.Processes()
-		if err != nil {
-			return false, err
-		}
+func check() (data bool, err error) {
+	conn, err := Dial()
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+	return true, nil
+}
 
-		for _, p := range processes {
-			name, err := p.Name()
-			if err != nil {
-				continue
-			}
+func wakeup(hidden bool) error {
+	running, _ := check()
+	if running {
+		return nil
+	}
 
-			if strings.Contains(strings.ToLower(name), strings.ToLower(identifier)) {
-				return true, nil
-			}
+	uri := "gopeed:"
+	if hidden {
+		uri = uri + "?hidden=true"
+	}
+	if err := browser.OpenURL(uri); err != nil {
+		return err
+	}
+
+	for i := 0; i < 10; i++ {
+		if ok, _ := check(); ok {
+			return nil
 		}
-		return false, nil
+		time.Sleep(1 * time.Second)
+	}
+	return fmt.Errorf("start gopeed failed")
+}
+
+var apiMap = map[string]func(message *Message) (data any, err error){
+	"ping": func(message *Message) (data any, err error) {
+		return check()
 	},
-	"create": func(params json.RawMessage) (data any, err error) {
-		var strParams string
-		if err = json.Unmarshal(params, &strParams); err != nil {
+	"create": func(message *Message) (data any, err error) {
+		buf, err := message.Params.MarshalJSON()
+		if err != nil {
 			return
 		}
-		err = browser.OpenURL(fmt.Sprintf("%s:///create?params=%s", identifier, strParams))
+
+		silent := false
+		if v, ok := message.Meta["silent"]; ok {
+			silent, _ = v.(bool)
+		}
+
+		if err := wakeup(silent); err != nil {
+			return nil, err
+		}
+
+		client := &http.Client{
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					return Dial()
+				},
+			},
+			Timeout: 10 * time.Second,
+		}
+		req, err := http.NewRequest("POST", "http://127.0.0.1/create", bytes.NewBuffer(buf))
+		if err != nil {
+			return
+		}
+		if message.Meta != nil {
+			metaJson, _ := json.Marshal(message.Meta)
+			req.Header.Set("X-Gopeed-Host-Meta", string(metaJson))
+		}
+		_, err = client.Do(req)
 		return
 	},
 }
@@ -88,7 +133,7 @@ func main() {
 		var data any
 		var err error
 		if handler, ok := apiMap[message.Method]; ok {
-			data, err = handler(message.Params)
+			data, err = handler(&message)
 		} else {
 			err = errors.New("Unknown method: " + message.Method)
 		}

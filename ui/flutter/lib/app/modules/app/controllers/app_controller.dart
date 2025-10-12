@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart';
+import '../../../../api/model/create_task.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/request.dart';
 import '../../../../core/common/start_config.dart';
@@ -31,7 +32,7 @@ import '../../../../util/package_info.dart';
 import '../../../../util/updater.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
-import '../../create/dto/create_router_params.dart';
+import '../../../rpc/rpc.dart';
 import '../../redirect/views/redirect_view.dart';
 
 const unixSocketPath = 'gopeed.sock';
@@ -77,6 +78,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
     _initTray().onError(
         (error, stackTrace) => logger.w("initTray error", error, stackTrace));
+
+    _initRpcServer().onError((error, stackTrace) =>
+        logger.w("initRpcServer error", error, stackTrace));
 
     _initForegroundTask().onError((error, stackTrace) =>
         logger.w("initForegroundTask error", error, stackTrace));
@@ -271,6 +275,37 @@ class AppController extends GetxController with WindowListener, TrayListener {
     trayManager.addListener(this);
   }
 
+  Future<void> _initRpcServer() async {
+    if (!Util.isDesktop()) {
+      return;
+    }
+    try {
+      await startRpcServer({
+        "/create": (ctx) async {
+          final meta =
+              ctx.request.headers["X-Gopeed-Host-Meta"]?.firstOrNull ?? "{}";
+          final jsonMeta = jsonDecode(meta);
+          final silent = jsonMeta['silent'] as bool? ?? false;
+          final params = await ctx.readText();
+          final createTaskParams = _decodeToCreatTaskParams(params);
+          if (!silent) {
+            await windowManager.show();
+            _handleToCreate0(createTaskParams);
+          } else {
+            try {
+              await createTask(createTaskParams);
+            } catch (e) {
+              logger.w(
+                  "create task from extension fail", e, StackTrace.current);
+            }
+          }
+        },
+      });
+    } catch (e) {
+      logger.w("start rpc server fail", e, StackTrace.current);
+    }
+  }
+
   Future<void> _initForegroundTask() async {
     if (!Util.isMobile()) {
       return;
@@ -317,13 +352,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       if (uri.path == "/create") {
         final params = uri.queryParameters["params"];
         if (params?.isNotEmpty == true) {
-          final safeParams = params!.replaceAll(" ", "+");
-          final paramsJson =
-              String.fromCharCodes(base64Decode(base64.normalize(safeParams)));
-          Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
-              arguments: RedirectArgs(Routes.CREATE,
-                  arguments:
-                      CreateRouterParams.fromJson(jsonDecode(paramsJson))));
+          _handleToCreate(params!);
           return;
         }
         Get.rootDelegate.offAndToNamed(Routes.CREATE);
@@ -346,7 +375,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     }
     Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
         arguments: RedirectArgs(Routes.CREATE,
-            arguments: CreateRouterParams(req: Request(url: path))));
+            arguments: CreateTask(req: Request(url: path))));
   }
 
   String runningAddress() {
@@ -523,5 +552,22 @@ class AppController extends GetxController with WindowListener, TrayListener {
         address: startConfig.value.address,
         apiToken: startConfig.value.apiToken));
     await putConfig(downloaderConfig.value);
+  }
+
+  CreateTask _decodeToCreatTaskParams(String params) {
+    final safeParams = params.replaceAll('"', "").replaceAll(" ", "+");
+    final paramsJson =
+        String.fromCharCodes(base64Decode(base64.normalize(safeParams)));
+    return CreateTask.fromJson(jsonDecode(paramsJson));
+  }
+
+  _handleToCreate(String params) {
+    final createTaskParams = _decodeToCreatTaskParams(params);
+    _handleToCreate0(createTaskParams);
+  }
+
+  _handleToCreate0(CreateTask createTaskParams) {
+    Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
+        arguments: RedirectArgs(Routes.CREATE, arguments: createTaskParams));
   }
 }

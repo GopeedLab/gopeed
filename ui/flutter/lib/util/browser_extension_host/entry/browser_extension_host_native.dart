@@ -26,7 +26,7 @@ const _firefoxNativeHostsKey = r'Software\Mozilla\NativeMessagingHosts';
 
 /// Install host binary for browser extension
 Future<void> doInstallHost() async {
-  final hostPath = Util.homePathJoin(_hostExecName);
+  final hostPath = await Util.homePathJoin(_hostExecName);
   await Util.installAsset('assets/exec/$_hostExecName', hostPath,
       executable: true);
 }
@@ -62,7 +62,7 @@ Future<bool> doCheckBrowserInstalled(Browser browser) async {
 Future<bool> doCheckManifestInstalled(Browser browser) async {
   if (await checkBrowserInstalled(browser) == false) return false;
 
-  final manifestPath = _getManifestPath(browser);
+  final manifestPath = await _getManifestPath(browser);
   if (manifestPath == null) return false;
 
   if (Platform.isWindows) {
@@ -86,7 +86,7 @@ Future<void> doInstallManifest(Browser browser) async {
   if (await checkBrowserInstalled(browser) == false) return;
   if (await checkManifestInstalled(browser)) return;
 
-  final manifestPath = _getManifestPath(browser)!;
+  final manifestPath = (await _getManifestPath(browser))!;
   final manifestContent = await _getManifestContent(browser);
   final manifestDir = path.dirname(manifestPath);
   await Directory(manifestDir).create(recursive: true);
@@ -209,11 +209,11 @@ List<String> _getUnixExecutablePaths(Browser browser) {
   }
 }
 
-String? _getManifestPath(Browser browser) {
+Future<String?> _getManifestPath(Browser browser) async {
   final manifestName =
       browser == Browser.firefox ? '$_hostName.moz.json' : '$_hostName.json';
   if (Platform.isWindows) {
-    return Util.homePathJoin(manifestName);
+    return await Util.homePathJoin(manifestName);
   }
 
   final home =
@@ -259,7 +259,7 @@ Future<bool> _checkWindowsRegistry(String keyPath) async {
 }
 
 Future<String> _getManifestContent(Browser browser) async {
-  final hostPath = Util.homePathJoin(_hostExecName);
+  final hostPath = await Util.homePathJoin(_hostExecName);
   final manifest = {
     'name': _hostName,
     'description': 'Gopeed browser extension host',

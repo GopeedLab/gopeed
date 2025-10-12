@@ -25,16 +25,20 @@ func installByDmg(killSignalChan chan<- any, packagePath, destDir string) error 
 	mountPoint := ""
 	for _, line := range strings.Split(string(output), "\n") {
 		if strings.Contains(line, "/Volumes/") {
-			fields := strings.Fields(line)
-			if len(fields) > 2 {
-				mountPoint = fields[len(fields)-1]
+			// Find the /Volumes/ path in the line
+			// hdiutil output format: /dev/disk4s1  Apple_HFS  /Volumes/Gopeed
+			// or with sequence number: /dev/disk4s1  Apple_HFS  /Volumes/Gopeed 1
+			idx := strings.Index(line, "/Volumes/")
+			if idx != -1 {
+				// Extract everything from /Volumes/ onwards and trim whitespace
+				mountPoint = strings.TrimSpace(line[idx:])
 				break
 			}
 		}
 	}
 
 	if mountPoint == "" {
-		return fmt.Errorf("failed to get mount point")
+		return fmt.Errorf("failed to get mount point from hdiutil output: %s", string(output))
 	}
 
 	// Detach the mounted DMG
@@ -45,7 +49,7 @@ func installByDmg(killSignalChan chan<- any, packagePath, destDir string) error 
 		return err
 	}
 	if len(matches) == 0 {
-		return fmt.Errorf("no .app found in dmg")
+		return fmt.Errorf("no .app found in dmg, mountPoint: %s", mountPoint)
 	}
 
 	killSignalChan <- nil
