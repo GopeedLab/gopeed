@@ -51,6 +51,7 @@ Future<bool> doCheckBrowserInstalled(Browser browser) async {
         return await _checkWindowsRegistry(r'SOFTWARE\Mozilla\Firefox') ||
             await _checkWindowsRegistry(
                 r'SOFTWARE\WOW6432Node\Mozilla\Firefox') ||
+            await _checkWindowsRegistry(r'SOFTWARE\BrowserWorks\Waterfox') ||
             await _checkWindowsExecutable(browser);
     }
   } else {
@@ -144,6 +145,10 @@ List<String> _getWindowsExecutablePaths(Browser browser) {
           path.join(programFiles, 'Mozilla Firefox', 'firefox.exe'),
         if (programFilesX86 != null)
           path.join(programFilesX86, 'Mozilla Firefox', 'firefox.exe'),
+        if (programFiles != null)
+          path.join(programFiles, 'Waterfox', 'waterfox.exe'),
+        if (programFilesX86 != null)
+          path.join(programFilesX86, 'Waterfox', 'waterfox.exe'),
       ];
   }
 }
@@ -178,7 +183,10 @@ List<String> _getUnixExecutablePaths(Browser browser) {
         return [
           '/Applications/Firefox.app',
           '~/Applications/Firefox.app',
-          '/Users/${Platform.environment['USER']}/Applications/Firefox.app'
+          '/Users/${Platform.environment['USER']}/Applications/Firefox.app',
+          '/Applications/Waterfox.app',
+          '~/Applications/Waterfox.app',
+          '/Users/${Platform.environment['USER']}/Applications/Waterfox.app'
         ];
     }
   } else {
@@ -203,7 +211,11 @@ List<String> _getUnixExecutablePaths(Browser browser) {
           '/usr/bin/firefox',
           '/snap/bin/firefox',
           '/usr/lib/firefox/firefox',
-          '/opt/firefox/firefox'
+          '/opt/firefox/firefox',
+          '/usr/bin/waterfox',
+          '/snap/bin/waterfox',
+          '/usr/lib/waterfox/waterfox',
+          '/opt/waterfox/waterfox'
         ];
     }
   }
