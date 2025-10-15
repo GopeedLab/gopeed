@@ -116,5 +116,7 @@ const zhTW = {
     'fileSelectedSize': '大小：',
     'httpHeaderName': '標頭名稱',
     'httpHeaderValue': '標頭值',
+    'networkAutoControl': '網路狀態自動控制',
+    'networkAutoControlTip': '當網路從WiFi切換到流動數據時自動暫停下載，切換回WiFi時自動恢復下載',
   }
 };
