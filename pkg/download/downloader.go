@@ -1016,7 +1016,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			d.Logger.Error().Stack().Err(err).Msgf("restore fetcher failed, task id: %s", task.ID)
 			return
 		}
-		isCreate = task.Status == base.DownloadStatusReady
+		isCreate = task.Status == base.DownloadStatusReady || task.Status == base.DownloadStatusWait
 		task.updateStatus(base.DownloadStatusRunning)
 
 		return
