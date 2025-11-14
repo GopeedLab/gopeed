@@ -106,13 +106,28 @@ func TestSafeRemove(t *testing.T) {
 }
 
 func TestCheckDuplicateAndRename(t *testing.T) {
+	// Test with extension
 	doCheckDuplicateAndRename(t, []string{}, "a.txt", "a.txt")
 	doCheckDuplicateAndRename(t, []string{"a.txt"}, "a.txt", "a (1).txt")
 	doCheckDuplicateAndRename(t, []string{"a.txt", "a (1).txt"}, "a.txt", "a (2).txt")
 
+	// Test without extension
 	doCheckDuplicateAndRename(t, []string{}, "a", "a")
 	doCheckDuplicateAndRename(t, []string{"a"}, "a", "a (1)")
 	doCheckDuplicateAndRename(t, []string{"a", "a (1)"}, "a", "a (2)")
+
+	// Test hidden files (starting with dot)
+	doCheckDuplicateAndRename(t, []string{}, ".gitignore", ".gitignore")
+	doCheckDuplicateAndRename(t, []string{".gitignore"}, ".gitignore", ".gitignore (1)")
+	doCheckDuplicateAndRename(t, []string{".gitignore", ".gitignore (1)"}, ".gitignore", ".gitignore (2)")
+
+	// Test hidden files with extension
+	doCheckDuplicateAndRename(t, []string{}, ".config.json", ".config.json")
+	doCheckDuplicateAndRename(t, []string{".config.json"}, ".config.json", ".config (1).json")
+
+	// Test multiple dots
+	doCheckDuplicateAndRename(t, []string{}, "test.tar.gz", "test.tar.gz")
+	doCheckDuplicateAndRename(t, []string{"test.tar.gz"}, "test.tar.gz", "test.tar (1).gz")
 }
 
 func doCheckDuplicateAndRename(t *testing.T, exitsPaths []string, path string, except string) {

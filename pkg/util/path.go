@@ -50,12 +50,17 @@ func CheckDuplicateAndRename(path string) (string, error) {
 		return "", err
 	}
 
-	index := strings.LastIndex(name, ".")
+	ext := syspath.Ext(name)
 	var nameTpl string
-	if index == -1 {
+	// Special case: if the extension is the entire filename (like .gitignore),
+	// or if index of last dot is 0 (starts with dot), treat it as no extension
+	if ext == "" || ext == name || (len(ext) > 0 && strings.LastIndex(name, ".") == 0) {
+		// No extension or hidden file without extension
 		nameTpl = name + " (%d)"
 	} else {
-		nameTpl = name[:index] + " (%d)" + name[index:]
+		// Has extension
+		nameWithoutExt := name[:len(name)-len(ext)]
+		nameTpl = nameWithoutExt + " (%d)" + ext
 	}
 	for i := 1; ; i++ {
 		newName := fmt.Sprintf(nameTpl, i)
