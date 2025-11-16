@@ -60,21 +60,21 @@ class _TaskScreenState extends State<TaskScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 GpOutlineButton(
-                  icon: 'assets/icons/pause.png',
+                  icon: 'assets/icons/resume.svg',
                   onTap: () {
                     // 处理开始按钮点击事件
                   },
                 ),
                 const SizedBox(width: 12),
                 GpOutlineButton(
-                  icon: 'assets/icons/pause.png',
+                  icon: 'assets/icons/pause.svg',
                   onTap: () {
                     // 处理暂停按钮点击事件
                   },
                 ),
                 const SizedBox(width: 12),
                 GpOutlineButton(
-                  icon: 'assets/icons/pause.png',
+                  icon: 'assets/icons/delete.svg',
                   onTap: () {
                     // 处理删除按钮点击事件
                   },
@@ -109,23 +109,23 @@ class _TaskScreenState extends State<TaskScreen> {
                 bottomRightStatusText: '下载中', // 状态文本
                 actionButtons: [
                   GpIconButton(
-                    icon: Icons.pause,
+                    icon: 'assets/icons/item_pause.svg',
                     onTap: () => print('暂停任务 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.delete,
+                    icon: 'assets/icons/item_delete.svg',
                     onTap: () => print('删除任务 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.folder_open,
-                    onTap: () => print('打开所在位置 $index'),
+                    icon: 'assets/icons/item_reveal.svg',
+                    onTap: () => print('打开所在·位置 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.info,
+                    icon: 'assets/icons/item_info.svg',
                     onTap: () => print('查看信息 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.more_vert,
+                    icon: 'assets/icons/item_more.svg',
                     onTap: () => print('更多操作 $index'),
                   ),
                 ],
@@ -149,23 +149,23 @@ class _TaskScreenState extends State<TaskScreen> {
                 bottomRightStatusText: '已完成', // 状态文本
                 actionButtons: [
                   GpIconButton(
-                    icon: Icons.pause,
-                    onTap: () => print('暂停任务 $index'),
+                    icon: 'assets/icons/item_resume.svg',
+                    onTap: () => print('重新下载任务 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.delete,
+                    icon: 'assets/icons/item_delete.svg',
                     onTap: () => print('删除任务 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.folder_open,
+                    icon: 'assets/icons/item_reveal.svg',
                     onTap: () => print('打开所在位置 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.info,
+                    icon: 'assets/icons/item_info.svg',
                     onTap: () => print('查看信息 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.more_vert,
+                    icon: 'assets/icons/item_more.svg',
                     onTap: () => print('更多操作 $index'),
                   ),
                 ],
@@ -189,23 +189,23 @@ class _TaskScreenState extends State<TaskScreen> {
                 bottomRightStatusText: '失败', // 状态文本
                 actionButtons: [
                   GpIconButton(
-                    icon: Icons.pause,
-                    onTap: () => print('暂停任务 $index'),
+                    icon: 'assets/icons/item_resume.svg',
+                    onTap: () => print('重试任务 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.delete,
+                    icon: 'assets/icons/item_delete.svg',
                     onTap: () => print('删除任务 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.folder_open,
+                    icon: 'assets/icons/item_reveal.svg',
                     onTap: () => print('打开所在位置 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.info,
+                    icon: 'assets/icons/item_info.svg',
                     onTap: () => print('查看信息 $index'),
                   ),
                   GpIconButton(
-                    icon: Icons.more_vert,
+                    icon: 'assets/icons/item_more.svg',
                     onTap: () => print('更多操作 $index'),
                   ),
                 ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// GpOutlineButton - 线框按钮组件
 ///
@@ -74,9 +75,26 @@ class GpOutlineButton extends StatelessWidget {
 
     // 如果是字符串，认为是资源路径
     if (icon is String) {
+      final String path = icon as String;
+      // 支持 svg 资源
+      if (path.toLowerCase().endsWith('.svg')) {
+        return Center(
+          child: SvgPicture.asset(
+            path,
+            width: iconSize,
+            height: iconSize,
+            fit: BoxFit.contain,
+            colorFilter:
+                iconColor != null
+                    ? ColorFilter.mode(iconColor!, BlendMode.srcIn)
+                    : null,
+          ),
+        );
+      }
+
       return Center(
         child: Image.asset(
-          icon as String,
+          path,
           width: iconSize,
           height: iconSize,
           color: iconColor,
