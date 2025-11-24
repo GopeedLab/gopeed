@@ -718,6 +718,7 @@ class SettingView extends GetView<SettingController> {
                 labelText: 'password'.tr,
                 contentPadding: const EdgeInsets.all(0.0),
               ),
+              obscureText: true,
             ),
           ),
         ]);
