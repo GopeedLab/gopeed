@@ -687,6 +687,19 @@ class SettingView extends GetView<SettingController> {
         final usrController = TextEditingController(text: proxy.usr);
         final pwdController = TextEditingController(text: proxy.pwd);
 
+        updateAuth() async {
+          if (usrController.text != proxy.usr ||
+              pwdController.text != proxy.pwd) {
+            proxy.usr = usrController.text;
+            proxy.pwd = pwdController.text;
+
+            await debounceSave();
+          }
+        }
+
+        usrController.addListener(updateAuth);
+        pwdController.addListener(updateAuth);
+
         final auth = Row(children: [
           Flexible(
             child: TextFormField(
@@ -705,6 +718,7 @@ class SettingView extends GetView<SettingController> {
                 labelText: 'password'.tr,
                 contentPadding: const EdgeInsets.all(0.0),
               ),
+              obscureText: true,
             ),
           ),
         ]);
