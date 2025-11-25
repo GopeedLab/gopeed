@@ -25,6 +25,7 @@ import '../../../views/check_list_view.dart';
 import '../../../views/directory_selector.dart';
 import '../../../views/open_in_new.dart';
 import '../../../views/outlined_button_loading.dart';
+import '../../../views/text_button_loading.dart';
 import '../../app/controllers/app_controller.dart';
 import '../controllers/setting_controller.dart';
 
@@ -951,7 +952,7 @@ class SettingView extends GetView<SettingController> {
                 _showWebhookDialog();
               },
               icon: const Icon(Icons.add),
-              label: Text('webhookAdd'.tr),
+              label: Text('add'.tr),
             ),
           ],
         );
@@ -1118,25 +1119,46 @@ class SettingView extends GetView<SettingController> {
   void _showWebhookDialog({int? index, String? initialUrl}) {
     final urlController = TextEditingController(text: initialUrl ?? '');
     final testController = OutlinedButtonLoadingController();
+    final saveController = TextButtonLoadingController();
     final appController = Get.find<AppController>();
     final downloaderCfg = appController.downloaderConfig;
     final isEdit = index != null;
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: Get.context!,
       builder: (dialogContext) => AlertDialog(
-        title: Text(isEdit ? 'edit'.tr : 'webhookAdd'.tr),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: urlController,
-              decoration: InputDecoration(
-                hintText: 'webhookUrlHint'.tr,
+        title: Text(isEdit ? 'edit'.tr : 'add'.tr),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: urlController,
+                decoration: InputDecoration(
+                  hintText: 'webhookUrlHint'.tr,
+                ),
+                keyboardType: TextInputType.url,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'required'.tr;
+                  }
+                  final url = value.trim().toLowerCase();
+                  if (!url.startsWith('http://') &&
+                      !url.startsWith('https://')) {
+                    return 'webhookUrlInvalid'.tr;
+                  }
+                  try {
+                    Uri.parse(value.trim());
+                  } catch (e) {
+                    return 'webhookUrlInvalid'.tr;
+                  }
+                  return null;
+                },
               ),
-              keyboardType: TextInputType.url,
-            ),
-          ],
+            ],
+          ),
         ),
         actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
@@ -1146,6 +1168,9 @@ class SettingView extends GetView<SettingController> {
             child: OutlinedButtonLoading(
               controller: testController,
               onPressed: () async {
+                if (!formKey.currentState!.validate()) {
+                  return;
+                }
                 final url = urlController.text.trim();
                 if (url.isEmpty) return;
                 testController.start();
@@ -1169,19 +1194,31 @@ class SettingView extends GetView<SettingController> {
                 onPressed: () => Navigator.of(dialogContext).pop(),
                 child: Text('cancel'.tr),
               ),
-              TextButton(
+              TextButtonLoading(
+                controller: saveController,
                 onPressed: () async {
+                  if (!formKey.currentState!.validate()) {
+                    return;
+                  }
                   final url = urlController.text.trim();
                   if (url.isEmpty) return;
-                  if (isEdit) {
-                    downloaderCfg.value.extra.webhookUrls[index] = url;
-                  } else {
-                    downloaderCfg.value.extra.webhookUrls.add(url);
-                  }
-                  downloaderCfg.refresh();
-                  await appController.saveConfig();
-                  if (dialogContext.mounted) {
-                    Navigator.of(dialogContext).pop();
+
+                  saveController.start();
+                  try {
+                    if (isEdit) {
+                      downloaderCfg.value.extra.webhookUrls[index] = url;
+                    } else {
+                      downloaderCfg.value.extra.webhookUrls.add(url);
+                    }
+                    downloaderCfg.refresh();
+                    await appController.saveConfig();
+                    if (dialogContext.mounted) {
+                      Navigator.of(dialogContext).pop();
+                    }
+                  } catch (e) {
+                    showErrorMessage(e);
+                  } finally {
+                    saveController.stop();
                   }
                 },
                 child: Text('confirm'.tr),
