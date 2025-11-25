@@ -60,25 +60,25 @@ func newWebhookTask(task *Task) *WebhookTask {
 	return wt
 }
 
-// triggerWebhooks sends webhook notifications to all configured URLs
-func (d *Downloader) triggerWebhooks(event WebhookEvent, task *Task, err error) {
+// getWebhookUrls extracts and converts webhook URLs from config
+func (d *Downloader) getWebhookUrls() []interface{} {
 	cfg := d.cfg.DownloaderStoreConfig
 	if cfg == nil || cfg.Extra == nil {
-		return
+		return nil
 	}
 
 	webhookUrls, ok := cfg.Extra["webhookUrls"]
 	if !ok {
-		return
+		return nil
 	}
 
-	// Convert interface to []string
+	// Convert interface to []interface{}
 	urls, ok := webhookUrls.([]interface{})
 	if !ok {
 		// Try direct string slice
 		urlsStr, ok := webhookUrls.([]string)
 		if !ok || len(urlsStr) == 0 {
-			return
+			return nil
 		}
 		urls = make([]interface{}, len(urlsStr))
 		for i, u := range urlsStr {
@@ -87,6 +87,16 @@ func (d *Downloader) triggerWebhooks(event WebhookEvent, task *Task, err error) 
 	}
 
 	if len(urls) == 0 {
+		return nil
+	}
+
+	return urls
+}
+
+// triggerWebhooks sends webhook notifications to all configured URLs
+func (d *Downloader) triggerWebhooks(event WebhookEvent, task *Task, err error) {
+	urls := d.getWebhookUrls()
+	if urls == nil {
 		return
 	}
 
@@ -145,31 +155,8 @@ func (d *Downloader) sendWebhooks(urls []interface{}, payload *WebhookPayload) {
 
 // SendTestWebhook sends a test webhook with a simulated payload
 func (d *Downloader) SendTestWebhook() error {
-	cfg := d.cfg.DownloaderStoreConfig
-	if cfg == nil || cfg.Extra == nil {
-		return nil
-	}
-
-	webhookUrls, ok := cfg.Extra["webhookUrls"]
-	if !ok {
-		return nil
-	}
-
-	// Convert interface to []interface{}
-	urls, ok := webhookUrls.([]interface{})
-	if !ok {
-		// Try direct string slice
-		urlsStr, ok := webhookUrls.([]string)
-		if !ok || len(urlsStr) == 0 {
-			return nil
-		}
-		urls = make([]interface{}, len(urlsStr))
-		for i, u := range urlsStr {
-			urls[i] = u
-		}
-	}
-
-	if len(urls) == 0 {
+	urls := d.getWebhookUrls()
+	if urls == nil {
 		return nil
 	}
 
