@@ -80,6 +80,7 @@ const zhCN = {
     'deleteTask': '删除 @count 个任务',
     'deleteTaskTip': '保留已下载的文件',
     'delete': '删除',
+    'edit': '编辑',
     'newVersionTitle': '发现新版本 @version',
     'newVersionUpdate': '立即更新',
     'newVersionLater': '稍后再说',

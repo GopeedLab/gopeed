@@ -949,15 +949,10 @@ class SettingView extends GetView<SettingController> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.play_arrow, size: 20),
-                      tooltip: 'webhookTest'.tr,
-                      onPressed: () async {
-                        try {
-                          await api.testWebhook(url);
-                          showMessage('tip'.tr, 'webhookTestSuccess'.tr);
-                        } catch (e) {
-                          showErrorMessage('webhookTestFail'.tr);
-                        }
+                      icon: const Icon(Icons.edit, size: 20),
+                      tooltip: 'edit'.tr,
+                      onPressed: () {
+                        _showWebhookDialog(index: index, initialUrl: url);
                       },
                     ),
                     IconButton(
@@ -977,7 +972,7 @@ class SettingView extends GetView<SettingController> {
             // Add button
             OutlinedButton.icon(
               onPressed: () {
-                _showAddWebhookDialog();
+                _showWebhookDialog();
               },
               icon: const Icon(Icons.add),
               label: Text('webhookAdd'.tr),
@@ -1118,16 +1113,17 @@ class SettingView extends GetView<SettingController> {
     });
   }
 
-  void _showAddWebhookDialog() {
-    final urlController = TextEditingController();
+  void _showWebhookDialog({int? index, String? initialUrl}) {
+    final urlController = TextEditingController(text: initialUrl ?? '');
     final testController = OutlinedButtonLoadingController();
     final appController = Get.find<AppController>();
     final downloaderCfg = appController.downloaderConfig;
+    final isEdit = index != null;
 
     showDialog(
       context: Get.context!,
       builder: (context) => AlertDialog(
-        title: Text('webhookAdd'.tr),
+        title: Text(isEdit ? 'edit'.tr : 'webhookAdd'.tr),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1141,10 +1137,7 @@ class SettingView extends GetView<SettingController> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('cancel'.tr),
-          ),
+          // Test button on the left
           OutlinedButtonLoading(
             controller: testController,
             onPressed: () async {
@@ -1153,17 +1146,34 @@ class SettingView extends GetView<SettingController> {
               testController.start();
               try {
                 await api.testWebhook(url);
-                // Test successful, add to list
-                downloaderCfg.value.extra.webhookUrls.add(url);
-                downloaderCfg.refresh();
-                await appController.saveConfig();
-                Get.back();
-                showMessage('tip'.tr, 'webhookAddSuccess'.tr);
+                showMessage('tip'.tr, 'webhookTestSuccess'.tr);
               } catch (e) {
                 showErrorMessage('webhookTestFail'.tr);
               } finally {
                 testController.stop();
               }
+            },
+            child: Text('webhookTest'.tr),
+          ),
+          const Spacer(),
+          // Cancel and Confirm on the right
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('cancel'.tr),
+          ),
+          TextButton(
+            onPressed: () async {
+              final url = urlController.text.trim();
+              if (url.isEmpty) return;
+              if (isEdit) {
+                downloaderCfg.value.extra.webhookUrls[index] = url;
+              } else {
+                downloaderCfg.value.extra.webhookUrls.add(url);
+              }
+              downloaderCfg.refresh();
+              await appController.saveConfig();
+              Get.back();
+              showMessage('tip'.tr, isEdit ? 'save'.tr : 'webhookAddSuccess'.tr);
             },
             child: Text('confirm'.tr),
           ),

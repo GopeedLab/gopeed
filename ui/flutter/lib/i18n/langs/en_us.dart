@@ -81,6 +81,7 @@ const enUS = {
     'deleteTask': 'Delete @count tasks',
     'deleteTaskTip': 'Keep downloaded files',
     'delete': 'Delete',
+    'edit': 'Edit',
     'newVersionTitle': 'Discover new version @version',
     'newVersionUpdate': 'Update Now',
     'newVersionLater': 'Later',
