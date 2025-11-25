@@ -857,6 +857,7 @@ func (d *Downloader) watch(task *Task) {
 	d.emit(EventKeyFinally, task, err)
 	d.notifyRunning()
 	d.triggerOnDone(task)
+	d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 
 	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
 		downloadFilePath := task.Meta.SingleFilepath()
@@ -887,6 +888,7 @@ func (d *Downloader) doOnError(task *Task, err error) {
 		d.emit(EventKeyError, task, err)
 		d.emit(EventKeyFinally, task, err)
 		d.notifyRunning()
+		d.triggerWebhooks(WebhookEventDownloadError, task, err)
 	}
 }
 
