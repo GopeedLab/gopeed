@@ -75,7 +75,12 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
       defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
       defaultBtClient: json['defaultBtClient'] as bool? ?? true,
       notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
-    )..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>);
+    )
+      ..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>)
+      ..downloadCategories = (json['downloadCategories'] as List<dynamic>?)
+              ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
 
 Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
     <String, dynamic>{
@@ -86,6 +91,8 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'defaultBtClient': instance.defaultBtClient,
       'notifyWhenNewVersion': instance.notifyWhenNewVersion,
       'bt': instance.bt.toJson(),
+      'downloadCategories':
+          instance.downloadCategories.map((e) => e.toJson()).toList(),
     };
 
 ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig(
@@ -141,3 +148,17 @@ Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) {
   val['customTrackers'] = instance.customTrackers;
   return val;
 }
+
+DownloadCategory _$DownloadCategoryFromJson(Map<String, dynamic> json) =>
+    DownloadCategory(
+      name: json['name'] as String,
+      path: json['path'] as String,
+      isBuiltIn: json['isBuiltIn'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'path': instance.path,
+      'isBuiltIn': instance.isBuiltIn,
+    };

@@ -941,6 +941,9 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 		opts.Path = storeConfig.DownloadDir
 	}
 
+	// Replace placeholders in download path (e.g., %year%, %month%, %day%, %date%)
+	opts.Path = util.ReplacePathPlaceholders(opts.Path)
+
 	// if enable white download directory, check if the download directory is in the white list
 	if len(d.cfg.WhiteDownloadDirs) > 0 {
 		inWhiteList := false

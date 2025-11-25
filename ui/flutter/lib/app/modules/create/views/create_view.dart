@@ -12,6 +12,7 @@ import 'package:rounded_loading_button_plus/rounded_loading_button.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/create_task_batch.dart';
+import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
@@ -328,6 +329,41 @@ class CreateView extends GetView<CreateController> {
                         DirectorySelector(
                           controller: _pathController,
                         ),
+                        // Show rendered path preview if path contains placeholders
+                        ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _pathController,
+                          builder: (context, value, child) {
+                            final path = value.text;
+                            if (path.contains('%')) {
+                              final renderedPath = renderPathPlaceholders(path);
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.arrow_right_alt,
+                                      color: Theme.of(context).hintColor,
+                                      size: 18,
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        renderedPath,
+                                        style: TextStyle(
+                                          color: Theme.of(context).hintColor,
+                                          fontSize: 12,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                        // Category selector
+                        _buildCategorySelector(appController),
                         Obx(
                           () => Visibility(
                             visible: controller.showAdvanced.value,
@@ -911,5 +947,57 @@ class CreateView extends GetView<CreateController> {
                 ),
               ],
             ));
+  }
+
+  Widget _buildCategorySelector(AppController appController) {
+    final categories =
+        appController.downloaderConfig.value.extra.downloadCategories;
+    if (categories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Text(
+            'selectCategory'.tr,
+            style: TextStyle(
+              color: Get.theme.hintColor,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: categories.map((category) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: OutlinedButton(
+                      onPressed: () {
+                        _pathController.text = category.path;
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                      ),
+                      child: Text(
+                        category.name,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

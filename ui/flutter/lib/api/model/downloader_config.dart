@@ -84,6 +84,7 @@ class ExtraConfig {
   bool notifyWhenNewVersion;
 
   ExtraConfigBt bt = ExtraConfigBt();
+  List<DownloadCategory> downloadCategories = [];
 
   ExtraConfig({
     this.themeMode = '',
@@ -98,6 +99,24 @@ class ExtraConfig {
       json == null ? ExtraConfig() : _$ExtraConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$ExtraConfigToJson(this);
+}
+
+@JsonSerializable()
+class DownloadCategory {
+  String name;
+  String path;
+  bool isBuiltIn;
+
+  DownloadCategory({
+    required this.name,
+    required this.path,
+    this.isBuiltIn = false,
+  });
+
+  factory DownloadCategory.fromJson(Map<String, dynamic> json) =>
+      _$DownloadCategoryFromJson(json);
+
+  Map<String, dynamic> toJson() => _$DownloadCategoryToJson(this);
 }
 
 @JsonSerializable()

@@ -83,6 +83,8 @@ class SettingView extends GetView<SettingController> {
         controller: downloadDirController,
         showLabel: false,
         showAndoirdToggle: true,
+        allowEdit: true,
+        showPlaceholderButton: true,
       );
     });
     final buildMaxRunning = _buildConfigItem(
@@ -132,6 +134,98 @@ class SettingView extends GetView<SettingController> {
         ),
       );
     });
+
+    // Download categories configuration
+    buildDownloadCategories() {
+      final categories = downloaderCfg.value.extra.downloadCategories;
+      return ListTile(
+        title: Text('downloadCategories'.tr),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (categories.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'addCategory'.tr,
+                  style: TextStyle(color: Theme.of(context).hintColor),
+                ),
+              ),
+            ...categories.map((category) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            category.path,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).hintColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.edit,
+                        size: 20,
+                        color: Theme.of(context).hintColor,
+                      ),
+                      onPressed: () {
+                        _showCategoryDialog(
+                          context,
+                          debounceSave,
+                          downloaderCfg,
+                          category: category,
+                        );
+                      },
+                    ),
+                    if (!category.isBuiltIn)
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete,
+                          size: 20,
+                          color: Theme.of(context).hintColor,
+                        ),
+                        onPressed: () {
+                          downloaderCfg.update((val) {
+                            val!.extra.downloadCategories.remove(category);
+                          });
+                          debounceSave();
+                        },
+                      ),
+                  ],
+                ),
+              );
+            }),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: Text('addCategory'.tr),
+                onPressed: () {
+                  _showCategoryDialog(
+                    context,
+                    debounceSave,
+                    downloaderCfg,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     buildBrowserExtension() {
       return ListTile(
@@ -950,6 +1044,7 @@ class SettingView extends GetView<SettingController> {
                             child: Column(
                           children: _addDivider([
                             buildDownloadDir(),
+                            buildDownloadCategories(),
                             buildMaxRunning(),
                             buildDefaultDirectDownload(),
                             buildBrowserExtension(),
@@ -1118,6 +1213,72 @@ class SettingView extends GetView<SettingController> {
       default:
         return 'themeSystem'.tr;
     }
+  }
+
+  void _showCategoryDialog(
+    BuildContext context,
+    Future<bool> Function() debounceSave,
+    Rx<DownloaderConfig> downloaderCfg, {
+    DownloadCategory? category,
+  }) {
+    final isEditing = category != null;
+    final nameController = TextEditingController(text: category?.name ?? '');
+    final pathController = TextEditingController(text: category?.path ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEditing ? 'categoryName'.tr : 'addCategory'.tr),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'categoryName'.tr,
+              ),
+            ),
+            const SizedBox(height: 16),
+            DirectorySelector(
+              controller: pathController,
+              showLabel: true,
+              allowEdit: true,
+              showPlaceholderButton: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('cancel'.tr),
+          ),
+          TextButton(
+            onPressed: () {
+              if (nameController.text.isEmpty || pathController.text.isEmpty) {
+                return;
+              }
+
+              if (isEditing) {
+                category.name = nameController.text;
+                category.path = pathController.text;
+              } else {
+                downloaderCfg.update((val) {
+                  val!.extra.downloadCategories.add(
+                    DownloadCategory(
+                      name: nameController.text,
+                      path: pathController.text,
+                    ),
+                  );
+                });
+              }
+              debounceSave();
+              Navigator.of(context).pop();
+            },
+            child: Text('confirm'.tr),
+          ),
+        ],
+      ),
+    );
   }
 }
 
