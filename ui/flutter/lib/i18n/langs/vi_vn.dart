@@ -90,5 +90,7 @@ const viVN = {
         'Cảm ơn tất cả những người đóng góp đã giúp xây dựng và phát triển cộng đồng Gopeed!',
     'browserExtension': 'Tiện ích mở rộng trình duyệt',
     'skipVerifyCert': 'Bỏ qua xác thực chứng chỉ',
+    'networkAutoControl': 'Điều khiển mạng tự động',
+    'networkAutoControlTip': 'Tự động tạm dừng tải xuống khi chuyển từ WiFi sang dữ liệu di động và tiếp tục khi quay lại WiFi',
   },
 };

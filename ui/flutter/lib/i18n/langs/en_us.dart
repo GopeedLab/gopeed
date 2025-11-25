@@ -136,5 +136,7 @@ const enUS = {
     'login_failed': 'Login failed, please check your username and password',
     'login_failed_network':
         'Login failed, please check your network connection',
+    'networkAutoControl': 'Network Auto Control',
+    'networkAutoControlTip': 'Automatically pause downloads when switching from WiFi to mobile data, and resume when switching back to WiFi',
   },
 };

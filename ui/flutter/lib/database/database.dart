@@ -10,6 +10,7 @@ const String _windowState = 'windowState';
 const String _bookmark = 'bookmark';
 const String _createHistory = 'createHistory';
 const String _webToken = 'webToken';
+const String _networkAutoControl = 'networkAutoControl';
 
 class Database {
   static final Database _instance = Database._internal();
@@ -108,5 +109,13 @@ class Database {
 
   void clearCreateHistory() {
     clear(_createHistory);
+  }
+
+  void saveNetworkAutoControl(bool enabled) {
+    save<bool>(_networkAutoControl, enabled);
+  }
+
+  bool getNetworkAutoControl() {
+    return get<bool>(_networkAutoControl, (json) => json as bool) ?? false;
   }
 }

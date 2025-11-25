@@ -97,5 +97,7 @@ const itIT = {
     'browserExtension': 'Estensione del browser',
     'launchAtStartup': "Lancia all'avvio",
     'skipVerifyCert': 'Salta la verifica del certificato',
+    'networkAutoControl': 'Controllo automatico della rete',
+    'networkAutoControlTip': 'Mette automaticamente in pausa i download quando si passa dal WiFi ai dati mobili e riprende quando si torna al WiFi',
   },
 };
