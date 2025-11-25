@@ -274,6 +274,50 @@ func TestWebhook_TestWebhookFailsOn201(t *testing.T) {
 	})
 }
 
+func TestWebhook_TestWebhookUrl(t *testing.T) {
+	receivedPayload := make(chan *WebhookPayload, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload WebhookPayload
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Errorf("Failed to decode payload: %v", err)
+			return
+		}
+		receivedPayload <- &payload
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	setupWebhookTest(t, func(downloader *Downloader) {
+		// Test single URL
+		err := downloader.TestWebhookUrl(server.URL)
+		if err != nil {
+			t.Errorf("TestWebhookUrl failed: %v", err)
+		}
+
+		select {
+		case payload := <-receivedPayload:
+			if payload.Event != WebhookEventDone {
+				t.Errorf("Expected event 'done', got '%s'", payload.Event)
+			}
+			if payload.Extra == nil || payload.Extra["test"] != "true" {
+				t.Error("Expected test=true in extra")
+			}
+		case <-time.After(2 * time.Second):
+			t.Error("Timeout waiting for webhook")
+		}
+	})
+}
+
+func TestWebhook_TestWebhookUrlEmpty(t *testing.T) {
+	setupWebhookTest(t, func(downloader *Downloader) {
+		// Test with empty URL - should return error
+		err := downloader.TestWebhookUrl("")
+		if err == nil {
+			t.Error("Expected TestWebhookUrl to return error for empty URL")
+		}
+	})
+}
+
 func setupWebhookTest(t *testing.T, fn func(downloader *Downloader)) {
 	defaultDownloader.Setup()
 	defaultDownloader.cfg.StorageDir = ".test_storage"

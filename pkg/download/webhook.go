@@ -162,6 +162,26 @@ func (d *Downloader) SendTestWebhook() error {
 		return nil
 	}
 
+	for _, urlInterface := range urls {
+		url, ok := urlInterface.(string)
+		if !ok || url == "" {
+			continue
+		}
+		if err := d.TestWebhookUrl(url); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// TestWebhookUrl tests a single webhook URL with a simulated payload
+// Returns error if the URL does not respond with HTTP 200
+func (d *Downloader) TestWebhookUrl(url string) error {
+	if url == "" {
+		return fmt.Errorf("webhook URL is empty")
+	}
+
 	// Create a simulated test payload
 	testPayload := &WebhookPayload{
 		Event: WebhookEventDone,
@@ -189,28 +209,21 @@ func (d *Downloader) SendTestWebhook() error {
 		Timeout: webhookTimeout,
 	}
 
-	for _, urlInterface := range urls {
-		url, ok := urlInterface.(string)
-		if !ok || url == "" {
-			continue
-		}
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "Gopeed-Webhook/1.0")
 
-		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "Gopeed-Webhook/1.0")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
 
-		resp, err := client.Do(req)
-		if err != nil {
-			return err
-		}
-		resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("webhook test failed: %s returned status %d", url, resp.StatusCode)
-		}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("webhook test failed: %s returned status %d", url, resp.StatusCode)
 	}
 
 	return nil

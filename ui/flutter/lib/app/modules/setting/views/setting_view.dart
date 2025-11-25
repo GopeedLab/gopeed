@@ -925,9 +925,6 @@ class SettingView extends GetView<SettingController> {
         'count': downloaderCfg.value.extra.webhookUrls.length.toString()
       }),
       (Key key) {
-        final webhookTestController = OutlinedButtonLoadingController();
-        final webhookUrlsController = TextEditingController(
-            text: downloaderCfg.value.extra.webhookUrls.join('\r\n'));
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -936,35 +933,54 @@ class SettingView extends GetView<SettingController> {
               style: Theme.of(Get.context!).textTheme.bodySmall,
             ),
             _padding,
-            TextField(
-              key: key,
-              focusNode: FocusNode(),
-              controller: webhookUrlsController,
-              keyboardType: TextInputType.multiline,
-              maxLines: 5,
-              decoration: InputDecoration(
-                hintText: 'webhookUrlsHint'.tr,
-              ),
-              onChanged: (value) async {
-                downloaderCfg.value.extra.webhookUrls = Util.textToLines(value);
-                await debounceSave();
-              },
-            ),
+            // List of existing webhook URLs
+            ...downloaderCfg.value.extra.webhookUrls.asMap().entries.map((entry) {
+              final index = entry.key;
+              final url = entry.value;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        url,
+                        style: Theme.of(Get.context!).textTheme.bodyMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.play_arrow, size: 20),
+                      tooltip: 'webhookTest'.tr,
+                      onPressed: () async {
+                        try {
+                          await api.testWebhook(url);
+                          showMessage('tip'.tr, 'webhookTestSuccess'.tr);
+                        } catch (e) {
+                          showErrorMessage('webhookTestFail'.tr);
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 20),
+                      tooltip: 'delete'.tr,
+                      onPressed: () async {
+                        downloaderCfg.value.extra.webhookUrls.removeAt(index);
+                        downloaderCfg.refresh();
+                        await debounceSave();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
             _padding,
-            OutlinedButtonLoading(
-              onPressed: () async {
-                webhookTestController.start();
-                try {
-                  await api.testWebhook();
-                  showMessage('tip'.tr, 'webhookTestSuccess'.tr);
-                } catch (e) {
-                  showErrorMessage('webhookTestFail'.tr);
-                } finally {
-                  webhookTestController.stop();
-                }
+            // Add button
+            OutlinedButton.icon(
+              onPressed: () {
+                _showAddWebhookDialog();
               },
-              controller: webhookTestController,
-              child: Text('webhookTest'.tr),
+              icon: const Icon(Icons.add),
+              label: Text('webhookAdd'.tr),
             ),
           ],
         );
@@ -1100,6 +1116,60 @@ class SettingView extends GetView<SettingController> {
         ),
       );
     });
+  }
+
+  void _showAddWebhookDialog() {
+    final urlController = TextEditingController();
+    final testController = OutlinedButtonLoadingController();
+    final appController = Get.find<AppController>();
+    final downloaderCfg = appController.downloaderConfig;
+
+    showDialog(
+      context: Get.context!,
+      builder: (context) => AlertDialog(
+        title: Text('webhookAdd'.tr),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: urlController,
+              decoration: InputDecoration(
+                hintText: 'webhookUrlHint'.tr,
+              ),
+              keyboardType: TextInputType.url,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('cancel'.tr),
+          ),
+          OutlinedButtonLoading(
+            controller: testController,
+            onPressed: () async {
+              final url = urlController.text.trim();
+              if (url.isEmpty) return;
+              testController.start();
+              try {
+                await api.testWebhook(url);
+                // Test successful, add to list
+                downloaderCfg.value.extra.webhookUrls.add(url);
+                downloaderCfg.refresh();
+                await appController.saveConfig();
+                Get.back();
+                showMessage('tip'.tr, 'webhookAddSuccess'.tr);
+              } catch (e) {
+                showErrorMessage('webhookTestFail'.tr);
+              } finally {
+                testController.stop();
+              }
+            },
+            child: Text('confirm'.tr),
+          ),
+        ],
+      ),
+    );
   }
 
   void _tapInputWidget(GlobalKey key) {

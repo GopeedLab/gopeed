@@ -236,8 +236,9 @@ Future<void> updateExtension(String identity) async {
       () => _client.dio.post("api/v1/extensions/$identity/update"), null);
 }
 
-Future<void> testWebhook() async {
-  return _parse(() => _client.dio.post("api/v1/webhook/test"), null);
+Future<void> testWebhook(String url) async {
+  return _parse(
+      () => _client.dio.post("api/v1/webhook/test", data: {"url": url}), null);
 }
 
 Future<String> login(LoginReq loginReq) async {
