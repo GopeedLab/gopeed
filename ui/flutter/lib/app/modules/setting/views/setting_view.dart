@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../api/api.dart' as api;
 import '../../../../api/model/downloader_config.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
@@ -917,6 +918,59 @@ class SettingView extends GetView<SettingController> {
           ));
     }
 
+    // advanced config webhook items
+    final buildWebhook = _buildConfigItem(
+      'webhook',
+      () => 'items'.trParams({
+        'count': downloaderCfg.value.extra.webhookUrls.length.toString()
+      }),
+      (Key key) {
+        final webhookTestController = OutlinedButtonLoadingController();
+        final webhookUrlsController = TextEditingController(
+            text: downloaderCfg.value.extra.webhookUrls.join('\r\n'));
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'webhookDesc'.tr,
+              style: Theme.of(Get.context!).textTheme.bodySmall,
+            ),
+            _padding,
+            TextField(
+              key: key,
+              focusNode: FocusNode(),
+              controller: webhookUrlsController,
+              keyboardType: TextInputType.multiline,
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: 'webhookUrlsHint'.tr,
+              ),
+              onChanged: (value) async {
+                downloaderCfg.value.extra.webhookUrls = Util.textToLines(value);
+                await debounceSave();
+              },
+            ),
+            _padding,
+            OutlinedButtonLoading(
+              onPressed: () async {
+                webhookTestController.start();
+                try {
+                  await api.testWebhook();
+                  showMessage('tip'.tr, 'webhookTestSuccess'.tr);
+                } catch (e) {
+                  showErrorMessage('webhookTestFail'.tr);
+                } finally {
+                  webhookTestController.stop();
+                }
+              },
+              controller: webhookTestController,
+              child: Text('webhookTest'.tr),
+            ),
+          ],
+        );
+      },
+    );
+
     return Obx(() {
       return GestureDetector(
         onTap: () {
@@ -1036,6 +1090,7 @@ class SettingView extends GetView<SettingController> {
                           child: Column(
                         children: _addDivider([
                           buildLogsDir(),
+                          buildWebhook(),
                         ]),
                       )),
                     ]),
