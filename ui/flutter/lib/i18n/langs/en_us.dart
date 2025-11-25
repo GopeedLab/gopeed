@@ -72,7 +72,6 @@ const enUS = {
     'webhookTest': 'Test',
     'webhookTestSuccess': 'Webhook test successful',
     'webhookTestFail': 'Webhook test failed',
-    'webhookAddSuccess': 'Webhook added successfully',
     'show': 'Show',
     'continue': 'Continue',
     'pause': 'Pause',

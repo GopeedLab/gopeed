@@ -892,38 +892,11 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
-    // advanced config log items start
-    buildLogsDir() {
-      return ListTile(
-          title: Text("logDirectory".tr),
-          subtitle: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: TextEditingController(text: logsDir()),
-                  enabled: false,
-                  readOnly: true,
-                ),
-              ),
-              Util.isDesktop()
-                  ? IconButton(
-                      icon: const Icon(Icons.folder_open),
-                      onPressed: () {
-                        launchUrl(Uri.file(logsDir()));
-                      },
-                    )
-                  : CopyButton(logsDir()),
-            ],
-          ));
-    }
-
     // advanced config webhook items
     final buildWebhook = _buildConfigItem(
       'webhook',
-      () => 'items'.trParams({
-        'count': downloaderCfg.value.extra.webhookUrls.length.toString()
-      }),
+      () => 'items'.trParams(
+          {'count': downloaderCfg.value.extra.webhookUrls.length.toString()}),
       (Key key) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -934,7 +907,10 @@ class SettingView extends GetView<SettingController> {
             ),
             _padding,
             // List of existing webhook URLs
-            ...downloaderCfg.value.extra.webhookUrls.asMap().entries.map((entry) {
+            ...downloaderCfg.value.extra.webhookUrls
+                .asMap()
+                .entries
+                .map((entry) {
               final index = entry.key;
               final url = entry.value;
               return Padding(
@@ -981,6 +957,32 @@ class SettingView extends GetView<SettingController> {
         );
       },
     );
+
+    // advanced config log items start
+    buildLogsDir() {
+      return ListTile(
+          title: Text("logDirectory".tr),
+          subtitle: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: TextEditingController(text: logsDir()),
+                  enabled: false,
+                  readOnly: true,
+                ),
+              ),
+              Util.isDesktop()
+                  ? IconButton(
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: () {
+                        launchUrl(Uri.file(logsDir()));
+                      },
+                    )
+                  : CopyButton(logsDir()),
+            ],
+          ));
+    }
 
     return Obx(() {
       return GestureDetector(
@@ -1100,8 +1102,8 @@ class SettingView extends GetView<SettingController> {
                       Card(
                           child: Column(
                         children: _addDivider([
-                          buildLogsDir(),
                           buildWebhook(),
+                          buildLogsDir(),
                         ]),
                       )),
                     ]),
@@ -1122,7 +1124,7 @@ class SettingView extends GetView<SettingController> {
 
     showDialog(
       context: Get.context!,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(isEdit ? 'edit'.tr : 'webhookAdd'.tr),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1136,46 +1138,55 @@ class SettingView extends GetView<SettingController> {
             ),
           ],
         ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
         actions: [
           // Test button on the left
-          OutlinedButtonLoading(
-            controller: testController,
-            onPressed: () async {
-              final url = urlController.text.trim();
-              if (url.isEmpty) return;
-              testController.start();
-              try {
-                await api.testWebhook(url);
-                showMessage('tip'.tr, 'webhookTestSuccess'.tr);
-              } catch (e) {
-                showErrorMessage('webhookTestFail'.tr);
-              } finally {
-                testController.stop();
-              }
-            },
-            child: Text('webhookTest'.tr),
+          Padding(
+            padding: const EdgeInsets.only(left: 16.0),
+            child: OutlinedButtonLoading(
+              controller: testController,
+              onPressed: () async {
+                final url = urlController.text.trim();
+                if (url.isEmpty) return;
+                testController.start();
+                try {
+                  await api.testWebhook(url);
+                  showMessage('tip'.tr, 'webhookTestSuccess'.tr);
+                } catch (e) {
+                  showErrorMessage('webhookTestFail'.tr);
+                } finally {
+                  testController.stop();
+                }
+              },
+              child: Text('webhookTest'.tr),
+            ),
           ),
-          const Spacer(),
           // Cancel and Confirm on the right
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('cancel'.tr),
-          ),
-          TextButton(
-            onPressed: () async {
-              final url = urlController.text.trim();
-              if (url.isEmpty) return;
-              if (isEdit) {
-                downloaderCfg.value.extra.webhookUrls[index] = url;
-              } else {
-                downloaderCfg.value.extra.webhookUrls.add(url);
-              }
-              downloaderCfg.refresh();
-              await appController.saveConfig();
-              Get.back();
-              showMessage('tip'.tr, isEdit ? 'save'.tr : 'webhookAddSuccess'.tr);
-            },
-            child: Text('confirm'.tr),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text('cancel'.tr),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final url = urlController.text.trim();
+                  if (url.isEmpty) return;
+                  if (isEdit) {
+                    downloaderCfg.value.extra.webhookUrls[index] = url;
+                  } else {
+                    downloaderCfg.value.extra.webhookUrls.add(url);
+                  }
+                  downloaderCfg.refresh();
+                  await appController.saveConfig();
+                  if (dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                },
+                child: Text('confirm'.tr),
+              ),
+            ],
           ),
         ],
       ),

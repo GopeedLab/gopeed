@@ -71,7 +71,6 @@ const zhCN = {
     'webhookTest': '测试',
     'webhookTestSuccess': 'Webhook 测试成功',
     'webhookTestFail': 'Webhook 测试失败',
-    'webhookAddSuccess': 'Webhook 添加成功',
     'show': '显示',
     'continue': '继续',
     'pause': '暂停',
