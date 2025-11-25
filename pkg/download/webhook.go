@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/pkg/base"
 )
 
 const (
@@ -16,49 +19,20 @@ const (
 type WebhookEvent string
 
 const (
-	WebhookEventDone  WebhookEvent = "done"
-	WebhookEventError WebhookEvent = "error"
+	WebhookEventDownloadDone  WebhookEvent = "DOWNLOAD_DONE"
+	WebhookEventDownloadError WebhookEvent = "DOWNLOAD_ERROR"
 )
 
-// WebhookPayload is the payload sent to webhook URLs
+// WebhookData is the data sent to webhook URLs
+type WebhookData struct {
+	Event   WebhookEvent     `json:"event"`
+	Time    int64            `json:"time"` // Unix timestamp in milliseconds
+	Payload *WebhookPayload  `json:"payload"`
+}
+
+// WebhookPayload contains the task data
 type WebhookPayload struct {
-	Event WebhookEvent      `json:"event"`
-	Task  *WebhookTask      `json:"task"`
-	Error string            `json:"error,omitempty"`
-	Time  int64             `json:"time"` // Unix timestamp in milliseconds
-	Extra map[string]string `json:"extra,omitempty"`
-}
-
-// WebhookTask is a simplified task structure for webhook payload
-type WebhookTask struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Status   string `json:"status"`
-	URL      string `json:"url"`
-	Path     string `json:"path"`
-	Size     int64  `json:"size"`
-	Protocol string `json:"protocol"`
-}
-
-func newWebhookTask(task *Task) *WebhookTask {
-	wt := &WebhookTask{
-		ID:       task.ID,
-		Name:     task.Name(),
-		Status:   string(task.Status),
-		Protocol: task.Protocol,
-	}
-	if task.Meta != nil {
-		if task.Meta.Req != nil {
-			wt.URL = task.Meta.Req.URL
-		}
-		if task.Meta.Opts != nil {
-			wt.Path = task.Meta.Opts.Path
-		}
-		if task.Meta.Res != nil {
-			wt.Size = task.Meta.Res.Size
-		}
-	}
-	return wt
+	Task *Task `json:"task"`
 }
 
 // getWebhookUrls extracts and converts webhook URLs from config
@@ -101,22 +75,21 @@ func (d *Downloader) triggerWebhooks(event WebhookEvent, task *Task, err error) 
 		return
 	}
 
-	payload := &WebhookPayload{
+	data := &WebhookData{
 		Event: event,
-		Task:  newWebhookTask(task),
 		Time:  time.Now().UnixMilli(),
-	}
-	if err != nil {
-		payload.Error = err.Error()
+		Payload: &WebhookPayload{
+			Task: task.clone(),
+		},
 	}
 
-	go d.sendWebhooks(urls, payload)
+	go d.sendWebhooks(urls, data)
 }
 
-func (d *Downloader) sendWebhooks(urls []interface{}, payload *WebhookPayload) {
-	jsonData, err := json.Marshal(payload)
+func (d *Downloader) sendWebhooks(urls []interface{}, data *WebhookData) {
+	jsonData, err := json.Marshal(data)
 	if err != nil {
-		d.Logger.Error().Err(err).Msg("webhook: failed to marshal payload")
+		d.Logger.Error().Err(err).Msg("webhook: failed to marshal data")
 		return
 	}
 
@@ -182,25 +155,36 @@ func (d *Downloader) TestWebhookUrl(url string) error {
 		return fmt.Errorf("webhook URL is empty")
 	}
 
-	// Create a simulated test payload
-	testPayload := &WebhookPayload{
-		Event: WebhookEventDone,
-		Task: &WebhookTask{
-			ID:       "test-task-id",
-			Name:     "test-file.zip",
-			Status:   "done",
-			URL:      "https://example.com/test-file.zip",
-			Path:     "/downloads",
-			Size:     1024 * 1024 * 100, // 100MB
-			Protocol: "http",
+	// Create a simulated test task with minimal required fields
+	testTask := NewTask()
+	testTask.Protocol = "http"
+	testTask.Status = base.DownloadStatusDone
+	testTask.Meta = &fetcher.FetcherMeta{
+		Req: &base.Request{
+			URL: "https://example.com/test-file.zip",
 		},
-		Time: time.Now().UnixMilli(),
-		Extra: map[string]string{
-			"test": "true",
+		Opts: &base.Options{
+			Name: "test-file.zip",
+			Path: "/downloads",
+		},
+		Res: &base.Resource{
+			Size: 1024 * 1024 * 100, // 100MB
+			Files: []*base.FileInfo{
+				{Name: "test-file.zip", Size: 1024 * 1024 * 100},
+			},
 		},
 	}
 
-	jsonData, err := json.Marshal(testPayload)
+	// Create test data
+	testData := &WebhookData{
+		Event: WebhookEventDownloadDone,
+		Time:  time.Now().UnixMilli(),
+		Payload: &WebhookPayload{
+			Task: testTask,
+		},
+	}
+
+	jsonData, err := json.Marshal(testData)
 	if err != nil {
 		return err
 	}

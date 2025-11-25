@@ -27,7 +27,7 @@ var mockFetcherMeta = fetcher.FetcherMeta{
 }
 
 func TestWebhook_TriggerOnDone(t *testing.T) {
-	receivedPayload := make(chan *WebhookPayload, 1)
+	receivedData := make(chan *WebhookData, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST request, got %s", r.Method)
@@ -35,12 +35,12 @@ func TestWebhook_TriggerOnDone(t *testing.T) {
 		if r.Header.Get("Content-Type") != "application/json" {
 			t.Errorf("Expected Content-Type application/json, got %s", r.Header.Get("Content-Type"))
 		}
-		var payload WebhookPayload
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Errorf("Failed to decode payload: %v", err)
+		var data WebhookData
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			t.Errorf("Failed to decode data: %v", err)
 			return
 		}
-		receivedPayload <- &payload
+		receivedData <- &data
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -60,18 +60,20 @@ func TestWebhook_TriggerOnDone(t *testing.T) {
 		task.Meta = &mockFetcherMeta
 
 		// Trigger webhook
-		downloader.triggerWebhooks(WebhookEventDone, task, nil)
+		downloader.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 
 		select {
-		case payload := <-receivedPayload:
-			if payload.Event != WebhookEventDone {
-				t.Errorf("Expected event 'done', got '%s'", payload.Event)
+		case data := <-receivedData:
+			if data.Event != WebhookEventDownloadDone {
+				t.Errorf("Expected event 'DOWNLOAD_DONE', got '%s'", data.Event)
 			}
-			if payload.Task.ID != task.ID {
-				t.Errorf("Expected task ID '%s', got '%s'", task.ID, payload.Task.ID)
+			if data.Payload == nil || data.Payload.Task == nil {
+				t.Error("Expected payload.task to be present")
+			} else if data.Payload.Task.ID != task.ID {
+				t.Errorf("Expected task ID '%s', got '%s'", task.ID, data.Payload.Task.ID)
 			}
-			if payload.Error != "" {
-				t.Errorf("Expected no error, got '%s'", payload.Error)
+			if data.Time == 0 {
+				t.Error("Expected time to be set")
 			}
 		case <-time.After(2 * time.Second):
 			t.Error("Timeout waiting for webhook")
@@ -80,14 +82,14 @@ func TestWebhook_TriggerOnDone(t *testing.T) {
 }
 
 func TestWebhook_TriggerOnError(t *testing.T) {
-	receivedPayload := make(chan *WebhookPayload, 1)
+	receivedData := make(chan *WebhookData, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var payload WebhookPayload
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Errorf("Failed to decode payload: %v", err)
+		var data WebhookData
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			t.Errorf("Failed to decode data: %v", err)
 			return
 		}
-		receivedPayload <- &payload
+		receivedData <- &data
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -108,15 +110,15 @@ func TestWebhook_TriggerOnError(t *testing.T) {
 
 		// Trigger webhook with error
 		testError := http.ErrServerClosed
-		downloader.triggerWebhooks(WebhookEventError, task, testError)
+		downloader.triggerWebhooks(WebhookEventDownloadError, task, testError)
 
 		select {
-		case payload := <-receivedPayload:
-			if payload.Event != WebhookEventError {
-				t.Errorf("Expected event 'error', got '%s'", payload.Event)
+		case data := <-receivedData:
+			if data.Event != WebhookEventDownloadError {
+				t.Errorf("Expected event 'DOWNLOAD_ERROR', got '%s'", data.Event)
 			}
-			if payload.Error != testError.Error() {
-				t.Errorf("Expected error '%s', got '%s'", testError.Error(), payload.Error)
+			if data.Payload == nil || data.Payload.Task == nil {
+				t.Error("Expected payload.task to be present")
 			}
 		case <-time.After(2 * time.Second):
 			t.Error("Timeout waiting for webhook")
@@ -125,14 +127,14 @@ func TestWebhook_TriggerOnError(t *testing.T) {
 }
 
 func TestWebhook_SendTestWebhook(t *testing.T) {
-	receivedPayload := make(chan *WebhookPayload, 1)
+	receivedData := make(chan *WebhookData, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var payload WebhookPayload
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Errorf("Failed to decode payload: %v", err)
+		var data WebhookData
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			t.Errorf("Failed to decode data: %v", err)
 			return
 		}
-		receivedPayload <- &payload
+		receivedData <- &data
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -153,15 +155,15 @@ func TestWebhook_SendTestWebhook(t *testing.T) {
 		}
 
 		select {
-		case payload := <-receivedPayload:
-			if payload.Event != WebhookEventDone {
-				t.Errorf("Expected event 'done', got '%s'", payload.Event)
+		case data := <-receivedData:
+			if data.Event != WebhookEventDownloadDone {
+				t.Errorf("Expected event 'DOWNLOAD_DONE', got '%s'", data.Event)
 			}
-			if payload.Task.ID != "test-task-id" {
-				t.Errorf("Expected task ID 'test-task-id', got '%s'", payload.Task.ID)
+			if data.Payload == nil || data.Payload.Task == nil {
+				t.Error("Expected payload.task to be present")
 			}
-			if payload.Extra == nil || payload.Extra["test"] != "true" {
-				t.Error("Expected test=true in extra")
+			if data.Time == 0 {
+				t.Error("Expected time to be set")
 			}
 		case <-time.After(2 * time.Second):
 			t.Error("Timeout waiting for webhook")
@@ -177,7 +179,7 @@ func TestWebhook_NoWebhookConfigured(t *testing.T) {
 		task.Meta = &mockFetcherMeta
 
 		// Trigger webhook (should not panic with no webhooks configured)
-		downloader.triggerWebhooks(WebhookEventDone, task, nil)
+		downloader.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 
 		// Send test webhook (should not panic)
 		err := downloader.SendTestWebhook()
@@ -215,7 +217,7 @@ func TestWebhook_MultipleUrls(t *testing.T) {
 		task.Meta = &mockFetcherMeta
 
 		// Trigger webhook
-		downloader.triggerWebhooks(WebhookEventDone, task, nil)
+		downloader.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 
 		// Wait for webhooks
 		time.Sleep(500 * time.Millisecond)
@@ -275,14 +277,14 @@ func TestWebhook_TestWebhookFailsOn201(t *testing.T) {
 }
 
 func TestWebhook_TestWebhookUrl(t *testing.T) {
-	receivedPayload := make(chan *WebhookPayload, 1)
+	receivedData := make(chan *WebhookData, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var payload WebhookPayload
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Errorf("Failed to decode payload: %v", err)
+		var data WebhookData
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			t.Errorf("Failed to decode data: %v", err)
 			return
 		}
-		receivedPayload <- &payload
+		receivedData <- &data
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -295,12 +297,12 @@ func TestWebhook_TestWebhookUrl(t *testing.T) {
 		}
 
 		select {
-		case payload := <-receivedPayload:
-			if payload.Event != WebhookEventDone {
-				t.Errorf("Expected event 'done', got '%s'", payload.Event)
+		case data := <-receivedData:
+			if data.Event != WebhookEventDownloadDone {
+				t.Errorf("Expected event 'DOWNLOAD_DONE', got '%s'", data.Event)
 			}
-			if payload.Extra == nil || payload.Extra["test"] != "true" {
-				t.Error("Expected test=true in extra")
+			if data.Payload == nil || data.Payload.Task == nil {
+				t.Error("Expected payload.task to be present")
 			}
 		case <-time.After(2 * time.Second):
 			t.Error("Timeout waiting for webhook")
