@@ -226,6 +226,54 @@ func TestWebhook_MultipleUrls(t *testing.T) {
 	})
 }
 
+func TestWebhook_TestWebhookFailsOnNon200(t *testing.T) {
+	// Test that SendTestWebhook returns error for non-200 status codes
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError) // 500
+	}))
+	defer server.Close()
+
+	setupWebhookTest(t, func(downloader *Downloader) {
+		// Configure webhook URLs
+		cfg, _ := downloader.GetConfig()
+		if cfg.Extra == nil {
+			cfg.Extra = make(map[string]any)
+		}
+		cfg.Extra["webhookUrls"] = []string{server.URL}
+		downloader.PutConfig(cfg)
+
+		// Send test webhook - should fail with non-200 status
+		err := downloader.SendTestWebhook()
+		if err == nil {
+			t.Error("Expected SendTestWebhook to return error for non-200 status")
+		}
+	})
+}
+
+func TestWebhook_TestWebhookFailsOn201(t *testing.T) {
+	// Test that SendTestWebhook returns error for 201 (only 200 is success)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated) // 201
+	}))
+	defer server.Close()
+
+	setupWebhookTest(t, func(downloader *Downloader) {
+		// Configure webhook URLs
+		cfg, _ := downloader.GetConfig()
+		if cfg.Extra == nil {
+			cfg.Extra = make(map[string]any)
+		}
+		cfg.Extra["webhookUrls"] = []string{server.URL}
+		downloader.PutConfig(cfg)
+
+		// Send test webhook - should fail with 201 status (only 200 is success)
+		err := downloader.SendTestWebhook()
+		if err == nil {
+			t.Error("Expected SendTestWebhook to return error for 201 status")
+		}
+	})
+}
+
 func setupWebhookTest(t *testing.T, fn func(downloader *Downloader)) {
 	defaultDownloader.Setup()
 	defaultDownloader.cfg.StorageDir = ".test_storage"
