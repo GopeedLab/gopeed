@@ -36,7 +36,7 @@ type WebhookPayload struct {
 }
 
 // getWebhookUrls extracts and converts webhook URLs from config
-func (d *Downloader) getWebhookUrls() []interface{} {
+func (d *Downloader) getWebhookUrls() []string {
 	cfg := d.cfg.DownloaderStoreConfig
 	if cfg == nil || cfg.Extra == nil {
 		return nil
@@ -47,25 +47,32 @@ func (d *Downloader) getWebhookUrls() []interface{} {
 		return nil
 	}
 
-	// Convert interface to []interface{}
-	urls, ok := webhookUrls.([]interface{})
-	if !ok {
-		// Try direct string slice
-		urlsStr, ok := webhookUrls.([]string)
-		if !ok || len(urlsStr) == 0 {
+	// Try direct string slice first
+	if urlsStr, ok := webhookUrls.([]string); ok {
+		if len(urlsStr) == 0 {
 			return nil
 		}
-		urls = make([]interface{}, len(urlsStr))
-		for i, u := range urlsStr {
-			urls[i] = u
+		return urlsStr
+	}
+
+	// Convert []interface{} to []string
+	if urlsInterface, ok := webhookUrls.([]any); ok {
+		if len(urlsInterface) == 0 {
+			return nil
 		}
+		urls := make([]string, 0, len(urlsInterface))
+		for _, urlInterface := range urlsInterface {
+			if url, ok := urlInterface.(string); ok && url != "" {
+				urls = append(urls, url)
+			}
+		}
+		if len(urls) == 0 {
+			return nil
+		}
+		return urls
 	}
 
-	if len(urls) == 0 {
-		return nil
-	}
-
-	return urls
+	return nil
 }
 
 // sendWebhookToUrl sends webhook data to a single URL
@@ -103,7 +110,7 @@ func (d *Downloader) sendWebhookToUrl(url string, data *WebhookData) (int, error
 // triggerWebhooks sends webhook notifications to all configured URLs
 func (d *Downloader) triggerWebhooks(event WebhookEvent, task *Task, err error) {
 	urls := d.getWebhookUrls()
-	if urls == nil {
+	if len(urls) == 0 {
 		return
 	}
 
@@ -118,10 +125,9 @@ func (d *Downloader) triggerWebhooks(event WebhookEvent, task *Task, err error) 
 	go d.sendWebhooks(urls, data)
 }
 
-func (d *Downloader) sendWebhooks(urls []interface{}, data *WebhookData) {
-	for _, urlInterface := range urls {
-		url, ok := urlInterface.(string)
-		if !ok || url == "" {
+func (d *Downloader) sendWebhooks(urls []string, data *WebhookData) {
+	for _, url := range urls {
+		if url == "" {
 			continue
 		}
 		go func(webhookUrl string) {
@@ -143,13 +149,12 @@ func (d *Downloader) sendWebhooks(urls []interface{}, data *WebhookData) {
 // Returns error if any webhook URL does not respond with HTTP 200
 func (d *Downloader) SendTestWebhook() error {
 	urls := d.getWebhookUrls()
-	if urls == nil {
+	if len(urls) == 0 {
 		return nil
 	}
 
-	for _, urlInterface := range urls {
-		url, ok := urlInterface.(string)
-		if !ok || url == "" {
+	for _, url := range urls {
+		if url == "" {
 			continue
 		}
 		if err := d.TestWebhookUrl(url); err != nil {
