@@ -67,6 +67,7 @@ const enUS = {
     'developer': 'Developer',
     'logDirectory': 'Log Directory',
     'webhook': 'Webhook',
+    'webhookEnable': 'Enable Webhook',
     'webhookDesc': 'Send HTTP POST notifications when tasks complete or fail',
     'webhookUrlHint': 'Enter webhook URL',
     'webhookTest': 'Test',

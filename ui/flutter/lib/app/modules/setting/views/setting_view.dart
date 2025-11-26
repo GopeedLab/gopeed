@@ -1036,19 +1036,42 @@ class SettingView extends GetView<SettingController> {
     // advanced config webhook items
     final buildWebhook = _buildConfigItem(
       'webhook',
-      () => 'items'.trParams(
-          {'count': downloaderCfg.value.extra.webhookUrls.length.toString()}),
+      () => downloaderCfg.value.webhook.enable
+          ? 'enabled'.tr
+          : 'disabled'.tr,
       (Key key) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Text(
+                  'webhookEnable'.tr,
+                  style: Theme.of(Get.context!).textTheme.bodyMedium,
+                ),
+                const Spacer(),
+                Switch(
+                  value: downloaderCfg.value.webhook.enable,
+                  onChanged: (value) {
+                    downloaderCfg.update((val) {
+                      val!.webhook.enable = value;
+                    });
+                    if (Util.isDesktop()) {
+                      controller.clearTap();
+                    }
+                    debounceSave();
+                  },
+                ),
+              ],
+            ),
+            _padding,
             Text(
               'webhookDesc'.tr,
               style: Theme.of(Get.context!).textTheme.bodySmall,
             ),
             _padding,
             // List of existing webhook URLs
-            ...downloaderCfg.value.extra.webhookUrls
+            ...downloaderCfg.value.webhook.urls
                 .asMap()
                 .entries
                 .map((entry) {
@@ -1076,7 +1099,7 @@ class SettingView extends GetView<SettingController> {
                       icon: const Icon(Icons.delete, size: 20),
                       tooltip: 'delete'.tr,
                       onPressed: () async {
-                        downloaderCfg.value.extra.webhookUrls.removeAt(index);
+                        downloaderCfg.value.webhook.urls.removeAt(index);
                         downloaderCfg.refresh();
                         await debounceSave();
                       },
@@ -1347,9 +1370,9 @@ class SettingView extends GetView<SettingController> {
                   saveController.start();
                   try {
                     if (isEdit) {
-                      downloaderCfg.value.extra.webhookUrls[index] = url;
+                      downloaderCfg.value.webhook.urls[index] = url;
                     } else {
-                      downloaderCfg.value.extra.webhookUrls.add(url);
+                      downloaderCfg.value.webhook.urls.add(url);
                     }
                     downloaderCfg.refresh();
                     await appController.saveConfig();

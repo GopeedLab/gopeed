@@ -9,6 +9,7 @@ class DownloaderConfig {
   ProtocolConfig protocolConfig = ProtocolConfig();
   ExtraConfig extra = ExtraConfig();
   ProxyConfig proxy = ProxyConfig();
+  WebhookConfig webhook = WebhookConfig();
 
   DownloaderConfig({
     this.downloadDir = '',
@@ -82,7 +83,6 @@ class ExtraConfig {
   bool defaultDirectDownload;
   bool defaultBtClient;
   bool notifyWhenNewVersion;
-  List<String> webhookUrls;
   List<DownloadCategory> downloadCategories;
 
   ExtraConfigBt bt = ExtraConfigBt();
@@ -94,7 +94,6 @@ class ExtraConfig {
     this.defaultDirectDownload = false,
     this.defaultBtClient = true,
     this.notifyWhenNewVersion = true,
-    this.webhookUrls = const [],
     this.downloadCategories = const [],
   });
 
@@ -124,6 +123,22 @@ class DownloadCategory {
       _$DownloadCategoryFromJson(json);
 
   Map<String, dynamic> toJson() => _$DownloadCategoryToJson(this);
+}
+
+@JsonSerializable()
+class WebhookConfig {
+  bool enable;
+  List<String> urls;
+
+  WebhookConfig({
+    this.enable = false,
+    this.urls = const [],
+  });
+
+  factory WebhookConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? WebhookConfig() : _$WebhookConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$WebhookConfigToJson(this);
 }
 
 @JsonSerializable()

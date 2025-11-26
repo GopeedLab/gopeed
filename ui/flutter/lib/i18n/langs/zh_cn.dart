@@ -66,6 +66,7 @@ const zhCN = {
     'developer': '开发者',
     'logDirectory': '日志目录',
     'webhook': 'Webhook 推送',
+    'webhookEnable': '启用 Webhook',
     'webhookDesc': '在任务完成或失败时发送 HTTP POST 通知',
     'webhookUrlHint': '请输入 Webhook URL',
     'webhookTest': '测试',

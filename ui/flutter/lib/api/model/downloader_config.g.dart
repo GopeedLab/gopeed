@@ -14,7 +14,8 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..protocolConfig = ProtocolConfig.fromJson(
           json['protocolConfig'] as Map<String, dynamic>?)
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
-      ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>);
+      ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>)
+      ..webhook = WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
@@ -23,6 +24,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'protocolConfig': instance.protocolConfig.toJson(),
       'extra': instance.extra.toJson(),
       'proxy': instance.proxy.toJson(),
+      'webhook': instance.webhook.toJson(),
     };
 
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>
@@ -75,10 +77,6 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
       defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
       defaultBtClient: json['defaultBtClient'] as bool? ?? true,
       notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
-      webhookUrls: (json['webhookUrls'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
       downloadCategories: (json['downloadCategories'] as List<dynamic>?)
               ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -93,7 +91,6 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'defaultDirectDownload': instance.defaultDirectDownload,
       'defaultBtClient': instance.defaultBtClient,
       'notifyWhenNewVersion': instance.notifyWhenNewVersion,
-      'webhookUrls': instance.webhookUrls,
       'downloadCategories':
           instance.downloadCategories.map((e) => e.toJson()).toList(),
       'bt': instance.bt.toJson(),
@@ -125,6 +122,21 @@ Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) {
   val['isDeleted'] = instance.isDeleted;
   return val;
 }
+
+WebhookConfig _$WebhookConfigFromJson(Map<String, dynamic> json) =>
+    WebhookConfig(
+      enable: json['enable'] as bool? ?? false,
+      urls: (json['urls'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+    );
+
+Map<String, dynamic> _$WebhookConfigToJson(WebhookConfig instance) =>
+    <String, dynamic>{
+      'enable': instance.enable,
+      'urls': instance.urls,
+    };
 
 ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig(
       enable: json['enable'] as bool? ?? false,
