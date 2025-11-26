@@ -504,6 +504,12 @@ class AppController extends GetxController with WindowListener, TrayListener {
       // default select all tracker subscribe urls
       extra.bt.trackerSubscribeUrls.addAll(allTrackerSubscribeUrls);
     }
+    
+    // Initialize default download categories if empty
+    if (extra.downloadCategories.isEmpty) {
+      await _initDefaultDownloadCategories();
+    }
+    
     final proxy = config.proxy;
     if (proxy.scheme.isEmpty) {
       proxy.scheme = 'http';
@@ -521,6 +527,74 @@ class AppController extends GetxController with WindowListener, TrayListener {
         config.downloadDir = './';
       }
     }
+  }
+
+  Future<void> _initDefaultDownloadCategories() async {
+    final extra = downloaderConfig.value.extra;
+    final downloadDir = downloaderConfig.value.downloadDir.isEmpty
+        ? (await getDownloadsDirectory())?.path ?? "./"
+        : downloaderConfig.value.downloadDir;
+
+    // Get OS-specific default paths
+    String getMusicPath() {
+      if (Util.isWindows()) {
+        return '$downloadDir\\Music';
+      } else if (Util.isDesktop()) {
+        return '$downloadDir/Music';
+      }
+      return '$downloadDir/Music';
+    }
+
+    String getVideoPath() {
+      if (Util.isWindows()) {
+        return '$downloadDir\\Video';
+      } else if (Util.isDesktop()) {
+        return '$downloadDir/Video';
+      }
+      return '$downloadDir/Video';
+    }
+
+    String getDocumentPath() {
+      if (Util.isWindows()) {
+        return '$downloadDir\\Document';
+      } else if (Util.isDesktop()) {
+        return '$downloadDir/Document';
+      }
+      return '$downloadDir/Document';
+    }
+
+    String getProgramPath() {
+      if (Util.isWindows()) {
+        return '$downloadDir\\Program';
+      } else if (Util.isDesktop()) {
+        return '$downloadDir/Program';
+      }
+      return '$downloadDir/Program';
+    }
+
+    // Add default built-in categories
+    extra.downloadCategories.addAll([
+      DownloadCategory(
+        name: 'categoryMusic'.tr,
+        path: getMusicPath(),
+        isBuiltIn: true,
+      ),
+      DownloadCategory(
+        name: 'categoryVideo'.tr,
+        path: getVideoPath(),
+        isBuiltIn: true,
+      ),
+      DownloadCategory(
+        name: 'categoryDocument'.tr,
+        path: getDocumentPath(),
+        isBuiltIn: true,
+      ),
+      DownloadCategory(
+        name: 'categoryProgram'.tr,
+        path: getProgramPath(),
+        isBuiltIn: true,
+      ),
+    ]);
   }
 
   Future<void> _initLaunchAtStartup() async {

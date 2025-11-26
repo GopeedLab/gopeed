@@ -201,7 +201,9 @@ class SettingView extends GetView<SettingController> {
                         ),
                         onPressed: () {
                           downloaderCfg.update((val) {
-                            val!.extra.downloadCategories.remove(category);
+                            val!.extra.downloadCategories = val.extra.downloadCategories
+                                .where((c) => c != category)
+                                .toList();
                           });
                           debounceSave();
                         },
@@ -1446,12 +1448,13 @@ class SettingView extends GetView<SettingController> {
                 category.path = pathController.text;
               } else {
                 downloaderCfg.update((val) {
-                  val!.extra.downloadCategories.add(
+                  val!.extra.downloadCategories = [
+                    ...val.extra.downloadCategories,
                     DownloadCategory(
                       name: nameController.text,
                       path: pathController.text,
                     ),
-                  );
+                  ];
                 });
               }
               debounceSave();
