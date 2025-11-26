@@ -82,6 +82,7 @@ class ExtraConfig {
   bool defaultDirectDownload;
   bool defaultBtClient;
   bool notifyWhenNewVersion;
+  List<String> webhookUrls;
 
   ExtraConfigBt bt = ExtraConfigBt();
   List<DownloadCategory> downloadCategories = [];
@@ -93,6 +94,7 @@ class ExtraConfig {
     this.defaultDirectDownload = false,
     this.defaultBtClient = true,
     this.notifyWhenNewVersion = true,
+    this.webhookUrls = const [],
   });
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>

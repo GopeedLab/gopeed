@@ -389,3 +389,14 @@ func getServerConfig() *base.DownloaderStoreConfig {
 	cfg, _ := Downloader.GetConfig()
 	return cfg
 }
+
+func TestWebhook(w http.ResponseWriter, r *http.Request) {
+	var req model.TestWebhookReq
+	if ReadJson(r, w, &req) {
+		if err := Downloader.TestWebhookUrl(req.URL); err != nil {
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
+		WriteJson(w, model.NewNilResult())
+	}
+}

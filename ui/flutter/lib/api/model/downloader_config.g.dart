@@ -81,6 +81,11 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
               ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [];
+      webhookUrls: (json['webhookUrls'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+    )..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>);
 
 Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
     <String, dynamic>{
@@ -90,6 +95,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'defaultDirectDownload': instance.defaultDirectDownload,
       'defaultBtClient': instance.defaultBtClient,
       'notifyWhenNewVersion': instance.notifyWhenNewVersion,
+      'webhookUrls': instance.webhookUrls,
       'bt': instance.bt.toJson(),
       'downloadCategories':
           instance.downloadCategories.map((e) => e.toJson()).toList(),
