@@ -128,7 +128,6 @@ const zhTW = {
     'categoryVideo': '影片',
     'categoryDocument': '文件',
     'categoryProgram': '程式',
-    'addCategory': '新增分類',
     'categoryName': '分類名稱',
     'categoryPath': '分類路徑',
     'builtInCategory': '內建分類無法刪除',

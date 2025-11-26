@@ -22,10 +22,13 @@ const deDE = {
     'followSettings': 'Einstellungen Folgen',
     'downloadLink': 'Download Link',
     'downloadLinkValid': 'Bitte geben Sie den Download-Link ein',
-    'downloadLinkHit': 'Bitte geben Sie den Download-Link ein, einen pro Zeile@append',
-    'downloadLinkHitDesktop': ', oder ziehen Sie die Torrent-Datei direkt hierher',
+    'downloadLinkHit':
+        'Bitte geben Sie den Download-Link ein, einen pro Zeile@append',
+    'downloadLinkHitDesktop':
+        ', oder ziehen Sie die Torrent-Datei direkt hierher',
     'download': 'Download',
-    'noFileSelected': 'Bitte wählen Sie mindestens eine Datei aus, um fortzufahren.',
+    'noFileSelected':
+        'Bitte wählen Sie mindestens eine Datei aus, um fortzufahren.',
     'noStoragePermission': 'Speicherberechtigung erforderlich',
     'selectFile': 'Datei auswählen',
     'rename': 'Umbenennen',
@@ -46,7 +49,8 @@ const deDE = {
     'updateDaily': 'Tägliche Aktualisierung',
     'lastUpdate': 'Letzte Aktualisierung: @time',
     'addTracker': 'Tracker hinzufügen',
-    'addTrackerHit': 'Bitte geben Sie die URL des Tracker-Servers ein, eine pro Zeile',
+    'addTrackerHit':
+        'Bitte geben Sie die URL des Tracker-Servers ein, eine pro Zeile',
     'ui': 'Benutzeroberfläche',
     'theme': 'Thema',
     'themeSystem': 'System',
@@ -123,7 +127,8 @@ const deDE = {
     'username_required': 'Bitte geben Sie Ihren Benutzernamen ein',
     'password_required': 'Bitte geben Sie Ihr Passwort ein',
     'login_success': 'Anmeldung erfolgreich',
-    'login_failed': 'Anmeldung fehlgeschlagen, bitte überprüfen Sie Ihren Benutzernamen und Ihr Passwort',
+    'login_failed':
+        'Anmeldung fehlgeschlagen, bitte überprüfen Sie Ihren Benutzernamen und Ihr Passwort',
     'login_failed_network':
         'Anmeldung fehlgeschlagen, bitte überprüfen Sie Ihre Netzwerkverbindung',
     'insertPlaceholder': 'Platzhalter einfügen',
@@ -137,7 +142,6 @@ const deDE = {
     'categoryVideo': 'Video',
     'categoryDocument': 'Dokument',
     'categoryProgram': 'Programm',
-    'addCategory': 'Kategorie hinzufügen',
     'categoryName': 'Kategoriename',
     'categoryPath': 'Kategoriepfad',
     'builtInCategory': 'Integrierte Kategorie kann nicht gelöscht werden',

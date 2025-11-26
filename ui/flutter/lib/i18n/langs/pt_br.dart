@@ -22,7 +22,8 @@ const ptBR = {
     'followSettings': 'Follow Settings',
     'downloadLink': 'Link de Download',
     'downloadLinkValid': 'Por favor, insira o link de download',
-    'downloadLinkHit': 'Por favor, insira o link de download, um por linha@append',
+    'downloadLinkHit':
+        'Por favor, insira o link de download, um por linha@append',
     'downloadLinkHitDesktop': ', ou arraste o arquivo torrent aqui',
     'download': 'Download',
     'noFileSelected': 'Por favor, selecione ao menos um arquivo para continuar',
@@ -130,7 +131,6 @@ const ptBR = {
     'categoryVideo': 'Vídeo',
     'categoryDocument': 'Documento',
     'categoryProgram': 'Programa',
-    'addCategory': 'Adicionar Categoria',
     'categoryName': 'Nome da Categoria',
     'categoryPath': 'Caminho da Categoria',
     'builtInCategory': 'Categoria integrada não pode ser excluída',

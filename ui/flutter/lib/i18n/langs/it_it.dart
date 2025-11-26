@@ -109,7 +109,6 @@ const itIT = {
     'categoryVideo': 'Video',
     'categoryDocument': 'Documento',
     'categoryProgram': 'Programma',
-    'addCategory': 'Aggiungi categoria',
     'categoryName': 'Nome categoria',
     'categoryPath': 'Percorso categoria',
     'builtInCategory': 'La categoria predefinita non può essere eliminata',

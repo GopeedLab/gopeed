@@ -505,12 +505,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       // default select all tracker subscribe urls
       extra.bt.trackerSubscribeUrls.addAll(allTrackerSubscribeUrls);
     }
-    
-    // Initialize default download categories if empty
-    if (extra.downloadCategories.isEmpty) {
-      await _initDefaultDownloadCategories();
-    }
-    
+
     final proxy = config.proxy;
     if (proxy.scheme.isEmpty) {
       proxy.scheme = 'http';
@@ -528,37 +523,40 @@ class AppController extends GetxController with WindowListener, TrayListener {
         config.downloadDir = './';
       }
     }
+
+    // Initialize default download categories if empty
+    if (extra.downloadCategories.isEmpty) {
+      await _initDefaultDownloadCategories();
+    }
   }
 
   Future<void> _initDefaultDownloadCategories() async {
     final extra = downloaderConfig.value.extra;
-    final downloadDir = downloaderConfig.value.downloadDir.isEmpty
-        ? (await getDownloadsDirectory())?.path ?? "./"
-        : downloaderConfig.value.downloadDir;
+    final downloadDir = downloaderConfig.value.downloadDir;
 
     // Add default built-in categories with i18n keys
     // No need to set initial name value, it will be retrieved via nameKey
     extra.downloadCategories.addAll([
       DownloadCategory(
-        name: '', // Empty name, will use nameKey for display
+        name: '',
         path: path.join(downloadDir, 'Music'),
         isBuiltIn: true,
         nameKey: 'categoryMusic',
       ),
       DownloadCategory(
-        name: '', // Empty name, will use nameKey for display
+        name: '',
         path: path.join(downloadDir, 'Video'),
         isBuiltIn: true,
         nameKey: 'categoryVideo',
       ),
       DownloadCategory(
-        name: '', // Empty name, will use nameKey for display
+        name: '',
         path: path.join(downloadDir, 'Document'),
         isBuiltIn: true,
         nameKey: 'categoryDocument',
       ),
       DownloadCategory(
-        name: '', // Empty name, will use nameKey for display
+        name: '',
         path: path.join(downloadDir, 'Program'),
         isBuiltIn: true,
         nameKey: 'categoryProgram',

@@ -148,7 +148,6 @@ const enUS = {
     'categoryVideo': 'Video',
     'categoryDocument': 'Document',
     'categoryProgram': 'Program',
-    'addCategory': 'Add Category',
     'categoryName': 'Category Name',
     'categoryPath': 'Category Path',
     'builtInCategory': 'Built-in category cannot be deleted',

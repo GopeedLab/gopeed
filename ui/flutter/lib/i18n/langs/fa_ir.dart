@@ -74,7 +74,6 @@ const faIR = {
     'categoryVideo': 'ویدیو',
     'categoryDocument': 'سند',
     'categoryProgram': 'برنامه',
-    'addCategory': 'افزودن دسته‌بندی',
     'categoryName': 'نام دسته‌بندی',
     'categoryPath': 'مسیر دسته‌بندی',
     'builtInCategory': 'دسته‌بندی داخلی قابل حذف نیست',

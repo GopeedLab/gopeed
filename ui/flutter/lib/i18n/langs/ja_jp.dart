@@ -75,7 +75,6 @@ const jaJP = {
     'categoryVideo': '動画',
     'categoryDocument': 'ドキュメント',
     'categoryProgram': 'プログラム',
-    'addCategory': 'カテゴリを追加',
     'categoryName': 'カテゴリ名',
     'categoryPath': 'カテゴリパス',
     'builtInCategory': '内蔵カテゴリは削除できません',

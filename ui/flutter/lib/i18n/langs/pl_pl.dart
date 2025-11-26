@@ -107,7 +107,6 @@ const plPL = {
     'categoryVideo': 'Wideo',
     'categoryDocument': 'Dokument',
     'categoryProgram': 'Program',
-    'addCategory': 'Dodaj kategorię',
     'categoryName': 'Nazwa kategorii',
     'categoryPath': 'Ścieżka kategorii',
     'builtInCategory': 'Wbudowanej kategorii nie można usunąć',

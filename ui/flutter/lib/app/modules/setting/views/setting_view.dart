@@ -79,7 +79,7 @@ class SettingView extends GetView<SettingController> {
         'downloadDir', () => downloaderCfg.value.downloadDir, (Key key) {
       final downloadDirController =
           TextEditingController(text: downloaderCfg.value.downloadDir);
-      
+
       // Update config only when editing is done (on focus lost or submit)
       void onEditComplete() {
         if (downloadDirController.text != downloaderCfg.value.downloadDir) {
@@ -90,7 +90,7 @@ class SettingView extends GetView<SettingController> {
           debounceSave();
         }
       }
-      
+
       return DirectorySelector(
         controller: downloadDirController,
         showLabel: false,
@@ -162,7 +162,7 @@ class SettingView extends GetView<SettingController> {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  'addCategory'.tr,
+                  'add'.tr,
                   style: TextStyle(color: Theme.of(context).hintColor),
                 ),
               ),
@@ -220,11 +220,13 @@ class SettingView extends GetView<SettingController> {
                             content: Text('confirmDelete'.tr),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
                                 child: Text('cancel'.tr),
                               ),
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(true),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
                                 child: Text('confirm'.tr),
                               ),
                             ],
@@ -240,7 +242,8 @@ class SettingView extends GetView<SettingController> {
                           } else {
                             // Remove custom categories completely
                             downloaderCfg.update((val) {
-                              val!.extra.downloadCategories = val.extra.downloadCategories
+                              val!.extra.downloadCategories = val
+                                  .extra.downloadCategories
                                   .where((c) => c != category)
                                   .toList();
                             });
@@ -257,7 +260,7 @@ class SettingView extends GetView<SettingController> {
               padding: const EdgeInsets.only(top: 8),
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.add, size: 18),
-                label: Text('addCategory'.tr),
+                label: Text('add'.tr),
                 onPressed: () {
                   _showCategoryDialog(
                     context,
@@ -1447,16 +1450,16 @@ class SettingView extends GetView<SettingController> {
     Rx<DownloaderConfig> downloaderCfg, {
     DownloadCategory? category,
   }) {
-    final isEditing = category != null;
+    final isEdit = category != null;
     final nameController = TextEditingController(
-      text: isEditing ? _getCategoryDisplayName(category) : '',
+      text: isEdit ? _getCategoryDisplayName(category) : '',
     );
     final pathController = TextEditingController(text: category?.path ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(isEditing ? 'categoryName'.tr : 'addCategory'.tr),
+        title: Text(isEdit ? 'edit'.tr : 'add'.tr),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1486,11 +1489,12 @@ class SettingView extends GetView<SettingController> {
                 return;
               }
 
-              if (isEditing) {
+              if (isEdit) {
                 // Trigger UI update by wrapping changes in update()
                 downloaderCfg.update((val) {
                   // If name changed, clear nameKey so it won't be re-translated
-                  final nameChanged = nameController.text != _getCategoryDisplayName(category);
+                  final nameChanged =
+                      nameController.text != _getCategoryDisplayName(category);
                   category.name = nameController.text;
                   category.path = pathController.text;
                   if (nameChanged) {

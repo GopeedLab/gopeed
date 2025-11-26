@@ -145,7 +145,6 @@ const zhCN = {
     'categoryVideo': '视频',
     'categoryDocument': '文档',
     'categoryProgram': '程序',
-    'addCategory': '添加分类',
     'categoryName': '分类名称',
     'categoryPath': '分类路径',
     'builtInCategory': '内置分类不能删除',

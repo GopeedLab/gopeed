@@ -23,7 +23,8 @@ const idID = {
     'downloadLinkValid': 'Silakan masukkan tautan unduhan',
     'downloadLinkHit':
         'Tolong masukkan tautan unduhan, HTTP/HTTPS/MAGNET didukung@append',
-    'downloadLinkHitDesktop': ', atau seret file torrent ke sini secara langsung',
+    'downloadLinkHitDesktop':
+        ', atau seret file torrent ke sini secara langsung',
     'download': 'Download',
     'noFileSelected': 'Silakan pilih setidaknya satu file untuk melanjutkan.',
     'noStoragePermission': 'Izin penyimpanan diperlukan',
@@ -120,7 +121,6 @@ const idID = {
     'categoryVideo': 'Video',
     'categoryDocument': 'Dokumen',
     'categoryProgram': 'Program',
-    'addCategory': 'Tambah Kategori',
     'categoryName': 'Nama Kategori',
     'categoryPath': 'Path Kategori',
     'builtInCategory': 'Kategori bawaan tidak dapat dihapus',

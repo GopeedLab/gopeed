@@ -131,7 +131,6 @@ const ruRU = {
     'categoryVideo': 'Видео',
     'categoryDocument': 'Документ',
     'categoryProgram': 'Программа',
-    'addCategory': 'Добавить категорию',
     'categoryName': 'Название категории',
     'categoryPath': 'Путь категории',
     'builtInCategory': 'Встроенную категорию нельзя удалить',

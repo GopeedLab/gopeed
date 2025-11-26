@@ -22,7 +22,8 @@ const taTA = {
     'downloadLinkValid': 'பதிவிறக்க இணைப்பை உள்ளிடவும்',
     'downloadLinkHit':
         'பதிவிறக்க இணைப்பை உள்ளிடவும், HTTP/HTTPS/MAGNET ஆகியவற்றை ஏற்கும்@append',
-    'downloadLinkHitDesktop': ', அல்லது torrent கோப்பை நேரடியாக இங்கே இழுக்கவும்',
+    'downloadLinkHitDesktop':
+        ', அல்லது torrent கோப்பை நேரடியாக இங்கே இழுக்கவும்',
     'download': 'பதிவிறக்கு',
     'noFileSelected': 'குறைந்தபட்சம் ஒரு கோப்பைத் தேர்ந்தெடுக்கவும்.',
     'noStoragePermission': 'சேமிப்பக அனுமதி தேவை',
@@ -108,7 +109,6 @@ const taTA = {
     'categoryVideo': 'காணொளி',
     'categoryDocument': 'ஆவணம்',
     'categoryProgram': 'நிரல்',
-    'addCategory': 'வகை சேர்க்க',
     'categoryName': 'வகை பெயர்',
     'categoryPath': 'வகை பாதை',
     'builtInCategory': 'உள்ளமைக்கப்பட்ட வகையை நீக்க முடியாது',

@@ -131,7 +131,6 @@ const ukUA = {
     'categoryVideo': 'Відео',
     'categoryDocument': 'Документ',
     'categoryProgram': 'Програма',
-    'addCategory': 'Додати категорію',
     'categoryName': 'Назва категорії',
     'categoryPath': 'Шлях категорії',
     'builtInCategory': 'Вбудовану категорію неможливо видалити',

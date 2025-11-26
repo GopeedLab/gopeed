@@ -102,7 +102,6 @@ const viVN = {
     'categoryVideo': 'Video',
     'categoryDocument': 'Tài liệu',
     'categoryProgram': 'Chương trình',
-    'addCategory': 'Thêm danh mục',
     'categoryName': 'Tên danh mục',
     'categoryPath': 'Đường dẫn danh mục',
     'builtInCategory': 'Không thể xóa danh mục tích hợp',

@@ -22,9 +22,11 @@ const esES = {
     'downloadLinkValid': 'Por favor, introduce el enlace de descarga',
     'downloadLinkHit':
         'Por favor, introduce el enlace de descarga, se admite HTTP/HTTPS/MAGNET@append',
-    'downloadLinkHitDesktop': ', o arrastra el archivo torrent aquí directamente',
+    'downloadLinkHitDesktop':
+        ', o arrastra el archivo torrent aquí directamente',
     'download': 'Descargar',
-    'noFileSelected': 'Por favor, selecciona al menos un archivo para continuar.',
+    'noFileSelected':
+        'Por favor, selecciona al menos un archivo para continuar.',
     'noStoragePermission': 'Se requiere permiso de almacenamiento',
     'selectFile': 'Seleccionar Archivo',
     'rename': 'Renombrar',
@@ -44,7 +46,8 @@ const esES = {
     'updateDaily': 'Actualizar diariamente',
     'lastUpdate': 'Última actualización: @time',
     'addTracker': 'Añadir Tracker',
-    'addTrackerHit': 'Por favor, introduce la URL del servidor tracker, una por línea',
+    'addTrackerHit':
+        'Por favor, introduce la URL del servidor tracker, una por línea',
     'ui': 'Interfaz',
     'theme': 'Tema',
     'themeSystem': 'Sistema',
@@ -116,7 +119,6 @@ const esES = {
     'categoryVideo': 'Video',
     'categoryDocument': 'Documento',
     'categoryProgram': 'Programa',
-    'addCategory': 'Agregar categoría',
     'categoryName': 'Nombre de categoría',
     'categoryPath': 'Ruta de categoría',
     'builtInCategory': 'La categoría incorporada no se puede eliminar',

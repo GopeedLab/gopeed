@@ -23,7 +23,8 @@ const trTR = {
     'downloadLink': 'İndirme Bağlantısı',
     'downloadLinkValid': 'Lütfen indirme bağlantısını girin',
     'downloadLinkHit': 'Lütfen her satıra bir indirme bağlantısı girin@append',
-    'downloadLinkHitDesktop': ', veya doğrudan torrent dosyasını buraya sürükleyin',
+    'downloadLinkHitDesktop':
+        ', veya doğrudan torrent dosyasını buraya sürükleyin',
     'download': 'İndir',
     'noFileSelected': 'Devam etmek için en az bir dosya seçin.',
     'noStoragePermission': 'Depolama izni gerekli',
@@ -40,12 +41,14 @@ const trTR = {
     'defaultDirectDownload': 'Varsayılan olarak doğrudan indirmeyi seç',
     'items': '@count öğe',
     'subscribeTracker': 'Tracker Aboneliği',
-    'subscribeFail': 'Abonelik başarısız oldu, lütfen ağı kontrol edin veya daha sonra tekrar deneyin',
+    'subscribeFail':
+        'Abonelik başarısız oldu, lütfen ağı kontrol edin veya daha sonra tekrar deneyin',
     'update': 'Güncelle',
     'updateDaily': 'Günlük güncelle',
     'lastUpdate': 'Son güncelleme: @time',
     'addTracker': 'Tracker Ekle',
-    'addTrackerHit': 'Lütfen tracker sunucu URL’sini girin, her satıra bir tane',
+    'addTrackerHit':
+        'Lütfen tracker sunucu URL’sini girin, her satıra bir tane',
     'ui': 'Arayüz',
     'theme': 'Tema',
     'themeSystem': 'Sistem',
@@ -97,8 +100,8 @@ const trTR = {
     'username': 'Kullanıcı Adı',
     'password': 'Şifre',
     'thanks': 'Teşekkürler',
-    'thanksDesc': 
-    'Gopeed topluluğunun inşasında ve geliştirilmesinde katkıda bulunan herkese teşekkürler!',
+    'thanksDesc':
+        'Gopeed topluluğunun inşasında ve geliştirilmesinde katkıda bulunan herkese teşekkürler!',
     'browserExtension': 'Tarayıcı Eklentisi',
     'launchAtStartup': 'Başlangıçta Çalıştır',
     'seedConfig': 'Seed Ayarları',
@@ -129,7 +132,6 @@ const trTR = {
     'categoryVideo': 'Video',
     'categoryDocument': 'Belge',
     'categoryProgram': 'Program',
-    'addCategory': 'Kategori Ekle',
     'categoryName': 'Kategori Adı',
     'categoryPath': 'Kategori Yolu',
     'builtInCategory': 'Yerleşik kategori silinemez',
