@@ -231,12 +231,37 @@ class _DirectorySelectorState extends State<DirectorySelector> {
             child: ValueListenableBuilder<TextEditingValue>(
           valueListenable: widget.controller,
           builder: (context, value, child) {
-            String? helperText;
-            String? suffixText;
+            Widget? suffix;
             if (widget.showRenderedPlaceholders && value.text.contains('%')) {
               final renderedPath = renderPathPlaceholders(value.text);
-              // Show rendered path as helper text (below the field)
-              helperText = '→ $renderedPath';
+              // Show rendered path as a chip/badge in the input field
+              suffix = Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_forward, size: 14, color: Colors.blue[700]),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        renderedPath,
+                        style: TextStyle(
+                          color: Colors.blue[700],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
             }
             
             return TextFormField(
@@ -245,20 +270,10 @@ class _DirectorySelectorState extends State<DirectorySelector> {
               decoration: widget.showLabel
                   ? InputDecoration(
                       labelText: 'downloadDir'.tr,
-                      helperText: helperText,
-                      helperMaxLines: 3,
-                      helperStyle: TextStyle(
-                        color: Colors.blue[700],
-                        fontSize: 13,
-                      ),
+                      suffix: suffix,
                     )
                   : InputDecoration(
-                      helperText: helperText,
-                      helperMaxLines: 3,
-                      helperStyle: TextStyle(
-                        color: Colors.blue[700],
-                        fontSize: 13,
-                      ),
+                      suffix: suffix,
                     ),
               validator: (v) {
                 return v!.trim().isNotEmpty ? null : 'downloadDirValid'.tr;
