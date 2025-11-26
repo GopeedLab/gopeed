@@ -73,7 +73,9 @@ class CreateView extends GetView<CreateController> {
           .toString();
     }
     if (_pathController.text.isEmpty) {
-      _pathController.text = appController.downloaderConfig.value.downloadDir;
+      // Render placeholders when initializing the path
+      final downloadDir = appController.downloaderConfig.value.downloadDir;
+      _pathController.text = renderPathPlaceholders(downloadDir);
     }
 
     final CreateTask? routerParams = Get.rootDelegate.arguments();
@@ -328,7 +330,6 @@ class CreateView extends GetView<CreateController> {
                         ),
                         DirectorySelector(
                           controller: _pathController,
-                          showRenderedPlaceholders: true,
                         ),
                         // Category selector
                         _buildCategorySelector(appController),
@@ -955,7 +956,7 @@ class CreateView extends GetView<CreateController> {
                     padding: const EdgeInsets.only(right: 8),
                     child: OutlinedButton(
                       onPressed: () {
-                        _pathController.text = category.path;
+                        _pathController.text = renderPathPlaceholders(category.path);
                       },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
