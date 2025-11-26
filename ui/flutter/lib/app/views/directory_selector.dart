@@ -232,9 +232,11 @@ class _DirectorySelectorState extends State<DirectorySelector> {
           valueListenable: widget.controller,
           builder: (context, value, child) {
             String? helperText;
+            String? suffixText;
             if (widget.showRenderedPlaceholders && value.text.contains('%')) {
               final renderedPath = renderPathPlaceholders(value.text);
-              helperText = renderedPath;
+              // Show rendered path as helper text (below the field)
+              helperText = '→ $renderedPath';
             }
             
             return TextFormField(
@@ -244,11 +246,19 @@ class _DirectorySelectorState extends State<DirectorySelector> {
                   ? InputDecoration(
                       labelText: 'downloadDir'.tr,
                       helperText: helperText,
-                      helperMaxLines: 2,
+                      helperMaxLines: 3,
+                      helperStyle: TextStyle(
+                        color: Colors.blue[700],
+                        fontSize: 13,
+                      ),
                     )
                   : InputDecoration(
                       helperText: helperText,
-                      helperMaxLines: 2,
+                      helperMaxLines: 3,
+                      helperStyle: TextStyle(
+                        color: Colors.blue[700],
+                        fontSize: 13,
+                      ),
                     ),
               validator: (v) {
                 return v!.trim().isNotEmpty ? null : 'downloadDirValid'.tr;
