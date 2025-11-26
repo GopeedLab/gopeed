@@ -81,6 +81,8 @@ class DirectorySelector extends StatefulWidget {
   final bool showAndoirdToggle;
   final bool allowEdit;
   final bool showPlaceholderButton;
+  final VoidCallback? onEditComplete;
+  final bool showRenderedPlaceholders;
 
   const DirectorySelector({
     Key? key,
@@ -89,6 +91,8 @@ class DirectorySelector extends StatefulWidget {
     this.showAndoirdToggle = false,
     this.allowEdit = false,
     this.showPlaceholderButton = false,
+    this.onEditComplete,
+    this.showRenderedPlaceholders = false,
   }) : super(key: key);
 
   @override
@@ -224,16 +228,37 @@ class _DirectorySelectorState extends State<DirectorySelector> {
     return Row(
       children: [
         Expanded(
-            child: TextFormField(
-          readOnly: widget.allowEdit ? false : (Util.isWeb() ? false : true),
-          controller: widget.controller,
-          decoration: widget.showLabel
-              ? InputDecoration(
-                  labelText: 'downloadDir'.tr,
-                )
-              : null,
-          validator: (v) {
-            return v!.trim().isNotEmpty ? null : 'downloadDirValid'.tr;
+            child: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: widget.controller,
+          builder: (context, value, child) {
+            String? helperText;
+            if (widget.showRenderedPlaceholders && value.text.contains('%')) {
+              final renderedPath = renderPathPlaceholders(value.text);
+              helperText = renderedPath;
+            }
+            
+            return TextFormField(
+              readOnly: widget.allowEdit ? false : (Util.isWeb() ? false : true),
+              controller: widget.controller,
+              decoration: widget.showLabel
+                  ? InputDecoration(
+                      labelText: 'downloadDir'.tr,
+                      helperText: helperText,
+                      helperMaxLines: 2,
+                    )
+                  : InputDecoration(
+                      helperText: helperText,
+                      helperMaxLines: 2,
+                    ),
+              validator: (v) {
+                return v!.trim().isNotEmpty ? null : 'downloadDirValid'.tr;
+              },
+              onEditingComplete: widget.onEditComplete,
+              onTapOutside: (event) {
+                // Call onEditComplete when user taps outside the field
+                widget.onEditComplete?.call();
+              },
+            );
           },
         )),
         buildSelectWidget(),

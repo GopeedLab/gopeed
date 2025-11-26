@@ -79,22 +79,25 @@ class SettingView extends GetView<SettingController> {
         'downloadDir', () => downloaderCfg.value.downloadDir, (Key key) {
       final downloadDirController =
           TextEditingController(text: downloaderCfg.value.downloadDir);
-      downloadDirController.addListener(() async {
+      
+      // Update config only when editing is done (on focus lost or submit)
+      void onEditComplete() {
         if (downloadDirController.text != downloaderCfg.value.downloadDir) {
           downloaderCfg.value.downloadDir = downloadDirController.text;
           if (Util.isDesktop()) {
             controller.clearTap();
           }
-
-          await debounceSave();
+          debounceSave();
         }
-      });
+      }
+      
       return DirectorySelector(
         controller: downloadDirController,
         showLabel: false,
         showAndoirdToggle: true,
         allowEdit: true,
         showPlaceholderButton: true,
+        onEditComplete: onEditComplete,
       );
     });
     final buildMaxRunning = _buildConfigItem(

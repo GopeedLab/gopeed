@@ -537,27 +537,28 @@ class AppController extends GetxController with WindowListener, TrayListener {
         : downloaderConfig.value.downloadDir;
 
     // Add default built-in categories with i18n keys
+    // No need to set initial name value, it will be retrieved via nameKey
     extra.downloadCategories.addAll([
       DownloadCategory(
-        name: 'categoryMusic'.tr,
+        name: '', // Empty name, will use nameKey for display
         path: path.join(downloadDir, 'Music'),
         isBuiltIn: true,
         nameKey: 'categoryMusic',
       ),
       DownloadCategory(
-        name: 'categoryVideo'.tr,
+        name: '', // Empty name, will use nameKey for display
         path: path.join(downloadDir, 'Video'),
         isBuiltIn: true,
         nameKey: 'categoryVideo',
       ),
       DownloadCategory(
-        name: 'categoryDocument'.tr,
+        name: '', // Empty name, will use nameKey for display
         path: path.join(downloadDir, 'Document'),
         isBuiltIn: true,
         nameKey: 'categoryDocument',
       ),
       DownloadCategory(
-        name: 'categoryProgram'.tr,
+        name: '', // Empty name, will use nameKey for display
         path: path.join(downloadDir, 'Program'),
         isBuiltIn: true,
         nameKey: 'categoryProgram',

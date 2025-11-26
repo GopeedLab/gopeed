@@ -328,39 +328,7 @@ class CreateView extends GetView<CreateController> {
                         ),
                         DirectorySelector(
                           controller: _pathController,
-                        ),
-                        // Show rendered path preview if path contains placeholders
-                        ValueListenableBuilder<TextEditingValue>(
-                          valueListenable: _pathController,
-                          builder: (context, value, child) {
-                            final path = value.text;
-                            if (path.contains('%')) {
-                              final renderedPath = renderPathPlaceholders(path);
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.arrow_right_alt,
-                                      color: Theme.of(context).hintColor,
-                                      size: 18,
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        renderedPath,
-                                        style: TextStyle(
-                                          color: Theme.of(context).hintColor,
-                                          fontSize: 12,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
+                          showRenderedPlaceholders: true,
                         ),
                         // Category selector
                         _buildCategorySelector(appController),
