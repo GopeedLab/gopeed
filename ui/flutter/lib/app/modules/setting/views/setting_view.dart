@@ -35,6 +35,14 @@ final _divider = const Divider().paddingOnly(left: 10, right: 10);
 class SettingView extends GetView<SettingController> {
   const SettingView({Key? key}) : super(key: key);
 
+  // Helper function to get display name for a category
+  static String _getCategoryDisplayName(DownloadCategory category) {
+    if (category.nameKey != null && category.nameKey!.isNotEmpty) {
+      return category.nameKey!.tr;
+    }
+    return category.name;
+  }
+
   @override
   Widget build(BuildContext context) {
     final appController = Get.find<AppController>();
@@ -139,7 +147,9 @@ class SettingView extends GetView<SettingController> {
 
     // Download categories configuration
     buildDownloadCategories() {
-      final categories = downloaderCfg.value.extra.downloadCategories;
+      final categories = downloaderCfg.value.extra.downloadCategories
+          .where((c) => !c.isDeleted) // Filter out deleted categories
+          .toList();
       return ListTile(
         title: Text('downloadCategories'.tr),
         subtitle: Column(
@@ -163,7 +173,7 @@ class SettingView extends GetView<SettingController> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            category.getDisplayName(),
+                            _getCategoryDisplayName(category),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Text(
@@ -199,11 +209,19 @@ class SettingView extends GetView<SettingController> {
                         color: Theme.of(context).hintColor,
                       ),
                       onPressed: () {
-                        downloaderCfg.update((val) {
-                          val!.extra.downloadCategories = val.extra.downloadCategories
-                              .where((c) => c != category)
-                              .toList();
-                        });
+                        if (category.isBuiltIn) {
+                          // Mark built-in category as deleted instead of removing it
+                          downloaderCfg.update((val) {
+                            category.isDeleted = true;
+                          });
+                        } else {
+                          // Remove custom categories completely
+                          downloaderCfg.update((val) {
+                            val!.extra.downloadCategories = val.extra.downloadCategories
+                                .where((c) => c != category)
+                                .toList();
+                          });
+                        }
                         debounceSave();
                       },
                     ),
@@ -1407,7 +1425,7 @@ class SettingView extends GetView<SettingController> {
   }) {
     final isEditing = category != null;
     final nameController = TextEditingController(
-      text: isEditing ? category.getDisplayName() : '',
+      text: isEditing ? _getCategoryDisplayName(category) : '',
     );
     final pathController = TextEditingController(text: category?.path ?? '');
 
@@ -1446,11 +1464,15 @@ class SettingView extends GetView<SettingController> {
 
               if (isEditing) {
                 // If name changed, clear nameKey so it won't be re-translated
-                final nameChanged = nameController.text != category.getDisplayName();
+                final nameChanged = nameController.text != _getCategoryDisplayName(category);
                 category.name = nameController.text;
                 category.path = pathController.text;
                 if (nameChanged) {
                   category.nameKey = null;
+                }
+                // If editing a deleted built-in category, unmark it as deleted
+                if (category.isBuiltIn && category.isDeleted) {
+                  category.isDeleted = false;
                 }
               } else {
                 downloaderCfg.update((val) {

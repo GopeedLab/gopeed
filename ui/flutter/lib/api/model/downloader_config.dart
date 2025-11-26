@@ -109,26 +109,20 @@ class DownloadCategory {
   String path;
   bool isBuiltIn;
   String? nameKey; // i18n key for built-in categories (e.g., 'categoryMusic')
+  bool isDeleted; // Mark built-in categories as deleted instead of removing them
 
   DownloadCategory({
     required this.name,
     required this.path,
     this.isBuiltIn = false,
     this.nameKey,
+    this.isDeleted = false,
   });
 
   factory DownloadCategory.fromJson(Map<String, dynamic> json) =>
       _$DownloadCategoryFromJson(json);
 
   Map<String, dynamic> toJson() => _$DownloadCategoryToJson(this);
-  
-  // Get display name - use translated key if available, otherwise use name
-  String getDisplayName() {
-    if (nameKey != null && nameKey!.isNotEmpty) {
-      return nameKey!.tr;
-    }
-    return name;
-  }
 }
 
 @JsonSerializable()

@@ -951,9 +951,19 @@ class CreateView extends GetView<CreateController> {
 
   Widget _buildCategorySelector(AppController appController) {
     final categories =
-        appController.downloaderConfig.value.extra.downloadCategories;
+        appController.downloaderConfig.value.extra.downloadCategories
+            .where((c) => !c.isDeleted) // Filter out deleted categories
+            .toList();
     if (categories.isEmpty) {
       return const SizedBox.shrink();
+    }
+
+    // Helper to get display name
+    String getCategoryDisplayName(DownloadCategory category) {
+      if (category.nameKey != null && category.nameKey!.isNotEmpty) {
+        return category.nameKey!.tr;
+      }
+      return category.name;
     }
 
     return Padding(
@@ -987,7 +997,7 @@ class CreateView extends GetView<CreateController> {
                         minimumSize: Size.zero,
                       ),
                       child: Text(
-                        category.getDisplayName(),
+                        getCategoryDisplayName(category),
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
