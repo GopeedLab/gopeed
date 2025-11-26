@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_handler/share_handler.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -535,64 +536,31 @@ class AppController extends GetxController with WindowListener, TrayListener {
         ? (await getDownloadsDirectory())?.path ?? "./"
         : downloaderConfig.value.downloadDir;
 
-    // Get OS-specific default paths
-    String getMusicPath() {
-      if (Util.isWindows()) {
-        return '$downloadDir\\Music';
-      } else if (Util.isDesktop()) {
-        return '$downloadDir/Music';
-      }
-      return '$downloadDir/Music';
-    }
-
-    String getVideoPath() {
-      if (Util.isWindows()) {
-        return '$downloadDir\\Video';
-      } else if (Util.isDesktop()) {
-        return '$downloadDir/Video';
-      }
-      return '$downloadDir/Video';
-    }
-
-    String getDocumentPath() {
-      if (Util.isWindows()) {
-        return '$downloadDir\\Document';
-      } else if (Util.isDesktop()) {
-        return '$downloadDir/Document';
-      }
-      return '$downloadDir/Document';
-    }
-
-    String getProgramPath() {
-      if (Util.isWindows()) {
-        return '$downloadDir\\Program';
-      } else if (Util.isDesktop()) {
-        return '$downloadDir/Program';
-      }
-      return '$downloadDir/Program';
-    }
-
-    // Add default built-in categories
+    // Add default built-in categories with i18n keys
     extra.downloadCategories.addAll([
       DownloadCategory(
         name: 'categoryMusic'.tr,
-        path: getMusicPath(),
+        path: path.join(downloadDir, 'Music'),
         isBuiltIn: true,
+        nameKey: 'categoryMusic',
       ),
       DownloadCategory(
         name: 'categoryVideo'.tr,
-        path: getVideoPath(),
+        path: path.join(downloadDir, 'Video'),
         isBuiltIn: true,
+        nameKey: 'categoryVideo',
       ),
       DownloadCategory(
         name: 'categoryDocument'.tr,
-        path: getDocumentPath(),
+        path: path.join(downloadDir, 'Document'),
         isBuiltIn: true,
+        nameKey: 'categoryDocument',
       ),
       DownloadCategory(
         name: 'categoryProgram'.tr,
-        path: getProgramPath(),
+        path: path.join(downloadDir, 'Program'),
         isBuiltIn: true,
+        nameKey: 'categoryProgram',
       ),
     ]);
   }

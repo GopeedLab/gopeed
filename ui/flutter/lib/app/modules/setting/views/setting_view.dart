@@ -163,7 +163,7 @@ class SettingView extends GetView<SettingController> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            category.name,
+                            category.getDisplayName(),
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           Text(
@@ -192,22 +192,21 @@ class SettingView extends GetView<SettingController> {
                         );
                       },
                     ),
-                    if (!category.isBuiltIn)
-                      IconButton(
-                        icon: Icon(
-                          Icons.delete,
-                          size: 20,
-                          color: Theme.of(context).hintColor,
-                        ),
-                        onPressed: () {
-                          downloaderCfg.update((val) {
-                            val!.extra.downloadCategories = val.extra.downloadCategories
-                                .where((c) => c != category)
-                                .toList();
-                          });
-                          debounceSave();
-                        },
+                    IconButton(
+                      icon: Icon(
+                        Icons.delete,
+                        size: 20,
+                        color: Theme.of(context).hintColor,
                       ),
+                      onPressed: () {
+                        downloaderCfg.update((val) {
+                          val!.extra.downloadCategories = val.extra.downloadCategories
+                              .where((c) => c != category)
+                              .toList();
+                        });
+                        debounceSave();
+                      },
+                    ),
                   ],
                 ),
               );
@@ -1407,7 +1406,9 @@ class SettingView extends GetView<SettingController> {
     DownloadCategory? category,
   }) {
     final isEditing = category != null;
-    final nameController = TextEditingController(text: category?.name ?? '');
+    final nameController = TextEditingController(
+      text: isEditing ? category.getDisplayName() : '',
+    );
     final pathController = TextEditingController(text: category?.path ?? '');
 
     showDialog(
@@ -1444,8 +1445,13 @@ class SettingView extends GetView<SettingController> {
               }
 
               if (isEditing) {
+                // If name changed, clear nameKey so it won't be re-translated
+                final nameChanged = nameController.text != category.getDisplayName();
                 category.name = nameController.text;
                 category.path = pathController.text;
+                if (nameChanged) {
+                  category.nameKey = null;
+                }
               } else {
                 downloaderCfg.update((val) {
                   val!.extra.downloadCategories = [

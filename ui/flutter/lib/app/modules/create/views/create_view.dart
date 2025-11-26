@@ -987,7 +987,7 @@ class CreateView extends GetView<CreateController> {
                         minimumSize: Size.zero,
                       ),
                       child: Text(
-                        category.name,
+                        category.getDisplayName(),
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),

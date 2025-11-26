@@ -159,6 +159,7 @@ DownloadCategory _$DownloadCategoryFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String,
       path: json['path'] as String,
       isBuiltIn: json['isBuiltIn'] as bool? ?? false,
+      nameKey: json['nameKey'] as String?,
     );
 
 Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) =>
@@ -166,4 +167,5 @@ Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) =>
       'name': instance.name,
       'path': instance.path,
       'isBuiltIn': instance.isBuiltIn,
+      'nameKey': instance.nameKey,
     };
