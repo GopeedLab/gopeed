@@ -4,6 +4,7 @@ const jaJP = {
     'error': 'エラー',
     'tip': 'ヒント',
     'confirm': '確認',
+    'confirmDelete': '削除してもよろしいですか？',
     'cancel': 'キャンセル',
     'selectAll': 'すべてを選択',
     'task': 'タスク',

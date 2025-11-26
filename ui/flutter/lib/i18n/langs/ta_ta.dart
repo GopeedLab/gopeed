@@ -4,6 +4,7 @@ const taTA = {
     'error': 'பிழை',
     'tip': 'குறிப்பு',
     'confirm': 'சரி',
+    'confirmDelete': 'நிச்சயமாக நீக்க விரும்புகிறீர்களா?',
     'cancel': 'ரத்துசெய்',
     'on': 'On',
     'off': 'Off',

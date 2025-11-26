@@ -4,6 +4,7 @@ const plPL = {
     'error': 'Błąd',
     'tip': 'Tip',
     'confirm': 'Potwierdź',
+    'confirmDelete': 'Czy na pewno chcesz usunąć?',
     'cancel': 'Anuluj',
     'on': 'Włącz',
     'off': 'Wyłącz',

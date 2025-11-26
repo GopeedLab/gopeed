@@ -4,6 +4,7 @@ const ptBR = {
     'error': 'Erro',
     'tip': 'Dica',
     'confirm': 'Confirmar',
+    'confirmDelete': 'Tem certeza de que deseja excluir?',
     'cancel': 'Cancelar',
     'on': 'Ligado',
     'off': 'Desligado',

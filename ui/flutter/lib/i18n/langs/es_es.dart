@@ -4,6 +4,7 @@ const esES = {
     'error': 'Error',
     'tip': 'Consejo',
     'confirm': 'Confirmar',
+    'confirmDelete': '¿Está seguro de que desea eliminar?',
     'cancel': 'Cancelar',
     'on': 'Activado',
     'off': 'Desactivado',

@@ -4,6 +4,7 @@ const zhTW = {
     'error': '錯誤',
     'tip': '提示',
     'confirm': '確認',
+    'confirmDelete': '確定要刪除嗎？',
     'cancel': '取消',
     'on': '開啟',
     'off': '關閉',

@@ -4,6 +4,7 @@ const itIT = {
     'error': 'Errore',
     'tip': 'Suggerimento',
     'confirm': 'Conferma',
+    'confirmDelete': 'Sei sicuro di voler eliminare?',
     'cancel': 'Annullla',
     'on': 'Acceso',
     'off': 'Spento',

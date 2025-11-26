@@ -211,21 +211,42 @@ class SettingView extends GetView<SettingController> {
                         size: 20,
                         color: Theme.of(context).hintColor,
                       ),
-                      onPressed: () {
-                        if (category.isBuiltIn) {
-                          // Mark built-in category as deleted instead of removing it
-                          downloaderCfg.update((val) {
-                            category.isDeleted = true;
-                          });
-                        } else {
-                          // Remove custom categories completely
-                          downloaderCfg.update((val) {
-                            val!.extra.downloadCategories = val.extra.downloadCategories
-                                .where((c) => c != category)
-                                .toList();
-                          });
+                      onPressed: () async {
+                        // Show confirmation dialog
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('tip'.tr),
+                            content: Text('confirmDelete'.tr),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: Text('cancel'.tr),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                child: Text('confirm'.tr),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmed == true) {
+                          if (category.isBuiltIn) {
+                            // Mark built-in category as deleted instead of removing it
+                            downloaderCfg.update((val) {
+                              category.isDeleted = true;
+                            });
+                          } else {
+                            // Remove custom categories completely
+                            downloaderCfg.update((val) {
+                              val!.extra.downloadCategories = val.extra.downloadCategories
+                                  .where((c) => c != category)
+                                  .toList();
+                            });
+                          }
+                          debounceSave();
                         }
-                        debounceSave();
                       },
                     ),
                   ],
@@ -1466,17 +1487,20 @@ class SettingView extends GetView<SettingController> {
               }
 
               if (isEditing) {
-                // If name changed, clear nameKey so it won't be re-translated
-                final nameChanged = nameController.text != _getCategoryDisplayName(category);
-                category.name = nameController.text;
-                category.path = pathController.text;
-                if (nameChanged) {
-                  category.nameKey = null;
-                }
-                // If editing a deleted built-in category, unmark it as deleted
-                if (category.isBuiltIn && category.isDeleted) {
-                  category.isDeleted = false;
-                }
+                // Trigger UI update by wrapping changes in update()
+                downloaderCfg.update((val) {
+                  // If name changed, clear nameKey so it won't be re-translated
+                  final nameChanged = nameController.text != _getCategoryDisplayName(category);
+                  category.name = nameController.text;
+                  category.path = pathController.text;
+                  if (nameChanged) {
+                    category.nameKey = null;
+                  }
+                  // If editing a deleted built-in category, unmark it as deleted
+                  if (category.isBuiltIn && category.isDeleted) {
+                    category.isDeleted = false;
+                  }
+                });
               } else {
                 downloaderCfg.update((val) {
                   val!.extra.downloadCategories = [

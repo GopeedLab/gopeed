@@ -4,6 +4,7 @@ const faIR = {
     'error': 'اررور',
     'tip': 'Tip',
     'confirm': 'تایید',
+    'confirmDelete': 'آیا مطمئن هستید که می خواهید حذف کنید؟',
     'cancel': 'انصراف',
     'selectAll': 'انتخاب همه',
     'task': 'کار',

@@ -4,6 +4,7 @@ const zhCN = {
     'error': '错误',
     'tip': '提示',
     'confirm': '确认',
+    'confirmDelete': '确定要删除吗？',
     'cancel': '取消',
     'on': '开启',
     'off': '关闭',

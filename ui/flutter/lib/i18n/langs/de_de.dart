@@ -4,6 +4,7 @@ const deDE = {
     'error': 'Fehler',
     'tip': 'Tipp',
     'confirm': 'Bestätigen',
+    'confirmDelete': 'Möchten Sie wirklich löschen?',
     'cancel': 'Abbrechen',
     'on': 'An',
     'off': 'Aus',

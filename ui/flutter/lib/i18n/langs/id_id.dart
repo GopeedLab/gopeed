@@ -4,6 +4,7 @@ const idID = {
     'error': 'Kesalahan',
     'tip': 'Tips',
     'confirm': 'Konfirmasi',
+    'confirmDelete': 'Apakah Anda yakin ingin menghapus?',
     'cancel': 'Batal',
     'on': 'Aktif',
     'off': 'Nonaktif',

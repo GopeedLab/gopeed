@@ -4,6 +4,7 @@ const trTR = {
     'error': 'Hata',
     'tip': 'İpucu',
     'confirm': 'Onayla',
+    'confirmDelete': 'Silmek istediğinizden emin misiniz?',
     'cancel': 'İptal',
     'on': 'Açık',
     'off': 'Kapalı',

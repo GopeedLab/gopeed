@@ -4,6 +4,7 @@ const frFR = {
     'error': 'Erreur',
     'tip': 'Conseil',
     'confirm': 'Confirmer',
+    'confirmDelete': 'Êtes-vous sûr de vouloir supprimer ?',
     'cancel': 'Annuler',
     'on': 'Activé',
     'off': 'Désactivé',

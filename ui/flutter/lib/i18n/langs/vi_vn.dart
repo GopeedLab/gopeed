@@ -4,6 +4,7 @@ const viVN = {
     'error': 'Lỗi',
     'tip': 'Mẹo',
     'confirm': 'Xác nhận',
+    'confirmDelete': 'Bạn có chắc chắn muốn xóa?',
     'cancel': 'Hủy',
     'on': 'Bật',
     'off': 'Tắt',

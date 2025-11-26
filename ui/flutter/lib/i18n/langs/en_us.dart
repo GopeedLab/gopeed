@@ -4,6 +4,7 @@ const enUS = {
     'error': 'Error',
     'tip': 'Tip',
     'confirm': 'Confirm',
+    'confirmDelete': 'Are you sure you want to delete?',
     'cancel': 'Cancel',
     'on': 'On',
     'off': 'Off',

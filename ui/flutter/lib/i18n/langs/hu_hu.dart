@@ -4,6 +4,7 @@ const huHU = {
     'error': 'Hiba',
     'tip': 'Tipp',
     'confirm': 'Megerősít',
+    'confirmDelete': 'Biztosan törölni szeretné?',
     'cancel': 'Mégsem',
     'on': 'Bekapcsolva',
     'off': 'Kikapcsolva',
