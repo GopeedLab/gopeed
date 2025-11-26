@@ -1036,9 +1036,7 @@ class SettingView extends GetView<SettingController> {
     // advanced config webhook items
     final buildWebhook = _buildConfigItem(
       'webhook',
-      () => downloaderCfg.value.webhook.enable
-          ? 'enabled'.tr
-          : 'disabled'.tr,
+      () => downloaderCfg.value.webhook.enable ? 'on'.tr : 'off'.tr,
       (Key key) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1056,9 +1054,6 @@ class SettingView extends GetView<SettingController> {
                     downloaderCfg.update((val) {
                       val!.webhook.enable = value;
                     });
-                    if (Util.isDesktop()) {
-                      controller.clearTap();
-                    }
                     debounceSave();
                   },
                 ),
@@ -1071,10 +1066,7 @@ class SettingView extends GetView<SettingController> {
             ),
             _padding,
             // List of existing webhook URLs
-            ...downloaderCfg.value.webhook.urls
-                .asMap()
-                .entries
-                .map((entry) {
+            ...downloaderCfg.value.webhook.urls.asMap().entries.map((entry) {
               final index = entry.key;
               final url = entry.value;
               return Padding(
