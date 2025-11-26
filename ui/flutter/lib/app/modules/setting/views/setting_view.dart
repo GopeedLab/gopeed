@@ -1099,8 +1099,12 @@ class SettingView extends GetView<SettingController> {
                       icon: const Icon(Icons.delete, size: 20),
                       tooltip: 'delete'.tr,
                       onPressed: () async {
-                        downloaderCfg.value.webhook.urls.removeAt(index);
-                        downloaderCfg.refresh();
+                        // Create new list to avoid unmodifiable list error
+                        final urls = List<String>.from(downloaderCfg.value.webhook.urls);
+                        urls.removeAt(index);
+                        downloaderCfg.update((val) {
+                          val!.webhook.urls = urls;
+                        });
                         await debounceSave();
                       },
                     ),
@@ -1369,12 +1373,16 @@ class SettingView extends GetView<SettingController> {
 
                   saveController.start();
                   try {
+                    // Create new list to avoid unmodifiable list error
+                    final urls = List<String>.from(downloaderCfg.value.webhook.urls);
                     if (isEdit) {
-                      downloaderCfg.value.webhook.urls[index] = url;
+                      urls[index] = url;
                     } else {
-                      downloaderCfg.value.webhook.urls.add(url);
+                      urls.add(url);
                     }
-                    downloaderCfg.refresh();
+                    downloaderCfg.update((val) {
+                      val!.webhook.urls = urls;
+                    });
                     await appController.saveConfig();
                     if (dialogContext.mounted) {
                       Navigator.of(dialogContext).pop();
