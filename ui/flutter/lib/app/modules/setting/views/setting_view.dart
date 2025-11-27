@@ -35,6 +35,14 @@ final _divider = const Divider().paddingOnly(left: 10, right: 10);
 class SettingView extends GetView<SettingController> {
   const SettingView({Key? key}) : super(key: key);
 
+  // Helper function to get display name for a category
+  static String _getCategoryDisplayName(DownloadCategory category) {
+    if (category.nameKey != null && category.nameKey!.isNotEmpty) {
+      return category.nameKey!.tr;
+    }
+    return category.name;
+  }
+
   @override
   Widget build(BuildContext context) {
     final appController = Get.find<AppController>();
@@ -71,20 +79,25 @@ class SettingView extends GetView<SettingController> {
         'downloadDir', () => downloaderCfg.value.downloadDir, (Key key) {
       final downloadDirController =
           TextEditingController(text: downloaderCfg.value.downloadDir);
-      downloadDirController.addListener(() async {
+
+      // Update config only when editing is done (on focus lost or submit)
+      void onEditComplete() {
         if (downloadDirController.text != downloaderCfg.value.downloadDir) {
           downloaderCfg.value.downloadDir = downloadDirController.text;
           if (Util.isDesktop()) {
             controller.clearTap();
           }
-
-          await debounceSave();
+          debounceSave();
         }
-      });
+      }
+
       return DirectorySelector(
         controller: downloadDirController,
         showLabel: false,
         showAndoirdToggle: true,
+        allowEdit: true,
+        showPlaceholderButton: true,
+        onEditComplete: onEditComplete,
       );
     });
     final buildMaxRunning = _buildConfigItem(
@@ -134,6 +147,133 @@ class SettingView extends GetView<SettingController> {
         ),
       );
     });
+
+    // Download categories configuration
+    buildDownloadCategories() {
+      final categories = downloaderCfg.value.extra.downloadCategories
+          .where((c) => !c.isDeleted) // Filter out deleted categories
+          .toList();
+      return ListTile(
+        title: Text('downloadCategories'.tr),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (categories.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'add'.tr,
+                  style: TextStyle(color: Theme.of(context).hintColor),
+                ),
+              ),
+            ...categories.map((category) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getCategoryDisplayName(category),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            category.path,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).hintColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.edit,
+                        size: 20,
+                        color: Theme.of(context).hintColor,
+                      ),
+                      onPressed: () {
+                        _showCategoryDialog(
+                          context,
+                          debounceSave,
+                          downloaderCfg,
+                          category: category,
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.delete,
+                        size: 20,
+                        color: Theme.of(context).hintColor,
+                      ),
+                      onPressed: () async {
+                        // Show confirmation dialog
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('tip'.tr),
+                            content: Text('confirmDelete'.tr),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: Text('cancel'.tr),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: Text('confirm'.tr),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmed == true) {
+                          if (category.isBuiltIn) {
+                            // Mark built-in category as deleted instead of removing it
+                            downloaderCfg.update((val) {
+                              category.isDeleted = true;
+                            });
+                          } else {
+                            // Remove custom categories completely
+                            downloaderCfg.update((val) {
+                              val!.extra.downloadCategories = val
+                                  .extra.downloadCategories
+                                  .where((c) => c != category)
+                                  .toList();
+                            });
+                          }
+                          debounceSave();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: Text('add'.tr),
+                onPressed: () {
+                  _showCategoryDialog(
+                    context,
+                    debounceSave,
+                    downloaderCfg,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     buildBrowserExtension() {
       return ListTile(
@@ -896,22 +1036,37 @@ class SettingView extends GetView<SettingController> {
     // advanced config webhook items
     final buildWebhook = _buildConfigItem(
       'webhook',
-      () => 'items'.trParams(
-          {'count': downloaderCfg.value.extra.webhookUrls.length.toString()}),
+      () => downloaderCfg.value.webhook.enable ? 'on'.tr : 'off'.tr,
       (Key key) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Text(
+                  'webhookEnable'.tr,
+                  style: Theme.of(Get.context!).textTheme.bodyMedium,
+                ),
+                const Spacer(),
+                Switch(
+                  value: downloaderCfg.value.webhook.enable,
+                  onChanged: (value) {
+                    downloaderCfg.update((val) {
+                      val!.webhook.enable = value;
+                    });
+                    debounceSave();
+                  },
+                ),
+              ],
+            ),
+            _padding,
             Text(
               'webhookDesc'.tr,
               style: Theme.of(Get.context!).textTheme.bodySmall,
             ),
             _padding,
             // List of existing webhook URLs
-            ...downloaderCfg.value.extra.webhookUrls
-                .asMap()
-                .entries
-                .map((entry) {
+            ...downloaderCfg.value.webhook.urls.asMap().entries.map((entry) {
               final index = entry.key;
               final url = entry.value;
               return Padding(
@@ -936,8 +1091,12 @@ class SettingView extends GetView<SettingController> {
                       icon: const Icon(Icons.delete, size: 20),
                       tooltip: 'delete'.tr,
                       onPressed: () async {
-                        downloaderCfg.value.extra.webhookUrls.removeAt(index);
-                        downloaderCfg.refresh();
+                        // Create new list to avoid unmodifiable list error
+                        final urls = List<String>.from(downloaderCfg.value.webhook.urls);
+                        urls.removeAt(index);
+                        downloaderCfg.update((val) {
+                          val!.webhook.urls = urls;
+                        });
                         await debounceSave();
                       },
                     ),
@@ -1018,6 +1177,7 @@ class SettingView extends GetView<SettingController> {
                             child: Column(
                           children: _addDivider([
                             buildDownloadDir(),
+                            buildDownloadCategories(),
                             buildMaxRunning(),
                             buildDefaultDirectDownload(),
                             buildBrowserExtension(),
@@ -1205,12 +1365,16 @@ class SettingView extends GetView<SettingController> {
 
                   saveController.start();
                   try {
+                    // Create new list to avoid unmodifiable list error
+                    final urls = List<String>.from(downloaderCfg.value.webhook.urls);
                     if (isEdit) {
-                      downloaderCfg.value.extra.webhookUrls[index] = url;
+                      urls[index] = url;
                     } else {
-                      downloaderCfg.value.extra.webhookUrls.add(url);
+                      urls.add(url);
                     }
-                    downloaderCfg.refresh();
+                    downloaderCfg.update((val) {
+                      val!.webhook.urls = urls;
+                    });
                     await appController.saveConfig();
                     if (dialogContext.mounted) {
                       Navigator.of(dialogContext).pop();
@@ -1301,6 +1465,88 @@ class SettingView extends GetView<SettingController> {
       default:
         return 'themeSystem'.tr;
     }
+  }
+
+  void _showCategoryDialog(
+    BuildContext context,
+    Future<bool> Function() debounceSave,
+    Rx<DownloaderConfig> downloaderCfg, {
+    DownloadCategory? category,
+  }) {
+    final isEdit = category != null;
+    final nameController = TextEditingController(
+      text: isEdit ? _getCategoryDisplayName(category) : '',
+    );
+    final pathController = TextEditingController(text: category?.path ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEdit ? 'edit'.tr : 'add'.tr),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'categoryName'.tr,
+              ),
+            ),
+            const SizedBox(height: 16),
+            DirectorySelector(
+              controller: pathController,
+              showLabel: true,
+              allowEdit: true,
+              showPlaceholderButton: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('cancel'.tr),
+          ),
+          TextButton(
+            onPressed: () {
+              if (nameController.text.isEmpty || pathController.text.isEmpty) {
+                return;
+              }
+
+              if (isEdit) {
+                // Trigger UI update by wrapping changes in update()
+                downloaderCfg.update((val) {
+                  // If name changed, clear nameKey so it won't be re-translated
+                  final nameChanged =
+                      nameController.text != _getCategoryDisplayName(category);
+                  category.name = nameController.text;
+                  category.path = pathController.text;
+                  if (nameChanged) {
+                    category.nameKey = null;
+                  }
+                  // If editing a deleted built-in category, unmark it as deleted
+                  if (category.isBuiltIn && category.isDeleted) {
+                    category.isDeleted = false;
+                  }
+                });
+              } else {
+                downloaderCfg.update((val) {
+                  val!.extra.downloadCategories = [
+                    ...val.extra.downloadCategories,
+                    DownloadCategory(
+                      name: nameController.text,
+                      path: pathController.text,
+                    ),
+                  ];
+                });
+              }
+              debounceSave();
+              Navigator.of(context).pop();
+            },
+            child: Text('confirm'.tr),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -35,10 +35,29 @@ type WebhookPayload struct {
 	Task *Task `json:"task"`
 }
 
-// getWebhookUrls extracts and converts webhook URLs from config
+// getWebhookUrls extracts webhook URLs from config
+// Supports both new webhook config format and legacy extra field for backward compatibility
 func (d *Downloader) getWebhookUrls() []string {
 	cfg := d.cfg.DownloaderStoreConfig
-	if cfg == nil || cfg.Extra == nil {
+	if cfg == nil {
+		return nil
+	}
+
+	// Try new webhook config first
+	if cfg.Webhook != nil && cfg.Webhook.Enable && len(cfg.Webhook.URLs) > 0 {
+		urls := make([]string, 0, len(cfg.Webhook.URLs))
+		for _, url := range cfg.Webhook.URLs {
+			if url != "" {
+				urls = append(urls, url)
+			}
+		}
+		if len(urls) > 0 {
+			return urls
+		}
+	}
+
+	// Fall back to legacy extra field for backward compatibility
+	if cfg.Extra == nil {
 		return nil
 	}
 

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_handler/share_handler.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -504,6 +505,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       // default select all tracker subscribe urls
       extra.bt.trackerSubscribeUrls.addAll(allTrackerSubscribeUrls);
     }
+
     final proxy = config.proxy;
     if (proxy.scheme.isEmpty) {
       proxy.scheme = 'http';
@@ -521,6 +523,45 @@ class AppController extends GetxController with WindowListener, TrayListener {
         config.downloadDir = './';
       }
     }
+
+    // Initialize default download categories if empty
+    if (extra.downloadCategories.isEmpty) {
+      await _initDefaultDownloadCategories();
+    }
+  }
+
+  Future<void> _initDefaultDownloadCategories() async {
+    final extra = downloaderConfig.value.extra;
+    final downloadDir = downloaderConfig.value.downloadDir;
+
+    // Add default built-in categories with i18n keys
+    // No need to set initial name value, it will be retrieved via nameKey
+    extra.downloadCategories.addAll([
+      DownloadCategory(
+        name: '',
+        path: path.join(downloadDir, 'Music'),
+        isBuiltIn: true,
+        nameKey: 'categoryMusic',
+      ),
+      DownloadCategory(
+        name: '',
+        path: path.join(downloadDir, 'Video'),
+        isBuiltIn: true,
+        nameKey: 'categoryVideo',
+      ),
+      DownloadCategory(
+        name: '',
+        path: path.join(downloadDir, 'Document'),
+        isBuiltIn: true,
+        nameKey: 'categoryDocument',
+      ),
+      DownloadCategory(
+        name: '',
+        path: path.join(downloadDir, 'Program'),
+        isBuiltIn: true,
+        nameKey: 'categoryProgram',
+      ),
+    ]);
   }
 
   Future<void> _initLaunchAtStartup() async {
