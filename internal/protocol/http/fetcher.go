@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
@@ -675,9 +676,9 @@ func decodeFilenameParam(filename string) string {
 	// Check if the filename is MIME encoded-word (e.g., =?UTF-8?B?...?=)
 	if strings.HasPrefix(filename, "=?") {
 		decoder := new(mime.WordDecoder)
-		// Some servers use "UTF8" instead of "UTF-8"
-		filename = strings.Replace(filename, "UTF8", "UTF-8", 1)
-		if decoded, err := decoder.Decode(filename); err == nil {
+		// Some servers use "UTF8" instead of "UTF-8", create a normalized copy
+		normalizedFilename := strings.Replace(filename, "UTF8", "UTF-8", 1)
+		if decoded, err := decoder.Decode(normalizedFilename); err == nil {
 			return decoded
 		}
 	}
@@ -763,7 +764,7 @@ func tryRecoverUTF8(s string) string {
 func isValidUTF8WithNonASCII(s string) bool {
 	hasNonASCII := false
 	for _, r := range s {
-		if r == 65533 { // Unicode replacement character - invalid UTF-8
+		if r == unicode.ReplacementChar { // Invalid UTF-8 sequence
 			return false
 		}
 		if r > 127 {
