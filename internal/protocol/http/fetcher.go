@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
@@ -26,6 +27,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/xiaoqidun/setft"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 const (
@@ -673,7 +675,7 @@ func parseFilenameExtended(cd string) string {
 }
 
 // decodeFilenameParam decodes a filename parameter value
-// Handles MIME encoded-word and URL encoding
+// Handles MIME encoded-word, URL encoding, and GBK encoding fallback
 func decodeFilenameParam(filename string) string {
 	// Check if the filename is MIME encoded-word (e.g., =?UTF-8?B?...?=)
 	if strings.HasPrefix(filename, "=?") {
@@ -686,11 +688,44 @@ func decodeFilenameParam(filename string) string {
 	}
 
 	// Try URL decoding
-	if decoded := util.TryUrlQueryUnescape(filename); decoded != filename {
-		return decoded
+	decoded := util.TryUrlQueryUnescape(filename)
+
+	// Check if the result is valid UTF-8. If not, try GBK decoding.
+	// This handles the case where Chinese Windows servers send GBK-encoded filenames
+	// which appear as garbled characters (e.g., "下载地址.zip" -> "���ص�ַ.zip")
+	if !utf8.ValidString(decoded) {
+		if gbkDecoded := tryDecodeGBK(decoded); gbkDecoded != "" {
+			return gbkDecoded
+		}
 	}
 
-	return filename
+	return decoded
+}
+
+// gbkDecoder is a reusable GBK decoder for better performance
+var gbkDecoder = simplifiedchinese.GBK.NewDecoder()
+
+// tryDecodeGBK attempts to decode a string as GBK/GB2312/GB18030 encoding
+// Returns empty string if decoding fails or result is not valid UTF-8
+func tryDecodeGBK(s string) string {
+	// GBK uses 1-2 bytes per character. Single-byte chars are 0x00-0x7F (ASCII compatible).
+	// Double-byte chars have first byte 0x81-0xFE and second byte 0x40-0xFE.
+	// Skip if string is empty or all ASCII (valid UTF-8)
+	if len(s) == 0 {
+		return ""
+	}
+
+	// Create a fresh decoder since the transform state may be corrupted
+	decoder := simplifiedchinese.GBK.NewDecoder()
+	decoded, err := decoder.Bytes([]byte(s))
+	if err != nil {
+		return ""
+	}
+	result := string(decoded)
+	if utf8.ValidString(result) {
+		return result
+	}
+	return ""
 }
 
 // parseFilenameFallback manually parses filename= when mime.ParseMediaType fails

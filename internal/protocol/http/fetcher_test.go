@@ -100,6 +100,19 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
+	// Test GBK-encoded filename (common on Chinese Windows servers)
+	// Before fix: "测试.zip" sent as GBK bytes -> parsed as "²âÊÔ.zip" (garbled)
+	// After fix: correctly decoded back to "测试.zip"
+	testResolve(test.StartTestCustomServer, "gbk-encoded", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: test.TestChineseFileName,
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
 
 	fetcher := buildFetcher()
 	err := fetcher.Resolve(&base.Request{

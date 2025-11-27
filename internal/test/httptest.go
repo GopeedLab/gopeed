@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/armon/go-socks5"
 	"io"
 	"net"
 	"net/http"
@@ -17,6 +15,10 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/armon/go-socks5"
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 const (
@@ -138,6 +140,24 @@ func StartTestCustomServer() net.Listener {
 		mux.HandleFunc("/filename-star", func(writer http.ResponseWriter, request *http.Request) {
 			// URL-encoded TestChineseFileName: 测试.zip -> %E6%B5%8B%E8%AF%95.zip
 			writer.Header().Set("Content-Disposition", `attachment; filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip`)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		// Test endpoint for GBK-encoded filename (common on Chinese Windows servers)
+		// This simulates the case where "测试.zip" is sent as GBK bytes
+		// which appears as garbled characters when interpreted as UTF-8
+		mux.HandleFunc("/gbk-encoded", func(writer http.ResponseWriter, request *http.Request) {
+			// Encode TestChineseFileName as GBK
+			gbkEncoder := simplifiedchinese.GBK.NewEncoder()
+			gbkBytes, _ := gbkEncoder.Bytes([]byte(TestChineseFileName))
+			// Send GBK bytes directly in filename (simulating broken server behavior)
+			writer.Header().Set("Content-Disposition", `attachment; filename="`+string(gbkBytes)+`"`)
 			writer.Header().Set("Content-Type", "application/octet-stream")
 			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
 			file, err := os.Open(BuildFile)
