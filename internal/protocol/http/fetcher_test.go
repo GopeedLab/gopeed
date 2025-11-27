@@ -42,7 +42,7 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: false,
 		Files: []*base.FileInfo{
 			{
-				Name: "测试.zip",
+				Name: test.TestChineseFileName,
 				Size: test.BuildSize,
 			},
 		},
@@ -52,7 +52,7 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: false,
 		Files: []*base.FileInfo{
 			{
-				Name: "测试.zip",
+				Name: test.TestChineseFileName,
 				Size: test.BuildSize,
 			},
 		},
@@ -62,7 +62,7 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: false,
 		Files: []*base.FileInfo{
 			{
-				Name: "测试.zip",
+				Name: test.TestChineseFileName,
 				Size: 0,
 			},
 		},
@@ -74,6 +74,39 @@ func TestFetcher_Resolve(t *testing.T) {
 			{
 				Name: test.BuildName,
 				Size: 0,
+			},
+		},
+	}, t)
+	// Test mixed encoding Content-Disposition (filename= garbled + filename*=UTF-8 proper)
+	testResolve(test.StartTestCustomServer, "mixed-encoding", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: test.TestChineseFileName,
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
+	// Test filename*= only (RFC 5987 format)
+	testResolve(test.StartTestCustomServer, "filename-star", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: test.TestChineseFileName,
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
+	// Test Latin-1 mangled UTF-8 recovery
+	testResolve(test.StartTestCustomServer, "latin1-mangled", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: test.TestChineseFileName,
+				Size: test.BuildSize,
 			},
 		},
 	}, t)

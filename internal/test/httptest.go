@@ -34,6 +34,10 @@ const (
 	DownloadRename     = "download (1).data"
 	DownloadFile       = Dir + DownloadName
 	DownloadRenameFile = Dir + DownloadRename
+
+	// TestChineseFileName is a common test filename with Chinese characters
+	// Used to test Content-Disposition parsing with various encodings
+	TestChineseFileName = "测试.zip"
 )
 
 func StartTestFileServer() net.Listener {
@@ -103,7 +107,52 @@ func StartTestCustomServer() net.Listener {
 			io.Copy(writer, file)
 		})
 		mux.HandleFunc("/no-encode", func(writer http.ResponseWriter, request *http.Request) {
-			writer.Header().Set("Content-Disposition", "attachment; filename=测试.zip")
+			writer.Header().Set("Content-Disposition", "attachment; filename="+TestChineseFileName)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		// Test endpoint for mixed encoding: filename= with garbled characters and filename*= with proper UTF-8
+		mux.HandleFunc("/mixed-encoding", func(writer http.ResponseWriter, request *http.Request) {
+			// This simulates a server that sends both a garbled filename= and a proper filename*=UTF-8''...
+			// filename*= contains URL-encoded TestChineseFileName
+			writer.Header().Set("Content-Disposition", `attachment;filename="ã€ä¸å¿˜åˆå¿ƒç¾ŽåŒ–ç‰ˆ.zip";filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip`)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		// Test endpoint for filename*= only (RFC 5987 format)
+		mux.HandleFunc("/filename-star", func(writer http.ResponseWriter, request *http.Request) {
+			// URL-encoded TestChineseFileName: 测试.zip -> %E6%B5%8B%E8%AF%95.zip
+			writer.Header().Set("Content-Disposition", `attachment; filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip`)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		// Test endpoint for Latin-1 mangled UTF-8 (raw UTF-8 bytes sent without proper encoding)
+		// This simulates the filename becoming garbled scenario
+		mux.HandleFunc("/latin1-mangled", func(writer http.ResponseWriter, request *http.Request) {
+			// Manually construct the Content-Disposition header with raw UTF-8 bytes
+			// that will be interpreted as Latin-1 by the HTTP library
+			rawBytes := []byte(TestChineseFileName)
+			// Build the header value with raw bytes (simulating broken server behavior)
+			headerValue := `attachment; filename="` + string(rawBytes) + `"`
+			writer.Header().Set("Content-Disposition", headerValue)
 			writer.Header().Set("Content-Type", "application/octet-stream")
 			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
 			file, err := os.Open(BuildFile)

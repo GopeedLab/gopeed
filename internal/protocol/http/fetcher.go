@@ -164,24 +164,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	}
 	contentDisposition := httpResp.Header.Get(base.HttpHeaderContentDisposition)
 	if contentDisposition != "" {
-		_, params, _ := mime.ParseMediaType(contentDisposition)
-		filename := params["filename"]
-		if filename != "" {
-			// Check if the filename is MIME encoded-word
-			if strings.HasPrefix(filename, "=?") {
-				decoder := new(mime.WordDecoder)
-				filename = strings.Replace(filename, "UTF8", "UTF-8", 1)
-				file.Name, _ = decoder.Decode(filename)
-			} else {
-				file.Name = util.TryUrlQueryUnescape(filename)
-			}
-		} else {
-			substr := "attachment; filename="
-			index := strings.Index(contentDisposition, substr)
-			if index != -1 {
-				file.Name = util.TryUrlQueryUnescape(contentDisposition[index+len(substr):])
-			}
-		}
+		file.Name = parseFilename(contentDisposition)
 	}
 	// get file filePath by URL
 	if file.Name == "" {
@@ -618,12 +601,176 @@ func (f *Fetcher) buildClient() *http.Client {
 	}
 }
 
-func decodeMangledString(mangled string) string {
-	rawBytes := make([]byte, 0, len(mangled)*3)
-	for _, r := range mangled {
+// parseFilename extracts filename from Content-Disposition header
+// It handles multiple encoding scenarios:
+// 1. RFC 5987/RFC 2231 format: filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip (preferred)
+// 2. MIME encoded-word: filename="=?UTF-8?B?5rWL6K+VLnppcA==?="
+// 3. URL-encoded: filename="%E6%B5%8B%E8%AF%95.zip"
+// 4. Raw UTF-8 bytes misinterpreted as Latin-1 (needs recovery)
+// 5. Plain ASCII filename
+func parseFilename(contentDisposition string) string {
+	// First, try to find filename*= (RFC 5987 format, most reliable for non-ASCII)
+	if filename := parseFilenameExtended(contentDisposition); filename != "" {
+		return filename
+	}
+
+	// Try standard MIME parsing for regular filename= parameter
+	_, params, err := mime.ParseMediaType(contentDisposition)
+	if err == nil {
+		if filename := params["filename"]; filename != "" {
+			return decodeFilenameParam(filename)
+		}
+	}
+
+	// Fallback: manual parsing if mime.ParseMediaType fails
+	return parseFilenameFallback(contentDisposition)
+}
+
+// parseFilenameExtended parses RFC 5987/RFC 2231 extended parameter format
+// Format: filename*=charset'language'value (e.g., UTF-8''%E6%B5%8B%E8%AF%95.zip)
+func parseFilenameExtended(cd string) string {
+	// Look for filename*= (case-insensitive)
+	lower := strings.ToLower(cd)
+	idx := strings.Index(lower, "filename*=")
+	if idx == -1 {
+		return ""
+	}
+
+	// Extract the value after filename*=
+	value := cd[idx+len("filename*="):]
+
+	// Find the end of the value (next ; or end of string)
+	if endIdx := strings.Index(value, ";"); endIdx != -1 {
+		value = value[:endIdx]
+	}
+	value = strings.TrimSpace(value)
+
+	// Parse charset'language'encoded-value format
+	// Common format: UTF-8''%E6%B5%8B%E8%AF%95.zip
+	parts := strings.SplitN(value, "''", 2)
+	if len(parts) == 2 {
+		// parts[0] is charset (e.g., "UTF-8")
+		// parts[1] is percent-encoded value
+		decoded, err := url.QueryUnescape(parts[1])
+		if err == nil {
+			return decoded
+		}
+	}
+
+	// Try with single quote delimiter as well (some servers use this)
+	parts = strings.SplitN(value, "'", 3)
+	if len(parts) >= 3 {
+		decoded, err := url.QueryUnescape(parts[2])
+		if err == nil {
+			return decoded
+		}
+	}
+
+	return ""
+}
+
+// decodeFilenameParam decodes a filename parameter value
+// Handles MIME encoded-word, URL encoding, and Latin-1 to UTF-8 recovery
+func decodeFilenameParam(filename string) string {
+	// Check if the filename is MIME encoded-word (e.g., =?UTF-8?B?...?=)
+	if strings.HasPrefix(filename, "=?") {
+		decoder := new(mime.WordDecoder)
+		// Some servers use "UTF8" instead of "UTF-8"
+		filename = strings.Replace(filename, "UTF8", "UTF-8", 1)
+		if decoded, err := decoder.Decode(filename); err == nil {
+			return decoded
+		}
+	}
+
+	// Try URL decoding
+	if decoded := util.TryUrlQueryUnescape(filename); decoded != filename {
+		return decoded
+	}
+
+	// Check if the filename might be UTF-8 bytes misinterpreted as Latin-1
+	// This happens when server sends raw UTF-8 but mime.ParseMediaType treats each byte as a rune
+	if recovered := tryRecoverUTF8(filename); recovered != filename {
+		return recovered
+	}
+
+	return filename
+}
+
+// parseFilenameFallback manually parses filename= when mime.ParseMediaType fails
+func parseFilenameFallback(cd string) string {
+	// Look for filename= (case-insensitive)
+	lower := strings.ToLower(cd)
+	idx := strings.Index(lower, "filename=")
+	if idx == -1 {
+		return ""
+	}
+
+	// Skip "filename=" prefix
+	value := cd[idx+len("filename="):]
+
+	// Find the end of the value
+	if endIdx := strings.Index(value, ";"); endIdx != -1 {
+		value = value[:endIdx]
+	}
+	value = strings.TrimSpace(value)
+
+	// Remove quotes if present
+	if len(value) >= 2 {
+		if (value[0] == '"' && value[len(value)-1] == '"') ||
+			(value[0] == '\'' && value[len(value)-1] == '\'') {
+			value = value[1 : len(value)-1]
+		}
+	}
+
+	return decodeFilenameParam(value)
+}
+
+// tryRecoverUTF8 attempts to recover UTF-8 string from a Latin-1 misinterpreted string
+// When server sends raw UTF-8 bytes but they're interpreted as Latin-1,
+// each UTF-8 byte becomes a separate rune. We need to extract the original bytes.
+func tryRecoverUTF8(s string) string {
+	// Check if all runes can fit in a single byte (Latin-1 range)
+	// If any rune is > 255, it's not a Latin-1 misinterpretation
+	canRecover := true
+	for _, r := range s {
+		if r > 255 {
+			canRecover = false
+			break
+		}
+	}
+
+	if !canRecover {
+		return s
+	}
+
+	// Extract the original bytes
+	rawBytes := make([]byte, 0, len(s))
+	for _, r := range s {
 		rawBytes = append(rawBytes, byte(r))
 	}
-	return string(rawBytes)
+
+	// Check if the recovered bytes form valid UTF-8
+	recovered := string(rawBytes)
+	if isValidUTF8WithNonASCII(recovered) {
+		return recovered
+	}
+
+	return s
+}
+
+// isValidUTF8WithNonASCII checks if string is valid UTF-8 and contains non-ASCII characters
+// We only want to recover if the result actually contains non-ASCII (Chinese, etc.)
+func isValidUTF8WithNonASCII(s string) bool {
+	hasNonASCII := false
+	for _, r := range s {
+		if r == 65533 { // Unicode replacement character - invalid UTF-8
+			return false
+		}
+		if r > 127 {
+			hasNonASCII = true
+		}
+	}
+	return hasNonASCII
 }
 
 type fetcherData struct {
