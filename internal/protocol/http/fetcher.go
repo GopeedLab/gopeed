@@ -18,7 +18,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
@@ -604,11 +603,14 @@ func (f *Fetcher) buildClient() *http.Client {
 
 // parseFilename extracts filename from Content-Disposition header
 // It handles multiple encoding scenarios:
-// 1. RFC 5987/RFC 2231 format: filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip (preferred)
+// 1. RFC 5987/RFC 2231 format: filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip (preferred, checked first)
 // 2. MIME encoded-word: filename="=?UTF-8?B?5rWL6K+VLnppcA==?="
 // 3. URL-encoded: filename="%E6%B5%8B%E8%AF%95.zip"
-// 4. Raw UTF-8 bytes misinterpreted as Latin-1 (needs recovery)
-// 5. Plain ASCII filename
+// 4. Plain ASCII filename
+//
+// The key fix is checking filename*= first before mime.ParseMediaType, because
+// some servers send Content-Disposition headers with invalid characters that cause
+// mime.ParseMediaType to fail, but the filename*= parameter is still valid.
 func parseFilename(contentDisposition string) string {
 	// First, try to find filename*= (RFC 5987 format, most reliable for non-ASCII)
 	if filename := parseFilenameExtended(contentDisposition); filename != "" {
@@ -671,7 +673,7 @@ func parseFilenameExtended(cd string) string {
 }
 
 // decodeFilenameParam decodes a filename parameter value
-// Handles MIME encoded-word, URL encoding, and Latin-1 to UTF-8 recovery
+// Handles MIME encoded-word and URL encoding
 func decodeFilenameParam(filename string) string {
 	// Check if the filename is MIME encoded-word (e.g., =?UTF-8?B?...?=)
 	if strings.HasPrefix(filename, "=?") {
@@ -686,12 +688,6 @@ func decodeFilenameParam(filename string) string {
 	// Try URL decoding
 	if decoded := util.TryUrlQueryUnescape(filename); decoded != filename {
 		return decoded
-	}
-
-	// Check if the filename might be UTF-8 bytes misinterpreted as Latin-1
-	// This happens when server sends raw UTF-8 but mime.ParseMediaType treats each byte as a rune
-	if recovered := tryRecoverUTF8(filename); recovered != filename {
-		return recovered
 	}
 
 	return filename
@@ -724,54 +720,6 @@ func parseFilenameFallback(cd string) string {
 	}
 
 	return decodeFilenameParam(value)
-}
-
-// tryRecoverUTF8 attempts to recover UTF-8 string from a Latin-1 misinterpreted string
-// When server sends raw UTF-8 bytes but they're interpreted as Latin-1,
-// each UTF-8 byte becomes a separate rune. We need to extract the original bytes.
-func tryRecoverUTF8(s string) string {
-	// Check if all runes can fit in a single byte (Latin-1 range)
-	// If any rune is > 255, it's not a Latin-1 misinterpretation
-	canRecover := true
-	for _, r := range s {
-		if r > 255 {
-			canRecover = false
-			break
-		}
-	}
-
-	if !canRecover {
-		return s
-	}
-
-	// Extract the original bytes
-	rawBytes := make([]byte, 0, len(s))
-	for _, r := range s {
-		rawBytes = append(rawBytes, byte(r))
-	}
-
-	// Check if the recovered bytes form valid UTF-8
-	recovered := string(rawBytes)
-	if isValidUTF8WithNonASCII(recovered) {
-		return recovered
-	}
-
-	return s
-}
-
-// isValidUTF8WithNonASCII checks if string is valid UTF-8 and contains non-ASCII characters
-// We only want to recover if the result actually contains non-ASCII (Chinese, etc.)
-func isValidUTF8WithNonASCII(s string) bool {
-	hasNonASCII := false
-	for _, r := range s {
-		if r == unicode.ReplacementChar { // Invalid UTF-8 sequence
-			return false
-		}
-		if r > 127 {
-			hasNonASCII = true
-		}
-	}
-	return hasNonASCII
 }
 
 type fetcherData struct {

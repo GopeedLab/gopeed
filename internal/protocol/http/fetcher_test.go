@@ -77,7 +77,8 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
-	// Test mixed encoding Content-Disposition (filename= garbled + filename*=UTF-8 proper)
+	// Test mixed encoding Content-Disposition where mime.ParseMediaType fails
+	// due to invalid characters, but filename*= contains the correct UTF-8 encoded name
 	testResolve(test.StartTestCustomServer, "mixed-encoding", &base.Resource{
 		Size:  test.BuildSize,
 		Range: false,
@@ -90,17 +91,6 @@ func TestFetcher_Resolve(t *testing.T) {
 	}, t)
 	// Test filename*= only (RFC 5987 format)
 	testResolve(test.StartTestCustomServer, "filename-star", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: test.TestChineseFileName,
-				Size: test.BuildSize,
-			},
-		},
-	}, t)
-	// Test Latin-1 mangled UTF-8 recovery
-	testResolve(test.StartTestCustomServer, "latin1-mangled", &base.Resource{
 		Size:  test.BuildSize,
 		Range: false,
 		Files: []*base.FileInfo{
