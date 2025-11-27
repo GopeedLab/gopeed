@@ -18,6 +18,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				MaxRunning:     5,
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
+				Webhook:        &WebhookConfig{},
 			},
 		},
 		{
@@ -29,6 +30,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				MaxRunning:     10,
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
+				Webhook:        &WebhookConfig{},
 			},
 		},
 		{
@@ -43,7 +45,8 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{
 					"key": "value",
 				},
-				Proxy: &DownloaderProxyConfig{},
+				Proxy:   &DownloaderProxyConfig{},
+				Webhook: &WebhookConfig{},
 			},
 		},
 		{
@@ -59,6 +62,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				Proxy: &DownloaderProxyConfig{
 					Enable: true,
 				},
+				Webhook: &WebhookConfig{},
 			},
 		},
 	}
@@ -71,6 +75,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: tt.fields.ProtocolConfig,
 				Extra:          tt.fields.Extra,
 				Proxy:          tt.fields.Proxy,
+				Webhook:        tt.fields.Webhook,
 			}
 			if got := cfg.Init(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Init() = %v, want %v", got, tt.want)
@@ -255,6 +260,7 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 				ProtocolConfig: tt.fields.ProtocolConfig,
 				Extra:          tt.fields.Extra,
 				Proxy:          tt.fields.Proxy,
+				Webhook:        tt.fields.Webhook,
 			}
 			if got := cfg.Merge(tt.args.beforeCfg); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Merge() = %v, want %v", got, tt.want)

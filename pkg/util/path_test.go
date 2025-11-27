@@ -1,8 +1,11 @@
 package util
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestDir(t *testing.T) {
@@ -236,6 +239,78 @@ func TestReplaceInvalidFilename(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := ReplaceInvalidFilename(tt.args.path); got != tt.want {
 				t.Errorf("ReplaceInvalidFilename() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReplacePathPlaceholders(t *testing.T) {
+	now := time.Now()
+	year := fmt.Sprintf("%d", now.Year())
+	month := fmt.Sprintf("%02d", now.Month())
+	day := fmt.Sprintf("%02d", now.Day())
+	date := fmt.Sprintf("%s-%s-%s", year, month, day)
+
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{
+			name: "empty path",
+			path: "",
+			want: "",
+		},
+		{
+			name: "no placeholders",
+			path: "/home/user/Downloads",
+			want: "/home/user/Downloads",
+		},
+		{
+			name: "year placeholder",
+			path: "/Downloads/%year%",
+			want: "/Downloads/" + year,
+		},
+		{
+			name: "month placeholder",
+			path: "/Downloads/%month%",
+			want: "/Downloads/" + month,
+		},
+		{
+			name: "day placeholder",
+			path: "/Downloads/%day%",
+			want: "/Downloads/" + day,
+		},
+		{
+			name: "date placeholder",
+			path: "/Downloads/%date%",
+			want: "/Downloads/" + date,
+		},
+		{
+			name: "multiple placeholders",
+			path: "/Downloads/%year%-%month%",
+			want: "/Downloads/" + year + "-" + month,
+		},
+		{
+			name: "mixed path with placeholders",
+			path: "/home/user/Downloads/%year%/%month%/%day%",
+			want: "/home/user/Downloads/" + year + "/" + month + "/" + day,
+		},
+		{
+			name: "windows style path",
+			path: "D:\\Downloads\\%year%-%month%",
+			want: "D:\\Downloads\\" + year + "-" + month,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ReplacePathPlaceholders(tt.path)
+			if !strings.Contains(got, year) && tt.path != "" && strings.Contains(tt.path, "%year%") {
+				t.Errorf("ReplacePathPlaceholders() = %v, want containing year %v", got, year)
+			}
+			if got != tt.want {
+				t.Errorf("ReplacePathPlaceholders() = %v, want %v", got, tt.want)
 			}
 		})
 	}

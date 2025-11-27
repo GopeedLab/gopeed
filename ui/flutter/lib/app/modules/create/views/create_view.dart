@@ -12,6 +12,7 @@ import 'package:rounded_loading_button_plus/rounded_loading_button.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/create_task_batch.dart';
+import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
@@ -72,7 +73,9 @@ class CreateView extends GetView<CreateController> {
           .toString();
     }
     if (_pathController.text.isEmpty) {
-      _pathController.text = appController.downloaderConfig.value.downloadDir;
+      // Render placeholders when initializing the path
+      final downloadDir = appController.downloaderConfig.value.downloadDir;
+      _pathController.text = renderPathPlaceholders(downloadDir);
     }
 
     final CreateTask? routerParams = Get.rootDelegate.arguments();
@@ -328,6 +331,8 @@ class CreateView extends GetView<CreateController> {
                         DirectorySelector(
                           controller: _pathController,
                         ),
+                        // Category selector
+                        _buildCategorySelector(appController),
                         Obx(
                           () => Visibility(
                             visible: controller.showAdvanced.value,
@@ -911,5 +916,67 @@ class CreateView extends GetView<CreateController> {
                 ),
               ],
             ));
+  }
+
+  Widget _buildCategorySelector(AppController appController) {
+    final categories =
+        appController.downloaderConfig.value.extra.downloadCategories
+            .where((c) => !c.isDeleted) // Filter out deleted categories
+            .toList();
+    if (categories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Helper to get display name
+    String getCategoryDisplayName(DownloadCategory category) {
+      if (category.nameKey != null && category.nameKey!.isNotEmpty) {
+        return category.nameKey!.tr;
+      }
+      return category.name;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Text(
+            'selectCategory'.tr,
+            style: TextStyle(
+              color: Get.theme.hintColor,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: categories.map((category) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: OutlinedButton(
+                      onPressed: () {
+                        _pathController.text = renderPathPlaceholders(category.path);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                      ),
+                      child: Text(
+                        getCategoryDisplayName(category),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

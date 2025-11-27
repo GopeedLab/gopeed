@@ -9,6 +9,7 @@ class DownloaderConfig {
   ProtocolConfig protocolConfig = ProtocolConfig();
   ExtraConfig extra = ExtraConfig();
   ProxyConfig proxy = ProxyConfig();
+  WebhookConfig webhook = WebhookConfig();
 
   DownloaderConfig({
     this.downloadDir = '',
@@ -82,7 +83,7 @@ class ExtraConfig {
   bool defaultDirectDownload;
   bool defaultBtClient;
   bool notifyWhenNewVersion;
-  List<String> webhookUrls;
+  List<DownloadCategory> downloadCategories;
 
   ExtraConfigBt bt = ExtraConfigBt();
 
@@ -93,13 +94,51 @@ class ExtraConfig {
     this.defaultDirectDownload = false,
     this.defaultBtClient = true,
     this.notifyWhenNewVersion = true,
-    this.webhookUrls = const [],
+    this.downloadCategories = const [],
   });
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ExtraConfig() : _$ExtraConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$ExtraConfigToJson(this);
+}
+
+@JsonSerializable()
+class DownloadCategory {
+  String name;
+  String path;
+  bool isBuiltIn;
+  String? nameKey; // i18n key for built-in categories (e.g., 'categoryMusic')
+  bool isDeleted; // Mark built-in categories as deleted instead of removing them
+
+  DownloadCategory({
+    required this.name,
+    required this.path,
+    this.isBuiltIn = false,
+    this.nameKey,
+    this.isDeleted = false,
+  });
+
+  factory DownloadCategory.fromJson(Map<String, dynamic> json) =>
+      _$DownloadCategoryFromJson(json);
+
+  Map<String, dynamic> toJson() => _$DownloadCategoryToJson(this);
+}
+
+@JsonSerializable()
+class WebhookConfig {
+  bool enable;
+  List<String> urls;
+
+  WebhookConfig({
+    this.enable = false,
+    this.urls = const [],
+  });
+
+  factory WebhookConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? WebhookConfig() : _$WebhookConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$WebhookConfigToJson(this);
 }
 
 @JsonSerializable()

@@ -182,6 +182,7 @@ type DownloaderStoreConfig struct {
 	ProtocolConfig map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
 	Extra          map[string]any         `json:"extra"`
 	Proxy          *DownloaderProxyConfig `json:"proxy"`
+	Webhook        *WebhookConfig         `json:"webhook"` // Webhook is the webhook configuration
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
@@ -193,6 +194,9 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	}
 	if cfg.Proxy == nil {
 		cfg.Proxy = &DownloaderProxyConfig{}
+	}
+	if cfg.Webhook == nil {
+		cfg.Webhook = &WebhookConfig{}
 	}
 	return cfg
 }
@@ -216,7 +220,16 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	if cfg.Proxy == nil {
 		cfg.Proxy = beforeCfg.Proxy
 	}
+	if cfg.Webhook == nil {
+		cfg.Webhook = beforeCfg.Webhook
+	}
 	return cfg
+}
+
+// WebhookConfig is the webhook configuration
+type WebhookConfig struct {
+	Enable bool     `json:"enable"` // Enable is the flag to enable/disable webhooks
+	URLs   []string `json:"urls"`   // URLs is the list of webhook URLs
 }
 
 type DownloaderProxyConfig struct {
