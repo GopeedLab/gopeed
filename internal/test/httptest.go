@@ -150,8 +150,10 @@ func StartTestCustomServer() net.Listener {
 			io.Copy(writer, file)
 		})
 		// Test endpoint for GBK-encoded filename (common on Chinese Windows servers)
-		// This simulates the case where "测试.zip" is sent as GBK bytes
-		// which appears as garbled characters when interpreted as UTF-8
+		// This simulates the case where Chinese characters are sent as GBK bytes
+		// which appear as garbled characters when interpreted as UTF-8.
+		// For example, "测试" in GBK is [B2 E2 CA D4] which is invalid UTF-8.
+		// Our fix detects invalid UTF-8 and attempts GBK decoding.
 		mux.HandleFunc("/gbk-encoded", func(writer http.ResponseWriter, request *http.Request) {
 			// Encode TestChineseFileName as GBK
 			gbkEncoder := simplifiedchinese.GBK.NewEncoder()
