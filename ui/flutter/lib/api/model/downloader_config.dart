@@ -86,6 +86,7 @@ class ExtraConfig {
   List<DownloadCategory> downloadCategories;
 
   ExtraConfigBt bt = ExtraConfigBt();
+  ExtraConfigGithubMirror githubMirror = ExtraConfigGithubMirror();
 
   ExtraConfig({
     this.themeMode = '',
@@ -109,7 +110,8 @@ class DownloadCategory {
   String path;
   bool isBuiltIn;
   String? nameKey; // i18n key for built-in categories (e.g., 'categoryMusic')
-  bool isDeleted; // Mark built-in categories as deleted instead of removing them
+  bool
+      isDeleted; // Mark built-in categories as deleted instead of removing them
 
   DownloadCategory({
     required this.name,
@@ -180,4 +182,47 @@ class ExtraConfigBt {
       _$ExtraConfigBtFromJson(json);
 
   Map<String, dynamic> toJson() => _$ExtraConfigBtToJson(this);
+}
+
+enum GithubMirrorType {
+  jsdelivr,
+  ghProxy,
+}
+
+@JsonSerializable()
+class GithubMirror {
+  GithubMirrorType type;
+  String url;
+  bool isBuiltIn;
+  bool isDeleted;
+
+  GithubMirror({
+    required this.type,
+    required this.url,
+    this.isBuiltIn = false,
+    this.isDeleted = false,
+  });
+
+  factory GithubMirror.fromJson(Map<String, dynamic> json) =>
+      _$GithubMirrorFromJson(json);
+
+  Map<String, dynamic> toJson() => _$GithubMirrorToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true)
+class ExtraConfigGithubMirror {
+  bool enabled;
+  List<GithubMirror> mirrors;
+
+  ExtraConfigGithubMirror({
+    this.enabled = true,
+    this.mirrors = const [],
+  });
+
+  factory ExtraConfigGithubMirror.fromJson(Map<String, dynamic>? json) =>
+      json == null
+          ? ExtraConfigGithubMirror()
+          : _$ExtraConfigGithubMirrorFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ExtraConfigGithubMirrorToJson(this);
 }

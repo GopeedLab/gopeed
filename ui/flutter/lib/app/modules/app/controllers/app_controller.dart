@@ -526,17 +526,22 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
     // Initialize default download categories if empty
     if (extra.downloadCategories.isEmpty) {
-      await _initDefaultDownloadCategories();
+      _initDefaultDownloadCategories();
+    }
+
+    // Initialize default GitHub mirrors if empty
+    if (extra.githubMirror.mirrors.isEmpty) {
+      _initDefaultGithubMirrors();
     }
   }
 
-  Future<void> _initDefaultDownloadCategories() async {
+  void _initDefaultDownloadCategories() {
     final extra = downloaderConfig.value.extra;
     final downloadDir = downloaderConfig.value.downloadDir;
 
     // Add default built-in categories with i18n keys
     // No need to set initial name value, it will be retrieved via nameKey
-    extra.downloadCategories.addAll([
+    extra.downloadCategories = [
       DownloadCategory(
         name: '',
         path: path.join(downloadDir, 'Music'),
@@ -561,7 +566,25 @@ class AppController extends GetxController with WindowListener, TrayListener {
         isBuiltIn: true,
         nameKey: 'categoryProgram',
       ),
-    ]);
+    ];
+  }
+
+  void _initDefaultGithubMirrors() {
+    final extra = downloaderConfig.value.extra;
+
+    // Add default built-in GitHub mirrors
+    extra.githubMirror.mirrors = [
+      GithubMirror(
+        type: GithubMirrorType.jsdelivr,
+        url: 'https://fastly.jsdelivr.net/gh',
+        isBuiltIn: true,
+      ),
+      GithubMirror(
+        type: GithubMirrorType.ghProxy,
+        url: 'https://fastgit.cc',
+        isBuiltIn: true,
+      ),
+    ];
   }
 
   Future<void> _initLaunchAtStartup() async {
