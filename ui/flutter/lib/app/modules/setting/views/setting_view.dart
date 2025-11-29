@@ -884,6 +884,136 @@ class SettingView extends GetView<SettingController> {
       },
     );
 
+    // advanced config GitHub mirror items start
+    final buildGithubMirror = _buildConfigItem(
+      'githubMirror',
+      () => downloaderCfg.value.extra.githubMirror.enabled ? 'on'.tr : 'off'.tr,
+      (Key key) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'githubMirrorEnable'.tr,
+                  style: Theme.of(Get.context!).textTheme.bodyMedium,
+                ),
+                const Spacer(),
+                Switch(
+                  value: downloaderCfg.value.extra.githubMirror.enabled,
+                  onChanged: (value) {
+                    downloaderCfg.update((val) {
+                      val!.extra.githubMirror.enabled = value;
+                    });
+                    debounceSave();
+                  },
+                ),
+              ],
+            ),
+            _padding,
+            Text(
+              'githubMirrorDesc'.tr,
+              style: Theme.of(Get.context!).textTheme.bodySmall,
+            ),
+            _padding,
+            // List of existing GitHub mirrors
+            ...downloaderCfg.value.extra.githubMirror.mirrors
+                .where((m) => !m.isDeleted)
+                .toList()
+                .asMap()
+                .entries
+                .map((entry) {
+              // Get the original index in the full list
+              final mirror = entry.value;
+              final index = downloaderCfg.value.extra.githubMirror.mirrors
+                  .indexOf(mirror);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              mirror.url,
+                              style:
+                                  Theme.of(Get.context!).textTheme.bodyMedium,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      tooltip: 'edit'.tr,
+                      onPressed: () {
+                        _showGithubMirrorDialog(
+                            index: index, initialMirror: mirror);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 20),
+                      tooltip: 'delete'.tr,
+                      onPressed: () async {
+                        // Show confirmation dialog
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('tip'.tr),
+                            content: Text('confirmDelete'.tr),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: Text('cancel'.tr),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: Text('confirm'.tr),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true) return;
+
+                        if (mirror.isBuiltIn) {
+                          // Mark built-in mirror as deleted (logical delete)
+                          downloaderCfg.update((val) {
+                            mirror.isDeleted = true;
+                          });
+                        } else {
+                          // Remove custom mirrors completely (physical delete)
+                          final mirrors = List<GithubMirror>.from(
+                              downloaderCfg.value.extra.githubMirror.mirrors);
+                          mirrors.removeAt(index);
+                          downloaderCfg.update((val) {
+                            val!.extra.githubMirror.mirrors = mirrors;
+                          });
+                        }
+                        await debounceSave();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+            _padding,
+            // Add button
+            OutlinedButton.icon(
+              onPressed: () {
+                _showGithubMirrorDialog();
+              },
+              icon: const Icon(Icons.add),
+              label: Text('add'.tr),
+            ),
+          ],
+        );
+      },
+    );
+
     // advanced config API items start
     final buildApiProtocol = _buildConfigItem(
       'protocol',
@@ -1092,7 +1222,8 @@ class SettingView extends GetView<SettingController> {
                       tooltip: 'delete'.tr,
                       onPressed: () async {
                         // Create new list to avoid unmodifiable list error
-                        final urls = List<String>.from(downloaderCfg.value.webhook.urls);
+                        final urls =
+                            List<String>.from(downloaderCfg.value.webhook.urls);
                         urls.removeAt(index);
                         downloaderCfg.update((val) {
                           val!.webhook.urls = urls;
@@ -1247,7 +1378,10 @@ class SettingView extends GetView<SettingController> {
                       Text('network'.tr),
                       Card(
                           child: Column(
-                        children: _addDivider([buildProxy()]),
+                        children: _addDivider([
+                          buildProxy(),
+                          buildGithubMirror(),
+                        ]),
                       )),
                       const Text('API'),
                       Card(
@@ -1307,12 +1441,12 @@ class SettingView extends GetView<SettingController> {
                   final url = value.trim().toLowerCase();
                   if (!url.startsWith('http://') &&
                       !url.startsWith('https://')) {
-                    return 'webhookUrlInvalid'.tr;
+                    return 'urlInvalid'.tr;
                   }
                   try {
                     Uri.parse(value.trim());
                   } catch (e) {
-                    return 'webhookUrlInvalid'.tr;
+                    return 'urlInvalid'.tr;
                   }
                   return null;
                 },
@@ -1366,7 +1500,8 @@ class SettingView extends GetView<SettingController> {
                   saveController.start();
                   try {
                     // Create new list to avoid unmodifiable list error
-                    final urls = List<String>.from(downloaderCfg.value.webhook.urls);
+                    final urls =
+                        List<String>.from(downloaderCfg.value.webhook.urls);
                     if (isEdit) {
                       urls[index] = url;
                     } else {
@@ -1390,6 +1525,125 @@ class SettingView extends GetView<SettingController> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showGithubMirrorDialog({int? index, GithubMirror? initialMirror}) {
+    final isEdit = index != null;
+    GithubMirrorType selectedType =
+        initialMirror?.type ?? GithubMirrorType.jsdelivr;
+    final urlController = TextEditingController(text: initialMirror?.url ?? '');
+    final saveController = TextButtonLoadingController();
+    final appController = Get.find<AppController>();
+    final downloaderCfg = appController.downloaderConfig;
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: Get.context!,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(isEdit ? 'edit'.tr : 'add'.tr),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<GithubMirrorType>(
+                  value: selectedType,
+                  decoration: InputDecoration(
+                    labelText: 'githubMirrorType'.tr,
+                  ),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        selectedType = value;
+                      });
+                    }
+                  },
+                  items: GithubMirrorType.values
+                      .map((type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type.name),
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: urlController,
+                  decoration: InputDecoration(
+                    labelText: 'githubMirrorUrl'.tr,
+                    hintText: 'githubMirrorUrlHint'.tr,
+                  ),
+                  keyboardType: TextInputType.url,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'required'.tr;
+                    }
+                    final url = value.trim().toLowerCase();
+                    if (!url.startsWith('http://') &&
+                        !url.startsWith('https://')) {
+                      return 'urlInvalid'.tr;
+                    }
+                    try {
+                      Uri.parse(value.trim());
+                    } catch (e) {
+                      return 'urlInvalid'.tr;
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('cancel'.tr),
+            ),
+            TextButtonLoading(
+              controller: saveController,
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) {
+                  return;
+                }
+                final url = urlController.text.trim();
+                if (url.isEmpty) return;
+
+                saveController.start();
+                try {
+                  // Create new list to avoid unmodifiable list error
+                  final mirrors = List<GithubMirror>.from(
+                      downloaderCfg.value.extra.githubMirror.mirrors);
+
+                  final newMirror = GithubMirror(
+                    type: selectedType,
+                    url: url,
+                  );
+
+                  if (isEdit) {
+                    mirrors[index] = newMirror;
+                  } else {
+                    mirrors.add(newMirror);
+                  }
+
+                  downloaderCfg.update((val) {
+                    val!.extra.githubMirror.mirrors = mirrors;
+                  });
+                  await appController.saveConfig();
+                  if (dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                } catch (e) {
+                  showErrorMessage(e);
+                } finally {
+                  saveController.stop();
+                }
+              },
+              child: Text('confirm'.tr),
+            ),
+          ],
+        ),
       ),
     );
   }

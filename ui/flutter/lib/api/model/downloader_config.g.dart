@@ -15,7 +15,8 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
           json['protocolConfig'] as Map<String, dynamic>?)
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
       ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>)
-      ..webhook = WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?);
+      ..webhook =
+          WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
@@ -81,7 +82,10 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
               ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
-    )..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>);
+    )
+      ..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>)
+      ..githubMirror = ExtraConfigGithubMirror.fromJson(
+          json['githubMirror'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
     <String, dynamic>{
@@ -94,6 +98,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'downloadCategories':
           instance.downloadCategories.map((e) => e.toJson()).toList(),
       'bt': instance.bt.toJson(),
+      'githubMirror': instance.githubMirror.toJson(),
     };
 
 DownloadCategory _$DownloadCategoryFromJson(Map<String, dynamic> json) =>
@@ -126,10 +131,9 @@ Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) {
 WebhookConfig _$WebhookConfigFromJson(Map<String, dynamic> json) =>
     WebhookConfig(
       enable: json['enable'] as bool? ?? false,
-      urls: (json['urls'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
+      urls:
+          (json['urls'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+              const [],
     );
 
 Map<String, dynamic> _$WebhookConfigToJson(WebhookConfig instance) =>
@@ -191,3 +195,40 @@ Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) {
   val['customTrackers'] = instance.customTrackers;
   return val;
 }
+
+GithubMirror _$GithubMirrorFromJson(Map<String, dynamic> json) => GithubMirror(
+      type: $enumDecode(_$GithubMirrorTypeEnumMap, json['type']),
+      url: json['url'] as String,
+      isBuiltIn: json['isBuiltIn'] as bool? ?? false,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$GithubMirrorToJson(GithubMirror instance) =>
+    <String, dynamic>{
+      'type': _$GithubMirrorTypeEnumMap[instance.type]!,
+      'url': instance.url,
+      'isBuiltIn': instance.isBuiltIn,
+      'isDeleted': instance.isDeleted,
+    };
+
+const _$GithubMirrorTypeEnumMap = {
+  GithubMirrorType.jsdelivr: 'jsdelivr',
+  GithubMirrorType.ghProxy: 'ghProxy',
+};
+
+ExtraConfigGithubMirror _$ExtraConfigGithubMirrorFromJson(
+        Map<String, dynamic> json) =>
+    ExtraConfigGithubMirror(
+      enabled: json['enabled'] as bool? ?? true,
+      mirrors: (json['mirrors'] as List<dynamic>?)
+              ?.map((e) => GithubMirror.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+    );
+
+Map<String, dynamic> _$ExtraConfigGithubMirrorToJson(
+        ExtraConfigGithubMirror instance) =>
+    <String, dynamic>{
+      'enabled': instance.enabled,
+      'mirrors': instance.mirrors.map((e) => e.toJson()).toList(),
+    };
