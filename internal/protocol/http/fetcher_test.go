@@ -42,7 +42,7 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: false,
 		Files: []*base.FileInfo{
 			{
-				Name: "测试.zip",
+				Name: test.TestChineseFileName,
 				Size: test.BuildSize,
 			},
 		},
@@ -52,7 +52,7 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: false,
 		Files: []*base.FileInfo{
 			{
-				Name: "测试.zip",
+				Name: test.TestChineseFileName,
 				Size: test.BuildSize,
 			},
 		},
@@ -62,7 +62,7 @@ func TestFetcher_Resolve(t *testing.T) {
 		Range: false,
 		Files: []*base.FileInfo{
 			{
-				Name: "测试.zip",
+				Name: test.TestChineseFileName,
 				Size: 0,
 			},
 		},
@@ -74,6 +74,42 @@ func TestFetcher_Resolve(t *testing.T) {
 			{
 				Name: test.BuildName,
 				Size: 0,
+			},
+		},
+	}, t)
+	// Test mixed encoding Content-Disposition where mime.ParseMediaType fails
+	// due to invalid characters, but filename*= contains the correct UTF-8 encoded name
+	testResolve(test.StartTestCustomServer, "mixed-encoding", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: test.TestChineseFileName,
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
+	// Test filename*= only (RFC 5987 format)
+	testResolve(test.StartTestCustomServer, "filename-star", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: test.TestChineseFileName,
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
+	// Test GBK-encoded filename (common on Chinese Windows servers)
+	// Before fix: "测试.zip" sent as GBK bytes -> parsed as "²âÊÔ.zip" (garbled)
+	// After fix: correctly decoded back to "测试.zip"
+	testResolve(test.StartTestCustomServer, "gbk-encoded", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: test.TestChineseFileName,
+				Size: test.BuildSize,
 			},
 		},
 	}, t)

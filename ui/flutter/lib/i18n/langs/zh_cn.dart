@@ -72,7 +72,7 @@ const zhCN = {
     'webhookTest': '测试',
     'webhookTestSuccess': 'Webhook 测试成功',
     'webhookTestFail': 'Webhook 测试失败',
-    'webhookUrlInvalid': '请输入有效的 HTTP 或 HTTPS 链接',
+    'urlInvalid': '请输入有效的 HTTP 或 HTTPS 链接',
     'required': '此项为必填项',
     'show': '显示',
     'continue': '继续',
@@ -150,5 +150,11 @@ const zhCN = {
     'categoryPath': '分类路径',
     'builtInCategory': '内置分类不能删除',
     'selectCategory': '选择分类',
+    'githubMirror': 'GitHub 镜像',
+    'githubMirrorEnable': '启用 GitHub 镜像',
+    'githubMirrorDesc': '使用镜像站点加速 GitHub 内容下载',
+    'githubMirrorType': '镜像类型',
+    'githubMirrorUrl': '镜像地址',
+    'githubMirrorUrlHint': '请输入镜像地址',
   }
 };
