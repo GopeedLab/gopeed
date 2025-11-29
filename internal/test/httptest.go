@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/armon/go-socks5"
 	"io"
 	"net"
 	"net/http"
@@ -17,6 +15,10 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/armon/go-socks5"
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 const (
@@ -34,6 +36,10 @@ const (
 	DownloadRename     = "download (1).data"
 	DownloadFile       = Dir + DownloadName
 	DownloadRenameFile = Dir + DownloadRename
+
+	// TestChineseFileName is a common test filename with Chinese characters
+	// Used to test Content-Disposition parsing with various encodings
+	TestChineseFileName = "测试.zip"
 )
 
 func StartTestFileServer() net.Listener {
@@ -103,7 +109,57 @@ func StartTestCustomServer() net.Listener {
 			io.Copy(writer, file)
 		})
 		mux.HandleFunc("/no-encode", func(writer http.ResponseWriter, request *http.Request) {
-			writer.Header().Set("Content-Disposition", "attachment; filename=测试.zip")
+			writer.Header().Set("Content-Disposition", "attachment; filename="+TestChineseFileName)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		// Test endpoint for mixed encoding: filename= with garbled characters (including special chars)
+		// and filename*= with proper UTF-8. This tests the case where mime.ParseMediaType fails
+		// due to invalid characters like <a> tags in the filename.
+		mux.HandleFunc("/mixed-encoding", func(writer http.ResponseWriter, request *http.Request) {
+			// This simulates a server that sends a garbled filename= with special chars that cause
+			// mime.ParseMediaType to fail, plus a proper filename*=UTF-8''...
+			// The filename*= should be preferred and correctly parsed.
+			writer.Header().Set("Content-Disposition", `attachment;filename="garbled<invalid>chars.zip";filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip`)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		// Test endpoint for filename*= only (RFC 5987 format)
+		mux.HandleFunc("/filename-star", func(writer http.ResponseWriter, request *http.Request) {
+			// URL-encoded TestChineseFileName: 测试.zip -> %E6%B5%8B%E8%AF%95.zip
+			writer.Header().Set("Content-Disposition", `attachment; filename*=UTF-8''%E6%B5%8B%E8%AF%95.zip`)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		// Test endpoint for GBK-encoded filename (common on Chinese Windows servers)
+		// This simulates the case where Chinese characters are sent as GBK bytes
+		// which appear as garbled characters when interpreted as UTF-8.
+		// For example, "测试" in GBK is [B2 E2 CA D4] which is invalid UTF-8.
+		// Our fix detects invalid UTF-8 and attempts GBK decoding.
+		mux.HandleFunc("/gbk-encoded", func(writer http.ResponseWriter, request *http.Request) {
+			// Encode TestChineseFileName as GBK
+			gbkEncoder := simplifiedchinese.GBK.NewEncoder()
+			gbkBytes, _ := gbkEncoder.Bytes([]byte(TestChineseFileName))
+			// Send GBK bytes directly in filename (simulating broken server behavior)
+			writer.Header().Set("Content-Disposition", `attachment; filename="`+string(gbkBytes)+`"`)
 			writer.Header().Set("Content-Type", "application/octet-stream")
 			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
 			file, err := os.Open(BuildFile)
