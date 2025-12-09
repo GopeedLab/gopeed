@@ -14,7 +14,17 @@ func TestByteFmt(t *testing.T) {
 		{
 			name: "unknown",
 			args: args{size: int64(0)},
-			want: "unknown",
+			want: unknownSize,
+		},
+		{
+			name: "negative value",
+			args: args{size: int64(-1)},
+			want: unknownSize,
+		},
+		{
+			name: "negative min int64",
+			args: args{size: int64(-9223372036854775808)},
+			want: unknownSize,
 		},
 		{
 			name: "100B",
@@ -50,6 +60,11 @@ func TestByteFmt(t *testing.T) {
 			name: "2MB",
 			args: args{size: int64(1024 * 1024 * 2)},
 			want: "2MB",
+		},
+		{
+			name: "large value",
+			args: args{size: int64(9223372036854775807)}, // max int64
+			want: "8EB",
 		},
 	}
 	for _, tt := range tests {
