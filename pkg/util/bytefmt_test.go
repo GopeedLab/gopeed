@@ -14,17 +14,17 @@ func TestByteFmt(t *testing.T) {
 		{
 			name: "unknown",
 			args: args{size: int64(0)},
-			want: "unknown",
+			want: unknownSize,
 		},
 		{
 			name: "negative value",
 			args: args{size: int64(-1)},
-			want: "unknown",
+			want: unknownSize,
 		},
 		{
 			name: "negative min int64",
 			args: args{size: int64(-9223372036854775808)},
-			want: "unknown",
+			want: unknownSize,
 		},
 		{
 			name: "100B",

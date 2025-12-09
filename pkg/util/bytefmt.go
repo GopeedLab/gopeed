@@ -5,15 +5,17 @@ import (
 	"math"
 )
 
+const unknownSize = "unknown"
+
 var unitArr = []string{"B", "KB", "MB", "GB", "TB", "PB", "EB"}
 
 func ByteFmt(size int64) string {
 	if size == 0 {
-		return "unknown"
+		return unknownSize
 	}
 	// Handle negative values
 	if size < 0 {
-		return "unknown"
+		return unknownSize
 	}
 	fs := float64(size)
 	p := int(math.Log(fs) / math.Log(1024))
