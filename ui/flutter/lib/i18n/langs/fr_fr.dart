@@ -38,6 +38,7 @@ const frFR = {
     'useServerCtime':
         'Utiliser l\'heure du serveur pour la création de fichier',
     'maxRunning': 'Tâches en cours maximum',
+    'autoStartTasks': 'Démarrer automatiquement les tâches incomplètes au lancement',
     'items': '@count éléments',
     'subscribeTracker': 'S\'abonner au tracker',
     'subscribeFail':
