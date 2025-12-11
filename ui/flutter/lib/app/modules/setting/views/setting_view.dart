@@ -148,6 +148,25 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
+    final buildAutoStartTasks = _buildConfigItem('autoStartTasks', () {
+      return appController.downloaderConfig.value.extra.autoStartTasks
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: appController.downloaderConfig.value.extra.autoStartTasks,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.extra.autoStartTasks = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
     // Download categories configuration
     buildDownloadCategories() {
       final categories = downloaderCfg.value.extra.downloadCategories
@@ -1311,6 +1330,7 @@ class SettingView extends GetView<SettingController> {
                             buildDownloadCategories(),
                             buildMaxRunning(),
                             buildDefaultDirectDownload(),
+                            buildAutoStartTasks(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
                           ]),

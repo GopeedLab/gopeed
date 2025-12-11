@@ -29,6 +29,7 @@ const jaJP = {
     'downloadDirValid': 'ダウンロードディレクトリを選択してください',
     'connections': '接続',
     'maxRunning': '最大実行タスク',
+    'autoStartTasks': '起動時に未完了のタスクを自動的に開始',
     'items': '@count アイテム',
     'subscribeTracker': 'トラッカーを購読',
     'subscribeFail': '登録に失敗しました。ネットワークを確認するか、後でもう一度お試しください',
