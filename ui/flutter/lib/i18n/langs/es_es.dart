@@ -38,6 +38,7 @@ const esES = {
     'connections': 'Conexiones',
     'useServerCtime': 'Usar tiempo del servidor para la creación de archivos',
     'maxRunning': 'Máximo de Tareas en Ejecución',
+    'autoStartTasks': 'Iniciar automáticamente tareas incompletas al arrancar',
     'items': '@count elementos',
     'subscribeTracker': 'Suscribirse al Tracker',
     'subscribeFail':
