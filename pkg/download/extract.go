@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mholt/archiver/v4"
+	"github.com/mholt/archives"
 )
 
 // supportedArchiveExtensions contains file extensions that can be extracted
@@ -55,7 +55,7 @@ func extractArchive(archivePath string, destDir string, password string) error {
 	}
 
 	// Identify the archive format
-	format, input, err := archiver.Identify(context.Background(), archivePath, file)
+	format, input, err := archives.Identify(context.Background(), archivePath, file)
 	if err != nil {
 		return err
 	}
@@ -68,26 +68,26 @@ func extractArchive(archivePath string, destDir string, password string) error {
 	// Handle password-protected archives
 	if password != "" {
 		// Try to set password for formats that support it
-		if rar, ok := format.(archiver.Rar); ok {
+		if rar, ok := format.(archives.Rar); ok {
 			rar.Password = password
 			format = rar
 		}
-		if sz, ok := format.(archiver.SevenZip); ok {
+		if sz, ok := format.(archives.SevenZip); ok {
 			sz.Password = password
 			format = sz
 		}
-		// Note: Zip format in archiver v4 doesn't have a Password field
-		// Password-protected zips are not fully supported in this version
+		// Note: Zip format in archives doesn't have a Password field
+		// Password-protected zips are not fully supported
 	}
 
 	// Handle extraction based on format type
 	switch f := format.(type) {
-	case archiver.Extractor:
+	case archives.Extractor:
 		// For archive formats (zip, rar, 7z, tar, etc.)
-		return f.Extract(context.Background(), input, func(ctx context.Context, af archiver.FileInfo) error {
+		return f.Extract(context.Background(), input, func(ctx context.Context, af archives.FileInfo) error {
 			return extractFile(ctx, af, destDir)
 		})
-	case archiver.Decompressor:
+	case archives.Decompressor:
 		// For single-file compression formats (gz, bz2, xz, etc.)
 		// Decompress to a file without the compression extension
 		baseName := filepath.Base(archivePath)
@@ -113,14 +113,14 @@ func extractArchive(archivePath string, destDir string, password string) error {
 
 		_, err = io.Copy(destFile, reader)
 		return err
-	case archiver.Archiver:
+	case archives.Archiver:
 		// This format is an archiver, try to extract using the extractor interface
-		if ext, ok := format.(archiver.Extractor); ok {
+		if ext, ok := format.(archives.Extractor); ok {
 			// Reset file position
 			if seeker, ok := input.(io.Seeker); ok {
 				seeker.Seek(0, io.SeekStart)
 			}
-			return ext.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, af archiver.FileInfo) error {
+			return ext.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, af archives.FileInfo) error {
 				return extractFile(ctx, af, destDir)
 			})
 		}
@@ -130,7 +130,7 @@ func extractArchive(archivePath string, destDir string, password string) error {
 }
 
 // extractFile handles extracting a single file from an archive
-func extractFile(ctx context.Context, af archiver.FileInfo, destDir string) error {
+func extractFile(ctx context.Context, af archives.FileInfo, destDir string) error {
 	// Skip directories, they will be created when extracting files
 	if af.IsDir() {
 		destPath := filepath.Join(destDir, af.NameInArchive)
