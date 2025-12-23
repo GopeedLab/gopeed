@@ -56,10 +56,12 @@ class CreateView extends GetView<CreateController> {
     ),
   ];
   final _btTrackerController = TextEditingController();
+  final _archivePasswordController = TextEditingController();
 
   final _availableSchemes = ["http:", "https:", "magnet:"];
 
   final _skipVerifyCertController = false.obs;
+  final _autoExtractController = false.obs;
 
   CreateView({Key? key}) : super(key: key);
 
@@ -590,6 +592,39 @@ class CreateView extends GetView<CreateController> {
                                               ),
                                             ),
                                           ),
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 10),
+                                            child: CompactCheckbox(
+                                              label: 'autoExtract'.tr,
+                                              value: _autoExtractController
+                                                  .value,
+                                              onChanged: (bool? value) {
+                                                _autoExtractController
+                                                    .value = value ?? false;
+                                              },
+                                              textStyle: const TextStyle(
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ),
+                                          Obx(
+                                            () => Visibility(
+                                              visible: _autoExtractController.value,
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.only(top: 10),
+                                                child: TextFormField(
+                                                  controller: _archivePasswordController,
+                                                  obscureText: true,
+                                                  decoration: InputDecoration(
+                                                    labelText: 'archivePassword'.tr,
+                                                    hintText: 'archivePasswordHint'.tr,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       Column(
@@ -798,7 +833,9 @@ class CreateView extends GetView<CreateController> {
   Object? parseReqOptsExtra() {
     return OptsExtraHttp()
       ..connections = int.tryParse(_connectionsController.text) ?? 0
-      ..autoTorrent = true;
+      ..autoTorrent = true
+      ..autoExtract = _autoExtractController.value
+      ..archivePassword = _archivePasswordController.text;
   }
 
   String _hitText() {

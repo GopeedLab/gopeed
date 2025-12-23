@@ -16,6 +16,7 @@ require (
 	github.com/imroc/req/v3 v3.52.2
 	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/mattn/go-ieproxy v0.0.12
+	github.com/mholt/archiver/v4 v4.0.0-alpha.9
 	github.com/pkg/errors v0.9.1
 	github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529
 	github.com/rs/zerolog v1.31.0
@@ -26,19 +27,33 @@ require (
 )
 
 require (
+	github.com/STARRY-S/zip v0.1.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
+	github.com/bodgit/plumbing v1.3.0 // indirect
+	github.com/bodgit/sevenzip v1.5.2 // indirect
+	github.com/bodgit/windows v1.0.1 // indirect
+	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/icholy/digest v1.1.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/pgzip v1.2.6 // indirect
+	github.com/nwaples/rardecode/v2 v2.0.0-beta.4 // indirect
 	github.com/onsi/ginkgo/v2 v2.23.4 // indirect
+	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
 	github.com/quic-go/quic-go v0.51.0 // indirect
 	github.com/refraction-networking/utls v1.6.7 // indirect
+	github.com/sorairolake/lzip-go v0.3.5 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
+	github.com/therootcompany/xz v1.0.1 // indirect
+	github.com/ulikunitz/xz v0.5.12 // indirect
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/mock v0.5.1 // indirect
+	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 )
 
 require (

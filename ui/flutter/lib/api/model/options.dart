@@ -26,10 +26,14 @@ class Options {
 class OptsExtraHttp {
   int connections;
   bool autoTorrent;
+  bool autoExtract;
+  String archivePassword;
 
   OptsExtraHttp({
     this.connections = 0,
     this.autoTorrent = false,
+    this.autoExtract = false,
+    this.archivePassword = '',
   });
 
   factory OptsExtraHttp.fromJson(Map<String, dynamic> json) =>

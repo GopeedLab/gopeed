@@ -37,10 +37,14 @@ OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) =>
     OptsExtraHttp(
       connections: (json['connections'] as num?)?.toInt() ?? 0,
       autoTorrent: json['autoTorrent'] as bool? ?? false,
+      autoExtract: json['autoExtract'] as bool? ?? false,
+      archivePassword: json['archivePassword'] as String? ?? '',
     );
 
 Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) =>
     <String, dynamic>{
       'connections': instance.connections,
       'autoTorrent': instance.autoTorrent,
+      'autoExtract': instance.autoExtract,
+      'archivePassword': instance.archivePassword,
     };
