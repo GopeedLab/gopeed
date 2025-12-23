@@ -12,6 +12,7 @@ func TestIsArchiveFile(t *testing.T) {
 		filename string
 		expected bool
 	}{
+		// Archive formats
 		{"file.zip", true},
 		{"file.ZIP", true},
 		{"file.tar", true},
@@ -21,12 +22,21 @@ func TestIsArchiveFile(t *testing.T) {
 		{"file.tbz2", true},
 		{"file.tar.xz", true},
 		{"file.txz", true},
+		{"file.tar.zst", true},
+		{"file.tzst", true},
 		{"file.rar", true},
 		{"file.RAR", true},
 		{"file.7z", true},
+		// Compression formats
 		{"file.gz", true},
 		{"file.bz2", true},
 		{"file.xz", true},
+		{"file.lz4", true},
+		{"file.sz", true},
+		{"file.zst", true},
+		{"file.br", true},
+		{"file.lz", true},
+		// Non-archive files
 		{"file.txt", false},
 		{"file.pdf", false},
 		{"file.exe", false},

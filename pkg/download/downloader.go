@@ -883,9 +883,9 @@ func (d *Downloader) watch(task *Task) {
 			go func() {
 				// Extract to the same directory as the downloaded file
 				destDir := task.Meta.Opts.Path
-				err2 := extractArchive(downloadFilePath, destDir, e.ArchivePassword)
-				if err2 != nil {
-					d.Logger.Error().Err(err2).Msgf("auto extract archive failed, task id: %s", task.ID)
+				extractErr := extractArchive(downloadFilePath, destDir, e.ArchivePassword)
+				if extractErr != nil {
+					d.Logger.Error().Err(extractErr).Msgf("auto extract archive failed, task id: %s", task.ID)
 				} else {
 					d.Logger.Info().Msgf("auto extract archive completed, task id: %s", task.ID)
 				}

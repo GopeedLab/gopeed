@@ -10,8 +10,9 @@ import (
 	"github.com/mholt/archives"
 )
 
-// supportedArchiveExtensions contains file extensions that can be extracted
+// supportedArchiveExtensions contains file extensions supported by mholt/archives library
 var supportedArchiveExtensions = []string{
+	// Archive formats
 	".zip",
 	".tar",
 	".tar.gz", ".tgz",
@@ -19,13 +20,18 @@ var supportedArchiveExtensions = []string{
 	".tar.xz", ".txz",
 	".tar.lz4", ".tlz4",
 	".tar.sz", ".tsz",
+	".tar.zst", ".tzst",
 	".rar",
 	".7z",
+	// Compression formats
 	".gz",
 	".bz2",
 	".xz",
 	".lz4",
 	".sz",
+	".zst",
+	".br",
+	".lz",
 }
 
 // isArchiveFile checks if a file is a supported archive format
@@ -84,8 +90,8 @@ func extractArchive(archivePath string, destDir string, password string) error {
 	switch f := format.(type) {
 	case archives.Extractor:
 		// For archive formats (zip, rar, 7z, tar, etc.)
-		return f.Extract(context.Background(), input, func(ctx context.Context, af archives.FileInfo) error {
-			return extractFile(ctx, af, destDir)
+		return f.Extract(context.Background(), input, func(ctx context.Context, fileInfo archives.FileInfo) error {
+			return extractFile(ctx, fileInfo, destDir)
 		})
 	case archives.Decompressor:
 		// For single-file compression formats (gz, bz2, xz, etc.)
@@ -120,8 +126,8 @@ func extractArchive(archivePath string, destDir string, password string) error {
 			if seeker, ok := input.(io.Seeker); ok {
 				seeker.Seek(0, io.SeekStart)
 			}
-			return ext.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, af archives.FileInfo) error {
-				return extractFile(ctx, af, destDir)
+			return ext.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
+				return extractFile(ctx, fileInfo, destDir)
 			})
 		}
 	}
@@ -130,15 +136,15 @@ func extractArchive(archivePath string, destDir string, password string) error {
 }
 
 // extractFile handles extracting a single file from an archive
-func extractFile(ctx context.Context, af archives.FileInfo, destDir string) error {
+func extractFile(ctx context.Context, fileInfo archives.FileInfo, destDir string) error {
 	// Skip directories, they will be created when extracting files
-	if af.IsDir() {
-		destPath := filepath.Join(destDir, af.NameInArchive)
-		return os.MkdirAll(destPath, af.Mode())
+	if fileInfo.IsDir() {
+		destPath := filepath.Join(destDir, fileInfo.NameInArchive)
+		return os.MkdirAll(destPath, fileInfo.Mode())
 	}
 
 	// Sanitize the path to prevent path traversal attacks
-	cleanPath := filepath.Clean(af.NameInArchive)
+	cleanPath := filepath.Clean(fileInfo.NameInArchive)
 	if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) {
 		// Skip files with suspicious paths
 		return nil
@@ -152,7 +158,7 @@ func extractFile(ctx context.Context, af archives.FileInfo, destDir string) erro
 	}
 
 	// Open the file from the archive
-	reader, err := af.Open()
+	reader, err := fileInfo.Open()
 	if err != nil {
 		return err
 	}
@@ -172,5 +178,5 @@ func extractFile(ctx context.Context, af archives.FileInfo, destDir string) erro
 	}
 
 	// Set file permissions
-	return os.Chmod(destPath, af.Mode())
+	return os.Chmod(destPath, fileInfo.Mode())
 }
