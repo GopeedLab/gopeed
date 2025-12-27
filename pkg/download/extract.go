@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/mholt/archives"
@@ -37,12 +38,9 @@ var supportedArchiveExtensions = []string{
 // isArchiveFile checks if a file is a supported archive format
 func isArchiveFile(filename string) bool {
 	lowerName := strings.ToLower(filename)
-	for _, ext := range supportedArchiveExtensions {
-		if strings.HasSuffix(lowerName, ext) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(supportedArchiveExtensions, func(ext string) bool {
+		return strings.HasSuffix(lowerName, ext)
+	})
 }
 
 // extractArchive extracts an archive file to a destination directory
@@ -97,9 +95,12 @@ func extractArchive(archivePath string, destDir string, password string) error {
 		// For single-file compression formats (gz, bz2, xz, etc.)
 		// Decompress to a file without the compression extension
 		baseName := filepath.Base(archivePath)
+		lowerBaseName := strings.ToLower(baseName)
 		for _, ext := range supportedArchiveExtensions {
-			if strings.HasSuffix(strings.ToLower(baseName), ext) {
-				baseName = baseName[:len(baseName)-len(ext)]
+			if strings.HasSuffix(lowerBaseName, ext) {
+				// Get the actual suffix from the original filename (preserving case)
+				actualSuffix := baseName[len(baseName)-len(ext):]
+				baseName = strings.TrimSuffix(baseName, actualSuffix)
 				break
 			}
 		}
