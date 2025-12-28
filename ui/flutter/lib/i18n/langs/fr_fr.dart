@@ -101,7 +101,7 @@ const frFR = {
     'launchAtStartup': 'Lancer au démarrage',
     'skipVerifyCert': 'Ignorer la vérification du certificat',
     'autoExtract': 'Extraire automatiquement les archives',
-    'archivePassword': 'Mot de passe de l'archive',
+    'archivePassword': 'Mot de passe de l\'archive',
     'archivePasswordHint': 'Laisser vide si non protégé par mot de passe',
     'insertPlaceholder': 'Insérer un espace réservé',
     'placeholderYear': 'Année en cours',
