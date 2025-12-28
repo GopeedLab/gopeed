@@ -201,7 +201,7 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	}
 	if cfg.Archive == nil {
 		cfg.Archive = &ArchiveConfig{
-			AutoExtract:        true,
+			AutoExtract:        false,
 			DeleteAfterExtract: true,
 		}
 	}
