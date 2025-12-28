@@ -21,7 +21,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				Webhook:        &WebhookConfig{},
 				Archive: &ArchiveConfig{
 					AutoExtract:        false,
-					DeleteAfterExtract: true,
+					DeleteAfterExtract: false,
 				},
 			},
 		},
@@ -37,7 +37,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				Webhook:        &WebhookConfig{},
 				Archive: &ArchiveConfig{
 					AutoExtract:        false,
-					DeleteAfterExtract: true,
+					DeleteAfterExtract: false,
 				},
 			},
 		},
@@ -57,7 +57,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				Webhook: &WebhookConfig{},
 				Archive: &ArchiveConfig{
 					AutoExtract:        false,
-					DeleteAfterExtract: true,
+					DeleteAfterExtract: false,
 				},
 			},
 		},
@@ -77,7 +77,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				Webhook: &WebhookConfig{},
 				Archive: &ArchiveConfig{
 					AutoExtract:        false,
-					DeleteAfterExtract: true,
+					DeleteAfterExtract: false,
 				},
 			},
 		},
@@ -297,7 +297,7 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 				beforeCfg: &DownloaderStoreConfig{
 					Archive: &ArchiveConfig{
 						AutoExtract:        false,
-						DeleteAfterExtract: true,
+						DeleteAfterExtract: false,
 					},
 				},
 			},
@@ -314,14 +314,14 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 				beforeCfg: &DownloaderStoreConfig{
 					Archive: &ArchiveConfig{
 						AutoExtract:        false,
-						DeleteAfterExtract: true,
+						DeleteAfterExtract: false,
 					},
 				},
 			},
 			&DownloaderStoreConfig{
 				Archive: &ArchiveConfig{
 					AutoExtract:        false,
-					DeleteAfterExtract: true,
+					DeleteAfterExtract: false,
 				},
 			},
 		},

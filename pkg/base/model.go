@@ -2,13 +2,14 @@ package base
 
 import (
 	"fmt"
-	"github.com/GopeedLab/gopeed/pkg/util"
-	"github.com/mattn/go-ieproxy"
-	"golang.org/x/exp/slices"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/GopeedLab/gopeed/pkg/util"
+	"github.com/mattn/go-ieproxy"
+	"golang.org/x/exp/slices"
 )
 
 // Request download request
@@ -202,7 +203,7 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	if cfg.Archive == nil {
 		cfg.Archive = &ArchiveConfig{
 			AutoExtract:        false,
-			DeleteAfterExtract: true,
+			DeleteAfterExtract: false,
 		}
 	}
 	return cfg
