@@ -25,6 +25,7 @@ on:
       - ".github/workflows/test.yml"
       - "go.mod"
       - "go.sum"
+  workflow_dispatch:
 
 env:
   GO_VERSION: "1.24"
