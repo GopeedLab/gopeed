@@ -132,7 +132,6 @@ jobs:
           iscc.exe setup.iss
           mv "Output\gopeed.exe" "Output\Gopeed-$TAG-windows-amd64.exe"
           Compress-Archive -Path "Output\Gopeed-$TAG-windows-amd64.exe" -DestinationPath "Output\Gopeed-$TAG-windows-amd64.zip"
-          Remove-Item -Path "Output\Gopeed-$TAG-windows-amd64.exe"
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
