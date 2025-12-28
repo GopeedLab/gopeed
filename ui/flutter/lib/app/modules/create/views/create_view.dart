@@ -62,6 +62,7 @@ class CreateView extends GetView<CreateController> {
 
   final _skipVerifyCertController = false.obs;
   final _autoExtractController = false.obs;
+  final _deleteAfterExtractController = false.obs;
 
   CreateView({Key? key}) : super(key: key);
 
@@ -499,17 +500,20 @@ class CreateView extends GetView<CreateController> {
                                 const Divider(),
                                 TabBar(
                                   controller: controller.advancedTabController,
-                                  tabs: const [
-                                    Tab(
+                                  tabs: [
+                                    const Tab(
                                       text: 'HTTP',
                                     ),
-                                    Tab(
+                                    const Tab(
                                       text: 'BitTorrent',
+                                    ),
+                                    Tab(
+                                      text: 'archives'.tr,
                                     )
                                   ],
                                 ),
                                 DefaultTabController(
-                                  length: 2,
+                                  length: 3,
                                   child: ContentSizeTabBarView(
                                     controller:
                                         controller.advancedTabController,
@@ -592,6 +596,21 @@ class CreateView extends GetView<CreateController> {
                                               ),
                                             ),
                                           ),
+                                        ],
+                                      ),
+                                      Column(
+                                        children: [
+                                          TextFormField(
+                                              controller: _btTrackerController,
+                                              maxLines: 5,
+                                              decoration: InputDecoration(
+                                                labelText: 'Trackers',
+                                                hintText: 'addTrackerHit'.tr,
+                                              )),
+                                        ],
+                                      ),
+                                      Column(
+                                        children: [
                                           Padding(
                                             padding:
                                                 const EdgeInsets.only(top: 10),
@@ -611,31 +630,40 @@ class CreateView extends GetView<CreateController> {
                                           Obx(
                                             () => Visibility(
                                               visible: _autoExtractController.value,
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.only(top: 10),
-                                                child: TextFormField(
-                                                  controller: _archivePasswordController,
-                                                  obscureText: true,
-                                                  decoration: InputDecoration(
-                                                    labelText: 'archivePassword'.tr,
-                                                    hintText: 'archivePasswordHint'.tr,
+                                              child: Column(
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(top: 10),
+                                                    child: TextFormField(
+                                                      controller: _archivePasswordController,
+                                                      obscureText: true,
+                                                      decoration: InputDecoration(
+                                                        labelText: 'archivePassword'.tr,
+                                                        hintText: 'archivePasswordHint'.tr,
+                                                      ),
+                                                    ),
                                                   ),
-                                                ),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(top: 10),
+                                                    child: CompactCheckbox(
+                                                      label: 'deleteAfterExtract'.tr,
+                                                      value: _deleteAfterExtractController
+                                                          .value,
+                                                      onChanged: (bool? value) {
+                                                        _deleteAfterExtractController
+                                                            .value = value ?? false;
+                                                      },
+                                                      textStyle: const TextStyle(
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                      Column(
-                                        children: [
-                                          TextFormField(
-                                              controller: _btTrackerController,
-                                              maxLines: 5,
-                                              decoration: InputDecoration(
-                                                labelText: 'Trackers',
-                                                hintText: 'addTrackerHit'.tr,
-                                              )),
                                         ],
                                       )
                                     ],
@@ -835,7 +863,8 @@ class CreateView extends GetView<CreateController> {
       ..connections = int.tryParse(_connectionsController.text) ?? 0
       ..autoTorrent = true
       ..autoExtract = _autoExtractController.value
-      ..archivePassword = _archivePasswordController.text;
+      ..archivePassword = _archivePasswordController.text
+      ..deleteAfterExtract = _deleteAfterExtractController.value;
   }
 
   String _hitText() {

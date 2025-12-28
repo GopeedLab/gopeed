@@ -39,6 +39,7 @@ OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) =>
       autoTorrent: json['autoTorrent'] as bool? ?? false,
       autoExtract: json['autoExtract'] as bool? ?? false,
       archivePassword: json['archivePassword'] as String? ?? '',
+      deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) =>
@@ -47,4 +48,5 @@ Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) =>
       'autoTorrent': instance.autoTorrent,
       'autoExtract': instance.autoExtract,
       'archivePassword': instance.archivePassword,
+      'deleteAfterExtract': instance.deleteAfterExtract,
     };

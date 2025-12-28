@@ -888,6 +888,15 @@ func (d *Downloader) watch(task *Task) {
 					d.Logger.Error().Err(extractErr).Msgf("auto extract archive failed, task id: %s", task.ID)
 				} else {
 					d.Logger.Info().Msgf("auto extract archive completed, task id: %s", task.ID)
+					// Delete archive after successful extraction if enabled
+					if e.DeleteAfterExtract {
+						deleteErr := os.Remove(downloadFilePath)
+						if deleteErr != nil {
+							d.Logger.Error().Err(deleteErr).Msgf("delete archive after extraction failed, task id: %s", task.ID)
+						} else {
+							d.Logger.Info().Msgf("archive deleted after extraction, task id: %s", task.ID)
+						}
+					}
 				}
 			}()
 		}

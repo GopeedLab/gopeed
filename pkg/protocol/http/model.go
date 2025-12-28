@@ -14,6 +14,8 @@ type OptsExtra struct {
 	AutoExtract bool `json:"autoExtract"`
 	// ArchivePassword is the password for extracting password-protected archives
 	ArchivePassword string `json:"archivePassword"`
+	// DeleteAfterExtract when true, deletes the archive file after successful extraction
+	DeleteAfterExtract bool `json:"deleteAfterExtract"`
 }
 
 // Stats for download
