@@ -183,6 +183,7 @@ type DownloaderStoreConfig struct {
 	Extra          map[string]any         `json:"extra"`
 	Proxy          *DownloaderProxyConfig `json:"proxy"`
 	Webhook        *WebhookConfig         `json:"webhook"` // Webhook is the webhook configuration
+	Archive        *ArchiveConfig         `json:"archive"` // Archive is the archive extraction configuration
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
@@ -197,6 +198,12 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	}
 	if cfg.Webhook == nil {
 		cfg.Webhook = &WebhookConfig{}
+	}
+	if cfg.Archive == nil {
+		cfg.Archive = &ArchiveConfig{
+			AutoExtract:        true,
+			DeleteAfterExtract: true,
+		}
 	}
 	return cfg
 }
@@ -223,6 +230,9 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	if cfg.Webhook == nil {
 		cfg.Webhook = beforeCfg.Webhook
 	}
+	if cfg.Archive == nil {
+		cfg.Archive = beforeCfg.Archive
+	}
 	return cfg
 }
 
@@ -230,6 +240,12 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 type WebhookConfig struct {
 	Enable bool     `json:"enable"` // Enable is the flag to enable/disable webhooks
 	URLs   []string `json:"urls"`   // URLs is the list of webhook URLs
+}
+
+// ArchiveConfig is the archive extraction configuration
+type ArchiveConfig struct {
+	AutoExtract        bool `json:"autoExtract"`        // AutoExtract enables automatic extraction of archives after download
+	DeleteAfterExtract bool `json:"deleteAfterExtract"` // DeleteAfterExtract deletes the archive after successful extraction
 }
 
 type DownloaderProxyConfig struct {

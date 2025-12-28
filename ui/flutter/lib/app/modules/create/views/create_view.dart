@@ -61,8 +61,8 @@ class CreateView extends GetView<CreateController> {
   final _availableSchemes = ["http:", "https:", "magnet:"];
 
   final _skipVerifyCertController = false.obs;
-  final _autoExtractController = false.obs;
-  final _deleteAfterExtractController = false.obs;
+  final _autoExtractController = Rxn<bool>();
+  final _deleteAfterExtractController = Rxn<bool>();
 
   CreateView({Key? key}) : super(key: key);
 
@@ -79,6 +79,15 @@ class CreateView extends GetView<CreateController> {
       // Render placeholders when initializing the path
       final downloadDir = appController.downloaderConfig.value.downloadDir;
       _pathController.text = renderPathPlaceholders(downloadDir);
+    }
+    // Initialize archive settings from global config if not already set
+    if (_autoExtractController.value == null) {
+      _autoExtractController.value =
+          appController.downloaderConfig.value.archive.autoExtract;
+    }
+    if (_deleteAfterExtractController.value == null) {
+      _deleteAfterExtractController.value =
+          appController.downloaderConfig.value.archive.deleteAfterExtract;
     }
 
     final CreateTask? routerParams = Get.rootDelegate.arguments();
@@ -617,7 +626,7 @@ class CreateView extends GetView<CreateController> {
                                             child: CompactCheckbox(
                                               label: 'autoExtract'.tr,
                                               value: _autoExtractController
-                                                  .value,
+                                                  .value ?? false,
                                               onChanged: (bool? value) {
                                                 _autoExtractController
                                                     .value = value ?? false;
@@ -629,7 +638,7 @@ class CreateView extends GetView<CreateController> {
                                           ),
                                           Obx(
                                             () => Visibility(
-                                              visible: _autoExtractController.value,
+                                              visible: _autoExtractController.value ?? false,
                                               child: Column(
                                                 children: [
                                                   Padding(
@@ -650,7 +659,7 @@ class CreateView extends GetView<CreateController> {
                                                     child: CompactCheckbox(
                                                       label: 'deleteAfterExtract'.tr,
                                                       value: _deleteAfterExtractController
-                                                          .value,
+                                                          .value ?? false,
                                                       onChanged: (bool? value) {
                                                         _deleteAfterExtractController
                                                             .value = value ?? false;
@@ -862,9 +871,9 @@ class CreateView extends GetView<CreateController> {
     return OptsExtraHttp()
       ..connections = int.tryParse(_connectionsController.text) ?? 0
       ..autoTorrent = true
-      ..autoExtract = _autoExtractController.value
+      ..autoExtract = _autoExtractController.value ?? false
       ..archivePassword = _archivePasswordController.text
-      ..deleteAfterExtract = _deleteAfterExtractController.value;
+      ..deleteAfterExtract = _deleteAfterExtractController.value ?? false;
   }
 
   String _hitText() {
