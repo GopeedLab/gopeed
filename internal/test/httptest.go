@@ -169,6 +169,35 @@ func StartTestCustomServer() net.Listener {
 			defer file.Close()
 			io.Copy(writer, file)
 		})
+		// Test endpoint for filename with HTML-encoded ampersand (&amp;)
+		// This tests the case from the bug report where filenames containing & are
+		// HTML-encoded as &amp; by the server, causing truncation at the semicolon.
+		// Example: "查询处理&优化.pptx" -> "查询处理&amp;优化.pptx"
+		mux.HandleFunc("/ampersand-encoded", func(writer http.ResponseWriter, request *http.Request) {
+			// Simulate server sending filename with HTML-encoded ampersand
+			writer.Header().Set("Content-Disposition", `attachment; filename="查询处理&amp;优化.pptx"`)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		// Test endpoint for unquoted filename with HTML-encoded ampersand
+		// Some servers might send unquoted filenames with HTML entities
+		mux.HandleFunc("/ampersand-unquoted", func(writer http.ResponseWriter, request *http.Request) {
+			writer.Header().Set("Content-Disposition", `attachment; filename=test&amp;file.txt`)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
 		return mux
 	})
 }

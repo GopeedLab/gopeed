@@ -113,6 +113,30 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
+	// Test filename with HTML-encoded ampersand (fixes issue with & being truncated)
+	// Before fix: "查询处理&amp;优化.pptx" -> "查询处理&amp" (truncated at semicolon)
+	// After fix: correctly decoded to "查询处理&优化.pptx"
+	testResolve(test.StartTestCustomServer, "ampersand-encoded", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "查询处理&优化.pptx",
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
+	// Test unquoted filename with HTML-encoded ampersand
+	testResolve(test.StartTestCustomServer, "ampersand-unquoted", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "test&file.txt",
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
 
 	fetcher := buildFetcher()
 	err := fetcher.Resolve(&base.Request{
