@@ -152,3 +152,85 @@ func createTestZip(path string) error {
 
 	return w.Close()
 }
+
+func TestExtractArchive_Progress(t *testing.T) {
+	// Create a temporary directory
+	tempDir, err := os.MkdirTemp("", "extract_progress_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test zip file with multiple files
+	zipPath := filepath.Join(tempDir, "test.zip")
+	destDir := filepath.Join(tempDir, "extracted")
+
+	// Create zip with 4 files
+	if err := createTestZipWithMultipleFiles(zipPath, 4); err != nil {
+		t.Fatal(err)
+	}
+
+	// Track progress callbacks
+	progressCalls := make([]struct {
+		extracted int
+		total     int
+		progress  int
+	}, 0)
+
+	// Extract the archive with progress tracking
+	err = extractArchive(zipPath, destDir, "", func(extracted int, total int, progress int) {
+		progressCalls = append(progressCalls, struct {
+			extracted int
+			total     int
+			progress  int
+		}{extracted, total, progress})
+	})
+	if err != nil {
+		t.Fatalf("extractArchive failed: %v", err)
+	}
+
+	// Verify that progress callbacks were made
+	if len(progressCalls) != 4 {
+		t.Errorf("expected 4 progress callbacks, got %d", len(progressCalls))
+	}
+
+	// Verify the first progress call
+	if len(progressCalls) > 0 {
+		first := progressCalls[0]
+		if first.extracted != 1 || first.total != 4 {
+			t.Errorf("first progress call: expected extracted=1, total=4, got extracted=%d, total=%d", first.extracted, first.total)
+		}
+	}
+
+	// Verify the last progress call
+	if len(progressCalls) > 0 {
+		last := progressCalls[len(progressCalls)-1]
+		if last.extracted != 4 || last.total != 4 || last.progress != 100 {
+			t.Errorf("last progress call: expected extracted=4, total=4, progress=100, got extracted=%d, total=%d, progress=%d", last.extracted, last.total, last.progress)
+		}
+	}
+}
+
+// createTestZipWithMultipleFiles creates a test zip file with the specified number of files
+func createTestZipWithMultipleFiles(path string, numFiles int) error {
+	zipFile, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer zipFile.Close()
+
+	w := zip.NewWriter(zipFile)
+
+	for i := 0; i < numFiles; i++ {
+		f, err := w.Create(filepath.Join("dir", "file"+string(rune('A'+i))+".txt"))
+		if err != nil {
+			return err
+		}
+		_, err = f.Write([]byte("Content of file " + string(rune('A'+i))))
+		if err != nil {
+			return err
+		}
+	}
+
+	return w.Close()
+}

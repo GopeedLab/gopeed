@@ -47,35 +47,35 @@ func isArchiveFile(filename string) bool {
 	})
 }
 
-// extractArchive extracts an archive file to a destination directory
-func extractArchive(archivePath string, destDir string, password string, progressCallback ExtractProgressCallback) error {
-	// Open the archive file
+// archiveInfo holds information about an opened archive
+type archiveInfo struct {
+	file   *os.File
+	stat   os.FileInfo
+	format archives.Format
+	input  io.Reader
+}
+
+// openArchive opens an archive file and identifies its format
+func openArchive(archivePath string, password string) (*archiveInfo, error) {
 	file, err := os.Open(archivePath)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer file.Close()
 
-	// Get file info for format identification
 	stat, err := file.Stat()
 	if err != nil {
-		return err
+		file.Close()
+		return nil, err
 	}
 
-	// Identify the archive format
 	format, input, err := archives.Identify(context.Background(), archivePath, file)
 	if err != nil {
-		return err
-	}
-
-	// Create destination directory if it doesn't exist
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return err
+		file.Close()
+		return nil, err
 	}
 
 	// Handle password-protected archives
 	if password != "" {
-		// Try to set password for formats that support it
 		if rar, ok := format.(archives.Rar); ok {
 			rar.Password = password
 			format = rar
@@ -84,12 +84,32 @@ func extractArchive(archivePath string, destDir string, password string, progres
 			sz.Password = password
 			format = sz
 		}
-		// Note: Zip format in archives doesn't have a Password field
-		// Password-protected zips are not fully supported
+	}
+
+	return &archiveInfo{
+		file:   file,
+		stat:   stat,
+		format: format,
+		input:  input,
+	}, nil
+}
+
+// extractArchive extracts an archive file to a destination directory
+func extractArchive(archivePath string, destDir string, password string, progressCallback ExtractProgressCallback) error {
+	// Open the archive file
+	info, err := openArchive(archivePath, password)
+	if err != nil {
+		return err
+	}
+	defer info.file.Close()
+
+	// Create destination directory if it doesn't exist
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return err
 	}
 
 	// Handle extraction based on format type
-	switch f := format.(type) {
+	switch f := info.format.(type) {
 	case archives.Extractor:
 		// For archive formats (zip, rar, 7z, tar, etc.)
 		// First, count total files for progress tracking
@@ -99,7 +119,7 @@ func extractArchive(archivePath string, destDir string, password string, progres
 			totalFiles = 0
 		}
 		var extractedFiles atomic.Int32
-		return f.Extract(context.Background(), input, func(ctx context.Context, fileInfo archives.FileInfo) error {
+		return f.Extract(context.Background(), info.input, func(ctx context.Context, fileInfo archives.FileInfo) error {
 			err := extractFile(ctx, fileInfo, destDir)
 			if err == nil && !fileInfo.IsDir() {
 				extracted := int(extractedFiles.Add(1))
@@ -128,7 +148,7 @@ func extractArchive(archivePath string, destDir string, password string, progres
 		}
 		destPath := filepath.Join(destDir, baseName)
 
-		reader, err := f.OpenReader(input)
+		reader, err := f.OpenReader(info.input)
 		if err != nil {
 			return err
 		}
@@ -151,9 +171,9 @@ func extractArchive(archivePath string, destDir string, password string, progres
 		return err
 	case archives.Archiver:
 		// This format is an archiver, try to extract using the extractor interface
-		if ext, ok := format.(archives.Extractor); ok {
+		if ext, ok := info.format.(archives.Extractor); ok {
 			// Reset file position
-			if seeker, ok := input.(io.Seeker); ok {
+			if seeker, ok := info.input.(io.Seeker); ok {
 				seeker.Seek(0, io.SeekStart)
 			}
 			// Count total files for progress tracking
@@ -162,7 +182,7 @@ func extractArchive(archivePath string, destDir string, password string, progres
 				totalFiles = 0
 			}
 			var extractedFiles atomic.Int32
-			return ext.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
+			return ext.Extract(context.Background(), io.NewSectionReader(info.file, 0, info.stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
 				err := extractFile(ctx, fileInfo, destDir)
 				if err == nil && !fileInfo.IsDir() {
 					extracted := int(extractedFiles.Add(1))
@@ -184,49 +204,27 @@ func extractArchive(archivePath string, destDir string, password string, progres
 
 // countArchiveFiles counts the number of files in an archive for progress calculation
 func countArchiveFiles(archivePath string, password string) (int, error) {
-	file, err := os.Open(archivePath)
+	info, err := openArchive(archivePath, password)
 	if err != nil {
 		return 0, err
 	}
-	defer file.Close()
-
-	stat, err := file.Stat()
-	if err != nil {
-		return 0, err
-	}
-
-	format, input, err := archives.Identify(context.Background(), archivePath, file)
-	if err != nil {
-		return 0, err
-	}
-
-	// Handle password-protected archives
-	if password != "" {
-		if rar, ok := format.(archives.Rar); ok {
-			rar.Password = password
-			format = rar
-		}
-		if sz, ok := format.(archives.SevenZip); ok {
-			sz.Password = password
-			format = sz
-		}
-	}
+	defer info.file.Close()
 
 	count := 0
-	switch f := format.(type) {
+	switch f := info.format.(type) {
 	case archives.Extractor:
-		err = f.Extract(context.Background(), input, func(ctx context.Context, fileInfo archives.FileInfo) error {
+		err = f.Extract(context.Background(), info.input, func(ctx context.Context, fileInfo archives.FileInfo) error {
 			if !fileInfo.IsDir() {
 				count++
 			}
 			return nil
 		})
 	case archives.Archiver:
-		if ext, ok := format.(archives.Extractor); ok {
-			if seeker, ok := input.(io.Seeker); ok {
+		if ext, ok := info.format.(archives.Extractor); ok {
+			if seeker, ok := info.input.(io.Seeker); ok {
 				seeker.Seek(0, io.SeekStart)
 			}
-			err = ext.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
+			err = ext.Extract(context.Background(), io.NewSectionReader(info.file, 0, info.stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
 				if !fileInfo.IsDir() {
 					count++
 				}
