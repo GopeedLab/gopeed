@@ -187,18 +187,6 @@ class BuildTaskListView extends GetView {
       return totalSize <= 0 ? 0 : task.progress.downloaded / totalSize;
     }
 
-    bool isExtracting() {
-      return task.progress.extractStatus == ExtractStatus.extracting;
-    }
-
-    bool isExtractDone() {
-      return task.progress.extractStatus == ExtractStatus.done;
-    }
-
-    bool isExtractError() {
-      return task.progress.extractStatus == ExtractStatus.error;
-    }
-
     String getExtractionStatusText() {
       switch (task.progress.extractStatus) {
         case ExtractStatus.extracting:
@@ -344,48 +332,54 @@ class BuildTaskListView extends GetView {
                         ),
                   // Extraction status row
                   if (task.progress.extractStatus != ExtractStatus.none)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Row(
+                    Builder(builder: (context) {
+                      final isExtracting =
+                          task.progress.extractStatus == ExtractStatus.extracting;
+                      final isExtractDone =
+                          task.progress.extractStatus == ExtractStatus.done;
+                      final statusColor = isExtracting
+                          ? Get.theme.colorScheme.primary
+                          : (isExtractDone ? Colors.green : Colors.red);
+                      return Column(
+                        children: [
+                          Row(
                             children: [
-                              Icon(
-                                isExtracting()
-                                    ? Icons.unarchive
-                                    : (isExtractDone()
-                                        ? Icons.check_circle
-                                        : Icons.error),
-                                size: 16,
-                                color: isExtracting()
-                                    ? Get.theme.colorScheme.primary
-                                    : (isExtractDone()
-                                        ? Colors.green
-                                        : Colors.red),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                getExtractionStatusText(),
-                                style: Get.textTheme.bodySmall?.copyWith(
-                                  color: isExtracting()
-                                      ? Get.theme.colorScheme.primary
-                                      : (isExtractDone()
-                                          ? Colors.green
-                                          : Colors.red),
-                                ),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isExtracting
+                                          ? Icons.unarchive
+                                          : (isExtractDone
+                                              ? Icons.check_circle
+                                              : Icons.error),
+                                      size: 16,
+                                      color: statusColor,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      getExtractionStatusText(),
+                                      style: Get.textTheme.bodySmall?.copyWith(
+                                        color: statusColor,
+                                      ),
+                                    ),
+                                  ],
+                                ).padding(left: 18),
                               ),
                             ],
-                          ).padding(left: 18),
-                        ),
-                      ],
-                    ).padding(top: 4),
-                  // Extraction progress bar
-                  if (isExtracting())
-                    LinearProgressIndicator(
-                      value: task.progress.extractProgress / 100.0,
-                      backgroundColor: Get.theme.colorScheme.surfaceContainerHighest,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                          Get.theme.colorScheme.secondary),
-                    ),
+                          ).padding(top: 4, bottom: isExtracting ? 0 : 8),
+                          // Extraction progress bar
+                          if (isExtracting)
+                            LinearProgressIndicator(
+                              value: task.progress.extractProgress / 100.0,
+                              backgroundColor:
+                                  Get.theme.colorScheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  Get.theme.colorScheme.secondary),
+                            ),
+                        ],
+                      );
+                    }),
                 ],
               ),
             )).padding(horizontal: 14, top: 8),
