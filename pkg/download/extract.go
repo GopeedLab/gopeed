@@ -3,6 +3,7 @@ package download
 import (
 	"context"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -94,6 +95,21 @@ func openArchive(archivePath string, password string) (*archiveInfo, error) {
 	}, nil
 }
 
+// createExtractionHandler creates a handler function for extracting files with progress tracking
+func createExtractionHandler(destDir string, totalFiles int, extractedFiles *atomic.Int32, progressCallback ExtractProgressCallback) func(ctx context.Context, fileInfo archives.FileInfo) error {
+	return func(ctx context.Context, fileInfo archives.FileInfo) error {
+		err := extractFile(ctx, fileInfo, destDir)
+		if err == nil && !fileInfo.IsDir() {
+			extracted := int(extractedFiles.Add(1))
+			if progressCallback != nil && totalFiles > 0 {
+				progress := int(math.Min(float64((extracted*100)/totalFiles), 100))
+				progressCallback(extracted, totalFiles, progress)
+			}
+		}
+		return err
+	}
+}
+
 // extractArchive extracts an archive file to a destination directory
 func extractArchive(archivePath string, destDir string, password string, progressCallback ExtractProgressCallback) error {
 	// Open the archive file
@@ -119,20 +135,7 @@ func extractArchive(archivePath string, destDir string, password string, progres
 			totalFiles = 0
 		}
 		var extractedFiles atomic.Int32
-		return f.Extract(context.Background(), info.input, func(ctx context.Context, fileInfo archives.FileInfo) error {
-			err := extractFile(ctx, fileInfo, destDir)
-			if err == nil && !fileInfo.IsDir() {
-				extracted := int(extractedFiles.Add(1))
-				if progressCallback != nil && totalFiles > 0 {
-					progress := (extracted * 100) / totalFiles
-					if progress > 100 {
-						progress = 100
-					}
-					progressCallback(extracted, totalFiles, progress)
-				}
-			}
-			return err
-		})
+		return f.Extract(context.Background(), info.input, createExtractionHandler(destDir, totalFiles, &extractedFiles, progressCallback))
 	case archives.Decompressor:
 		// For single-file compression formats (gz, bz2, xz, etc.)
 		// Decompress to a file without the compression extension
@@ -182,24 +185,21 @@ func extractArchive(archivePath string, destDir string, password string, progres
 				totalFiles = 0
 			}
 			var extractedFiles atomic.Int32
-			return ext.Extract(context.Background(), io.NewSectionReader(info.file, 0, info.stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
-				err := extractFile(ctx, fileInfo, destDir)
-				if err == nil && !fileInfo.IsDir() {
-					extracted := int(extractedFiles.Add(1))
-					if progressCallback != nil && totalFiles > 0 {
-						progress := (extracted * 100) / totalFiles
-						if progress > 100 {
-							progress = 100
-						}
-						progressCallback(extracted, totalFiles, progress)
-					}
-				}
-				return err
-			})
+			return ext.Extract(context.Background(), io.NewSectionReader(info.file, 0, info.stat.Size()), createExtractionHandler(destDir, totalFiles, &extractedFiles, progressCallback))
 		}
 	}
 
 	return nil
+}
+
+// createCountingHandler creates a handler function for counting files in an archive
+func createCountingHandler(count *int) func(ctx context.Context, fileInfo archives.FileInfo) error {
+	return func(ctx context.Context, fileInfo archives.FileInfo) error {
+		if !fileInfo.IsDir() {
+			*count++
+		}
+		return nil
+	}
 }
 
 // countArchiveFiles counts the number of files in an archive for progress calculation
@@ -213,23 +213,13 @@ func countArchiveFiles(archivePath string, password string) (int, error) {
 	count := 0
 	switch f := info.format.(type) {
 	case archives.Extractor:
-		err = f.Extract(context.Background(), info.input, func(ctx context.Context, fileInfo archives.FileInfo) error {
-			if !fileInfo.IsDir() {
-				count++
-			}
-			return nil
-		})
+		err = f.Extract(context.Background(), info.input, createCountingHandler(&count))
 	case archives.Archiver:
 		if ext, ok := info.format.(archives.Extractor); ok {
 			if seeker, ok := info.input.(io.Seeker); ok {
 				seeker.Seek(0, io.SeekStart)
 			}
-			err = ext.Extract(context.Background(), io.NewSectionReader(info.file, 0, info.stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
-				if !fileInfo.IsDir() {
-					count++
-				}
-				return nil
-			})
+			err = ext.Extract(context.Background(), io.NewSectionReader(info.file, 0, info.stat.Size()), createCountingHandler(&count))
 		}
 	case archives.Decompressor:
 		// Single file compression, count as 1
