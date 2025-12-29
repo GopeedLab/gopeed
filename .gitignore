@@ -10,8 +10,6 @@ ui/flutter/dist/
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-coverage.txt
-coverage_filtered.txt
 
 .idea/
 
