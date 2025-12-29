@@ -45,6 +45,20 @@ var (
 
 type Listener func(event *Event)
 
+// ExtractStatus represents the current status of archive extraction
+type ExtractStatus string
+
+const (
+	// ExtractStatusNone indicates extraction has not started
+	ExtractStatusNone ExtractStatus = ""
+	// ExtractStatusExtracting indicates extraction is in progress
+	ExtractStatusExtracting ExtractStatus = "extracting"
+	// ExtractStatusDone indicates extraction completed successfully
+	ExtractStatusDone ExtractStatus = "done"
+	// ExtractStatusError indicates extraction failed
+	ExtractStatusError ExtractStatus = "error"
+)
+
 type Progress struct {
 	// Total download time(ns)
 	Used int64 `json:"used"`
@@ -56,6 +70,10 @@ type Progress struct {
 	UploadSpeed int64 `json:"uploadSpeed"`
 	// Uploaded size(bytes)
 	Uploaded int64 `json:"uploaded"`
+	// ExtractStatus indicates the current status of archive extraction
+	ExtractStatus ExtractStatus `json:"extractStatus"`
+	// ExtractProgress is the percentage of extraction completed (0-100)
+	ExtractProgress int `json:"extractProgress"`
 }
 
 type Downloader struct {
@@ -881,13 +899,29 @@ func (d *Downloader) watch(task *Task) {
 		// Auto-extract archive files
 		if e.AutoExtract && isArchiveFile(downloadFilePath) {
 			go func() {
+				// Set extraction status to extracting
+				task.Progress.ExtractStatus = ExtractStatusExtracting
+				task.Progress.ExtractProgress = 0
+				d.emit(EventKeyProgress, task)
+				d.storage.Put(bucketTask, task.ID, task.clone())
+
 				// Extract to the same directory as the downloaded file
 				destDir := task.Meta.Opts.Path
-				extractErr := extractArchive(downloadFilePath, destDir, e.ArchivePassword)
+				extractErr := extractArchive(downloadFilePath, destDir, e.ArchivePassword, func(extractedFiles int, totalFiles int, progress int) {
+					task.Progress.ExtractProgress = progress
+					d.emit(EventKeyProgress, task)
+				})
 				if extractErr != nil {
 					d.Logger.Error().Err(extractErr).Msgf("auto extract archive failed, task id: %s", task.ID)
+					task.Progress.ExtractStatus = ExtractStatusError
+					d.emit(EventKeyProgress, task)
+					d.storage.Put(bucketTask, task.ID, task.clone())
 				} else {
 					d.Logger.Info().Msgf("auto extract archive completed, task id: %s", task.ID)
+					task.Progress.ExtractStatus = ExtractStatusDone
+					task.Progress.ExtractProgress = 100
+					d.emit(EventKeyProgress, task)
+					d.storage.Put(bucketTask, task.ID, task.clone())
 					// Delete archive after successful extraction if enabled
 					if e.DeleteAfterExtract {
 						deleteErr := os.Remove(downloadFilePath)
