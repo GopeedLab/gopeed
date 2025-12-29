@@ -148,6 +148,46 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
+    // Archive auto extract configuration
+    final buildAutoExtract = _buildConfigItem('autoExtract', () {
+      return appController.downloaderConfig.value.archive.autoExtract
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: appController.downloaderConfig.value.archive.autoExtract,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.archive.autoExtract = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
+    // Archive delete after extract configuration
+    final buildDeleteAfterExtract = _buildConfigItem('deleteAfterExtract', () {
+      return appController.downloaderConfig.value.archive.deleteAfterExtract
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: appController.downloaderConfig.value.archive.deleteAfterExtract,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.archive.deleteAfterExtract = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
     // Download categories configuration
     buildDownloadCategories() {
       final categories = downloaderCfg.value.extra.downloadCategories
@@ -1313,6 +1353,14 @@ class SettingView extends GetView<SettingController> {
                             buildDefaultDirectDownload(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
+                          ]),
+                        )),
+                        Text('archives'.tr),
+                        Card(
+                            child: Column(
+                          children: _addDivider([
+                            buildAutoExtract(),
+                            buildDeleteAfterExtract(),
                           ]),
                         )),
                         const Text('HTTP'),

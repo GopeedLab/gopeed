@@ -56,10 +56,13 @@ class CreateView extends GetView<CreateController> {
     ),
   ];
   final _btTrackerController = TextEditingController();
+  final _archivePasswordController = TextEditingController();
 
   final _availableSchemes = ["http:", "https:", "magnet:"];
 
   final _skipVerifyCertController = false.obs;
+  final _autoExtractController = Rxn<bool>();
+  final _deleteAfterExtractController = Rxn<bool>();
 
   CreateView({Key? key}) : super(key: key);
 
@@ -76,6 +79,15 @@ class CreateView extends GetView<CreateController> {
       // Render placeholders when initializing the path
       final downloadDir = appController.downloaderConfig.value.downloadDir;
       _pathController.text = renderPathPlaceholders(downloadDir);
+    }
+    // Initialize archive settings from global config if not already set
+    if (_autoExtractController.value == null) {
+      _autoExtractController.value =
+          appController.downloaderConfig.value.archive.autoExtract;
+    }
+    if (_deleteAfterExtractController.value == null) {
+      _deleteAfterExtractController.value =
+          appController.downloaderConfig.value.archive.deleteAfterExtract;
     }
 
     final CreateTask? routerParams = Get.rootDelegate.arguments();
@@ -497,17 +509,20 @@ class CreateView extends GetView<CreateController> {
                                 const Divider(),
                                 TabBar(
                                   controller: controller.advancedTabController,
-                                  tabs: const [
-                                    Tab(
+                                  tabs: [
+                                    const Tab(
                                       text: 'HTTP',
                                     ),
-                                    Tab(
+                                    const Tab(
                                       text: 'BitTorrent',
+                                    ),
+                                    Tab(
+                                      text: 'archives'.tr,
                                     )
                                   ],
                                 ),
                                 DefaultTabController(
-                                  length: 2,
+                                  length: 3,
                                   child: ContentSizeTabBarView(
                                     controller:
                                         controller.advancedTabController,
@@ -601,6 +616,63 @@ class CreateView extends GetView<CreateController> {
                                                 labelText: 'Trackers',
                                                 hintText: 'addTrackerHit'.tr,
                                               )),
+                                        ],
+                                      ),
+                                      Column(
+                                        children: [
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 10),
+                                            child: CompactCheckbox(
+                                              label: 'autoExtract'.tr,
+                                              value: _autoExtractController
+                                                  .value ?? false,
+                                              onChanged: (bool? value) {
+                                                _autoExtractController
+                                                    .value = value ?? false;
+                                              },
+                                              textStyle: const TextStyle(
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ),
+                                          Obx(
+                                            () => Visibility(
+                                              visible: _autoExtractController.value ?? false,
+                                              child: Column(
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(top: 10),
+                                                    child: TextFormField(
+                                                      controller: _archivePasswordController,
+                                                      obscureText: true,
+                                                      decoration: InputDecoration(
+                                                        labelText: 'archivePassword'.tr,
+                                                        hintText: 'archivePasswordHint'.tr,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(top: 10),
+                                                    child: CompactCheckbox(
+                                                      label: 'deleteAfterExtract'.tr,
+                                                      value: _deleteAfterExtractController
+                                                          .value ?? false,
+                                                      onChanged: (bool? value) {
+                                                        _deleteAfterExtractController
+                                                            .value = value ?? false;
+                                                      },
+                                                      textStyle: const TextStyle(
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       )
                                     ],
@@ -798,7 +870,10 @@ class CreateView extends GetView<CreateController> {
   Object? parseReqOptsExtra() {
     return OptsExtraHttp()
       ..connections = int.tryParse(_connectionsController.text) ?? 0
-      ..autoTorrent = true;
+      ..autoTorrent = true
+      ..autoExtract = _autoExtractController.value ?? false
+      ..archivePassword = _archivePasswordController.text
+      ..deleteAfterExtract = _deleteAfterExtractController.value ?? false;
   }
 
   String _hitText() {

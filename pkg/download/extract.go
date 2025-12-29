@@ -1,0 +1,183 @@
+package download
+
+import (
+	"context"
+	"io"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+
+	"github.com/mholt/archives"
+)
+
+// supportedArchiveExtensions contains file extensions supported by mholt/archives library
+var supportedArchiveExtensions = []string{
+	// Archive formats
+	".zip",
+	".tar",
+	".tar.gz", ".tgz",
+	".tar.bz2", ".tbz2",
+	".tar.xz", ".txz",
+	".tar.lz4", ".tlz4",
+	".tar.sz", ".tsz",
+	".tar.zst", ".tzst",
+	".rar",
+	".7z",
+	// Compression formats
+	".gz",
+	".bz2",
+	".xz",
+	".lz4",
+	".sz",
+	".zst",
+	".br",
+	".lz",
+}
+
+// isArchiveFile checks if a file is a supported archive format
+func isArchiveFile(filename string) bool {
+	lowerName := strings.ToLower(filename)
+	return slices.ContainsFunc(supportedArchiveExtensions, func(ext string) bool {
+		return strings.HasSuffix(lowerName, ext)
+	})
+}
+
+// extractArchive extracts an archive file to a destination directory
+func extractArchive(archivePath string, destDir string, password string) error {
+	// Open the archive file
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Get file info for format identification
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	// Identify the archive format
+	format, input, err := archives.Identify(context.Background(), archivePath, file)
+	if err != nil {
+		return err
+	}
+
+	// Create destination directory if it doesn't exist
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return err
+	}
+
+	// Handle password-protected archives
+	if password != "" {
+		// Try to set password for formats that support it
+		if rar, ok := format.(archives.Rar); ok {
+			rar.Password = password
+			format = rar
+		}
+		if sz, ok := format.(archives.SevenZip); ok {
+			sz.Password = password
+			format = sz
+		}
+		// Note: Zip format in archives doesn't have a Password field
+		// Password-protected zips are not fully supported
+	}
+
+	// Handle extraction based on format type
+	switch f := format.(type) {
+	case archives.Extractor:
+		// For archive formats (zip, rar, 7z, tar, etc.)
+		return f.Extract(context.Background(), input, func(ctx context.Context, fileInfo archives.FileInfo) error {
+			return extractFile(ctx, fileInfo, destDir)
+		})
+	case archives.Decompressor:
+		// For single-file compression formats (gz, bz2, xz, etc.)
+		// Decompress to a file without the compression extension
+		baseName := filepath.Base(archivePath)
+		lowerBaseName := strings.ToLower(baseName)
+		for _, ext := range supportedArchiveExtensions {
+			if strings.HasSuffix(lowerBaseName, ext) {
+				// Get the actual suffix from the original filename (preserving case)
+				actualSuffix := baseName[len(baseName)-len(ext):]
+				baseName = strings.TrimSuffix(baseName, actualSuffix)
+				break
+			}
+		}
+		destPath := filepath.Join(destDir, baseName)
+
+		reader, err := f.OpenReader(input)
+		if err != nil {
+			return err
+		}
+		defer reader.Close()
+
+		destFile, err := os.Create(destPath)
+		if err != nil {
+			return err
+		}
+		defer destFile.Close()
+
+		_, err = io.Copy(destFile, reader)
+		return err
+	case archives.Archiver:
+		// This format is an archiver, try to extract using the extractor interface
+		if ext, ok := format.(archives.Extractor); ok {
+			// Reset file position
+			if seeker, ok := input.(io.Seeker); ok {
+				seeker.Seek(0, io.SeekStart)
+			}
+			return ext.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
+				return extractFile(ctx, fileInfo, destDir)
+			})
+		}
+	}
+
+	return nil
+}
+
+// extractFile handles extracting a single file from an archive
+func extractFile(ctx context.Context, fileInfo archives.FileInfo, destDir string) error {
+	// Skip directories, they will be created when extracting files
+	if fileInfo.IsDir() {
+		destPath := filepath.Join(destDir, fileInfo.NameInArchive)
+		return os.MkdirAll(destPath, fileInfo.Mode())
+	}
+
+	// Sanitize the path to prevent path traversal attacks
+	cleanPath := filepath.Clean(fileInfo.NameInArchive)
+	if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) {
+		// Skip files with suspicious paths
+		return nil
+	}
+
+	destPath := filepath.Join(destDir, cleanPath)
+
+	// Create parent directories
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return err
+	}
+
+	// Open the file from the archive
+	reader, err := fileInfo.Open()
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	// Create the destination file
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	// Copy the contents
+	_, err = io.Copy(destFile, reader)
+	if err != nil {
+		return err
+	}
+
+	// Set file permissions
+	return os.Chmod(destPath, fileInfo.Mode())
+}
