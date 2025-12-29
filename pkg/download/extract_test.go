@@ -70,7 +70,7 @@ func TestExtractArchive_Zip(t *testing.T) {
 	}
 
 	// Extract the archive
-	err = extractArchive(zipPath, destDir, "")
+	err = extractArchive(zipPath, destDir, "", nil)
 	if err != nil {
 		t.Fatalf("extractArchive failed: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestExtractArchive_NonArchive(t *testing.T) {
 	destDir := filepath.Join(tempDir, "extracted")
 
 	// Trying to extract a non-archive should return an error
-	err = extractArchive(txtPath, destDir, "")
+	err = extractArchive(txtPath, destDir, "", nil)
 	if err == nil {
 		t.Error("expected error when extracting non-archive file")
 	}

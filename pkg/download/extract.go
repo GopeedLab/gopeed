@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 
 	"github.com/mholt/archives"
 )
@@ -35,6 +36,9 @@ var supportedArchiveExtensions = []string{
 	".lz",
 }
 
+// ExtractProgressCallback is called to report extraction progress
+type ExtractProgressCallback func(extractedFiles int, totalFiles int, progress int)
+
 // isArchiveFile checks if a file is a supported archive format
 func isArchiveFile(filename string) bool {
 	lowerName := strings.ToLower(filename)
@@ -44,7 +48,7 @@ func isArchiveFile(filename string) bool {
 }
 
 // extractArchive extracts an archive file to a destination directory
-func extractArchive(archivePath string, destDir string, password string) error {
+func extractArchive(archivePath string, destDir string, password string, progressCallback ExtractProgressCallback) error {
 	// Open the archive file
 	file, err := os.Open(archivePath)
 	if err != nil {
@@ -88,8 +92,26 @@ func extractArchive(archivePath string, destDir string, password string) error {
 	switch f := format.(type) {
 	case archives.Extractor:
 		// For archive formats (zip, rar, 7z, tar, etc.)
+		// First, count total files for progress tracking
+		totalFiles, err := countArchiveFiles(archivePath, password)
+		if err != nil {
+			// If counting fails, proceed without progress reporting
+			totalFiles = 0
+		}
+		var extractedFiles atomic.Int32
 		return f.Extract(context.Background(), input, func(ctx context.Context, fileInfo archives.FileInfo) error {
-			return extractFile(ctx, fileInfo, destDir)
+			err := extractFile(ctx, fileInfo, destDir)
+			if err == nil && !fileInfo.IsDir() {
+				extracted := int(extractedFiles.Add(1))
+				if progressCallback != nil && totalFiles > 0 {
+					progress := (extracted * 100) / totalFiles
+					if progress > 100 {
+						progress = 100
+					}
+					progressCallback(extracted, totalFiles, progress)
+				}
+			}
+			return err
 		})
 	case archives.Decompressor:
 		// For single-file compression formats (gz, bz2, xz, etc.)
@@ -118,7 +140,14 @@ func extractArchive(archivePath string, destDir string, password string) error {
 		}
 		defer destFile.Close()
 
+		// Report progress at start and end for decompression
+		if progressCallback != nil {
+			progressCallback(0, 1, 0)
+		}
 		_, err = io.Copy(destFile, reader)
+		if err == nil && progressCallback != nil {
+			progressCallback(1, 1, 100)
+		}
 		return err
 	case archives.Archiver:
 		// This format is an archiver, try to extract using the extractor interface
@@ -127,13 +156,89 @@ func extractArchive(archivePath string, destDir string, password string) error {
 			if seeker, ok := input.(io.Seeker); ok {
 				seeker.Seek(0, io.SeekStart)
 			}
+			// Count total files for progress tracking
+			totalFiles, err := countArchiveFiles(archivePath, password)
+			if err != nil {
+				totalFiles = 0
+			}
+			var extractedFiles atomic.Int32
 			return ext.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
-				return extractFile(ctx, fileInfo, destDir)
+				err := extractFile(ctx, fileInfo, destDir)
+				if err == nil && !fileInfo.IsDir() {
+					extracted := int(extractedFiles.Add(1))
+					if progressCallback != nil && totalFiles > 0 {
+						progress := (extracted * 100) / totalFiles
+						if progress > 100 {
+							progress = 100
+						}
+						progressCallback(extracted, totalFiles, progress)
+					}
+				}
+				return err
 			})
 		}
 	}
 
 	return nil
+}
+
+// countArchiveFiles counts the number of files in an archive for progress calculation
+func countArchiveFiles(archivePath string, password string) (int, error) {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+
+	format, input, err := archives.Identify(context.Background(), archivePath, file)
+	if err != nil {
+		return 0, err
+	}
+
+	// Handle password-protected archives
+	if password != "" {
+		if rar, ok := format.(archives.Rar); ok {
+			rar.Password = password
+			format = rar
+		}
+		if sz, ok := format.(archives.SevenZip); ok {
+			sz.Password = password
+			format = sz
+		}
+	}
+
+	count := 0
+	switch f := format.(type) {
+	case archives.Extractor:
+		err = f.Extract(context.Background(), input, func(ctx context.Context, fileInfo archives.FileInfo) error {
+			if !fileInfo.IsDir() {
+				count++
+			}
+			return nil
+		})
+	case archives.Archiver:
+		if ext, ok := format.(archives.Extractor); ok {
+			if seeker, ok := input.(io.Seeker); ok {
+				seeker.Seek(0, io.SeekStart)
+			}
+			err = ext.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
+				if !fileInfo.IsDir() {
+					count++
+				}
+				return nil
+			})
+		}
+	case archives.Decompressor:
+		// Single file compression, count as 1
+		return 1, nil
+	}
+
+	return count, err
 }
 
 // extractFile handles extracting a single file from an archive
