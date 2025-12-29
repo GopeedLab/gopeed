@@ -174,7 +174,7 @@ func StartTestCustomServer() net.Listener {
 }
 
 // StartTestHostHeaderServer starts a server that validates the Host header
-// Returns 400 Bad Request if Host header is set to "test"
+// Returns 400 Bad Request if the Host header value equals "test"
 func StartTestHostHeaderServer() net.Listener {
 	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()

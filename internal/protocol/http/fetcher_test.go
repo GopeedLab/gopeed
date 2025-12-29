@@ -125,7 +125,6 @@ func TestFetcher_Resolve(t *testing.T) {
 		t.Fatal(err)
 	}
 	// When no filename is provided, it should use the hostname (without port) as the name
-	// ParseName uses url.Hostname() which returns just the hostname part
 	expectedName := "127.0.0.1"
 	if fetcher.Meta().Res.Files[0].Name != expectedName {
 		t.Errorf("Resolve() got name = %v, want %v", fetcher.Meta().Res.Files[0].Name, expectedName)
@@ -164,8 +163,7 @@ func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 			},
 		},
 	})
-	// Invalid header with \r should be handled gracefully (sanitized by Go's http client)
-	// The request should succeed as Go's http client sanitizes invalid headers
+	// Invalid header with \r should be sanitized by Go's http client, allowing the request to succeed
 	if err != nil {
 		t.Errorf("Resolve() got = %v, want nil (invalid headers should be sanitized)", err)
 	}
