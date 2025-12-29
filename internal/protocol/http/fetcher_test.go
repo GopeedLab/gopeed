@@ -113,6 +113,32 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
+	// Test filename with plus signs (e.g., C++ Primer)
+	// Before fix: %2B decoded to space -> "C++ Primer" became "C  Primer"
+	// After fix: %2B correctly decoded to + -> "C++  Primer  Plus.mobi"
+	testResolve(test.StartTestCustomServer, "plus-sign-encoded", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "C++  Primer  Plus.mobi",
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
+	// Test filename with plus sign in URL path
+	// Before fix: %2B decoded to space
+	// After fix: %2B correctly decoded to +
+	testResolve(test.StartTestCustomServer, "C%2B%2B%20Primer.txt", &base.Resource{
+		Size:  0,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "C++ Primer.txt",
+				Size: 0,
+			},
+		},
+	}, t)
 
 	fetcher := buildFetcher()
 	err := fetcher.Resolve(&base.Request{

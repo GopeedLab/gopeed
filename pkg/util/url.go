@@ -66,3 +66,16 @@ func TryUrlQueryUnescape(s string) string {
 	}
 	return s
 }
+
+// TryUrlPathUnescape tries to unescape a URL path-encoded string.
+// Unlike QueryUnescape, PathUnescape does not treat '+' as a space.
+// This is the correct function to use for decoding URL paths and filenames
+// where %2B should decode to '+', not to a space.
+//
+// If unescaping fails, it returns the original string.
+func TryUrlPathUnescape(s string) string {
+	if decoded, err := url.PathUnescape(s); err == nil {
+		return decoded
+	}
+	return s
+}
