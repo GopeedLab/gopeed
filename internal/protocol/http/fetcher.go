@@ -640,7 +640,7 @@ func findParamValueEnd(value string) int {
 	if len(value) == 0 {
 		return 0
 	}
-	
+
 	// If the value starts with a quote, find the matching closing quote
 	if value[0] == '"' || value[0] == '\'' {
 		quote := value[0]
@@ -762,7 +762,7 @@ func decodeFilenameParam(filename string) string {
 	// This must be done before other decoding to handle cases where servers
 	// HTML-encode special characters in filenames
 	filename = unescapeHTMLEntities(filename)
-	
+
 	// Check if the filename is MIME encoded-word (e.g., =?UTF-8?B?...?=)
 	if strings.HasPrefix(filename, "=?") {
 		decoder := new(mime.WordDecoder)
@@ -800,7 +800,7 @@ func unescapeHTMLEntities(s string) string {
 		"&#39;":  "'",
 		"&apos;": "'",
 	}
-	
+
 	result := s
 	for entity, char := range replacements {
 		result = strings.ReplaceAll(result, entity, char)
