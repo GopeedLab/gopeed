@@ -23,7 +23,7 @@ class CreateController extends GetxController
   @override
   void onInit() {
     super.onInit();
-    advancedTabController = TabController(length: 2, vsync: this);
+    advancedTabController = TabController(length: 3, vsync: this);
     directDownload.value = Get.find<AppController>()
         .downloaderConfig
         .value
