@@ -2,6 +2,9 @@ package download
 
 import (
 	"archive/zip"
+	"io"
+	gohttp "net/http"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -1064,6 +1067,329 @@ func TestDownloader_AutoExtract(t *testing.T) {
 			t.Error("isArchiveFile should return false for .txt file")
 		}
 	})
+}
+
+// TestDownloader_AutoExtractWithProgress tests the auto-extract functionality with progress tracking
+// This test exercises the ExtractStatus and ExtractProgress fields in the Progress struct
+func TestDownloader_AutoExtractWithProgress(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "auto_extract_progress_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test zip file to serve
+	zipPath := tempDir + "/archive.zip"
+	if err := createTestArchiveWithMultipleFiles(zipPath, 3); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a simple HTTP server to serve the zip file
+	server := startTestArchiveServer(zipPath)
+	defer server.Close()
+
+	// Create downloader
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Track extraction status changes
+	var extractStatusChanges []ExtractStatus
+	var extractProgressValues []int
+	var statusMutex sync.Mutex
+	extractDoneCh := make(chan struct{})
+	var extractDoneOnce sync.Once
+
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyProgress && event.Task != nil && event.Task.Progress != nil {
+			statusMutex.Lock()
+			status := event.Task.Progress.ExtractStatus
+			progress := event.Task.Progress.ExtractProgress
+			// Record status changes
+			if status != ExtractStatusNone {
+				if len(extractStatusChanges) == 0 || extractStatusChanges[len(extractStatusChanges)-1] != status {
+					extractStatusChanges = append(extractStatusChanges, status)
+				}
+				extractProgressValues = append(extractProgressValues, progress)
+			}
+			statusMutex.Unlock()
+			// Signal when extraction is done or errored
+			if status == ExtractStatusDone || status == ExtractStatusError {
+				extractDoneOnce.Do(func() {
+					close(extractDoneCh)
+				})
+			}
+		}
+	})
+
+	// Create request to download the zip file
+	req := &base.Request{
+		URL: "http://" + server.Addr().String() + "/archive.zip",
+	}
+
+	// Create task with AutoExtract enabled
+	downloadDir := tempDir + "/downloads"
+	taskId, err := downloader.CreateDirect(req, &base.Options{
+		Path: downloadDir,
+		Name: "archive.zip",
+		Extra: http.OptsExtra{
+			Connections: 1,
+			AutoExtract: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for extraction to complete (with timeout)
+	select {
+	case <-extractDoneCh:
+		// Extraction completed
+	case <-time.After(30 * time.Second):
+		t.Log("Extraction timed out, checking results anyway")
+	}
+
+	// Give a small buffer for final events to be processed
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify task exists
+	task := downloader.GetTask(taskId)
+	if task == nil {
+		t.Fatal("Task should exist")
+	}
+
+	// Verify extraction status changes occurred
+	statusMutex.Lock()
+	defer statusMutex.Unlock()
+
+	t.Logf("Recorded extract status changes: %v", extractStatusChanges)
+	t.Logf("Recorded extract progress values: %v", extractProgressValues)
+
+	// Verify that we went through ExtractStatusExtracting
+	foundExtracting := false
+	for _, status := range extractStatusChanges {
+		if status == ExtractStatusExtracting {
+			foundExtracting = true
+			break
+		}
+	}
+	if !foundExtracting {
+		t.Error("Expected ExtractStatusExtracting in status changes")
+	}
+
+	// Verify that we reached ExtractStatusDone
+	foundDone := false
+	for _, status := range extractStatusChanges {
+		if status == ExtractStatusDone {
+			foundDone = true
+			break
+		}
+	}
+	if !foundDone {
+		t.Error("Expected ExtractStatusDone in status changes")
+	}
+
+	// Verify progress values include 100 (final)
+	found100 := false
+	for _, p := range extractProgressValues {
+		if p == 100 {
+			found100 = true
+			break
+		}
+	}
+	if !found100 {
+		t.Error("Expected progress to reach 100")
+	}
+
+	// Verify extracted files exist
+	extractedFile := downloadDir + "/test_0.txt"
+	if _, err := os.Stat(extractedFile); os.IsNotExist(err) {
+		t.Error("Expected extracted file to exist")
+	}
+}
+
+// TestDownloader_AutoExtractWithDeleteAfterExtract tests the auto-extract with DeleteAfterExtract option
+func TestDownloader_AutoExtractWithDeleteAfterExtract(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "auto_extract_delete_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test zip file to serve
+	zipPath := tempDir + "/archive.zip"
+	if err := createTestArchiveWithMultipleFiles(zipPath, 2); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a simple HTTP server to serve the zip file
+	server := startTestArchiveServer(zipPath)
+	defer server.Close()
+
+	// Create downloader
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Track extraction status changes
+	extractDoneCh := make(chan struct{})
+	var extractDoneOnce sync.Once
+
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyProgress && event.Task != nil && event.Task.Progress != nil {
+			status := event.Task.Progress.ExtractStatus
+			if status == ExtractStatusDone || status == ExtractStatusError {
+				extractDoneOnce.Do(func() {
+					close(extractDoneCh)
+				})
+			}
+		}
+	})
+
+	// Create request to download the zip file
+	req := &base.Request{
+		URL: "http://" + server.Addr().String() + "/archive.zip",
+	}
+
+	// Create task with AutoExtract and DeleteAfterExtract enabled
+	downloadDir := tempDir + "/downloads"
+	_, err = downloader.CreateDirect(req, &base.Options{
+		Path: downloadDir,
+		Name: "archive.zip",
+		Extra: http.OptsExtra{
+			Connections:        1,
+			AutoExtract:        true,
+			DeleteAfterExtract: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for extraction to complete (with timeout)
+	select {
+	case <-extractDoneCh:
+		// Extraction completed
+	case <-time.After(10 * time.Second):
+		t.Log("Extraction timed out")
+	}
+
+	// Give time for file deletion
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify archive was deleted
+	archivePath := downloadDir + "/archive.zip"
+	if _, err := os.Stat(archivePath); !os.IsNotExist(err) {
+		t.Error("Expected archive to be deleted after extraction")
+	}
+
+	// Verify extracted files exist
+	extractedFile := downloadDir + "/test_0.txt"
+	if _, err := os.Stat(extractedFile); os.IsNotExist(err) {
+		t.Error("Expected extracted file to exist")
+	}
+}
+
+// TestExtractStatus tests the ExtractStatus constants
+func TestExtractStatus(t *testing.T) {
+	tests := []struct {
+		status   ExtractStatus
+		expected string
+	}{
+		{ExtractStatusNone, ""},
+		{ExtractStatusExtracting, "extracting"},
+		{ExtractStatusDone, "done"},
+		{ExtractStatusError, "error"},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.status), func(t *testing.T) {
+			if string(tt.status) != tt.expected {
+				t.Errorf("ExtractStatus %v = %q, want %q", tt.status, string(tt.status), tt.expected)
+			}
+		})
+	}
+}
+
+// TestProgress_ExtractFields tests the ExtractStatus and ExtractProgress fields in Progress struct
+func TestProgress_ExtractFields(t *testing.T) {
+	progress := &Progress{
+		ExtractStatus:   ExtractStatusExtracting,
+		ExtractProgress: 50,
+	}
+
+	if progress.ExtractStatus != ExtractStatusExtracting {
+		t.Errorf("ExtractStatus = %v, want %v", progress.ExtractStatus, ExtractStatusExtracting)
+	}
+	if progress.ExtractProgress != 50 {
+		t.Errorf("ExtractProgress = %v, want %v", progress.ExtractProgress, 50)
+	}
+
+	// Test status transitions
+	progress.ExtractStatus = ExtractStatusDone
+	progress.ExtractProgress = 100
+	if progress.ExtractStatus != ExtractStatusDone {
+		t.Errorf("ExtractStatus after update = %v, want %v", progress.ExtractStatus, ExtractStatusDone)
+	}
+	if progress.ExtractProgress != 100 {
+		t.Errorf("ExtractProgress after update = %v, want %v", progress.ExtractProgress, 100)
+	}
+}
+
+// createTestArchiveWithMultipleFiles creates a test zip file with multiple files
+func createTestArchiveWithMultipleFiles(path string, count int) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	zipWriter := zip.NewWriter(file)
+	defer zipWriter.Close()
+
+	for i := 0; i < count; i++ {
+		w, err := zipWriter.Create("test_" + strconv.Itoa(i) + ".txt")
+		if err != nil {
+			return err
+		}
+		_, err = w.Write([]byte("test content " + strconv.Itoa(i)))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// startTestArchiveServer starts a simple HTTP server that serves a zip file
+func startTestArchiveServer(zipPath string) net.Listener {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		gohttp.Serve(listener, gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+			file, err := os.Open(zipPath)
+			if err != nil {
+				gohttp.Error(w, err.Error(), gohttp.StatusInternalServerError)
+				return
+			}
+			defer file.Close()
+
+			stat, _ := file.Stat()
+			w.Header().Set("Content-Type", "application/zip")
+			w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
+			io.Copy(w, file)
+		}))
+	}()
+
+	return listener
 }
 
 // createTestArchive creates a simple test zip file for testing
