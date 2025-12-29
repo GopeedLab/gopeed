@@ -96,7 +96,8 @@ func openArchive(archivePath string, password string) (*archiveInfo, error) {
 }
 
 // createExtractionHandler creates a handler function for extracting files with progress tracking
-func createExtractionHandler(destDir string, totalFiles int, extractedFiles *atomic.Int32, progressCallback ExtractProgressCallback) func(ctx context.Context, fileInfo archives.FileInfo) error {
+func createExtractionHandler(destDir string, totalFiles int, progressCallback ExtractProgressCallback) func(ctx context.Context, fileInfo archives.FileInfo) error {
+	var extractedFiles atomic.Int32
 	return func(ctx context.Context, fileInfo archives.FileInfo) error {
 		err := extractFile(ctx, fileInfo, destDir)
 		if err == nil && !fileInfo.IsDir() {
@@ -134,8 +135,7 @@ func extractArchive(archivePath string, destDir string, password string, progres
 			// If counting fails, proceed without progress reporting
 			totalFiles = 0
 		}
-		var extractedFiles atomic.Int32
-		return f.Extract(context.Background(), info.input, createExtractionHandler(destDir, totalFiles, &extractedFiles, progressCallback))
+		return f.Extract(context.Background(), info.input, createExtractionHandler(destDir, totalFiles, progressCallback))
 	case archives.Decompressor:
 		// For single-file compression formats (gz, bz2, xz, etc.)
 		// Decompress to a file without the compression extension
@@ -184,8 +184,7 @@ func extractArchive(archivePath string, destDir string, password string, progres
 			if err != nil {
 				totalFiles = 0
 			}
-			var extractedFiles atomic.Int32
-			return ext.Extract(context.Background(), io.NewSectionReader(info.file, 0, info.stat.Size()), createExtractionHandler(destDir, totalFiles, &extractedFiles, progressCallback))
+			return ext.Extract(context.Background(), io.NewSectionReader(info.file, 0, info.stat.Size()), createExtractionHandler(destDir, totalFiles, progressCallback))
 		}
 	}
 
