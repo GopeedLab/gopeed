@@ -1296,6 +1296,117 @@ func TestDownloader_AutoExtractWithDeleteAfterExtract(t *testing.T) {
 	}
 }
 
+// TestDownloader_AutoExtractError tests the auto-extract error handling path
+func TestDownloader_AutoExtractError(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "auto_extract_error_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a corrupt zip file (just invalid data with .zip extension)
+	corruptZipPath := tempDir + "/corrupt.zip"
+	if err := os.WriteFile(corruptZipPath, []byte("this is not a valid zip file"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a simple HTTP server to serve the corrupt zip file
+	server := startTestArchiveServer(corruptZipPath)
+	defer server.Close()
+
+	// Create downloader
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Track extraction status changes
+	var extractStatusChanges []ExtractStatus
+	var statusMutex sync.Mutex
+	extractDoneCh := make(chan struct{})
+	var extractDoneOnce sync.Once
+
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyProgress && event.Task != nil && event.Task.Progress != nil {
+			statusMutex.Lock()
+			status := event.Task.Progress.ExtractStatus
+			if status != ExtractStatusNone {
+				if len(extractStatusChanges) == 0 || extractStatusChanges[len(extractStatusChanges)-1] != status {
+					extractStatusChanges = append(extractStatusChanges, status)
+				}
+			}
+			statusMutex.Unlock()
+			if status == ExtractStatusDone || status == ExtractStatusError {
+				extractDoneOnce.Do(func() {
+					close(extractDoneCh)
+				})
+			}
+		}
+	})
+
+	// Create request to download the corrupt zip file
+	req := &base.Request{
+		URL: "http://" + server.Addr().String() + "/corrupt.zip",
+	}
+
+	// Create task with AutoExtract enabled
+	downloadDir := tempDir + "/downloads"
+	_, err = downloader.CreateDirect(req, &base.Options{
+		Path: downloadDir,
+		Name: "corrupt.zip",
+		Extra: http.OptsExtra{
+			Connections: 1,
+			AutoExtract: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for extraction to complete (with timeout)
+	select {
+	case <-extractDoneCh:
+		// Extraction completed (should be error)
+	case <-time.After(10 * time.Second):
+		t.Log("Extraction timed out")
+	}
+
+	// Give a small buffer for final events to be processed
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify extraction status changes include error
+	statusMutex.Lock()
+	defer statusMutex.Unlock()
+
+	t.Logf("Recorded extract status changes: %v", extractStatusChanges)
+
+	// Verify that we went through ExtractStatusExtracting
+	foundExtracting := false
+	for _, status := range extractStatusChanges {
+		if status == ExtractStatusExtracting {
+			foundExtracting = true
+			break
+		}
+	}
+	if !foundExtracting {
+		t.Error("Expected ExtractStatusExtracting in status changes")
+	}
+
+	// Verify that we reached ExtractStatusError
+	foundError := false
+	for _, status := range extractStatusChanges {
+		if status == ExtractStatusError {
+			foundError = true
+			break
+		}
+	}
+	if !foundError {
+		t.Error("Expected ExtractStatusError in status changes")
+	}
+}
+
 // TestExtractStatus tests the ExtractStatus constants
 func TestExtractStatus(t *testing.T) {
 	tests := []struct {

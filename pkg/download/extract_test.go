@@ -347,9 +347,18 @@ func TestExtractArchive_Gzip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var progressCalled bool
+	// Track progress callback values
+	var progressCalls []struct {
+		extracted int
+		total     int
+		progress  int
+	}
 	err = extractArchive(gzPath, destDir, "", func(extracted int, total int, progress int) {
-		progressCalled = true
+		progressCalls = append(progressCalls, struct {
+			extracted int
+			total     int
+			progress  int
+		}{extracted, total, progress})
 	})
 	if err != nil {
 		t.Fatalf("extractArchive failed for gzip: %v", err)
@@ -370,8 +379,19 @@ func TestExtractArchive_Gzip(t *testing.T) {
 		t.Errorf("unexpected content: %q", string(content))
 	}
 
-	if !progressCalled {
-		t.Error("expected progress callback to be called for gzip")
+	// Verify progress callbacks - should have exactly 2 calls for gzip: start (0,1,0) and end (1,1,100)
+	if len(progressCalls) != 2 {
+		t.Errorf("expected 2 progress callbacks for gzip, got %d", len(progressCalls))
+	}
+	if len(progressCalls) >= 2 {
+		// Verify start callback
+		if progressCalls[0].extracted != 0 || progressCalls[0].total != 1 || progressCalls[0].progress != 0 {
+			t.Errorf("expected start callback (0,1,0), got (%d,%d,%d)", progressCalls[0].extracted, progressCalls[0].total, progressCalls[0].progress)
+		}
+		// Verify end callback
+		if progressCalls[1].extracted != 1 || progressCalls[1].total != 1 || progressCalls[1].progress != 100 {
+			t.Errorf("expected end callback (1,1,100), got (%d,%d,%d)", progressCalls[1].extracted, progressCalls[1].total, progressCalls[1].progress)
+		}
 	}
 }
 
