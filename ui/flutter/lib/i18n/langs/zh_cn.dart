@@ -38,6 +38,7 @@ const zhCN = {
     'useServerCtime': '创建文件使用服务器时间',
     'maxRunning': '最大下载数',
     'defaultDirectDownload': '默认勾选直接下载',
+    'autoStartTasks': '启动时自动开始未完成的任务',
     'items': '@count 项',
     'subscribeTracker': '订阅 Tracker',
     'subscribeFail': '订阅失败，请检查网络或稍后重试',

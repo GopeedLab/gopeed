@@ -78,6 +78,7 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
       defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
       defaultBtClient: json['defaultBtClient'] as bool? ?? true,
       notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
+      autoStartTasks: json['autoStartTasks'] as bool? ?? false,
       downloadCategories: (json['downloadCategories'] as List<dynamic>?)
               ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -95,6 +96,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'defaultDirectDownload': instance.defaultDirectDownload,
       'defaultBtClient': instance.defaultBtClient,
       'notifyWhenNewVersion': instance.notifyWhenNewVersion,
+      'autoStartTasks': instance.autoStartTasks,
       'downloadCategories':
           instance.downloadCategories.map((e) => e.toJson()).toList(),
       'bt': instance.bt.toJson(),

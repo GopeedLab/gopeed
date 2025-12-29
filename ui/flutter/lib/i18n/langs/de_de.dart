@@ -41,6 +41,7 @@ const deDE = {
     'useServerCtime': 'Serverzeit für die Dateierstellung verwenden',
     'maxRunning': 'Maximale Anzahl ausgeführter Aufgaben',
     'defaultDirectDownload': 'Direkten Download standardmäßig aktivieren',
+    'autoStartTasks': 'Unvollständige Aufgaben beim Start automatisch starten',
     'items': '@count Artikel',
     'subscribeTracker': 'Abonnement-Tracker',
     'subscribeFail':
