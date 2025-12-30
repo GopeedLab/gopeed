@@ -865,7 +865,7 @@ func (d *Downloader) watch(task *Task) {
 		// Check global HTTP config for AutoTorrent setting
 		var httpCfg internalhttp.Config
 		autoTorrent := false
-		if d.getProtocolConfig("http", &httpCfg) {
+		if d.getProtocolConfig(task.fetcherManager.Name(), &httpCfg) {
 			autoTorrent = httpCfg.AutoTorrent
 		}
 		if autoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
