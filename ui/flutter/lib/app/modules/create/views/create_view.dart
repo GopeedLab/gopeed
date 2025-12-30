@@ -870,7 +870,6 @@ class CreateView extends GetView<CreateController> {
   Object? parseReqOptsExtra() {
     return OptsExtraHttp()
       ..connections = int.tryParse(_connectionsController.text) ?? 0
-      ..autoTorrent = true
       ..autoExtract = _autoExtractController.value ?? false
       ..archivePassword = _archivePasswordController.text
       ..deleteAfterExtract = _deleteAfterExtractController.value ?? false;

@@ -41,11 +41,13 @@ class HttpConfig {
   String userAgent;
   int connections;
   bool useServerCtime;
+  bool autoTorrent;
 
   HttpConfig({
     this.userAgent = '',
     this.connections = 0,
     this.useServerCtime = false,
+    this.autoTorrent = false,
   });
 
   factory HttpConfig.fromJson(Map<String, dynamic> json) =>

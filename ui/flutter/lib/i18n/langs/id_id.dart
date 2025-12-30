@@ -37,6 +37,7 @@ const idID = {
     'downloadDirValid': 'Silahkan pilih direktori unduhan',
     'connections': 'Koneksi',
     'useServerCtime': 'Gunakan waktu server untuk pembuatan file',
+    'autoTorrent': 'Unduh otomatis file torrent',
     'maxRunning': 'Tugas Maksimum yang Berjalan',
     'defaultDirectDownload': 'Pilih unduhan langsung sebagai opsi standar',
     'items': '@count items',

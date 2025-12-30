@@ -78,7 +78,7 @@ func newChunk(begin int64, end int64) *chunk {
 
 type Fetcher struct {
 	ctl    *controller.Controller
-	config *config
+	config *Config
 	doneCh chan error
 
 	meta         *fetcher.FetcherMeta
@@ -805,9 +805,10 @@ func (fm *FetcherManager) AutoRename() bool {
 }
 
 func (fm *FetcherManager) DefaultConfig() any {
-	return &config{
+	return &Config{
 		UserAgent:   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",
 		Connections: 16,
+		AutoTorrent: false,
 	}
 }
 

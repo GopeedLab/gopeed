@@ -36,6 +36,7 @@ const zhCN = {
     'downloadDirValid': '请选择下载目录',
     'connections': '连接数',
     'useServerCtime': '创建文件使用服务器时间',
+    'autoTorrent': '自动下载种子文件',
     'maxRunning': '最大下载数',
     'defaultDirectDownload': '默认勾选直接下载',
     'items': '@count 项',

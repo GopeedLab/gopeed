@@ -429,6 +429,22 @@ class SettingView extends GetView<SettingController> {
         ),
       );
     });
+    final buildHttpAutoTorrent = _buildConfigItem(
+        'autoTorrent', () => httpConfig.autoTorrent ? 'on'.tr : 'off'.tr,
+        (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: httpConfig.autoTorrent,
+          onChanged: (bool value) {
+            downloaderCfg.update((val) {
+              val!.protocolConfig.http.autoTorrent = value;
+            });
+            debounceSave();
+          },
+        ),
+      );
+    });
 
     // bt config items start
     final btConfig = downloaderCfg.value.protocolConfig.bt;
@@ -1370,6 +1386,7 @@ class SettingView extends GetView<SettingController> {
                             buildHttpUa(),
                             buildHttpConnections(),
                             buildHttpUseServerCtime(),
+                            buildHttpAutoTorrent(),
                           ]),
                         )),
                         const Text('BitTorrent'),
