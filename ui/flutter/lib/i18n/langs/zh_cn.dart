@@ -112,6 +112,8 @@ const zhCN = {
     'thanksDesc': '感谢所有为 Gopeed 社区建设添砖加瓦的贡献者们！',
     'browserExtension': '浏览器扩展',
     'launchAtStartup': '开机自动运行',
+    'runAsMenubarApp': '以菜单栏应用运行',
+    'runAsMenubarAppDesc': '隐藏程序坞图标，仅在菜单栏运行',
     'seedConfig': '做种设置',
     'seedKeep': '持续做种直到手动停止',
     'seedRatio': '做种分享率',

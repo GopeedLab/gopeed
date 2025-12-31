@@ -95,6 +95,8 @@ const plPL = {
         'Dziękuję wszystkim za pomoc przy powstawaniu aplikacji Gopeed!',
     'browserExtension': 'Wtyczka dla przeglądarki',
     'launchAtStartup': 'Uruchom na starcie',
+    'runAsMenubarApp': 'Uruchom jako aplikacja paska menu',
+    'runAsMenubarAppDesc': 'Ukryj ikonę Docka i uruchom tylko w pasku menu',
     'skipVerifyCert': 'Pomiń weryfikację certyfikatu',
     'archives': 'Archiwa',
     'autoExtract': 'Automatycznie wyodrębnij archiwa',

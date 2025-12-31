@@ -106,6 +106,8 @@ const deDE = {
         'Vielen Dank an alle Mitwirkenden, die beim Aufbau und der Entwicklung der Gopeed-Community geholfen haben!',
     'browserExtension': 'Browsererweiterung',
     'launchAtStartup': 'Beim Start starten',
+    'runAsMenubarApp': 'Als Menüleisten-App ausführen',
+    'runAsMenubarAppDesc': 'Dock-Symbol ausblenden und nur in der Menüleiste ausführen',
     'seedConfig': 'Seed-Konfiguration',
     'seedKeep': 'Weiter-seeden bis manuell gestoppt',
     'seedRatio': 'Seed Verhältniss',

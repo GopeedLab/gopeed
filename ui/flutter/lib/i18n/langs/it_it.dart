@@ -97,6 +97,8 @@ const itIT = {
         'Grazie a tutti i contributori che hanno contribuito a costruire e sviluppare la comunità Gopeed!',
     'browserExtension': 'Estensione del browser',
     'launchAtStartup': "Lancia all'avvio",
+    'runAsMenubarApp': 'Esegui come app della barra dei menu',
+    'runAsMenubarAppDesc': 'Nascondi icona Dock ed esegui solo nella barra dei menu',
     'skipVerifyCert': 'Salta la verifica del certificato',
     'archives': 'Archivi',
     'autoExtract': 'Estrai automaticamente gli archivi',

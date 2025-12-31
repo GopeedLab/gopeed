@@ -114,6 +114,8 @@ const enUS = {
         'Thanks to all the contributors who have helped build and develop the Gopeed community!',
     'browserExtension': 'Browser Extension',
     'launchAtStartup': 'Launch at Startup',
+    'runAsMenubarApp': 'Run as menubar app',
+    'runAsMenubarAppDesc': 'Hide dock icon and run in menubar only',
     'seedConfig': 'Seed Config',
     'seedKeep': 'Keep seeding until manually stopped',
     'seedRatio': 'Seed ratio',

@@ -114,5 +114,8 @@ const viVN = {
     'categoryPath': 'Đường dẫn danh mục',
     'builtInCategory': 'Không thể xóa danh mục tích hợp',
     'selectCategory': 'Chọn danh mục',
+    'launchAtStartup': 'Khởi động cùng hệ thống',
+    'runAsMenubarApp': 'Chạy như ứng dụng thanh menu',
+    'runAsMenubarAppDesc': 'Ẩn biểu tượng Dock và chỉ chạy trong thanh menu',
   },
 };
