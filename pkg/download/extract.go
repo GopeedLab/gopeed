@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/bodgit/sevenzip"
 	"github.com/mholt/archives"
 )
 
@@ -455,54 +456,87 @@ func extractMultiPartArchive(firstPartPath string, destDir string, password stri
 	return extractArchive(firstPartPath, destDir, password, progressCallback)
 }
 
-// extractSevenZipMultiPart extracts a multi-part 7z archive
+// extractSevenZipMultiPart extracts a multi-part 7z archive using bodgit/sevenzip directly
+// The mholt/archives wrapper doesn't properly handle multi-part 7z files because it uses
+// io.SectionReader which can only see the first part. The bodgit/sevenzip library's
+// OpenReaderWithPassword function handles multi-part files automatically when given the .001 file path.
 func extractSevenZipMultiPart(firstPartPath string, destDir string, password string, progressCallback ExtractProgressCallback) error {
-	// The bodgit/sevenzip library automatically handles .001, .002, etc. files
-	// when you open the .001 file using OpenReader
-	// However, mholt/archives wraps this, so we need to configure it properly
+	// Use bodgit/sevenzip directly - it automatically handles .001, .002, etc. files
+	var reader *sevenzip.ReadCloser
+	var err error
 
-	// For 7z, we can use the standard extraction as archives library
-	// should detect and handle multi-part automatically via bodgit/sevenzip
-	file, err := os.Open(firstPartPath)
+	if password != "" {
+		reader, err = sevenzip.OpenReaderWithPassword(firstPartPath, password)
+	} else {
+		reader, err = sevenzip.OpenReader(firstPartPath)
+	}
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-
-	stat, err := file.Stat()
-	if err != nil {
-		return err
-	}
-
-	// Create the 7z format with password
-	sz := archives.SevenZip{
-		Password: password,
-	}
+	defer reader.Close()
 
 	// Create destination directory
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return err
 	}
 
-	// Count files first for progress
+	// Count total files for progress
 	totalFiles := 0
-	err = sz.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), func(ctx context.Context, fileInfo archives.FileInfo) error {
-		if !fileInfo.IsDir() {
+	for _, f := range reader.File {
+		if !f.FileInfo().IsDir() {
 			totalFiles++
 		}
-		return nil
-	})
-
-	// Reset file position
-	file.Seek(0, io.SeekStart)
-
-	if err != nil {
-		// If counting fails, proceed without progress
-		totalFiles = 0
 	}
 
-	// Extract with progress tracking
-	return sz.Extract(context.Background(), io.NewSectionReader(file, 0, stat.Size()), createExtractionHandler(destDir, totalFiles, progressCallback))
+	// Extract files with progress tracking
+	extractedFiles := 0
+	for _, f := range reader.File {
+		destPath := filepath.Join(destDir, f.Name)
+
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(destPath, f.Mode()); err != nil {
+				return err
+			}
+			continue
+		}
+
+		// Ensure parent directory exists
+		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			return err
+		}
+
+		// Extract file - open, copy, close immediately (as recommended by bodgit/sevenzip)
+		if err := extractSevenZipFile(f, destPath); err != nil {
+			return err
+		}
+
+		extractedFiles++
+		if progressCallback != nil && totalFiles > 0 {
+			progress := int(float64(extractedFiles) / float64(totalFiles) * 100)
+			progressCallback(extractedFiles, totalFiles, progress)
+		}
+	}
+
+	return nil
+}
+
+// extractSevenZipFile extracts a single file from a 7z archive
+// This follows the bodgit/sevenzip recommended pattern of closing rc before processing the next file
+func extractSevenZipFile(f *sevenzip.File, destPath string) error {
+	rc, err := f.Open()
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+
+	outFile, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	_, err = io.Copy(outFile, rc)
+	return err
 }
 
 // extractRarMultiPart extracts a multi-part RAR archive

@@ -1648,7 +1648,7 @@ func TestArchivePartInfo_PatternField(t *testing.T) {
 func TestArchivePartInfo_FirstPartPath(t *testing.T) {
 	// Verify that FirstPartPath is set correctly for different formats
 	tests := []struct {
-		filename      string
+		filename       string
 		expectedSuffix string // Expected suffix of the FirstPartPath
 	}{
 		{"archive.7z.001", "archive.7z.001"},

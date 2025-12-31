@@ -1225,7 +1225,7 @@ func (d *Downloader) handleAutoExtract(task *Task, downloadFilePath string, opts
 			return
 		}
 
-		// All parts are ready! 
+		// All parts are ready!
 		// Only one task should perform extraction - we'll use the one that completes last
 		// Check if extraction has already been started by another part
 		if d.isMultiPartExtractionInProgress(partInfo.BaseName) {
