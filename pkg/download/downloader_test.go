@@ -188,19 +188,22 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 		t.Errorf("CreateDirectBatch() task got = %v, want %v", len(tasks), len(reqs))
 	}
 
-	nameMatchMap := make(map[string]bool)
-	for _, name := range fileNames {
+	// Collect all task names
+	taskNames := make(map[string]bool)
+	for _, task := range tasks {
+		taskNames[task.Meta.Opts.Name] = true
+	}
+
+	// Check that we have the expected number of unique task names
+	if len(taskNames) != len(reqs) {
+		t.Errorf("CreateDirectBatch() unique task names got = %v, want %v, names: %v", len(taskNames), len(reqs), taskNames)
+	}
+
+	// Check that all task files exist
+	for name := range taskNames {
 		if _, err := os.Stat(test.Dir + "/" + name); os.IsNotExist(err) {
 			t.Errorf("CreateDirectBatch() file not exist: %v", name)
 		}
-		for _, task := range tasks {
-			if name == task.Meta.Opts.Name {
-				nameMatchMap[task.Meta.Opts.Name] = true
-			}
-		}
-	}
-	if len(nameMatchMap) != len(reqs) {
-		t.Errorf("CreateDirectBatch() names got = %v, want %v", len(nameMatchMap), len(reqs))
 	}
 
 }
