@@ -100,6 +100,8 @@ const zhTW = {
     'thanksDesc': '感謝所有幫助建立和發展 Gopeed 社群的貢獻者！',
     'browserExtension': '瀏覽器擴充功能',
     'launchAtStartup': '開機自動執行',
+    'runAsMenubarApp': '以選單列應用程式執行',
+    'runAsMenubarAppDesc': '隱藏 Dock 圖示，僅在選單列執行',
     'seedConfig': '做種設定',
     'seedKeep': '持續做種直到手動停止',
     'seedRatio': '做種分享率',

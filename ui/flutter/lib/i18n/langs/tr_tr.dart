@@ -104,6 +104,8 @@ const trTR = {
         'Gopeed topluluğunun inşasında ve geliştirilmesinde katkıda bulunan herkese teşekkürler!',
     'browserExtension': 'Tarayıcı Eklentisi',
     'launchAtStartup': 'Başlangıçta Çalıştır',
+    'runAsMenubarApp': 'Menü çubuğu uygulaması olarak çalıştır',
+    'runAsMenubarAppDesc': 'Dock simgesini gizle ve yalnızca menü çubuğunda çalıştır',
     'seedConfig': 'Seed Ayarları',
     'seedKeep': 'Manuel olarak durdurulana kadar seed etmeye devam et',
     'seedRatio': 'Seed oranı',

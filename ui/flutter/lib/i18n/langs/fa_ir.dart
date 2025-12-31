@@ -86,5 +86,8 @@ const faIR = {
     'categoryPath': 'مسیر دسته‌بندی',
     'builtInCategory': 'دسته‌بندی داخلی قابل حذف نیست',
     'selectCategory': 'انتخاب دسته‌بندی',
+    'launchAtStartup': 'راه‌اندازی در استارت‌آپ',
+    'runAsMenubarApp': 'اجرا به عنوان برنامه نوار منو',
+    'runAsMenubarAppDesc': 'پنهان کردن آیکون Dock و اجرا فقط در نوار منو',
   }
 };

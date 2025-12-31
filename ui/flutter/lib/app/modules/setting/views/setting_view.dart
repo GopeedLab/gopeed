@@ -9,9 +9,11 @@ import 'package:gopeed/app/views/copy_button.dart';
 import 'package:intl/intl.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart' as api;
 import '../../../../api/model/downloader_config.dart';
+import '../../../../database/database.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
@@ -365,6 +367,46 @@ class SettingView extends GetView<SettingController> {
                     logger.e('launchAtStartup fail', e);
                   }
                 },
+              ),
+            );
+          });
+
+    // Menubar mode only for macOS
+    final buildMenubarMode = !Util.isMacos()
+        ? () => null
+        : _buildConfigItem('runAsMenubarApp', () {
+            return Database.instance.getRunAsMenubarApp() ? 'on'.tr : 'off'.tr;
+          }, (Key key) {
+            return Container(
+              alignment: Alignment.centerLeft,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Switch(
+                    value: Database.instance.getRunAsMenubarApp(),
+                    onChanged: (bool value) async {
+                      // Save to database (single source of truth)
+                      Database.instance.saveRunAsMenubarApp(value);
+                      // Apply dock icon visibility
+                      await windowManager.setSkipTaskbar(value);
+                      // Small delay to let macOS process the activation policy change
+                      await Future.delayed(const Duration(milliseconds: 100));
+                      // Ensure window stays visible after toggle
+                      await windowManager.show();
+                      await windowManager.focus();
+                      // Force UI refresh
+                      controller.clearTap();
+                      await debounceSave();
+                    },
+                  ),
+                  Text(
+                    'runAsMenubarAppDesc'.tr,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                ],
               ),
             );
           });
@@ -1353,6 +1395,7 @@ class SettingView extends GetView<SettingController> {
                             buildDefaultDirectDownload(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
+                            buildMenubarMode(),
                           ]),
                         )),
                         Text('archives'.tr),

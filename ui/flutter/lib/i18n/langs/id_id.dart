@@ -101,6 +101,8 @@ const idID = {
         'Terima kasih kepada semua kontributor yang telah membantu membangun dan mengembangkan komunitas Gopeed!',
     'browserExtension': 'Ekstensi Perambanan',
     'launchAtStartup': 'Luncurkan saat Startup',
+    'runAsMenubarApp': 'Jalankan sebagai aplikasi bilah menu',
+    'runAsMenubarAppDesc': 'Sembunyikan ikon Dock dan jalankan hanya di bilah menu',
     'seedConfig': 'Konfigurasi Seed',
     'seedKeep': 'Terus seeding hingga dihentikan secara manual',
     'seedRatio': 'Rasio Seed',
