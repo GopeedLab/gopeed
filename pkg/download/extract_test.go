@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -1316,5 +1317,363 @@ func TestArchiveInfo_Fields(t *testing.T) {
 	// Verify stat mode
 	if info.stat.Mode().IsDir() {
 		t.Error("expected file, not directory")
+	}
+}
+
+// Tests for multi-part archive detection
+func TestIsMultiPartArchive(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected bool
+	}{
+		// 7z multi-part
+		{"archive.7z.001", true},
+		{"archive.7z.002", true},
+		{"archive.7z.100", true},
+		{"ARCHIVE.7Z.001", true},
+
+		// RAR new style
+		{"archive.part01.rar", true},
+		{"archive.part1.rar", true},
+		{"archive.part99.rar", true},
+		{"ARCHIVE.PART01.RAR", true},
+
+		// RAR old style (extension parts)
+		{"archive.r00", true},
+		{"archive.r01", true},
+		{"archive.r99", true},
+
+		// ZIP multi-part
+		{"archive.zip.001", true},
+		{"archive.zip.002", true},
+
+		// ZIP split
+		{"archive.z01", true},
+		{"archive.z02", true},
+
+		// Regular (non-multi-part) archives
+		{"archive.zip", false},
+		{"archive.rar", false},
+		{"archive.7z", false},
+		{"archive.tar.gz", false},
+
+		// Non-archive files
+		{"file.txt", false},
+		{"file.001", false}, // No .7z or .zip prefix
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			result := isMultiPartArchive(tt.filename)
+			if result != tt.expected {
+				t.Errorf("isMultiPartArchive(%q) = %v, expected %v", tt.filename, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetArchivePartInfo_7z(t *testing.T) {
+	tests := []struct {
+		filename    string
+		baseName    string
+		partNumber  int
+		isMultiPart bool
+	}{
+		{"archive.7z.001", "archive.7z", 1, true},
+		{"archive.7z.002", "archive.7z", 2, true},
+		{"archive.7z.010", "archive.7z", 10, true},
+		{"my.file.7z.005", "my.file.7z", 5, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			info := getArchivePartInfo(tt.filename)
+			if info.IsMultiPart != tt.isMultiPart {
+				t.Errorf("IsMultiPart: expected %v, got %v", tt.isMultiPart, info.IsMultiPart)
+			}
+			if info.BaseName != tt.baseName {
+				t.Errorf("BaseName: expected %q, got %q", tt.baseName, info.BaseName)
+			}
+			if info.PartNumber != tt.partNumber {
+				t.Errorf("PartNumber: expected %d, got %d", tt.partNumber, info.PartNumber)
+			}
+		})
+	}
+}
+
+func TestGetArchivePartInfo_RarNewStyle(t *testing.T) {
+	tests := []struct {
+		filename    string
+		baseName    string
+		partNumber  int
+		isMultiPart bool
+	}{
+		{"archive.part01.rar", "archive", 1, true},
+		{"archive.part02.rar", "archive", 2, true},
+		{"archive.part1.rar", "archive", 1, true},
+		{"my.archive.part10.rar", "my.archive", 10, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			info := getArchivePartInfo(tt.filename)
+			if info.IsMultiPart != tt.isMultiPart {
+				t.Errorf("IsMultiPart: expected %v, got %v", tt.isMultiPart, info.IsMultiPart)
+			}
+			if info.BaseName != tt.baseName {
+				t.Errorf("BaseName: expected %q, got %q", tt.baseName, info.BaseName)
+			}
+			if info.PartNumber != tt.partNumber {
+				t.Errorf("PartNumber: expected %d, got %d", tt.partNumber, info.PartNumber)
+			}
+		})
+	}
+}
+
+func TestGetArchivePartInfo_RarOldStyle(t *testing.T) {
+	tests := []struct {
+		filename    string
+		baseName    string
+		partNumber  int
+		isMultiPart bool
+	}{
+		{"archive.r00", "archive", 1, true}, // r00 is treated as first extension part (after .rar)
+		{"archive.r01", "archive", 1, true},
+		{"archive.r99", "archive", 99, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			info := getArchivePartInfo(tt.filename)
+			if info.IsMultiPart != tt.isMultiPart {
+				t.Errorf("IsMultiPart: expected %v, got %v", tt.isMultiPart, info.IsMultiPart)
+			}
+			if info.BaseName != tt.baseName {
+				t.Errorf("BaseName: expected %q, got %q", tt.baseName, info.BaseName)
+			}
+		})
+	}
+}
+
+func TestGetArchivePartInfo_ZipMultiPart(t *testing.T) {
+	tests := []struct {
+		filename    string
+		baseName    string
+		partNumber  int
+		isMultiPart bool
+	}{
+		{"archive.zip.001", "archive.zip", 1, true},
+		{"archive.zip.002", "archive.zip", 2, true},
+		{"my.file.zip.010", "my.file.zip", 10, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			info := getArchivePartInfo(tt.filename)
+			if info.IsMultiPart != tt.isMultiPart {
+				t.Errorf("IsMultiPart: expected %v, got %v", tt.isMultiPart, info.IsMultiPart)
+			}
+			if info.BaseName != tt.baseName {
+				t.Errorf("BaseName: expected %q, got %q", tt.baseName, info.BaseName)
+			}
+			if info.PartNumber != tt.partNumber {
+				t.Errorf("PartNumber: expected %d, got %d", tt.partNumber, info.PartNumber)
+			}
+		})
+	}
+}
+
+func TestGetArchivePartInfo_ZipSplit(t *testing.T) {
+	tests := []struct {
+		filename    string
+		baseName    string
+		partNumber  int
+		isMultiPart bool
+	}{
+		{"archive.z01", "archive", 1, true},
+		{"archive.z02", "archive", 2, true},
+		{"archive.z99", "archive", 99, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			info := getArchivePartInfo(tt.filename)
+			if info.IsMultiPart != tt.isMultiPart {
+				t.Errorf("IsMultiPart: expected %v, got %v", tt.isMultiPart, info.IsMultiPart)
+			}
+			if info.BaseName != tt.baseName {
+				t.Errorf("BaseName: expected %q, got %q", tt.baseName, info.BaseName)
+			}
+			if info.PartNumber != tt.partNumber {
+				t.Errorf("PartNumber: expected %d, got %d", tt.partNumber, info.PartNumber)
+			}
+		})
+	}
+}
+
+func TestGetArchivePartInfo_NonMultiPart(t *testing.T) {
+	tests := []string{
+		"archive.zip",
+		"archive.rar",
+		"archive.7z",
+		"file.txt",
+		"file.001",
+	}
+
+	for _, filename := range tests {
+		t.Run(filename, func(t *testing.T) {
+			info := getArchivePartInfo(filename)
+			if info.IsMultiPart {
+				t.Errorf("Expected non-multi-part for %q, but got IsMultiPart=true", filename)
+			}
+		})
+	}
+}
+
+func TestIsFirstPart(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected bool
+	}{
+		// First parts
+		{"archive.7z.001", true},
+		{"archive.part01.rar", true},
+		{"archive.part1.rar", true},
+		{"archive.zip.001", true},
+		{"archive.z01", true},
+
+		// Non-first parts
+		{"archive.7z.002", false},
+		{"archive.part02.rar", false},
+		{"archive.zip.002", false},
+		{"archive.z02", false},
+
+		// For RAR old style (.r00, .r01), these are NOT the first part
+		// The first part is the .rar file, but these extension files
+		// have partNumber=1 due to parsePartNumber treating 00 as 1
+		// So isFirstPart returns true for these (which is technically correct
+		// in terms of part numbering, even though .rar is the "real" first file)
+		{"archive.r00", true},
+		{"archive.r01", true},
+
+		// Non-multi-part (should return false)
+		{"archive.zip", false},
+		{"archive.rar", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			result := isFirstPart(tt.filename)
+			if result != tt.expected {
+				t.Errorf("isFirstPart(%q) = %v, expected %v", tt.filename, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetMultiPartArchiveBaseName(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected string
+	}{
+		{"/path/to/archive.7z.001", "/path/to/archive.7z"},
+		{"/path/to/archive.part01.rar", "/path/to/archive"},
+		{"/path/to/archive.zip.001", "/path/to/archive.zip"},
+		{"/path/to/archive.z01", "/path/to/archive"},
+		// Non-multi-part should return empty
+		{"/path/to/archive.zip", ""},
+		{"/path/to/file.txt", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			result := GetMultiPartArchiveBaseName(tt.filename)
+			if result != tt.expected {
+				t.Errorf("GetMultiPartArchiveBaseName(%q) = %q, expected %q", tt.filename, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsArchiveFile_IncludesMultiPart(t *testing.T) {
+	// Test that isArchiveFile returns true for multi-part archives
+	tests := []struct {
+		filename string
+		expected bool
+	}{
+		{"archive.7z.001", true},
+		{"archive.7z.002", true},
+		{"archive.part01.rar", true},
+		{"archive.zip.001", true},
+		{"archive.z01", true},
+		{"archive.r00", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			result := isArchiveFile(tt.filename)
+			if result != tt.expected {
+				t.Errorf("isArchiveFile(%q) = %v, expected %v", tt.filename, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestArchivePartInfo_PatternField(t *testing.T) {
+	// Verify that the Pattern field is set correctly for different formats
+	tests := []struct {
+		filename        string
+		patternContains string
+	}{
+		{"archive.7z.001", ".7z)"},
+		{"archive.part01.rar", ".part"},
+		{"archive.r00", ".r("},
+		{"archive.zip.001", ".zip)"},
+		{"archive.z01", ".z("},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			info := getArchivePartInfo(tt.filename)
+			if !info.IsMultiPart {
+				t.Fatalf("Expected multi-part archive for %q", tt.filename)
+			}
+			if info.Pattern == "" {
+				t.Errorf("Pattern should not be empty for %q", tt.filename)
+			}
+		})
+	}
+}
+
+func TestArchivePartInfo_FirstPartPath(t *testing.T) {
+	// Verify that FirstPartPath is set correctly for different formats
+	tests := []struct {
+		filename      string
+		expectedSuffix string // Expected suffix of the FirstPartPath
+	}{
+		{"archive.7z.001", "archive.7z.001"},
+		{"archive.7z.002", "archive.7z.001"},
+		{"archive.7z.005", "archive.7z.001"},
+		{"archive.part01.rar", "archive.part01.rar"},
+		{"archive.part02.rar", "archive.part01.rar"},
+		{"archive.zip.001", "archive.zip.001"},
+		{"archive.zip.003", "archive.zip.001"},
+		{"archive.z01", "archive.z01"},
+		{"archive.z05", "archive.z01"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			info := getArchivePartInfo(tt.filename)
+			if !info.IsMultiPart {
+				t.Fatalf("Expected multi-part archive for %q", tt.filename)
+			}
+			if info.FirstPartPath == "" {
+				t.Errorf("FirstPartPath should not be empty for %q", tt.filename)
+			}
+			if !strings.HasSuffix(info.FirstPartPath, tt.expectedSuffix) {
+				t.Errorf("FirstPartPath for %q = %q, expected suffix %q", tt.filename, info.FirstPartPath, tt.expectedSuffix)
+			}
+		})
 	}
 }

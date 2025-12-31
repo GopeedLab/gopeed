@@ -2,6 +2,7 @@ package download
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	gohttp "net/http"
 	"net/url"
@@ -51,6 +52,8 @@ type ExtractStatus string
 const (
 	// ExtractStatusNone indicates extraction has not started
 	ExtractStatusNone ExtractStatus = ""
+	// ExtractStatusWaitingParts indicates waiting for other multi-part archive parts to complete
+	ExtractStatusWaitingParts ExtractStatus = "waitingParts"
 	// ExtractStatusExtracting indicates extraction is in progress
 	ExtractStatusExtracting ExtractStatus = "extracting"
 	// ExtractStatusDone indicates extraction completed successfully
@@ -74,6 +77,12 @@ type Progress struct {
 	ExtractStatus ExtractStatus `json:"extractStatus"`
 	// ExtractProgress is the percentage of extraction completed (0-100)
 	ExtractProgress int `json:"extractProgress"`
+	// MultiPartBaseName is set for multi-part archives to group related parts
+	MultiPartBaseName string `json:"multiPartBaseName,omitempty"`
+	// MultiPartNumber is the part number for multi-part archives (1-indexed)
+	MultiPartNumber int `json:"multiPartNumber,omitempty"`
+	// MultiPartIsFirst indicates if this is the first part of a multi-part archive
+	MultiPartIsFirst bool `json:"multiPartIsFirst,omitempty"`
 }
 
 type Downloader struct {
@@ -898,41 +907,7 @@ func (d *Downloader) watch(task *Task) {
 
 		// Auto-extract archive files
 		if e.AutoExtract && isArchiveFile(downloadFilePath) {
-			go func() {
-				// Set extraction status to extracting
-				task.Progress.ExtractStatus = ExtractStatusExtracting
-				task.Progress.ExtractProgress = 0
-				d.emit(EventKeyProgress, task)
-				d.storage.Put(bucketTask, task.ID, task.clone())
-
-				// Extract to the same directory as the downloaded file
-				destDir := task.Meta.Opts.Path
-				extractErr := extractArchive(downloadFilePath, destDir, e.ArchivePassword, func(extractedFiles int, totalFiles int, progress int) {
-					task.Progress.ExtractProgress = progress
-					d.emit(EventKeyProgress, task)
-				})
-				if extractErr != nil {
-					d.Logger.Error().Err(extractErr).Msgf("auto extract archive failed, task id: %s", task.ID)
-					task.Progress.ExtractStatus = ExtractStatusError
-					d.emit(EventKeyProgress, task)
-					d.storage.Put(bucketTask, task.ID, task.clone())
-				} else {
-					d.Logger.Info().Msgf("auto extract archive completed, task id: %s", task.ID)
-					task.Progress.ExtractStatus = ExtractStatusDone
-					task.Progress.ExtractProgress = 100
-					d.emit(EventKeyProgress, task)
-					d.storage.Put(bucketTask, task.ID, task.clone())
-					// Delete archive after successful extraction if enabled
-					if e.DeleteAfterExtract {
-						deleteErr := os.Remove(downloadFilePath)
-						if deleteErr != nil {
-							d.Logger.Error().Err(deleteErr).Msgf("delete archive after extraction failed, task id: %s", task.ID)
-						} else {
-							d.Logger.Info().Msgf("archive deleted after extraction, task id: %s", task.ID)
-						}
-					}
-				}
-			}()
+			go d.handleAutoExtract(task, downloadFilePath, e)
 		}
 	}
 }
@@ -1223,6 +1198,343 @@ func (d *Downloader) buildFetcher(url string) (fetcher.Fetcher, error) {
 	fetcher := fm.Build()
 	d.setupFetcher(fm, fetcher)
 	return fetcher, nil
+}
+
+// handleAutoExtract handles automatic extraction of archive files, including multi-part archives
+func (d *Downloader) handleAutoExtract(task *Task, downloadFilePath string, opts *http.OptsExtra) {
+	// Check if this is a multi-part archive
+	partInfo := getArchivePartInfo(downloadFilePath)
+
+	if partInfo.IsMultiPart {
+		// Set multi-part info on the task
+		task.Progress.MultiPartBaseName = partInfo.BaseName
+		task.Progress.MultiPartNumber = partInfo.PartNumber
+		task.Progress.MultiPartIsFirst = isFirstPart(downloadFilePath)
+		d.storage.Put(bucketTask, task.ID, task.clone())
+
+		// Check if all parts are downloaded
+		destDir := task.Meta.Opts.Path
+		allPartsReady, missingParts := d.checkMultiPartArchiveReady(downloadFilePath, destDir, partInfo)
+
+		if !allPartsReady {
+			// Not all parts are ready yet, set status to waiting
+			task.Progress.ExtractStatus = ExtractStatusWaitingParts
+			d.emit(EventKeyProgress, task)
+			d.storage.Put(bucketTask, task.ID, task.clone())
+			d.Logger.Info().Msgf("multi-part archive waiting for other parts, task id: %s, missing: %v", task.ID, missingParts)
+			return
+		}
+
+		// All parts are ready! 
+		// Only one task should perform extraction - we'll use the one that completes last
+		// Check if extraction has already been started by another part
+		if d.isMultiPartExtractionInProgress(partInfo.BaseName) {
+			// Another part already started extraction, mark this as done
+			task.Progress.ExtractStatus = ExtractStatusDone
+			task.Progress.ExtractProgress = 100
+			d.emit(EventKeyProgress, task)
+			d.storage.Put(bucketTask, task.ID, task.clone())
+			d.Logger.Info().Msgf("multi-part archive part completed, extraction handled by another part, task id: %s", task.ID)
+			return
+		}
+
+		// This task will handle extraction - mark as extracting first to prevent others
+		task.Progress.ExtractStatus = ExtractStatusExtracting
+		d.emit(EventKeyProgress, task)
+		d.storage.Put(bucketTask, task.ID, task.clone())
+
+		// Extract the multi-part archive
+		d.performMultiPartExtraction(task, partInfo.FirstPartPath, destDir, opts)
+	} else {
+		// Regular (non-multi-part) archive
+		d.performExtraction(task, downloadFilePath, task.Meta.Opts.Path, opts)
+	}
+}
+
+// checkMultiPartArchiveReady checks if all parts of a multi-part archive are downloaded
+// by examining task status rather than file existence
+func (d *Downloader) checkMultiPartArchiveReady(filePath string, destDir string, partInfo ArchivePartInfo) (bool, []string) {
+	// Use task-based checking - find all tasks with the same MultiPartBaseName
+	// and verify they are all in Done status
+	baseName := GetMultiPartArchiveBaseName(filePath)
+	if baseName == "" {
+		return true, nil
+	}
+
+	return d.checkAllMultiPartTasksDone(baseName)
+}
+
+// checkAllMultiPartTasksDone checks if all tasks belonging to a multi-part archive are done
+func (d *Downloader) checkAllMultiPartTasksDone(baseName string) (bool, []string) {
+	var notDoneParts []string
+
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	// Find all tasks that belong to this multi-part archive
+	var relatedTasks []*Task
+	for _, task := range d.tasks {
+		taskBaseName := ""
+		if task.Meta != nil && task.Meta.Res != nil && len(task.Meta.Res.Files) > 0 {
+			taskBaseName = GetMultiPartArchiveBaseName(task.Meta.SingleFilepath())
+		}
+		if taskBaseName == baseName {
+			relatedTasks = append(relatedTasks, task)
+		}
+	}
+
+	// If we found no related tasks, we can't determine readiness
+	if len(relatedTasks) == 0 {
+		return false, []string{"no related tasks found for " + baseName}
+	}
+
+	// Check if all related tasks are done
+	for _, task := range relatedTasks {
+		if task.Status != base.DownloadStatusDone {
+			notDoneParts = append(notDoneParts, task.Meta.SingleFilepath())
+		}
+	}
+
+	return len(notDoneParts) == 0, notDoneParts
+}
+
+// isMultiPartExtractionInProgress checks if any task for this multi-part archive
+// has already started extraction (to prevent duplicate extractions)
+func (d *Downloader) isMultiPartExtractionInProgress(baseName string) bool {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	for _, task := range d.tasks {
+		taskBaseName := ""
+		if task.Meta != nil && task.Meta.Res != nil && len(task.Meta.Res.Files) > 0 {
+			taskBaseName = GetMultiPartArchiveBaseName(task.Meta.SingleFilepath())
+		}
+		if taskBaseName == baseName {
+			// Check if this task is already extracting or has completed extraction
+			if task.Progress.ExtractStatus == ExtractStatusExtracting ||
+				task.Progress.ExtractStatus == ExtractStatusDone ||
+				task.Progress.ExtractStatus == ExtractStatusError {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// performExtraction performs extraction for a regular (non-multi-part) archive
+func (d *Downloader) performExtraction(task *Task, archivePath string, destDir string, opts *http.OptsExtra) {
+	// Set extraction status to extracting
+	task.Progress.ExtractStatus = ExtractStatusExtracting
+	task.Progress.ExtractProgress = 0
+	d.emit(EventKeyProgress, task)
+	d.storage.Put(bucketTask, task.ID, task.clone())
+
+	// Extract the archive
+	extractErr := extractArchive(archivePath, destDir, opts.ArchivePassword, func(extractedFiles int, totalFiles int, progress int) {
+		task.Progress.ExtractProgress = progress
+		d.emit(EventKeyProgress, task)
+	})
+
+	d.handleExtractionResult(task, extractErr, []string{archivePath}, opts.DeleteAfterExtract)
+}
+
+// performMultiPartExtraction performs extraction for a multi-part archive
+func (d *Downloader) performMultiPartExtraction(task *Task, firstPartPath string, destDir string, opts *http.OptsExtra) {
+	// Set extraction status to extracting
+	task.Progress.ExtractStatus = ExtractStatusExtracting
+	task.Progress.ExtractProgress = 0
+	d.emit(EventKeyProgress, task)
+	d.storage.Put(bucketTask, task.ID, task.clone())
+
+	d.Logger.Info().Msgf("starting multi-part archive extraction, first part: %s, task id: %s", firstPartPath, task.ID)
+
+	// Extract the multi-part archive
+	extractErr := extractMultiPartArchive(firstPartPath, destDir, opts.ArchivePassword, func(extractedFiles int, totalFiles int, progress int) {
+		task.Progress.ExtractProgress = progress
+		d.emit(EventKeyProgress, task)
+	})
+
+	// Collect all part files for potential deletion
+	partFiles := d.collectMultiPartFiles(firstPartPath)
+
+	d.handleExtractionResult(task, extractErr, partFiles, opts.DeleteAfterExtract)
+
+	// Update status for all related multi-part tasks
+	d.updateMultiPartTasksStatus(task, extractErr)
+}
+
+// collectMultiPartFiles collects all files belonging to a multi-part archive
+func (d *Downloader) collectMultiPartFiles(firstPartPath string) []string {
+	var files []string
+	partInfo := getArchivePartInfo(firstPartPath)
+	dir := filepath.Dir(firstPartPath)
+
+	switch {
+	case strings.Contains(partInfo.Pattern, ".7z)"):
+		// 7z: .7z.001, .7z.002, etc.
+		files = d.collectSequentialFiles(dir, partInfo.BaseName, ".%03d")
+	case strings.Contains(partInfo.Pattern, ".part"):
+		// RAR new style
+		files = d.collectRarNewStyleFiles(dir, partInfo.BaseName)
+	case partInfo.Pattern == "rar-old-style" || strings.Contains(partInfo.Pattern, ".r("):
+		// RAR old style
+		files = d.collectRarOldStyleFiles(dir, partInfo.BaseName)
+	case strings.Contains(partInfo.Pattern, ".zip)"):
+		// ZIP multi-part
+		files = d.collectSequentialFiles(dir, partInfo.BaseName, ".%03d")
+	case strings.Contains(partInfo.Pattern, ".z("):
+		// ZIP split
+		files = d.collectZipSplitFiles(dir, partInfo.BaseName)
+	}
+
+	return files
+}
+
+// collectSequentialFiles collects sequential numbered files
+func (d *Downloader) collectSequentialFiles(dir, baseName, format string) []string {
+	var files []string
+	suffix := filepath.Ext(baseName)
+	nameWithoutExt := strings.TrimSuffix(baseName, suffix)
+	partNum := 1
+
+	for {
+		partPath := filepath.Join(dir, nameWithoutExt+suffix+fmt.Sprintf(format, partNum))
+		if _, err := os.Stat(partPath); os.IsNotExist(err) {
+			break
+		}
+		files = append(files, partPath)
+		partNum++
+	}
+
+	return files
+}
+
+// collectRarNewStyleFiles collects RAR new style part files
+func (d *Downloader) collectRarNewStyleFiles(dir, baseName string) []string {
+	var files []string
+	partNum := 1
+
+	for {
+		singleDigitPath := filepath.Join(dir, baseName+fmt.Sprintf(".part%d.rar", partNum))
+		doubleDigitPath := filepath.Join(dir, baseName+fmt.Sprintf(".part%02d.rar", partNum))
+
+		if _, err := os.Stat(singleDigitPath); err == nil {
+			files = append(files, singleDigitPath)
+		} else if _, err := os.Stat(doubleDigitPath); err == nil {
+			files = append(files, doubleDigitPath)
+		} else {
+			break
+		}
+		partNum++
+	}
+
+	return files
+}
+
+// collectRarOldStyleFiles collects RAR old style part files
+func (d *Downloader) collectRarOldStyleFiles(dir, baseName string) []string {
+	var files []string
+
+	// .rar file
+	rarPath := filepath.Join(dir, baseName+".rar")
+	if _, err := os.Stat(rarPath); err == nil {
+		files = append(files, rarPath)
+	}
+
+	// .r00, .r01, etc.
+	partNum := 0
+	for {
+		partPath := filepath.Join(dir, baseName+fmt.Sprintf(".r%02d", partNum))
+		if _, err := os.Stat(partPath); os.IsNotExist(err) {
+			break
+		}
+		files = append(files, partPath)
+		partNum++
+	}
+
+	return files
+}
+
+// collectZipSplitFiles collects ZIP split files
+func (d *Downloader) collectZipSplitFiles(dir, baseName string) []string {
+	var files []string
+
+	// .z01, .z02, etc.
+	partNum := 1
+	for {
+		partPath := filepath.Join(dir, baseName+fmt.Sprintf(".z%02d", partNum))
+		if _, err := os.Stat(partPath); os.IsNotExist(err) {
+			break
+		}
+		files = append(files, partPath)
+		partNum++
+	}
+
+	// .zip file
+	zipPath := filepath.Join(dir, baseName+".zip")
+	if _, err := os.Stat(zipPath); err == nil {
+		files = append(files, zipPath)
+	}
+
+	return files
+}
+
+// handleExtractionResult handles the result of an extraction operation
+func (d *Downloader) handleExtractionResult(task *Task, extractErr error, archiveFiles []string, deleteAfterExtract bool) {
+	if extractErr != nil {
+		d.Logger.Error().Err(extractErr).Msgf("auto extract archive failed, task id: %s", task.ID)
+		task.Progress.ExtractStatus = ExtractStatusError
+		d.emit(EventKeyProgress, task)
+		d.storage.Put(bucketTask, task.ID, task.clone())
+	} else {
+		d.Logger.Info().Msgf("auto extract archive completed, task id: %s", task.ID)
+		task.Progress.ExtractStatus = ExtractStatusDone
+		task.Progress.ExtractProgress = 100
+		d.emit(EventKeyProgress, task)
+		d.storage.Put(bucketTask, task.ID, task.clone())
+
+		// Delete archive files after successful extraction if enabled
+		if deleteAfterExtract {
+			for _, archiveFile := range archiveFiles {
+				deleteErr := os.Remove(archiveFile)
+				if deleteErr != nil {
+					d.Logger.Error().Err(deleteErr).Msgf("delete archive after extraction failed: %s", archiveFile)
+				} else {
+					d.Logger.Info().Msgf("archive deleted after extraction: %s", archiveFile)
+				}
+			}
+		}
+	}
+}
+
+// updateMultiPartTasksStatus updates the extraction status for all tasks that belong to the same multi-part archive
+func (d *Downloader) updateMultiPartTasksStatus(sourceTask *Task, extractErr error) {
+	if sourceTask.Progress.MultiPartBaseName == "" {
+		return
+	}
+
+	status := ExtractStatusDone
+	progress := 100
+	if extractErr != nil {
+		status = ExtractStatusError
+		progress = 0
+	}
+
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	for _, task := range d.tasks {
+		if task.ID == sourceTask.ID {
+			continue
+		}
+		if task.Progress.MultiPartBaseName == sourceTask.Progress.MultiPartBaseName {
+			task.Progress.ExtractStatus = status
+			task.Progress.ExtractProgress = progress
+			d.emit(EventKeyProgress, task)
+			d.storage.Put(bucketTask, task.ID, task.clone())
+		}
+	}
 }
 
 func initTask(task *Task) {

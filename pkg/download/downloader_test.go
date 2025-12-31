@@ -3,8 +3,8 @@ package download
 import (
 	"archive/zip"
 	"io"
-	gohttp "net/http"
 	"net"
+	gohttp "net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -1450,6 +1450,51 @@ func TestProgress_ExtractFields(t *testing.T) {
 	}
 	if progress.ExtractProgress != 100 {
 		t.Errorf("ExtractProgress after update = %v, want %v", progress.ExtractProgress, 100)
+	}
+}
+
+// TestProgress_MultiPartFields tests the multi-part archive fields in Progress struct
+func TestProgress_MultiPartFields(t *testing.T) {
+	progress := &Progress{
+		ExtractStatus:     ExtractStatusWaitingParts,
+		MultiPartBaseName: "/path/to/archive.7z",
+		MultiPartNumber:   1,
+		MultiPartIsFirst:  true,
+	}
+
+	if progress.ExtractStatus != ExtractStatusWaitingParts {
+		t.Errorf("ExtractStatus = %v, want %v", progress.ExtractStatus, ExtractStatusWaitingParts)
+	}
+	if progress.MultiPartBaseName != "/path/to/archive.7z" {
+		t.Errorf("MultiPartBaseName = %v, want %v", progress.MultiPartBaseName, "/path/to/archive.7z")
+	}
+	if progress.MultiPartNumber != 1 {
+		t.Errorf("MultiPartNumber = %v, want %v", progress.MultiPartNumber, 1)
+	}
+	if !progress.MultiPartIsFirst {
+		t.Error("MultiPartIsFirst should be true")
+	}
+
+	// Test second part
+	progress2 := &Progress{
+		ExtractStatus:     ExtractStatusWaitingParts,
+		MultiPartBaseName: "/path/to/archive.7z",
+		MultiPartNumber:   2,
+		MultiPartIsFirst:  false,
+	}
+
+	if progress2.MultiPartNumber != 2 {
+		t.Errorf("MultiPartNumber = %v, want %v", progress2.MultiPartNumber, 2)
+	}
+	if progress2.MultiPartIsFirst {
+		t.Error("MultiPartIsFirst should be false")
+	}
+}
+
+// TestExtractStatus_WaitingParts tests the new ExtractStatusWaitingParts status
+func TestExtractStatus_WaitingParts(t *testing.T) {
+	if ExtractStatusWaitingParts != "waitingParts" {
+		t.Errorf("ExtractStatusWaitingParts = %v, want %v", ExtractStatusWaitingParts, "waitingParts")
 	}
 }
 
