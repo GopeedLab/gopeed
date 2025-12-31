@@ -2116,7 +2116,7 @@ func TestMultiPartArchivePatterns(t *testing.T) {
 		{"archive.7z.001", true},
 		{"archive.7z.999", true},
 		{"Archive.7Z.001", true},
-		{"archive.7z.01", false},  // Only 3 digits
+		{"archive.7z.01", false},   // Only 3 digits
 		{"archive.7z.0001", false}, // 4 digits not matched
 
 		// RAR new style
