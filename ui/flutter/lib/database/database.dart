@@ -10,6 +10,7 @@ const String _windowState = 'windowState';
 const String _bookmark = 'bookmark';
 const String _createHistory = 'createHistory';
 const String _webToken = 'webToken';
+const String _runAsMenubarApp = 'runAsMenubarApp';
 
 class Database {
   static final Database _instance = Database._internal();
@@ -108,5 +109,13 @@ class Database {
 
   void clearCreateHistory() {
     clear(_createHistory);
+  }
+
+  void saveRunAsMenubarApp(bool value) {
+    box.put(_runAsMenubarApp, value);
+  }
+
+  bool getRunAsMenubarApp() {
+    return box.get(_runAsMenubarApp, defaultValue: false) as bool;
   }
 }

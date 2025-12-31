@@ -53,6 +53,7 @@ dependencies:
   app_links: ^6.3.3
   uri_to_file: ^1.0.0
   window_manager: ^0.4.2
+  hotkey_manager: ^0.2.3
   share_plus: ^10.1.0
   flutter_form_builder: ^9.5.0
   form_builder_validators: ^11.0.0

@@ -70,6 +70,9 @@ const jaJP = {
     'archivePassword': 'アーカイブパスワード',
     'archivePasswordHint': 'パスワードなしの場合は空のままにしてください',
     'deleteAfterExtract': '展開後にアーカイブを削除',
+    'extracting': '展開中',
+    'extractDone': '展開完了',
+    'extractError': '展開失敗',
     'insertPlaceholder': 'プレースホルダーを挿入',
     'placeholderYear': '現在の年',
     'placeholderMonth': '現在の月 (01-12)',
@@ -85,5 +88,8 @@ const jaJP = {
     'categoryPath': 'カテゴリパス',
     'builtInCategory': '内蔵カテゴリは削除できません',
     'selectCategory': 'カテゴリを選択',
+    'launchAtStartup': '起動時に起動',
+    'runAsMenubarApp': 'メニューバーアプリとして実行',
+    'runAsMenubarAppDesc': 'Dockアイコンを非表示にして、メニューバーのみで実行',
   }
 };

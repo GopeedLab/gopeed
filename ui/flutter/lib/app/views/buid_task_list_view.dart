@@ -187,6 +187,19 @@ class BuildTaskListView extends GetView {
       return totalSize <= 0 ? 0 : task.progress.downloaded / totalSize;
     }
 
+    String getExtractionStatusText() {
+      switch (task.progress.extractStatus) {
+        case ExtractStatus.extracting:
+          return '${'extracting'.tr} ${task.progress.extractProgress}%';
+        case ExtractStatus.done:
+          return 'extractDone'.tr;
+        case ExtractStatus.error:
+          return 'extractError'.tr;
+        default:
+          return '';
+      }
+    }
+
     String getProgressText() {
       if (isDone()) {
         return Util.fmtByte(task.meta.res!.size);
@@ -317,6 +330,56 @@ class BuildTaskListView extends GetView {
                       : LinearProgressIndicator(
                           value: getProgress(),
                         ),
+                  // Extraction status row
+                  if (task.progress.extractStatus != ExtractStatus.none)
+                    Builder(builder: (context) {
+                      final isExtracting =
+                          task.progress.extractStatus == ExtractStatus.extracting;
+                      final isExtractDone =
+                          task.progress.extractStatus == ExtractStatus.done;
+                      final statusColor = isExtracting
+                          ? Get.theme.colorScheme.primary
+                          : (isExtractDone ? Colors.green : Colors.red);
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isExtracting
+                                          ? Icons.unarchive
+                                          : (isExtractDone
+                                              ? Icons.check_circle
+                                              : Icons.error),
+                                      size: 16,
+                                      color: statusColor,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      getExtractionStatusText(),
+                                      style: Get.textTheme.bodySmall?.copyWith(
+                                        color: statusColor,
+                                      ),
+                                    ),
+                                  ],
+                                ).padding(left: 18),
+                              ),
+                            ],
+                          ).padding(top: 4, bottom: isExtracting ? 0 : 8),
+                          // Extraction progress bar
+                          if (isExtracting)
+                            LinearProgressIndicator(
+                              value: task.progress.extractProgress / 100.0,
+                              backgroundColor:
+                                  Get.theme.colorScheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  Get.theme.colorScheme.secondary),
+                            ),
+                        ],
+                      );
+                    }),
                 ],
               ),
             )).padding(horizontal: 14, top: 8),

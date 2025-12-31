@@ -97,6 +97,9 @@ const viVN = {
     'archivePassword': 'Mật khẩu tập tin nén',
     'archivePasswordHint': 'Để trống nếu không có mật khẩu',
     'deleteAfterExtract': 'Xóa tập tin nén sau khi giải nén',
+    'extracting': 'Đang giải nén',
+    'extractDone': 'Giải nén hoàn tất',
+    'extractError': 'Giải nén thất bại',
     'insertPlaceholder': 'Chèn placeholder',
     'placeholderYear': 'Năm hiện tại',
     'placeholderMonth': 'Tháng hiện tại (01-12)',
@@ -112,5 +115,8 @@ const viVN = {
     'categoryPath': 'Đường dẫn danh mục',
     'builtInCategory': 'Không thể xóa danh mục tích hợp',
     'selectCategory': 'Chọn danh mục',
+    'launchAtStartup': 'Khởi động cùng hệ thống',
+    'runAsMenubarApp': 'Chạy như ứng dụng thanh menu',
+    'runAsMenubarAppDesc': 'Ẩn biểu tượng Dock và chỉ chạy trong thanh menu',
   },
 };

@@ -69,6 +69,9 @@ const faIR = {
     'archivePassword': 'رمز عبور بایگانی',
     'archivePasswordHint': 'اگر رمز ندارد خالی بگذارید',
     'deleteAfterExtract': 'حذف آرشیو پس از استخراج',
+    'extracting': 'در حال استخراج',
+    'extractDone': 'استخراج کامل شد',
+    'extractError': 'استخراج ناموفق بود',
     'insertPlaceholder': 'درج نگهدارنده',
     'placeholderYear': 'سال جاری',
     'placeholderMonth': 'ماه جاری (01-12)',
@@ -84,5 +87,8 @@ const faIR = {
     'categoryPath': 'مسیر دسته‌بندی',
     'builtInCategory': 'دسته‌بندی داخلی قابل حذف نیست',
     'selectCategory': 'انتخاب دسته‌بندی',
+    'launchAtStartup': 'راه‌اندازی در استارت‌آپ',
+    'runAsMenubarApp': 'اجرا به عنوان برنامه نوار منو',
+    'runAsMenubarAppDesc': 'پنهان کردن آیکون Dock و اجرا فقط در نوار منو',
   }
 };

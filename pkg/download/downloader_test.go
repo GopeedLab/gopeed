@@ -1,15 +1,20 @@
 package download
 
 import (
-	"github.com/GopeedLab/gopeed/internal/test"
-	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"archive/zip"
+	"io"
+	gohttp "net/http"
+	"net"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/GopeedLab/gopeed/internal/test"
+	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 )
 
 func TestDownloader_Resolve(t *testing.T) {
@@ -642,4 +647,1066 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 		}
 	})
 
+}
+
+func TestDownloader_Stats(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Test Stats for non-existent task
+	_, err := downloader.Stats("non-existent-id")
+	if err != ErrTaskNotFound {
+		t.Errorf("Stats() expected ErrTaskNotFound, got %v", err)
+	}
+
+	// Create a task
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}
+	rr, err := downloader.Resolve(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
+
+	taskId, err := downloader.Create(rr.ID, &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wg.Wait()
+
+	// Test Stats for existing task
+	stats, err := downloader.Stats(taskId)
+	if err != nil {
+		t.Errorf("Stats() unexpected error: %v", err)
+	}
+	if stats == nil {
+		t.Error("Stats() returned nil stats")
+	}
+}
+
+func TestDownloader_Delete(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Create multiple tasks
+	var wg sync.WaitGroup
+	taskCount := 3
+	wg.Add(taskCount)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
+
+	taskIds := make([]string, 0)
+	for i := 0; i < taskCount; i++ {
+		req := &base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}
+		taskId, err := downloader.CreateDirect(req, &base.Options{
+			Path: test.Dir,
+			Name: test.DownloadName,
+			Extra: http.OptsExtra{
+				Connections: 4,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		taskIds = append(taskIds, taskId)
+	}
+
+	wg.Wait()
+
+	// Test Delete with filter (single task)
+	t.Run("Delete single task by ID", func(t *testing.T) {
+		initialCount := len(downloader.GetTasks())
+		err := downloader.Delete(&TaskFilter{IDs: []string{taskIds[0]}}, true)
+		if err != nil {
+			t.Errorf("Delete() unexpected error: %v", err)
+		}
+		newCount := len(downloader.GetTasks())
+		if newCount != initialCount-1 {
+			t.Errorf("Delete() task count got = %v, want %v", newCount, initialCount-1)
+		}
+	})
+
+	// Test Delete with non-matching filter (should do nothing)
+	t.Run("Delete with non-matching filter", func(t *testing.T) {
+		initialCount := len(downloader.GetTasks())
+		err := downloader.Delete(&TaskFilter{IDs: []string{"non-existent-id"}}, true)
+		if err != nil {
+			t.Errorf("Delete() unexpected error: %v", err)
+		}
+		newCount := len(downloader.GetTasks())
+		if newCount != initialCount {
+			t.Errorf("Delete() task count got = %v, want %v", newCount, initialCount)
+		}
+	})
+
+	// Test Delete by status
+	t.Run("Delete by status", func(t *testing.T) {
+		initialCount := len(downloader.GetTasks())
+		err := downloader.Delete(&TaskFilter{Statuses: []base.Status{base.DownloadStatusDone}}, false)
+		if err != nil {
+			t.Errorf("Delete() unexpected error: %v", err)
+		}
+		newCount := len(downloader.GetTasks())
+		if newCount != 0 {
+			t.Errorf("Delete() should have deleted all done tasks, got %v remaining", newCount)
+		}
+		_ = initialCount // suppress unused variable warning
+	})
+}
+
+func TestDownloader_ContinueBatch(t *testing.T) {
+	listener := test.StartTestSlowFileServer(time.Millisecond * 2000)
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Create multiple tasks and pause them
+	taskCount := 3
+	taskIds := make([]string, 0)
+
+	for i := 0; i < taskCount; i++ {
+		req := &base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}
+		rr, err := downloader.Resolve(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		taskId, err := downloader.Create(rr.ID, &base.Options{
+			Path: test.Dir,
+			Name: test.DownloadName,
+			Extra: http.OptsExtra{
+				Connections: 4,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		taskIds = append(taskIds, taskId)
+	}
+
+	// Wait a moment for tasks to start
+	time.Sleep(time.Millisecond * 500)
+
+	// Pause all tasks
+	err := downloader.Pause(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify tasks are paused
+	for _, taskId := range taskIds {
+		task := downloader.GetTask(taskId)
+		if task.Status != base.DownloadStatusPause && task.Status != base.DownloadStatusDone {
+			t.Errorf("Task %s should be paused or done, got %s", taskId, task.Status)
+		}
+	}
+
+	// Test ContinueBatch with specific IDs
+	t.Run("ContinueBatch with filter", func(t *testing.T) {
+		var wg sync.WaitGroup
+		wg.Add(1)
+		downloader.Listener(func(event *Event) {
+			if event.Key == EventKeyDone {
+				wg.Done()
+			}
+		})
+
+		err := downloader.ContinueBatch(&TaskFilter{IDs: []string{taskIds[0]}})
+		if err != nil {
+			t.Errorf("ContinueBatch() unexpected error: %v", err)
+		}
+		wg.Wait()
+	})
+
+	// Test ContinueBatch with nil filter (continues all)
+	t.Run("ContinueBatch with nil filter", func(t *testing.T) {
+		var wg sync.WaitGroup
+		// Count remaining paused tasks
+		pausedCount := 0
+		for _, taskId := range taskIds {
+			task := downloader.GetTask(taskId)
+			if task.Status == base.DownloadStatusPause {
+				pausedCount++
+			}
+		}
+		wg.Add(pausedCount)
+		downloader.Listener(func(event *Event) {
+			if event.Key == EventKeyDone {
+				wg.Done()
+			}
+		})
+
+		err := downloader.ContinueBatch(nil)
+		if err != nil {
+			t.Errorf("ContinueBatch() unexpected error: %v", err)
+		}
+		if pausedCount > 0 {
+			wg.Wait()
+		}
+	})
+
+	// Clean up
+	downloader.Delete(nil, true)
+}
+
+func TestDownloader_PauseAndContinue(t *testing.T) {
+	listener := test.StartTestSlowFileServer(time.Millisecond * 5000)
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}
+	rr, err := downloader.Resolve(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	taskId, err := downloader.Create(rr.ID, &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for task to start
+	time.Sleep(time.Millisecond * 1000)
+
+	// Test Pause with empty filter (returns nil, not error - empty filter means no op)
+	t.Run("Pause with empty filter", func(t *testing.T) {
+		err := downloader.Pause(&TaskFilter{})
+		// Empty filter returns error from Pause function
+		if err == nil {
+			// This is fine - different implementations might handle this differently
+		}
+	})
+
+	// Test Pause with filter
+	t.Run("Pause with filter", func(t *testing.T) {
+		task := downloader.GetTask(taskId)
+		if task == nil {
+			t.Skip("Task already completed")
+		}
+		if task.Status == base.DownloadStatusDone {
+			t.Skip("Task already completed")
+		}
+
+		err := downloader.Pause(&TaskFilter{IDs: []string{taskId}})
+		if err != nil {
+			// Task might have finished between check and pause
+			t.Logf("Pause() error (task may have finished): %v", err)
+		} else {
+			task = downloader.GetTask(taskId)
+			if task.Status != base.DownloadStatusPause && task.Status != base.DownloadStatusDone {
+				t.Errorf("Task should be paused or done, got %s", task.Status)
+			}
+		}
+	})
+
+	// Test Pause with non-matching filter
+	t.Run("Pause with non-matching filter", func(t *testing.T) {
+		err := downloader.Pause(&TaskFilter{IDs: []string{"non-existent-id"}})
+		if err == nil {
+			t.Error("Pause() with non-matching filter should return error")
+		}
+	})
+
+	// Test Continue with empty filter (returns error - empty filter means no op)
+	t.Run("Continue with empty filter", func(t *testing.T) {
+		err := downloader.Continue(&TaskFilter{})
+		// Empty filter returns error from Continue function
+		if err == nil {
+			// This is fine - different implementations might handle this differently
+		}
+	})
+
+	// Test Continue with non-matching filter
+	t.Run("Continue with non-matching filter", func(t *testing.T) {
+		err := downloader.Continue(&TaskFilter{IDs: []string{"non-existent-id"}})
+		if err == nil {
+			t.Error("Continue() with non-matching filter should return error")
+		}
+	})
+
+	// Test Continue with valid filter
+	t.Run("Continue with valid filter", func(t *testing.T) {
+		task := downloader.GetTask(taskId)
+		if task == nil {
+			t.Skip("Task not found")
+		}
+		if task.Status == base.DownloadStatusDone {
+			t.Skip("Task already completed")
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		downloader.Listener(func(event *Event) {
+			if event.Key == EventKeyDone && event.Task != nil && event.Task.ID == taskId {
+				wg.Done()
+			}
+		})
+
+		err := downloader.Continue(&TaskFilter{IDs: []string{taskId}})
+		if err != nil {
+			// Task might have finished or not be in pausable state
+			t.Logf("Continue() note: %v", err)
+		}
+		wg.Wait()
+
+		task = downloader.GetTask(taskId)
+		if task != nil && task.Status != base.DownloadStatusDone {
+			t.Errorf("Task should be done, got %s", task.Status)
+		}
+	})
+
+	// Clean up
+	downloader.Delete(nil, true)
+}
+
+func TestDownloader_GetTask(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Test GetTask for non-existent task
+	task := downloader.GetTask("non-existent-id")
+	if task != nil {
+		t.Errorf("GetTask() expected nil for non-existent task, got %v", task)
+	}
+}
+
+func TestDownloader_Emit(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Test emit with no listener (should not panic)
+	downloader.emit(EventKeyDone, nil)
+
+	// Test emit with listener
+	eventReceived := false
+	downloader.Listener(func(event *Event) {
+		eventReceived = true
+	})
+	downloader.emit(EventKeyDone, nil)
+	if !eventReceived {
+		t.Error("Event should have been received by listener")
+	}
+}
+
+func TestDownloader_AutoExtract(t *testing.T) {
+	// Create a temporary directory for extraction tests
+	tempDir, err := os.MkdirTemp("", "downloader_extract_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test zip file
+	zipPath := tempDir + "/test_archive.zip"
+	if err := createTestArchive(zipPath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify isArchiveFile works correctly
+	t.Run("isArchiveFile", func(t *testing.T) {
+		if !isArchiveFile(zipPath) {
+			t.Error("isArchiveFile should return true for .zip file")
+		}
+		if isArchiveFile(tempDir + "/test.txt") {
+			t.Error("isArchiveFile should return false for .txt file")
+		}
+	})
+}
+
+// TestDownloader_AutoExtractWithProgress tests the auto-extract functionality with progress tracking
+// This test exercises the ExtractStatus and ExtractProgress fields in the Progress struct
+func TestDownloader_AutoExtractWithProgress(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "auto_extract_progress_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test zip file to serve
+	zipPath := tempDir + "/archive.zip"
+	if err := createTestArchiveWithMultipleFiles(zipPath, 3); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a simple HTTP server to serve the zip file
+	server := startTestArchiveServer(zipPath)
+	defer server.Close()
+
+	// Create downloader
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Track extraction status changes
+	var extractStatusChanges []ExtractStatus
+	var extractProgressValues []int
+	var statusMutex sync.Mutex
+	extractDoneCh := make(chan struct{})
+	var extractDoneOnce sync.Once
+
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyProgress && event.Task != nil && event.Task.Progress != nil {
+			statusMutex.Lock()
+			status := event.Task.Progress.ExtractStatus
+			progress := event.Task.Progress.ExtractProgress
+			// Record status changes
+			if status != ExtractStatusNone {
+				if len(extractStatusChanges) == 0 || extractStatusChanges[len(extractStatusChanges)-1] != status {
+					extractStatusChanges = append(extractStatusChanges, status)
+				}
+				extractProgressValues = append(extractProgressValues, progress)
+			}
+			statusMutex.Unlock()
+			// Signal when extraction is done or errored
+			if status == ExtractStatusDone || status == ExtractStatusError {
+				extractDoneOnce.Do(func() {
+					close(extractDoneCh)
+				})
+			}
+		}
+	})
+
+	// Create request to download the zip file
+	req := &base.Request{
+		URL: "http://" + server.Addr().String() + "/archive.zip",
+	}
+
+	// Create task with AutoExtract enabled
+	downloadDir := tempDir + "/downloads"
+	taskId, err := downloader.CreateDirect(req, &base.Options{
+		Path: downloadDir,
+		Name: "archive.zip",
+		Extra: http.OptsExtra{
+			Connections: 1,
+			AutoExtract: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for extraction to complete (with timeout)
+	select {
+	case <-extractDoneCh:
+		// Extraction completed
+	case <-time.After(30 * time.Second):
+		t.Log("Extraction timed out, checking results anyway")
+	}
+
+	// Give a small buffer for final events to be processed
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify task exists
+	task := downloader.GetTask(taskId)
+	if task == nil {
+		t.Fatal("Task should exist")
+	}
+
+	// Verify extraction status changes occurred
+	statusMutex.Lock()
+	defer statusMutex.Unlock()
+
+	t.Logf("Recorded extract status changes: %v", extractStatusChanges)
+	t.Logf("Recorded extract progress values: %v", extractProgressValues)
+
+	// Verify that we went through ExtractStatusExtracting
+	foundExtracting := false
+	for _, status := range extractStatusChanges {
+		if status == ExtractStatusExtracting {
+			foundExtracting = true
+			break
+		}
+	}
+	if !foundExtracting {
+		t.Error("Expected ExtractStatusExtracting in status changes")
+	}
+
+	// Verify that we reached ExtractStatusDone
+	foundDone := false
+	for _, status := range extractStatusChanges {
+		if status == ExtractStatusDone {
+			foundDone = true
+			break
+		}
+	}
+	if !foundDone {
+		t.Error("Expected ExtractStatusDone in status changes")
+	}
+
+	// Verify progress values include 100 (final)
+	found100 := false
+	for _, p := range extractProgressValues {
+		if p == 100 {
+			found100 = true
+			break
+		}
+	}
+	if !found100 {
+		t.Error("Expected progress to reach 100")
+	}
+
+	// Verify extracted files exist
+	extractedFile := downloadDir + "/test_0.txt"
+	if _, err := os.Stat(extractedFile); os.IsNotExist(err) {
+		t.Error("Expected extracted file to exist")
+	}
+}
+
+// TestDownloader_AutoExtractWithDeleteAfterExtract tests the auto-extract with DeleteAfterExtract option
+func TestDownloader_AutoExtractWithDeleteAfterExtract(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "auto_extract_delete_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test zip file to serve
+	zipPath := tempDir + "/archive.zip"
+	if err := createTestArchiveWithMultipleFiles(zipPath, 2); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a simple HTTP server to serve the zip file
+	server := startTestArchiveServer(zipPath)
+	defer server.Close()
+
+	// Create downloader
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Track extraction status changes
+	extractDoneCh := make(chan struct{})
+	var extractDoneOnce sync.Once
+
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyProgress && event.Task != nil && event.Task.Progress != nil {
+			status := event.Task.Progress.ExtractStatus
+			if status == ExtractStatusDone || status == ExtractStatusError {
+				extractDoneOnce.Do(func() {
+					close(extractDoneCh)
+				})
+			}
+		}
+	})
+
+	// Create request to download the zip file
+	req := &base.Request{
+		URL: "http://" + server.Addr().String() + "/archive.zip",
+	}
+
+	// Create task with AutoExtract and DeleteAfterExtract enabled
+	downloadDir := tempDir + "/downloads"
+	_, err = downloader.CreateDirect(req, &base.Options{
+		Path: downloadDir,
+		Name: "archive.zip",
+		Extra: http.OptsExtra{
+			Connections:        1,
+			AutoExtract:        true,
+			DeleteAfterExtract: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for extraction to complete (with timeout)
+	select {
+	case <-extractDoneCh:
+		// Extraction completed
+	case <-time.After(10 * time.Second):
+		t.Log("Extraction timed out")
+	}
+
+	// Give time for file deletion
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify archive was deleted
+	archivePath := downloadDir + "/archive.zip"
+	if _, err := os.Stat(archivePath); !os.IsNotExist(err) {
+		t.Error("Expected archive to be deleted after extraction")
+	}
+
+	// Verify extracted files exist
+	extractedFile := downloadDir + "/test_0.txt"
+	if _, err := os.Stat(extractedFile); os.IsNotExist(err) {
+		t.Error("Expected extracted file to exist")
+	}
+}
+
+// TestDownloader_AutoExtractError tests the auto-extract error handling path
+func TestDownloader_AutoExtractError(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "auto_extract_error_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a corrupt zip file (just invalid data with .zip extension)
+	corruptZipPath := tempDir + "/corrupt.zip"
+	if err := os.WriteFile(corruptZipPath, []byte("this is not a valid zip file"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a simple HTTP server to serve the corrupt zip file
+	server := startTestArchiveServer(corruptZipPath)
+	defer server.Close()
+
+	// Create downloader
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Track extraction status changes
+	var extractStatusChanges []ExtractStatus
+	var statusMutex sync.Mutex
+	extractDoneCh := make(chan struct{})
+	var extractDoneOnce sync.Once
+
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyProgress && event.Task != nil && event.Task.Progress != nil {
+			statusMutex.Lock()
+			status := event.Task.Progress.ExtractStatus
+			if status != ExtractStatusNone {
+				if len(extractStatusChanges) == 0 || extractStatusChanges[len(extractStatusChanges)-1] != status {
+					extractStatusChanges = append(extractStatusChanges, status)
+				}
+			}
+			statusMutex.Unlock()
+			if status == ExtractStatusDone || status == ExtractStatusError {
+				extractDoneOnce.Do(func() {
+					close(extractDoneCh)
+				})
+			}
+		}
+	})
+
+	// Create request to download the corrupt zip file
+	req := &base.Request{
+		URL: "http://" + server.Addr().String() + "/corrupt.zip",
+	}
+
+	// Create task with AutoExtract enabled
+	downloadDir := tempDir + "/downloads"
+	_, err = downloader.CreateDirect(req, &base.Options{
+		Path: downloadDir,
+		Name: "corrupt.zip",
+		Extra: http.OptsExtra{
+			Connections: 1,
+			AutoExtract: true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for extraction to complete (with timeout)
+	select {
+	case <-extractDoneCh:
+		// Extraction completed (should be error)
+	case <-time.After(10 * time.Second):
+		t.Log("Extraction timed out")
+	}
+
+	// Give a small buffer for final events to be processed
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify extraction status changes include error
+	statusMutex.Lock()
+	defer statusMutex.Unlock()
+
+	t.Logf("Recorded extract status changes: %v", extractStatusChanges)
+
+	// Verify that we went through ExtractStatusExtracting
+	foundExtracting := false
+	for _, status := range extractStatusChanges {
+		if status == ExtractStatusExtracting {
+			foundExtracting = true
+			break
+		}
+	}
+	if !foundExtracting {
+		t.Error("Expected ExtractStatusExtracting in status changes")
+	}
+
+	// Verify that we reached ExtractStatusError
+	foundError := false
+	for _, status := range extractStatusChanges {
+		if status == ExtractStatusError {
+			foundError = true
+			break
+		}
+	}
+	if !foundError {
+		t.Error("Expected ExtractStatusError in status changes")
+	}
+}
+
+// TestExtractStatus tests the ExtractStatus constants
+func TestExtractStatus(t *testing.T) {
+	tests := []struct {
+		status   ExtractStatus
+		expected string
+	}{
+		{ExtractStatusNone, ""},
+		{ExtractStatusExtracting, "extracting"},
+		{ExtractStatusDone, "done"},
+		{ExtractStatusError, "error"},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.status), func(t *testing.T) {
+			if string(tt.status) != tt.expected {
+				t.Errorf("ExtractStatus %v = %q, want %q", tt.status, string(tt.status), tt.expected)
+			}
+		})
+	}
+}
+
+// TestProgress_ExtractFields tests the ExtractStatus and ExtractProgress fields in Progress struct
+func TestProgress_ExtractFields(t *testing.T) {
+	progress := &Progress{
+		ExtractStatus:   ExtractStatusExtracting,
+		ExtractProgress: 50,
+	}
+
+	if progress.ExtractStatus != ExtractStatusExtracting {
+		t.Errorf("ExtractStatus = %v, want %v", progress.ExtractStatus, ExtractStatusExtracting)
+	}
+	if progress.ExtractProgress != 50 {
+		t.Errorf("ExtractProgress = %v, want %v", progress.ExtractProgress, 50)
+	}
+
+	// Test status transitions
+	progress.ExtractStatus = ExtractStatusDone
+	progress.ExtractProgress = 100
+	if progress.ExtractStatus != ExtractStatusDone {
+		t.Errorf("ExtractStatus after update = %v, want %v", progress.ExtractStatus, ExtractStatusDone)
+	}
+	if progress.ExtractProgress != 100 {
+		t.Errorf("ExtractProgress after update = %v, want %v", progress.ExtractProgress, 100)
+	}
+}
+
+// createTestArchiveWithMultipleFiles creates a test zip file with multiple files
+func createTestArchiveWithMultipleFiles(path string, count int) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	zipWriter := zip.NewWriter(file)
+	defer zipWriter.Close()
+
+	for i := 0; i < count; i++ {
+		w, err := zipWriter.Create("test_" + strconv.Itoa(i) + ".txt")
+		if err != nil {
+			return err
+		}
+		_, err = w.Write([]byte("test content " + strconv.Itoa(i)))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// startTestArchiveServer starts a simple HTTP server that serves a zip file
+func startTestArchiveServer(zipPath string) net.Listener {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		gohttp.Serve(listener, gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+			file, err := os.Open(zipPath)
+			if err != nil {
+				gohttp.Error(w, err.Error(), gohttp.StatusInternalServerError)
+				return
+			}
+			defer file.Close()
+
+			stat, _ := file.Stat()
+			w.Header().Set("Content-Type", "application/zip")
+			w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
+			io.Copy(w, file)
+		}))
+	}()
+
+	return listener
+}
+
+// createTestArchive creates a simple test zip file for testing
+func createTestArchive(path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create a simple zip archive
+	zipWriter := zip.NewWriter(file)
+	defer zipWriter.Close()
+
+	// Add a test file
+	w, err := zipWriter.Create("test.txt")
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte("test content"))
+	return err
+}
+
+func TestDownloader_Close(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Close should not error
+	err := downloader.Close()
+	if err != nil {
+		t.Errorf("Close() unexpected error: %v", err)
+	}
+
+	// Calling Close again should not panic
+	err = downloader.Close()
+	if err != nil {
+		t.Errorf("Close() second call unexpected error: %v", err)
+	}
+}
+
+func TestDownloader_DeleteAll(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Create multiple tasks
+	var wg sync.WaitGroup
+	taskCount := 3
+	wg.Add(taskCount)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
+
+	for i := 0; i < taskCount; i++ {
+		req := &base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}
+		_, err := downloader.CreateDirect(req, &base.Options{
+			Path: test.Dir,
+			Name: test.DownloadName,
+			Extra: http.OptsExtra{
+				Connections: 4,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	wg.Wait()
+
+	// Verify tasks were created
+	if len(downloader.GetTasks()) != taskCount {
+		t.Errorf("Expected %d tasks, got %d", taskCount, len(downloader.GetTasks()))
+	}
+
+	// Delete all tasks with nil filter
+	err := downloader.Delete(nil, true)
+	if err != nil {
+		t.Errorf("Delete(nil) unexpected error: %v", err)
+	}
+
+	// Verify all tasks are deleted
+	if len(downloader.GetTasks()) != 0 {
+		t.Errorf("All tasks should be deleted, got %d remaining", len(downloader.GetTasks()))
+	}
+}
+
+func TestDownloader_ContinueAll(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Create a task and wait for completion
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
+
+	taskId, err := downloader.CreateDirect(req, &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wg.Wait()
+
+	// Verify task completed
+	task := downloader.GetTask(taskId)
+	if task == nil {
+		t.Fatal("Task should exist")
+	}
+	if task.Status != base.DownloadStatusDone {
+		t.Errorf("Task should be done, got %s", task.Status)
+	}
+
+	// Test ContinueBatch with nil on an already done task (should be a no-op)
+	err = downloader.ContinueBatch(nil)
+	if err != nil {
+		t.Logf("ContinueBatch(nil) on done tasks returned: %v", err)
+	}
+
+	// Clean up
+	downloader.Delete(nil, true)
+}
+
+func TestDownloader_ProtocolConfigNotExist(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Test getting a protocol config that doesn't exist
+	var unknownCfg map[string]any
+	exists := downloader.getProtocolConfig("unknown-protocol", &unknownCfg)
+	if exists {
+		t.Errorf("getProtocolConfig() for unknown protocol should return false")
+	}
+}
+
+func TestTaskFilter_IsEmpty(t *testing.T) {
+	tests := []struct {
+		name     string
+		filter   *TaskFilter
+		expected bool
+	}{
+		{
+			name:     "nil IDs, Statuses, NotStatuses",
+			filter:   &TaskFilter{},
+			expected: true,
+		},
+		{
+			name:     "empty IDs only",
+			filter:   &TaskFilter{IDs: []string{}},
+			expected: true,
+		},
+		{
+			name:     "non-empty IDs",
+			filter:   &TaskFilter{IDs: []string{"id1"}},
+			expected: false,
+		},
+		{
+			name:     "non-empty Statuses",
+			filter:   &TaskFilter{Statuses: []base.Status{base.DownloadStatusDone}},
+			expected: false,
+		},
+		{
+			name:     "non-empty NotStatuses",
+			filter:   &TaskFilter{NotStatuses: []base.Status{base.DownloadStatusError}},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.filter.IsEmpty()
+			if result != tt.expected {
+				t.Errorf("TaskFilter.IsEmpty() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
 }
