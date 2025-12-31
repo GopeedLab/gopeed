@@ -173,6 +173,39 @@ func StartTestCustomServer() net.Listener {
 	})
 }
 
+// StartTestHostHeaderServer starts a server that validates the Host header
+// Returns 400 Bad Request if the Host header value equals "test"
+func StartTestHostHeaderServer() net.Listener {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+			// If the Host header is "test", return 400 (simulating server that validates Host)
+			if request.Host == "test" {
+				writer.WriteHeader(400)
+				writer.Write([]byte("Bad Request: Invalid Host header"))
+				return
+			}
+			writer.WriteHeader(200)
+			writer.Write([]byte("OK"))
+		})
+		return mux
+	})
+}
+
+// StartTestRootServer starts a simple server at the root path
+// Used to test URL resolution when no filename is provided
+func StartTestRootServer() net.Listener {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+			writer.Header().Set("Content-Type", "text/html")
+			writer.WriteHeader(200)
+			writer.Write([]byte("<html><body>Test Page</body></html>"))
+		})
+		return mux
+	})
+}
+
 func StartTestRetryServer() net.Listener {
 	counter := 0
 	return startTestServer(func(sl *shutdownListener) http.Handler {
