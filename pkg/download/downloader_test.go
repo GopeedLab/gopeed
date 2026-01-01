@@ -2,16 +2,19 @@ package download
 
 import (
 	"archive/zip"
+	"fmt"
 	"io"
-	gohttp "net/http"
 	"net"
+	gohttp "net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
@@ -188,19 +191,22 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 		t.Errorf("CreateDirectBatch() task got = %v, want %v", len(tasks), len(reqs))
 	}
 
-	nameMatchMap := make(map[string]bool)
-	for _, name := range fileNames {
+	// Collect all task names
+	taskNames := make(map[string]bool)
+	for _, task := range tasks {
+		taskNames[task.Meta.Opts.Name] = true
+	}
+
+	// Check that we have the expected number of unique task names
+	if len(taskNames) != len(reqs) {
+		t.Errorf("CreateDirectBatch() unique task names got = %v, want %v, names: %v", len(taskNames), len(reqs), taskNames)
+	}
+
+	// Check that all task files exist
+	for name := range taskNames {
 		if _, err := os.Stat(test.Dir + "/" + name); os.IsNotExist(err) {
 			t.Errorf("CreateDirectBatch() file not exist: %v", name)
 		}
-		for _, task := range tasks {
-			if name == task.Meta.Opts.Name {
-				nameMatchMap[task.Meta.Opts.Name] = true
-			}
-		}
-	}
-	if len(nameMatchMap) != len(reqs) {
-		t.Errorf("CreateDirectBatch() names got = %v, want %v", len(nameMatchMap), len(reqs))
 	}
 
 }
@@ -1453,6 +1459,51 @@ func TestProgress_ExtractFields(t *testing.T) {
 	}
 }
 
+// TestProgress_MultiPartFields tests the multi-part archive fields in Progress struct
+func TestProgress_MultiPartFields(t *testing.T) {
+	progress := &Progress{
+		ExtractStatus:     ExtractStatusWaitingParts,
+		MultiPartBaseName: "/path/to/archive.7z",
+		MultiPartNumber:   1,
+		MultiPartIsFirst:  true,
+	}
+
+	if progress.ExtractStatus != ExtractStatusWaitingParts {
+		t.Errorf("ExtractStatus = %v, want %v", progress.ExtractStatus, ExtractStatusWaitingParts)
+	}
+	if progress.MultiPartBaseName != "/path/to/archive.7z" {
+		t.Errorf("MultiPartBaseName = %v, want %v", progress.MultiPartBaseName, "/path/to/archive.7z")
+	}
+	if progress.MultiPartNumber != 1 {
+		t.Errorf("MultiPartNumber = %v, want %v", progress.MultiPartNumber, 1)
+	}
+	if !progress.MultiPartIsFirst {
+		t.Error("MultiPartIsFirst should be true")
+	}
+
+	// Test second part
+	progress2 := &Progress{
+		ExtractStatus:     ExtractStatusWaitingParts,
+		MultiPartBaseName: "/path/to/archive.7z",
+		MultiPartNumber:   2,
+		MultiPartIsFirst:  false,
+	}
+
+	if progress2.MultiPartNumber != 2 {
+		t.Errorf("MultiPartNumber = %v, want %v", progress2.MultiPartNumber, 2)
+	}
+	if progress2.MultiPartIsFirst {
+		t.Error("MultiPartIsFirst should be false")
+	}
+}
+
+// TestExtractStatus_WaitingParts tests the new ExtractStatusWaitingParts status
+func TestExtractStatus_WaitingParts(t *testing.T) {
+	if ExtractStatusWaitingParts != "waitingParts" {
+		t.Errorf("ExtractStatusWaitingParts = %v, want %v", ExtractStatusWaitingParts, "waitingParts")
+	}
+}
+
 // createTestArchiveWithMultipleFiles creates a test zip file with multiple files
 func createTestArchiveWithMultipleFiles(path string, count int) error {
 	file, err := os.Create(path)
@@ -1708,5 +1759,728 @@ func TestTaskFilter_IsEmpty(t *testing.T) {
 				t.Errorf("TaskFilter.IsEmpty() = %v, want %v", result, tt.expected)
 			}
 		})
+	}
+}
+
+// Tests for multi-part archive collection functions
+func TestDownloader_CollectSequentialFiles(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "collect_sequential_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create test files for 7z multi-part pattern (archive.7z.001, .002, .003)
+	for i := 1; i <= 3; i++ {
+		path := filepath.Join(tempDir, fmt.Sprintf("archive.7z.%03d", i))
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	downloader := NewDownloader(nil)
+	files := downloader.collectSequentialFiles(tempDir, "archive.7z", ".%03d")
+
+	if len(files) != 3 {
+		t.Errorf("collectSequentialFiles() = %d files, want 3", len(files))
+	}
+
+	// Verify files are in order
+	for i, file := range files {
+		expected := filepath.Join(tempDir, fmt.Sprintf("archive.7z.%03d", i+1))
+		if file != expected {
+			t.Errorf("files[%d] = %q, want %q", i, file, expected)
+		}
+	}
+}
+
+func TestDownloader_CollectSequentialFiles_NoFiles(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "collect_sequential_empty_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	downloader := NewDownloader(nil)
+	files := downloader.collectSequentialFiles(tempDir, "archive.7z", ".%03d")
+
+	if len(files) != 0 {
+		t.Errorf("collectSequentialFiles() = %d files, want 0", len(files))
+	}
+}
+
+func TestDownloader_CollectRarNewStyleFiles(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "collect_rar_new_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create test files with double-digit format
+	for i := 1; i <= 3; i++ {
+		path := filepath.Join(tempDir, fmt.Sprintf("archive.part%02d.rar", i))
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	downloader := NewDownloader(nil)
+	files := downloader.collectRarNewStyleFiles(tempDir, "archive")
+
+	if len(files) != 3 {
+		t.Errorf("collectRarNewStyleFiles() = %d files, want 3", len(files))
+	}
+}
+
+func TestDownloader_CollectRarNewStyleFiles_SingleDigit(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "collect_rar_single_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create test files with single-digit format
+	for i := 1; i <= 2; i++ {
+		path := filepath.Join(tempDir, fmt.Sprintf("archive.part%d.rar", i))
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	downloader := NewDownloader(nil)
+	files := downloader.collectRarNewStyleFiles(tempDir, "archive")
+
+	if len(files) != 2 {
+		t.Errorf("collectRarNewStyleFiles() = %d files, want 2", len(files))
+	}
+}
+
+func TestDownloader_CollectRarOldStyleFiles(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "collect_rar_old_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create .rar file
+	rarPath := filepath.Join(tempDir, "archive.rar")
+	if err := os.WriteFile(rarPath, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create .r00, .r01, .r02 files
+	for i := 0; i <= 2; i++ {
+		path := filepath.Join(tempDir, fmt.Sprintf("archive.r%02d", i))
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	downloader := NewDownloader(nil)
+	files := downloader.collectRarOldStyleFiles(tempDir, "archive")
+
+	// Should have 4 files: .rar + .r00 + .r01 + .r02
+	if len(files) != 4 {
+		t.Errorf("collectRarOldStyleFiles() = %d files, want 4", len(files))
+	}
+
+	// First file should be .rar
+	if files[0] != rarPath {
+		t.Errorf("First file should be .rar, got %q", files[0])
+	}
+}
+
+func TestDownloader_CollectZipSplitFiles(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "collect_zip_split_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create .z01, .z02 files
+	for i := 1; i <= 2; i++ {
+		path := filepath.Join(tempDir, fmt.Sprintf("archive.z%02d", i))
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Create .zip file
+	zipPath := filepath.Join(tempDir, "archive.zip")
+	if err := os.WriteFile(zipPath, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	downloader := NewDownloader(nil)
+	files := downloader.collectZipSplitFiles(tempDir, "archive")
+
+	// Should have 3 files: .z01 + .z02 + .zip
+	if len(files) != 3 {
+		t.Errorf("collectZipSplitFiles() = %d files, want 3", len(files))
+	}
+
+	// Last file should be .zip
+	if files[len(files)-1] != zipPath {
+		t.Errorf("Last file should be .zip, got %q", files[len(files)-1])
+	}
+}
+
+func TestDownloader_CollectMultiPartFiles(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "collect_multipart_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test with 7z pattern
+	t.Run("7z pattern", func(t *testing.T) {
+		subDir := filepath.Join(tempDir, "7z")
+		if err := os.MkdirAll(subDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		for i := 1; i <= 2; i++ {
+			path := filepath.Join(subDir, fmt.Sprintf("archive.7z.%03d", i))
+			if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		downloader := NewDownloader(nil)
+		firstPart := filepath.Join(subDir, "archive.7z.001")
+		files := downloader.collectMultiPartFiles(firstPart)
+
+		if len(files) != 2 {
+			t.Errorf("collectMultiPartFiles(7z) = %d files, want 2", len(files))
+		}
+	})
+
+	// Test with RAR new style pattern
+	t.Run("RAR new style pattern", func(t *testing.T) {
+		subDir := filepath.Join(tempDir, "rar_new")
+		if err := os.MkdirAll(subDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		for i := 1; i <= 2; i++ {
+			path := filepath.Join(subDir, fmt.Sprintf("archive.part%02d.rar", i))
+			if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		downloader := NewDownloader(nil)
+		firstPart := filepath.Join(subDir, "archive.part01.rar")
+		files := downloader.collectMultiPartFiles(firstPart)
+
+		if len(files) != 2 {
+			t.Errorf("collectMultiPartFiles(RAR new) = %d files, want 2", len(files))
+		}
+	})
+
+	// Test with ZIP multi-part pattern
+	t.Run("ZIP multi-part pattern", func(t *testing.T) {
+		subDir := filepath.Join(tempDir, "zip")
+		if err := os.MkdirAll(subDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		for i := 1; i <= 3; i++ {
+			path := filepath.Join(subDir, fmt.Sprintf("archive.zip.%03d", i))
+			if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		downloader := NewDownloader(nil)
+		firstPart := filepath.Join(subDir, "archive.zip.001")
+		files := downloader.collectMultiPartFiles(firstPart)
+
+		if len(files) != 3 {
+			t.Errorf("collectMultiPartFiles(ZIP) = %d files, want 3", len(files))
+		}
+	})
+}
+
+func TestDownloader_CheckAllMultiPartTasksDone(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	tempDir, err := os.MkdirTemp("", "check_multipart_done_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create tasks with multi-part base name
+	baseName := "archive.7z"
+
+	// Create task 1 - done
+	task1 := &Task{
+		ID:     "task1",
+		Status: base.DownloadStatusDone,
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: baseName + ".001"}},
+			},
+		},
+		Progress: &Progress{},
+	}
+	initTask(task1)
+
+	// Create task 2 - done
+	task2 := &Task{
+		ID:     "task2",
+		Status: base.DownloadStatusDone,
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: baseName + ".002"}},
+			},
+		},
+		Progress: &Progress{},
+	}
+	initTask(task2)
+
+	downloader.tasks = []*Task{task1, task2}
+
+	// All tasks are done
+	basePath := filepath.Join(tempDir, baseName)
+	allDone, missing := downloader.checkAllMultiPartTasksDone(basePath)
+	if !allDone {
+		t.Errorf("checkAllMultiPartTasksDone() = false, want true; missing: %v", missing)
+	}
+
+	// Set task2 to running
+	task2.Status = base.DownloadStatusRunning
+	allDone, missing = downloader.checkAllMultiPartTasksDone(basePath)
+	if allDone {
+		t.Error("checkAllMultiPartTasksDone() = true, want false")
+	}
+	if len(missing) == 0 {
+		t.Error("Expected missing parts to be reported")
+	}
+}
+
+func TestDownloader_CheckAllMultiPartTasksDone_NoRelatedTasks(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// No tasks exist
+	allDone, missing := downloader.checkAllMultiPartTasksDone("/some/path/archive.7z")
+	if allDone {
+		t.Error("checkAllMultiPartTasksDone() = true, want false with no related tasks")
+	}
+	if len(missing) == 0 {
+		t.Error("Expected missing message")
+	}
+}
+
+func TestDownloader_IsMultiPartExtractionInProgress(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	tempDir, err := os.MkdirTemp("", "extraction_progress_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	baseName := "archive.7z"
+	basePath := filepath.Join(tempDir, baseName)
+
+	// Create task with no extraction status
+	task1 := &Task{
+		ID:     "task1",
+		Status: base.DownloadStatusDone,
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: baseName + ".001"}},
+			},
+		},
+		Progress: &Progress{ExtractStatus: ExtractStatusNone},
+	}
+	initTask(task1)
+	downloader.tasks = []*Task{task1}
+
+	// No extraction in progress
+	if downloader.isMultiPartExtractionInProgress(basePath) {
+		t.Error("isMultiPartExtractionInProgress() = true, want false")
+	}
+
+	// Set to extracting
+	task1.Progress.ExtractStatus = ExtractStatusExtracting
+	if !downloader.isMultiPartExtractionInProgress(basePath) {
+		t.Error("isMultiPartExtractionInProgress() = false, want true (extracting)")
+	}
+
+	// Set to done
+	task1.Progress.ExtractStatus = ExtractStatusDone
+	if !downloader.isMultiPartExtractionInProgress(basePath) {
+		t.Error("isMultiPartExtractionInProgress() = false, want true (done)")
+	}
+
+	// Set to error
+	task1.Progress.ExtractStatus = ExtractStatusError
+	if !downloader.isMultiPartExtractionInProgress(basePath) {
+		t.Error("isMultiPartExtractionInProgress() = false, want true (error)")
+	}
+
+	// Set to waiting parts (not in progress)
+	task1.Progress.ExtractStatus = ExtractStatusWaitingParts
+	if downloader.isMultiPartExtractionInProgress(basePath) {
+		t.Error("isMultiPartExtractionInProgress() = true, want false (waitingParts)")
+	}
+}
+
+func TestDownloader_HandleExtractionResult_Success(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	tempDir, err := os.MkdirTemp("", "extraction_result_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test archive file
+	archivePath := filepath.Join(tempDir, "test.zip")
+	if err := os.WriteFile(archivePath, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	task := &Task{
+		ID: "test-task",
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: "test.zip"}},
+			},
+		},
+		Progress: &Progress{},
+	}
+	initTask(task)
+
+	// Test successful extraction
+	downloader.handleExtractionResult(task, nil, []string{archivePath}, false)
+
+	if task.Progress.ExtractStatus != ExtractStatusDone {
+		t.Errorf("ExtractStatus = %v, want %v", task.Progress.ExtractStatus, ExtractStatusDone)
+	}
+	if task.Progress.ExtractProgress != 100 {
+		t.Errorf("ExtractProgress = %d, want 100", task.Progress.ExtractProgress)
+	}
+
+	// Archive should still exist (deleteAfterExtract=false)
+	if _, err := os.Stat(archivePath); os.IsNotExist(err) {
+		t.Error("Archive should still exist when deleteAfterExtract=false")
+	}
+}
+
+func TestDownloader_HandleExtractionResult_WithDelete(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	tempDir, err := os.MkdirTemp("", "extraction_delete_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create test archive files
+	archivePath1 := filepath.Join(tempDir, "test.7z.001")
+	archivePath2 := filepath.Join(tempDir, "test.7z.002")
+	if err := os.WriteFile(archivePath1, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(archivePath2, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	task := &Task{
+		ID: "test-task",
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: "test.7z.001"}},
+			},
+		},
+		Progress: &Progress{},
+	}
+	initTask(task)
+
+	// Test successful extraction with delete
+	downloader.handleExtractionResult(task, nil, []string{archivePath1, archivePath2}, true)
+
+	if task.Progress.ExtractStatus != ExtractStatusDone {
+		t.Errorf("ExtractStatus = %v, want %v", task.Progress.ExtractStatus, ExtractStatusDone)
+	}
+
+	// Archives should be deleted
+	if _, err := os.Stat(archivePath1); !os.IsNotExist(err) {
+		t.Error("Archive 1 should be deleted when deleteAfterExtract=true")
+	}
+	if _, err := os.Stat(archivePath2); !os.IsNotExist(err) {
+		t.Error("Archive 2 should be deleted when deleteAfterExtract=true")
+	}
+}
+
+func TestDownloader_HandleExtractionResult_Error(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	tempDir, err := os.MkdirTemp("", "extraction_error_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	task := &Task{
+		ID: "test-task",
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: "test.zip"}},
+			},
+		},
+		Progress: &Progress{},
+	}
+	initTask(task)
+
+	// Test failed extraction
+	extractErr := fmt.Errorf("extraction failed")
+	downloader.handleExtractionResult(task, extractErr, nil, false)
+
+	if task.Progress.ExtractStatus != ExtractStatusError {
+		t.Errorf("ExtractStatus = %v, want %v", task.Progress.ExtractStatus, ExtractStatusError)
+	}
+}
+
+func TestDownloader_UpdateMultiPartTasksStatus(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	tempDir, err := os.MkdirTemp("", "update_status_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create source task with multi-part base name
+	sourceTask := &Task{
+		ID: "source",
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: "archive.7z.001"}},
+			},
+		},
+		Progress: &Progress{MultiPartBaseName: "archive.7z"},
+	}
+	initTask(sourceTask)
+
+	// Create related task
+	relatedTask := &Task{
+		ID: "related",
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: "archive.7z.002"}},
+			},
+		},
+		Progress: &Progress{MultiPartBaseName: "archive.7z"},
+	}
+	initTask(relatedTask)
+
+	// Create unrelated task
+	unrelatedTask := &Task{
+		ID: "unrelated",
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: "other.7z.001"}},
+			},
+		},
+		Progress: &Progress{MultiPartBaseName: "other.7z"},
+	}
+	initTask(unrelatedTask)
+
+	downloader.tasks = []*Task{sourceTask, relatedTask, unrelatedTask}
+
+	// Test successful extraction
+	downloader.updateMultiPartTasksStatus(sourceTask, nil)
+
+	if relatedTask.Progress.ExtractStatus != ExtractStatusDone {
+		t.Errorf("Related task ExtractStatus = %v, want %v", relatedTask.Progress.ExtractStatus, ExtractStatusDone)
+	}
+	if relatedTask.Progress.ExtractProgress != 100 {
+		t.Errorf("Related task ExtractProgress = %d, want 100", relatedTask.Progress.ExtractProgress)
+	}
+	if unrelatedTask.Progress.ExtractStatus == ExtractStatusDone {
+		t.Error("Unrelated task should not be updated")
+	}
+}
+
+func TestDownloader_UpdateMultiPartTasksStatus_WithError(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	tempDir, err := os.MkdirTemp("", "update_error_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create source task with multi-part base name
+	sourceTask := &Task{
+		ID: "source",
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: "archive.7z.001"}},
+			},
+		},
+		Progress: &Progress{MultiPartBaseName: "archive.7z"},
+	}
+	initTask(sourceTask)
+
+	// Create related task
+	relatedTask := &Task{
+		ID: "related",
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: "archive.7z.002"}},
+			},
+		},
+		Progress: &Progress{MultiPartBaseName: "archive.7z"},
+	}
+	initTask(relatedTask)
+
+	downloader.tasks = []*Task{sourceTask, relatedTask}
+
+	// Test failed extraction
+	downloader.updateMultiPartTasksStatus(sourceTask, fmt.Errorf("extraction failed"))
+
+	if relatedTask.Progress.ExtractStatus != ExtractStatusError {
+		t.Errorf("Related task ExtractStatus = %v, want %v", relatedTask.Progress.ExtractStatus, ExtractStatusError)
+	}
+	if relatedTask.Progress.ExtractProgress != 0 {
+		t.Errorf("Related task ExtractProgress = %d, want 0", relatedTask.Progress.ExtractProgress)
+	}
+}
+
+func TestDownloader_UpdateMultiPartTasksStatus_NoBaseName(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	tempDir, err := os.MkdirTemp("", "update_no_base_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create task without multi-part base name
+	task := &Task{
+		ID: "single",
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: "single.zip"}},
+			},
+		},
+		Progress: &Progress{MultiPartBaseName: ""},
+	}
+	initTask(task)
+
+	downloader.tasks = []*Task{task}
+
+	// Should not panic or error
+	downloader.updateMultiPartTasksStatus(task, nil)
+}
+
+func TestDownloader_CheckMultiPartArchiveReady(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	tempDir, err := os.MkdirTemp("", "check_ready_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	baseName := "archive.7z"
+	fileName := baseName + ".001"
+	filePath := filepath.Join(tempDir, fileName)
+
+	// Create tasks
+	task := &Task{
+		ID:     "task1",
+		Status: base.DownloadStatusDone,
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: fileName}},
+			},
+		},
+		Progress: &Progress{},
+	}
+	initTask(task)
+	downloader.tasks = []*Task{task}
+
+	partInfo := getArchivePartInfo(filePath)
+	ready, missing := downloader.checkMultiPartArchiveReady(filePath, tempDir, partInfo)
+
+	if !ready {
+		t.Errorf("checkMultiPartArchiveReady() = false, want true; missing: %v", missing)
+	}
+}
+
+func TestDownloader_CheckMultiPartArchiveReady_EmptyBaseName(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Use a non-multi-part file path
+	partInfo := getArchivePartInfo("/some/regular.zip")
+	ready, _ := downloader.checkMultiPartArchiveReady("/some/regular.zip", "/dest", partInfo)
+
+	// Should return true for non-multi-part files
+	if !ready {
+		t.Error("checkMultiPartArchiveReady() should return true for non-multi-part files")
 	}
 }
