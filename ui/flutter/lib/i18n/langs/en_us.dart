@@ -36,6 +36,7 @@ const enUS = {
     'downloadDirValid': 'Please select the download directory',
     'connections': 'Connections',
     'useServerCtime': 'Use server time for file creation',
+    'autoTorrent': 'Auto download torrent files',
     'maxRunning': 'Max Running Tasks',
     'defaultDirectDownload': 'Check direct download by default',
     'items': '@count items',

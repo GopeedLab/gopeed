@@ -35,6 +35,7 @@ const viVN = {
     'downloadDirValid': 'Vui lòng chọn thư mục tải về',
     'connections': 'Kết nối',
     'useServerCtime': 'Sử dụng thời gian máy chủ cho việc tạo tệp',
+    'autoTorrent': 'Tự động tải xuống tập tin torrent',
     'maxRunning': 'Số nhiệm vụ tối đa',
     'items': '@count mục',
     'subscribeTracker': 'Theo dõi Tracker',

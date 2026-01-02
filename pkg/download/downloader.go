@@ -18,6 +18,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
+	internalhttp "github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -888,7 +889,13 @@ func (d *Downloader) watch(task *Task) {
 
 	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
 		downloadFilePath := task.Meta.SingleFilepath()
-		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
+		// Check global HTTP config for AutoTorrent setting
+		var httpCfg internalhttp.Config
+		autoTorrent := false
+		if d.getProtocolConfig(task.fetcherManager.Name(), &httpCfg) {
+			autoTorrent = httpCfg.AutoTorrent
+		}
+		if autoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
 			go func() {
 				_, err2 := d.CreateDirect(
 					&base.Request{

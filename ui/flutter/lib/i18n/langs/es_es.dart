@@ -37,6 +37,7 @@ const esES = {
     'downloadDirValid': 'Por favor, selecciona el directorio de descarga',
     'connections': 'Conexiones',
     'useServerCtime': 'Usar tiempo del servidor para la creación de archivos',
+    'autoTorrent': 'Descargar automáticamente archivos torrent',
     'maxRunning': 'Máximo de Tareas en Ejecución',
     'items': '@count elementos',
     'subscribeTracker': 'Suscribirse al Tracker',

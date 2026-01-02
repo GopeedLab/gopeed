@@ -36,6 +36,7 @@ const itIT = {
     'downloadDirValid': 'Seleziona la directory di scaricamento',
     'connections': 'Connessioni',
     'useServerCtime': "Utilizza l'ora del server per la creazione dei file",
+    'autoTorrent': 'Scarica automaticamente i file torrent',
     'maxRunning': 'Numero massimo di attività in esecuzione',
     'items': '@count elementi',
     'subscribeTracker': 'Iscriviti al tracker',

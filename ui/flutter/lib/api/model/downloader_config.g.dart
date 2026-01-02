@@ -46,6 +46,7 @@ HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
       userAgent: json['userAgent'] as String? ?? '',
       connections: (json['connections'] as num?)?.toInt() ?? 0,
       useServerCtime: json['useServerCtime'] as bool? ?? false,
+      autoTorrent: json['autoTorrent'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
@@ -53,6 +54,7 @@ Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
       'userAgent': instance.userAgent,
       'connections': instance.connections,
       'useServerCtime': instance.useServerCtime,
+      'autoTorrent': instance.autoTorrent,
     };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(

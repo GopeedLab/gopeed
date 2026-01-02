@@ -36,6 +36,7 @@ const taTA = {
     'downloadDirValid': 'பதிவிரக்குமிடத்தை தேர்வு செயுங்கள்',
     'connections': 'தொடர்புகள்',
     'useServerCtime': 'Use server time for file creation',
+    'autoTorrent': 'Auto download torrent files',
     'maxRunning': 'அதிகபட்ச இயங்கும் பணிகள்',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
