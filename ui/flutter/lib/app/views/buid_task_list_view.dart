@@ -367,7 +367,7 @@ class BuildTaskListView extends GetView {
                                 ).padding(left: 18),
                               ),
                             ],
-                          ).padding(top: 4, bottom: isExtracting ? 0 : 8),
+                          ).padding(top: 4, bottom: 8),
                           // Extraction progress bar
                           if (isExtracting)
                             LinearProgressIndicator(

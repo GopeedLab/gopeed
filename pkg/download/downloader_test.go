@@ -1420,6 +1420,7 @@ func TestExtractStatus(t *testing.T) {
 		expected string
 	}{
 		{ExtractStatusNone, ""},
+		{ExtractStatusQueued, "queued"},
 		{ExtractStatusExtracting, "extracting"},
 		{ExtractStatusDone, "done"},
 		{ExtractStatusError, "error"},
@@ -2083,7 +2084,7 @@ func TestDownloader_CheckAllMultiPartTasksDone_NoRelatedTasks(t *testing.T) {
 	}
 }
 
-func TestDownloader_IsMultiPartExtractionInProgress(t *testing.T) {
+func TestDownloader_TryClaimMultiPartExtraction(t *testing.T) {
 	downloader := NewDownloader(nil)
 	if err := downloader.Setup(); err != nil {
 		t.Fatal(err)
@@ -2097,50 +2098,80 @@ func TestDownloader_IsMultiPartExtractionInProgress(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	baseName := "archive.7z"
-	basePath := filepath.Join(tempDir, baseName)
+	// GetMultiPartArchiveBaseName returns filepath.Join(dir, baseName)
+	// SingleFilepath returns path.Join(Opts.Path, file.Path, file.Name)
+	// So for file.Name = "archive.7z.001" and Opts.Path = tempDir, file.Path = "",
+	// SingleFilepath = tempDir/archive.7z.001
+	// GetMultiPartArchiveBaseName extracts "archive.7z" from that and joins with dir
+	// So baseName to match = tempDir/archive.7z
+	fullBaseName := filepath.Join(tempDir, baseName)
 
 	// Create task with no extraction status
+	// Note: file.Path should be empty/relative, not absolute path
 	task1 := &Task{
 		ID:     "task1",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
 			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
-				Files: []*base.FileInfo{{Name: baseName + ".001"}},
+				Files: []*base.FileInfo{{Name: baseName + ".001", Path: ""}},
 			},
 		},
 		Progress: &Progress{ExtractStatus: ExtractStatusNone},
 	}
 	initTask(task1)
-	downloader.tasks = []*Task{task1}
 
-	// No extraction in progress
-	if downloader.isMultiPartExtractionInProgress(basePath) {
-		t.Error("isMultiPartExtractionInProgress() = true, want false")
+	task2 := &Task{
+		ID:     "task2",
+		Status: base.DownloadStatusDone,
+		Meta: &fetcher.FetcherMeta{
+			Opts: &base.Options{Path: tempDir},
+			Res: &base.Resource{
+				Files: []*base.FileInfo{{Name: baseName + ".002", Path: ""}},
+			},
+		},
+		Progress: &Progress{ExtractStatus: ExtractStatusNone},
+	}
+	initTask(task2)
+
+	downloader.tasks = []*Task{task1, task2}
+
+	// Task1 should be able to claim extraction (no one has claimed yet)
+	if !downloader.tryClaimMultiPartExtraction(task1, fullBaseName) {
+		t.Error("tryClaimMultiPartExtraction() = false, want true (first claim)")
+	}
+	// task1's status should now be Queued
+	if task1.Progress.ExtractStatus != ExtractStatusQueued {
+		t.Errorf("task1.ExtractStatus = %v, want %v", task1.Progress.ExtractStatus, ExtractStatusQueued)
 	}
 
-	// Set to extracting
+	// Task2 should NOT be able to claim (task1 already claimed)
+	if downloader.tryClaimMultiPartExtraction(task2, fullBaseName) {
+		t.Error("tryClaimMultiPartExtraction() = true, want false (already claimed)")
+	}
+
+	// Reset task1 to extracting - task2 still can't claim
 	task1.Progress.ExtractStatus = ExtractStatusExtracting
-	if !downloader.isMultiPartExtractionInProgress(basePath) {
-		t.Error("isMultiPartExtractionInProgress() = false, want true (extracting)")
+	if downloader.tryClaimMultiPartExtraction(task2, fullBaseName) {
+		t.Error("tryClaimMultiPartExtraction() = true, want false (extracting)")
 	}
 
-	// Set to done
+	// Reset task1 to done - task2 still can't claim
 	task1.Progress.ExtractStatus = ExtractStatusDone
-	if !downloader.isMultiPartExtractionInProgress(basePath) {
-		t.Error("isMultiPartExtractionInProgress() = false, want true (done)")
+	if downloader.tryClaimMultiPartExtraction(task2, fullBaseName) {
+		t.Error("tryClaimMultiPartExtraction() = true, want false (done)")
 	}
 
-	// Set to error
+	// Reset task1 to error - task2 still can't claim
 	task1.Progress.ExtractStatus = ExtractStatusError
-	if !downloader.isMultiPartExtractionInProgress(basePath) {
-		t.Error("isMultiPartExtractionInProgress() = false, want true (error)")
+	if downloader.tryClaimMultiPartExtraction(task2, fullBaseName) {
+		t.Error("tryClaimMultiPartExtraction() = true, want false (error)")
 	}
 
-	// Set to waiting parts (not in progress)
+	// Reset task1 to waiting parts - now task2 CAN claim
 	task1.Progress.ExtractStatus = ExtractStatusWaitingParts
-	if downloader.isMultiPartExtractionInProgress(basePath) {
-		t.Error("isMultiPartExtractionInProgress() = true, want false (waitingParts)")
+	if !downloader.tryClaimMultiPartExtraction(task2, fullBaseName) {
+		t.Error("tryClaimMultiPartExtraction() = false, want true (other task waiting)")
 	}
 }
 
