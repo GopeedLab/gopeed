@@ -104,6 +104,10 @@ type Downloader struct {
 	checkDuplicateLock *sync.Mutex
 	closed             atomic.Bool
 
+	// claimedExtractions tracks which multi-part archives have been claimed for extraction
+	// Key: fullBaseName (e.g., "/path/archive.7z"), Value: taskID that claimed it
+	claimedExtractions sync.Map
+
 	extensions []*Extension
 }
 
@@ -1341,32 +1345,15 @@ func (d *Downloader) checkAllMultiPartTasksDone(baseName string) (bool, []string
 
 // tryClaimMultiPartExtraction atomically checks if extraction can be claimed for a multi-part archive
 // and if so, marks the task as queued. Returns true if this task should proceed with queueing.
-// This prevents race conditions where multiple tasks try to queue extraction simultaneously.
+// This uses sync.Map.LoadOrStore for atomic claim to prevent race conditions.
 func (d *Downloader) tryClaimMultiPartExtraction(task *Task, baseName string) bool {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
-	// Check if any task for this multi-part archive has already claimed extraction
-	for _, t := range d.tasks {
-		if t.ID == task.ID {
-			continue // Skip the current task
-		}
-		taskBaseName := ""
-		if t.Meta != nil && t.Meta.Res != nil && len(t.Meta.Res.Files) > 0 {
-			taskBaseName = GetMultiPartArchiveBaseName(t.Meta.SingleFilepath())
-		}
-		if taskBaseName == baseName {
-			// Check if this task is already queued, extracting, or has completed extraction
-			if t.Progress.ExtractStatus == ExtractStatusQueued ||
-				t.Progress.ExtractStatus == ExtractStatusExtracting ||
-				t.Progress.ExtractStatus == ExtractStatusDone ||
-				t.Progress.ExtractStatus == ExtractStatusError {
-				return false // Another task already claimed it
-			}
-		}
+	// Use LoadOrStore for atomic claim - if another goroutine already stored a value, we get that value back
+	_, alreadyClaimed := d.claimedExtractions.LoadOrStore(baseName, task.ID)
+	if alreadyClaimed {
+		return false // Another task already claimed it
 	}
 
-	// No other task has claimed it - this task claims it now (while still holding the lock)
+	// This task successfully claimed it
 	task.Progress.ExtractStatus = ExtractStatusQueued
 	return true
 }
@@ -1390,6 +1377,9 @@ func (d *Downloader) performExtraction(task *Task, archivePath string, destDir s
 
 // performMultiPartExtraction performs extraction for a multi-part archive
 func (d *Downloader) performMultiPartExtraction(task *Task, firstPartPath string, destDir string, opts *http.OptsExtra) {
+	// Get the baseName for releasing the claim later
+	fullBaseName := GetMultiPartArchiveBaseName(firstPartPath)
+
 	// Set extraction status to extracting
 	task.Progress.ExtractStatus = ExtractStatusExtracting
 	task.Progress.ExtractProgress = 0
@@ -1411,6 +1401,9 @@ func (d *Downloader) performMultiPartExtraction(task *Task, firstPartPath string
 
 	// Update status for all related multi-part tasks
 	d.updateMultiPartTasksStatus(task, extractErr)
+
+	// Release the claim so future downloads of the same archive can be extracted
+	d.claimedExtractions.Delete(fullBaseName)
 }
 
 // collectMultiPartFiles collects all files belonging to a multi-part archive
