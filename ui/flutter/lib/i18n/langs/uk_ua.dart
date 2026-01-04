@@ -123,6 +123,7 @@ const ukUA = {
     'extracting': 'Розпакування',
     'extractDone': 'Розпакування завершено',
     'extractError': 'Помилка розпакування',
+    'waitingParts': 'Очікування частин',
     'name': 'Назва',
     'size': 'Розмір',
     'unknown': 'Невідомо',

@@ -126,6 +126,7 @@ const huHU = {
     'extracting': 'Kicsomagolás',
     'extractDone': 'Kicsomagolás befejezve',
     'extractError': 'Kicsomagolás sikertelen',
+    'waitingParts': 'Várakozás a részekre',
     'name': 'Név',
     'size': 'Méret',
     'unknown': 'Ismeretlen',

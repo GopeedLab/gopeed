@@ -195,6 +195,8 @@ class BuildTaskListView extends GetView {
           return 'extractDone'.tr;
         case ExtractStatus.error:
           return 'extractError'.tr;
+        case ExtractStatus.waitingParts:
+          return 'waitingParts'.tr;
         default:
           return '';
       }

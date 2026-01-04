@@ -132,6 +132,7 @@ const zhCN = {
     'extracting': '正在解压',
     'extractDone': '解压完成',
     'extractError': '解压失败',
+    'waitingParts': '等待分卷',
     'name': '名称',
     'size': '大小',
     'unknown': '未知',

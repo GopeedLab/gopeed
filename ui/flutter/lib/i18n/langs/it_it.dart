@@ -108,6 +108,7 @@ const itIT = {
     'extracting': 'Estrazione in corso',
     'extractDone': 'Estrazione completata',
     'extractError': 'Estrazione fallita',
+    'waitingParts': 'In attesa delle parti',
     'insertPlaceholder': 'Inserisci segnaposto',
     'placeholderYear': 'Anno corrente',
     'placeholderMonth': 'Mese corrente (01-12)',

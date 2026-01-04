@@ -106,6 +106,7 @@ const plPL = {
     'extracting': 'Rozpakowywanie',
     'extractDone': 'Rozpakowywanie zakończone',
     'extractError': 'Rozpakowywanie nie powiodło się',
+    'waitingParts': 'Oczekiwanie na części',
     'insertPlaceholder': 'Wstaw placeholder',
     'placeholderYear': 'Bieżący rok',
     'placeholderMonth': 'Bieżący miesiąc (01-12)',

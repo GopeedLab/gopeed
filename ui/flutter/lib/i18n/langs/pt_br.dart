@@ -123,6 +123,7 @@ const ptBR = {
     'extracting': 'Extraindo',
     'extractDone': 'Extração concluída',
     'extractError': 'Falha na extração',
+    'waitingParts': 'Aguardando partes',
     'name': 'Nome',
     'size': 'Tamanho',
     'unknown': 'Desconhecido',

@@ -742,6 +742,9 @@ func (d *Downloader) emit(eventKey EventKey, task *Task, errs ...error) {
 }
 
 func (d *Downloader) GetTask(id string) *Task {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
 	for _, task := range d.tasks {
 		if task.ID == id {
 			return task
@@ -751,12 +754,18 @@ func (d *Downloader) GetTask(id string) *Task {
 }
 
 func (d *Downloader) GetTasks() []*Task {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
 	return d.tasks
 }
 
 // GetTasksByFilter get tasks by filter, if filter is nil, return all tasks
 // return tasks and if match all tasks
 func (d *Downloader) GetTasksByFilter(filter *TaskFilter) []*Task {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
 	if filter == nil || filter.IsEmpty() {
 		return d.tasks
 	}
@@ -1358,6 +1367,12 @@ func (d *Downloader) tryClaimMultiPartExtraction(task *Task, baseName string) bo
 	return true
 }
 
+// releaseMultiPartExtractionClaim releases the extraction claim for a multi-part archive
+// This is primarily used for testing purposes
+func (d *Downloader) releaseMultiPartExtractionClaim(baseName string) {
+	d.claimedExtractions.Delete(baseName)
+}
+
 // performExtraction performs extraction for a regular (non-multi-part) archive
 func (d *Downloader) performExtraction(task *Task, archivePath string, destDir string, opts *http.OptsExtra) {
 	// Set extraction status to extracting
@@ -1403,7 +1418,7 @@ func (d *Downloader) performMultiPartExtraction(task *Task, firstPartPath string
 	d.updateMultiPartTasksStatus(task, extractErr)
 
 	// Release the claim so future downloads of the same archive can be extracted
-	d.claimedExtractions.Delete(fullBaseName)
+	d.releaseMultiPartExtractionClaim(fullBaseName)
 }
 
 // collectMultiPartFiles collects all files belonging to a multi-part archive

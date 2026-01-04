@@ -110,6 +110,7 @@ const frFR = {
     'extracting': 'Extraction en cours',
     'extractDone': 'Extraction terminée',
     'extractError': 'Échec de l\'extraction',
+    'waitingParts': 'En attente des parties',
     'insertPlaceholder': 'Insérer un espace réservé',
     'placeholderYear': 'Année en cours',
     'placeholderMonth': 'Mois en cours (01-12)',

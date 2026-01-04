@@ -124,6 +124,7 @@ const trTR = {
     'extracting': 'Çıkarılıyor',
     'extractDone': 'Çıkarma tamamlandı',
     'extractError': 'Çıkarma başarısız',
+    'waitingParts': 'Parçalar bekleniyor',
     'name': 'Ad',
     'size': 'Boyut',
     'unknown': 'Bilinmeyen',

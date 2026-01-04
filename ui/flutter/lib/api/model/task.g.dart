@@ -58,6 +58,7 @@ const _$ExtractStatusEnumMap = {
   ExtractStatus.extracting: 'extracting',
   ExtractStatus.done: 'done',
   ExtractStatus.error: 'error',
+  ExtractStatus.waitingParts: 'waitingParts',
 };
 
 Progress _$ProgressFromJson(Map<String, dynamic> json) => Progress(

@@ -118,6 +118,7 @@ const esES = {
     'extracting': 'Extrayendo',
     'extractDone': 'Extracción completada',
     'extractError': 'Error en la extracción',
+    'waitingParts': 'Esperando partes',
     'insertPlaceholder': 'Insertar marcador de posición',
     'placeholderYear': 'Año actual',
     'placeholderMonth': 'Mes actual (01-12)',

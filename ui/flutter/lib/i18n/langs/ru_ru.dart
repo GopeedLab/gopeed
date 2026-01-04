@@ -123,6 +123,7 @@ const ruRU = {
     'extracting': 'Распаковка',
     'extractDone': 'Распаковка завершена',
     'extractError': 'Ошибка распаковки',
+    'waitingParts': 'Ожидание частей',
     'name': 'Название',
     'size': 'Размер',
     'unknown': 'Неизвестно',

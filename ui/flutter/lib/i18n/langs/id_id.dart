@@ -120,6 +120,7 @@ const idID = {
     'extracting': 'Mengekstrak',
     'extractDone': 'Ekstraksi selesai',
     'extractError': 'Ekstraksi gagal',
+    'waitingParts': 'Menunggu bagian',
     'insertPlaceholder': 'Sisipkan placeholder',
     'placeholderYear': 'Tahun saat ini',
     'placeholderMonth': 'Bulan saat ini (01-12)',

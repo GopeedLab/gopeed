@@ -126,6 +126,7 @@ const deDE = {
     'extracting': 'Wird entpackt',
     'extractDone': 'Entpacken abgeschlossen',
     'extractError': 'Entpacken fehlgeschlagen',
+    'waitingParts': 'Warte auf Teile',
     'name': 'Name',
     'size': 'Größe',
     'unknown': 'Unbekannt',
