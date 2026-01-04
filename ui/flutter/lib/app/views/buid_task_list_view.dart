@@ -335,13 +335,19 @@ class BuildTaskListView extends GetView {
                   // Extraction status row
                   if (task.progress.extractStatus != ExtractStatus.none)
                     Builder(builder: (context) {
-                      final isExtracting =
-                          task.progress.extractStatus == ExtractStatus.extracting;
+                      final isExtracting = task.progress.extractStatus ==
+                          ExtractStatus.extracting;
                       final isExtractDone =
                           task.progress.extractStatus == ExtractStatus.done;
+                      final isWaitingParts = task.progress.extractStatus ==
+                          ExtractStatus.waitingParts;
                       final statusColor = isExtracting
                           ? Get.theme.colorScheme.primary
-                          : (isExtractDone ? Colors.green : Colors.red);
+                          : (isExtractDone
+                              ? Colors.green
+                              : isWaitingParts
+                                  ? Colors.orange
+                                  : Colors.red);
                       return Column(
                         children: [
                           Row(

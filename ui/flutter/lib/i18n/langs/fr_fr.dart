@@ -100,7 +100,8 @@ const frFR = {
     'browserExtension': 'Extension du navigateur',
     'launchAtStartup': 'Lancer au démarrage',
     'runAsMenubarApp': 'Exécuter en tant qu\'application de barre de menus',
-    'runAsMenubarAppDesc': 'Masquer l\'icône du Dock et exécuter uniquement dans la barre de menus',
+    'runAsMenubarAppDesc':
+        'Masquer l\'icône du Dock et exécuter uniquement dans la barre de menus',
     'skipVerifyCert': 'Ignorer la vérification du certificat',
     'archives': 'Archives',
     'autoExtract': 'Extraire automatiquement les archives',

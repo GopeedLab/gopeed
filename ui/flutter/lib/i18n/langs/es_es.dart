@@ -100,7 +100,8 @@ const esES = {
     'browserExtension': 'Extensión del Navegador',
     'launchAtStartup': 'Iniciar al Arranque',
     'runAsMenubarApp': 'Ejecutar como aplicación de barra de menú',
-    'runAsMenubarAppDesc': 'Ocultar icono del Dock y ejecutar solo en la barra de menú',
+    'runAsMenubarAppDesc':
+        'Ocultar icono del Dock y ejecutar solo en la barra de menú',
     'seedConfig': 'Configuración de Semilla',
     'seedKeep': 'Mantener sembrado',
     'seedRatio': 'Ratio de semilla',
