@@ -169,6 +169,29 @@ func StartTestCustomServer() net.Listener {
 			defer file.Close()
 			io.Copy(writer, file)
 		})
+		// Test endpoint for filenames with plus signs (C++ files, etc.)
+		// This tests that %2B decodes to + not space
+		mux.HandleFunc("/plus-sign-encoded", func(writer http.ResponseWriter, request *http.Request) {
+			// Use filename*= format with %2B encoding for plus signs
+			writer.Header().Set("Content-Disposition", `attachment; filename*=UTF-8''C%2B%2B%20%20Primer%20%20Plus.mobi`)
+			writer.Header().Set("Content-Type", "application/octet-stream")
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		// Test endpoint for plus sign in URL path
+		mux.HandleFunc("/C%2B%2B%20Primer.txt", func(writer http.ResponseWriter, request *http.Request) {
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
 		// Test endpoint for filename with HTML-encoded ampersand (&amp;)
 		// This tests the case from the bug report where filenames containing & are
 		// HTML-encoded as &amp; by the server, causing truncation at the semicolon.

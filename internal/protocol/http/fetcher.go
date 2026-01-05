@@ -171,9 +171,9 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	// get file filePath by URL
 	if file.Name == "" {
 		file.Name = path.Base(httpReq.URL.Path)
-		// Url decode
+		// Url decode - use PathUnescape for paths to handle %2B correctly
 		if file.Name != "" {
-			file.Name, _ = url.QueryUnescape(file.Name)
+			file.Name, _ = url.PathUnescape(file.Name)
 		}
 	}
 	// unknown file filePath
@@ -737,7 +737,8 @@ func parseFilenameExtended(cd string) string {
 	if len(parts) == 2 {
 		// parts[0] is charset (e.g., "UTF-8")
 		// parts[1] is percent-encoded value
-		decoded, err := url.QueryUnescape(parts[1])
+		// Use PathUnescape to handle %2B correctly (should decode to +, not space)
+		decoded, err := url.PathUnescape(parts[1])
 		if err == nil {
 			return decoded
 		}
@@ -746,7 +747,8 @@ func parseFilenameExtended(cd string) string {
 	// Try with single quote delimiter as well (some servers use this)
 	parts = strings.SplitN(value, "'", 3)
 	if len(parts) >= 3 {
-		decoded, err := url.QueryUnescape(parts[2])
+		// Use PathUnescape to handle %2B correctly (should decode to +, not space)
+		decoded, err := url.PathUnescape(parts[2])
 		if err == nil {
 			return decoded
 		}
@@ -773,8 +775,8 @@ func decodeFilenameParam(filename string) string {
 		}
 	}
 
-	// Try URL decoding
-	decoded := util.TryUrlQueryUnescape(filename)
+	// Try URL decoding - use PathUnescape for filenames to handle %2B correctly
+	decoded := util.TryUrlPathUnescape(filename)
 
 	// Check if the result is valid UTF-8. If not, try GBK decoding.
 	// This handles the case where Chinese Windows servers send GBK-encoded filenames
