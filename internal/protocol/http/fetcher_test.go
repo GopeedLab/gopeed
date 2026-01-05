@@ -140,45 +140,58 @@ func TestFetcher_Resolve(t *testing.T) {
 		},
 	}, t)
 
+	// Test URL without file path - should use domain/host as filename
+	listener := test.StartTestRootServer()
+	defer listener.Close()
 	fetcher := buildFetcher()
 	err := fetcher.Resolve(&base.Request{
-		URL: "http://github.com",
+		URL: "http://" + listener.Addr().String() + "/",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fetcher.Meta().Res.Files[0].Name != "github.com" {
-		t.Errorf("Resolve() got = %v, want %v", fetcher.Meta().Res, "github.com")
+	// When no filename is provided, it should use the hostname (without port) as the name
+	expectedName := "127.0.0.1"
+	if fetcher.Meta().Res.Files[0].Name != expectedName {
+		t.Errorf("Resolve() got name = %v, want %v", fetcher.Meta().Res.Files[0].Name, expectedName)
 	}
 }
 
 func TestFetcher_ResolveWithHostHeader(t *testing.T) {
+	listener := test.StartTestHostHeaderServer()
+	defer listener.Close()
+	
 	fetcher := buildFetcher()
 	err := fetcher.Resolve(&base.Request{
-		URL: "https://bing.com",
+		URL: "http://" + listener.Addr().String() + "/",
 		Extra: &http.ReqExtra{
 			Header: map[string]string{
 				"Host": "test",
 			},
 		},
 	})
+	// The server should return 400 for invalid Host header
 	if err == nil || !strings.Contains(err.Error(), "400") {
-		t.Errorf("Resolve() got = %v, want %v", err, "400")
+		t.Errorf("Resolve() got = %v, want error containing 400", err)
 	}
 }
 
 func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
+	listener := test.StartTestRootServer()
+	defer listener.Close()
+	
 	fetcher := buildFetcher()
 	err := fetcher.Resolve(&base.Request{
-		URL: "https://bing.com",
+		URL: "http://" + listener.Addr().String() + "/",
 		Extra: &http.ReqExtra{
 			Header: map[string]string{
 				"Referer": "\rtest",
 			},
 		},
 	})
+	// Invalid header with \r should be sanitized by Go's http client, allowing the request to succeed
 	if err != nil {
-		t.Errorf("Resolve() got = %v, want nil", err)
+		t.Errorf("Resolve() got = %v, want nil (invalid headers should be sanitized)", err)
 	}
 }
 

@@ -16,7 +16,9 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
       ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>)
       ..webhook =
-          WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?);
+          WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
+      ..archive =
+          ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
@@ -26,6 +28,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'extra': instance.extra.toJson(),
       'proxy': instance.proxy.toJson(),
       'webhook': instance.webhook.toJson(),
+      'archive': instance.archive.toJson(),
     };
 
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>
@@ -231,4 +234,16 @@ Map<String, dynamic> _$ExtraConfigGithubMirrorToJson(
     <String, dynamic>{
       'enabled': instance.enabled,
       'mirrors': instance.mirrors.map((e) => e.toJson()).toList(),
+    };
+
+ArchiveConfig _$ArchiveConfigFromJson(Map<String, dynamic> json) =>
+    ArchiveConfig(
+      autoExtract: json['autoExtract'] as bool? ?? true,
+      deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? true,
+    );
+
+Map<String, dynamic> _$ArchiveConfigToJson(ArchiveConfig instance) =>
+    <String, dynamic>{
+      'autoExtract': instance.autoExtract,
+      'deleteAfterExtract': instance.deleteAfterExtract,
     };

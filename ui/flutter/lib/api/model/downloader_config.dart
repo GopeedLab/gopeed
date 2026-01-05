@@ -10,6 +10,7 @@ class DownloaderConfig {
   ExtraConfig extra = ExtraConfig();
   ProxyConfig proxy = ProxyConfig();
   WebhookConfig webhook = WebhookConfig();
+  ArchiveConfig archive = ArchiveConfig();
 
   DownloaderConfig({
     this.downloadDir = '',
@@ -225,4 +226,20 @@ class ExtraConfigGithubMirror {
           : _$ExtraConfigGithubMirrorFromJson(json);
 
   Map<String, dynamic> toJson() => _$ExtraConfigGithubMirrorToJson(this);
+}
+
+@JsonSerializable()
+class ArchiveConfig {
+  bool autoExtract;
+  bool deleteAfterExtract;
+
+  ArchiveConfig({
+    this.autoExtract = true,
+    this.deleteAfterExtract = true,
+  });
+
+  factory ArchiveConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? ArchiveConfig() : _$ArchiveConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ArchiveConfigToJson(this);
 }

@@ -115,6 +115,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
   @override
   void onWindowFocus() {
     refresh();
+    if (Util.isMacos() && Database.instance.getRunAsMenubarApp()) {
+      windowManager.setSkipTaskbar(true);
+    }
   }
 
   @override
