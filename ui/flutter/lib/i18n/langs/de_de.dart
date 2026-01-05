@@ -42,6 +42,7 @@ const deDE = {
     'autoTorrent': 'Torrent-Dateien automatisch herunterladen',
     'maxRunning': 'Maximale Anzahl ausgeführter Aufgaben',
     'defaultDirectDownload': 'Direkten Download standardmäßig aktivieren',
+    'autoStartTasks': 'Unvollständige Aufgaben beim Start automatisch starten',
     'items': '@count Artikel',
     'subscribeTracker': 'Abonnement-Tracker',
     'subscribeFail':
@@ -108,7 +109,8 @@ const deDE = {
     'browserExtension': 'Browsererweiterung',
     'launchAtStartup': 'Beim Start starten',
     'runAsMenubarApp': 'Als Menüleisten-App ausführen',
-    'runAsMenubarAppDesc': 'Dock-Symbol ausblenden und nur in der Menüleiste ausführen',
+    'runAsMenubarAppDesc':
+        'Dock-Symbol ausblenden und nur in der Menüleiste ausführen',
     'seedConfig': 'Seed-Konfiguration',
     'seedKeep': 'Weiter-seeden bis manuell gestoppt',
     'seedRatio': 'Seed Verhältniss',
@@ -127,6 +129,7 @@ const deDE = {
     'extracting': 'Wird entpackt',
     'extractDone': 'Entpacken abgeschlossen',
     'extractError': 'Entpacken fehlgeschlagen',
+    'waitingParts': 'Warte auf Teile',
     'name': 'Name',
     'size': 'Größe',
     'unknown': 'Unbekannt',

@@ -52,9 +52,9 @@ class _CompactCheckboxState extends State<CompactCheckbox> {
           widget.scale == null
               ? checkbox
               : Transform.scale(
-            scale: widget.scale,
-            child: checkbox,
-          ),
+                  scale: widget.scale,
+                  child: checkbox,
+                ),
           Text(
             widget.label,
             style: widget.textStyle,

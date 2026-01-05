@@ -11,7 +11,7 @@
 ///      fonts:
 ///       - asset: fonts/Gopeed.ttf
 ///
-/// 
+///
 /// * Entypo, Copyright (C) 2012 by Daniel Bruce
 ///         Author:    Daniel Bruce
 ///         License:   SIL (http://scripts.sil.org/OFL)
@@ -33,24 +33,44 @@ class Gopeed {
   static const _kFontFam = 'Gopeed';
   static const String? _kFontPkg = null;
 
-  static const IconData install = IconData(0xe800, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData android = IconData(0xe801, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData cd = IconData(0xe802, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData folder_bt = IconData(0xe803, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_bt = IconData(0xe804, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData folder = IconData(0xf07b, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData sort = IconData(0xf0dc, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData html5 = IconData(0xf13b, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file = IconData(0xf15b, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_alt = IconData(0xf15c, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_pdf = IconData(0xf1c1, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_word = IconData(0xf1c2, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_excel = IconData(0xf1c3, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_powerpoint = IconData(0xf1c4, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_image = IconData(0xf1c5, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_archive = IconData(0xf1c6, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_audio = IconData(0xf1c7, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_video = IconData(0xf1c8, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData file_code = IconData(0xf1c9, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData app_store_ios = IconData(0xf370, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData install =
+      IconData(0xe800, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData android =
+      IconData(0xe801, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData cd =
+      IconData(0xe802, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData folder_bt =
+      IconData(0xe803, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_bt =
+      IconData(0xe804, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData folder =
+      IconData(0xf07b, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData sort =
+      IconData(0xf0dc, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData html5 =
+      IconData(0xf13b, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file =
+      IconData(0xf15b, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_alt =
+      IconData(0xf15c, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_pdf =
+      IconData(0xf1c1, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_word =
+      IconData(0xf1c2, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_excel =
+      IconData(0xf1c3, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_powerpoint =
+      IconData(0xf1c4, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_image =
+      IconData(0xf1c5, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_archive =
+      IconData(0xf1c6, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_audio =
+      IconData(0xf1c7, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_video =
+      IconData(0xf1c8, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData file_code =
+      IconData(0xf1c9, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData app_store_ios =
+      IconData(0xf370, fontFamily: _kFontFam, fontPackage: _kFontPkg);
 }

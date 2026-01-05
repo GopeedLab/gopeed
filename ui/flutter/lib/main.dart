@@ -71,7 +71,8 @@ Future<void> init(Args args) async {
     final windowState = Database.instance.getWindowState();
 
     // Check if menubar mode is enabled (only for macOS)
-    final runAsMenubarApp = Util.isMacos() && Database.instance.getRunAsMenubarApp();
+    final runAsMenubarApp =
+        Util.isMacos() && Database.instance.getRunAsMenubarApp();
 
     final windowOptions = WindowOptions(
       size: Size(windowState?.width ?? 800, windowState?.height ?? 600),
@@ -130,6 +131,16 @@ Future<void> init(Args args) async {
     await controller.loadDownloaderConfig();
   } catch (e) {
     logger.e("load config fail", e);
+  }
+
+  // Auto-start incomplete tasks if enabled
+  if (controller.downloaderConfig.value.extra.autoStartTasks) {
+    try {
+      await api.continueAllTasks(null);
+      logger.i("auto-start tasks completed");
+    } catch (e) {
+      logger.w("auto-start tasks fail", e);
+    }
   }
 
   () async {

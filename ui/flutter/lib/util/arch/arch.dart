@@ -1,6 +1,6 @@
 import 'arch_stub.dart'
-  if (dart.library.io) 'entry/arch_native.dart'
-  if (dart.library.html) 'entry/arch_web.dart';
+    if (dart.library.io) 'entry/arch_native.dart'
+    if (dart.library.html) 'entry/arch_web.dart';
 
 // Copy from pkg/sky_engine/lib/ffi/abi.dart
 enum Architecture {

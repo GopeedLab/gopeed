@@ -105,7 +105,8 @@ const ptBR = {
     'browserExtension': 'Extensões para Navegadores',
     'launchAtStartup': 'Launch at Startup',
     'runAsMenubarApp': 'Executar como aplicativo da barra de menus',
-    'runAsMenubarAppDesc': 'Ocultar ícone do Dock e executar apenas na barra de menus',
+    'runAsMenubarAppDesc':
+        'Ocultar ícone do Dock e executar apenas na barra de menus',
     'seedConfig': 'Seed Config',
     'seedKeep': 'Keep seeding until manually stopped',
     'seedRatio': 'Seed ratio',
@@ -124,6 +125,7 @@ const ptBR = {
     'extracting': 'Extraindo',
     'extractDone': 'Extração concluída',
     'extractError': 'Falha na extração',
+    'waitingParts': 'Aguardando partes',
     'name': 'Nome',
     'size': 'Tamanho',
     'unknown': 'Desconhecido',

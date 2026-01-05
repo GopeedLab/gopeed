@@ -195,6 +195,8 @@ class BuildTaskListView extends GetView {
           return 'extractDone'.tr;
         case ExtractStatus.error:
           return 'extractError'.tr;
+        case ExtractStatus.waitingParts:
+          return 'waitingParts'.tr;
         default:
           return '';
       }
@@ -333,13 +335,19 @@ class BuildTaskListView extends GetView {
                   // Extraction status row
                   if (task.progress.extractStatus != ExtractStatus.none)
                     Builder(builder: (context) {
-                      final isExtracting =
-                          task.progress.extractStatus == ExtractStatus.extracting;
+                      final isExtracting = task.progress.extractStatus ==
+                          ExtractStatus.extracting;
                       final isExtractDone =
                           task.progress.extractStatus == ExtractStatus.done;
+                      final isWaitingParts = task.progress.extractStatus ==
+                          ExtractStatus.waitingParts;
                       final statusColor = isExtracting
                           ? Get.theme.colorScheme.primary
-                          : (isExtractDone ? Colors.green : Colors.red);
+                          : (isExtractDone
+                              ? Colors.green
+                              : isWaitingParts
+                                  ? Colors.orange
+                                  : Colors.red);
                       return Column(
                         children: [
                           Row(
@@ -367,7 +375,7 @@ class BuildTaskListView extends GetView {
                                 ).padding(left: 18),
                               ),
                             ],
-                          ).padding(top: 4, bottom: isExtracting ? 0 : 8),
+                          ).padding(top: 4, bottom: 8),
                           // Extraction progress bar
                           if (isExtracting)
                             LinearProgressIndicator(

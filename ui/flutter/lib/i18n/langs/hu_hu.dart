@@ -108,7 +108,8 @@ const huHU = {
     'browserExtension': 'Böngésző bővítmény',
     'launchAtStartup': 'Indítás indításkor',
     'runAsMenubarApp': 'Futtatás menüsáv alkalmazásként',
-    'runAsMenubarAppDesc': 'Dock ikon elrejtése és csak a menüsávban való futtatás',
+    'runAsMenubarAppDesc':
+        'Dock ikon elrejtése és csak a menüsávban való futtatás',
     'seedConfig': 'Seed beállítás',
     'seedKeep': 'Tartsa a seedet amíg manuálisan le nem állítják',
     'seedRatio': 'Seed arány',
@@ -127,6 +128,7 @@ const huHU = {
     'extracting': 'Kicsomagolás',
     'extractDone': 'Kicsomagolás befejezve',
     'extractError': 'Kicsomagolás sikertelen',
+    'waitingParts': 'Várakozás a részekre',
     'name': 'Név',
     'size': 'Méret',
     'unknown': 'Ismeretlen',

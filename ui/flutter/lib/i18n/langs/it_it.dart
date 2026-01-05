@@ -99,7 +99,8 @@ const itIT = {
     'browserExtension': 'Estensione del browser',
     'launchAtStartup': "Lancia all'avvio",
     'runAsMenubarApp': 'Esegui come app della barra dei menu',
-    'runAsMenubarAppDesc': 'Nascondi icona Dock ed esegui solo nella barra dei menu',
+    'runAsMenubarAppDesc':
+        'Nascondi icona Dock ed esegui solo nella barra dei menu',
     'skipVerifyCert': 'Salta la verifica del certificato',
     'archives': 'Archivi',
     'autoExtract': 'Estrai automaticamente gli archivi',
@@ -109,6 +110,7 @@ const itIT = {
     'extracting': 'Estrazione in corso',
     'extractDone': 'Estrazione completata',
     'extractError': 'Estrazione fallita',
+    'waitingParts': 'In attesa delle parti',
     'insertPlaceholder': 'Inserisci segnaposto',
     'placeholderYear': 'Anno corrente',
     'placeholderMonth': 'Mese corrente (01-12)',

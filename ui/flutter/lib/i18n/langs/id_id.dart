@@ -103,7 +103,8 @@ const idID = {
     'browserExtension': 'Ekstensi Perambanan',
     'launchAtStartup': 'Luncurkan saat Startup',
     'runAsMenubarApp': 'Jalankan sebagai aplikasi bilah menu',
-    'runAsMenubarAppDesc': 'Sembunyikan ikon Dock dan jalankan hanya di bilah menu',
+    'runAsMenubarAppDesc':
+        'Sembunyikan ikon Dock dan jalankan hanya di bilah menu',
     'seedConfig': 'Konfigurasi Seed',
     'seedKeep': 'Terus seeding hingga dihentikan secara manual',
     'seedRatio': 'Rasio Seed',
@@ -121,6 +122,7 @@ const idID = {
     'extracting': 'Mengekstrak',
     'extractDone': 'Ekstraksi selesai',
     'extractError': 'Ekstraksi gagal',
+    'waitingParts': 'Menunggu bagian',
     'insertPlaceholder': 'Sisipkan placeholder',
     'placeholderYear': 'Tahun saat ini',
     'placeholderMonth': 'Bulan saat ini (01-12)',

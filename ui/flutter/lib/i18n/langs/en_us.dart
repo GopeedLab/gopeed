@@ -39,6 +39,7 @@ const enUS = {
     'autoTorrent': 'Auto download torrent files',
     'maxRunning': 'Max Running Tasks',
     'defaultDirectDownload': 'Check direct download by default',
+    'autoStartTasks': 'Auto-start incomplete tasks on startup',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':
@@ -135,6 +136,7 @@ const enUS = {
     'extracting': 'Extracting',
     'extractDone': 'Extraction completed',
     'extractError': 'Extraction failed',
+    'waitingParts': 'Waiting for parts',
     'name': 'Name',
     'size': 'Size',
     'unknown': 'Unknown',

@@ -8,4 +8,3 @@ unregisterUrlScheme(String scheme) => doUnregisterUrlScheme(scheme);
 registerDefaultTorrentClient() => doRegisterDefaultTorrentClient();
 
 unregisterDefaultTorrentClient() => doUnregisterDefaultTorrentClient();
-

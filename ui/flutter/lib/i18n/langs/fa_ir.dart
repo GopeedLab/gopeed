@@ -72,6 +72,7 @@ const faIR = {
     'extracting': 'در حال استخراج',
     'extractDone': 'استخراج کامل شد',
     'extractError': 'استخراج ناموفق بود',
+    'waitingParts': 'در انتظار قسمت‌ها',
     'insertPlaceholder': 'درج نگهدارنده',
     'placeholderYear': 'سال جاری',
     'placeholderMonth': 'ماه جاری (01-12)',
