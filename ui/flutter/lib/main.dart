@@ -133,6 +133,16 @@ Future<void> init(Args args) async {
     logger.e("load config fail", e);
   }
 
+  // Auto-start incomplete tasks if enabled
+  if (controller.downloaderConfig.value.extra.autoStartTasks) {
+    try {
+      await api.continueAllTasks(null);
+      logger.i("auto-start tasks completed");
+    } catch (e) {
+      logger.w("auto-start tasks fail", e);
+    }
+  }
+
   () async {
     if (Util.isDesktop()) {
       try {
