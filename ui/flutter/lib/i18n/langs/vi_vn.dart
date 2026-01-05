@@ -99,6 +99,7 @@ const viVN = {
     'extracting': 'Đang giải nén',
     'extractDone': 'Giải nén hoàn tất',
     'extractError': 'Giải nén thất bại',
+    'waitingParts': 'Đang chờ các phần',
     'insertPlaceholder': 'Chèn placeholder',
     'placeholderYear': 'Năm hiện tại',
     'placeholderMonth': 'Tháng hiện tại (01-12)',

@@ -120,6 +120,7 @@ const zhTW = {
     'extracting': '正在解壓',
     'extractDone': '解壓完成',
     'extractError': '解壓失敗',
+    'waitingParts': '等待分卷',
     'name': '名稱',
     'size': '大小',
     'unknown': '未知',

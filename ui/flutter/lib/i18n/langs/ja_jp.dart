@@ -72,6 +72,7 @@ const jaJP = {
     'extracting': '展開中',
     'extractDone': '展開完了',
     'extractError': '展開失敗',
+    'waitingParts': '分割ファイルを待っています',
     'insertPlaceholder': 'プレースホルダーを挿入',
     'placeholderYear': '現在の年',
     'placeholderMonth': '現在の月 (01-12)',

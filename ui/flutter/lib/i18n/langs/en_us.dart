@@ -134,6 +134,7 @@ const enUS = {
     'extracting': 'Extracting',
     'extractDone': 'Extraction completed',
     'extractError': 'Extraction failed',
+    'waitingParts': 'Waiting for parts',
     'name': 'Name',
     'size': 'Size',
     'unknown': 'Unknown',

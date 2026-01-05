@@ -17,7 +17,9 @@ enum ExtractStatus {
   @JsonValue('done')
   done,
   @JsonValue('error')
-  error
+  error,
+  @JsonValue('waitingParts')
+  waitingParts
 }
 
 @JsonSerializable(explicitToJson: true)

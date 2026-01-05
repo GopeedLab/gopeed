@@ -179,7 +179,8 @@ class SettingView extends GetView<SettingController> {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
-          value: appController.downloaderConfig.value.archive.deleteAfterExtract,
+          value:
+              appController.downloaderConfig.value.archive.deleteAfterExtract,
           onChanged: (bool value) async {
             appController.downloaderConfig.update((val) {
               val!.archive.deleteAfterExtract = value;

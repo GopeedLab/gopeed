@@ -107,7 +107,8 @@ const deDE = {
     'browserExtension': 'Browsererweiterung',
     'launchAtStartup': 'Beim Start starten',
     'runAsMenubarApp': 'Als Menüleisten-App ausführen',
-    'runAsMenubarAppDesc': 'Dock-Symbol ausblenden und nur in der Menüleiste ausführen',
+    'runAsMenubarAppDesc':
+        'Dock-Symbol ausblenden und nur in der Menüleiste ausführen',
     'seedConfig': 'Seed-Konfiguration',
     'seedKeep': 'Weiter-seeden bis manuell gestoppt',
     'seedRatio': 'Seed Verhältniss',
@@ -126,6 +127,7 @@ const deDE = {
     'extracting': 'Wird entpackt',
     'extractDone': 'Entpacken abgeschlossen',
     'extractError': 'Entpacken fehlgeschlagen',
+    'waitingParts': 'Warte auf Teile',
     'name': 'Name',
     'size': 'Größe',
     'unknown': 'Unbekannt',

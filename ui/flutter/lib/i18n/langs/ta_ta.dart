@@ -108,6 +108,7 @@ const taTA = {
     'extracting': 'பிரித்தெடுக்கிறது',
     'extractDone': 'பிரித்தெடுத்தல் முடிந்தது',
     'extractError': 'பிரித்தெடுத்தல் தோல்வியடைந்தது',
+    'waitingParts': 'பாகங்களுக்காக காத்திருக்கிறது',
     'insertPlaceholder': 'இடங்காட்டி செருக',
     'placeholderYear': 'தற்போதைய ஆண்டு',
     'placeholderMonth': 'தற்போதைய மாதம் (01-12)',

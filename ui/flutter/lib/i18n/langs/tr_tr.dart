@@ -105,7 +105,8 @@ const trTR = {
     'browserExtension': 'Tarayıcı Eklentisi',
     'launchAtStartup': 'Başlangıçta Çalıştır',
     'runAsMenubarApp': 'Menü çubuğu uygulaması olarak çalıştır',
-    'runAsMenubarAppDesc': 'Dock simgesini gizle ve yalnızca menü çubuğunda çalıştır',
+    'runAsMenubarAppDesc':
+        'Dock simgesini gizle ve yalnızca menü çubuğunda çalıştır',
     'seedConfig': 'Seed Ayarları',
     'seedKeep': 'Manuel olarak durdurulana kadar seed etmeye devam et',
     'seedRatio': 'Seed oranı',
@@ -124,6 +125,7 @@ const trTR = {
     'extracting': 'Çıkarılıyor',
     'extractDone': 'Çıkarma tamamlandı',
     'extractError': 'Çıkarma başarısız',
+    'waitingParts': 'Parçalar bekleniyor',
     'name': 'Ad',
     'size': 'Boyut',
     'unknown': 'Bilinmeyen',

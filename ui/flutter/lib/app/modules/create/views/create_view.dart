@@ -626,10 +626,11 @@ class CreateView extends GetView<CreateController> {
                                             child: CompactCheckbox(
                                               label: 'autoExtract'.tr,
                                               value: _autoExtractController
-                                                  .value ?? false,
+                                                      .value ??
+                                                  false,
                                               onChanged: (bool? value) {
-                                                _autoExtractController
-                                                    .value = value ?? false;
+                                                _autoExtractController.value =
+                                                    value ?? false;
                                               },
                                               textStyle: const TextStyle(
                                                 color: Colors.grey,
@@ -638,33 +639,49 @@ class CreateView extends GetView<CreateController> {
                                           ),
                                           Obx(
                                             () => Visibility(
-                                              visible: _autoExtractController.value ?? false,
+                                              visible: _autoExtractController
+                                                      .value ??
+                                                  false,
                                               child: Column(
                                                 children: [
                                                   Padding(
                                                     padding:
-                                                        const EdgeInsets.only(top: 10),
+                                                        const EdgeInsets.only(
+                                                            top: 10),
                                                     child: TextFormField(
-                                                      controller: _archivePasswordController,
+                                                      controller:
+                                                          _archivePasswordController,
                                                       obscureText: true,
-                                                      decoration: InputDecoration(
-                                                        labelText: 'archivePassword'.tr,
-                                                        hintText: 'archivePasswordHint'.tr,
+                                                      decoration:
+                                                          InputDecoration(
+                                                        labelText:
+                                                            'archivePassword'
+                                                                .tr,
+                                                        hintText:
+                                                            'archivePasswordHint'
+                                                                .tr,
                                                       ),
                                                     ),
                                                   ),
                                                   Padding(
                                                     padding:
-                                                        const EdgeInsets.only(top: 10),
+                                                        const EdgeInsets.only(
+                                                            top: 10),
                                                     child: CompactCheckbox(
-                                                      label: 'deleteAfterExtract'.tr,
-                                                      value: _deleteAfterExtractController
-                                                          .value ?? false,
+                                                      label:
+                                                          'deleteAfterExtract'
+                                                              .tr,
+                                                      value:
+                                                          _deleteAfterExtractController
+                                                                  .value ??
+                                                              false,
                                                       onChanged: (bool? value) {
                                                         _deleteAfterExtractController
-                                                            .value = value ?? false;
+                                                                .value =
+                                                            value ?? false;
                                                       },
-                                                      textStyle: const TextStyle(
+                                                      textStyle:
+                                                          const TextStyle(
                                                         color: Colors.grey,
                                                       ),
                                                     ),
@@ -1031,7 +1048,8 @@ class CreateView extends GetView<CreateController> {
                     padding: const EdgeInsets.only(right: 8),
                     child: OutlinedButton(
                       onPressed: () {
-                        _pathController.text = renderPathPlaceholders(category.path);
+                        _pathController.text =
+                            renderPathPlaceholders(category.path);
                       },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(

@@ -58,6 +58,7 @@ const _$ExtractStatusEnumMap = {
   ExtractStatus.extracting: 'extracting',
   ExtractStatus.done: 'done',
   ExtractStatus.error: 'error',
+  ExtractStatus.waitingParts: 'waitingParts',
 };
 
 Progress _$ProgressFromJson(Map<String, dynamic> json) => Progress(
@@ -66,9 +67,9 @@ Progress _$ProgressFromJson(Map<String, dynamic> json) => Progress(
       downloaded: (json['downloaded'] as num).toInt(),
       uploadSpeed: (json['uploadSpeed'] as num).toInt(),
       uploaded: (json['uploaded'] as num).toInt(),
-      extractStatus: $enumDecodeNullable(
-              _$ExtractStatusEnumMap, json['extractStatus']) ??
-          ExtractStatus.none,
+      extractStatus:
+          $enumDecodeNullable(_$ExtractStatusEnumMap, json['extractStatus']) ??
+              ExtractStatus.none,
       extractProgress: (json['extractProgress'] as num?)?.toInt() ?? 0,
     );
 

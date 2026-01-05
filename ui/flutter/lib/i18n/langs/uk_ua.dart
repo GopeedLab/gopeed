@@ -104,7 +104,8 @@ const ukUA = {
     'browserExtension': 'Розширення для браузера',
     'launchAtStartup': 'Запускати під час завантаження системи',
     'runAsMenubarApp': 'Запускати як додаток у рядку меню',
-    'runAsMenubarAppDesc': 'Приховати значок у Dock і запускати лише в рядку меню',
+    'runAsMenubarAppDesc':
+        'Приховати значок у Dock і запускати лише в рядку меню',
     'seedConfig': 'Налаштування роздачі',
     'seedKeep': 'Роздавати доки не зупиню вручну',
     'seedRatio': 'Коефіцієнт роздачі',
@@ -123,6 +124,7 @@ const ukUA = {
     'extracting': 'Розпакування',
     'extractDone': 'Розпакування завершено',
     'extractError': 'Помилка розпакування',
+    'waitingParts': 'Очікування частин',
     'name': 'Назва',
     'size': 'Розмір',
     'unknown': 'Невідомо',
