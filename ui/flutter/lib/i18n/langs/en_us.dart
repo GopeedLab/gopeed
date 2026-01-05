@@ -38,6 +38,7 @@ const enUS = {
     'useServerCtime': 'Use server time for file creation',
     'maxRunning': 'Max Running Tasks',
     'defaultDirectDownload': 'Check direct download by default',
+    'autoStartTasks': 'Auto-start incomplete tasks on startup',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':

@@ -38,6 +38,7 @@ const zhTW = {
     'useServerCtime': '使用伺服器時間作為檔案建立時間',
     'maxRunning': '最大執行任務數',
     'defaultDirectDownload': '預設勾選直接下載',
+    'autoStartTasks': '啟動時自動開始未完成的任務',
     'items': '@count 個項目',
     'subscribeTracker': '訂閱 Tracker',
     'subscribeFail': '訂閱失敗，請檢查網路或稍後再試',

@@ -53,14 +53,6 @@ const _$ProtocolEnumMap = {
   Protocol.bt: 'bt',
 };
 
-const _$ExtractStatusEnumMap = {
-  ExtractStatus.none: '',
-  ExtractStatus.extracting: 'extracting',
-  ExtractStatus.done: 'done',
-  ExtractStatus.error: 'error',
-  ExtractStatus.waitingParts: 'waitingParts',
-};
-
 Progress _$ProgressFromJson(Map<String, dynamic> json) => Progress(
       used: (json['used'] as num).toInt(),
       speed: (json['speed'] as num).toInt(),
@@ -82,3 +74,11 @@ Map<String, dynamic> _$ProgressToJson(Progress instance) => <String, dynamic>{
       'extractStatus': _$ExtractStatusEnumMap[instance.extractStatus]!,
       'extractProgress': instance.extractProgress,
     };
+
+const _$ExtractStatusEnumMap = {
+  ExtractStatus.none: '',
+  ExtractStatus.extracting: 'extracting',
+  ExtractStatus.done: 'done',
+  ExtractStatus.error: 'error',
+  ExtractStatus.waitingParts: 'waitingParts',
+};
