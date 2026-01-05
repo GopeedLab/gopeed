@@ -246,7 +246,8 @@ class _DirectorySelectorState extends State<DirectorySelector> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.arrow_forward, size: 14, color: Colors.blue[700]),
+                    Icon(Icons.arrow_forward,
+                        size: 14, color: Colors.blue[700]),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
@@ -263,9 +264,10 @@ class _DirectorySelectorState extends State<DirectorySelector> {
                 ),
               );
             }
-            
+
             return TextFormField(
-              readOnly: widget.allowEdit ? false : (Util.isWeb() ? false : true),
+              readOnly:
+                  widget.allowEdit ? false : (Util.isWeb() ? false : true),
               controller: widget.controller,
               decoration: widget.showLabel
                   ? InputDecoration(

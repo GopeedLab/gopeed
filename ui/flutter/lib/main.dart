@@ -1,8 +1,10 @@
 import 'package:args/args.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'api/api.dart' as api;
@@ -67,10 +69,15 @@ Future<void> init(Args args) async {
   if (Util.isDesktop()) {
     await windowManager.ensureInitialized();
     final windowState = Database.instance.getWindowState();
+
+    // Check if menubar mode is enabled (only for macOS)
+    final runAsMenubarApp =
+        Util.isMacos() && Database.instance.getRunAsMenubarApp();
+
     final windowOptions = WindowOptions(
       size: Size(windowState?.width ?? 800, windowState?.height ?? 600),
       center: true,
-      skipTaskbar: false,
+      skipTaskbar: runAsMenubarApp,
     );
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
       if (!args.hidden) {
@@ -84,6 +91,22 @@ Future<void> init(Args args) async {
       //   await windowManager.maximize();
       // }
     });
+
+    // Register Cmd+W hotkey on macOS to close window
+    if (Util.isMacos()) {
+      await hotKeyManager.unregisterAll();
+      HotKey hotKey = HotKey(
+        key: PhysicalKeyboardKey.keyW,
+        modifiers: [HotKeyModifier.meta],
+        scope: HotKeyScope.inapp,
+      );
+      await hotKeyManager.register(
+        hotKey,
+        keyDownHandler: (hotKey) {
+          windowManager.hide();
+        },
+      );
+    }
   }
 
   initLogger();
@@ -108,6 +131,16 @@ Future<void> init(Args args) async {
     await controller.loadDownloaderConfig();
   } catch (e) {
     logger.e("load config fail", e);
+  }
+
+  // Auto-start incomplete tasks if enabled
+  if (controller.downloaderConfig.value.extra.autoStartTasks) {
+    try {
+      await api.continueAllTasks(null);
+      logger.i("auto-start tasks completed");
+    } catch (e) {
+      logger.w("auto-start tasks fail", e);
+    }
   }
 
   () async {
