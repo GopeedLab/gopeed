@@ -888,7 +888,7 @@ class CreateView extends GetView<CreateController> {
     final appController = Get.find<AppController>();
     return OptsExtraHttp()
       ..connections = int.tryParse(_connectionsController.text) ?? 0
-      ..autoTorrent = appController.downloaderConfig.value.archive.autoTorrent
+      ..autoTorrent = appController.downloaderConfig.value.torrent.autoTorrent
       ..autoExtract = _autoExtractController.value ?? false
       ..archivePassword = _archivePasswordController.text
       ..deleteAfterExtract = _deleteAfterExtractController.value ?? false;

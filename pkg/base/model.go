@@ -185,6 +185,7 @@ type DownloaderStoreConfig struct {
 	Proxy          *DownloaderProxyConfig `json:"proxy"`
 	Webhook        *WebhookConfig         `json:"webhook"` // Webhook is the webhook configuration
 	Archive        *ArchiveConfig         `json:"archive"` // Archive is the archive extraction configuration
+	Torrent        *TorrentConfig         `json:"torrent"` // Torrent is the torrent-related configuration
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
@@ -204,6 +205,11 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 		cfg.Archive = &ArchiveConfig{
 			AutoExtract:        false,
 			DeleteAfterExtract: false,
+		}
+	}
+	if cfg.Torrent == nil {
+		cfg.Torrent = &TorrentConfig{
+			AutoTorrent: false,
 		}
 	}
 	return cfg
@@ -234,6 +240,9 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	if cfg.Archive == nil {
 		cfg.Archive = beforeCfg.Archive
 	}
+	if cfg.Torrent == nil {
+		cfg.Torrent = beforeCfg.Torrent
+	}
 	return cfg
 }
 
@@ -247,7 +256,11 @@ type WebhookConfig struct {
 type ArchiveConfig struct {
 	AutoExtract        bool `json:"autoExtract"`        // AutoExtract enables automatic extraction of archives after download
 	DeleteAfterExtract bool `json:"deleteAfterExtract"` // DeleteAfterExtract deletes the archive after successful extraction
-	AutoTorrent        bool `json:"autoTorrent"`        // AutoTorrent enables automatic creation of torrent tasks for downloaded .torrent files
+}
+
+// TorrentConfig is the torrent-related configuration
+type TorrentConfig struct {
+	AutoTorrent bool `json:"autoTorrent"` // AutoTorrent enables automatic creation of torrent tasks for downloaded .torrent files
 }
 
 type DownloaderProxyConfig struct {

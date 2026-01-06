@@ -18,7 +18,9 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..webhook =
           WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
       ..archive =
-          ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?);
+          ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?)
+      ..torrent =
+          TorrentConfig.fromJson(json['torrent'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
@@ -29,6 +31,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'proxy': instance.proxy.toJson(),
       'webhook': instance.webhook.toJson(),
       'archive': instance.archive.toJson(),
+      'torrent': instance.torrent.toJson(),
     };
 
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>
@@ -242,12 +245,20 @@ ArchiveConfig _$ArchiveConfigFromJson(Map<String, dynamic> json) =>
     ArchiveConfig(
       autoExtract: json['autoExtract'] as bool? ?? true,
       deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? true,
-      autoTorrent: json['autoTorrent'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$ArchiveConfigToJson(ArchiveConfig instance) =>
     <String, dynamic>{
       'autoExtract': instance.autoExtract,
       'deleteAfterExtract': instance.deleteAfterExtract,
+    };
+
+TorrentConfig _$TorrentConfigFromJson(Map<String, dynamic> json) =>
+    TorrentConfig(
+      autoTorrent: json['autoTorrent'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$TorrentConfigToJson(TorrentConfig instance) =>
+    <String, dynamic>{
       'autoTorrent': instance.autoTorrent,
     };

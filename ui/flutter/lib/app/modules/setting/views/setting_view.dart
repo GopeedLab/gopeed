@@ -212,17 +212,17 @@ class SettingView extends GetView<SettingController> {
 
     // Auto-torrent configuration
     final buildAutoTorrent = _buildConfigItem('autoTorrent', () {
-      return appController.downloaderConfig.value.archive.autoTorrent
+      return appController.downloaderConfig.value.torrent.autoTorrent
           ? 'on'.tr
           : 'off'.tr;
     }, (Key key) {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
-          value: appController.downloaderConfig.value.archive.autoTorrent,
+          value: appController.downloaderConfig.value.torrent.autoTorrent,
           onChanged: (bool value) async {
             appController.downloaderConfig.update((val) {
-              val!.archive.autoTorrent = value;
+              val!.torrent.autoTorrent = value;
             });
             await debounceSave();
           },
@@ -1445,7 +1445,6 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildAutoExtract(),
                             buildDeleteAfterExtract(),
-                            buildAutoTorrent(),
                           ]),
                         )),
                         const Text('HTTP'),
@@ -1461,6 +1460,7 @@ class SettingView extends GetView<SettingController> {
                         Card(
                             child: Column(
                           children: _addDivider([
+                            buildAutoTorrent(),
                             buildBtListenPort(),
                             buildBtTrackerSubscribeUrls(),
                             buildBtTrackers(),
