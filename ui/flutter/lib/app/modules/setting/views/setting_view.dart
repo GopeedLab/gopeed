@@ -210,6 +210,26 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
+    // Auto-torrent configuration
+    final buildAutoTorrent = _buildConfigItem('autoTorrent', () {
+      return appController.downloaderConfig.value.archive.autoTorrent
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: appController.downloaderConfig.value.archive.autoTorrent,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.archive.autoTorrent = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
     // Download categories configuration
     buildDownloadCategories() {
       final categories = downloaderCfg.value.extra.downloadCategories
@@ -485,22 +505,6 @@ class SettingView extends GetView<SettingController> {
           onChanged: (bool value) {
             downloaderCfg.update((val) {
               val!.protocolConfig.http.useServerCtime = value;
-            });
-            debounceSave();
-          },
-        ),
-      );
-    });
-    final buildHttpAutoTorrent = _buildConfigItem(
-        'autoTorrent', () => httpConfig.autoTorrent ? 'on'.tr : 'off'.tr,
-        (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value: httpConfig.autoTorrent,
-          onChanged: (bool value) {
-            downloaderCfg.update((val) {
-              val!.protocolConfig.http.autoTorrent = value;
             });
             debounceSave();
           },
@@ -1441,6 +1445,7 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildAutoExtract(),
                             buildDeleteAfterExtract(),
+                            buildAutoTorrent(),
                           ]),
                         )),
                         const Text('HTTP'),
@@ -1450,7 +1455,6 @@ class SettingView extends GetView<SettingController> {
                             buildHttpUa(),
                             buildHttpConnections(),
                             buildHttpUseServerCtime(),
-                            buildHttpAutoTorrent(),
                           ]),
                         )),
                         const Text('BitTorrent'),

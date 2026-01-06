@@ -41,13 +41,11 @@ class HttpConfig {
   String userAgent;
   int connections;
   bool useServerCtime;
-  bool autoTorrent;
 
   HttpConfig({
     this.userAgent = '',
     this.connections = 0,
     this.useServerCtime = false,
-    this.autoTorrent = false,
   });
 
   factory HttpConfig.fromJson(Map<String, dynamic> json) =>
@@ -236,10 +234,12 @@ class ExtraConfigGithubMirror {
 class ArchiveConfig {
   bool autoExtract;
   bool deleteAfterExtract;
+  bool autoTorrent;
 
   ArchiveConfig({
     this.autoExtract = true,
     this.deleteAfterExtract = true,
+    this.autoTorrent = false,
   });
 
   factory ArchiveConfig.fromJson(Map<String, dynamic>? json) =>

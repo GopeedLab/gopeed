@@ -330,7 +330,7 @@ func TestFetcher_DownloadWithProxy(t *testing.T) {
 func TestFetcher_ConfigConnections(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
-	fetcher := doDownloadReady(buildConfigFetcher(Config{
+	fetcher := doDownloadReady(buildConfigFetcher(config{
 		Connections: 16,
 	}), listener, 0, t)
 	err := fetcher.Start()
@@ -351,7 +351,7 @@ func TestFetcher_ConfigConnections(t *testing.T) {
 func TestFetcher_ConfigUseServerCtime(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
-	fetcher := doDownloadReady(buildConfigFetcher(Config{
+	fetcher := doDownloadReady(buildConfigFetcher(config{
 		Connections:    16,
 		UseServerCtime: true,
 	}), listener, 0, t)
@@ -373,7 +373,7 @@ func TestFetcher_ConfigUseServerCtime(t *testing.T) {
 func TestFetcher_Stats(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
-	fetcher := doDownloadReady(buildConfigFetcher(Config{
+	fetcher := doDownloadReady(buildConfigFetcher(config{
 		Connections: 16,
 	}), listener, 0, t)
 	err := fetcher.Start()
@@ -624,7 +624,7 @@ func buildFetcher() *Fetcher {
 	return fetcher.(*Fetcher)
 }
 
-func buildConfigFetcher(cfg Config) fetcher.Fetcher {
+func buildConfigFetcher(cfg config) fetcher.Fetcher {
 	fetcher := new(FetcherManager).Build()
 	newController := controller.NewController()
 	newController.GetConfig = func(v any) {
