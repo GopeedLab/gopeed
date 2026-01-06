@@ -83,11 +83,11 @@ class CreateView extends GetView<CreateController> {
     // Initialize archive settings from global config if not already set
     if (_autoExtractController.value == null) {
       _autoExtractController.value =
-          appController.downloaderConfig.value.archive.autoExtract;
+          appController.downloaderConfig.value.protocolConfig.http.autoExtract;
     }
     if (_deleteAfterExtractController.value == null) {
       _deleteAfterExtractController.value =
-          appController.downloaderConfig.value.archive.deleteAfterExtract;
+          appController.downloaderConfig.value.protocolConfig.http.deleteAfterExtract;
     }
 
     final CreateTask? routerParams = Get.rootDelegate.arguments();
@@ -888,7 +888,7 @@ class CreateView extends GetView<CreateController> {
     final appController = Get.find<AppController>();
     return OptsExtraHttp()
       ..connections = int.tryParse(_connectionsController.text) ?? 0
-      ..autoTorrent = appController.downloaderConfig.value.torrent.autoTorrent
+      ..autoTorrent = appController.downloaderConfig.value.protocolConfig.http.autoTorrent
       ..autoExtract = _autoExtractController.value ?? false
       ..archivePassword = _archivePasswordController.text
       ..deleteAfterExtract = _deleteAfterExtractController.value ?? false;

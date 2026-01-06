@@ -171,17 +171,17 @@ class SettingView extends GetView<SettingController> {
 
     // Archive auto extract configuration
     final buildAutoExtract = _buildConfigItem('autoExtract', () {
-      return appController.downloaderConfig.value.archive.autoExtract
+      return appController.downloaderConfig.value.protocolConfig.http.autoExtract
           ? 'on'.tr
           : 'off'.tr;
     }, (Key key) {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
-          value: appController.downloaderConfig.value.archive.autoExtract,
+          value: appController.downloaderConfig.value.protocolConfig.http.autoExtract,
           onChanged: (bool value) async {
             appController.downloaderConfig.update((val) {
-              val!.archive.autoExtract = value;
+              val!.protocolConfig.http.autoExtract = value;
             });
             await debounceSave();
           },
@@ -191,7 +191,7 @@ class SettingView extends GetView<SettingController> {
 
     // Archive delete after extract configuration
     final buildDeleteAfterExtract = _buildConfigItem('deleteAfterExtract', () {
-      return appController.downloaderConfig.value.archive.deleteAfterExtract
+      return appController.downloaderConfig.value.protocolConfig.http.deleteAfterExtract
           ? 'on'.tr
           : 'off'.tr;
     }, (Key key) {
@@ -199,10 +199,10 @@ class SettingView extends GetView<SettingController> {
         alignment: Alignment.centerLeft,
         child: Switch(
           value:
-              appController.downloaderConfig.value.archive.deleteAfterExtract,
+              appController.downloaderConfig.value.protocolConfig.http.deleteAfterExtract,
           onChanged: (bool value) async {
             appController.downloaderConfig.update((val) {
-              val!.archive.deleteAfterExtract = value;
+              val!.protocolConfig.http.deleteAfterExtract = value;
             });
             await debounceSave();
           },
@@ -212,17 +212,17 @@ class SettingView extends GetView<SettingController> {
 
     // Auto-torrent configuration
     final buildAutoTorrent = _buildConfigItem('autoTorrent', () {
-      return appController.downloaderConfig.value.torrent.autoTorrent
+      return appController.downloaderConfig.value.protocolConfig.http.autoTorrent
           ? 'on'.tr
           : 'off'.tr;
     }, (Key key) {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
-          value: appController.downloaderConfig.value.torrent.autoTorrent,
+          value: appController.downloaderConfig.value.protocolConfig.http.autoTorrent,
           onChanged: (bool value) async {
             appController.downloaderConfig.update((val) {
-              val!.torrent.autoTorrent = value;
+              val!.protocolConfig.http.autoTorrent = value;
             });
             await debounceSave();
           },
@@ -1439,14 +1439,6 @@ class SettingView extends GetView<SettingController> {
                             buildMenubarMode(),
                           ]),
                         )),
-                        Text('archives'.tr),
-                        Card(
-                            child: Column(
-                          children: _addDivider([
-                            buildAutoExtract(),
-                            buildDeleteAfterExtract(),
-                          ]),
-                        )),
                         const Text('HTTP'),
                         Card(
                             child: Column(
@@ -1454,13 +1446,15 @@ class SettingView extends GetView<SettingController> {
                             buildHttpUa(),
                             buildHttpConnections(),
                             buildHttpUseServerCtime(),
+                            buildAutoExtract(),
+                            buildDeleteAfterExtract(),
+                            buildAutoTorrent(),
                           ]),
                         )),
                         const Text('BitTorrent'),
                         Card(
                             child: Column(
                           children: _addDivider([
-                            buildAutoTorrent(),
                             buildBtListenPort(),
                             buildBtTrackerSubscribeUrls(),
                             buildBtTrackers(),

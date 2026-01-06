@@ -10,8 +10,6 @@ class DownloaderConfig {
   ExtraConfig extra = ExtraConfig();
   ProxyConfig proxy = ProxyConfig();
   WebhookConfig webhook = WebhookConfig();
-  ArchiveConfig archive = ArchiveConfig();
-  TorrentConfig torrent = TorrentConfig();
 
   DownloaderConfig({
     this.downloadDir = '',
@@ -42,11 +40,17 @@ class HttpConfig {
   String userAgent;
   int connections;
   bool useServerCtime;
+  bool autoExtract;
+  bool deleteAfterExtract;
+  bool autoTorrent;
 
   HttpConfig({
     this.userAgent = '',
     this.connections = 0,
     this.useServerCtime = false,
+    this.autoExtract = false,
+    this.deleteAfterExtract = false,
+    this.autoTorrent = false,
   });
 
   factory HttpConfig.fromJson(Map<String, dynamic> json) =>
@@ -229,34 +233,4 @@ class ExtraConfigGithubMirror {
           : _$ExtraConfigGithubMirrorFromJson(json);
 
   Map<String, dynamic> toJson() => _$ExtraConfigGithubMirrorToJson(this);
-}
-
-@JsonSerializable()
-class ArchiveConfig {
-  bool autoExtract;
-  bool deleteAfterExtract;
-
-  ArchiveConfig({
-    this.autoExtract = true,
-    this.deleteAfterExtract = true,
-  });
-
-  factory ArchiveConfig.fromJson(Map<String, dynamic>? json) =>
-      json == null ? ArchiveConfig() : _$ArchiveConfigFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ArchiveConfigToJson(this);
-}
-
-@JsonSerializable()
-class TorrentConfig {
-  bool autoTorrent;
-
-  TorrentConfig({
-    this.autoTorrent = false,
-  });
-
-  factory TorrentConfig.fromJson(Map<String, dynamic>? json) =>
-      json == null ? TorrentConfig() : _$TorrentConfigFromJson(json);
-
-  Map<String, dynamic> toJson() => _$TorrentConfigToJson(this);
 }
