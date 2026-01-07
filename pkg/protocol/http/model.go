@@ -6,7 +6,7 @@ type ReqExtra struct {
 	Body   string            `json:"body"`
 }
 
-type OptsExtra struct {
+type OptExtra struct {
 	Connections int `json:"connections"`
 	// AutoTorrent when task download complete, and it is a .torrent file, it will be auto create a new task for the torrent file
 	AutoTorrent bool `json:"autoTorrent"`

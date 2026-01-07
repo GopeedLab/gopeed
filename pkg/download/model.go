@@ -2,6 +2,9 @@ package download
 
 import (
 	"encoding/json"
+	"sync"
+	"time"
+
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/protocol/bt"
@@ -9,8 +12,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"sync"
-	"time"
 )
 
 type ResolveResult struct {
@@ -53,8 +54,8 @@ func NewTask() *Task {
 // Name returns the display name of the task.
 func (t *Task) Name() string {
 	// Custom name first
-	if t.Meta.Opts.Name != "" {
-		return t.Meta.Opts.Name
+	if t.Meta.Opt.Name != "" {
+		return t.Meta.Opt.Name
 	}
 
 	// Task is not resolved, parse the name from the URL

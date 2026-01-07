@@ -53,11 +53,11 @@ var (
 			"connections": 2,
 		},
 	}
-	createReq = &model.CreateTask{
+	resolveReq = &model.ResolveTask{
 		Req: taskReq,
 		Opt: createOpts,
 	}
-	createResoledReq = &model.CreateTask{
+	createReq = &model.CreateTask{
 		Req: taskReq,
 		Opt: createOpts,
 	}
@@ -80,7 +80,7 @@ func TestInfo(t *testing.T) {
 
 func TestResolve(t *testing.T) {
 	doTest(func() {
-		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", taskReq)
+		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", resolveReq)
 		if !test.AssertResourceEqual(taskRes, resp.Res) {
 			t.Errorf("Resolve() got = %v, want %v", test.ToJson(resp.Res), test.ToJson(taskRes))
 		}
@@ -89,7 +89,7 @@ func TestResolve(t *testing.T) {
 
 func TestCreateTask(t *testing.T) {
 	doTest(func() {
-		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", taskReq)
+		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", resolveReq)
 
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -101,7 +101,6 @@ func TestCreateTask(t *testing.T) {
 
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", &model.CreateTask{
 			Rid: resp.ID,
-			Opt: createOpts,
 		})
 		if taskId == "" {
 			t.Fatal("create task failed")
@@ -165,7 +164,7 @@ func TestCreateDirectTaskBatchWithOpt(t *testing.T) {
 				Req: createReq.Req,
 			}
 			if i == 0 {
-				item.Opts = &base.Options{
+				item.Opt = &base.Options{
 					Name: "spe_opt.data",
 				}
 			}
@@ -173,7 +172,7 @@ func TestCreateDirectTaskBatchWithOpt(t *testing.T) {
 		}
 		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
 			Reqs: reqs,
-			Opts: &base.Options{
+			Opt: &base.Options{
 				Name: "default_opt.data",
 			},
 		})
@@ -192,30 +191,6 @@ func TestCreateDirectTaskBatchWithOpt(t *testing.T) {
 					t.Errorf("CreateDirectTaskBatch() got = %v, want %v", task.Name(), "default_opt.data")
 				}
 			}
-		}
-	})
-}
-
-func TestCreateDirectTaskWithResoled(t *testing.T) {
-	doTest(func() {
-		var wg sync.WaitGroup
-		wg.Add(1)
-		Downloader.Listener(func(event *download.Event) {
-			if event.Key == download.EventKeyFinally {
-				wg.Done()
-			}
-		})
-
-		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createResoledReq)
-		if taskId == "" {
-			t.Fatal("create task failed")
-		}
-
-		wg.Wait()
-		want := test.FileMd5(test.BuildFile)
-		got := test.FileMd5(test.DownloadFile)
-		if want != got {
-			t.Errorf("CreateDirectTaskWithResoled() got = %v, want %v", got, want)
 		}
 	})
 }

@@ -321,7 +321,7 @@ func (d *Downloader) saveTask(task *Task) error {
 	return nil
 }
 
-func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
+func (d *Downloader) Resolve(req *base.Request, opt *base.Options) (rr *ResolveResult, err error) {
 	rrId, err := gonanoid.New()
 	if err != nil {
 		return
@@ -342,7 +342,11 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	if err != nil {
 		return
 	}
-	err = fetcher.Resolve(req)
+	initOpt, err := d.initOptions(opt)
+	if err != nil {
+		return
+	}
+	err = fetcher.Resolve(req, initOpt)
 	if err != nil {
 		return
 	}
@@ -383,24 +387,28 @@ func (d *Downloader) remainRunningCount() int {
 	return d.cfg.MaxRunning - runningCount
 }
 
-func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId string, err error) {
+func (d *Downloader) CreateDirect(req *base.Request, opt *base.Options) (taskId string, err error) {
 	var fetcher fetcher.Fetcher
 	fetcher, err = d.buildFetcher(req.URL)
 	if err != nil {
 		return
 	}
 	fetcher.Meta().Req = req
-	return d.doCreate(fetcher, opts)
+	initOpt, err := d.initOptions(opt)
+	if err != nil {
+		return
+	}
+	return d.doCreate(fetcher, initOpt)
 }
 
 func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []string, err error) {
 	taskIds := make([]string, 0)
 	for _, ir := range req.Reqs {
-		opts := ir.Opts
-		if opts == nil {
-			opts = req.Opts
+		opt := ir.Opt
+		if opt == nil {
+			opt = req.Opt
 		}
-		taskId, err := d.CreateDirect(ir.Req, opts.Clone())
+		taskId, err := d.CreateDirect(ir.Req, opt.Clone())
 		if err != nil {
 			return nil, err
 		}
@@ -409,7 +417,7 @@ func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []stri
 	return taskIds, nil
 }
 
-func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err error) {
+func (d *Downloader) Create(rrId string) (taskId string, err error) {
 	d.fetcherMapLock.RLock()
 	fetcher, ok := d.fetcherCache[rrId]
 	d.fetcherMapLock.RUnlock()
@@ -421,7 +429,7 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 		delete(d.fetcherCache, rrId)
 		d.fetcherMapLock.Unlock()
 	}()
-	return d.doCreate(fetcher, opts)
+	return d.doCreate(fetcher, nil)
 }
 
 func (d *Downloader) Pause(filter *TaskFilter) (err error) {
@@ -901,7 +909,7 @@ func (d *Downloader) watch(task *Task) {
 	d.triggerOnDone(task)
 	d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 
-	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
+	if e, ok := task.Meta.Opt.Extra.(*http.OptExtra); ok {
 		downloadFilePath := task.Meta.SingleFilepath()
 		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
 			go func() {
@@ -910,7 +918,7 @@ func (d *Downloader) watch(task *Task) {
 						URL: downloadFilePath,
 					},
 					&base.Options{
-						Path:        task.Meta.Opts.Path,
+						Path:        task.Meta.Opt.Path,
 						SelectFiles: make([]int, 0),
 					})
 				if err2 != nil {
@@ -947,7 +955,6 @@ func (d *Downloader) restoreTask(task *Task) error {
 		}
 	}
 	go d.watch(task)
-	task.fetcher.Create(task.Meta.Opts)
 	return nil
 }
 
@@ -970,42 +977,15 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 	if task.fetcher.Meta().Res == nil {
 		task.fetcher.Meta().Res = task.Meta.Res
 	}
+	if task.fetcher.Meta().Opt == nil {
+		task.fetcher.Meta().Opt = task.Meta.Opt
+	}
 	return nil
 }
 
-func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId string, err error) {
-	if opts == nil {
-		opts = &base.Options{}
-	}
-	if opts.SelectFiles == nil {
-		opts.SelectFiles = make([]int, 0)
-	}
-
-	meta := f.Meta()
-	meta.Opts = opts
-	if opts.Path == "" {
-		storeConfig, err := d.GetConfig()
-		if err != nil {
-			return "", err
-		}
-		opts.Path = storeConfig.DownloadDir
-	}
-
-	// Replace placeholders in download path (e.g., %year%, %month%, %day%, %date%)
-	opts.Path = util.ReplacePathPlaceholders(opts.Path)
-
-	// if enable white download directory, check if the download directory is in the white list
-	if len(d.cfg.WhiteDownloadDirs) > 0 {
-		inWhiteList := false
-		for _, dir := range d.cfg.WhiteDownloadDirs {
-			if match, err := filepath.Match(dir, opts.Path); match && err == nil {
-				inWhiteList = true
-				break
-			}
-		}
-		if !inWhiteList {
-			return "", errors.New("download directory is not in white list")
-		}
+func (d *Downloader) doCreate(f fetcher.Fetcher, opt *base.Options) (taskId string, err error) {
+	if f.Meta().Opt == nil {
+		f.Meta().Opt = opt
 	}
 
 	fm, err := d.parseFm(f.Meta().Req.URL)
@@ -1021,9 +1001,6 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	task.Progress = &Progress{}
 	_, task.Uploading = f.(fetcher.Uploader)
 	initTask(task)
-	if err = f.Create(opts); err != nil {
-		return
-	}
 	if err = d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
 		return
 	}
@@ -1047,6 +1024,39 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 
 	go d.watch(task)
 	return
+}
+
+func (d *Downloader) initOptions(opt *base.Options) (*base.Options, error) {
+	if opt == nil {
+		opt = &base.Options{}
+	}
+	if opt.SelectFiles == nil {
+		opt.SelectFiles = make([]int, 0)
+	}
+	if opt.Path == "" {
+		storeConfig, err := d.GetConfig()
+		if err != nil {
+			return nil, err
+		}
+		opt.Path = storeConfig.DownloadDir
+	}
+	// Replace placeholders in download path (e.g., %year%, %month%, %day%, %date%)
+	opt.Path = util.ReplacePathPlaceholders(opt.Path)
+
+	// if enable white download directory, check if the download directory is in the white list
+	if len(d.cfg.WhiteDownloadDirs) > 0 {
+		inWhiteList := false
+		for _, dir := range d.cfg.WhiteDownloadDirs {
+			if match, err := filepath.Match(dir, opt.Path); match && err == nil {
+				inWhiteList = true
+				break
+			}
+		}
+		if !inWhiteList {
+			return nil, errors.New("download directory is not in white list")
+		}
+	}
+	return opt, nil
 }
 
 func (d *Downloader) statusMut(task *Task, fn func() (bool, error)) (bool, error) {
@@ -1088,7 +1098,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 
 		d.triggerOnStart(task)
 		if task.Meta.Res == nil {
-			err := task.fetcher.Resolve(task.Meta.Req)
+			err := task.fetcher.Resolve(task.Meta.Req, task.Meta.Opt)
 			if err != nil {
 				return err
 			}
@@ -1099,7 +1109,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			if task.fetcherManager.AutoRename() {
 				d.checkDuplicateLock.Lock()
 				defer d.checkDuplicateLock.Unlock()
-				task.Meta.Opts.Name = util.ReplaceInvalidFilename(task.Meta.Opts.Name)
+				task.Meta.Opt.Name = util.ReplaceInvalidFilename(task.Meta.Opt.Name)
 				// check if the download file is duplicated and rename it automatically.
 				if task.Meta.Res.Name != "" {
 					task.Meta.Res.Name = util.ReplaceInvalidFilename(task.Meta.Res.Name)
@@ -1108,7 +1118,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 					if err != nil {
 						return err
 					}
-					task.Meta.Opts.Name = newName
+					task.Meta.Opt.Name = newName
 				} else {
 					task.Meta.Res.Files[0].Name = util.ReplaceInvalidFilename(task.Meta.Res.Files[0].Name)
 					fullFilePath := task.Meta.SingleFilepath()
@@ -1116,11 +1126,11 @@ func (d *Downloader) doStart(task *Task) (err error) {
 					if err != nil {
 						return err
 					}
-					task.Meta.Opts.Name = newName
+					task.Meta.Opt.Name = newName
 				}
 			}
 
-			task.Meta.Res.CalcSize(task.Meta.Opts.SelectFiles)
+			task.Meta.Res.CalcSize(task.Meta.Opt.SelectFiles)
 		}
 
 		task.Progress.Speed = 0
@@ -1219,20 +1229,20 @@ func (d *Downloader) buildFetcher(url string) (fetcher.Fetcher, error) {
 // enqueueExtraction adds an extraction job to the global extraction queue
 // This ensures only one extraction (or one multi-part archive extraction) runs at a time
 // to prevent resource exhaustion
-func (d *Downloader) enqueueExtraction(task *Task, downloadFilePath string, opts *http.OptsExtra) {
+func (d *Downloader) enqueueExtraction(task *Task, downloadFilePath string, opt *http.OptExtra) {
 	partInfo := getArchivePartInfo(downloadFilePath)
 
 	if partInfo.IsMultiPart {
 		// For multi-part archives, handle specially
-		d.enqueueMultiPartExtraction(task, downloadFilePath, partInfo, opts)
+		d.enqueueMultiPartExtraction(task, downloadFilePath, partInfo, opt)
 	} else {
 		// For single archives, queue immediately
-		d.enqueueSingleExtraction(task, downloadFilePath, opts)
+		d.enqueueSingleExtraction(task, downloadFilePath, opt)
 	}
 }
 
 // enqueueSingleExtraction queues extraction for a single (non-multi-part) archive
-func (d *Downloader) enqueueSingleExtraction(task *Task, downloadFilePath string, opts *http.OptsExtra) {
+func (d *Downloader) enqueueSingleExtraction(task *Task, downloadFilePath string, opt *http.OptExtra) {
 	jobID := "single:" + task.ID
 
 	// Set extraction status to queued
@@ -1243,7 +1253,7 @@ func (d *Downloader) enqueueSingleExtraction(task *Task, downloadFilePath string
 
 	// Create and enqueue the extraction job
 	job := NewExtractionJob(jobID, func() {
-		d.performExtraction(task, downloadFilePath, task.Meta.Opts.Path, opts)
+		d.performExtraction(task, downloadFilePath, task.Meta.Opt.Path, opt)
 	})
 
 	go func() {
@@ -1253,14 +1263,14 @@ func (d *Downloader) enqueueSingleExtraction(task *Task, downloadFilePath string
 
 // enqueueMultiPartExtraction handles queueing for multi-part archives
 // It ensures only ONE extraction job is queued when ALL parts are ready
-func (d *Downloader) enqueueMultiPartExtraction(task *Task, downloadFilePath string, partInfo ArchivePartInfo, opts *http.OptsExtra) {
+func (d *Downloader) enqueueMultiPartExtraction(task *Task, downloadFilePath string, partInfo ArchivePartInfo, opt *http.OptExtra) {
 	// Set multi-part info on the task
 	task.Progress.MultiPartBaseName = partInfo.BaseName
 	task.Progress.MultiPartNumber = partInfo.PartNumber
 	task.Progress.MultiPartIsFirst = isFirstPart(downloadFilePath)
 
 	// Check if all parts are downloaded
-	destDir := task.Meta.Opts.Path
+	destDir := task.Meta.Opt.Path
 	allPartsReady, missingParts := d.checkMultiPartArchiveReady(downloadFilePath, destDir, partInfo)
 
 	if !allPartsReady {
@@ -1297,7 +1307,7 @@ func (d *Downloader) enqueueMultiPartExtraction(task *Task, downloadFilePath str
 
 	// Create and enqueue the extraction job
 	job := NewExtractionJob(jobID, func() {
-		d.performMultiPartExtraction(task, partInfo.FirstPartPath, destDir, opts)
+		d.performMultiPartExtraction(task, partInfo.FirstPartPath, destDir, opt)
 	})
 
 	go func() {
@@ -1374,7 +1384,7 @@ func (d *Downloader) releaseMultiPartExtractionClaim(baseName string) {
 }
 
 // performExtraction performs extraction for a regular (non-multi-part) archive
-func (d *Downloader) performExtraction(task *Task, archivePath string, destDir string, opts *http.OptsExtra) {
+func (d *Downloader) performExtraction(task *Task, archivePath string, destDir string, opt *http.OptExtra) {
 	// Set extraction status to extracting
 	task.Progress.ExtractStatus = ExtractStatusExtracting
 	task.Progress.ExtractProgress = 0
@@ -1382,16 +1392,16 @@ func (d *Downloader) performExtraction(task *Task, archivePath string, destDir s
 	d.storage.Put(bucketTask, task.ID, task.clone())
 
 	// Extract the archive
-	extractErr := extractArchive(archivePath, destDir, opts.ArchivePassword, func(extractedFiles int, totalFiles int, progress int) {
+	extractErr := extractArchive(archivePath, destDir, opt.ArchivePassword, func(extractedFiles int, totalFiles int, progress int) {
 		task.Progress.ExtractProgress = progress
 		d.emit(EventKeyProgress, task)
 	})
 
-	d.handleExtractionResult(task, extractErr, []string{archivePath}, opts.DeleteAfterExtract)
+	d.handleExtractionResult(task, extractErr, []string{archivePath}, opt.DeleteAfterExtract)
 }
 
 // performMultiPartExtraction performs extraction for a multi-part archive
-func (d *Downloader) performMultiPartExtraction(task *Task, firstPartPath string, destDir string, opts *http.OptsExtra) {
+func (d *Downloader) performMultiPartExtraction(task *Task, firstPartPath string, destDir string, opt *http.OptExtra) {
 	// Get the baseName for releasing the claim later
 	fullBaseName := GetMultiPartArchiveBaseName(firstPartPath)
 
@@ -1404,7 +1414,7 @@ func (d *Downloader) performMultiPartExtraction(task *Task, firstPartPath string
 	d.Logger.Info().Msgf("starting multi-part archive extraction, first part: %s, task id: %s", firstPartPath, task.ID)
 
 	// Extract the multi-part archive
-	extractErr := extractMultiPartArchive(firstPartPath, destDir, opts.ArchivePassword, func(extractedFiles int, totalFiles int, progress int) {
+	extractErr := extractMultiPartArchive(firstPartPath, destDir, opt.ArchivePassword, func(extractedFiles int, totalFiles int, progress int) {
 		task.Progress.ExtractProgress = progress
 		d.emit(EventKeyProgress, task)
 	})
@@ -1412,7 +1422,7 @@ func (d *Downloader) performMultiPartExtraction(task *Task, firstPartPath string
 	// Collect all part files for potential deletion
 	partFiles := d.collectMultiPartFiles(firstPartPath)
 
-	d.handleExtractionResult(task, extractErr, partFiles, opts.DeleteAfterExtract)
+	d.handleExtractionResult(task, extractErr, partFiles, opt.DeleteAfterExtract)
 
 	// Update status for all related multi-part tasks
 	d.updateMultiPartTasksStatus(task, extractErr)
@@ -1621,24 +1631,17 @@ func (b *boot) Extra(extra interface{}) *boot {
 	return b
 }
 
-func (b *boot) Resolve() (*ResolveResult, error) {
-	return defaultDownloader.Resolve(&base.Request{
-		URL:   b.url,
-		Extra: b.extra,
-	})
-}
-
 func (b *boot) Listener(listener Listener) *boot {
 	b.listener = listener
 	return b
 }
 
-func (b *boot) Create(opts *base.Options) (string, error) {
+func (b *boot) Create(opt *base.Options) (string, error) {
 	defaultDownloader.Listener(b.listener)
 	return defaultDownloader.CreateDirect(&base.Request{
 		URL:   b.url,
 		Extra: b.extra,
-	}, opts)
+	}, opt)
 }
 
 func Boot() *boot {

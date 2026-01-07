@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
-	"strings"
-	"sync"
 )
 
 const progressWidth = 20
@@ -43,7 +44,7 @@ func main() {
 		}).
 		Create(&base.Options{
 			Path:  *args.dir,
-			Extra: http.OptsExtra{Connections: *args.connections},
+			Extra: http.OptExtra{Connections: *args.connections},
 		})
 	if err != nil {
 		panic(err)

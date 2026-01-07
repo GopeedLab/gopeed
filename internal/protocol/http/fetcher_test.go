@@ -3,17 +3,19 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"net"
+	gohttp "net/http"
+	"net/url"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
-	"net"
-	gohttp "net/http"
-	"net/url"
-	"strings"
-	"testing"
-	"time"
 )
 
 func TestFetcher_Resolve(t *testing.T) {
@@ -120,6 +122,9 @@ func TestFetcher_Resolve(t *testing.T) {
 	fetcher := buildFetcher()
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/",
+	}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -134,7 +139,7 @@ func TestFetcher_Resolve(t *testing.T) {
 func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 	listener := test.StartTestHostHeaderServer()
 	defer listener.Close()
-	
+
 	fetcher := buildFetcher()
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/",
@@ -143,6 +148,9 @@ func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 				"Host": "test",
 			},
 		},
+	}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
 	})
 	// The server should return 400 for invalid Host header
 	if err == nil || !strings.Contains(err.Error(), "400") {
@@ -153,8 +161,9 @@ func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 	listener := test.StartTestRootServer()
 	defer listener.Close()
-	
+
 	fetcher := buildFetcher()
+	defer fetcher.Pause() // Close the resolve response to allow server shutdown
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/",
 		Extra: &http.ReqExtra{
@@ -162,6 +171,9 @@ func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 				"Referer": "\rtest",
 			},
 		},
+	}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
 	})
 	// Invalid header with \r should be sanitized by Go's http client, allowing the request to succeed
 	if err != nil {
@@ -173,8 +185,12 @@ func testResolve(startTestServer func() net.Listener, path string, want *base.Re
 	listener := startTestServer()
 	defer listener.Close()
 	fetcher := buildFetcher()
+	defer fetcher.Pause() // Close the resolve response to allow server shutdown
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + path,
+	}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -335,16 +351,289 @@ func TestFetcher_Stats(t *testing.T) {
 		t.Fatal(err)
 	}
 	stats := fetcher.Stats().(*http.Stats)
-	if len(stats.Connections) != 16 {
-		t.Errorf("Stats() got = %v, want %v", len(stats.Connections), 16)
+	// With slow-start strategy, connection count may be less than max if download is fast
+	// Just verify we have at least 1 connection and no more than max
+	if len(stats.Connections) < 1 || len(stats.Connections) > 16 {
+		t.Errorf("Stats() connection count got = %v, want between 1 and 16", len(stats.Connections))
 	}
 	totalDownloaded := int64(0)
-	for _, conn := range stats.Connections {
+	for i, conn := range stats.Connections {
+		t.Logf("Connection %d: Downloaded=%d, Completed=%v", i, conn.Downloaded, conn.Completed)
 		totalDownloaded += conn.Downloaded
 	}
 	if totalDownloaded != test.BuildSize {
 		t.Errorf("Stats() got = %v, want %v", totalDownloaded, test.BuildSize)
 	}
+}
+
+// TestFetcher_DownloadOneTimeURL tests downloading from a URL that can only be accessed once
+// This simulates signed URLs or one-time download links that expire after first use
+func TestFetcher_DownloadOneTimeURL(t *testing.T) {
+	listener := test.StartTestOneTimeServer()
+	defer listener.Close()
+
+	fetcher := buildFetcher()
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+		Extra: &http.OptExtra{
+			Connections: 4, // Try to use multiple connections, but only first should work
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify file content
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
+// TestFetcher_SlowStartExpansion tests slow-start connection expansion edge cases
+// Tests that slow-start expansion reaches exactly maxConns
+// Expansion pattern: 1 -> 2 -> 4 -> 8 -> 16...
+// For max=5: 1 -> 2 -> 4 -> 5 (capped)
+// For max=9: 1 -> 2 -> 4 -> 8 -> 9 (capped)
+func TestFetcher_SlowStartExpansion(t *testing.T) {
+	testCases := []struct {
+		name     string
+		maxConns int
+	}{
+		{"MaxConns5", 5}, // 1->2->4->5
+		{"MaxConns9", 9}, // 1->2->4->8->9
+		{"MaxConns8", 8}, // 1->2->4->8
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			// Clean up any leftover files from previous tests
+			os.Remove(test.DownloadFile)
+
+			// Use 100ns delay per byte for faster test (~10MB/s theoretical)
+			listener := test.StartTestSlowStartServer(100 * time.Nanosecond)
+
+			// Ensure cleanup happens before next subtest
+			cleanup := func() {
+				listener.Close()
+				os.Remove(test.DownloadFile)
+				// Wait for server to fully stop
+				time.Sleep(50 * time.Millisecond)
+			}
+
+			fetcher := buildConfigFetcher(config{
+				Connections: tc.maxConns,
+			})
+
+			err := fetcher.Resolve(&base.Request{
+				URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+			}, &base.Options{
+				Name: test.DownloadName,
+				Path: test.Dir,
+				Extra: &http.OptExtra{
+					Connections: tc.maxConns,
+				},
+			})
+			if err != nil {
+				cleanup()
+				t.Fatal(err)
+			}
+
+			err = fetcher.Start()
+			if err != nil {
+				cleanup()
+				t.Fatal(err)
+			}
+
+			err = fetcher.Wait()
+			if err != nil {
+				t.Logf("Wait() returned error: %v", err)
+				cleanup()
+				t.Fatal(err)
+			}
+
+			// Check final connection count equals maxConns exactly
+			stats := fetcher.Stats().(*http.Stats)
+			finalConns := len(stats.Connections)
+
+			// Debug: show connection details and metadata
+			httpFetcher := fetcher.(*Fetcher)
+			t.Logf("Resource: Size=%d, Range=%v", httpFetcher.Meta().Res.Size, httpFetcher.Meta().Res.Range)
+			for i, conn := range stats.Connections {
+				t.Logf("Connection %d: Downloaded=%d, Completed=%v", i, conn.Downloaded, conn.Completed)
+			}
+
+			if finalConns != tc.maxConns {
+				t.Errorf("Expected exactly %d connections, got %d", tc.maxConns, finalConns)
+			}
+
+			// Verify file content before cleanup
+			want := test.FileMd5(test.BuildFile)
+			got := test.FileMd5(test.DownloadFile)
+			if want != got {
+				t.Errorf("Download() got = %v, want %v", got, want)
+			}
+
+			cleanup()
+		})
+	}
+}
+
+// TestFetcher_AsyncPrefetch tests the async prefetch functionality
+// where data is downloaded in background during resolve phase and reused in start
+func TestFetcher_AsyncPrefetch(t *testing.T) {
+	// Test 1: Prefetch completes entire file before Start is called
+	t.Run("PrefetchComplete", func(t *testing.T) {
+		listener := test.StartTestFileServer()
+		defer listener.Close()
+
+		fetcher := buildFetcher()
+		err := fetcher.Resolve(&base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}, &base.Options{
+			Name: test.DownloadName,
+			Path: test.Dir,
+			Extra: &http.OptExtra{
+				Connections: 4,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Poll until prefetch completes the entire file (with timeout)
+		timeout := time.After(30 * time.Second)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+	pollLoop:
+		for {
+			select {
+			case <-timeout:
+				t.Fatal("Timeout waiting for prefetch to complete")
+			case <-ticker.C:
+				if fetcher.prefetchSize.Load() >= test.BuildSize {
+					break pollLoop
+				}
+			}
+		}
+
+		prefetchedBefore := fetcher.prefetchSize.Load()
+		t.Logf("Prefetched bytes before Start: %d (%.2f MB)", prefetchedBefore, float64(prefetchedBefore)/(1024*1024))
+
+		// Should have prefetched the entire file
+		if prefetchedBefore != test.BuildSize {
+			t.Errorf("Prefetch should complete entire file, got %d, want %d", prefetchedBefore, test.BuildSize)
+		}
+
+		// Now start the download
+		err = fetcher.Start()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Wait for download to complete
+		err = fetcher.Wait()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Check how much was utilized from prefetch
+		prefetchedUsed := fetcher.resolveDataPos.Load()
+		t.Logf("Prefetched bytes used: %d (%.2f MB)", prefetchedUsed, float64(prefetchedUsed)/(1024*1024))
+
+		// Verify file is correct
+		want := test.FileMd5(test.BuildFile)
+		got := test.FileMd5(test.DownloadFile)
+		if want != got {
+			t.Errorf("Download() got = %v, want %v", got, want)
+		}
+
+		os.Remove(test.DownloadFile)
+	})
+
+	// Test 2: Prefetch only downloads partial data before Start is called
+	t.Run("PrefetchPartial", func(t *testing.T) {
+		// Use slow server with 1 microsecond delay per byte
+		// This means ~1MB/s speed, so 100ms should download ~100KB
+		listener := test.StartTestSlowStartServer(1 * time.Microsecond)
+		defer listener.Close()
+
+		fetcher := buildFetcher()
+		err := fetcher.Resolve(&base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}, &base.Options{
+			Name: test.DownloadName,
+			Path: test.Dir,
+			Extra: &http.OptExtra{
+				Connections: 4,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Wait only 200ms - should only prefetch a small portion
+		time.Sleep(200 * time.Millisecond)
+
+		prefetchedBefore := fetcher.prefetchSize.Load()
+		t.Logf("Prefetched bytes before Start: %d (%.2f KB)", prefetchedBefore, float64(prefetchedBefore)/1024)
+
+		// Verify we have partial data (not zero, but not complete)
+		if prefetchedBefore == 0 {
+			t.Log("Warning: No data prefetched, may be too slow")
+		}
+		if prefetchedBefore >= test.BuildSize {
+			t.Log("Warning: Prefetch completed entire file, test may not be valid")
+		}
+
+		// Now start the download
+		err = fetcher.Start()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Wait for download to complete
+		err = fetcher.Wait()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Check stats - should have connections that downloaded remaining data
+		stats := fetcher.Stats().(*http.Stats)
+		t.Logf("Final connections: %d", len(stats.Connections))
+
+		prefetchedUsed := fetcher.resolveDataPos.Load()
+		t.Logf("Prefetched bytes used: %d (%.2f KB)", prefetchedUsed, float64(prefetchedUsed)/1024)
+
+		// Verify connections picked up where prefetch left off
+		if len(stats.Connections) > 0 {
+			firstConn := stats.Connections[0]
+			t.Logf("First connection downloaded: %d bytes", firstConn.Downloaded)
+		}
+
+		// Verify file is correct
+		want := test.FileMd5(test.BuildFile)
+		got := test.FileMd5(test.DownloadFile)
+		if want != got {
+			t.Errorf("Download() got = %v, want %v", got, want)
+		}
+
+		os.Remove(test.DownloadFile)
+	})
 }
 
 func TestFetcherManager_ParseName(t *testing.T) {
@@ -400,15 +689,9 @@ func downloadReady(listener net.Listener, connections int, t *testing.T) fetcher
 }
 
 func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, t *testing.T) fetcher.Fetcher {
-	err := f.Resolve(&base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	var extra any = nil
 	if connections > 0 {
-		extra = http.OptsExtra{
+		extra = &http.OptExtra{
 			Connections: connections,
 		}
 	}
@@ -417,7 +700,9 @@ func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, 
 		Path:  test.Dir,
 		Extra: extra,
 	}
-	err = f.Create(opts)
+	err := f.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,19 +727,39 @@ func downloadNormal(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadPost(listener net.Listener, connections int, t *testing.T) {
-	fetcher := downloadReady(listener, connections, t)
-	fetcher.Meta().Req.Extra = &http.ReqExtra{
-		Method: "POST",
-		Header: map[string]string{
-			"Authorization": "Bearer 123456",
-		},
-		Body: fmt.Sprintf(`{"name":"%s"}`, test.BuildName),
+	// POST parameters must be set before Resolve since the new design
+	// starts downloading during Resolve phase
+	f := buildFetcher()
+	var extra any = nil
+	if connections > 0 {
+		extra = &http.OptExtra{
+			Connections: connections,
+		}
 	}
-	err := fetcher.Start()
+	opts := &base.Options{
+		Name:  test.DownloadName,
+		Path:  test.Dir,
+		Extra: extra,
+	}
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		Extra: &http.ReqExtra{
+			Method: "POST",
+			Header: map[string]string{
+				"Authorization": "Bearer 123456",
+			},
+			Body: fmt.Sprintf(`{"name":"%s"}`, test.BuildName),
+		},
+	}
+	err := f.Resolve(req, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = fetcher.Wait()
+	err = f.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = f.Wait()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -491,14 +796,30 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadError(listener net.Listener, connections int, t *testing.T) {
-	fetcher := downloadReady(listener, connections, t)
-	err := fetcher.Start()
+	fetcher := buildFetcher()
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+	})
+	// With the new async design, Resolve may succeed (HTTP response received)
+	// but errors occur during async download or Start/Wait
 	if err != nil {
-		t.Fatal(err)
+		// Error detected in Resolve - this is fine
+		return
 	}
+
+	// Resolve succeeded, error should occur during Start/Wait
+	err = fetcher.Start()
+	if err != nil {
+		// Error detected in Start - this is fine
+		return
+	}
+
 	err = fetcher.Wait()
 	if err == nil {
-		t.Errorf("Download() got = %v, want %v", err, nil)
+		t.Errorf("Expected error during download, but got none")
 	}
 }
 

@@ -1,20 +1,18 @@
 package fetcher
 
 import (
-	"github.com/GopeedLab/gopeed/internal/controller"
-	"github.com/GopeedLab/gopeed/pkg/base"
 	"path"
 	"strings"
+
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/pkg/base"
 )
 
 // Fetcher defines the interface for a download protocol.
 // Each download task will have a corresponding Fetcher instance for the management of the download task
 type Fetcher interface {
 	Setup(ctl *controller.Controller)
-	// Resolve resource info from request
-	Resolve(req *base.Request) error
-	// Create ready to download, but not started
-	Create(opts *base.Options) error
+	Resolve(req *base.Request, opt *base.Options) error
 	Start() error
 	Pause() error
 	Close() error
@@ -37,19 +35,19 @@ type Uploader interface {
 
 // FetcherMeta defines the meta information of a fetcher.
 type FetcherMeta struct {
-	Req  *base.Request  `json:"req"`
-	Res  *base.Resource `json:"res"`
-	Opts *base.Options  `json:"opts"`
+	Req *base.Request  `json:"req"`
+	Res *base.Resource `json:"res"`
+	Opt *base.Options  `json:"opt"`
 }
 
 // FolderPath return the folder path of the meta info.
 func (m *FetcherMeta) FolderPath() string {
 	// check if rename folder
 	folder := m.Res.Name
-	if m.Opts.Name != "" {
-		folder = m.Opts.Name
+	if m.Opt.Name != "" {
+		folder = m.Opt.Name
 	}
-	return path.Join(m.Opts.Path, folder)
+	return path.Join(m.Opt.Path, folder)
 }
 
 // SingleFilepath return the single file path of the meta info.
@@ -57,10 +55,10 @@ func (m *FetcherMeta) SingleFilepath() string {
 	// check if rename file
 	file := m.Res.Files[0]
 	fileName := file.Name
-	if m.Opts.Name != "" {
-		fileName = m.Opts.Name
+	if m.Opt.Name != "" {
+		fileName = m.Opt.Name
 	}
-	return path.Join(m.Opts.Path, file.Path, fileName)
+	return path.Join(m.Opt.Path, file.Path, fileName)
 }
 
 // RootDirPath return the root dir path of the task file.
@@ -68,7 +66,7 @@ func (m *FetcherMeta) RootDirPath() string {
 	if m.Res.Name != "" {
 		return m.FolderPath()
 	} else {
-		return m.Opts.Path
+		return m.Opt.Path
 	}
 }
 

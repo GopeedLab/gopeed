@@ -251,18 +251,94 @@ func StartTestPostServer() net.Listener {
 }
 
 func StartTestErrorServer() net.Listener {
-	counter := 0
 	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
-			counter++
-			if counter != 1 {
-				writer.WriteHeader(500)
-				return
-			}
+			// Always return 500 error to test error handling
+			writer.WriteHeader(500)
+			return
 		})
 		return mux
 	})
+}
+
+// StartTestOneTimeServer creates a server where the URL can only be downloaded once
+// The first non-probe request succeeds, all subsequent requests return 404
+// This simulates one-time download URLs (e.g., signed URLs that expire after first use)
+func StartTestOneTimeServer() net.Listener {
+	var accessed atomic.Bool
+
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			// First full download request succeeds, subsequent requests fail
+			if accessed.Swap(true) {
+				writer.WriteHeader(404)
+				return
+			}
+
+			// First request - return full file without Range support
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				return
+			}
+			defer file.Close()
+			io.Copy(writer, file)
+		})
+		return mux
+	})
+}
+
+// StartTestSlowStartServer creates a server with configurable delay per request
+// This allows testing slow-start connection expansion to reach max connections
+func StartTestSlowStartServer(delayPerByte time.Duration) net.Listener {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			rangeFileHandle(
+				writer,
+				request,
+				nil,
+				func(file *os.File, n int64) {
+					slowCopyNWithDelay(sl, writer, file, n, delayPerByte)
+				},
+			)
+		})
+		return mux
+	})
+}
+
+// slowCopyNWithDelay copies n bytes from src to dst with a delay per byte
+func slowCopyNWithDelay(sl *shutdownListener, dst io.Writer, src io.Reader, n int64, delayPerByte time.Duration) {
+	buf := make([]byte, 32*1024)
+	remaining := n
+	for remaining > 0 {
+		if sl.isShutdown {
+			return
+		}
+		toRead := int64(len(buf))
+		if toRead > remaining {
+			toRead = remaining
+		}
+		nr, er := src.Read(buf[:toRead])
+		if nr > 0 {
+			nw, ew := dst.Write(buf[0:nr])
+			if nw > 0 {
+				remaining -= int64(nw)
+				// Add delay based on bytes written
+				if delayPerByte > 0 {
+					time.Sleep(delayPerByte * time.Duration(nw))
+				}
+			}
+			if ew != nil {
+				break
+			}
+		}
+		if er != nil {
+			break
+		}
+	}
 }
 
 // StartTestLimitServer connections limit server
@@ -323,6 +399,26 @@ func StartTestRangeBugServer() net.Listener {
 
 func rangeFileHandle(writer http.ResponseWriter, request *http.Request, modifyEnd func(end int64) int64, iocpN func(file *os.File, n int64)) {
 	r := request.Header.Get("Range")
+
+	// If no Range header, return full file with Accept-Ranges header
+	if r == "" {
+		// Open file first to ensure it exists
+		file, err := os.Open(BuildFile)
+		if err != nil {
+			writer.WriteHeader(500)
+			return
+		}
+		defer file.Close()
+
+		writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+		writer.Header().Set("Accept-Ranges", "bytes")
+		writer.WriteHeader(200)
+		(writer.(http.Flusher)).Flush()
+
+		iocpN(file, BuildSize)
+		return
+	}
+
 	// split range
 	s := strings.Split(r, "=")
 	if len(s) != 2 {
@@ -356,12 +452,7 @@ func rangeFileHandle(writer http.ResponseWriter, request *http.Request, modifyEn
 		end = modifyEnd(end)
 	}
 
-	writer.Header().Set("Content-Length", fmt.Sprintf("%d", end-start+1))
-	writer.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, BuildSize))
-	writer.Header().Set("Accept-Ranges", "bytes")
-	writer.WriteHeader(206)
-	(writer.(http.Flusher)).Flush()
-
+	// Open file before sending headers to ensure it exists
 	file, err := os.Open(BuildFile)
 	if err != nil {
 		writer.WriteHeader(500)
@@ -369,6 +460,13 @@ func rangeFileHandle(writer http.ResponseWriter, request *http.Request, modifyEn
 	}
 	defer file.Close()
 	file.Seek(start, 0)
+
+	writer.Header().Set("Content-Length", fmt.Sprintf("%d", end-start+1))
+	writer.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, BuildSize))
+	writer.Header().Set("Accept-Ranges", "bytes")
+	writer.WriteHeader(206)
+	(writer.(http.Flusher)).Flush()
+
 	iocpN(file, end-start+1)
 }
 
@@ -463,8 +561,9 @@ type shutdownListener struct {
 }
 
 func (c *shutdownListener) Close() error {
-	c.isShutdown = true
+	// Shutdown server first (waits for in-flight requests), then set isShutdown
 	closeErr := c.server.Shutdown(context.Background())
+	c.isShutdown = true
 	if err := ifExistAndRemove(BuildFile); err != nil {
 		fmt.Println(err)
 	}

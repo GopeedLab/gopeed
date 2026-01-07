@@ -20,6 +20,14 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 )
 
+var testDownloadOpt = &base.Options{
+	Path: test.Dir,
+	Name: test.DownloadName,
+	Extra: http.OptExtra{
+		Connections: 4,
+	},
+}
+
 func TestDownloader_Resolve(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
@@ -32,7 +40,7 @@ func TestDownloader_Resolve(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +72,7 @@ func TestDownloader_Create(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req, testDownloadOpt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,13 +84,7 @@ func TestDownloader_Create(t *testing.T) {
 			wg.Done()
 		}
 	})
-	_, err = downloader.Create(rr.ID, &base.Options{
-		Path: test.Dir,
-		Name: test.DownloadName,
-		Extra: http.OptsExtra{
-			Connections: 4,
-		},
-	})
+	_, err = downloader.Create(rr.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +110,7 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req, testDownloadOpt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,13 +122,7 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 			wg.Done()
 		}
 	})
-	_, err = downloader.Create(rr.ID, &base.Options{
-		Path: test.Dir,
-		Name: test.DownloadName,
-		Extra: http.OptsExtra{
-			Connections: 4,
-		},
-	})
+	_, err = downloader.Create(rr.ID)
 	if !strings.Contains(err.Error(), "white") {
 		t.Errorf("TestDownloader_CreateNotInWhite() got = %v, want %v", err.Error(), "not in white list")
 	}
@@ -172,13 +168,7 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 
 	_, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
 		Reqs: reqs,
-		Opts: &base.Options{
-			Path: test.Dir,
-			Name: test.DownloadName,
-			Extra: http.OptsExtra{
-				Connections: 4,
-			},
-		},
+		Opt:  testDownloadOpt,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -194,7 +184,7 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 	// Collect all task names
 	taskNames := make(map[string]bool)
 	for _, task := range tasks {
-		taskNames[task.Meta.Opts.Name] = true
+		taskNames[task.Meta.Opt.Name] = true
 	}
 
 	// Check that we have the expected number of unique task names
@@ -317,7 +307,7 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildReqProxy func
 			Pwd:    pwd,
 		})
 	}
-	rr, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req, nil)
 	if err != nil {
 		if errHandler == nil {
 			t.Fatal(err)
@@ -365,7 +355,7 @@ func TestDownloader_CreateRename(t *testing.T) {
 		_, err := downloader.CreateDirect(req, &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
-			Extra: http.OptsExtra{
+			Extra: http.OptExtra{
 				Connections: 4,
 			},
 		})
@@ -400,18 +390,12 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req, testDownloadOpt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	id, err := downloader.Create(rr.ID, &base.Options{
-		Path: test.Dir,
-		Name: test.DownloadName,
-		Extra: http.OptsExtra{
-			Connections: 4,
-		},
-	})
+	id, err := downloader.Create(rr.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -542,10 +526,10 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	taskIds, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
 		Reqs: reqs,
-		Opts: &base.Options{
+		Opt: &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
-			Extra: http.OptsExtra{
+			Extra: http.OptExtra{
 				Connections: 4,
 			},
 		},
@@ -675,7 +659,7 @@ func TestDownloader_Stats(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req, testDownloadOpt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -688,13 +672,7 @@ func TestDownloader_Stats(t *testing.T) {
 		}
 	})
 
-	taskId, err := downloader.Create(rr.ID, &base.Options{
-		Path: test.Dir,
-		Name: test.DownloadName,
-		Extra: http.OptsExtra{
-			Connections: 4,
-		},
-	})
+	taskId, err := downloader.Create(rr.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -736,13 +714,7 @@ func TestDownloader_Delete(t *testing.T) {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		taskId, err := downloader.CreateDirect(req, &base.Options{
-			Path: test.Dir,
-			Name: test.DownloadName,
-			Extra: http.OptsExtra{
-				Connections: 4,
-			},
-		})
+		taskId, err := downloader.CreateDirect(req, testDownloadOpt)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -810,17 +782,11 @@ func TestDownloader_ContinueBatch(t *testing.T) {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		rr, err := downloader.Resolve(req)
+		rr, err := downloader.Resolve(req, testDownloadOpt)
 		if err != nil {
 			t.Fatal(err)
 		}
-		taskId, err := downloader.Create(rr.ID, &base.Options{
-			Path: test.Dir,
-			Name: test.DownloadName,
-			Extra: http.OptsExtra{
-				Connections: 4,
-			},
-		})
+		taskId, err := downloader.Create(rr.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -905,18 +871,12 @@ func TestDownloader_PauseAndContinue(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req)
+	rr, err := downloader.Resolve(req, testDownloadOpt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	taskId, err := downloader.Create(rr.ID, &base.Options{
-		Path: test.Dir,
-		Name: test.DownloadName,
-		Extra: http.OptsExtra{
-			Connections: 4,
-		},
-	})
+	taskId, err := downloader.Create(rr.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1141,7 +1101,7 @@ func TestDownloader_AutoExtractWithProgress(t *testing.T) {
 	taskId, err := downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "archive.zip",
-		Extra: http.OptsExtra{
+		Extra: http.OptExtra{
 			Connections: 1,
 			AutoExtract: true,
 		},
@@ -1268,7 +1228,7 @@ func TestDownloader_AutoExtractWithDeleteAfterExtract(t *testing.T) {
 	_, err = downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "archive.zip",
-		Extra: http.OptsExtra{
+		Extra: http.OptExtra{
 			Connections:        1,
 			AutoExtract:        true,
 			DeleteAfterExtract: true,
@@ -1362,7 +1322,7 @@ func TestDownloader_AutoExtractError(t *testing.T) {
 	_, err = downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "corrupt.zip",
-		Extra: http.OptsExtra{
+		Extra: http.OptExtra{
 			Connections: 1,
 			AutoExtract: true,
 		},
@@ -1622,7 +1582,7 @@ func TestDownloader_DeleteAll(t *testing.T) {
 		_, err := downloader.CreateDirect(req, &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
-			Extra: http.OptsExtra{
+			Extra: http.OptExtra{
 				Connections: 4,
 			},
 		})
@@ -1676,7 +1636,7 @@ func TestDownloader_ContinueAll(t *testing.T) {
 	taskId, err := downloader.CreateDirect(req, &base.Options{
 		Path: test.Dir,
 		Name: test.DownloadName,
-		Extra: http.OptsExtra{
+		Extra: http.OptExtra{
 			Connections: 4,
 		},
 	})
@@ -2024,7 +1984,7 @@ func TestDownloader_CheckAllMultiPartTasksDone(t *testing.T) {
 		ID:     "task1",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: baseName + ".001"}},
 			},
@@ -2038,7 +1998,7 @@ func TestDownloader_CheckAllMultiPartTasksDone(t *testing.T) {
 		ID:     "task2",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: baseName + ".002"}},
 			},
@@ -2106,7 +2066,7 @@ func TestDownloader_TryClaimMultiPartExtraction(t *testing.T) {
 		ID:     "task1",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: baseName + ".001", Path: ""}},
 			},
@@ -2119,7 +2079,7 @@ func TestDownloader_TryClaimMultiPartExtraction(t *testing.T) {
 		ID:     "task2",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: baseName + ".002", Path: ""}},
 			},
@@ -2175,7 +2135,7 @@ func TestDownloader_HandleExtractionResult_Success(t *testing.T) {
 	task := &Task{
 		ID: "test-task",
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "test.zip"}},
 			},
@@ -2226,7 +2186,7 @@ func TestDownloader_HandleExtractionResult_WithDelete(t *testing.T) {
 	task := &Task{
 		ID: "test-task",
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "test.7z.001"}},
 			},
@@ -2267,7 +2227,7 @@ func TestDownloader_HandleExtractionResult_Error(t *testing.T) {
 	task := &Task{
 		ID: "test-task",
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "test.zip"}},
 			},
@@ -2302,7 +2262,7 @@ func TestDownloader_UpdateMultiPartTasksStatus(t *testing.T) {
 	sourceTask := &Task{
 		ID: "source",
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "archive.7z.001"}},
 			},
@@ -2315,7 +2275,7 @@ func TestDownloader_UpdateMultiPartTasksStatus(t *testing.T) {
 	relatedTask := &Task{
 		ID: "related",
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "archive.7z.002"}},
 			},
@@ -2328,7 +2288,7 @@ func TestDownloader_UpdateMultiPartTasksStatus(t *testing.T) {
 	unrelatedTask := &Task{
 		ID: "unrelated",
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "other.7z.001"}},
 			},
@@ -2370,7 +2330,7 @@ func TestDownloader_UpdateMultiPartTasksStatus_WithError(t *testing.T) {
 	sourceTask := &Task{
 		ID: "source",
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "archive.7z.001"}},
 			},
@@ -2383,7 +2343,7 @@ func TestDownloader_UpdateMultiPartTasksStatus_WithError(t *testing.T) {
 	relatedTask := &Task{
 		ID: "related",
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "archive.7z.002"}},
 			},
@@ -2422,7 +2382,7 @@ func TestDownloader_UpdateMultiPartTasksStatus_NoBaseName(t *testing.T) {
 	task := &Task{
 		ID: "single",
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "single.zip"}},
 			},
@@ -2459,7 +2419,7 @@ func TestDownloader_CheckMultiPartArchiveReady(t *testing.T) {
 		ID:     "task1",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opts: &base.Options{Path: tempDir},
+			Opt: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: fileName}},
 			},

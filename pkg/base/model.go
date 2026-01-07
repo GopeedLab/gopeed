@@ -149,7 +149,7 @@ func ParseReqExtra[E any](req *Request) error {
 	return nil
 }
 
-func ParseOptsExtra[E any](opts *Options) error {
+func ParseOptExtra[E any](opts *Options) error {
 	if opts.Extra == nil {
 		return nil
 	}
@@ -166,12 +166,12 @@ func ParseOptsExtra[E any](opts *Options) error {
 
 type CreateTaskBatch struct {
 	Reqs []*CreateTaskBatchItem `json:"reqs"`
-	Opts *Options               `json:"opts"`
+	Opt  *Options               `json:"opt"`
 }
 
 type CreateTaskBatchItem struct {
-	Req  *Request `json:"req"`
-	Opts *Options `json:"opts"`
+	Req *Request `json:"req"`
+	Opt *Options `json:"opt"`
 }
 
 // DownloaderStoreConfig is the config that can restore the downloader.
