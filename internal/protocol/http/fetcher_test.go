@@ -19,171 +19,199 @@ import (
 )
 
 func TestFetcher_Resolve(t *testing.T) {
-	testResolve(test.StartTestFileServer, test.BuildName, &base.Resource{
-		Size:  test.BuildSize,
-		Range: true,
-		Files: []*base.FileInfo{
-			{
-				Name: test.BuildName,
-				Size: test.BuildSize,
+	testResolve(test.StartTestFileServer, test.BuildName, t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: true,
+			Files: []*base.FileInfo{
+				{
+					Name: test.BuildName,
+					Size: test.BuildSize,
+				},
 			},
-		},
-	}, t)
-	testResolve(test.StartTestCustomServer, "disposition", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: test.BuildName,
-				Size: test.BuildSize,
+		}, nil
+	})
+	testResolve(test.StartTestCustomServer, "disposition", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: test.BuildName,
+					Size: test.BuildSize,
+				},
 			},
-		},
-	}, t)
-	testResolve(test.StartTestCustomServer, "encoded-word", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: test.TestChineseFileName,
-				Size: test.BuildSize,
+		}, nil
+	})
+	testResolve(test.StartTestCustomServer, "encoded-word", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: test.TestChineseFileName,
+					Size: test.BuildSize,
+				},
 			},
-		},
-	}, t)
-	testResolve(test.StartTestCustomServer, "no-encode", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: test.TestChineseFileName,
-				Size: test.BuildSize,
+		}, nil
+	})
+	testResolve(test.StartTestCustomServer, "no-encode", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: test.TestChineseFileName,
+					Size: test.BuildSize,
+				},
 			},
-		},
-	}, t)
-	testResolve(test.StartTestCustomServer, "%E6%B5%8B%E8%AF%95.zip", &base.Resource{
-		Size:  0,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: test.TestChineseFileName,
-				Size: 0,
+		}, nil
+	})
+	testResolve(test.StartTestCustomServer, "%E6%B5%8B%E8%AF%95.zip", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  0,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: test.TestChineseFileName,
+					Size: 0,
+				},
 			},
-		},
-	}, t)
-	testResolve(test.StartTestCustomServer, test.BuildName, &base.Resource{
-		Size:  0,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: test.BuildName,
-				Size: 0,
+		}, nil
+	})
+	testResolve(test.StartTestCustomServer, test.BuildName, t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  0,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: test.BuildName,
+					Size: 0,
+				},
 			},
-		},
-	}, t)
+		}, nil
+	})
 	// Test mixed encoding Content-Disposition where mime.ParseMediaType fails
 	// due to invalid characters, but filename*= contains the correct UTF-8 encoded name
-	testResolve(test.StartTestCustomServer, "mixed-encoding", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: test.TestChineseFileName,
-				Size: test.BuildSize,
+	testResolve(test.StartTestCustomServer, "mixed-encoding", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: test.TestChineseFileName,
+					Size: test.BuildSize,
+				},
 			},
-		},
-	}, t)
+		}, nil
+	})
 	// Test filename*= only (RFC 5987 format)
-	testResolve(test.StartTestCustomServer, "filename-star", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: test.TestChineseFileName,
-				Size: test.BuildSize,
+	testResolve(test.StartTestCustomServer, "filename-star", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: test.TestChineseFileName,
+					Size: test.BuildSize,
+				},
 			},
-		},
-	}, t)
+		}, nil
+	})
 	// Test GBK-encoded filename (common on Chinese Windows servers)
 	// Before fix: "测试.zip" sent as GBK bytes -> parsed as "²âÊÔ.zip" (garbled)
 	// After fix: correctly decoded back to "测试.zip"
-	testResolve(test.StartTestCustomServer, "gbk-encoded", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: test.TestChineseFileName,
-				Size: test.BuildSize,
+	testResolve(test.StartTestCustomServer, "gbk-encoded", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: test.TestChineseFileName,
+					Size: test.BuildSize,
+				},
 			},
-		},
-	}, t)
+		}, nil
+	})
 	// Test filename with plus signs (e.g., C++ Primer)
 	// Before fix: %2B decoded to space -> "C++ Primer" became "C  Primer"
 	// After fix: %2B correctly decoded to + -> "C++  Primer  Plus.mobi"
-	testResolve(test.StartTestCustomServer, "plus-sign-encoded", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: "C++  Primer  Plus.mobi",
-				Size: test.BuildSize,
+	testResolve(test.StartTestCustomServer, "plus-sign-encoded", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: "C++  Primer  Plus.mobi",
+					Size: test.BuildSize,
+				},
 			},
-		},
-	}, t)
+		}, nil
+	})
 	// Test filename with plus sign in URL path
 	// Before fix: %2B decoded to space
 	// After fix: %2B correctly decoded to +
-	testResolve(test.StartTestCustomServer, "C%2B%2B%20Primer.txt", &base.Resource{
-		Size:  0,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: "C++ Primer.txt",
-				Size: 0,
+	testResolve(test.StartTestCustomServer, "C%2B%2B%20Primer.txt", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  0,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: "C++ Primer.txt",
+					Size: 0,
+				},
 			},
-		},
-	}, t)
+		}, nil
+	})
 	// Test filename with HTML-encoded ampersand (fixes issue with & being truncated)
 	// Before fix: "查询处理&amp;优化.pptx" -> "查询处理&amp" (truncated at semicolon)
 	// After fix: correctly decoded to "查询处理&优化.pptx"
-	testResolve(test.StartTestCustomServer, "ampersand-encoded", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: "查询处理&优化.pptx",
-				Size: test.BuildSize,
+	testResolve(test.StartTestCustomServer, "ampersand-encoded", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: "查询处理&优化.pptx",
+					Size: test.BuildSize,
+				},
 			},
-		},
-	}, t)
-	// Test unquoted filename with HTML-encoded ampersand
-	testResolve(test.StartTestCustomServer, "ampersand-unquoted", &base.Resource{
-		Size:  test.BuildSize,
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: "test&file.txt",
-				Size: test.BuildSize,
-			},
-		},
-	}, t)
-
-	// Test URL without file path - should use domain/host as filename
-	listener := test.StartTestRootServer()
-	defer listener.Close()
-	fetcher := buildFetcher()
-	err := fetcher.Resolve(&base.Request{
-		URL: "http://" + listener.Addr().String() + "/",
-	}, &base.Options{
-		Name: test.DownloadName,
-		Path: test.Dir,
+		}, nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// When no filename is provided, it should use the hostname (without port) as the name
-	expectedName := "127.0.0.1"
-	if fetcher.Meta().Res.Files[0].Name != expectedName {
-		t.Errorf("Resolve() got name = %v, want %v", fetcher.Meta().Res.Files[0].Name, expectedName)
-	}
+	// Test unquoted filename with HTML-encoded ampersand
+	testResolve(test.StartTestCustomServer, "ampersand-unquoted", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  test.BuildSize,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: "test&file.txt",
+					Size: test.BuildSize,
+				},
+			},
+		}, nil
+	})
+	// Test URL without file path - should use domain/host as filename
+	testResolve(test.StartTestCustomServer, "", t, func(err error) (*base.Resource, error) {
+		return &base.Resource{
+			Size:  0,
+			Range: false,
+			Files: []*base.FileInfo{
+				{
+					Name: "127.0.0.1",
+					Size: 0,
+				},
+			},
+		}, nil
+	})
+	// Test 403 Forbidden response handling
+	testResolve(test.StartTestCustomServer, "forbidden", t, func(err error) (*base.Resource, error) {
+		requestError := extractRequestError(err)
+		if requestError != nil && requestError.Code == 403 {
+			return nil, nil
+		}
+		return nil, err
+	})
 }
 
 func TestFetcher_ResolveWithHostHeader(t *testing.T) {
@@ -209,7 +237,7 @@ func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 }
 
 func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
-	listener := test.StartTestRootServer()
+	listener := test.StartTestCustomServer()
 	defer listener.Close()
 
 	fetcher := buildFetcher()
@@ -231,7 +259,7 @@ func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 	}
 }
 
-func testResolve(startTestServer func() net.Listener, path string, want *base.Resource, t *testing.T) {
+func testResolve(startTestServer func() net.Listener, path string, t *testing.T, wantFn func(error) (*base.Resource, error)) {
 	listener := startTestServer()
 	defer listener.Close()
 	fetcher := buildFetcher()
@@ -242,10 +270,11 @@ func testResolve(startTestServer func() net.Listener, path string, want *base.Re
 		Name: test.DownloadName,
 		Path: test.Dir,
 	})
+	want, err := wantFn(err)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !test.AssertResourceEqual(want, fetcher.meta.Res) {
+	if want != nil && !test.AssertResourceEqual(want, fetcher.meta.Res) {
 		t.Errorf("Resolve() got = %+v, want %+v", fetcher.meta.Res, want)
 	}
 }

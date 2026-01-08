@@ -70,6 +70,9 @@ func StartTestSlowFileServer(delay time.Duration) net.Listener {
 func StartTestCustomServer() net.Listener {
 	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+			writer.WriteHeader(200)
+		})
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
 			file, err := os.Open(BuildFile)
 			if err != nil {
@@ -221,6 +224,10 @@ func StartTestCustomServer() net.Listener {
 			defer file.Close()
 			io.Copy(writer, file)
 		})
+		// Test 403 Forbidden endpoint
+		mux.HandleFunc("/forbidden", func(writer http.ResponseWriter, request *http.Request) {
+			writer.WriteHeader(403)
+		})
 		return mux
 	})
 }
@@ -239,20 +246,6 @@ func StartTestHostHeaderServer() net.Listener {
 			}
 			writer.WriteHeader(200)
 			writer.Write([]byte("OK"))
-		})
-		return mux
-	})
-}
-
-// StartTestRootServer starts a simple server at the root path
-// Used to test URL resolution when no filename is provided
-func StartTestRootServer() net.Listener {
-	return startTestServer(func(sl *shutdownListener) http.Handler {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-			writer.Header().Set("Content-Type", "text/html")
-			writer.WriteHeader(200)
-			writer.Write([]byte("<html><body>Test Page</body></html>"))
 		})
 		return mux
 	})

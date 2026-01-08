@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net"
@@ -18,6 +20,49 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
+
+type RequestError struct {
+	Code int
+}
+
+func NewRequestError(code int) *RequestError {
+	return &RequestError{Code: code}
+}
+
+func (re *RequestError) Error() string {
+	return fmt.Sprintf("http request fail, code:%d", re.Code)
+}
+
+func isFailureExemptHTTPCode(code int) bool {
+	if code >= 500 && code <= 599 {
+		return true
+	}
+
+	switch code {
+	case 429, 408, 440, 499:
+		return true
+	default:
+		return false
+	}
+}
+
+func shouldCountHTTPFailure(err error) bool {
+	var re *RequestError
+	if !errors.As(err, &re) {
+		return false
+	}
+
+	return !isFailureExemptHTTPCode(re.Code)
+}
+
+func extractRequestError(err error) *RequestError {
+	var re *RequestError
+	if errors.As(err, &re) {
+		return re
+	}
+
+	return nil
+}
 
 // ============================================================================
 // HTTP Request/Client Building
@@ -116,7 +161,7 @@ func parseFilename(contentDisposition string) string {
 }
 
 // parseFilenameExtended handles RFC 5987 extended notation (filename*=)
-// Format: filename*=charset'language'value (e.g., UTF-8''%E6%B5%8B%E8%AF%95.zip)
+// Format: filename*=charset'language'value (e.g., UTF-8”%E6%B5%8B%E8%AF%95.zip)
 func parseFilenameExtended(cd string) string {
 	lower := strings.ToLower(cd)
 	idx := strings.Index(lower, "filename*=")
@@ -125,7 +170,7 @@ func parseFilenameExtended(cd string) string {
 	}
 
 	value := cd[idx+len("filename*="):]
-	
+
 	// Find the end of the value using proper quote handling
 	endIdx := findParamValueEnd(value)
 	if endIdx != -1 {
@@ -233,7 +278,7 @@ func parseFilenameFallback(cd string) string {
 	}
 
 	value := cd[idx+len("filename="):]
-	
+
 	// Find the end of the value using proper quote handling
 	endIdx := findParamValueEnd(value)
 	if endIdx != -1 {
@@ -283,7 +328,7 @@ func findParamValueEnd(value string) int {
 		// No closing quote found, treat rest of string as value
 		return -1
 	}
-	
+
 	// Unquoted value - find the next semicolon that's not part of an HTML entity
 	// HTML entities have the pattern &...;  (e.g., &amp; &lt; &gt; &quot; &#39;)
 	for i := 0; i < len(value); i++ {
@@ -309,7 +354,7 @@ func findParamValueEnd(value string) int {
 					}
 				}
 			}
-			
+
 			if !isEntity {
 				return i
 			}

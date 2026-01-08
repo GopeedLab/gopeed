@@ -29,54 +29,6 @@ const (
 )
 
 // ============================================================================
-// Error Types
-// ============================================================================
-
-type RequestError struct {
-	Code int
-	Msg  string
-}
-
-func NewRequestError(code int, msg string) *RequestError {
-	return &RequestError{Code: code, Msg: msg}
-}
-
-func (re *RequestError) Error() string {
-	return fmt.Sprintf("http request fail, code:%d, msg:%s", re.Code, re.Msg)
-}
-
-func isFailureExemptHTTPCode(code int) bool {
-	if code >= 500 && code <= 599 {
-		return true
-	}
-
-	switch code {
-	case 429, 408, 440, 499:
-		return true
-	default:
-		return false
-	}
-}
-
-func shouldCountHTTPFailure(err error) bool {
-	var re *RequestError
-	if !errors.As(err, &re) {
-		return false
-	}
-
-	return !isFailureExemptHTTPCode(re.Code)
-}
-
-func extractRequestError(err error) *RequestError {
-	var re *RequestError
-	if errors.As(err, &re) {
-		return re
-	}
-
-	return nil
-}
-
-// ============================================================================
 // State Machine
 // ============================================================================
 
@@ -398,7 +350,7 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
 		resp.Body.Close()
 		f.setState(stateError)
-		return NewRequestError(resp.StatusCode, resp.Status)
+		return NewRequestError(resp.StatusCode)
 	}
 
 	// Check if server supports range requests
@@ -640,19 +592,23 @@ func (f *Fetcher) doStart() error {
 	// Open or create target file first (needed for prefetch copy)
 	name := f.meta.SingleFilepath()
 	var err error
+	var file *os.File
 	_, err = os.Stat(name)
 	if err != nil {
 		if os.IsNotExist(err) {
-			f.file, err = f.ctl.Touch(name, f.meta.Res.Size)
+			file, err = f.ctl.Touch(name, f.meta.Res.Size)
 		} else {
 			return err
 		}
 	} else {
-		f.file, err = os.OpenFile(name, os.O_RDWR, os.ModeAppend)
+		file, err = os.OpenFile(name, os.O_RDWR, os.ModeAppend)
 	}
 	if err != nil {
 		return err
 	}
+	f.fileMu.Lock()
+	f.file = file
+	f.fileMu.Unlock()
 
 	// For range-supported resources, stop prefetch and copy data
 	// For non-range resources, the response will be used directly
@@ -879,7 +835,10 @@ func (f *Fetcher) expandConnections() {
 func (f *Fetcher) runConnection(conn *connection) {
 	defer f.wg.Done()
 
+	f.connMu.Lock()
 	conn.State = connConnecting
+	f.connMu.Unlock()
+
 	client := f.buildClient()
 	buf := make([]byte, 8192)
 
@@ -890,8 +849,10 @@ func (f *Fetcher) runConnection(conn *connection) {
 		err := f.downloadChunkOnce(conn, client, buf)
 		if err == nil {
 			if !f.meta.Res.Range || !f.helpOtherConnection(conn) {
+				f.connMu.Lock()
 				conn.Completed = true
 				conn.State = connCompleted
+				f.connMu.Unlock()
 				return
 			}
 
@@ -913,25 +874,33 @@ func (f *Fetcher) runConnection(conn *connection) {
 
 		if shouldCountHTTPFailure(err) {
 			if re := extractRequestError(err); re != nil && re.Code == 403 {
+				f.connMu.Lock()
 				conn.State = connFailed
 				conn.failed = true
+				f.connMu.Unlock()
 				if f.slowStart != nil {
 					f.slowStart.onConnectFailed()
 				}
 				return
 			}
 			conn.retryTimes++
+			f.connMu.Lock()
 			conn.failed = true
+			f.connMu.Unlock()
 			if f.slowStart != nil {
 				f.slowStart.onConnectFailed()
 			}
 			if conn.retryTimes >= 3 {
+				f.connMu.Lock()
 				conn.State = connFailed
+				f.connMu.Unlock()
 				return
 			}
 		}
 
+		f.connMu.Lock()
 		conn.State = connFailed
+		f.connMu.Unlock()
 		retryDelay := time.Second * time.Duration(retries+1)
 		if retryDelay > 5*time.Second {
 			retryDelay = 5 * time.Second
@@ -975,11 +944,13 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	defer resp.Body.Close()
 
 	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
-		return NewRequestError(resp.StatusCode, resp.Status)
+		return NewRequestError(resp.StatusCode)
 	}
 
+	f.connMu.Lock()
 	conn.State = connDownloading
 	conn.failed = false
+	f.connMu.Unlock()
 
 	if conn.Role == rolePrimary || conn.ID == 0 {
 		f.primaryReadyOnce.Do(func() {
@@ -1055,7 +1026,10 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 	defer f.wg.Done()
 
+	f.connMu.Lock()
 	conn.State = connConnecting
+	f.connMu.Unlock()
+
 	buf := make([]byte, 8192)
 
 	// Get the resolve response
@@ -1072,8 +1046,10 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 	defer resp.Body.Close()
 
+	f.connMu.Lock()
 	conn.State = connDownloading
 	conn.failed = false
+	f.connMu.Unlock()
 
 	// Signal primary ready
 	f.primaryReadyOnce.Do(func() {
@@ -1097,8 +1073,10 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 				_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
 				if writeErr != nil {
 					f.fileMu.Unlock()
+					f.connMu.Lock()
 					conn.State = connFailed
 					conn.failed = true
+					f.connMu.Unlock()
 					if f.slowStart != nil {
 						f.slowStart.onConnectFailed()
 					}
@@ -1112,12 +1090,16 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 		}
 		if err != nil {
 			if err == io.EOF {
+				f.connMu.Lock()
 				conn.Completed = true
 				conn.State = connCompleted
+				f.connMu.Unlock()
 				return
 			}
 			// Reading from resolve response failed: treat as transient (do not count as fail)
+			f.connMu.Lock()
 			conn.State = connFailed
+			f.connMu.Unlock()
 			return
 		}
 	}
@@ -1136,7 +1118,9 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 			return
 		}
 
+		f.connMu.Lock()
 		conn.State = connConnecting
+		f.connMu.Unlock()
 
 		err := func() error {
 			httpReq, err := f.buildRequest(conn.ctx, f.meta.Req)
@@ -1151,11 +1135,13 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 			defer resp.Body.Close()
 
 			if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
-				return NewRequestError(resp.StatusCode, resp.Status)
+				return NewRequestError(resp.StatusCode)
 			}
 
+			f.connMu.Lock()
 			conn.State = connDownloading
 			conn.failed = false
+			f.connMu.Unlock()
 
 			f.primaryReadyOnce.Do(func() {
 				close(f.primaryReadyCh)
@@ -1195,8 +1181,10 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 		}()
 
 		if err == nil {
+			f.connMu.Lock()
 			conn.Completed = true
 			conn.State = connCompleted
+			f.connMu.Unlock()
 			return
 		}
 
@@ -1213,8 +1201,10 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 		if shouldCountHTTPFailure(err) {
 			// Immediate fail for server connection limit (403)
 			if re := extractRequestError(err); re != nil && re.Code == 403 {
+				f.connMu.Lock()
 				conn.State = connFailed
 				conn.failed = true
+				f.connMu.Unlock()
 				if f.slowStart != nil {
 					f.slowStart.onConnectFailed()
 				}
@@ -1223,15 +1213,19 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 			conn.retryTimes++
 			countedRetries++
 			if countedRetries >= 3 {
+				f.connMu.Lock()
 				conn.State = connFailed
 				conn.failed = true
+				f.connMu.Unlock()
 				if f.slowStart != nil {
 					f.slowStart.onConnectFailed()
 				}
 				return
 			}
 			// Retry again for counted failures below the cap
+			f.connMu.Lock()
 			conn.State = connFailed
+			f.connMu.Unlock()
 			retryDelay := time.Second * time.Duration(retries+1)
 			if retryDelay > 5*time.Second {
 				retryDelay = 5 * time.Second
@@ -1242,7 +1236,9 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 		}
 
 		// Retry indefinitely for non-counted errors
+		f.connMu.Lock()
 		conn.State = connFailed
+		f.connMu.Unlock()
 		retryDelay := time.Second * time.Duration(retries+1)
 		if retryDelay > 5*time.Second {
 			retryDelay = 5 * time.Second
@@ -1284,6 +1280,10 @@ func (f *Fetcher) helpOtherConnection(helper *connection) bool {
 }
 
 func (f *Fetcher) resumeConnections() {
+	// Collect connections to resume while holding the lock
+	var toResume []*connection
+
+	f.connMu.Lock()
 	for _, conn := range f.connections {
 		// Only skip connections that have truly completed successfully
 		if conn.Completed || conn.State == connCompleted {
@@ -1306,6 +1306,12 @@ func (f *Fetcher) resumeConnections() {
 		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
 		conn.State = connNotStarted
 		conn.failed = false // Clear failed flag for resumed connection
+		toResume = append(toResume, conn)
+	}
+	f.connMu.Unlock()
+
+	// Start connections outside the lock
+	for _, conn := range toResume {
 		f.wg.Add(1)
 		go f.runConnection(conn)
 	}
@@ -1362,7 +1368,7 @@ func (f *Fetcher) onDownloadComplete() {
 					continue
 				}
 				if re := extractRequestError(conn.lastErr); re != nil {
-					finalErr = fmt.Errorf("connection %d failed: retries=%d, http code=%d, msg=%s", conn.ID, conn.retryTimes, re.Code, re.Msg)
+					finalErr = fmt.Errorf("connection %d failed: retries=%d, status=%d", conn.ID, conn.retryTimes, re.Code)
 				} else if conn.lastErr != nil {
 					finalErr = fmt.Errorf("connection %d failed: retries=%d, err=%v", conn.ID, conn.retryTimes, conn.lastErr)
 				} else {
