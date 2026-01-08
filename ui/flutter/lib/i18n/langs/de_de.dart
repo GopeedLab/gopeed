@@ -39,6 +39,7 @@ const deDE = {
     'downloadDirValid': 'Bitte wählen Sie das Download-Verzeichnis',
     'connections': 'Anschlüsse',
     'useServerCtime': 'Serverzeit für die Dateierstellung verwenden',
+    'autoTorrent': 'Torrent-Dateien automatisch herunterladen',
     'maxRunning': 'Maximale Anzahl ausgeführter Aufgaben',
     'defaultDirectDownload': 'Direkten Download standardmäßig aktivieren',
     'autoStartTasks': 'Unvollständige Aufgaben beim Start automatisch starten',

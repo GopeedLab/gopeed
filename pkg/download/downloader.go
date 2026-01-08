@@ -909,6 +909,7 @@ func (d *Downloader) watch(task *Task) {
 
 	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
 		downloadFilePath := task.Meta.SingleFilepath()
+		// Auto-create torrent task for downloaded .torrent files
 		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
 			go func() {
 				_, err2 := d.CreateDirect(

@@ -37,6 +37,7 @@ const trTR = {
     'downloadDirValid': 'Lütfen bir indirme dizini seçin',
     'connections': 'Bağlantılar',
     'useServerCtime': 'Dosya oluşturma için sunucu zamanını kullan',
+    'autoTorrent': 'Torrent dosyalarını otomatik olarak indir',
     'maxRunning': 'Maksimum Çalışan Görev',
     'defaultDirectDownload': 'Varsayılan olarak doğrudan indirmeyi seç',
     'items': '@count öğe',

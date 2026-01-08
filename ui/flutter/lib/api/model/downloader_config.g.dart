@@ -16,9 +16,7 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
       ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>)
       ..webhook =
-          WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
-      ..archive =
-          ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?);
+          WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
@@ -28,7 +26,6 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'extra': instance.extra.toJson(),
       'proxy': instance.proxy.toJson(),
       'webhook': instance.webhook.toJson(),
-      'archive': instance.archive.toJson(),
     };
 
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>
@@ -46,6 +43,9 @@ HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
       userAgent: json['userAgent'] as String? ?? '',
       connections: (json['connections'] as num?)?.toInt() ?? 0,
       useServerCtime: json['useServerCtime'] as bool? ?? false,
+      autoExtract: json['autoExtract'] as bool? ?? false,
+      deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? false,
+      autoTorrent: json['autoTorrent'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
@@ -53,6 +53,9 @@ Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
       'userAgent': instance.userAgent,
       'connections': instance.connections,
       'useServerCtime': instance.useServerCtime,
+      'autoExtract': instance.autoExtract,
+      'deleteAfterExtract': instance.deleteAfterExtract,
+      'autoTorrent': instance.autoTorrent,
     };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
@@ -238,14 +241,3 @@ Map<String, dynamic> _$ExtraConfigGithubMirrorToJson(
       'mirrors': instance.mirrors.map((e) => e.toJson()).toList(),
     };
 
-ArchiveConfig _$ArchiveConfigFromJson(Map<String, dynamic> json) =>
-    ArchiveConfig(
-      autoExtract: json['autoExtract'] as bool? ?? true,
-      deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? true,
-    );
-
-Map<String, dynamic> _$ArchiveConfigToJson(ArchiveConfig instance) =>
-    <String, dynamic>{
-      'autoExtract': instance.autoExtract,
-      'deleteAfterExtract': instance.deleteAfterExtract,
-    };
