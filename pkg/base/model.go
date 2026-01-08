@@ -149,7 +149,7 @@ func ParseReqExtra[E any](req *Request) error {
 	return nil
 }
 
-func ParseOptsExtra[E any](opts *Options) error {
+func ParseOptExtra[E any](opts *Options) error {
 	if opts.Extra == nil {
 		return nil
 	}

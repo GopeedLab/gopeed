@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
-	"strings"
-	"sync"
 )
 
 const progressWidth = 20

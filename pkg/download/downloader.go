@@ -321,7 +321,7 @@ func (d *Downloader) saveTask(task *Task) error {
 	return nil
 }
 
-func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
+func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *ResolveResult, err error) {
 	rrId, err := gonanoid.New()
 	if err != nil {
 		return
@@ -342,7 +342,11 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	if err != nil {
 		return
 	}
-	err = fetcher.Resolve(req)
+	initOpt, err := d.initOptions(opts)
+	if err != nil {
+		return
+	}
+	err = fetcher.Resolve(req, initOpt)
 	if err != nil {
 		return
 	}
@@ -390,7 +394,11 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 		return
 	}
 	fetcher.Meta().Req = req
-	return d.doCreate(fetcher, opts)
+	initOpt, err := d.initOptions(opts)
+	if err != nil {
+		return
+	}
+	return d.doCreate(fetcher, initOpt)
 }
 
 func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []string, err error) {
@@ -409,7 +417,7 @@ func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []stri
 	return taskIds, nil
 }
 
-func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err error) {
+func (d *Downloader) Create(rrId string) (taskId string, err error) {
 	d.fetcherMapLock.RLock()
 	fetcher, ok := d.fetcherCache[rrId]
 	d.fetcherMapLock.RUnlock()
@@ -421,7 +429,7 @@ func (d *Downloader) Create(rrId string, opts *base.Options) (taskId string, err
 		delete(d.fetcherCache, rrId)
 		d.fetcherMapLock.Unlock()
 	}()
-	return d.doCreate(fetcher, opts)
+	return d.doCreate(fetcher, nil)
 }
 
 func (d *Downloader) Pause(filter *TaskFilter) (err error) {
@@ -855,8 +863,6 @@ func (d *Downloader) watch(task *Task) {
 				if err != nil {
 					d.Logger.Warn().Err(err).Msgf("task wait upload failed, task id: %s", task.ID)
 				}
-				d.lock.Lock()
-				defer d.lock.Unlock()
 
 				// Check if the task is deleted
 				if d.GetTask(task.ID) != nil {
@@ -947,7 +953,6 @@ func (d *Downloader) restoreTask(task *Task) error {
 		}
 	}
 	go d.watch(task)
-	task.fetcher.Create(task.Meta.Opts)
 	return nil
 }
 
@@ -970,42 +975,15 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 	if task.fetcher.Meta().Res == nil {
 		task.fetcher.Meta().Res = task.Meta.Res
 	}
+	if task.fetcher.Meta().Opts == nil {
+		task.fetcher.Meta().Opts = task.Meta.Opts
+	}
 	return nil
 }
 
 func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId string, err error) {
-	if opts == nil {
-		opts = &base.Options{}
-	}
-	if opts.SelectFiles == nil {
-		opts.SelectFiles = make([]int, 0)
-	}
-
-	meta := f.Meta()
-	meta.Opts = opts
-	if opts.Path == "" {
-		storeConfig, err := d.GetConfig()
-		if err != nil {
-			return "", err
-		}
-		opts.Path = storeConfig.DownloadDir
-	}
-
-	// Replace placeholders in download path (e.g., %year%, %month%, %day%, %date%)
-	opts.Path = util.ReplacePathPlaceholders(opts.Path)
-
-	// if enable white download directory, check if the download directory is in the white list
-	if len(d.cfg.WhiteDownloadDirs) > 0 {
-		inWhiteList := false
-		for _, dir := range d.cfg.WhiteDownloadDirs {
-			if match, err := filepath.Match(dir, opts.Path); match && err == nil {
-				inWhiteList = true
-				break
-			}
-		}
-		if !inWhiteList {
-			return "", errors.New("download directory is not in white list")
-		}
+	if f.Meta().Opts == nil {
+		f.Meta().Opts = opts
 	}
 
 	fm, err := d.parseFm(f.Meta().Req.URL)
@@ -1021,9 +999,6 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	task.Progress = &Progress{}
 	_, task.Uploading = f.(fetcher.Uploader)
 	initTask(task)
-	if err = f.Create(opts); err != nil {
-		return
-	}
 	if err = d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
 		return
 	}
@@ -1047,6 +1022,39 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 
 	go d.watch(task)
 	return
+}
+
+func (d *Downloader) initOptions(opts *base.Options) (*base.Options, error) {
+	if opts == nil {
+		opts = &base.Options{}
+	}
+	if opts.SelectFiles == nil {
+		opts.SelectFiles = make([]int, 0)
+	}
+	if opts.Path == "" {
+		storeConfig, err := d.GetConfig()
+		if err != nil {
+			return nil, err
+		}
+		opts.Path = storeConfig.DownloadDir
+	}
+	// Replace placeholders in download path (e.g., %year%, %month%, %day%, %date%)
+	opts.Path = util.ReplacePathPlaceholders(opts.Path)
+
+	// if enable white download directory, check if the download directory is in the white list
+	if len(d.cfg.WhiteDownloadDirs) > 0 {
+		inWhiteList := false
+		for _, dir := range d.cfg.WhiteDownloadDirs {
+			if match, err := filepath.Match(dir, opts.Path); match && err == nil {
+				inWhiteList = true
+				break
+			}
+		}
+		if !inWhiteList {
+			return nil, errors.New("download directory is not in white list")
+		}
+	}
+	return opts, nil
 }
 
 func (d *Downloader) statusMut(task *Task, fn func() (bool, error)) (bool, error) {
@@ -1088,7 +1096,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 
 		d.triggerOnStart(task)
 		if task.Meta.Res == nil {
-			err := task.fetcher.Resolve(task.Meta.Req)
+			err := task.fetcher.Resolve(task.Meta.Req, task.Meta.Opts)
 			if err != nil {
 				return err
 			}
@@ -1619,13 +1627,6 @@ func (b *boot) URL(url string) *boot {
 func (b *boot) Extra(extra interface{}) *boot {
 	b.extra = extra
 	return b
-}
-
-func (b *boot) Resolve() (*ResolveResult, error) {
-	return defaultDownloader.Resolve(&base.Request{
-		URL:   b.url,
-		Extra: b.extra,
-	})
 }
 
 func (b *boot) Listener(listener Listener) *boot {

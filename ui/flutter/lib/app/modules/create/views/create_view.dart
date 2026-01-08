@@ -16,6 +16,7 @@ import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/options.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
+import '../../../../api/model/resolve_task.dart';
 import '../../../../api/model/task.dart';
 import '../../../../database/database.dart';
 import '../../../../util/input_formatter.dart';
@@ -125,13 +126,13 @@ class CreateView extends GetView<CreateController> {
         }
 
         // handle options
-        if (routerParams.opt != null) {
-          _renameController.text = routerParams.opt!.name;
-          _pathController.text = routerParams.opt!.path;
+        if (routerParams.opts != null) {
+          _renameController.text = routerParams.opts!.name;
+          _pathController.text = routerParams.opts!.path;
 
           final optionsHandlers = {
             Protocol.http: () {
-              final opt = routerParams.opt!;
+              final opt = routerParams.opts!;
               _renameController.text = opt.name;
               _pathController.text = opt.path;
               if (opt.extra != null) {
@@ -143,7 +144,7 @@ class CreateView extends GetView<CreateController> {
             },
             Protocol.bt: null,
           };
-          if (routerParams.opt?.extra != null) {
+          if (routerParams.opts?.extra != null) {
             optionsHandlers[protocol]?.call();
           }
         }
@@ -814,29 +815,34 @@ class CreateView extends GetView<CreateController> {
         */
         final isMultiLine = urls.length > 1;
         final isDirect = controller.directDownload.value || isMultiLine;
+        final opt = Options(
+          name: isMultiLine ? "" : _renameController.text,
+          path: _pathController.text,
+          selectFiles: [],
+          extra: parseReqOptsExtra(),
+        );
         if (isDirect) {
           await Future.wait(urls.map((url) {
             return createTask(CreateTask(
-                req: Request(
-                  url: url,
-                  extra: parseReqExtra(url),
-                  proxy: parseProxy(),
-                  skipVerifyCert: _skipVerifyCertController.value,
-                ),
-                opt: Options(
-                  name: isMultiLine ? "" : _renameController.text,
-                  path: _pathController.text,
-                  selectFiles: [],
-                  extra: parseReqOptsExtra(),
-                )));
+              req: Request(
+                url: url,
+                extra: parseReqExtra(url),
+                proxy: parseProxy(),
+                skipVerifyCert: _skipVerifyCertController.value,
+              ),
+              opts: opt,
+            ));
           }));
           Get.rootDelegate.offNamed(Routes.TASK);
         } else {
-          final rr = await resolve(Request(
-            url: submitUrl,
-            extra: parseReqExtra(_urlController.text),
-            proxy: parseProxy(),
-            skipVerifyCert: _skipVerifyCertController.value,
+          final rr = await resolve(ResolveTask(
+            req: Request(
+              url: submitUrl,
+              extra: parseReqExtra(_urlController.text),
+              proxy: parseProxy(),
+              skipVerifyCert: _skipVerifyCertController.value,
+            ),
+            opts: opt,
           ));
           await _showResolveDialog(rr);
         }
@@ -983,7 +989,7 @@ class CreateView extends GetView<CreateController> {
                             } else {
                               await createTask(CreateTask(
                                   rid: rr.id,
-                                  opt: Options(
+                                  opts: Options(
                                       name: _renameController.text,
                                       path: _pathController.text,
                                       selectFiles: controller.selectedIndexes,
