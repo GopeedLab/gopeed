@@ -12,7 +12,7 @@ import (
 // Each download task will have a corresponding Fetcher instance for the management of the download task
 type Fetcher interface {
 	Setup(ctl *controller.Controller)
-	Resolve(req *base.Request, opt *base.Options) error
+	Resolve(req *base.Request, opts *base.Options) error
 	Start() error
 	Pause() error
 	Close() error
@@ -35,19 +35,19 @@ type Uploader interface {
 
 // FetcherMeta defines the meta information of a fetcher.
 type FetcherMeta struct {
-	Req *base.Request  `json:"req"`
-	Res *base.Resource `json:"res"`
-	Opt *base.Options  `json:"opt"`
+	Req  *base.Request  `json:"req"`
+	Res  *base.Resource `json:"res"`
+	Opts *base.Options  `json:"opts"`
 }
 
 // FolderPath return the folder path of the meta info.
 func (m *FetcherMeta) FolderPath() string {
 	// check if rename folder
 	folder := m.Res.Name
-	if m.Opt.Name != "" {
-		folder = m.Opt.Name
+	if m.Opts.Name != "" {
+		folder = m.Opts.Name
 	}
-	return path.Join(m.Opt.Path, folder)
+	return path.Join(m.Opts.Path, folder)
 }
 
 // SingleFilepath return the single file path of the meta info.
@@ -55,10 +55,10 @@ func (m *FetcherMeta) SingleFilepath() string {
 	// check if rename file
 	file := m.Res.Files[0]
 	fileName := file.Name
-	if m.Opt.Name != "" {
-		fileName = m.Opt.Name
+	if m.Opts.Name != "" {
+		fileName = m.Opts.Name
 	}
-	return path.Join(m.Opt.Path, file.Path, fileName)
+	return path.Join(m.Opts.Path, file.Path, fileName)
 }
 
 // RootDirPath return the root dir path of the task file.
@@ -66,7 +66,7 @@ func (m *FetcherMeta) RootDirPath() string {
 	if m.Res.Name != "" {
 		return m.FolderPath()
 	} else {
-		return m.Opt.Path
+		return m.Opts.Path
 	}
 }
 

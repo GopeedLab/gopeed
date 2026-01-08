@@ -18,7 +18,7 @@ func main() {
 			}
 		}).
 		Create(&base.Options{
-			Extra: http.OptExtra{
+			Extra: http.OptsExtra{
 				Connections: 8,
 			},
 		})

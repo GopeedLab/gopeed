@@ -42,7 +42,38 @@ func NewRequestError(code int, msg string) *RequestError {
 }
 
 func (re *RequestError) Error() string {
-	return fmt.Sprintf("http request fail,code:%d", re.Code)
+	return fmt.Sprintf("http request fail, code:%d, msg:%s", re.Code, re.Msg)
+}
+
+func isFailureExemptHTTPCode(code int) bool {
+	if code >= 500 && code <= 599 {
+		return true
+	}
+
+	switch code {
+	case 429, 408, 440, 499:
+		return true
+	default:
+		return false
+	}
+}
+
+func shouldCountHTTPFailure(err error) bool {
+	var re *RequestError
+	if !errors.As(err, &re) {
+		return false
+	}
+
+	return !isFailureExemptHTTPCode(re.Code)
+}
+
+func extractRequestError(err error) *RequestError {
+	var re *RequestError
+	if errors.As(err, &re) {
+		return re
+	}
+
+	return nil
 }
 
 // ============================================================================
@@ -111,6 +142,7 @@ type connection struct {
 
 	failed     bool
 	retryTimes int
+	lastErr    error
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -313,24 +345,24 @@ func (f *Fetcher) setState(s fetcherState) {
 	f.state.Store(int32(s))
 }
 
-func (f *Fetcher) Resolve(req *base.Request, opt *base.Options) error {
+func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
 		return err
 	}
 	f.meta.Req = req
-	f.meta.Opt = opt
-	if f.meta.Opt == nil {
-		f.meta.Opt = &base.Options{}
+	f.meta.Opts = opts
+	if f.meta.Opts == nil {
+		f.meta.Opts = &base.Options{}
 	}
 
 	// Parse options
-	if err := base.ParseOptExtra[fhttp.OptExtra](opt); err != nil {
+	if err := base.ParseOptExtra[fhttp.OptsExtra](opts); err != nil {
 		return err
 	}
-	if opt.Extra == nil {
-		opt.Extra = &fhttp.OptExtra{}
+	if opts.Extra == nil {
+		opts.Extra = &fhttp.OptsExtra{}
 	}
-	extra := opt.Extra.(*fhttp.OptExtra)
+	extra := opts.Extra.(*fhttp.OptsExtra)
 	if extra.Connections <= 0 {
 		extra.Connections = f.config.Connections
 		if extra.Connections <= 0 {
@@ -591,7 +623,7 @@ func (f *Fetcher) Start() error {
 		return f.doStart()
 
 	default:
-		return fmt.Errorf("cannot start in state: %s", state)
+		return fmt.Errorf("cannot start in current state: %v", state)
 	}
 }
 
@@ -644,7 +676,7 @@ func (f *Fetcher) doStart() error {
 	}
 
 	// Initialize slow start controller
-	maxConns := f.meta.Opt.Extra.(*fhttp.OptExtra).Connections
+	maxConns := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
 	f.slowStart = newSlowStartController(maxConns)
 
 	// Create main context
@@ -850,129 +882,146 @@ func (f *Fetcher) runConnection(conn *connection) {
 	client := f.buildClient()
 	buf := make([]byte, 8192)
 
-	downloadChunk := func(chunk *chunk) error {
-		for retries := 0; retries < 3; retries++ {
-			if conn.ctx.Err() != nil {
-				return conn.ctx.Err()
-			}
-
-			// Check if chunk is done
-			if f.meta.Res.Range && chunk.remain() <= 0 {
-				return nil
-			}
-
-			err := func() error {
-				httpReq, err := f.buildRequest(conn.ctx, f.meta.Req)
-				if err != nil {
-					return err
-				}
-
-				// Set Range header
-				if f.meta.Res.Range {
-					httpReq.Header.Set(base.HttpHeaderRange,
-						fmt.Sprintf(base.HttpHeaderRangeFormat, chunk.Begin+chunk.Downloaded, chunk.End))
-				}
-
-				resp, err := client.Do(httpReq)
-				if err != nil {
-					return err
-				}
-				defer resp.Body.Close()
-
-				if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
-					return NewRequestError(resp.StatusCode, resp.Status)
-				}
-
-				// Connection successful - notify slow start controller
-				conn.State = connDownloading
-				conn.failed = false
-
-				// Signal primary ready (only once)
-				if conn.Role == rolePrimary || conn.ID == 0 {
-					f.primaryReadyOnce.Do(func() {
-						close(f.primaryReadyCh)
-					})
-				}
-				if f.slowStart != nil {
-					f.slowStart.onConnectSuccess()
-				}
-
-				// Download data
-				reader := NewTimeoutReader(resp.Body, readTimeout)
-				for {
-					n, err := reader.Read(buf)
-					if n > 0 {
-						finished := false
-						if f.meta.Res.Range {
-							remain := chunk.remain()
-							if remain < int64(n) {
-								n = int(remain)
-								finished = true
-							}
-						}
-
-						f.fileMu.Lock()
-						if f.file != nil {
-							_, writeErr := f.file.WriteAt(buf[:n], chunk.Begin+chunk.Downloaded)
-							if writeErr != nil {
-								f.fileMu.Unlock()
-								return writeErr
-							}
-						}
-						f.fileMu.Unlock()
-
-						chunk.Downloaded += int64(n)
-						conn.Downloaded += int64(n)
-
-						if finished {
-							return nil
-						}
-					}
-					if err != nil {
-						if err == io.EOF {
-							return nil
-						}
-						return err
-					}
-				}
-			}()
-
-			if err == nil {
-				return nil
-			}
-
-			if errors.Is(err, context.Canceled) {
-				return err
-			}
-
-			// Retry after delay
-			conn.failed = true
-			conn.retryTimes++
-			time.Sleep(time.Second * time.Duration(retries+1))
-		}
-
-		return fmt.Errorf("max retries exceeded")
-	}
+	retries := 0
+	conn.retryTimes = 0
 
 	for {
-		if err := downloadChunk(conn.Chunk); err != nil {
-			// Don't mark as failed if cancelled (paused)
-			if errors.Is(err, context.Canceled) {
+		err := f.downloadChunkOnce(conn, client, buf)
+		if err == nil {
+			if !f.meta.Res.Range || !f.helpOtherConnection(conn) {
+				conn.Completed = true
+				conn.State = connCompleted
 				return
 			}
-			conn.State = connFailed
+
+			// Reset counters after a successful help switch
+			retries = 0
+			conn.retryTimes = 0
+			continue
+		}
+
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+
+		if re := extractRequestError(err); re != nil {
+			conn.lastErr = re
+		} else {
+			conn.lastErr = err
+		}
+
+		if shouldCountHTTPFailure(err) {
+			if re := extractRequestError(err); re != nil && re.Code == 403 {
+				conn.State = connFailed
+				conn.failed = true
+				if f.slowStart != nil {
+					f.slowStart.onConnectFailed()
+				}
+				return
+			}
+			conn.retryTimes++
 			conn.failed = true
 			if f.slowStart != nil {
 				f.slowStart.onConnectFailed()
 			}
-			return
+			if conn.retryTimes >= 3 {
+				conn.State = connFailed
+				return
+			}
 		}
 
-		// Check if we can help other connections
-		if !f.meta.Res.Range || !f.helpOtherConnection(conn) {
-			conn.Completed = true
-			conn.State = connCompleted
-			return
+		conn.State = connFailed
+		retryDelay := time.Second * time.Duration(retries+1)
+		if retryDelay > 5*time.Second {
+			retryDelay = 5 * time.Second
+		}
+		retries++
+		time.Sleep(retryDelay)
+	}
+}
+
+// downloadChunkOnce performs a single HTTP request for the current chunk without retrying.
+func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf []byte) error {
+	if conn.ctx.Err() != nil {
+		return conn.ctx.Err()
+	}
+
+	if f.meta.Res.Range && conn.Chunk.remain() <= 0 {
+		return nil
+	}
+
+	httpReq, err := f.buildRequest(conn.ctx, f.meta.Req)
+	if err != nil {
+		return err
+	}
+
+	if f.meta.Res.Range {
+		httpReq.Header.Set(base.HttpHeaderRange,
+			fmt.Sprintf(base.HttpHeaderRangeFormat, conn.Chunk.Begin+conn.Chunk.Downloaded, conn.Chunk.End))
+	}
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
+		return NewRequestError(resp.StatusCode, resp.Status)
+	}
+
+	conn.State = connDownloading
+	conn.failed = false
+
+	if conn.Role == rolePrimary || conn.ID == 0 {
+		f.primaryReadyOnce.Do(func() {
+			close(f.primaryReadyCh)
+		})
+	}
+	if f.slowStart != nil {
+		f.slowStart.onConnectSuccess()
+	}
+
+	reader := NewTimeoutReader(resp.Body, readTimeout)
+	for {
+		if conn.ctx.Err() != nil {
+			return conn.ctx.Err()
+		}
+
+		n, err := reader.Read(buf)
+		if n > 0 {
+			finished := false
+			if f.meta.Res.Range {
+				remain := conn.Chunk.remain()
+				if remain < int64(n) {
+					n = int(remain)
+					finished = true
+				}
+			}
+
+			f.fileMu.Lock()
+			if f.file != nil {
+				_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Begin+conn.Chunk.Downloaded)
+				if writeErr != nil {
+					f.fileMu.Unlock()
+					return writeErr
+				}
+			}
+			f.fileMu.Unlock()
+
+			conn.Chunk.Downloaded += int64(n)
+			conn.Downloaded += int64(n)
+
+			if finished {
+				return nil
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
 		}
 	}
 }
@@ -1043,11 +1092,8 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 				conn.State = connCompleted
 				return
 			}
+			// Reading from resolve response failed: treat as transient (do not count as fail)
 			conn.State = connFailed
-			conn.failed = true
-			if f.slowStart != nil {
-				f.slowStart.onConnectFailed()
-			}
 			return
 		}
 	}
@@ -1055,79 +1101,131 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 // runConnectionFallback is used when resolve response is not available
 func (f *Fetcher) runConnectionFallback(conn *connection) {
-	conn.State = connConnecting
 	client := f.buildClient()
 	buf := make([]byte, 8192)
 
-	err := func() error {
-		httpReq, err := f.buildRequest(conn.ctx, f.meta.Req)
-		if err != nil {
-			return err
+	retries := 0
+	countedRetries := 0
+
+	for {
+		if conn.ctx.Err() != nil {
+			return
 		}
 
-		resp, err := client.Do(httpReq)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
+		conn.State = connConnecting
 
-		if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
-			return NewRequestError(resp.StatusCode, resp.Status)
-		}
-
-		conn.State = connDownloading
-		conn.failed = false
-
-		f.primaryReadyOnce.Do(func() {
-			close(f.primaryReadyCh)
-		})
-		if f.slowStart != nil {
-			f.slowStart.onConnectSuccess()
-		}
-
-		reader := NewTimeoutReader(resp.Body, readTimeout)
-		for {
-			if conn.ctx.Err() != nil {
-				return conn.ctx.Err()
-			}
-
-			n, err := reader.Read(buf)
-			if n > 0 {
-				f.fileMu.Lock()
-				if f.file != nil {
-					_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
-					if writeErr != nil {
-						f.fileMu.Unlock()
-						return writeErr
-					}
-				}
-				f.fileMu.Unlock()
-
-				conn.Chunk.Downloaded += int64(n)
-				conn.Downloaded += int64(n)
-			}
+		err := func() error {
+			httpReq, err := f.buildRequest(conn.ctx, f.meta.Req)
 			if err != nil {
-				if err == io.EOF {
-					return nil
-				}
 				return err
 			}
-		}
-	}()
 
-	if err != nil {
-		if !errors.Is(err, context.Canceled) {
-			conn.State = connFailed
-			conn.failed = true
-			if f.slowStart != nil {
-				f.slowStart.onConnectFailed()
+			resp, err := client.Do(httpReq)
+			if err != nil {
+				return err
 			}
-		}
-		return
-	}
+			defer resp.Body.Close()
 
-	conn.Completed = true
-	conn.State = connCompleted
+			if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
+				return NewRequestError(resp.StatusCode, resp.Status)
+			}
+
+			conn.State = connDownloading
+			conn.failed = false
+
+			f.primaryReadyOnce.Do(func() {
+				close(f.primaryReadyCh)
+			})
+			if f.slowStart != nil {
+				f.slowStart.onConnectSuccess()
+			}
+
+			reader := NewTimeoutReader(resp.Body, readTimeout)
+			for {
+				if conn.ctx.Err() != nil {
+					return conn.ctx.Err()
+				}
+
+				n, err := reader.Read(buf)
+				if n > 0 {
+					f.fileMu.Lock()
+					if f.file != nil {
+						_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
+						if writeErr != nil {
+							f.fileMu.Unlock()
+							return writeErr
+						}
+					}
+					f.fileMu.Unlock()
+
+					conn.Chunk.Downloaded += int64(n)
+					conn.Downloaded += int64(n)
+				}
+				if err != nil {
+					if err == io.EOF {
+						return nil
+					}
+					return err
+				}
+			}
+		}()
+
+		if err == nil {
+			conn.Completed = true
+			conn.State = connCompleted
+			return
+		}
+
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+
+		if re := extractRequestError(err); re != nil {
+			conn.lastErr = re
+		} else {
+			conn.lastErr = err
+		}
+
+		if shouldCountHTTPFailure(err) {
+			// Immediate fail for server connection limit (403)
+			if re := extractRequestError(err); re != nil && re.Code == 403 {
+				conn.State = connFailed
+				conn.failed = true
+				if f.slowStart != nil {
+					f.slowStart.onConnectFailed()
+				}
+				return
+			}
+			conn.retryTimes++
+			countedRetries++
+			if countedRetries >= 3 {
+				conn.State = connFailed
+				conn.failed = true
+				if f.slowStart != nil {
+					f.slowStart.onConnectFailed()
+				}
+				return
+			}
+			// Retry again for counted failures below the cap
+			conn.State = connFailed
+			retryDelay := time.Second * time.Duration(retries+1)
+			if retryDelay > 5*time.Second {
+				retryDelay = 5 * time.Second
+			}
+			retries++
+			time.Sleep(retryDelay)
+			continue
+		}
+
+		// Retry indefinitely for non-counted errors
+		conn.State = connFailed
+		retryDelay := time.Second * time.Duration(retries+1)
+		if retryDelay > 5*time.Second {
+			retryDelay = 5 * time.Second
+		}
+		retries++
+		time.Sleep(retryDelay)
+	}
 }
 
 func (f *Fetcher) helpOtherConnection(helper *connection) bool {
@@ -1187,7 +1285,13 @@ func (f *Fetcher) onDownloadComplete() {
 	f.connMu.Lock()
 	for _, conn := range f.connections {
 		if conn.State == connFailed && conn.failed {
-			finalErr = fmt.Errorf("connection %d failed", conn.ID)
+			if re := extractRequestError(conn.lastErr); re != nil {
+				finalErr = fmt.Errorf("connection %d failed: retries=%d, http code=%d, msg=%s", conn.ID, conn.retryTimes, re.Code, re.Msg)
+			} else if conn.lastErr != nil {
+				finalErr = fmt.Errorf("connection %d failed: retries=%d, err=%v", conn.ID, conn.retryTimes, conn.lastErr)
+			} else {
+				finalErr = fmt.Errorf("connection %d failed: retries=%d", conn.ID, conn.retryTimes)
+			}
 			break
 		}
 	}

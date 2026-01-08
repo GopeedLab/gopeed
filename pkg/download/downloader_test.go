@@ -23,7 +23,7 @@ import (
 var testDownloadOpt = &base.Options{
 	Path: test.Dir,
 	Name: test.DownloadName,
-	Extra: http.OptExtra{
+	Extra: http.OptsExtra{
 		Connections: 4,
 	},
 }
@@ -110,21 +110,14 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
-	if err != nil {
-		t.Fatal(err)
+	// With new fetcher design, white list check happens during Resolve (not Create)
+	// because Resolve now requires Options which includes the download path
+	_, err := downloader.Resolve(req, testDownloadOpt)
+	if err == nil {
+		t.Error("TestDownloader_CreateNotInWhite() expected error but got nil")
 	}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	downloader.Listener(func(event *Event) {
-		if event.Key == EventKeyDone {
-			wg.Done()
-		}
-	})
-	_, err = downloader.Create(rr.ID)
 	if !strings.Contains(err.Error(), "white") {
-		t.Errorf("TestDownloader_CreateNotInWhite() got = %v, want %v", err.Error(), "not in white list")
+		t.Errorf("TestDownloader_CreateNotInWhite() got = %v, want error containing 'white'", err.Error())
 	}
 }
 
@@ -168,7 +161,7 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 
 	_, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
 		Reqs: reqs,
-		Opt:  testDownloadOpt,
+		Opts: testDownloadOpt,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -184,7 +177,7 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 	// Collect all task names
 	taskNames := make(map[string]bool)
 	for _, task := range tasks {
-		taskNames[task.Meta.Opt.Name] = true
+		taskNames[task.Meta.Opts.Name] = true
 	}
 
 	// Check that we have the expected number of unique task names
@@ -355,7 +348,7 @@ func TestDownloader_CreateRename(t *testing.T) {
 		_, err := downloader.CreateDirect(req, &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
-			Extra: http.OptExtra{
+			Extra: http.OptsExtra{
 				Connections: 4,
 			},
 		})
@@ -526,10 +519,10 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 
 	taskIds, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
 		Reqs: reqs,
-		Opt: &base.Options{
+		Opts: &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
-			Extra: http.OptExtra{
+			Extra: http.OptsExtra{
 				Connections: 4,
 			},
 		},
@@ -1101,7 +1094,7 @@ func TestDownloader_AutoExtractWithProgress(t *testing.T) {
 	taskId, err := downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "archive.zip",
-		Extra: http.OptExtra{
+		Extra: http.OptsExtra{
 			Connections: 1,
 			AutoExtract: true,
 		},
@@ -1228,7 +1221,7 @@ func TestDownloader_AutoExtractWithDeleteAfterExtract(t *testing.T) {
 	_, err = downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "archive.zip",
-		Extra: http.OptExtra{
+		Extra: http.OptsExtra{
 			Connections:        1,
 			AutoExtract:        true,
 			DeleteAfterExtract: true,
@@ -1322,7 +1315,7 @@ func TestDownloader_AutoExtractError(t *testing.T) {
 	_, err = downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "corrupt.zip",
-		Extra: http.OptExtra{
+		Extra: http.OptsExtra{
 			Connections: 1,
 			AutoExtract: true,
 		},
@@ -1582,7 +1575,7 @@ func TestDownloader_DeleteAll(t *testing.T) {
 		_, err := downloader.CreateDirect(req, &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
-			Extra: http.OptExtra{
+			Extra: http.OptsExtra{
 				Connections: 4,
 			},
 		})
@@ -1636,7 +1629,7 @@ func TestDownloader_ContinueAll(t *testing.T) {
 	taskId, err := downloader.CreateDirect(req, &base.Options{
 		Path: test.Dir,
 		Name: test.DownloadName,
-		Extra: http.OptExtra{
+		Extra: http.OptsExtra{
 			Connections: 4,
 		},
 	})
@@ -1984,7 +1977,7 @@ func TestDownloader_CheckAllMultiPartTasksDone(t *testing.T) {
 		ID:     "task1",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: baseName + ".001"}},
 			},
@@ -1998,7 +1991,7 @@ func TestDownloader_CheckAllMultiPartTasksDone(t *testing.T) {
 		ID:     "task2",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: baseName + ".002"}},
 			},
@@ -2066,7 +2059,7 @@ func TestDownloader_TryClaimMultiPartExtraction(t *testing.T) {
 		ID:     "task1",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: baseName + ".001", Path: ""}},
 			},
@@ -2079,7 +2072,7 @@ func TestDownloader_TryClaimMultiPartExtraction(t *testing.T) {
 		ID:     "task2",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: baseName + ".002", Path: ""}},
 			},
@@ -2135,7 +2128,7 @@ func TestDownloader_HandleExtractionResult_Success(t *testing.T) {
 	task := &Task{
 		ID: "test-task",
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "test.zip"}},
 			},
@@ -2186,7 +2179,7 @@ func TestDownloader_HandleExtractionResult_WithDelete(t *testing.T) {
 	task := &Task{
 		ID: "test-task",
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "test.7z.001"}},
 			},
@@ -2227,7 +2220,7 @@ func TestDownloader_HandleExtractionResult_Error(t *testing.T) {
 	task := &Task{
 		ID: "test-task",
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "test.zip"}},
 			},
@@ -2262,7 +2255,7 @@ func TestDownloader_UpdateMultiPartTasksStatus(t *testing.T) {
 	sourceTask := &Task{
 		ID: "source",
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "archive.7z.001"}},
 			},
@@ -2275,7 +2268,7 @@ func TestDownloader_UpdateMultiPartTasksStatus(t *testing.T) {
 	relatedTask := &Task{
 		ID: "related",
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "archive.7z.002"}},
 			},
@@ -2288,7 +2281,7 @@ func TestDownloader_UpdateMultiPartTasksStatus(t *testing.T) {
 	unrelatedTask := &Task{
 		ID: "unrelated",
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "other.7z.001"}},
 			},
@@ -2330,7 +2323,7 @@ func TestDownloader_UpdateMultiPartTasksStatus_WithError(t *testing.T) {
 	sourceTask := &Task{
 		ID: "source",
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "archive.7z.001"}},
 			},
@@ -2343,7 +2336,7 @@ func TestDownloader_UpdateMultiPartTasksStatus_WithError(t *testing.T) {
 	relatedTask := &Task{
 		ID: "related",
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "archive.7z.002"}},
 			},
@@ -2382,7 +2375,7 @@ func TestDownloader_UpdateMultiPartTasksStatus_NoBaseName(t *testing.T) {
 	task := &Task{
 		ID: "single",
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: "single.zip"}},
 			},
@@ -2419,7 +2412,7 @@ func TestDownloader_CheckMultiPartArchiveReady(t *testing.T) {
 		ID:     "task1",
 		Status: base.DownloadStatusDone,
 		Meta: &fetcher.FetcherMeta{
-			Opt: &base.Options{Path: tempDir},
+			Opts: &base.Options{Path: tempDir},
 			Res: &base.Resource{
 				Files: []*base.FileInfo{{Name: fileName}},
 			},

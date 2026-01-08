@@ -255,15 +255,125 @@ func TestFetcher_DownloadLimit(t *testing.T) {
 
 	downloadNormal(listener, 1, t)
 	downloadNormal(listener, 2, t)
-	downloadNormal(listener, 8, t)
+
+	os.Remove(test.DownloadFile)
+	fetcher := downloadReady(listener, 8, t)
+	if err := fetcher.Start(); err != nil {
+		t.Fatal(err)
+	}
+	err := fetcher.Wait()
+	if err == nil {
+		t.Fatalf("expected error when exceeding server connection limit")
+	}
+	if !strings.Contains(err.Error(), "http code=403") {
+		t.Fatalf("expected http 403 error, got: %v", err)
+	}
 }
 
 func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
-	listener := test.StartTestLimitServer(16, readTimeout.Milliseconds()+5000)
+	// Server will timeout once (first request delays longer than readTimeout),
+	// then subsequent requests work normally
+	listener := test.StartTestTimeoutOnceServer(readTimeout.Milliseconds() + 5000)
 	defer listener.Close()
 
-	downloadError(listener, 1, t)
-	downloadError(listener, 4, t)
+	for _, connections := range []int{1, 4} {
+		os.Remove(test.DownloadFile)
+
+		fetcher := downloadReady(listener, connections, t)
+		if err := fetcher.Start(); err != nil {
+			t.Fatal(err)
+		}
+		if err := fetcher.Wait(); err != nil {
+			t.Fatal(err)
+		}
+
+		stats := fetcher.Stats().(*http.Stats)
+		if len(stats.Connections) == 0 {
+			t.Fatalf("expected connections stats for timeout test")
+		}
+
+		// Verify successful download after timeout recovery
+		want := test.FileMd5(test.BuildFile)
+		got := test.FileMd5(test.DownloadFile)
+		if want != got {
+			t.Errorf("Download() got = %v, want %v", got, want)
+		}
+
+		// Verify timeouts don't count as failures (retryTimes should be 0)
+		for _, conn := range stats.Connections {
+			if conn.Failed {
+				t.Fatalf("expected no counted failures after timeout recovery, got retries=%d", conn.RetryTimes)
+			}
+			if conn.RetryTimes != 0 {
+				t.Fatalf("expected retryTimes to stay zero for non-counted timeouts, got %d", conn.RetryTimes)
+			}
+		}
+	}
+}
+
+func TestFetcher_DownloadServerConnectionLimit(t *testing.T) {
+	// Server allows max 4 concurrent connections, returns 429 for excess
+	// 429 errors don't count as failures and will retry indefinitely
+	listener := test.StartTestConnectionLimitServer(4)
+	defer listener.Close()
+
+	// Request 8 connections, but server only allows 4 concurrent
+	os.Remove(test.DownloadFile)
+	fetcher := downloadReady(listener, 8, t)
+	if err := fetcher.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := fetcher.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify successful download despite connection limit
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+
+	// Verify 429 errors don't count as failures (retryTimes should be 0)
+	stats := fetcher.Stats().(*http.Stats)
+	for _, conn := range stats.Connections {
+		if conn.RetryTimes != 0 {
+			t.Errorf("Expected retryTimes to be 0 for 429 errors (exempt), got %d", conn.RetryTimes)
+		}
+		if conn.Failed {
+			t.Errorf("Expected no failed connections for 429 errors (they retry indefinitely)")
+		}
+	}
+}
+
+func TestFetcher_Download500Recovery(t *testing.T) {
+	// Server returns 500 for 15 seconds, then recovers
+	listener := test.StartTestTemporary500Server(15 * time.Second)
+	defer listener.Close()
+
+	os.Remove(test.DownloadFile)
+	fetcher := downloadReady(listener, 4, t)
+	if err := fetcher.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := fetcher.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify successful download after 500 errors
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+
+	// Verify 500 errors don't count as failures (retryTimes should be 0)
+	stats := fetcher.Stats().(*http.Stats)
+	for _, conn := range stats.Connections {
+		if conn.RetryTimes != 0 {
+			t.Errorf("Expected retryTimes to be 0 for 500 errors (exempt), got %d", conn.RetryTimes)
+		}
+	}
 }
 
 func TestFetcher_DownloadOnBugFileServer(t *testing.T) {
@@ -378,7 +488,7 @@ func TestFetcher_DownloadOneTimeURL(t *testing.T) {
 	}, &base.Options{
 		Name: test.DownloadName,
 		Path: test.Dir,
-		Extra: &http.OptExtra{
+		Extra: &http.OptsExtra{
 			Connections: 4, // Try to use multiple connections, but only first should work
 		},
 	})
@@ -444,7 +554,7 @@ func TestFetcher_SlowStartExpansion(t *testing.T) {
 			}, &base.Options{
 				Name: test.DownloadName,
 				Path: test.Dir,
-				Extra: &http.OptExtra{
+				Extra: &http.OptsExtra{
 					Connections: tc.maxConns,
 				},
 			})
@@ -507,7 +617,7 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 		}, &base.Options{
 			Name: test.DownloadName,
 			Path: test.Dir,
-			Extra: &http.OptExtra{
+			Extra: &http.OptsExtra{
 				Connections: 4,
 			},
 		})
@@ -567,9 +677,9 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 
 	// Test 2: Prefetch only downloads partial data before Start is called
 	t.Run("PrefetchPartial", func(t *testing.T) {
-		// Use slow server with 1 microsecond delay per byte
-		// This means ~1MB/s speed, so 100ms should download ~100KB
-		listener := test.StartTestSlowStartServer(1 * time.Microsecond)
+		// Use slow server with 100 nanosecond delay per byte
+		// This means ~10MB/s speed, so 100ms should download ~1MB
+		listener := test.StartTestSlowStartServer(100 * time.Nanosecond)
 		defer listener.Close()
 
 		fetcher := buildFetcher()
@@ -578,7 +688,7 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 		}, &base.Options{
 			Name: test.DownloadName,
 			Path: test.Dir,
-			Extra: &http.OptExtra{
+			Extra: &http.OptsExtra{
 				Connections: 4,
 			},
 		})
@@ -586,8 +696,8 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Wait only 200ms - should only prefetch a small portion
-		time.Sleep(200 * time.Millisecond)
+		// Wait only 100ms - should only prefetch a small portion
+		time.Sleep(100 * time.Millisecond)
 
 		prefetchedBefore := fetcher.prefetchSize.Load()
 		t.Logf("Prefetched bytes before Start: %d (%.2f KB)", prefetchedBefore, float64(prefetchedBefore)/1024)
@@ -691,7 +801,7 @@ func downloadReady(listener net.Listener, connections int, t *testing.T) fetcher
 func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, t *testing.T) fetcher.Fetcher {
 	var extra any = nil
 	if connections > 0 {
-		extra = &http.OptExtra{
+		extra = &http.OptsExtra{
 			Connections: connections,
 		}
 	}
@@ -732,7 +842,7 @@ func downloadPost(listener net.Listener, connections int, t *testing.T) {
 	f := buildFetcher()
 	var extra any = nil
 	if connections > 0 {
-		extra = &http.OptExtra{
+		extra = &http.OptsExtra{
 			Connections: connections,
 		}
 	}

@@ -91,11 +91,11 @@ func (f *Fetcher) initClient() (err error) {
 	return
 }
 
-func (f *Fetcher) Resolve(req *base.Request, opt *base.Options) error {
+func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	f.meta.Req = req
-	f.meta.Opt = opt
-	if f.meta.Opt == nil {
-		f.meta.Opt = &base.Options{}
+	f.meta.Opts = opts
+	if f.meta.Opts == nil {
+		f.meta.Opts = &base.Options{}
 	}
 	if err := f.addTorrent(req, false); err != nil {
 		return err
@@ -113,18 +113,18 @@ func (f *Fetcher) Start() (err error) {
 	files := f.torrent.Files()
 	// If the user does not specify the file to download, all files will be downloaded by default
 	if f.data.Progress == nil {
-		if len(f.meta.Opt.SelectFiles) == 0 {
-			f.meta.Opt.SelectFiles = make([]int, len(files))
+		if len(f.meta.Opts.SelectFiles) == 0 {
+			f.meta.Opts.SelectFiles = make([]int, len(files))
 			for i := range files {
-				f.meta.Opt.SelectFiles[i] = i
+				f.meta.Opts.SelectFiles[i] = i
 			}
 		}
-		f.data.Progress = make(fetcher.Progress, len(f.meta.Opt.SelectFiles))
+		f.data.Progress = make(fetcher.Progress, len(f.meta.Opts.SelectFiles))
 	}
-	if len(f.meta.Opt.SelectFiles) == len(files) {
+	if len(f.meta.Opts.SelectFiles) == len(files) {
 		f.torrent.DownloadAll()
 	} else {
-		for _, selectIndex := range f.meta.Opt.SelectFiles {
+		for _, selectIndex := range f.meta.Opts.SelectFiles {
 			file := files[selectIndex]
 			file.Download()
 		}
@@ -183,7 +183,7 @@ func (f *Fetcher) Progress() fetcher.Progress {
 		return f.data.Progress
 	}
 	for i := range f.data.Progress {
-		selectIndex := f.meta.Opt.SelectFiles[i]
+		selectIndex := f.meta.Opts.SelectFiles[i]
 		file := f.torrent.Files()[selectIndex]
 		f.data.Progress[i] = file.BytesCompleted()
 	}
@@ -196,19 +196,19 @@ func (f *Fetcher) Wait() (err error) {
 		case <-f.torrentDropCtx.Done():
 			return
 		case <-time.After(time.Second):
-			if f.torrentReady.Load() && len(f.meta.Opt.SelectFiles) > 0 {
+			if f.torrentReady.Load() && len(f.meta.Opts.SelectFiles) > 0 {
 				if f.isDone() {
 					// remove unselected files
 					for i, file := range f.torrent.Files() {
 						selected := false
-						for _, selectIndex := range f.meta.Opt.SelectFiles {
+						for _, selectIndex := range f.meta.Opts.SelectFiles {
 							if i == selectIndex {
 								selected = true
 								break
 							}
 						}
 						if !selected {
-							util.SafeRemove(filepath.Join(f.meta.Opt.Path, f.meta.Res.Name, file.Path()))
+							util.SafeRemove(filepath.Join(f.meta.Opts.Path, f.meta.Res.Name, file.Path()))
 						}
 					}
 					return
@@ -219,10 +219,10 @@ func (f *Fetcher) Wait() (err error) {
 }
 
 func (f *Fetcher) isDone() bool {
-	if f.meta.Opt == nil {
+	if f.meta.Opts == nil {
 		return false
 	}
-	for _, selectIndex := range f.meta.Opt.SelectFiles {
+	for _, selectIndex := range f.meta.Opts.SelectFiles {
 		file := f.torrent.Files()[selectIndex]
 		if file.BytesCompleted() < file.Length() {
 			return false
@@ -250,8 +250,8 @@ func (f *Fetcher) updateRes() {
 	}
 	res.CalcSize(nil)
 	f.meta.Res = res
-	if f.meta.Opt != nil {
-		f.meta.Opt.InitSelectFiles(len(res.Files))
+	if f.meta.Opts != nil {
+		f.meta.Opts.InitSelectFiles(len(res.Files))
 	}
 }
 
@@ -345,8 +345,12 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 	}
 	schema := util.ParseSchema(req.URL)
 	privateTorrent := false
+	var spec *torrent.TorrentSpec
 	if schema == "MAGNET" {
-		f.torrent, err = client.AddMagnet(req.URL)
+		spec, err = torrent.TorrentSpecFromMagnetUri(req.URL)
+		if err != nil {
+			return
+		}
 	} else {
 		var reader io.Reader
 		if schema == "FILE" {
@@ -383,18 +387,18 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 		if info.Private != nil && *info.Private {
 			privateTorrent = true
 		}
-		spec, er := torrent.TorrentSpecFromMetaInfoErr(metaInfo)
-		if er != nil {
+		spec, err = torrent.TorrentSpecFromMetaInfoErr(metaInfo)
+		if err != nil {
 			return
 		}
-		spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
-			ClientBaseDir: cfg.DataDir,
-			TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
-				return f.meta.Opt.Path
-			},
-		})
-		f.torrent, _, err = client.AddTorrentSpec(spec)
 	}
+	spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
+		ClientBaseDir: cfg.DataDir,
+		TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
+			return f.meta.Opts.Path
+		},
+	})
+	f.torrent, _, err = client.AddTorrentSpec(spec)
 	if err != nil {
 		return
 	}

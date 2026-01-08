@@ -16,7 +16,7 @@ var mockFetcherMeta = fetcher.FetcherMeta{
 	Req: &base.Request{
 		URL: "https://example.com/test.zip",
 	},
-	Opt: &base.Options{
+	Opts: &base.Options{
 		Path: "/downloads",
 	},
 	Res: &base.Resource{

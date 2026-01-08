@@ -54,8 +54,8 @@ func NewTask() *Task {
 // Name returns the display name of the task.
 func (t *Task) Name() string {
 	// Custom name first
-	if t.Meta.Opt.Name != "" {
-		return t.Meta.Opt.Name
+	if t.Meta.Opts.Name != "" {
+		return t.Meta.Opts.Name
 	}
 
 	// Task is not resolved, parse the name from the URL

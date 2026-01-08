@@ -83,7 +83,7 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		fetcher := fb.Build().(*Fetcher)
 		fetcher.meta = meta
 		base.ParseReqExtra[fhttp.ReqExtra](fetcher.meta.Req)
-		base.ParseOptExtra[fhttp.OptExtra](fetcher.meta.Opt)
+		base.ParseOptExtra[fhttp.OptsExtra](fetcher.meta.Opts)
 		if len(fd.Connections) > 0 {
 			fetcher.connections = fd.Connections
 		}

@@ -54,12 +54,12 @@ var (
 		},
 	}
 	resolveReq = &model.ResolveTask{
-		Req: taskReq,
-		Opt: createOpts,
+		Req:  taskReq,
+		Opts: createOpts,
 	}
 	createReq = &model.CreateTask{
-		Req: taskReq,
-		Opt: createOpts,
+		Req:  taskReq,
+		Opts: createOpts,
 	}
 	installExtensionReq = &model.InstallExtension{
 		URL: "https://github.com/GopeedLab/gopeed-extension-samples#github-contributor-avatars-sample",
@@ -164,7 +164,7 @@ func TestCreateDirectTaskBatchWithOpt(t *testing.T) {
 				Req: createReq.Req,
 			}
 			if i == 0 {
-				item.Opt = &base.Options{
+				item.Opts = &base.Options{
 					Name: "spe_opt.data",
 				}
 			}
@@ -172,7 +172,7 @@ func TestCreateDirectTaskBatchWithOpt(t *testing.T) {
 		}
 		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
 			Reqs: reqs,
-			Opt: &base.Options{
+			Opts: &base.Options{
 				Name: "default_opt.data",
 			},
 		})

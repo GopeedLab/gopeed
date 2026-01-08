@@ -44,7 +44,7 @@ func main() {
 		}).
 		Create(&base.Options{
 			Path:  *args.dir,
-			Extra: http.OptExtra{Connections: *args.connections},
+			Extra: http.OptsExtra{Connections: *args.connections},
 		})
 	if err != nil {
 		panic(err)

@@ -254,8 +254,8 @@ func StartTestErrorServer() net.Listener {
 	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
-			// Always return 500 error to test error handling
-			writer.WriteHeader(500)
+			// Always return 404 error to test error handling
+			writer.WriteHeader(404)
 			return
 		})
 		return mux
@@ -344,6 +344,7 @@ func slowCopyNWithDelay(sl *shutdownListener, dst io.Writer, src io.Reader, n in
 // StartTestLimitServer connections limit server
 func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 	var connections atomic.Int32
+	var slowOnce atomic.Bool
 
 	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
@@ -356,12 +357,125 @@ func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 				writer.WriteHeader(403)
 				return
 			}
+
+			// First request intentionally delays the first write to trigger a single read timeout,
+			// subsequent requests respond at normal speed.
+			useInitialDelay := delay > 0 && !slowOnce.Swap(true)
 			rangeFileHandle(
 				writer,
 				request,
 				nil,
 				func(file *os.File, n int64) {
-					slowCopyN(sl, writer, file, n, delay)
+					if useInitialDelay {
+						slowCopyAfterDelay(sl, writer, file, n, delay)
+						return
+					}
+					slowCopyN(sl, writer, file, n, 0)
+				},
+			)
+		})
+		return mux
+	})
+}
+
+// StartTestTimeoutOnceServer creates a server that times out on first request, then works normally
+func StartTestTimeoutOnceServer(delay int64) net.Listener {
+	var timeoutOnce atomic.Bool
+
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			// First request delays to trigger timeout, subsequent requests respond normally
+			useInitialDelay := delay > 0 && !timeoutOnce.Swap(true)
+			rangeFileHandle(
+				writer,
+				request,
+				nil,
+				func(file *os.File, n int64) {
+					if useInitialDelay {
+						slowCopyAfterDelay(sl, writer, file, n, delay)
+						return
+					}
+					slowCopyN(sl, writer, file, n, 0)
+				},
+			)
+		})
+		return mux
+	})
+}
+
+// StartTestConnectionLimitServer creates a server with concurrent connection limit
+// Returns 429 Too Many Requests when limit is exceeded
+func StartTestConnectionLimitServer(maxConnections int32) net.Listener {
+	var connections atomic.Int32
+
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			connections.Add(1)
+			defer func() {
+				connections.Add(-1)
+			}()
+
+			if connections.Load() > maxConnections {
+				writer.WriteHeader(429)
+				writer.Write([]byte("Too Many Requests"))
+				return
+			}
+
+			rangeFileHandle(
+				writer,
+				request,
+				nil,
+				func(file *os.File, n int64) {
+					slowCopyN(sl, writer, file, n, 0)
+				},
+			)
+		})
+		return mux
+	})
+}
+
+// StartTestTemporary500Server creates a server that returns 500 for a duration, then recovers
+// Uses slow transfer to ensure the file isn't fully downloaded during resolve phase
+func StartTestTemporary500Server(errorDuration time.Duration) net.Listener {
+	startTime := time.Now()
+	var requestCount atomic.Int32
+
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			reqNum := requestCount.Add(1)
+
+			// First request (Resolve) succeeds with slow transfer to prevent full download
+			// Subsequent requests return 500 for the specified duration, then recover
+			if reqNum == 1 {
+				// Slow transfer for resolve: 50 microsecond per byte (~20MB/s)
+				// This ensures resolve doesn't complete the full 200MB file
+				rangeFileHandle(
+					writer,
+					request,
+					nil,
+					func(file *os.File, n int64) {
+						slowCopyNWithDelay(sl, writer, file, n, 50*time.Microsecond)
+					},
+				)
+				return
+			}
+
+			// Subsequent requests: return 500 for errorDuration, then normal
+			if time.Since(startTime) < errorDuration {
+				writer.WriteHeader(500)
+				writer.Write([]byte("Internal Server Error"))
+				return
+			}
+
+			rangeFileHandle(
+				writer,
+				request,
+				nil,
+				func(file *os.File, n int64) {
+					slowCopyN(sl, writer, file, n, 0)
 				},
 			)
 		})
@@ -515,6 +629,14 @@ func slowCopyN(sl *shutdownListener, dst io.Writer, src io.Reader, n int64, dela
 		err = io.EOF
 	}
 	return
+}
+
+// slowCopyAfterDelay sleeps once before performing a normal copy to simulate a single timeout.
+func slowCopyAfterDelay(sl *shutdownListener, dst io.Writer, src io.Reader, n int64, delay int64) (written int64, err error) {
+	if delay > 0 {
+		time.Sleep(time.Millisecond * time.Duration(delay))
+	}
+	return slowCopyN(sl, dst, src, n, 0)
 }
 
 func startTestServer(serverHandle func(sl *shutdownListener) http.Handler) net.Listener {

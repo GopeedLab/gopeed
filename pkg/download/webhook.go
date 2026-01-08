@@ -195,7 +195,7 @@ func (d *Downloader) TestWebhookUrl(url string) error {
 		Req: &base.Request{
 			URL: "https://example.com/test-file.zip",
 		},
-		Opt: &base.Options{
+		Opts: &base.Options{
 			Name: "test-file.zip",
 			Path: "/downloads",
 		},
