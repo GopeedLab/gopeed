@@ -115,6 +115,56 @@ func TestFetcher_Resolve(t *testing.T) {
 			},
 		},
 	}, t)
+	// Test filename with plus signs (e.g., C++ Primer)
+	// Before fix: %2B decoded to space -> "C++ Primer" became "C  Primer"
+	// After fix: %2B correctly decoded to + -> "C++  Primer  Plus.mobi"
+	testResolve(test.StartTestCustomServer, "plus-sign-encoded", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "C++  Primer  Plus.mobi",
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
+	// Test filename with plus sign in URL path
+	// Before fix: %2B decoded to space
+	// After fix: %2B correctly decoded to +
+	testResolve(test.StartTestCustomServer, "C%2B%2B%20Primer.txt", &base.Resource{
+		Size:  0,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "C++ Primer.txt",
+				Size: 0,
+			},
+		},
+	}, t)
+	// Test filename with HTML-encoded ampersand (fixes issue with & being truncated)
+	// Before fix: "查询处理&amp;优化.pptx" -> "查询处理&amp" (truncated at semicolon)
+	// After fix: correctly decoded to "查询处理&优化.pptx"
+	testResolve(test.StartTestCustomServer, "ampersand-encoded", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "查询处理&优化.pptx",
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
+	// Test unquoted filename with HTML-encoded ampersand
+	testResolve(test.StartTestCustomServer, "ampersand-unquoted", &base.Resource{
+		Size:  test.BuildSize,
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: "test&file.txt",
+				Size: test.BuildSize,
+			},
+		},
+	}, t)
 
 	// Test URL without file path - should use domain/host as filename
 	listener := test.StartTestRootServer()
