@@ -956,9 +956,14 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		return err
 	}
 
+	// Capture chunk boundaries at request time to handle concurrent modifications
+	chunkBegin := conn.Chunk.Begin
+	chunkEnd := conn.Chunk.End
+	downloadedAtStart := conn.Chunk.Downloaded
+
 	if f.meta.Res.Range {
 		httpReq.Header.Set(base.HttpHeaderRange,
-			fmt.Sprintf(base.HttpHeaderRangeFormat, conn.Chunk.Begin+conn.Chunk.Downloaded, conn.Chunk.End))
+			fmt.Sprintf(base.HttpHeaderRangeFormat, chunkBegin+downloadedAtStart, chunkEnd))
 	}
 
 	resp, err := client.Do(httpReq)
@@ -983,6 +988,9 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		f.slowStart.onConnectSuccess()
 	}
 
+	// Calculate expected bytes based on request-time chunk boundaries
+	expectedBytes := chunkEnd - chunkBegin + 1 - downloadedAtStart
+
 	reader := NewTimeoutReader(resp.Body, readTimeout)
 	for {
 		if conn.ctx.Err() != nil {
@@ -993,9 +1001,26 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		if n > 0 {
 			finished := false
 			if f.meta.Res.Range {
+				// Use current chunk boundaries for remain calculation
+				// This respects any concurrent chunk splitting
 				remain := conn.Chunk.remain()
+				if remain <= 0 {
+					return nil
+				}
 				if remain < int64(n) {
 					n = int(remain)
+					finished = true
+				}
+
+				// Also check against expected bytes from our HTTP request
+				// to avoid writing data past our requested range
+				downloadedInThisRequest := conn.Chunk.Downloaded - downloadedAtStart
+				remainInRequest := expectedBytes - downloadedInThisRequest
+				if remainInRequest <= 0 {
+					return nil
+				}
+				if remainInRequest < int64(n) {
+					n = int(remainInRequest)
 					finished = true
 				}
 			}
