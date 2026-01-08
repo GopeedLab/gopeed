@@ -116,6 +116,7 @@ func parseFilename(contentDisposition string) string {
 }
 
 // parseFilenameExtended handles RFC 5987 extended notation (filename*=)
+// Format: filename*=charset'language'value (e.g., UTF-8''%E6%B5%8B%E8%AF%95.zip)
 func parseFilenameExtended(cd string) string {
 	lower := strings.ToLower(cd)
 	idx := strings.Index(lower, "filename*=")
@@ -124,7 +125,10 @@ func parseFilenameExtended(cd string) string {
 	}
 
 	value := cd[idx+len("filename*="):]
-	if endIdx := strings.Index(value, ";"); endIdx != -1 {
+	
+	// Find the end of the value using proper quote handling
+	endIdx := findParamValueEnd(value)
+	if endIdx != -1 {
 		value = value[:endIdx]
 	}
 	value = strings.TrimSpace(value)
@@ -132,7 +136,8 @@ func parseFilenameExtended(cd string) string {
 	// Try charset''encoded format (e.g., UTF-8''%E4%B8%AD%E6%96%87.txt)
 	parts := strings.SplitN(value, "''", 2)
 	if len(parts) == 2 {
-		decoded, err := url.QueryUnescape(parts[1])
+		// Use PathUnescape to handle %2B correctly (should decode to +, not space)
+		decoded, err := url.PathUnescape(parts[1])
 		if err == nil {
 			return decoded
 		}
@@ -141,7 +146,8 @@ func parseFilenameExtended(cd string) string {
 	// Try charset'language'encoded format
 	parts = strings.SplitN(value, "'", 3)
 	if len(parts) >= 3 {
-		decoded, err := url.QueryUnescape(parts[2])
+		// Use PathUnescape to handle %2B correctly (should decode to +, not space)
+		decoded, err := url.PathUnescape(parts[2])
 		if err == nil {
 			return decoded
 		}
@@ -151,7 +157,13 @@ func parseFilenameExtended(cd string) string {
 }
 
 // decodeFilenameParam decodes filename parameter value
+// Handles HTML entities, MIME encoded-word, URL encoding, and GBK encoding fallback
 func decodeFilenameParam(filename string) string {
+	// First, unescape HTML entities (e.g., &amp; -> &, &lt; -> <, &gt; -> >)
+	// This must be done before other decoding to handle cases where servers
+	// HTML-encode special characters in filenames
+	filename = unescapeHTMLEntities(filename)
+
 	// Handle RFC 2047 encoded word (=?charset?encoding?text?=)
 	if strings.HasPrefix(filename, "=?") {
 		decoder := new(mime.WordDecoder)
@@ -161,8 +173,8 @@ func decodeFilenameParam(filename string) string {
 		}
 	}
 
-	// Try URL decoding
-	decoded := util.TryUrlQueryUnescape(filename)
+	// Try URL decoding - use PathUnescape for filenames to handle %2B correctly
+	decoded := util.TryUrlPathUnescape(filename)
 
 	// If not valid UTF-8, try GBK decoding (common for Chinese websites)
 	if !utf8.ValidString(decoded) {
@@ -172,6 +184,26 @@ func decodeFilenameParam(filename string) string {
 	}
 
 	return decoded
+}
+
+// unescapeHTMLEntities unescapes common HTML entities in filenames
+// This handles cases where servers HTML-encode special characters like & to &amp;
+func unescapeHTMLEntities(s string) string {
+	// Common HTML entities that might appear in filenames
+	replacements := map[string]string{
+		"&amp;":  "&",
+		"&lt;":   "<",
+		"&gt;":   ">",
+		"&quot;": "\"",
+		"&#39;":  "'",
+		"&apos;": "'",
+	}
+
+	result := s
+	for entity, char := range replacements {
+		result = strings.ReplaceAll(result, entity, char)
+	}
+	return result
 }
 
 // tryDecodeGBK attempts to decode string as GBK encoding
@@ -201,7 +233,10 @@ func parseFilenameFallback(cd string) string {
 	}
 
 	value := cd[idx+len("filename="):]
-	if endIdx := strings.Index(value, ";"); endIdx != -1 {
+	
+	// Find the end of the value using proper quote handling
+	endIdx := findParamValueEnd(value)
+	if endIdx != -1 {
 		value = value[:endIdx]
 	}
 	value = strings.TrimSpace(value)
@@ -215,4 +250,84 @@ func parseFilenameFallback(cd string) string {
 	}
 
 	return decodeFilenameParam(value)
+}
+
+// findParamValueEnd finds the end position of a parameter value in a Content-Disposition header.
+// It correctly handles quoted values where semicolons inside quotes should not be treated as delimiters.
+// It also handles HTML entities in unquoted values (e.g., &amp; should not be split at the semicolon).
+// Returns the end index (exclusive) of the value, or -1 if it extends to the end of the string.
+func findParamValueEnd(value string) int {
+	value = strings.TrimSpace(value)
+	if len(value) == 0 {
+		return 0
+	}
+
+	// If the value starts with a quote, find the matching closing quote
+	if value[0] == '"' || value[0] == '\'' {
+		quote := value[0]
+		// Find the closing quote, handling escaped quotes
+		for i := 1; i < len(value); i++ {
+			if value[i] == quote {
+				// Check if it's escaped
+				if i > 0 && value[i-1] == '\\' {
+					continue
+				}
+				// Found closing quote, now look for ; after it
+				remaining := value[i+1:]
+				if semiIdx := strings.Index(remaining, ";"); semiIdx != -1 {
+					return i + 1 + semiIdx
+				}
+				return -1 // No semicolon after closing quote
+			}
+		}
+		// No closing quote found, treat rest of string as value
+		return -1
+	}
+	
+	// Unquoted value - find the next semicolon that's not part of an HTML entity
+	// HTML entities have the pattern &...;  (e.g., &amp; &lt; &gt; &quot; &#39;)
+	for i := 0; i < len(value); i++ {
+		if value[i] == ';' {
+			// Check if this semicolon is part of an HTML entity
+			// Look backwards for an & character
+			isEntity := false
+			if i > 0 {
+				// Look for & before this semicolon (within reasonable distance, max 10 chars)
+				for j := i - 1; j >= 0 && j >= i-10; j-- {
+					if value[j] == '&' {
+						// Found &, this semicolon might be part of an HTML entity
+						// Check if there are only alphanumeric or # between & and ;
+						entityChars := value[j+1 : i]
+						if len(entityChars) > 0 && isValidHTMLEntityChars(entityChars) {
+							isEntity = true
+						}
+						break
+					}
+					// If we hit whitespace or another special char, stop looking
+					if value[j] == ' ' || value[j] == '"' || value[j] == '\'' {
+						break
+					}
+				}
+			}
+			
+			if !isEntity {
+				return i
+			}
+		}
+	}
+	return -1 // No semicolon, extends to end
+}
+
+// isValidHTMLEntityChars checks if a string contains only valid HTML entity characters
+// (alphanumeric and #, typically for entities like &amp; &lt; &#39; etc.)
+func isValidHTMLEntityChars(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	for _, c := range s {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '#') {
+			return false
+		}
+	}
+	return true
 }
