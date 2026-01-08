@@ -947,9 +947,16 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		return conn.ctx.Err()
 	}
 
+	// Read chunk boundaries under lock to get a consistent snapshot
+	// This protects against concurrent modification by helpOtherConnection
+	f.connMu.Lock()
 	if f.meta.Res.Range && conn.Chunk.remain() <= 0 {
+		f.connMu.Unlock()
 		return nil
 	}
+	rangeStart := conn.Chunk.Begin + conn.Chunk.Downloaded
+	rangeEnd := conn.Chunk.End
+	f.connMu.Unlock()
 
 	httpReq, err := f.buildRequest(conn.ctx, f.meta.Req)
 	if err != nil {
@@ -958,7 +965,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 
 	if f.meta.Res.Range {
 		httpReq.Header.Set(base.HttpHeaderRange,
-			fmt.Sprintf(base.HttpHeaderRangeFormat, conn.Chunk.Begin+conn.Chunk.Downloaded, conn.Chunk.End))
+			fmt.Sprintf(base.HttpHeaderRangeFormat, rangeStart, rangeEnd))
 	}
 
 	resp, err := client.Do(httpReq)
@@ -992,11 +999,17 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		n, err := reader.Read(buf)
 		if n > 0 {
 			finished := false
+			var writeOffset int64
+
+			// Lock to safely read chunk state and calculate write parameters
+			// This protects against concurrent chunk splitting by helpOtherConnection
+			f.connMu.Lock()
 			if f.meta.Res.Range {
 				// Check current chunk boundaries - this respects any concurrent chunk splitting
 				remain := conn.Chunk.remain()
 				if remain <= 0 {
 					// Chunk has been fully downloaded (possibly split and reduced)
+					f.connMu.Unlock()
 					return nil
 				}
 				if remain < int64(n) {
@@ -1004,10 +1017,12 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 					finished = true
 				}
 			}
+			writeOffset = conn.Chunk.Begin + conn.Chunk.Downloaded
+			f.connMu.Unlock()
 
 			f.fileMu.Lock()
 			if f.file != nil {
-				_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Begin+conn.Chunk.Downloaded)
+				_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
 				if writeErr != nil {
 					f.fileMu.Unlock()
 					return writeErr
@@ -1015,8 +1030,11 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			}
 			f.fileMu.Unlock()
 
+			// Lock again to update Downloaded atomically with the read above
+			f.connMu.Lock()
 			conn.Chunk.Downloaded += int64(n)
 			conn.Downloaded += int64(n)
+			f.connMu.Unlock()
 
 			if finished {
 				return nil
