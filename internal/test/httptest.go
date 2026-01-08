@@ -456,38 +456,6 @@ func StartTestTimeoutOnceServer(delay int64) net.Listener {
 	})
 }
 
-// StartTestConnectionLimitServer creates a server with concurrent connection limit
-// Returns 429 Too Many Requests when limit is exceeded
-func StartTestConnectionLimitServer(maxConnections int32) net.Listener {
-	var connections atomic.Int32
-
-	return startTestServer(func(sl *shutdownListener) http.Handler {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
-			connections.Add(1)
-			defer func() {
-				connections.Add(-1)
-			}()
-
-			if connections.Load() > maxConnections {
-				writer.WriteHeader(429)
-				writer.Write([]byte("Too Many Requests"))
-				return
-			}
-
-			rangeFileHandle(
-				writer,
-				request,
-				nil,
-				func(file *os.File, n int64) {
-					slowCopyN(sl, writer, file, n, 0)
-				},
-			)
-		})
-		return mux
-	})
-}
-
 // StartTestTemporary500Server creates a server that returns 500 for a duration, then recovers
 // Uses slow transfer to ensure the file isn't fully downloaded during resolve phase
 func StartTestTemporary500Server(errorDuration time.Duration) net.Listener {

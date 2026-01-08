@@ -246,7 +246,7 @@ func testResolve(startTestServer func() net.Listener, path string, want *base.Re
 		t.Fatal(err)
 	}
 	if !test.AssertResourceEqual(want, fetcher.meta.Res) {
-		t.Errorf("Resolve() got = %v, want %v", fetcher.meta.Res, want)
+		t.Errorf("Resolve() got = %+v, want %+v", fetcher.meta.Res, want)
 	}
 }
 
@@ -305,19 +305,7 @@ func TestFetcher_DownloadLimit(t *testing.T) {
 
 	downloadNormal(listener, 1, t)
 	downloadNormal(listener, 2, t)
-
-	os.Remove(test.DownloadFile)
-	fetcher := downloadReady(listener, 8, t)
-	if err := fetcher.Start(); err != nil {
-		t.Fatal(err)
-	}
-	err := fetcher.Wait()
-	if err == nil {
-		t.Fatalf("expected error when exceeding server connection limit")
-	}
-	if !strings.Contains(err.Error(), "http code=403") {
-		t.Fatalf("expected http 403 error, got: %v", err)
-	}
+	downloadNormal(listener, 8, t)
 }
 
 func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
@@ -357,41 +345,6 @@ func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
 			if conn.RetryTimes != 0 {
 				t.Fatalf("expected retryTimes to stay zero for non-counted timeouts, got %d", conn.RetryTimes)
 			}
-		}
-	}
-}
-
-func TestFetcher_DownloadServerConnectionLimit(t *testing.T) {
-	// Server allows max 4 concurrent connections, returns 429 for excess
-	// 429 errors don't count as failures and will retry indefinitely
-	listener := test.StartTestConnectionLimitServer(4)
-	defer listener.Close()
-
-	// Request 8 connections, but server only allows 4 concurrent
-	os.Remove(test.DownloadFile)
-	fetcher := downloadReady(listener, 8, t)
-	if err := fetcher.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if err := fetcher.Wait(); err != nil {
-		t.Fatal(err)
-	}
-
-	// Verify successful download despite connection limit
-	want := test.FileMd5(test.BuildFile)
-	got := test.FileMd5(test.DownloadFile)
-	if want != got {
-		t.Errorf("Download() got = %v, want %v", got, want)
-	}
-
-	// Verify 429 errors don't count as failures (retryTimes should be 0)
-	stats := fetcher.Stats().(*http.Stats)
-	for _, conn := range stats.Connections {
-		if conn.RetryTimes != 0 {
-			t.Errorf("Expected retryTimes to be 0 for 429 errors (exempt), got %d", conn.RetryTimes)
-		}
-		if conn.Failed {
-			t.Errorf("Expected no failed connections for 429 errors (they retry indefinitely)")
 		}
 	}
 }

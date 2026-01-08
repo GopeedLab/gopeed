@@ -438,7 +438,8 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	if file.Name == "" {
 		file.Name = path.Base(httpReq.URL.Path)
 		if file.Name != "" {
-			file.Name, _ = url.QueryUnescape(file.Name)
+			// Use PathUnescape instead of QueryUnescape to correctly handle %2B (should decode to +, not space)
+			file.Name, _ = url.PathUnescape(file.Name)
 		}
 	}
 	if file.Name == "" || file.Name == "/" || file.Name == "." {
@@ -1261,11 +1262,27 @@ func (f *Fetcher) helpOtherConnection(helper *connection) bool {
 
 func (f *Fetcher) resumeConnections() {
 	for _, conn := range f.connections {
-		if conn.Completed || conn.State == connFailed {
+		// Only skip connections that have truly completed successfully
+		if conn.Completed || conn.State == connCompleted {
 			continue
 		}
+		// For failed connections, skip if:
+		// 1. They have exhausted retries (retryTimes >= 3), OR
+		// 2. They failed with a permanent error like 403
+		if conn.State == connFailed && conn.failed {
+			// Check if it's a permanent error (like 403)
+			if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
+				continue
+			}
+			// Check if retries exhausted
+			if conn.retryTimes >= 3 {
+				continue
+			}
+		}
+		// Reset the connection state for resume
 		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
 		conn.State = connNotStarted
+		conn.failed = false // Clear failed flag for resumed connection
 		f.wg.Add(1)
 		go f.runConnection(conn)
 	}
@@ -1280,19 +1297,56 @@ func (f *Fetcher) waitForCompletion() {
 }
 
 func (f *Fetcher) onDownloadComplete() {
-	// Check for any errors
-	var finalErr error
 	f.connMu.Lock()
+
+	// First, check if download actually completed successfully
+	// Calculate total downloaded from all connections
+	totalDownloaded := int64(0)
+	if f.resolveConn != nil {
+		totalDownloaded += f.resolveConn.Downloaded
+	}
 	for _, conn := range f.connections {
-		if conn.State == connFailed && conn.failed {
-			if re := extractRequestError(conn.lastErr); re != nil {
-				finalErr = fmt.Errorf("connection %d failed: retries=%d, http code=%d, msg=%s", conn.ID, conn.retryTimes, re.Code, re.Msg)
-			} else if conn.lastErr != nil {
-				finalErr = fmt.Errorf("connection %d failed: retries=%d, err=%v", conn.ID, conn.retryTimes, conn.lastErr)
-			} else {
-				finalErr = fmt.Errorf("connection %d failed: retries=%d", conn.ID, conn.retryTimes)
+		totalDownloaded += conn.Downloaded
+	}
+
+	// Check if all chunks are complete (no remaining bytes)
+	allChunksComplete := true
+	for _, conn := range f.connections {
+		if conn.Chunk != nil && conn.Chunk.remain() > 0 && !conn.Completed && conn.State != connCompleted {
+			// This connection has remaining work and isn't done
+			// Check if it failed with 403 (server limit) - these can be ignored if other connections completed the work
+			if conn.State == connFailed && conn.failed {
+				if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
+					// 403 is server connection limit, check if other connections will complete this chunk
+					continue
+				}
 			}
+			allChunksComplete = false
 			break
+		}
+	}
+
+	// If total downloaded matches file size, consider it a success regardless of connection failures
+	downloadComplete := f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size
+
+	// Check for any errors, but ignore 403 (server connection limit) errors if download completed
+	var finalErr error
+	if !downloadComplete && !allChunksComplete {
+		for _, conn := range f.connections {
+			if conn.State == connFailed && conn.failed {
+				// Skip 403 errors (server connection limit) - these are expected when exceeding server's limit
+				if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
+					continue
+				}
+				if re := extractRequestError(conn.lastErr); re != nil {
+					finalErr = fmt.Errorf("connection %d failed: retries=%d, http code=%d, msg=%s", conn.ID, conn.retryTimes, re.Code, re.Msg)
+				} else if conn.lastErr != nil {
+					finalErr = fmt.Errorf("connection %d failed: retries=%d, err=%v", conn.ID, conn.retryTimes, conn.lastErr)
+				} else {
+					finalErr = fmt.Errorf("connection %d failed: retries=%d", conn.ID, conn.retryTimes)
+				}
+				break
+			}
 		}
 	}
 	f.connMu.Unlock()
