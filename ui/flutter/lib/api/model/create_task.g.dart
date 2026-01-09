@@ -11,9 +11,9 @@ CreateTask _$CreateTaskFromJson(Map<String, dynamic> json) => CreateTask(
       req: json['req'] == null
           ? null
           : Request.fromJson(json['req'] as Map<String, dynamic>),
-      opt: json['opt'] == null
+      opts: json['opts'] == null
           ? null
-          : Options.fromJson(json['opt'] as Map<String, dynamic>),
+          : Options.fromJson(json['opts'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$CreateTaskToJson(CreateTask instance) {
@@ -27,6 +27,6 @@ Map<String, dynamic> _$CreateTaskToJson(CreateTask instance) {
 
   writeNotNull('rid', instance.rid);
   writeNotNull('req', instance.req?.toJson());
-  writeNotNull('opt', instance.opt?.toJson());
+  writeNotNull('opts', instance.opts?.toJson());
   return val;
 }

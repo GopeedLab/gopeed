@@ -5,6 +5,7 @@
 [![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://docs.gopeed.com/donate.html)
+[![WeChat](https://img.shields.io/badge/WeChat%20Official%20Account-07C160?logo=wechat&logoColor=white)](https://raw.githubusercontent.com/GopeedLab/gopeed/main/_docs/img/weixin.png)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -24,15 +25,23 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://
 <table>
   <tbody>
     <tr>
-      <td rowspan="2">🪟 Windows</td>
-      <td><code>EXE</code></td>
+      <td rowspan="4">🪟 Windows</td>
+      <td rowspan="2"><code>EXE</code></td>
       <td>amd64</td>
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">📥</a></td>
     </tr>
     <tr>
-      <td><code>Portable</code></td>
+      <td>arm64</td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-v$NEXT_PATCH_VERSION-windows-arm64.zip">📥</a></td>
+    </tr>
+    <tr>
+      <td rowspan="2"><code>Portable</code></td>
       <td>amd64</td>
       <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">📥</a></td>
+    </tr>
+    <tr>
+      <td>arm64</td>
+      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-v$NEXT_PATCH_VERSION-windows-arm64-portable.zip">📥</a></td>
     </tr>
     <tr>
       <td rowspan="3">🍎 MacOS</td>
@@ -169,6 +178,12 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ## 🔌 Browser Extension
 
 Gopeed also provides a browser extension to take over browser downloads, supporting browsers such as Chrome, Edge, Firefox, etc., please refer to: [https://github.com/GopeedLab/browser-extension](https://github.com/GopeedLab/browser-extension)
+
+## 📱 WeChat Official Account
+
+Follow our WeChat Official Account to get the latest updates and news.
+
+<img src="_docs/img/weixin.png" width="200" />
 
 ## 💝 Donate
 

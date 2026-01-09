@@ -2,13 +2,14 @@ package base
 
 import (
 	"fmt"
-	"github.com/GopeedLab/gopeed/pkg/util"
-	"github.com/mattn/go-ieproxy"
-	"golang.org/x/exp/slices"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/GopeedLab/gopeed/pkg/util"
+	"github.com/mattn/go-ieproxy"
+	"golang.org/x/exp/slices"
 )
 
 // Request download request
@@ -148,7 +149,7 @@ func ParseReqExtra[E any](req *Request) error {
 	return nil
 }
 
-func ParseOptsExtra[E any](opts *Options) error {
+func ParseOptExtra[E any](opts *Options) error {
 	if opts.Extra == nil {
 		return nil
 	}
@@ -182,6 +183,8 @@ type DownloaderStoreConfig struct {
 	ProtocolConfig map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
 	Extra          map[string]any         `json:"extra"`
 	Proxy          *DownloaderProxyConfig `json:"proxy"`
+	Webhook        *WebhookConfig         `json:"webhook"` // Webhook is the webhook configuration
+	Archive        *ArchiveConfig         `json:"archive"` // Archive is the archive extraction configuration
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
@@ -193,6 +196,15 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	}
 	if cfg.Proxy == nil {
 		cfg.Proxy = &DownloaderProxyConfig{}
+	}
+	if cfg.Webhook == nil {
+		cfg.Webhook = &WebhookConfig{}
+	}
+	if cfg.Archive == nil {
+		cfg.Archive = &ArchiveConfig{
+			AutoExtract:        false,
+			DeleteAfterExtract: false,
+		}
 	}
 	return cfg
 }
@@ -216,7 +228,25 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	if cfg.Proxy == nil {
 		cfg.Proxy = beforeCfg.Proxy
 	}
+	if cfg.Webhook == nil {
+		cfg.Webhook = beforeCfg.Webhook
+	}
+	if cfg.Archive == nil {
+		cfg.Archive = beforeCfg.Archive
+	}
 	return cfg
+}
+
+// WebhookConfig is the webhook configuration
+type WebhookConfig struct {
+	Enable bool     `json:"enable"` // Enable is the flag to enable/disable webhooks
+	URLs   []string `json:"urls"`   // URLs is the list of webhook URLs
+}
+
+// ArchiveConfig is the archive extraction configuration
+type ArchiveConfig struct {
+	AutoExtract        bool `json:"autoExtract"`        // AutoExtract enables automatic extraction of archives after download
+	DeleteAfterExtract bool `json:"deleteAfterExtract"` // DeleteAfterExtract deletes the archive after successful extraction
 }
 
 type DownloaderProxyConfig struct {

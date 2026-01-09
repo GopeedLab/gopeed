@@ -11,9 +11,9 @@ CreateTaskBatch _$CreateTaskBatchFromJson(Map<String, dynamic> json) =>
       reqs: (json['reqs'] as List<dynamic>?)
           ?.map((e) => CreateTaskBatchItem.fromJson(e as Map<String, dynamic>))
           .toList(),
-      opt: json['opt'] == null
+      opts: json['opts'] == null
           ? null
-          : Options.fromJson(json['opt'] as Map<String, dynamic>),
+          : Options.fromJson(json['opts'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$CreateTaskBatchToJson(CreateTaskBatch instance) {
@@ -26,7 +26,7 @@ Map<String, dynamic> _$CreateTaskBatchToJson(CreateTaskBatch instance) {
   }
 
   writeNotNull('reqs', instance.reqs?.map((e) => e.toJson()).toList());
-  writeNotNull('opt', instance.opt?.toJson());
+  writeNotNull('opts', instance.opts?.toJson());
   return val;
 }
 

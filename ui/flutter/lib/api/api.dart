@@ -16,6 +16,7 @@ import 'model/install_extension.dart';
 import 'model/login.dart';
 import 'model/request.dart';
 import 'model/resolve_result.dart';
+import 'model/resolve_task.dart';
 import 'model/result.dart';
 import 'model/switch_extension.dart';
 import 'model/task.dart';
@@ -123,9 +124,9 @@ Future<T> _parse<T>(
   }
 }
 
-Future<ResolveResult> resolve(Request request) async {
+Future<ResolveResult> resolve(ResolveTask resolveTask) async {
   return _parse<ResolveResult>(
-      () => _client.dio.post("api/v1/resolve", data: request),
+      () => _client.dio.post("api/v1/resolve", data: resolveTask),
       (data) => ResolveResult.fromJson(data));
 }
 
@@ -234,6 +235,11 @@ Future<UpdateCheckExtensionResp> upgradeCheckExtension(String identity) async {
 Future<void> updateExtension(String identity) async {
   return _parse(
       () => _client.dio.post("api/v1/extensions/$identity/update"), null);
+}
+
+Future<void> testWebhook(String url) async {
+  return _parse(
+      () => _client.dio.post("api/v1/webhook/test", data: {"url": url}), null);
 }
 
 Future<String> login(LoginReq loginReq) async {

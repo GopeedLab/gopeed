@@ -14,17 +14,86 @@ import '../../util/util.dart';
 
 final deviceInfo = DeviceInfoPlugin();
 
+// Placeholder information for download directory
+class PathPlaceholder {
+  final String placeholder;
+  final String description;
+  final String example;
+
+  const PathPlaceholder({
+    required this.placeholder,
+    required this.description,
+    required this.example,
+  });
+}
+
+// Available placeholders for download directory
+List<PathPlaceholder> getPathPlaceholders() {
+  final now = DateTime.now();
+  final year = now.year.toString();
+  final month = now.month.toString().padLeft(2, '0');
+  final day = now.day.toString().padLeft(2, '0');
+
+  return [
+    PathPlaceholder(
+      placeholder: '%year%',
+      description: 'placeholderYear'.tr,
+      example: year,
+    ),
+    PathPlaceholder(
+      placeholder: '%month%',
+      description: 'placeholderMonth'.tr,
+      example: month,
+    ),
+    PathPlaceholder(
+      placeholder: '%day%',
+      description: 'placeholderDay'.tr,
+      example: day,
+    ),
+    PathPlaceholder(
+      placeholder: '%date%',
+      description: 'placeholderDate'.tr,
+      example: '$year-$month-$day',
+    ),
+  ];
+}
+
+// Render placeholders in a path with actual values
+String renderPathPlaceholders(String path) {
+  if (path.isEmpty) return path;
+
+  final now = DateTime.now();
+  final year = now.year.toString();
+  final month = now.month.toString().padLeft(2, '0');
+  final day = now.day.toString().padLeft(2, '0');
+  final date = '$year-$month-$day';
+
+  return path
+      .replaceAll('%year%', year)
+      .replaceAll('%month%', month)
+      .replaceAll('%day%', day)
+      .replaceAll('%date%', date);
+}
+
 class DirectorySelector extends StatefulWidget {
   final TextEditingController controller;
   final bool showLabel;
   final bool showAndoirdToggle;
+  final bool allowEdit;
+  final bool showPlaceholderButton;
+  final VoidCallback? onEditComplete;
+  final bool showRenderedPlaceholders;
 
-  const DirectorySelector(
-      {Key? key,
-      required this.controller,
-      this.showLabel = true,
-      this.showAndoirdToggle = false})
-      : super(key: key);
+  const DirectorySelector({
+    Key? key,
+    required this.controller,
+    this.showLabel = true,
+    this.showAndoirdToggle = false,
+    this.allowEdit = false,
+    this.showPlaceholderButton = false,
+    this.onEditComplete,
+    this.showRenderedPlaceholders = false,
+  }) : super(key: key);
 
   @override
   State<DirectorySelector> createState() => _DirectorySelectorState();
@@ -108,22 +177,119 @@ class _DirectorySelectorState extends State<DirectorySelector> {
       return null;
     }
 
+    Widget? buildPlaceholderButton() {
+      if (!widget.showPlaceholderButton) return null;
+
+      return PopupMenuButton<String>(
+        icon: const Icon(Icons.data_object),
+        tooltip: 'insertPlaceholder'.tr,
+        onSelected: (String placeholder) {
+          final currentText = widget.controller.text;
+          final selection = widget.controller.selection;
+          final cursorPosition = selection.baseOffset >= 0
+              ? selection.baseOffset
+              : currentText.length;
+
+          final newText = currentText.substring(0, cursorPosition) +
+              placeholder +
+              currentText.substring(cursorPosition);
+          widget.controller.text = newText;
+          widget.controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: cursorPosition + placeholder.length),
+          );
+        },
+        itemBuilder: (BuildContext context) {
+          final placeholders = getPathPlaceholders();
+          return placeholders.map((p) {
+            return PopupMenuItem<String>(
+              value: p.placeholder,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${p.placeholder} - ${p.description}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'example'.trParams({'value': p.example}),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList();
+        },
+      );
+    }
+
     return Row(
       children: [
         Expanded(
-            child: TextFormField(
-          readOnly: Util.isWeb() ? false : true,
-          controller: widget.controller,
-          decoration: widget.showLabel
-              ? InputDecoration(
-                  labelText: 'downloadDir'.tr,
-                )
-              : null,
-          validator: (v) {
-            return v!.trim().isNotEmpty ? null : 'downloadDirValid'.tr;
+            child: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: widget.controller,
+          builder: (context, value, child) {
+            Widget? suffix;
+            if (widget.showRenderedPlaceholders && value.text.contains('%')) {
+              final renderedPath = renderPathPlaceholders(value.text);
+              // Show rendered path as a chip/badge in the input field
+              suffix = Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_forward,
+                        size: 14, color: Colors.blue[700]),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        renderedPath,
+                        style: TextStyle(
+                          color: Colors.blue[700],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return TextFormField(
+              readOnly:
+                  widget.allowEdit ? false : (Util.isWeb() ? false : true),
+              controller: widget.controller,
+              decoration: widget.showLabel
+                  ? InputDecoration(
+                      labelText: 'downloadDir'.tr,
+                      suffix: suffix,
+                    )
+                  : InputDecoration(
+                      suffix: suffix,
+                    ),
+              validator: (v) {
+                return v!.trim().isNotEmpty ? null : 'downloadDirValid'.tr;
+              },
+              onEditingComplete: widget.onEditComplete,
+              onTapOutside: (event) {
+                // Call onEditComplete when user taps outside the field
+                widget.onEditComplete?.call();
+              },
+            );
           },
         )),
-        buildSelectWidget()
+        buildSelectWidget(),
+        buildPlaceholderButton(),
       ].where((e) => e != null).map((e) => e!).toList(),
     );
   }

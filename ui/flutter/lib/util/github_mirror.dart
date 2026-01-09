@@ -1,38 +1,40 @@
 import 'package:dio/dio.dart';
+import 'package:get/get.dart';
 
-// List of mirrors for GitHub
-const _sourceMirror = [
-  // github.tbedu.top: https://github.tbedu.top/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
-  ["https://github.tbedu.top/", r"(.*)"],
-  // fastgit.cc: https://fastgit.cc/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
-  ["https://fastgit.cc/", r"(.*)"],
-  // gitproxy.click: https://gitproxy.click/https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt
-  ["https://gitproxy.click/", r"(.*)"],
-  // jsdelivr: https://fastly.jsdelivr.net/gh/ngosang/trackerslist/trackers_all.txt
-  [
-    "https://fastly.jsdelivr.net/gh",
-    r".*raw.githubusercontent.com(/.*)(/.*)/(?:master|main)(/.*)"
-  ],
-];
-
-// List of mirrors for GitHub release
-const _assertMirror = [
-  // github.tbedu.top: https://https://github.tbedu.top/https://github.com/GopeedLab/gopeed/releases/download/v1.6.10/Gopeed-v1.6.10-windows-amd64.zip
-  ["https://github.tbedu.top/", r"(.*)"],
-  // fastgit.cc: https://fastgit.cc/https://github.com/GopeedLab/gopeed/releases/download/v1.6.10/Gopeed-v1.6.10-windows-amd64.zip
-  ["https://fastgit.cc/", r"(.*)"],
-  // gitproxy.click: https://gitproxy.click/https://github.com/GopeedLab/gopeed/releases/download/v1.6.10/Gopeed-v1.6.10-windows-amd64.zip
-  ["https://gitproxy.click/", r"(.*)"],
-];
+import '../api/model/downloader_config.dart';
+import '../app/modules/app/controllers/app_controller.dart';
 
 enum MirrorType {
   githubSource,
   githubRelease,
 }
 
+/// Get the configured mirrors
+List<GithubMirror> _getConfiguredMirrors() {
+  try {
+    final appController = Get.find<AppController>();
+    final config = appController.downloaderConfig.value.extra.githubMirror;
+
+    if (!config.enabled) {
+      return [];
+    }
+
+    // Return configured mirrors (filtering not deleted ones)
+    return config.mirrors.where((m) => !m.isDeleted).toList();
+  } catch (e) {
+    // Fallback to empty list if controller not found
+    return [];
+  }
+}
+
 /// Auto detect the best mirror for the given [rawUrl] and [type]
 Future<String> githubAutoMirror(String rawUrl, MirrorType type) async {
   final mirrorUrls = githubMirrorUrls(rawUrl, type);
+
+  // If no mirrors, return original URL
+  if (mirrorUrls.isEmpty) {
+    return rawUrl;
+  }
 
   // Ping all mirrors and get the fastest one
   final pingResult = await Future.wait(mirrorUrls.map((e) async {
@@ -64,20 +66,39 @@ Future<String> githubAutoMirror(String rawUrl, MirrorType type) async {
 }
 
 List<String> githubMirrorUrls(String rawUrl, MirrorType type) {
-  final mirrors = switch (type) {
-    MirrorType.githubSource => _sourceMirror,
-    MirrorType.githubRelease => _assertMirror,
-  };
+  final mirrors = _getConfiguredMirrors();
 
   final ret = <String>[];
-  for (final cdn in mirrors) {
-    final reg = RegExp(cdn[1]);
-    final match = reg.firstMatch(rawUrl.toString());
-    var matchStr = "";
-    for (var i = 1; i <= match!.groupCount; i++) {
-      matchStr += match.group(i)!;
+  for (final mirror in mirrors) {
+    String? mirrorUrl;
+
+    if (mirror.type == GithubMirrorType.jsdelivr) {
+      // jsdelivr only supports source files
+      if (type != MirrorType.githubSource) {
+        continue;
+      }
+
+      // Transform: https://raw.githubusercontent.com/user/repo/master/path
+      // To: https://fastly.jsdelivr.net/gh/user/repo/path
+      final jsDelivrPattern = RegExp(
+          r'.*raw\.githubusercontent\.com(/[^/]+)(/[^/]+)/(?:master|main)(/.*)');
+      final match = jsDelivrPattern.firstMatch(rawUrl);
+      if (match != null) {
+        final user = match.group(1);
+        final repo = match.group(2);
+        final path = match.group(3);
+        mirrorUrl = '${mirror.url}$user$repo$path';
+      }
+    } else if (mirror.type == GithubMirrorType.ghProxy) {
+      // gh-proxy supports both source and release
+      // Simply prepend the mirror URL to the original URL
+      mirrorUrl = '${mirror.url}/$rawUrl';
     }
-    ret.add("${cdn[0]}$matchStr");
+
+    if (mirrorUrl != null) {
+      ret.add(mirrorUrl);
+    }
   }
+
   return ret;
 }

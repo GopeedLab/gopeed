@@ -9,8 +9,11 @@ import 'package:gopeed/app/views/copy_button.dart';
 import 'package:intl/intl.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:window_manager/window_manager.dart';
 
+import '../../../../api/api.dart' as api;
 import '../../../../api/model/downloader_config.dart';
+import '../../../../database/database.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
@@ -24,6 +27,7 @@ import '../../../views/check_list_view.dart';
 import '../../../views/directory_selector.dart';
 import '../../../views/open_in_new.dart';
 import '../../../views/outlined_button_loading.dart';
+import '../../../views/text_button_loading.dart';
 import '../../app/controllers/app_controller.dart';
 import '../controllers/setting_controller.dart';
 
@@ -32,6 +36,14 @@ final _divider = const Divider().paddingOnly(left: 10, right: 10);
 
 class SettingView extends GetView<SettingController> {
   const SettingView({Key? key}) : super(key: key);
+
+  // Helper function to get display name for a category
+  static String _getCategoryDisplayName(DownloadCategory category) {
+    if (category.nameKey != null && category.nameKey!.isNotEmpty) {
+      return category.nameKey!.tr;
+    }
+    return category.name;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,20 +81,25 @@ class SettingView extends GetView<SettingController> {
         'downloadDir', () => downloaderCfg.value.downloadDir, (Key key) {
       final downloadDirController =
           TextEditingController(text: downloaderCfg.value.downloadDir);
-      downloadDirController.addListener(() async {
+
+      // Update config only when editing is done (on focus lost or submit)
+      void onEditComplete() {
         if (downloadDirController.text != downloaderCfg.value.downloadDir) {
           downloaderCfg.value.downloadDir = downloadDirController.text;
           if (Util.isDesktop()) {
             controller.clearTap();
           }
-
-          await debounceSave();
+          debounceSave();
         }
-      });
+      }
+
       return DirectorySelector(
         controller: downloadDirController,
         showLabel: false,
         showAndoirdToggle: true,
+        allowEdit: true,
+        showPlaceholderButton: true,
+        onEditComplete: onEditComplete,
       );
     });
     final buildMaxRunning = _buildConfigItem(
@@ -132,6 +149,193 @@ class SettingView extends GetView<SettingController> {
         ),
       );
     });
+
+    final buildAutoStartTasks = _buildConfigItem('autoStartTasks', () {
+      return appController.downloaderConfig.value.extra.autoStartTasks
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: appController.downloaderConfig.value.extra.autoStartTasks,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.extra.autoStartTasks = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
+    // Archive auto extract configuration
+    final buildAutoExtract = _buildConfigItem('autoExtract', () {
+      return appController.downloaderConfig.value.archive.autoExtract
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: appController.downloaderConfig.value.archive.autoExtract,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.archive.autoExtract = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
+    // Archive delete after extract configuration
+    final buildDeleteAfterExtract = _buildConfigItem('deleteAfterExtract', () {
+      return appController.downloaderConfig.value.archive.deleteAfterExtract
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value:
+              appController.downloaderConfig.value.archive.deleteAfterExtract,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.archive.deleteAfterExtract = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
+    // Download categories configuration
+    buildDownloadCategories() {
+      final categories = downloaderCfg.value.extra.downloadCategories
+          .where((c) => !c.isDeleted) // Filter out deleted categories
+          .toList();
+      return ListTile(
+        title: Text('downloadCategories'.tr),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (categories.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'add'.tr,
+                  style: TextStyle(color: Theme.of(context).hintColor),
+                ),
+              ),
+            ...categories.map((category) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getCategoryDisplayName(category),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            category.path,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).hintColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.edit,
+                        size: 20,
+                        color: Theme.of(context).hintColor,
+                      ),
+                      onPressed: () {
+                        _showCategoryDialog(
+                          context,
+                          debounceSave,
+                          downloaderCfg,
+                          category: category,
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.delete,
+                        size: 20,
+                        color: Theme.of(context).hintColor,
+                      ),
+                      onPressed: () async {
+                        // Show confirmation dialog
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('tip'.tr),
+                            content: Text('confirmDelete'.tr),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: Text('cancel'.tr),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: Text('confirm'.tr),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmed == true) {
+                          if (category.isBuiltIn) {
+                            // Mark built-in category as deleted instead of removing it
+                            downloaderCfg.update((val) {
+                              category.isDeleted = true;
+                            });
+                          } else {
+                            // Remove custom categories completely
+                            downloaderCfg.update((val) {
+                              val!.extra.downloadCategories = val
+                                  .extra.downloadCategories
+                                  .where((c) => c != category)
+                                  .toList();
+                            });
+                          }
+                          debounceSave();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: Text('add'.tr),
+                onPressed: () {
+                  _showCategoryDialog(
+                    context,
+                    debounceSave,
+                    downloaderCfg,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     buildBrowserExtension() {
       return ListTile(
@@ -183,6 +387,46 @@ class SettingView extends GetView<SettingController> {
                     logger.e('launchAtStartup fail', e);
                   }
                 },
+              ),
+            );
+          });
+
+    // Menubar mode only for macOS
+    final buildMenubarMode = !Util.isMacos()
+        ? () => null
+        : _buildConfigItem('runAsMenubarApp', () {
+            return Database.instance.getRunAsMenubarApp() ? 'on'.tr : 'off'.tr;
+          }, (Key key) {
+            return Container(
+              alignment: Alignment.centerLeft,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Switch(
+                    value: Database.instance.getRunAsMenubarApp(),
+                    onChanged: (bool value) async {
+                      // Save to database (single source of truth)
+                      Database.instance.saveRunAsMenubarApp(value);
+                      // Apply dock icon visibility
+                      await windowManager.setSkipTaskbar(value);
+                      // Small delay to let macOS process the activation policy change
+                      await Future.delayed(const Duration(milliseconds: 100));
+                      // Ensure window stays visible after toggle
+                      await windowManager.show();
+                      await windowManager.focus();
+                      // Force UI refresh
+                      controller.clearTap();
+                      await debounceSave();
+                    },
+                  ),
+                  Text(
+                    'runAsMenubarAppDesc'.tr,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                ],
               ),
             );
           });
@@ -742,6 +986,136 @@ class SettingView extends GetView<SettingController> {
       },
     );
 
+    // advanced config GitHub mirror items start
+    final buildGithubMirror = _buildConfigItem(
+      'githubMirror',
+      () => downloaderCfg.value.extra.githubMirror.enabled ? 'on'.tr : 'off'.tr,
+      (Key key) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'githubMirrorEnable'.tr,
+                  style: Theme.of(Get.context!).textTheme.bodyMedium,
+                ),
+                const Spacer(),
+                Switch(
+                  value: downloaderCfg.value.extra.githubMirror.enabled,
+                  onChanged: (value) {
+                    downloaderCfg.update((val) {
+                      val!.extra.githubMirror.enabled = value;
+                    });
+                    debounceSave();
+                  },
+                ),
+              ],
+            ),
+            _padding,
+            Text(
+              'githubMirrorDesc'.tr,
+              style: Theme.of(Get.context!).textTheme.bodySmall,
+            ),
+            _padding,
+            // List of existing GitHub mirrors
+            ...downloaderCfg.value.extra.githubMirror.mirrors
+                .where((m) => !m.isDeleted)
+                .toList()
+                .asMap()
+                .entries
+                .map((entry) {
+              // Get the original index in the full list
+              final mirror = entry.value;
+              final index = downloaderCfg.value.extra.githubMirror.mirrors
+                  .indexOf(mirror);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              mirror.url,
+                              style:
+                                  Theme.of(Get.context!).textTheme.bodyMedium,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      tooltip: 'edit'.tr,
+                      onPressed: () {
+                        _showGithubMirrorDialog(
+                            index: index, initialMirror: mirror);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 20),
+                      tooltip: 'delete'.tr,
+                      onPressed: () async {
+                        // Show confirmation dialog
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('tip'.tr),
+                            content: Text('confirmDelete'.tr),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: Text('cancel'.tr),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: Text('confirm'.tr),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true) return;
+
+                        if (mirror.isBuiltIn) {
+                          // Mark built-in mirror as deleted (logical delete)
+                          downloaderCfg.update((val) {
+                            mirror.isDeleted = true;
+                          });
+                        } else {
+                          // Remove custom mirrors completely (physical delete)
+                          final mirrors = List<GithubMirror>.from(
+                              downloaderCfg.value.extra.githubMirror.mirrors);
+                          mirrors.removeAt(index);
+                          downloaderCfg.update((val) {
+                            val!.extra.githubMirror.mirrors = mirrors;
+                          });
+                        }
+                        await debounceSave();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+            _padding,
+            // Add button
+            OutlinedButton.icon(
+              onPressed: () {
+                _showGithubMirrorDialog();
+              },
+              icon: const Icon(Icons.add),
+              label: Text('add'.tr),
+            ),
+          ],
+        );
+      },
+    );
+
     // advanced config API items start
     final buildApiProtocol = _buildConfigItem(
       'protocol',
@@ -891,6 +1265,92 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
+    // advanced config webhook items
+    final buildWebhook = _buildConfigItem(
+      'webhook',
+      () => downloaderCfg.value.webhook.enable ? 'on'.tr : 'off'.tr,
+      (Key key) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'webhookEnable'.tr,
+                  style: Theme.of(Get.context!).textTheme.bodyMedium,
+                ),
+                const Spacer(),
+                Switch(
+                  value: downloaderCfg.value.webhook.enable,
+                  onChanged: (value) {
+                    downloaderCfg.update((val) {
+                      val!.webhook.enable = value;
+                    });
+                    debounceSave();
+                  },
+                ),
+              ],
+            ),
+            _padding,
+            Text(
+              'webhookDesc'.tr,
+              style: Theme.of(Get.context!).textTheme.bodySmall,
+            ),
+            _padding,
+            // List of existing webhook URLs
+            ...downloaderCfg.value.webhook.urls.asMap().entries.map((entry) {
+              final index = entry.key;
+              final url = entry.value;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        url,
+                        style: Theme.of(Get.context!).textTheme.bodyMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      tooltip: 'edit'.tr,
+                      onPressed: () {
+                        _showWebhookDialog(index: index, initialUrl: url);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 20),
+                      tooltip: 'delete'.tr,
+                      onPressed: () async {
+                        // Create new list to avoid unmodifiable list error
+                        final urls =
+                            List<String>.from(downloaderCfg.value.webhook.urls);
+                        urls.removeAt(index);
+                        downloaderCfg.update((val) {
+                          val!.webhook.urls = urls;
+                        });
+                        await debounceSave();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+            _padding,
+            // Add button
+            OutlinedButton.icon(
+              onPressed: () {
+                _showWebhookDialog();
+              },
+              icon: const Icon(Icons.add),
+              label: Text('add'.tr),
+            ),
+          ],
+        );
+      },
+    );
+
     // advanced config log items start
     buildLogsDir() {
       return ListTile(
@@ -950,10 +1410,21 @@ class SettingView extends GetView<SettingController> {
                             child: Column(
                           children: _addDivider([
                             buildDownloadDir(),
+                            buildDownloadCategories(),
                             buildMaxRunning(),
                             buildDefaultDirectDownload(),
+                            buildAutoStartTasks(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
+                            buildMenubarMode(),
+                          ]),
+                        )),
+                        Text('archives'.tr),
+                        Card(
+                            child: Column(
+                          children: _addDivider([
+                            buildAutoExtract(),
+                            buildDeleteAfterExtract(),
                           ]),
                         )),
                         const Text('HTTP'),
@@ -1019,7 +1490,10 @@ class SettingView extends GetView<SettingController> {
                       Text('network'.tr),
                       Card(
                           child: Column(
-                        children: _addDivider([buildProxy()]),
+                        children: _addDivider([
+                          buildProxy(),
+                          buildGithubMirror(),
+                        ]),
                       )),
                       const Text('API'),
                       Card(
@@ -1035,6 +1509,7 @@ class SettingView extends GetView<SettingController> {
                       Card(
                           child: Column(
                         children: _addDivider([
+                          buildWebhook(),
                           buildLogsDir(),
                         ]),
                       )),
@@ -1045,6 +1520,244 @@ class SettingView extends GetView<SettingController> {
         ),
       );
     });
+  }
+
+  void _showWebhookDialog({int? index, String? initialUrl}) {
+    final urlController = TextEditingController(text: initialUrl ?? '');
+    final testController = OutlinedButtonLoadingController();
+    final saveController = TextButtonLoadingController();
+    final appController = Get.find<AppController>();
+    final downloaderCfg = appController.downloaderConfig;
+    final isEdit = index != null;
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: Get.context!,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEdit ? 'edit'.tr : 'add'.tr),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: urlController,
+                decoration: InputDecoration(
+                  hintText: 'webhookUrlHint'.tr,
+                ),
+                keyboardType: TextInputType.url,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'required'.tr;
+                  }
+                  final url = value.trim().toLowerCase();
+                  if (!url.startsWith('http://') &&
+                      !url.startsWith('https://')) {
+                    return 'urlInvalid'.tr;
+                  }
+                  try {
+                    Uri.parse(value.trim());
+                  } catch (e) {
+                    return 'urlInvalid'.tr;
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actions: [
+          // Test button on the left
+          Padding(
+            padding: const EdgeInsets.only(left: 16.0),
+            child: OutlinedButtonLoading(
+              controller: testController,
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) {
+                  return;
+                }
+                final url = urlController.text.trim();
+                if (url.isEmpty) return;
+                testController.start();
+                try {
+                  await api.testWebhook(url);
+                  showMessage('tip'.tr, 'webhookTestSuccess'.tr);
+                } catch (e) {
+                  showErrorMessage('webhookTestFail'.tr);
+                } finally {
+                  testController.stop();
+                }
+              },
+              child: Text('webhookTest'.tr),
+            ),
+          ),
+          // Cancel and Confirm on the right
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text('cancel'.tr),
+              ),
+              TextButtonLoading(
+                controller: saveController,
+                onPressed: () async {
+                  if (!formKey.currentState!.validate()) {
+                    return;
+                  }
+                  final url = urlController.text.trim();
+                  if (url.isEmpty) return;
+
+                  saveController.start();
+                  try {
+                    // Create new list to avoid unmodifiable list error
+                    final urls =
+                        List<String>.from(downloaderCfg.value.webhook.urls);
+                    if (isEdit) {
+                      urls[index] = url;
+                    } else {
+                      urls.add(url);
+                    }
+                    downloaderCfg.update((val) {
+                      val!.webhook.urls = urls;
+                    });
+                    await appController.saveConfig();
+                    if (dialogContext.mounted) {
+                      Navigator.of(dialogContext).pop();
+                    }
+                  } catch (e) {
+                    showErrorMessage(e);
+                  } finally {
+                    saveController.stop();
+                  }
+                },
+                child: Text('confirm'.tr),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGithubMirrorDialog({int? index, GithubMirror? initialMirror}) {
+    final isEdit = index != null;
+    GithubMirrorType selectedType =
+        initialMirror?.type ?? GithubMirrorType.jsdelivr;
+    final urlController = TextEditingController(text: initialMirror?.url ?? '');
+    final saveController = TextButtonLoadingController();
+    final appController = Get.find<AppController>();
+    final downloaderCfg = appController.downloaderConfig;
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: Get.context!,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(isEdit ? 'edit'.tr : 'add'.tr),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<GithubMirrorType>(
+                  value: selectedType,
+                  decoration: InputDecoration(
+                    labelText: 'githubMirrorType'.tr,
+                  ),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        selectedType = value;
+                      });
+                    }
+                  },
+                  items: GithubMirrorType.values
+                      .map((type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type.name),
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: urlController,
+                  decoration: InputDecoration(
+                    labelText: 'githubMirrorUrl'.tr,
+                    hintText: 'githubMirrorUrlHint'.tr,
+                  ),
+                  keyboardType: TextInputType.url,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'required'.tr;
+                    }
+                    final url = value.trim().toLowerCase();
+                    if (!url.startsWith('http://') &&
+                        !url.startsWith('https://')) {
+                      return 'urlInvalid'.tr;
+                    }
+                    try {
+                      Uri.parse(value.trim());
+                    } catch (e) {
+                      return 'urlInvalid'.tr;
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('cancel'.tr),
+            ),
+            TextButtonLoading(
+              controller: saveController,
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) {
+                  return;
+                }
+                final url = urlController.text.trim();
+                if (url.isEmpty) return;
+
+                saveController.start();
+                try {
+                  // Create new list to avoid unmodifiable list error
+                  final mirrors = List<GithubMirror>.from(
+                      downloaderCfg.value.extra.githubMirror.mirrors);
+
+                  final newMirror = GithubMirror(
+                    type: selectedType,
+                    url: url,
+                  );
+
+                  if (isEdit) {
+                    mirrors[index] = newMirror;
+                  } else {
+                    mirrors.add(newMirror);
+                  }
+
+                  downloaderCfg.update((val) {
+                    val!.extra.githubMirror.mirrors = mirrors;
+                  });
+                  await appController.saveConfig();
+                  if (dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                } catch (e) {
+                  showErrorMessage(e);
+                } finally {
+                  saveController.stop();
+                }
+              },
+              child: Text('confirm'.tr),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _tapInputWidget(GlobalKey key) {
@@ -1118,6 +1831,88 @@ class SettingView extends GetView<SettingController> {
       default:
         return 'themeSystem'.tr;
     }
+  }
+
+  void _showCategoryDialog(
+    BuildContext context,
+    Future<bool> Function() debounceSave,
+    Rx<DownloaderConfig> downloaderCfg, {
+    DownloadCategory? category,
+  }) {
+    final isEdit = category != null;
+    final nameController = TextEditingController(
+      text: isEdit ? _getCategoryDisplayName(category) : '',
+    );
+    final pathController = TextEditingController(text: category?.path ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEdit ? 'edit'.tr : 'add'.tr),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'categoryName'.tr,
+              ),
+            ),
+            const SizedBox(height: 16),
+            DirectorySelector(
+              controller: pathController,
+              showLabel: true,
+              allowEdit: true,
+              showPlaceholderButton: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('cancel'.tr),
+          ),
+          TextButton(
+            onPressed: () {
+              if (nameController.text.isEmpty || pathController.text.isEmpty) {
+                return;
+              }
+
+              if (isEdit) {
+                // Trigger UI update by wrapping changes in update()
+                downloaderCfg.update((val) {
+                  // If name changed, clear nameKey so it won't be re-translated
+                  final nameChanged =
+                      nameController.text != _getCategoryDisplayName(category);
+                  category.name = nameController.text;
+                  category.path = pathController.text;
+                  if (nameChanged) {
+                    category.nameKey = null;
+                  }
+                  // If editing a deleted built-in category, unmark it as deleted
+                  if (category.isBuiltIn && category.isDeleted) {
+                    category.isDeleted = false;
+                  }
+                });
+              } else {
+                downloaderCfg.update((val) {
+                  val!.extra.downloadCategories = [
+                    ...val.extra.downloadCategories,
+                    DownloadCategory(
+                      name: nameController.text,
+                      path: pathController.text,
+                    ),
+                  ];
+                });
+              }
+              debounceSave();
+              Navigator.of(context).pop();
+            },
+            child: Text('confirm'.tr),
+          ),
+        ],
+      ),
+    );
   }
 }
 

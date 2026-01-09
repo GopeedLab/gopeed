@@ -18,6 +18,11 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				MaxRunning:     5,
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
+				Webhook:        &WebhookConfig{},
+				Archive: &ArchiveConfig{
+					AutoExtract:        false,
+					DeleteAfterExtract: false,
+				},
 			},
 		},
 		{
@@ -29,6 +34,11 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				MaxRunning:     10,
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
+				Webhook:        &WebhookConfig{},
+				Archive: &ArchiveConfig{
+					AutoExtract:        false,
+					DeleteAfterExtract: false,
+				},
 			},
 		},
 		{
@@ -43,7 +53,12 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{
 					"key": "value",
 				},
-				Proxy: &DownloaderProxyConfig{},
+				Proxy:   &DownloaderProxyConfig{},
+				Webhook: &WebhookConfig{},
+				Archive: &ArchiveConfig{
+					AutoExtract:        false,
+					DeleteAfterExtract: false,
+				},
 			},
 		},
 		{
@@ -59,6 +74,30 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				Proxy: &DownloaderProxyConfig{
 					Enable: true,
 				},
+				Webhook: &WebhookConfig{},
+				Archive: &ArchiveConfig{
+					AutoExtract:        false,
+					DeleteAfterExtract: false,
+				},
+			},
+		},
+		{
+			"Init Archive",
+			&DownloaderStoreConfig{
+				Archive: &ArchiveConfig{
+					AutoExtract:        true,
+					DeleteAfterExtract: false,
+				},
+			},
+			&DownloaderStoreConfig{
+				MaxRunning:     5,
+				ProtocolConfig: map[string]any{},
+				Proxy:          &DownloaderProxyConfig{},
+				Webhook:        &WebhookConfig{},
+				Archive: &ArchiveConfig{
+					AutoExtract:        true,
+					DeleteAfterExtract: false,
+				},
 			},
 		},
 	}
@@ -71,6 +110,8 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: tt.fields.ProtocolConfig,
 				Extra:          tt.fields.Extra,
 				Proxy:          tt.fields.Proxy,
+				Webhook:        tt.fields.Webhook,
+				Archive:        tt.fields.Archive,
 			}
 			if got := cfg.Init(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Init() = %v, want %v", got, tt.want)
@@ -245,6 +286,45 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 				},
 			},
 		},
+		{
+			"Merge Archive No Override",
+			&DownloaderStoreConfig{
+				Archive: &ArchiveConfig{
+					AutoExtract: true,
+				},
+			},
+			args{
+				beforeCfg: &DownloaderStoreConfig{
+					Archive: &ArchiveConfig{
+						AutoExtract:        false,
+						DeleteAfterExtract: false,
+					},
+				},
+			},
+			&DownloaderStoreConfig{
+				Archive: &ArchiveConfig{
+					AutoExtract: true,
+				},
+			},
+		},
+		{
+			"Merge Archive Override",
+			&DownloaderStoreConfig{},
+			args{
+				beforeCfg: &DownloaderStoreConfig{
+					Archive: &ArchiveConfig{
+						AutoExtract:        false,
+						DeleteAfterExtract: false,
+					},
+				},
+			},
+			&DownloaderStoreConfig{
+				Archive: &ArchiveConfig{
+					AutoExtract:        false,
+					DeleteAfterExtract: false,
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -255,6 +335,8 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 				ProtocolConfig: tt.fields.ProtocolConfig,
 				Extra:          tt.fields.Extra,
 				Proxy:          tt.fields.Proxy,
+				Webhook:        tt.fields.Webhook,
+				Archive:        tt.fields.Archive,
 			}
 			if got := cfg.Merge(tt.args.beforeCfg); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Merge() = %v, want %v", got, tt.want)

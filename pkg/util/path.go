@@ -8,6 +8,7 @@ import (
 	syspath "path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func Dir(path string) string {
@@ -197,5 +198,30 @@ func ReplaceInvalidFilename(path string) string {
 	for _, char := range invalidPathChars {
 		path = strings.ReplaceAll(path, char, "_")
 	}
+	return path
+}
+
+// ReplacePathPlaceholders replaces date placeholders in a path with actual values
+// Supported placeholders:
+//   - %year%  - Current year (e.g., 2025)
+//   - %month% - Current month (01-12)
+//   - %day%   - Current day (01-31)
+//   - %date%  - Full date format (2025-01-01)
+func ReplacePathPlaceholders(path string) string {
+	if path == "" {
+		return ""
+	}
+
+	now := time.Now()
+	year := fmt.Sprintf("%d", now.Year())
+	month := fmt.Sprintf("%02d", now.Month())
+	day := fmt.Sprintf("%02d", now.Day())
+	date := fmt.Sprintf("%s-%s-%s", year, month, day)
+
+	path = strings.ReplaceAll(path, "%year%", year)
+	path = strings.ReplaceAll(path, "%month%", month)
+	path = strings.ReplaceAll(path, "%day%", day)
+	path = strings.ReplaceAll(path, "%date%", date)
+
 	return path
 }

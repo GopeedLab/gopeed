@@ -34,19 +34,60 @@ jobs:
 
   build-windows:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows' }}
-    runs-on: windows-2022
     needs: [get-release]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            os: windows-11-arm
+            llvm_ver: "20251202" # Only ARM64
+            flutter_channel: 'master'
+            flutter_version: '8817d45220d' # Only ARM64
+          - arch: amd64
+            os: windows-2022
+            flutter_channel: 'stable'
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v3
+
+      # Install LLVM environment only on ARM64
+      - name: Install llvm-mingw-ucrt-aarch64 (ARM64 only)
+        if: matrix.arch == 'arm64'
+        run: |
+          $ver = "${{ matrix.llvm_ver }}"
+          $url = "https://github.com/mstorsjo/llvm-mingw/releases/download/$ver/llvm-mingw-$ver-ucrt-aarch64.zip"
+          $zip = "$env:RUNNER_TEMP\\llvm.zip"
+          $extract = "$env:RUNNER_TEMP\\extract"
+          $target = "C:\\clangarm64"
+
+          curl -L $url -o $zip
+          rm -r -fo $extract,$target -ea Ignore
+          mkdir $extract | Out-Null
+
+          tar -xf $zip -C $extract
+          mv (Get-ChildItem $extract)[0].FullName $target
+
+          $b = "$target\\bin"
+          "CC=$b\\clang.exe"        >> $env:GITHUB_ENV
+          "CXX=$b\\clang++.exe"     >> $env:GITHUB_ENV
+          "CLANGARM64_BIN=$b"       >> $env:GITHUB_ENV
+          "CGO_ENABLED=1"           >> $env:GITHUB_ENV
+          "CLANGARM64_ROOT=$target" >> $env:GITHUB_ENV
+          $b >> $env:GITHUB_PATH
+
       - uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: ${{ matrix.flutter_channel }}
+          flutter-version: ${{ matrix.flutter_version || env.FLUTTER_VERSION }}
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
+          GOARCH: ${{ matrix.arch }}
         run: |
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
@@ -57,18 +98,26 @@ jobs:
           cd ui/flutter
           $TAG = "v$env:VERSION"
           flutter build windows --dart-define="UPDATE_CHANNEL=windowsPortable"
-          $mingw = "C:\Program Files\Git\mingw64\bin"
           $system = "C:\Windows\System32"
-          $release = "build\windows\x64\runner\Release\"
-          cp $mingw\libstdc++-6.dll $release
-          cp $mingw\libgcc_s_seh-1.dll $release
+          if ("${{ matrix.arch }}" -eq "amd64") {
+              # for amd64
+              $release = "build\windows\x64\runner\Release\"
+              $mingw = "C:\Program Files\Git\mingw64\bin"
+              cp $mingw\libstdc++-6.dll $release
+              cp $mingw\libgcc_s_seh-1.dll $release
+          } else {
+              # for ARM64
+              $release = "build\windows\arm64\runner\Release\"
+              $mingw = "$env:CLANGARM64_ROOT\aarch64-w64-mingw32\bin"
+              cp $mingw\libc++.dll $release
+          }
           cp $mingw\libwinpthread-1.dll $release
           cp $system\msvcp140.dll $release
           cp $system\vcruntime140.dll $release
           cp $system\vcruntime140_1.dll $release
 
           New-Item -Path build\windows\Output -ItemType Directory
-          Compress-Archive -Path "$release*" -DestinationPath "build\windows\Output\Gopeed-$TAG-windows-amd64-portable.zip"
+          Compress-Archive -Path "$release*" -DestinationPath "build\windows\Output\Gopeed-$TAG-windows-${{ matrix.arch }}-portable.zip"
 
           flutter build windows --dart-define="UPDATE_CHANNEL=windowsInstaller"
           cd build/windows
@@ -116,7 +165,7 @@ jobs:
           Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
           [Files]
-          Source: ".\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs;
+          Source: ".\${{ matrix.arch == 'amd64' && 'x64' || 'arm64' }}\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs;
           ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
           [UninstallDelete]
@@ -130,9 +179,8 @@ jobs:
           Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
           "@ > setup.iss
           iscc.exe setup.iss
-          mv "Output\gopeed.exe" "Output\Gopeed-$TAG-windows-amd64.exe"
-          Compress-Archive -Path "Output\Gopeed-$TAG-windows-amd64.exe" -DestinationPath "Output\Gopeed-$TAG-windows-amd64.zip"
-          Remove-Item -Path "Output\Gopeed-$TAG-windows-amd64.exe"
+          mv "Output\gopeed.exe" "Output\Gopeed-$TAG-windows-${{ matrix.arch }}.exe"
+          Compress-Archive -Path "Output\Gopeed-$TAG-windows-${{ matrix.arch }}.exe" -DestinationPath "Output\Gopeed-$TAG-windows-${{ matrix.arch }}.zip"
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
@@ -198,7 +246,7 @@ jobs:
         name: Build Amd64 Libraries
         run: |
           mkdir -p ui/flutter/macos/Frameworks
-          
+
           cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/macos/Frameworks/libgopeed.dylib
           cp ui/flutter/lib-amd64/host ui/flutter/assets/exec/host
           cp ui/flutter/lib-amd64/updater ui/flutter/assets/exec/updater
@@ -206,17 +254,17 @@ jobs:
         name: Build Universal Libraries
         run: |
           mkdir -p ui/flutter/macos/Frameworks
-          
+
           # arm64 lib
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -buildmode=c-shared -o ui/flutter/.temp/libgopeed.dylib.arm64 github.com/GopeedLab/gopeed/bind/desktop
           go build -ldflags="-w -s" -o ui/flutter/.temp/host.arm64 github.com/GopeedLab/gopeed/cmd/host
           go build -ldflags="-w -s" -o ui/flutter/.temp/updater.arm64 github.com/GopeedLab/gopeed/cmd/updater
-         
+
           # amd64 lib
           cp ui/flutter/lib-amd64/libgopeed.dylib ui/flutter/.temp/libgopeed.dylib.amd64
           cp ui/flutter/lib-amd64/host ui/flutter/.temp/host.amd64
           cp ui/flutter/lib-amd64/updater ui/flutter/.temp/updater.amd64
-         
+
           # universal lib
           lipo -create -output ui/flutter/macos/Frameworks/libgopeed.dylib ui/flutter/.temp/libgopeed.dylib.arm64 ui/flutter/.temp/libgopeed.dylib.amd64
           lipo -create -output ui/flutter/assets/exec/host ui/flutter/.temp/host.arm64 ui/flutter/.temp/host.amd64
@@ -240,7 +288,7 @@ jobs:
           EOF
           mkdir dist
           appdmg appdmg.json dist/Gopeed-v$VERSION-macos.dmg
-          
+
           if [[ "${{ matrix.channel }}" == "arm64" ]]; then
             mv dist/Gopeed-v$VERSION-macos.dmg dist/Gopeed-v$VERSION-macos-arm64.dmg
           fi
@@ -271,10 +319,7 @@ jobs:
           channel: master
       - run: |
           sudo apt update -y
-          # flutter build dependencies
-          sudo apt install -y ninja-build libgtk-3-dev libayatana-appindicator3-1 libayatana-appindicator3-dev
-          # appimage build dependencies
-          sudo apt install -y libfuse2 locate
+          sudo apt install -y ninja-build libgtk-3-dev libayatana-appindicator3-1 libayatana-appindicator3-dev rpm patchelf libfuse2 locate imagemagick potrace libkeybinder-3.0-dev
           arch=$(uname -m)
           wget -O appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${arch}.AppImage"
           chmod +x appimagetool
@@ -288,6 +333,29 @@ jobs:
           go build -ldflags="-w -s" -o ui/flutter/assets/exec/updater github.com/GopeedLab/gopeed/cmd/updater
 
           cd ui/flutter
+
+          ICON_PATH=$(find assets -name "logo.png" -o -name "icon.png" | head -n 1)
+          [ -z "$ICON_PATH" ] && ICON_PATH="assets/icon.png" && touch assets/icon.png
+
+          convert "$ICON_PATH" assets/icon.svg
+          ICON_PATH="assets/icon.svg"
+
+          RPM_ARCH=$(uname -m)
+
+          mkdir -p linux/packaging/rpm
+          cat << EOF > linux/packaging/rpm/make_config.yaml
+          display_name: Gopeed
+          icon: $ICON_PATH
+          summary: High speed downloader.
+          description: A high speed downloader that supports all platforms.
+          group: Applications/Internet
+          license: GPL-3.0
+          url: https://github.com/GopeedLab/gopeed
+          vendor: GopeedLab
+          maintainer: GopeedLab <support@gopeed.com>
+          build_arch: $RPM_ARCH
+          EOF
+
           cat << EOF > distribute_options.yaml
           output: dist/
           releases:
@@ -307,12 +375,18 @@ jobs:
                     build_args:
                       dart-define:
                         UPDATE_CHANNEL: linuxDeb
+                - name: rpm
+                  package:
+                    platform: linux
+                    target: rpm
+                    build_args:
+                      dart-define:
+                        UPDATE_CHANNEL: linuxRpm
           EOF
           dart pub global activate -sgit https://github.com/GopeedLab/flutter_distributor.git --git-path packages/flutter_distributor
           flutter_distributor release --name linux
           cd dist/*
 
-          # Get current running architecture, x86_64 -> amd64 and aarch64 -> arm64
           ARCH="amd64"
           if [[ "${{ matrix.os }}" == *-arm ]]; then
             ARCH="arm64"
@@ -320,6 +394,7 @@ jobs:
 
           mv gopeed-*-linux.AppImage Gopeed-v${VERSION}-linux-${ARCH}.AppImage
           mv gopeed-*-linux.deb Gopeed-v${VERSION}-linux-${ARCH}.deb
+          mv gopeed-*-linux.rpm Gopeed-v${VERSION}-linux-${ARCH}.rpm
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
@@ -401,6 +476,7 @@ jobs:
                 - cmake
                 - curl
                 - libgtk-3-dev
+                - libkeybinder-3.0-dev
                 - ninja-build
                 - unzip
                 - xz-utils
@@ -416,6 +492,7 @@ jobs:
               plugin: nil
               stage-packages:
                 - libgtk-3-dev
+                - libkeybinder-3.0-dev
                 - libappindicator3-dev
               override-build: |
                 # work around pub get stack overflow # https://github.com/dart-lang/sdk/issues/51068#issuecomment-1396588253
