@@ -260,9 +260,11 @@ type Fetcher struct {
 	redirectLock sync.Mutex
 
 	// Lifecycle control
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	wg                  sync.WaitGroup
+	waitForCompletionMu sync.Mutex
+	completionWaiting   bool // Flag to prevent multiple concurrent waitForCompletion calls
 
 	// Resolve connection control
 	resolveCtx    context.Context
@@ -638,6 +640,11 @@ func (f *Fetcher) doStart() error {
 
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
+
+	// Reset completion waiting flag for new download session
+	f.waitForCompletionMu.Lock()
+	f.completionWaiting = false
+	f.waitForCompletionMu.Unlock()
 
 	// Start download
 	f.setState(stateSlowStart)
@@ -1318,6 +1325,16 @@ func (f *Fetcher) resumeConnections() {
 }
 
 func (f *Fetcher) waitForCompletion() {
+	// Prevent multiple concurrent calls to waitForCompletion
+	f.waitForCompletionMu.Lock()
+	if f.completionWaiting {
+		// Another goroutine is already waiting
+		f.waitForCompletionMu.Unlock()
+		return
+	}
+	f.completionWaiting = true
+	f.waitForCompletionMu.Unlock()
+
 	f.wg.Wait()
 	// Only trigger completion if not cancelled/paused
 	if f.ctx != nil && f.ctx.Err() == nil {
