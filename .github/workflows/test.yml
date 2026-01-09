@@ -57,7 +57,7 @@ jobs:
         run: |
           # Get packages for testing and coverage (including cmd/web for flags_test.go)
           PACKAGES=$(go list ./... | grep -v /bind/ | grep -v -E '/cmd/(?!web)')
-          go test -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage.txt $PACKAGES
+          go test -p=1 -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage.txt $PACKAGES
           # Filter out main.go from coverage report to avoid lowering coverage percentage
           grep -v "main.go" coverage.txt > coverage_filtered.txt || true
           mv coverage_filtered.txt coverage.txt

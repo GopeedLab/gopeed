@@ -744,6 +744,10 @@ func (f *Fetcher) expandConnections() {
 				setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
 			}
 			f.setState(stateDone)
+			// Cancel context to signal downloadLoop to exit
+			if f.cancel != nil {
+				f.cancel()
+			}
 			f.doneCh <- nil
 			return
 		}
