@@ -636,6 +636,9 @@ func (f *Fetcher) doStart() error {
 	maxConns := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
 	f.slowStart = newSlowStartController(maxConns)
 
+	// Reset WaitGroup for new download session
+	f.wg = sync.WaitGroup{}
+
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
