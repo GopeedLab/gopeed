@@ -61,13 +61,13 @@ jobs:
           for i in {1..10}
           do
             echo "Running tests - iteration $i"
-            go test -p=1 -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_$i.txt $PACKAGES
+            go test -count=1 -p=1 -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_$i.txt $PACKAGES
           done
           # For 10 times TO TEST with parallelism
           for i in {1..10}
           do
             echo "Running tests in parallel - iteration $i"
-            go test  -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
+            go test -count=1 -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
           done
 
       - uses: codecov/codecov-action@v4
