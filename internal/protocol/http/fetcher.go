@@ -636,9 +636,6 @@ func (f *Fetcher) doStart() error {
 	maxConns := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
 	f.slowStart = newSlowStartController(maxConns)
 
-	// Reset WaitGroup for new download session
-	f.wg = sync.WaitGroup{}
-
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
@@ -650,6 +647,19 @@ func (f *Fetcher) doStart() error {
 }
 
 func (f *Fetcher) downloadLoop() {
+	defer func() {
+		f.fileMu.Lock()
+		if f.file != nil {
+			f.file.Close()
+		}
+		f.fileMu.Unlock()
+
+		// Update file last modified time
+		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
+			setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
+		}
+	}()
+
 	// Check if this is a resume or fresh start
 	isResume := len(f.connections) > 0
 
@@ -735,22 +745,7 @@ func (f *Fetcher) expandConnections() {
 		// If prefetched all data, mark as done
 		if prefetched >= totalSize {
 			f.connMu.Unlock()
-			// Close file before signaling done
-			f.fileMu.Lock()
-			if f.file != nil {
-				f.file.Close()
-				f.file = nil
-			}
-			f.fileMu.Unlock()
-			// Update file last modified time
-			if f.config.UseServerCtime && f.meta.Res != nil && len(f.meta.Res.Files) > 0 && f.meta.Res.Files[0].Ctime != nil {
-				setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
-			}
 			f.setState(stateDone)
-			// Cancel context to signal downloadLoop to exit
-			if f.cancel != nil {
-				f.cancel()
-			}
 			f.doneCh <- nil
 			return
 		}
@@ -1324,20 +1319,6 @@ func (f *Fetcher) resumeConnections() {
 
 func (f *Fetcher) waitForCompletion() {
 	f.wg.Wait()
-
-	// Close file and update modification time after all connections finish
-	f.fileMu.Lock()
-	if f.file != nil {
-		f.file.Close()
-		f.file = nil
-	}
-	f.fileMu.Unlock()
-
-	// Update file last modified time
-	if f.config.UseServerCtime && f.meta.Res != nil && len(f.meta.Res.Files) > 0 && f.meta.Res.Files[0].Ctime != nil {
-		setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
-	}
-
 	// Only trigger completion if not cancelled/paused
 	if f.ctx != nil && f.ctx.Err() == nil {
 		f.onDownloadComplete()
