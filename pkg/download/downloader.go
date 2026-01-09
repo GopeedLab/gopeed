@@ -661,6 +661,11 @@ func (d *Downloader) Stats(id string) (sr any, err error) {
 }
 
 func (d *Downloader) doDelete(task *Task, force bool) (err error) {
+	// Wait for any ongoing task operations (start/pause handlers) to complete
+	// This ensures task.Meta has the correct updated file name after auto-rename
+	task.lock.Lock()
+	defer task.lock.Unlock()
+
 	err = func() error {
 		if err := d.storage.Delete(bucketTask, task.ID); err != nil {
 			return err
