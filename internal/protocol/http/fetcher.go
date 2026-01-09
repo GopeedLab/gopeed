@@ -263,6 +263,7 @@ type Fetcher struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+	downloadLoopDone chan struct{} // Signal when downloadLoop exits and file is closed
 
 	// Resolve connection control
 	resolveCtx    context.Context
@@ -272,6 +273,7 @@ type Fetcher struct {
 func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	f.doneCh = make(chan error, 1)
+	f.downloadLoopDone = make(chan struct{})
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
@@ -639,6 +641,9 @@ func (f *Fetcher) doStart() error {
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
+	// Create downloadLoopDone channel for this download session
+	f.downloadLoopDone = make(chan struct{})
+
 	// Start download
 	f.setState(stateSlowStart)
 	go f.downloadLoop()
@@ -648,15 +653,24 @@ func (f *Fetcher) doStart() error {
 
 func (f *Fetcher) downloadLoop() {
 	defer func() {
+		// Capture the file reference before releasing the lock
+		// to ensure we close the actual file even if f.file is set to nil elsewhere
 		f.fileMu.Lock()
-		if f.file != nil {
-			f.file.Close()
-		}
+		file := f.file
 		f.fileMu.Unlock()
+
+		if file != nil {
+			file.Close()
+		}
 
 		// Update file last modified time
 		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
 			setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
+		}
+		
+		// Signal that downloadLoop has exited and file is closed
+		if f.downloadLoopDone != nil {
+			close(f.downloadLoopDone)
 		}
 	}()
 
@@ -1386,6 +1400,12 @@ func (f *Fetcher) onDownloadComplete() {
 		f.setState(stateDone)
 	}
 
+	// Cancel context to ensure downloadLoop exits
+	// Check if context is not already cancelled
+	if f.ctx != nil && f.ctx.Err() == nil && f.cancel != nil {
+		f.cancel()
+	}
+
 	select {
 	case f.doneCh <- finalErr:
 	default:
@@ -1525,5 +1545,10 @@ func (f *Fetcher) Progress() fetcher.Progress {
 }
 
 func (f *Fetcher) Wait() error {
-	return <-f.doneCh
+	err := <-f.doneCh
+	// Wait for downloadLoop to fully exit and file to be closed
+	if f.downloadLoopDone != nil {
+		<-f.downloadLoopDone
+	}
+	return err
 }
