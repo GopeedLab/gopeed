@@ -274,7 +274,7 @@ type Fetcher struct {
 func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	f.doneCh = make(chan error, 1)
-	f.downloadLoopDone = make(chan struct{})
+	// Note: downloadLoopDone is created in doStart() when downloadLoop is actually started
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
@@ -658,6 +658,9 @@ func (f *Fetcher) doStart() error {
 
 func (f *Fetcher) downloadLoop() {
 	defer func() {
+		// Wait for all connection goroutines to finish before closing file
+		f.wg.Wait()
+
 		// Capture the file reference before releasing the lock
 		// to ensure we close the actual file even if f.file is set to nil elsewhere
 		f.fileMu.Lock()
@@ -1482,9 +1485,6 @@ func (f *Fetcher) Pause() error {
 		}
 	}
 
-	// Wait for all goroutines to stop
-	f.wg.Wait()
-
 	// Wait for prefetch to finish
 	for f.prefetchStopCh != nil && !f.prefetchDone.Load() {
 		time.Sleep(10 * time.Millisecond)
@@ -1501,12 +1501,11 @@ func (f *Fetcher) Pause() error {
 	}
 	f.resolveRespLock.Unlock()
 
-	f.fileMu.Lock()
-	if f.file != nil {
-		f.file.Close()
-		f.file = nil
+	// Wait for downloadLoop to fully exit (which includes waiting for wg and closing file)
+	// This ensures all goroutines have stopped before we return
+	if f.downloadLoopDone != nil {
+		<-f.downloadLoopDone
 	}
-	f.fileMu.Unlock()
 
 	f.setState(statePaused)
 	return nil
