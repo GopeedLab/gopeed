@@ -1347,10 +1347,22 @@ func (f *Fetcher) resumeConnections() {
 }
 
 func (f *Fetcher) waitForCompletion() {
-	f.wg.Wait()
-	// Only trigger completion if not cancelled/paused
-	if f.ctx != nil && f.ctx.Err() == nil {
-		f.onDownloadComplete()
+	done := make(chan struct{})
+	go func() {
+		f.wg.Wait()
+		close(done)
+	}()
+	
+	// Wait for either completion or context cancellation
+	select {
+	case <-done:
+		// Only trigger completion if not cancelled/paused
+		if f.ctx != nil && f.ctx.Err() == nil {
+			f.onDownloadComplete()
+		}
+	case <-f.ctx.Done():
+		// Context cancelled, don't wait for wg and don't complete
+		return
 	}
 }
 
