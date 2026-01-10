@@ -57,16 +57,10 @@ jobs:
         run: |
           # Get packages for testing and coverage (including cmd/web for flags_test.go)
           PACKAGES=$(go list ./... | grep -v /bind/ | grep -v -E '/cmd/(?!web)')
-          # For 10 times TO TEST without parallelism
-          for i in {1..10}
-          do
-            echo "Running tests - iteration $i"
-            go test -count=1 -p=1 -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_$i.txt $PACKAGES
-          done
           # For 10 times TO TEST with parallelism
           for i in {1..10}
           do
-            echo "Running tests in parallel - iteration $i"
+            echo "Running tests - iteration $i"
             go test -count=1 -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
           done
 

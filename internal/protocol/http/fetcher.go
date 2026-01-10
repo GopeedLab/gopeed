@@ -694,11 +694,26 @@ func (f *Fetcher) downloadLoop() {
 	} else {
 		// Resume: restart existing connections
 		f.resumeConnections()
-		f.waitForCompletion()
-		return
+		// Wait for completion in a separate goroutine so we can still respond to context cancellation
+		done := make(chan struct{})
+		go func() {
+			f.wg.Wait()
+			close(done)
+		}()
+		select {
+		case <-f.ctx.Done():
+			// Paused or cancelled - exit immediately, defer will wait for wg
+			return
+		case <-done:
+			// All connections completed
+			if f.ctx.Err() == nil {
+				f.onDownloadComplete()
+			}
+			return
+		}
 	}
 
-	// Slow start loop
+	// Slow start loop (only for fresh start)
 	for {
 		select {
 		case <-f.ctx.Done():
