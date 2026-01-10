@@ -312,7 +312,7 @@ github.com/GopeedLab/gopeed/cmd/web/flags.go:58.23,60.4 1 0
 github.com/GopeedLab/gopeed/cmd/web/flags.go:61.3,61.31 1 0
 github.com/GopeedLab/gopeed/cmd/web/flags.go:64.2,64.12 1 0
 github.com/GopeedLab/gopeed/cmd/web/flags.go:68.54,69.32 1 11
-github.com/GopeedLab/gopeed/cmd/web/flags.go:69.32,70.17 1 66
+github.com/GopeedLab/gopeed/cmd/web/flags.go:69.32,70.17 1 55
 github.com/GopeedLab/gopeed/cmd/web/flags.go:71.12,72.35 1 0
 github.com/GopeedLab/gopeed/cmd/web/flags.go:73.12,74.29 1 0
 github.com/GopeedLab/gopeed/cmd/web/flags.go:75.12,76.37 1 0
