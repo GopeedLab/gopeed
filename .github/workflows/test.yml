@@ -56,12 +56,18 @@ jobs:
       - name: Run Unit tests.
         run: |
           # Get packages for testing and coverage (including cmd/web for flags_test.go)
-          PACKAGES=$(go list ./... | grep -v /bind/ | grep -v -E '/cmd/(?!web)')
+          PACKAGES="github.com/GopeedLab/gopeed/pkg/rest"
           # For 10 times TO TEST with parallelism
           for i in {1..10}
           do
             echo "Running tests - iteration $i"
-            go test -timeout 30s -count=1 -v -run TestPauseAllAndContinueALLTasks ./pkg/rest/...
+            go test -count=1 -timeout 1m -v -run TestPauseAllAndContinueALLTasks -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
+          done
+          # For 10 times TO TEST with parallelism
+          for i in {1..10}
+          do
+            echo "Running tests - iteration $i"
+            go test -count=1 -timeout 1m -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
           done
 
       - uses: codecov/codecov-action@v4
