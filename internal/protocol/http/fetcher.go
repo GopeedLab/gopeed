@@ -727,11 +727,22 @@ func (f *Fetcher) startResolveDownload() {
 		// For non-range downloads, wait for completion in the main downloadLoop
 		// by triggering immediate completion check
 		go func() {
-			f.wg.Wait()
-			// Signal expansion channel to trigger completion check in downloadLoop
+			done := make(chan struct{})
+			go func() {
+				f.wg.Wait()
+				close(done)
+			}()
+			// Wait for either completion or context cancellation
 			select {
-			case f.slowStart.expansionCh <- struct{}{}:
-			default:
+			case <-done:
+				// Signal expansion channel to trigger completion check in downloadLoop
+				select {
+				case f.slowStart.expansionCh <- struct{}{}:
+				default:
+				}
+			case <-f.ctx.Done():
+				// Context cancelled, don't send to expansionCh
+				return
 			}
 		}()
 		return
