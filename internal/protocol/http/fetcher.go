@@ -642,6 +642,9 @@ func (f *Fetcher) doStart() error {
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
+	// Reset WaitGroup for this download session
+	f.wg = sync.WaitGroup{}
+
 	// Create downloadLoopDone channel for this download session
 	f.downloadLoopDone = make(chan struct{})
 	f.downloadLoopDoneOnce = sync.Once{}
