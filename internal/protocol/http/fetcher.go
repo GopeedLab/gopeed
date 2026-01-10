@@ -670,7 +670,9 @@ func (f *Fetcher) downloadLoop(doneCh chan struct{}) {
 		}
 		
 		// Signal that downloadLoop has exited and file is closed
-		// Use the passed-in channel to avoid closing the wrong channel
+		// Use the passed-in channel to prevent race condition where multiple 
+		// downloadLoop goroutines might try to close the same channel during 
+		// rapid pause/resume cycles
 		if doneCh != nil {
 			close(doneCh)
 		}
