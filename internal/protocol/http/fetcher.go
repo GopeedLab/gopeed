@@ -642,16 +642,17 @@ func (f *Fetcher) doStart() error {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
 	// Create downloadLoopDone channel for this download session
-	f.downloadLoopDone = make(chan struct{})
+	doneCh := make(chan struct{})
+	f.downloadLoopDone = doneCh
 
 	// Start download
 	f.setState(stateSlowStart)
-	go f.downloadLoop()
+	go f.downloadLoop(doneCh)
 
 	return nil
 }
 
-func (f *Fetcher) downloadLoop() {
+func (f *Fetcher) downloadLoop(doneCh chan struct{}) {
 	defer func() {
 		// Capture the file reference before releasing the lock
 		// to ensure we close the actual file even if f.file is set to nil elsewhere
@@ -669,8 +670,9 @@ func (f *Fetcher) downloadLoop() {
 		}
 		
 		// Signal that downloadLoop has exited and file is closed
-		if f.downloadLoopDone != nil {
-			close(f.downloadLoopDone)
+		// Use the passed-in channel to avoid closing the wrong channel
+		if doneCh != nil {
+			close(doneCh)
 		}
 	}()
 
