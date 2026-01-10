@@ -263,7 +263,8 @@ type Fetcher struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
-	downloadLoopDone chan struct{} // Signal when downloadLoop exits and file is closed
+	downloadLoopDone     chan struct{} // Signal when downloadLoop exits and file is closed
+	downloadLoopDoneOnce sync.Once     // Ensure downloadLoopDone is closed only once
 
 	// Resolve connection control
 	resolveCtx    context.Context
@@ -643,6 +644,7 @@ func (f *Fetcher) doStart() error {
 
 	// Create downloadLoopDone channel for this download session
 	f.downloadLoopDone = make(chan struct{})
+	f.downloadLoopDoneOnce = sync.Once{}
 
 	// Start download
 	f.setState(stateSlowStart)
@@ -669,9 +671,12 @@ func (f *Fetcher) downloadLoop() {
 		}
 		
 		// Signal that downloadLoop has exited and file is closed
-		if f.downloadLoopDone != nil {
-			close(f.downloadLoopDone)
-		}
+		// Use sync.Once to ensure channel is closed only once
+		f.downloadLoopDoneOnce.Do(func() {
+			if f.downloadLoopDone != nil {
+				close(f.downloadLoopDone)
+			}
+		})
 	}()
 
 	// Check if this is a resume or fresh start
