@@ -765,6 +765,10 @@ func (f *Fetcher) expandConnections() {
 		if prefetched >= totalSize {
 			f.connMu.Unlock()
 			f.setState(stateDone)
+			// Cancel context to ensure downloadLoop exits
+			if f.cancel != nil {
+				f.cancel()
+			}
 			f.doneCh <- nil
 			return
 		}
