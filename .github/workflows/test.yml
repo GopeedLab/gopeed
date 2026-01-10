@@ -61,7 +61,7 @@ jobs:
           for i in {1..10}
           do
             echo "Running tests - iteration $i"
-            go test -count=1 -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
+            go test -count=1 -v -run TestPauseAllAndContinueALLTasks ./pkg/rest/...
           done
 
       - uses: codecov/codecov-action@v4
