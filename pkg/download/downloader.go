@@ -100,6 +100,7 @@ type Downloader struct {
 	listener     Listener
 
 	lock               *sync.Mutex
+	listenerLock       *sync.RWMutex
 	fetcherMapLock     *sync.RWMutex
 	checkDuplicateLock *sync.Mutex
 	closed             atomic.Bool
@@ -124,6 +125,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		storage:      cfg.Storage,
 
 		lock:               &sync.Mutex{},
+		listenerLock:       &sync.RWMutex{},
 		fetcherMapLock:     &sync.RWMutex{},
 		checkDuplicateLock: &sync.Mutex{},
 
@@ -737,16 +739,22 @@ func (d *Downloader) Clear() error {
 }
 
 func (d *Downloader) Listener(fn Listener) {
+	d.listenerLock.Lock()
 	d.listener = fn
+	d.listenerLock.Unlock()
 }
 
 func (d *Downloader) emit(eventKey EventKey, task *Task, errs ...error) {
-	if d.listener != nil {
+	d.listenerLock.RLock()
+	listener := d.listener
+	d.listenerLock.RUnlock()
+	
+	if listener != nil {
 		var err error
 		if len(errs) > 0 {
 			err = errs[0]
 		}
-		d.listener(&Event{
+		listener(&Event{
 			Key:  eventKey,
 			Task: task,
 			Err:  err,
@@ -878,9 +886,13 @@ func (d *Downloader) watch(task *Task) {
 		}
 	}
 
+	// Check if already done with status lock
+	task.statusLock.Lock()
 	if task.Status == base.DownloadStatusDone {
+		task.statusLock.Unlock()
 		return
 	}
+	task.statusLock.Unlock()
 
 	err := task.fetcher.Wait()
 	if err != nil {
@@ -893,6 +905,8 @@ func (d *Downloader) watch(task *Task) {
 		return
 	}
 
+	// Update progress and status with lock
+	task.statusLock.Lock()
 	task.Progress.Used = task.timer.Used()
 	if task.Meta.Res.Size == 0 {
 		task.Meta.Res.Size = task.fetcher.Progress().TotalDownloaded()
@@ -905,7 +919,9 @@ func (d *Downloader) watch(task *Task) {
 	task.Progress.Speed = totalSize / used
 	task.Progress.Downloaded = totalSize
 	task.updateStatus(base.DownloadStatusDone)
-	d.storage.Put(bucketTask, task.ID, task.clone())
+	taskClone := task.clone()
+	task.statusLock.Unlock()
+	d.storage.Put(bucketTask, task.ID, taskClone)
 	d.emit(EventKeyDone, task)
 	d.emit(EventKeyFinally, task, err)
 	d.notifyRunning()
