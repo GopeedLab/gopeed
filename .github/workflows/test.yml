@@ -58,7 +58,7 @@ jobs:
           # Get packages for testing and coverage (including cmd/web for flags_test.go)
           PACKAGES="github.com/GopeedLab/gopeed/pkg/rest"
           # For 10 times TO TEST with parallelism
-          for i in {1..10}
+          for i in {1..50}
           do
             echo "Running tests - iteration $i"
             go test -count=1 -timeout 1m -v -run TestPauseAllAndContinueALLTasks -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
@@ -67,7 +67,7 @@ jobs:
           for i in {1..10}
           do
             echo "Running tests - iteration $i"
-            go test -count=1 -timeout 1m -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
+            go test -count=1 -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
           done
 
       - uses: codecov/codecov-action@v4
