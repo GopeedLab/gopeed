@@ -56,7 +56,8 @@ jobs:
       - name: Run Unit tests.
         run: |
           # Get packages for testing and coverage (including cmd/web for flags_test.go)
-          PACKAGES="github.com/GopeedLab/gopeed/pkg/rest"
+          #PACKAGES="github.com/GopeedLab/gopeed/pkg/rest"
+          PACKAGES=$(go list ./... | grep -v /bind/ | grep -v -E '/cmd/(?!web)')
           # For 10 times TO TEST with parallelism
           for i in {1..10}
           do
