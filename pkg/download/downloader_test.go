@@ -787,7 +787,7 @@ func TestDownloader_ContinueBatch(t *testing.T) {
 	}
 
 	// Wait a moment for tasks to start
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Millisecond * 100)
 
 	// Pause all tasks
 	err := downloader.Pause(nil)
