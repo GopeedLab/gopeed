@@ -56,7 +56,7 @@ jobs:
       - name: Run Unit tests.
         run: |
           # Get packages for testing and coverage (including cmd/web for flags_test.go)
-          PACKAGES="github.com/GopeedLab/gopeed/pkg/rest"
+          PACKAGES=$(go list ./... | grep -v /bind/ | grep -v -E '/cmd/(?!web)')
           # for循环测试10次
           for i in {1..10}
           do
