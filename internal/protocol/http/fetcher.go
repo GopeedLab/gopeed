@@ -268,6 +268,7 @@ type Fetcher struct {
 	completionOnce     sync.Once // Ensure onDownloadComplete is called only once per session
 	finalError         error
 	completionSignalCh chan struct{}
+	internalWg         sync.WaitGroup // Waits for internal helper goroutines
 
 	// Resolve connection control
 	resolveCtx    context.Context
@@ -731,7 +732,9 @@ func (f *Fetcher) startResolveDownload() {
 
 		// For non-range downloads, wait for completion in the main downloadLoop
 		// by triggering immediate completion check
+		f.internalWg.Add(1)
 		go func() {
+			defer f.internalWg.Done()
 			f.wg.Wait()
 			// Signal expansion channel to trigger completion check in downloadLoop
 			select {
@@ -752,7 +755,11 @@ func (f *Fetcher) expandConnections() {
 	if batchSize <= 0 {
 		// Max reached, transition to steady state
 		f.setState(stateSteady)
-		go f.waitForCompletion()
+		f.internalWg.Add(1)
+		go func() {
+			defer f.internalWg.Done()
+			f.waitForCompletion()
+		}()
 		return
 	}
 
@@ -840,7 +847,11 @@ func (f *Fetcher) expandConnections() {
 	if len(newConns) == 0 {
 		// No new connections could be created, stop expansion
 		f.setState(stateSteady)
-		go f.waitForCompletion()
+		f.internalWg.Add(1)
+		go func() {
+			defer f.internalWg.Done()
+			f.waitForCompletion()
+		}()
 		return
 	}
 
@@ -1481,6 +1492,7 @@ func (f *Fetcher) Pause() error {
 
 	// Wait for all goroutines to stop
 	f.wg.Wait()
+	f.internalWg.Wait()
 
 	// Wait for downloadLoop to exit (which might be waiting on wg)
 	if f.downloadLoopDoneCh != nil {
