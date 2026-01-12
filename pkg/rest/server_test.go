@@ -202,7 +202,6 @@ func TestPauseAndContinueTask(t *testing.T) {
 		Downloader.Listener(func(event *download.Event) {
 			switch event.Key {
 			case download.EventKeyFinally:
-				fmt.Printf("finally task status =%s, err=%v \n", event.Task.Status, event.Err)
 				wg.Done()
 			}
 		})
@@ -826,16 +825,6 @@ func doTest(handler func()) {
 
 func doTest0(onStart func(cfg *model.StartConfig), handler func()) {
 	testFunc := func(storage model.Storage) {
-		// 打印当前目录下存在的 download*.data 文件，便于调试
-		files, err := filepath.Glob("download*.data")
-		if err != nil {
-			panic(err)
-		}
-		if len(files) == 0 {
-			fmt.Println("NotExisting storage files")
-		} else {
-			fmt.Printf("AlreadyExisting storage files: %v\n", files)
-		}
 		var cfg = &model.StartConfig{}
 		cfg.Init()
 		cfg.Storage = storage
