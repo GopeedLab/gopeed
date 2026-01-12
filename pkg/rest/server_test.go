@@ -202,6 +202,7 @@ func TestPauseAndContinueTask(t *testing.T) {
 		Downloader.Listener(func(event *download.Event) {
 			switch event.Key {
 			case download.EventKeyFinally:
+				fmt.Printf("finally task status =%s, err=%v \n", event.Task.Status, event.Err)
 				wg.Done()
 			}
 		})
