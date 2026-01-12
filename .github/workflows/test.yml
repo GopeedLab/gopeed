@@ -55,11 +55,13 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - name: Run Unit tests.
         run: |
-          # for循环测试100次
-          for i in {1..100}
+          # Get packages for testing and coverage (including cmd/web for flags_test.go)
+          PACKAGES=$(go list ./... | grep -v /bind/ | grep -v -E '/cmd/(?!web)')
+          # for循环测试10次
+          for i in {1..10}
           do
             echo "Running test iteration $i"
-            go test -v -count=1 -run "TestCreateDirectTaskBatchWithOpt|TestPauseAndContinueTask" ./pkg/rest/...
+            go test -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage.txt $PACKAGES
           done
       - uses: codecov/codecov-action@v4
         with:
