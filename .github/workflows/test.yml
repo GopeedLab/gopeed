@@ -56,15 +56,11 @@ jobs:
       - name: Run Unit tests.
         run: |
           # Get packages for testing and coverage (including cmd/web for flags_test.go)
-          #PACKAGES="github.com/GopeedLab/gopeed/pkg/rest"
           PACKAGES=$(go list ./... | grep -v /bind/ | grep -v -E '/cmd/(?!web)')
-          # For 10 times TO TEST with parallelism
-          for i in {1..10}
-          do
-            echo "Running tests - iteration $i"
-            go test -count=1 -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage_iter_parallel_$i.txt $PACKAGES
-          done
-
+          go test -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage.txt $PACKAGES
+          # Filter out main.go from coverage report to avoid lowering coverage percentage
+          grep -v "main.go" coverage.txt > coverage_filtered.txt || true
+          mv coverage_filtered.txt coverage.txt
       - uses: codecov/codecov-action@v4
         with:
           files: ./coverage.txt

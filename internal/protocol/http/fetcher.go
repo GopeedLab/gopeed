@@ -28,8 +28,6 @@ const (
 	helpMinSize    = 1 * 1024 * 1024 // Minimum chunk size for helper connections
 )
 
-var errTargetFileClosed = errors.New("target file is closed")
-
 // ============================================================================
 // State Machine
 // ============================================================================
@@ -262,60 +260,13 @@ type Fetcher struct {
 	redirectLock sync.Mutex
 
 	// Lifecycle control
-	lifeMu sync.Mutex
 	ctx    context.Context
 	cancel context.CancelFunc
-	// runWG is a per-Start/run waitgroup for all spawned goroutines (connections,
-	// waiters, etc). It must never be reused while a previous Wait is still
-	// unwinding; otherwise Go 1.24+ will panic with "WaitGroup is reused before
-	// previous Wait has returned".
-	runMu  sync.Mutex
-	runID  uint64
-	runWG  *sync.WaitGroup
-	// completionStarted prevents spawning many waiters for the same run.
-	completionRunID   uint64
-	completionStarted bool
+	wg     sync.WaitGroup
 
 	// Resolve connection control
 	resolveCtx    context.Context
 	resolveCancel context.CancelFunc
-}
-
-func (f *Fetcher) newRunGroup() (*sync.WaitGroup, uint64) {
-	f.runMu.Lock()
-	defer f.runMu.Unlock()
-	f.runID++
-	f.runWG = &sync.WaitGroup{}
-	f.completionRunID = f.runID
-	f.completionStarted = false
-	return f.runWG, f.runID
-}
-
-func (f *Fetcher) currentRunGroup() (*sync.WaitGroup, uint64) {
-	f.runMu.Lock()
-	defer f.runMu.Unlock()
-	if f.runWG == nil {
-		f.runWG = &sync.WaitGroup{}
-	}
-	return f.runWG, f.runID
-}
-
-func (f *Fetcher) startCompletionWait(wg *sync.WaitGroup, runID uint64) {
-	f.runMu.Lock()
-	if f.completionStarted && f.completionRunID == runID {
-		f.runMu.Unlock()
-		return
-	}
-	// If a newer run has started, don't spawn for the old one.
-	if f.runID != runID {
-		f.runMu.Unlock()
-		return
-	}
-	f.completionStarted = true
-	f.completionRunID = runID
-	f.runMu.Unlock()
-
-	go f.waitForCompletion(wg, runID)
 }
 
 func (f *Fetcher) Setup(ctl *controller.Controller) {
@@ -327,8 +278,6 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl.GetConfig(&f.config)
 	f.resolvedCh = make(chan struct{})
 	f.primaryReadyCh = make(chan struct{})
-	// Initialize run group so Pause() can safely Wait() even before first Start.
-	f.currentRunGroup()
 
 	// Check if this is a restore scenario (has existing connections or meta)
 	if f.meta.Res != nil {
@@ -477,9 +426,7 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 
 	// If start was called before resolve completed, auto-start
 	if f.startPending.Load() {
-		go func() {
-			_ = f.Start()
-		}()
+		go f.doStart()
 	}
 
 	return nil
@@ -612,9 +559,6 @@ func (f *Fetcher) cleanupPrefetchFile() {
 }
 
 func (f *Fetcher) Start() error {
-	f.lifeMu.Lock()
-	defer f.lifeMu.Unlock()
-
 	state := f.getState()
 
 	switch state {
@@ -695,17 +639,14 @@ func (f *Fetcher) doStart() error {
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
-	// Create a fresh run group for this start/resume cycle.
-	wg, runID := f.newRunGroup()
-
 	// Start download
 	f.setState(stateSlowStart)
-	go f.downloadLoop(wg, runID)
+	go f.downloadLoop()
 
 	return nil
 }
 
-func (f *Fetcher) downloadLoop(wg *sync.WaitGroup, runID uint64) {
+func (f *Fetcher) downloadLoop() {
 	defer func() {
 		f.fileMu.Lock()
 		if f.file != nil {
@@ -724,11 +665,11 @@ func (f *Fetcher) downloadLoop(wg *sync.WaitGroup, runID uint64) {
 
 	if !isResume {
 		// Fresh start: begin with resolve connection
-		f.startResolveDownload(wg, runID)
+		f.startResolveDownload()
 	} else {
 		// Resume: restart existing connections
-		f.resumeConnections(wg)
-		f.waitForCompletion(wg, runID)
+		f.resumeConnections()
+		f.waitForCompletion()
 		return
 	}
 
@@ -740,15 +681,15 @@ func (f *Fetcher) downloadLoop(wg *sync.WaitGroup, runID uint64) {
 			return
 		case <-f.slowStart.expansionCh:
 			// Batch completed, try to expand
-			if f.checkCompletion(wg, runID) {
+			if f.checkCompletion() {
 				return
 			}
-			f.expandConnections(wg, runID)
+			f.expandConnections()
 		}
 	}
 }
 
-func (f *Fetcher) startResolveDownload(wg *sync.WaitGroup, runID uint64) {
+func (f *Fetcher) startResolveDownload() {
 	// If no range support or size unknown, just use single connection with resolve response
 	if !f.meta.Res.Range || f.meta.Res.Size == 0 {
 		// Create a single connection for the entire file
@@ -761,14 +702,14 @@ func (f *Fetcher) startResolveDownload(wg *sync.WaitGroup, runID uint64) {
 		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
 		f.connections = append(f.connections, conn)
 
-		wg.Add(1)
+		f.wg.Add(1)
 		// Use the resolve response directly
-		go f.runConnectionWithResolveResp(wg, conn)
+		go f.runConnectionWithResolveResp(conn)
 
 		// For non-range downloads, wait for completion in the main downloadLoop
 		// by triggering immediate completion check
 		go func() {
-			wg.Wait()
+			f.wg.Wait()
 			// Signal expansion channel to trigger completion check in downloadLoop
 			select {
 			case f.slowStart.expansionCh <- struct{}{}:
@@ -780,15 +721,15 @@ func (f *Fetcher) startResolveDownload(wg *sync.WaitGroup, runID uint64) {
 
 	// Range supported: use slow start to launch connections
 	// Start first batch of connections
-	f.expandConnections(wg, runID)
+	f.expandConnections()
 }
 
-func (f *Fetcher) expandConnections(wg *sync.WaitGroup, runID uint64) {
+func (f *Fetcher) expandConnections() {
 	batchSize := f.slowStart.getNextBatchSize()
 	if batchSize <= 0 {
 		// Max reached, transition to steady state
 		f.setState(stateSteady)
-		f.startCompletionWait(wg, runID)
+		go f.waitForCompletion()
 		return
 	}
 
@@ -825,8 +766,8 @@ func (f *Fetcher) expandConnections(wg *sync.WaitGroup, runID uint64) {
 		f.connMu.Unlock()
 
 		f.slowStart.commitBatch(1)
-		wg.Add(1)
-		go f.runConnection(wg, conn)
+		f.wg.Add(1)
+		go f.runConnection(conn)
 		return
 	}
 
@@ -877,7 +818,7 @@ func (f *Fetcher) expandConnections(wg *sync.WaitGroup, runID uint64) {
 	if len(newConns) == 0 {
 		// No new connections could be created, stop expansion
 		f.setState(stateSteady)
-		f.startCompletionWait(wg, runID)
+		go f.waitForCompletion()
 		return
 	}
 
@@ -886,13 +827,13 @@ func (f *Fetcher) expandConnections(wg *sync.WaitGroup, runID uint64) {
 
 	// Launch connections
 	for _, conn := range newConns {
-		wg.Add(1)
-		go f.runConnection(wg, conn)
+		f.wg.Add(1)
+		go f.runConnection(conn)
 	}
 }
 
-func (f *Fetcher) runConnection(wg *sync.WaitGroup, conn *connection) {
-	defer wg.Done()
+func (f *Fetcher) runConnection(conn *connection) {
+	defer f.wg.Done()
 
 	f.connMu.Lock()
 	conn.State = connConnecting
@@ -929,18 +870,6 @@ func (f *Fetcher) runConnection(wg *sync.WaitGroup, conn *connection) {
 			conn.lastErr = re
 		} else {
 			conn.lastErr = err
-		}
-
-		// Local storage errors won't be fixed by retrying.
-		if errors.Is(err, errTargetFileClosed) || errors.Is(err, os.ErrClosed) {
-			f.connMu.Lock()
-			conn.State = connFailed
-			conn.failed = true
-			f.connMu.Unlock()
-			if f.slowStart != nil {
-				f.slowStart.onConnectFailed()
-			}
-			return
 		}
 
 		if shouldCountHTTPFailure(err) {
@@ -1063,14 +992,12 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			f.connMu.Unlock()
 
 			f.fileMu.Lock()
-			if f.file == nil {
-				f.fileMu.Unlock()
-				return errTargetFileClosed
-			}
-			_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
-			if writeErr != nil {
-				f.fileMu.Unlock()
-				return writeErr
+			if f.file != nil {
+				_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
+				if writeErr != nil {
+					f.fileMu.Unlock()
+					return writeErr
+				}
 			}
 			f.fileMu.Unlock()
 
@@ -1096,8 +1023,8 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 
 // runConnectionWithResolveResp uses the response body from Resolve phase
 // This is crucial for one-time URLs that can only be accessed once
-func (f *Fetcher) runConnectionWithResolveResp(wg *sync.WaitGroup, conn *connection) {
-	defer wg.Done()
+func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
+	defer f.wg.Done()
 
 	f.connMu.Lock()
 	conn.State = connConnecting
@@ -1142,29 +1069,19 @@ func (f *Fetcher) runConnectionWithResolveResp(wg *sync.WaitGroup, conn *connect
 		n, err := reader.Read(buf)
 		if n > 0 {
 			f.fileMu.Lock()
-			if f.file == nil {
-				f.fileMu.Unlock()
-				f.connMu.Lock()
-				conn.State = connFailed
-				conn.failed = true
-				conn.lastErr = errTargetFileClosed
-				f.connMu.Unlock()
-				if f.slowStart != nil {
-					f.slowStart.onConnectFailed()
+			if f.file != nil {
+				_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
+				if writeErr != nil {
+					f.fileMu.Unlock()
+					f.connMu.Lock()
+					conn.State = connFailed
+					conn.failed = true
+					f.connMu.Unlock()
+					if f.slowStart != nil {
+						f.slowStart.onConnectFailed()
+					}
+					return
 				}
-				return
-			}
-			_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
-			if writeErr != nil {
-				f.fileMu.Unlock()
-				f.connMu.Lock()
-				conn.State = connFailed
-				conn.failed = true
-				f.connMu.Unlock()
-				if f.slowStart != nil {
-					f.slowStart.onConnectFailed()
-				}
-				return
 			}
 			f.fileMu.Unlock()
 
@@ -1242,14 +1159,12 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 				n, err := reader.Read(buf)
 				if n > 0 {
 					f.fileMu.Lock()
-					if f.file == nil {
-						f.fileMu.Unlock()
-						return errTargetFileClosed
-					}
-					_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
-					if writeErr != nil {
-						f.fileMu.Unlock()
-						return writeErr
+					if f.file != nil {
+						_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
+						if writeErr != nil {
+							f.fileMu.Unlock()
+							return writeErr
+						}
 					}
 					f.fileMu.Unlock()
 
@@ -1364,7 +1279,7 @@ func (f *Fetcher) helpOtherConnection(helper *connection) bool {
 	return true
 }
 
-func (f *Fetcher) resumeConnections(wg *sync.WaitGroup) {
+func (f *Fetcher) resumeConnections() {
 	// Collect connections to resume while holding the lock
 	var toResume []*connection
 
@@ -1397,18 +1312,13 @@ func (f *Fetcher) resumeConnections(wg *sync.WaitGroup) {
 
 	// Start connections outside the lock
 	for _, conn := range toResume {
-		wg.Add(1)
-		go f.runConnection(wg, conn)
+		f.wg.Add(1)
+		go f.runConnection(conn)
 	}
 }
 
-func (f *Fetcher) waitForCompletion(wg *sync.WaitGroup, runID uint64) {
-	wg.Wait()
-	// If a new run has started, this waiter belongs to an old run.
-	_, curID := f.currentRunGroup()
-	if curID != runID {
-		return
-	}
+func (f *Fetcher) waitForCompletion() {
+	f.wg.Wait()
 	// Only trigger completion if not cancelled/paused
 	if f.ctx != nil && f.ctx.Err() == nil {
 		f.onDownloadComplete()
@@ -1482,7 +1392,7 @@ func (f *Fetcher) onDownloadComplete() {
 	}
 }
 
-func (f *Fetcher) checkCompletion(wg *sync.WaitGroup, runID uint64) bool {
+func (f *Fetcher) checkCompletion() bool {
 	// Check if all data has been downloaded
 	f.connMu.Lock()
 	defer f.connMu.Unlock()
@@ -1497,7 +1407,7 @@ func (f *Fetcher) checkCompletion(wg *sync.WaitGroup, runID uint64) bool {
 
 	if f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size {
 		f.setState(stateSteady)
-		f.startCompletionWait(wg, runID)
+		go f.waitForCompletion()
 		return true
 	}
 
@@ -1515,7 +1425,7 @@ func (f *Fetcher) checkCompletion(wg *sync.WaitGroup, runID uint64) bool {
 
 	if allCompleted {
 		f.setState(stateSteady)
-		f.startCompletionWait(wg, runID)
+		go f.waitForCompletion()
 		return true
 	}
 
@@ -1523,9 +1433,6 @@ func (f *Fetcher) checkCompletion(wg *sync.WaitGroup, runID uint64) bool {
 }
 
 func (f *Fetcher) Pause() error {
-	f.lifeMu.Lock()
-	defer f.lifeMu.Unlock()
-
 	if f.cancel != nil {
 		f.cancel()
 	}
@@ -1543,9 +1450,8 @@ func (f *Fetcher) Pause() error {
 		}
 	}
 
-	// Wait for all goroutines of the current run to stop.
-	wg, _ := f.currentRunGroup()
-	wg.Wait()
+	// Wait for all goroutines to stop
+	f.wg.Wait()
 
 	// Wait for prefetch to finish
 	for f.prefetchStopCh != nil && !f.prefetchDone.Load() {
