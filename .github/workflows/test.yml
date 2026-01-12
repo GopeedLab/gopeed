@@ -59,7 +59,7 @@ jobs:
           for i in {1..100}
           do
             echo "Running test iteration $i"
-            go test -v -count=1 -run TestPauseAndContinueTask ./pkg/rest/...
+            go test -v -count=1 -run "TestCreateDirectTaskBatchWithOpt|TestPauseAndContinueTask" ./pkg/rest/...
           done
       - uses: codecov/codecov-action@v4
         with:

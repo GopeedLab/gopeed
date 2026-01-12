@@ -824,6 +824,14 @@ func doTest(handler func()) {
 
 func doTest0(onStart func(cfg *model.StartConfig), handler func()) {
 	testFunc := func(storage model.Storage) {
+		// 打印当前目录下存在的 download*.data 文件，便于调试
+		files, err := filepath.Glob("download*.data")
+		if err != nil {
+			panic(err)
+		}
+		for _, file := range files {
+			fmt.Printf("Found existing storage file: %s\n", file)
+		}
 		var cfg = &model.StartConfig{}
 		cfg.Init()
 		cfg.Storage = storage
