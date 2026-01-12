@@ -217,6 +217,7 @@ func TestPauseAndContinueTask(t *testing.T) {
 		if t2.Status != base.DownloadStatusPause {
 			t.Errorf("PauseTask() got = %v, want %v", t2.Status, base.DownloadStatusPause)
 		}
+		time.Sleep(time.Millisecond * 100)
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/"+taskId+"/continue", nil)
 		t3 := httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
 		if t3.Status != base.DownloadStatusRunning {

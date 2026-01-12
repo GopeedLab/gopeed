@@ -795,6 +795,8 @@ func TestDownloader_ContinueBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	time.Sleep(time.Millisecond * 50)
+
 	// Verify tasks are paused
 	for _, taskId := range taskIds {
 		task := downloader.GetTask(taskId)
