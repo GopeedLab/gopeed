@@ -829,8 +829,10 @@ func doTest0(onStart func(cfg *model.StartConfig), handler func()) {
 		if err != nil {
 			panic(err)
 		}
-		for _, file := range files {
-			fmt.Printf("Found existing storage file: %s\n", file)
+		if len(files) == 0 {
+			fmt.Println("NotExisting storage files")
+		} else {
+			fmt.Printf("AlreadyExisting storage files: %v\n", files)
 		}
 		var cfg = &model.StartConfig{}
 		cfg.Init()
