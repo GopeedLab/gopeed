@@ -264,6 +264,8 @@ type Fetcher struct {
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
 	completionOnce sync.Once // Ensure onDownloadComplete is called only once per session
+	finalError     error
+	completionSignalCh chan struct{}
 
 	// Resolve connection control
 	resolveCtx    context.Context
@@ -273,6 +275,7 @@ type Fetcher struct {
 func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	f.doneCh = make(chan error, 1)
+	f.completionSignalCh = make(chan struct{}, 1)
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
@@ -662,6 +665,14 @@ func (f *Fetcher) downloadLoop() {
 		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
 			setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
 		}
+
+		state := f.getState()
+		if state == stateDone || state == stateError {
+			select {
+			case f.doneCh <- f.finalError:
+			default:
+			}
+		}
 	}()
 
 	// Check if this is a resume or fresh start
@@ -682,6 +693,8 @@ func (f *Fetcher) downloadLoop() {
 		select {
 		case <-f.ctx.Done():
 			// Paused or cancelled
+			return
+		case <-f.completionSignalCh:
 			return
 		case <-f.slowStart.expansionCh:
 			// Batch completed, try to expand
@@ -749,8 +762,7 @@ func (f *Fetcher) expandConnections() {
 		// If prefetched all data, mark as done
 		if prefetched >= totalSize {
 			f.connMu.Unlock()
-			f.setState(stateDone)
-			f.doneCh <- nil
+			f.onDownloadComplete()
 			return
 		}
 
@@ -1395,8 +1407,10 @@ func (f *Fetcher) onDownloadComplete() {
 		f.setState(stateDone)
 	}
 
+	f.finalError = finalErr
+
 	select {
-	case f.doneCh <- finalErr:
+	case f.completionSignalCh <- struct{}{}:
 	default:
 	}
 }
@@ -1404,7 +1418,6 @@ func (f *Fetcher) onDownloadComplete() {
 func (f *Fetcher) checkCompletion() bool {
 	// Check if all data has been downloaded
 	f.connMu.Lock()
-	defer f.connMu.Unlock()
 
 	totalDownloaded := int64(0)
 	if f.resolveConn != nil {
@@ -1415,8 +1428,8 @@ func (f *Fetcher) checkCompletion() bool {
 	}
 
 	if f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size {
-		f.setState(stateSteady)
-		go f.waitForCompletion()
+		f.connMu.Unlock()
+		f.waitForCompletion()
 		return true
 	}
 
@@ -1433,11 +1446,12 @@ func (f *Fetcher) checkCompletion() bool {
 	}
 
 	if allCompleted {
-		f.setState(stateSteady)
-		go f.waitForCompletion()
+		f.connMu.Unlock()
+		f.waitForCompletion()
 		return true
 	}
 
+	f.connMu.Unlock()
 	return false
 }
 
