@@ -28,6 +28,8 @@ const (
 	helpMinSize    = 1 * 1024 * 1024 // Minimum chunk size for helper connections
 )
 
+var errTargetFileClosed = errors.New("target file is closed")
+
 // ============================================================================
 // State Machine
 // ============================================================================
@@ -260,6 +262,7 @@ type Fetcher struct {
 	redirectLock sync.Mutex
 
 	// Lifecycle control
+	lifeMu sync.Mutex
 	ctx    context.Context
 	cancel context.CancelFunc
 	// runWG is a per-Start/run waitgroup for all spawned goroutines (connections,
@@ -269,6 +272,9 @@ type Fetcher struct {
 	runMu  sync.Mutex
 	runID  uint64
 	runWG  *sync.WaitGroup
+	// completionStarted prevents spawning many waiters for the same run.
+	completionRunID   uint64
+	completionStarted bool
 
 	// Resolve connection control
 	resolveCtx    context.Context
@@ -280,6 +286,8 @@ func (f *Fetcher) newRunGroup() (*sync.WaitGroup, uint64) {
 	defer f.runMu.Unlock()
 	f.runID++
 	f.runWG = &sync.WaitGroup{}
+	f.completionRunID = f.runID
+	f.completionStarted = false
 	return f.runWG, f.runID
 }
 
@@ -290,6 +298,24 @@ func (f *Fetcher) currentRunGroup() (*sync.WaitGroup, uint64) {
 		f.runWG = &sync.WaitGroup{}
 	}
 	return f.runWG, f.runID
+}
+
+func (f *Fetcher) startCompletionWait(wg *sync.WaitGroup, runID uint64) {
+	f.runMu.Lock()
+	if f.completionStarted && f.completionRunID == runID {
+		f.runMu.Unlock()
+		return
+	}
+	// If a newer run has started, don't spawn for the old one.
+	if f.runID != runID {
+		f.runMu.Unlock()
+		return
+	}
+	f.completionStarted = true
+	f.completionRunID = runID
+	f.runMu.Unlock()
+
+	go f.waitForCompletion(wg, runID)
 }
 
 func (f *Fetcher) Setup(ctl *controller.Controller) {
@@ -451,7 +477,9 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 
 	// If start was called before resolve completed, auto-start
 	if f.startPending.Load() {
-		go f.doStart()
+		go func() {
+			_ = f.Start()
+		}()
 	}
 
 	return nil
@@ -584,6 +612,9 @@ func (f *Fetcher) cleanupPrefetchFile() {
 }
 
 func (f *Fetcher) Start() error {
+	f.lifeMu.Lock()
+	defer f.lifeMu.Unlock()
+
 	state := f.getState()
 
 	switch state {
@@ -757,7 +788,7 @@ func (f *Fetcher) expandConnections(wg *sync.WaitGroup, runID uint64) {
 	if batchSize <= 0 {
 		// Max reached, transition to steady state
 		f.setState(stateSteady)
-		go f.waitForCompletion(wg, runID)
+		f.startCompletionWait(wg, runID)
 		return
 	}
 
@@ -846,7 +877,7 @@ func (f *Fetcher) expandConnections(wg *sync.WaitGroup, runID uint64) {
 	if len(newConns) == 0 {
 		// No new connections could be created, stop expansion
 		f.setState(stateSteady)
-		go f.waitForCompletion(wg, runID)
+		f.startCompletionWait(wg, runID)
 		return
 	}
 
@@ -898,6 +929,18 @@ func (f *Fetcher) runConnection(wg *sync.WaitGroup, conn *connection) {
 			conn.lastErr = re
 		} else {
 			conn.lastErr = err
+		}
+
+		// Local storage errors won't be fixed by retrying.
+		if errors.Is(err, errTargetFileClosed) || errors.Is(err, os.ErrClosed) {
+			f.connMu.Lock()
+			conn.State = connFailed
+			conn.failed = true
+			f.connMu.Unlock()
+			if f.slowStart != nil {
+				f.slowStart.onConnectFailed()
+			}
+			return
 		}
 
 		if shouldCountHTTPFailure(err) {
@@ -1020,12 +1063,14 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			f.connMu.Unlock()
 
 			f.fileMu.Lock()
-			if f.file != nil {
-				_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
-				if writeErr != nil {
-					f.fileMu.Unlock()
-					return writeErr
-				}
+			if f.file == nil {
+				f.fileMu.Unlock()
+				return errTargetFileClosed
+			}
+			_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
+			if writeErr != nil {
+				f.fileMu.Unlock()
+				return writeErr
 			}
 			f.fileMu.Unlock()
 
@@ -1097,19 +1142,29 @@ func (f *Fetcher) runConnectionWithResolveResp(wg *sync.WaitGroup, conn *connect
 		n, err := reader.Read(buf)
 		if n > 0 {
 			f.fileMu.Lock()
-			if f.file != nil {
-				_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
-				if writeErr != nil {
-					f.fileMu.Unlock()
-					f.connMu.Lock()
-					conn.State = connFailed
-					conn.failed = true
-					f.connMu.Unlock()
-					if f.slowStart != nil {
-						f.slowStart.onConnectFailed()
-					}
-					return
+			if f.file == nil {
+				f.fileMu.Unlock()
+				f.connMu.Lock()
+				conn.State = connFailed
+				conn.failed = true
+				conn.lastErr = errTargetFileClosed
+				f.connMu.Unlock()
+				if f.slowStart != nil {
+					f.slowStart.onConnectFailed()
 				}
+				return
+			}
+			_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
+			if writeErr != nil {
+				f.fileMu.Unlock()
+				f.connMu.Lock()
+				conn.State = connFailed
+				conn.failed = true
+				f.connMu.Unlock()
+				if f.slowStart != nil {
+					f.slowStart.onConnectFailed()
+				}
+				return
 			}
 			f.fileMu.Unlock()
 
@@ -1187,12 +1242,14 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 				n, err := reader.Read(buf)
 				if n > 0 {
 					f.fileMu.Lock()
-					if f.file != nil {
-						_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
-						if writeErr != nil {
-							f.fileMu.Unlock()
-							return writeErr
-						}
+					if f.file == nil {
+						f.fileMu.Unlock()
+						return errTargetFileClosed
+					}
+					_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
+					if writeErr != nil {
+						f.fileMu.Unlock()
+						return writeErr
 					}
 					f.fileMu.Unlock()
 
@@ -1440,7 +1497,7 @@ func (f *Fetcher) checkCompletion(wg *sync.WaitGroup, runID uint64) bool {
 
 	if f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size {
 		f.setState(stateSteady)
-		go f.waitForCompletion(wg, runID)
+		f.startCompletionWait(wg, runID)
 		return true
 	}
 
@@ -1458,7 +1515,7 @@ func (f *Fetcher) checkCompletion(wg *sync.WaitGroup, runID uint64) bool {
 
 	if allCompleted {
 		f.setState(stateSteady)
-		go f.waitForCompletion(wg, runID)
+		f.startCompletionWait(wg, runID)
 		return true
 	}
 
@@ -1466,6 +1523,9 @@ func (f *Fetcher) checkCompletion(wg *sync.WaitGroup, runID uint64) bool {
 }
 
 func (f *Fetcher) Pause() error {
+	f.lifeMu.Lock()
+	defer f.lifeMu.Unlock()
+
 	if f.cancel != nil {
 		f.cancel()
 	}
