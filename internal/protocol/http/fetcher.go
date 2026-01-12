@@ -263,8 +263,10 @@ type Fetcher struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
-	completionOnce sync.Once // Ensure onDownloadComplete is called only once per session
-	finalError     error
+	// tracks the lifecycle of the downloadLoop goroutine
+	downloadLoopDoneCh chan struct{}
+	completionOnce     sync.Once // Ensure onDownloadComplete is called only once per session
+	finalError         error
 	completionSignalCh chan struct{}
 
 	// Resolve connection control
@@ -648,7 +650,11 @@ func (f *Fetcher) doStart() error {
 
 	// Start download
 	f.setState(stateSlowStart)
-	go f.downloadLoop()
+	f.downloadLoopDoneCh = make(chan struct{})
+	go func() {
+		defer close(f.downloadLoopDoneCh)
+		f.downloadLoop()
+	}()
 
 	return nil
 }
@@ -1475,6 +1481,11 @@ func (f *Fetcher) Pause() error {
 
 	// Wait for all goroutines to stop
 	f.wg.Wait()
+
+	// Wait for downloadLoop to exit (which might be waiting on wg)
+	if f.downloadLoopDoneCh != nil {
+		<-f.downloadLoopDoneCh
+	}
 
 	// Wait for prefetch to finish
 	for f.prefetchStopCh != nil && !f.prefetchDone.Load() {
