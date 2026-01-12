@@ -241,6 +241,7 @@ func TestPauseAllAndContinueALLTasks(t *testing.T) {
 
 		createAndPause := func() {
 			taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+			time.Sleep(time.Millisecond * 5)
 			httpRequestCheckOk[*download.Task](http.MethodPut, "/api/v1/tasks/"+taskId+"/pause", nil)
 		}
 
@@ -248,6 +249,7 @@ func TestPauseAllAndContinueALLTasks(t *testing.T) {
 		for i := 0; i < total; i++ {
 			createAndPause()
 		}
+		time.Sleep(time.Millisecond * 50)
 
 		// continue all
 		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/continue", nil)
