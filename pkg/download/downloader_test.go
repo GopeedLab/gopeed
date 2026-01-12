@@ -863,6 +863,14 @@ func TestDownloader_PauseAndContinue(t *testing.T) {
 	}
 	defer downloader.Clear()
 
+	var doneWg sync.WaitGroup
+	doneWg.Add(1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			doneWg.Done()
+		}
+	})
+
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
@@ -945,20 +953,13 @@ func TestDownloader_PauseAndContinue(t *testing.T) {
 			t.Skip("Task already completed")
 		}
 
-		var wg sync.WaitGroup
-		wg.Add(1)
-		downloader.Listener(func(event *Event) {
-			if event.Key == EventKeyDone && event.Task != nil && event.Task.ID == taskId {
-				wg.Done()
-			}
-		})
-
 		err := downloader.Continue(&TaskFilter{IDs: []string{taskId}})
 		if err != nil {
 			// Task might have finished or not be in pausable state
 			t.Logf("Continue() note: %v", err)
 		}
-		wg.Wait()
+
+		doneWg.Wait()
 
 		task = downloader.GetTask(taskId)
 		if task != nil && task.Status != base.DownloadStatusDone {
