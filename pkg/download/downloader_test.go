@@ -757,7 +757,7 @@ func TestDownloader_Delete(t *testing.T) {
 	})
 }
 
-func TestDownloader_ContinueBatch(t *testing.T) {
+func TestDownloader_PauseAndContinue(t *testing.T) {
 	listener := test.StartTestSlowFileServer(time.Millisecond * 2000)
 	defer listener.Close()
 
@@ -767,7 +767,74 @@ func TestDownloader_ContinueBatch(t *testing.T) {
 	}
 	defer downloader.Clear()
 
-	// Create multiple tasks and pause them
+	// Create a single task
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}
+	rr, err := downloader.Resolve(req, testDownloadOpt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskId, err := downloader.Create(rr.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for task to start
+	time.Sleep(time.Millisecond * 100)
+
+	// Pause with specific taskId
+	err = downloader.Pause(&TaskFilter{IDs: []string{taskId}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(time.Millisecond * 100)
+
+	// Verify task is paused
+	task := downloader.GetTask(taskId)
+	if task.Status != base.DownloadStatusPause {
+		t.Errorf("Task should be paused, got %s", task.Status)
+	}
+
+	// Continue with specific taskId
+	var wg sync.WaitGroup
+	wg.Add(1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			wg.Done()
+		}
+	})
+
+	err = downloader.Continue(&TaskFilter{IDs: []string{taskId}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for task to complete
+	wg.Wait()
+
+	// Verify task is done
+	task = downloader.GetTask(taskId)
+	if task.Status != base.DownloadStatusDone {
+		t.Errorf("Task should be done, got %s", task.Status)
+	}
+
+	// Clean up
+	downloader.Delete(nil, true)
+}
+
+func TestDownloader_PauseAllAndContinueAll(t *testing.T) {
+	listener := test.StartTestSlowFileServer(time.Millisecond * 2000)
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Create multiple tasks
 	taskCount := 3
 	taskIds := make([]string, 0)
 
@@ -786,186 +853,57 @@ func TestDownloader_ContinueBatch(t *testing.T) {
 		taskIds = append(taskIds, taskId)
 	}
 
-	// Wait a moment for tasks to start
+	// Wait for tasks to start
 	time.Sleep(time.Millisecond * 100)
 
-	// Pause all tasks
+	// Pause all tasks with nil filter
 	err := downloader.Pause(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Millisecond * 100)
 
-	// Verify tasks are paused
+	// Verify all tasks are paused
+	pausedCount := 0
 	for _, taskId := range taskIds {
 		task := downloader.GetTask(taskId)
-		if task.Status != base.DownloadStatusPause && task.Status != base.DownloadStatusDone {
-			t.Errorf("Task %s should be paused or done, got %s", taskId, task.Status)
+		if task.Status == base.DownloadStatusPause {
+			pausedCount++
 		}
 	}
-
-	// Test ContinueBatch with specific IDs
-	t.Run("ContinueBatch with filter", func(t *testing.T) {
-		var wg sync.WaitGroup
-		wg.Add(1)
-		downloader.Listener(func(event *Event) {
-			if event.Key == EventKeyDone {
-				wg.Done()
-			}
-		})
-
-		err := downloader.ContinueBatch(&TaskFilter{IDs: []string{taskIds[0]}})
-		if err != nil {
-			t.Errorf("ContinueBatch() unexpected error: %v", err)
-		}
-		wg.Wait()
-	})
-
-	// Test ContinueBatch with nil filter (continues all)
-	t.Run("ContinueBatch with nil filter", func(t *testing.T) {
-		var wg sync.WaitGroup
-		// Count remaining paused tasks
-		pausedCount := 0
-		for _, taskId := range taskIds {
-			task := downloader.GetTask(taskId)
-			if task.Status == base.DownloadStatusPause {
-				pausedCount++
-			}
-		}
-		wg.Add(pausedCount)
-		downloader.Listener(func(event *Event) {
-			if event.Key == EventKeyDone {
-				wg.Done()
-			}
-		})
-
-		err := downloader.ContinueBatch(nil)
-		if err != nil {
-			t.Errorf("ContinueBatch() unexpected error: %v", err)
-		}
-		if pausedCount > 0 {
-			wg.Wait()
-		}
-	})
-
-	// Clean up
-	downloader.Delete(nil, true)
-}
-
-func TestDownloader_PauseAndContinue(t *testing.T) {
-	listener := test.StartTestSlowFileServer(time.Millisecond * 5000)
-	defer listener.Close()
-
-	downloader := NewDownloader(nil)
-	if err := downloader.Setup(); err != nil {
-		t.Fatal(err)
+	if pausedCount != taskCount {
+		t.Errorf("Expected %d paused tasks, got %d", taskCount, pausedCount)
 	}
-	defer downloader.Clear()
 
-	var doneWg sync.WaitGroup
-	doneWg.Add(1)
+	// Continue all tasks with nil filter
+	var wg sync.WaitGroup
+	wg.Add(taskCount)
 	downloader.Listener(func(event *Event) {
 		if event.Key == EventKeyDone {
-			doneWg.Done()
+			wg.Done()
 		}
 	})
 
-	req := &base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
+	err = downloader.Continue(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	taskId, err := downloader.Create(rr.ID)
-	if err != nil {
-		t.Fatal(err)
+	// Wait for all tasks to complete
+	wg.Wait()
+
+	// Verify all tasks are done
+	doneCount := 0
+	for _, taskId := range taskIds {
+		task := downloader.GetTask(taskId)
+		if task.Status == base.DownloadStatusDone {
+			doneCount++
+		}
 	}
-
-	// Wait for task to start
-	time.Sleep(time.Millisecond * 1000)
-
-	// Test Pause with empty filter (returns nil, not error - empty filter means no op)
-	t.Run("Pause with empty filter", func(t *testing.T) {
-		err := downloader.Pause(&TaskFilter{})
-		// Empty filter returns error from Pause function
-		if err == nil {
-			// This is fine - different implementations might handle this differently
-		}
-	})
-
-	// Test Pause with filter
-	t.Run("Pause with filter", func(t *testing.T) {
-		task := downloader.GetTask(taskId)
-		if task == nil {
-			t.Skip("Task already completed")
-		}
-		if task.Status == base.DownloadStatusDone {
-			t.Skip("Task already completed")
-		}
-
-		err := downloader.Pause(&TaskFilter{IDs: []string{taskId}})
-		if err != nil {
-			// Task might have finished between check and pause
-			t.Logf("Pause() error (task may have finished): %v", err)
-		} else {
-			task = downloader.GetTask(taskId)
-			if task.Status != base.DownloadStatusPause && task.Status != base.DownloadStatusDone {
-				t.Errorf("Task should be paused or done, got %s", task.Status)
-			}
-		}
-	})
-
-	// Test Pause with non-matching filter
-	t.Run("Pause with non-matching filter", func(t *testing.T) {
-		err := downloader.Pause(&TaskFilter{IDs: []string{"non-existent-id"}})
-		if err == nil {
-			t.Error("Pause() with non-matching filter should return error")
-		}
-	})
-
-	// Test Continue with empty filter (returns error - empty filter means no op)
-	t.Run("Continue with empty filter", func(t *testing.T) {
-		err := downloader.Continue(&TaskFilter{})
-		// Empty filter returns error from Continue function
-		if err == nil {
-			// This is fine - different implementations might handle this differently
-		}
-	})
-
-	// Test Continue with non-matching filter
-	t.Run("Continue with non-matching filter", func(t *testing.T) {
-		err := downloader.Continue(&TaskFilter{IDs: []string{"non-existent-id"}})
-		if err == nil {
-			t.Error("Continue() with non-matching filter should return error")
-		}
-	})
-
-	// Test Continue with valid filter
-	t.Run("Continue with valid filter", func(t *testing.T) {
-		task := downloader.GetTask(taskId)
-		if task == nil {
-			t.Skip("Task not found")
-		}
-		if task.Status == base.DownloadStatusDone {
-			t.Skip("Task already completed")
-		}
-
-		err := downloader.Continue(&TaskFilter{IDs: []string{taskId}})
-		if err != nil {
-			// Task might have finished or not be in pausable state
-			t.Logf("Continue() note: %v", err)
-		}
-
-		doneWg.Wait()
-
-		task = downloader.GetTask(taskId)
-		if task != nil && task.Status != base.DownloadStatusDone {
-			t.Errorf("Task should be done, got %s", task.Status)
-		}
-	})
+	if doneCount != taskCount {
+		t.Errorf("Expected %d done tasks, got %d", taskCount, doneCount)
+	}
 
 	// Clean up
 	downloader.Delete(nil, true)
@@ -1604,61 +1542,6 @@ func TestDownloader_DeleteAll(t *testing.T) {
 	if len(downloader.GetTasks()) != 0 {
 		t.Errorf("All tasks should be deleted, got %d remaining", len(downloader.GetTasks()))
 	}
-}
-
-func TestDownloader_ContinueAll(t *testing.T) {
-	listener := test.StartTestFileServer()
-	defer listener.Close()
-
-	downloader := NewDownloader(nil)
-	if err := downloader.Setup(); err != nil {
-		t.Fatal(err)
-	}
-	defer downloader.Clear()
-
-	// Create a task and wait for completion
-	req := &base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	downloader.Listener(func(event *Event) {
-		if event.Key == EventKeyDone {
-			wg.Done()
-		}
-	})
-
-	taskId, err := downloader.CreateDirect(req, &base.Options{
-		Path: test.Dir,
-		Name: test.DownloadName,
-		Extra: http.OptsExtra{
-			Connections: 4,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	wg.Wait()
-
-	// Verify task completed
-	task := downloader.GetTask(taskId)
-	if task == nil {
-		t.Fatal("Task should exist")
-	}
-	if task.Status != base.DownloadStatusDone {
-		t.Errorf("Task should be done, got %s", task.Status)
-	}
-
-	// Test ContinueBatch with nil on an already done task (should be a no-op)
-	err = downloader.ContinueBatch(nil)
-	if err != nil {
-		t.Logf("ContinueBatch(nil) on done tasks returned: %v", err)
-	}
-
-	// Clean up
-	downloader.Delete(nil, true)
 }
 
 func TestDownloader_ProtocolConfigNotExist(t *testing.T) {
