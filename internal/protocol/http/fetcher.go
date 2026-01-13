@@ -260,15 +260,9 @@ type Fetcher struct {
 	redirectLock sync.Mutex
 
 	// Lifecycle control
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
-	// tracks the lifecycle of the downloadLoop goroutine
-	downloadLoopDoneCh chan struct{}
-	completionOnce     sync.Once // Ensure onDownloadComplete is called only once per session
-	finalError         error
-	completionSignalCh chan struct{}
-	internalWg         sync.WaitGroup // Waits for internal helper goroutines
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 
 	// Resolve connection control
 	resolveCtx    context.Context
@@ -278,7 +272,6 @@ type Fetcher struct {
 func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl = ctl
 	f.doneCh = make(chan error, 1)
-	f.completionSignalCh = make(chan struct{}, 1)
 	if f.meta == nil {
 		f.meta = &fetcher.FetcherMeta{}
 	}
@@ -646,39 +639,18 @@ func (f *Fetcher) doStart() error {
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
-	// Reset completion once for new download session
-	f.completionOnce = sync.Once{}
-
 	// Start download
 	f.setState(stateSlowStart)
-	f.downloadLoopDoneCh = make(chan struct{})
-	go func() {
-		defer close(f.downloadLoopDoneCh)
-		f.downloadLoop()
-	}()
+	go f.downloadLoop()
 
 	return nil
 }
 
 func (f *Fetcher) downloadLoop() {
 	defer func() {
-		f.fileMu.Lock()
-		if f.file != nil {
-			f.file.Close()
-		}
-		f.fileMu.Unlock()
-
-		// Update file last modified time
+		// Update file last modified time before closing
 		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
 			setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
-		}
-
-		state := f.getState()
-		if state == stateDone || state == stateError {
-			select {
-			case f.doneCh <- f.finalError:
-			default:
-			}
 		}
 	}()
 
@@ -700,8 +672,6 @@ func (f *Fetcher) downloadLoop() {
 		select {
 		case <-f.ctx.Done():
 			// Paused or cancelled
-			return
-		case <-f.completionSignalCh:
 			return
 		case <-f.slowStart.expansionCh:
 			// Batch completed, try to expand
@@ -732,9 +702,7 @@ func (f *Fetcher) startResolveDownload() {
 
 		// For non-range downloads, wait for completion in the main downloadLoop
 		// by triggering immediate completion check
-		f.internalWg.Add(1)
 		go func() {
-			defer f.internalWg.Done()
 			f.wg.Wait()
 			// Signal expansion channel to trigger completion check in downloadLoop
 			select {
@@ -755,11 +723,7 @@ func (f *Fetcher) expandConnections() {
 	if batchSize <= 0 {
 		// Max reached, transition to steady state
 		f.setState(stateSteady)
-		f.internalWg.Add(1)
-		go func() {
-			defer f.internalWg.Done()
-			f.waitForCompletion()
-		}()
+		go f.waitForCompletion()
 		return
 	}
 
@@ -775,7 +739,17 @@ func (f *Fetcher) expandConnections() {
 		// If prefetched all data, mark as done
 		if prefetched >= totalSize {
 			f.connMu.Unlock()
-			f.onDownloadComplete()
+
+			// Close the file before signaling completion
+			f.fileMu.Lock()
+			if f.file != nil {
+				f.file.Close()
+				f.file = nil
+			}
+			f.fileMu.Unlock()
+
+			f.setState(stateDone)
+			f.doneCh <- nil
 			return
 		}
 
@@ -847,11 +821,7 @@ func (f *Fetcher) expandConnections() {
 	if len(newConns) == 0 {
 		// No new connections could be created, stop expansion
 		f.setState(stateSteady)
-		f.internalWg.Add(1)
-		go func() {
-			defer f.internalWg.Done()
-			f.waitForCompletion()
-		}()
+		go f.waitForCompletion()
 		return
 	}
 
@@ -1351,15 +1321,10 @@ func (f *Fetcher) resumeConnections() {
 }
 
 func (f *Fetcher) waitForCompletion() {
-	// Allow multiple goroutines to wait on the WaitGroup
 	f.wg.Wait()
-
-	// Only trigger completion callback once, even if multiple goroutines call this
 	// Only trigger completion if not cancelled/paused
 	if f.ctx != nil && f.ctx.Err() == nil {
-		f.completionOnce.Do(func() {
-			f.onDownloadComplete()
-		})
+		f.onDownloadComplete()
 	}
 }
 
@@ -1418,16 +1383,23 @@ func (f *Fetcher) onDownloadComplete() {
 	}
 	f.connMu.Unlock()
 
+	// Close the file before signaling completion
+	// This ensures the file handle is released before Wait() returns
+	f.fileMu.Lock()
+	if f.file != nil {
+		f.file.Close()
+		f.file = nil
+	}
+	f.fileMu.Unlock()
+
 	if finalErr != nil {
 		f.setState(stateError)
 	} else {
 		f.setState(stateDone)
 	}
 
-	f.finalError = finalErr
-
 	select {
-	case f.completionSignalCh <- struct{}{}:
+	case f.doneCh <- finalErr:
 	default:
 	}
 }
@@ -1435,6 +1407,7 @@ func (f *Fetcher) onDownloadComplete() {
 func (f *Fetcher) checkCompletion() bool {
 	// Check if all data has been downloaded
 	f.connMu.Lock()
+	defer f.connMu.Unlock()
 
 	totalDownloaded := int64(0)
 	if f.resolveConn != nil {
@@ -1445,8 +1418,8 @@ func (f *Fetcher) checkCompletion() bool {
 	}
 
 	if f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size {
-		f.connMu.Unlock()
-		f.waitForCompletion()
+		f.setState(stateSteady)
+		go f.waitForCompletion()
 		return true
 	}
 
@@ -1463,12 +1436,11 @@ func (f *Fetcher) checkCompletion() bool {
 	}
 
 	if allCompleted {
-		f.connMu.Unlock()
-		f.waitForCompletion()
+		f.setState(stateSteady)
+		go f.waitForCompletion()
 		return true
 	}
 
-	f.connMu.Unlock()
 	return false
 }
 
@@ -1492,12 +1464,6 @@ func (f *Fetcher) Pause() error {
 
 	// Wait for all goroutines to stop
 	f.wg.Wait()
-	f.internalWg.Wait()
-
-	// Wait for downloadLoop to exit (which might be waiting on wg)
-	if f.downloadLoopDoneCh != nil {
-		<-f.downloadLoopDoneCh
-	}
 
 	// Wait for prefetch to finish
 	for f.prefetchStopCh != nil && !f.prefetchDone.Load() {
