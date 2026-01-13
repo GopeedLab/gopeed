@@ -264,6 +264,9 @@ type Fetcher struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
+	// downloadLoop lifecycle tracking
+	downloadLoopDone chan struct{} // Closed when downloadLoop exits
+
 	// Resolve connection control
 	resolveCtx    context.Context
 	resolveCancel context.CancelFunc
@@ -639,6 +642,9 @@ func (f *Fetcher) doStart() error {
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
+	// Create downloadLoop lifecycle channel
+	f.downloadLoopDone = make(chan struct{})
+
 	// Start download
 	f.setState(stateSlowStart)
 	go f.downloadLoop()
@@ -651,6 +657,11 @@ func (f *Fetcher) downloadLoop() {
 		// Update file last modified time before closing
 		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
 			setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
+		}
+
+		// Signal that downloadLoop has exited
+		if f.downloadLoopDone != nil {
+			close(f.downloadLoopDone)
 		}
 	}()
 
@@ -676,9 +687,18 @@ func (f *Fetcher) downloadLoop() {
 		case <-f.slowStart.expansionCh:
 			// Batch completed, try to expand
 			if f.checkCompletion() {
+				// All work is done, wait for connections to finish
+				f.waitForCompletion()
 				return
 			}
 			f.expandConnections()
+
+			// Check if we've reached steady state (max connections)
+			if f.getState() == stateSteady {
+				// Wait for all connections to complete
+				f.waitForCompletion()
+				return
+			}
 		}
 	}
 }
@@ -700,16 +720,9 @@ func (f *Fetcher) startResolveDownload() {
 		// Use the resolve response directly
 		go f.runConnectionWithResolveResp(conn)
 
-		// For non-range downloads, wait for completion in the main downloadLoop
-		// by triggering immediate completion check
-		go func() {
-			f.wg.Wait()
-			// Signal expansion channel to trigger completion check in downloadLoop
-			select {
-			case f.slowStart.expansionCh <- struct{}{}:
-			default:
-			}
-		}()
+		// For non-range downloads, wait for completion directly in this goroutine
+		// Don't create another goroutine to avoid WaitGroup reuse issues
+		f.waitForCompletion()
 		return
 	}
 
@@ -723,7 +736,8 @@ func (f *Fetcher) expandConnections() {
 	if batchSize <= 0 {
 		// Max reached, transition to steady state
 		f.setState(stateSteady)
-		go f.waitForCompletion()
+		// Don't start a new goroutine - let the downloadLoop handle completion
+		// This avoids multiple goroutines calling wg.Wait() simultaneously
 		return
 	}
 
@@ -1418,8 +1432,7 @@ func (f *Fetcher) checkCompletion() bool {
 	}
 
 	if f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size {
-		f.setState(stateSteady)
-		go f.waitForCompletion()
+		// Don't start a new goroutine - let the caller handle completion
 		return true
 	}
 
@@ -1436,8 +1449,7 @@ func (f *Fetcher) checkCompletion() bool {
 	}
 
 	if allCompleted {
-		f.setState(stateSteady)
-		go f.waitForCompletion()
+		// Don't start a new goroutine - let the caller handle completion
 		return true
 	}
 
@@ -1462,7 +1474,12 @@ func (f *Fetcher) Pause() error {
 		}
 	}
 
-	// Wait for all goroutines to stop
+	// Wait for downloadLoop to exit first (it will call wg.Wait internally)
+	if f.downloadLoopDone != nil {
+		<-f.downloadLoopDone
+	}
+
+	// Wait for all connection goroutines to stop
 	f.wg.Wait()
 
 	// Wait for prefetch to finish
