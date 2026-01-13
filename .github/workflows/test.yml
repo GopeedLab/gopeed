@@ -61,7 +61,7 @@ jobs:
           for i in {1..20}
           do
             echo "Running test iteration $i"
-            go test -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage.txt $PACKAGES
+            go test -v -timeout=4m -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage.txt $PACKAGES
           done
       - uses: codecov/codecov-action@v4
         with:
