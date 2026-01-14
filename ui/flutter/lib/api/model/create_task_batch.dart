@@ -8,11 +8,11 @@ part 'create_task_batch.g.dart';
 @JsonSerializable(explicitToJson: true)
 class CreateTaskBatch {
   List<CreateTaskBatchItem>? reqs;
-  Options? opt;
+  Options? opts;
 
   CreateTaskBatch({
     this.reqs,
-    this.opt,
+    this.opts,
   });
 
   factory CreateTaskBatch.fromJson(

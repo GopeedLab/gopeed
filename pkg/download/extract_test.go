@@ -227,11 +227,14 @@ func createTestZipWithMultipleFiles(path string, numFiles int) error {
 	w := zip.NewWriter(zipFile)
 
 	for i := 0; i < numFiles; i++ {
-		f, err := w.Create(filepath.Join("dir", "file"+string(rune('A'+i))+".txt"))
+		// Use Windows-safe names. The previous rune-based approach could generate
+		// invalid Windows filename characters (e.g. '\\', ':', '|') when numFiles is large.
+		nameInZip := fmt.Sprintf("dir/file%03d.txt", i+1)
+		f, err := w.Create(nameInZip)
 		if err != nil {
 			return err
 		}
-		_, err = f.Write([]byte("Content of file " + string(rune('A'+i))))
+		_, err = f.Write([]byte(fmt.Sprintf("Content of file %03d", i+1)))
 		if err != nil {
 			return err
 		}
@@ -1055,7 +1058,15 @@ func TestExtractArchive_ReadOnlyDestDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Make it writable for cleanup
-	defer os.Chmod(destDir, 0755)
+	defer func() { _ = os.Chmod(destDir, 0755) }()
+
+	// Windows ACL semantics mean chmod often does not prevent writes.
+	// If the filesystem doesn't enforce the permission change, skip.
+	probe := filepath.Join(destDir, "__write_probe.tmp")
+	if err := os.WriteFile(probe, []byte("x"), 0644); err == nil {
+		_ = os.Remove(probe)
+		t.Skip("filesystem does not enforce read-only directory permissions")
+	}
 
 	// Extraction should fail due to read-only destination
 	err = extractArchive(zipPath, destDir, "", nil)
@@ -1589,9 +1600,14 @@ func TestGetMultiPartArchiveBaseName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.filename, func(t *testing.T) {
-			result := GetMultiPartArchiveBaseName(tt.filename)
-			if result != tt.expected {
-				t.Errorf("GetMultiPartArchiveBaseName(%q) = %q, expected %q", tt.filename, result, tt.expected)
+			filename := filepath.FromSlash(tt.filename)
+			expected := tt.expected
+			if expected != "" {
+				expected = filepath.FromSlash(expected)
+			}
+			result := GetMultiPartArchiveBaseName(filename)
+			if result != expected {
+				t.Errorf("GetMultiPartArchiveBaseName(%q) = %q, expected %q", filename, result, expected)
 			}
 		})
 	}
@@ -2067,10 +2083,16 @@ func TestDetermineFirstPartPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := determineFirstPartPath(tt.dir, tt.baseName, tt.pattern)
-			if result != tt.expected {
+			dir := filepath.FromSlash(tt.dir)
+			expected := tt.expected
+			if expected != "" {
+				expected = filepath.FromSlash(expected)
+			}
+
+			result := determineFirstPartPath(dir, tt.baseName, tt.pattern)
+			if result != expected {
 				t.Errorf("determineFirstPartPath(%q, %q, %q) = %q, expected %q",
-					tt.dir, tt.baseName, tt.pattern, result, tt.expected)
+					dir, tt.baseName, tt.pattern, result, expected)
 			}
 		})
 	}

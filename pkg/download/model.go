@@ -2,6 +2,9 @@ package download
 
 import (
 	"encoding/json"
+	"sync"
+	"time"
+
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/protocol/bt"
@@ -9,8 +12,6 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"sync"
-	"time"
 )
 
 type ResolveResult struct {

@@ -20,15 +20,15 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
+	"github.com/anacrolix/torrent/storage"
 )
 
 var (
-	client        *torrent.Client
-	lock          sync.Mutex
-	torrentDirMap = make(map[string]string)
-	ftMap         = make(map[string]*fileTorrentImpl)
-	closeCtx      context.Context
-	closeFunc     func()
+	cfg       *torrent.ClientConfig
+	client    *torrent.Client
+	lock      sync.Mutex
+	closeCtx  context.Context
+	closeFunc func()
 )
 
 type Fetcher struct {
@@ -71,21 +71,12 @@ func (f *Fetcher) initClient() (err error) {
 		closeCtx, closeFunc = context.WithCancel(context.Background())
 	}
 
-	cfg := torrent.NewDefaultClientConfig()
+	cfg = torrent.NewDefaultClientConfig()
 	cfg.Seed = true
 	cfg.Bep20 = fmt.Sprintf("-GP%s-", parseBep20())
 	cfg.ExtendedHandshakeClientVersion = fmt.Sprintf("Gopeed %s", base.Version)
 	cfg.ListenPort = f.config.ListenPort
 	cfg.HTTPProxy = f.ctl.GetProxy(f.meta.Req.Proxy)
-	cfg.DefaultStorage = newFileOpts(newFileClientOpts{
-		ClientBaseDir: cfg.DataDir,
-		HandleFileTorrent: func(infoHash metainfo.Hash, ft *fileTorrentImpl) {
-			if dir, ok := torrentDirMap[infoHash.String()]; ok {
-				ft.setTorrentDir(dir)
-			}
-			ftMap[infoHash.String()] = ft
-		},
-	})
 	dnsResolver := &DnsCacheResolver{RefreshTimeout: 5 * time.Minute}
 	cfg.TrackerDialContext = dnsResolver.DialContext
 	client, err = torrent.NewClient(cfg)
@@ -100,20 +91,16 @@ func (f *Fetcher) initClient() (err error) {
 	return
 }
 
-func (f *Fetcher) Resolve(req *base.Request) error {
+func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	f.meta.Req = req
+	f.meta.Opts = opts
+	if f.meta.Opts == nil {
+		f.meta.Opts = &base.Options{}
+	}
 	if err := f.addTorrent(req, false); err != nil {
 		return err
 	}
 	f.updateRes()
-	return nil
-}
-
-func (f *Fetcher) Create(opts *base.Options) (err error) {
-	f.meta.Opts = opts
-	if f.meta.Res != nil {
-		torrentDirMap[f.meta.Res.Hash] = opts.Path
-	}
 	return nil
 }
 
@@ -123,9 +110,7 @@ func (f *Fetcher) Start() (err error) {
 			return
 		}
 	}
-	if ft, ok := ftMap[f.meta.Res.Hash]; ok {
-		ft.setTorrentDir(f.meta.Opts.Path)
-	}
+
 	files := f.torrent.Files()
 	// If the user does not specify the file to download, all files will be downloaded by default
 	if f.data.Progress == nil {
@@ -145,12 +130,12 @@ func (f *Fetcher) Start() (err error) {
 			file.Download()
 		}
 	}
+	f.torrent.AllowDataDownload()
 	return
 }
 
 func (f *Fetcher) Pause() (err error) {
-	f.torrentReady.Store(false)
-	f.safeDrop()
+	f.torrent.DisallowDataDownload()
 	return
 }
 
@@ -361,8 +346,12 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 	}
 	schema := util.ParseSchema(req.URL)
 	privateTorrent := false
+	var spec *torrent.TorrentSpec
 	if schema == "MAGNET" {
-		f.torrent, err = client.AddMagnet(req.URL)
+		spec, err = torrent.TorrentSpecFromMagnetUri(req.URL)
+		if err != nil {
+			return
+		}
 	} else {
 		var reader io.Reader
 		if schema == "FILE" {
@@ -399,8 +388,18 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 		if info.Private != nil && *info.Private {
 			privateTorrent = true
 		}
-		f.torrent, err = client.AddTorrent(metaInfo)
+		spec, err = torrent.TorrentSpecFromMetaInfoErr(metaInfo)
+		if err != nil {
+			return
+		}
 	}
+	spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
+		ClientBaseDir: cfg.DataDir,
+		TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
+			return f.meta.Opts.Path
+		},
+	})
+	f.torrent, _, err = client.AddTorrentSpec(spec)
 	if err != nil {
 		return
 	}

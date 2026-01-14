@@ -1,13 +1,12 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'create_task.dart';
+part of 'resolve_task.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-CreateTask _$CreateTaskFromJson(Map<String, dynamic> json) => CreateTask(
-      rid: json['rid'] as String?,
+ResolveTask _$ResolveTaskFromJson(Map<String, dynamic> json) => ResolveTask(
       req: json['req'] == null
           ? null
           : Request.fromJson(json['req'] as Map<String, dynamic>),
@@ -16,7 +15,7 @@ CreateTask _$CreateTaskFromJson(Map<String, dynamic> json) => CreateTask(
           : Options.fromJson(json['opts'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$CreateTaskToJson(CreateTask instance) {
+Map<String, dynamic> _$ResolveTaskToJson(ResolveTask instance) {
   final val = <String, dynamic>{};
 
   void writeNotNull(String key, dynamic value) {
@@ -25,8 +24,7 @@ Map<String, dynamic> _$CreateTaskToJson(CreateTask instance) {
     }
   }
 
-  writeNotNull('rid', instance.rid);
-  writeNotNull('req', instance.req?.toJson());
-  writeNotNull('opts', instance.opts?.toJson());
+  writeNotNull('req', instance.req);
+  writeNotNull('opts', instance.opts);
   return val;
 }

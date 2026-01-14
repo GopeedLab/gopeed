@@ -50,9 +50,9 @@ func TestWebhook_TriggerOnDone(t *testing.T) {
 		// Configure webhook URLs
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{server.URL},
-	}
+			Enable: true,
+			URLs:   []string{server.URL},
+		}
 		downloader.PutConfig(cfg)
 
 		// Create a mock task
@@ -99,9 +99,9 @@ func TestWebhook_TriggerOnError(t *testing.T) {
 		// Configure webhook URLs
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{server.URL},
-	}
+			Enable: true,
+			URLs:   []string{server.URL},
+		}
 		downloader.PutConfig(cfg)
 
 		// Create a mock task
@@ -144,9 +144,9 @@ func TestWebhook_SendTestWebhook(t *testing.T) {
 		// Configure webhook URLs
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{server.URL},
-	}
+			Enable: true,
+			URLs:   []string{server.URL},
+		}
 		downloader.PutConfig(cfg)
 
 		// Send test webhook
@@ -207,9 +207,9 @@ func TestWebhook_MultipleUrls(t *testing.T) {
 		// Configure multiple webhook URLs
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{server1.URL, server2.URL},
-	}
+			Enable: true,
+			URLs:   []string{server1.URL, server2.URL},
+		}
 		downloader.PutConfig(cfg)
 
 		// Create a mock task
@@ -240,9 +240,9 @@ func TestWebhook_TestWebhookFailsOnNon200(t *testing.T) {
 		// Configure webhook URLs
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{server.URL},
-	}
+			Enable: true,
+			URLs:   []string{server.URL},
+		}
 		downloader.PutConfig(cfg)
 
 		// Send test webhook - should fail with non-200 status
@@ -264,9 +264,9 @@ func TestWebhook_TestWebhookFailsOn201(t *testing.T) {
 		// Configure webhook URLs
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{server.URL},
-	}
+			Enable: true,
+			URLs:   []string{server.URL},
+		}
 		downloader.PutConfig(cfg)
 
 		// Send test webhook - should fail with 201 status (only 200 is success)
@@ -346,7 +346,7 @@ func TestWebhook_GetWebhookUrls_NoExtraField(t *testing.T) {
 func TestWebhook_GetWebhookUrls_NoWebhookUrlsKey(t *testing.T) {
 	setupWebhookTest(t, func(downloader *Downloader) {
 		cfg, _ := downloader.GetConfig()
-		cfg.Webhook = &base.WebhookConfig{Enable: true}  // No URLs set
+		cfg.Webhook = &base.WebhookConfig{Enable: true} // No URLs set
 		downloader.PutConfig(cfg)
 
 		urls := downloader.getWebhookUrls()
@@ -360,9 +360,9 @@ func TestWebhook_GetWebhookUrls_StringSlice(t *testing.T) {
 	setupWebhookTest(t, func(downloader *Downloader) {
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{"http://example.com", "http://example2.com"},
-	}
+			Enable: true,
+			URLs:   []string{"http://example.com", "http://example2.com"},
+		}
 		downloader.PutConfig(cfg)
 
 		urls := downloader.getWebhookUrls()
@@ -379,9 +379,9 @@ func TestWebhook_GetWebhookUrls_InterfaceSlice(t *testing.T) {
 	setupWebhookTest(t, func(downloader *Downloader) {
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{"http://example.com", "http://example2.com"},
-	}
+			Enable: true,
+			URLs:   []string{"http://example.com", "http://example2.com"},
+		}
 		downloader.PutConfig(cfg)
 
 		urls := downloader.getWebhookUrls()
@@ -412,9 +412,9 @@ func TestWebhook_GetWebhookUrls_InterfaceSliceWithEmptyStrings(t *testing.T) {
 	setupWebhookTest(t, func(downloader *Downloader) {
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{"", "", ""},
-	}
+			Enable: true,
+			URLs:   []string{"", "", ""},
+		}
 		downloader.PutConfig(cfg)
 
 		urls := downloader.getWebhookUrls()
@@ -446,7 +446,7 @@ func TestWebhook_GetWebhookUrls_InterfaceSliceMixedTypes(t *testing.T) {
 func TestWebhook_GetWebhookUrls_InvalidType(t *testing.T) {
 	setupWebhookTest(t, func(downloader *Downloader) {
 		cfg, _ := downloader.GetConfig()
-		cfg.Webhook = &base.WebhookConfig{Enable: false}  // Disabled webhook
+		cfg.Webhook = &base.WebhookConfig{Enable: false} // Disabled webhook
 		downloader.PutConfig(cfg)
 
 		urls := downloader.getWebhookUrls()
@@ -640,9 +640,9 @@ func TestWebhook_TriggerWebhooks_EmptyUrlSkipped(t *testing.T) {
 	setupWebhookTest(t, func(downloader *Downloader) {
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{server.URL, "", server.URL},
-	}
+			Enable: true,
+			URLs:   []string{server.URL, "", server.URL},
+		}
 		downloader.PutConfig(cfg)
 
 		task := NewTask()
@@ -675,9 +675,9 @@ func TestWebhook_WebhookDataStructure(t *testing.T) {
 	setupWebhookTest(t, func(downloader *Downloader) {
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{server.URL},
-	}
+			Enable: true,
+			URLs:   []string{server.URL},
+		}
 		downloader.PutConfig(cfg)
 
 		task := NewTask()
@@ -744,9 +744,9 @@ func TestWebhook_SendTestWebhook_MixedResults(t *testing.T) {
 	setupWebhookTest(t, func(downloader *Downloader) {
 		cfg, _ := downloader.GetConfig()
 		cfg.Webhook = &base.WebhookConfig{
-		Enable: true,
-		URLs: []string{server1.URL, server2.URL},
-	}
+			Enable: true,
+			URLs:   []string{server1.URL, server2.URL},
+		}
 		downloader.PutConfig(cfg)
 
 		// Should fail because server2 returns 500

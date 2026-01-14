@@ -2,13 +2,14 @@ package download
 
 import (
 	"errors"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	"github.com/dop251/goja"
-	"os"
-	"testing"
-	"time"
 )
 
 func TestDownloader_InstallExtensionByFolder(t *testing.T) {
@@ -18,7 +19,7 @@ func TestDownloader_InstallExtensionByFolder(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -35,7 +36,7 @@ func TestDownloader_InstallExtensionByFolderDevMode(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +53,7 @@ func TestDownloader_InstallExtensionByGit(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/GopeedLab/gopeed/releases",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +70,7 @@ func TestDownloader_InstallExtensionByGitSimple(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/GopeedLab/gopeed/releases",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -86,7 +87,7 @@ func TestDownloader_InstallExtensionByGitFull(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/GopeedLab/gopeed/releases",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -156,7 +157,7 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://test.com",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -185,7 +186,7 @@ func TestDownloader_Extension_OnStart(t *testing.T) {
 			select {
 			case err = <-errCh:
 				break
-			case <-time.After(time.Second * 10):
+			case <-time.After(time.Second * 30): // Increased timeout for real network requests
 				err = errors.New("timeout")
 			}
 			if err != nil {
@@ -238,7 +239,7 @@ func TestDownloader_Extension_OnError(t *testing.T) {
 		select {
 		case err = <-errCh:
 			break
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second * 30): // Increased timeout for real network requests
 			err = errors.New("timeout")
 		}
 
@@ -273,7 +274,7 @@ func TestDownloader_Extension_OnDone(t *testing.T) {
 		select {
 		case err = <-errCh:
 			break
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second * 30): // Increased timeout for real network requests
 			err = errors.New("timeout")
 		}
 		// wait for script execution
@@ -300,7 +301,7 @@ func TestDownloader_Extension_Errors(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -315,7 +316,7 @@ func TestDownloader_Extension_Errors(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -330,7 +331,7 @@ func TestDownloader_Extension_Errors(t *testing.T) {
 		}
 		_, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		})
+		}, nil)
 		if err == nil {
 			t.Fatalf("except error, but got nil")
 		}
@@ -352,7 +353,7 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -373,7 +374,7 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 		})
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -390,7 +391,7 @@ func TestDownloader_ExtensionStorage(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

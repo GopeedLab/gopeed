@@ -31,7 +31,7 @@ func TestFetcher_Resolve_DataUri_Torrent(t *testing.T) {
 	dataUri := "data:application/x-bittorrent;base64," + base64.StdEncoding.EncodeToString(buf)
 	err = fetcher.Resolve(&base.Request{
 		URL: dataUri,
-	})
+	}, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -81,7 +81,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 					"udp://tracker.bitsearch.to:1337/announce",
 				},
 			},
-		})
+		}, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -111,7 +111,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 					"udp://tracker.bitsearch.to:1337/announce",
 				},
 			},
-		})
+		}, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -145,7 +145,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 	t.Run("Resolve Unclean Torrent", func(t *testing.T) {
 		err := fetcher.Resolve(&base.Request{
 			URL: "./testdata/test.unclean.torrent",
-		})
+		}, nil)
 		if err != nil {
 			t.Errorf("Resolve Unclean Torrent Resolve() got = %v, want nil", err)
 		}
@@ -156,7 +156,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 		uri := "file:///" + file
 		err := fetcher.Resolve(&base.Request{
 			URL: uri,
-		})
+		}, nil)
 		if err != nil {
 			t.Errorf("Resolve file scheme Torrent Resolve() got = %v, want nil", err)
 		}

@@ -1,20 +1,18 @@
 package fetcher
 
 import (
-	"github.com/GopeedLab/gopeed/internal/controller"
-	"github.com/GopeedLab/gopeed/pkg/base"
 	"path"
 	"strings"
+
+	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/pkg/base"
 )
 
 // Fetcher defines the interface for a download protocol.
 // Each download task will have a corresponding Fetcher instance for the management of the download task
 type Fetcher interface {
 	Setup(ctl *controller.Controller)
-	// Resolve resource info from request
-	Resolve(req *base.Request) error
-	// Create ready to download, but not started
-	Create(opts *base.Options) error
+	Resolve(req *base.Request, opts *base.Options) error
 	Start() error
 	Pause() error
 	Close() error

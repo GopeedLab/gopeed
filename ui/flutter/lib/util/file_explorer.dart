@@ -8,7 +8,13 @@ class FileExplorer {
     if (await FileSystemEntity.isFile(filePath)) {
       _openFile(filePath);
     } else if (await FileSystemEntity.isDirectory(filePath)) {
-      _openDirectory(filePath);
+      await _openDirectory(filePath);
+    } else {
+      // If file does not exist, open its parent directory
+      final parentPath = path.dirname(filePath);
+      if (await FileSystemEntity.isDirectory(parentPath)) {
+        await _openDirectory(parentPath);
+      }
     }
   }
 
