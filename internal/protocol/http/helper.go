@@ -13,6 +13,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -120,15 +121,42 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 	return httpReq, nil
 }
 
+// buildClient creates an HTTP client with the default connection timeout.
+// Used for resolve phase where we don't have connection time data yet.
 func (f *Fetcher) buildClient() *http.Client {
+	return f.buildClientWithTimeout(connectTimeout)
+}
+
+// buildFastFailClient creates an HTTP client with fast-fail timeout.
+// Uses max(minFastFailTimeout, maxConnTime) for fast-fail retry during download phase.
+func (f *Fetcher) buildFastFailClient() *http.Client {
+	maxConn := f.maxConnTime.Load()
+	if maxConn == 0 {
+		// No successful connection yet, use default timeout
+		return f.buildClientWithTimeout(connectTimeout)
+	}
+
+	timeout := maxConn
+	if timeout >= minFastFailTimeout {
+		// If greater than minFastFailTimeout, increase by 50% for safety margin
+		timeout = int64(float64(timeout) * 1.5)
+	} else {
+		timeout = minFastFailTimeout
+	}
+	return f.buildClientWithTimeout(time.Duration(timeout))
+}
+
+// buildClientWithTimeout creates an HTTP client with the specified connection timeout.
+func (f *Fetcher) buildClientWithTimeout(timeout time.Duration) *http.Client {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout: connectTimeout,
+			Timeout: timeout,
 		}).DialContext,
 		Proxy: f.ctl.GetProxy(f.meta.Req.Proxy),
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: f.meta.Req.SkipVerifyCert,
 		},
+		TLSHandshakeTimeout: timeout,
 	}
 	jar, _ := cookiejar.New(nil)
 	return &http.Client{
