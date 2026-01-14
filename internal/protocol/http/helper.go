@@ -416,6 +416,10 @@ const (
 	maxExtensionLength = 20
 )
 
+// invalidFilenameChars contains characters that are invalid in filenames
+// across different operating systems (Windows and Unix-like)
+var invalidFilenameChars = []string{`\`, `/`, `:`, `*`, `?`, `"`, `<`, `>`, `|`}
+
 // replaceInvalidFilenameChars replaces invalid path characters in a filename
 // with underscores to ensure filesystem compatibility.
 func replaceInvalidFilenameChars(filename string) string {
@@ -425,8 +429,7 @@ func replaceInvalidFilenameChars(filename string) string {
 	// Replace invalid characters with underscores
 	// Windows: \ / : * ? " < > |
 	// Unix-like: / :
-	invalidChars := []string{`\`, `/`, `:`, `*`, `?`, `"`, `<`, `>`, `|`}
-	for _, char := range invalidChars {
+	for _, char := range invalidFilenameChars {
 		filename = strings.ReplaceAll(filename, char, "_")
 	}
 	return filename
