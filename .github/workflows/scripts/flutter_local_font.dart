@@ -46,9 +46,9 @@ Future<void> main(List<String> args) async {
 
     // Relative font asset paths which Flutter's loader typically concatenates with:
     //   https://fonts.gstatic.com/s/
-    // We keep this as a best-effort heuristic to cover the common concatenation pattern.
-    // Some gstatic assets include extra dot segments like: *.118.woff2
-    // So we allow dots in the path, while still restricting to font-like extensions.
+    // Keep this as a best-effort heuristic to cover the common concatenation pattern.
+    // Some gstatic assets include extra dot segments like: notocoloremoji/v32/Yq6P-KqIXTD0t4D9z1ESnKM3-HpFabsE4tq3luCC7p-aXxcn.0.woff2
+    // Allow dots in the path, while still restricting to font-like extensions.
     final relAssetRegex = RegExp(
       r"""["']([a-zA-Z0-9/_\.-]+\.(?:woff2|woff|ttf|otf|eot|svg))["']""",
       caseSensitive: false,
@@ -123,7 +123,6 @@ Future<void> main(List<String> args) async {
       );
     }
     stdout.writeln(' - fonts.gstatic.com rewritten -> assets/gstatic/');
-    stdout.writeln('Backup: ${mainJs.path}.bak');
   } catch (e, st) {
     stderr.writeln('ERROR: $e');
     stderr.writeln(st);
