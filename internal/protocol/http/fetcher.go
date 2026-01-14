@@ -411,6 +411,9 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 		file.Name = httpReq.URL.Hostname()
 	}
 
+	// Truncate filename if too long (filesystem limits)
+	file.Name = truncateFilename(file.Name, 100)
+
 	res.Files = append(res.Files, file)
 	f.meta.Res = res
 

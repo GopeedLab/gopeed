@@ -404,3 +404,70 @@ func isValidHTMLEntityChars(s string) bool {
 	}
 	return true
 }
+
+// ============================================================================
+// Filename Length Handling
+// ============================================================================
+
+// truncateFilename truncates a filename to a maximum byte length while preserving the extension.
+// If the filename (including extension) exceeds maxLength bytes, it will be truncated.
+// The extension is preserved when possible, and the base name is truncated to fit.
+// Truncation is done carefully to avoid cutting in the middle of a Unicode character.
+// maxLength should be at least 10 to allow for reasonable truncation with extensions.
+func truncateFilename(filename string, maxLength int) string {
+	// If already short enough, return as-is
+	if len(filename) <= maxLength {
+		return filename
+	}
+
+	// Find the extension (last dot in filename)
+	ext := ""
+	lastDot := strings.LastIndex(filename, ".")
+	
+	// Only treat as extension if:
+	// 1. There is a dot
+	// 2. The dot is not at the start (not a hidden file like .gitignore)
+	// 3. The extension is reasonable length (< 20 bytes) to avoid edge cases
+	if lastDot > 0 && lastDot < len(filename)-1 && len(filename)-lastDot < 20 {
+		ext = filename[lastDot:]
+		filename = filename[:lastDot]
+	}
+
+	// Calculate how much space we have for the base name
+	availableLength := maxLength - len(ext)
+	
+	// Ensure we have at least some space for the base name
+	if availableLength < 1 {
+		// Extension itself is too long or no room, just truncate everything at byte boundary
+		return truncateAtValidUTF8Boundary(filename+ext, maxLength)
+	}
+
+	// Truncate the base name at a valid UTF-8 boundary
+	truncatedBase := truncateAtValidUTF8Boundary(filename, availableLength)
+	
+	return truncatedBase + ext
+}
+
+// truncateAtValidUTF8Boundary truncates a string to at most maxBytes,
+// ensuring we don't cut in the middle of a UTF-8 character
+func truncateAtValidUTF8Boundary(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
+	}
+	
+	// Truncate at byte position
+	truncated := s[:maxBytes]
+	
+	// Find the last valid UTF-8 character boundary
+	// Walk backwards to find where the last complete character ends
+	for len(truncated) > 0 {
+		// Check if this is a valid UTF-8 string
+		if utf8.ValidString(truncated) {
+			return truncated
+		}
+		// Remove one byte and try again
+		truncated = truncated[:len(truncated)-1]
+	}
+	
+	return truncated
+}
