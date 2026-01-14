@@ -110,6 +110,7 @@ func (f *Fetcher) Start() (err error) {
 			return
 		}
 	}
+
 	files := f.torrent.Files()
 	// If the user does not specify the file to download, all files will be downloaded by default
 	if f.data.Progress == nil {
@@ -129,12 +130,12 @@ func (f *Fetcher) Start() (err error) {
 			file.Download()
 		}
 	}
+	f.torrent.AllowDataDownload()
 	return
 }
 
 func (f *Fetcher) Pause() (err error) {
-	f.torrentReady.Store(false)
-	f.safeDrop()
+	f.torrent.DisallowDataDownload()
 	return
 }
 

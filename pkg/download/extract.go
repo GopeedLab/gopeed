@@ -229,7 +229,7 @@ func extractArchive(archivePath string, destDir string, password string, progres
 func createCountingHandler(count *int) func(ctx context.Context, fileInfo archives.FileInfo) error {
 	return func(ctx context.Context, fileInfo archives.FileInfo) error {
 		if !fileInfo.IsDir() {
-			*count++
+			(*count)++
 		}
 		return nil
 	}

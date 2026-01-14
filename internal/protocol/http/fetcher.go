@@ -23,9 +23,14 @@ import (
 )
 
 const (
-	connectTimeout = 15 * time.Second
-	readTimeout    = 15 * time.Second
-	helpMinSize    = 1 * 1024 * 1024 // Minimum chunk size for helper connections
+	connectTimeout     = 15 * time.Second
+	readTimeout        = 15 * time.Second
+	minFastFailTimeout = int64(3 * time.Second) // Minimum timeout for fast-fail retry
+
+	// Work stealing parameters
+	// When a connection finishes its chunk, it can "steal" work from slow connections.
+	stealThresholdSeconds = 3          // Only steal if victim needs > 3 seconds to finish
+	stealMinChunkSize     = 512 * 1024 // Min steal size: 512KB (avoid tiny chunks)
 )
 
 // ============================================================================
@@ -96,6 +101,11 @@ type connection struct {
 	retryTimes int
 	lastErr    error
 
+	// Speed tracking for work stealing decisions
+	speed             int64 // bytes per second
+	lastSpeedCheck    int64 // timestamp in nanoseconds
+	lastSpeedDownload int64 // bytes downloaded at last check
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -121,14 +131,6 @@ func newSlowStartController(maxConnections int) *slowStartController {
 		nextBatchSize:  1,
 		expansionCh:    make(chan struct{}, 1),
 	}
-}
-
-// startBatch marks the start of a new batch with count connections
-func (s *slowStartController) startBatch(count int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.batchPending = count
-	s.batchReady = 0
 }
 
 // onConnectSuccess is called when a connection successfully gets HTTP response
@@ -202,13 +204,6 @@ func (s *slowStartController) commitBatch(count int) {
 	s.batchReady = 0
 }
 
-// isMaxReached returns true if max connections have been launched
-func (s *slowStartController) isMaxReached() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.totalLaunched >= s.maxConnections
-}
-
 // ============================================================================
 // Fetcher
 // ============================================================================
@@ -230,6 +225,9 @@ type Fetcher struct {
 
 	// Slow start controller
 	slowStart *slowStartController
+
+	// Max connection time for adaptive timeout (stored as int64 nanoseconds for atomic ops)
+	maxConnTime atomic.Int64
 
 	// First primary connection success signal
 	primaryReadyOnce sync.Once
@@ -264,6 +262,9 @@ type Fetcher struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
+	// downloadLoop lifecycle tracking
+	downloadLoopDone chan struct{} // Closed when downloadLoop exits
+
 	// Resolve connection control
 	resolveCtx    context.Context
 	resolveCancel context.CancelFunc
@@ -297,6 +298,14 @@ func (f *Fetcher) setState(s fetcherState) {
 	f.state.Store(int32(s))
 }
 
+// updateMaxConnTime updates maxConnTime if the new duration is larger
+func (f *Fetcher) updateMaxConnTime(d time.Duration) {
+	newVal := int64(d)
+	if newVal > f.maxConnTime.Load() {
+		f.maxConnTime.Store(newVal)
+	}
+}
+
 func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
 		return err
@@ -326,7 +335,7 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 
 	// Build HTTP request WITHOUT Range header (normal request)
 	// This allows the response to be reused for downloading (important for one-time URLs)
-	httpReq, err := f.buildRequest(nil, req)
+	httpReq, err := f.buildRequest(context.TODO(), req)
 	if err != nil {
 		f.setState(stateError)
 		return err
@@ -335,11 +344,15 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	client := f.buildClient()
 
 	// Send normal HTTP request (no Range header)
+	// Track connection time for adaptive timeout in download phase
+	connStartTime := time.Now()
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		f.setState(stateError)
 		return err
 	}
+	// Record connection time as baseline for fast-fail timeout
+	f.updateMaxConnTime(time.Since(connStartTime))
 
 	// Parse response to get resource info
 	res := &base.Resource{
@@ -639,6 +652,9 @@ func (f *Fetcher) doStart() error {
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
+	// Create downloadLoop lifecycle channel
+	f.downloadLoopDone = make(chan struct{})
+
 	// Start download
 	f.setState(stateSlowStart)
 	go f.downloadLoop()
@@ -648,15 +664,14 @@ func (f *Fetcher) doStart() error {
 
 func (f *Fetcher) downloadLoop() {
 	defer func() {
-		f.fileMu.Lock()
-		if f.file != nil {
-			f.file.Close()
-		}
-		f.fileMu.Unlock()
-
-		// Update file last modified time
+		// Update file last modified time before closing
 		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
 			setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
+		}
+
+		// Signal that downloadLoop has exited
+		if f.downloadLoopDone != nil {
+			close(f.downloadLoopDone)
 		}
 	}()
 
@@ -682,9 +697,18 @@ func (f *Fetcher) downloadLoop() {
 		case <-f.slowStart.expansionCh:
 			// Batch completed, try to expand
 			if f.checkCompletion() {
+				// All work is done, wait for connections to finish
+				f.waitForCompletion()
 				return
 			}
 			f.expandConnections()
+
+			// Check if we've reached steady state (max connections)
+			if f.getState() == stateSteady {
+				// Wait for all connections to complete
+				f.waitForCompletion()
+				return
+			}
 		}
 	}
 }
@@ -706,16 +730,9 @@ func (f *Fetcher) startResolveDownload() {
 		// Use the resolve response directly
 		go f.runConnectionWithResolveResp(conn)
 
-		// For non-range downloads, wait for completion in the main downloadLoop
-		// by triggering immediate completion check
-		go func() {
-			f.wg.Wait()
-			// Signal expansion channel to trigger completion check in downloadLoop
-			select {
-			case f.slowStart.expansionCh <- struct{}{}:
-			default:
-			}
-		}()
+		// For non-range downloads, wait for completion directly in this goroutine
+		// Don't create another goroutine to avoid WaitGroup reuse issues
+		f.waitForCompletion()
 		return
 	}
 
@@ -729,7 +746,8 @@ func (f *Fetcher) expandConnections() {
 	if batchSize <= 0 {
 		// Max reached, transition to steady state
 		f.setState(stateSteady)
-		go f.waitForCompletion()
+		// Don't start a new goroutine - let the downloadLoop handle completion
+		// This avoids multiple goroutines calling wg.Wait() simultaneously
 		return
 	}
 
@@ -745,6 +763,15 @@ func (f *Fetcher) expandConnections() {
 		// If prefetched all data, mark as done
 		if prefetched >= totalSize {
 			f.connMu.Unlock()
+
+			// Close the file before signaling completion
+			f.fileMu.Lock()
+			if f.file != nil {
+				f.file.Close()
+				f.file = nil
+			}
+			f.fileMu.Unlock()
+
 			f.setState(stateDone)
 			f.doneCh <- nil
 			return
@@ -773,6 +800,9 @@ func (f *Fetcher) expandConnections() {
 
 	// For subsequent batches, use "help other connection" strategy
 	// Find connections with enough remaining work to split
+	// During slow start, use fixed minimum size since speed is not yet stable
+	minSplitSize := int64(stealMinChunkSize)
+
 	newConns := make([]*connection, 0, batchSize)
 	for i := 0; i < batchSize; i++ {
 		// Find the connection with most remaining work
@@ -784,7 +814,8 @@ func (f *Fetcher) expandConnections() {
 				continue
 			}
 			remain := conn.Chunk.remain()
-			if remain > maxRemain && remain > helpMinSize*2 {
+			// Only split if remaining work is at least 2x the minimum split size
+			if remain > maxRemain && remain > minSplitSize*2 {
 				maxRemainConn = conn
 				maxRemain = remain
 			}
@@ -839,13 +870,19 @@ func (f *Fetcher) runConnection(conn *connection) {
 	conn.State = connConnecting
 	f.connMu.Unlock()
 
-	client := f.buildClient()
+	// Use fast-fail client for quick retry during download phase
+	client := f.buildFastFailClient()
 	buf := make([]byte, 8192)
 
 	retries := 0
 	conn.retryTimes = 0
 
 	for {
+		// Rebuild client with updated fast-fail timeout on retries
+		if retries > 0 {
+			client = f.buildFastFailClient()
+		}
+
 		err := f.downloadChunkOnce(conn, client, buf)
 		if err == nil {
 			if !f.meta.Res.Range || !f.helpOtherConnection(conn) {
@@ -937,6 +974,9 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			fmt.Sprintf(base.HttpHeaderRangeFormat, rangeStart, rangeEnd))
 	}
 
+	// Record connection start time for adaptive timeout tracking
+	connStartTime := time.Now()
+
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return err
@@ -946,6 +986,9 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
 		return NewRequestError(resp.StatusCode)
 	}
+
+	// Record successful connection time for adaptive timeout
+	f.updateMaxConnTime(time.Since(connStartTime))
 
 	f.connMu.Lock()
 	conn.State = connDownloading
@@ -1005,6 +1048,19 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			f.connMu.Lock()
 			conn.Chunk.Downloaded += int64(n)
 			conn.Downloaded += int64(n)
+			// Update connection speed periodically
+			now := time.Now().UnixNano()
+			if conn.lastSpeedCheck == 0 {
+				conn.lastSpeedCheck = now
+				conn.lastSpeedDownload = conn.Downloaded
+			} else if now-conn.lastSpeedCheck >= int64(500*time.Millisecond) {
+				elapsed := float64(now-conn.lastSpeedCheck) / float64(time.Second)
+				if elapsed > 0 {
+					conn.speed = int64(float64(conn.Downloaded-conn.lastSpeedDownload) / elapsed)
+				}
+				conn.lastSpeedCheck = now
+				conn.lastSpeedDownload = conn.Downloaded
+			}
 			f.connMu.Unlock()
 
 			if finished {
@@ -1107,7 +1163,8 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 // runConnectionFallback is used when resolve response is not available
 func (f *Fetcher) runConnectionFallback(conn *connection) {
-	client := f.buildClient()
+	// Use fast-fail client for quick retry during download phase
+	client := f.buildFastFailClient()
 	buf := make([]byte, 8192)
 
 	retries := 0
@@ -1116,6 +1173,11 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 	for {
 		if conn.ctx.Err() != nil {
 			return
+		}
+
+		// Rebuild client with updated fast-fail timeout on retries
+		if retries > 0 {
+			client = f.buildFastFailClient()
 		}
 
 		f.connMu.Lock()
@@ -1128,6 +1190,9 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 				return err
 			}
 
+			// Record connection start time for adaptive timeout tracking
+			connStartTime := time.Now()
+
 			resp, err := client.Do(httpReq)
 			if err != nil {
 				return err
@@ -1137,6 +1202,9 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 			if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
 				return NewRequestError(resp.StatusCode)
 			}
+
+			// Record successful connection time for adaptive timeout
+			f.updateMaxConnTime(time.Since(connStartTime))
 
 			f.connMu.Lock()
 			conn.State = connDownloading
@@ -1248,34 +1316,50 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 	}
 }
 
+// helpOtherConnection implements work stealing: when a connection finishes its chunk,
+// it looks for connections that need more than stealThresholdSeconds to finish and steals half of its work.
 func (f *Fetcher) helpOtherConnection(helper *connection) bool {
 	f.connMu.Lock()
 	defer f.connMu.Unlock()
 
-	// Find the slowest connection
-	var maxRemainConnection *connection
-	var maxRemain int64
+	// Find the connection with longest remaining time
+	var slowestConn *connection
+	var maxRemainSeconds int64
 	for _, r := range f.connections {
 		if r == helper || r.Completed || r.State == connFailed {
 			continue
 		}
 
 		remain := r.Chunk.remain()
-		if remain > maxRemain && remain > helpMinSize {
-			maxRemainConnection = r
-			maxRemain = remain
+		if remain < stealMinChunkSize {
+			continue
+		}
+
+		// Calculate remaining time in seconds for this connection
+		var remainSeconds int64
+		if r.speed > 0 {
+			remainSeconds = remain / r.speed
+		} else {
+			// Speed unknown, assume it needs help if chunk is large enough
+			remainSeconds = stealThresholdSeconds + 1
+		}
+
+		// Only consider if it needs more than threshold seconds to finish
+		if remainSeconds > stealThresholdSeconds && remainSeconds > maxRemainSeconds {
+			slowestConn = r
+			maxRemainSeconds = remainSeconds
 		}
 	}
 
-	if maxRemainConnection == nil {
+	if slowestConn == nil {
 		return false
 	}
 
-	// Re-calculate the chunk range
-	helper.Chunk.Begin = maxRemainConnection.Chunk.End - maxRemainConnection.Chunk.remain()/2
-	helper.Chunk.End = maxRemainConnection.Chunk.End
+	// Re-calculate the chunk range: steal half of the remaining work
+	helper.Chunk.Begin = slowestConn.Chunk.End - slowestConn.Chunk.remain()/2
+	helper.Chunk.End = slowestConn.Chunk.End
 	helper.Chunk.Downloaded = 0
-	maxRemainConnection.Chunk.End = helper.Chunk.Begin - 1
+	slowestConn.Chunk.End = helper.Chunk.Begin - 1
 	return true
 }
 
@@ -1380,6 +1464,15 @@ func (f *Fetcher) onDownloadComplete() {
 	}
 	f.connMu.Unlock()
 
+	// Close the file before signaling completion
+	// This ensures the file handle is released before Wait() returns
+	f.fileMu.Lock()
+	if f.file != nil {
+		f.file.Close()
+		f.file = nil
+	}
+	f.fileMu.Unlock()
+
 	if finalErr != nil {
 		f.setState(stateError)
 	} else {
@@ -1406,8 +1499,7 @@ func (f *Fetcher) checkCompletion() bool {
 	}
 
 	if f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size {
-		f.setState(stateSteady)
-		go f.waitForCompletion()
+		// Don't start a new goroutine - let the caller handle completion
 		return true
 	}
 
@@ -1424,8 +1516,7 @@ func (f *Fetcher) checkCompletion() bool {
 	}
 
 	if allCompleted {
-		f.setState(stateSteady)
-		go f.waitForCompletion()
+		// Don't start a new goroutine - let the caller handle completion
 		return true
 	}
 
@@ -1450,7 +1541,12 @@ func (f *Fetcher) Pause() error {
 		}
 	}
 
-	// Wait for all goroutines to stop
+	// Wait for downloadLoop to exit first (it will call wg.Wait internally)
+	if f.downloadLoopDone != nil {
+		<-f.downloadLoopDone
+	}
+
+	// Wait for all connection goroutines to stop
 	f.wg.Wait()
 
 	// Wait for prefetch to finish
