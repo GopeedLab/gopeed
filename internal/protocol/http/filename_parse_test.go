@@ -137,6 +137,85 @@ func TestUnescapeHTMLEntities(t *testing.T) {
 	}
 }
 
+// TestReplaceInvalidFilenameChars tests the invalid character replacement functionality
+func TestReplaceInvalidFilenameChars(t *testing.T) {
+	tests := []struct {
+		name     string
+		filename string
+		want     string
+	}{
+		{
+			name:     "no invalid chars",
+			filename: "normal_file.txt",
+			want:     "normal_file.txt",
+		},
+		{
+			name:     "backslash",
+			filename: "path\\to\\file.txt",
+			want:     "path_to_file.txt",
+		},
+		{
+			name:     "forward slash",
+			filename: "path/to/file.txt",
+			want:     "path_to_file.txt",
+		},
+		{
+			name:     "colon",
+			filename: "file:name.txt",
+			want:     "file_name.txt",
+		},
+		{
+			name:     "asterisk",
+			filename: "file*.txt",
+			want:     "file_.txt",
+		},
+		{
+			name:     "question mark",
+			filename: "file?.txt",
+			want:     "file_.txt",
+		},
+		{
+			name:     "quote",
+			filename: "file\"name.txt",
+			want:     "file_name.txt",
+		},
+		{
+			name:     "less than and greater than",
+			filename: "file<name>.txt",
+			want:     "file_name_.txt",
+		},
+		{
+			name:     "pipe",
+			filename: "file|name.txt",
+			want:     "file_name.txt",
+		},
+		{
+			name:     "multiple invalid chars",
+			filename: "path\\to/file:name*.txt",
+			want:     "path_to_file_name_.txt",
+		},
+		{
+			name:     "empty filename",
+			filename: "",
+			want:     "",
+		},
+		{
+			name:     "Windows path",
+			filename: "C:\\Users\\test\\file.txt",
+			want:     "C__Users_test_file.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := replaceInvalidFilenameChars(tt.filename)
+			if got != tt.want {
+				t.Errorf("replaceInvalidFilenameChars() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 // TestTruncateFilename tests the filename truncation functionality
 func TestTruncateFilename(t *testing.T) {
 	tests := []struct {

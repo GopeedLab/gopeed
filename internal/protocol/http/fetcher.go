@@ -411,6 +411,9 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 		file.Name = httpReq.URL.Hostname()
 	}
 
+	// Replace invalid filename characters (filesystem compatibility)
+	file.Name = replaceInvalidFilenameChars(file.Name)
+
 	// Truncate filename if too long (filesystem limits)
 	file.Name = truncateFilename(file.Name, 100)
 
