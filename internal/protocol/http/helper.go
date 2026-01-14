@@ -409,6 +409,13 @@ func isValidHTMLEntityChars(s string) bool {
 // Filename Length Handling
 // ============================================================================
 
+const (
+	// maxExtensionLength is the maximum length in bytes for a file extension
+	// to be treated as a valid extension. Extensions longer than this are
+	// treated as part of the filename to avoid edge cases.
+	maxExtensionLength = 20
+)
+
 // truncateFilename truncates a filename to a maximum byte length while preserving the extension.
 // If the filename (including extension) exceeds maxLength bytes, it will be truncated.
 // The extension is preserved when possible, and the base name is truncated to fit.
@@ -427,8 +434,8 @@ func truncateFilename(filename string, maxLength int) string {
 	// Only treat as extension if:
 	// 1. There is a dot
 	// 2. The dot is not at the start (not a hidden file like .gitignore)
-	// 3. The extension is reasonable length (< 20 bytes) to avoid edge cases
-	if lastDot > 0 && lastDot < len(filename)-1 && len(filename)-lastDot < 20 {
+	// 3. The extension is reasonable length (< maxExtensionLength bytes) to avoid edge cases
+	if lastDot > 0 && lastDot < len(filename)-1 && len(filename)-lastDot < maxExtensionLength {
 		ext = filename[lastDot:]
 		filename = filename[:lastDot]
 	}
