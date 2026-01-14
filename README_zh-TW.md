@@ -189,7 +189,7 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 
 ### 🌍 開發環境
 
-1. Golang 1.23+
+1. Golang 1.24+
 2. Flutter 3.24+
 
 ### 📋 克隆項目

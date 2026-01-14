@@ -2,11 +2,12 @@ package download
 
 import (
 	"encoding/json"
-	"go.etcd.io/bbolt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sync"
+
+	"go.etcd.io/bbolt"
 )
 
 type Storage interface {
@@ -45,22 +46,24 @@ func changeValue(p any, v any) {
 	}
 }
 
-var memData = make(map[string]map[string]any)
-
 type MemStorage struct {
 	lock *sync.RWMutex
+	data map[string]map[string]any
 }
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		lock: &sync.RWMutex{},
+		data: make(map[string]map[string]any),
 	}
 }
 
 func (n *MemStorage) Setup(buckets []string) error {
+	n.lock.Lock()
+	defer n.lock.Unlock()
 	for _, bucket := range buckets {
-		if _, ok := memData[bucket]; !ok {
-			memData[bucket] = make(map[string]any)
+		if _, ok := n.data[bucket]; !ok {
+			n.data[bucket] = make(map[string]any)
 		}
 	}
 	return nil
@@ -69,7 +72,7 @@ func (n *MemStorage) Setup(buckets []string) error {
 func (n *MemStorage) Put(bucket string, key string, v any) error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	if bucketData, ok := memData[bucket]; ok {
+	if bucketData, ok := n.data[bucket]; ok {
 		bucketData[key] = v
 	}
 	return nil
@@ -78,7 +81,7 @@ func (n *MemStorage) Put(bucket string, key string, v any) error {
 func (n *MemStorage) Get(bucket string, key string, v any) (bool, error) {
 	n.lock.RLock()
 	defer n.lock.RUnlock()
-	if dv, ok := memData[bucket][key]; ok {
+	if dv, ok := n.data[bucket][key]; ok {
 		changeValue(v, dv)
 		return true, nil
 	}
@@ -88,7 +91,7 @@ func (n *MemStorage) Get(bucket string, key string, v any) (bool, error) {
 func (n *MemStorage) List(bucket string, v any) error {
 	n.lock.RLock()
 	defer n.lock.RUnlock()
-	data := memData[bucket]
+	data := n.data[bucket]
 	list := make([]any, 0)
 	for _, v := range data {
 		list = append(list, v)
@@ -100,7 +103,7 @@ func (n *MemStorage) List(bucket string, v any) error {
 func (n *MemStorage) Pop(bucket string, key string, v any) error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	data := memData[bucket]
+	data := n.data[bucket]
 	changeValue(v, data[key])
 	delete(data, key)
 	return nil
@@ -109,7 +112,7 @@ func (n *MemStorage) Pop(bucket string, key string, v any) error {
 func (n *MemStorage) Delete(bucket string, key string) error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	delete(memData[bucket], key)
+	delete(n.data[bucket], key)
 	return nil
 }
 
@@ -120,7 +123,7 @@ func (n *MemStorage) Close() error {
 func (n *MemStorage) Clear() error {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	memData = make(map[string]map[string]any)
+	n.data = make(map[string]map[string]any)
 	return nil
 }
 
