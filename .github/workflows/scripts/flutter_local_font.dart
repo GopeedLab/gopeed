@@ -243,7 +243,7 @@ Future<void> main(List<String> args) async {
       final httpClient = HttpClient()
         ..connectionTimeout = const Duration(seconds: 30)
         ..idleTimeout = const Duration(seconds: 30)
-        ..maxConnectionsPerHost = 6
+        ..maxConnectionsPerHost = 6;
       try {
         for (final entry in downloads.entries) {
           final relPath = entry.key;
