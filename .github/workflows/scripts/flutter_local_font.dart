@@ -101,9 +101,7 @@ Set<String> _parseSupportedLocales(File messageFile) {
   final locales = <String>{};
 
   if (!messageFile.existsSync()) {
-    stdout.writeln(
-        'Warning: message.dart not found, only base fonts will be used');
-    return locales;
+    _fail('Warning: message.dart not found, only base fonts will be used');
   }
 
   final content = messageFile.readAsStringSync();
@@ -118,7 +116,7 @@ Set<String> _parseSupportedLocales(File messageFile) {
   }
 
   if (locales.isEmpty) {
-    stdout.writeln(
+    _fail(
         'Warning: No locales found in message.dart, only base fonts will be used');
   }
 
@@ -208,6 +206,10 @@ Future<void> main(List<String> args) async {
           p.startsWith('packages/')) continue;
       if (p.contains('..')) continue;
       relAssetsUnderS.add(p);
+    }
+
+    if (relAssetsUnderS.isEmpty) {
+      _fail('No fonts.gstatic.com assets found in main.dart.js.');
     }
 
     // Build a download plan: dest relative path (under assets/gstatic/) -> URL.
