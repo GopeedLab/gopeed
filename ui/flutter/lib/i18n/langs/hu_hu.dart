@@ -37,6 +37,7 @@ const huHU = {
     'downloadDirValid': 'Kérjük, válassza ki a letöltési könyvtárat',
     'connections': 'Kapcsolatok',
     'useServerCtime': 'Használja a szerveridőt a fájl létrehozásához',
+    'autoTorrent': 'Töltse le automatikusan a torrent fájlokat',
     'maxRunning': 'Maximális futó feladatok',
     'defaultDirectDownload':
         'Alapértelmezettként ellenőrizze a közvetlen letöltést',

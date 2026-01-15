@@ -36,6 +36,7 @@ const zhTW = {
     'downloadDirValid': '請選擇下載目錄',
     'connections': '連接數',
     'useServerCtime': '使用伺服器時間作為檔案建立時間',
+    'autoTorrent': '自動下載種子檔案',
     'maxRunning': '最大執行任務數',
     'defaultDirectDownload': '預設勾選直接下載',
     'autoStartTasks': '啟動時自動開始未完成的任務',

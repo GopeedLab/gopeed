@@ -35,6 +35,7 @@ const plPL = {
     'downloadDirValid': 'Wskaż folder pobierania',
     'connections': 'Połączenia',
     'useServerCtime': 'Użyj czasu serwera do utworzenia pliku',
+    'autoTorrent': 'Automatyczne pobieranie plików torrent',
     'maxRunning': 'Maksymalna liczba zadań',
     'items': '@count items',
     'subscribeTracker': 'Subskrybuj tracker',

@@ -37,6 +37,7 @@ const ptBR = {
     'downloadDirValid': 'Por favor, selecione a pasta',
     'connections': 'Conexões',
     'useServerCtime': 'Use server time for file creation',
+    'autoTorrent': 'Baixar automaticamente arquivos torrent',
     'maxRunning': 'Máximo de Tarefas Simultâneas',
     'defaultDirectDownload': 'Marcar download direto por padrão',
     'items': '@count itens',

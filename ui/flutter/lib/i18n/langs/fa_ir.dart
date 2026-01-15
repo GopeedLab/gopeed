@@ -26,6 +26,7 @@ const faIR = {
     'downloadDir': 'دایرکتوری دانلود',
     'downloadDirValid': 'لطفا دایرکتوری دانلود را انتخاب کنید',
     'connections': 'اتصالات',
+    'autoTorrent': 'دانلود خودکار فایل‌های تورنت',
     'items': '@count آیتم ها',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':

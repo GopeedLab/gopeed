@@ -28,6 +28,7 @@ const jaJP = {
     'downloadDir': 'ディレクトリのダウンロード',
     'downloadDirValid': 'ダウンロードディレクトリを選択してください',
     'connections': '接続',
+    'autoTorrent': 'トレントファイルを自動ダウンロード',
     'maxRunning': '最大実行タスク',
     'autoStartTasks': '起動時に未完了のタスクを自動的に開始',
     'items': '@count アイテム',

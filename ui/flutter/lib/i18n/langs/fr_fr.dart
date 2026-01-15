@@ -37,6 +37,7 @@ const frFR = {
     'connections': 'Connexions',
     'useServerCtime':
         'Utiliser l\'heure du serveur pour la création de fichier',
+    'autoTorrent': 'Télécharger automatiquement les fichiers torrent',
     'maxRunning': 'Tâches en cours maximum',
     'autoStartTasks':
         'Démarrer automatiquement les tâches incomplètes au lancement',
