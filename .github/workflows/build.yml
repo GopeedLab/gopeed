@@ -42,11 +42,11 @@ jobs:
           - arch: arm64
             os: windows-11-arm
             llvm_ver: "20251202" # Only ARM64
-            flutter_channel: 'master'
-            flutter_version: '8817d45220d' # Only ARM64
+            flutter_channel: "master"
+            flutter_version: "8817d45220d" # Only ARM64
           - arch: amd64
             os: windows-2022
-            flutter_channel: 'stable'
+            flutter_channel: "stable"
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -215,7 +215,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        channel: [ arm64, amd64, universal ]
+        channel: [arm64, amd64, universal]
     needs: [get-release, build-macos-amd64-lib]
     steps:
       - uses: actions/checkout@v3
@@ -628,6 +628,7 @@ jobs:
         run: |
           cd ui/flutter
           flutter build web --no-web-resources-cdn
+          dart ../../.github/workflows/scripts/flutter_local_font.dart
           cd ../../
           cp -r ui/flutter/build/web cmd/web/dist
           mkdir -p dist/zip
@@ -744,6 +745,7 @@ jobs:
         run: |
           cd ui/flutter
           flutter build web --no-web-resources-cdn --dart-define="UPDATE_CHANNEL=docker"
+          dart ../../.github/workflows/scripts/flutter_local_font.dart
           cd ../../
           rm -rf cmd/web/dist
           cp -r ui/flutter/build/web cmd/web/dist
