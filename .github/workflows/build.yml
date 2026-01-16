@@ -6,7 +6,7 @@ on:
       platform:
         description: "Build platform"
         required: true
-        default: "all"
+        default: "windows" # Поменял дефолт на windows для удобства
       test:
         description: "Test mode"
         required: true
@@ -15,6 +15,8 @@ on:
 env:
   GO_VERSION: "1.24"
   FLUTTER_VERSION: "3.24.5"
+  # === СТАТИЧНАЯ ВЕРСИЯ ===
+  FIXED_VERSION: "1.8.4"
 
 permissions:
   contents: write
@@ -25,12 +27,13 @@ jobs:
     outputs:
       version: ${{ steps.get-release.outputs.version }}
       upload_url: ${{ steps.get-release.outputs.upload_url }}
-
     steps:
       - uses: monkeyWie/get-latest-release@v2.1
         id: get-release
         with:
           myToken: ${{ github.token }}
+        # Игнорируем ошибку, так как на форке релизов нет
+        continue-on-error: true
 
   build-windows:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'windows' }}
@@ -84,9 +87,11 @@ jobs:
         with:
           channel: ${{ matrix.flutter_channel }}
           flutter-version: ${{ matrix.flutter_version || env.FLUTTER_VERSION }}
+      
       - name: Build
         env:
-          VERSION: ${{ needs.get-release.outputs.version }}
+          # === ИСПОЛЬЗУЕМ СТАТИЧНУЮ ВЕРСИЮ ВМЕСТО РЕЛИЗНОЙ ===
+          VERSION: ${{ env.FIXED_VERSION }}
           GOARCH: ${{ matrix.arch }}
         run: |
           Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
@@ -181,12 +186,23 @@ jobs:
           iscc.exe setup.iss
           mv "Output\gopeed.exe" "Output\Gopeed-$TAG-windows-${{ matrix.arch }}.exe"
           Compress-Archive -Path "Output\Gopeed-$TAG-windows-${{ matrix.arch }}.exe" -DestinationPath "Output\Gopeed-$TAG-windows-${{ matrix.arch }}.zip"
-      - name: Upload
-        uses: shogo82148/actions-upload-release-asset@v1
+      
+      # === ОТКЛЮЧЕННЫЙ ШАГ ЗАГРУЗКИ В RELEASE (чтобы не было ошибки) ===
+      # - name: Upload
+      #   uses: shogo82148/actions-upload-release-asset@v1
+      #   with:
+      #     upload_url: ${{ needs.get-release.outputs.upload_url }}
+      #     asset_path: ui/flutter/build/windows/Output/*
+      #     overwrite: true
+      
+      # === НОВЫЙ ШАГ: СОХРАНЕНИЕ АРТЕФАКТА ДЛЯ WINDOWS ===
+      - name: Upload Artifacts (Windows)
+        uses: actions/upload-artifact@v4
         with:
-          upload_url: ${{ needs.get-release.outputs.upload_url }}
-          asset_path: ui/flutter/build/windows/Output/*
-          overwrite: true
+          name: Gopeed-Windows-${{ matrix.arch }}
+          path: ui/flutter/build/windows/Output/*
+
+  # Остальные джобы оставлены "как есть", но могут не работать без релиза.
   build-macos-amd64-lib:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-13
