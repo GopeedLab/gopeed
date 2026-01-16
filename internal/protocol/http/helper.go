@@ -416,25 +416,6 @@ const (
 	maxExtensionLength = 20
 )
 
-// invalidFilenameChars contains characters that are invalid in filenames
-// across different operating systems (Windows and Unix-like)
-var invalidFilenameChars = []string{`\`, `/`, `:`, `*`, `?`, `"`, `<`, `>`, `|`}
-
-// replaceInvalidFilenameChars replaces invalid path characters in a filename
-// with underscores to ensure filesystem compatibility.
-func replaceInvalidFilenameChars(filename string) string {
-	if filename == "" {
-		return ""
-	}
-	// Replace invalid characters with underscores
-	// Windows: \ / : * ? " < > |
-	// Unix-like: / :
-	for _, char := range invalidFilenameChars {
-		filename = strings.ReplaceAll(filename, char, "_")
-	}
-	return filename
-}
-
 // truncateFilename truncates a filename to a maximum byte length while preserving the extension.
 // If the filename (including extension) exceeds maxLength bytes, it will be truncated.
 // The extension is preserved when possible, and the base name is truncated to fit.

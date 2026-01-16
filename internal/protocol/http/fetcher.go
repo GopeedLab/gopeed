@@ -19,6 +19,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/xiaoqidun/setft"
 )
 
@@ -412,7 +413,7 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	}
 
 	// Replace invalid filename characters (filesystem compatibility)
-	file.Name = replaceInvalidFilenameChars(file.Name)
+	file.Name = util.ReplaceInvalidFilename(file.Name)
 
 	// Truncate filename if too long (filesystem limits)
 	file.Name = truncateFilename(file.Name, 100)
