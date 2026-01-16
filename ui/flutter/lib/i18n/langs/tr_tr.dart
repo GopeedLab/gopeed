@@ -39,6 +39,8 @@ const trTR = {
     'useServerCtime': 'Dosya oluşturma için sunucu zamanını kullan',
     'maxRunning': 'Maksimum Çalışan Görev',
     'defaultDirectDownload': 'Varsayılan olarak doğrudan indirmeyi seç',
+    'autoDeleteTorrents': '.torrent dosyalarını otomatik sil',
+    'autoCleanMissingFiles': 'Eksik dosyaları otomatik temizle',
     'items': '@count öğe',
     'subscribeTracker': 'Tracker Aboneliği',
     'subscribeFail':

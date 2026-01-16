@@ -40,6 +40,8 @@ const frFR = {
     'maxRunning': 'Tâches en cours maximum',
     'autoStartTasks':
         'Démarrer automatiquement les tâches incomplètes au lancement',
+    'autoDeleteTorrents': 'Supprimer automatiquement les fichiers .torrent',
+    'autoCleanMissingFiles': 'Nettoyer automatiquement les fichiers manquants',
     'items': '@count éléments',
     'subscribeTracker': 'S\'abonner au tracker',
     'subscribeFail':

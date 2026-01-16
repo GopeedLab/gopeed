@@ -36,6 +36,8 @@ const viVN = {
     'connections': 'Kết nối',
     'useServerCtime': 'Sử dụng thời gian máy chủ cho việc tạo tệp',
     'maxRunning': 'Số nhiệm vụ tối đa',
+    'autoDeleteTorrents': 'Tự động xóa tệp .torrent',
+    'autoCleanMissingFiles': 'Tự động dọn dẹp tệp bị thiếu',
     'items': '@count mục',
     'subscribeTracker': 'Theo dõi Tracker',
     'subscribeFail':
