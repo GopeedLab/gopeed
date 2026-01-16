@@ -205,6 +205,9 @@ func (d *Downloader) Setup() error {
 	}
 	d.extensions = extensions
 
+	// Auto-cleanup non-existing tasks on startup
+	d.cleanupNonExistingTasks()
+
 	// handle upload
 	go func() {
 		for _, task := range d.tasks {
@@ -269,6 +272,80 @@ func (d *Downloader) Setup() error {
 		}
 	}()
 	return nil
+}
+
+// cleanupNonExistingTasks checks for tasks whose files are missing on disk
+// and removes them if the AutoCleanMissingFiles config is enabled.
+func (d *Downloader) cleanupNonExistingTasks() {
+	cfg, err := d.GetConfig()
+	if err != nil {
+		return
+	}
+
+	// If the feature is disabled, do nothing
+	if !cfg.AutoCleanMissingFiles {
+		return
+	}
+
+	var tasksToDelete []string
+
+	for _, task := range d.tasks {
+		if task.Meta == nil || task.Meta.Res == nil {
+			continue
+		}
+
+		var targetPath string
+		// Determine if it is a single file or a directory (multi-file torrent)
+		if task.Meta.Res.Name != "" {
+			targetPath = task.Meta.FolderPath()
+		} else {
+			targetPath = task.Meta.SingleFilepath()
+		}
+
+		// Skip if path is empty
+		if targetPath == "" {
+			continue
+		}
+
+		// Check if file/folder exists
+		if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+			d.Logger.Info().Msgf("Auto-cleanup: task %s file not found at %s, removing from list", task.ID, targetPath)
+			tasksToDelete = append(tasksToDelete, task.ID)
+		}
+	}
+
+	if len(tasksToDelete) > 0 {
+		d.Delete(&TaskFilter{IDs: tasksToDelete}, false)
+	}
+}
+
+// resolveTorrentSourcePath tries to extract a local file path from the request URL.
+// It handles file:// URLs and raw absolute paths (Linux/Windows).
+func (d *Downloader) resolveTorrentSourcePath(urlStr string) string {
+	if urlStr == "" {
+		return ""
+	}
+
+	// Case 1: Standard file:// URL
+	if strings.HasPrefix(urlStr, "file://") {
+		u, err := url.Parse(urlStr)
+		if err != nil {
+			d.Logger.Warn().Err(err).Msgf("Failed to parse file URL: %s", urlStr)
+			return ""
+		}
+		// filepath.FromSlash handles converting /C:/path to C:\path on Windows
+		return filepath.FromSlash(u.Path)
+	}
+
+	// Case 2: Raw path (e.g., from file picker on Linux/Mac or Windows)
+	// We check if it looks like an absolute path and points to a file.
+	if filepath.IsAbs(urlStr) {
+		// Clean the path to remove any redundancies like ../ or extra slashes
+		cleanPath := filepath.Clean(urlStr)
+		return cleanPath
+	}
+
+	return ""
 }
 
 func (d *Downloader) parseFm(url string) (fetcher.FetcherManager, error) {
@@ -874,6 +951,8 @@ func (d *Downloader) watch(task *Task) {
 	}
 
 	if task.Status == base.DownloadStatusDone {
+		// Cleanup check for tasks that are already done on startup
+		d.deleteTorrentFileIfConfigured(task)
 		return
 	}
 
@@ -907,6 +986,9 @@ func (d *Downloader) watch(task *Task) {
 	d.triggerOnDone(task)
 	d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 
+	// Auto delete .torrent files after download completion
+	d.deleteTorrentFileIfConfigured(task)
+
 	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
 		downloadFilePath := task.Meta.SingleFilepath()
 		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
@@ -930,6 +1012,50 @@ func (d *Downloader) watch(task *Task) {
 		// This ensures only one extraction runs at a time to prevent resource exhaustion
 		if e.AutoExtract && isArchiveFile(downloadFilePath) {
 			d.enqueueExtraction(task, downloadFilePath, e)
+		}
+	}
+}
+
+// Helper function to encapsulate deletion logic
+func (d *Downloader) deleteTorrentFileIfConfigured(task *Task) {
+	if d.cfg.DownloaderStoreConfig == nil || !d.cfg.DownloaderStoreConfig.AutoDeleteTorrents {
+		return
+	}
+	if task.Meta == nil || task.Meta.Res == nil || task.Meta.Req == nil {
+		return
+	}
+
+	var filePathToDelete string
+
+	// Case 1: Check if the downloaded result is a torrent file (HTTP download)
+	if strings.HasSuffix(task.Meta.SingleFilepath(), ".torrent") {
+		filePathToDelete = task.Meta.SingleFilepath()
+	} else if strings.HasPrefix(strings.ToUpper(task.Meta.Req.URL), "DATA:APPLICATION/X-BITTORRENT;BASE64,") {
+		// Case 3: Web version uploads torrent files as base64 encoded data URLs - no local file to delete
+		d.Logger.Debug().Msgf("Torrent file was uploaded as base64 data URL, no local file to delete")
+		return
+	} else {
+		// Case 2: Check if the request URL points to a local torrent file (BT task via Drag & Drop or Picker)
+		// Use helper to resolve file:// URLs and raw paths
+		resolvedSource := d.resolveTorrentSourcePath(task.Meta.Req.URL)
+		if resolvedSource != "" && strings.HasSuffix(resolvedSource, ".torrent") {
+			filePathToDelete = resolvedSource
+		}
+	}
+
+	// Final check and deletion
+	if filePathToDelete != "" {
+		// Verify file exists before trying to delete to avoid unnecessary errors
+		if _, err := os.Stat(filePathToDelete); err == nil {
+			d.Logger.Info().Msgf("Auto deleting torrent file: %s", filePathToDelete)
+			if err := os.Remove(filePathToDelete); err != nil {
+				d.Logger.Error().Err(err).Msgf("failed to delete torrent file: %s", filePathToDelete)
+			} else {
+				d.Logger.Info().Msgf("Successfully deleted torrent file: %s", filePathToDelete)
+			}
+		} else if !os.IsNotExist(err) {
+			// Some other error occurred during Stat (e.g. permission denied)
+			d.Logger.Error().Err(err).Msgf("cannot access torrent file to delete: %s", filePathToDelete)
 		}
 	}
 }
