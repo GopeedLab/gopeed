@@ -986,9 +986,6 @@ func (d *Downloader) watch(task *Task) {
 	d.triggerOnDone(task)
 	d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 
-	// Auto delete .torrent files after download completion
-	d.deleteTorrentFileIfConfigured(task)
-
 	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
 		downloadFilePath := task.Meta.SingleFilepath()
 		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
@@ -1003,9 +1000,15 @@ func (d *Downloader) watch(task *Task) {
 					})
 				if err2 != nil {
 					d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
+				} else {
+					// Successfully created BT task, now delete the torrent file
+					d.deleteTorrentFileIfConfigured(task)
 				}
 
 			}()
+		} else if !e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
+			// AutoTorrent disabled, delete immediately
+			d.deleteTorrentFileIfConfigured(task)
 		}
 
 		// Auto-extract archive files using the extraction queue
