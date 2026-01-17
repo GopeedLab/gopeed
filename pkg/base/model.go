@@ -185,6 +185,10 @@ type DownloaderStoreConfig struct {
 	Proxy          *DownloaderProxyConfig `json:"proxy"`
 	Webhook        *WebhookConfig         `json:"webhook"` // Webhook is the webhook configuration
 	Archive        *ArchiveConfig         `json:"archive"` // Archive is the archive extraction configuration
+
+	// New fields added for auto-management
+	AutoDeleteTorrents    bool `json:"autoDeleteTorrents"`    // AutoDeleteTorrents enables automatic deletion of .torrent files after download
+	AutoCleanMissingFiles bool `json:"autoCleanMissingFiles"` // AutoCleanMissingFiles enables automatic cleanup of tasks with missing files
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {

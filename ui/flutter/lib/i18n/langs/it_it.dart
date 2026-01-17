@@ -37,6 +37,8 @@ const itIT = {
     'connections': 'Connessioni',
     'useServerCtime': "Utilizza l'ora del server per la creazione dei file",
     'maxRunning': 'Numero massimo di attività in esecuzione',
+    'autoDeleteTorrents': 'Elimina automaticamente i file .torrent',
+    'autoCleanMissingFiles': 'Pulisci automaticamente i file mancanti',
     'items': '@count elementi',
     'subscribeTracker': 'Iscriviti al tracker',
     'subscribeFail':

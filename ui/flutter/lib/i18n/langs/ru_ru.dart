@@ -40,6 +40,8 @@ const ruRU = {
     'maxRunning': 'Максимальное количество активных задач',
     'defaultDirectDownload': 'Прямая загрузка по умолчанию',
     'autoStartTasks': 'Автоматически запускать незавершённые задачи при старте',
+    'autoDeleteTorrents': 'Автоудаление торрент-файлов',
+    'autoCleanMissingFiles': 'Автоочистка отсутствующих файлов',
     'items': '@подсчет элементов',
     'subscribeTracker': 'Подпись трекера',
     'subscribeFail':
