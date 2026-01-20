@@ -970,14 +970,14 @@ func (d *Downloader) watch(task *Task) {
 				if err2 != nil {
 					d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
 				} else {
-					// Successfully created BT task, now delete the http task
-					d.Delete(&TaskFilter{IDs: []string{task.ID}}, false)
+					// Successfully created BT task, now delete the http task and .torrent file
+					d.Delete(&TaskFilter{IDs: []string{task.ID}}, true)
 				}
 
 			}()
 		} else if !e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
-			// AutoTorrent disabled, delete the http task
-			d.Delete(&TaskFilter{IDs: []string{task.ID}}, false)
+			// AutoTorrent disabled, delete the http task and .torrent file
+			d.Delete(&TaskFilter{IDs: []string{task.ID}}, true)
 		}
 
 		// Auto-extract archive files using the extraction queue
