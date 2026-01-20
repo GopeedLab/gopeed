@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:app_links/app_links.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
@@ -20,6 +21,7 @@ import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/request.dart';
+import '../../../../api/model/result.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../core/libgopeed_boot.dart';
 import '../../../../database/database.dart';
@@ -301,6 +303,33 @@ class AppController extends GetxController with WindowListener, TrayListener {
             } catch (e) {
               logger.w(
                   "create task from extension fail", e, StackTrace.current);
+            }
+          }
+        },
+        "/forward": (ctx) async {
+          try {
+            final body = await ctx.readJSON();
+            final method = (body['method'] as String?)?.toUpperCase() ?? 'GET';
+            final path = (body['path'] as String?) ?? "/";
+            final data = body['data'];
+            final query = body['query'] as Map<String, dynamic>?;
+
+            // Forward request to gopeed REST API
+            final response = await forward(
+              path,
+              method: method,
+              data: data,
+              queryParameters: query,
+            );
+
+            // Return raw response
+            await ctx.writeJSON(response.data);
+          } catch (e) {
+            if (e is DioException && e.response != null) {
+              // Return API error response
+              await ctx.writeJSON(e.response!.data);
+            } else {
+              await ctx.writeJSON(Result(code: 1, msg: e.toString()).toJson());
             }
           }
         },

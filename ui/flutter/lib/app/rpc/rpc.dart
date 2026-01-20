@@ -1,8 +1,7 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dart_ipc/dart_ipc.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../../util/util.dart';
 
