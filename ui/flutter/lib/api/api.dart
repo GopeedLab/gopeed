@@ -17,7 +17,6 @@ import 'model/login.dart';
 import 'model/resolve_result.dart';
 import 'model/resolve_task.dart';
 import 'model/result.dart';
-import 'model/server_info.dart';
 import 'model/switch_extension.dart';
 import 'model/task.dart';
 import 'model/update_check_extension_resp.dart';
@@ -122,11 +121,6 @@ Future<T> _parse<T>(
     }
     throw Exception(Result(code: 1000, msg: e.message));
   }
-}
-
-Future<ServerInfo> getInfo() async {
-  return _parse<ServerInfo>(() => _client.dio.get("api/v1/info"),
-      (data) => ServerInfo.fromJson(data));
 }
 
 Future<ResolveResult> resolve(ResolveTask resolveTask) async {
