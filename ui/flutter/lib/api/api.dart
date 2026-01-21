@@ -14,7 +14,6 @@ import 'model/downloader_config.dart';
 import 'model/extension.dart';
 import 'model/install_extension.dart';
 import 'model/login.dart';
-import 'model/request.dart';
 import 'model/resolve_result.dart';
 import 'model/resolve_task.dart';
 import 'model/result.dart';
@@ -266,4 +265,20 @@ String join(String path) {
       ? baseUrl.substring(0, baseUrl.length - 1)
       : baseUrl;
   return "$cleanBaseUrl/${Util.cleanPath(path)}";
+}
+
+/// Generic request method for API proxy
+/// Directly forwards requests to gopeed REST API
+Future<Response> forward(
+  String path, {
+  String method = 'GET',
+  dynamic data,
+  Map<String, dynamic>? queryParameters,
+}) async {
+  return _client.dio.request(
+    path,
+    data: data,
+    queryParameters: queryParameters,
+    options: Options(method: method),
+  );
 }

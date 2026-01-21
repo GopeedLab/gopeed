@@ -3,6 +3,14 @@ package download
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
@@ -12,13 +20,6 @@ import (
 	"github.com/dop251/goja"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"io"
-	"os"
-	"path"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var (
@@ -200,10 +201,14 @@ func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath st
 		subPath = pathArr[1]
 	}
 
-	tempExtDir := filepath.Join(d.cfg.StorageDir, tempExtensionsDir, projectPath)
-	if err := util.RmAndMkDirAll(tempExtDir); err != nil {
+	// Use unique suffix to avoid concurrent conflicts when multiple git operations
+	// target the same extension (e.g., install and update check happening simultaneously)
+	tempExtDir := filepath.Join(d.cfg.StorageDir, tempExtensionsDir, fmt.Sprintf("%s_%d", projectPath, time.Now().UnixNano()))
+	if err := os.MkdirAll(tempExtDir, 0755); err != nil {
 		return nil, err
 	}
+	defer os.RemoveAll(tempExtDir)
+
 	proxyOptions := transport.ProxyOptions{}
 	proxyUrl := d.cfg.DownloaderStoreConfig.Proxy.ToUrl()
 	if proxyUrl != nil {
@@ -220,7 +225,6 @@ func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath st
 	}); err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(tempExtDir)
 
 	return handler(filepath.Join(tempExtDir, subPath), false)
 }
@@ -260,9 +264,9 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, er
 					gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] resource invalid", ext.buildIdentity())
 					return
 				}
-				ctx.Res.Name = util.ReplaceInvalidFilename(ctx.Res.Name)
+				ctx.Res.Name = util.SafeFilename(ctx.Res.Name)
 				for _, file := range ctx.Res.Files {
-					file.Name = util.ReplaceInvalidFilename(file.Name)
+					file.Name = util.SafeFilename(file.Name)
 				}
 				ctx.Res.CalcSize(nil)
 			}

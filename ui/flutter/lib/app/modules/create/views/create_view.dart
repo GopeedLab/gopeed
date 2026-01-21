@@ -82,17 +82,16 @@ class CreateView extends GetView<CreateController> {
       _pathController.text = renderPathPlaceholders(downloadDir);
     }
     // Initialize archive settings from global config if not already set
-    if (_autoExtractController.value == null) {
-      _autoExtractController.value =
-          appController.downloaderConfig.value.archive.autoExtract;
-    }
-    if (_deleteAfterExtractController.value == null) {
-      _deleteAfterExtractController.value =
-          appController.downloaderConfig.value.archive.deleteAfterExtract;
-    }
+    _autoExtractController.value ??=
+        appController.downloaderConfig.value.archive.autoExtract;
+    _deleteAfterExtractController.value ??=
+        appController.downloaderConfig.value.archive.deleteAfterExtract;
 
+    // Handle pending create task from deep link
     final CreateTask? routerParams = Get.rootDelegate.arguments();
-    if (routerParams?.req?.url.isNotEmpty ?? false) {
+    if ((routerParams?.req?.url.isNotEmpty ?? false) &&
+        !controller.pendingCreateHandled) {
+      controller.pendingCreateHandled = true;
       // get url from route arguments
       final url = routerParams!.req!.url;
       _urlController.text = url;
