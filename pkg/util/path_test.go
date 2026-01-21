@@ -244,6 +244,104 @@ func TestReplaceInvalidFilename(t *testing.T) {
 	}
 }
 
+// TestSafeFilename tests the combined filename sanitization functionality
+func TestSafeFilename(t *testing.T) {
+	tests := []struct {
+		name      string
+		filename  string
+		maxLength int
+		want      string
+	}{
+		{
+			name:      "short filename - no changes needed",
+			filename:  "test.txt",
+			maxLength: 100,
+			want:      "test.txt",
+		},
+		{
+			name:      "empty filename",
+			filename:  "",
+			maxLength: 100,
+			want:      "",
+		},
+		{
+			name:      "invalid chars only",
+			filename:  "te/st:file.txt",
+			maxLength: 100,
+			want:      "te_st_file.txt",
+		},
+		{
+			name:      "long filename only",
+			filename:  "this_is_a_very_long_filename_that_exceeds_the_maximum_allowed_length_and_should_be_truncated_properly.txt",
+			maxLength: 100,
+			want:      "this_is_a_very_long_filename_that_exceeds_the_maximum_allowed_length_and_should_be_truncated_pro.txt",
+		},
+		{
+			name:      "both invalid chars and too long",
+			filename:  "path/to/very:long*filename?that<exceeds>filesystem|limits_and_has_invalid_characters_everywhere.pdf",
+			maxLength: 100,
+			want:      "path_to_very_long*filename?that<exceeds>filesystem|limits_and_has_invalid_characters_everywhere.pdf",
+		},
+		{
+			name:      "windows path with invalid chars and length",
+			filename:  "C:\\Users\\test\\very_long_filename_with_backslashes_and_colons_that_needs_sanitization.txt",
+			maxLength: 80,
+			want:      "C_\\Users\\test\\very_long_filename_with_backslashes_and_colons_that_needs_sani.txt",
+		},
+		{
+			name:      "unicode with invalid chars and truncation",
+			filename:  "测试/文件名:非常长的中文文件名_需要被截断_这是一个测试用的超长文件名.pdf",
+			maxLength: 50,
+			want:      "测试_文件名_非常长的中文文件名_.pdf",
+		},
+		{
+			name:      "hidden file with truncation",
+			filename:  ".gitignore_with_very_long_name_that_needs_truncation",
+			maxLength: 30,
+			want:      ".gitignore_with_very_long_name",
+		},
+		{
+			name:      "multiple dots and invalid chars",
+			filename:  "archive/tar.gz.backup:old.txt",
+			maxLength: 100,
+			want:      "archive_tar.gz.backup_old.txt",
+		},
+		{
+			name:      "extension longer than reasonable",
+			filename:  "test.verylongextensionthatshouldnotbetreatedasextension",
+			maxLength: 30,
+			want:      "test.verylongextensionthatshou",
+		},
+		{
+			name:      "very short max length with extension",
+			filename:  "document.pdf",
+			maxLength: 10,
+			want:      "docume.pdf",
+		},
+		{
+			name:      "filename with spaces and invalid chars",
+			filename:  "my document/with:spaces and a very long name that needs to be truncated.docx",
+			maxLength: 50,
+			want:      "my document_with_spaces and a very long name .docx",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SafeFilename(tt.filename, tt.maxLength)
+			if got != tt.want {
+				t.Errorf("SafeFilename() = %q (len=%d), want %q (len=%d)",
+					got, len(got), tt.want, len(tt.want))
+			}
+			// Verify result doesn't exceed maxLength
+			if len(got) > tt.maxLength {
+				t.Errorf("SafeFilename() result length %d exceeds maxLength %d",
+					len(got), tt.maxLength)
+			}
+		})
+	}
+}
+
 func TestReplacePathPlaceholders(t *testing.T) {
 	now := time.Now()
 	year := fmt.Sprintf("%d", now.Year())

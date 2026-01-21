@@ -191,7 +191,65 @@ func IsExistsFile(path string) bool {
 	return false
 }
 
+const (
+	// MaxFilenameLength is the maximum length in bytes for a filename
+	MaxFilenameLength = 100
+	// maxExtensionLength is the maximum length in bytes for a file extension
+	// to be treated as a valid extension. Extensions longer than this are
+	// treated as part of the filename to avoid edge cases.
+	maxExtensionLength = 20
+)
+
+// SafeFilename sanitizes a filename by replacing invalid characters and truncating to a safe length.
+// It performs two operations:
+// 1. Replaces invalid path characters (platform-specific) with underscores
+// 2. Truncates filename to maxLength bytes while preserving the file extension
+// The function handles UTF-8 multi-byte characters correctly by truncating at valid boundaries.
+func SafeFilename(filename string, maxLength int) string {
+	if filename == "" {
+		return ""
+	}
+	
+	// Step 1: Replace invalid characters
+	for _, char := range invalidPathChars {
+		filename = strings.ReplaceAll(filename, char, "_")
+	}
+	
+	// Step 2: Truncate if needed
+	if len(filename) <= maxLength {
+		return filename
+	}
+
+	// Find the extension (last dot in filename)
+	ext := ""
+	lastDot := strings.LastIndex(filename, ".")
+	
+	// Only treat as extension if:
+	// 1. There is a dot
+	// 2. The dot is not at the start (not a hidden file like .gitignore)
+	// 3. The extension is reasonable length (< maxExtensionLength bytes) to avoid edge cases
+	if lastDot > 0 && lastDot < len(filename)-1 && len(filename)-lastDot < maxExtensionLength {
+		ext = filename[lastDot:]
+		filename = filename[:lastDot]
+	}
+
+	// Calculate how much space we have for the base name
+	availableLength := maxLength - len(ext)
+	
+	// Ensure we have at least some space for the base name
+	if availableLength < 1 {
+		// Extension itself is too long or no room, just truncate everything at byte boundary
+		return truncateAtValidUTF8Boundary(filename+ext, maxLength)
+	}
+
+	// Truncate the base name at a valid UTF-8 boundary
+	truncatedBase := truncateAtValidUTF8Boundary(filename, availableLength)
+	
+	return truncatedBase + ext
+}
+
 // ReplaceInvalidFilename replace invalid path characters
+// Deprecated: Use SafeFilename instead which also handles length truncation
 func ReplaceInvalidFilename(path string) string {
 	if path == "" {
 		return ""
@@ -202,20 +260,8 @@ func ReplaceInvalidFilename(path string) string {
 	return path
 }
 
-const (
-	// MaxFilenameLength is the maximum length in bytes for a filename
-	MaxFilenameLength = 100
-	// maxExtensionLength is the maximum length in bytes for a file extension
-	// to be treated as a valid extension. Extensions longer than this are
-	// treated as part of the filename to avoid edge cases.
-	maxExtensionLength = 20
-)
-
 // TruncateFilename truncates a filename to a maximum byte length while preserving the extension.
-// If the filename (including extension) exceeds maxLength bytes, it will be truncated.
-// The extension is preserved when possible, and the base name is truncated to fit.
-// Truncation is done carefully to avoid cutting in the middle of a Unicode character.
-// maxLength should be at least 10 to allow for reasonable truncation with extensions.
+// Deprecated: Use SafeFilename instead which also handles invalid character replacement
 func TruncateFilename(filename string, maxLength int) string {
 	// If already short enough, return as-is
 	if len(filename) <= maxLength {
