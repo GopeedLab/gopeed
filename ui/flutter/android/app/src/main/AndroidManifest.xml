@@ -73,8 +73,12 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" />
-                <data android:scheme="https" />
+                <data
+                    android:scheme="http"
+                    android:host="*" />
+                <data
+                    android:scheme="https"
+                    android:host="*" />
             </intent-filter>
 
             <!-- Specifies an Android theme to apply to this Activity as soon as
