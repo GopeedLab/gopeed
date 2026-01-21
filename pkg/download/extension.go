@@ -264,9 +264,9 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, er
 					gopeed.Logger.logger.Warn().Err(err).Msgf("[%s] resource invalid", ext.buildIdentity())
 					return
 				}
-				ctx.Res.Name = util.SafeFilename(ctx.Res.Name, util.MaxFilenameLength)
+				ctx.Res.Name = util.SafeFilename(ctx.Res.Name)
 				for _, file := range ctx.Res.Files {
-					file.Name = util.SafeFilename(file.Name, util.MaxFilenameLength)
+					file.Name = util.SafeFilename(file.Name)
 				}
 				ctx.Res.CalcSize(nil)
 			}

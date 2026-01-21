@@ -192,9 +192,9 @@ const (
 // SafeFilename sanitizes a filename by replacing invalid characters and truncating to a safe length.
 // It performs two operations:
 // 1. Replaces invalid path characters (platform-specific) with underscores
-// 2. Truncates filename to maxLength bytes while preserving the file extension
+// 2. Truncates filename to MaxFilenameLength bytes while preserving the file extension
 // The function handles UTF-8 multi-byte characters correctly by truncating at valid boundaries.
-func SafeFilename(filename string, maxLength int) string {
+func SafeFilename(filename string) string {
 	if filename == "" {
 		return ""
 	}
@@ -205,7 +205,7 @@ func SafeFilename(filename string, maxLength int) string {
 	}
 	
 	// Step 2: Truncate if needed
-	if len(filename) <= maxLength {
+	if len(filename) <= MaxFilenameLength {
 		return filename
 	}
 
@@ -223,12 +223,12 @@ func SafeFilename(filename string, maxLength int) string {
 	}
 
 	// Calculate how much space we have for the base name
-	availableLength := maxLength - len(ext)
+	availableLength := MaxFilenameLength - len(ext)
 	
 	// Ensure we have at least some space for the base name
 	if availableLength < 1 {
 		// Extension itself is too long or no room, just truncate everything at byte boundary
-		return truncateAtValidUTF8Boundary(filename+ext, maxLength)
+		return truncateAtValidUTF8Boundary(filename+ext, MaxFilenameLength)
 	}
 
 	// Truncate the base name at a valid UTF-8 boundary
