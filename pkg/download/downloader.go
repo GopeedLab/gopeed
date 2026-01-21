@@ -958,6 +958,10 @@ func (d *Downloader) watch(task *Task) {
 	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
 		downloadFilePath := task.Meta.SingleFilepath()
 		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
+
+			cfg, err := d.GetConfig()
+			shouldDelete := err == nil && cfg.AutoDeleteTorrents
+
 			go func() {
 				_, err2 := d.CreateDirect(
 					&base.Request{
@@ -970,13 +974,11 @@ func (d *Downloader) watch(task *Task) {
 				if err2 != nil {
 					d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
 				} else {
-					// Successfully created BT task, now delete the http task and .torrent file if AutoDeleteTorrents is enabled
-					cfg, err := d.GetConfig()
-					if err == nil && cfg.AutoDeleteTorrents {
+					// Используем переменную shouldDelete, которую получили выше
+					if shouldDelete {
 						d.Delete(&TaskFilter{IDs: []string{task.ID}}, true)
 					}
 				}
-
 			}()
 		}
 
