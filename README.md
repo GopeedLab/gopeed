@@ -14,7 +14,7 @@
 
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
-## 🚀 Introduction1
+## 🚀 Introduction
 
 Gopeed (full name Go Speed), a high-speed downloader developed by `Golang` + `Flutter`, supports (HTTP, BitTorrent, Magnet) protocol, and supports all platforms. In addition to basic download functions, Gopeed is also a highly customizable downloader that supports implementing more features through integration with [APIs](https://docs.gopeed.com/dev-api.html) or installation and development of [extensions](https://docs.gopeed.com/dev-extension.html).
 
