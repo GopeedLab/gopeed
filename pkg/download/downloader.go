@@ -1108,9 +1108,11 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				d.checkDuplicateLock.Lock()
 				defer d.checkDuplicateLock.Unlock()
 				task.Meta.Opts.Name = util.ReplaceInvalidFilename(task.Meta.Opts.Name)
+				task.Meta.Opts.Name = util.TruncateFilename(task.Meta.Opts.Name, util.MaxFilenameLength)
 				// check if the download file is duplicated and rename it automatically.
 				if task.Meta.Res.Name != "" {
 					task.Meta.Res.Name = util.ReplaceInvalidFilename(task.Meta.Res.Name)
+					task.Meta.Res.Name = util.TruncateFilename(task.Meta.Res.Name, util.MaxFilenameLength)
 					fullDirPath := task.Meta.FolderPath()
 					newName, err := util.CheckDuplicateAndRename(fullDirPath)
 					if err != nil {
@@ -1119,6 +1121,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 					task.Meta.Opts.Name = newName
 				} else {
 					task.Meta.Res.Files[0].Name = util.ReplaceInvalidFilename(task.Meta.Res.Files[0].Name)
+					task.Meta.Res.Files[0].Name = util.TruncateFilename(task.Meta.Res.Files[0].Name, util.MaxFilenameLength)
 					fullFilePath := task.Meta.SingleFilepath()
 					newName, err := util.CheckDuplicateAndRename(fullFilePath)
 					if err != nil {
