@@ -142,17 +142,6 @@ func CopyDir(source string, target string, excludeDir ...string) error {
 	return nil
 }
 
-// RmAndMkDirAll remove and create directory, if the directory already exists, it will be overwritten.
-func RmAndMkDirAll(path string) error {
-	if err := os.RemoveAll(path); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(path, 0755); err != nil {
-		return err
-	}
-	return nil
-}
-
 // copy file, if the target file already exists, it will be overwritten.
 func copyForce(source string, target string) error {
 	sourceFile, err := os.Open(source)

@@ -20,6 +20,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/downloader_config.dart';
+import '../../../../api/model/install_extension.dart';
 import '../../../../api/model/request.dart';
 import '../../../../api/model/result.dart';
 import '../../../../core/common/start_config.dart';
@@ -293,7 +294,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
           final jsonMeta = jsonDecode(meta);
           final silent = jsonMeta['silent'] as bool? ?? false;
           final params = await ctx.readText();
-          final createTaskParams = _decodeToCreatTaskParams(params);
+          final createTaskParams = CreateTask.fromJson(_decodeParams(params));
           if (!silent) {
             await windowManager.show();
             _handleToCreate0(createTaskParams);
@@ -382,6 +383,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
   Future<void> _handleDeepLink(Uri uri) async {
     if (uri.scheme == "gopeed") {
+      // gopeed:///create?params=eyJyZXEiOnsidXJsIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9maWxlLnR4dCJ9fQ==
       if (uri.path == "/create") {
         final params = uri.queryParameters["params"];
         if (params?.isNotEmpty == true) {
@@ -389,6 +391,16 @@ class AppController extends GetxController with WindowListener, TrayListener {
           return;
         }
         Get.rootDelegate.offAndToNamed(Routes.CREATE);
+        return;
+      }
+      // gopeed:///extension?params=eyJ1cmwiOiJodHRwczovL2dpdGh1Yi5jb20vbW9ua2V5V2llL2dvcGVlZC1leHRlbnNpb24tYmlsaWJpbGkiLCJkZXZNb2RlIjpmYWxzZX0=
+      if (uri.path == "/extension") {
+        final params = uri.queryParameters["params"];
+        if (params?.isNotEmpty == true) {
+          _handleToExtension(params!);
+          return;
+        }
+        Get.rootDelegate.offAndToNamed(Routes.EXTENSION);
         return;
       }
       Get.rootDelegate.offAndToNamed(Routes.HOME);
@@ -650,20 +662,26 @@ class AppController extends GetxController with WindowListener, TrayListener {
     await putConfig(downloaderConfig.value);
   }
 
-  CreateTask _decodeToCreatTaskParams(String params) {
+  Map<String, dynamic> _decodeParams(String params) {
     final safeParams = params.replaceAll('"', "").replaceAll(" ", "+");
     final paramsJson =
         String.fromCharCodes(base64Decode(base64.normalize(safeParams)));
-    return CreateTask.fromJson(jsonDecode(paramsJson));
+    return jsonDecode(paramsJson);
   }
 
   _handleToCreate(String params) {
-    final createTaskParams = _decodeToCreatTaskParams(params);
+    final createTaskParams = CreateTask.fromJson(_decodeParams(params));
     _handleToCreate0(createTaskParams);
   }
 
   _handleToCreate0(CreateTask createTaskParams) {
     Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
         arguments: RedirectArgs(Routes.CREATE, arguments: createTaskParams));
+  }
+
+  _handleToExtension(String params) {
+    final installExtension = InstallExtension.fromJson(_decodeParams(params));
+    Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
+        arguments: RedirectArgs(Routes.EXTENSION, arguments: installExtension));
   }
 }
