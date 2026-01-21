@@ -974,7 +974,7 @@ func (d *Downloader) watch(task *Task) {
 				if err2 != nil {
 					d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
 				} else {
-					// Используем переменную shouldDelete, которую получили выше
+
 					if shouldDelete {
 						d.Delete(&TaskFilter{IDs: []string{task.ID}}, true)
 					}
