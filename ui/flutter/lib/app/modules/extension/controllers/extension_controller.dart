@@ -9,6 +9,9 @@ class ExtensionController extends GetxController {
   final devMode = false.obs;
   var _devModeCount = 0;
 
+  /// Flag to prevent handling pending install multiple times
+  bool pendingInstallHandled = false;
+
   @override
   void onInit() async {
     super.onInit();
