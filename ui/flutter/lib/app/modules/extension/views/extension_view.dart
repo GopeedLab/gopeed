@@ -30,8 +30,34 @@ class ExtensionView extends GetView<ExtensionController> {
   final _installUrlController = TextEditingController();
   final _installBtnController = IconButtonLoadingController();
 
+  Future<void> _doInstall() async {
+    if (_installUrlController.text.isEmpty) {
+      controller.tryOpenDevMode();
+      return;
+    }
+    _installBtnController.start();
+    try {
+      await installExtension(InstallExtension(url: _installUrlController.text));
+      Get.snackbar('tip'.tr, 'extensionInstallSuccess'.tr);
+      await controller.load();
+    } catch (e) {
+      showErrorMessage(e);
+    } finally {
+      _installBtnController.stop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Handle pending install extension from deep link
+    final args = Get.rootDelegate.arguments();
+    if (args is InstallExtension && !controller.pendingInstallHandled) {
+      controller.pendingInstallHandled = true;
+      _installUrlController.text = args.url;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _doInstall();
+      });
+    }
     return Scaffold(
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,23 +97,7 @@ class ExtensionView extends GetView<ExtensionController> {
                   const SizedBox(width: 10),
                   IconButtonLoading(
                       controller: _installBtnController,
-                      onPressed: () async {
-                        if (_installUrlController.text.isEmpty) {
-                          controller.tryOpenDevMode();
-                          return;
-                        }
-                        _installBtnController.start();
-                        try {
-                          await installExtension(InstallExtension(
-                              url: _installUrlController.text));
-                          Get.snackbar('tip'.tr, 'extensionInstallSuccess'.tr);
-                          await controller.load();
-                        } catch (e) {
-                          showErrorMessage(e);
-                        } finally {
-                          _installBtnController.stop();
-                        }
-                      },
+                      onPressed: _doInstall,
                       icon: const Icon(Icons.download)),
                   controller.devMode.value && Util.isDesktop()
                       ? IconButton(
