@@ -347,44 +347,47 @@ class BuildTaskListView extends GetView {
                     children: [
                       // Left side: Progress text + Percentage
                       Expanded(
-                          flex: 1,
                           child: Row(
-                            children: [
-                              Text(
-                                getProgressText(),
-                                style: Get.textTheme.bodyLarge
-                                    ?.copyWith(color: Get.theme.disabledColor),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                getPercentText(),
-                                style: Get.textTheme.bodyLarge
-                                    ?.copyWith(color: Get.theme.disabledColor),
-                              ),
-                            ],
-                          ).padding(left: 18)),
+                        children: [
+                          Flexible(
+                            child: Text(
+                              getProgressText(),
+                              style: Get.textTheme.bodyLarge
+                                  ?.copyWith(color: Get.theme.disabledColor),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            getPercentText(),
+                            style: Get.textTheme.bodyLarge
+                                ?.copyWith(color: Get.theme.disabledColor),
+                          ),
+                        ],
+                      ).padding(left: 18)),
                       // Right side: ETA + Speed + Actions
-                      Expanded(
-                          flex: 1,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                getEtaText(),
-                                style: Get.textTheme.titleSmall,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Only show ETA on wider screens
+                          if (!Util.isMobile() && getEtaText().isNotEmpty) ...[
+                            Text(
+                              getEtaText(),
+                              style: Get.textTheme.titleSmall,
+                            ),
+                            Text(
+                              " | ",
+                              style: Get.textTheme.titleSmall?.copyWith(
+                                color: Get.theme.disabledColor,
+                                fontWeight: FontWeight.w300,
                               ),
-                              Text(
-                                " | ",
-                                style: Get.textTheme.titleSmall?.copyWith(
-                                  color: Get.theme.disabledColor,
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ).padding(horizontal: 4),
-                              Text("${Util.fmtByte(task.progress.speed)} / s",
-                                  style: Get.textTheme.titleSmall),
-                              ...buildActions()
-                            ],
-                          )),
+                            ).padding(horizontal: 4),
+                          ],
+                          Text("${Util.fmtByte(task.progress.speed)}/s",
+                              style: Get.textTheme.titleSmall),
+                          ...buildActions()
+                        ],
+                      ),
                     ],
                   ),
                   isDone()
