@@ -225,18 +225,25 @@ class BuildTaskListView extends GetView {
     // Get ETA text, e.g. "00:05:30"
     String getEtaText() {
       if (isDone()) return "";
+      if (!isRunning()) return "";
 
       final total = task.meta.res?.size ?? 0;
       final downloaded = task.progress.downloaded;
       final speed = task.progress.speed;
 
-      // If speed is 0 or file is downloaded, don't show time
-      if (total <= 0 || speed <= 0 || downloaded >= total) {
+      // If speed is 0 or total unknown, don't show time
+      if (total <= 0 || speed <= 0) {
         return "";
       }
 
       final remainingBytes = total - downloaded;
-      final remainingSeconds = remainingBytes ~/ speed;
+      // If remaining bytes <= 0, download is essentially complete
+      if (remainingBytes <= 0) {
+        return "";
+      }
+
+      // Use ceiling division to avoid showing 0 seconds when there's still data remaining
+      final remainingSeconds = (remainingBytes + speed - 1) ~/ speed;
 
       // If time is too long (e.g. > 1 day), return > 1d
       if (remainingSeconds > 86400) return "> 1d";
@@ -347,44 +354,51 @@ class BuildTaskListView extends GetView {
                     children: [
                       // Left side: Progress text + Percentage
                       Expanded(
-                          flex: 1,
                           child: Row(
-                            children: [
-                              Text(
-                                getProgressText(),
-                                style: Get.textTheme.bodyLarge
-                                    ?.copyWith(color: Get.theme.disabledColor),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                getPercentText(),
-                                style: Get.textTheme.bodyLarge
-                                    ?.copyWith(color: Get.theme.disabledColor),
-                              ),
-                            ],
-                          ).padding(left: 18)),
+                        children: [
+                          Flexible(
+                            child: Text(
+                              getProgressText(),
+                              style: Get.textTheme.bodyLarge
+                                  ?.copyWith(color: Get.theme.disabledColor),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // Hide percentage on mobile
+                          if (!Util.isMobile() &&
+                              getPercentText().isNotEmpty) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              getPercentText(),
+                              style: Get.textTheme.bodyLarge
+                                  ?.copyWith(color: Get.theme.disabledColor),
+                            ),
+                          ],
+                        ],
+                      ).padding(left: 18)),
                       // Right side: ETA + Speed + Actions
-                      Expanded(
-                          flex: 1,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                getEtaText(),
-                                style: Get.textTheme.titleSmall,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Only show ETA on wider screens
+                          if (!Util.isMobile() && getEtaText().isNotEmpty) ...[
+                            Text(
+                              getEtaText(),
+                              style: Get.textTheme.titleSmall,
+                            ),
+                            Text(
+                              " | ",
+                              style: Get.textTheme.titleSmall?.copyWith(
+                                color: Get.theme.disabledColor,
+                                fontWeight: FontWeight.w300,
                               ),
-                              Text(
-                                " | ",
-                                style: Get.textTheme.titleSmall?.copyWith(
-                                  color: Get.theme.disabledColor,
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ).padding(horizontal: 4),
-                              Text("${Util.fmtByte(task.progress.speed)} / s",
-                                  style: Get.textTheme.titleSmall),
-                              ...buildActions()
-                            ],
-                          )),
+                            ).padding(horizontal: 4),
+                          ],
+                          Text("${Util.fmtByte(task.progress.speed)}/s",
+                              style: Get.textTheme.titleSmall),
+                          ...buildActions()
+                        ],
+                      ),
                     ],
                   ),
                   isDone()
