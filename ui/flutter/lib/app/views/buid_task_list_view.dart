@@ -357,12 +357,16 @@ class BuildTaskListView extends GetView {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            getPercentText(),
-                            style: Get.textTheme.bodyLarge
-                                ?.copyWith(color: Get.theme.disabledColor),
-                          ),
+                          // Hide percentage on mobile
+                          if (!Util.isMobile() &&
+                              getPercentText().isNotEmpty) ...[
+                            const SizedBox(width: 4),
+                            Text(
+                              getPercentText(),
+                              style: Get.textTheme.bodyLarge
+                                  ?.copyWith(color: Get.theme.disabledColor),
+                            ),
+                          ],
                         ],
                       ).padding(left: 18)),
                       // Right side: ETA + Speed + Actions
