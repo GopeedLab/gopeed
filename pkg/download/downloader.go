@@ -205,6 +205,9 @@ func (d *Downloader) Setup() error {
 	}
 	d.extensions = extensions
 
+	// Auto-cleanup non-existing tasks on startup
+	d.cleanupNonExistingTasks()
+
 	// handle upload
 	go func() {
 		for _, task := range d.tasks {
@@ -269,6 +272,51 @@ func (d *Downloader) Setup() error {
 		}
 	}()
 	return nil
+}
+
+// cleanupNonExistingTasks checks for tasks whose files are missing on disk
+// and removes them if the AutoCleanMissingFiles config is enabled.
+func (d *Downloader) cleanupNonExistingTasks() {
+	cfg, err := d.GetConfig()
+	if err != nil {
+		return
+	}
+
+	// If the feature is disabled, do nothing
+	if !cfg.AutoCleanMissingFiles {
+		return
+	}
+
+	var tasksToDelete []string
+
+	for _, task := range d.tasks {
+		if task.Meta == nil || task.Meta.Res == nil {
+			continue
+		}
+
+		var targetPath string
+		// Determine if it is a single file or a directory (multi-file torrent)
+		if task.Meta.Res.Name != "" {
+			targetPath = task.Meta.FolderPath()
+		} else {
+			targetPath = task.Meta.SingleFilepath()
+		}
+
+		// Skip if path is empty
+		if targetPath == "" {
+			continue
+		}
+
+		// Check if file/folder exists
+		if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+			d.Logger.Info().Msgf("Auto-cleanup: task %s file not found at %s, removing from list", task.ID, targetPath)
+			tasksToDelete = append(tasksToDelete, task.ID)
+		}
+	}
+
+	if len(tasksToDelete) > 0 {
+		d.Delete(&TaskFilter{IDs: tasksToDelete}, false)
+	}
 }
 
 func (d *Downloader) parseFm(url string) (fetcher.FetcherManager, error) {
@@ -910,6 +958,10 @@ func (d *Downloader) watch(task *Task) {
 	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
 		downloadFilePath := task.Meta.SingleFilepath()
 		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
+
+			cfg, err := d.GetConfig()
+			shouldDelete := err == nil && cfg.AutoDeleteTorrents
+
 			go func() {
 				_, err2 := d.CreateDirect(
 					&base.Request{
@@ -921,8 +973,12 @@ func (d *Downloader) watch(task *Task) {
 					})
 				if err2 != nil {
 					d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
-				}
+				} else {
 
+					if shouldDelete {
+						d.Delete(&TaskFilter{IDs: []string{task.ID}}, true)
+					}
+				}
 			}()
 		}
 

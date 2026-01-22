@@ -39,6 +39,8 @@ const idID = {
     'useServerCtime': 'Gunakan waktu server untuk pembuatan file',
     'maxRunning': 'Tugas Maksimum yang Berjalan',
     'defaultDirectDownload': 'Pilih unduhan langsung sebagai opsi standar',
+    'autoDeleteTorrents': 'Otomatis hapus file .torrent',
+    'autoCleanMissingFiles': 'Otomatis bersihkan file yang hilang',
     'items': '@count items',
     'subscribeTracker': 'Berlangganan Tracker',
     'subscribeFail':

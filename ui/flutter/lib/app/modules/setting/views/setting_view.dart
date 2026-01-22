@@ -169,6 +169,46 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
+    // New: Auto Delete Torrents
+    final buildAutoDeleteTorrents = _buildConfigItem('autoDeleteTorrents', () {
+      return appController.downloaderConfig.value.autoDeleteTorrents
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: appController.downloaderConfig.value.autoDeleteTorrents,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.autoDeleteTorrents = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
+    // New: Auto Clean Missing Files
+    final buildAutoCleanMissingFiles = _buildConfigItem('autoCleanMissingFiles', () {
+      return appController.downloaderConfig.value.autoCleanMissingFiles
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: appController.downloaderConfig.value.autoCleanMissingFiles,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.autoCleanMissingFiles = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
     // Archive auto extract configuration
     final buildAutoExtract = _buildConfigItem('autoExtract', () {
       return appController.downloaderConfig.value.archive.autoExtract
@@ -1414,6 +1454,8 @@ class SettingView extends GetView<SettingController> {
                             buildMaxRunning(),
                             buildDefaultDirectDownload(),
                             buildAutoStartTasks(),
+                            buildAutoDeleteTorrents(),
+                            buildAutoCleanMissingFiles(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
                             buildMenubarMode(),
