@@ -41,7 +41,7 @@ const zhTW = {
     'autoStartTasks': '啟動時自動開始未完成的任務',
     'autoTorrentEnable': '自動從 .torrent 檔案建立 BT 任務',
     'autoTorrentDeleteAfterDownload': '建立 BT 任務後刪除 .torrent 檔案',
-    'autoCleanMissingFileTasks': '自動清理缺失檔案任務',
+    'autoDeleteMissingFileTasks': '自動刪除缺失檔案任務',
     'items': '@count 個項目',
     'subscribeTracker': '訂閱 Tracker',
     'subscribeFail': '訂閱失敗，請檢查網路或稍後再試',

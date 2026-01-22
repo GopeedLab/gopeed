@@ -39,7 +39,7 @@ const viVN = {
     'autoTorrentEnable': 'Tự động tạo nhiệm vụ BT từ file .torrent',
     'autoTorrentDeleteAfterDownload':
         'Xóa file .torrent sau khi tạo nhiệm vụ BT',
-    'autoCleanMissingFileTasks': 'Tự động dọn dẹp tác vụ có tệp bị thiếu',
+    'autoDeleteMissingFileTasks': 'Tự động xóa tác vụ có tệp bị thiếu',
     'items': '@count mục',
     'subscribeTracker': 'Theo dõi Tracker',
     'subscribeFail':

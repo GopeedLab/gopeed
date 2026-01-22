@@ -42,7 +42,7 @@ const enUS = {
     'autoTorrentEnable': 'Auto create BT tasks from .torrent files',
     'autoTorrentDeleteAfterDownload':
         'Delete .torrent file after BT task creation',
-    'autoCleanMissingFileTasks': 'Auto clean missing file tasks',
+    'autoDeleteMissingFileTasks': 'Auto delete missing file tasks',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':

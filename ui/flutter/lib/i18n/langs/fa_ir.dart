@@ -28,7 +28,7 @@ const faIR = {
     'connections': 'اتصالات',
     'autoTorrentEnable': 'ایجاد خودکار وظایف BT از فایل‌های .torrent',
     'autoTorrentDeleteAfterDownload': 'حذف فایل .torrent پس از ایجاد وظیفه BT',
-    'autoCleanMissingFileTasks': 'پاکسازی خودکار وظایف با فایل‌های گم شده',
+    'autoDeleteMissingFileTasks': 'حذف خودکار وظایف با فایل‌های گم شده',
     'items': '@count آیتم ها',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':

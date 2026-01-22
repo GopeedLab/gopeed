@@ -21,7 +21,7 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
           json['autoTorrent'] as Map<String, dynamic>?)
       ..archive =
           ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?)
-      ..autoCleanMissingFiles = json['autoCleanMissingFiles'] as bool;
+      ..autoDeleteMissingFileTasks = json['autoDeleteMissingFileTasks'] as bool;
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
@@ -33,7 +33,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'webhook': instance.webhook.toJson(),
       'autoTorrent': instance.autoTorrent.toJson(),
       'archive': instance.archive.toJson(),
-      'autoCleanMissingFiles': instance.autoCleanMissingFiles,
+      'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
     };
 
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>

@@ -42,8 +42,8 @@ const ukUA = {
     'autoTorrentEnable': 'Автоматично створювати BT-завдання з .torrent файлів',
     'autoTorrentDeleteAfterDownload':
         'Видалити .torrent файл після створення BT-завдання',
-    'autoCleanMissingFileTasks':
-        'Автоматично очищати завдання з відсутніми файлами',
+    'autoDeleteMissingFileTasks':
+        'Автоматично видаляти завдання з відсутніми файлами',
     'items': '@count елементів',
     'subscribeTracker': 'Підписатися на трекер',
     'subscribeFail':

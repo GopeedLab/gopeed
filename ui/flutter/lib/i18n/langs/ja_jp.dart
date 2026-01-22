@@ -32,7 +32,7 @@ const jaJP = {
     'autoStartTasks': '起動時に未完了のタスクを自動的に開始',
     'autoTorrentEnable': '.torrentファイルからBTタスクを自動作成',
     'autoTorrentDeleteAfterDownload': 'BTタスク作成後に.torrentファイルを削除',
-    'autoCleanMissingFileTasks': '欠落ファイルタスクを自動クリーン',
+    'autoDeleteMissingFileTasks': '欠落ファイルタスクを自動削除',
     'items': '@count アイテム',
     'subscribeTracker': 'トラッカーを購読',
     'subscribeFail': '登録に失敗しました。ネットワークを確認するか、後でもう一度お試しください',

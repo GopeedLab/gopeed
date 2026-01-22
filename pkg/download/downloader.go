@@ -283,7 +283,7 @@ func (d *Downloader) cleanupNonExistingTasks() {
 	}
 
 	// If the feature is disabled, do nothing
-	if !cfg.AutoCleanMissingFiles {
+	if !cfg.AutoDeleteMissingFileTasks {
 		return
 	}
 

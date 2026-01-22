@@ -188,7 +188,7 @@ type DownloaderStoreConfig struct {
 	Archive        *ArchiveConfig         `json:"archive"`     // Archive is the archive extraction configuration
 
 	// New fields added for auto-management
-	AutoCleanMissingFiles bool `json:"autoCleanMissingFiles"` // AutoCleanMissingFiles enables automatic cleanup of tasks with missing files
+	AutoDeleteMissingFileTasks bool `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {

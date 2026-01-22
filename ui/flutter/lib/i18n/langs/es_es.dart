@@ -43,8 +43,8 @@ const esES = {
         'Crear automáticamente tareas BT desde archivos .torrent',
     'autoTorrentDeleteAfterDownload':
         'Eliminar archivo .torrent después de crear tarea BT',
-    'autoCleanMissingFileTasks':
-        'Limpiar automáticamente tareas con archivos faltantes',
+    'autoDeleteMissingFileTasks':
+        'Eliminar automáticamente tareas con archivos faltantes',
     'items': '@count elementos',
     'subscribeTracker': 'Suscribirse al Tracker',
     'subscribeFail':

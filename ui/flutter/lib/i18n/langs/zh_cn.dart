@@ -41,7 +41,7 @@ const zhCN = {
     'autoStartTasks': '启动时自动开始未完成的任务',
     'autoTorrentEnable': '自动从 .torrent 文件创建 BT 任务',
     'autoTorrentDeleteAfterDownload': '创建 BT 任务后删除 .torrent 文件',
-    'autoCleanMissingFileTasks': '自动清理缺失文件任务',
+    'autoDeleteMissingFileTasks': '自动删除缺失文件任务',
     'items': '@count 项',
     'subscribeTracker': '订阅 Tracker',
     'subscribeFail': '订阅失败，请检查网络或稍后重试',

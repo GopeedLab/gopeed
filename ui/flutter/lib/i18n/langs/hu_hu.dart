@@ -44,8 +44,8 @@ const huHU = {
         'BT feladatok automatikus létrehozása .torrent fájlokból',
     'autoTorrentDeleteAfterDownload':
         '.torrent fájl törlése a BT feladat létrehozása után',
-    'autoCleanMissingFileTasks':
-        'Hiányzó fájlokkal rendelkező feladatok automatikus tisztítása',
+    'autoDeleteMissingFileTasks':
+        'Hiányzó fájlokkal rendelkező feladatok automatikus törlése',
     'items': '@count elem',
     'subscribeTracker': 'Nyomkövető előfizetése',
     'subscribeFail':

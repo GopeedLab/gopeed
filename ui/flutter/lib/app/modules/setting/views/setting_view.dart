@@ -212,20 +212,21 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
-    // New: Auto Clean Missing File Tasks
-    final buildAutoCleanMissingFileTasks =
-        _buildConfigItem('autoCleanMissingFileTasks', () {
-      return appController.downloaderConfig.value.autoCleanMissingFiles
+    // New: Auto Delete Missing File Tasks
+    final buildAutoDeleteMissingFileTasks =
+        _buildConfigItem('autoDeleteMissingFileTasks', () {
+      return appController.downloaderConfig.value.autoDeleteMissingFileTasks
           ? 'on'.tr
           : 'off'.tr;
     }, (Key key) {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
-          value: appController.downloaderConfig.value.autoCleanMissingFiles,
+          value:
+              appController.downloaderConfig.value.autoDeleteMissingFileTasks,
           onChanged: (bool value) async {
             appController.downloaderConfig.update((val) {
-              val!.autoCleanMissingFiles = value;
+              val!.autoDeleteMissingFileTasks = value;
             });
             await debounceSave();
           },
@@ -1484,7 +1485,7 @@ class SettingView extends GetView<SettingController> {
                                       .autoTorrent.enable,
                                   child: buildAutoTorrentDeleteAfterDownload(),
                                 )),
-                            buildAutoCleanMissingFileTasks(),
+                            buildAutoDeleteMissingFileTasks(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
                             buildMenubarMode(),

@@ -40,8 +40,8 @@ const itIT = {
     'autoTorrentEnable': 'Crea automaticamente attività BT da file .torrent',
     'autoTorrentDeleteAfterDownload':
         'Elimina file .torrent dopo creazione attività BT',
-    'autoCleanMissingFileTasks':
-        'Pulisci automaticamente le attività con file mancanti',
+    'autoDeleteMissingFileTasks':
+        'Elimina automaticamente le attività con file mancanti',
     'items': '@count elementi',
     'subscribeTracker': 'Iscriviti al tracker',
     'subscribeFail':

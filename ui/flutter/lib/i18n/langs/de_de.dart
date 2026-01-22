@@ -46,8 +46,7 @@ const deDE = {
         'BT-Aufgaben automatisch aus .torrent-Dateien erstellen',
     'autoTorrentDeleteAfterDownload':
         '.torrent-Datei nach BT-Aufgabenerstellung löschen',
-    'autoCleanMissingFileTasks':
-        'Fehlende Dateiaufgaben automatisch bereinigen',
+    'autoDeleteMissingFileTasks': 'Fehlende Dateiaufgaben automatisch löschen',
     'items': '@count Artikel',
     'subscribeTracker': 'Abonnement-Tracker',
     'subscribeFail':

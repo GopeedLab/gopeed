@@ -39,8 +39,8 @@ const plPL = {
     'autoTorrentEnable': 'Automatyczne tworzenie zadań BT z plików .torrent',
     'autoTorrentDeleteAfterDownload':
         'Usuń plik .torrent po utworzeniu zadania BT',
-    'autoCleanMissingFileTasks':
-        'Automatycznie czyść zadania z brakującymi plikami',
+    'autoDeleteMissingFileTasks':
+        'Automatycznie usuwaj zadania z brakującymi plikami',
     'items': '@count items',
     'subscribeTracker': 'Subskrybuj tracker',
     'subscribeFail': 'Błąd subskrypcji, sprawdź łączność z internetem',

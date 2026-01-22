@@ -40,8 +40,8 @@ const taTA = {
     'autoTorrentEnable': '.torrent கோப்புகளிலிருந்து BT பணிகளை தானாக உருவாக்கு',
     'autoTorrentDeleteAfterDownload':
         'BT பணி உருவாக்கத்திற்குப் பிறகு .torrent கோப்பை நீக்கு',
-    'autoCleanMissingFileTasks':
-        'காணாமல் போன கோப்புகளுடன் பணிகளை தானாக சுத்தம் செய்',
+    'autoDeleteMissingFileTasks':
+        'காணாமல் போன கோப்புகளுடன் பணிகளை தானாக நீக்கு',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':

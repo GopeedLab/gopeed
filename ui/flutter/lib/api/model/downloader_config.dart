@@ -14,7 +14,7 @@ class DownloaderConfig {
   ArchiveConfig archive = ArchiveConfig();
 
   // New fields for auto-management
-  bool autoCleanMissingFiles = false;
+  bool autoDeleteMissingFileTasks = false;
 
   DownloaderConfig({
     this.downloadDir = '',

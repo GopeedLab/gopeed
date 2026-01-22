@@ -44,8 +44,8 @@ const frFR = {
         'Créer automatiquement des tâches BT à partir de fichiers .torrent',
     'autoTorrentDeleteAfterDownload':
         'Supprimer le fichier .torrent après création de tâche BT',
-    'autoCleanMissingFileTasks':
-        'Nettoyer automatiquement les tâches avec fichiers manquants',
+    'autoDeleteMissingFileTasks':
+        'Supprimer automatiquement les tâches avec fichiers manquants',
     'items': '@count éléments',
     'subscribeTracker': 'S\'abonner au tracker',
     'subscribeFail':

@@ -42,7 +42,7 @@ const trTR = {
     'autoTorrentEnable': '.torrent dosyalarından otomatik BT görevi oluştur',
     'autoTorrentDeleteAfterDownload':
         'BT görevi oluşturulduktan sonra .torrent dosyasını sil',
-    'autoCleanMissingFileTasks': 'Eksik dosya görevlerini otomatik temizle',
+    'autoDeleteMissingFileTasks': 'Eksik dosya görevlerini otomatik sil',
     'items': '@count öğe',
     'subscribeTracker': 'Tracker Aboneliği',
     'subscribeFail':

@@ -42,8 +42,8 @@ const idID = {
     'autoTorrentEnable': 'Buat tugas BT secara otomatis dari file .torrent',
     'autoTorrentDeleteAfterDownload':
         'Hapus file .torrent setelah membuat tugas BT',
-    'autoCleanMissingFileTasks':
-        'Otomatis bersihkan tugas dengan file yang hilang',
+    'autoDeleteMissingFileTasks':
+        'Otomatis hapus tugas dengan file yang hilang',
     'items': '@count items',
     'subscribeTracker': 'Berlangganan Tracker',
     'subscribeFail':

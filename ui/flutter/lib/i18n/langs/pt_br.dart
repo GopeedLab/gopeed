@@ -43,8 +43,8 @@ const ptBR = {
         'Criar automaticamente tarefas BT de arquivos .torrent',
     'autoTorrentDeleteAfterDownload':
         'Excluir arquivo .torrent após criação da tarefa BT',
-    'autoCleanMissingFileTasks':
-        'Limpar automaticamente tarefas com arquivos ausentes',
+    'autoDeleteMissingFileTasks':
+        'Excluir automaticamente tarefas com arquivos ausentes',
     'items': '@count itens',
     'subscribeTracker': 'Assinar Rastreador',
     'subscribeFail':

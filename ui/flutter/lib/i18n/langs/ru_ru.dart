@@ -43,7 +43,7 @@ const ruRU = {
     'autoTorrentEnable': 'Автоматически создавать BT-задачи из .torrent файлов',
     'autoTorrentDeleteAfterDownload':
         'Удалить .torrent файл после создания BT-задачи',
-    'autoCleanMissingFileTasks': 'Автоочистка задач с отсутствующими файлами',
+    'autoDeleteMissingFileTasks': 'Автоудаление задач с отсутствующими файлами',
     'items': '@подсчет элементов',
     'subscribeTracker': 'Подпись трекера',
     'subscribeFail':
