@@ -40,6 +40,8 @@ const huHU = {
     'maxRunning': 'Maximális futó feladatok',
     'defaultDirectDownload':
         'Alapértelmezettként ellenőrizze a közvetlen letöltést',
+    'autoDeleteTorrents': 'Automatikus .torrent fájlok törlése',
+    'autoCleanMissingFiles': 'Hiányzó fájlok automatikus tisztítása',
     'items': '@count elem',
     'subscribeTracker': 'Nyomkövető előfizetése',
     'subscribeFail':

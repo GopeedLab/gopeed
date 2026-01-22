@@ -12,6 +12,10 @@ class DownloaderConfig {
   WebhookConfig webhook = WebhookConfig();
   ArchiveConfig archive = ArchiveConfig();
 
+  // New fields for auto-management
+  bool autoDeleteTorrents = false;
+  bool autoCleanMissingFiles = false;
+
   DownloaderConfig({
     this.downloadDir = '',
     this.maxRunning = 0,
