@@ -5,8 +5,10 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -69,21 +71,119 @@
                 <data
                     android:scheme="magnet" />
             </intent-filter>
+            <!-- Handle http/https URLs with common downloadable mimeTypes -->
             <intent-filter android:label="Gopeed">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="http"
-                    android:host="*"
-                    android:path="*" />
-                <data
-                    android:scheme="https"
-                    android:host="*"
-                    android:path="*" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="*/*" />
             </intent-filter>
+            <!-- Handle binary/octet-stream downloads (generic file downloads) -->
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <!-- Handle zip/archive files -->
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="application/zip" />
+            </intent-filter>
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="application/x-rar-compressed" />
+            </intent-filter>
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="application/x-7z-compressed" />
+            </intent-filter>
+            <!-- Handle executable/installer files -->
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+            </intent-filter>
+            <!-- Handle video files -->
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+            <!-- Handle audio files -->
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="audio/*" />
+            </intent-filter>
+            <!-- Handle image files -->
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <!-- Handle PDF files -->
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
+            <!-- Handle document files -->
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="application/msword" />
+            </intent-filter>
+            <intent-filter android:label="Gopeed">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="application/vnd.openxmlformats-officedocument.*" />
+            </intent-filter>
+            <!-- Register as a download manager - ACTION_VIEW_DOWNLOADS -->
             <intent-filter>
-                <action android:name="android.intent.action.WEB_SEARCH" />
+                <action android:name="android.intent.action.VIEW_DOWNLOADS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <!-- Handle DOWNLOAD_COMPLETE broadcast intent (optional) -->
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_NOTIFICATION_CLICKED" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
 
@@ -108,7 +208,7 @@
         </activity>
 
         <!-- Add android:stopWithTask option only when necessary. -->
-        <service 
+        <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
