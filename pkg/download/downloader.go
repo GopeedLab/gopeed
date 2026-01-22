@@ -283,7 +283,7 @@ func (d *Downloader) cleanupNonExistingTasks() {
 	}
 
 	// If the feature is disabled, do nothing
-	if !cfg.AutoCleanMissingFiles {
+	if !cfg.AutoDeleteMissingFileTasks {
 		return
 	}
 
@@ -957,10 +957,25 @@ func (d *Downloader) watch(task *Task) {
 
 	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
 		downloadFilePath := task.Meta.SingleFilepath()
-		if e.AutoTorrent && strings.HasSuffix(downloadFilePath, ".torrent") {
 
-			cfg, err := d.GetConfig()
-			shouldDelete := err == nil && cfg.AutoDeleteTorrents
+		cfg, _ := d.GetConfig()
+
+		// Determine if auto-torrent is enabled (use global config if not explicitly set)
+		autoTorrentEnabled := false
+		if e.AutoTorrent != nil {
+			autoTorrentEnabled = *e.AutoTorrent
+		} else if cfg != nil && cfg.AutoTorrent != nil {
+			autoTorrentEnabled = cfg.AutoTorrent.Enable
+		}
+
+		if autoTorrentEnabled && strings.HasSuffix(downloadFilePath, ".torrent") {
+			// Determine if should delete torrent file after creating BT task
+			shouldDelete := false
+			if e.DeleteTorrentAfterDownload != nil {
+				shouldDelete = *e.DeleteTorrentAfterDownload
+			} else if cfg != nil && cfg.AutoTorrent != nil {
+				shouldDelete = cfg.AutoTorrent.DeleteAfterDownload
+			}
 
 			go func() {
 				_, err2 := d.CreateDirect(
@@ -973,18 +988,26 @@ func (d *Downloader) watch(task *Task) {
 					})
 				if err2 != nil {
 					d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
-				} else {
+					return
+				}
 
-					if shouldDelete {
-						d.Delete(&TaskFilter{IDs: []string{task.ID}}, true)
-					}
+				if shouldDelete {
+					d.Delete(&TaskFilter{IDs: []string{task.ID}}, true)
 				}
 			}()
 		}
 
+		// Determine if auto-extract is enabled (use global config if not explicitly set)
+		autoExtractEnabled := false
+		if e.AutoExtract != nil {
+			autoExtractEnabled = *e.AutoExtract
+		} else if cfg != nil && cfg.Archive != nil {
+			autoExtractEnabled = cfg.Archive.AutoExtract
+		}
+
 		// Auto-extract archive files using the extraction queue
 		// This ensures only one extraction runs at a time to prevent resource exhaustion
-		if e.AutoExtract && isArchiveFile(downloadFilePath) {
+		if autoExtractEnabled && isArchiveFile(downloadFilePath) {
 			d.enqueueExtraction(task, downloadFilePath, e)
 		}
 	}

@@ -10,11 +10,11 @@ class DownloaderConfig {
   ExtraConfig extra = ExtraConfig();
   ProxyConfig proxy = ProxyConfig();
   WebhookConfig webhook = WebhookConfig();
+  AutoTorrentConfig autoTorrent = AutoTorrentConfig();
   ArchiveConfig archive = ArchiveConfig();
 
   // New fields for auto-management
-  bool autoDeleteTorrents = false;
-  bool autoCleanMissingFiles = false;
+  bool autoDeleteMissingFileTasks = false;
 
   DownloaderConfig({
     this.downloadDir = '',
@@ -232,6 +232,22 @@ class ExtraConfigGithubMirror {
           : _$ExtraConfigGithubMirrorFromJson(json);
 
   Map<String, dynamic> toJson() => _$ExtraConfigGithubMirrorToJson(this);
+}
+
+@JsonSerializable()
+class AutoTorrentConfig {
+  bool enable;
+  bool deleteAfterDownload;
+
+  AutoTorrentConfig({
+    this.enable = false,
+    this.deleteAfterDownload = false,
+  });
+
+  factory AutoTorrentConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? AutoTorrentConfig() : _$AutoTorrentConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$AutoTorrentConfigToJson(this);
 }
 
 @JsonSerializable()

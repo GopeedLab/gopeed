@@ -62,6 +62,8 @@ class CreateView extends GetView<CreateController> {
   final _availableSchemes = ["http:", "https:", "magnet:"];
 
   final _skipVerifyCertController = false.obs;
+  final _autoTorrentController = Rxn<bool>();
+  final _deleteTorrentAfterDownloadController = Rxn<bool>();
   final _autoExtractController = Rxn<bool>();
   final _deleteAfterExtractController = Rxn<bool>();
 
@@ -81,11 +83,6 @@ class CreateView extends GetView<CreateController> {
       final downloadDir = appController.downloaderConfig.value.downloadDir;
       _pathController.text = renderPathPlaceholders(downloadDir);
     }
-    // Initialize archive settings from global config if not already set
-    _autoExtractController.value ??=
-        appController.downloaderConfig.value.archive.autoExtract;
-    _deleteAfterExtractController.value ??=
-        appController.downloaderConfig.value.archive.deleteAfterExtract;
 
     // Handle pending create task from deep link
     final CreateTask? routerParams = Get.rootDelegate.arguments();
@@ -509,20 +506,17 @@ class CreateView extends GetView<CreateController> {
                                 const Divider(),
                                 TabBar(
                                   controller: controller.advancedTabController,
-                                  tabs: [
-                                    const Tab(
+                                  tabs: const [
+                                    Tab(
                                       text: 'HTTP',
                                     ),
-                                    const Tab(
+                                    Tab(
                                       text: 'BitTorrent',
                                     ),
-                                    Tab(
-                                      text: 'archives'.tr,
-                                    )
                                   ],
                                 ),
                                 DefaultTabController(
-                                  length: 3,
+                                  length: 2,
                                   child: ContentSizeTabBarView(
                                     controller:
                                         controller.advancedTabController,
@@ -605,21 +599,52 @@ class CreateView extends GetView<CreateController> {
                                               ),
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                      Column(
-                                        children: [
-                                          TextFormField(
-                                              controller: _btTrackerController,
-                                              maxLines: 5,
-                                              decoration: InputDecoration(
-                                                labelText: 'Trackers',
-                                                hintText: 'addTrackerHit'.tr,
-                                              )),
-                                        ],
-                                      ),
-                                      Column(
-                                        children: [
+                                          // AutoTorrent options
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 10),
+                                            child: CompactCheckbox(
+                                              label: 'autoTorrentEnable'.tr,
+                                              value: _autoTorrentController
+                                                      .value ??
+                                                  false,
+                                              onChanged: (bool? value) {
+                                                _autoTorrentController.value =
+                                                    value ?? false;
+                                              },
+                                              textStyle: const TextStyle(
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ),
+                                          Obx(
+                                            () => Visibility(
+                                              visible: _autoTorrentController
+                                                      .value ??
+                                                  false,
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                    top: 10, left: 20),
+                                                child: CompactCheckbox(
+                                                  label:
+                                                      'autoTorrentDeleteAfterDownload'
+                                                          .tr,
+                                                  value:
+                                                      _deleteTorrentAfterDownloadController
+                                                              .value ??
+                                                          false,
+                                                  onChanged: (bool? value) {
+                                                    _deleteTorrentAfterDownloadController
+                                                        .value = value ?? false;
+                                                  },
+                                                  textStyle: const TextStyle(
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          // AutoExtract options
                                           Padding(
                                             padding:
                                                 const EdgeInsets.only(top: 10),
@@ -647,7 +672,7 @@ class CreateView extends GetView<CreateController> {
                                                   Padding(
                                                     padding:
                                                         const EdgeInsets.only(
-                                                            top: 10),
+                                                            top: 10, left: 20),
                                                     child: TextFormField(
                                                       controller:
                                                           _archivePasswordController,
@@ -666,7 +691,7 @@ class CreateView extends GetView<CreateController> {
                                                   Padding(
                                                     padding:
                                                         const EdgeInsets.only(
-                                                            top: 10),
+                                                            top: 10, left: 20),
                                                     child: CompactCheckbox(
                                                       label:
                                                           'deleteAfterExtract'
@@ -691,7 +716,18 @@ class CreateView extends GetView<CreateController> {
                                             ),
                                           ),
                                         ],
-                                      )
+                                      ),
+                                      Column(
+                                        children: [
+                                          TextFormField(
+                                              controller: _btTrackerController,
+                                              maxLines: 5,
+                                              decoration: InputDecoration(
+                                                labelText: 'Trackers',
+                                                hintText: 'addTrackerHit'.tr,
+                                              )),
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 )
@@ -892,8 +928,9 @@ class CreateView extends GetView<CreateController> {
   Object? parseReqOptsExtra() {
     return OptsExtraHttp()
       ..connections = int.tryParse(_connectionsController.text) ?? 0
-      ..autoTorrent = true
-      ..autoExtract = _autoExtractController.value ?? false
+      ..autoTorrent = _autoTorrentController.value
+      ..deleteTorrentAfterDownload = _deleteTorrentAfterDownloadController.value
+      ..autoExtract = _autoExtractController.value
       ..archivePassword = _archivePasswordController.text
       ..deleteAfterExtract = _deleteAfterExtractController.value ?? false;
   }

@@ -19,6 +19,10 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
 				Webhook:        &WebhookConfig{},
+				AutoTorrent: &AutoTorrentConfig{
+					Enable:              false,
+					DeleteAfterDownload: false,
+				},
 				Archive: &ArchiveConfig{
 					AutoExtract:        false,
 					DeleteAfterExtract: false,
@@ -35,6 +39,10 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
 				Webhook:        &WebhookConfig{},
+				AutoTorrent: &AutoTorrentConfig{
+					Enable:              false,
+					DeleteAfterDownload: false,
+				},
 				Archive: &ArchiveConfig{
 					AutoExtract:        false,
 					DeleteAfterExtract: false,
@@ -55,6 +63,10 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				},
 				Proxy:   &DownloaderProxyConfig{},
 				Webhook: &WebhookConfig{},
+				AutoTorrent: &AutoTorrentConfig{
+					Enable:              false,
+					DeleteAfterDownload: false,
+				},
 				Archive: &ArchiveConfig{
 					AutoExtract:        false,
 					DeleteAfterExtract: false,
@@ -75,6 +87,33 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 					Enable: true,
 				},
 				Webhook: &WebhookConfig{},
+				AutoTorrent: &AutoTorrentConfig{
+					Enable:              false,
+					DeleteAfterDownload: false,
+				},
+				Archive: &ArchiveConfig{
+					AutoExtract:        false,
+					DeleteAfterExtract: false,
+				},
+			},
+		},
+		{
+			"Init AutoTorrent",
+			&DownloaderStoreConfig{
+				AutoTorrent: &AutoTorrentConfig{
+					Enable:              true,
+					DeleteAfterDownload: true,
+				},
+			},
+			&DownloaderStoreConfig{
+				MaxRunning:     5,
+				ProtocolConfig: map[string]any{},
+				Proxy:          &DownloaderProxyConfig{},
+				Webhook:        &WebhookConfig{},
+				AutoTorrent: &AutoTorrentConfig{
+					Enable:              true,
+					DeleteAfterDownload: true,
+				},
 				Archive: &ArchiveConfig{
 					AutoExtract:        false,
 					DeleteAfterExtract: false,
@@ -94,6 +133,10 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
 				Webhook:        &WebhookConfig{},
+				AutoTorrent: &AutoTorrentConfig{
+					Enable:              false,
+					DeleteAfterDownload: false,
+				},
 				Archive: &ArchiveConfig{
 					AutoExtract:        true,
 					DeleteAfterExtract: false,
@@ -111,6 +154,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				Extra:          tt.fields.Extra,
 				Proxy:          tt.fields.Proxy,
 				Webhook:        tt.fields.Webhook,
+				AutoTorrent:    tt.fields.AutoTorrent,
 				Archive:        tt.fields.Archive,
 			}
 			if got := cfg.Init(); !reflect.DeepEqual(got, tt.want) {
@@ -287,6 +331,45 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 			},
 		},
 		{
+			"Merge AutoTorrent No Override",
+			&DownloaderStoreConfig{
+				AutoTorrent: &AutoTorrentConfig{
+					Enable: true,
+				},
+			},
+			args{
+				beforeCfg: &DownloaderStoreConfig{
+					AutoTorrent: &AutoTorrentConfig{
+						Enable:              false,
+						DeleteAfterDownload: false,
+					},
+				},
+			},
+			&DownloaderStoreConfig{
+				AutoTorrent: &AutoTorrentConfig{
+					Enable: true,
+				},
+			},
+		},
+		{
+			"Merge AutoTorrent Override",
+			&DownloaderStoreConfig{},
+			args{
+				beforeCfg: &DownloaderStoreConfig{
+					AutoTorrent: &AutoTorrentConfig{
+						Enable:              true,
+						DeleteAfterDownload: true,
+					},
+				},
+			},
+			&DownloaderStoreConfig{
+				AutoTorrent: &AutoTorrentConfig{
+					Enable:              true,
+					DeleteAfterDownload: true,
+				},
+			},
+		},
+		{
 			"Merge Archive No Override",
 			&DownloaderStoreConfig{
 				Archive: &ArchiveConfig{
@@ -336,6 +419,7 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 				Extra:          tt.fields.Extra,
 				Proxy:          tt.fields.Proxy,
 				Webhook:        tt.fields.Webhook,
+				AutoTorrent:    tt.fields.AutoTorrent,
 				Archive:        tt.fields.Archive,
 			}
 			if got := cfg.Merge(tt.args.beforeCfg); !reflect.DeepEqual(got, tt.want) {

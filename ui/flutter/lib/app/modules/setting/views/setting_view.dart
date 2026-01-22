@@ -169,19 +169,19 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
-    // New: Auto Delete Torrents
-    final buildAutoDeleteTorrents = _buildConfigItem('autoDeleteTorrents', () {
-      return appController.downloaderConfig.value.autoDeleteTorrents
+    // AutoTorrent: Enable auto create BT tasks from .torrent files
+    final buildAutoTorrentEnable = _buildConfigItem('autoTorrentEnable', () {
+      return appController.downloaderConfig.value.autoTorrent.enable
           ? 'on'.tr
           : 'off'.tr;
     }, (Key key) {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
-          value: appController.downloaderConfig.value.autoDeleteTorrents,
+          value: appController.downloaderConfig.value.autoTorrent.enable,
           onChanged: (bool value) async {
             appController.downloaderConfig.update((val) {
-              val!.autoDeleteTorrents = value;
+              val!.autoTorrent.enable = value;
             });
             await debounceSave();
           },
@@ -189,19 +189,44 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
-    // New: Auto Clean Missing Files
-    final buildAutoCleanMissingFiles = _buildConfigItem('autoCleanMissingFiles', () {
-      return appController.downloaderConfig.value.autoCleanMissingFiles
+    // AutoTorrent: Delete .torrent file after BT task creation
+    final buildAutoTorrentDeleteAfterDownload =
+        _buildConfigItem('autoTorrentDeleteAfterDownload', () {
+      return appController
+              .downloaderConfig.value.autoTorrent.deleteAfterDownload
           ? 'on'.tr
           : 'off'.tr;
     }, (Key key) {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
-          value: appController.downloaderConfig.value.autoCleanMissingFiles,
+          value: appController
+              .downloaderConfig.value.autoTorrent.deleteAfterDownload,
           onChanged: (bool value) async {
             appController.downloaderConfig.update((val) {
-              val!.autoCleanMissingFiles = value;
+              val!.autoTorrent.deleteAfterDownload = value;
+            });
+            await debounceSave();
+          },
+        ),
+      );
+    });
+
+    // New: Auto Delete Missing File Tasks
+    final buildAutoDeleteMissingFileTasks =
+        _buildConfigItem('autoDeleteMissingFileTasks', () {
+      return appController.downloaderConfig.value.autoDeleteMissingFileTasks
+          ? 'on'.tr
+          : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value:
+              appController.downloaderConfig.value.autoDeleteMissingFileTasks,
+          onChanged: (bool value) async {
+            appController.downloaderConfig.update((val) {
+              val!.autoDeleteMissingFileTasks = value;
             });
             await debounceSave();
           },
@@ -1454,8 +1479,13 @@ class SettingView extends GetView<SettingController> {
                             buildMaxRunning(),
                             buildDefaultDirectDownload(),
                             buildAutoStartTasks(),
-                            buildAutoDeleteTorrents(),
-                            buildAutoCleanMissingFiles(),
+                            buildAutoTorrentEnable(),
+                            Obx(() => Visibility(
+                                  visible: appController.downloaderConfig.value
+                                      .autoTorrent.enable,
+                                  child: buildAutoTorrentDeleteAfterDownload(),
+                                )),
+                            buildAutoDeleteMissingFileTasks(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
                             buildMenubarMode(),
@@ -1466,7 +1496,11 @@ class SettingView extends GetView<SettingController> {
                             child: Column(
                           children: _addDivider([
                             buildAutoExtract(),
-                            buildDeleteAfterExtract(),
+                            Obx(() => Visibility(
+                                  visible: appController.downloaderConfig.value
+                                      .archive.autoExtract,
+                                  child: buildDeleteAfterExtract(),
+                                )),
                           ]),
                         )),
                         const Text('HTTP'),
