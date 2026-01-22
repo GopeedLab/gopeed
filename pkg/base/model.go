@@ -178,17 +178,15 @@ type CreateTaskBatchItem struct {
 type DownloaderStoreConfig struct {
 	FirstLoad bool `json:"-"` // FirstLoad is the flag that the config is first time init and not from store
 
-	DownloadDir    string                 `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
-	MaxRunning     int                    `json:"maxRunning"`     // MaxRunning is the max running download count
-	ProtocolConfig map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
-	Extra          map[string]any         `json:"extra"`
-	Proxy          *DownloaderProxyConfig `json:"proxy"`
-	Webhook        *WebhookConfig         `json:"webhook"`     // Webhook is the webhook configuration
-	AutoTorrent    *AutoTorrentConfig     `json:"autoTorrent"` // AutoTorrent is the auto torrent task creation configuration
-	Archive        *ArchiveConfig         `json:"archive"`     // Archive is the archive extraction configuration
-
-	// New fields added for auto-management
-	AutoDeleteMissingFileTasks bool `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
+	DownloadDir                string                 `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
+	MaxRunning                 int                    `json:"maxRunning"`     // MaxRunning is the max running download count
+	ProtocolConfig             map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
+	Extra                      map[string]any         `json:"extra"`
+	Proxy                      *DownloaderProxyConfig `json:"proxy"`
+	Webhook                    *WebhookConfig         `json:"webhook"`                    // Webhook is the webhook configuration
+	AutoTorrent                *AutoTorrentConfig     `json:"autoTorrent"`                // AutoTorrent is the auto torrent task creation configuration
+	Archive                    *ArchiveConfig         `json:"archive"`                    // Archive is the archive extraction configuration
+	AutoDeleteMissingFileTasks bool                   `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
