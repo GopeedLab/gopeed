@@ -17,9 +17,10 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>)
       ..webhook =
           WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
+      ..autoTorrent = AutoTorrentConfig.fromJson(
+          json['autoTorrent'] as Map<String, dynamic>?)
       ..archive =
           ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?)
-      ..autoDeleteTorrents = json['autoDeleteTorrents'] as bool
       ..autoCleanMissingFiles = json['autoCleanMissingFiles'] as bool;
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
@@ -30,8 +31,8 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'extra': instance.extra.toJson(),
       'proxy': instance.proxy.toJson(),
       'webhook': instance.webhook.toJson(),
+      'autoTorrent': instance.autoTorrent.toJson(),
       'archive': instance.archive.toJson(),
-      'autoDeleteTorrents': instance.autoDeleteTorrents,
       'autoCleanMissingFiles': instance.autoCleanMissingFiles,
     };
 
@@ -240,6 +241,18 @@ Map<String, dynamic> _$ExtraConfigGithubMirrorToJson(
     <String, dynamic>{
       'enabled': instance.enabled,
       'mirrors': instance.mirrors.map((e) => e.toJson()).toList(),
+    };
+
+AutoTorrentConfig _$AutoTorrentConfigFromJson(Map<String, dynamic> json) =>
+    AutoTorrentConfig(
+      enable: json['enable'] as bool? ?? false,
+      deleteAfterDownload: json['deleteAfterDownload'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$AutoTorrentConfigToJson(AutoTorrentConfig instance) =>
+    <String, dynamic>{
+      'enable': instance.enable,
+      'deleteAfterDownload': instance.deleteAfterDownload,
     };
 
 ArchiveConfig _$ArchiveConfigFromJson(Map<String, dynamic> json) =>

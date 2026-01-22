@@ -39,8 +39,10 @@ const enUS = {
     'maxRunning': 'Max Running Tasks',
     'defaultDirectDownload': 'Check direct download by default',
     'autoStartTasks': 'Auto-start incomplete tasks on startup',
-    'autoDeleteTorrents': 'Auto delete .torrent files',
-    'autoCleanMissingFiles': 'Auto clean missing files',
+    'autoTorrentEnable': 'Auto create BT tasks from .torrent files',
+    'autoTorrentDeleteAfterDownload':
+        'Delete .torrent file after BT task creation',
+    'autoCleanMissingFileTasks': 'Auto clean missing file tasks',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':

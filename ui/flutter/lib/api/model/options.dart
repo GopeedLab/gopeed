@@ -25,15 +25,17 @@ class Options {
 @JsonSerializable()
 class OptsExtraHttp {
   int connections;
-  bool autoTorrent;
-  bool autoExtract;
+  bool? autoTorrent;
+  bool? deleteTorrentAfterDownload;
+  bool? autoExtract;
   String archivePassword;
   bool deleteAfterExtract;
 
   OptsExtraHttp({
     this.connections = 0,
-    this.autoTorrent = false,
-    this.autoExtract = false,
+    this.autoTorrent,
+    this.deleteTorrentAfterDownload,
+    this.autoExtract,
     this.archivePassword = '',
     this.deleteAfterExtract = false,
   });

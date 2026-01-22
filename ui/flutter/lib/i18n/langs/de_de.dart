@@ -42,8 +42,12 @@ const deDE = {
     'maxRunning': 'Maximale Anzahl ausgeführter Aufgaben',
     'defaultDirectDownload': 'Direkten Download standardmäßig aktivieren',
     'autoStartTasks': 'Unvollständige Aufgaben beim Start automatisch starten',
-    'autoDeleteTorrents': 'Automatisches Löschen von .torrent-Dateien',
-    'autoCleanMissingFiles': 'Automatisches Bereinigen fehlender Dateien',
+    'autoTorrentEnable':
+        'BT-Aufgaben automatisch aus .torrent-Dateien erstellen',
+    'autoTorrentDeleteAfterDownload':
+        '.torrent-Datei nach BT-Aufgabenerstellung löschen',
+    'autoCleanMissingFileTasks':
+        'Fehlende Dateiaufgaben automatisch bereinigen',
     'items': '@count Artikel',
     'subscribeTracker': 'Abonnement-Tracker',
     'subscribeFail':
