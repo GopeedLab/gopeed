@@ -225,18 +225,25 @@ class BuildTaskListView extends GetView {
     // Get ETA text, e.g. "00:05:30"
     String getEtaText() {
       if (isDone()) return "";
+      if (!isRunning()) return "";
 
       final total = task.meta.res?.size ?? 0;
       final downloaded = task.progress.downloaded;
       final speed = task.progress.speed;
 
-      // If speed is 0 or file is downloaded, don't show time
-      if (total <= 0 || speed <= 0 || downloaded >= total) {
+      // If speed is 0 or total unknown, don't show time
+      if (total <= 0 || speed <= 0) {
         return "";
       }
 
       final remainingBytes = total - downloaded;
-      final remainingSeconds = remainingBytes ~/ speed;
+      // If remaining bytes <= 0, download is essentially complete
+      if (remainingBytes <= 0) {
+        return "";
+      }
+
+      // Use ceiling division to avoid showing 0 seconds when there's still data remaining
+      final remainingSeconds = (remainingBytes + speed - 1) ~/ speed;
 
       // If time is too long (e.g. > 1 day), return > 1d
       if (remainingSeconds > 86400) return "> 1d";
