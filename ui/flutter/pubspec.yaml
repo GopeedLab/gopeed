@@ -101,7 +101,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
   ffigen: ^8.0.2
-  # build json model: dart run build_runner build --delete-conflicting-outputs
+  # build json model: flutter pub run build_runner build --delete-conflicting-outputs
   build_runner: ^2.2.1
   json_serializable: ^6.3.2
   flutter_launcher_icons: ^0.13.1
@@ -148,7 +148,7 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
 
-# dart run flutter_launcher_icons:main
+# flutter pub run flutter_launcher_icons:main
 flutter_icons:
   image_path: "assets/icon/icon_1024.png"
   android: true # can specify file name here e.g. "ic_launcher"
@@ -164,7 +164,7 @@ flutter_icons:
     generate: true
     image_path: "assets/icon/icon_macos_1024.png"
 
-# dart run ffigen
+# flutter pub run ffigen
 ffigen:
   name: LibgopeedBind
   description: Bindings to gopeed library.
