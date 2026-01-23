@@ -44,8 +44,7 @@ jobs:
           - arch: arm64
             os: windows-11-arm
             llvm_ver: "20251202" # Only ARM64
-            flutter_channel: "master"
-            flutter_version: "8817d45220d" # Only ARM64
+            flutter_channel: "stable"
           - arch: amd64
             os: windows-2022
             flutter_channel: "stable"
@@ -85,7 +84,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ matrix.flutter_channel }}
-          flutter-version: ${{ matrix.flutter_version || env.FLUTTER_VERSION }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
