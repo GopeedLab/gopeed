@@ -191,7 +191,7 @@ jobs:
           overwrite: true
   build-macos-amd64-lib:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
-    runs-on: macos-13
+    runs-on: macos-15-intel
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
