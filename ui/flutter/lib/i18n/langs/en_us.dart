@@ -59,6 +59,8 @@ const enUS = {
     'themeDark': 'Dark',
     'locale': 'Language',
     'notifyWhenNewVersion': 'Notify for updates',
+    'analyticsEnabled': 'Upload Statistics',
+    'analyticsEnabledDesc': 'Share anonymous usage data to help us improve',
     'about': 'About',
     'homepage': 'Homepage',
     'version': 'Version',

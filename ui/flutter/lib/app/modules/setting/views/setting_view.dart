@@ -14,6 +14,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../api/api.dart' as api;
 import '../../../../api/model/downloader_config.dart';
 import '../../../../database/database.dart';
+import '../../../../util/analytics.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
@@ -859,6 +860,21 @@ class SettingView extends GetView<SettingController> {
       );
     });
 
+    final analyticsEnabled = Database.instance.getAnalyticsEnabled().obs;
+    buildAnalyticsEnabled() {
+      return ListTile(
+        title: Text('analyticsEnabled'.tr),
+        subtitle: Text('analyticsEnabledDesc'.tr),
+        trailing: Obx(() => Switch(
+              value: analyticsEnabled.value,
+              onChanged: (bool value) {
+                analyticsEnabled.value = value;
+                Database.instance.saveAnalyticsEnabled(value);
+              },
+            )),
+      );
+    }
+
     buildThanks() {
       const thankPage =
           'https://github.com/GopeedLab/gopeed/graphs/contributors';
@@ -1538,6 +1554,7 @@ class SettingView extends GetView<SettingController> {
                             buildHomepage(),
                             buildVersion(),
                             buildAutoCheckUpdate(),
+                            if (Config.isConfigured) buildAnalyticsEnabled(),
                             buildThanks(),
                           ]),
                         )),
