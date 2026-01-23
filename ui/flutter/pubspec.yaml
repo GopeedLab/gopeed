@@ -55,7 +55,7 @@ dependencies:
   window_manager: ^0.4.2
   hotkey_manager: ^0.2.3
   share_plus: ^10.1.0
-  flutter_form_builder: ^9.5.0
+  flutter_form_builder: ^10.2.0
   form_builder_validators: ^11.0.0
   flutter_foreground_task: ^8.2.0
   open_filex: ^4.7.0
