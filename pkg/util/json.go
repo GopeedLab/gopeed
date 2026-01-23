@@ -26,3 +26,13 @@ func DeepClone[T any](v *T) *T {
 	json.Unmarshal(b, &t)
 	return &t
 }
+
+// Ptr returns a pointer to the given value.
+func Ptr[T any](v T) *T {
+	return &v
+}
+
+// BoolPtr returns a pointer to a bool value.
+func BoolPtr(v bool) *bool {
+	return &v
+}

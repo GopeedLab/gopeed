@@ -37,8 +37,11 @@ const taTA = {
     'connections': 'தொடர்புகள்',
     'useServerCtime': 'Use server time for file creation',
     'maxRunning': 'அதிகபட்ச இயங்கும் பணிகள்',
-    'autoDeleteTorrents': 'தானாக .torrent கோப்புகளை நீக்கு',
-    'autoCleanMissingFiles': 'காணாமல் போன கோப்புகளை தானாக சுத்தம் செய்',
+    'autoTorrentEnable': '.torrent கோப்புகளிலிருந்து BT பணிகளை தானாக உருவாக்கு',
+    'autoTorrentDeleteAfterDownload':
+        'BT பணி உருவாக்கத்திற்குப் பிறகு .torrent கோப்பை நீக்கு',
+    'autoDeleteMissingFileTasks':
+        'காணாமல் போன கோப்புகளுடன் பணிகளை தானாக நீக்கு',
     'items': '@count items',
     'subscribeTracker': 'Subscribe Tracker',
     'subscribeFail':

@@ -39,8 +39,11 @@ const ukUA = {
     'useServerCtime': 'Використовувати час сервера для створення файлу',
     'maxRunning': 'Макс. завдань у черзі',
     'defaultDirectDownload': 'Пряме завантаження за замовчуванням',
-    'autoDeleteTorrents': 'Автоматично видаляти файли .torrent',
-    'autoCleanMissingFiles': 'Автоматично очищати відсутні файли',
+    'autoTorrentEnable': 'Автоматично створювати BT-завдання з .torrent файлів',
+    'autoTorrentDeleteAfterDownload':
+        'Видалити .torrent файл після створення BT-завдання',
+    'autoDeleteMissingFileTasks':
+        'Автоматично видаляти завдання з відсутніми файлами',
     'items': '@count елементів',
     'subscribeTracker': 'Підписатися на трекер',
     'subscribeFail':

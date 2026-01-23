@@ -39,8 +39,12 @@ const esES = {
     'useServerCtime': 'Usar tiempo del servidor para la creación de archivos',
     'maxRunning': 'Máximo de Tareas en Ejecución',
     'autoStartTasks': 'Iniciar automáticamente tareas incompletas al arrancar',
-    'autoDeleteTorrents': 'Eliminar automáticamente archivos .torrent',
-    'autoCleanMissingFiles': 'Limpiar automáticamente archivos faltantes',
+    'autoTorrentEnable':
+        'Crear automáticamente tareas BT desde archivos .torrent',
+    'autoTorrentDeleteAfterDownload':
+        'Eliminar archivo .torrent después de crear tarea BT',
+    'autoDeleteMissingFileTasks':
+        'Eliminar automáticamente tareas con archivos faltantes',
     'items': '@count elementos',
     'subscribeTracker': 'Suscribirse al Tracker',
     'subscribeFail':

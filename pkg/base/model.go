@@ -178,17 +178,15 @@ type CreateTaskBatchItem struct {
 type DownloaderStoreConfig struct {
 	FirstLoad bool `json:"-"` // FirstLoad is the flag that the config is first time init and not from store
 
-	DownloadDir    string                 `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
-	MaxRunning     int                    `json:"maxRunning"`     // MaxRunning is the max running download count
-	ProtocolConfig map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
-	Extra          map[string]any         `json:"extra"`
-	Proxy          *DownloaderProxyConfig `json:"proxy"`
-	Webhook        *WebhookConfig         `json:"webhook"` // Webhook is the webhook configuration
-	Archive        *ArchiveConfig         `json:"archive"` // Archive is the archive extraction configuration
-
-	// New fields added for auto-management
-	AutoDeleteTorrents    bool `json:"autoDeleteTorrents"`    // AutoDeleteTorrents enables automatic deletion of .torrent files after download
-	AutoCleanMissingFiles bool `json:"autoCleanMissingFiles"` // AutoCleanMissingFiles enables automatic cleanup of tasks with missing files
+	DownloadDir                string                 `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
+	MaxRunning                 int                    `json:"maxRunning"`     // MaxRunning is the max running download count
+	ProtocolConfig             map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
+	Extra                      map[string]any         `json:"extra"`
+	Proxy                      *DownloaderProxyConfig `json:"proxy"`
+	Webhook                    *WebhookConfig         `json:"webhook"`                    // Webhook is the webhook configuration
+	AutoTorrent                *AutoTorrentConfig     `json:"autoTorrent"`                // AutoTorrent is the auto torrent task creation configuration
+	Archive                    *ArchiveConfig         `json:"archive"`                    // Archive is the archive extraction configuration
+	AutoDeleteMissingFileTasks bool                   `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
@@ -203,6 +201,12 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	}
 	if cfg.Webhook == nil {
 		cfg.Webhook = &WebhookConfig{}
+	}
+	if cfg.AutoTorrent == nil {
+		cfg.AutoTorrent = &AutoTorrentConfig{
+			Enable:              false,
+			DeleteAfterDownload: false,
+		}
 	}
 	if cfg.Archive == nil {
 		cfg.Archive = &ArchiveConfig{
@@ -235,6 +239,9 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	if cfg.Webhook == nil {
 		cfg.Webhook = beforeCfg.Webhook
 	}
+	if cfg.AutoTorrent == nil {
+		cfg.AutoTorrent = beforeCfg.AutoTorrent
+	}
 	if cfg.Archive == nil {
 		cfg.Archive = beforeCfg.Archive
 	}
@@ -245,6 +252,12 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 type WebhookConfig struct {
 	Enable bool     `json:"enable"` // Enable is the flag to enable/disable webhooks
 	URLs   []string `json:"urls"`   // URLs is the list of webhook URLs
+}
+
+// AutoTorrentConfig is the auto torrent task creation configuration
+type AutoTorrentConfig struct {
+	Enable              bool `json:"enable"`              // Enable enables automatic BT task creation when downloading .torrent files
+	DeleteAfterDownload bool `json:"deleteAfterDownload"` // DeleteAfterDownload deletes the .torrent file after BT task creation
 }
 
 // ArchiveConfig is the archive extraction configuration

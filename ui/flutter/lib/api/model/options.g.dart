@@ -36,17 +36,29 @@ Map<String, dynamic> _$OptionsToJson(Options instance) {
 OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) =>
     OptsExtraHttp(
       connections: (json['connections'] as num?)?.toInt() ?? 0,
-      autoTorrent: json['autoTorrent'] as bool? ?? false,
-      autoExtract: json['autoExtract'] as bool? ?? false,
+      autoTorrent: json['autoTorrent'] as bool?,
+      deleteTorrentAfterDownload: json['deleteTorrentAfterDownload'] as bool?,
+      autoExtract: json['autoExtract'] as bool?,
       archivePassword: json['archivePassword'] as String? ?? '',
       deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? false,
     );
 
-Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) =>
-    <String, dynamic>{
-      'connections': instance.connections,
-      'autoTorrent': instance.autoTorrent,
-      'autoExtract': instance.autoExtract,
-      'archivePassword': instance.archivePassword,
-      'deleteAfterExtract': instance.deleteAfterExtract,
-    };
+Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) {
+  final val = <String, dynamic>{
+    'connections': instance.connections,
+  };
+
+  void writeNotNull(String key, dynamic value) {
+    if (value != null) {
+      val[key] = value;
+    }
+  }
+
+  writeNotNull('autoTorrent', instance.autoTorrent);
+  writeNotNull(
+      'deleteTorrentAfterDownload', instance.deleteTorrentAfterDownload);
+  writeNotNull('autoExtract', instance.autoExtract);
+  val['archivePassword'] = instance.archivePassword;
+  val['deleteAfterExtract'] = instance.deleteAfterExtract;
+  return val;
+}

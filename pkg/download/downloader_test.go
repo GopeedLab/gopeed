@@ -18,6 +18,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
+	"github.com/GopeedLab/gopeed/pkg/util"
 )
 
 var testDownloadOpt = &base.Options{
@@ -1037,7 +1038,7 @@ func TestDownloader_AutoExtractWithProgress(t *testing.T) {
 		Name: "archive.zip",
 		Extra: http.OptsExtra{
 			Connections: 1,
-			AutoExtract: true,
+			AutoExtract: util.BoolPtr(true),
 		},
 	})
 	if err != nil {
@@ -1164,7 +1165,7 @@ func TestDownloader_AutoExtractWithDeleteAfterExtract(t *testing.T) {
 		Name: "archive.zip",
 		Extra: http.OptsExtra{
 			Connections:        1,
-			AutoExtract:        true,
+			AutoExtract:        util.BoolPtr(true),
 			DeleteAfterExtract: true,
 		},
 	})
@@ -1258,7 +1259,7 @@ func TestDownloader_AutoExtractError(t *testing.T) {
 		Name: "corrupt.zip",
 		Extra: http.OptsExtra{
 			Connections: 1,
-			AutoExtract: true,
+			AutoExtract: util.BoolPtr(true),
 		},
 	})
 	if err != nil {
@@ -2330,5 +2331,320 @@ func TestDownloader_CheckMultiPartArchiveReady_EmptyBaseName(t *testing.T) {
 	// Should return true for non-multi-part files
 	if !ready {
 		t.Error("checkMultiPartArchiveReady() should return true for non-multi-part files")
+	}
+}
+
+// startTestTorrentServer starts a simple HTTP server that serves a torrent file
+func startTestTorrentServer(torrentPath string) net.Listener {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+
+	server := &gohttp.Server{
+		Handler: gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+			data, err := os.ReadFile(torrentPath)
+			if err != nil {
+				w.WriteHeader(gohttp.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/x-bittorrent")
+			w.Header().Set("Content-Disposition", "attachment; filename=ubuntu.torrent")
+			w.Write(data)
+		}),
+	}
+	go server.Serve(listener)
+	return listener
+}
+
+// TestDownloader_AutoTorrent tests the auto-torrent functionality
+// When a .torrent file is downloaded with AutoTorrent enabled, it should automatically create a BT task
+func TestDownloader_AutoTorrent(t *testing.T) {
+	// Path to the test torrent file
+	torrentPath := "../../internal/protocol/bt/testdata/ubuntu-22.04-live-server-amd64.iso.torrent"
+	if _, err := os.Stat(torrentPath); os.IsNotExist(err) {
+		t.Skip("Test torrent file not found, skipping test")
+	}
+
+	// Start a simple HTTP server to serve the torrent file
+	server := startTestTorrentServer(torrentPath)
+	defer server.Close()
+
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "auto_torrent_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create downloader
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		// Delete all tasks before clearing to avoid panic from BT tasks trying to access deleted resources
+		downloader.Delete(nil, true)
+		downloader.Clear()
+	}()
+
+	// Track created tasks
+	btTaskCreated := make(chan struct{}, 1)
+	var originalTaskId string
+
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyStart {
+			// A new task started - if it's not the original, it's the BT task
+			if event.Task != nil && event.Task.ID != originalTaskId && originalTaskId != "" {
+				select {
+				case btTaskCreated <- struct{}{}:
+				default:
+				}
+			}
+		}
+	})
+
+	// Create request to download the torrent file
+	req := &base.Request{
+		URL: "http://" + server.Addr().String() + "/ubuntu.torrent",
+	}
+
+	// Create task with AutoTorrent enabled
+	downloadDir := tempDir + "/downloads"
+	originalTaskId, err = downloader.CreateDirect(req, &base.Options{
+		Path: downloadDir,
+		Name: "ubuntu.torrent",
+		Extra: http.OptsExtra{
+			Connections: 1,
+			AutoTorrent: util.BoolPtr(true),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("Original task ID: %s", originalTaskId)
+
+	// Wait for BT task to be created (with timeout)
+	select {
+	case <-btTaskCreated:
+		t.Log("BT task created")
+	case <-time.After(10 * time.Second):
+		t.Log("Timeout waiting for BT task creation")
+	}
+
+	// Give a small buffer for task creation to complete
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify that a BT task was created
+	tasks := downloader.GetTasks()
+
+	// At minimum, we should have 2 tasks: the original torrent download and the BT task
+	if len(tasks) < 2 {
+		t.Errorf("Expected at least 2 tasks (torrent download + BT task), got %d", len(tasks))
+	} else {
+		t.Logf("Successfully created %d tasks", len(tasks))
+	}
+}
+
+// TestDownloader_AutoTorrentWithDelete tests the auto-torrent with DeleteTorrentAfterDownload option
+func TestDownloader_AutoTorrentWithDelete(t *testing.T) {
+	// Path to the test torrent file
+	torrentPath := "../../internal/protocol/bt/testdata/ubuntu-22.04-live-server-amd64.iso.torrent"
+	if _, err := os.Stat(torrentPath); os.IsNotExist(err) {
+		t.Skip("Test torrent file not found, skipping test")
+	}
+
+	// Start a simple HTTP server to serve the torrent file
+	server := startTestTorrentServer(torrentPath)
+	defer server.Close()
+
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "auto_torrent_delete_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create downloader
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		// Delete all tasks before clearing to avoid panic from BT tasks trying to access deleted resources
+		downloader.Delete(nil, true)
+		downloader.Clear()
+	}()
+
+	// Track task events
+	var originalTaskId string
+	originalTaskDeleted := make(chan struct{}, 1)
+	btTaskCreated := make(chan struct{}, 1)
+
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyStart {
+			// BT task was created and started
+			if event.Task != nil && event.Task.ID != originalTaskId && originalTaskId != "" {
+				select {
+				case btTaskCreated <- struct{}{}:
+				default:
+				}
+			}
+		}
+		if event.Key == EventKeyDelete {
+			// Check if the deleted task is the original torrent task
+			if event.Task != nil && event.Task.ID == originalTaskId {
+				select {
+				case originalTaskDeleted <- struct{}{}:
+				default:
+				}
+			}
+		}
+	})
+
+	// Create request to download the torrent file
+	req := &base.Request{
+		URL: "http://" + server.Addr().String() + "/ubuntu.torrent",
+	}
+
+	// Create task with AutoTorrent and DeleteTorrentAfterDownload enabled
+	downloadDir := tempDir + "/downloads"
+	originalTaskId, err = downloader.CreateDirect(req, &base.Options{
+		Path: downloadDir,
+		Name: "ubuntu.torrent",
+		Extra: http.OptsExtra{
+			Connections:                1,
+			AutoTorrent:                util.BoolPtr(true),
+			DeleteTorrentAfterDownload: util.BoolPtr(true),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("Original task ID: %s", originalTaskId)
+
+	// Wait for original task to be deleted (this happens after BT task is created)
+	select {
+	case <-originalTaskDeleted:
+		t.Log("Original torrent task was deleted as expected")
+	case <-time.After(10 * time.Second):
+		// Check manually if the task still exists
+		originalTask := downloader.GetTask(originalTaskId)
+		if originalTask != nil {
+			t.Error("Original torrent task should have been deleted but still exists")
+		} else {
+			t.Log("Original torrent task was deleted (detected via GetTask)")
+		}
+	}
+
+	// Give a moment for BT task creation
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify that original task is deleted and BT task exists
+	originalTask := downloader.GetTask(originalTaskId)
+	if originalTask != nil {
+		t.Error("Original torrent task should have been deleted")
+	}
+
+	// Verify remaining tasks (should have at least the BT task)
+	tasks := downloader.GetTasks()
+	t.Logf("Remaining tasks: %d", len(tasks))
+
+	// At least one task should remain (the BT task)
+	if len(tasks) == 0 {
+		t.Error("Expected at least one task (BT task) to remain")
+	}
+
+	// None of the remaining tasks should be the original torrent task
+	for _, task := range tasks {
+		if task.ID == originalTaskId {
+			t.Error("Original torrent task should have been deleted")
+		}
+	}
+}
+
+// TestDownloader_AutoTorrentDisabled tests that auto-torrent does not create BT task when disabled
+func TestDownloader_AutoTorrentDisabled(t *testing.T) {
+	// Path to the test torrent file
+	torrentPath := "../../internal/protocol/bt/testdata/ubuntu-22.04-live-server-amd64.iso.torrent"
+	if _, err := os.Stat(torrentPath); os.IsNotExist(err) {
+		t.Skip("Test torrent file not found, skipping test")
+	}
+
+	// Start a simple HTTP server to serve the torrent file
+	server := startTestTorrentServer(torrentPath)
+	defer server.Close()
+
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "auto_torrent_disabled_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create downloader
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		downloader.Delete(nil, true)
+		downloader.Clear()
+	}()
+
+	// Track task completion
+	taskDone := make(chan struct{}, 1)
+
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			select {
+			case taskDone <- struct{}{}:
+			default:
+			}
+		}
+	})
+
+	// Create request to download the torrent file
+	req := &base.Request{
+		URL: "http://" + server.Addr().String() + "/ubuntu.torrent",
+	}
+
+	// Create task with AutoTorrent explicitly disabled
+	downloadDir := tempDir + "/downloads"
+	_, err = downloader.CreateDirect(req, &base.Options{
+		Path: downloadDir,
+		Name: "ubuntu.torrent",
+		Extra: http.OptsExtra{
+			Connections: 1,
+			AutoTorrent: util.BoolPtr(false),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for task to complete
+	select {
+	case <-taskDone:
+		// Task completed
+	case <-time.After(10 * time.Second):
+		t.Fatal("Timeout waiting for task to complete")
+	}
+
+	// Give a small buffer
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify that only 1 task exists (no BT task was created)
+	tasks := downloader.GetTasks()
+	if len(tasks) != 1 {
+		t.Errorf("Expected exactly 1 task (torrent download only), got %d", len(tasks))
+	}
+
+	// Verify the torrent file was downloaded
+	torrentFilePath := downloadDir + "/ubuntu.torrent"
+	if _, err := os.Stat(torrentFilePath); os.IsNotExist(err) {
+		t.Error("Torrent file should have been downloaded")
 	}
 }
