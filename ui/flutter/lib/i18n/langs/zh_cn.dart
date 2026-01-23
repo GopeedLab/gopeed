@@ -56,6 +56,8 @@ const zhCN = {
     'themeDark': '暗黑主题',
     'locale': '语言',
     'notifyWhenNewVersion': '有新版本时提醒',
+    'analyticsEnabled': '上传统计数据',
+    'analyticsEnabledDesc': '分享匿名使用数据以帮助我们改进',
     'about': '关于',
     'homepage': '主页',
     'version': '版本',

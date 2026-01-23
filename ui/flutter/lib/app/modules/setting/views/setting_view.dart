@@ -14,6 +14,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../api/api.dart' as api;
 import '../../../../api/model/downloader_config.dart';
 import '../../../../database/database.dart';
+import '../../../../util/analytics.dart';
 import '../../../../i18n/message.dart';
 import '../../../../util/input_formatter.dart';
 import '../../../../util/locale_manager.dart';
@@ -190,7 +191,8 @@ class SettingView extends GetView<SettingController> {
     });
 
     // New: Auto Clean Missing Files
-    final buildAutoCleanMissingFiles = _buildConfigItem('autoCleanMissingFiles', () {
+    final buildAutoCleanMissingFiles =
+        _buildConfigItem('autoCleanMissingFiles', () {
       return appController.downloaderConfig.value.autoCleanMissingFiles
           ? 'on'.tr
           : 'off'.tr;
@@ -833,6 +835,21 @@ class SettingView extends GetView<SettingController> {
         ),
       );
     });
+
+    final analyticsEnabled = Database.instance.getAnalyticsEnabled().obs;
+    buildAnalyticsEnabled() {
+      return ListTile(
+        title: Text('analyticsEnabled'.tr),
+        subtitle: Text('analyticsEnabledDesc'.tr),
+        trailing: Obx(() => Switch(
+              value: analyticsEnabled.value,
+              onChanged: (bool value) {
+                analyticsEnabled.value = value;
+                Database.instance.saveAnalyticsEnabled(value);
+              },
+            )),
+      );
+    }
 
     buildThanks() {
       const thankPage =
@@ -1504,6 +1521,7 @@ class SettingView extends GetView<SettingController> {
                             buildHomepage(),
                             buildVersion(),
                             buildAutoCheckUpdate(),
+                            if (Config.isConfigured) buildAnalyticsEnabled(),
                             buildThanks(),
                           ]),
                         )),

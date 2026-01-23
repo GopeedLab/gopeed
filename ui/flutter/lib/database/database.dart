@@ -11,6 +11,8 @@ const String _bookmark = 'bookmark';
 const String _createHistory = 'createHistory';
 const String _webToken = 'webToken';
 const String _runAsMenubarApp = 'runAsMenubarApp';
+const String _analyticsEnabled = 'analyticsEnabled';
+const String _analyticsClientId = 'analyticsClientId';
 
 class Database {
   static final Database _instance = Database._internal();
@@ -117,5 +119,21 @@ class Database {
 
   bool getRunAsMenubarApp() {
     return box.get(_runAsMenubarApp, defaultValue: false) as bool;
+  }
+
+  void saveAnalyticsEnabled(bool value) {
+    box.put(_analyticsEnabled, value);
+  }
+
+  bool getAnalyticsEnabled() {
+    return box.get(_analyticsEnabled, defaultValue: true) as bool;
+  }
+
+  void saveAnalyticsClientId(String clientId) {
+    box.put(_analyticsClientId, clientId);
+  }
+
+  String? getAnalyticsClientId() {
+    return box.get(_analyticsClientId) as String?;
   }
 }
