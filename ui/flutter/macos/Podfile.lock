@@ -85,7 +85,7 @@ SPEC CHECKSUMS:
   app_links: 9028728e32c83a0831d9db8cf91c526d16cc5468
   desktop_drop: e0b672a7d84c0a6cbc378595e82cdb15f2970a43
   device_info_plus: 724ebb83a99d517430554a1810445ff28fe71fa3
-  FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
+  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   HotKey: 400beb7caa29054ea8d864c96f5ba7e5b4852277
   hotkey_manager_macos: a4317849af96d2430fa89944d3c58977ca089fbe
   open_dir_macos: 79810d7921d777f8732bf6358b3a0839a8fad9b5
@@ -98,6 +98,6 @@ SPEC CHECKSUMS:
   url_launcher_macos: 0fba8ddabfc33ce0a9afe7c5fef5aab3d8d2d673
   window_manager: 1d01fa7ac65a6e6f83b965471b1a7fdd3f06166c
 
-PODFILE CHECKSUM: 353c8bcc5d5b0994e508d035b5431cfe18c1dea7
+PODFILE CHECKSUM: 0d3963a09fc94f580682bd88480486da345dc3f0
 
 COCOAPODS: 1.16.2

@@ -12,13 +12,12 @@ class DownloaderConfig {
   WebhookConfig webhook = WebhookConfig();
   AutoTorrentConfig autoTorrent = AutoTorrentConfig();
   ArchiveConfig archive = ArchiveConfig();
-
-  // New fields for auto-management
-  bool autoDeleteMissingFileTasks = false;
+  bool autoDeleteMissingFileTasks;
 
   DownloaderConfig({
     this.downloadDir = '',
     this.maxRunning = 0,
+    this.autoDeleteMissingFileTasks = false,
   });
 
   factory DownloaderConfig.fromJson(Map<String, dynamic> json) =>
