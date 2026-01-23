@@ -11,11 +11,9 @@ import 'log_util.dart';
 
 /// GA4 Measurement Protocol configuration from dart-define
 class Config {
-  static const String measurementId = String.fromEnvironment(
-      'GA4_MEASUREMENT_ID',
-      defaultValue: "G-XPDNG5BFLH");
-  static const String apiSecret = String.fromEnvironment('GA4_API_SECRET',
-      defaultValue: "366C4u-rTIuiIFTPdEBgnA");
+  static const String measurementId =
+      String.fromEnvironment('GA4_MEASUREMENT_ID');
+  static const String apiSecret = String.fromEnvironment('GA4_API_SECRET');
 
   static bool get isConfigured =>
       measurementId.isNotEmpty && apiSecret.isNotEmpty;
