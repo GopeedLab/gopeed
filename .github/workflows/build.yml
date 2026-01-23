@@ -85,7 +85,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: ${{ matrix.flutter_channel }}
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ matrix.flutter_version || env.FLUTTER_VERSION }}
       - name: Build
         env:
           VERSION: ${{ needs.get-release.outputs.version }}
