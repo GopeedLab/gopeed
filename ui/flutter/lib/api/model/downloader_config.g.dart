@@ -10,6 +10,8 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
     DownloaderConfig(
       downloadDir: json['downloadDir'] as String? ?? '',
       maxRunning: (json['maxRunning'] as num?)?.toInt() ?? 0,
+      autoDeleteMissingFileTasks:
+          json['autoDeleteMissingFileTasks'] as bool? ?? false,
     )
       ..protocolConfig = ProtocolConfig.fromJson(
           json['protocolConfig'] as Map<String, dynamic>?)
@@ -20,8 +22,7 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..autoTorrent = AutoTorrentConfig.fromJson(
           json['autoTorrent'] as Map<String, dynamic>?)
       ..archive =
-          ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?)
-      ..autoDeleteMissingFileTasks = json['autoDeleteMissingFileTasks'] as bool;
+          ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{

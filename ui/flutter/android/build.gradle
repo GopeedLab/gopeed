@@ -1,16 +1,3 @@
-buildscript {
-    ext.kotlin_version = '1.8.22'
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath 'com.android.tools.build:gradle:7.1.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
-
 allprojects {
     repositories {
         google()
@@ -26,6 +13,24 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
-tasks.register("clean", Delete) {
+subprojects { subproject ->
+    subproject.plugins.withId('com.android.library') {
+        subproject.android {
+            if (namespace == null || namespace.isEmpty()) {
+                def manifest = file("${subproject.projectDir}/src/main/AndroidManifest.xml")
+                if (manifest.exists()) {
+                    def manifestContent = manifest.getText()
+                    def packagePattern = /package\s*=\s*["']([^"']+)["']/
+                    def matcher = (manifestContent =~ packagePattern)
+                    if (matcher.find()) {
+                        namespace = matcher.group(1)
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.register('clean', Delete) {
     delete rootProject.buildDir
 }
