@@ -308,7 +308,6 @@ func createTestZipWithChineseFilenames(path string) error {
 	return w.Close()
 }
 
-
 func TestOpenArchive_NonExistentFile(t *testing.T) {
 	_, err := openArchive("/nonexistent/path/file.zip", "")
 	if err == nil {

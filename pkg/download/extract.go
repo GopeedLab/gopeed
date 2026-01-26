@@ -81,7 +81,6 @@ func newZipFormat() archives.Zip {
 	}
 }
 
-
 // isArchiveFile checks if a file is a supported archive format
 func isArchiveFile(filename string) bool {
 	lowerName := strings.ToLower(filename)
@@ -133,13 +132,11 @@ func openArchive(archivePath string, password string) (*archiveInfo, error) {
 			format = sz
 		}
 	}
-	
+
 	// For ZIP files, configure character encoding to handle non-UTF8 filenames
 	// This is essential for Chinese characters encoded in GBK/GB18030
 	if _, ok := format.(archives.Zip); ok {
-		zipFormat := newZipFormat()
-		// Preserve password if it was set (though ZIP password is handled differently)
-		format = zipFormat
+		format = newZipFormat()
 	}
 
 	return &archiveInfo{
