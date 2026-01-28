@@ -778,6 +778,100 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 	})
 }
 
+// TestFetcher_DownloadExpiringRedirectURL tests that the fetcher correctly handles
+// expiring redirect URLs by falling back to the original URL and getting a new redirect.
+func TestFetcher_DownloadExpiringRedirectURL(t *testing.T) {
+	// Test with redirect expiring after 2 requests
+	// This means:
+	// - Request 1: Resolve (original URL redirects to temp URL v1)
+	// - Request 2: First download request to temp URL v1 succeeds
+	// - Request 3: Second download request to temp URL v1 returns 403
+	// - Fetcher should then retry with original URL, get temp URL v2
+	// - Continue downloading from temp URL v2
+	t.Run("RedirectExpiresAfter2Requests", func(t *testing.T) {
+		os.Remove(test.DownloadFile)
+
+		// Create server with redirect expiring after 2 requests, with slow transfer to ensure
+		// multiple connection attempts are needed
+		listener := test.StartTestExpiringRedirectServer(2, 100*time.Nanosecond)
+		defer listener.Close()
+
+		fetcher := buildFetcher()
+		err := fetcher.Resolve(&base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}, &base.Options{
+			Name: test.DownloadName,
+			Path: test.Dir,
+			Extra: &http.OptsExtra{
+				Connections: 4, // Use multiple connections to trigger redirect expiration
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = fetcher.Start()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = fetcher.Wait()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify file content is correct despite redirect expiration
+		want := test.FileMd5(test.BuildFile)
+		got := test.FileMd5(test.DownloadFile)
+		if want != got {
+			t.Errorf("Download() got = %v, want %v", got, want)
+		}
+
+		os.Remove(test.DownloadFile)
+	})
+
+	// Test with redirect expiring after 5 requests (more room for initial connections)
+	t.Run("RedirectExpiresAfter5Requests", func(t *testing.T) {
+		os.Remove(test.DownloadFile)
+
+		listener := test.StartTestExpiringRedirectServer(5, 100*time.Nanosecond)
+		defer listener.Close()
+
+		fetcher := buildFetcher()
+		err := fetcher.Resolve(&base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		}, &base.Options{
+			Name: test.DownloadName,
+			Path: test.Dir,
+			Extra: &http.OptsExtra{
+				Connections: 8,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = fetcher.Start()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = fetcher.Wait()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify file content
+		want := test.FileMd5(test.BuildFile)
+		got := test.FileMd5(test.DownloadFile)
+		if want != got {
+			t.Errorf("Download() got = %v, want %v", got, want)
+		}
+
+		os.Remove(test.DownloadFile)
+	})
+}
+
 func TestFetcherManager_ParseName(t *testing.T) {
 	type args struct {
 		u string

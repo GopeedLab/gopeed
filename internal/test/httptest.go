@@ -335,6 +335,67 @@ func StartTestOneTimeServer() net.Listener {
 	})
 }
 
+// StartTestExpiringRedirectServer creates a server that simulates expiring redirect URLs.
+// The original URL redirects to a temporary URL that expires after a specified number of requests.
+// When the temporary URL expires (returns 403), the client should retry with the original URL
+// to get a new redirect URL.
+// Parameters:
+//   - requestsBeforeExpire: number of requests the temporary URL accepts before expiring
+//   - delayPerByte: optional delay per byte for slow transfer (use 0 for no delay)
+func StartTestExpiringRedirectServer(requestsBeforeExpire int32, delayPerByte time.Duration) net.Listener {
+	var redirectVersion atomic.Int32
+	var requestCount atomic.Int32
+	redirectVersion.Store(1)
+
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			path := request.URL.Path
+
+			// Original URL - redirects to current version of temporary URL
+			if path == "/"+BuildName {
+				// Reset request count when original URL is accessed
+				requestCount.Store(0)
+				// Redirect to versioned temporary URL
+				version := redirectVersion.Load()
+				redirectURL := fmt.Sprintf("/redirect-v%d/%s", version, BuildName)
+				http.Redirect(writer, request, redirectURL, http.StatusFound)
+				return
+			}
+
+			// Temporary URL handler - matches /redirect-v{N}/... pattern
+			if strings.HasPrefix(path, "/redirect-v") {
+				// Check if the redirect has expired
+				count := requestCount.Add(1)
+				if count > requestsBeforeExpire {
+					// Redirect expired - increment version for next redirect
+					redirectVersion.Add(1)
+					writer.WriteHeader(403)
+					writer.Write([]byte("Redirect URL expired"))
+					return
+				}
+
+				// Serve the file with range support
+				rangeFileHandle(
+					writer,
+					request,
+					nil,
+					func(file *os.File, n int64) {
+						if delayPerByte > 0 {
+							slowCopyNWithDelay(sl, writer, file, n, delayPerByte)
+						} else {
+							io.CopyN(writer, file, n)
+						}
+					},
+				)
+				return
+			}
+
+			// Not found
+			writer.WriteHeader(404)
+		})
+	})
+}
+
 // StartTestSlowStartServer creates a server with configurable delay per request
 // This allows testing slow-start connection expansion to reach max connections
 func StartTestSlowStartServer(delayPerByte time.Duration) net.Listener {
