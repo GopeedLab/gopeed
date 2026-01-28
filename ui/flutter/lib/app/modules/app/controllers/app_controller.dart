@@ -62,6 +62,11 @@ final allTrackerSubscribeUrlCdns = {
 class AppController extends GetxController with WindowListener, TrayListener {
   static StartConfig? _defaultStartConfig;
 
+  /// Command line --hidden flag passed from main.dart
+  final bool hiddenFromArgs;
+
+  AppController({this.hiddenFromArgs = false});
+
   final autoStartup = false.obs;
   final startConfig = StartConfig().obs;
   final runningPort = 0.obs;
@@ -156,24 +161,44 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
   Future<void> _initDeepLinks() async {
     if (Util.isWeb()) {
+      // For web, just show window
       return;
     }
 
     // Handle deep link
-    () async {
-      _appLinks = AppLinks();
+    _appLinks = AppLinks();
 
-      // Handle link when app is in warm state (front or background)
-      _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
-        await _handleDeepLink(uri);
-      });
+    // Handle link when app is in warm state (front or background)
+    _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
+      await _handleDeepLink(uri);
+    });
 
-      // Check initial link if app was in cold state (terminated)
-      final uri = await _appLinks.getInitialLink();
-      if (uri != null) {
-        await _handleDeepLink(uri);
-      }
-    }();
+    // Get initial link for cold start - this works after runApp()
+    Uri? initialLink;
+    try {
+      initialLink = await _appLinks.getInitialLink();
+    } catch (e) {
+      // ignore errors
+    }
+
+    // Determine if window should be hidden
+    // Priority 1: gopeed: URL scheme hidden parameter
+    // Priority 2: Command line --hidden flag
+    bool shouldHide = hiddenFromArgs;
+    if (initialLink?.scheme == "gopeed") {
+      shouldHide = initialLink!.queryParameters["hidden"] == "true";
+    }
+
+    // Show window if not hidden (desktop only)
+    if (Util.isDesktop() && !shouldHide) {
+      await windowManager.show();
+      await windowManager.focus();
+    }
+
+    // Handle initial link for deep link navigation
+    if (initialLink != null) {
+      _handleDeepLink(initialLink);
+    }
 
     // Handle shared media, e.g. shared link from browser
     if (Util.isMobile()) {
@@ -638,7 +663,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     launchAtStartup.setup(
         appName: packageInfo.appName,
         appPath: Platform.resolvedExecutable,
-        args: ['--${Args.flagHidden}']);
+        args: ['--${StartupArgs.flagHidden}']);
     autoStartup.value = await launchAtStartup.isEnabled();
   }
 
