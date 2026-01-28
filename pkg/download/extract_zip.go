@@ -34,7 +34,7 @@ func extractZipMultiPart(firstPartPath string, destDir string, password string, 
 
 	// First pass: count files for progress
 	totalFiles := 0
-	zip := archives.Zip{}
+	zip := newZipFormat()
 	err = zip.Extract(context.Background(), io.NewSectionReader(multiReader, 0, totalSize), func(ctx context.Context, fileInfo archives.FileInfo) error {
 		if !fileInfo.IsDir() {
 			totalFiles++

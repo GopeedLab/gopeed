@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/mholt/archives"
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 // supportedArchiveExtensions contains file extensions supported by mholt/archives library
@@ -70,6 +71,16 @@ type ArchivePartInfo struct {
 // ExtractProgressCallback is called to report extraction progress
 type ExtractProgressCallback func(extractedFiles int, totalFiles int, progress int)
 
+// newZipFormat creates a Zip format with proper character encoding support.
+// It uses GB18030 encoding to handle Chinese characters in filenames that may
+// be encoded with legacy GBK/GB18030 instead of UTF-8.
+func newZipFormat() archives.Zip {
+	return archives.Zip{
+		// GB18030 is a superset of GBK and handles Chinese characters correctly
+		TextEncoding: simplifiedchinese.GB18030,
+	}
+}
+
 // isArchiveFile checks if a file is a supported archive format
 func isArchiveFile(filename string) bool {
 	lowerName := strings.ToLower(filename)
@@ -109,7 +120,8 @@ func openArchive(archivePath string, password string) (*archiveInfo, error) {
 		return nil, err
 	}
 
-	// Handle password-protected archives
+	// Configure format-specific settings
+	// Handle password-protected archives and character encoding
 	if password != "" {
 		if rar, ok := format.(archives.Rar); ok {
 			rar.Password = password
@@ -119,6 +131,12 @@ func openArchive(archivePath string, password string) (*archiveInfo, error) {
 			sz.Password = password
 			format = sz
 		}
+	}
+
+	// For ZIP files, configure character encoding to handle non-UTF8 filenames
+	// This is essential for Chinese characters encoded in GBK/GB18030
+	if _, ok := format.(archives.Zip); ok {
+		format = newZipFormat()
 	}
 
 	return &archiveInfo{
