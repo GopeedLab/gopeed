@@ -38,7 +38,7 @@ class ExtensionView extends GetView<ExtensionController> {
     _installBtnController.start();
     try {
       await installExtension(InstallExtension(url: _installUrlController.text));
-      Get.snackbar('tip'.tr, 'extensionInstallSuccess'.tr);
+      showMessage('tip'.tr, 'extensionInstallSuccess'.tr);
       await controller.load();
     } catch (e) {
       showErrorMessage(e);
@@ -109,7 +109,7 @@ class ExtensionView extends GetView<ExtensionController> {
                               try {
                                 await installExtension(
                                     InstallExtension(devMode: true, url: dir));
-                                Get.snackbar(
+                                showMessage(
                                     'tip'.tr, 'extensionInstallSuccess'.tr);
                                 await controller.load();
                               } catch (e) {
@@ -290,7 +290,7 @@ class ExtensionView extends GetView<ExtensionController> {
     return showDialog<void>(
         context: Get.context!,
         barrierDismissible: false,
-        builder: (_) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
               content: Builder(builder: (context) {
                 final height = MediaQuery.of(context).size.height;
                 final width = MediaQuery.of(context).size.width;
@@ -351,7 +351,7 @@ class ExtensionView extends GetView<ExtensionController> {
                                 backgroundColor: MaterialStateProperty.all(
                                     Get.theme.colorScheme.background)),
                     onPressed: () {
-                      Get.back();
+                      Navigator.of(dialogContext).pop();
                     },
                     child: Text('cancel'.tr),
                   ),
@@ -372,7 +372,9 @@ class ExtensionView extends GetView<ExtensionController> {
                                 UpdateExtensionSettings(
                                     settings: formKey.currentState!.value));
                             await controller.load();
-                            Get.back();
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                            }
                           }
                         } catch (e) {
                           showErrorMessage(e);
@@ -453,12 +455,12 @@ class ExtensionView extends GetView<ExtensionController> {
     showDialog(
         context: Get.context!,
         barrierDismissible: false,
-        builder: (_) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
               title: Text('extensionDelete'.tr),
               actions: [
                 TextButton(
                   child: Text('cancel'.tr),
-                  onPressed: () => Get.back(),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
                 ),
                 TextButton(
                   child: Text(
@@ -469,7 +471,9 @@ class ExtensionView extends GetView<ExtensionController> {
                     try {
                       await deleteExtension(extension.identity);
                       await controller.load();
-                      Get.back();
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
                     } catch (e) {
                       showErrorMessage(e);
                     }
@@ -484,14 +488,14 @@ class ExtensionView extends GetView<ExtensionController> {
 
     showDialog(
         context: Get.context!,
-        builder: (context) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
               content: Text('newVersionTitle'.trParams({
                 'version': 'v${controller.updateFlags[extension.identity]!}'
               })),
               actions: [
                 TextButton(
                   onPressed: () {
-                    Get.back();
+                    Navigator.of(dialogContext).pop();
                   },
                   child: Text('newVersionLater'.tr),
                 ),
@@ -503,7 +507,9 @@ class ExtensionView extends GetView<ExtensionController> {
                       await updateExtension(extension.identity);
                       await controller.load();
                       controller.updateFlags.remove(extension.identity);
-                      Get.back();
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
                       showMessage('tip'.tr, 'extensionUpdateSuccess'.tr);
                     } catch (e) {
                       showErrorMessage(e);
