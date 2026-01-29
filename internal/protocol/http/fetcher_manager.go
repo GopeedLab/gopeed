@@ -15,6 +15,7 @@ import (
 
 type fetcherData struct {
 	Connections []*connection
+	RedirectURL string // Saved redirect URL for resume
 }
 
 // ============================================================================
@@ -71,8 +72,12 @@ func (fm *FetcherManager) DefaultConfig() any {
 
 func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
+	_f.redirectLock.Lock()
+	redirectURL := _f.redirectURL
+	_f.redirectLock.Unlock()
 	return &fetcherData{
 		Connections: _f.connections,
+		RedirectURL: redirectURL,
 	}, nil
 }
 
@@ -86,6 +91,10 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		base.ParseOptExtra[fhttp.OptsExtra](fetcher.meta.Opts)
 		if len(fd.Connections) > 0 {
 			fetcher.connections = fd.Connections
+		}
+		// Restore redirect URL for resume
+		if fd.RedirectURL != "" {
+			fetcher.redirectURL = fd.RedirectURL
 		}
 		return fetcher
 	}

@@ -588,6 +588,10 @@ func (f *Fetcher) Start() error {
 		// Already downloading, this is a resume from pause
 		return f.doStart()
 
+	case stateError:
+		// Retry after error: reset and restart
+		return f.doStart()
+
 	default:
 		return fmt.Errorf("cannot start in current state: %v", state)
 	}
@@ -598,8 +602,29 @@ func (f *Fetcher) doStart() error {
 	<-f.resolvedCh
 
 	state := f.getState()
-	if state == stateDone || state == stateError {
+	if state == stateDone {
 		return nil
+	}
+
+	// If retrying after error, reset connection states for retry
+	if state == stateError {
+		// Drain any pending error from doneCh before retry
+		select {
+		case <-f.doneCh:
+		default:
+		}
+
+		f.connMu.Lock()
+		for _, conn := range f.connections {
+			// Reset connections that can be retried
+			if !conn.Completed && conn.State != connCompleted {
+				conn.State = connNotStarted
+				conn.failed = false
+				conn.retryTimes = 0
+				conn.lastErr = nil
+			}
+		}
+		f.connMu.Unlock()
 	}
 
 	// Open or create target file first (needed for prefetch copy)
@@ -948,6 +973,8 @@ func (f *Fetcher) runConnection(conn *connection) {
 }
 
 // downloadChunkOnce performs a single HTTP request for the current chunk without retrying.
+// If the redirect URL fails with an expiration-related error (401, 403, 410),
+// it will automatically retry with the original URL and update the redirect URL on success.
 func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf []byte) error {
 	if conn.ctx.Err() != nil {
 		return conn.ctx.Err()
@@ -981,11 +1008,32 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
-		return NewRequestError(resp.StatusCode)
+		resp.Body.Close()
+		originalErr := NewRequestError(resp.StatusCode)
+
+		// Check if this might be a redirect URL expiration error
+		// If so, try falling back to the original URL
+		if f.hasRedirectURL() && isRedirectExpiredError(originalErr) {
+			fallbackResp, fallbackErr := f.tryFallbackToOriginalURL(conn.ctx, client, rangeStart, rangeEnd)
+			if fallbackErr == nil && fallbackResp != nil {
+				// Fallback succeeded, use this response instead
+				resp = fallbackResp
+				// Update the redirect URL from the response
+				f.updateRedirectURL(resp)
+			} else {
+				// Fallback also failed, return the original error
+				if fallbackResp != nil {
+					fallbackResp.Body.Close()
+				}
+				return originalErr
+			}
+		} else {
+			return originalErr
+		}
 	}
+	defer resp.Body.Close()
 
 	// Record successful connection time for adaptive timeout
 	f.updateMaxConnTime(time.Since(connStartTime))

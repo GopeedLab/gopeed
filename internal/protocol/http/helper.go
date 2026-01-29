@@ -65,14 +65,23 @@ func extractRequestError(err error) *RequestError {
 	return nil
 }
 
-// ============================================================================
-// HTTP Request/Client Building
-// ============================================================================
-
+// buildRequest creates an HTTP request using the redirect URL if available.
 func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq *http.Request, err error) {
+	return f.buildRequestWithURL(ctx, req, true)
+}
+
+// buildRequestWithOriginalURL creates an HTTP request using the original URL.
+// This is used for retrying when the redirect URL has expired.
+func (f *Fetcher) buildRequestWithOriginalURL(ctx context.Context, req *base.Request) (httpReq *http.Request, err error) {
+	return f.buildRequestWithURL(ctx, req, false)
+}
+
+// buildRequestWithURL creates an HTTP request.
+// If useRedirect is true and a redirect URL exists, it will be used; otherwise the original URL is used.
+func (f *Fetcher) buildRequestWithURL(ctx context.Context, req *base.Request, useRedirect bool) (httpReq *http.Request, err error) {
 	var reqUrl string
 	f.redirectLock.Lock()
-	if f.redirectURL != "" {
+	if useRedirect && f.redirectURL != "" {
 		reqUrl = f.redirectURL
 	} else {
 		reqUrl = req.URL
@@ -119,6 +128,68 @@ func (f *Fetcher) buildRequest(ctx context.Context, req *base.Request) (httpReq 
 		httpReq.Host = host
 	}
 	return httpReq, nil
+}
+
+// updateRedirectURL updates the redirect URL from the response.
+// This is called when a request using the original URL succeeds after the redirect URL expired.
+func (f *Fetcher) updateRedirectURL(resp *http.Response) {
+	if resp != nil && resp.Request != nil {
+		newRedirectURL := resp.Request.URL.String()
+		f.redirectLock.Lock()
+		f.redirectURL = newRedirectURL
+		f.redirectLock.Unlock()
+	}
+}
+
+// hasRedirectURL checks if a redirect URL exists and is different from the original URL.
+func (f *Fetcher) hasRedirectURL() bool {
+	f.redirectLock.Lock()
+	defer f.redirectLock.Unlock()
+	return f.redirectURL != "" && f.redirectURL != f.meta.Req.URL
+}
+
+// isRedirectExpiredError checks if the error indicates that the redirect URL may have expired.
+// This includes 403 (Forbidden), 401 (Unauthorized), 410 (Gone), and network errors.
+func isRedirectExpiredError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for specific HTTP error codes that might indicate URL expiration
+	if re := extractRequestError(err); re != nil {
+		switch re.Code {
+		case 401, 403, 404, 410:
+			return true
+		}
+	}
+
+	return false
+}
+
+// tryFallbackToOriginalURL attempts to make a request using the original URL
+// when the redirect URL has expired. Returns the response if successful.
+func (f *Fetcher) tryFallbackToOriginalURL(ctx context.Context, client *http.Client, rangeStart, rangeEnd int64) (*http.Response, error) {
+	httpReq, err := f.buildRequestWithOriginalURL(ctx, f.meta.Req)
+	if err != nil {
+		return nil, err
+	}
+
+	if f.meta.Res.Range && rangeEnd > 0 {
+		httpReq.Header.Set(base.HttpHeaderRange,
+			fmt.Sprintf(base.HttpHeaderRangeFormat, rangeStart, rangeEnd))
+	}
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
+		resp.Body.Close()
+		return nil, NewRequestError(resp.StatusCode)
+	}
+
+	return resp, nil
 }
 
 // buildClient creates an HTTP client with the default connection timeout.
