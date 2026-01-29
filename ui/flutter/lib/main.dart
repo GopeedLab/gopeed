@@ -22,37 +22,32 @@ import 'util/scheme_register/scheme_register.dart';
 import 'util/updater.dart';
 import 'util/util.dart';
 
-class Args {
+class StartupArgs {
   static const flagHidden = "hidden";
 
-  bool hidden = false;
+  /// Command line --hidden flag (for auto-start)
+  bool hiddenFromArgs = false;
 
-  Args();
+  StartupArgs._();
 
-  Args.parse(List<String> args) {
-    final parser = ArgParser();
-    parser.addFlag(flagHidden);
-    final results = parser.parse(args);
-    hidden = results.flag(flagHidden);
+  /// Parse from command line arguments only
+  static StartupArgs parse(List<String> arguments) {
+    final args = StartupArgs._();
+    try {
+      final parser = ArgParser()..addFlag(flagHidden);
+      final results = parser.parse(arguments);
+      args.hiddenFromArgs = results.flag(flagHidden);
+    } catch (e) {
+      // ignore parse errors
+    }
+    return args;
   }
 }
 
 void main(List<String> arguments) async {
-  Args args;
-  // Parse url scheme arguments, e.g. gopeed:?hidden=true
-  // TODO: macos open url handle
-  // TODO: macos updater test
-  if (arguments.firstOrNull?.startsWith("gopeed:") == true) {
-    try {
-      final uri = Uri.parse(arguments.first);
-      args = Args()..hidden = uri.queryParameters["hidden"] == "true";
-    } catch (e) {
-      // ignore
-      args = Args.parse([]);
-    }
-  } else {
-    args = Args.parse(arguments);
-  }
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final args = StartupArgs.parse(arguments);
 
   await init(args);
   onStart();
@@ -60,8 +55,8 @@ void main(List<String> arguments) async {
   runApp(const AppView());
 }
 
-Future<void> init(Args args) async {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> init(StartupArgs args) async {
+  // Note: WidgetsFlutterBinding.ensureInitialized() is already called in main()
   if (Util.isMobile()) {
     FlutterForegroundTask.initCommunicationPort();
   }
@@ -81,16 +76,7 @@ Future<void> init(Args args) async {
       skipTaskbar: runAsMenubarApp,
     );
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      if (!args.hidden) {
-        await windowManager.show();
-        await windowManager.focus();
-      }
       await windowManager.setPreventClose(true);
-      // windows_manager has a bug where when window to be maximized, it will be unmaximized immediately, so can't implement this feature currently.
-      // https://github.com/leanflutter/window_manager/issues/412
-      // if (windowState.isMaximized) {
-      //   await windowManager.maximize();
-      // }
     });
 
     // Register Cmd+W hotkey on macOS to close window
@@ -118,7 +104,8 @@ Future<void> init(Args args) async {
     logger.e("init package info fail", e);
   }
 
-  final controller = Get.put(AppController());
+  final controller =
+      Get.put(AppController(hiddenFromArgs: args.hiddenFromArgs));
   try {
     await controller.loadStartConfig();
     final startCfg = controller.startConfig.value;

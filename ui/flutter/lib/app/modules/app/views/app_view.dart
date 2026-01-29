@@ -44,7 +44,11 @@ class AppView extends GetView<AppController> {
             // Set the title bar to use the actual brightness of the UI
             windowManager.setBrightness(brightness);
           }
-          return child!;
+          // Fix for GetX Overlay issue with Flutter 3.38.1+
+          // Reference: https://github.com/jonataslaw/getx/issues/3425
+          return Overlay(
+            initialEntries: [OverlayEntry(builder: (_) => child!)],
+          );
         },
       ),
     );
