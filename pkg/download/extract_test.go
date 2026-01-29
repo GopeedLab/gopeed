@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 func TestIsArchiveFile(t *testing.T) {
@@ -238,6 +240,69 @@ func createTestZipWithMultipleFiles(path string, numFiles int) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return w.Close()
+}
+
+// createTestZipWithChineseFilenames creates a test ZIP file with Chinese filenames encoded in GBK
+func createTestZipWithChineseFilenames(path string) error {
+	zipFile, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer zipFile.Close()
+
+	w := zip.NewWriter(zipFile)
+
+	// Encode Chinese filenames in GBK (as some legacy Windows applications do)
+	encoder := simplifiedchinese.GBK.NewEncoder()
+
+	// Add a file with Chinese filename
+	chineseFilename := "测试文件.txt"
+	gbkFilename, err := encoder.String(chineseFilename)
+	if err != nil {
+		return err
+	}
+
+	// Create a FileHeader and manually set the Name with GBK encoding
+	// We need to mark it as non-UTF8 by not setting the UTF-8 flag
+	header := &zip.FileHeader{
+		Name:   gbkFilename,
+		Method: zip.Deflate,
+	}
+	// Clear the UTF-8 bit (bit 11) to indicate non-UTF8 encoding
+	header.Flags = 0
+
+	f, err := w.CreateHeader(header)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write([]byte("这是测试内容"))
+	if err != nil {
+		return err
+	}
+
+	// Add a file in a subdirectory with Chinese name
+	chineseDirAndFile := "文件夹/中文内容.txt"
+	gbkDirAndFile, err := encoder.String(chineseDirAndFile)
+	if err != nil {
+		return err
+	}
+
+	header2 := &zip.FileHeader{
+		Name:   gbkDirAndFile,
+		Method: zip.Deflate,
+	}
+	header2.Flags = 0
+
+	f2, err := w.CreateHeader(header2)
+	if err != nil {
+		return err
+	}
+	_, err = f2.Write([]byte("中文子文件内容"))
+	if err != nil {
+		return err
 	}
 
 	return w.Close()
@@ -2380,5 +2445,49 @@ func TestExtractZipMultiPart_Progress(t *testing.T) {
 	// Should have progress calls
 	if progressCalls == 0 {
 		t.Error("Expected progress callbacks")
+	}
+}
+
+// Test extracting ZIP files with Chinese filenames encoded in GBK/GB18030
+func TestExtractArchive_ChineseFilenames(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "extract_chinese_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create a test ZIP file with Chinese filenames encoded in GBK
+	zipPath := filepath.Join(tempDir, "chinese.zip")
+	destDir := filepath.Join(tempDir, "extracted")
+
+	if err := createTestZipWithChineseFilenames(zipPath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Extract the archive
+	err = extractArchive(zipPath, destDir, "", nil)
+	if err != nil {
+		t.Fatalf("extractArchive failed: %v", err)
+	}
+
+	// Verify the extracted files with proper Chinese filenames
+	expectedFiles := []string{
+		filepath.Join(destDir, "测试文件.txt"),
+		filepath.Join(destDir, "文件夹", "中文内容.txt"),
+	}
+
+	for _, path := range expectedFiles {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			t.Errorf("expected file %q not found after extraction", path)
+		}
+	}
+
+	// Verify content of the Chinese file
+	content, err := os.ReadFile(filepath.Join(destDir, "测试文件.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "这是测试内容" {
+		t.Errorf("unexpected content: %q", string(content))
 	}
 }
