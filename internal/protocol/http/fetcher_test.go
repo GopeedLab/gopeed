@@ -872,6 +872,74 @@ func TestFetcher_DownloadExpiringRedirectURL(t *testing.T) {
 	})
 }
 
+// TestFetcher_RetryAfterError tests that the fetcher can retry downloading
+// after a previous download attempt failed by calling Start() again.
+func TestFetcher_RetryAfterError(t *testing.T) {
+	os.Remove(test.DownloadFile)
+
+	// Server fails first 3 requests (after resolve), then recovers
+	// With 1 connection and 3 retries:
+	// - First Start(): requests 2, 3, 4 → all fail (3 retries exhausted) → returns error
+	// - Second Start(): request 5 → succeeds (server recovered after 3 failures)
+	listener := test.StartTestFailThenRecoverServer(3)
+	defer listener.Close()
+
+	fetcher := buildFetcher()
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+		Extra: &http.OptsExtra{
+			Connections: 1, // Use single connection to simplify test
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// First download attempt - should fail because server returns 416 after resolve
+	err = fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = fetcher.Wait()
+	// First attempt should fail with 416 error
+	if err == nil {
+		t.Fatal("Expected first download attempt to fail, but it succeeded")
+	}
+	t.Logf("First attempt failed as expected: %v", err)
+
+	// Check that fetcher is in error state
+	state := fetcher.getState()
+	if state != stateError {
+		t.Errorf("Expected fetcher to be in stateError, got %v", state)
+	}
+
+	// Verify that we can call Start() again after error
+	// This tests the stateError handling in Start()
+	err = fetcher.Start()
+	if err != nil {
+		t.Fatalf("Start() after error failed: %v", err)
+	}
+
+	// Wait for second attempt - should succeed now that server has recovered
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatalf("Retry failed: %v", err)
+	}
+
+	// Verify file content
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+
+	os.Remove(test.DownloadFile)
+}
+
 func TestFetcherManager_ParseName(t *testing.T) {
 	type args struct {
 		u string

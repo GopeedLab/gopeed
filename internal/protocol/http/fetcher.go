@@ -588,6 +588,10 @@ func (f *Fetcher) Start() error {
 		// Already downloading, this is a resume from pause
 		return f.doStart()
 
+	case stateError:
+		// Retry after error: reset and restart
+		return f.doStart()
+
 	default:
 		return fmt.Errorf("cannot start in current state: %v", state)
 	}
@@ -598,8 +602,29 @@ func (f *Fetcher) doStart() error {
 	<-f.resolvedCh
 
 	state := f.getState()
-	if state == stateDone || state == stateError {
+	if state == stateDone {
 		return nil
+	}
+
+	// If retrying after error, reset connection states for retry
+	if state == stateError {
+		// Drain any pending error from doneCh before retry
+		select {
+		case <-f.doneCh:
+		default:
+		}
+
+		f.connMu.Lock()
+		for _, conn := range f.connections {
+			// Reset connections that can be retried
+			if !conn.Completed && conn.State != connCompleted {
+				conn.State = connNotStarted
+				conn.failed = false
+				conn.retryTimes = 0
+				conn.lastErr = nil
+			}
+		}
+		f.connMu.Unlock()
 	}
 
 	// Open or create target file first (needed for prefetch copy)

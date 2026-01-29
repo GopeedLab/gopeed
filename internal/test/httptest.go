@@ -557,6 +557,57 @@ func StartTestTemporary500Server(errorDuration time.Duration) net.Listener {
 	})
 }
 
+// StartTestFailThenRecoverServer creates a server that fails all connections initially,
+// then recovers after a specified number of failed requests.
+// This tests the retry functionality when calling Start() again after a download fails.
+// Parameters:
+//   - failedRequestsBeforeRecover: number of requests that will fail before server recovers
+//
+// Note: Uses 416 (Range Not Satisfiable) instead of 500 because 5xx errors are exempt
+// from failure counting and will retry indefinitely. 416 is counted as a failure.
+func StartTestFailThenRecoverServer(failedRequestsBeforeRecover int32) net.Listener {
+	var requestCount atomic.Int32
+
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			reqNum := requestCount.Add(1)
+
+			// First request (Resolve) always succeeds
+			if reqNum == 1 {
+				rangeFileHandle(
+					writer,
+					request,
+					nil,
+					func(file *os.File, n int64) {
+						io.CopyN(writer, file, n)
+					},
+				)
+				return
+			}
+
+			// Subsequent requests fail until we've had enough failures
+			// Use 416 Range Not Satisfiable - this error is counted towards failure limit
+			if reqNum <= failedRequestsBeforeRecover+1 { // +1 because first request is resolve
+				writer.WriteHeader(416)
+				writer.Write([]byte("Range Not Satisfiable"))
+				return
+			}
+
+			// After enough failures, server recovers
+			rangeFileHandle(
+				writer,
+				request,
+				nil,
+				func(file *os.File, n int64) {
+					io.CopyN(writer, file, n)
+				},
+			)
+		})
+		return mux
+	})
+}
+
 // StartTestRangeBugServer simulate bug server:
 // Don't follow Range request rules, always return more data than range, e.g. Range: bytes=0-100, return 150 bytes
 func StartTestRangeBugServer() net.Listener {
