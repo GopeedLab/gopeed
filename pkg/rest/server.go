@@ -142,6 +142,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateCheckExtension)
 	r.Methods(http.MethodPost).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateExtension)
 	r.Methods(http.MethodPost).Path("/api/v1/webhook/test").HandlerFunc(TestWebhook)
+	r.Methods(http.MethodPost).Path("/api/v1/script/test").HandlerFunc(TestScript)
 	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
 
 	enableApiToken := startCfg.ApiToken != ""

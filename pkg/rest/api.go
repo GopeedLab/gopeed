@@ -401,3 +401,14 @@ func TestWebhook(w http.ResponseWriter, r *http.Request) {
 		WriteJson(w, model.NewNilResult())
 	}
 }
+
+func TestScript(w http.ResponseWriter, r *http.Request) {
+	var req model.TestScriptReq
+	if ReadJson(r, w, &req) {
+		if err := Downloader.TestScript(req.Path); err != nil {
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
+		WriteJson(w, model.NewNilResult())
+	}
+}
