@@ -135,7 +135,9 @@ func (d *Downloader) executeScriptAtPath(scriptPath string, data *ScriptData) er
 	// Write JSON data to stdin in a goroutine
 	go func() {
 		defer stdin.Close()
-		stdin.Write(jsonData)
+		if _, err := stdin.Write(jsonData); err != nil {
+			d.Logger.Warn().Err(err).Str("path", scriptPath).Msg("script: failed to write data to stdin")
+		}
 	}()
 
 	// Wait for the command to complete with timeout
