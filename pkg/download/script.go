@@ -1,0 +1,231 @@
+package download
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
+
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/pkg/base"
+)
+
+const (
+	scriptTimeout = 60 * time.Second
+)
+
+// ScriptEvent represents the type of script event
+type ScriptEvent string
+
+const (
+	ScriptEventDownloadDone  ScriptEvent = "DOWNLOAD_DONE"
+	ScriptEventDownloadError ScriptEvent = "DOWNLOAD_ERROR"
+)
+
+// ScriptData is the data passed to scripts as JSON via stdin
+type ScriptData struct {
+	Event   ScriptEvent    `json:"event"`
+	Time    int64          `json:"time"` // Unix timestamp in milliseconds
+	Payload *ScriptPayload `json:"payload"`
+}
+
+// ScriptPayload contains the task data
+type ScriptPayload struct {
+	Task *Task `json:"task"`
+}
+
+// getScriptPaths extracts script paths from config
+func (d *Downloader) getScriptPaths() []string {
+	cfg := d.cfg.DownloaderStoreConfig
+	if cfg == nil {
+		return nil
+	}
+
+	// Check new script config
+	if cfg.Script != nil && cfg.Script.Enable && len(cfg.Script.Paths) > 0 {
+		paths := make([]string, 0, len(cfg.Script.Paths))
+		for _, path := range cfg.Script.Paths {
+			if path != "" {
+				paths = append(paths, path)
+			}
+		}
+		if len(paths) > 0 {
+			return paths
+		}
+	}
+
+	return nil
+}
+
+// executeScriptAtPath executes a single script with the given data
+// Returns any error that occurred during execution
+func (d *Downloader) executeScriptAtPath(scriptPath string, data *ScriptData) error {
+	if scriptPath == "" {
+		return fmt.Errorf("script path is empty")
+	}
+
+	// Check if script file exists
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		return fmt.Errorf("script file does not exist: %s", scriptPath)
+	}
+
+	// Prepare JSON data to pass via stdin
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	// Determine the script interpreter based on file extension
+	var cmd *exec.Cmd
+	ext := filepath.Ext(scriptPath)
+	
+	switch ext {
+	case ".sh", ".bash":
+		cmd = exec.Command("bash", scriptPath)
+	case ".py":
+		cmd = exec.Command("python3", scriptPath)
+	case ".js":
+		cmd = exec.Command("node", scriptPath)
+	case "":
+		// No extension, try to execute directly (assumes shebang or executable)
+		cmd = exec.Command(scriptPath)
+	default:
+		// Unknown extension, try to execute directly
+		cmd = exec.Command(scriptPath)
+	}
+
+	// Create a pipe to pass JSON data via stdin
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+
+	// Set environment variables with task information
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("GOPEED_EVENT=%s", data.Event),
+		fmt.Sprintf("GOPEED_TASK_ID=%s", data.Payload.Task.ID),
+		fmt.Sprintf("GOPEED_TASK_NAME=%s", data.Payload.Task.Name()),
+		fmt.Sprintf("GOPEED_TASK_STATUS=%s", data.Payload.Task.Status),
+	)
+
+	// Add download path and file information if available
+	if data.Payload.Task.Meta != nil && data.Payload.Task.Meta.Opts != nil {
+		cmd.Env = append(cmd.Env,
+			fmt.Sprintf("GOPEED_DOWNLOAD_DIR=%s", data.Payload.Task.Meta.Opts.Path),
+		)
+		
+		// Get the full file path
+		if data.Payload.Task.Meta.Res != nil && len(data.Payload.Task.Meta.Res.Files) > 0 {
+			fileName := data.Payload.Task.Name()
+			fullPath := filepath.Join(data.Payload.Task.Meta.Opts.Path, fileName)
+			cmd.Env = append(cmd.Env,
+				fmt.Sprintf("GOPEED_FILE_NAME=%s", fileName),
+				fmt.Sprintf("GOPEED_FILE_PATH=%s", fullPath),
+			)
+		}
+	}
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// Write JSON data to stdin in a goroutine
+	go func() {
+		defer stdin.Close()
+		stdin.Write(jsonData)
+	}()
+
+	// Wait for the command to complete with timeout
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(scriptTimeout):
+		// Kill the process if it times out
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		return fmt.Errorf("script execution timed out after %v", scriptTimeout)
+	}
+}
+
+// triggerScripts executes all configured scripts
+func (d *Downloader) triggerScripts(event ScriptEvent, task *Task, err error) {
+	paths := d.getScriptPaths()
+	if len(paths) == 0 {
+		return
+	}
+
+	data := &ScriptData{
+		Event: event,
+		Time:  time.Now().UnixMilli(),
+		Payload: &ScriptPayload{
+			Task: task.clone(),
+		},
+	}
+
+	go d.executeScripts(paths, data)
+}
+
+func (d *Downloader) executeScripts(paths []string, data *ScriptData) {
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		go func(scriptPath string) {
+			err := d.executeScriptAtPath(scriptPath, data)
+			if err != nil {
+				d.Logger.Warn().Err(err).Str("path", scriptPath).Msg("script: failed to execute")
+				return
+			}
+			d.Logger.Debug().Str("path", scriptPath).Msg("script: executed successfully")
+		}(path)
+	}
+}
+
+// TestScript executes a test script with a simulated payload
+// Returns error if the script execution fails
+func (d *Downloader) TestScript(scriptPath string) error {
+	// Check if script file exists
+	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
+		return fmt.Errorf("script file does not exist: %s", scriptPath)
+	}
+
+	// Create a simulated test task with minimal required fields
+	testTask := NewTask()
+	testTask.Protocol = "http"
+	testTask.Status = base.DownloadStatusDone
+	testTask.Meta = &fetcher.FetcherMeta{
+		Req: &base.Request{
+			URL: "https://example.com/test-file.zip",
+		},
+		Opts: &base.Options{
+			Name: "test-file.zip",
+			Path: "/downloads",
+		},
+		Res: &base.Resource{
+			Size: 1024 * 1024 * 100, // 100MB
+			Files: []*base.FileInfo{
+				{Name: "test-file.zip", Size: 1024 * 1024 * 100},
+			},
+		},
+	}
+
+	// Create test data
+	testData := &ScriptData{
+		Event: ScriptEventDownloadDone,
+		Time:  time.Now().UnixMilli(),
+		Payload: &ScriptPayload{
+			Task: testTask,
+		},
+	}
+
+	return d.executeScriptAtPath(scriptPath, testData)
+}
