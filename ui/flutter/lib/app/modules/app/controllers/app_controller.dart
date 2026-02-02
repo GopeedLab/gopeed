@@ -407,6 +407,11 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   Future<void> _handleDeepLink(Uri uri) async {
+    // Ensure window is shown and focused when handling deep links
+    if (Util.isDesktop()) {
+      await windowManager.show();
+    }
+
     if (uri.scheme == "gopeed") {
       // gopeed:///create?params=eyJyZXEiOnsidXJsIjoiaHR0cHM6Ly9leGFtcGxlLmNvbS9maWxlLnR4dCJ9fQ==
       if (uri.path == "/create") {

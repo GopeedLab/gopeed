@@ -38,6 +38,7 @@ const enUS = {
     'useServerCtime': 'Use server time for file creation',
     'maxRunning': 'Max Running Tasks',
     'defaultDirectDownload': 'Check direct download by default',
+    'showCreateTaskDialog': "Show 'Create Task' dialog for extension downloads",
     'autoStartTasks': 'Auto-start incomplete tasks on startup',
     'autoTorrentEnable': 'Auto create BT tasks from .torrent files',
     'autoTorrentDeleteAfterDownload':

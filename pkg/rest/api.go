@@ -1,6 +1,11 @@
 package rest
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"strings"
+
 	"io"
 	"net/http"
 	"net/url"
@@ -10,6 +15,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"github.com/gorilla/mux"
+	"github.com/pkg/browser"
 )
 
 func Info(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +44,41 @@ func Resolve(w http.ResponseWriter, r *http.Request) {
 func CreateTask(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateTask
 	if ReadJson(r, w, &req) {
+		// Check if "show create task dialog" is enabled for browser extension requests
+		cfg, cfgErr := Downloader.GetConfig()
+		if cfgErr == nil {
+			// Check if the feature is enabled
+			if showCreateDialog, ok := cfg.Extra["showCreateTaskDialogEnabled"].(bool); ok && showCreateDialog {
+				// Check if request is from browser extension (has Origin header)
+				origin := r.Header.Get("Origin")
+				isExtension := strings.HasPrefix(origin, "chrome-extension://") ||
+					strings.HasPrefix(origin, "moz-extension://") ||
+					strings.HasPrefix(origin, "safari-web-extension://")
+				if isExtension {
+					// Convert to deep link format
+					createTask := map[string]interface{}{
+						"req": req.Req,
+						"opts": req.Opts,
+					}
+
+					jsonData, marshalErr := json.Marshal(createTask)
+					if marshalErr == nil {
+						encodedParams := base64.URLEncoding.EncodeToString(jsonData)
+						deepLink := fmt.Sprintf("gopeed:///create?params=%s", encodedParams)
+
+						// Try to open deep link in GUI app
+						// If successful, return early (GUI will handle task creation)
+						if browser.OpenURL(deepLink) == nil {
+							WriteJson(w, model.NewNilResult())
+							return
+						}
+						// If browser.OpenURL fails (no GUI running), fall through to normal task creation
+					}
+				}
+			}
+		}
+
+		// Normal flow: process the task creation
 		var (
 			taskId string
 			err    error
