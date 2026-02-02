@@ -239,3 +239,130 @@ func buildConfigFetcher(proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher
 	fetcher.Setup(newController)
 	return fetcher
 }
+
+// TestFetcher_Patch tests the Patch functionality for BT fetcher.
+// It tests modifying selected files after Resolve (without downloading).
+func TestFetcher_Patch(t *testing.T) {
+	f := buildFetcher()
+
+	// Resolve a multi-file torrent
+	err := f.Resolve(&base.Request{
+		URL: "./testdata/test.torrent",
+	}, nil)
+	if err != nil {
+		t.Fatalf("Resolve failed: %v", err)
+	}
+
+	// Verify initial state: 3 files, all selected by default
+	meta := f.Meta()
+	if len(meta.Res.Files) != 3 {
+		t.Fatalf("Expected 3 files, got %d", len(meta.Res.Files))
+	}
+	if len(meta.Opts.SelectFiles) != 3 {
+		t.Fatalf("Expected 3 selected files, got %d", len(meta.Opts.SelectFiles))
+	}
+
+	// Total size of all files: 107484864
+	totalSize := int64(107484864)
+	if meta.Res.Size != totalSize {
+		t.Fatalf("Expected total size %d, got %d", totalSize, meta.Res.Size)
+	}
+
+	t.Run("Patch with valid indices", func(t *testing.T) {
+		// Select only file 0 and 2 (c.txt and a.txt)
+		err := f.Patch(nil, &base.Options{
+			SelectFiles: []int{0, 2},
+		})
+		if err != nil {
+			t.Fatalf("Patch failed: %v", err)
+		}
+
+		meta := f.Meta()
+		if !reflect.DeepEqual(meta.Opts.SelectFiles, []int{0, 2}) {
+			t.Errorf("Expected SelectFiles [0, 2], got %v", meta.Opts.SelectFiles)
+		}
+
+		// Size should be recalculated: c.txt (98501754) + a.txt (78114) = 98579868
+		expectedSize := int64(98501754 + 78114)
+		if meta.Res.Size != expectedSize {
+			t.Errorf("Expected size %d, got %d", expectedSize, meta.Res.Size)
+		}
+	})
+
+	t.Run("Patch with invalid indices are silently ignored", func(t *testing.T) {
+		// Mix of valid (0, 1) and invalid (-1, 5, 100) indices
+		err := f.Patch(nil, &base.Options{
+			SelectFiles: []int{-1, 0, 5, 1, 100},
+		})
+		if err != nil {
+			t.Fatalf("Patch should not return error for invalid indices: %v", err)
+		}
+
+		meta := f.Meta()
+		// Only valid indices 0 and 1 should remain
+		if !reflect.DeepEqual(meta.Opts.SelectFiles, []int{0, 1}) {
+			t.Errorf("Expected SelectFiles [0, 1], got %v", meta.Opts.SelectFiles)
+		}
+
+		// Size should be: c.txt (98501754) + b.txt (8904996) = 107406750
+		expectedSize := int64(98501754 + 8904996)
+		if meta.Res.Size != expectedSize {
+			t.Errorf("Expected size %d, got %d", expectedSize, meta.Res.Size)
+		}
+	})
+
+	t.Run("Patch with all invalid indices results in empty selection", func(t *testing.T) {
+		err := f.Patch(nil, &base.Options{
+			SelectFiles: []int{-5, 10, 999},
+		})
+		if err != nil {
+			t.Fatalf("Patch should not return error: %v", err)
+		}
+
+		meta := f.Meta()
+		if len(meta.Opts.SelectFiles) != 0 {
+			t.Errorf("Expected empty SelectFiles, got %v", meta.Opts.SelectFiles)
+		}
+
+		// Note: CalcSize with empty selectFiles calculates total size of all files
+		// This is by design - empty selection in CalcSize means "all files"
+		// But SelectFiles being empty means no files are selected for download
+		if meta.Res.Size != totalSize {
+			t.Errorf("Expected size %d (CalcSize with empty slice = all files), got %d", totalSize, meta.Res.Size)
+		}
+	})
+
+	t.Run("Patch with nil opts does nothing", func(t *testing.T) {
+		// First set a known state
+		f.Patch(nil, &base.Options{SelectFiles: []int{1}})
+		prevSelectFiles := f.Meta().Opts.SelectFiles
+
+		// Patch with nil opts
+		err := f.Patch(nil, nil)
+		if err != nil {
+			t.Fatalf("Patch with nil opts should not fail: %v", err)
+		}
+
+		// Should remain unchanged
+		if !reflect.DeepEqual(f.Meta().Opts.SelectFiles, prevSelectFiles) {
+			t.Errorf("SelectFiles should remain unchanged after nil opts Patch")
+		}
+	})
+
+	t.Run("Patch progress array is resized", func(t *testing.T) {
+		btFetcher := f.(*Fetcher)
+		// Initialize progress array
+		btFetcher.data.Progress = make(fetcher.Progress, 3)
+
+		err := f.Patch(nil, &base.Options{
+			SelectFiles: []int{0, 2},
+		})
+		if err != nil {
+			t.Fatalf("Patch failed: %v", err)
+		}
+
+		if len(btFetcher.data.Progress) != 2 {
+			t.Errorf("Expected Progress length 2, got %d", len(btFetcher.data.Progress))
+		}
+	})
+}

@@ -132,13 +132,10 @@ func (f *Fetcher) buildRequestWithURL(ctx context.Context, req *base.Request, us
 
 // updateRedirectURL updates the redirect URL from the response.
 // This is called when a request using the original URL succeeds after the redirect URL expired.
-func (f *Fetcher) updateRedirectURL(resp *http.Response) {
-	if resp != nil && resp.Request != nil {
-		newRedirectURL := resp.Request.URL.String()
-		f.redirectLock.Lock()
-		f.redirectURL = newRedirectURL
-		f.redirectLock.Unlock()
-	}
+func (f *Fetcher) updateRedirectURL(url string) {
+	f.redirectLock.Lock()
+	f.redirectURL = url
+	f.redirectLock.Unlock()
 }
 
 // hasRedirectURL checks if a redirect URL exists and is different from the original URL.

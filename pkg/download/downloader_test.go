@@ -2648,3 +2648,87 @@ func TestDownloader_AutoTorrentDisabled(t *testing.T) {
 		t.Error("Torrent file should have been downloaded")
 	}
 }
+
+func TestDownloader_PatchTask_HTTP(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	req := &base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		Extra: &http.OptsExtra{
+			Connections: 2,
+		},
+		Labels: map[string]string{
+			"test": "value1",
+		},
+	}
+	opts := &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+	}
+
+	// Create task but don't start it yet
+	taskId, err := downloader.CreateDirect(req, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Pause the task immediately
+	if err := downloader.Pause(&TaskFilter{IDs: []string{taskId}}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Patch the task with new labels
+	patchReq := &base.Request{
+		Labels: map[string]string{
+			"test":   "value2",
+			"newKey": "newValue",
+		},
+	}
+
+	if err := downloader.Patch(taskId, patchReq, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the patch was applied
+	task := downloader.GetTask(taskId)
+	if task == nil {
+		t.Fatal("task not found")
+	}
+
+	if task.Meta.Req.Labels["test"] != "value2" {
+		t.Errorf("PatchTask() label 'test' = %v, want %v", task.Meta.Req.Labels["test"], "value2")
+	}
+	if task.Meta.Req.Labels["newKey"] != "newValue" {
+		t.Errorf("PatchTask() label 'newKey' = %v, want %v", task.Meta.Req.Labels["newKey"], "newValue")
+	}
+
+	// Clean up
+	downloader.Delete(&TaskFilter{IDs: []string{taskId}}, true)
+}
+
+func TestDownloader_PatchTask_NotFound(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	// Try to patch a non-existent task
+	patchReq := &base.Request{
+		Labels: map[string]string{
+			"test": "value",
+		},
+	}
+
+	err := downloader.Patch("non-existent-id", patchReq, nil)
+	if err != ErrTaskNotFound {
+		t.Errorf("Patch() error = %v, want %v", err, ErrTaskNotFound)
+	}
+}
