@@ -44,8 +44,8 @@ jobs:
           - arch: arm64
             os: windows-11-arm
             llvm_ver: "20251202" # Only ARM64
-            flutter_channel: "main"
-            flutter_version: "3b62efc2a3da49882f43c372e0bc53daef7295a6" # Only ARM64
+            flutter_channel: "master"
+            flutter_version: "6fe09872b12acb5747d6e01e84987120cabf31df" # Only ARM64
           - arch: amd64
             os: windows-2022
             flutter_channel: "stable"
@@ -78,8 +78,6 @@ jobs:
           "CGO_ENABLED=1"           >> $env:GITHUB_ENV
           "CLANGARM64_ROOT=$target" >> $env:GITHUB_ENV
           $b >> $env:GITHUB_PATH
-
-          git config --global core.longpaths true
 
       - uses: actions/setup-go@v4
         with:
