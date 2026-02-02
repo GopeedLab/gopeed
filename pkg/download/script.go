@@ -8,9 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
-
-	"github.com/GopeedLab/gopeed/internal/fetcher"
-	"github.com/GopeedLab/gopeed/pkg/base"
 )
 
 const (
@@ -207,44 +204,4 @@ func (d *Downloader) executeScripts(paths []string, data *ScriptData) {
 			d.Logger.Debug().Str("path", scriptPath).Msg("script: executed successfully")
 		}(path)
 	}
-}
-
-// TestScript executes a test script with a simulated payload
-// Returns error if the script execution fails
-func (d *Downloader) TestScript(scriptPath string) error {
-	// Check if script file exists
-	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-		return fmt.Errorf("script file does not exist: %s", scriptPath)
-	}
-
-	// Create a simulated test task with minimal required fields
-	testTask := NewTask()
-	testTask.Protocol = "http"
-	testTask.Status = base.DownloadStatusDone
-	testTask.Meta = &fetcher.FetcherMeta{
-		Req: &base.Request{
-			URL: "https://example.com/test-file.zip",
-		},
-		Opts: &base.Options{
-			Name: "test-file.zip",
-			Path: "/downloads",
-		},
-		Res: &base.Resource{
-			Size: 1024 * 1024 * 100, // 100MB
-			Files: []*base.FileInfo{
-				{Name: "test-file.zip", Size: 1024 * 1024 * 100},
-			},
-		},
-	}
-
-	// Create test data
-	testData := &ScriptData{
-		Event: ScriptEventDownloadDone,
-		Time:  time.Now().UnixMilli(),
-		Payload: &ScriptPayload{
-			Task: testTask,
-		},
-	}
-
-	return d.executeScriptAtPath(scriptPath, testData)
 }

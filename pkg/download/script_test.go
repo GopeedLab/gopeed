@@ -65,47 +65,6 @@ echo "Task ID: $GOPEED_TASK_ID" >> %s
 	})
 }
 
-func TestScript_TriggerOnError(t *testing.T) {
-	// Create a temporary test script
-	tmpDir := t.TempDir()
-	scriptPath := filepath.Join(tmpDir, "test.sh")
-	outputFile := filepath.Join(tmpDir, "output.txt")
-
-	scriptContent := fmt.Sprintf(`#!/bin/bash
-echo "Event: $GOPEED_EVENT" > %s
-`, outputFile)
-
-	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
-		t.Fatalf("Failed to create test script: %v", err)
-	}
-
-	setupScriptTest(t, func(downloader *Downloader) {
-		// Configure script paths
-		cfg, _ := downloader.GetConfig()
-		cfg.Script = &base.ScriptConfig{
-			Enable: true,
-			Paths:  []string{scriptPath},
-		}
-		downloader.PutConfig(cfg)
-
-		// Create a mock task
-		task := NewTask()
-		task.Protocol = "http"
-		task.Meta = &mockFetcherMeta
-
-		// Trigger script with error
-		testError := fmt.Errorf("test error")
-		downloader.triggerScripts(ScriptEventDownloadError, task, testError)
-
-		// Wait for script to execute
-		time.Sleep(1 * time.Second)
-
-		// Check if output file was created
-		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Error("Script did not create output file")
-		}
-	})
-}
 
 func TestScript_NoScriptConfigured(t *testing.T) {
 	setupScriptTest(t, func(downloader *Downloader) {
@@ -274,44 +233,6 @@ func TestScript_ExecuteScriptAtPath_NonExistentFile(t *testing.T) {
 	})
 }
 
-func TestScript_TestScript_Success(t *testing.T) {
-	// Create a temporary test script
-	tmpDir := t.TempDir()
-	scriptPath := filepath.Join(tmpDir, "test.sh")
-	outputFile := filepath.Join(tmpDir, "output.txt")
-
-	scriptContent := fmt.Sprintf(`#!/bin/bash
-echo "Test script executed" > %s
-`, outputFile)
-
-	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
-		t.Fatalf("Failed to create test script: %v", err)
-	}
-
-	setupScriptTest(t, func(downloader *Downloader) {
-		err := downloader.TestScript(scriptPath)
-		if err != nil {
-			t.Errorf("TestScript failed: %v", err)
-		}
-
-		// Wait for script to execute
-		time.Sleep(500 * time.Millisecond)
-
-		// Check if output file was created
-		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Error("Test script did not create output file")
-		}
-	})
-}
-
-func TestScript_TestScript_NonExistentScript(t *testing.T) {
-	setupScriptTest(t, func(downloader *Downloader) {
-		err := downloader.TestScript("/non/existent/script.sh")
-		if err == nil {
-			t.Error("Expected error for non-existent script")
-		}
-	})
-}
 
 func TestScript_EnvironmentVariables(t *testing.T) {
 	// Create a temporary test script that outputs environment variables

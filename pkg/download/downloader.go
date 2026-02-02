@@ -1023,7 +1023,6 @@ func (d *Downloader) doOnError(task *Task, err error) {
 		d.emit(EventKeyFinally, task, err)
 		d.notifyRunning()
 		d.triggerWebhooks(WebhookEventDownloadError, task, err)
-		d.triggerScripts(ScriptEventDownloadError, task, err)
 	}
 }
 

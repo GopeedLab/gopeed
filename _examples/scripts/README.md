@@ -4,7 +4,7 @@ This directory contains example scripts that demonstrate how to use Gopeed's scr
 
 ## Overview
 
-Gopeed can execute scripts automatically when downloads complete or fail. This is useful for:
+Gopeed can execute scripts automatically when downloads complete successfully. This is useful for:
 - Moving downloaded files to different locations (e.g., from SSD to HDD)
 - Backing up files to multiple locations
 - Sending notifications
@@ -15,7 +15,7 @@ Gopeed can execute scripts automatically when downloads complete or fail. This i
 
 When Gopeed executes your script, it provides the following environment variables:
 
-- `GOPEED_EVENT`: Event type (`DOWNLOAD_DONE` or `DOWNLOAD_ERROR`)
+- `GOPEED_EVENT`: Event type (currently always `DOWNLOAD_DONE`)
 - `GOPEED_TASK_ID`: Unique task identifier
 - `GOPEED_TASK_NAME`: Display name of the task
 - `GOPEED_TASK_STATUS`: Task status
@@ -149,13 +149,6 @@ curl -X PUT http://localhost:9999/api/v1/config \
         "/path/to/notify.py"
       ]
     }
-  }'
-
-# Test a script
-curl -X POST http://localhost:9999/api/v1/script/test \
-  -H "Content-Type: application/json" \
-  -d '{
-    "path": "/path/to/move_file.sh"
   }'
 ```
 
