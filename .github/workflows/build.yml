@@ -45,7 +45,7 @@ jobs:
             os: windows-11-arm
             llvm_ver: "20251202" # Only ARM64
             flutter_channel: "master"
-            flutter_version: "0a6e4a6de69698b8c8a7bc7a9d9f75427136ee11" # Only ARM64
+            flutter_version: "adc901062556672b4138e18a4dc62a4be8f4b3c2" # Only ARM64
           - arch: amd64
             os: windows-2022
             flutter_channel: "stable"
