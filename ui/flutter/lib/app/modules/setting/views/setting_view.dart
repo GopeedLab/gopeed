@@ -1349,25 +1349,25 @@ class SettingView extends GetView<SettingController> {
     final buildShowCreateTaskDialog = Util.isWindows()
         ? () => null
         : _buildConfigItem('showCreateTaskDialog', () {
-      return appController
-              .downloaderConfig.value.extra.showCreateTaskDialogEnabled
-          ? 'on'.tr
-          : 'off'.tr;
-    }, (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value: appController
-              .downloaderConfig.value.extra.showCreateTaskDialogEnabled,
-          onChanged: (bool value) async {
-            appController.downloaderConfig.update((val) {
-              val!.extra.showCreateTaskDialogEnabled = value;
-            });
-            await debounceSave();
-          },
-        ),
-      );
-    });
+            return appController
+                    .downloaderConfig.value.extra.showCreateTaskDialogEnabled
+                ? 'on'.tr
+                : 'off'.tr;
+          }, (Key key) {
+            return Container(
+              alignment: Alignment.centerLeft,
+              child: Switch(
+                value: appController
+                    .downloaderConfig.value.extra.showCreateTaskDialogEnabled,
+                onChanged: (bool value) async {
+                  appController.downloaderConfig.update((val) {
+                    val!.extra.showCreateTaskDialogEnabled = value;
+                  });
+                  await debounceSave();
+                },
+              ),
+            );
+          });
 
     // advanced config webhook items
     final buildWebhook = _buildConfigItem(
