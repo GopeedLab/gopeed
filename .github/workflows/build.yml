@@ -79,6 +79,8 @@ jobs:
           "CLANGARM64_ROOT=$target" >> $env:GITHUB_ENV
           $b >> $env:GITHUB_PATH
 
+          git config --global core.longpaths true
+
       - uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
