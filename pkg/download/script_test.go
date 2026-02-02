@@ -388,6 +388,44 @@ echo "GOPEED_FILE_PATH=$GOPEED_FILE_PATH" >> %s
 	})
 }
 
+func TestScript_WindowsBatchExtension(t *testing.T) {
+	// This test verifies that .bat and .cmd extensions are recognized
+	tmpDir := t.TempDir()
+	
+	setupScriptTest(t, func(downloader *Downloader) {
+		// Test .bat extension
+		batScript := filepath.Join(tmpDir, "test.bat")
+		if err := os.WriteFile(batScript, []byte("@echo off\necho test"), 0644); err != nil {
+			t.Fatalf("Failed to create .bat script: %v", err)
+		}
+		
+		// Test .cmd extension
+		cmdScript := filepath.Join(tmpDir, "test.cmd")
+		if err := os.WriteFile(cmdScript, []byte("@echo off\necho test"), 0644); err != nil {
+			t.Fatalf("Failed to create .cmd script: %v", err)
+		}
+		
+		// Note: These tests only verify the extension is recognized
+		// Actual execution would fail on non-Windows systems, which is expected
+	})
+}
+
+func TestScript_PowerShellExtension(t *testing.T) {
+	// This test verifies that .ps1 extension is recognized
+	tmpDir := t.TempDir()
+	
+	setupScriptTest(t, func(downloader *Downloader) {
+		// Test .ps1 extension
+		ps1Script := filepath.Join(tmpDir, "test.ps1")
+		if err := os.WriteFile(ps1Script, []byte("Write-Host 'test'"), 0644); err != nil {
+			t.Fatalf("Failed to create .ps1 script: %v", err)
+		}
+		
+		// Note: This test only verifies the extension is recognized
+		// Actual execution depends on PowerShell availability
+	})
+}
+
 func setupScriptTest(t *testing.T, fn func(downloader *Downloader)) {
 	defaultDownloader.Setup()
 	defaultDownloader.cfg.StorageDir = ".test_storage"

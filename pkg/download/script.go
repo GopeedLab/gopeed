@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/fetcher"
@@ -88,6 +89,22 @@ func (d *Downloader) executeScriptAtPath(scriptPath string, data *ScriptData) er
 		cmd = exec.Command("python3", scriptPath)
 	case ".js":
 		cmd = exec.Command("node", scriptPath)
+	case ".bat", ".cmd":
+		// Windows batch files
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd", "/c", scriptPath)
+		} else {
+			// Batch files are Windows-specific
+			return fmt.Errorf("batch files (.bat/.cmd) are only supported on Windows")
+		}
+	case ".ps1":
+		// PowerShell scripts
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("powershell", "-ExecutionPolicy", "Bypass", "-File", scriptPath)
+		} else {
+			// Try pwsh (PowerShell Core) on non-Windows systems
+			cmd = exec.Command("pwsh", "-File", scriptPath)
+		}
 	case "":
 		// No extension, try to execute directly (assumes shebang or executable)
 		cmd = exec.Command(scriptPath)

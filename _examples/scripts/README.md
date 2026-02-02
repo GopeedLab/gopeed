@@ -53,7 +53,9 @@ Example JSON structure:
 
 ## Example Scripts
 
-### 1. move_file.sh
+### Unix/Linux/macOS Scripts
+
+#### 1. move_file.sh
 Automatically moves downloaded files from the download directory to a target directory. This is useful for moving files from fast SSDs to larger HDDs after download.
 
 **Usage:**
@@ -61,7 +63,7 @@ Automatically moves downloaded files from the download directory to a target dir
 2. Make the script executable: `chmod +x move_file.sh`
 3. Configure Gopeed to use this script
 
-### 2. backup_file.sh
+#### 2. backup_file.sh
 Copies downloaded files to multiple backup locations.
 
 **Usage:**
@@ -69,7 +71,7 @@ Copies downloaded files to multiple backup locations.
 2. Make the script executable: `chmod +x backup_file.sh`
 3. Configure Gopeed to use this script
 
-### 3. notify.py
+#### 3. notify.py
 Sends notifications when downloads complete. Can be customized to send emails, push notifications, or webhook calls.
 
 **Requirements:**
@@ -81,7 +83,7 @@ Sends notifications when downloads complete. Can be customized to send emails, p
 2. Make the script executable: `chmod +x notify.py`
 3. Configure Gopeed to use this script
 
-### 4. process_file.js
+#### 4. process_file.js
 Processes downloaded files (e.g., automatically extracts ZIP archives).
 
 **Requirements:**
@@ -92,6 +94,43 @@ Processes downloaded files (e.g., automatically extracts ZIP archives).
 1. Make the script executable: `chmod +x process_file.js`
 2. Customize the processing logic as needed
 3. Configure Gopeed to use this script
+
+### Windows Scripts
+
+#### 5. move_file.bat
+Windows batch script that moves downloaded files to a target directory.
+
+**Usage:**
+1. Edit the script and set `TARGET_DIR` to your desired location (e.g., `D:\Downloads\Archive`)
+2. Configure Gopeed to use this script
+
+#### 6. move_file.ps1
+PowerShell script that moves downloaded files with better error handling.
+
+**Usage:**
+1. Edit the script and set `$TARGET_DIR` to your desired location
+2. Ensure PowerShell execution policy allows script execution
+3. Configure Gopeed to use this script
+
+#### 7. notify.ps1
+PowerShell script that sends notifications when downloads complete.
+
+**Usage:**
+1. Edit the script and set `$WEBHOOK_URL` to your notification endpoint
+2. Configure Gopeed to use this script
+
+## Supported Script Types
+
+Gopeed automatically detects the script type based on the file extension:
+
+| Extension | Interpreter | Platform |
+|-----------|-------------|----------|
+| `.sh`, `.bash` | bash | Unix/Linux/macOS |
+| `.py` | python3 | All platforms |
+| `.js` | node | All platforms |
+| `.bat`, `.cmd` | cmd.exe | Windows only |
+| `.ps1` | PowerShell | Windows (pwsh on other platforms) |
+| No extension | Direct execution | All platforms (requires executable bit or shebang) |
 
 ## Configuration
 
@@ -185,6 +224,42 @@ except:
 sys.exit(0)
 ```
 
+### Windows Batch Script Template
+```batch
+@echo off
+REM Exit if not a download done event
+if not "%GOPEED_EVENT%"=="DOWNLOAD_DONE" exit /b 0
+
+REM Your custom logic here
+echo Processing: %GOPEED_FILE_NAME%
+echo Location: %GOPEED_FILE_PATH%
+
+exit /b 0
+```
+
+### Windows PowerShell Script Template
+```powershell
+# Exit if not a download done event
+if ($env:GOPEED_EVENT -ne "DOWNLOAD_DONE") { exit 0 }
+
+# Your custom logic here
+Write-Host "Processing: $env:GOPEED_FILE_NAME"
+Write-Host "Location: $env:GOPEED_FILE_PATH"
+
+# Read full task data from stdin (optional)
+try {
+    $input = [System.Console]::In.ReadToEnd()
+    if ($input) {
+        $taskData = $input | ConvertFrom-Json
+        Write-Host "Task ID: $($taskData.payload.task.id)"
+    }
+} catch {
+    # Ignore parsing errors
+}
+
+exit 0
+```
+
 ## Security Considerations
 
 - Scripts are executed with the same permissions as the Gopeed process
@@ -192,13 +267,15 @@ sys.exit(0)
 - Be cautious with scripts that accept external input
 - Only use scripts from trusted sources
 - Scripts have a 60-second timeout by default
+- **Windows users**: Be aware of PowerShell execution policies
 
 ## Troubleshooting
 
 ### Script not executing
-- Check that the script file exists and is executable (`chmod +x script.sh`)
+- Check that the script file exists and is executable (`chmod +x script.sh` on Unix)
 - Verify the script path in Gopeed configuration is correct
 - Check Gopeed logs for error messages
+- **Windows**: Ensure PowerShell execution policy allows running scripts
 
 ### Script timeout
 - If your script takes longer than 60 seconds, it will be killed
@@ -209,6 +286,12 @@ sys.exit(0)
 - Ensure Gopeed has permission to execute the script
 - Ensure the script has permission to access/modify the target directories
 - Check file and directory ownership and permissions
+- **Windows**: Run Gopeed with appropriate privileges if accessing protected folders
+
+### Windows-specific issues
+- **PowerShell execution policy**: Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` to allow script execution
+- **Batch file errors**: Check that paths with spaces are properly quoted
+- **Path format**: Use Windows path format (e.g., `C:\path\to\file` or `C:/path/to/file`)
 
 ## License
 
