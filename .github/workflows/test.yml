@@ -67,20 +67,30 @@ jobs:
           token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
   build-desktop:
     name: Build desktop check
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-2022, macos-latest, ubuntu-22.04, ubuntu-22.04-arm]
+        include:
+          - os: windows-2022
+          - os: windows-11-arm
+            flutter_channel: "main"
+            flutter_version: "7e1c8868"
+          - os: macos-latest
+          - os: ubuntu-22.04
+          - os: ubuntu-22.04-arm
+    runs-on: ${{ matrix.os }}
     needs: [test]
     steps:
       - uses: actions/checkout@v3
+      - name: Enable long paths for flutter main branch checks
+        run: |
+          git config --global core.longpaths true
       - uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: master
+          channel: ${{ matrix.flutter_channel || 'stable' }}
+          flutter-version: ${{ matrix.flutter_version || env.FLUTTER_VERSION }}
       - if: runner.os == 'Windows'
         run: |
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
