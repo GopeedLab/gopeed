@@ -78,7 +78,7 @@ jobs:
           - os: ubuntu-22.04
           - os: ubuntu-22.04-arm
             flutter_channel: "main"
-    name: Build desktop check - ${{ matrix.os }}
+    name: Build desktop check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     needs: [test]
     steps:
