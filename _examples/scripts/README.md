@@ -259,7 +259,7 @@ exit 0
 - Always validate and sanitize file paths before processing
 - Be cautious with scripts that accept external input
 - Only use scripts from trusted sources
-- Scripts have a 60-second timeout by default
+- Scripts run without timeout limitation, so ensure they complete properly
 - **Windows users**: Be aware of PowerShell execution policies
 
 ## Troubleshooting
@@ -269,11 +269,6 @@ exit 0
 - Verify the script path in Gopeed configuration is correct
 - Check Gopeed logs for error messages
 - **Windows**: Ensure PowerShell execution policy allows running scripts
-
-### Script timeout
-- If your script takes longer than 60 seconds, it will be killed
-- Consider running long-running tasks in the background
-- Use asynchronous processing for time-consuming operations
 
 ### Permission errors
 - Ensure Gopeed has permission to execute the script

@@ -10,10 +10,6 @@ import (
 	"time"
 )
 
-const (
-	scriptTimeout = 60 * time.Second
-)
-
 // ScriptEvent represents the type of script event
 type ScriptEvent string
 
@@ -154,22 +150,8 @@ func (d *Downloader) executeScriptAtPath(scriptPath string, data *ScriptData) er
 		}
 	}()
 
-	// Wait for the command to complete with timeout
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Wait()
-	}()
-
-	select {
-	case err := <-done:
-		return err
-	case <-time.After(scriptTimeout):
-		// Kill the process if it times out
-		if cmd.Process != nil {
-			cmd.Process.Kill()
-		}
-		return fmt.Errorf("script execution timed out after %v", scriptTimeout)
-	}
+	// Wait for the command to complete (no timeout)
+	return cmd.Wait()
 }
 
 // triggerScripts executes all configured scripts
