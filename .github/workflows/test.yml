@@ -72,6 +72,7 @@ jobs:
         include:
           - os: windows-2022
           - os: windows-11-arm
+            llvm_ver: "20251202" # Only ARM64
             flutter_channel: "main"
             flutter_version: "7e1c8868"
           - os: macos-latest
@@ -85,6 +86,29 @@ jobs:
       - name: Enable long paths for flutter main branch checks
         run: |
           git config --global core.longpaths true
+      - name: Install llvm-mingw-ucrt-aarch64 (ARM64 only)
+        if: matrix.os == 'windows-11-arm'
+        run: |
+          $ver = "${{ matrix.llvm_ver }}"
+          $url = "https://github.com/mstorsjo/llvm-mingw/releases/download/$ver/llvm-mingw-$ver-ucrt-aarch64.zip"
+          $zip = "$env:RUNNER_TEMP\\llvm.zip"
+          $extract = "$env:RUNNER_TEMP\\extract"
+          $target = "C:\\clangarm64"
+
+          curl -L $url -o $zip
+          rm -r -fo $extract,$target -ea Ignore
+          mkdir $extract | Out-Null
+
+          tar -xf $zip -C $extract
+          mv (Get-ChildItem $extract)[0].FullName $target
+
+          $b = "$target\\bin"
+          "CC=$b\\clang.exe"        >> $env:GITHUB_ENV
+          "CXX=$b\\clang++.exe"     >> $env:GITHUB_ENV
+          "CLANGARM64_BIN=$b"       >> $env:GITHUB_ENV
+          "CGO_ENABLED=1"           >> $env:GITHUB_ENV
+          "CLANGARM64_ROOT=$target" >> $env:GITHUB_ENV
+          $b >> $env:GITHUB_PATH
       - uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
