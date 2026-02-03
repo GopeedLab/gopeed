@@ -77,6 +77,7 @@ jobs:
           - os: macos-latest
           - os: ubuntu-22.04
           - os: ubuntu-22.04-arm
+            flutter_channel: "main"
     runs-on: ${{ matrix.os }}
     needs: [test]
     steps:
