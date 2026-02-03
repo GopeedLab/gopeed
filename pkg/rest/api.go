@@ -57,7 +57,7 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 				if isExtension {
 					// Convert to deep link format
 					createTask := map[string]interface{}{
-						"req": req.Req,
+						"req":  req.Req,
 						"opts": req.Opts,
 					}
 

@@ -140,10 +140,7 @@ class WebhookConfig {
   bool enable;
   List<String> urls;
 
-  WebhookConfig({
-    this.enable = false,
-    this.urls = const [],
-  });
+  WebhookConfig({this.enable = false, this.urls = const []});
 
   factory WebhookConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? WebhookConfig() : _$WebhookConfigFromJson(json);
@@ -192,10 +189,7 @@ class ExtraConfigBt {
   Map<String, dynamic> toJson() => _$ExtraConfigBtToJson(this);
 }
 
-enum GithubMirrorType {
-  jsdelivr,
-  ghProxy,
-}
+enum GithubMirrorType { jsdelivr, ghProxy }
 
 @JsonSerializable()
 class GithubMirror {
@@ -222,10 +216,7 @@ class ExtraConfigGithubMirror {
   bool enabled;
   List<GithubMirror> mirrors;
 
-  ExtraConfigGithubMirror({
-    this.enabled = true,
-    this.mirrors = const [],
-  });
+  ExtraConfigGithubMirror({this.enabled = true, this.mirrors = const []});
 
   factory ExtraConfigGithubMirror.fromJson(Map<String, dynamic>? json) =>
       json == null
@@ -240,10 +231,7 @@ class AutoTorrentConfig {
   bool enable;
   bool deleteAfterDownload;
 
-  AutoTorrentConfig({
-    this.enable = false,
-    this.deleteAfterDownload = false,
-  });
+  AutoTorrentConfig({this.enable = false, this.deleteAfterDownload = false});
 
   factory AutoTorrentConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? AutoTorrentConfig() : _$AutoTorrentConfigFromJson(json);
@@ -256,10 +244,7 @@ class ArchiveConfig {
   bool autoExtract;
   bool deleteAfterExtract;
 
-  ArchiveConfig({
-    this.autoExtract = true,
-    this.deleteAfterExtract = true,
-  });
+  ArchiveConfig({this.autoExtract = true, this.deleteAfterExtract = true});
 
   factory ArchiveConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ArchiveConfig() : _$ArchiveConfigFromJson(json);

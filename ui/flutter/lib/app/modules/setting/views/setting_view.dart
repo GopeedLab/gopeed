@@ -53,8 +53,10 @@ class SettingView extends GetView<SettingController> {
     final startCfg = appController.startConfig;
 
     Timer? timer;
-    Future<bool> debounceSave(
-        {Future<String> Function()? check, bool needRestart = false}) {
+    Future<bool> debounceSave({
+      Future<String> Function()? check,
+      bool needRestart = false,
+    }) {
       var completer = Completer<bool>();
       timer?.cancel();
       timer = Timer(const Duration(milliseconds: 1000), () async {
@@ -79,202 +81,236 @@ class SettingView extends GetView<SettingController> {
 
     // download basic config items start
     final buildDownloadDir = _buildConfigItem(
-        'downloadDir', () => downloaderCfg.value.downloadDir, (Key key) {
-      final downloadDirController =
-          TextEditingController(text: downloaderCfg.value.downloadDir);
+      'downloadDir',
+      () => downloaderCfg.value.downloadDir,
+      (Key key) {
+        final downloadDirController = TextEditingController(
+          text: downloaderCfg.value.downloadDir,
+        );
 
-      // Update config only when editing is done (on focus lost or submit)
-      void onEditComplete() {
-        if (downloadDirController.text != downloaderCfg.value.downloadDir) {
-          downloaderCfg.value.downloadDir = downloadDirController.text;
-          if (Util.isDesktop()) {
-            controller.clearTap();
+        // Update config only when editing is done (on focus lost or submit)
+        void onEditComplete() {
+          if (downloadDirController.text != downloaderCfg.value.downloadDir) {
+            downloaderCfg.value.downloadDir = downloadDirController.text;
+            if (Util.isDesktop()) {
+              controller.clearTap();
+            }
+            debounceSave();
           }
-          debounceSave();
         }
-      }
 
-      return DirectorySelector(
-        controller: downloadDirController,
-        showLabel: false,
-        showAndoirdToggle: true,
-        allowEdit: true,
-        showPlaceholderButton: true,
-        onEditComplete: onEditComplete,
-      );
-    });
+        return DirectorySelector(
+          controller: downloadDirController,
+          showLabel: false,
+          showAndoirdToggle: true,
+          allowEdit: true,
+          showPlaceholderButton: true,
+          onEditComplete: onEditComplete,
+        );
+      },
+    );
     final buildMaxRunning = _buildConfigItem(
-        'maxRunning', () => downloaderCfg.value.maxRunning.toString(),
-        (Key key) {
-      final maxRunningController = TextEditingController(
-          text: downloaderCfg.value.maxRunning.toString());
-      maxRunningController.addListener(() async {
-        if (maxRunningController.text.isNotEmpty &&
-            maxRunningController.text !=
-                downloaderCfg.value.maxRunning.toString()) {
-          downloaderCfg.value.maxRunning = int.parse(maxRunningController.text);
+      'maxRunning',
+      () => downloaderCfg.value.maxRunning.toString(),
+      (Key key) {
+        final maxRunningController = TextEditingController(
+          text: downloaderCfg.value.maxRunning.toString(),
+        );
+        maxRunningController.addListener(() async {
+          if (maxRunningController.text.isNotEmpty &&
+              maxRunningController.text !=
+                  downloaderCfg.value.maxRunning.toString()) {
+            downloaderCfg.value.maxRunning = int.parse(
+              maxRunningController.text,
+            );
 
-          await debounceSave();
-        }
-      });
-
-      return TextField(
-        key: key,
-        focusNode: FocusNode(),
-        controller: maxRunningController,
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          NumericalRangeFormatter(min: 1, max: 256),
-        ],
-      );
-    });
-
-    final buildDefaultDirectDownload =
-        _buildConfigItem('defaultDirectDownload', () {
-      return appController.downloaderConfig.value.extra.defaultDirectDownload
-          ? 'on'.tr
-          : 'off'.tr;
-    }, (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value:
-              appController.downloaderConfig.value.extra.defaultDirectDownload,
-          onChanged: (bool value) async {
-            appController.downloaderConfig.update((val) {
-              val!.extra.defaultDirectDownload = value;
-            });
             await debounceSave();
-          },
-        ),
-      );
-    });
+          }
+        });
 
-    final buildAutoStartTasks = _buildConfigItem('autoStartTasks', () {
-      return appController.downloaderConfig.value.extra.autoStartTasks
-          ? 'on'.tr
-          : 'off'.tr;
-    }, (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value: appController.downloaderConfig.value.extra.autoStartTasks,
-          onChanged: (bool value) async {
-            appController.downloaderConfig.update((val) {
-              val!.extra.autoStartTasks = value;
-            });
-            await debounceSave();
-          },
-        ),
-      );
-    });
+        return TextField(
+          key: key,
+          focusNode: FocusNode(),
+          controller: maxRunningController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            NumericalRangeFormatter(min: 1, max: 256),
+          ],
+        );
+      },
+    );
+
+    final buildDefaultDirectDownload = _buildConfigItem(
+      'defaultDirectDownload',
+      () {
+        return appController.downloaderConfig.value.extra.defaultDirectDownload
+            ? 'on'.tr
+            : 'off'.tr;
+      },
+      (Key key) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          child: Switch(
+            value: appController
+                .downloaderConfig.value.extra.defaultDirectDownload,
+            onChanged: (bool value) async {
+              appController.downloaderConfig.update((val) {
+                val!.extra.defaultDirectDownload = value;
+              });
+              await debounceSave();
+            },
+          ),
+        );
+      },
+    );
+
+    final buildAutoStartTasks = _buildConfigItem(
+      'autoStartTasks',
+      () {
+        return appController.downloaderConfig.value.extra.autoStartTasks
+            ? 'on'.tr
+            : 'off'.tr;
+      },
+      (Key key) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          child: Switch(
+            value: appController.downloaderConfig.value.extra.autoStartTasks,
+            onChanged: (bool value) async {
+              appController.downloaderConfig.update((val) {
+                val!.extra.autoStartTasks = value;
+              });
+              await debounceSave();
+            },
+          ),
+        );
+      },
+    );
 
     // AutoTorrent: Enable auto create BT tasks from .torrent files
-    final buildAutoTorrentEnable = _buildConfigItem('autoTorrentEnable', () {
-      return appController.downloaderConfig.value.autoTorrent.enable
-          ? 'on'.tr
-          : 'off'.tr;
-    }, (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value: appController.downloaderConfig.value.autoTorrent.enable,
-          onChanged: (bool value) async {
-            appController.downloaderConfig.update((val) {
-              val!.autoTorrent.enable = value;
-            });
-            await debounceSave();
-          },
-        ),
-      );
-    });
+    final buildAutoTorrentEnable = _buildConfigItem(
+      'autoTorrentEnable',
+      () {
+        return appController.downloaderConfig.value.autoTorrent.enable
+            ? 'on'.tr
+            : 'off'.tr;
+      },
+      (Key key) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          child: Switch(
+            value: appController.downloaderConfig.value.autoTorrent.enable,
+            onChanged: (bool value) async {
+              appController.downloaderConfig.update((val) {
+                val!.autoTorrent.enable = value;
+              });
+              await debounceSave();
+            },
+          ),
+        );
+      },
+    );
 
     // AutoTorrent: Delete .torrent file after BT task creation
-    final buildAutoTorrentDeleteAfterDownload =
-        _buildConfigItem('autoTorrentDeleteAfterDownload', () {
-      return appController
-              .downloaderConfig.value.autoTorrent.deleteAfterDownload
-          ? 'on'.tr
-          : 'off'.tr;
-    }, (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value: appController
-              .downloaderConfig.value.autoTorrent.deleteAfterDownload,
-          onChanged: (bool value) async {
-            appController.downloaderConfig.update((val) {
-              val!.autoTorrent.deleteAfterDownload = value;
-            });
-            await debounceSave();
-          },
-        ),
-      );
-    });
+    final buildAutoTorrentDeleteAfterDownload = _buildConfigItem(
+      'autoTorrentDeleteAfterDownload',
+      () {
+        return appController
+                .downloaderConfig.value.autoTorrent.deleteAfterDownload
+            ? 'on'.tr
+            : 'off'.tr;
+      },
+      (Key key) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          child: Switch(
+            value: appController
+                .downloaderConfig.value.autoTorrent.deleteAfterDownload,
+            onChanged: (bool value) async {
+              appController.downloaderConfig.update((val) {
+                val!.autoTorrent.deleteAfterDownload = value;
+              });
+              await debounceSave();
+            },
+          ),
+        );
+      },
+    );
 
     // New: Auto Delete Missing File Tasks
-    final buildAutoDeleteMissingFileTasks =
-        _buildConfigItem('autoDeleteMissingFileTasks', () {
-      return appController.downloaderConfig.value.autoDeleteMissingFileTasks
-          ? 'on'.tr
-          : 'off'.tr;
-    }, (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value:
-              appController.downloaderConfig.value.autoDeleteMissingFileTasks,
-          onChanged: (bool value) async {
-            appController.downloaderConfig.update((val) {
-              val!.autoDeleteMissingFileTasks = value;
-            });
-            await debounceSave();
-          },
-        ),
-      );
-    });
+    final buildAutoDeleteMissingFileTasks = _buildConfigItem(
+      'autoDeleteMissingFileTasks',
+      () {
+        return appController.downloaderConfig.value.autoDeleteMissingFileTasks
+            ? 'on'.tr
+            : 'off'.tr;
+      },
+      (Key key) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          child: Switch(
+            value:
+                appController.downloaderConfig.value.autoDeleteMissingFileTasks,
+            onChanged: (bool value) async {
+              appController.downloaderConfig.update((val) {
+                val!.autoDeleteMissingFileTasks = value;
+              });
+              await debounceSave();
+            },
+          ),
+        );
+      },
+    );
 
     // Archive auto extract configuration
-    final buildAutoExtract = _buildConfigItem('autoExtract', () {
-      return appController.downloaderConfig.value.archive.autoExtract
-          ? 'on'.tr
-          : 'off'.tr;
-    }, (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value: appController.downloaderConfig.value.archive.autoExtract,
-          onChanged: (bool value) async {
-            appController.downloaderConfig.update((val) {
-              val!.archive.autoExtract = value;
-            });
-            await debounceSave();
-          },
-        ),
-      );
-    });
+    final buildAutoExtract = _buildConfigItem(
+      'autoExtract',
+      () {
+        return appController.downloaderConfig.value.archive.autoExtract
+            ? 'on'.tr
+            : 'off'.tr;
+      },
+      (Key key) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          child: Switch(
+            value: appController.downloaderConfig.value.archive.autoExtract,
+            onChanged: (bool value) async {
+              appController.downloaderConfig.update((val) {
+                val!.archive.autoExtract = value;
+              });
+              await debounceSave();
+            },
+          ),
+        );
+      },
+    );
 
     // Archive delete after extract configuration
-    final buildDeleteAfterExtract = _buildConfigItem('deleteAfterExtract', () {
-      return appController.downloaderConfig.value.archive.deleteAfterExtract
-          ? 'on'.tr
-          : 'off'.tr;
-    }, (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value:
-              appController.downloaderConfig.value.archive.deleteAfterExtract,
-          onChanged: (bool value) async {
-            appController.downloaderConfig.update((val) {
-              val!.archive.deleteAfterExtract = value;
-            });
-            await debounceSave();
-          },
-        ),
-      );
-    });
+    final buildDeleteAfterExtract = _buildConfigItem(
+      'deleteAfterExtract',
+      () {
+        return appController.downloaderConfig.value.archive.deleteAfterExtract
+            ? 'on'.tr
+            : 'off'.tr;
+      },
+      (Key key) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          child: Switch(
+            value:
+                appController.downloaderConfig.value.archive.deleteAfterExtract,
+            onChanged: (bool value) async {
+              appController.downloaderConfig.update((val) {
+                val!.archive.deleteAfterExtract = value;
+              });
+              await debounceSave();
+            },
+          ),
+        );
+      },
+    );
 
     // Download categories configuration
     buildDownloadCategories() {
@@ -390,11 +426,7 @@ class SettingView extends GetView<SettingController> {
                 icon: const Icon(Icons.add, size: 18),
                 label: Text('add'.tr),
                 onPressed: () {
-                  _showCategoryDialog(
-                    context,
-                    debounceSave,
-                    downloaderCfg,
-                  );
+                  _showCategoryDialog(context, debounceSave, downloaderCfg);
                 },
               ),
             ),
@@ -405,226 +437,251 @@ class SettingView extends GetView<SettingController> {
 
     buildBrowserExtension() {
       return ListTile(
-          title: Text('browserExtension'.tr),
-          subtitle: const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              OpenInNew(
-                text: "Chrome",
-                url:
-                    "https://chromewebstore.google.com/detail/gopeed/mijpgljlfcapndmchhjffkpckknofcnd",
-              ),
-              SizedBox(width: 10),
-              OpenInNew(
-                text: "Edge",
-                url:
-                    "https://microsoftedge.microsoft.com/addons/detail/dkajnckekendchdleoaenoophcobooce",
-              ),
-              SizedBox(width: 10),
-              OpenInNew(
-                text: "Firefox",
-                url:
-                    "https://addons.mozilla.org/zh-CN/firefox/addon/gopeed-extension",
-              ),
-            ],
-          ).paddingOnly(top: 5));
+        title: Text('browserExtension'.tr),
+        subtitle: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            OpenInNew(
+              text: "Chrome",
+              url:
+                  "https://chromewebstore.google.com/detail/gopeed/mijpgljlfcapndmchhjffkpckknofcnd",
+            ),
+            SizedBox(width: 10),
+            OpenInNew(
+              text: "Edge",
+              url:
+                  "https://microsoftedge.microsoft.com/addons/detail/dkajnckekendchdleoaenoophcobooce",
+            ),
+            SizedBox(width: 10),
+            OpenInNew(
+              text: "Firefox",
+              url:
+                  "https://addons.mozilla.org/zh-CN/firefox/addon/gopeed-extension",
+            ),
+          ],
+        ).paddingOnly(top: 5),
+      );
     }
 
     // Currently auto startup only support Windows and Linux
     final buildAutoStartup = !Util.isWindows() && !Util.isLinux()
         ? () => null
-        : _buildConfigItem('launchAtStartup', () {
-            return appController.autoStartup.value ? 'on'.tr : 'off'.tr;
-          }, (Key key) {
-            return Container(
-              alignment: Alignment.centerLeft,
-              child: Switch(
-                value: appController.autoStartup.value,
-                onChanged: (bool value) async {
-                  try {
-                    if (value) {
-                      await launchAtStartup.enable();
-                    } else {
-                      await launchAtStartup.disable();
+        : _buildConfigItem(
+            'launchAtStartup',
+            () {
+              return appController.autoStartup.value ? 'on'.tr : 'off'.tr;
+            },
+            (Key key) {
+              return Container(
+                alignment: Alignment.centerLeft,
+                child: Switch(
+                  value: appController.autoStartup.value,
+                  onChanged: (bool value) async {
+                    try {
+                      if (value) {
+                        await launchAtStartup.enable();
+                      } else {
+                        await launchAtStartup.disable();
+                      }
+                      appController.autoStartup.value = value;
+                    } catch (e) {
+                      showErrorMessage(e);
+                      logger.e('launchAtStartup fail', e);
                     }
-                    appController.autoStartup.value = value;
-                  } catch (e) {
-                    showErrorMessage(e);
-                    logger.e('launchAtStartup fail', e);
-                  }
-                },
-              ),
-            );
-          });
+                  },
+                ),
+              );
+            },
+          );
 
     // Menubar mode only for macOS
     final buildMenubarMode = !Util.isMacos()
         ? () => null
-        : _buildConfigItem('runAsMenubarApp', () {
-            return Database.instance.getRunAsMenubarApp() ? 'on'.tr : 'off'.tr;
-          }, (Key key) {
-            return Container(
-              alignment: Alignment.centerLeft,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Switch(
-                    value: Database.instance.getRunAsMenubarApp(),
-                    onChanged: (bool value) async {
-                      // Save to database (single source of truth)
-                      Database.instance.saveRunAsMenubarApp(value);
-                      // Apply dock icon visibility
-                      await windowManager.setSkipTaskbar(value);
-                      // Small delay to let macOS process the activation policy change
-                      await Future.delayed(const Duration(milliseconds: 100));
-                      // Ensure window stays visible after toggle
-                      await windowManager.show();
-                      await windowManager.focus();
-                      // Force UI refresh
-                      controller.clearTap();
-                      await debounceSave();
-                    },
-                  ),
-                  Text(
-                    'runAsMenubarAppDesc'.tr,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).hintColor,
+        : _buildConfigItem(
+            'runAsMenubarApp',
+            () {
+              return Database.instance.getRunAsMenubarApp()
+                  ? 'on'.tr
+                  : 'off'.tr;
+            },
+            (Key key) {
+              return Container(
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Switch(
+                      value: Database.instance.getRunAsMenubarApp(),
+                      onChanged: (bool value) async {
+                        // Save to database (single source of truth)
+                        Database.instance.saveRunAsMenubarApp(value);
+                        // Apply dock icon visibility
+                        await windowManager.setSkipTaskbar(value);
+                        // Small delay to let macOS process the activation policy change
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        // Ensure window stays visible after toggle
+                        await windowManager.show();
+                        await windowManager.focus();
+                        // Force UI refresh
+                        controller.clearTap();
+                        await debounceSave();
+                      },
                     ),
-                  ),
-                ],
-              ),
-            );
-          });
+                    Text(
+                      'runAsMenubarAppDesc'.tr,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).hintColor,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
 
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;
-    final buildHttpUa =
-        _buildConfigItem('User-Agent', () => httpConfig.userAgent, (Key key) {
-      final uaController = TextEditingController(text: httpConfig.userAgent);
-      uaController.addListener(() async {
-        if (uaController.text.isNotEmpty &&
-            uaController.text != httpConfig.userAgent) {
-          httpConfig.userAgent = uaController.text;
+    final buildHttpUa = _buildConfigItem(
+      'User-Agent',
+      () => httpConfig.userAgent,
+      (Key key) {
+        final uaController = TextEditingController(text: httpConfig.userAgent);
+        uaController.addListener(() async {
+          if (uaController.text.isNotEmpty &&
+              uaController.text != httpConfig.userAgent) {
+            httpConfig.userAgent = uaController.text;
 
-          await debounceSave();
-        }
-      });
+            await debounceSave();
+          }
+        });
 
-      return TextField(
-        key: key,
-        focusNode: FocusNode(),
-        controller: uaController,
-      );
-    });
+        return TextField(
+          key: key,
+          focusNode: FocusNode(),
+          controller: uaController,
+        );
+      },
+    );
     final buildHttpConnections = _buildConfigItem(
-        'connections', () => httpConfig.connections.toString(), (Key key) {
-      final connectionsController =
-          TextEditingController(text: httpConfig.connections.toString());
-      connectionsController.addListener(() async {
-        if (connectionsController.text.isNotEmpty &&
-            connectionsController.text != httpConfig.connections.toString()) {
-          httpConfig.connections = int.parse(connectionsController.text);
+      'connections',
+      () => httpConfig.connections.toString(),
+      (Key key) {
+        final connectionsController = TextEditingController(
+          text: httpConfig.connections.toString(),
+        );
+        connectionsController.addListener(() async {
+          if (connectionsController.text.isNotEmpty &&
+              connectionsController.text != httpConfig.connections.toString()) {
+            httpConfig.connections = int.parse(connectionsController.text);
 
-          await debounceSave();
-        }
-      });
+            await debounceSave();
+          }
+        });
 
-      return TextField(
-        key: key,
-        focusNode: FocusNode(),
-        controller: connectionsController,
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          NumericalRangeFormatter(min: 1, max: 256),
-        ],
-      );
-    });
+        return TextField(
+          key: key,
+          focusNode: FocusNode(),
+          controller: connectionsController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            NumericalRangeFormatter(min: 1, max: 256),
+          ],
+        );
+      },
+    );
     final buildHttpUseServerCtime = _buildConfigItem(
-        'useServerCtime', () => httpConfig.useServerCtime ? 'on'.tr : 'off'.tr,
-        (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value: httpConfig.useServerCtime,
-          onChanged: (bool value) {
-            downloaderCfg.update((val) {
-              val!.protocolConfig.http.useServerCtime = value;
-            });
-            debounceSave();
-          },
-        ),
-      );
-    });
+      'useServerCtime',
+      () => httpConfig.useServerCtime ? 'on'.tr : 'off'.tr,
+      (Key key) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          child: Switch(
+            value: httpConfig.useServerCtime,
+            onChanged: (bool value) {
+              downloaderCfg.update((val) {
+                val!.protocolConfig.http.useServerCtime = value;
+              });
+              debounceSave();
+            },
+          ),
+        );
+      },
+    );
 
     // bt config items start
     final btConfig = downloaderCfg.value.protocolConfig.bt;
     final btExtConfig = downloaderCfg.value.extra.bt;
     final buildBtListenPort = _buildConfigItem(
-        'port', () => btConfig.listenPort.toString(), (Key key) {
-      final listenPortController =
-          TextEditingController(text: btConfig.listenPort.toString());
-      listenPortController.addListener(() async {
-        if (listenPortController.text.isNotEmpty &&
-            listenPortController.text != btConfig.listenPort.toString()) {
-          btConfig.listenPort = int.parse(listenPortController.text);
+      'port',
+      () => btConfig.listenPort.toString(),
+      (Key key) {
+        final listenPortController = TextEditingController(
+          text: btConfig.listenPort.toString(),
+        );
+        listenPortController.addListener(() async {
+          if (listenPortController.text.isNotEmpty &&
+              listenPortController.text != btConfig.listenPort.toString()) {
+            btConfig.listenPort = int.parse(listenPortController.text);
 
-          await debounceSave();
-        }
-      });
+            await debounceSave();
+          }
+        });
 
-      return TextField(
-        key: key,
-        focusNode: FocusNode(),
-        controller: listenPortController,
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          NumericalRangeFormatter(min: 0, max: 65535),
-        ],
-      );
-    });
+        return TextField(
+          key: key,
+          focusNode: FocusNode(),
+          controller: listenPortController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            NumericalRangeFormatter(min: 0, max: 65535),
+          ],
+        );
+      },
+    );
     final buildBtTrackerSubscribeUrls = _buildConfigItem(
-        'subscribeTracker',
-        () => 'items'.trParams(
-            {'count': btExtConfig.trackerSubscribeUrls.length.toString()}),
-        (Key key) {
-      final trackerUpdateController = OutlinedButtonLoadingController();
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 200,
-            child: CheckListView(
-              items: allTrackerSubscribeUrls,
-              checked: btExtConfig.trackerSubscribeUrls,
-              onChanged: (value) {
-                btExtConfig.trackerSubscribeUrls = value;
+      'subscribeTracker',
+      () => 'items'.trParams({
+        'count': btExtConfig.trackerSubscribeUrls.length.toString(),
+      }),
+      (Key key) {
+        final trackerUpdateController = OutlinedButtonLoadingController();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 200,
+              child: CheckListView(
+                items: allTrackerSubscribeUrls,
+                checked: btExtConfig.trackerSubscribeUrls,
+                onChanged: (value) {
+                  btExtConfig.trackerSubscribeUrls = value;
 
-                debounceSave();
-              },
-            ),
-          ),
-          _padding,
-          Row(
-            children: [
-              OutlinedButtonLoading(
-                onPressed: () async {
-                  trackerUpdateController.start();
-                  try {
-                    await appController.trackerUpdate();
-                  } catch (e) {
-                    showErrorMessage('subscribeFail'.tr);
-                  } finally {
-                    trackerUpdateController.stop();
-                  }
+                  debounceSave();
                 },
-                controller: trackerUpdateController,
-                child: Text('update'.tr),
               ),
-              Expanded(
-                child: SwitchListTile(
+            ),
+            _padding,
+            Row(
+              children: [
+                OutlinedButtonLoading(
+                  onPressed: () async {
+                    trackerUpdateController.start();
+                    try {
+                      await appController.trackerUpdate();
+                    } catch (e) {
+                      showErrorMessage('subscribeFail'.tr);
+                    } finally {
+                      trackerUpdateController.stop();
+                    }
+                  },
+                  controller: trackerUpdateController,
+                  child: Text('update'.tr),
+                ),
+                Expanded(
+                  child: SwitchListTile(
                     controlAffinity: ListTileControlAffinity.leading,
                     value: btExtConfig.autoUpdateTrackers,
                     onChanged: (bool value) {
@@ -633,66 +690,75 @@ class SettingView extends GetView<SettingController> {
                       });
                       debounceSave();
                     },
-                    title: Text('updateDaily'.tr)),
-              ),
-            ],
-          ),
-          Text('lastUpdate'.trParams({
-            'time': btExtConfig.lastTrackerUpdateTime != null
-                ? DateFormat('yyyy-MM-dd HH:mm:ss')
-                    .format(btExtConfig.lastTrackerUpdateTime!)
-                : ''
-          })),
-        ],
-      );
-    });
+                    title: Text('updateDaily'.tr),
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              'lastUpdate'.trParams({
+                'time': btExtConfig.lastTrackerUpdateTime != null
+                    ? DateFormat(
+                        'yyyy-MM-dd HH:mm:ss',
+                      ).format(btExtConfig.lastTrackerUpdateTime!)
+                    : '',
+              }),
+            ),
+          ],
+        );
+      },
+    );
     final buildBtTrackers = _buildConfigItem(
-        'addTracker',
-        () => 'items'
-            .trParams({'count': btExtConfig.customTrackers.length.toString()}),
-        (Key key) {
-      final trackersController = TextEditingController(
-          text: btExtConfig.customTrackers.join('\r\n').toString());
-      return TextField(
-        key: key,
-        focusNode: FocusNode(),
-        controller: trackersController,
-        keyboardType: TextInputType.multiline,
-        maxLines: 5,
-        decoration: InputDecoration(
-          hintText: 'addTrackerHit'.tr,
-        ),
-        onChanged: (value) async {
-          btExtConfig.customTrackers = Util.textToLines(value);
-          appController.refreshTrackers();
+      'addTracker',
+      () => 'items'.trParams({
+        'count': btExtConfig.customTrackers.length.toString(),
+      }),
+      (Key key) {
+        final trackersController = TextEditingController(
+          text: btExtConfig.customTrackers.join('\r\n').toString(),
+        );
+        return TextField(
+          key: key,
+          focusNode: FocusNode(),
+          controller: trackersController,
+          keyboardType: TextInputType.multiline,
+          maxLines: 5,
+          decoration: InputDecoration(hintText: 'addTrackerHit'.tr),
+          onChanged: (value) async {
+            btExtConfig.customTrackers = Util.textToLines(value);
+            appController.refreshTrackers();
 
-          await debounceSave();
-        },
-      );
-    });
-    final buildBtSeedConfig = _buildConfigItem('seedConfig',
-        () => '${'seedKeep'.tr}(${btConfig.seedKeep ? 'on'.tr : 'off'.tr})',
-        (Key key) {
-      final seedRatioController =
-          TextEditingController(text: btConfig.seedRatio.toString());
-      seedRatioController.addListener(() {
-        if (seedRatioController.text.isNotEmpty) {
-          btConfig.seedRatio = double.parse(seedRatioController.text);
-          debounceSave();
-        }
-      });
-      final seedTimeController =
-          TextEditingController(text: (btConfig.seedTime ~/ 60).toString());
-      seedTimeController.addListener(() {
-        if (seedTimeController.text.isNotEmpty) {
-          btConfig.seedTime = int.parse(seedTimeController.text) * 60;
-          debounceSave();
-        }
-      });
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SwitchListTile(
+            await debounceSave();
+          },
+        );
+      },
+    );
+    final buildBtSeedConfig = _buildConfigItem(
+      'seedConfig',
+      () => '${'seedKeep'.tr}(${btConfig.seedKeep ? 'on'.tr : 'off'.tr})',
+      (Key key) {
+        final seedRatioController = TextEditingController(
+          text: btConfig.seedRatio.toString(),
+        );
+        seedRatioController.addListener(() {
+          if (seedRatioController.text.isNotEmpty) {
+            btConfig.seedRatio = double.parse(seedRatioController.text);
+            debounceSave();
+          }
+        });
+        final seedTimeController = TextEditingController(
+          text: (btConfig.seedTime ~/ 60).toString(),
+        );
+        seedTimeController.addListener(() {
+          if (seedTimeController.text.isNotEmpty) {
+            btConfig.seedTime = int.parse(seedTimeController.text) * 60;
+            debounceSave();
+          }
+        });
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile(
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
               value: btConfig.seedKeep,
@@ -702,115 +768,125 @@ class SettingView extends GetView<SettingController> {
                 });
                 debounceSave();
               },
-              title: Text('seedKeep'.tr)),
-          btConfig.seedKeep
-              ? null
-              : TextField(
-                  controller: seedRatioController,
-                  decoration: InputDecoration(
-                    labelText: 'seedRatio'.tr,
+              title: Text('seedKeep'.tr),
+            ),
+            btConfig.seedKeep
+                ? null
+                : TextField(
+                    controller: seedRatioController,
+                    decoration: InputDecoration(labelText: 'seedRatio'.tr),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}'),
+                      ),
+                    ],
                   ),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d+\.?\d{0,2}')),
-                  ],
-                ),
-          btConfig.seedKeep
-              ? null
-              : TextField(
-                  controller: seedTimeController,
-                  decoration: InputDecoration(
-                    labelText: 'seedTime'.tr,
+            btConfig.seedKeep
+                ? null
+                : TextField(
+                    controller: seedTimeController,
+                    decoration: InputDecoration(labelText: 'seedTime'.tr),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      NumericalRangeFormatter(min: 0, max: 100000000),
+                    ],
                   ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    NumericalRangeFormatter(min: 0, max: 100000000),
-                  ],
-                ),
-        ].where((e) => e != null).map((e) => e!).toList(),
-      );
-    });
+          ].where((e) => e != null).map((e) => e!).toList(),
+        );
+      },
+    );
     final buildBtDefaultClientConfig = !Util.isWindows()
         ? () => null
-        : _buildConfigItem('setAsDefaultBtClient', () {
-            return appController.downloaderConfig.value.extra.defaultBtClient
-                ? 'on'.tr
-                : 'off'.tr;
-          }, (Key key) {
-            return Container(
-              alignment: Alignment.centerLeft,
-              child: Switch(
-                value:
-                    appController.downloaderConfig.value.extra.defaultBtClient,
-                onChanged: (bool value) async {
-                  try {
-                    if (value) {
-                      registerDefaultTorrentClient();
-                    } else {
-                      unregisterDefaultTorrentClient();
+        : _buildConfigItem(
+            'setAsDefaultBtClient',
+            () {
+              return appController.downloaderConfig.value.extra.defaultBtClient
+                  ? 'on'.tr
+                  : 'off'.tr;
+            },
+            (Key key) {
+              return Container(
+                alignment: Alignment.centerLeft,
+                child: Switch(
+                  value: appController
+                      .downloaderConfig.value.extra.defaultBtClient,
+                  onChanged: (bool value) async {
+                    try {
+                      if (value) {
+                        registerDefaultTorrentClient();
+                      } else {
+                        unregisterDefaultTorrentClient();
+                      }
+                      appController.downloaderConfig.update((val) {
+                        val!.extra.defaultBtClient = value;
+                      });
+                      await debounceSave();
+                    } catch (e) {
+                      showErrorMessage(e);
+                      logger.e('register default torrent client fail', e);
                     }
-                    appController.downloaderConfig.update((val) {
-                      val!.extra.defaultBtClient = value;
-                    });
-                    await debounceSave();
-                  } catch (e) {
-                    showErrorMessage(e);
-                    logger.e('register default torrent client fail', e);
-                  }
-                },
-              ),
-            );
-          });
+                  },
+                ),
+              );
+            },
+          );
 
     // ui config items start
     final buildTheme = _buildConfigItem(
-        'theme',
-        () => _getThemeName(downloaderCfg.value.extra.themeMode),
-        (Key key) => DropdownButton<String>(
-              key: key,
-              value: downloaderCfg.value.extra.themeMode,
-              onChanged: (value) async {
-                downloaderCfg.update((val) {
-                  val?.extra.themeMode = value!;
-                });
-                Get.changeThemeMode(ThemeMode.values.byName(value!));
-                controller.clearTap();
+      'theme',
+      () => _getThemeName(downloaderCfg.value.extra.themeMode),
+      (Key key) => DropdownButton<String>(
+        key: key,
+        value: downloaderCfg.value.extra.themeMode,
+        onChanged: (value) async {
+          downloaderCfg.update((val) {
+            val?.extra.themeMode = value!;
+          });
+          Get.changeThemeMode(ThemeMode.values.byName(value!));
+          controller.clearTap();
 
-                await debounceSave();
-              },
-              items: ThemeMode.values
-                  .map((e) => DropdownMenuItem<String>(
-                        value: e.name,
-                        child: Text(_getThemeName(e.name)),
-                      ))
-                  .toList(),
-            ));
+          await debounceSave();
+        },
+        items: ThemeMode.values
+            .map(
+              (e) => DropdownMenuItem<String>(
+                value: e.name,
+                child: Text(_getThemeName(e.name)),
+              ),
+            )
+            .toList(),
+      ),
+    );
     final buildLocale = _buildConfigItem(
-        'locale',
-        () => messages.keys[downloaderCfg.value.extra.locale]!['label']!,
-        (Key key) => DropdownButton<String>(
-              key: key,
-              value: downloaderCfg.value.extra.locale,
-              isDense: true,
-              onChanged: (value) async {
-                downloaderCfg.update((val) {
-                  val!.extra.locale = value!;
-                });
-                Get.updateLocale(toLocale(value!));
-                controller.clearTap();
+      'locale',
+      () => messages.keys[downloaderCfg.value.extra.locale]!['label']!,
+      (Key key) => DropdownButton<String>(
+        key: key,
+        value: downloaderCfg.value.extra.locale,
+        isDense: true,
+        onChanged: (value) async {
+          downloaderCfg.update((val) {
+            val!.extra.locale = value!;
+          });
+          Get.updateLocale(toLocale(value!));
+          controller.clearTap();
 
-                await debounceSave();
-              },
-              items: messages.keys.keys
-                  .map((e) => DropdownMenuItem<String>(
-                        value: e,
-                        child: Text(messages.keys[e]!['label']!),
-                      ))
-                  .toList(),
-            ));
+          await debounceSave();
+        },
+        items: messages.keys.keys
+            .map(
+              (e) => DropdownMenuItem<String>(
+                value: e,
+                child: Text(messages.keys[e]!['label']!),
+              ),
+            )
+            .toList(),
+      ),
+    );
 
     // about config items start
     buildHomepage() {
@@ -830,7 +906,8 @@ class SettingView extends GetView<SettingController> {
         title: hasNewVersion
             ? badges.Badge(
                 position: badges.BadgePosition.topStart(start: 36),
-                child: Text('version'.tr))
+                child: Text('version'.tr),
+              )
             : Text('version'.tr),
         subtitle: Text(packageInfo.version),
         onTap: () {
@@ -842,36 +919,38 @@ class SettingView extends GetView<SettingController> {
     }
 
     final buildAutoCheckUpdate = _buildConfigItem(
-        'notifyWhenNewVersion',
-        () =>
-            downloaderCfg.value.extra.notifyWhenNewVersion ? 'on'.tr : 'off'.tr,
-        (Key key) {
-      return Container(
-        alignment: Alignment.centerLeft,
-        child: Switch(
-          value: downloaderCfg.value.extra.notifyWhenNewVersion,
-          onChanged: (bool value) async {
-            downloaderCfg.update((val) {
-              val!.extra.notifyWhenNewVersion = value;
-            });
-            await debounceSave();
-          },
-        ),
-      );
-    });
+      'notifyWhenNewVersion',
+      () => downloaderCfg.value.extra.notifyWhenNewVersion ? 'on'.tr : 'off'.tr,
+      (Key key) {
+        return Container(
+          alignment: Alignment.centerLeft,
+          child: Switch(
+            value: downloaderCfg.value.extra.notifyWhenNewVersion,
+            onChanged: (bool value) async {
+              downloaderCfg.update((val) {
+                val!.extra.notifyWhenNewVersion = value;
+              });
+              await debounceSave();
+            },
+          ),
+        );
+      },
+    );
 
     final analyticsEnabled = Database.instance.getAnalyticsEnabled().obs;
     buildAnalyticsEnabled() {
       return ListTile(
         title: Text('analyticsEnabled'.tr),
         subtitle: Text('analyticsEnabledDesc'.tr),
-        trailing: Obx(() => Switch(
-              value: analyticsEnabled.value,
-              onChanged: (bool value) {
-                analyticsEnabled.value = value;
-                Database.instance.saveAnalyticsEnabled(value);
-              },
-            )),
+        trailing: Obx(
+          () => Switch(
+            value: analyticsEnabled.value,
+            onChanged: (bool value) {
+              analyticsEnabled.value = value;
+              Database.instance.saveAnalyticsEnabled(value);
+            },
+          ),
+        ),
       );
     }
 
@@ -945,18 +1024,9 @@ class SettingView extends GetView<SettingController> {
               }
             },
             items: const [
-              DropdownMenuItem<String>(
-                value: 'http',
-                child: Text('HTTP'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'https',
-                child: Text('HTTPS'),
-              ),
-              DropdownMenuItem<String>(
-                value: 'socks5',
-                child: Text('SOCKS5'),
-              ),
+              DropdownMenuItem<String>(value: 'http', child: Text('HTTP')),
+              DropdownMenuItem<String>(value: 'https', child: Text('HTTPS')),
+              DropdownMenuItem<String>(value: 'socks5', child: Text('SOCKS5')),
             ],
           ),
         );
@@ -982,32 +1052,34 @@ class SettingView extends GetView<SettingController> {
 
         ipController.addListener(updateAddress);
         portController.addListener(updateAddress);
-        final server = Row(children: [
-          Flexible(
-            child: TextFormField(
-              controller: ipController,
-              decoration: InputDecoration(
-                labelText: 'server'.tr,
-                contentPadding: const EdgeInsets.all(0.0),
+        final server = Row(
+          children: [
+            Flexible(
+              child: TextFormField(
+                controller: ipController,
+                decoration: InputDecoration(
+                  labelText: 'server'.tr,
+                  contentPadding: const EdgeInsets.all(0.0),
+                ),
               ),
             ),
-          ),
-          const Padding(padding: EdgeInsets.only(left: 10)),
-          Flexible(
-            child: TextFormField(
-              controller: portController,
-              decoration: InputDecoration(
-                labelText: 'port'.tr,
-                contentPadding: const EdgeInsets.all(0.0),
+            const Padding(padding: EdgeInsets.only(left: 10)),
+            Flexible(
+              child: TextFormField(
+                controller: portController,
+                decoration: InputDecoration(
+                  labelText: 'port'.tr,
+                  contentPadding: const EdgeInsets.all(0.0),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  NumericalRangeFormatter(min: 0, max: 65535),
+                ],
               ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                NumericalRangeFormatter(min: 0, max: 65535),
-              ],
             ),
-          ),
-        ]);
+          ],
+        );
 
         final usrController = TextEditingController(text: proxy.usr);
         final pwdController = TextEditingController(text: proxy.pwd);
@@ -1025,28 +1097,30 @@ class SettingView extends GetView<SettingController> {
         usrController.addListener(updateAuth);
         pwdController.addListener(updateAuth);
 
-        final auth = Row(children: [
-          Flexible(
-            child: TextFormField(
-              controller: usrController,
-              decoration: InputDecoration(
-                labelText: 'username'.tr,
-                contentPadding: const EdgeInsets.all(0.0),
+        final auth = Row(
+          children: [
+            Flexible(
+              child: TextFormField(
+                controller: usrController,
+                decoration: InputDecoration(
+                  labelText: 'username'.tr,
+                  contentPadding: const EdgeInsets.all(0.0),
+                ),
               ),
             ),
-          ),
-          const Padding(padding: EdgeInsets.only(left: 10)),
-          Flexible(
-            child: TextFormField(
-              controller: pwdController,
-              decoration: InputDecoration(
-                labelText: 'password'.tr,
-                contentPadding: const EdgeInsets.all(0.0),
+            const Padding(padding: EdgeInsets.only(left: 10)),
+            Flexible(
+              child: TextFormField(
+                controller: pwdController,
+                decoration: InputDecoration(
+                  labelText: 'password'.tr,
+                  contentPadding: const EdgeInsets.all(0.0),
+                ),
+                obscureText: true,
               ),
-              obscureText: true,
             ),
-          ),
-        ]);
+          ],
+        );
 
         List<Widget> customView() {
           if (proxy.proxyMode != ProxyModeEnum.customProxy) {
@@ -1058,10 +1132,7 @@ class SettingView extends GetView<SettingController> {
         return Form(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: _addPadding([
-              mode,
-              ...customView(),
-            ]),
+            children: _addPadding([mode, ...customView()]),
           ),
         );
       },
@@ -1120,8 +1191,9 @@ class SettingView extends GetView<SettingController> {
                           Expanded(
                             child: Text(
                               mirror.url,
-                              style:
-                                  Theme.of(Get.context!).textTheme.bodyMedium,
+                              style: Theme.of(
+                                Get.context!,
+                              ).textTheme.bodyMedium,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -1133,7 +1205,9 @@ class SettingView extends GetView<SettingController> {
                       tooltip: 'edit'.tr,
                       onPressed: () {
                         _showGithubMirrorDialog(
-                            index: index, initialMirror: mirror);
+                          index: index,
+                          initialMirror: mirror,
+                        );
                       },
                     ),
                     IconButton(
@@ -1170,7 +1244,8 @@ class SettingView extends GetView<SettingController> {
                         } else {
                           // Remove custom mirrors completely (physical delete)
                           final mirrors = List<GithubMirror>.from(
-                              downloaderCfg.value.extra.githubMirror.mirrors);
+                            downloaderCfg.value.extra.githubMirror.mirrors,
+                          );
                           mirrors.removeAt(index);
                           downloaderCfg.update((val) {
                             val!.extra.githubMirror.mirrors = mirrors;
@@ -1231,7 +1306,7 @@ class SettingView extends GetView<SettingController> {
                     : null,
               ].where((e) => e != null).map((e) => e!).toList(),
             ),
-          )
+          ),
         ];
         if ((Util.isDesktop() || Util.isAndroid()) &&
             startCfg.value.network == 'tcp') {
@@ -1254,24 +1329,29 @@ class SettingView extends GetView<SettingController> {
               startCfg.value.address = newAddress;
 
               final saved = await debounceSave(
-                  check: () async {
-                    // Check if address already in use
-                    final configIp = ipController.text;
-                    final configPort = int.parse(portController.text);
-                    if (configPort == 0) {
-                      return '';
-                    }
-                    try {
-                      final socket = await Socket.connect(configIp, configPort,
-                          timeout: const Duration(seconds: 3));
-                      socket.close();
-                      return 'portInUse'
-                          .trParams({'port': configPort.toString()});
-                    } catch (e) {
-                      return '';
-                    }
-                  },
-                  needRestart: true);
+                check: () async {
+                  // Check if address already in use
+                  final configIp = ipController.text;
+                  final configPort = int.parse(portController.text);
+                  if (configPort == 0) {
+                    return '';
+                  }
+                  try {
+                    final socket = await Socket.connect(
+                      configIp,
+                      configPort,
+                      timeout: const Duration(seconds: 3),
+                    );
+                    socket.close();
+                    return 'portInUse'.trParams({
+                      'port': configPort.toString(),
+                    });
+                  } catch (e) {
+                    return '';
+                  }
+                },
+                needRestart: true,
+              );
 
               // If save failed, restore the old address
               if (!saved) {
@@ -1319,55 +1399,58 @@ class SettingView extends GetView<SettingController> {
           ]);
         }
 
-        return Form(
-          child: Row(
-            children: items,
-          ),
+        return Form(child: Row(children: items));
+      },
+    );
+    final buildApiToken = _buildConfigItem(
+      'apiToken',
+      () => startCfg.value.apiToken.isEmpty ? 'notSet'.tr : 'set'.tr,
+      (Key key) {
+        final apiTokenController = TextEditingController(
+          text: startCfg.value.apiToken,
+        );
+        apiTokenController.addListener(() async {
+          if (apiTokenController.text != startCfg.value.apiToken) {
+            startCfg.value.apiToken = apiTokenController.text;
+
+            await debounceSave(needRestart: true);
+          }
+        });
+        return TextField(
+          key: key,
+          obscureText: true,
+          controller: apiTokenController,
+          focusNode: FocusNode(),
         );
       },
     );
-    final buildApiToken = _buildConfigItem('apiToken',
-        () => startCfg.value.apiToken.isEmpty ? 'notSet'.tr : 'set'.tr,
-        (Key key) {
-      final apiTokenController =
-          TextEditingController(text: startCfg.value.apiToken);
-      apiTokenController.addListener(() async {
-        if (apiTokenController.text != startCfg.value.apiToken) {
-          startCfg.value.apiToken = apiTokenController.text;
-
-          await debounceSave(needRestart: true);
-        }
-      });
-      return TextField(
-        key: key,
-        obscureText: true,
-        controller: apiTokenController,
-        focusNode: FocusNode(),
-      );
-    });
 
     final buildShowCreateTaskDialog = Util.isWindows()
         ? () => null
-        : _buildConfigItem('showCreateTaskDialog', () {
-            return appController
-                    .downloaderConfig.value.extra.showCreateTaskDialogEnabled
-                ? 'on'.tr
-                : 'off'.tr;
-          }, (Key key) {
-            return Container(
-              alignment: Alignment.centerLeft,
-              child: Switch(
-                value: appController
-                    .downloaderConfig.value.extra.showCreateTaskDialogEnabled,
-                onChanged: (bool value) async {
-                  appController.downloaderConfig.update((val) {
-                    val!.extra.showCreateTaskDialogEnabled = value;
-                  });
-                  await debounceSave();
-                },
-              ),
-            );
-          });
+        : _buildConfigItem(
+            'showCreateTaskDialog',
+            () {
+              return appController
+                      .downloaderConfig.value.extra.showCreateTaskDialogEnabled
+                  ? 'on'.tr
+                  : 'off'.tr;
+            },
+            (Key key) {
+              return Container(
+                alignment: Alignment.centerLeft,
+                child: Switch(
+                  value: appController
+                      .downloaderConfig.value.extra.showCreateTaskDialogEnabled,
+                  onChanged: (bool value) async {
+                    appController.downloaderConfig.update((val) {
+                      val!.extra.showCreateTaskDialogEnabled = value;
+                    });
+                    await debounceSave();
+                  },
+                ),
+              );
+            },
+          );
 
     // advanced config webhook items
     final buildWebhook = _buildConfigItem(
@@ -1428,8 +1511,9 @@ class SettingView extends GetView<SettingController> {
                       tooltip: 'delete'.tr,
                       onPressed: () async {
                         // Create new list to avoid unmodifiable list error
-                        final urls =
-                            List<String>.from(downloaderCfg.value.webhook.urls);
+                        final urls = List<String>.from(
+                          downloaderCfg.value.webhook.urls,
+                        );
                         urls.removeAt(index);
                         downloaderCfg.update((val) {
                           val!.webhook.urls = urls;
@@ -1458,27 +1542,28 @@ class SettingView extends GetView<SettingController> {
     // advanced config log items start
     buildLogsDir() {
       return ListTile(
-          title: Text("logDirectory".tr),
-          subtitle: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: TextEditingController(text: logsDir()),
-                  enabled: false,
-                  readOnly: true,
-                ),
+        title: Text("logDirectory".tr),
+        subtitle: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: TextEditingController(text: logsDir()),
+                enabled: false,
+                readOnly: true,
               ),
-              Util.isDesktop()
-                  ? IconButton(
-                      icon: const Icon(Icons.folder_open),
-                      onPressed: () {
-                        launchUrl(Uri.file(logsDir()));
-                      },
-                    )
-                  : CopyButton(logsDir()),
-            ],
-          ));
+            ),
+            Util.isDesktop()
+                ? IconButton(
+                    icon: const Icon(Icons.folder_open),
+                    onPressed: () {
+                      launchUrl(Uri.file(logsDir()));
+                    },
+                  )
+                : CopyButton(logsDir()),
+          ],
+        ),
+      );
     }
 
     return Obx(() {
@@ -1489,29 +1574,26 @@ class SettingView extends GetView<SettingController> {
         child: DefaultTabController(
           length: 2,
           child: Scaffold(
-              appBar: PreferredSize(
-                  preferredSize: const Size.fromHeight(56),
-                  child: AppBar(
-                    bottom: TabBar(
-                      tabs: [
-                        Tab(
-                          text: 'basic'.tr,
-                        ),
-                        Tab(
-                          text: 'advanced'.tr,
-                        ),
-                      ],
-                    ),
-                  )),
-              body: TabBarView(
-                children: [
-                  SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _addPadding([
-                        Text('general'.tr),
-                        Card(
-                            child: Column(
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(56),
+              child: AppBar(
+                bottom: TabBar(
+                  tabs: [
+                    Tab(text: 'basic'.tr),
+                    Tab(text: 'advanced'.tr),
+                  ],
+                ),
+              ),
+            ),
+            body: TabBarView(
+              children: [
+                SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _addPadding([
+                      Text('general'.tr),
+                      Card(
+                        child: Column(
                           children: _addDivider([
                             buildDownloadDir(),
                             buildDownloadCategories(),
@@ -1519,41 +1601,48 @@ class SettingView extends GetView<SettingController> {
                             buildDefaultDirectDownload(),
                             buildAutoStartTasks(),
                             buildAutoTorrentEnable(),
-                            Obx(() => Visibility(
-                                  visible: appController.downloaderConfig.value
-                                      .autoTorrent.enable,
-                                  child: buildAutoTorrentDeleteAfterDownload(),
-                                )),
+                            Obx(
+                              () => Visibility(
+                                visible: appController
+                                    .downloaderConfig.value.autoTorrent.enable,
+                                child: buildAutoTorrentDeleteAfterDownload(),
+                              ),
+                            ),
                             buildAutoDeleteMissingFileTasks(),
                             buildBrowserExtension(),
                             buildAutoStartup(),
                             buildMenubarMode(),
                           ]),
-                        )),
-                        Text('archives'.tr),
-                        Card(
-                            child: Column(
+                        ),
+                      ),
+                      Text('archives'.tr),
+                      Card(
+                        child: Column(
                           children: _addDivider([
                             buildAutoExtract(),
-                            Obx(() => Visibility(
-                                  visible: appController.downloaderConfig.value
-                                      .archive.autoExtract,
-                                  child: buildDeleteAfterExtract(),
-                                )),
+                            Obx(
+                              () => Visibility(
+                                visible: appController
+                                    .downloaderConfig.value.archive.autoExtract,
+                                child: buildDeleteAfterExtract(),
+                              ),
+                            ),
                           ]),
-                        )),
-                        const Text('HTTP'),
-                        Card(
-                            child: Column(
+                        ),
+                      ),
+                      const Text('HTTP'),
+                      Card(
+                        child: Column(
                           children: _addDivider([
                             buildHttpUa(),
                             buildHttpConnections(),
                             buildHttpUseServerCtime(),
                           ]),
-                        )),
-                        const Text('BitTorrent'),
-                        Card(
-                            child: Column(
+                        ),
+                      ),
+                      const Text('BitTorrent'),
+                      Card(
+                        child: Column(
                           children: _addDivider([
                             buildBtListenPort(),
                             buildBtTrackerSubscribeUrls(),
@@ -1561,18 +1650,17 @@ class SettingView extends GetView<SettingController> {
                             buildBtSeedConfig(),
                             buildBtDefaultClientConfig(),
                           ]),
-                        )),
-                        Text('ui'.tr),
-                        Card(
-                            child: Column(
-                          children: _addDivider([
-                            buildTheme(),
-                            buildLocale(),
-                          ]),
-                        )),
-                        Text('about'.tr),
-                        Card(
-                            child: Column(
+                        ),
+                      ),
+                      Text('ui'.tr),
+                      Card(
+                        child: Column(
+                          children: _addDivider([buildTheme(), buildLocale()]),
+                        ),
+                      ),
+                      Text('about'.tr),
+                      Card(
+                        child: Column(
                           children: _addDivider([
                             buildHomepage(),
                             buildVersion(),
@@ -1580,60 +1668,66 @@ class SettingView extends GetView<SettingController> {
                             if (Config.isConfigured) buildAnalyticsEnabled(),
                             buildThanks(),
                           ]),
-                        )),
-                      ]),
-                    ),
+                        ),
+                      ),
+                    ]),
                   ),
-                  // Column(
-                  //   children: [
-                  //     Card(
-                  //         child: Column(
-                  //       children: [
-                  //         ..._addDivider([
-                  //           buildApiProtocol(),
-                  //           Util.isDesktop() && startCfg.value.network == 'tcp'
-                  //               ? buildApiToken()
-                  //               : null,
-                  //         ]),
-                  //       ],
-                  //     )),
-                  //   ],
-                  // ),
-                  SingleChildScrollView(
-                      child: Column(
+                ),
+                // Column(
+                //   children: [
+                //     Card(
+                //         child: Column(
+                //       children: [
+                //         ..._addDivider([
+                //           buildApiProtocol(),
+                //           Util.isDesktop() && startCfg.value.network == 'tcp'
+                //               ? buildApiToken()
+                //               : null,
+                //         ]),
+                //       ],
+                //     )),
+                //   ],
+                // ),
+                SingleChildScrollView(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: _addPadding([
                       Text('network'.tr),
                       Card(
-                          child: Column(
-                        children: _addDivider([
-                          buildProxy(),
-                          buildGithubMirror(),
-                        ]),
-                      )),
+                        child: Column(
+                          children: _addDivider([
+                            buildProxy(),
+                            buildGithubMirror(),
+                          ]),
+                        ),
+                      ),
                       const Text('API'),
                       Card(
-                          child: Column(
-                        children: _addDivider([
-                          buildApiProtocol(),
-                          Util.isDesktop() && startCfg.value.network == 'tcp'
-                              ? buildApiToken()
-                              : null,
-                          buildShowCreateTaskDialog(),
-                        ]),
-                      )),
+                        child: Column(
+                          children: _addDivider([
+                            buildApiProtocol(),
+                            Util.isDesktop() && startCfg.value.network == 'tcp'
+                                ? buildApiToken()
+                                : null,
+                            buildShowCreateTaskDialog(),
+                          ]),
+                        ),
+                      ),
                       Text('developer'.tr),
                       Card(
-                          child: Column(
-                        children: _addDivider([
-                          buildWebhook(),
-                          buildLogsDir(),
-                        ]),
-                      )),
+                        child: Column(
+                          children: _addDivider([
+                            buildWebhook(),
+                            buildLogsDir(),
+                          ]),
+                        ),
+                      ),
                     ]),
-                  ))
-                ],
-              ).paddingOnly(left: 16, right: 16, top: 16, bottom: 16)),
+                  ),
+                ),
+              ],
+            ).paddingOnly(left: 16, right: 16, top: 16, bottom: 16),
+          ),
         ),
       );
     });
@@ -1659,9 +1753,7 @@ class SettingView extends GetView<SettingController> {
             children: [
               TextFormField(
                 controller: urlController,
-                decoration: InputDecoration(
-                  hintText: 'webhookUrlHint'.tr,
-                ),
+                decoration: InputDecoration(hintText: 'webhookUrlHint'.tr),
                 keyboardType: TextInputType.url,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -1729,8 +1821,9 @@ class SettingView extends GetView<SettingController> {
                   saveController.start();
                   try {
                     // Create new list to avoid unmodifiable list error
-                    final urls =
-                        List<String>.from(downloaderCfg.value.webhook.urls);
+                    final urls = List<String>.from(
+                      downloaderCfg.value.webhook.urls,
+                    );
                     if (isEdit) {
                       urls[index] = url;
                     } else {
@@ -1780,9 +1873,7 @@ class SettingView extends GetView<SettingController> {
               children: [
                 DropdownButtonFormField<GithubMirrorType>(
                   value: selectedType,
-                  decoration: InputDecoration(
-                    labelText: 'githubMirrorType'.tr,
-                  ),
+                  decoration: InputDecoration(labelText: 'githubMirrorType'.tr),
                   onChanged: (value) {
                     if (value != null) {
                       setState(() {
@@ -1791,10 +1882,12 @@ class SettingView extends GetView<SettingController> {
                     }
                   },
                   items: GithubMirrorType.values
-                      .map((type) => DropdownMenuItem(
-                            value: type,
-                            child: Text(type.name),
-                          ))
+                      .map(
+                        (type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(type.name),
+                        ),
+                      )
                       .toList(),
                 ),
                 const SizedBox(height: 16),
@@ -1843,12 +1936,10 @@ class SettingView extends GetView<SettingController> {
                 try {
                   // Create new list to avoid unmodifiable list error
                   final mirrors = List<GithubMirror>.from(
-                      downloaderCfg.value.extra.githubMirror.mirrors);
-
-                  final newMirror = GithubMirror(
-                    type: selectedType,
-                    url: url,
+                    downloaderCfg.value.extra.githubMirror.mirrors,
                   );
+
+                  final newMirror = GithubMirror(type: selectedType, url: url);
 
                   if (isEdit) {
                     mirrors[index] = newMirror;
@@ -1904,18 +1995,22 @@ class SettingView extends GetView<SettingController> {
   }
 
   Widget Function() _buildConfigItem(
-      String label, String Function() text, Widget Function(Key key) input) {
+    String label,
+    String Function() text,
+    Widget Function(Key key) input,
+  ) {
     final tapStatues = controller.tapStatues;
     final inputKey = GlobalKey();
     return () => ListTile(
-        title: Text(label.tr),
-        subtitle: tapStatues[label] ?? false ? input(inputKey) : Text(text()),
-        onTap: () {
-          controller.onTap(label);
-          WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-            _tapInputWidget(inputKey);
-          });
-        });
+          title: Text(label.tr),
+          subtitle: tapStatues[label] ?? false ? input(inputKey) : Text(text()),
+          onTap: () {
+            controller.onTap(label);
+            WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+              _tapInputWidget(inputKey);
+            });
+          },
+        );
   }
 
   List<Widget> _addPadding(List<Widget> widgets) {
@@ -1971,9 +2066,7 @@ class SettingView extends GetView<SettingController> {
           children: [
             TextField(
               controller: nameController,
-              decoration: InputDecoration(
-                labelText: 'categoryName'.tr,
-              ),
+              decoration: InputDecoration(labelText: 'categoryName'.tr),
             ),
             const SizedBox(height: 16),
             DirectorySelector(
@@ -2033,11 +2126,7 @@ class SettingView extends GetView<SettingController> {
   }
 }
 
-enum ProxyModeEnum {
-  noProxy,
-  systemProxy,
-  customProxy,
-}
+enum ProxyModeEnum { noProxy, systemProxy, customProxy }
 
 extension ProxyMode on ProxyConfig {
   ProxyModeEnum get proxyMode {
