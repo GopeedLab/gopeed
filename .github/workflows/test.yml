@@ -66,7 +66,6 @@ jobs:
           files: ./coverage.txt
           token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
   build-desktop:
-    name: Build desktop check
     strategy:
       matrix:
         include:
@@ -79,6 +78,7 @@ jobs:
           - os: ubuntu-22.04
           - os: ubuntu-22.04-arm
             flutter_channel: "main"
+    name: Build desktop check - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: [test]
     steps:
