@@ -114,6 +114,7 @@ jobs:
               $release = "build\windows\arm64\runner\Release\"
               $mingw = "$env:CLANGARM64_ROOT\aarch64-w64-mingw32\bin"
               cp $mingw\libc++.dll $release
+              cp $mingw\libunwind.dll $release
           }
           cp $mingw\libwinpthread-1.dll $release
           cp $system\msvcp140.dll $release
