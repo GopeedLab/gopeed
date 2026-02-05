@@ -1,4 +1,4 @@
-FROM golang:1.24.11 AS go
+FROM golang:1.24.11-alpine3.23 AS go
 WORKDIR /app
 COPY ./go.mod ./go.sum ./
 RUN go mod download
@@ -8,7 +8,7 @@ RUN CGO_ENABLED=0 go build -tags nosqlite,web \
       -ldflags="-s -w -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION -X github.com/GopeedLab/gopeed/pkg/base.InDocker=true" \
       -o dist/gopeed github.com/GopeedLab/gopeed/cmd/web
 
-FROM alpine:3.18
+FROM alpine:3.23
 LABEL maintainer="monkeyWie"
 WORKDIR /app
 COPY --from=go /app/dist/gopeed ./
