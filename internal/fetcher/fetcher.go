@@ -14,6 +14,10 @@ type Fetcher interface {
 	Setup(ctl *controller.Controller)
 	Resolve(req *base.Request, opts *base.Options) error
 	Start() error
+	// Patch modifies task-specific data based on the protocol.
+	// For HTTP: can modify Request info (URL, headers, etc.)
+	// For BT: can modify SelectFiles (via opts.SelectFiles)
+	Patch(req *base.Request, opts *base.Options) error
 	Pause() error
 	Close() error
 

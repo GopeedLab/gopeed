@@ -836,6 +836,26 @@ class CreateView extends GetView<CreateController> {
             : _urlController.text.trim();
 
         final urls = Util.textToLines(submitUrl);
+
+        // Check if there is a pending update task (only for single URL)
+        if (urls.length == 1) {
+          final appController = Get.find<AppController>();
+          final pendingTask = appController.pendingUpdateTask.value;
+          if (pendingTask != null) {
+            final shouldUpdate = await _showPendingUpdateDialog(
+                pendingTask.id, pendingTask.name);
+            if (shouldUpdate == true) {
+              // Update the pending task instead of creating a new one
+              await _updatePendingTask(pendingTask.id, urls.first);
+              return;
+            } else if (shouldUpdate == null) {
+              // User cancelled, don't create task either
+              return;
+            }
+            // shouldUpdate == false, continue to create new task
+          }
+        }
+
         // Add url to the history
         if (!isWebFileChosen) {
           for (final url in urls) {
@@ -887,6 +907,72 @@ class CreateView extends GetView<CreateController> {
     } finally {
       _confirmController.reset();
       controller.isConfirming.value = false;
+    }
+  }
+
+  /// Shows a dialog to ask if user wants to update pending task or create new
+  /// Returns true to update, false to create new, null if cancelled
+  Future<bool?> _showPendingUpdateDialog(String taskId, String taskName) async {
+    return showDialog<bool>(
+      context: Get.context!,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text('pendingUpdateFound'.tr),
+        content: Text('pendingUpdateConfirm'.trParams({'name': taskName})),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(null),
+            child: Text('cancel'.tr),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('pendingUpdateNo'.tr),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('pendingUpdateYes'.tr),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Updates the pending task with new URL and headers
+  Future<void> _updatePendingTask(String taskId, String newUrl) async {
+    try {
+      // Build headers from current form
+      final headers = <String, String>{};
+      for (final c in _httpHeaderControllers) {
+        final key = c.name.text.trim();
+        final value = c.value.text.trim();
+        if (key.isNotEmpty) {
+          headers[key] = value;
+        }
+      }
+
+      // Build ReqExtraHttp
+      final reqExtra = ReqExtraHttp(header: headers);
+
+      // Create patch request
+      final patchData = ResolveTask(
+        req: Request(
+          url: newUrl,
+          extra: reqExtra.toJson(),
+          proxy: parseProxy(),
+          skipVerifyCert: _skipVerifyCertController.value,
+        ),
+      );
+
+      await patchTask(taskId, patchData);
+      await continueTask(taskId);
+
+      // Clear pending update state
+      final appController = Get.find<AppController>();
+      appController.pendingUpdateTask.value = null;
+
+      Get.rootDelegate.offNamed(Routes.TASK);
+    } catch (e) {
+      showErrorMessage(e);
     }
   }
 

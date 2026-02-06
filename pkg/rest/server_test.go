@@ -232,6 +232,60 @@ func TestPauseAndContinueTask(t *testing.T) {
 	})
 }
 
+func TestPatchTask(t *testing.T) {
+	doTest(func() {
+		// Create a task
+		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", createReq)
+		if taskId == "" {
+			t.Fatal("create task failed")
+		}
+
+		// Pause the task
+		httpRequestCheckOk[any](http.MethodPut, "/api/v1/tasks/"+taskId+"/pause", nil)
+		time.Sleep(time.Millisecond * 100)
+
+		// Patch the task with new labels
+		patchReq := &model.ResolveTask{
+			Req: &base.Request{
+				Labels: map[string]string{
+					"patched": "true",
+					"version": "2",
+				},
+			},
+		}
+		httpRequestCheckOk[any](http.MethodPatch, "/api/v1/tasks/"+taskId, patchReq)
+
+		// Verify the patch was applied
+		task := httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
+		if task.Meta.Req.Labels["patched"] != "true" {
+			t.Errorf("PatchTask() label 'patched' = %v, want %v", task.Meta.Req.Labels["patched"], "true")
+		}
+		if task.Meta.Req.Labels["version"] != "2" {
+			t.Errorf("PatchTask() label 'version' = %v, want %v", task.Meta.Req.Labels["version"], "2")
+		}
+
+		// Clean up
+		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId+"?force=true", nil)
+	})
+}
+
+func TestPatchTaskNotFound(t *testing.T) {
+	doTest(func() {
+		// Try to patch a non-existent task
+		patchReq := &model.ResolveTask{
+			Req: &base.Request{
+				Labels: map[string]string{
+					"test": "value",
+				},
+			},
+		}
+		code, _ := httpRequest[any](http.MethodPatch, "/api/v1/tasks/non-existent-id", patchReq)
+		if code != int(model.CodeTaskNotFound) {
+			t.Errorf("PatchTaskNotFound() result code = %v, want %v", code, model.CodeTaskNotFound)
+		}
+	})
+}
+
 func TestPauseAllAndContinueALLTasks(t *testing.T) {
 	doTest(func() {
 		cfg, err := Downloader.GetConfig()

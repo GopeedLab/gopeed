@@ -1021,7 +1021,9 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 				// Fallback succeeded, use this response instead
 				resp = fallbackResp
 				// Update the redirect URL from the response
-				f.updateRedirectURL(resp)
+				if resp.Request != nil && resp.Request.URL != nil {
+					f.updateRedirectURL(resp.Request.URL.String())
+				}
 			} else {
 				// Fallback also failed, return the original error
 				if fallbackResp != nil {
@@ -1569,6 +1571,60 @@ func (f *Fetcher) checkCompletion() bool {
 	}
 
 	return false
+}
+
+// Patch modifies the HTTP request information.
+func (f *Fetcher) Patch(req *base.Request, opts *base.Options) error {
+	// Patch request info
+	if req != nil {
+		if req.URL != "" {
+			f.meta.Req.URL = req.URL
+			// Clear redirect URL when URL is changed, so new requests use the new URL
+			f.updateRedirectURL("")
+		}
+		if req.Extra != nil {
+			if err := base.ParseReqExtra[fhttp.ReqExtra](req); err != nil {
+				return err
+			}
+			patchExtra := req.Extra.(*fhttp.ReqExtra)
+			// Merge Extra fields instead of replacing entirely
+			if f.meta.Req.Extra == nil {
+				f.meta.Req.Extra = &fhttp.ReqExtra{}
+			}
+			existingExtra := f.meta.Req.Extra.(*fhttp.ReqExtra)
+			// Update Method only if non-empty
+			if patchExtra.Method != "" {
+				existingExtra.Method = patchExtra.Method
+			}
+			// Update Body only if non-empty
+			if patchExtra.Body != "" {
+				existingExtra.Body = patchExtra.Body
+			}
+			// Merge Headers: existing keys are overwritten, new keys are added
+			if patchExtra.Header != nil {
+				if existingExtra.Header == nil {
+					existingExtra.Header = make(map[string]string)
+				}
+				for k, v := range patchExtra.Header {
+					existingExtra.Header[k] = v
+				}
+			}
+		}
+		// Merge Labels: existing keys are overwritten, new keys are added
+		if req.Labels != nil {
+			if f.meta.Req.Labels == nil {
+				f.meta.Req.Labels = make(map[string]string)
+			}
+			for k, v := range req.Labels {
+				f.meta.Req.Labels[k] = v
+			}
+		}
+		if req.Proxy != nil {
+			f.meta.Req.Proxy = req.Proxy
+		}
+	}
+
+	return nil
 }
 
 func (f *Fetcher) Pause() error {

@@ -8,12 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/GopeedLab/gopeed/pkg/download"
-	"github.com/GopeedLab/gopeed/pkg/rest/model"
-	"github.com/GopeedLab/gopeed/pkg/util"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
 	"io"
 	"io/fs"
 	"net"
@@ -24,6 +18,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/rest/model"
+	"github.com/GopeedLab/gopeed/pkg/util"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -122,6 +123,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodPost).Path("/api/v1/resolve").HandlerFunc(Resolve)
 	r.Methods(http.MethodPost).Path("/api/v1/tasks").HandlerFunc(CreateTask)
 	r.Methods(http.MethodPost).Path("/api/v1/tasks/batch").HandlerFunc(CreateTaskBatch)
+	r.Methods(http.MethodPatch).Path("/api/v1/tasks/{id}").HandlerFunc(PatchTask)
 	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/pause").HandlerFunc(PauseTask)
 	r.Methods(http.MethodPut).Path("/api/v1/tasks/pause").HandlerFunc(PauseTasks)
 	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/continue").HandlerFunc(ContinueTask)
@@ -145,9 +147,9 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
 
 	enableApiToken := startCfg.ApiToken != ""
-	enableBasicAuth := startCfg.WebEnable && startCfg.WebAuth != nil
+	enableWebAuth := startCfg.WebEnable && startCfg.WebAuth != nil
 	if startCfg.WebEnable {
-		if enableBasicAuth {
+		if enableWebAuth {
 			r.Methods(http.MethodPost).Path("/api/web/login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var loginReq model.WebAuth
 				if ReadJson(r, w, &loginReq) {
@@ -172,7 +174,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		r.PathPrefix("/fs/extensions").Handler(http.FileServer(new(extensionFileSystem)))
 		r.PathPrefix("/").Handler(gzipMiddleware(http.FileServer(newEmbedCacheFileSystem(http.FS(startCfg.WebFS)))))
 	}
-	if enableApiToken || enableBasicAuth {
+	if enableApiToken || enableWebAuth {
 		writeUnauthorized := func(w http.ResponseWriter, r *http.Request) {
 			WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
 		}
@@ -193,7 +195,7 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 					}
 				}
 
-				if enableBasicAuth {
+				if enableWebAuth {
 					if !strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/api/web/login" {
 						h.ServeHTTP(w, r)
 						return

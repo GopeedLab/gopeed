@@ -141,6 +141,11 @@ Future<List<String>> createTaskBatch(CreateTaskBatch createTaskBatch) async {
       (data) => (data as List).map((e) => e as String).toList());
 }
 
+Future<void> patchTask(String id, ResolveTask patchTask) async {
+  return _parse(
+      () => _client.dio.patch("api/v1/tasks/$id", data: patchTask), null);
+}
+
 Future<List<Task>> getTasks(List<Status> statuses) async {
   return _parse<List<Task>>(
       () => _client.dio.get(

@@ -851,6 +851,89 @@ func StartSocks5Server(usr, pwd string) net.Listener {
 	return listener
 }
 
+// StartTestPatchURLServer creates a server with two endpoints:
+// - /bad-url: always returns 404 (simulates a broken download link)
+// - /good-url: returns the file successfully (simulates a working download link)
+// This is used to test the Patch functionality where a failed download URL can be
+// replaced with a working one.
+func StartTestPatchURLServer() net.Listener {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		// Bad URL - always fails with 404
+		mux.HandleFunc("/bad-url", func(writer http.ResponseWriter, request *http.Request) {
+			writer.WriteHeader(404)
+			writer.Write([]byte("Not Found"))
+		})
+		// Good URL - returns the file successfully with range support
+		mux.HandleFunc("/good-url", func(writer http.ResponseWriter, request *http.Request) {
+			rangeFileHandle(
+				writer,
+				request,
+				nil,
+				func(file *os.File, n int64) {
+					io.CopyN(writer, file, n)
+				},
+			)
+		})
+		return mux
+	})
+}
+
+// StartTestCookieExpiringServer creates a server that simulates cookie expiration during download.
+// - First request (Resolve): accepts "session=old_token" and succeeds
+// - Subsequent requests: "session=old_token" is expired (returns 401), only "session=new_token" works
+// This is used to test the Patch functionality where a cookie expires mid-download,
+// requiring the user to patch with a new cookie to resume.
+func StartTestCookieExpiringServer() net.Listener {
+	var requestCount atomic.Int32
+
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			reqNum := requestCount.Add(1)
+			cookie := request.Header.Get("Cookie")
+
+			// First request (Resolve): accept old_token
+			if reqNum == 1 {
+				if !strings.Contains(cookie, "session=old_token") {
+					writer.WriteHeader(401)
+					writer.Write([]byte("Unauthorized: Invalid cookie"))
+					return
+				}
+				// Return file info for resolve (with range support)
+				rangeFileHandle(
+					writer,
+					request,
+					nil,
+					func(file *os.File, n int64) {
+						io.CopyN(writer, file, n)
+					},
+				)
+				return
+			}
+
+			// Subsequent requests: old_token is expired, only new_token works
+			if strings.Contains(cookie, "session=new_token") {
+				// New token is valid - return the file with range support
+				rangeFileHandle(
+					writer,
+					request,
+					nil,
+					func(file *os.File, n int64) {
+						io.CopyN(writer, file, n)
+					},
+				)
+				return
+			}
+
+			// Old token or invalid token - return 401
+			writer.WriteHeader(401)
+			writer.Write([]byte("Unauthorized: Cookie expired"))
+		})
+		return mux
+	})
+}
+
 func AssertResourceEqual(want, got *base.Resource) bool {
 	// Ignore ctime
 	if got != nil && len(got.Files) > 0 {
