@@ -19,6 +19,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
 				Webhook:        &WebhookConfig{},
+				Script:         &ScriptConfig{},
 				AutoTorrent: &AutoTorrentConfig{
 					Enable:              false,
 					DeleteAfterDownload: false,
@@ -39,6 +40,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
 				Webhook:        &WebhookConfig{},
+				Script:         &ScriptConfig{},
 				AutoTorrent: &AutoTorrentConfig{
 					Enable:              false,
 					DeleteAfterDownload: false,
@@ -63,6 +65,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				},
 				Proxy:   &DownloaderProxyConfig{},
 				Webhook: &WebhookConfig{},
+				Script:  &ScriptConfig{},
 				AutoTorrent: &AutoTorrentConfig{
 					Enable:              false,
 					DeleteAfterDownload: false,
@@ -87,6 +90,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 					Enable: true,
 				},
 				Webhook: &WebhookConfig{},
+				Script:  &ScriptConfig{},
 				AutoTorrent: &AutoTorrentConfig{
 					Enable:              false,
 					DeleteAfterDownload: false,
@@ -110,6 +114,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
 				Webhook:        &WebhookConfig{},
+				Script:         &ScriptConfig{},
 				AutoTorrent: &AutoTorrentConfig{
 					Enable:              true,
 					DeleteAfterDownload: true,
@@ -133,6 +138,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
 				Webhook:        &WebhookConfig{},
+				Script:         &ScriptConfig{},
 				AutoTorrent: &AutoTorrentConfig{
 					Enable:              false,
 					DeleteAfterDownload: false,
@@ -154,6 +160,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				Extra:          tt.fields.Extra,
 				Proxy:          tt.fields.Proxy,
 				Webhook:        tt.fields.Webhook,
+				Script:         tt.fields.Script,
 				AutoTorrent:    tt.fields.AutoTorrent,
 				Archive:        tt.fields.Archive,
 			}
