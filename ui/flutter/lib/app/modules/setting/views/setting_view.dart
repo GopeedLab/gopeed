@@ -1432,6 +1432,92 @@ class SettingView extends GetView<SettingController> {
       },
     );
 
+    // advanced config script items
+    final buildScript = _buildConfigItem(
+      'script',
+      () => downloaderCfg.value.script.enable ? 'on'.tr : 'off'.tr,
+      (Key key) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'scriptEnable'.tr,
+                  style: Theme.of(Get.context!).textTheme.bodyMedium,
+                ),
+                const Spacer(),
+                Switch(
+                  value: downloaderCfg.value.script.enable,
+                  onChanged: (value) {
+                    downloaderCfg.update((val) {
+                      val!.script.enable = value;
+                    });
+                    debounceSave();
+                  },
+                ),
+              ],
+            ),
+            _padding,
+            Text(
+              'scriptDesc'.tr,
+              style: Theme.of(Get.context!).textTheme.bodySmall,
+            ),
+            _padding,
+            // List of existing script paths
+            ...downloaderCfg.value.script.paths.asMap().entries.map((entry) {
+              final index = entry.key;
+              final path = entry.value;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        path,
+                        style: Theme.of(Get.context!).textTheme.bodyMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      tooltip: 'edit'.tr,
+                      onPressed: () {
+                        _showScriptDialog(index: index, initialPath: path);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 20),
+                      tooltip: 'delete'.tr,
+                      onPressed: () async {
+                        // Create new list to avoid unmodifiable list error
+                        final paths =
+                            List<String>.from(downloaderCfg.value.script.paths);
+                        paths.removeAt(index);
+                        downloaderCfg.update((val) {
+                          val!.script.paths = paths;
+                        });
+                        await debounceSave();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+            _padding,
+            // Add button
+            OutlinedButton.icon(
+              onPressed: () {
+                _showScriptDialog();
+              },
+              icon: const Icon(Icons.add),
+              label: Text('add'.tr),
+            ),
+          ],
+        );
+      },
+    );
+
     // advanced config log items start
     buildLogsDir() {
       return ListTile(
@@ -1603,6 +1689,7 @@ class SettingView extends GetView<SettingController> {
                           child: Column(
                         children: _addDivider([
                           buildWebhook(),
+                          buildScript(),
                           buildLogsDir(),
                         ]),
                       )),
@@ -1728,6 +1815,82 @@ class SettingView extends GetView<SettingController> {
                 child: Text('confirm'.tr),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showScriptDialog({int? index, String? initialPath}) {
+    final pathController = TextEditingController(text: initialPath ?? '');
+    final saveController = TextButtonLoadingController();
+    final appController = Get.find<AppController>();
+    final downloaderCfg = appController.downloaderConfig;
+    final isEdit = index != null;
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: Get.context!,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isEdit ? 'edit'.tr : 'add'.tr),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: pathController,
+                decoration: InputDecoration(
+                  hintText: 'scriptPathHint'.tr,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'required'.tr;
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text('cancel'.tr),
+          ),
+          TextButtonLoading(
+            controller: saveController,
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) {
+                return;
+              }
+              final path = pathController.text.trim();
+              if (path.isEmpty) return;
+
+              saveController.start();
+              try {
+                // Create new list to avoid unmodifiable list error
+                final paths =
+                    List<String>.from(downloaderCfg.value.script.paths);
+                if (isEdit) {
+                  paths[index] = path;
+                } else {
+                  paths.add(path);
+                }
+                downloaderCfg.update((val) {
+                  val!.script.paths = paths;
+                });
+                await appController.saveConfig();
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+              } catch (e) {
+                showErrorMessage(e);
+              } finally {
+                saveController.stop();
+              }
+            },
+            child: Text('confirm'.tr),
           ),
         ],
       ),
