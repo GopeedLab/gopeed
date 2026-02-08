@@ -78,7 +78,7 @@ func (r *Resource) Validate() error {
 	if r.Name == "" {
 		return fmt.Errorf("invalid resource name")
 	}
-	if r.Files == nil || len(r.Files) == 0 {
+	if len(r.Files) == 0 {
 		return fmt.Errorf("invalid resource files")
 	}
 	for _, file := range r.Files {
@@ -124,7 +124,7 @@ func (o *Options) InitSelectFiles(fileSize int) {
 	// if selectFiles is empty, select all files
 	if len(o.SelectFiles) == 0 {
 		o.SelectFiles = make([]int, fileSize)
-		for i := 0; i < fileSize; i++ {
+		for i := range fileSize {
 			o.SelectFiles[i] = i
 		}
 	}

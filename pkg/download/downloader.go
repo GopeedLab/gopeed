@@ -480,6 +480,47 @@ func (d *Downloader) Create(rrId string) (taskId string, err error) {
 	return d.doCreate(fetcher, nil)
 }
 
+// Patch modifies task-specific data based on the protocol.
+// For HTTP protocol, it can modify Request info.
+// For BT protocol, it can modify SelectFiles.
+func (d *Downloader) Patch(id string, req *base.Request, opts *base.Options) error {
+	task := d.GetTask(id)
+	if task == nil {
+		return ErrTaskNotFound
+	}
+
+	// Restore fetcher if not loaded
+	if task.fetcher == nil {
+		err := func() error {
+			task.statusLock.Lock()
+			defer task.statusLock.Unlock()
+
+			return d.restoreFetcher(task)
+		}()
+		if err != nil {
+			return err
+		}
+	}
+
+	// Call the fetcher's Patch method
+	if err := task.fetcher.Patch(req, opts); err != nil {
+		return err
+	}
+
+	// Update task meta from fetcher
+	task.Meta = task.fetcher.Meta()
+
+	// Save task to storage
+	if err := d.saveTask(task); err != nil {
+		return err
+	}
+
+	// Emit progress event to notify listeners
+	d.emit(EventKeyProgress, task)
+
+	return nil
+}
+
 func (d *Downloader) Pause(filter *TaskFilter) (err error) {
 	if filter == nil || filter.IsEmpty() {
 		return d.pauseAll()

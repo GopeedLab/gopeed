@@ -6,6 +6,7 @@ type ResolveTask struct {
 	Req  *base.Request `json:"req"`
 	Opts *base.Options `json:"opts"`
 }
+
 type CreateTask struct {
 	Rid string `json:"rid"`
 

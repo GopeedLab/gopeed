@@ -1208,3 +1208,349 @@ func buildConfigFetcher(cfg config) fetcher.Fetcher {
 	fetcher.Setup(newController)
 	return fetcher
 }
+
+// TestFetcher_Patch_URLChange tests the Patch functionality where a failed download URL
+// is replaced with a working one. This simulates:
+// 1. Initial download attempt with a bad URL (returns 404)
+// 2. Patching the task with a new working URL
+// 3. Successful download after URL modification
+func TestFetcher_Patch_URLChange(t *testing.T) {
+	listener := test.StartTestPatchURLServer()
+	defer listener.Close()
+
+	f := buildFetcher()
+	badURL := "http://" + listener.Addr().String() + "/bad-url"
+	goodURL := "http://" + listener.Addr().String() + "/good-url"
+
+	opts := &base.Options{
+		Name:  test.DownloadName,
+		Path:  test.Dir,
+		Extra: &http.OptsExtra{Connections: 1},
+	}
+
+	// Step 1: Try to resolve with bad URL - should fail with error
+	err := f.Resolve(&base.Request{URL: badURL}, opts)
+	if err == nil {
+		t.Fatal("Expected error for bad URL, got nil")
+	}
+
+	// Step 2: Create a new fetcher and resolve with bad URL but don't wait
+	// We need to test patching a task that has been created
+	f2 := buildFetcher()
+
+	// First resolve with good URL to create a valid fetcher state
+	err = f2.Resolve(&base.Request{URL: goodURL}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify initial URL
+	if f2.meta.Req.URL != goodURL {
+		t.Errorf("Initial URL = %v, want %v", f2.meta.Req.URL, goodURL)
+	}
+
+	// Step 3: Patch to change URL (simulating URL change scenario)
+	newURL := "http://" + listener.Addr().String() + "/good-url"
+	err = f2.Patch(&base.Request{URL: newURL}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify URL was patched
+	if f2.meta.Req.URL != newURL {
+		t.Errorf("Patched URL = %v, want %v", f2.meta.Req.URL, newURL)
+	}
+
+	// Step 4: Start download and verify success
+	err = f2.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = f2.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify file was downloaded correctly
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
+// TestFetcher_Patch_Labels tests patching request labels with merge behavior
+func TestFetcher_Patch_Labels(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	f := buildFetcher()
+	opts := &base.Options{
+		Name:  test.DownloadName,
+		Path:  test.Dir,
+		Extra: &http.OptsExtra{Connections: 1},
+	}
+
+	err := f.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		Labels: map[string]string{
+			"key1": "value1",
+			"key3": "value3",
+		},
+	}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify initial labels
+	if f.meta.Req.Labels["key1"] != "value1" {
+		t.Errorf("Initial label key1 = %v, want value1", f.meta.Req.Labels["key1"])
+	}
+	if f.meta.Req.Labels["key3"] != "value3" {
+		t.Errorf("Initial label key3 = %v, want value3", f.meta.Req.Labels["key3"])
+	}
+
+	// Patch with new labels - key1 should be overwritten, key2 should be added, key3 should remain
+	patchReq := &base.Request{
+		Labels: map[string]string{
+			"key1": "modified",
+			"key2": "newValue",
+		},
+	}
+	err = f.Patch(patchReq, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify labels were merged correctly
+	if f.meta.Req.Labels["key1"] != "modified" {
+		t.Errorf("Patched label key1 = %v, want modified", f.meta.Req.Labels["key1"])
+	}
+	if f.meta.Req.Labels["key2"] != "newValue" {
+		t.Errorf("Patched label key2 = %v, want newValue", f.meta.Req.Labels["key2"])
+	}
+	// key3 should remain unchanged
+	if f.meta.Req.Labels["key3"] != "value3" {
+		t.Errorf("Label key3 = %v, want value3 (should remain unchanged)", f.meta.Req.Labels["key3"])
+	}
+}
+
+// TestFetcher_Patch_Extra tests patching request Extra with merge behavior
+func TestFetcher_Patch_Extra(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	f := buildFetcher()
+	opts := &base.Options{
+		Name:  test.DownloadName,
+		Path:  test.Dir,
+		Extra: &http.OptsExtra{Connections: 1},
+	}
+
+	// Resolve with initial Extra
+	err := f.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+		Extra: &http.ReqExtra{
+			Method: "GET",
+			Body:   "initial body",
+			Header: map[string]string{
+				"Authorization": "Bearer token123",
+				"X-Custom":      "original",
+			},
+		},
+	}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify initial Extra
+	initialExtra := f.meta.Req.Extra.(*http.ReqExtra)
+	if initialExtra.Method != "GET" {
+		t.Errorf("Initial Method = %v, want GET", initialExtra.Method)
+	}
+	if initialExtra.Body != "initial body" {
+		t.Errorf("Initial Body = %v, want 'initial body'", initialExtra.Body)
+	}
+	if initialExtra.Header["Authorization"] != "Bearer token123" {
+		t.Errorf("Initial Authorization header = %v, want 'Bearer token123'", initialExtra.Header["Authorization"])
+	}
+	if initialExtra.Header["X-Custom"] != "original" {
+		t.Errorf("Initial X-Custom header = %v, want 'original'", initialExtra.Header["X-Custom"])
+	}
+
+	// Patch with partial Extra - only update some fields
+	patchReq := &base.Request{
+		Extra: &http.ReqExtra{
+			Method: "POST", // Update method
+			// Body is empty, should NOT update
+			Header: map[string]string{
+				"X-Custom":   "modified", // Overwrite existing
+				"X-New":      "added",    // Add new
+				// Authorization is not in patch, should remain
+			},
+		},
+	}
+	err = f.Patch(patchReq, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify Extra was merged correctly
+	patchedExtra := f.meta.Req.Extra.(*http.ReqExtra)
+
+	// Method should be updated
+	if patchedExtra.Method != "POST" {
+		t.Errorf("Patched Method = %v, want POST", patchedExtra.Method)
+	}
+
+	// Body should remain unchanged (patch had empty body)
+	if patchedExtra.Body != "initial body" {
+		t.Errorf("Patched Body = %v, want 'initial body' (should remain unchanged)", patchedExtra.Body)
+	}
+
+	// Authorization header should remain unchanged
+	if patchedExtra.Header["Authorization"] != "Bearer token123" {
+		t.Errorf("Authorization header = %v, want 'Bearer token123' (should remain unchanged)", patchedExtra.Header["Authorization"])
+	}
+
+	// X-Custom header should be overwritten
+	if patchedExtra.Header["X-Custom"] != "modified" {
+		t.Errorf("X-Custom header = %v, want 'modified'", patchedExtra.Header["X-Custom"])
+	}
+
+	// X-New header should be added
+	if patchedExtra.Header["X-New"] != "added" {
+		t.Errorf("X-New header = %v, want 'added'", patchedExtra.Header["X-New"])
+	}
+}
+
+// TestFetcher_Patch_NilData tests that Patch with nil data doesn't cause errors
+func TestFetcher_Patch_NilData(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	f := buildFetcher()
+	opts := &base.Options{
+		Name:  test.DownloadName,
+		Path:  test.Dir,
+		Extra: &http.OptsExtra{Connections: 1},
+	}
+
+	err := f.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	originalURL := f.meta.Req.URL
+
+	// Patch with nil data - should not cause error
+	err = f.Patch(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify URL unchanged
+	if f.meta.Req.URL != originalURL {
+		t.Errorf("URL changed after nil patch: got %v, want %v", f.meta.Req.URL, originalURL)
+	}
+
+	// Patch with empty request - should not cause error
+	err = f.Patch(&base.Request{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify URL still unchanged
+	if f.meta.Req.URL != originalURL {
+		t.Errorf("URL changed after empty patch: got %v, want %v", f.meta.Req.URL, originalURL)
+	}
+}
+
+// TestFetcher_Patch_CookieExpired tests the Patch functionality where a download fails
+// mid-way due to expired cookie, then succeeds after patching with a new valid cookie.
+// This simulates:
+// 1. Initial resolve with valid cookie succeeds
+// 2. Download starts but fails because cookie expires mid-download (server returns 401)
+// 3. User patches the task with a new valid cookie
+// 4. Download resumes and completes successfully
+func TestFetcher_Patch_CookieExpired(t *testing.T) {
+	listener := test.StartTestCookieExpiringServer()
+	defer listener.Close()
+
+	downloadURL := "http://" + listener.Addr().String() + "/" + test.BuildName
+	opts := &base.Options{
+		Name:  test.DownloadName,
+		Path:  test.Dir,
+		Extra: &http.OptsExtra{Connections: 1},
+	}
+
+	// Step 1: Resolve with old_token - should succeed (first request accepts old_token)
+	f := buildFetcher()
+	err := f.Resolve(&base.Request{
+		URL: downloadURL,
+		Extra: &http.ReqExtra{
+			Header: map[string]string{
+				"Cookie": "session=old_token",
+			},
+		},
+	}, opts)
+	if err != nil {
+		t.Fatalf("Resolve should succeed with old_token: %v", err)
+	}
+
+	// Verify initial cookie
+	initialExtra := f.meta.Req.Extra.(*http.ReqExtra)
+	if initialExtra.Header["Cookie"] != "session=old_token" {
+		t.Errorf("Initial Cookie = %v, want session=old_token", initialExtra.Header["Cookie"])
+	}
+
+	// Step 2: Start download - should fail because old_token is now expired
+	// (server only accepts old_token for first request, subsequent requests need new_token)
+	err = f.Start()
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+	err = f.Wait()
+	// Download should fail with 401 error
+	if err == nil {
+		t.Fatal("Expected download to fail with expired cookie, but it succeeded")
+	}
+	t.Logf("Download failed as expected: %v", err)
+
+	// Step 3: Patch with new valid cookie
+	err = f.Patch(&base.Request{
+		Extra: &http.ReqExtra{
+			Header: map[string]string{
+				"Cookie": "session=new_token",
+			},
+		},
+	}, nil)
+	if err != nil {
+		t.Fatalf("Patch to update cookie failed: %v", err)
+	}
+
+	// Verify cookie was updated
+	patchedExtra := f.meta.Req.Extra.(*http.ReqExtra)
+	if patchedExtra.Header["Cookie"] != "session=new_token" {
+		t.Errorf("Cookie should be updated: got %v, want session=new_token", patchedExtra.Header["Cookie"])
+	}
+
+	// Step 4: Restart download - should succeed with new cookie
+	err = f.Start()
+	if err != nil {
+		t.Fatalf("Restart failed: %v", err)
+	}
+	err = f.Wait()
+	if err != nil {
+		t.Fatalf("Download after patch failed: %v", err)
+	}
+
+	// Verify download completed successfully
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("File MD5 mismatch: got %v, want %v", got, want)
+	}
+}

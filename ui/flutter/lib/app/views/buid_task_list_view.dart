@@ -1,9 +1,11 @@
-import 'package:contextmenu_plus/contextmenu_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_context_menu/flutter_context_menu.dart';
 import 'package:get/get.dart';
 import 'package:styled_widget/styled_widget.dart';
 
 import '../../api/api.dart';
+import '../../api/model/request.dart';
+import '../../api/model/resolve_task.dart';
 import '../../api/model/task.dart';
 import '../../util/message.dart';
 import '../../util/util.dart';
@@ -116,6 +118,162 @@ class BuildTaskListView extends GetView {
               ));
     }
 
+    Future<void> showUpdateUrlDialog(BuildContext context, Task task) async {
+      final urlController = TextEditingController(text: task.meta.req.url);
+      final headerControllers =
+          <MapEntry<TextEditingController, TextEditingController>>[];
+
+      // Initialize with existing headers if available
+      if (task.meta.req.extra != null && task.meta.req.extra is Map) {
+        final extra = task.meta.req.extra as Map<String, dynamic>;
+        if (extra.containsKey('header') && extra['header'] is Map) {
+          final headers = extra['header'] as Map<String, dynamic>;
+          for (final entry in headers.entries) {
+            headerControllers.add(MapEntry(
+              TextEditingController(text: entry.key),
+              TextEditingController(text: entry.value.toString()),
+            ));
+          }
+        }
+      }
+
+      // Add one empty header row by default if none exists
+      if (headerControllers.isEmpty) {
+        headerControllers.add(MapEntry(
+          TextEditingController(),
+          TextEditingController(),
+        ));
+      }
+
+      return showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('updateUrl'.tr),
+              content: SizedBox(
+                width: 400,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: urlController,
+                        decoration: InputDecoration(
+                          labelText: 'downloadLink'.tr,
+                          hintText: 'updateUrlDialogHint'.tr,
+                          icon: const Icon(Icons.link),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text('httpHeader'.tr,
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      ...headerControllers.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final controllers = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: controllers.key,
+                                  decoration: InputDecoration(
+                                    hintText: 'httpHeaderName'.tr,
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: controllers.value,
+                                  decoration: InputDecoration(
+                                    hintText: 'httpHeaderValue'.tr,
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.add),
+                                onPressed: () {
+                                  setState(() {
+                                    headerControllers.add(MapEntry(
+                                      TextEditingController(),
+                                      TextEditingController(),
+                                    ));
+                                  });
+                                },
+                                iconSize: 20,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.remove),
+                                onPressed: () {
+                                  if (headerControllers.length <= 1) {
+                                    return;
+                                  }
+                                  setState(() {
+                                    headerControllers.removeAt(index);
+                                  });
+                                },
+                                iconSize: 20,
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: Text('cancel'.tr),
+                  onPressed: () => Get.back(),
+                ),
+                TextButton(
+                  child: Text('confirm'.tr),
+                  onPressed: () async {
+                    try {
+                      // Build headers map
+                      final headers = <String, String>{};
+                      for (final entry in headerControllers) {
+                        final key = entry.key.text.trim();
+                        final value = entry.value.text.trim();
+                        if (key.isNotEmpty) {
+                          headers[key] = value;
+                        }
+                      }
+
+                      // Build ReqExtraHttp
+                      final reqExtra = ReqExtraHttp(header: headers);
+
+                      // Create patch request
+                      final patchData = ResolveTask(
+                        req: Request(
+                          url: urlController.text.trim(),
+                          extra: reqExtra.toJson(),
+                        ),
+                      );
+
+                      await patchTask(task.id, patchData);
+                      await continueTask(task.id);
+                      Get.back();
+                    } catch (e) {
+                      showErrorMessage(e);
+                    }
+                  },
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
+
     List<Widget> buildActions() {
       final list = <Widget>[];
       if (isDone()) {
@@ -157,29 +315,6 @@ class BuildTaskListView extends GetView {
         },
       ));
       return list;
-    }
-
-    Widget buildContextItem(IconData icon, String label, Function() onTap,
-        {bool enabled = true}) {
-      return ListTile(
-        dense: true,
-        visualDensity: const VisualDensity(vertical: -1),
-        minLeadingWidth: 12,
-        leading: Icon(icon, size: 18),
-        title: Text(label,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold, // Make the text bold
-            )),
-        onTap: () async {
-          Get.back();
-          try {
-            await onTap();
-          } catch (e) {
-            showErrorMessage(e);
-          }
-        },
-        enabled: enabled,
-      );
     }
 
     double getProgress() {
@@ -258,6 +393,7 @@ class BuildTaskListView extends GetView {
       }
     }
 
+    final appController = Get.find<AppController>();
     final taskController = Get.find<TaskController>();
     final taskListController = taskController.tabIndex.value == 0
         ? Get.find<TaskDownloadingController>()
@@ -268,19 +404,24 @@ class BuildTaskListView extends GetView {
         .where((id) => tasks.any((task) => task.id == id))
         .toList();
 
-    return ContextMenuArea(
-      width: 140,
-      builder: (context) => [
-        buildContextItem(Icons.checklist, 'selectAll'.tr, () {
+    // Build context menu entries
+    final contextMenuEntries = <ContextMenuEntry>[
+      MenuItem(
+        icon: const Icon(Icons.checklist),
+        label: Text('selectAll'.tr),
+        onSelected: (_) {
           if (tasks.isEmpty) return;
-
           if (selectedTaskIds.isNotEmpty) {
             taskListController.selectedTaskIds([]);
           } else {
             taskListController.selectedTaskIds(tasks.map((e) => e.id).toList());
           }
-        }),
-        buildContextItem(Icons.check, 'select'.tr, () {
+        },
+      ),
+      MenuItem(
+        icon: const Icon(Icons.check),
+        label: Text('select'.tr),
+        onSelected: (_) {
           if (isSelect()) {
             taskListController.selectedTaskIds(taskListController
                 .selectedTaskIds
@@ -290,36 +431,89 @@ class BuildTaskListView extends GetView {
             taskListController.selectedTaskIds(
                 [...taskListController.selectedTaskIds, task.id]);
           }
-        }),
-        const Divider(
-          indent: 8,
-          endIndent: 8,
-        ),
-        buildContextItem(Icons.play_arrow, 'continue'.tr, () async {
+        },
+      ),
+      const MenuDivider(),
+      MenuItem(
+        icon: const Icon(Icons.play_arrow),
+        label: Text('continue'.tr),
+        enabled: !isDone() && !isRunning(),
+        onSelected: (_) async {
           try {
             await continueAllTasks(filterSelectedTaskIds(
                 {...taskListController.selectedTaskIds, task.id}));
           } finally {
             taskListController.selectedTaskIds([]);
           }
-        }, enabled: !isDone() && !isRunning()),
-        buildContextItem(Icons.pause, 'pause'.tr, () async {
+        },
+      ),
+      MenuItem(
+        icon: const Icon(Icons.pause),
+        label: Text('pause'.tr),
+        enabled: !isDone() && isRunning(),
+        onSelected: (_) async {
           try {
             await pauseAllTasks(filterSelectedTaskIds(
                 {...taskListController.selectedTaskIds, task.id}));
           } finally {
             taskListController.selectedTaskIds([]);
           }
-        }, enabled: !isDone() && isRunning()),
-        buildContextItem(Icons.delete, 'delete'.tr, () async {
+        },
+      ),
+      MenuItem(
+        icon: const Icon(Icons.delete),
+        label: Text('delete'.tr),
+        onSelected: (_) async {
           try {
             await showDeleteDialog(filterSelectedTaskIds(
                 {...taskListController.selectedTaskIds, task.id}));
           } finally {
             taskListController.selectedTaskIds([]);
           }
-        }),
-      ],
+        },
+      ),
+      // Update URL submenu - only enabled for HTTP tasks in pause or error status
+      const MenuDivider(),
+      MenuItem.submenu(
+        icon: const Icon(Icons.link),
+        label: Text('updateUrl'.tr),
+        enabled: task.protocol == Protocol.http &&
+            (task.status == Status.pause || task.status == Status.error),
+        items: [
+          MenuItem(
+            icon: const Icon(Icons.edit_note),
+            label: Text('updateUrlManual'.tr),
+            onSelected: (_) async {
+              await showUpdateUrlDialog(context, task);
+            },
+          ),
+          MenuItem(
+            icon: Icon(appController.pendingUpdateTask.value?.id == task.id
+                ? Icons.cancel
+                : Icons.sensors),
+            label: Text(appController.pendingUpdateTask.value?.id == task.id
+                ? 'updateUrlCancelListen'.tr
+                : 'updateUrlListen'.tr),
+            onSelected: (_) {
+              if (appController.pendingUpdateTask.value?.id == task.id) {
+                appController.pendingUpdateTask.value = null;
+              } else {
+                appController.pendingUpdateTask.value =
+                    PendingUpdateTask(id: task.id, name: task.name);
+              }
+            },
+          ),
+        ],
+      ),
+    ];
+
+    final contextMenu = ContextMenu(
+      entries: contextMenuEntries,
+      padding: const EdgeInsets.all(8.0),
+    );
+
+    return ContextMenuRegion(
+      contextMenu: contextMenu,
       child: Obx(
         () => Card(
             elevation: 4.0,
@@ -344,7 +538,24 @@ class BuildTaskListView extends GetView {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                      title: Text(task.name),
+                      title: Row(
+                        children: [
+                          Expanded(child: Text(task.name)),
+                          // Show pending update indicator
+                          if (appController.pendingUpdateTask.value?.id ==
+                              task.id)
+                            Tooltip(
+                              message: 'updateUrlListeningTip'.tr,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: Icon(Icons.hearing,
+                                    size: 16,
+                                    color:
+                                        Theme.of(context).colorScheme.primary),
+                              ),
+                            ),
+                        ],
+                      ),
                       leading: Icon(
                         fileIcon(task.name,
                             isFolder: isFolderTask(),

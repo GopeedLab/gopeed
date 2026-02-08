@@ -9,14 +9,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "67.0.0"
-  after_layout:
-    dependency: transitive
-    description:
-      name: after_layout
-      sha256: "95a1cb2ca1464f44f14769329fbf15987d20ab6c88f8fc5d359bd362be625f29"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.2.0"
   analyzer:
     dependency: transitive
     description:
@@ -25,14 +17,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.4.1"
-  animations:
-    dependency: transitive
-    description:
-      name: animations
-      sha256: d3d6dcfb218225bbe68e87ccf6378bbb2e32a94900722c5f81611dad089911cb
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.11"
   app_links:
     dependency: "direct main"
     description:
@@ -233,22 +217,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.2"
-  context_menus:
-    dependency: "direct main"
-    description:
-      name: context_menus
-      sha256: "3b4f846a7a7dcb8cc76bb0c8c1b3915501f5f7370c524e3aa00ab4cc048f08db"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.2.0"
-  contextmenu_plus:
-    dependency: "direct main"
-    description:
-      name: contextmenu_plus
-      sha256: c4c3a11633ba98b6e325e80942cd6ca29269b246e307b0a43514ae4f9c8bcc7f
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.1"
   convert:
     dependency: transitive
     description:
@@ -393,19 +361,19 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  fluent_ui:
-    dependency: "direct main"
-    description:
-      name: fluent_ui
-      sha256: e7804bf3bbb3ecf9e77d5498181dc36375f5ca736ccfb3862fea17c50050eb89
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.9.2"
   flutter:
     dependency: "direct main"
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_context_menu:
+    dependency: "direct main"
+    description:
+      name: flutter_context_menu
+      sha256: e8f2cd13ef5e3320e35b27b3f7de278d9fc6b3f9c328cc16cd90784fb66d1054
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.1"
   flutter_foreground_task:
     dependency: "direct main"
     description:
@@ -734,14 +702,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.11.1"
-  math_expressions:
-    dependency: transitive
-    description:
-      name: math_expressions
-      sha256: e32d803d758ace61cc6c4bdfed1226ff60a6a23646b35685670d28b5616139f8
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.6.0"
   menu_base:
     dependency: transitive
     description:
@@ -1007,14 +967,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.2.2"
-  recase:
-    dependency: transitive
-    description:
-      name: recase
-      sha256: e4eb4ec2dcdee52dcf99cb4ceabaffc631d7424ee55e56f280bc039737f89213
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.1.0"
   rounded_loading_button_plus:
     dependency: "direct main"
     description:
@@ -1039,14 +991,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.1.9"
-  scroll_pos:
-    dependency: transitive
-    description:
-      name: scroll_pos
-      sha256: cebf602b2dd939de6832bb902ffefb574608d1b84f420b82b381a4007d3c1e1b
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.5.0"
   share_handler:
     dependency: "direct main"
     description:

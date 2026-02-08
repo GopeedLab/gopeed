@@ -144,6 +144,7 @@ const zhCN = {
     'unknown': '未知',
     'fileSelectedCount': '文件数：',
     'fileSelectedSize': '大小：',
+    'httpHeader': '请求头',
     'httpHeaderName': '请求头名称',
     'httpHeaderValue': '请求头值',
     'login': '登录',
@@ -173,5 +174,15 @@ const zhCN = {
     'githubMirrorType': '镜像类型',
     'githubMirrorUrl': '镜像地址',
     'githubMirrorUrlHint': '请输入镜像地址',
+    'updateUrl': '更新地址',
+    'updateUrlManual': '手动更新',
+    'updateUrlListen': '监听更新',
+    'updateUrlListeningTip': '正在等待更新地址',
+    'updateUrlCancelListen': '取消监听',
+    'updateUrlDialogHint': '请输入新的下载地址',
+    'pendingUpdateFound': '发现待更新任务',
+    'pendingUpdateConfirm': '任务 "@name" 正在等待更新地址，是否使用新地址更新该任务？',
+    'pendingUpdateYes': '更新任务',
+    'pendingUpdateNo': '创建新任务',
   }
 };

@@ -59,6 +59,14 @@ final allTrackerSubscribeUrlCdns = {
     v: githubMirrorUrls(v, MirrorType.githubSource)
 };
 
+/// Represents a task that is pending URL update via listen mode.
+class PendingUpdateTask {
+  final String id;
+  final String name;
+
+  PendingUpdateTask({required this.id, required this.name});
+}
+
 class AppController extends GetxController with WindowListener, TrayListener {
   static StartConfig? _defaultStartConfig;
 
@@ -71,6 +79,10 @@ class AppController extends GetxController with WindowListener, TrayListener {
   final startConfig = StartConfig().obs;
   final runningPort = 0.obs;
   final downloaderConfig = DownloaderConfig().obs;
+
+  /// The task that is pending URL update via listen mode.
+  /// Stored here in AppController to persist across page navigations.
+  final pendingUpdateTask = Rxn<PendingUpdateTask>();
 
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
@@ -320,7 +332,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
           final silent = jsonMeta['silent'] as bool? ?? false;
           final params = await ctx.readText();
           final createTaskParams = CreateTask.fromJson(_decodeParams(params));
-          if (!silent) {
+          if (!silent || pendingUpdateTask.value != null) {
             await windowManager.show();
             _handleToCreate0(createTaskParams);
           } else {

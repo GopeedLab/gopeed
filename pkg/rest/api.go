@@ -74,6 +74,28 @@ func CreateTaskBatch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func PatchTask(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	taskId := vars["id"]
+	if taskId == "" {
+		WriteJson(w, model.NewErrorResult("param invalid: id", model.CodeInvalidParam))
+		return
+	}
+
+	var req model.ResolveTask
+	if ReadJson(r, w, &req) {
+		if err := Downloader.Patch(taskId, req.Req, req.Opts); err != nil {
+			if err == download.ErrTaskNotFound {
+				WriteJson(w, model.NewErrorResult("task not found", model.CodeTaskNotFound))
+				return
+			}
+			WriteJson(w, model.NewErrorResult(err.Error()))
+			return
+		}
+		WriteJson(w, model.NewNilResult())
+	}
+}
+
 func PauseTask(w http.ResponseWriter, r *http.Request) {
 	filter, errResult := parseIdFilter(r)
 	if errResult != nil {

@@ -232,6 +232,59 @@ func (f *Fetcher) isDone() bool {
 	return true
 }
 
+// Patch modifies the BT task settings.
+// Invalid file indices are silently ignored.
+func (f *Fetcher) Patch(req *base.Request, opts *base.Options) error {
+	if opts == nil {
+		return nil
+	}
+
+	if opts.SelectFiles != nil {
+		selectFiles := opts.SelectFiles
+
+		// Get file count from resource metadata
+		fileCount := 0
+		if f.meta.Res != nil {
+			fileCount = len(f.meta.Res.Files)
+		}
+
+		// Filter out invalid indices (silently ignore)
+		validSelectFiles := make([]int, 0, len(selectFiles))
+		for _, idx := range selectFiles {
+			if idx >= 0 && idx < fileCount {
+				validSelectFiles = append(validSelectFiles, idx)
+			}
+		}
+
+		if f.torrent != nil {
+			files := f.torrent.Files()
+
+			// Cancel all current file downloads first
+			f.torrent.CancelPieces(0, f.torrent.NumPieces())
+
+			// Apply new file selection
+			if len(validSelectFiles) == len(files) {
+				f.torrent.DownloadAll()
+			} else {
+				for _, selectIndex := range validSelectFiles {
+					file := files[selectIndex]
+					file.Download()
+				}
+			}
+		}
+
+		f.meta.Opts.SelectFiles = validSelectFiles
+		// Recalculate the resource size based on new selection
+		if f.meta.Res != nil {
+			f.meta.Res.CalcSize(validSelectFiles)
+		}
+		// Reset progress tracking for new file selection
+		f.data.Progress = make(fetcher.Progress, len(validSelectFiles))
+	}
+
+	return nil
+}
+
 func (f *Fetcher) updateRes() {
 	res := &base.Resource{
 		Range: true,
