@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:badges/badges.dart' as badges;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -1689,7 +1690,7 @@ class SettingView extends GetView<SettingController> {
                           child: Column(
                         children: _addDivider([
                           buildWebhook(),
-                          buildScript(),
+                          if (Util.isDesktop()) buildScript(),
                           buildLogsDir(),
                         ]),
                       )),
@@ -1838,17 +1839,39 @@ class SettingView extends GetView<SettingController> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: pathController,
-                decoration: InputDecoration(
-                  hintText: 'scriptPathHint'.tr,
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'required'.tr;
-                  }
-                  return null;
-                },
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: pathController,
+                      decoration: InputDecoration(
+                        hintText: 'scriptPathHint'.tr,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'required'.tr;
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  if (Util.isDesktop())
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.folder_open),
+                        onPressed: () async {
+                          final result = await FilePicker.platform.pickFiles();
+                          if (result != null && result.files.isNotEmpty) {
+                            final filePath = result.files.first.path;
+                            if (filePath != null) {
+                              pathController.text = filePath;
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                ],
               ),
             ],
           ),

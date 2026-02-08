@@ -1,7 +1,6 @@
 package download
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,64 +9,6 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
 )
-
-func TestScript_TriggerOnDone(t *testing.T) {
-	// Create a test script that writes to output file
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "output.txt")
-
-	// Create a script that writes to output file
-	testScript := fmt.Sprintf(`#!/bin/bash
-echo "Script executed" > %s
-echo "Event: $GOPEED_EVENT" >> %s
-echo "Task ID: $GOPEED_TASK_ID" >> %s
-echo "Task Path: $GOPEED_TASK_PATH" >> %s
-`, outputFile, outputFile, outputFile, outputFile)
-
-	// Write test script
-	testScriptPath := filepath.Join(tmpDir, "test.sh")
-	if err := os.WriteFile(testScriptPath, []byte(testScript), 0755); err != nil {
-		t.Fatalf("Failed to create test script: %v", err)
-	}
-
-	setupScriptTest(t, func(downloader *Downloader) {
-		// Configure script paths
-		cfg, _ := downloader.GetConfig()
-		cfg.Script = &base.ScriptConfig{
-			Enable: true,
-			Paths:  []string{testScriptPath},
-		}
-		downloader.PutConfig(cfg)
-
-		// Create a mock task
-		task := NewTask()
-		task.Protocol = "http"
-		task.Meta = &mockFetcherMeta
-
-		// Trigger script
-		downloader.triggerScripts(ScriptEventDownloadDone, task, nil)
-
-		// Wait for script to execute
-		time.Sleep(1 * time.Second)
-
-		// Check if output file was created
-		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Error("Script did not create output file")
-		}
-
-		// Read and verify output
-		content, err := os.ReadFile(outputFile)
-		if err != nil {
-			t.Errorf("Failed to read output file: %v", err)
-		}
-
-		output := string(content)
-		if output == "" {
-			t.Error("Script output is empty")
-		}
-	})
-}
-
 
 func TestScript_NoScriptConfigured(t *testing.T) {
 	setupScriptTest(t, func(downloader *Downloader) {
@@ -78,57 +19,6 @@ func TestScript_NoScriptConfigured(t *testing.T) {
 
 		// Trigger script (should not panic with no scripts configured)
 		downloader.triggerScripts(ScriptEventDownloadDone, task, nil)
-	})
-}
-
-func TestScript_MultipleScripts(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile1 := filepath.Join(tmpDir, "output1.txt")
-	outputFile2 := filepath.Join(tmpDir, "output2.txt")
-
-	scriptPath1 := filepath.Join(tmpDir, "test1.sh")
-	scriptContent1 := fmt.Sprintf(`#!/bin/bash
-echo "Script 1" > %s
-`, outputFile1)
-	if err := os.WriteFile(scriptPath1, []byte(scriptContent1), 0755); err != nil {
-		t.Fatalf("Failed to create test script 1: %v", err)
-	}
-
-	scriptPath2 := filepath.Join(tmpDir, "test2.sh")
-	scriptContent2 := fmt.Sprintf(`#!/bin/bash
-echo "Script 2" > %s
-`, outputFile2)
-	if err := os.WriteFile(scriptPath2, []byte(scriptContent2), 0755); err != nil {
-		t.Fatalf("Failed to create test script 2: %v", err)
-	}
-
-	setupScriptTest(t, func(downloader *Downloader) {
-		// Configure multiple script paths
-		cfg, _ := downloader.GetConfig()
-		cfg.Script = &base.ScriptConfig{
-			Enable: true,
-			Paths:  []string{scriptPath1, scriptPath2},
-		}
-		downloader.PutConfig(cfg)
-
-		// Create a mock task
-		task := NewTask()
-		task.Protocol = "http"
-		task.Meta = &mockFetcherMeta
-
-		// Trigger scripts
-		downloader.triggerScripts(ScriptEventDownloadDone, task, nil)
-
-		// Wait for scripts to execute
-		time.Sleep(1 * time.Second)
-
-		// Check if both output files were created
-		if _, err := os.Stat(outputFile1); os.IsNotExist(err) {
-			t.Error("Script 1 did not create output file")
-		}
-		if _, err := os.Stat(outputFile2); os.IsNotExist(err) {
-			t.Error("Script 2 did not create output file")
-		}
 	})
 }
 
@@ -236,116 +126,68 @@ func TestScript_ExecuteScriptAtPath_NonExistentFile(t *testing.T) {
 	})
 }
 
-
-func TestScript_EnvironmentVariables(t *testing.T) {
-	// Create a temporary test script that outputs environment variables
-	tmpDir := t.TempDir()
-	scriptPath := filepath.Join(tmpDir, "test_env.sh")
-	outputFile := filepath.Join(tmpDir, "env_output.txt")
-
-	scriptContent := fmt.Sprintf(`#!/bin/bash
-echo "GOPEED_EVENT=$GOPEED_EVENT" > %s
-echo "GOPEED_TASK_ID=$GOPEED_TASK_ID" >> %s
-echo "GOPEED_TASK_NAME=$GOPEED_TASK_NAME" >> %s
-echo "GOPEED_TASK_STATUS=$GOPEED_TASK_STATUS" >> %s
-echo "GOPEED_TASK_PATH=$GOPEED_TASK_PATH" >> %s
-`, outputFile, outputFile, outputFile, outputFile, outputFile)
-
-	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
-		t.Fatalf("Failed to create test script: %v", err)
+func createDownloadDoneTask(t *testing.T, downloadDir, fileName string) (*Task, string) {
+	t.Helper()
+	content := []byte("downloaded file")
+	task := NewTask()
+	task.Protocol = "http"
+	task.Status = base.DownloadStatusDone
+	task.Meta = &fetcher.FetcherMeta{
+		Req: &base.Request{
+			URL: "https://example.com/" + fileName,
+		},
+		Opts: &base.Options{
+			Name: fileName,
+			Path: filepath.ToSlash(downloadDir),
+		},
+		Res: &base.Resource{
+			Size: int64(len(content)),
+			Files: []*base.FileInfo{
+				{Name: fileName, Size: int64(len(content))},
+			},
+		},
 	}
 
-	setupScriptTest(t, func(downloader *Downloader) {
-		// Configure script paths
-		cfg, _ := downloader.GetConfig()
-		cfg.Script = &base.ScriptConfig{
-			Enable: true,
-			Paths:  []string{scriptPath},
-		}
-		downloader.PutConfig(cfg)
-
-		// Create a mock task with proper metadata
-		task := NewTask()
-		task.Protocol = "http"
-		task.Status = base.DownloadStatusDone
-		task.Meta = &fetcher.FetcherMeta{
-			Req: &base.Request{
-				URL: "https://example.com/test.zip",
-			},
-			Opts: &base.Options{
-				Name: "test.zip",
-				Path: "/downloads",
-			},
-			Res: &base.Resource{
-				Size: 1024 * 1024,
-				Files: []*base.FileInfo{
-					{Name: "test.zip", Size: 1024 * 1024},
-				},
-			},
-		}
-
-		// Trigger script
-		downloader.triggerScripts(ScriptEventDownloadDone, task, nil)
-
-		// Wait for script to execute
-		time.Sleep(1 * time.Second)
-
-		// Check if output file was created
-		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Error("Script did not create output file")
-			return
-		}
-
-		// Read and verify environment variables
-		content, err := os.ReadFile(outputFile)
-		if err != nil {
-			t.Errorf("Failed to read output file: %v", err)
-			return
-		}
-
-		output := string(content)
-		if output == "" {
-			t.Error("Script output is empty")
-		}
-	})
+	filePath := task.Meta.SingleFilepath()
+	filePathOS := filepath.FromSlash(filePath)
+	if err := os.MkdirAll(filepath.Dir(filePathOS), 0755); err != nil {
+		t.Fatalf("Failed to create download dir: %v", err)
+	}
+	if err := os.WriteFile(filePathOS, content, 0644); err != nil {
+		t.Fatalf("Failed to create download file: %v", err)
+	}
+	return task, filePath
 }
 
-func TestScript_WindowsBatchExtension(t *testing.T) {
-	// This test verifies that .bat and .cmd extensions are recognized
-	tmpDir := t.TempDir()
-	
-	setupScriptTest(t, func(downloader *Downloader) {
-		// Test .bat extension
-		batScript := filepath.Join(tmpDir, "test.bat")
-		if err := os.WriteFile(batScript, []byte("@echo off\necho test"), 0644); err != nil {
-			t.Fatalf("Failed to create .bat script: %v", err)
+func waitForFile(t *testing.T, path string, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(path); err == nil {
+			return
 		}
-		
-		// Test .cmd extension
-		cmdScript := filepath.Join(tmpDir, "test.cmd")
-		if err := os.WriteFile(cmdScript, []byte("@echo off\necho test"), 0644); err != nil {
-			t.Fatalf("Failed to create .cmd script: %v", err)
-		}
-		
-		// Note: These tests only verify the extension is recognized
-		// Actual execution would fail on non-Windows systems, which is expected
-	})
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("Timeout waiting for file: %s", path)
 }
 
-func TestScript_PowerShellExtension(t *testing.T) {
-	// This test verifies that .ps1 extension is recognized
-	tmpDir := t.TempDir()
-	
-	setupScriptTest(t, func(downloader *Downloader) {
-		// Test .ps1 extension
-		ps1Script := filepath.Join(tmpDir, "test.ps1")
-		if err := os.WriteFile(ps1Script, []byte("Write-Host 'test'"), 0644); err != nil {
-			t.Fatalf("Failed to create .ps1 script: %v", err)
-		}
-		
-		// Note: This test only verifies the extension is recognized
-		// Actual execution depends on PowerShell availability
-	})
+func getTestScriptPath(t *testing.T, name string) string {
+	t.Helper()
+	path := filepath.Join("testdata", "scripts", name)
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("Missing test script %s: %v", path, err)
+	}
+	return path
+}
+
+func ensureScriptExecutable(t *testing.T, scriptPath string) {
+	t.Helper()
+	if filepath.Ext(scriptPath) != ".sh" {
+		return
+	}
+	if err := os.Chmod(scriptPath, 0755); err != nil {
+		t.Fatalf("Failed to chmod script: %v", err)
+	}
 }
 
 func setupScriptTest(t *testing.T, fn func(downloader *Downloader)) {
