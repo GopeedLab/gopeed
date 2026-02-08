@@ -184,6 +184,7 @@ type DownloaderStoreConfig struct {
 	Extra                      map[string]any         `json:"extra"`
 	Proxy                      *DownloaderProxyConfig `json:"proxy"`
 	Webhook                    *WebhookConfig         `json:"webhook"`                    // Webhook is the webhook configuration
+	Script                     *ScriptConfig          `json:"script"`                     // Script is the script execution configuration
 	AutoTorrent                *AutoTorrentConfig     `json:"autoTorrent"`                // AutoTorrent is the auto torrent task creation configuration
 	Archive                    *ArchiveConfig         `json:"archive"`                    // Archive is the archive extraction configuration
 	AutoDeleteMissingFileTasks bool                   `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
@@ -201,6 +202,9 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	}
 	if cfg.Webhook == nil {
 		cfg.Webhook = &WebhookConfig{}
+	}
+	if cfg.Script == nil {
+		cfg.Script = &ScriptConfig{}
 	}
 	if cfg.AutoTorrent == nil {
 		cfg.AutoTorrent = &AutoTorrentConfig{
@@ -239,6 +243,9 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	if cfg.Webhook == nil {
 		cfg.Webhook = beforeCfg.Webhook
 	}
+	if cfg.Script == nil {
+		cfg.Script = beforeCfg.Script
+	}
 	if cfg.AutoTorrent == nil {
 		cfg.AutoTorrent = beforeCfg.AutoTorrent
 	}
@@ -252,6 +259,12 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 type WebhookConfig struct {
 	Enable bool     `json:"enable"` // Enable is the flag to enable/disable webhooks
 	URLs   []string `json:"urls"`   // URLs is the list of webhook URLs
+}
+
+// ScriptConfig is the script execution configuration
+type ScriptConfig struct {
+	Enable bool     `json:"enable"` // Enable is the flag to enable/disable script execution
+	Paths  []string `json:"paths"`  // Paths is the list of script paths to execute
 }
 
 // AutoTorrentConfig is the auto torrent task creation configuration

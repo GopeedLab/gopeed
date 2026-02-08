@@ -19,6 +19,8 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>)
       ..webhook =
           WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
+      ..script =
+          ScriptConfig.fromJson(json['script'] as Map<String, dynamic>?)
       ..autoTorrent = AutoTorrentConfig.fromJson(
           json['autoTorrent'] as Map<String, dynamic>?)
       ..archive =
@@ -32,6 +34,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'extra': instance.extra.toJson(),
       'proxy': instance.proxy.toJson(),
       'webhook': instance.webhook.toJson(),
+      'script': instance.script.toJson(),
       'autoTorrent': instance.autoTorrent.toJson(),
       'archive': instance.archive.toJson(),
       'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
@@ -151,6 +154,20 @@ Map<String, dynamic> _$WebhookConfigToJson(WebhookConfig instance) =>
     <String, dynamic>{
       'enable': instance.enable,
       'urls': instance.urls,
+    };
+
+ScriptConfig _$ScriptConfigFromJson(Map<String, dynamic> json) =>
+    ScriptConfig(
+      enable: json['enable'] as bool? ?? false,
+      paths:
+          (json['paths'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+              const [],
+    );
+
+Map<String, dynamic> _$ScriptConfigToJson(ScriptConfig instance) =>
+    <String, dynamic>{
+      'enable': instance.enable,
+      'paths': instance.paths,
     };
 
 ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig(

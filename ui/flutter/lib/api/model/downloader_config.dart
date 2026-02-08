@@ -10,6 +10,7 @@ class DownloaderConfig {
   ExtraConfig extra = ExtraConfig();
   ProxyConfig proxy = ProxyConfig();
   WebhookConfig webhook = WebhookConfig();
+  ScriptConfig script = ScriptConfig();
   AutoTorrentConfig autoTorrent = AutoTorrentConfig();
   ArchiveConfig archive = ArchiveConfig();
   bool autoDeleteMissingFileTasks;
@@ -147,6 +148,22 @@ class WebhookConfig {
       json == null ? WebhookConfig() : _$WebhookConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$WebhookConfigToJson(this);
+}
+
+@JsonSerializable()
+class ScriptConfig {
+  bool enable;
+  List<String> paths;
+
+  ScriptConfig({
+    this.enable = false,
+    this.paths = const [],
+  });
+
+  factory ScriptConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? ScriptConfig() : _$ScriptConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ScriptConfigToJson(this);
 }
 
 @JsonSerializable()
