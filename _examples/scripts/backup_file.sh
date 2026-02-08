@@ -17,11 +17,14 @@ BACKUP_DIRS=(
     "/path/to/backup3"
 )
 
-# Check if file exists
-if [ ! -f "$GOPEED_FILE_PATH" ]; then
-    echo "Error: File not found at $GOPEED_FILE_PATH"
+# Check if file or folder exists
+if [ ! -e "$GOPEED_TASK_PATH" ]; then
+    echo "Error: Path not found at $GOPEED_TASK_PATH"
     exit 1
 fi
+
+# Get the base name
+BASENAME=$(basename "$GOPEED_TASK_PATH")
 
 # Copy to each backup location
 for DIR in "${BACKUP_DIRS[@]}"; do
@@ -30,13 +33,13 @@ for DIR in "${BACKUP_DIRS[@]}"; do
         mkdir -p "$DIR"
     fi
     
-    echo "Copying file to $DIR/"
-    cp "$GOPEED_FILE_PATH" "$DIR/"
+    echo "Copying to $DIR/"
+    cp -r "$GOPEED_TASK_PATH" "$DIR/"
     
     if [ $? -eq 0 ]; then
-        echo "File copied successfully to $DIR/$GOPEED_FILE_NAME"
+        echo "Successfully copied to $DIR/$BASENAME"
     else
-        echo "Warning: Failed to copy file to $DIR"
+        echo "Warning: Failed to copy to $DIR"
     fi
 done
 

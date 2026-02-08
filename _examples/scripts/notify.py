@@ -11,7 +11,7 @@ import sys
 import json
 import requests
 
-def send_notification(event, task_name, file_path, status):
+def send_notification(event, task_name, task_path, status):
     """
     Send a notification to a webhook endpoint.
     You can customize this to send emails, push notifications, etc.
@@ -24,7 +24,7 @@ def send_notification(event, task_name, file_path, status):
     notification_data = {
         "event": event,
         "task_name": task_name,
-        "file_path": file_path,
+        "task_path": task_path,
         "status": status,
         "message": f"Download '{task_name}' completed successfully"
     }
@@ -51,7 +51,7 @@ def main():
     task_id = os.getenv("GOPEED_TASK_ID")
     task_name = os.getenv("GOPEED_TASK_NAME")
     status = os.getenv("GOPEED_TASK_STATUS")
-    file_path = os.getenv("GOPEED_FILE_PATH")
+    task_path = os.getenv("GOPEED_TASK_PATH")
     
     # Only process DOWNLOAD_DONE events
     if event != "DOWNLOAD_DONE":
@@ -59,10 +59,10 @@ def main():
         return 0
     
     print(f"Processing download completion for: {task_name}")
-    print(f"File path: {file_path}")
+    print(f"Task path: {task_path}")
     
     # Send notification
-    send_notification(event, task_name, file_path, status)
+    send_notification(event, task_name, task_path, status)
     
     # You can also read the full task data from stdin
     try:

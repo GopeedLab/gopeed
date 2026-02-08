@@ -14,13 +14,13 @@ $WEBHOOK_URL = "https://example.com/webhook"
 $notificationData = @{
     event = $env:GOPEED_EVENT
     task_name = $env:GOPEED_TASK_NAME
-    file_path = $env:GOPEED_FILE_PATH
+    task_path = $env:GOPEED_TASK_PATH
     status = $env:GOPEED_TASK_STATUS
     message = "Download '$env:GOPEED_TASK_NAME' completed successfully"
 } | ConvertTo-Json
 
 Write-Host "Processing download completion for: $env:GOPEED_TASK_NAME"
-Write-Host "File path: $env:GOPEED_FILE_PATH"
+Write-Host "Task path: $env:GOPEED_TASK_PATH"
 
 # Send notification via webhook
 try {

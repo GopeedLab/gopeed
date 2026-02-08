@@ -120,21 +120,19 @@ func (d *Downloader) executeScriptAtPath(scriptPath string, data *ScriptData) er
 		fmt.Sprintf("GOPEED_TASK_STATUS=%s", data.Payload.Task.Status),
 	)
 
-	// Add download path and file information if available
-	if data.Payload.Task.Meta != nil && data.Payload.Task.Meta.Opts != nil {
-		cmd.Env = append(cmd.Env,
-			fmt.Sprintf("GOPEED_DOWNLOAD_DIR=%s", data.Payload.Task.Meta.Opts.Path),
-		)
-		
-		// Get the full file path
-		if data.Payload.Task.Meta.Res != nil && len(data.Payload.Task.Meta.Res.Files) > 0 {
-			fileName := data.Payload.Task.Name()
-			fullPath := filepath.Join(data.Payload.Task.Meta.Opts.Path, fileName)
-			cmd.Env = append(cmd.Env,
-				fmt.Sprintf("GOPEED_FILE_NAME=%s", fileName),
-				fmt.Sprintf("GOPEED_FILE_PATH=%s", fullPath),
-			)
+	// Add task path using the same logic as task deletion
+	if data.Payload.Task.Meta != nil && data.Payload.Task.Meta.Res != nil {
+		var taskPath string
+		if data.Payload.Task.Meta.Res.Name != "" {
+			// Multi-file task (folder)
+			taskPath = data.Payload.Task.Meta.FolderPath()
+		} else {
+			// Single file task
+			taskPath = data.Payload.Task.Meta.SingleFilepath()
 		}
+		cmd.Env = append(cmd.Env,
+			fmt.Sprintf("GOPEED_TASK_PATH=%s", taskPath),
+		)
 	}
 
 	// Start the command

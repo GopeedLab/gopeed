@@ -12,18 +12,21 @@ import (
 )
 
 func TestScript_TriggerOnDone(t *testing.T) {
-	// Create a temporary test script
+	// Create a test script that writes to output file
 	tmpDir := t.TempDir()
-	scriptPath := filepath.Join(tmpDir, "test.sh")
 	outputFile := filepath.Join(tmpDir, "output.txt")
 
-	scriptContent := fmt.Sprintf(`#!/bin/bash
+	// Create a script that writes to output file
+	testScript := fmt.Sprintf(`#!/bin/bash
 echo "Script executed" > %s
 echo "Event: $GOPEED_EVENT" >> %s
 echo "Task ID: $GOPEED_TASK_ID" >> %s
-`, outputFile, outputFile, outputFile)
+echo "Task Path: $GOPEED_TASK_PATH" >> %s
+`, outputFile, outputFile, outputFile, outputFile)
 
-	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
+	// Write test script
+	testScriptPath := filepath.Join(tmpDir, "test.sh")
+	if err := os.WriteFile(testScriptPath, []byte(testScript), 0755); err != nil {
 		t.Fatalf("Failed to create test script: %v", err)
 	}
 
@@ -32,7 +35,7 @@ echo "Task ID: $GOPEED_TASK_ID" >> %s
 		cfg, _ := downloader.GetConfig()
 		cfg.Script = &base.ScriptConfig{
 			Enable: true,
-			Paths:  []string{scriptPath},
+			Paths:  []string{testScriptPath},
 		}
 		downloader.PutConfig(cfg)
 
@@ -245,10 +248,8 @@ echo "GOPEED_EVENT=$GOPEED_EVENT" > %s
 echo "GOPEED_TASK_ID=$GOPEED_TASK_ID" >> %s
 echo "GOPEED_TASK_NAME=$GOPEED_TASK_NAME" >> %s
 echo "GOPEED_TASK_STATUS=$GOPEED_TASK_STATUS" >> %s
-echo "GOPEED_DOWNLOAD_DIR=$GOPEED_DOWNLOAD_DIR" >> %s
-echo "GOPEED_FILE_NAME=$GOPEED_FILE_NAME" >> %s
-echo "GOPEED_FILE_PATH=$GOPEED_FILE_PATH" >> %s
-`, outputFile, outputFile, outputFile, outputFile, outputFile, outputFile, outputFile)
+echo "GOPEED_TASK_PATH=$GOPEED_TASK_PATH" >> %s
+`, outputFile, outputFile, outputFile, outputFile, outputFile)
 
 	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
 		t.Fatalf("Failed to create test script: %v", err)

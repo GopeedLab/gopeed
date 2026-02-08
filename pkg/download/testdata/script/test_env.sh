@@ -1,0 +1,7 @@
+#!/bin/bash
+# Test script to verify environment variables
+echo "GOPEED_EVENT=$GOPEED_EVENT"
+echo "GOPEED_TASK_ID=$GOPEED_TASK_ID"
+echo "GOPEED_TASK_NAME=$GOPEED_TASK_NAME"
+echo "GOPEED_TASK_STATUS=$GOPEED_TASK_STATUS"
+echo "GOPEED_TASK_PATH=$GOPEED_TASK_PATH"

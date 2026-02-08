@@ -3,13 +3,11 @@
 # to a different location after download completes.
 
 # Environment variables provided by Gopeed:
-# - GOPEED_EVENT: Event type (DOWNLOAD_DONE or DOWNLOAD_ERROR)
+# - GOPEED_EVENT: Event type (DOWNLOAD_DONE)
 # - GOPEED_TASK_ID: Task ID
 # - GOPEED_TASK_NAME: Task name
 # - GOPEED_TASK_STATUS: Task status
-# - GOPEED_DOWNLOAD_DIR: Download directory
-# - GOPEED_FILE_NAME: Downloaded file name
-# - GOPEED_FILE_PATH: Full path to downloaded file
+# - GOPEED_TASK_PATH: Full path to downloaded file or folder
 
 # Exit if not a download done event
 if ($env:GOPEED_EVENT -ne "DOWNLOAD_DONE") {
@@ -26,20 +24,20 @@ if (-not (Test-Path $TARGET_DIR)) {
     Write-Host "Created target directory: $TARGET_DIR"
 }
 
-# Check if file exists
-if (-not (Test-Path $env:GOPEED_FILE_PATH)) {
-    Write-Host "Error: File not found at $env:GOPEED_FILE_PATH"
+# Check if file or folder exists
+if (-not (Test-Path $env:GOPEED_TASK_PATH)) {
+    Write-Host "Error: Path not found at $env:GOPEED_TASK_PATH"
     exit 1
 }
 
-# Move the file
+# Move the file or folder
 try {
-    Write-Host "Moving file from $env:GOPEED_FILE_PATH to $TARGET_DIR\"
-    Move-Item -Path $env:GOPEED_FILE_PATH -Destination $TARGET_DIR -Force
-    Write-Host "File moved successfully to $TARGET_DIR\$env:GOPEED_FILE_NAME"
+    Write-Host "Moving $env:GOPEED_TASK_PATH to $TARGET_DIR\"
+    Move-Item -Path $env:GOPEED_TASK_PATH -Destination $TARGET_DIR -Force
+    Write-Host "Successfully moved to $TARGET_DIR\"
     exit 0
 }
 catch {
-    Write-Host "Error: Failed to move file - $_"
+    Write-Host "Error: Failed to move - $_"
     exit 1
 }

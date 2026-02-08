@@ -19,9 +19,7 @@ When Gopeed executes your script, it provides the following environment variable
 - `GOPEED_TASK_ID`: Unique task identifier
 - `GOPEED_TASK_NAME`: Display name of the task
 - `GOPEED_TASK_STATUS`: Task status
-- `GOPEED_DOWNLOAD_DIR`: Directory where the file was downloaded
-- `GOPEED_FILE_NAME`: Name of the downloaded file
-- `GOPEED_FILE_PATH`: Full path to the downloaded file
+- `GOPEED_TASK_PATH`: Full path to the downloaded file or folder
 
 ## Task Data via STDIN
 

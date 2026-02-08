@@ -5,13 +5,11 @@
 # to a different location after download completes.
 
 # Environment variables provided by Gopeed:
-# - GOPEED_EVENT: Event type (DOWNLOAD_DONE or DOWNLOAD_ERROR)
+# - GOPEED_EVENT: Event type (DOWNLOAD_DONE)
 # - GOPEED_TASK_ID: Task ID
 # - GOPEED_TASK_NAME: Task name
 # - GOPEED_TASK_STATUS: Task status
-# - GOPEED_DOWNLOAD_DIR: Download directory
-# - GOPEED_FILE_NAME: Downloaded file name
-# - GOPEED_FILE_PATH: Full path to downloaded file
+# - GOPEED_TASK_PATH: Full path to downloaded file or folder
 
 # Exit if not a download done event
 if [ "$GOPEED_EVENT" != "DOWNLOAD_DONE" ]; then
@@ -27,20 +25,23 @@ if [ ! -d "$TARGET_DIR" ]; then
     mkdir -p "$TARGET_DIR"
 fi
 
-# Check if file exists
-if [ ! -f "$GOPEED_FILE_PATH" ]; then
-    echo "Error: File not found at $GOPEED_FILE_PATH"
+# Check if file or folder exists
+if [ ! -e "$GOPEED_TASK_PATH" ]; then
+    echo "Error: Path not found at $GOPEED_TASK_PATH"
     exit 1
 fi
 
-# Move the file
-echo "Moving file from $GOPEED_FILE_PATH to $TARGET_DIR/"
-mv "$GOPEED_FILE_PATH" "$TARGET_DIR/"
+# Get the base name of the file or folder
+BASENAME=$(basename "$GOPEED_TASK_PATH")
+
+# Move the file or folder
+echo "Moving $GOPEED_TASK_PATH to $TARGET_DIR/"
+mv "$GOPEED_TASK_PATH" "$TARGET_DIR/"
 
 if [ $? -eq 0 ]; then
-    echo "File moved successfully to $TARGET_DIR/$GOPEED_FILE_NAME"
+    echo "Successfully moved to $TARGET_DIR/$BASENAME"
 else
-    echo "Error: Failed to move file"
+    echo "Error: Failed to move"
     exit 1
 fi
 
