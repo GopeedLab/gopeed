@@ -1,7 +1,6 @@
 package download
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -18,16 +17,16 @@ const (
 	ScriptEventDownloadError ScriptEvent = "DOWNLOAD_ERROR"
 )
 
-// ScriptData is the data passed to scripts as JSON via stdin
+// ScriptData is the internal data structure for passing script information
 type ScriptData struct {
-	Event   ScriptEvent    `json:"event"`
-	Time    int64          `json:"time"` // Unix timestamp in milliseconds
-	Payload *ScriptPayload `json:"payload"`
+	Event   ScriptEvent
+	Time    int64 // Unix timestamp in milliseconds
+	Payload *ScriptPayload
 }
 
 // ScriptPayload contains the task data
 type ScriptPayload struct {
-	Task *Task `json:"task"`
+	Task *Task
 }
 
 // getScriptPaths extracts script paths from config
@@ -65,12 +64,6 @@ func (d *Downloader) executeScriptAtPath(scriptPath string, data *ScriptData) er
 		return fmt.Errorf("script file does not exist: %s", scriptPath)
 	}
 
-	// Prepare JSON data to pass via stdin
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
 	// Determine the script interpreter based on file extension
 	var cmd *exec.Cmd
 	ext := filepath.Ext(scriptPath)
@@ -106,12 +99,6 @@ func (d *Downloader) executeScriptAtPath(scriptPath string, data *ScriptData) er
 		cmd = exec.Command(scriptPath)
 	}
 
-	// Create a pipe to pass JSON data via stdin
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return err
-	}
-
 	// Set environment variables with task information
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("GOPEED_EVENT=%s", data.Event),
@@ -135,21 +122,8 @@ func (d *Downloader) executeScriptAtPath(scriptPath string, data *ScriptData) er
 		)
 	}
 
-	// Start the command
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	// Write JSON data to stdin in a goroutine
-	go func() {
-		defer stdin.Close()
-		if _, err := stdin.Write(jsonData); err != nil {
-			d.Logger.Warn().Err(err).Str("path", scriptPath).Msg("script: failed to write data to stdin")
-		}
-	}()
-
-	// Wait for the command to complete (no timeout)
-	return cmd.Wait()
+	// Start and wait for the command to complete (no timeout)
+	return cmd.Run()
 }
 
 // triggerScripts executes all configured scripts
