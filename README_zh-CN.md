@@ -1,4 +1,4 @@
-# [![](_docs/img/banner.png)](https://gopeed.com)
+# [![](_docs/img/banner.svg)](https://gopeed.com)
 
 [![Test Status](https://github.com/GopeedLab/gopeed/workflows/test/badge.svg)](https://github.com/GopeedLab/gopeed/actions?query=workflow%3Atest)
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
