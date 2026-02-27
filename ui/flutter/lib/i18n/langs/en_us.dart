@@ -193,5 +193,8 @@ const enUS = {
         'Task "@name" is waiting for URL update. Do you want to update it with the new URL?',
     'pendingUpdateYes': 'Update Task',
     'pendingUpdateNo': 'Create New Task',
+    'desktopNotification': 'Desktop Notifications',
+    'notificationTaskDone': 'Task completed',
+    'notificationTaskError': 'Task error',
   },
 };

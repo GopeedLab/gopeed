@@ -1,0 +1,81 @@
+import 'dart:async';
+
+import 'package:get/get.dart';
+import 'package:local_notifier/local_notifier.dart';
+
+import '../../../../api/api.dart';
+import '../../../../api/model/task.dart';
+import '../app/controllers/app_controller.dart';
+
+class NotificationService extends GetxService {
+  Timer? _timer;
+  final Map<String, Status> _previousStatus = {};
+
+  final AppController appController = Get.find<AppController>();
+
+  @override
+  void onInit() {
+    super.onInit();
+    _startPolling();
+  }
+
+  @override
+  void onClose() {
+    _timer?.cancel();
+    super.onClose();
+  }
+
+  void _startPolling() {
+    _timer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      try {
+        final config = appController.downloaderConfig.value;
+        if (!config.extra.desktopNotification) {
+          return;
+        }
+
+        final tasks = await getTasks([
+          Status.ready,
+          Status.running,
+          Status.pause,
+          Status.wait,
+          Status.error,
+          Status.done,
+        ]);
+
+        for (var task in tasks) {
+          final prevStatus = _previousStatus[task.id];
+          final currentStatus = task.status;
+
+          if (prevStatus != null && prevStatus != currentStatus) {
+            if (currentStatus == Status.done) {
+              _showNotification(
+                title: 'notificationTaskDone'.tr,
+                body: task.name,
+              );
+            } else if (currentStatus == Status.error) {
+              _showNotification(
+                title: 'notificationTaskError'.tr,
+                body: task.name,
+              );
+            }
+          }
+          _previousStatus[task.id] = currentStatus;
+        }
+
+        // Clean up deleted tasks from map
+        final currentTaskIds = tasks.map((t) => t.id).toSet();
+        _previousStatus.removeWhere((id, status) => !currentTaskIds.contains(id));
+      } catch (e) {
+        // Ignored
+      }
+    });
+  }
+
+  void _showNotification({required String title, required String body}) {
+    final notification = LocalNotification(
+      title: title,
+      body: body,
+    );
+    notification.show();
+  }
+}

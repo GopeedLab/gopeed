@@ -16,6 +16,7 @@ import 'package:tray_manager/tray_manager.dart';
 import 'package:uri_to_file/uri_to_file.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:local_notifier/local_notifier.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
@@ -38,6 +39,7 @@ import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
 import '../../../rpc/rpc.dart';
 import '../../redirect/views/redirect_view.dart';
+import '../../../services/notification_service.dart';
 
 const unixSocketPath = 'gopeed.sock';
 
@@ -96,6 +98,16 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
     _initWindows().onError((error, stackTrace) =>
         logger.w("initWindows error", error, stackTrace));
+        
+    if (Util.isDesktop()) {
+      localNotifier.setup(
+        appName: 'Gopeed',
+        shortcutPolicy: ShortcutPolicy.requireCreate,
+      ).then((_) {
+        Get.put(NotificationService());
+      }).catchError((error, stackTrace) =>
+          logger.w("init localNotifier error", error, stackTrace));
+    }
 
     _initTray().onError(
         (error, stackTrace) => logger.w("initTray error", error, stackTrace));
