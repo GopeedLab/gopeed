@@ -1,12 +1,10 @@
 import 'dart:async';
-
-import 'package:get/get.dart';
-import 'package:local_notifier/local_notifier.dart';
-
-import 'package:uri_to_file/uri_to_file.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../api/api.dart';
 import '../../api/model/task.dart';
@@ -18,11 +16,61 @@ class NotificationService extends GetxService {
   final Map<String, Status> _previousStatus = {};
 
   final AppController appController = Get.find<AppController>();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   @override
   void onInit() {
     super.onInit();
+    _initNotifications();
     _startPolling();
+  }
+
+  Future<void> _initNotifications() async {
+    const DarwinInitializationSettings initializationSettingsDarwin =
+        DarwinInitializationSettings(
+            requestAlertPermission: false,
+            requestBadgePermission: false,
+            requestSoundPermission: false);
+
+    final LinuxInitializationSettings initializationSettingsLinux =
+        LinuxInitializationSettings(
+      defaultActionName: 'Open notification',
+      defaultIcon: AssetsLinuxIcon('assets/icon/icon.png'),
+    );
+
+    String? windowsIconPath;
+    try {
+      if (Util.isWindows()) {
+        final byteData = await rootBundle.load('assets/icon/icon.ico');
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/notification_icon.ico');
+        await file.writeAsBytes(byteData.buffer
+            .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+        windowsIconPath = file.path;
+      }
+    } catch (e) {
+      // Ignore
+    }
+
+    final WindowsInitializationSettings initializationSettingsWindows =
+        WindowsInitializationSettings(
+      appName: 'Gopeed',
+      appUserModelId: 'com.gopeed.gopeed',
+      guid: '3c1bf3f4-3d91-4eaa-a33f-8705e71cf1ce', // unique guid
+      iconPath: windowsIconPath,
+    );
+
+    final InitializationSettings initializationSettings =
+        InitializationSettings(
+      macOS: initializationSettingsDarwin,
+      linux: initializationSettingsLinux,
+      windows: initializationSettingsWindows,
+    );
+
+    await flutterLocalNotificationsPlugin.initialize(
+      settings: initializationSettings,
+    );
   }
 
   @override
@@ -78,30 +126,21 @@ class NotificationService extends GetxService {
     });
   }
 
+  int _notificationId = 0;
+
   Future<void> _showNotification(
       {required String title, required String body}) async {
-    String? imagePath;
+    const NotificationDetails notificationDetails = NotificationDetails(
+      macOS: DarwinNotificationDetails(),
+      linux: LinuxNotificationDetails(),
+      windows: WindowsNotificationDetails(),
+    );
 
-    try {
-      if (Util.isWindows() || Util.isLinux()) {
-        final assetPath =
-            Util.isWindows() ? 'assets/icon/icon.ico' : 'assets/icon/icon.png';
-        final byteData = await rootBundle.load(assetPath);
-        final tempDir = await getTemporaryDirectory();
-        final file = File('${tempDir.path}/${assetPath.split('/').last}');
-        await file.writeAsBytes(byteData.buffer
-            .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
-        imagePath = file.path;
-      }
-    } catch (e) {
-      // Ignore if icon extraction fails
-    }
-
-    final notification = LocalNotification(
+    await flutterLocalNotificationsPlugin.show(
+      id: _notificationId++,
       title: title,
       body: body,
-      imagePath: imagePath,
+      notificationDetails: notificationDetails,
     );
-    notification.show();
   }
 }
