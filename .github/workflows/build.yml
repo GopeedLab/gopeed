@@ -358,7 +358,6 @@ jobs:
           url: https://github.com/GopeedLab/gopeed
           vendor: GopeedLab
           maintainer: GopeedLab <support@gopeed.com>
-          maintainer: GopeedLab <support@gopeed.com>
           build_arch: $RPM_ARCH
           EOF
 
