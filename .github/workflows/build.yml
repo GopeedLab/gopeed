@@ -186,13 +186,6 @@ jobs:
           iscc.exe setup.iss
           mv "Output\gopeed.exe" "Output\Gopeed-$TAG-windows-${{ matrix.arch }}.exe"
           Compress-Archive -Path "Output\Gopeed-$TAG-windows-${{ matrix.arch }}.exe" -DestinationPath "Output\Gopeed-$TAG-windows-${{ matrix.arch }}.zip"
-      - name: Upload artifact
-        if: matrix.arch == 'amd64'
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-amd64-build
-          path: ui/flutter/build/windows/Output/*
-          retention-days: 1
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:

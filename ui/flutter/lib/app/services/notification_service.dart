@@ -3,8 +3,14 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:local_notifier/local_notifier.dart';
 
+import 'package:uri_to_file/uri_to_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:flutter/services.dart';
+
 import '../../api/api.dart';
 import '../../api/model/task.dart';
+import '../../util/util.dart';
 import '../modules/app/controllers/app_controller.dart';
 
 class NotificationService extends GetxService {
@@ -64,17 +70,37 @@ class NotificationService extends GetxService {
 
         // Clean up deleted tasks from map
         final currentTaskIds = tasks.map((t) => t.id).toSet();
-        _previousStatus.removeWhere((id, status) => !currentTaskIds.contains(id));
+        _previousStatus
+            .removeWhere((id, status) => !currentTaskIds.contains(id));
       } catch (e) {
         // Ignored
       }
     });
   }
 
-  void _showNotification({required String title, required String body}) {
+  Future<void> _showNotification(
+      {required String title, required String body}) async {
+    String? imagePath;
+
+    try {
+      if (Util.isWindows() || Util.isLinux()) {
+        final assetPath =
+            Util.isWindows() ? 'assets/icon/icon.ico' : 'assets/icon/icon.png';
+        final byteData = await rootBundle.load(assetPath);
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/${assetPath.split('/').last}');
+        await file.writeAsBytes(byteData.buffer
+            .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+        imagePath = file.path;
+      }
+    } catch (e) {
+      // Ignore if icon extraction fails
+    }
+
     final notification = LocalNotification(
       title: title,
       body: body,
+      imagePath: imagePath,
     );
     notification.show();
   }
