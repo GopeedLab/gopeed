@@ -130,5 +130,8 @@ const itIT = {
     'categoryPath': 'Percorso categoria',
     'builtInCategory': 'La categoria predefinita non può essere eliminata',
     'selectCategory': 'Seleziona categoria',
+    'desktopNotification': 'Notifiche Desktop',
+    'notificationTaskDone': 'Attività completata',
+    'notificationTaskError': 'Errore attività',
   },
 };

@@ -93,5 +93,8 @@ const faIR = {
     'launchAtStartup': 'راه‌اندازی در استارت‌آپ',
     'runAsMenubarApp': 'اجرا به عنوان برنامه نوار منو',
     'runAsMenubarAppDesc': 'پنهان کردن آیکون Dock و اجرا فقط در نوار منو',
+    'desktopNotification': 'اعلان‌های دسکتاپ',
+    'notificationTaskDone': 'وظیفه تکمیل شد',
+    'notificationTaskError': 'خطای وظیفه',
   }
 };

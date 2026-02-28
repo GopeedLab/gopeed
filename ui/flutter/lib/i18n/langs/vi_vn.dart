@@ -122,5 +122,8 @@ const viVN = {
     'launchAtStartup': 'Khởi động cùng hệ thống',
     'runAsMenubarApp': 'Chạy như ứng dụng thanh menu',
     'runAsMenubarAppDesc': 'Ẩn biểu tượng Dock và chỉ chạy trong thanh menu',
+    'desktopNotification': 'Thông báo trên màn hình',
+    'notificationTaskDone': 'Nhiệm vụ hoàn thành',
+    'notificationTaskError': 'Lỗi nhiệm vụ',
   },
 };

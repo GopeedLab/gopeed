@@ -127,5 +127,8 @@ const plPL = {
     'categoryPath': 'Ścieżka kategorii',
     'builtInCategory': 'Wbudowanej kategorii nie można usunąć',
     'selectCategory': 'Wybierz kategorię',
+    'desktopNotification': 'Powiadomienia na pulpicie',
+    'notificationTaskDone': 'Zadanie zakończone',
+    'notificationTaskError': 'Błąd zadania',
   },
 };

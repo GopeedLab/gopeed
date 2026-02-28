@@ -142,5 +142,8 @@ const idID = {
     'categoryPath': 'Path Kategori',
     'builtInCategory': 'Kategori bawaan tidak dapat dihapus',
     'selectCategory': 'Pilih Kategori',
+    'desktopNotification': 'Notifikasi Desktop',
+    'notificationTaskDone': 'Tugas selesai',
+    'notificationTaskError': 'Tugas error',
   },
 };

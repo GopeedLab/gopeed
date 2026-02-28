@@ -95,5 +95,8 @@ const jaJP = {
     'launchAtStartup': '起動時に起動',
     'runAsMenubarApp': 'メニューバーアプリとして実行',
     'runAsMenubarAppDesc': 'Dockアイコンを非表示にして、メニューバーのみで実行',
+    'desktopNotification': 'デスクトップ通知',
+    'notificationTaskDone': 'タスク完了',
+    'notificationTaskError': 'タスクエラー',
   }
 };

@@ -129,5 +129,8 @@ const taTA = {
     'categoryPath': 'வகை பாதை',
     'builtInCategory': 'உள்ளமைக்கப்பட்ட வகையை நீக்க முடியாது',
     'selectCategory': 'வகையைத் தேர்ந்தெடுக்கவும்',
+    'desktopNotification': 'கணினி அறிவிப்புகள்',
+    'notificationTaskDone': 'பணி முடிந்தது',
+    'notificationTaskError': 'பணி பிழை',
   },
 };

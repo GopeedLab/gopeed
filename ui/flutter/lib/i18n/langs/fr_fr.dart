@@ -135,5 +135,8 @@ const frFR = {
     'categoryPath': 'Chemin de la catégorie',
     'builtInCategory': 'La catégorie intégrée ne peut pas être supprimée',
     'selectCategory': 'Sélectionner une catégorie',
+    'desktopNotification': 'Notifications de bureau',
+    'notificationTaskDone': 'Tâche terminée',
+    'notificationTaskError': 'Erreur de tâche',
   },
 };
