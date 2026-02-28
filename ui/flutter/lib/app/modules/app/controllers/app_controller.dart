@@ -16,7 +16,7 @@ import 'package:tray_manager/tray_manager.dart';
 import 'package:uri_to_file/uri_to_file.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:local_notifier/local_notifier.dart';
+
 
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
@@ -100,13 +100,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
         logger.w("initWindows error", error, stackTrace));
         
     if (Util.isDesktop()) {
-      localNotifier.setup(
-        appName: 'Gopeed',
-        shortcutPolicy: ShortcutPolicy.requireCreate,
-      ).then((_) {
-        Get.put(NotificationService());
-      }).catchError((error, stackTrace) =>
-          logger.w("init localNotifier error", error, stackTrace));
+      Get.put(NotificationService());
     }
 
     _initTray().onError(
