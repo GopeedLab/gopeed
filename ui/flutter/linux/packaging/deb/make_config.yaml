@@ -16,6 +16,7 @@ dependencies:
   - libayatana-appindicator3-1
   - gir1.2-ayatanaappindicator3-0.1
   - libkeybinder-3.0-0
+  - libnotify4
 
 keywords:
   - Application
