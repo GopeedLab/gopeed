@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:local_notifier/local_notifier.dart';
 
-import '../../../../api/api.dart';
-import '../../../../api/model/task.dart';
-import '../app/controllers/app_controller.dart';
+import '../../api/api.dart';
+import '../../api/model/task.dart';
+import '../modules/app/controllers/app_controller.dart';
 
 class NotificationService extends GetxService {
   Timer? _timer;
