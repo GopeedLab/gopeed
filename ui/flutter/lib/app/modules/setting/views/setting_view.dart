@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart' as api;
+import '../../../../app/routes/app_pages.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../database/database.dart';
 import '../../../../util/analytics.dart';
@@ -1680,7 +1681,7 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildTheme(),
                             buildLocale(),
-                            if (!Util.isWeb() && !Util.isDocker()) buildAppLock(),
+                            if (!Util.isWeb()) buildAppLock(),
                           ]),
                         )),
                         Text('about'.tr),
