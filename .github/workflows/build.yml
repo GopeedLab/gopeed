@@ -192,6 +192,11 @@ jobs:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: ui/flutter/build/windows/Output/*
           overwrite: true
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts-${{ matrix.arch }}
+          path: ui/flutter/build/windows/Output/*
   build-macos-amd64-lib:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'macos' }}
     runs-on: macos-15-intel
@@ -588,6 +593,11 @@ jobs:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
           asset_path: ui/flutter/dist/*
           overwrite: true
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-artifacts
+          path: ui/flutter/dist/*
   build-ios:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'ios' }}
     runs-on: macos-14

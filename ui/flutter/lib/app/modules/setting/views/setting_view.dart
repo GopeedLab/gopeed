@@ -5,6 +5,7 @@ import 'package:badges/badges.dart' as badges;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:gopeed/app/views/copy_button.dart';
 import 'package:intl/intl.dart';
@@ -834,6 +835,31 @@ class SettingView extends GetView<SettingController> {
                   .toList(),
             ));
 
+    final buildAppLock = _buildConfigItem('appLockSettingsTitle', () {
+      return Database.instance.getAppLockEnabled() ? 'on'.tr : 'off'.tr;
+    }, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: Database.instance.getAppLockEnabled(),
+          onChanged: (bool value) async {
+            if (value) {
+              // Redirect to setup page
+              await Get.toNamed(Routes.LOCK_SETUP);
+            } else {
+              // Disable immediately
+              Database.instance.setAppLockEnabled(false);
+              Database.instance.setBiometricsEnabled(false);
+              // Important to delete the pin from secure storage
+              final storage = Get.find<FlutterSecureStorage>();
+              await storage.delete(key: 'app_lock_pin');
+              await debounceSave();
+            }
+          },
+        ),
+      );
+    });
+
     // about config items start
     buildHomepage() {
       const homePage = 'https://gopeed.com';
@@ -1654,6 +1680,7 @@ class SettingView extends GetView<SettingController> {
                           children: _addDivider([
                             buildTheme(),
                             buildLocale(),
+                            if (!Util.isWeb() && !Util.isDocker()) buildAppLock(),
                           ]),
                         )),
                         Text('about'.tr),

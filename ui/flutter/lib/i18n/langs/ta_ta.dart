@@ -132,5 +132,10 @@ const taTA = {
     'desktopNotification': 'கணினி அறிவிப்புகள்',
     'notificationTaskDone': 'பணி முடிந்தது',
     'notificationTaskError': 'பணி பிழை',
+    'appLockSetupTitle': 'பின் அமை',
+    'appLockVerifyTitle': 'பின் உள்ளிடு',
+    'appLockPinMismatch': 'பின்கள் பொருந்தவில்லை',
+    'appLockUseBiometrics': 'பயோமெட்ரிக் மூலம் திறக்க வேண்டுமா?',
+    'appLockSettingsTitle': 'பயன்பாட்டுப் பூட்டு',
   },
 };

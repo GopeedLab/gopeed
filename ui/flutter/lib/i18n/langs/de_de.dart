@@ -167,5 +167,10 @@ const deDE = {
     'desktopNotification': 'Desktop-Benachrichtigungen',
     'notificationTaskDone': 'Aufgabe abgeschlossen',
     'notificationTaskError': 'Aufgabenfehler',
+    'appLockSetupTitle': 'Passwort einrichten',
+    'appLockVerifyTitle': 'Passwort eingeben',
+    'appLockPinMismatch': 'Passwörter stimmen nicht überein',
+    'appLockUseBiometrics': 'Mit Biometrie entsperren?',
+    'appLockSettingsTitle': 'App-Sperre',
   },
 };

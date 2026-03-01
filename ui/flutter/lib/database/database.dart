@@ -13,6 +13,8 @@ const String _webToken = 'webToken';
 const String _runAsMenubarApp = 'runAsMenubarApp';
 const String _analyticsEnabled = 'analyticsEnabled';
 const String _analyticsClientId = 'analyticsClientId';
+const String _appLockEnabled = 'appLockEnabled';
+const String _biometricsEnabled = 'biometricsEnabled';
 
 class Database {
   static final Database _instance = Database._internal();
@@ -135,5 +137,21 @@ class Database {
 
   String? getAnalyticsClientId() {
     return box.get(_analyticsClientId) as String?;
+  }
+
+  void setAppLockEnabled(bool value) {
+    box.put(_appLockEnabled, value);
+  }
+
+  bool getAppLockEnabled() {
+    return box.get(_appLockEnabled, defaultValue: false) as bool;
+  }
+
+  void setBiometricsEnabled(bool value) {
+    box.put(_biometricsEnabled, value);
+  }
+
+  bool getBiometricsEnabled() {
+    return box.get(_biometricsEnabled, defaultValue: false) as bool;
   }
 }

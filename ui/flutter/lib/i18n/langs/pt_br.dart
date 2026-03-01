@@ -156,5 +156,10 @@ const ptBR = {
     'desktopNotification': 'Notificações na área de trabalho',
     'notificationTaskDone': 'Tarefa concluída',
     'notificationTaskError': 'Erro na tarefa',
+    'appLockSetupTitle': 'Configurar PIN',
+    'appLockVerifyTitle': 'Inserir PIN',
+    'appLockPinMismatch': 'Os PINs não coincidem',
+    'appLockUseBiometrics': 'Desbloquear com biometria?',
+    'appLockSettingsTitle': 'Bloqueio de aplicativo',
   },
 };

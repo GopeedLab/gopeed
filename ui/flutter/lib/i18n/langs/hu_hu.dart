@@ -159,5 +159,10 @@ const huHU = {
     'desktopNotification': 'Asztali értesítések',
     'notificationTaskDone': 'Feladat befejezve',
     'notificationTaskError': 'Feladat hiba',
+    'appLockSetupTitle': 'PIN kód beállítása',
+    'appLockVerifyTitle': 'PIN kód megadása',
+    'appLockPinMismatch': 'A PIN kódok nem egyeznek',
+    'appLockUseBiometrics': 'Feloldás biometrikus azonosítással?',
+    'appLockSettingsTitle': 'Alkalmazás zárolása',
   },
 };

@@ -196,5 +196,10 @@ const enUS = {
     'desktopNotification': 'Desktop Notifications',
     'notificationTaskDone': 'Task completed',
     'notificationTaskError': 'Task error',
+    'appLockSetupTitle': 'Set up PIN',
+    'appLockVerifyTitle': 'Enter PIN',
+    'appLockPinMismatch': 'PINs do not match',
+    'appLockUseBiometrics': 'Unlock with biometrics?',
+    'appLockSettingsTitle': 'App Lock',
   },
 };

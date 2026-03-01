@@ -191,5 +191,10 @@ const zhCN = {
     'desktopNotification': '桌面通知',
     'notificationTaskDone': '任务完成',
     'notificationTaskError': '任务失败',
+    'appLockSetupTitle': '设置 PIN',
+    'appLockVerifyTitle': '输入 PIN',
+    'appLockPinMismatch': 'PIN 不匹配',
+    'appLockUseBiometrics': '使用生物识别解锁？',
+    'appLockSettingsTitle': '应用锁',
   }
 };

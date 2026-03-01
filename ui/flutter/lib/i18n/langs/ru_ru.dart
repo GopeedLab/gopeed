@@ -155,5 +155,10 @@ const ruRU = {
     'desktopNotification': 'Уведомления',
     'notificationTaskDone': 'Задача завершена',
     'notificationTaskError': 'Ошибка задачи',
+    'appLockSetupTitle': 'Установка пароля',
+    'appLockVerifyTitle': 'Введите пароль',
+    'appLockPinMismatch': 'Пароли не совпадают',
+    'appLockUseBiometrics': 'Разблокировать с помощью биометрии?',
+    'appLockSettingsTitle': 'Блокировка приложения',
   }
 };

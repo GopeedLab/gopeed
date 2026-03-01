@@ -145,5 +145,10 @@ const esES = {
     'desktopNotification': 'Notificaciones de escritorio',
     'notificationTaskDone': 'Tarea completada',
     'notificationTaskError': 'Error de tarea',
+    'appLockSetupTitle': 'Configurar PIN',
+    'appLockVerifyTitle': 'Ingresar PIN',
+    'appLockPinMismatch': 'Los PIN no coinciden',
+    'appLockUseBiometrics': '¿Desbloquear con biometría?',
+    'appLockSettingsTitle': 'Bloqueo de aplicación',
   },
 };

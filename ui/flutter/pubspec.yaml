@@ -83,6 +83,9 @@ dependencies:
   flutter_svg: ^2.0.17
   dart_ipc: ^1.0.1
   flutter_local_notifications: 20.1.0
+  local_auth: ^3.0.1
+  flutter_secure_storage: ^10.0.0
+  pinput: ^6.0.2
 dependency_overrides:
   permission_handler_windows:
     git:

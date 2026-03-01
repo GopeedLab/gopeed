@@ -133,5 +133,10 @@ const itIT = {
     'desktopNotification': 'Notifiche Desktop',
     'notificationTaskDone': 'Attività completata',
     'notificationTaskError': 'Errore attività',
+    'appLockSetupTitle': 'Imposta PIN',
+    'appLockVerifyTitle': 'Inserisci PIN',
+    'appLockPinMismatch': 'I PIN non corrispondono',
+    'appLockUseBiometrics': 'Sblocca con dati biometrici?',
+    'appLockSettingsTitle': 'Blocco app',
   },
 };

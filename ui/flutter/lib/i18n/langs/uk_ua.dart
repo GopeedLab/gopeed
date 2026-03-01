@@ -155,5 +155,10 @@ const ukUA = {
     'desktopNotification': 'Сповіщення',
     'notificationTaskDone': 'Завдання завершено',
     'notificationTaskError': 'Помилка завдання',
+    'appLockSetupTitle': 'Встановіть пароль',
+    'appLockVerifyTitle': 'Введіть пароль',
+    'appLockPinMismatch': 'Паролі не збігаються',
+    'appLockUseBiometrics': 'Розблокувати за допомогою біометрії?',
+    'appLockSettingsTitle': 'Блокування програми',
   },
 };

@@ -150,5 +150,10 @@ const zhTW = {
     'desktopNotification': '桌面通知',
     'notificationTaskDone': '任務完成',
     'notificationTaskError': '任務失敗',
+    'appLockSetupTitle': '設定 PIN',
+    'appLockVerifyTitle': '輸入 PIN',
+    'appLockPinMismatch': 'PIN 不相符',
+    'appLockUseBiometrics': '使用生物識別解鎖？',
+    'appLockSettingsTitle': '應用鎖',
   }
 };

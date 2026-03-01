@@ -145,5 +145,10 @@ const idID = {
     'desktopNotification': 'Notifikasi Desktop',
     'notificationTaskDone': 'Tugas selesai',
     'notificationTaskError': 'Tugas error',
+    'appLockSetupTitle': 'Siapkan PIN',
+    'appLockVerifyTitle': 'Masukkan PIN',
+    'appLockPinMismatch': 'PIN tidak cocok',
+    'appLockUseBiometrics': 'Buka kunci dengan biometrik?',
+    'appLockSettingsTitle': 'Kunci Aplikasi',
   },
 };

@@ -18,6 +18,10 @@ import '../modules/task/bindings/task_binding.dart';
 import '../modules/task/bindings/task_files_binding.dart';
 import '../modules/task/views/task_files_view.dart';
 import '../modules/task/views/task_view.dart';
+import '../modules/lock/bindings/lock_setup_binding.dart';
+import '../modules/lock/views/lock_setup_view.dart';
+import '../modules/lock/bindings/lock_verify_binding.dart';
+import '../modules/lock/views/lock_verify_view.dart';
 
 part 'app_routes.dart';
 
@@ -82,6 +86,16 @@ class AppPages {
             name: _Paths.REDIRECT,
             page: () => const RedirectView(),
             binding: RedirectBinding(),
+          ),
+          GetPage(
+            name: _Paths.LOCK_SETUP,
+            page: () => const LockSetupView(),
+            binding: LockSetupBinding(),
+          ),
+          GetPage(
+            name: _Paths.LOCK_VERIFY,
+            page: () => const LockVerifyView(),
+            binding: LockVerifyBinding(),
           ),
         ]),
   ];

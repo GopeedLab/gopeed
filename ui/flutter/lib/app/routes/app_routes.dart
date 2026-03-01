@@ -13,6 +13,8 @@ abstract class Routes {
   static const EXTENSION = _Paths.HOME + _Paths.EXTENSION;
   static const SETTING = _Paths.HOME + _Paths.SETTING;
   static const REDIRECT = _Paths.REDIRECT;
+  static const LOCK_SETUP = _Paths.LOCK_SETUP;
+  static const LOCK_VERIFY = _Paths.LOCK_VERIFY;
 }
 
 abstract class _Paths {
@@ -27,4 +29,6 @@ abstract class _Paths {
   static const EXTENSION = '/extension';
   static const SETTING = '/setting';
   static const REDIRECT = '/redirect';
+  static const LOCK_SETUP = '/lock-setup';
+  static const LOCK_VERIFY = '/lock-verify';
 }

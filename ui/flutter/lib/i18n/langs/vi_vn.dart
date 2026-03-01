@@ -125,5 +125,10 @@ const viVN = {
     'desktopNotification': 'Thông báo trên màn hình',
     'notificationTaskDone': 'Nhiệm vụ hoàn thành',
     'notificationTaskError': 'Lỗi nhiệm vụ',
+    'appLockSetupTitle': 'Thiết lập mã PIN',
+    'appLockVerifyTitle': 'Nhập mã PIN',
+    'appLockPinMismatch': 'Mã PIN không khớp',
+    'appLockUseBiometrics': 'Mở khóa bằng sinh trắc học?',
+    'appLockSettingsTitle': 'Khóa ứng dụng',
   },
 };

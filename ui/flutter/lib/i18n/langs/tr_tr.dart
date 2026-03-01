@@ -196,5 +196,10 @@ const trTR = {
     'desktopNotification': 'Masaüstü Bildirimleri',
     'notificationTaskDone': 'Görev tamamlandı',
     'notificationTaskError': 'Görev hatası',
+    'appLockSetupTitle': 'PIN ayarla',
+    'appLockVerifyTitle': 'PIN girin',
+    'appLockPinMismatch': 'PIN\'ler eşleşmiyor',
+    'appLockUseBiometrics': 'Biyometrik ile kilit açılsın mı?',
+    'appLockSettingsTitle': 'Uygulama Kilidi',
   },
 };

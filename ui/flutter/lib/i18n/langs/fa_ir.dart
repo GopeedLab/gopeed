@@ -96,5 +96,10 @@ const faIR = {
     'desktopNotification': 'اعلان‌های دسکتاپ',
     'notificationTaskDone': 'وظیفه تکمیل شد',
     'notificationTaskError': 'خطای وظیفه',
+    'appLockSetupTitle': 'تنظیم پین',
+    'appLockVerifyTitle': 'وارد کردن پین',
+    'appLockPinMismatch': 'پین‌ها مطابقت ندارند',
+    'appLockUseBiometrics': 'باز کردن با بیومتریک؟',
+    'appLockSettingsTitle': 'قفل برنامه',
   }
 };

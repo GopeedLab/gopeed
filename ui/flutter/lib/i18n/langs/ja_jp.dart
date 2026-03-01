@@ -98,5 +98,10 @@ const jaJP = {
     'desktopNotification': 'デスクトップ通知',
     'notificationTaskDone': 'タスク完了',
     'notificationTaskError': 'タスクエラー',
+    'appLockSetupTitle': 'PINを設定',
+    'appLockVerifyTitle': 'PINを入力',
+    'appLockPinMismatch': 'PINが一致しません',
+    'appLockUseBiometrics': '生体認証でロック解除しますか？',
+    'appLockSettingsTitle': 'アプリロック',
   }
 };

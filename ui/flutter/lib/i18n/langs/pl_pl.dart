@@ -130,5 +130,10 @@ const plPL = {
     'desktopNotification': 'Powiadomienia na pulpicie',
     'notificationTaskDone': 'Zadanie zakończone',
     'notificationTaskError': 'Błąd zadania',
+    'appLockSetupTitle': 'Konfiguruj kod PIN',
+    'appLockVerifyTitle': 'Wprowadź kod PIN',
+    'appLockPinMismatch': 'Kody PIN nie pasują do siebie',
+    'appLockUseBiometrics': 'Odblokować za pomocą biometrii?',
+    'appLockSettingsTitle': 'Blokada aplikacji',
   },
 };

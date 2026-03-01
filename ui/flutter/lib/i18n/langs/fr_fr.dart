@@ -138,5 +138,10 @@ const frFR = {
     'desktopNotification': 'Notifications de bureau',
     'notificationTaskDone': 'Tâche terminée',
     'notificationTaskError': 'Erreur de tâche',
+    'appLockSetupTitle': 'Configurer le code PIN',
+    'appLockVerifyTitle': 'Saisir le code PIN',
+    'appLockPinMismatch': 'Les codes PIN ne correspondent pas',
+    'appLockUseBiometrics': 'Déverrouiller avec la biométrie ?',
+    'appLockSettingsTitle': 'Verrouillage de l\'application',
   },
 };

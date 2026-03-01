@@ -8,6 +8,7 @@ import '../../../../i18n/message.dart';
 import '../../../../theme/theme.dart';
 import '../../../../util/locale_manager.dart';
 import '../../../../util/util.dart'; // Import the required packages
+import '../../../../database/database.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/app_controller.dart';
 
