@@ -228,8 +228,8 @@ class ExtensionView extends GetView<ExtensionController> {
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
                 onChanged: controller.onStoreQueryChanged,
               );
@@ -341,8 +341,6 @@ class ExtensionView extends GetView<ExtensionController> {
     );
   }
 
-
-
   String _filterLabel(ExtensionFilter f) {
     switch (f) {
       case ExtensionFilter.all:
@@ -353,8 +351,6 @@ class ExtensionView extends GetView<ExtensionController> {
         return 'extensionFilterNotInstalled'.tr;
     }
   }
-
-
 
   String _sortFieldLabel(GopeedExtensionSortField field) {
     switch (field) {
@@ -470,8 +466,7 @@ class ExtensionView extends GetView<ExtensionController> {
                   width: iconSize,
                   height: iconSize,
                   headers: {
-                    'Authorization':
-                        'Bearer ${Database.instance.getWebToken()}'
+                    'Authorization': 'Bearer ${Database.instance.getWebToken()}'
                   },
                 )
               : Image.file(
@@ -522,8 +517,7 @@ class ExtensionView extends GetView<ExtensionController> {
         value: !ext.disabled,
         onChanged: (value) async {
           try {
-            await switchExtension(
-                ext.identity, SwitchExtension(status: value));
+            await switchExtension(ext.identity, SwitchExtension(status: value));
             await controller.load();
           } catch (e) {
             showErrorMessage(e);
@@ -555,17 +549,16 @@ class ExtensionView extends GetView<ExtensionController> {
       actions.add(IconButton(
           onPressed: () => _showDeleteDialog(ext),
           icon: const Icon(Icons.delete)));
-      actions.add(Obx(() =>
-          controller.updateFlags.containsKey(ext.identity)
-              ? badges.Badge(
-                  position: badges.BadgePosition.topStart(start: 36),
-                  child: IconButton(
-                      onPressed: () => _showUpdateDialog(ext),
-                      icon: const Icon(Icons.refresh)))
-              : IconButton(
-                  onPressed: () =>
-                      showMessage('tip'.tr, 'extensionAlreadyLatest'.tr),
-                  icon: const Icon(Icons.refresh))));
+      actions.add(Obx(() => controller.updateFlags.containsKey(ext.identity)
+          ? badges.Badge(
+              position: badges.BadgePosition.topStart(start: 36),
+              child: IconButton(
+                  onPressed: () => _showUpdateDialog(ext),
+                  icon: const Icon(Icons.refresh)))
+          : IconButton(
+              onPressed: () =>
+                  showMessage('tip'.tr, 'extensionAlreadyLatest'.tr),
+              icon: const Icon(Icons.refresh))));
     } else if (storeExt != null) {
       // Store-only: show homepage/code links + stats
       if (storeExt.homepage.isNotEmpty) {
@@ -577,21 +570,21 @@ class ExtensionView extends GetView<ExtensionController> {
         actions.add(IconButton(
             onPressed: () => launchUrl(Uri.parse(storeExt.repoUrl)),
             icon: const Icon(Icons.code)));
-            
+
         actions.add(installing
-          ? const SizedBox(
-              width: 40,
-              height: 40,
-              child: Padding(
-                padding: EdgeInsets.all(8.0),
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          : IconButton(
-              icon: const Icon(Icons.download),
-              tooltip: 'extensionInstallBtn'.tr,
-              onPressed: () => controller.installFromStore(storeExt),
-            ));
+            ? const SizedBox(
+                width: 40,
+                height: 40,
+                child: Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.download),
+                tooltip: 'extensionInstallBtn'.tr,
+                onPressed: () => controller.installFromStore(storeExt),
+              ));
       }
     }
     Widget? bottomTrailingRow;
@@ -616,20 +609,19 @@ class ExtensionView extends GetView<ExtensionController> {
               const Icon(Icons.star, size: 16, color: Colors.amber),
               const SizedBox(width: 4),
               Text('${storeExt.stars}',
-                  style:
-                      const TextStyle(fontSize: 13, color: Colors.blueGrey, height: 1.1)),
+                  style: const TextStyle(
+                      fontSize: 13, color: Colors.blueGrey, height: 1.1)),
             ],
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Icon(Icons.download,
-                  size: 16, color: Colors.blueGrey),
+              const Icon(Icons.download, size: 16, color: Colors.blueGrey),
               const SizedBox(width: 4),
               Text('${storeExt.installs}',
-                  style:
-                      const TextStyle(fontSize: 13, color: Colors.blueGrey, height: 1.1)),
+                  style: const TextStyle(
+                      fontSize: 13, color: Colors.blueGrey, height: 1.1)),
             ],
           ),
         ],
@@ -676,17 +668,12 @@ class ExtensionView extends GetView<ExtensionController> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        isInstalled
-                            ? ext.description
-                            : storeExt!.description,
+                        isInstalled ? ext.description : storeExt!.description,
                         maxLines: ResponsiveBuilder.isNarrow(context) ? 2 : 3,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.color,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
                           height: 1.4,
                         ),
                       ),
@@ -784,11 +771,11 @@ class ExtensionView extends GetView<ExtensionController> {
                       width: Get.theme.buttonTheme.minWidth,
                       height: Get.theme.buttonTheme.height),
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                            shape: const StadiumBorder())
-                        .copyWith(
-                            backgroundColor: MaterialStateProperty.all(
-                                Get.theme.colorScheme.background)),
+                    style:
+                        ElevatedButton.styleFrom(shape: const StadiumBorder())
+                            .copyWith(
+                                backgroundColor: MaterialStateProperty.all(
+                                    Get.theme.colorScheme.background)),
                     onPressed: () => Navigator.of(dialogContext).pop(),
                     child: Text('cancel'.tr),
                   ),
@@ -802,13 +789,11 @@ class ExtensionView extends GetView<ExtensionController> {
                       onPressed: () async {
                         try {
                           confrimController.start();
-                          if (formKey.currentState?.saveAndValidate() ==
-                              true) {
+                          if (formKey.currentState?.saveAndValidate() == true) {
                             await updateExtensionSettings(
                                 extension.identity,
                                 UpdateExtensionSettings(
-                                    settings:
-                                        formKey.currentState!.value));
+                                    settings: formKey.currentState!.value));
                             await controller.load();
                             if (dialogContext.mounted) {
                               Navigator.of(dialogContext).pop();
@@ -837,8 +822,7 @@ class ExtensionView extends GetView<ExtensionController> {
         name: setting.name,
         decoration: InputDecoration(labelText: setting.title),
         initialValue: setting.value?.toString(),
-        inputFormatters:
-            inputFormatter != null ? [inputFormatter] : null,
+        inputFormatters: inputFormatter != null ? [inputFormatter] : null,
         keyboardType: keyBoardType,
         validator: FormBuilderValidators.compose([
           requiredValidator,
@@ -966,4 +950,3 @@ class _ExtItem {
   const _ExtItem({this.storeExt, this.installedExt})
       : assert(storeExt != null || installedExt != null);
 }
-
