@@ -50,22 +50,9 @@ android {
         versionName flutterVersionName
     }
 
-    signingConfigs {
-        release {
-            keyAlias 'upload'
-            keyPassword System.getenv('APK_KEY_PASSWORD')
-            storeFile file('upload-keystore.jks')
-            storePassword System.getenv('APK_STORE_PASSWORD')
-        }
-    }
-
     buildTypes {
         release {
-            if (signingConfigs.release.keyPassword != null) {
-                signingConfig signingConfigs.release
-            } else {
-                signingConfig signingConfigs.debug
-            }
+            signingConfig signingConfigs.debug
         }
     }
 
