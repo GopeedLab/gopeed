@@ -19,8 +19,7 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>)
       ..webhook =
           WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
-      ..script =
-          ScriptConfig.fromJson(json['script'] as Map<String, dynamic>?)
+      ..script = ScriptConfig.fromJson(json['script'] as Map<String, dynamic>?)
       ..autoTorrent = AutoTorrentConfig.fromJson(
           json['autoTorrent'] as Map<String, dynamic>?)
       ..archive =
@@ -91,6 +90,7 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
       defaultBtClient: json['defaultBtClient'] as bool? ?? true,
       notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
       autoStartTasks: json['autoStartTasks'] as bool? ?? false,
+      desktopNotification: json['desktopNotification'] as bool? ?? true,
       downloadCategories: (json['downloadCategories'] as List<dynamic>?)
               ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -109,6 +109,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'defaultBtClient': instance.defaultBtClient,
       'notifyWhenNewVersion': instance.notifyWhenNewVersion,
       'autoStartTasks': instance.autoStartTasks,
+      'desktopNotification': instance.desktopNotification,
       'downloadCategories':
           instance.downloadCategories.map((e) => e.toJson()).toList(),
       'bt': instance.bt.toJson(),
@@ -156,8 +157,7 @@ Map<String, dynamic> _$WebhookConfigToJson(WebhookConfig instance) =>
       'urls': instance.urls,
     };
 
-ScriptConfig _$ScriptConfigFromJson(Map<String, dynamic> json) =>
-    ScriptConfig(
+ScriptConfig _$ScriptConfigFromJson(Map<String, dynamic> json) => ScriptConfig(
       enable: json['enable'] as bool? ?? false,
       paths:
           (json['paths'] as List<dynamic>?)?.map((e) => e as String).toList() ??

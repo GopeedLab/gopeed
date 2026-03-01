@@ -498,6 +498,27 @@ class SettingView extends GetView<SettingController> {
             );
           });
 
+    final buildDesktopNotification = !Util.isDesktop()
+        ? () => null
+        : _buildConfigItem('desktopNotification', () {
+            return appController.downloaderConfig.value.extra.desktopNotification
+                ? 'on'.tr
+                : 'off'.tr;
+          }, (Key key) {
+            return Container(
+              alignment: Alignment.centerLeft,
+              child: Switch(
+                value: appController.downloaderConfig.value.extra.desktopNotification,
+                onChanged: (bool value) async {
+                  appController.downloaderConfig.update((val) {
+                    val!.extra.desktopNotification = value;
+                  });
+                  await debounceSave();
+                },
+              ),
+            );
+          });
+
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;
     final buildHttpUa =
@@ -1592,6 +1613,7 @@ class SettingView extends GetView<SettingController> {
                             buildBrowserExtension(),
                             buildAutoStartup(),
                             buildMenubarMode(),
+                            buildDesktopNotification(),
                           ]),
                         )),
                         Text('archives'.tr),

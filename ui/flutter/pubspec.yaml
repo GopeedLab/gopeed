@@ -82,6 +82,7 @@ dependencies:
       ref: cf08af829f4a4145634f8a047108f505fdbe5eaa
   flutter_svg: ^2.0.17
   dart_ipc: ^1.0.1
+  flutter_local_notifications: 20.1.0
 dependency_overrides:
   permission_handler_windows:
     git:

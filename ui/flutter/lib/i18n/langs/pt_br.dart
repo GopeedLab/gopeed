@@ -153,5 +153,8 @@ const ptBR = {
     'categoryPath': 'Caminho da Categoria',
     'builtInCategory': 'Categoria integrada não pode ser excluída',
     'selectCategory': 'Selecionar Categoria',
+    'desktopNotification': 'Notificações na área de trabalho',
+    'notificationTaskDone': 'Tarefa concluída',
+    'notificationTaskError': 'Erro na tarefa',
   },
 };

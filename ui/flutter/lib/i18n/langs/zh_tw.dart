@@ -147,5 +147,8 @@ const zhTW = {
     'categoryPath': '分類路徑',
     'builtInCategory': '內建分類無法刪除',
     'selectCategory': '選擇分類',
+    'desktopNotification': '桌面通知',
+    'notificationTaskDone': '任務完成',
+    'notificationTaskError': '任務失敗',
   }
 };

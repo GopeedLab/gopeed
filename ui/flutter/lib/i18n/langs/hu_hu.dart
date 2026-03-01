@@ -156,5 +156,8 @@ const huHU = {
     'categoryPath': 'Kategória útvonala',
     'builtInCategory': 'A beépített kategória nem törölhető',
     'selectCategory': 'Kategória kiválasztása',
+    'desktopNotification': 'Asztali értesítések',
+    'notificationTaskDone': 'Feladat befejezve',
+    'notificationTaskError': 'Feladat hiba',
   },
 };

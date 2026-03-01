@@ -152,5 +152,8 @@ const ruRU = {
     'categoryPath': 'Путь категории',
     'builtInCategory': 'Встроенную категорию нельзя удалить',
     'selectCategory': 'Выбрать категорию',
+    'desktopNotification': 'Уведомления',
+    'notificationTaskDone': 'Задача завершена',
+    'notificationTaskError': 'Ошибка задачи',
   }
 };

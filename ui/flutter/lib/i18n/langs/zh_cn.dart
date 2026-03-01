@@ -188,5 +188,8 @@ const zhCN = {
     'pendingUpdateConfirm': '任务 "@name" 正在等待更新地址，是否使用新地址更新该任务？',
     'pendingUpdateYes': '更新任务',
     'pendingUpdateNo': '创建新任务',
+    'desktopNotification': '桌面通知',
+    'notificationTaskDone': '任务完成',
+    'notificationTaskError': '任务失败',
   }
 };

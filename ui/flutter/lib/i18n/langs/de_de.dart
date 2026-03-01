@@ -164,5 +164,8 @@ const deDE = {
     'categoryPath': 'Kategoriepfad',
     'builtInCategory': 'Integrierte Kategorie kann nicht gelöscht werden',
     'selectCategory': 'Kategorie auswählen',
+    'desktopNotification': 'Desktop-Benachrichtigungen',
+    'notificationTaskDone': 'Aufgabe abgeschlossen',
+    'notificationTaskError': 'Aufgabenfehler',
   },
 };

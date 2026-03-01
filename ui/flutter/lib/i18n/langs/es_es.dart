@@ -142,5 +142,8 @@ const esES = {
     'categoryPath': 'Ruta de categoría',
     'builtInCategory': 'La categoría incorporada no se puede eliminar',
     'selectCategory': 'Seleccionar categoría',
+    'desktopNotification': 'Notificaciones de escritorio',
+    'notificationTaskDone': 'Tarea completada',
+    'notificationTaskError': 'Error de tarea',
   },
 };

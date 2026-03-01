@@ -152,5 +152,8 @@ const ukUA = {
     'categoryPath': 'Шлях категорії',
     'builtInCategory': 'Вбудовану категорію неможливо видалити',
     'selectCategory': 'Вибрати категорію',
+    'desktopNotification': 'Сповіщення',
+    'notificationTaskDone': 'Завдання завершено',
+    'notificationTaskError': 'Помилка завдання',
   },
 };

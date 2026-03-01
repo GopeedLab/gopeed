@@ -193,5 +193,8 @@ const trTR = {
         '"@name" işlemi URL güncellemesi bekliyor. Yeni URL ile güncellemek istiyor musunuz?',
     'pendingUpdateYes': 'İşlemi Güncelle',
     'pendingUpdateNo': 'Yeni İşlem Oluştur',
+    'desktopNotification': 'Masaüstü Bildirimleri',
+    'notificationTaskDone': 'Görev tamamlandı',
+    'notificationTaskError': 'Görev hatası',
   },
 };
