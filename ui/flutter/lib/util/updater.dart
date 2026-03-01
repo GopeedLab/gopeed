@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart';
 import '../app/views/outlined_button_loading.dart';
+import 'gopeed_api.dart';
 import 'arch/arch.dart';
 import 'github_mirror.dart';
 import 'log_util.dart';
@@ -70,8 +71,7 @@ Future<VersionInfo?> checkUpdate() async {
             "https://api.github.com/repos/GopeedLab/gopeed/releases/latest"))
         .data;
   } catch (e) {
-    releaseDataStr =
-        (await proxyRequest("https://gopeed.com/api/release")).data;
+    releaseDataStr = await gopeedGetRelease();
   }
   if (releaseDataStr == null) {
     return null;

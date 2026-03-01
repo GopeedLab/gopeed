@@ -200,10 +200,10 @@ Future<void> putConfig(DownloaderConfig config) async {
   return _parse(() => _client.dio.put("api/v1/config", data: config), null);
 }
 
-Future<void> installExtension(InstallExtension installExtension) async {
+Future<String> installExtension(InstallExtension installExtension) async {
   return _parse(
       () => _client.dio.post("api/v1/extensions", data: installExtension),
-      null);
+      (data) => data as String);
 }
 
 Future<List<Extension>> getExtensions() async {
