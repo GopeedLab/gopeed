@@ -44,10 +44,8 @@ class LockVerifyController extends GetxController {
     try {
       authenticated = await auth.authenticate(
         localizedReason: 'appLockUseBiometrics'.tr,
-        options: const AuthenticationOptions(
-          biometricOnly: true,
-          stickyAuth: true,
-        ),
+        biometricOnly: true,
+        persistAcrossBackgrounding: true,
       );
     } catch (e) {
       // Handle error or just ignore to allow PIN fallback
