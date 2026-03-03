@@ -275,7 +275,8 @@ class AppController extends GetxController with WindowListener, TrayListener {
         label: "create".tr,
         onClick: (menuItem) async => {
           await windowManager.show(),
-          await Get.rootDelegate.offAndToNamed(Routes.CREATE),
+          if (!Database.instance.getAppLockEnabled())
+            await Get.rootDelegate.offAndToNamed(Routes.CREATE),
         },
       ),
       MenuItem(
@@ -290,7 +291,8 @@ class AppController extends GetxController with WindowListener, TrayListener {
         label: 'setting'.tr,
         onClick: (menuItem) async => {
           await windowManager.show(),
-          await Get.rootDelegate.offAndToNamed(Routes.SETTING),
+          if (!Database.instance.getAppLockEnabled())
+            await Get.rootDelegate.offAndToNamed(Routes.SETTING),
         },
       ),
       MenuItem.separator(),

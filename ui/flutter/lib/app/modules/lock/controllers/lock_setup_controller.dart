@@ -42,11 +42,8 @@ class LockSetupController extends GetxController {
   Future<void> _savePinAndFinish(String pin) async {
     // 1. Save PIN to secure storage
     await secureStorage.write(key: 'app_lock_pin', value: pin);
-    
-    // 2. Mark app lock as enabled in fast Database
-    Database.instance.setAppLockEnabled(true);
 
-    // 3. Check for Biometrics
+    // 2. Check for Biometrics
     bool canCheckBiometrics = false;
     try {
       if (Util.isMobile() || Util.isMacos() || Util.isWindows()) {
@@ -91,7 +88,10 @@ class LockSetupController extends GetxController {
       }
     }
 
-    // Go back to previous screen (Settings)
-    Get.back(result: true);
+    // 3. Mark app lock as enabled LAST — after PIN is saved and biometrics handled
+    Database.instance.setAppLockEnabled(true);
+
+    // 4. Go back to settings via root delegate (we navigated here via rootDelegate)
+    Get.rootDelegate.back();
   }
 }

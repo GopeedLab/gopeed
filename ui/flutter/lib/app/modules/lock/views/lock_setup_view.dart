@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
 import 'package:gopeed/app/modules/lock/controllers/lock_setup_controller.dart';
-import 'package:gopeed/util/util.dart';
+
+const _gopeedGreen = Color(0xFF79C476);
 
 class LockSetupView extends GetView<LockSetupController> {
   const LockSetupView({Key? key}) : super(key: key);
@@ -10,34 +11,45 @@ class LockSetupView extends GetView<LockSetupController> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final isDark = theme.brightness == Brightness.dark;
+
     final defaultPinTheme = PinTheme(
       width: 56,
       height: 56,
-      textStyle: const TextStyle(
+      textStyle: TextStyle(
         fontSize: 22,
-        color: Color.fromRGBO(30, 60, 87, 1),
+        fontWeight: FontWeight.w600,
+        color: isDark ? Colors.white : Colors.black87,
       ),
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+        color: isDark ? Colors.grey[850] : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _gopeedGreen.withOpacity(0.3)),
       ),
     );
 
     final focusedPinTheme = defaultPinTheme.copyDecorationWith(
-      border: Border.all(color: theme.colorScheme.primary),
-      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: _gopeedGreen, width: 2),
+      borderRadius: BorderRadius.circular(12),
+    );
+
+    final submittedPinTheme = defaultPinTheme.copyDecorationWith(
+      border: Border.all(color: _gopeedGreen.withOpacity(0.6)),
+      borderRadius: BorderRadius.circular(12),
     );
 
     final errorPinTheme = defaultPinTheme.copyDecorationWith(
-      border: Border.all(color: theme.colorScheme.error),
+      border: Border.all(color: theme.colorScheme.error, width: 2),
     );
 
     return Scaffold(
       appBar: AppBar(
         title: Text('appLockSetupTitle'.tr),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Get.rootDelegate.back(),
+        ),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -47,12 +59,12 @@ class LockSetupView extends GetView<LockSetupController> {
               Icon(
                 Icons.lock_outline,
                 size: 80,
-                color: theme.colorScheme.primary,
+                color: _gopeedGreen,
               ),
               const SizedBox(height: 30),
               Obx(() => Text(
                     controller.isConfirming.value
-                        ? 'confirm'.tr + ' PIN'
+                        ? '${'confirm'.tr} PIN'
                         : 'appLockSetupTitle'.tr,
                     style: theme.textTheme.headlineSmall,
                   )),
@@ -62,9 +74,12 @@ class LockSetupView extends GetView<LockSetupController> {
                       controller: controller.confirmPinController,
                       length: 4,
                       obscureText: true,
+                      obscuringCharacter: '●',
+                      showCursor: true,
                       autofocus: true,
                       defaultPinTheme: defaultPinTheme,
                       focusedPinTheme: focusedPinTheme,
+                      submittedPinTheme: submittedPinTheme,
                       errorPinTheme: errorPinTheme,
                       onChanged: (_) => controller.resetError(),
                       onCompleted: controller.onPinCompleted,
@@ -73,9 +88,12 @@ class LockSetupView extends GetView<LockSetupController> {
                       controller: controller.pinController,
                       length: 4,
                       obscureText: true,
+                      obscuringCharacter: '●',
+                      showCursor: true,
                       autofocus: true,
                       defaultPinTheme: defaultPinTheme,
                       focusedPinTheme: focusedPinTheme,
+                      submittedPinTheme: submittedPinTheme,
                       onCompleted: controller.onPinCompleted,
                     )),
               const SizedBox(height: 20),

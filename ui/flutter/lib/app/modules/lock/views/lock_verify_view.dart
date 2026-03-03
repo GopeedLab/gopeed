@@ -5,16 +5,18 @@ import 'package:gopeed/app/modules/lock/controllers/lock_verify_controller.dart'
 import 'package:gopeed/database/database.dart';
 import 'package:gopeed/util/util.dart';
 
+const _gopeedGreen = Color(0xFF79C476);
+
 class LockVerifyView extends GetView<LockVerifyController> {
   const LockVerifyView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // If not locked and got here by accident, just pop back
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final hasBiometrics = Database.instance.getBiometricsEnabled();
 
-    // Use fingerprint icon on Android/Linux/Windows, FaceID on macOS/iOS (simplified)
+    // Use fingerprint icon on Android/Linux/Windows, FaceID on macOS/iOS
     final biometricIcon = Util.isIOS() || Util.isMacos() 
         ? Icons.face_retouching_natural
         : Icons.fingerprint;
@@ -22,24 +24,30 @@ class LockVerifyView extends GetView<LockVerifyController> {
     final defaultPinTheme = PinTheme(
       width: 56,
       height: 56,
-      textStyle: const TextStyle(
+      textStyle: TextStyle(
         fontSize: 22,
-        color: Color.fromRGBO(30, 60, 87, 1),
+        fontWeight: FontWeight.w600,
+        color: isDark ? Colors.white : Colors.black87,
       ),
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+        color: isDark ? Colors.grey[850] : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _gopeedGreen.withOpacity(0.3)),
       ),
     );
 
     final focusedPinTheme = defaultPinTheme.copyDecorationWith(
-      border: Border.all(color: theme.colorScheme.primary),
-      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: _gopeedGreen, width: 2),
+      borderRadius: BorderRadius.circular(12),
+    );
+
+    final submittedPinTheme = defaultPinTheme.copyDecorationWith(
+      border: Border.all(color: _gopeedGreen.withOpacity(0.6)),
+      borderRadius: BorderRadius.circular(12),
     );
 
     final errorPinTheme = defaultPinTheme.copyDecorationWith(
-      border: Border.all(color: theme.colorScheme.error),
+      border: Border.all(color: theme.colorScheme.error, width: 2),
     );
 
     return Scaffold(
@@ -51,7 +59,7 @@ class LockVerifyView extends GetView<LockVerifyController> {
               Icon(
                 Icons.lock,
                 size: 80,
-                color: theme.colorScheme.primary,
+                color: _gopeedGreen,
               ),
               const SizedBox(height: 30),
               Text(
@@ -63,9 +71,12 @@ class LockVerifyView extends GetView<LockVerifyController> {
                 controller: controller.pinController,
                 length: 4,
                 obscureText: true,
+                obscuringCharacter: '●',
+                showCursor: true,
                 autofocus: true,
                 defaultPinTheme: defaultPinTheme,
                 focusedPinTheme: focusedPinTheme,
+                submittedPinTheme: submittedPinTheme,
                 errorPinTheme: errorPinTheme,
                 onChanged: (_) => controller.resetError(),
                 onCompleted: controller.onPinCompleted,
@@ -92,7 +103,7 @@ class LockVerifyView extends GetView<LockVerifyController> {
                     child: Icon(
                       biometricIcon,
                       size: 60,
-                      color: theme.colorScheme.primary,
+                      color: _gopeedGreen,
                     ),
                   ),
                 ),
