@@ -11,18 +11,20 @@ class LockSetupController extends GetxController {
   
   final isConfirming = false.obs;
   final pinError = false.obs;
+  String _firstPin = '';
 
   final LocalAuthentication auth = LocalAuthentication();
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   void onPinCompleted(String pin) {
     if (!isConfirming.value) {
-      // First step done, move to confirmation
+      // First step done, save and move to confirmation
+      _firstPin = pin;
       isConfirming.value = true;
       pinController.clear();
     } else {
-      // Confirmation step
-      if (confirmPinController.text == pin) {
+      // Confirmation step — compare with the first PIN
+      if (_firstPin == pin) {
         _savePinAndFinish(pin);
       } else {
         pinError.value = true;

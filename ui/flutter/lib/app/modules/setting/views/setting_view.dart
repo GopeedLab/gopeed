@@ -846,7 +846,7 @@ class SettingView extends GetView<SettingController> {
           onChanged: (bool value) async {
             if (value) {
               // Redirect to setup page
-              await Get.toNamed(Routes.LOCK_SETUP);
+              await Get.rootDelegate.toNamed(Routes.LOCK_SETUP);
               // Force UI refresh to reflect updated database state
               controller.clearTap();
             } else {
