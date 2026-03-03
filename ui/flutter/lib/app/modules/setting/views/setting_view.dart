@@ -847,13 +847,16 @@ class SettingView extends GetView<SettingController> {
             if (value) {
               // Redirect to setup page
               await Get.toNamed(Routes.LOCK_SETUP);
+              // Force UI refresh to reflect updated database state
+              controller.clearTap();
             } else {
               // Disable immediately
               Database.instance.setAppLockEnabled(false);
               Database.instance.setBiometricsEnabled(false);
               // Important to delete the pin from secure storage
-              final storage = Get.find<FlutterSecureStorage>();
+              const storage = FlutterSecureStorage();
               await storage.delete(key: 'app_lock_pin');
+              controller.clearTap();
               await debounceSave();
             }
           },
