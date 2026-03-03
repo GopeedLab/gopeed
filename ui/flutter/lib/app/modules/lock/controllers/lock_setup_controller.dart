@@ -91,7 +91,7 @@ class LockSetupController extends GetxController {
     // 3. Mark app lock as enabled LAST — after PIN is saved and biometrics handled
     Database.instance.setAppLockEnabled(true);
 
-    // 4. Go back to settings via root delegate (we navigated here via rootDelegate)
+    // 4. Navigate back to settings
     Get.rootDelegate.popRoute();
   }
 }

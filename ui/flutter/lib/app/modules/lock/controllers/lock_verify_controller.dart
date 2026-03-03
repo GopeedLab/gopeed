@@ -57,9 +57,8 @@ class LockVerifyController extends GetxController {
   }
 
   void _unlockApp() {
-    // Navigate back to the previous context, or to RootView.
-    // If we presented this screen over everything, we can just Get.offAllNamed(Routes.ROOT);
-    // Setting `isLocked` state in AppController will also help.
-    Get.offAllNamed(Routes.ROOT);
+    // Navigate to HOME directly — do NOT use Routes.ROOT which would
+    // rebuild RootView and re-check getAppLockEnabled() → infinite loop
+    Get.rootDelegate.offAndToNamed(Routes.HOME);
   }
 }
