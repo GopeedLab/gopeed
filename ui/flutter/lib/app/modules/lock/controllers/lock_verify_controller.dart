@@ -14,11 +14,14 @@ class LockVerifyController extends GetxController {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   @override
-  void onInit() {
-    super.onInit();
-    // Try biometrics on start if enabled
+  void onReady() {
+    super.onReady();
+    // Auto-trigger biometrics if enabled — use onReady (not onInit)
+    // because the Android Activity must be fully visible for biometric prompt
     if (Database.instance.getBiometricsEnabled()) {
-      checkBiometrics();
+      Future.delayed(const Duration(milliseconds: 500), () {
+        checkBiometrics();
+      });
     }
   }
 

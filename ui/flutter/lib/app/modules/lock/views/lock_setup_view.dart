@@ -81,7 +81,9 @@ class LockSetupView extends GetView<LockSetupController> {
                       focusedPinTheme: focusedPinTheme,
                       submittedPinTheme: submittedPinTheme,
                       errorPinTheme: errorPinTheme,
-                      onChanged: (_) => controller.resetError(),
+                      onChanged: (value) {
+                        if (value.isNotEmpty) controller.resetError();
+                      },
                       onCompleted: controller.onPinCompleted,
                     )
                   : Pinput(
