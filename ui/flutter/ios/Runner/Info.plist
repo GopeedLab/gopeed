@@ -102,5 +102,9 @@
 		</array>
 
 		<!-- Add for share_handler end -->
+
+		<!-- Required for Face ID biometric authentication (local_auth) -->
+		<key>NSFaceIDUsageDescription</key>
+		<string>Gopeed uses Face ID to unlock the app</string>
 	</dict>
 </plist>

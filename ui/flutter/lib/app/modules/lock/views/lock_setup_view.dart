@@ -48,7 +48,7 @@ class LockSetupView extends GetView<LockSetupController> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => Get.rootDelegate.back(),
+          onPressed: () => Get.rootDelegate.popRoute(),
         ),
       ),
       body: Center(

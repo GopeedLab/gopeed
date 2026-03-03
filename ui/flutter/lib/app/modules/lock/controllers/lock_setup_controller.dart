@@ -92,6 +92,6 @@ class LockSetupController extends GetxController {
     Database.instance.setAppLockEnabled(true);
 
     // 4. Go back to settings via root delegate (we navigated here via rootDelegate)
-    Get.rootDelegate.back();
+    Get.rootDelegate.popRoute();
   }
 }
