@@ -127,7 +127,7 @@ const trTR = {
     'extensionFilterMarket': 'Market',
     'extensionFilterInstalled': 'Yüklü',
     'extensionManualInstall': 'Manuel Yükleme',
-    'extensionInstallTools': 'Yükleme Seçenekleri'
+    'extensionInstallTools': 'Yükleme Seçenekleri',
     'history': 'Geçmiş',
     'clearHistory': 'Geçmişi Temizle',
     'noHistoryFound': 'Geçmiş Bulunamadı',
