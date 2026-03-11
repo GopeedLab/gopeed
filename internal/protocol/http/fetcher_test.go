@@ -307,6 +307,99 @@ func TestFetcher_DownloadChunked(t *testing.T) {
 	downloadNormal(listener, 2, t)
 }
 
+func TestFetcher_DownloadChunkedContinue(t *testing.T) {
+	listener := test.StartTestCustomServer()
+	defer listener.Close()
+
+	downloadContinue(listener, 1, t)
+}
+
+func TestFetcher_DownloadNoRangeWithSize(t *testing.T) {
+	listener := test.StartTestNoRangeServer()
+	defer listener.Close()
+
+	downloadNormal(listener, 1, t)
+}
+
+func TestFetcher_DownloadNoRangeContinue(t *testing.T) {
+	listener := test.StartTestNoRangeServer()
+	defer listener.Close()
+
+	downloadContinue(listener, 1, t)
+}
+
+// TestFetcher_DownloadNoRangeNotExceedSize verifies that when a server returns
+// Content-Length but doesn't support Range requests, the downloaded bytes never
+// exceed the total file size after pause and resume.
+func TestFetcher_DownloadNoRangeNotExceedSize(t *testing.T) {
+	listener := test.StartTestNoRangeServer()
+	defer listener.Close()
+
+	fetcher := downloadReady(listener, 1, t)
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Let it download some data
+	time.Sleep(time.Millisecond * 50)
+	if err := fetcher.Pause(); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Millisecond * 50)
+	if err := fetcher.Start(); err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify total downloaded does not exceed file size
+	totalDownloaded := fetcher.Progress().TotalDownloaded()
+	if totalDownloaded > test.BuildSize {
+		t.Errorf("Downloaded %d bytes exceeds file size %d", totalDownloaded, test.BuildSize)
+	}
+
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
+// TestFetcher_DownloadChunkedNotExceedSize verifies that when a server doesn't
+// return Content-Length (chunked transfer), the download properly handles
+// pause/resume without accumulating extra bytes.
+func TestFetcher_DownloadChunkedNotExceedSize(t *testing.T) {
+	listener := test.StartTestCustomServer()
+	defer listener.Close()
+
+	fetcher := downloadReady(listener, 1, t)
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Let it download some data
+	time.Sleep(time.Millisecond * 50)
+	if err := fetcher.Pause(); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Millisecond * 50)
+	if err := fetcher.Start(); err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
 func TestFetcher_DownloadPost(t *testing.T) {
 	listener := test.StartTestPostServer()
 	defer listener.Close()

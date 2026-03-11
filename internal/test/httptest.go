@@ -636,6 +636,25 @@ func StartTestRangeBugServer() net.Listener {
 	})
 }
 
+// StartTestNoRangeServer starts a server that returns Content-Length but does NOT support Range requests.
+// This simulates servers where file size is known but range downloads are not supported.
+func StartTestNoRangeServer() net.Listener {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+			writer.WriteHeader(200)
+			io.Copy(writer, file)
+		})
+		return mux
+	})
+}
+
 func rangeFileHandle(writer http.ResponseWriter, request *http.Request, modifyEnd func(end int64) int64, iocpN func(file *os.File, n int64)) {
 	r := request.Header.Get("Range")
 

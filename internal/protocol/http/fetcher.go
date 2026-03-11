@@ -987,6 +987,14 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		f.connMu.Unlock()
 		return nil
 	}
+	// For non-range downloads, reset chunk state since server will send from beginning.
+	// Without Range support, each new request restarts the entire transfer.
+	if !f.meta.Res.Range {
+		conn.Chunk.Begin = 0
+		conn.Chunk.End = 0
+		conn.Chunk.Downloaded = 0
+		conn.Downloaded = 0
+	}
 	rangeStart := conn.Chunk.Begin + conn.Chunk.Downloaded
 	rangeEnd := conn.Chunk.End
 	f.connMu.Unlock()
@@ -1078,6 +1086,17 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 				}
 				if remain < int64(n) {
 					n = int(remain)
+					finished = true
+				}
+			} else if f.meta.Res.Size > 0 {
+				// For non-range downloads with known size, enforce size limit
+				remaining := f.meta.Res.Size - conn.Downloaded
+				if remaining <= 0 {
+					f.connMu.Unlock()
+					return nil
+				}
+				if remaining < int64(n) {
+					n = int(remaining)
 					finished = true
 				}
 			}
@@ -1174,6 +1193,21 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 		n, err := reader.Read(buf)
 		if n > 0 {
+			// For non-range downloads with known size, enforce size limit
+			if !f.meta.Res.Range && f.meta.Res.Size > 0 {
+				remaining := f.meta.Res.Size - conn.Downloaded
+				if remaining <= 0 {
+					f.connMu.Lock()
+					conn.Completed = true
+					conn.State = connCompleted
+					f.connMu.Unlock()
+					return
+				}
+				if remaining < int64(n) {
+					n = int(remaining)
+				}
+			}
+
 			f.fileMu.Lock()
 			if f.file != nil {
 				_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
@@ -1193,6 +1227,15 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 			conn.Chunk.Downloaded += int64(n)
 			conn.Downloaded += int64(n)
+
+			// Check if size limit reached after updating counters
+			if !f.meta.Res.Range && f.meta.Res.Size > 0 && conn.Downloaded >= f.meta.Res.Size {
+				f.connMu.Lock()
+				conn.Completed = true
+				conn.State = connCompleted
+				f.connMu.Unlock()
+				return
+			}
 		}
 		if err != nil {
 			if err == io.EOF {
@@ -1232,6 +1275,14 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 
 		f.connMu.Lock()
 		conn.State = connConnecting
+		// For non-range downloads, reset chunk state since server will send from beginning.
+		// Without Range support, each new request restarts the entire transfer.
+		if !f.meta.Res.Range {
+			conn.Chunk.Begin = 0
+			conn.Chunk.End = 0
+			conn.Chunk.Downloaded = 0
+			conn.Downloaded = 0
+		}
 		f.connMu.Unlock()
 
 		err := func() error {
@@ -1276,6 +1327,17 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 
 				n, err := reader.Read(buf)
 				if n > 0 {
+					// For non-range downloads with known size, enforce size limit
+					if !f.meta.Res.Range && f.meta.Res.Size > 0 {
+						remaining := f.meta.Res.Size - conn.Downloaded
+						if remaining <= 0 {
+							return nil
+						}
+						if remaining < int64(n) {
+							n = int(remaining)
+						}
+					}
+
 					f.fileMu.Lock()
 					if f.file != nil {
 						_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
@@ -1475,17 +1537,31 @@ func (f *Fetcher) onDownloadComplete() {
 	// Check if all chunks are complete (no remaining bytes)
 	allChunksComplete := true
 	for _, conn := range f.connections {
-		if conn.Chunk != nil && conn.Chunk.remain() > 0 && !conn.Completed && conn.State != connCompleted {
-			// This connection has remaining work and isn't done
-			// Check if it failed with 403 (server limit) - these can be ignored if other connections completed the work
-			if conn.State == connFailed && conn.failed {
-				if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
-					// 403 is server connection limit, check if other connections will complete this chunk
-					continue
+		if !conn.Completed && conn.State != connCompleted {
+			if f.meta.Res.Range {
+				// For range downloads, use chunk remain() to check completion
+				if conn.Chunk != nil && conn.Chunk.remain() > 0 {
+					// This connection has remaining work and isn't done
+					// Check if it failed with 403 (server limit) - these can be ignored if other connections completed the work
+					if conn.State == connFailed && conn.failed {
+						if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
+							continue
+						}
+					}
+					allChunksComplete = false
+					break
 				}
+			} else {
+				// For non-range downloads, completion is determined solely by EOF (conn.Completed).
+				// chunk.remain() is unreliable for non-range chunks (Begin=0, End=0).
+				if conn.State == connFailed && conn.failed {
+					if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
+						continue
+					}
+				}
+				allChunksComplete = false
+				break
 			}
-			allChunksComplete = false
-			break
 		}
 	}
 
