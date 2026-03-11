@@ -872,9 +872,9 @@ func (f *Fetcher) expandConnections() {
 	f.connMu.Unlock()
 
 	if len(newConns) == 0 {
-		// No new connections could be created, stop expansion
+		// No new connections could be created, stop expansion.
+		// The downloadLoop will check stateSteady and call waitForCompletion.
 		f.setState(stateSteady)
-		go f.waitForCompletion()
 		return
 	}
 
@@ -1195,9 +1195,9 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 		if n > 0 {
 			// For non-range downloads with known size, enforce size limit
 			if !f.meta.Res.Range && f.meta.Res.Size > 0 {
+				f.connMu.Lock()
 				remaining := f.meta.Res.Size - conn.Downloaded
 				if remaining <= 0 {
-					f.connMu.Lock()
 					conn.Completed = true
 					conn.State = connCompleted
 					f.connMu.Unlock()
@@ -1206,6 +1206,7 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 				if remaining < int64(n) {
 					n = int(remaining)
 				}
+				f.connMu.Unlock()
 			}
 
 			f.fileMu.Lock()
@@ -1225,17 +1226,18 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 			}
 			f.fileMu.Unlock()
 
+			f.connMu.Lock()
 			conn.Chunk.Downloaded += int64(n)
 			conn.Downloaded += int64(n)
 
 			// Check if size limit reached after updating counters
 			if !f.meta.Res.Range && f.meta.Res.Size > 0 && conn.Downloaded >= f.meta.Res.Size {
-				f.connMu.Lock()
 				conn.Completed = true
 				conn.State = connCompleted
 				f.connMu.Unlock()
 				return
 			}
+			f.connMu.Unlock()
 		}
 		if err != nil {
 			if err == io.EOF {
