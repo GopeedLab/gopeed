@@ -1,0 +1,120 @@
+name: Android
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: go.sum
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Locate Android NDK and SDK
+        run: |
+          ANDROID_SDK=/usr/local/lib/android/sdk
+          echo "ANDROID_HOME=${ANDROID_SDK}" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK}" >> $GITHUB_ENV
+          NDK_DIR=$(ls -d ${ANDROID_SDK}/ndk/* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$NDK_DIR" ]; then
+            ${ANDROID_SDK}/cmdline-tools/latest/bin/sdkmanager "ndk;27.2.12479018" --sdk_root=${ANDROID_SDK}
+            NDK_DIR="${ANDROID_SDK}/ndk/27.2.12479018"
+          fi
+          echo "ANDROID_NDK_HOME=${NDK_DIR}" >> $GITHUB_ENV
+
+      - name: Install gomobile
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          gomobile init
+
+      - name: Add golang.org/x/mobile dependency
+        run: go get golang.org/x/mobile@latest
+
+      - name: Build Android AAR (libgopeed)
+        id: gomobile-build
+        continue-on-error: true
+        run: |
+          mkdir -p ui/flutter/android/app/libs
+          gomobile bind \
+            -v \
+            -tags nosqlite \
+            -ldflags="-w -s -checklinkname=0 -X github.com/GopeedLab/gopeed/pkg/base.Version=v1.0.0" \
+            -target=android \
+            -androidapi=21 \
+            -javapkg=com.gopeed \
+            -o ui/flutter/android/app/libs/libgopeed.aar \
+            github.com/GopeedLab/gopeed/bind/mobile \
+            > /tmp/gomobile-out.txt 2>&1
+
+      - name: Report gomobile output
+        if: always()
+        run: |
+          LAST=$(tail -40 /tmp/gomobile-out.txt 2>/dev/null | tr '\n' '|')
+          echo "::error title=Gomobile Last 40 Lines::${LAST}"
+          if [ "${{ steps.gomobile-build.outcome }}" = "failure" ]; then exit 1; fi
+
+      - name: Decode keystore
+        env:
+          APK_KEYSTORE: ${{ secrets.APK_KEYSTORE }}
+        run: echo "$APK_KEYSTORE" | base64 -d > ui/flutter/android/app/upload-keystore.jks
+
+      - name: Build APKs
+        id: flutter-build
+        continue-on-error: true
+        env:
+          APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
+          APK_STORE_PASSWORD: ${{ secrets.APK_STORE_PASSWORD }}
+        run: |
+          cd ui/flutter
+          {
+            flutter pub get
+            flutter build apk --release --split-per-abi
+            flutter build apk --release
+          } > /tmp/flutter-out.txt 2>&1
+
+      - name: Report flutter output
+        if: always()
+        run: |
+          LAST=$(tail -50 /tmp/flutter-out.txt 2>/dev/null | tr '\n' '|')
+          echo "::error title=Flutter Build Output::${LAST}"
+          if [ "${{ steps.flutter-build.outcome }}" = "failure" ]; then exit 1; fi
+
+      - name: Upload APKs to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          files: |
+            ui/flutter/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+            ui/flutter/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            ui/flutter/build/app/outputs/flutter-apk/app-x86_64-release.apk
+            ui/flutter/build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import 'debrid.dart';
+
 part 'downloader_config.g.dart';
 
 @JsonSerializable(explicitToJson: true)
@@ -14,6 +16,7 @@ class DownloaderConfig {
   AutoTorrentConfig autoTorrent = AutoTorrentConfig();
   ArchiveConfig archive = ArchiveConfig();
   bool autoDeleteMissingFileTasks;
+  DebridConfig debrid = DebridConfig();
 
   DownloaderConfig({
     this.downloadDir = '',

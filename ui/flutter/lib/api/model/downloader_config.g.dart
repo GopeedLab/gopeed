@@ -23,7 +23,10 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..autoTorrent = AutoTorrentConfig.fromJson(
           json['autoTorrent'] as Map<String, dynamic>?)
       ..archive =
-          ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?);
+          ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?)
+      ..debrid = json['debrid'] == null
+          ? DebridConfig()
+          : DebridConfig.fromJson(json['debrid'] as Map<String, dynamic>);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
     <String, dynamic>{
@@ -37,6 +40,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'autoTorrent': instance.autoTorrent.toJson(),
       'archive': instance.archive.toJson(),
       'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
+      'debrid': instance.debrid.toJson(),
     };
 
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>

@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/api.dart' as api;
+import '../../../../api/model/debrid.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../database/database.dart';
 import '../../../../util/analytics.dart';
@@ -1637,6 +1638,19 @@ class SettingView extends GetView<SettingController> {
                             buildHttpUseServerCtime(),
                           ]),
                         )),
+                        const Text('Debrid Services'),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: _DebridSettingsWidget(
+                              config: downloaderCfg.value.debrid,
+                              onChanged: (cfg) {
+                                downloaderCfg.value.debrid = cfg;
+                                debounceSave();
+                              },
+                            ),
+                          ),
+                        ),
                         const Text('BitTorrent'),
                         Card(
                             child: Column(
@@ -2248,5 +2262,187 @@ extension ProxyMode on ProxyConfig {
         system = false;
         break;
     }
+  }
+}
+
+// ── Debrid Settings ──────────────────────────────────────────────────────────
+
+class _DebridSettingsWidget extends StatefulWidget {
+  final DebridConfig config;
+  final void Function(DebridConfig) onChanged;
+
+  const _DebridSettingsWidget(
+      {required this.config, required this.onChanged});
+
+  @override
+  State<_DebridSettingsWidget> createState() => _DebridSettingsWidgetState();
+}
+
+class _DebridSettingsWidgetState extends State<_DebridSettingsWidget> {
+  late String _active;
+  late TextEditingController _torBoxCtrl;
+  late TextEditingController _rdCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _active = widget.config.active;
+    _torBoxCtrl =
+        TextEditingController(text: widget.config.torBoxKey);
+    _rdCtrl =
+        TextEditingController(text: widget.config.realDebridKey);
+  }
+
+  @override
+  void dispose() {
+    _torBoxCtrl.dispose();
+    _rdCtrl.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    widget.onChanged(DebridConfig(
+      active: _active,
+      torBoxKey: _torBoxCtrl.text.trim(),
+      realDebridKey: _rdCtrl.text.trim(),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── TorBox ──────────────────────────────────────────────────────────
+        _ServiceTile(
+          label: 'TorBox',
+          subtitle: 'torbox.app',
+          isDefault: _active == 'torbox',
+          onSetDefault: () => setState(() {
+            _active = _active == 'torbox' ? '' : 'torbox';
+            _save();
+          }),
+        ),
+        _ApiKeyField(
+          label: 'TorBox API Key',
+          hint: 'Get yours at torbox.app/settings',
+          controller: _torBoxCtrl,
+          onChanged: (_) => _save(),
+        ),
+        const Divider(height: 24),
+        // ── Real-Debrid ──────────────────────────────────────────────────────
+        _ServiceTile(
+          label: 'Real-Debrid',
+          subtitle: 'real-debrid.com',
+          isDefault: _active == 'realdebrid',
+          onSetDefault: () => setState(() {
+            _active = _active == 'realdebrid' ? '' : 'realdebrid';
+            _save();
+          }),
+        ),
+        _ApiKeyField(
+          label: 'Real-Debrid API Key',
+          hint: 'Get yours at real-debrid.com/apitoken',
+          controller: _rdCtrl,
+          onChanged: (_) => _save(),
+        ),
+        if (_active.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Color(0xFF00BCD4), size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  'Active: ${_active == 'torbox' ? 'TorBox' : 'Real-Debrid'}',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ServiceTile extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final bool isDefault;
+  final VoidCallback onSetDefault;
+
+  const _ServiceTile({
+    required this.label,
+    required this.subtitle,
+    required this.isDefault,
+    required this.onSetDefault,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(subtitle,
+                  style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+        TextButton(
+          onPressed: onSetDefault,
+          child: Text(isDefault ? 'Active ✓' : 'Set as default'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ApiKeyField extends StatefulWidget {
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final void Function(String) onChanged;
+
+  const _ApiKeyField({
+    required this.label,
+    required this.hint,
+    required this.controller,
+    required this.onChanged,
+  });
+
+  @override
+  State<_ApiKeyField> createState() => _ApiKeyFieldState();
+}
+
+class _ApiKeyFieldState extends State<_ApiKeyField> {
+  bool _obscure = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: TextField(
+        controller: widget.controller,
+        obscureText: _obscure,
+        onChanged: widget.onChanged,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          hintText: widget.hint,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          suffixIcon: IconButton(
+            icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+            onPressed: () => setState(() => _obscure = !_obscure),
+          ),
+        ),
+      ),
+    );
   }
 }

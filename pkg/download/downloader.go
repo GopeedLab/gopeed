@@ -15,7 +15,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"context"
+
 	"github.com/GopeedLab/gopeed/internal/controller"
+	"github.com/GopeedLab/gopeed/internal/debrid"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -375,6 +378,13 @@ func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *Resolve
 		return
 	}
 
+	// Debrid resolve: if a debrid service is active and this is a magnet/torrent,
+	// route through the debrid service before falling back to extensions or fetchers.
+	if debridRes, debridErr := d.resolveViaDebrid(req); debridErr == nil && debridRes != nil {
+		rr = &ResolveResult{Res: debridRes}
+		return
+	}
+
 	res, err := d.triggerOnResolve(req)
 	if err != nil {
 		return
@@ -406,6 +416,61 @@ func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *Resolve
 		Res: fetcher.Meta().Res,
 	}
 	return
+}
+
+// resolveViaDebrid routes a magnet URI or .torrent URL through the configured
+// debrid service.  Returns (nil, nil) when debrid is disabled or the URL is
+// not a debrid candidate — callers should fall through to extensions/fetchers.
+func (d *Downloader) resolveViaDebrid(req *base.Request) (*base.Resource, error) {
+	cfg := d.cfg.Debrid
+	if cfg == nil || cfg.Active == "" {
+		return nil, nil
+	}
+	u := strings.ToLower(req.URL)
+	isMagnet := strings.HasPrefix(u, "magnet:")
+	isTorrent := strings.HasSuffix(u, ".torrent")
+	if !isMagnet && !isTorrent {
+		return nil, nil
+	}
+
+	svc, err := debrid.New(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 95*time.Second)
+	defer cancel()
+
+	files, err := svc.Resolve(ctx, req.URL)
+	if err != nil {
+		return nil, err
+	}
+	if len(files) == 0 {
+		return nil, fmt.Errorf("debrid: no files returned")
+	}
+
+	fileInfos := make([]*base.FileInfo, len(files))
+	for i, f := range files {
+		fileInfos[i] = &base.FileInfo{
+			Name: f.Name,
+			Size: f.Size,
+			Req:  &base.Request{URL: f.URL},
+		}
+	}
+	name := files[0].Name
+	if len(files) > 1 {
+		// Use first file's name as folder name (strip extension)
+		name = strings.TrimSuffix(files[0].Name, filepath.Ext(files[0].Name))
+	}
+	var totalSize int64
+	for _, f := range files {
+		totalSize += f.Size
+	}
+	return &base.Resource{
+		Name:  name,
+		Size:  totalSize,
+		Files: fileInfos,
+	}, nil
 }
 
 func (d *Downloader) notifyRunning() {
