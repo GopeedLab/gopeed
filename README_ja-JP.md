@@ -4,7 +4,7 @@
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
 [![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://gopeed.com)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://gopeed.com/docs/donate)
 [![WeChat](https://img.shields.io/badge/WeChat%20Official%20Account-07C160?logo=wechat&logoColor=white)](https://raw.githubusercontent.com/GopeedLab/gopeed/main/_docs/img/weixin.png)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
@@ -168,7 +168,7 @@ Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された
 
 ## 💝 寄付
 
-もしこのプロジェクトがお気に召しましたら、このプロジェクトの発展を支援するために[寄付](https://gopeed.com/donate)をご検討ください！
+もしこのプロジェクトがお気に召しましたら、このプロジェクトの発展を支援するために[寄付](https://gopeed.com/docs/donate)をご検討ください！
 
 ## 🖼️ ショーケース
 

@@ -4,7 +4,7 @@
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
 [![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://gopeed.com)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://gopeed.com/zh/docs/donate)
 [![WeChat](https://img.shields.io/badge/%E5%BE%AE%E4%BF%A1%E5%85%AC%E4%BC%97%E5%8F%B7-07C160?logo=wechat&logoColor=white)](https://raw.githubusercontent.com/GopeedLab/gopeed/main/_docs/img/weixin.png)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
@@ -178,7 +178,7 @@ Gopeed 还提供了浏览器扩展用于接管浏览器下载，支持 Chrome、
 
 ## 💝 赞助
 
-如果觉得项目对你有帮助，请考虑[赞助](https://gopeed.com/zh-CN/donate)以支持这个项目的发展，非常感谢！
+如果觉得项目对你有帮助，请考虑[赞助](https://gopeed.com/zh/docs/donate)以支持这个项目的发展，非常感谢！
 
 ## 🖼️ 界面展示
 

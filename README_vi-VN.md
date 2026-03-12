@@ -4,7 +4,7 @@
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
 [![Phiên bản](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Tải về](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Ủng hộ](https://img.shields.io/badge/%24-ủng%20hộ-ff69b4.svg)](https://gopeed.com)
+[![Ủng hộ](https://img.shields.io/badge/%24-ủng%20hộ-ff69b4.svg)](https://gopeed.com/docs/donate)
 [![WeChat](https://img.shields.io/badge/WeChat%20Official%20Account-07C160?logo=wechat&logoColor=white)](https://raw.githubusercontent.com/GopeedLab/gopeed/main/_docs/img/weixin.png)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
@@ -174,7 +174,7 @@ Theo dõi tài khoản chính thức để nhận các cập nhật và tin tứ
 
 ## 💝 Quyên góp
 
-Nếu bạn thích dự án này, xin vui lòng xem xét [quyên góp](https://gopeed.com/donate) để hỗ trợ phát triển dự án này, cảm ơn bạn!
+Nếu bạn thích dự án này, xin vui lòng xem xét [quyên góp](https://gopeed.com/docs/donate) để hỗ trợ phát triển dự án này, cảm ơn bạn!
 
 ## 🖼️ Trưng bày
 

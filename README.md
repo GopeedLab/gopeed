@@ -4,7 +4,7 @@
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
 [![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://gopeed.com)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://gopeed.com/docs/donate)
 [![WeChat](https://img.shields.io/badge/WeChat%20Official%20Account-07C160?logo=wechat&logoColor=white)](https://raw.githubusercontent.com/GopeedLab/gopeed/main/_docs/img/weixin.png)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
@@ -187,7 +187,7 @@ Follow our WeChat Official Account to get the latest updates and news.
 
 ## 💝 Donate
 
-If you like this project, please consider [donating](https://gopeed.com/donate) to support the development of this project, thank you!
+If you like this project, please consider [donating](https://gopeed.com/docs/donate) to support the development of this project, thank you!
 
 ## 🖼️ Showcase
 
