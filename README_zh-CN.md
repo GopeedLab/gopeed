@@ -4,7 +4,7 @@
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
 [![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://docs.gopeed.com/zh/donate.html)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://gopeed.com)
 [![WeChat](https://img.shields.io/badge/%E5%BE%AE%E4%BF%A1%E5%85%AC%E4%BC%97%E5%8F%B7-07C160?logo=wechat&logoColor=white)](https://raw.githubusercontent.com/GopeedLab/gopeed/main/_docs/img/weixin.png)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
@@ -16,9 +16,9 @@
 
 ## 🚀 介绍
 
-Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不是狗屁下载器！），是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。除了基本的下载功能外，Gopeed 还是一款高度可定制化的下载器，支持通过对接[APIs](https://docs.gopeed.com/zh/dev-api.html)或者安装和开发[扩展](https://docs.gopeed.com/zh/dev-extension.html)来实现更多的功能。
+Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不是狗屁下载器！），是一款由`Golang`+`Flutter`开发的高速下载器，支持（HTTP、BitTorrent、Magnet）协议下载，并且支持全平台使用。除了基本的下载功能外，Gopeed 还是一款高度可定制化的下载器，支持通过对接[APIs](https://gopeed.com/developer)或者安装和开发[扩展](https://gopeed.com/extension)来实现更多的功能。
 
-访问 ✈ [官方网站](https://gopeed.com/zh-CN) | 📖 [官方文档](https://docs.gopeed.com/zh/)
+访问 ✈ [官方网站](https://gopeed.com/zh-CN)
 
 ## ⬇️ 下载
 
@@ -156,7 +156,7 @@ Gopeed（全称 Go Speed），直译过来中文名叫做`够快下载器`（不
     </tr>
   </tbody>
 </table>
-更多关于安装的内容请参考[安装文档](https://docs.gopeed.com/zh/install.html)
+更多关于安装的内容请参考[安装文档](https://gopeed.com/zh-CN/install)
 
 ### 🛠️ 命令行工具
 
@@ -178,7 +178,7 @@ Gopeed 还提供了浏览器扩展用于接管浏览器下载，支持 Chrome、
 
 ## 💝 赞助
 
-如果觉得项目对你有帮助，请考虑[赞助](https://docs.gopeed.com/zh/donate)以支持这个项目的发展，非常感谢！
+如果觉得项目对你有帮助，请考虑[赞助](https://gopeed.com/zh-CN/donate)以支持这个项目的发展，非常感谢！
 
 ## 🖼️ 界面展示
 
