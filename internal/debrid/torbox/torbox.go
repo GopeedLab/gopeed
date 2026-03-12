@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/GopeedLab/gopeed/internal/debrid"
+	"github.com/GopeedLab/gopeed/internal/debrid/types"
 )
 
 const (
@@ -25,18 +25,18 @@ type service struct {
 	client *http.Client
 }
 
-func New(apiKey string) debrid.Service {
+func New(apiKey string) types.Service {
 	return &service{
 		apiKey: apiKey,
 		client: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
-func (s *service) Name() debrid.ServiceName {
-	return debrid.ServiceTorBox
+func (s *service) Name() types.ServiceName {
+	return types.ServiceTorBox
 }
 
-func (s *service) Resolve(ctx context.Context, magnetOrTorrent string) ([]debrid.File, error) {
+func (s *service) Resolve(ctx context.Context, magnetOrTorrent string) ([]types.File, error) {
 	// 1. Add magnet to TorBox
 	torrentID, err := s.createTorrent(ctx, magnetOrTorrent)
 	if err != nil {
@@ -57,12 +57,12 @@ func (s *service) Resolve(ctx context.Context, magnetOrTorrent string) ([]debrid
 	if len(files) == 0 {
 		// Single-file torrent with no file list — use torrent-level download
 		u := s.redirectURL(torrentID, 0, false)
-		return []debrid.File{{Name: torrent.Name, Size: torrent.Size, URL: u}}, nil
+		return []types.File{{Name: torrent.Name, Size: torrent.Size, URL: u}}, nil
 	}
 
-	result := make([]debrid.File, len(files))
+	result := make([]types.File, len(files))
 	for i, f := range files {
-		result[i] = debrid.File{
+		result[i] = types.File{
 			Name: f.Name,
 			Size: f.Size,
 			URL:  s.redirectURL(torrentID, f.ID, false),

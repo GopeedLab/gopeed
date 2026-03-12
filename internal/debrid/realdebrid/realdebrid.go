@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GopeedLab/gopeed/internal/debrid"
+	"github.com/GopeedLab/gopeed/internal/debrid/types"
 )
 
 const (
@@ -24,20 +24,20 @@ type service struct {
 	client *http.Client
 }
 
-func New(apiKey string) debrid.Service {
+func New(apiKey string) types.Service {
 	return &service{
 		apiKey: apiKey,
 		client: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
-func (s *service) Name() debrid.ServiceName {
-	return debrid.ServiceRealDebrid
+func (s *service) Name() types.ServiceName {
+	return types.ServiceRealDebrid
 }
 
 // Resolve adds the magnet to Real-Debrid, waits for it to become available,
 // then unrestricts each file link and returns the CDN URLs.
-func (s *service) Resolve(ctx context.Context, magnetOrTorrent string) ([]debrid.File, error) {
+func (s *service) Resolve(ctx context.Context, magnetOrTorrent string) ([]types.File, error) {
 	// 1. Add magnet
 	torrentID, err := s.addMagnet(ctx, magnetOrTorrent)
 	if err != nil {
@@ -59,13 +59,13 @@ func (s *service) Resolve(ctx context.Context, magnetOrTorrent string) ([]debrid
 	}
 
 	// 4. Unrestrict each link
-	result := make([]debrid.File, 0, len(info.Links))
+	result := make([]types.File, 0, len(info.Links))
 	for i, link := range info.Links {
 		unrestricted, err := s.unrestrictLink(ctx, link)
 		if err != nil {
 			return nil, fmt.Errorf("realdebrid: unrestrict link %d: %w", i, err)
 		}
-		result = append(result, debrid.File{
+		result = append(result, types.File{
 			Name: unrestricted.Filename,
 			Size: unrestricted.Filesize,
 			URL:  unrestricted.Download,

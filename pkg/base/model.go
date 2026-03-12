@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GopeedLab/gopeed/internal/debrid"
+	"github.com/GopeedLab/gopeed/internal/debrid/types"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/mattn/go-ieproxy"
 	"golang.org/x/exp/slices"
@@ -189,7 +189,7 @@ type DownloaderStoreConfig struct {
 	AutoTorrent                *AutoTorrentConfig     `json:"autoTorrent"`                // AutoTorrent is the auto torrent task creation configuration
 	Archive                    *ArchiveConfig         `json:"archive"`                    // Archive is the archive extraction configuration
 	AutoDeleteMissingFileTasks bool                   `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
-	Debrid                     *debrid.Config         `json:"debrid"`                     // Debrid holds debrid service configuration
+	Debrid                     *types.Config          `json:"debrid"`                     // Debrid holds debrid service configuration
 }
 
 func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {

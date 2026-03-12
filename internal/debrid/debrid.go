@@ -4,48 +4,27 @@
 package debrid
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/GopeedLab/gopeed/internal/debrid/realdebrid"
 	"github.com/GopeedLab/gopeed/internal/debrid/torbox"
+	"github.com/GopeedLab/gopeed/internal/debrid/types"
 )
 
-// ServiceName identifies a debrid provider.
-type ServiceName string
+// Re-export shared types so existing callers (e.g. pkg/download) can still
+// use debrid.Config, debrid.Service, etc. without a separate import.
+type (
+	ServiceName = types.ServiceName
+	File        = types.File
+	Service     = types.Service
+	Config      = types.Config
+)
 
 const (
-	ServiceTorBox     ServiceName = "torbox"
-	ServiceRealDebrid ServiceName = "realdebrid"
-	ServiceNone       ServiceName = ""
+	ServiceTorBox     = types.ServiceTorBox
+	ServiceRealDebrid = types.ServiceRealDebrid
+	ServiceNone       = types.ServiceNone
 )
-
-// File is a single downloadable file resolved by a debrid service.
-type File struct {
-	Name string
-	Size int64
-	URL  string // Direct HTTP download URL
-}
-
-// Service is the interface every debrid provider must implement.
-type Service interface {
-	// Name returns the canonical service identifier.
-	Name() ServiceName
-	// Resolve takes a magnet URI or .torrent URL and returns the list of
-	// download-ready HTTP files.  Implementations should poll until the
-	// content is cached (up to the supplied context deadline).
-	Resolve(ctx context.Context, magnetOrTorrent string) ([]File, error)
-}
-
-// Config holds per-service credentials and the user's active selection.
-// It is stored inside DownloaderStoreConfig.
-type Config struct {
-	// Active is the service that will intercept magnet/torrent links.
-	// Empty string means debrid is disabled.
-	Active        ServiceName `json:"active"`
-	TorBoxKey     string      `json:"torBoxKey"`
-	RealDebridKey string      `json:"realDebridKey"`
-}
 
 // New returns a ready-to-use Service for the given config, or an error if the
 // active service is unknown or its API key is missing.
