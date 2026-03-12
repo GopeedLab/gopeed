@@ -307,19 +307,14 @@ func TestFetcher_DownloadChunked(t *testing.T) {
 	downloadNormal(listener, 2, t)
 }
 
-func TestFetcher_DownloadChunkedContinue(t *testing.T) {
-	listener := test.StartTestCustomServer()
-	defer listener.Close()
-
-	downloadContinue(listener, 1, t)
-}
-
-// TestFetcher_DownloadChunkedNotExceedSize verifies that when a server doesn't
-// return Content-Length (chunked transfer, no Range support), the download
-// properly handles pause/resume without accumulating extra bytes.
-// This simulates the real-world bug where servers like GitHub's zip downloads
-// don't return Content-Length.
-func TestFetcher_DownloadChunkedNotExceedSize(t *testing.T) {
+// TestFetcher_DownloadNoRangePauseResume targets a specific bug where pausing
+// and resuming a download from a server that doesn't return Content-Length
+// (and doesn't support Range) causes the downloaded file to grow beyond the
+// actual file size. Root cause: on resume the server resends from byte 0, but
+// the old code wrote at the previously accumulated offset, appending a second
+// copy instead of overwriting. The fix resets the write offset on each non-range
+// retry so data is always written from the beginning.
+func TestFetcher_DownloadNoRangePauseResume(t *testing.T) {
 	listener := test.StartTestCustomServer()
 	defer listener.Close()
 
@@ -340,6 +335,21 @@ func TestFetcher_DownloadChunkedNotExceedSize(t *testing.T) {
 	err = fetcher.Wait()
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	// The critical assertion: the downloaded file must not be larger than
+	// the source file. Before the fix, each resume appended extra data,
+	// causing the file to exceed the actual size (the bug shown in the issue).
+	downloadInfo, err := os.Stat(test.DownloadFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceInfo, err := os.Stat(test.BuildFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if downloadInfo.Size() > sourceInfo.Size() {
+		t.Errorf("Downloaded file size %d exceeds source file size %d", downloadInfo.Size(), sourceInfo.Size())
 	}
 
 	want := test.FileMd5(test.BuildFile)
