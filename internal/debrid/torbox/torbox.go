@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	api             = "https://api.torbox.app/v1/api"
-	pollInterval    = 5 * time.Second
-	defaultTimeout  = 90 * time.Second
+	api            = "https://api.torbox.app/v1/api"
+	pollInterval   = 10 * time.Second
+	defaultTimeout = 600 * time.Second // 10 minutes
 )
 
 type service struct {
@@ -60,15 +60,15 @@ func (s *service) Resolve(ctx context.Context, magnetOrTorrent string) ([]types.
 		return []types.File{{Name: torrent.Name, Size: torrent.Size, URL: u}}, nil
 	}
 
-	result := make([]types.File, len(files))
-	for i, f := range files {
-		result[i] = types.File{
-			Name: f.Name,
-			Size: f.Size,
-			URL:  s.redirectURL(torrentID, f.ID, false),
-		}
+	if len(files) == 1 {
+		f := files[0]
+		return []types.File{{Name: f.Name, Size: f.Size, URL: s.redirectURL(torrentID, f.ID, false)}}, nil
 	}
-	return result, nil
+
+	// Multi-file torrent — download as a single ZIP so all files stay together.
+	zipName := torrent.Name + ".zip"
+	u := s.redirectURL(torrentID, 0, true)
+	return []types.File{{Name: zipName, Size: torrent.Size, URL: u}}, nil
 }
 
 // redirectURL builds a permanent requestdl URL that TorBox redirects to the
@@ -156,7 +156,7 @@ func (s *service) waitUntilCached(ctx context.Context, torrentID int) (*tbTorren
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("torbox: timed out waiting for torrent to cache — try again in a minute")
+			return nil, fmt.Errorf("torbox: could not cache this torrent within 10 minutes — it may be a rare or very large file. Check torbox.app for status, or re-add the magnet later.")
 		case <-time.After(pollInterval):
 		}
 

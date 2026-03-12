@@ -213,9 +213,12 @@ class AppController extends GetxController with WindowListener, TrayListener {
       await windowManager.focus();
     }
 
-    // Handle initial link for deep link navigation
+    // Handle initial link for deep link navigation.
+    // Use addPostFrameCallback so the router is fully mounted before we navigate.
     if (initialLink != null) {
-      _handleDeepLink(initialLink);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleDeepLink(initialLink!);
+      });
     }
 
     // Handle shared media, e.g. shared link from browser

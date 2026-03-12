@@ -15,8 +15,8 @@ import (
 
 const (
 	api            = "https://api.real-debrid.com/rest/1.0"
-	pollInterval   = 3 * time.Second
-	defaultTimeout = 90 * time.Second
+	pollInterval   = 10 * time.Second
+	defaultTimeout = 600 * time.Second // 10 minutes
 )
 
 type service struct {
@@ -150,7 +150,7 @@ func (s *service) waitUntilReady(ctx context.Context, torrentID string) (*rdTorr
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("realdebrid: timed out waiting for torrent — try again in a minute")
+			return nil, fmt.Errorf("realdebrid: could not cache this torrent within 10 minutes — it may be a rare or very large file. Check real-debrid.com for status, or re-add the magnet later.")
 		case <-time.After(pollInterval):
 		}
 

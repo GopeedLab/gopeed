@@ -438,7 +438,7 @@ func (d *Downloader) resolveViaDebrid(req *base.Request) (*base.Resource, error)
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 95*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 605*time.Second) // 10 min debrid timeout + 5s buffer
 	defer cancel()
 
 	files, err := svc.Resolve(ctx, req.URL)
