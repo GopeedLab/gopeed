@@ -81,10 +81,21 @@ jobs:
           echo "::error title=Gomobile Last 40 Lines::${LAST}"
           if [ "${{ steps.gomobile-build.outcome }}" = "failure" ]; then exit 1; fi
 
-      - name: Decode keystore
+      - name: Generate keystore
         env:
-          APK_KEYSTORE: ${{ secrets.APK_KEYSTORE }}
-        run: echo "$APK_KEYSTORE" | base64 -d > ui/flutter/android/app/upload-keystore.jks
+          APK_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
+          APK_STORE_PASSWORD: ${{ secrets.APK_STORE_PASSWORD }}
+        run: |
+          keytool -genkeypair \
+            -keystore ui/flutter/android/app/upload-keystore.jks \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -alias upload \
+            -keypass "$APK_KEY_PASSWORD" \
+            -storepass "$APK_STORE_PASSWORD" \
+            -storetype JKS \
+            -dname "CN=Gopeed Debrid, OU=Dev, O=Gopeed, L=Unknown, ST=Unknown, C=US"
 
       - name: Build APKs
         id: flutter-build
