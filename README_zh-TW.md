@@ -18,7 +18,7 @@
 
 Gopeed（全稱 Go Speed），是一款使用`Golang`+`Flutter`編寫的高速下載軟體，支援（HTTP、BitTorrent、Magnet）協定，同時支援所有的平台。
 
-前往 ✈ [主頁](https://gopeed.com/zh-CN)
+前往 ✈ [主頁](https://gopeed.com/zh-CN) | 📖 [文檔](https://gopeed.com/docs)
 
 ## ⬇️ 下載
 
