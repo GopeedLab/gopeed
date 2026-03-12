@@ -297,7 +297,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       MenuItem(
         label: 'donate'.tr,
         onClick: (menuItem) => {
-          launchUrl(Uri.parse("https://docs.gopeed.com/donate.html"),
+          launchUrl(Uri.parse("https://gopeed.com/docs/donate"),
               mode: LaunchMode.externalApplication)
         },
       ),

@@ -4,7 +4,7 @@
 [![Codecov](https://codecov.io/gh/GopeedLab/gopeed/branch/main/graph/badge.svg)](https://codecov.io/gh/GopeedLab/gopeed)
 [![Release](https://img.shields.io/github/release/GopeedLab/gopeed.svg)](https://github.com/GopeedLab/gopeed/releases)
 [![Download](https://img.shields.io/github/downloads/GopeedLab/gopeed/total.svg)](https://github.com/GopeedLab/gopeed/releases)
-[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://docs.gopeed.com/donate.html)
+[![Donate](https://img.shields.io/badge/%24-donate-ff69b4.svg)](https://gopeed.com/docs/donate)
 [![WeChat](https://img.shields.io/badge/WeChat%20Official%20Account-07C160?logo=wechat&logoColor=white)](https://raw.githubusercontent.com/GopeedLab/gopeed/main/_docs/img/weixin.png)
 [![Discord](https://img.shields.io/discord/1037992631881449472?label=Discord&logo=discord&style=social)](https://discord.gg/ZUJqJrwCGB)
 
@@ -16,9 +16,9 @@
 
 ## 🚀 Introduction
 
-Gopeed (full name Go Speed), a high-speed downloader developed by `Golang` + `Flutter`, supports (HTTP, BitTorrent, Magnet) protocol, and supports all platforms. In addition to basic download functions, Gopeed is also a highly customizable downloader that supports implementing more features through integration with [APIs](https://docs.gopeed.com/dev-api.html) or installation and development of [extensions](https://docs.gopeed.com/dev-extension.html).
+Gopeed (full name Go Speed), a high-speed downloader developed by `Golang` + `Flutter`, supports (HTTP, BitTorrent, Magnet) protocol, and supports all platforms. In addition to basic download functions, Gopeed is also a highly customizable downloader that supports implementing more features through integration with [APIs](https://gopeed.com/docs/dev-api) or installation and development of [extensions](https://gopeed.com/docs/dev-extension).
 
-Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://docs.gopeed.com)
+Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://gopeed.com/docs)
 
 ## ⬇️ Download
 
@@ -165,7 +165,7 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://
   </tbody>
 </table>
 
-More about installation, please refer to [Installation](https://docs.gopeed.com/install.html)
+More about installation, please refer to [Installation](https://gopeed.com/docs/install)
 
 ### 🛠️ Command tool
 
@@ -187,7 +187,7 @@ Follow our WeChat Official Account to get the latest updates and news.
 
 ## 💝 Donate
 
-If you like this project, please consider [donating](https://docs.gopeed.com/donate.html) to support the development of this project, thank you!
+If you like this project, please consider [donating](https://gopeed.com/docs/donate) to support the development of this project, thank you!
 
 ## 🖼️ Showcase
 
