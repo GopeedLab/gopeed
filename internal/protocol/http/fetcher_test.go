@@ -307,6 +307,58 @@ func TestFetcher_DownloadChunked(t *testing.T) {
 	downloadNormal(listener, 2, t)
 }
 
+// TestFetcher_DownloadNoRangePauseResume targets a specific bug where pausing
+// and resuming a download from a server that doesn't return Content-Length
+// (and doesn't support Range) causes the downloaded file to grow beyond the
+// actual file size. Root cause: on resume the server resends from byte 0, but
+// the old code wrote at the previously accumulated offset, appending a second
+// copy instead of overwriting. The fix resets the write offset on each non-range
+// retry so data is always written from the beginning.
+func TestFetcher_DownloadNoRangePauseResume(t *testing.T) {
+	listener := test.StartTestCustomServer()
+	defer listener.Close()
+
+	fetcher := downloadReady(listener, 1, t)
+	err := fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Let it download some data
+	time.Sleep(time.Millisecond * 50)
+	if err := fetcher.Pause(); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Millisecond * 50)
+	if err := fetcher.Start(); err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The critical assertion: the downloaded file must not be larger than
+	// the source file. Before the fix, each resume appended extra data,
+	// causing the file to exceed the actual size (the bug shown in the issue).
+	downloadInfo, err := os.Stat(test.DownloadFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceInfo, err := os.Stat(test.BuildFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if downloadInfo.Size() > sourceInfo.Size() {
+		t.Errorf("Downloaded file size %d exceeds source file size %d", downloadInfo.Size(), sourceInfo.Size())
+	}
+
+	want := test.FileMd5(test.BuildFile)
+	got := test.FileMd5(test.DownloadFile)
+	if want != got {
+		t.Errorf("Download() got = %v, want %v", got, want)
+	}
+}
+
 func TestFetcher_DownloadPost(t *testing.T) {
 	listener := test.StartTestPostServer()
 	defer listener.Close()
