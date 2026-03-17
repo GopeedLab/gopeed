@@ -22,8 +22,10 @@ const trTR = {
     'followSettings': 'Ayarları Takip Et',
     'downloadLink': 'İndirme Bağlantısı',
     'downloadLinkValid': 'Lütfen indirme bağlantısını girin',
-    'downloadLinkHit': 'Lütfen her satıra bir tane indirme bağlantısını girin@append',
-    'downloadLinkHitDesktop': ', veya torrent dosyasını olarak buraya sürükleyin',
+    'downloadLinkHit':
+        'Lütfen her satıra bir tane indirme bağlantısını girin@append',
+    'downloadLinkHitDesktop':
+        ', veya torrent dosyasını olarak buraya sürükleyin',
     'download': 'İndir',
     'noFileSelected': 'Devam etmek için lütfen en az bir dosya seçin.',
     'noStoragePermission': 'Depolama izni gerekli',
@@ -39,7 +41,8 @@ const trTR = {
     'maxRunning': 'Maksimum Çalışan İşlem',
     'defaultDirectDownload': 'Varsayılan olarak direkt indirmeyi işaretle',
     'autoStartTasks': 'Başlangıçta tamamlanmamış işlemleri otomatik başlat',
-    'autoTorrentEnable': '.torrent dosyalarından otomatik BitTorrent işlemleri oluştur',
+    'autoTorrentEnable':
+        '.torrent dosyalarından otomatik BitTorrent işlemleri oluştur',
     'autoTorrentDeleteAfterDownload':
         'BitTorrent işlemi oluşturulduktan sonra .torrent dosyasını sil',
     'autoDeleteMissingFileTasks': 'Eksik dosya işlemlerini otomatik sil',
@@ -51,7 +54,8 @@ const trTR = {
     'updateDaily': 'Günlük güncelle',
     'lastUpdate': 'Son güncelleme: @time',
     'addTracker': 'Tracker Ekle',
-    'addTrackerHit': 'Lütfen her satıra bir tane olacak şekilde tracker sunucu adresini girin',
+    'addTrackerHit':
+        'Lütfen her satıra bir tane olacak şekilde tracker sunucu adresini girin',
     'ui': 'Arayüz',
     'theme': 'Tema',
     'themeSystem': 'Sistem',
@@ -60,7 +64,8 @@ const trTR = {
     'locale': 'Dil',
     'notifyWhenNewVersion': 'Güncellemeleri bildir',
     'analyticsEnabled': 'İstatistikleri Yükle',
-    'analyticsEnabledDesc': 'Uygulamayı geliştirmemize yardımcı olmak için anonim kullanım verilerini paylaşın',
+    'analyticsEnabledDesc':
+        'Uygulamayı geliştirmemize yardımcı olmak için anonim kullanım verilerini paylaşın',
     'about': 'Hakkında',
     'homepage': 'Ana Sayfa',
     'version': 'Sürüm',
@@ -75,14 +80,16 @@ const trTR = {
     'logDirectory': 'Günlük Dizini',
     'webhook': 'Webhook',
     'webhookEnable': 'Webhook\'u Etkinleştir',
-    'webhookDesc': 'İşlemler tamamlandığında veya başarısız olduğunda HTTP POST bildirimleri gönder',
+    'webhookDesc':
+        'İşlemler tamamlandığında veya başarısız olduğunda HTTP POST bildirimleri gönder',
     'webhookUrlHint': 'Webhook URL\'sini girin',
     'webhookTest': 'Test',
     'webhookTestSuccess': 'Webhook testi başarılı',
     'webhookTestFail': 'Webhook testi başarısız',
     'script': 'Betik',
     'scriptEnable': 'Betiği Etkinleştir',
-    'scriptDesc': 'İndirmeler başarıyla tamamlandığında özel betikleri çalıştır',
+    'scriptDesc':
+        'İndirmeler başarıyla tamamlandığında özel betikleri çalıştır',
     'scriptPathHint': 'Betik dosya yolunu girin (örn. /path/to/script.sh)',
     'urlInvalid': 'Lütfen geçerli bir HTTP veya HTTPS URL\'si girin',
     'required': 'Bu alan zorunludur',
@@ -147,7 +154,8 @@ const trTR = {
     'browserExtension': 'Tarayıcı Eklentisi',
     'launchAtStartup': 'Başlangıçta çalıştır',
     'runAsMenubarApp': 'Menü çubuğu uygulaması olarak çalıştır',
-    'runAsMenubarAppDesc': 'Dock simgesini gizle ve sadece menü çubuğunda çalıştır',
+    'runAsMenubarAppDesc':
+        'Dock simgesini gizle ve sadece menü çubuğunda çalıştır',
     'seedConfig': 'Seed Yapılandırması',
     'seedKeep': 'Manuel olarak durdurulana kadar seed\'e devam et',
     'seedRatio': 'Seed oranı',
@@ -179,7 +187,8 @@ const trTR = {
     'username_required': 'Lütfen kullanıcı adınızı girin',
     'password_required': 'Lütfen şifrenizi girin',
     'login_success': 'Giriş başarılı',
-    'login_failed': 'Giriş başarısız, lütfen kullanıcı adınızı ve şifrenizi kontrol edin',
+    'login_failed':
+        'Giriş başarısız, lütfen kullanıcı adınızı ve şifrenizi kontrol edin',
     'login_failed_network':
         'Giriş başarısız, lütfen ağ bağlantınızı kontrol edin',
     'insertPlaceholder': 'Yer Tutucu Ekle',
@@ -199,7 +208,8 @@ const trTR = {
     'selectCategory': 'Kategori Seç',
     'githubMirror': 'GitHub Yansısı',
     'githubMirrorEnable': 'GitHub Yansısını Etkinleştir',
-    'githubMirrorDesc': 'GitHub içerik indirmelerini hızlandırmak için yansıları kullanın',
+    'githubMirrorDesc':
+        'GitHub içerik indirmelerini hızlandırmak için yansıları kullanın',
     'githubMirrorType': 'Yansı Türü',
     'githubMirrorUrl': 'Yansı URL\'si',
     'githubMirrorUrlHint': 'Yansı URL\'sini girin',
@@ -210,10 +220,21 @@ const trTR = {
     'updateUrlCancelListen': 'İzlemeyi İptal Et',
     'updateUrlDialogHint': 'Yeni indirme URL\'sini girin',
     'pendingUpdateFound': 'Bekleyen Güncelleme İşlemi Bulundu',
-    'pendingUpdateConfirm': 
+    'pendingUpdateConfirm':
         '"@name" işlemi URL güncellemesi bekliyor. Yeni URL ile güncellemek istiyor musunuz?',
     'pendingUpdateYes': 'İşlemi Güncelle',
     'pendingUpdateNo': 'Yeni İşlem Oluştur',
+    'ed2k': 'ED2K',
+    'ed2kTcpPort': 'TCP Listen Port',
+    'ed2kUdpPort': 'UDP Listen Port',
+    'ed2kServerList': 'Server Addresses',
+    'ed2kServerMet': 'Server.met Sources',
+    'ed2kNodesDat': 'nodes.dat Sources',
+    'ed2kAutoPort': 'Auto assign',
+    'ed2kOnePerLine': 'One entry per line',
+    'ed2kServersHint': 'host:port, one per line',
+    'ed2kServerMetHint': 'Server.met URL or ed2k serverlist link, one per line',
+    'ed2kNodesDatHint': 'nodes.dat path or URL, one per line',
     'desktopNotification': 'Masaüstü Bildirimleri',
     'notificationTaskDone': 'Görev tamamlandı',
     'notificationTaskError': 'Görev hatası',

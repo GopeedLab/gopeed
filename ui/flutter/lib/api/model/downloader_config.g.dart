@@ -42,12 +42,15 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>
     ProtocolConfig()
       ..http = HttpConfig.fromJson(json['http'] as Map<String, dynamic>)
-      ..bt = BtConfig.fromJson(json['bt'] as Map<String, dynamic>);
+      ..bt = BtConfig.fromJson(json['bt'] as Map<String, dynamic>)
+      ..ed2k = Ed2kConfig.fromJson(
+          json['ed2k'] as Map<String, dynamic>? ?? <String, dynamic>{});
 
 Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) =>
     <String, dynamic>{
       'http': instance.http.toJson(),
       'bt': instance.bt.toJson(),
+      'ed2k': instance.ed2k.toJson(),
     };
 
 HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
@@ -80,6 +83,23 @@ Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
       'seedKeep': instance.seedKeep,
       'seedRatio': instance.seedRatio,
       'seedTime': instance.seedTime,
+    };
+
+Ed2kConfig _$Ed2kConfigFromJson(Map<String, dynamic> json) => Ed2kConfig(
+      listenPort: (json['listenPort'] as num?)?.toInt() ?? 0,
+      udpPort: (json['udpPort'] as num?)?.toInt() ?? 0,
+      serverAddr: json['serverAddr'] as String? ?? '',
+      serverMet: json['serverMet'] as String? ?? '',
+      nodesDat: json['nodesDat'] as String? ?? '',
+    );
+
+Map<String, dynamic> _$Ed2kConfigToJson(Ed2kConfig instance) =>
+    <String, dynamic>{
+      'listenPort': instance.listenPort,
+      'udpPort': instance.udpPort,
+      'serverAddr': instance.serverAddr,
+      'serverMet': instance.serverMet,
+      'nodesDat': instance.nodesDat,
     };
 
 ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(

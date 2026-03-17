@@ -501,14 +501,16 @@ class SettingView extends GetView<SettingController> {
     final buildDesktopNotification = !Util.isDesktop()
         ? () => null
         : _buildConfigItem('desktopNotification', () {
-            return appController.downloaderConfig.value.extra.desktopNotification
+            return appController
+                    .downloaderConfig.value.extra.desktopNotification
                 ? 'on'.tr
                 : 'off'.tr;
           }, (Key key) {
             return Container(
               alignment: Alignment.centerLeft,
               child: Switch(
-                value: appController.downloaderConfig.value.extra.desktopNotification,
+                value: appController
+                    .downloaderConfig.value.extra.desktopNotification,
                 onChanged: (bool value) async {
                   appController.downloaderConfig.update((val) {
                     val!.extra.desktopNotification = value;
@@ -786,6 +788,138 @@ class SettingView extends GetView<SettingController> {
               ),
             );
           });
+
+    // ed2k config items start
+    final ed2kConfig = downloaderCfg.value.protocolConfig.ed2k;
+    List<String> parseEd2kEntries(String value) {
+      return value
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    String summarizeEd2kEntries(String value) {
+      final entries = parseEd2kEntries(value);
+      if (entries.isEmpty) {
+        return 'notSet'.tr;
+      }
+      return 'items'.trParams({'count': entries.length.toString()});
+    }
+
+    String formatEd2kMultilineValue(String value) {
+      return parseEd2kEntries(value).join('\r\n');
+    }
+
+    final buildEd2kListenPort = _buildConfigItem(
+        'ed2kTcpPort', () => ed2kConfig.listenPort.toString(), (Key key) {
+      final controller =
+          TextEditingController(text: ed2kConfig.listenPort.toString());
+      controller.addListener(() async {
+        if (controller.text.isNotEmpty &&
+            controller.text != ed2kConfig.listenPort.toString()) {
+          ed2kConfig.listenPort = int.parse(controller.text);
+          await debounceSave();
+        }
+      });
+
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: controller,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          NumericalRangeFormatter(min: 0, max: 65535),
+        ],
+      );
+    });
+    final buildEd2kUdpPort = _buildConfigItem(
+        'ed2kUdpPort', () => ed2kConfig.udpPort.toString(), (Key key) {
+      final controller =
+          TextEditingController(text: ed2kConfig.udpPort.toString());
+      controller.addListener(() async {
+        if (controller.text.isNotEmpty &&
+            controller.text != ed2kConfig.udpPort.toString()) {
+          ed2kConfig.udpPort = int.parse(controller.text);
+          await debounceSave();
+        }
+      });
+
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: controller,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          NumericalRangeFormatter(min: 0, max: 65535),
+        ],
+      );
+    });
+    final buildEd2kServerAddr = _buildConfigItem(
+        'ed2kServerList', () => summarizeEd2kEntries(ed2kConfig.serverAddr),
+        (Key key) {
+      final controller = TextEditingController(
+          text: formatEd2kMultilineValue(ed2kConfig.serverAddr));
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: controller,
+        keyboardType: TextInputType.multiline,
+        maxLines: 5,
+        decoration: InputDecoration(
+          hintText: 'ed2kServersHint'.tr,
+          helperText: 'ed2kOnePerLine'.tr,
+        ),
+        onChanged: (value) async {
+          ed2kConfig.serverAddr = Util.textToLines(value).join(',');
+          await debounceSave();
+        },
+      );
+    });
+    final buildEd2kServerMet = _buildConfigItem(
+        'ed2kServerMet', () => summarizeEd2kEntries(ed2kConfig.serverMet),
+        (Key key) {
+      final controller = TextEditingController(
+          text: formatEd2kMultilineValue(ed2kConfig.serverMet));
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: controller,
+        keyboardType: TextInputType.multiline,
+        maxLines: 4,
+        decoration: InputDecoration(
+          hintText: 'ed2kServerMetHint'.tr,
+          helperText: 'ed2kOnePerLine'.tr,
+        ),
+        onChanged: (value) async {
+          ed2kConfig.serverMet = Util.textToLines(value).join(',');
+          await debounceSave();
+        },
+      );
+    });
+    final buildEd2kNodesDat = _buildConfigItem(
+        'ed2kNodesDat', () => summarizeEd2kEntries(ed2kConfig.nodesDat),
+        (Key key) {
+      final controller = TextEditingController(
+          text: formatEd2kMultilineValue(ed2kConfig.nodesDat));
+      return TextField(
+        key: key,
+        focusNode: FocusNode(),
+        controller: controller,
+        keyboardType: TextInputType.multiline,
+        maxLines: 4,
+        decoration: InputDecoration(
+          hintText: 'ed2kNodesDatHint'.tr,
+          helperText: 'ed2kOnePerLine'.tr,
+        ),
+        onChanged: (value) async {
+          ed2kConfig.nodesDat = Util.textToLines(value).join(',');
+          await debounceSave();
+        },
+      );
+    });
 
     // ui config items start
     final buildTheme = _buildConfigItem(
@@ -1646,6 +1780,17 @@ class SettingView extends GetView<SettingController> {
                             buildBtTrackers(),
                             buildBtSeedConfig(),
                             buildBtDefaultClientConfig(),
+                          ]),
+                        )),
+                        Text('ed2k'.tr),
+                        Card(
+                            child: Column(
+                          children: _addDivider([
+                            buildEd2kListenPort(),
+                            buildEd2kUdpPort(),
+                            buildEd2kServerAddr(),
+                            buildEd2kServerMet(),
+                            buildEd2kNodesDat(),
                           ]),
                         )),
                         Text('ui'.tr),
