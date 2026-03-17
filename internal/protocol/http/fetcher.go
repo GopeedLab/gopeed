@@ -618,6 +618,7 @@ func (f *Fetcher) doStart() error {
 		for _, conn := range f.connections {
 			// Reset connections that can be retried
 			if !conn.Completed && conn.State != connCompleted {
+				f.resetConnectionForRestart(conn)
 				conn.State = connNotStarted
 				conn.failed = false
 				conn.retryTimes = 0
@@ -1413,6 +1414,27 @@ func (f *Fetcher) helpOtherConnection(helper *connection) bool {
 	return true
 }
 
+func (f *Fetcher) resetConnectionForRestart(conn *connection) {
+	if f.meta.Res.Range {
+		return
+	}
+
+	// Without range support a new request always starts from byte 0,
+	// so pause/retry must restart instead of continuing from the old offset.
+	if conn.Chunk == nil {
+		conn.Chunk = newChunk(0, 0)
+	} else {
+		conn.Chunk.Begin = 0
+		conn.Chunk.End = 0
+		conn.Chunk.Downloaded = 0
+	}
+	conn.Downloaded = 0
+	conn.Completed = false
+	conn.speed = 0
+	conn.lastSpeedCheck = 0
+	conn.lastSpeedDownload = 0
+}
+
 func (f *Fetcher) resumeConnections() {
 	// Collect connections to resume while holding the lock
 	var toResume []*connection
@@ -1436,6 +1458,7 @@ func (f *Fetcher) resumeConnections() {
 				continue
 			}
 		}
+		f.resetConnectionForRestart(conn)
 		// Reset the connection state for resume
 		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
 		conn.State = connNotStarted

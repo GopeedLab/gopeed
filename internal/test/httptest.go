@@ -335,6 +335,43 @@ func StartTestOneTimeServer() net.Listener {
 	})
 }
 
+// StartTestNoRangeSlowServer creates a server that always returns the full file
+// with Content-Length but does not support Range requests.
+func StartTestNoRangeSlowServer(delayPerChunk time.Duration) net.Listener {
+	return startTestServer(func(sl *shutdownListener) http.Handler {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
+			writer.Header().Set("Content-Length", fmt.Sprintf("%d", BuildSize))
+
+			file, err := os.Open(BuildFile)
+			if err != nil {
+				return
+			}
+			defer file.Close()
+
+			buf := make([]byte, 256*1024)
+			for !sl.isShutdown {
+				n, readErr := file.Read(buf)
+				if n > 0 {
+					if _, writeErr := writer.Write(buf[:n]); writeErr != nil {
+						return
+					}
+					if flusher, ok := writer.(http.Flusher); ok {
+						flusher.Flush()
+					}
+					if delayPerChunk > 0 {
+						time.Sleep(delayPerChunk)
+					}
+				}
+				if readErr != nil {
+					return
+				}
+			}
+		})
+		return mux
+	})
+}
+
 // StartTestExpiringRedirectServer creates a server that simulates expiring redirect URLs.
 // The original URL redirects to a temporary URL that expires after a specified number of requests.
 // When the temporary URL expires (returns 403), the client should retry with the original URL
