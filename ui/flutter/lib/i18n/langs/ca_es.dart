@@ -35,14 +35,18 @@ const caES = {
     'downloadDir': 'Carpeta de baixades',
     'downloadDirValid': 'Seleccioneu la carpeta de baixades',
     'connections': 'Connexions',
-    'useServerCtime': 'Utilitza l\'hora del servidor per a la creació de fitxers',
+    'useServerCtime':
+        'Utilitza l\'hora del servidor per a la creació de fitxers',
     'maxRunning': 'Màxim de tasques en execució',
     'defaultDirectDownload': 'Activa la baixada directa per defecte',
-    'autoStartTasks': 'Inicia automàticament les tasques incompletes a l\'inici',
-    'autoTorrentEnable': 'Crea automàticament tasques BT a partir de fitxers .torrent',
+    'autoStartTasks':
+        'Inicia automàticament les tasques incompletes a l\'inici',
+    'autoTorrentEnable':
+        'Crea automàticament tasques BT a partir de fitxers .torrent',
     'autoTorrentDeleteAfterDownload':
         'Suprimeix el fitxer .torrent després de crear la tasca BT',
-    'autoDeleteMissingFileTasks': 'Suprimeix automàticament les tasques dels fitxers que falten',
+    'autoDeleteMissingFileTasks':
+        'Suprimeix automàticament les tasques dels fitxers que falten',
     'items': '@count elements',
     'subscribeTracker': 'Subscripció al rastrejador',
     'subscribeFail':
@@ -51,7 +55,8 @@ const caES = {
     'updateDaily': 'Actualització diària',
     'lastUpdate': 'Última actualització: @time',
     'addTracker': 'Afegeix un rastrejador',
-    'addTrackerHit': 'Introduïu la URL del servidor del rastrejador, un per línia',
+    'addTrackerHit':
+        'Introduïu la URL del servidor del rastrejador, un per línia',
     'ui': 'UI',
     'theme': 'Tema',
     'themeSystem': 'Sistema',
@@ -60,7 +65,8 @@ const caES = {
     'locale': 'Idioma',
     'notifyWhenNewVersion': 'Notificació d\'actualitzacions',
     'analyticsEnabled': 'Puja les estadístiques',
-    'analyticsEnabledDesc': 'Compartiu dades d\'ús anònimes per ajudar-nos a millorar',
+    'analyticsEnabledDesc':
+        'Compartiu dades d\'ús anònimes per ajudar-nos a millorar',
     'about': 'Quant a',
     'homepage': 'Pàgina d\'inici',
     'version': 'Versió',
@@ -75,15 +81,18 @@ const caES = {
     'logDirectory': 'Carpeta dels registres',
     'webhook': 'Webhook',
     'webhookEnable': 'Activa el Webhook',
-    'webhookDesc': 'Envia notificacions HTTP POST quan les tasques finalitzin o fallin',
+    'webhookDesc':
+        'Envia notificacions HTTP POST quan les tasques finalitzin o fallin',
     'webhookUrlHint': 'Introduïu la URL del webhook',
     'webhookTest': 'Prova',
     'webhookTestSuccess': 'La prova del webhook ha estat correcta',
     'webhookTestFail': 'La prova del webhook ha fallat',
     'script': 'Seqüència d\'ordres',
     'scriptEnable': 'Activa la seqüència d\'ordres',
-    'scriptDesc': 'Executa seqüències d\'ordres  personalitzades quan les baixades finalitzin correctament',
-    'scriptPathHint': 'Introduïu la ruta del fitxer de seqüències d\'ordres (p.ex., /ruta/al/fitxer.sh)',
+    'scriptDesc':
+        'Executa seqüències d\'ordres  personalitzades quan les baixades finalitzin correctament',
+    'scriptPathHint':
+        'Introduïu la ruta del fitxer de seqüències d\'ordres (p.ex., /ruta/al/fitxer.sh)',
     'urlInvalid': 'Introduïu una URL HTTP o HTTPS vàlida',
     'required': 'Aquest camp és obligatori',
     'show': 'Mostra',
@@ -147,7 +156,8 @@ const caES = {
     'browserExtension': 'Extensió del navegador',
     'launchAtStartup': 'Executa a l\'inici',
     'runAsMenubarApp': 'Executa com a aplicació de barra de menú',
-    'runAsMenubarAppDesc': 'Amaga la icona de l\'acoblador i executa només a la barra de menú',
+    'runAsMenubarAppDesc':
+        'Amaga la icona de l\'acoblador i executa només a la barra de menú',
     'seedConfig': 'Configuració de les llavors',
     'seedKeep': 'Continua sembrant fins que s\'aturi manualment',
     'seedRatio': 'Proporció de les llavors',
@@ -161,7 +171,8 @@ const caES = {
     'archives': 'Comprimits',
     'autoExtract': 'Extreu els comprimits automàticament',
     'archivePassword': 'Contrasenya del comprimit',
-    'archivePasswordHint': 'Deixeu-lo en blanc si no està protegit amb contrasenya',
+    'archivePasswordHint':
+        'Deixeu-lo en blanc si no està protegit amb contrasenya',
     'deleteAfterExtract': 'Suprimeix el comprimit després de l\'extracció',
     'extracting': 'S\'està extraient',
     'extractDone': 'Extracció completada',
@@ -179,7 +190,8 @@ const caES = {
     'username_required': 'Introduïu el vostre nom d\'usuari',
     'password_required': 'Introduïu la vostra contrasenya',
     'login_success': 'Inici de sessió correcte',
-    'login_failed': 'No s\'ha pogut iniciar la sessió, comproveu el vostre nom d\'usuari i contrasenya',
+    'login_failed':
+        'No s\'ha pogut iniciar la sessió, comproveu el vostre nom d\'usuari i contrasenya',
     'login_failed_network':
         'No s\'ha pogut iniciar la sessió, comproveu la vostra connexió de xarxa',
     'insertPlaceholder': 'Inseriu un marcador de posició',
@@ -199,7 +211,8 @@ const caES = {
     'selectCategory': 'Seleccioneu una categoria',
     'githubMirror': 'Rèplica del GitHub',
     'githubMirrorEnable': 'Activa la rèplica del GitHub',
-    'githubMirrorDesc': 'Utilitzeu rèpliques per accelerar les baixades de contingut del GitHub',
+    'githubMirrorDesc':
+        'Utilitzeu rèpliques per accelerar les baixades de contingut del GitHub',
     'githubMirrorType': 'Tipus de rèplica',
     'githubMirrorUrl': 'URL de la rèplica',
     'githubMirrorUrlHint': 'Introduïu la URL de la rèplica',
@@ -214,6 +227,17 @@ const caES = {
         'La tasca "@name" està esperant l\'actualització de la URL. Voleu actualitzar-la amb la URL nova?',
     'pendingUpdateYes': 'Actualitza la tasca',
     'pendingUpdateNo': 'Crea una tasca nova',
+    'ed2k': 'ED2K',
+    'ed2kTcpPort': 'TCP Listen Port',
+    'ed2kUdpPort': 'UDP Listen Port',
+    'ed2kServerList': 'Server Addresses',
+    'ed2kServerMet': 'Server.met Sources',
+    'ed2kNodesDat': 'nodes.dat Sources',
+    'ed2kAutoPort': 'Auto assign',
+    'ed2kOnePerLine': 'One entry per line',
+    'ed2kServersHint': 'host:port, one per line',
+    'ed2kServerMetHint': 'Server.met URL or ed2k serverlist link, one per line',
+    'ed2kNodesDatHint': 'nodes.dat path or URL, one per line',
     'desktopNotification': 'Notificacions d\'escriptori',
     'notificationTaskDone': 'Tasca completada',
     'notificationTaskError': 'Error de tasca',

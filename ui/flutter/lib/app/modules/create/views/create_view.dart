@@ -59,7 +59,7 @@ class CreateView extends GetView<CreateController> {
   final _btTrackerController = TextEditingController();
   final _archivePasswordController = TextEditingController();
 
-  final _availableSchemes = ["http:", "https:", "magnet:"];
+  final _availableSchemes = ["http:", "https:", "magnet:", "ed2k:"];
 
   final _skipVerifyCertController = false.obs;
   final _autoTorrentController = Rxn<bool>();
@@ -116,6 +116,7 @@ class CreateView extends GetView<CreateController> {
                 jsonDecode(jsonEncode(routerParams.req!.extra)));
             _btTrackerController.text = reqExtra.trackers.join("\n");
           },
+          Protocol.ed2k: null,
         };
         if (routerParams.req?.extra != null) {
           extraHandlers[protocol]?.call();
@@ -139,6 +140,7 @@ class CreateView extends GetView<CreateController> {
               }
             },
             Protocol.bt: null,
+            Protocol.ed2k: null,
           };
           if (routerParams.opts?.extra != null) {
             optionsHandlers[protocol]?.call();
@@ -804,6 +806,9 @@ class CreateView extends GetView<CreateController> {
         uppercaseUrl.endsWith(".TORRENT")) {
       protocol = Protocol.bt;
     }
+    if (uppercaseUrl.startsWith("ED2K:")) {
+      protocol = Protocol.ed2k;
+    }
     return protocol;
   }
 
@@ -1006,6 +1011,9 @@ class CreateView extends GetView<CreateController> {
           reqExtra = ReqExtraBt()
             ..trackers = Util.textToLines(_btTrackerController.text);
         }
+        break;
+      case Protocol.ed2k:
+      case null:
         break;
     }
     return reqExtra;
