@@ -16,7 +16,7 @@
 
 ## 🚀 Giới thiệu
 
-Gopeed (tên đầy đủ Go Speed), một công cụ tải xuống tốc độ cao được phát triển bởi `Golang` + `Flutter`, hỗ trợ giao thức (HTTP, BitTorrent, Magnet) và hỗ trợ tất cả các nền tảng. Ngoài các chức năng tải xuống cơ bản, Gopeed còn là một công cụ tải xuống có thể tùy chỉnh cao cho phép triển khai thêm tính năng thông qua việc tích hợp với [APIs](https://gopeed.com/docs/dev-api) hoặc cài đặt và phát triển các [tiện ích mở rộng](https://gopeed.com/docs/dev-extension).
+Gopeed (tên đầy đủ Go Speed), một công cụ tải xuống tốc độ cao được phát triển bởi `Golang` + `Flutter`, hỗ trợ giao thức (HTTP, BitTorrent, Magnet, ED2K) và hỗ trợ tất cả các nền tảng. Ngoài các chức năng tải xuống cơ bản, Gopeed còn là một công cụ tải xuống có thể tùy chỉnh cao cho phép triển khai thêm tính năng thông qua việc tích hợp với [APIs](https://gopeed.com/docs/dev-api) hoặc cài đặt và phát triển các [tiện ích mở rộng](https://gopeed.com/docs/dev-extension).
 
 Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu chính thức](https://gopeed.com/docs)
 
