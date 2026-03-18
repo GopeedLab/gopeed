@@ -27,6 +27,7 @@ type Task struct {
 	Status    base.Status          `json:"status"`
 	Uploading bool                 `json:"uploading"`
 	Progress  *Progress            `json:"progress"`
+	IsCreated bool                 `json:"isCreated"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`
 
@@ -49,6 +50,7 @@ func NewTask() *Task {
 		Status:    base.DownloadStatusReady,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
+		IsCreated: false,
 	}
 }
 
