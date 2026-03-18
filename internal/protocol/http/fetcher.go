@@ -1498,7 +1498,16 @@ func (f *Fetcher) onDownloadComplete() {
 	// Check if all chunks are complete (no remaining bytes)
 	allChunksComplete := true
 	for _, conn := range f.connections {
-		if conn.Chunk != nil && conn.Chunk.remain() > 0 && !conn.Completed && conn.State != connCompleted {
+		needsMoreData := false
+		if f.meta.Res.Range {
+			needsMoreData = conn.Chunk != nil && conn.Chunk.remain() > 0
+		} else if f.meta.Res.Size > 0 {
+			needsMoreData = conn.Downloaded < f.meta.Res.Size
+		} else {
+			needsMoreData = !conn.Completed && conn.State != connCompleted
+		}
+
+		if needsMoreData && !conn.Completed && conn.State != connCompleted {
 			// This connection has remaining work and isn't done
 			// Check if it failed with 403 (server limit) - these can be ignored if other connections completed the work
 			if conn.State == connFailed && conn.failed {
