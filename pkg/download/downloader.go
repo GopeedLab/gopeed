@@ -1186,7 +1186,7 @@ func (d *Downloader) statusMut(task *Task, fn func() (bool, error)) (bool, error
 }
 
 func (d *Downloader) doStart(task *Task) (err error) {
-	var isCreate bool
+	var needCreate bool
 	isReturn, err := d.statusMut(task, func() (isReturn bool, err error) {
 		if task.Status == base.DownloadStatusRunning || task.Status == base.DownloadStatusDone {
 			isReturn = true
@@ -1198,7 +1198,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			d.Logger.Error().Stack().Err(err).Msgf("restore fetcher failed, task id: %s", task.ID)
 			return
 		}
-		isCreate = task.Status == base.DownloadStatusReady
+		needCreate = !task.IsCreated
 		task.updateStatus(base.DownloadStatusRunning)
 
 		return
@@ -1224,7 +1224,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			task.Meta.Res = task.fetcher.Meta().Res
 		}
 
-		if isCreate {
+		if needCreate {
 			if task.fetcherManager.AutoRename() {
 				d.checkDuplicateLock.Lock()
 				defer d.checkDuplicateLock.Unlock()
@@ -1248,10 +1248,9 @@ func (d *Downloader) doStart(task *Task) (err error) {
 					task.Meta.Opts.Name = newName
 				}
 			}
-
+			task.IsCreated = true
 			task.Meta.Res.CalcSize(task.Meta.Opts.SelectFiles)
 		}
-
 		task.Progress.Speed = 0
 		task.timer.Start()
 		if err := task.fetcher.Start(); err != nil {
