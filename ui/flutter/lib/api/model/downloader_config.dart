@@ -31,6 +31,7 @@ class DownloaderConfig {
 class ProtocolConfig {
   HttpConfig http = HttpConfig();
   BtConfig bt = BtConfig();
+  Ed2kConfig ed2k = Ed2kConfig();
 
   ProtocolConfig();
 
@@ -78,6 +79,28 @@ class BtConfig {
       _$BtConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$BtConfigToJson(this);
+}
+
+@JsonSerializable()
+class Ed2kConfig {
+  int listenPort;
+  int udpPort;
+  String serverAddr;
+  String serverMet;
+  String nodesDat;
+
+  Ed2kConfig({
+    this.listenPort = 0,
+    this.udpPort = 0,
+    this.serverAddr = '',
+    this.serverMet = '',
+    this.nodesDat = '',
+  });
+
+  factory Ed2kConfig.fromJson(Map<String, dynamic> json) =>
+      _$Ed2kConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$Ed2kConfigToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true)

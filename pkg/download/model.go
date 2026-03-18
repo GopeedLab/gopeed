@@ -8,6 +8,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/protocol/bt"
+	"github.com/GopeedLab/gopeed/internal/protocol/ed2k"
 	"github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -112,6 +113,14 @@ func (t *Task) updateUploadSpeed(downloaded int64, usedTime float64) int64 {
 }
 
 func calcSpeed(speedArr *[]int64, downloaded int64, usedTime float64) int64 {
+	if usedTime <= 0 {
+		return 0
+	}
+	if downloaded < 0 {
+		*speedArr = (*speedArr)[:0]
+		return 0
+	}
+
 	*speedArr = append(*speedArr, downloaded)
 	// Record last 5 seconds of download speed to calculate the average speed
 	if len(*speedArr) > int(5.0/usedTime) {
@@ -158,6 +167,7 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 		cfg.FetchManagers = []fetcher.FetcherManager{
 			new(http.FetcherManager),
 			new(bt.FetcherManager),
+			new(ed2k.FetcherManager),
 		}
 	}
 	if cfg.RefreshInterval == 0 {

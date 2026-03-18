@@ -127,6 +127,21 @@ type FetcherManager interface {
 	Close() error
 }
 
+// StatefulFetcherManager is an optional extension for protocols that keep
+// shared client state outside individual task fetchers.
+type StatefulFetcherManager interface {
+	SetStateStore(store ProtocolStateStore)
+}
+
+// ProtocolStateStore persists shared protocol state for a fetcher manager.
+// Downloader provides the concrete storage backend, while the protocol decides
+// when state should be loaded or flushed.
+type ProtocolStateStore interface {
+	Load(v any) (bool, error)
+	Save(v any) error
+	Delete() error
+}
+
 type DefaultFetcher struct {
 	Ctl    *controller.Controller
 	Meta   *FetcherMeta

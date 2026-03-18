@@ -386,6 +386,10 @@ github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJ
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
+github.com/monkeyWie/goed2k v0.0.0-20260317094144-6e18d43056e5 h1:tEOucyKJzFsCz5Gr41jFHj8i2g1zemTyS4uyErJgFHc=
+github.com/monkeyWie/goed2k v0.0.0-20260317094144-6e18d43056e5/go.mod h1:Ry2y1QlzerUgA1hVmExBdXXzE4Sjk1M7w0nSh6dhDOg=
+github.com/monkeyWie/goed2k v0.0.0-20260317100435-7a7575cf2447 h1:88kRsNwkDKPA4NzRUWdOoIL7SyMNDwtmAxzShKBvKTI=
+github.com/monkeyWie/goed2k v0.0.0-20260317100435-7a7575cf2447/go.mod h1:Ry2y1QlzerUgA1hVmExBdXXzE4Sjk1M7w0nSh6dhDOg=
 github.com/mr-tron/base58 v1.2.0 h1:T/HDJBh4ZCPbU39/+c3rRvE0uKBQlU27+QI8LJ4t64o=
 github.com/mr-tron/base58 v1.2.0/go.mod h1:BinMc/sQntlIE1frQmRFPUoPA1Zkr8VRgBdjWI2mNwc=
 github.com/mschoch/smat v0.0.0-20160514031455-90eadee771ae/go.mod h1:qAyveg+e4CE+eKJXWVjKXM4ck2QobLqTDytGJbLLhJg=
