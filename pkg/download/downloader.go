@@ -18,6 +18,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
+	protogblob "github.com/GopeedLab/gopeed/internal/protocol/gblob"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -111,6 +112,7 @@ type Downloader struct {
 	claimedExtractions sync.Map
 
 	extensions []*Extension
+	gblob      *protogblob.Registry
 }
 
 func NewDownloader(cfg *DownloaderConfig) *Downloader {
@@ -142,6 +144,8 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 }
 
 func (d *Downloader) Setup() error {
+	d.gblob = protogblob.NewRegistry(filepath.Join(d.cfg.StorageDir, protogblob.Scheme))
+
 	// setup storage
 	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
 		return err
@@ -166,6 +170,9 @@ func (d *Downloader) Setup() error {
 		protocol := fm.Name()
 		if _, ok := d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol]; !ok {
 			d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol] = fm.DefaultConfig()
+		}
+		if gfm, ok := fm.(*protogblob.FetcherManager); ok {
+			gfm.SetRegistry(d.gblob)
 		}
 		if sfm, ok := fm.(fetcher.StatefulFetcherManager); ok {
 			sfm.SetStateStore(&protocolStateStore{
@@ -192,6 +199,10 @@ func (d *Downloader) Setup() error {
 			}
 			d.assignFetcherManager(task)
 			initTask(task)
+			if task.Protocol == protogblob.Scheme && task.Status != base.DownloadStatusDone && task.Status != base.DownloadStatusError {
+				task.Status = base.DownloadStatusError
+				continue
+			}
 			if task.Status != base.DownloadStatusDone && task.Status != base.DownloadStatusError {
 				task.Status = base.DownloadStatusPause
 			}
@@ -384,11 +395,36 @@ func (d *Downloader) saveTask(task *Task) error {
 	return nil
 }
 
+func ensureRequestRawURL(req *base.Request) {
+	if req == nil {
+		return
+	}
+	if req.RawURL == "" {
+		req.RawURL = req.URL
+	}
+}
+
+func ensureResourceRequestRawURLs(parentReq *base.Request, res *base.Resource) {
+	if res == nil {
+		return
+	}
+	for _, file := range res.Files {
+		if file == nil || file.Req == nil {
+			continue
+		}
+		ensureRequestRawURL(file.Req)
+		if parentReq != nil && parentReq.RawURL != "" && file.Req.RawURL == file.Req.URL {
+			file.Req.RawURL = parentReq.RawURL
+		}
+	}
+}
+
 func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *ResolveResult, err error) {
 	rrId, err := gonanoid.New()
 	if err != nil {
 		return
 	}
+	ensureRequestRawURL(req)
 
 	res, err := d.triggerOnResolve(req)
 	if err != nil {
@@ -451,6 +487,7 @@ func (d *Downloader) remainRunningCount() int {
 }
 
 func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId string, err error) {
+	ensureRequestRawURL(req)
 	var fetcher fetcher.Fetcher
 	fetcher, err = d.buildFetcher(req.URL)
 	if err != nil {
@@ -765,6 +802,7 @@ func (d *Downloader) Stats(id string) (sr any, err error) {
 }
 
 func (d *Downloader) doDelete(task *Task, force bool) (err error) {
+	defer d.unpinGBlobTask(task)
 	err = func() error {
 		if err := d.storage.Delete(bucketTask, task.ID); err != nil {
 			return err
@@ -808,6 +846,9 @@ func (d *Downloader) Close() error {
 	}
 	for _, fm := range d.cfg.FetchManagers {
 		closeArr = append(closeArr, fm.Close)
+	}
+	if d.gblob != nil {
+		closeArr = append(closeArr, d.gblob.Close)
 	}
 	closeArr = append(closeArr, d.storage.Close)
 	// Make sure all resources are released, if had error, return the last error
@@ -1001,98 +1042,106 @@ func (d *Downloader) watch(task *Task) {
 		return
 	}
 
-	err := task.fetcher.Wait()
-	if err != nil {
-		d.doOnError(task, err)
-		return
-	}
-
-	// When delete a not resolved task, need check if the task resource is nil
-	if task.Meta.Res == nil || d.GetTask(task.ID) == nil {
-		return
-	}
-
-	task.Progress.Used = task.timer.Used()
-	if task.Meta.Res.Size == 0 {
-		task.Meta.Res.Size = task.fetcher.Progress().TotalDownloaded()
-	}
-	used := task.Progress.Used / int64(time.Second)
-	if used == 0 {
-		used = 1
-	}
-	totalSize := task.Meta.Res.Size
-	task.Progress.Speed = totalSize / used
-	task.Progress.Downloaded = totalSize
-	task.updateStatus(base.DownloadStatusDone)
-	d.storage.Put(bucketTask, task.ID, task.clone())
-	d.emit(EventKeyDone, task)
-	d.emit(EventKeyFinally, task, err)
-	d.notifyRunning()
-	d.triggerOnDone(task)
-	d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
-	d.triggerScripts(ScriptEventDownloadDone, task, nil)
-
-	if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
-		downloadFilePath := task.Meta.SingleFilepath()
-
-		cfg, _ := d.GetConfig()
-
-		// Determine if auto-torrent is enabled (use global config if not explicitly set)
-		autoTorrentEnabled := false
-		if e.AutoTorrent != nil {
-			autoTorrentEnabled = *e.AutoTorrent
-		} else if cfg != nil && cfg.AutoTorrent != nil {
-			autoTorrentEnabled = cfg.AutoTorrent.Enable
+	for {
+		err := task.fetcher.Wait()
+		if err != nil {
+			d.doOnError(task, err)
+			if task.Status == base.DownloadStatusRunning {
+				continue
+			}
+			return
 		}
 
-		if autoTorrentEnabled && strings.HasSuffix(downloadFilePath, ".torrent") {
-			// Determine if should delete torrent file after creating BT task
-			shouldDelete := false
-			if e.DeleteTorrentAfterDownload != nil {
-				shouldDelete = *e.DeleteTorrentAfterDownload
+		// When delete a not resolved task, need check if the task resource is nil
+		if task.Meta.Res == nil || d.GetTask(task.ID) == nil {
+			return
+		}
+
+		task.Progress.Used = task.timer.Used()
+		if task.Meta.Res.Size == 0 {
+			task.Meta.Res.Size = task.fetcher.Progress().TotalDownloaded()
+		}
+		used := task.Progress.Used / int64(time.Second)
+		if used == 0 {
+			used = 1
+		}
+		totalSize := task.Meta.Res.Size
+		task.Progress.Speed = totalSize / used
+		task.Progress.Downloaded = totalSize
+		task.updateStatus(base.DownloadStatusDone)
+		d.storage.Put(bucketTask, task.ID, task.clone())
+		d.emit(EventKeyDone, task)
+		d.emit(EventKeyFinally, task, err)
+		d.notifyRunning()
+		d.unpinGBlobTask(task)
+		d.triggerOnDone(task)
+		d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
+		d.triggerScripts(ScriptEventDownloadDone, task, nil)
+
+		if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
+			downloadFilePath := task.Meta.SingleFilepath()
+
+			cfg, _ := d.GetConfig()
+
+			// Determine if auto-torrent is enabled (use global config if not explicitly set)
+			autoTorrentEnabled := false
+			if e.AutoTorrent != nil {
+				autoTorrentEnabled = *e.AutoTorrent
 			} else if cfg != nil && cfg.AutoTorrent != nil {
-				shouldDelete = cfg.AutoTorrent.DeleteAfterDownload
+				autoTorrentEnabled = cfg.AutoTorrent.Enable
 			}
 
-			go func() {
-				_, err2 := d.CreateDirect(
-					&base.Request{
-						URL: downloadFilePath,
-					},
-					&base.Options{
-						Path:        task.Meta.Opts.Path,
-						SelectFiles: make([]int, 0),
-					})
-				if err2 != nil {
-					d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
-					return
+			if autoTorrentEnabled && strings.HasSuffix(downloadFilePath, ".torrent") {
+				// Determine if should delete torrent file after creating BT task
+				shouldDelete := false
+				if e.DeleteTorrentAfterDownload != nil {
+					shouldDelete = *e.DeleteTorrentAfterDownload
+				} else if cfg != nil && cfg.AutoTorrent != nil {
+					shouldDelete = cfg.AutoTorrent.DeleteAfterDownload
 				}
 
-				if shouldDelete {
-					d.Delete(&TaskFilter{IDs: []string{task.ID}}, true)
-				}
-			}()
-		}
+				go func() {
+					_, err2 := d.CreateDirect(
+						&base.Request{
+							URL: downloadFilePath,
+						},
+						&base.Options{
+							Path:        task.Meta.Opts.Path,
+							SelectFiles: make([]int, 0),
+						})
+					if err2 != nil {
+						d.Logger.Error().Err(err2).Msgf("auto create torrent task failed, task id: %s", task.ID)
+						return
+					}
 
-		// Determine if auto-extract is enabled (use global config if not explicitly set)
-		autoExtractEnabled := false
-		if e.AutoExtract != nil {
-			autoExtractEnabled = *e.AutoExtract
-		} else if cfg != nil && cfg.Archive != nil {
-			autoExtractEnabled = cfg.Archive.AutoExtract
-		}
+					if shouldDelete {
+						d.Delete(&TaskFilter{IDs: []string{task.ID}}, true)
+					}
+				}()
+			}
 
-		// Auto-extract archive files using the extraction queue
-		// This ensures only one extraction runs at a time to prevent resource exhaustion
-		if autoExtractEnabled && isArchiveFile(downloadFilePath) {
-			d.enqueueExtraction(task, downloadFilePath, e)
+			// Determine if auto-extract is enabled (use global config if not explicitly set)
+			autoExtractEnabled := false
+			if e.AutoExtract != nil {
+				autoExtractEnabled = *e.AutoExtract
+			} else if cfg != nil && cfg.Archive != nil {
+				autoExtractEnabled = cfg.Archive.AutoExtract
+			}
+
+			// Auto-extract archive files using the extraction queue
+			// This ensures only one extraction runs at a time to prevent resource exhaustion
+			if autoExtractEnabled && isArchiveFile(downloadFilePath) {
+				d.enqueueExtraction(task, downloadFilePath, e)
+			}
 		}
+		return
 	}
 }
 
 func (d *Downloader) doOnError(task *Task, err error) {
 	d.Logger.Warn().Err(err).Msgf("task download failed, task id: %s", task.ID)
 	task.updateStatus(base.DownloadStatusError)
+	d.unpinGBlobTask(task)
 	d.triggerOnError(task, err)
 	if task.Status == base.DownloadStatusError {
 		d.emit(EventKeyError, task, err)
@@ -1141,10 +1190,21 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	if f.Meta().Opts == nil {
 		f.Meta().Opts = opts
 	}
+	ensureRequestRawURL(f.Meta().Req)
 
 	fm, err := d.parseFm(f.Meta().Req.URL)
 	if err != nil {
 		return
+	}
+	if fm.Name() == protogblob.Scheme && d.gblob != nil {
+		if err = d.gblob.Pin(f.Meta().Req.URL); err != nil {
+			return "", err
+		}
+		defer func() {
+			if err != nil {
+				d.gblob.Unpin(f.Meta().Req.URL)
+			}
+		}()
 	}
 
 	task := NewTask()
@@ -1771,6 +1831,16 @@ func initTask(task *Task) {
 	task.lock = &sync.Mutex{}
 	task.speedArr = make([]int64, 0)
 	task.uploadSpeedArr = make([]int64, 0)
+}
+
+func (d *Downloader) unpinGBlobTask(task *Task) {
+	if d.gblob == nil || task == nil || task.Meta == nil || task.Meta.Req == nil || task.Meta.Req.URL == "" {
+		return
+	}
+	if task.Protocol != protogblob.Scheme {
+		return
+	}
+	d.gblob.Unpin(task.Meta.Req.URL)
 }
 
 var defaultDownloader = NewDownloader(nil)

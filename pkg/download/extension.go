@@ -13,7 +13,6 @@ import (
 
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/download/engine"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	gojautil "github.com/GopeedLab/gopeed/pkg/download/engine/util"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -268,6 +267,7 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, er
 				for _, file := range ctx.Res.Files {
 					file.Name = util.SafeFilename(file.Name)
 				}
+				ensureResourceRequestRawURLs(req, ctx.Res)
 				ctx.Res.CalcSize(nil)
 			}
 			res = ctx.Res
@@ -361,10 +361,8 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					if req.Labels == nil {
 						req.Labels = make(map[string]string)
 					}
-					engine := engine.NewEngine(&engine.Config{
-						ProxyConfig: d.cfg.Proxy,
-					})
-					defer engine.Close()
+					engine, session := d.newExtensionEngine()
+					defer session.CloseIfIdle()
 					err = engine.Runtime.Set("gopeed", gopeed)
 					if err != nil {
 						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] engine inject failed", ext.buildIdentity())
@@ -551,8 +549,12 @@ func (s *Script) match(event ActivationEvent, req *base.Request) bool {
 	}
 
 	// match url
+	targetURL := req.RawURL
+	if targetURL == "" {
+		targetURL = req.URL
+	}
 	for _, url := range s.Match.Urls {
-		if util.Match(url, req.URL) {
+		if util.Match(url, targetURL) {
 			return true
 		}
 	}
