@@ -16,4 +16,6 @@ type Stats struct {
 	SeedRatio float64 `json:"seedRatio"`
 	// Total seed time
 	SeedTime int64 `json:"seedTime"`
+	// Hashes of the downloaded files (if integrity verification is enabled)
+	FileHashes map[string]string `json:"fileHashes,omitempty"`
 }

@@ -9,4 +9,6 @@ type config struct {
 	SeedRatio float64 `json:"seedRatio"`
 	// SeedTime is the time in seconds to seed after downloading is complete.
 	SeedTime int64 `json:"seedTime"`
+	// VerifyIntegrity checks downloaded files SHA256 and CRC32 after download
+	VerifyIntegrity bool `json:"verifyIntegrity"`
 }

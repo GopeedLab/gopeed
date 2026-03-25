@@ -26,6 +26,7 @@ type OptsExtra struct {
 // Stats for download
 type Stats struct {
 	Connections []*StatsConnection `json:"connections"`
+	Sha256      string             `json:"sha256"`
 }
 
 type StatsConnection struct {

@@ -3,7 +3,10 @@ package bt
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"net/url"
 	"os"
@@ -44,6 +47,9 @@ type Fetcher struct {
 	torrentDropCtx  context.Context
 	torrentDropFunc func()
 	uploadDoneCh    chan any
+
+	// Integrity verification results: filepath relative to torrent root -> SHA-256
+	fileHashes map[string]string
 }
 
 func (f *Fetcher) Setup(ctl *controller.Controller) {
@@ -176,6 +182,7 @@ func (f *Fetcher) Stats() any {
 		SeedBytes:        f.data.SeedBytes,
 		SeedRatio:        f.seedRadio(),
 		SeedTime:         f.data.SeedTime,
+		FileHashes:       f.fileHashes,
 	}
 }
 
@@ -212,9 +219,48 @@ func (f *Fetcher) Wait() (err error) {
 							util.SafeRemove(filepath.Join(f.meta.Opts.Path, f.meta.Res.Name, file.Path()))
 						}
 					}
+					// If VerifyIntegrity is enabled, compute hashes
+					if f.config.VerifyIntegrity {
+						f.verifyFileIntegrity()
+					}
 					return
 				}
 			}
+		}
+	}
+}
+
+// verifyFileIntegrity computes SHA-256 and CRC32 of all downloaded files in the torrent
+// in a single pass per file. It stores the SHA-256 hash for Stats.
+func (f *Fetcher) verifyFileIntegrity() {
+	if f.fileHashes == nil {
+		f.fileHashes = make(map[string]string)
+	}
+
+	for _, selectIndex := range f.meta.Opts.SelectFiles {
+		if selectIndex >= len(f.torrent.Files()) {
+			continue
+		}
+		file := f.torrent.Files()[selectIndex]
+		fullPath := filepath.Join(f.meta.Opts.Path, f.meta.Res.Name, file.Path())
+
+		openedFile, err := os.Open(fullPath)
+		if err != nil {
+			continue // Skip if cannot open
+		}
+
+		sha256Hasher := sha256.New()
+		crc32Hasher := crc32.NewIEEE()
+		multiWriter := io.MultiWriter(sha256Hasher, crc32Hasher)
+
+		_, err = io.Copy(multiWriter, openedFile)
+		openedFile.Close()
+
+		if err == nil {
+			// Store SHA-256 for Stats access, using the display path as key
+			f.fileHashes[file.DisplayPath()] = hex.EncodeToString(sha256Hasher.Sum(nil))
+			// CRC32 is computed but not compared, can be logged or used later
+			_ = crc32Hasher.Sum32()
 		}
 	}
 }

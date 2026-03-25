@@ -57,6 +57,7 @@ HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
       userAgent: json['userAgent'] as String? ?? '',
       connections: (json['connections'] as num?)?.toInt() ?? 0,
       useServerCtime: json['useServerCtime'] as bool? ?? false,
+      verifyIntegrity: json['verifyIntegrity'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
@@ -64,6 +65,7 @@ Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
       'userAgent': instance.userAgent,
       'connections': instance.connections,
       'useServerCtime': instance.useServerCtime,
+      'verifyIntegrity': instance.verifyIntegrity,
     };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
@@ -75,6 +77,7 @@ BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
       seedKeep: json['seedKeep'] as bool? ?? false,
       seedRatio: (json['seedRatio'] as num?)?.toDouble() ?? 0,
       seedTime: (json['seedTime'] as num?)?.toInt() ?? 0,
+      verifyIntegrity: json['verifyIntegrity'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
@@ -83,6 +86,7 @@ Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
       'seedKeep': instance.seedKeep,
       'seedRatio': instance.seedRatio,
       'seedTime': instance.seedTime,
+      'verifyIntegrity': instance.verifyIntegrity,
     };
 
 Ed2kConfig _$Ed2kConfigFromJson(Map<String, dynamic> json) => Ed2kConfig(

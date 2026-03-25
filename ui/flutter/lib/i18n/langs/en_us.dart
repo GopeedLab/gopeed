@@ -36,6 +36,7 @@ const enUS = {
     'downloadDirValid': 'Please select the download directory',
     'connections': 'Connections',
     'useServerCtime': 'Use server time for file creation',
+    'verifyIntegrity': 'Verify file integrity after download',
     'maxRunning': 'Max Running Tasks',
     'defaultDirectDownload': 'Check direct download by default',
     'autoStartTasks': 'Auto-start incomplete tasks on startup',

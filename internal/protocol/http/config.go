@@ -1,7 +1,8 @@
 package http
 
 type config struct {
-	UserAgent      string `json:"userAgent"`
-	Connections    int    `json:"connections"`
-	UseServerCtime bool   `json:"useServerCtime"`
+	UserAgent       string `json:"userAgent"`
+	Connections     int    `json:"connections"`
+	UseServerCtime  bool   `json:"useServerCtime"`
+	VerifyIntegrity bool   `json:"verifyIntegrity"`
 }

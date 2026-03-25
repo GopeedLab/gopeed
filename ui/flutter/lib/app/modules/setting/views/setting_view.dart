@@ -581,6 +581,22 @@ class SettingView extends GetView<SettingController> {
         ),
       );
     });
+    final buildHttpVerifyIntegrity = _buildConfigItem(
+        'verifyIntegrity',
+        () => httpConfig.verifyIntegrity ? 'on'.tr : 'off'.tr, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: httpConfig.verifyIntegrity,
+          onChanged: (bool value) {
+            downloaderCfg.update((val) {
+              val!.protocolConfig.http.verifyIntegrity = value;
+            });
+            debounceSave();
+          },
+        ),
+      );
+    });
 
     // bt config items start
     final btConfig = downloaderCfg.value.protocolConfig.bt;
@@ -670,6 +686,23 @@ class SettingView extends GetView<SettingController> {
         ],
       );
     });
+    final buildBtVerifyIntegrity = _buildConfigItem(
+        'verifyIntegrity',
+        () => btConfig.verifyIntegrity ? 'on'.tr : 'off'.tr, (Key key) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        child: Switch(
+          value: btConfig.verifyIntegrity,
+          onChanged: (bool value) {
+            downloaderCfg.update((val) {
+              val!.protocolConfig.bt.verifyIntegrity = value;
+            });
+            debounceSave();
+          },
+        ),
+      );
+    });
+
     final buildBtTrackers = _buildConfigItem(
         'addTracker',
         () => 'items'
@@ -1769,6 +1802,7 @@ class SettingView extends GetView<SettingController> {
                             buildHttpUa(),
                             buildHttpConnections(),
                             buildHttpUseServerCtime(),
+                            buildHttpVerifyIntegrity(),
                           ]),
                         )),
                         const Text('BitTorrent'),
@@ -1780,6 +1814,7 @@ class SettingView extends GetView<SettingController> {
                             buildBtTrackers(),
                             buildBtSeedConfig(),
                             buildBtDefaultClientConfig(),
+                            buildBtVerifyIntegrity(),
                           ]),
                         )),
                         Text('ed2k'.tr),

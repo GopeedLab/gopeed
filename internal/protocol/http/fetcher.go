@@ -2,8 +2,11 @@ package http
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"net/http"
 	"net/url"
@@ -256,6 +259,9 @@ type Fetcher struct {
 	fileMu       sync.Mutex
 	redirectURL  string
 	redirectLock sync.Mutex
+
+	// Integrity verification results
+	sha256Hash string
 
 	// Lifecycle control
 	ctx    context.Context
@@ -546,7 +552,10 @@ func (f *Fetcher) stopPrefetchAndCopyData() int64 {
 		for copied < prefetched {
 			n, err := f.prefetchFile.Read(buf)
 			if n > 0 {
-				f.file.WriteAt(buf[:n], copied)
+				_, writeErr := f.file.WriteAt(buf[:n], copied)
+				if writeErr != nil {
+					break
+				}
 				copied += int64(n)
 			}
 			if err != nil {
@@ -1036,6 +1045,12 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			return originalErr
 		}
 	}
+	// If we requested a Range but got 200 (OK), the server ignored our Range header
+	// and returned the full file. We cannot write this at the chunk offset.
+	if f.meta.Res.Range && resp.StatusCode == base.HttpCodeOK {
+		resp.Body.Close()
+		return fmt.Errorf("server returned 200 instead of 206 for range request")
+	}
 	defer resp.Body.Close()
 
 	// Record successful connection time for adaptive timeout
@@ -1066,14 +1081,14 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			finished := false
 			var writeOffset int64
 
-			// Lock to safely read chunk state and calculate write parameters
-			// This protects against concurrent chunk splitting by helpOtherConnection
+			// Hold connMu through the entire read-check → write → update cycle.
+			// This prevents work stealing (helpOtherConnection/expandConnections)
+			// from modifying Chunk.End between reading remain and updating Downloaded.
 			f.connMu.Lock()
 			if f.meta.Res.Range {
 				// Check current chunk boundaries - this respects any concurrent chunk splitting
 				remain := conn.Chunk.remain()
 				if remain <= 0 {
-					// Chunk has been fully downloaded (possibly split and reduced)
 					f.connMu.Unlock()
 					return nil
 				}
@@ -1083,20 +1098,20 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 				}
 			}
 			writeOffset = conn.Chunk.Begin + conn.Chunk.Downloaded
-			f.connMu.Unlock()
 
+			// Write to file while still holding connMu
 			f.fileMu.Lock()
 			if f.file != nil {
 				_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
 				if writeErr != nil {
 					f.fileMu.Unlock()
+					f.connMu.Unlock()
 					return writeErr
 				}
 			}
 			f.fileMu.Unlock()
 
-			// Lock again to update Downloaded atomically with the read above
-			f.connMu.Lock()
+			// Update Downloaded in the same lock section
 			conn.Chunk.Downloaded += int64(n)
 			conn.Downloaded += int64(n)
 			// Update connection speed periodically
@@ -1555,6 +1570,13 @@ func (f *Fetcher) onDownloadComplete() {
 	}
 	f.fileMu.Unlock()
 
+	// Run integrity verification if enabled and download succeeded
+	if finalErr == nil && f.config.VerifyIntegrity {
+		if verifyErr := f.verifyFileIntegrity(); verifyErr != nil {
+			finalErr = verifyErr
+		}
+	}
+
 	if finalErr != nil {
 		f.setState(stateError)
 	} else {
@@ -1565,6 +1587,46 @@ func (f *Fetcher) onDownloadComplete() {
 	case f.doneCh <- finalErr:
 	default:
 	}
+}
+
+// verifyFileIntegrity computes SHA-256 and CRC32 of the downloaded file in a single pass.
+// It verifies the file size matches the expected size and stores the SHA-256 hash for Stats.
+func (f *Fetcher) verifyFileIntegrity() error {
+	name := f.meta.SingleFilepath()
+	file, err := os.Open(name)
+	if err != nil {
+		return fmt.Errorf("integrity check: cannot open file: %w", err)
+	}
+	defer file.Close()
+
+	// Verify file size
+	if f.meta.Res.Size > 0 {
+		info, err := file.Stat()
+		if err != nil {
+			return fmt.Errorf("integrity check: cannot stat file: %w", err)
+		}
+		if info.Size() != f.meta.Res.Size {
+			return fmt.Errorf("integrity check: file size mismatch: expected %d, got %d", f.meta.Res.Size, info.Size())
+		}
+	}
+
+	// Compute SHA-256 and CRC32 in a single pass
+	sha256Hasher := sha256.New()
+	crc32Hasher := crc32.NewIEEE()
+	multiWriter := io.MultiWriter(sha256Hasher, crc32Hasher)
+
+	if _, err := io.Copy(multiWriter, file); err != nil {
+		return fmt.Errorf("integrity check: error reading file: %w", err)
+	}
+
+	// Store SHA-256 for Stats access
+	f.sha256Hash = hex.EncodeToString(sha256Hasher.Sum(nil))
+
+	// CRC32 is computed but not compared (no expected value from server)
+	// It can be used for future chunk-level verification
+	_ = crc32Hasher.Sum32()
+
+	return nil
 }
 
 func (f *Fetcher) checkCompletion() bool {
@@ -1735,6 +1797,7 @@ func (f *Fetcher) Stats() any {
 	}
 	return &fhttp.Stats{
 		Connections: statsConnections,
+		Sha256:      f.sha256Hash,
 	}
 }
 
