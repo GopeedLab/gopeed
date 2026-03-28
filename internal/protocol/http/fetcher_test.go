@@ -553,6 +553,73 @@ func TestFetcher_Stats(t *testing.T) {
 	if totalDownloaded != test.BuildSize {
 		t.Errorf("Stats() got = %v, want %v", totalDownloaded, test.BuildSize)
 	}
+
+	// Verify that integrity information is available
+	if len(stats.Sha256) != 64 {
+		t.Errorf("Stats() SHA256 hash length mismatch: got %d, want 64", len(stats.Sha256))
+	}
+	if len(stats.Crc32) != 8 {
+		t.Errorf("Stats() CRC32 hash length mismatch: got %d, want 8", len(stats.Crc32))
+	}
+	if stats.FileSize <= 0 {
+		t.Errorf("Stats() file size should be positive, got %d", stats.FileSize)
+	}
+	if !stats.IntegrityVerified {
+		t.Error("Stats() integrity should be verified")
+	}
+
+	t.Logf("SHA256: %s", stats.Sha256)
+	t.Logf("CRC32: %s", stats.Crc32)
+	t.Logf("File size: %d (expected: %d)", stats.FileSize, stats.ExpectedSize)
+}
+
+// TestFetcher_IntegrityVerification tests that integrity verification works correctly
+func TestFetcher_IntegrityVerification(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	// Test with VerifyIntegrity enabled
+	fetcher := buildConfigFetcher(config{
+		Connections:     4,
+		VerifyIntegrity: true,
+	})
+
+	opts := &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+		Extra: &http.OptsExtra{
+			Connections: 4,
+		},
+	}
+
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
+	}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = fetcher.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = fetcher.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stats := fetcher.Stats().(*http.Stats)
+	if len(stats.Sha256) != 64 {
+		t.Errorf("Stats() SHA256 hash length mismatch: got %d, want 64", len(stats.Sha256))
+	}
+	if len(stats.Crc32) != 8 {
+		t.Errorf("Stats() CRC32 hash length mismatch: got %d, want 8", len(stats.Crc32))
+	}
+	if !stats.IntegrityVerified {
+		t.Error("Stats() integrity should be verified")
+	}
+
+	t.Logf("With VerifyIntegrity=true: SHA256=%s, CRC32=%s", stats.Sha256, stats.Crc32)
 }
 
 // TestFetcher_DownloadOneTimeURL tests downloading from a URL that can only be accessed once

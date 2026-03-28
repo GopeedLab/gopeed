@@ -261,7 +261,10 @@ type Fetcher struct {
 	redirectLock sync.Mutex
 
 	// Integrity verification results
-	sha256Hash string
+	sha256Hash        string
+	crc32Hash         string
+	fileSize          int64
+	integrityVerified bool
 
 	// Lifecycle control
 	ctx    context.Context
@@ -1570,10 +1573,14 @@ func (f *Fetcher) onDownloadComplete() {
 	}
 	f.fileMu.Unlock()
 
-	// Run integrity verification if enabled and download succeeded
-	if finalErr == nil && f.config.VerifyIntegrity {
+	// Always compute file integrity hashes if download succeeded
+	if finalErr == nil {
 		if verifyErr := f.verifyFileIntegrity(); verifyErr != nil {
-			finalErr = verifyErr
+			// If integrity check fails, log the error but don't fail the download
+			// unless VerifyIntegrity is enabled
+			if f.config.VerifyIntegrity {
+				finalErr = verifyErr
+			}
 		}
 	}
 
@@ -1590,7 +1597,7 @@ func (f *Fetcher) onDownloadComplete() {
 }
 
 // verifyFileIntegrity computes SHA-256 and CRC32 of the downloaded file in a single pass.
-// It verifies the file size matches the expected size and stores the SHA-256 hash for Stats.
+// It verifies the file size matches the expected size and stores the hash values for Stats.
 func (f *Fetcher) verifyFileIntegrity() error {
 	name := f.meta.SingleFilepath()
 	file, err := os.Open(name)
@@ -1599,14 +1606,23 @@ func (f *Fetcher) verifyFileIntegrity() error {
 	}
 	defer file.Close()
 
-	// Verify file size
+	// Get actual file size
+	info, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("integrity check: cannot stat file: %w", err)
+	}
+	f.fileSize = info.Size()
+
+	// Verify file size if expected size is known
+	sizeMatch := true
 	if f.meta.Res.Size > 0 {
-		info, err := file.Stat()
-		if err != nil {
-			return fmt.Errorf("integrity check: cannot stat file: %w", err)
-		}
 		if info.Size() != f.meta.Res.Size {
-			return fmt.Errorf("integrity check: file size mismatch: expected %d, got %d", f.meta.Res.Size, info.Size())
+			sizeMatch = false
+			errMsg := fmt.Errorf("integrity check: file size mismatch: expected %d, got %d", f.meta.Res.Size, info.Size())
+			// Return error only if VerifyIntegrity is enabled
+			if f.config.VerifyIntegrity {
+				return errMsg
+			}
 		}
 	}
 
@@ -1619,12 +1635,10 @@ func (f *Fetcher) verifyFileIntegrity() error {
 		return fmt.Errorf("integrity check: error reading file: %w", err)
 	}
 
-	// Store SHA-256 for Stats access
+	// Store hash values for Stats access
 	f.sha256Hash = hex.EncodeToString(sha256Hasher.Sum(nil))
-
-	// CRC32 is computed but not compared (no expected value from server)
-	// It can be used for future chunk-level verification
-	_ = crc32Hasher.Sum32()
+	f.crc32Hash = fmt.Sprintf("%08x", crc32Hasher.Sum32())
+	f.integrityVerified = sizeMatch
 
 	return nil
 }
@@ -1795,9 +1809,19 @@ func (f *Fetcher) Stats() any {
 			RetryTimes: connection.retryTimes,
 		})
 	}
+
+	expectedSize := int64(0)
+	if f.meta.Res != nil && len(f.meta.Res.Files) > 0 {
+		expectedSize = f.meta.Res.Size
+	}
+
 	return &fhttp.Stats{
-		Connections: statsConnections,
-		Sha256:      f.sha256Hash,
+		Connections:       statsConnections,
+		Sha256:            f.sha256Hash,
+		Crc32:             f.crc32Hash,
+		FileSize:          f.fileSize,
+		ExpectedSize:      expectedSize,
+		IntegrityVerified: f.integrityVerified,
 	}
 }
 

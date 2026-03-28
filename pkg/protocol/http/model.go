@@ -27,6 +27,13 @@ type OptsExtra struct {
 type Stats struct {
 	Connections []*StatsConnection `json:"connections"`
 	Sha256      string             `json:"sha256"`
+	Crc32       string             `json:"crc32"`
+	// FileSize is the actual size of the downloaded file
+	FileSize int64 `json:"fileSize"`
+	// ExpectedSize is the expected size from the server
+	ExpectedSize int64 `json:"expectedSize"`
+	// IntegrityVerified is true if integrity check was performed
+	IntegrityVerified bool `json:"integrityVerified"`
 }
 
 type StatsConnection struct {

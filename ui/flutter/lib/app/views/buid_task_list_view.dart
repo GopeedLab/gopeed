@@ -13,6 +13,7 @@ import '../modules/app/controllers/app_controller.dart';
 import '../modules/task/controllers/task_controller.dart';
 import '../modules/task/controllers/task_downloaded_controller.dart';
 import '../modules/task/controllers/task_downloading_controller.dart';
+import '../modules/task/views/hash_info_dialog.dart';
 import '../modules/task/views/task_view.dart';
 import '../routes/app_pages.dart';
 import 'file_icon.dart';
@@ -277,6 +278,17 @@ class BuildTaskListView extends GetView {
     List<Widget> buildActions() {
       final list = <Widget>[];
       if (isDone()) {
+        // Hash information button
+        list.add(IconButton(
+          icon: const Icon(Icons.security),
+          tooltip: 'hashInfo'.tr,
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (_) => HashInfoDialog(taskId: task.id),
+            );
+          },
+        ));
         list.add(IconButton(
           icon: const Icon(Icons.folder_open),
           onPressed: () {

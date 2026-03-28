@@ -17,14 +17,14 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/protocol/http"
+	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
 )
 
 var testDownloadOpt = &base.Options{
 	Path: test.Dir,
 	Name: test.DownloadName,
-	Extra: http.OptsExtra{
+	Extra: fhttp.OptsExtra{
 		Connections: 4,
 	},
 }
@@ -349,7 +349,7 @@ func TestDownloader_CreateRename(t *testing.T) {
 		_, err := downloader.CreateDirect(req, &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
-			Extra: http.OptsExtra{
+			Extra: fhttp.OptsExtra{
 				Connections: 4,
 			},
 		})
@@ -523,7 +523,7 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 		Opts: &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
-			Extra: http.OptsExtra{
+			Extra: fhttp.OptsExtra{
 				Connections: 4,
 			},
 		},
@@ -680,6 +680,32 @@ func TestDownloader_Stats(t *testing.T) {
 	}
 	if stats == nil {
 		t.Error("Stats() returned nil stats")
+	}
+
+	// Verify that integrity information is available
+	httpStats, ok := stats.(*fhttp.Stats)
+	if !ok {
+		t.Fatal("Stats() returned unexpected type")
+	}
+
+	// Check that SHA256 hash is computed (should be 64 hex characters)
+	if len(httpStats.Sha256) != 64 {
+		t.Errorf("Stats() SHA256 hash length mismatch: got %d, want 64", len(httpStats.Sha256))
+	}
+
+	// Check that CRC32 hash is computed (should be 8 hex characters)
+	if len(httpStats.Crc32) != 8 {
+		t.Errorf("Stats() CRC32 hash length mismatch: got %d, want 8", len(httpStats.Crc32))
+	}
+
+	// Check that file size is reported
+	if httpStats.FileSize <= 0 {
+		t.Errorf("Stats() file size should be positive, got %d", httpStats.FileSize)
+	}
+
+	// Check that integrity was verified
+	if !httpStats.IntegrityVerified {
+		t.Error("Stats() integrity should be verified")
 	}
 }
 
@@ -1036,7 +1062,7 @@ func TestDownloader_AutoExtractWithProgress(t *testing.T) {
 	taskId, err := downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "archive.zip",
-		Extra: http.OptsExtra{
+		Extra: fhttp.OptsExtra{
 			Connections: 1,
 			AutoExtract: util.BoolPtr(true),
 		},
@@ -1163,7 +1189,7 @@ func TestDownloader_AutoExtractWithDeleteAfterExtract(t *testing.T) {
 	_, err = downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "archive.zip",
-		Extra: http.OptsExtra{
+		Extra: fhttp.OptsExtra{
 			Connections:        1,
 			AutoExtract:        util.BoolPtr(true),
 			DeleteAfterExtract: true,
@@ -1257,7 +1283,7 @@ func TestDownloader_AutoExtractError(t *testing.T) {
 	_, err = downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "corrupt.zip",
-		Extra: http.OptsExtra{
+		Extra: fhttp.OptsExtra{
 			Connections: 1,
 			AutoExtract: util.BoolPtr(true),
 		},
@@ -1517,7 +1543,7 @@ func TestDownloader_DeleteAll(t *testing.T) {
 		_, err := downloader.CreateDirect(req, &base.Options{
 			Path: test.Dir,
 			Name: test.DownloadName,
-			Extra: http.OptsExtra{
+			Extra: fhttp.OptsExtra{
 				Connections: 4,
 			},
 		})
@@ -2414,7 +2440,7 @@ func TestDownloader_AutoTorrent(t *testing.T) {
 	originalTaskId, err = downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "ubuntu.torrent",
-		Extra: http.OptsExtra{
+		Extra: fhttp.OptsExtra{
 			Connections: 1,
 			AutoTorrent: util.BoolPtr(true),
 		},
@@ -2513,7 +2539,7 @@ func TestDownloader_AutoTorrentWithDelete(t *testing.T) {
 	originalTaskId, err = downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "ubuntu.torrent",
-		Extra: http.OptsExtra{
+		Extra: fhttp.OptsExtra{
 			Connections:                1,
 			AutoTorrent:                util.BoolPtr(true),
 			DeleteTorrentAfterDownload: util.BoolPtr(true),
@@ -2616,7 +2642,7 @@ func TestDownloader_AutoTorrentDisabled(t *testing.T) {
 	_, err = downloader.CreateDirect(req, &base.Options{
 		Path: downloadDir,
 		Name: "ubuntu.torrent",
-		Extra: http.OptsExtra{
+		Extra: fhttp.OptsExtra{
 			Connections: 1,
 			AutoTorrent: util.BoolPtr(false),
 		},
@@ -2661,7 +2687,7 @@ func TestDownloader_PatchTask_HTTP(t *testing.T) {
 
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-		Extra: &http.OptsExtra{
+		Extra: &fhttp.OptsExtra{
 			Connections: 2,
 		},
 		Labels: map[string]string{

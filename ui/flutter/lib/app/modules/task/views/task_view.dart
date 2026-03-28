@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../../api/api.dart';
+import '../../../../api/model/stats.dart';
 import '../../../../api/model/task.dart';
 import '../../../../util/file_explorer.dart';
 import '../../../../util/util.dart';
@@ -20,6 +22,19 @@ class TaskView extends GetView<TaskController> {
   @override
   Widget build(BuildContext context) {
     final selectTask = controller.selectTask;
+    final statsRx = Rxn<Stats>();
+
+    // Load stats when task changes
+    Future.microtask(() async {
+      if (selectTask.value?.status == Status.done && selectTask.value != null) {
+        try {
+          final stats = await getTaskStats(selectTask.value!.id);
+          statsRx.value = stats;
+        } catch (e) {
+          // Ignore errors - stats are optional
+        }
+      }
+    });
 
     return DefaultTabController(
       length: 2,
@@ -100,6 +115,91 @@ class TaskView extends GetView<TaskController> {
                       },
                     ),
                   ),
+                  // Integrity verification section - only show for completed tasks
+                  if (selectTask.value?.status == Status.done) ...[
+                    const Divider(),
+                    ListTile(
+                      title: Text('integrityVerification'.tr),
+                      subtitle: Obx(() => statsRx.value != null
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // File size info
+                                Text(
+                                  'fileSize'.tr +
+                                      ': ${Util.fmtByte(statsRx.value!.fileSize)}' +
+                                      (statsRx.value!.expectedSize > 0
+                                          ? ' / ${Util.fmtByte(statsRx.value!.expectedSize)}'
+                                          : ''),
+                                  style: Get.textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 4),
+                                // SHA256 hash
+                                Row(
+                                  children: [
+                                    const Icon(Icons.security, size: 16),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        'SHA256: ${statsRx.value!.sha256}',
+                                        style: Get.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontFamily: 'monospace',
+                                              color: statsRx.value!
+                                                      .integrityVerified
+                                                  ? Colors.green
+                                                  : Colors.red,
+                                            ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    CopyButton(statsRx.value!.sha256),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                // CRC32 hash
+                                Row(
+                                  children: [
+                                    const Icon(Icons.security, size: 16),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        'CRC32: ${statsRx.value!.crc32}',
+                                        style: Get.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontFamily: 'monospace',
+                                              color: statsRx.value!
+                                                      .integrityVerified
+                                                  ? Colors.green
+                                                  : Colors.red,
+                                            ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    CopyButton(statsRx.value!.crc32),
+                                  ],
+                                ),
+                                // Verification status
+                                if (statsRx.value!.integrityVerified) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.check_circle,
+                                          size: 14, color: Colors.green),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'integrityVerified'.tr,
+                                        style: Get.textTheme.bodySmall
+                                            ?.copyWith(color: Colors.green),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            )
+                          : Text('loading'.tr)),
+                    ),
+                  ],
                 ],
               )),
         ),

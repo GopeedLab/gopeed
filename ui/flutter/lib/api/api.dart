@@ -18,6 +18,7 @@ import 'model/resolve_result.dart';
 import 'model/resolve_task.dart';
 import 'model/result.dart';
 import 'model/switch_extension.dart';
+import 'model/stats.dart';
 import 'model/task.dart';
 import 'model/update_check_extension_resp.dart';
 import 'model/update_extension_settings.dart';
@@ -244,6 +245,11 @@ Future<void> updateExtension(String identity) async {
 Future<void> testWebhook(String url) async {
   return _parse(
       () => _client.dio.post("api/v1/webhook/test", data: {"url": url}), null);
+}
+
+Future<Stats> getTaskStats(String id) async {
+  return _parse<Stats>(() => _client.dio.get("api/v1/tasks/$id/stats"),
+      (data) => Stats.fromJson(data));
 }
 
 Future<String> login(LoginReq loginReq) async {

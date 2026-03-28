@@ -167,5 +167,15 @@ const ruRU = {
     'desktopNotification': 'Уведомления',
     'notificationTaskDone': 'Задача завершена',
     'notificationTaskError': 'Ошибка задачи',
+    'integrityVerification': 'Проверка целостности',
+    'fileSize': 'Размер файла',
+    'integrityVerified': 'Целостность подтверждена',
+    'loading': 'Загрузка',
+    'hashInfo': 'Информация о хеше',
+    'sha256Label': 'SHA256',
+    'crc32Label': 'CRC32',
+    'verificationStatus': 'Статус проверки',
+    'verified': 'Проверено',
+    'notVerified': 'Не проверено',
   }
 };
