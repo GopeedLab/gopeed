@@ -1,5 +1,5 @@
-const ar = {
-  'ar': {
+const arAR = {
+  'ar_AR': {
     'label': 'العربية',
     'error': 'خطأ',
     'tip': 'تلميح',
