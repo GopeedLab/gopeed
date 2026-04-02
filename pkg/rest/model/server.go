@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/GopeedLab/gopeed/pkg/base"
+	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
 	"io/fs"
 )
 
@@ -21,8 +22,10 @@ type StartConfig struct {
 	WhiteDownloadDirs []string                    `json:"whiteDownloadDirs"`
 	ApiToken          string                      `json:"apiToken"`
 	DownloadConfig    *base.DownloaderStoreConfig `json:"downloadConfig"`
+	WebViewRPCConfig  *enginewebview.RPCConfig    `json:"webViewRpcConfig,omitempty"`
 
-	ProductionMode bool
+	ProductionMode  bool
+	WebViewProvider enginewebview.Provider `json:"-"`
 
 	WebEnable bool
 	WebFS     fs.FS

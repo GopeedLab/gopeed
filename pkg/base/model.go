@@ -14,8 +14,9 @@ import (
 
 // Request download request
 type Request struct {
-	URL   string `json:"url"`
-	Extra any    `json:"extra"`
+	RawURL string `json:"rawUrl"`
+	URL    string `json:"url"`
+	Extra  any    `json:"extra"`
 	// Labels is used to mark the download task
 	Labels map[string]string `json:"labels"`
 	// Proxy is special proxy config for request

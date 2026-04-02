@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:app_links/app_links.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
@@ -17,13 +16,11 @@ import 'package:uri_to_file/uri_to_file.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
-
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/install_extension.dart';
 import '../../../../api/model/request.dart';
-import '../../../../api/model/result.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../core/libgopeed_boot.dart';
 import '../../../../database/database.dart';
@@ -37,7 +34,8 @@ import '../../../../util/package_info.dart';
 import '../../../../util/updater.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
-import '../../../rpc/rpc.dart';
+import '../../../rpc/host_rpc_service.dart';
+import '../../../rpc/webview_rpc_service.dart';
 import '../../redirect/views/redirect_view.dart';
 import '../../../services/notification_service.dart';
 
@@ -98,7 +96,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
     _initWindows().onError((error, stackTrace) =>
         logger.w("initWindows error", error, stackTrace));
-        
+
     if (Util.isDesktop()) {
       Get.put(NotificationService());
     }
@@ -126,6 +124,8 @@ class AppController extends GetxController with WindowListener, TrayListener {
   void onClose() {
     _linkSubscription?.cancel();
     trayManager.removeListener(this);
+    HostRpcService.instance.stop();
+    WebViewRpcService.instance.stop();
     LibgopeedBoot.instance.stop();
   }
 
@@ -330,54 +330,33 @@ class AppController extends GetxController with WindowListener, TrayListener {
       return;
     }
     try {
-      await startRpcServer({
-        "/create": (ctx) async {
-          final meta =
-              ctx.request.headers["X-Gopeed-Host-Meta"]?.firstOrNull ?? "{}";
-          final jsonMeta = jsonDecode(meta);
-          final silent = jsonMeta['silent'] as bool? ?? false;
-          final params = await ctx.readText();
-          final createTaskParams = CreateTask.fromJson(_decodeParams(params));
+      await HostRpcService.instance.start(
+        onCreate: (createTaskParams, silent) async {
           if (!silent || pendingUpdateTask.value != null) {
             await windowManager.show();
             _handleToCreate0(createTaskParams);
-          } else {
-            try {
-              await createTask(createTaskParams);
-            } catch (e) {
-              logger.w(
-                  "create task from extension fail", e, StackTrace.current);
-            }
+            return;
           }
-        },
-        "/forward": (ctx) async {
           try {
-            final body = await ctx.readJSON();
-            final method = (body['method'] as String?)?.toUpperCase() ?? 'GET';
-            final path = (body['path'] as String?) ?? "/";
-            final data = body['data'];
-            final query = body['query'] as Map<String, dynamic>?;
-
-            // Forward request to gopeed REST API
-            final response = await forward(
-              path,
-              method: method,
-              data: data,
-              queryParameters: query,
-            );
-
-            // Return raw response
-            await ctx.writeJSON(response.data);
+            await createTask(createTaskParams);
           } catch (e) {
-            if (e is DioException && e.response != null) {
-              // Return API error response
-              await ctx.writeJSON(e.response!.data);
-            } else {
-              await ctx.writeJSON(Result(code: 1, msg: e.toString()).toJson());
-            }
+            logger.w("create task from extension fail", e, StackTrace.current);
           }
         },
-      });
+        onForward: ({
+          required String path,
+          required String method,
+          data,
+          Map<String, dynamic>? query,
+        }) {
+          return forward(
+            path,
+            method: method,
+            data: data,
+            queryParameters: query,
+          );
+        },
+      );
     } catch (e) {
       logger.w("start rpc server fail", e, StackTrace.current);
     }

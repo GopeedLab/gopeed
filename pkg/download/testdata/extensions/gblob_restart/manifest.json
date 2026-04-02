@@ -1,0 +1,28 @@
+{
+  "name": "gblob-restart",
+  "title": "gopeed extension gblob restart resume test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onResolve",
+      "match": {
+        "urls": [
+          "*://*/restart-range*"
+        ]
+      },
+      "entry": "index.js"
+    },
+    {
+      "event": "onError",
+      "match": {
+        "labels": [
+          "mode"
+        ],
+        "urls": [
+          "*://*/restart-range*"
+        ]
+      },
+      "entry": "index.js"
+    }
+  ]
+}

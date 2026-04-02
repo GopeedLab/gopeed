@@ -433,9 +433,8 @@ func StartTestExpiringRedirectServer(requestsBeforeExpire int32, delayPerByte ti
 	})
 }
 
-// StartTestSlowStartServer creates a server with configurable delay per request
-// This allows testing slow-start connection expansion to reach max connections
-func StartTestSlowStartServer(delayPerByte time.Duration) net.Listener {
+// StartTestLowSpeedServer creates a server with configurable delay per request
+func StartTestLowSpeedServer(delayPerByte time.Duration) net.Listener {
 	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/"+BuildName, func(writer http.ResponseWriter, request *http.Request) {
@@ -484,10 +483,9 @@ func slowCopyNWithDelay(sl *shutdownListener, dst io.Writer, src io.Reader, n in
 	}
 }
 
-// StartTestLimitServer connections limit server
-func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
+// StartTestConLimitServer connections limit server
+func StartTestConLimitServer(maxConnections int32) net.Listener {
 	var connections atomic.Int32
-	var slowOnce atomic.Bool
 
 	return startTestServer(func(sl *shutdownListener) http.Handler {
 		mux := http.NewServeMux()
@@ -500,19 +498,11 @@ func StartTestLimitServer(maxConnections int32, delay int64) net.Listener {
 				writer.WriteHeader(403)
 				return
 			}
-
-			// First request intentionally delays the first write to trigger a single read timeout,
-			// subsequent requests respond at normal speed.
-			useInitialDelay := delay > 0 && !slowOnce.Swap(true)
 			rangeFileHandle(
 				writer,
 				request,
 				nil,
 				func(file *os.File, n int64) {
-					if useInitialDelay {
-						slowCopyAfterDelay(sl, writer, file, n, delay)
-						return
-					}
 					slowCopyN(sl, writer, file, n, 0)
 				},
 			)
@@ -711,10 +701,13 @@ func rangeFileHandle(writer http.ResponseWriter, request *http.Request, modifyEn
 		writer.WriteHeader(400)
 		return
 	}
-	end, err := strconv.ParseInt(s[1], 10, 64)
-	if err != nil {
-		writer.WriteHeader(400)
-		return
+	end := int64(BuildSize - 1)
+	if s[1] != "" {
+		end, err = strconv.ParseInt(s[1], 10, 64)
+		if err != nil {
+			writer.WriteHeader(400)
+			return
+		}
 	}
 	if start < 0 || end < 0 || start > end {
 		writer.WriteHeader(400)
@@ -880,7 +873,7 @@ func StartSocks5Server(usr, pwd string) net.Listener {
 		panic(err)
 	}
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0") // 你可以根据需要更改监听地址
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		panic(err)
 	}

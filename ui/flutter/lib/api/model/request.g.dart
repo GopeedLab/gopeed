@@ -7,6 +7,7 @@ part of 'request.dart';
 // **************************************************************************
 
 Request _$RequestFromJson(Map<String, dynamic> json) => Request(
+      rawUrl: json['rawUrl'] as String?,
       url: json['url'] as String,
       extra: json['extra'],
       labels: (json['labels'] as Map<String, dynamic>?)?.map(
@@ -20,6 +21,7 @@ Request _$RequestFromJson(Map<String, dynamic> json) => Request(
 
 Map<String, dynamic> _$RequestToJson(Request instance) {
   final val = <String, dynamic>{
+    'rawUrl': instance.rawUrl,
     'url': instance.url,
   };
 

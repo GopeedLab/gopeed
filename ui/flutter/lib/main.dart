@@ -10,6 +10,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'api/api.dart' as api;
 import 'app/modules/app/controllers/app_controller.dart';
+import 'app/rpc/webview_rpc_service.dart';
 import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
 import 'database/database.dart';
@@ -109,6 +110,10 @@ Future<void> init(StartupArgs args) async {
   try {
     await controller.loadStartConfig();
     final startCfg = controller.startConfig.value;
+    final webViewRpcConfig = await WebViewRpcService.instance.start();
+    if (webViewRpcConfig != null) {
+      startCfg.webViewRpcConfig = webViewRpcConfig;
+    }
     controller.runningPort.value = await LibgopeedBoot.instance.start(startCfg);
     api.init(startCfg.network, controller.runningAddress(), startCfg.apiToken);
   } catch (e) {

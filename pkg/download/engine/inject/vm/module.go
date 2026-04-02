@@ -1,6 +1,8 @@
 package vm
 
 import (
+	"fmt"
+
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
 )
@@ -25,7 +27,12 @@ func (vm *Vm) Get(name string) (value any) {
 func (vm *Vm) RunString(script string) (value any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = r.(error)
+			switch v := r.(type) {
+			case error:
+				err = v
+			default:
+				err = fmt.Errorf("panic: %v", r)
+			}
 		}
 	}()
 

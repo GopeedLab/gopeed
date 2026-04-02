@@ -1,8 +1,6 @@
 module github.com/GopeedLab/gopeed
 
-go 1.24.9
-
-toolchain go1.24.11
+go 1.25.4
 
 require (
 	github.com/anacrolix/torrent v1.60.1-0.20251217073903-486bcbe758e0
@@ -20,6 +18,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529
 	github.com/rs/zerolog v1.31.0
+	github.com/webview/webview_go v0.0.0
 	github.com/xiaoqidun/setft v0.0.0-20220310121541-be86327699ad
 	go.etcd.io/bbolt v1.4.3
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93
@@ -163,3 +162,5 @@ require (
 	modernc.org/sqlite v1.43.0 // indirect
 	zombiezen.com/go/sqlite v1.4.2 // indirect
 )
+
+replace github.com/webview/webview_go => ../webview_go

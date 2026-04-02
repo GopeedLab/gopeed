@@ -61,6 +61,28 @@ func TestDownloader_Resolve(t *testing.T) {
 	}
 }
 
+func TestDownloader_UsesTempDirForGBlobRegistry(t *testing.T) {
+	storageDir := t.TempDir()
+	downloader := NewDownloader(&DownloaderConfig{
+		Storage:    NewMemStorage(),
+		StorageDir: storageDir,
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	if downloader.gblob == nil {
+		t.Fatal("expected gblob registry to be initialized")
+	}
+	if strings.HasPrefix(filepath.Clean(downloader.gblob.Dir()), filepath.Clean(storageDir)) {
+		t.Fatalf("expected gblob registry dir outside storage dir, got %s", downloader.gblob.Dir())
+	}
+	if !strings.HasPrefix(filepath.Clean(downloader.gblob.Dir()), filepath.Clean(os.TempDir())) {
+		t.Fatalf("expected gblob registry dir under temp dir, got %s", downloader.gblob.Dir())
+	}
+}
+
 func TestDownloader_Create(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()

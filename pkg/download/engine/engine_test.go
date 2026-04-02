@@ -26,7 +26,11 @@ func TestPolyfill(t *testing.T) {
 	doTestPolyfill(t, "MessageError")
 	doTestPolyfill(t, "XMLHttpRequest")
 	doTestPolyfill(t, "Blob")
+	doTestPolyfill(t, "Event")
+	doTestPolyfill(t, "EventTarget")
 	doTestPolyfill(t, "FormData")
+	doTestPolyfill(t, "AbortController")
+	doTestPolyfill(t, "AbortSignal")
 	doTestPolyfill(t, "TextDecoder")
 	doTestPolyfill(t, "TextEncoder")
 	doTestPolyfill(t, "fetch")
@@ -36,10 +40,87 @@ func TestPolyfill(t *testing.T) {
 func TestError(t *testing.T) {
 	engine := NewEngine(nil)
 	_, err := engine.RunString(`
-      throw new MessageError('test');
+	      throw new MessageError('test');
 	`)
 	if me, ok := gojautil.AssertError[*gojaerror.MessageError](err); !ok {
 		t.Fatalf("expect MessageError, but got %v", me)
+	}
+}
+
+func TestURLCreateObjectURLRejectsUnsupportedType(t *testing.T) {
+	engine := NewEngine(nil)
+	defer engine.Close()
+
+	_, err := engine.RunString(`
+		URL.createObjectURL({});
+	`)
+	if err == nil {
+		t.Fatal("expected unsupported type error")
+	}
+	if !strings.Contains(err.Error(), "Unsupported object type for URL.createObjectURL: Object") {
+		t.Fatalf("unexpected unsupported type error: %v", err)
+	}
+}
+
+func TestCallFunction_DetachedAsyncWorkDoesNotBlockReturn(t *testing.T) {
+	engine := NewEngine(nil)
+	defer engine.Close()
+	if _, err := engine.RunString(`
+		globalThis.__done = false;
+		async function testDetached() {
+			(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 500));
+				globalThis.__done = true;
+			})();
+			return "ok";
+		}
+	`); err != nil {
+		t.Fatal(err)
+	}
+	fn, ok := goja.AssertFunction(engine.Runtime.Get("testDetached"))
+	if !ok {
+		t.Fatal("testDetached is not callable")
+	}
+	startedAt := time.Now()
+	value, err := engine.CallFunction(fn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	elapsed := time.Since(startedAt)
+	if elapsed > 200*time.Millisecond {
+		t.Fatalf("detached async work blocked return for %s", elapsed)
+	}
+	if value != "ok" {
+		t.Fatalf("unexpected return value: %#v", value)
+	}
+}
+
+func TestCallFunction_AwaitedPromiseBlocksUntilSettled(t *testing.T) {
+	engine := NewEngine(nil)
+	defer engine.Close()
+	if _, err := engine.RunString(`
+		async function testAwaited() {
+			await new Promise((resolve) => setTimeout(resolve, 120));
+			return "ok";
+		}
+	`); err != nil {
+		t.Fatal(err)
+	}
+	fn, ok := goja.AssertFunction(engine.Runtime.Get("testAwaited"))
+	if !ok {
+		t.Fatal("testAwaited is not callable")
+	}
+	startedAt := time.Now()
+	value, err := engine.CallFunction(fn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	elapsed := time.Since(startedAt)
+	if elapsed < 100*time.Millisecond {
+		t.Fatalf("awaited promise returned too early: %s", elapsed)
+	}
+	if value != "ok" {
+		t.Fatalf("unexpected return value: %#v", value)
 	}
 }
 
@@ -62,6 +143,50 @@ async function testText(){
 		body: 'test'
 	});
 	return await resp.text();
+}
+
+async function testResponseBodyGetReader() {
+	const resp = await fetch(host+'/text', {
+		method: 'POST',
+		body: 'stream-body'
+	});
+	if (!resp.body || typeof resp.body.getReader !== 'function') {
+		throw new Error('response.body.getReader is not available');
+	}
+	const reader = resp.body.getReader();
+	const decoder = new TextDecoder();
+	let result = '';
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) {
+			break;
+		}
+		result += decoder.decode(value, { stream: true });
+	}
+	result += decoder.decode();
+	return result;
+}
+
+async function testStreamingFetchResponseBody() {
+	const startedAt = Date.now();
+	const resp = await fetch(host+'/stream');
+	const resolvedAt = Date.now() - startedAt;
+	const reader = resp.body.getReader();
+	const decoder = new TextDecoder();
+	const first = await reader.read();
+	const firstAt = Date.now() - startedAt;
+	const second = await reader.read();
+	const secondAt = Date.now() - startedAt;
+	let result = '';
+	result += decoder.decode(first.value, { stream: true });
+	result += decoder.decode(second.value, { stream: true });
+	result += decoder.decode();
+	return {
+		resolvedAt,
+		firstAt,
+		secondAt,
+		text: result
+	};
 }
 
 async function testOctetStream(file){
@@ -249,6 +374,32 @@ async function testFingerprintSafari(){
 	}
 	if result != "test" {
 		t.Fatalf("testText failed, want %s, got %s", "test", result)
+	}
+
+	result, err = callTestFun(engine, "testResponseBodyGetReader")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result != "stream-body" {
+		t.Fatalf("testResponseBodyGetReader failed, want %s, got %s", "stream-body", result)
+	}
+
+	result, err = callTestFun(engine, "testStreamingFetchResponseBody")
+	if err != nil {
+		t.Fatal(err)
+	}
+	streaming := result.(map[string]any)
+	if streaming["text"] != "chunk-1chunk-2" {
+		t.Fatalf("testStreamingFetchResponseBody failed, want %s, got %v", "chunk-1chunk-2", streaming["text"])
+	}
+	if int(streaming["resolvedAt"].(int64)) >= 120 {
+		t.Fatalf("fetch resolved too late, got %dms", streaming["resolvedAt"].(int64))
+	}
+	if int(streaming["firstAt"].(int64)) >= 120 {
+		t.Fatalf("first chunk arrived too late, got %dms", streaming["firstAt"].(int64))
+	}
+	if int(streaming["secondAt"].(int64)) < 120 {
+		t.Fatalf("second chunk arrived too early, got %dms", streaming["secondAt"].(int64))
 	}
 
 	func() {
@@ -463,6 +614,18 @@ func startServer() net.Listener {
 		buf, _ := io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusOK)
 		w.Write(buf)
+	})
+	mux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		if flusher, ok := w.(http.Flusher); ok {
+			_, _ = w.Write([]byte("chunk-1"))
+			flusher.Flush()
+			time.Sleep(150 * time.Millisecond)
+			_, _ = w.Write([]byte("chunk-2"))
+			flusher.Flush()
+			return
+		}
+		_, _ = w.Write([]byte("chunk-1chunk-2"))
 	})
 	mux.HandleFunc("/octetStream", func(w http.ResponseWriter, r *http.Request) {
 		md5 := calcMd5(r.Body)
