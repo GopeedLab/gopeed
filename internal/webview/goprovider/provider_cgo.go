@@ -15,7 +15,7 @@ import (
 	runtimepkg "runtime"
 
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
-	webview "github.com/webview/webview_go"
+	webview "github.com/GopeedLab/webview_go"
 )
 
 type Provider struct {

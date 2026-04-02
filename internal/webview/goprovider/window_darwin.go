@@ -23,7 +23,7 @@ import "C"
 
 import (
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
-	webview "github.com/webview/webview_go"
+	webview "github.com/GopeedLab/webview_go"
 )
 
 func applyWindowOptions(w webview.WebView, opts enginewebview.OpenOptions) {
