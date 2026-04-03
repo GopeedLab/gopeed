@@ -18,30 +18,14 @@ import (
 	webview "github.com/GopeedLab/webview_go"
 )
 
-type Provider struct {
-	probeOnce sync.Once
-	available bool
-}
+type Provider struct{}
 
 func New() enginewebview.Provider {
 	return &Provider{}
 }
 
 func (p *Provider) IsAvailable() bool {
-	p.probeOnce.Do(func() {
-		page, err := p.Open(enginewebview.OpenOptions{
-			Headless: true,
-			Title:    "Gopeed WebView Probe",
-			Width:    1,
-			Height:   1,
-		})
-		if err != nil {
-			return
-		}
-		p.available = true
-		_ = page.Close()
-	})
-	return p.available
+	return webview.IsAvailable()
 }
 
 func (p *Provider) Open(opts enginewebview.OpenOptions) (enginewebview.Page, error) {

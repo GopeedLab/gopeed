@@ -65,6 +65,41 @@ jobs:
         with:
           files: ./coverage.txt
           token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
+  test-webview:
+    name: Test webview (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Install webview dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
+      - name: Build check (CGO enabled)
+        run: CGO_ENABLED=1 go build ./internal/webview/goprovider/
+        shell: bash
+      - name: Go vet
+        run: CGO_ENABLED=1 go vet ./internal/webview/goprovider/
+        shell: bash
+      - name: Test webview (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run CGO_ENABLED=1 go test -v -timeout 120s ./internal/webview/goprovider/
+      - name: Test webview (macOS)
+        if: runner.os == 'macOS'
+        run: CGO_ENABLED=1 go test -v -timeout 120s ./internal/webview/goprovider/
+      - name: Test webview (Windows)
+        if: runner.os == 'Windows'
+        run: go test -v -timeout 120s ./internal/webview/goprovider/
+        env:
+          CGO_ENABLED: 1
+
   build-desktop:
     strategy:
       matrix:
