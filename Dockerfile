@@ -14,7 +14,10 @@ WORKDIR /app
 COPY --from=go /app/dist/gopeed ./
 COPY entrypoint.sh ./entrypoint.sh
 RUN apk update && \
-    apk add --no-cache su-exec ; \
+    apk add --no-cache su-exec tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone && \
+    apk del tzdata && \
     chmod +x ./entrypoint.sh && \
     rm -rf /var/cache/apk/*
 VOLUME ["/app/storage"]
