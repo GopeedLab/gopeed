@@ -23,8 +23,8 @@ filippo.io/edwards25519 v1.0.0-rc.1 h1:m0VOOB23frXZvAOK44usCgLWvtsxIoMCTBGJZlpmG
 filippo.io/edwards25519 v1.0.0-rc.1/go.mod h1:N1IkdkCkiLB6tki+MYJoSx2JTY9NUlxZE7eHn5EwJns=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/GopeedLab/webview_go v0.0.0-20260402095221-59bbf6f806a3 h1:qE3daxTGUhs0UKeqqQEKQb72PAhaFm4wAlAXchg0R7w=
-github.com/GopeedLab/webview_go v0.0.0-20260402095221-59bbf6f806a3/go.mod h1:FvV19lu9rQ9NcbczN5y8pbWecURRRbWa8tbfFARBDa0=
+github.com/GopeedLab/webview_go v0.0.0-20260416010719-fc58e7d53769 h1:iuMR7aHvckis8PKYUDXDa8elcmf34GksWpaYak1EYKw=
+github.com/GopeedLab/webview_go v0.0.0-20260416010719-fc58e7d53769/go.mod h1:FvV19lu9rQ9NcbczN5y8pbWecURRRbWa8tbfFARBDa0=
 github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0rYXWg0=
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
@@ -388,8 +388,6 @@ github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJ
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
-github.com/monkeyWie/goed2k v0.0.0-20260317094144-6e18d43056e5 h1:tEOucyKJzFsCz5Gr41jFHj8i2g1zemTyS4uyErJgFHc=
-github.com/monkeyWie/goed2k v0.0.0-20260317094144-6e18d43056e5/go.mod h1:Ry2y1QlzerUgA1hVmExBdXXzE4Sjk1M7w0nSh6dhDOg=
 github.com/monkeyWie/goed2k v0.0.0-20260317100435-7a7575cf2447 h1:88kRsNwkDKPA4NzRUWdOoIL7SyMNDwtmAxzShKBvKTI=
 github.com/monkeyWie/goed2k v0.0.0-20260317100435-7a7575cf2447/go.mod h1:Ry2y1QlzerUgA1hVmExBdXXzE4Sjk1M7w0nSh6dhDOg=
 github.com/mr-tron/base58 v1.2.0 h1:T/HDJBh4ZCPbU39/+c3rRvE0uKBQlU27+QI8LJ4t64o=

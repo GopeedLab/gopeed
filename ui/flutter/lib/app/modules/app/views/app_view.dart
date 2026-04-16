@@ -9,6 +9,7 @@ import '../../../../theme/theme.dart';
 import '../../../../util/locale_manager.dart';
 import '../../../../util/util.dart'; // Import the required packages
 import '../../../rpc/webview_rpc_overlay.dart';
+import '../../../rpc/webview_rpc_service.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/app_controller.dart';
 
@@ -47,12 +48,13 @@ class AppView extends GetView<AppController> {
           }
           // Fix for GetX Overlay issue with Flutter 3.38.1+
           // Reference: https://github.com/jonataslaw/getx/issues/3425
-          return Overlay(
-            initialEntries: [
-              OverlayEntry(builder: (_) => child!),
-              OverlayEntry(builder: (_) => const WebViewRpcOverlay()),
-            ],
-          );
+          final entries = <OverlayEntry>[
+            OverlayEntry(builder: (_) => child!),
+          ];
+          if (WebViewRpcService.instance.supported) {
+            entries.add(OverlayEntry(builder: (_) => const WebViewRpcOverlay()));
+          }
+          return Overlay(initialEntries: entries);
         },
       ),
     );

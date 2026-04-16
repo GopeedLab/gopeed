@@ -100,7 +100,12 @@ func (p *pageWrapper) start() error {
 		runtimepkg.LockOSThread()
 		defer runtimepkg.UnlockOSThread()
 
-		w := webview.New(p.opts.Debug)
+		var w webview.WebView
+		if p.opts.Headless {
+			w = webview.NewHeadless(p.opts.Debug)
+		} else {
+			w = webview.New(p.opts.Debug)
+		}
 		p.view = w
 		w.SetTitle(firstNonEmpty(p.opts.Title, "Gopeed WebView"))
 		w.SetSize(defaultWindowDimension(p.opts.Width, 1280), defaultWindowDimension(p.opts.Height, 800), webview.HintNone)
@@ -299,7 +304,16 @@ func (p *pageWrapper) Close() error {
 	p.mu.Unlock()
 
 	if w != nil {
-		w.Terminate()
+		// PostQuitMessage (used by the Windows WebView2 terminate_impl)
+		// only takes effect on the thread that owns the message loop.
+		// Dispatch the termination to the webview's UI thread so that
+		// the quit message lands on the correct queue.
+		terminateDone := make(chan struct{})
+		w.Dispatch(func() {
+			w.Terminate()
+			close(terminateDone)
+		})
+		<-terminateDone
 	}
 	<-wait
 	return nil

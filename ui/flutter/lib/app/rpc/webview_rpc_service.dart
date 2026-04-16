@@ -76,7 +76,7 @@ class WebViewRpcService {
 
   final Map<String, WebViewRpcPageSession> _pagesById = {};
   final Completer<void> _overlayReady = Completer<void>();
-  final WebViewCookieManager _cookieManager = WebViewCookieManager();
+  late final WebViewCookieManager _cookieManager = WebViewCookieManager();
 
   RpcServerHandle? _server;
   int _pageSeq = 0;
