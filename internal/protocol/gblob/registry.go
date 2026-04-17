@@ -610,5 +610,8 @@ func (r *Registry) Close() error {
 			lastErr = err
 		}
 	}
+	if err := os.RemoveAll(r.dir); err != nil && !errors.Is(err, os.ErrNotExist) {
+		lastErr = err
+	}
 	return lastErr
 }

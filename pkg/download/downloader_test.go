@@ -61,7 +61,7 @@ func TestDownloader_Resolve(t *testing.T) {
 	}
 }
 
-func TestDownloader_UsesTempDirForGBlobRegistry(t *testing.T) {
+func TestDownloader_UsesStorageDirForGBlobRegistry(t *testing.T) {
 	storageDir := t.TempDir()
 	downloader := NewDownloader(&DownloaderConfig{
 		Storage:    NewMemStorage(),
@@ -75,11 +75,34 @@ func TestDownloader_UsesTempDirForGBlobRegistry(t *testing.T) {
 	if downloader.gblob == nil {
 		t.Fatal("expected gblob registry to be initialized")
 	}
-	if strings.HasPrefix(filepath.Clean(downloader.gblob.Dir()), filepath.Clean(storageDir)) {
-		t.Fatalf("expected gblob registry dir outside storage dir, got %s", downloader.gblob.Dir())
+	expectedDir := filepath.Join(storageDir, "gblob")
+	if filepath.Clean(downloader.gblob.Dir()) != filepath.Clean(expectedDir) {
+		t.Fatalf("expected gblob registry dir under storage dir, got %s want %s", downloader.gblob.Dir(), expectedDir)
 	}
-	if !strings.HasPrefix(filepath.Clean(downloader.gblob.Dir()), filepath.Clean(os.TempDir())) {
-		t.Fatalf("expected gblob registry dir under temp dir, got %s", downloader.gblob.Dir())
+}
+
+func TestDownloader_SetupCleansStaleGBlobDir(t *testing.T) {
+	storageDir := t.TempDir()
+	gblobDir := filepath.Join(storageDir, "gblob")
+	if err := os.MkdirAll(gblobDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	staleFile := filepath.Join(gblobDir, "stale")
+	if err := os.WriteFile(staleFile, []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	downloader := NewDownloader(&DownloaderConfig{
+		Storage:    NewMemStorage(),
+		StorageDir: storageDir,
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	if _, err := os.Stat(staleFile); !os.IsNotExist(err) {
+		t.Fatalf("expected stale gblob file to be removed on setup, got err=%v", err)
 	}
 }
 

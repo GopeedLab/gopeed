@@ -144,7 +144,11 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 }
 
 func (d *Downloader) Setup() error {
-	d.gblob = protogblob.NewRegistry(filepath.Join(os.TempDir(), "gopeed-gblob"))
+	gblobDir := filepath.Join(d.cfg.StorageDir, "gblob")
+	if err := os.RemoveAll(gblobDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	d.gblob = protogblob.NewRegistry(gblobDir)
 
 	// setup storage
 	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
