@@ -100,6 +100,7 @@ type PageGotoParams struct {
 	PageID    string `json:"pageId"`
 	URL       string `json:"url"`
 	TimeoutMS int64  `json:"timeoutMs,omitempty"`
+	WaitUntil string `json:"waitUntil,omitempty"`
 }
 
 func NewPageGotoParams(pageID string, url string, opts GotoOptions) PageGotoParams {
@@ -107,6 +108,7 @@ func NewPageGotoParams(pageID string, url string, opts GotoOptions) PageGotoPara
 		PageID:    pageID,
 		URL:       url,
 		TimeoutMS: opts.TimeoutMS,
+		WaitUntil: opts.WaitUntil,
 	}
 }
 

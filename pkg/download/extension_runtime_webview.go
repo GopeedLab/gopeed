@@ -154,12 +154,6 @@ func newJSWebViewPage(vm *goja.Runtime, page *enginewebview.PageHandle) *goja.Ob
 		}
 		return goja.Undefined()
 	})
-	_ = obj.Set("waitForLoad", func(call goja.FunctionCall) goja.Value {
-		if err := page.WaitForLoad(optionalMap(call.Argument(0))); err != nil {
-			panic(vm.ToValue(err))
-		}
-		return goja.Undefined()
-	})
 	_ = obj.Set("waitForSelector", func(call goja.FunctionCall) goja.Value {
 		selector, err := requireStringArg(call, 0, "selector")
 		if err != nil {

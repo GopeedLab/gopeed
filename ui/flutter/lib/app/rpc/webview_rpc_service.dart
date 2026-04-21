@@ -150,6 +150,7 @@ class WebViewRpcService {
         await _page(params).goto(
           _string(params, 'url'),
           timeoutMs: _int(params, 'timeoutMs'),
+          waitUntil: _stringOrNull(params, 'waitUntil'),
         );
         return {};
       case 'page.execute':
@@ -224,6 +225,20 @@ class WebViewRpcService {
     throw WebViewRpcException(
       code: 'INVALID_REQUEST',
       message: 'missing or invalid "$key"',
+    );
+  }
+
+  String? _stringOrNull(Map<String, dynamic> params, String key) {
+    final value = params[key];
+    if (value == null) {
+      return null;
+    }
+    if (value is String && value.isNotEmpty) {
+      return value;
+    }
+    throw WebViewRpcException(
+      code: 'INVALID_REQUEST',
+      message: 'invalid "$key"',
     );
   }
 
@@ -387,8 +402,9 @@ class WebViewRpcPageSession {
     }
   }
 
-  Future<void> goto(String url, {int? timeoutMs}) async {
+  Future<void> goto(String url, {int? timeoutMs, String? waitUntil}) async {
     final controller = await _controllerOrThrow();
+    final waitStrategy = _normalizeWaitUntil(waitUntil);
     final navigation = _ensureNavigationCompleter();
     try {
       await controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
@@ -401,7 +417,13 @@ class WebViewRpcPageSession {
         message: e.toString(),
       );
     }
-    final future = navigation.future;
+    final future = switch (waitStrategy) {
+      'domcontentloaded' => Future.any<void>([
+          _waitForDomReady(),
+          navigation.future,
+        ]),
+      _ => navigation.future,
+    };
     if (timeoutMs == null || timeoutMs <= 0) {
       await future;
       return;
@@ -455,6 +477,37 @@ class WebViewRpcPageSession {
       return result;
     } finally {
       _pendingExecutions.remove(requestId);
+    }
+  }
+
+  String _normalizeWaitUntil(String? waitUntil) {
+    if (waitUntil == null || waitUntil.isEmpty) {
+      return 'load';
+    }
+    switch (waitUntil.toLowerCase()) {
+      case 'load':
+        return 'load';
+      case 'domcontentloaded':
+        return 'domcontentloaded';
+      default:
+        throw WebViewRpcException(
+          code: 'INVALID_REQUEST',
+          message: 'invalid "waitUntil"',
+        );
+    }
+  }
+
+  Future<void> _waitForDomReady() async {
+    final controller = await _controllerOrThrow();
+    while (true) {
+      final readyState = await controller.evaluateJavascript(
+        source: 'document.readyState',
+      );
+      final state = readyState?.toString() ?? '';
+      if (state == 'interactive' || state == 'complete') {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
     }
   }
 

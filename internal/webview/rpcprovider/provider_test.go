@@ -92,6 +92,7 @@ func TestProviderLifecycleOverHTTP(t *testing.T) {
 	}
 	if err := opened.Goto("https://example.com", enginewebview.GotoOptions{
 		TimeoutMS: 3210,
+		WaitUntil: "domcontentloaded",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -123,6 +124,17 @@ func TestProviderLifecycleOverHTTP(t *testing.T) {
 		if calls[i].Method != method {
 			t.Fatalf("unexpected method at %d: got %s want %s", i, calls[i].Method, method)
 		}
+	}
+	gotoParamsJSON, err := json.Marshal(calls[4].Params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotoParams enginewebview.PageGotoParams
+	if err := json.Unmarshal(gotoParamsJSON, &gotoParams); err != nil {
+		t.Fatal(err)
+	}
+	if gotoParams.WaitUntil != "domcontentloaded" {
+		t.Fatalf("unexpected waitUntil: %q", gotoParams.WaitUntil)
 	}
 }
 

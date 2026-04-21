@@ -171,7 +171,11 @@ func (p *pageWrapper) Goto(url string, opts enginewebview.GotoOptions) error {
 	if opts.TimeoutMS > 0 {
 		timeout = time.Duration(opts.TimeoutMS) * time.Millisecond
 	}
-	err := p.waitForNavigation(url, timeout)
+	waitUntil := opts.WaitUntil
+	if waitUntil == "" {
+		waitUntil = "load"
+	}
+	err := p.waitForNavigation(url, timeout, waitUntil)
 	if err != nil {
 		p.tracef("goto failed %dms url=%s err=%v", time.Since(startedAt).Milliseconds(), url, err)
 		return err
@@ -326,16 +330,7 @@ func (p *pageWrapper) tracef(format string, args ...any) {
 	fmt.Printf("goprovider "+format+"\n", args...)
 }
 
-func (p *pageWrapper) waitForLoadEvent(timeout time.Duration) error {
-	select {
-	case <-p.loads:
-		return nil
-	case <-time.After(timeout):
-		return fmt.Errorf("webview navigation timeout")
-	}
-}
-
-func (p *pageWrapper) waitForNavigation(targetURL string, timeout time.Duration) error {
+func (p *pageWrapper) waitForNavigation(targetURL string, timeout time.Duration, waitUntil string) error {
 	deadline := time.Now().Add(timeout)
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -343,10 +338,12 @@ func (p *pageWrapper) waitForNavigation(targetURL string, timeout time.Duration)
 	for {
 		select {
 		case <-p.loads:
-			return nil
+			if waitUntil == "load" {
+				return nil
+			}
 		case <-ticker.C:
 			state, err := p.navigationState()
-			if err == nil && state.loaded(targetURL) {
+			if err == nil && state.ready(targetURL, waitUntil) {
 				return nil
 			}
 			if time.Now().After(deadline) {
@@ -361,12 +358,19 @@ type navigationState struct {
 	ReadyState string `json:"readyState"`
 }
 
-func (s navigationState) loaded(targetURL string) bool {
-	if s.ReadyState != "complete" {
-		return false
-	}
+func (s navigationState) ready(targetURL string, waitUntil string) bool {
 	if s.URL == "" || s.URL == "about:blank" {
 		return false
+	}
+	switch waitUntil {
+	case "domcontentloaded":
+		if s.ReadyState == "loading" || s.ReadyState == "" {
+			return false
+		}
+	default:
+		if s.ReadyState != "complete" {
+			return false
+		}
 	}
 	if targetURL == "" {
 		return true

@@ -1625,6 +1625,7 @@ func TestDownloader_ExtensionRuntimeWebViewPageMethodsInjected(t *testing.T) {
 			hasType: typeof page.type,
 			hasWaitForSelector: typeof page.waitForSelector,
 			hasWaitForFunction: typeof page.waitForFunction,
+			hasWaitForLoad: typeof page.waitForLoad,
 		};
 	})()`)
 	if err != nil {
@@ -1645,6 +1646,9 @@ func TestDownloader_ExtensionRuntimeWebViewPageMethodsInjected(t *testing.T) {
 		if result[key] != "function" {
 			t.Fatalf("expected %s to be a function, got %#v", key, result[key])
 		}
+	}
+	if result["hasWaitForLoad"] != "undefined" {
+		t.Fatalf("expected hasWaitForLoad to be undefined, got %#v", result["hasWaitForLoad"])
 	}
 }
 

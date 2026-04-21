@@ -39,6 +39,7 @@ type OpenOptions struct {
 
 type GotoOptions struct {
 	TimeoutMS int64
+	WaitUntil string
 }
 
 type ClickOptions struct {
@@ -147,7 +148,11 @@ func (p *PageHandle) Goto(url string, opts ...map[string]any) error {
 	if err != nil {
 		return err
 	}
-	return page.Goto(url, parseGotoOptions(firstMap(opts)))
+	gotoOpts, err := parseGotoOptions(firstMap(opts))
+	if err != nil {
+		return err
+	}
+	return page.Goto(url, gotoOpts)
 }
 
 func (p *PageHandle) Execute(scriptOrFn any, args ...any) (any, error) {
@@ -285,24 +290,6 @@ func (p *PageHandle) Type(selector string, text string, opts ...map[string]any) 
 		return true;
 	}`, selector, text, typeOpts.DelayMS)
 	return err
-}
-
-func (p *PageHandle) WaitForLoad(opts ...map[string]any) error {
-	waitOpts := parseWaitOptions(firstMap(opts))
-	_, matched, err := p.poll(waitOpts, func() (any, bool, error) {
-		value, err := p.Execute(`() => document.readyState === "complete"`)
-		if err != nil {
-			return nil, false, err
-		}
-		return true, truthy(value), nil
-	})
-	if err != nil {
-		return err
-	}
-	if !matched {
-		return fmt.Errorf("waitForLoad timeout")
-	}
-	return nil
 }
 
 func (p *PageHandle) WaitForSelector(selector string, opts ...map[string]any) (bool, error) {
@@ -493,8 +480,29 @@ func parseOpenOptions(raw map[string]any) OpenOptions {
 	}
 }
 
-func parseGotoOptions(raw map[string]any) GotoOptions {
-	return GotoOptions{TimeoutMS: parseInt64(raw["timeoutMs"])}
+func parseGotoOptions(raw map[string]any) (GotoOptions, error) {
+	waitUntil, err := normalizeWaitUntil(parseString(raw["waitUntil"]))
+	if err != nil {
+		return GotoOptions{}, err
+	}
+	return GotoOptions{
+		TimeoutMS: parseInt64(raw["timeoutMs"]),
+		WaitUntil: waitUntil,
+	}, nil
+}
+
+func normalizeWaitUntil(raw string) (string, error) {
+	if raw == "" {
+		return "load", nil
+	}
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "load":
+		return "load", nil
+	case "domcontentloaded":
+		return "domcontentloaded", nil
+	default:
+		return "", fmt.Errorf("invalid waitUntil: %s", raw)
+	}
 }
 
 func parseClickOptions(raw map[string]any) ClickOptions {

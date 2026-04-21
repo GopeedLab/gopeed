@@ -220,7 +220,8 @@ Request:
   "params": {
     "pageId": "page-1",
     "url": "https://example.com",
-    "timeoutMs": 15000
+    "timeoutMs": 15000,
+    "waitUntil": "domcontentloaded"
   }
 }
 ```
@@ -233,6 +234,8 @@ Success:
   "error": null
 }
 ```
+
+`waitUntil` currently supports `load` and `domcontentloaded`. The default is `load`.
 
 ### `page.execute`
 

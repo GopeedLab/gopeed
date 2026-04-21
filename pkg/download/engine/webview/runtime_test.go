@@ -107,8 +107,6 @@ func TestRuntimeHelpers(t *testing.T) {
 			executeQueue: []any{
 				false,
 				true,
-				false,
-				true,
 				map[string]any{"matched": false, "value": nil},
 				map[string]any{"matched": true, "value": "ready"},
 				"https://example.com",
@@ -131,14 +129,14 @@ func TestRuntimeHelpers(t *testing.T) {
 	if opener.page.lastInitScript != "window.__TEST__ = true" {
 		t.Fatalf("unexpected init script: %q", opener.page.lastInitScript)
 	}
-	if err := page.Goto("https://example.com"); err != nil {
+	if err := page.Goto("https://example.com", map[string]any{"waitUntil": "domcontentloaded"}); err != nil {
 		t.Fatal(err)
 	}
 	if opener.page.lastGotoURL != "https://example.com" {
 		t.Fatalf("unexpected goto url: %q", opener.page.lastGotoURL)
 	}
-	if err := page.WaitForLoad(map[string]any{"timeoutMs": 50, "pollIntervalMs": 1}); err != nil {
-		t.Fatal(err)
+	if opener.page.lastGotoOpts.WaitUntil != "domcontentloaded" {
+		t.Fatalf("unexpected goto waitUntil: %q", opener.page.lastGotoOpts.WaitUntil)
 	}
 	found, err := page.WaitForSelector("#app", map[string]any{"timeoutMs": 50, "pollIntervalMs": 1})
 	if err != nil {
@@ -250,6 +248,21 @@ func TestRuntimeInteractionHelpers(t *testing.T) {
 	}
 	if !strings.Contains(opener.page.lastExecuteSource, "element is not typable") {
 		t.Fatalf("unexpected type source: %q", opener.page.lastExecuteSource)
+	}
+}
+
+func TestRuntimeGotoRejectsInvalidWaitUntil(t *testing.T) {
+	opener := &fakeOpener{
+		page: &fakePage{},
+	}
+	runtime := NewRuntime(opener, true)
+	page, err := runtime.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = page.Goto("https://example.com", map[string]any{"waitUntil": "networkidle"})
+	if err == nil || !strings.Contains(err.Error(), "invalid waitUntil") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
