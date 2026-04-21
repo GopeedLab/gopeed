@@ -96,12 +96,12 @@ func newJSWebViewPage(vm *goja.Runtime, page *enginewebview.PageHandle) *goja.Ob
 		}
 		return goja.Undefined()
 	})
-	_ = obj.Set("navigate", func(call goja.FunctionCall) goja.Value {
+	_ = obj.Set("goto", func(call goja.FunctionCall) goja.Value {
 		url, err := requireStringArg(call, 0, "url")
 		if err != nil {
 			panic(vm.ToValue(err))
 		}
-		if err := page.Navigate(
+		if err := page.Goto(
 			url,
 			optionalMap(call.Argument(1)),
 		); err != nil {
@@ -119,6 +119,40 @@ func newJSWebViewPage(vm *goja.Runtime, page *enginewebview.PageHandle) *goja.Ob
 			panic(vm.ToValue(err))
 		}
 		return vm.ToValue(result)
+	})
+	_ = obj.Set("focus", func(call goja.FunctionCall) goja.Value {
+		selector, err := requireStringArg(call, 0, "selector")
+		if err != nil {
+			panic(vm.ToValue(err))
+		}
+		if err := page.Focus(selector); err != nil {
+			panic(vm.ToValue(err))
+		}
+		return goja.Undefined()
+	})
+	_ = obj.Set("click", func(call goja.FunctionCall) goja.Value {
+		selector, err := requireStringArg(call, 0, "selector")
+		if err != nil {
+			panic(vm.ToValue(err))
+		}
+		if err := page.Click(selector, optionalMap(call.Argument(1))); err != nil {
+			panic(vm.ToValue(err))
+		}
+		return goja.Undefined()
+	})
+	_ = obj.Set("type", func(call goja.FunctionCall) goja.Value {
+		selector, err := requireStringArg(call, 0, "selector")
+		if err != nil {
+			panic(vm.ToValue(err))
+		}
+		text, err := requireStringArg(call, 1, "text")
+		if err != nil {
+			panic(vm.ToValue(err))
+		}
+		if err := page.Type(selector, text, optionalMap(call.Argument(2))); err != nil {
+			panic(vm.ToValue(err))
+		}
+		return goja.Undefined()
 	})
 	_ = obj.Set("waitForLoad", func(call goja.FunctionCall) goja.Value {
 		if err := page.WaitForLoad(optionalMap(call.Argument(0))); err != nil {

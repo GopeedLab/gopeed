@@ -8,7 +8,7 @@ const (
 	MethodIsAvailable       = "webview.isAvailable"
 	MethodPageOpen          = "page.open"
 	MethodPageAddInitScript = "page.addInitScript"
-	MethodPageNavigate      = "page.navigate"
+	MethodPageGoto          = "page.goto"
 	MethodPageExecute       = "page.execute"
 	MethodPageGetCookies    = "page.getCookies"
 	MethodPageSetCookie     = "page.setCookie"
@@ -96,14 +96,14 @@ type PageAddInitScriptParams struct {
 	Script string `json:"script"`
 }
 
-type PageNavigateParams struct {
+type PageGotoParams struct {
 	PageID    string `json:"pageId"`
 	URL       string `json:"url"`
 	TimeoutMS int64  `json:"timeoutMs,omitempty"`
 }
 
-func NewPageNavigateParams(pageID string, url string, opts NavigateOptions) PageNavigateParams {
-	return PageNavigateParams{
+func NewPageGotoParams(pageID string, url string, opts GotoOptions) PageGotoParams {
+	return PageGotoParams{
 		PageID:    pageID,
 		URL:       url,
 		TimeoutMS: opts.TimeoutMS,

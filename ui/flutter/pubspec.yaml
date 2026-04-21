@@ -83,7 +83,7 @@ dependencies:
   flutter_svg: ^2.0.17
   flutter_markdown_plus: ^1.0.3
   dart_ipc: ^1.0.1
-  webview_flutter: ^4.10.0
+  flutter_inappwebview: ^6.1.5
   flutter_local_notifications: 20.1.0
 dependency_overrides:
   permission_handler_windows:

@@ -39,7 +39,7 @@ func TestProviderLifecycleOverHTTP(t *testing.T) {
 				"result": enginewebview.PageOpenResult{PageID: "page-open-1"},
 				"error":  nil,
 			}
-		case enginewebview.MethodPageAddInitScript, enginewebview.MethodPageNavigate:
+		case enginewebview.MethodPageAddInitScript, enginewebview.MethodPageGoto:
 			body = map[string]any{
 				"result": enginewebview.EmptyResult{},
 				"error":  nil,
@@ -90,7 +90,7 @@ func TestProviderLifecycleOverHTTP(t *testing.T) {
 	if err := opened.AddInitScript("window.__TEST__ = true"); err != nil {
 		t.Fatal(err)
 	}
-	if err := opened.Navigate("https://example.com", enginewebview.NavigateOptions{
+	if err := opened.Goto("https://example.com", enginewebview.GotoOptions{
 		TimeoutMS: 3210,
 	}); err != nil {
 		t.Fatal(err)
@@ -109,9 +109,10 @@ func TestProviderLifecycleOverHTTP(t *testing.T) {
 
 	expectedMethods := []string{
 		enginewebview.MethodIsAvailable,
+		enginewebview.MethodIsAvailable,
 		enginewebview.MethodPageOpen,
 		enginewebview.MethodPageAddInitScript,
-		enginewebview.MethodPageNavigate,
+		enginewebview.MethodPageGoto,
 		enginewebview.MethodPageExecute,
 		enginewebview.MethodPageClose,
 	}

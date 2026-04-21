@@ -89,7 +89,7 @@ Failure response:
 - `webview.isAvailable`
 - `page.open`
 - `page.addInitScript`
-- `page.navigate`
+- `page.goto`
 - `page.execute`
 - `page.getCookies`
 - `page.setCookie`
@@ -210,13 +210,13 @@ Success:
 }
 ```
 
-### `page.navigate`
+### `page.goto`
 
 Request:
 
 ```json
 {
-  "method": "page.navigate",
+  "method": "page.goto",
   "params": {
     "pageId": "page-1",
     "url": "https://example.com",
@@ -399,8 +399,8 @@ Success:
   - Returns `pageId`
 - `page.addInitScript`
   - Registers a page initialization script
-- `page.navigate`
-  - Navigates to the target URL
+- `page.goto`
+  - Goes to the target URL
   - The server should return only after navigation completes or fails
 - `page.execute`
   - Executes an expression or serialized function body
@@ -438,7 +438,7 @@ Notes:
 
 - `expires` uses RFC3339 / RFC3339Nano string form.
 - If the host platform supports a full native cookie store, it should return fields such as `httpOnly` and `secure`.
-- `setCookie -> navigate` is a valid pattern for preloading authenticated session state.
+- `setCookie -> goto` is a valid pattern for preloading authenticated session state.
 
 ## Error codes
 

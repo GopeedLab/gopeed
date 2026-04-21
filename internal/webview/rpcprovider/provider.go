@@ -59,8 +59,8 @@ func (p *page) AddInitScript(script string) error {
 	}, nil)
 }
 
-func (p *page) Navigate(url string, opts enginewebview.NavigateOptions) error {
-	return p.client.Call(enginewebview.MethodPageNavigate, enginewebview.NewPageNavigateParams(p.id, url, opts), nil)
+func (p *page) Goto(url string, opts enginewebview.GotoOptions) error {
+	return p.client.Call(enginewebview.MethodPageGoto, enginewebview.NewPageGotoParams(p.id, url, opts), nil)
 }
 
 func (p *page) Execute(expression string, args ...any) (any, error) {

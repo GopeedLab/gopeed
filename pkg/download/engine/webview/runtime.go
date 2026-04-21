@@ -19,7 +19,7 @@ type Opener interface {
 
 type Page interface {
 	AddInitScript(script string) error
-	Navigate(url string, opts NavigateOptions) error
+	Goto(url string, opts GotoOptions) error
 	Execute(expression string, args ...any) (any, error)
 	GetCookies() ([]Cookie, error)
 	SetCookie(cookie Cookie) error
@@ -37,8 +37,16 @@ type OpenOptions struct {
 	UserAgent string
 }
 
-type NavigateOptions struct {
+type GotoOptions struct {
 	TimeoutMS int64
+}
+
+type ClickOptions struct {
+	DelayMS int64
+}
+
+type TypeOptions struct {
+	DelayMS int64
 }
 
 type WaitOptions struct {
@@ -134,12 +142,12 @@ func (p *PageHandle) AddInitScript(script string) error {
 	return page.AddInitScript(script)
 }
 
-func (p *PageHandle) Navigate(url string, opts ...map[string]any) error {
+func (p *PageHandle) Goto(url string, opts ...map[string]any) error {
 	page, err := p.page()
 	if err != nil {
 		return err
 	}
-	return page.Navigate(url, parseNavigateOptions(firstMap(opts)))
+	return page.Goto(url, parseGotoOptions(firstMap(opts)))
 }
 
 func (p *PageHandle) Execute(scriptOrFn any, args ...any) (any, error) {
@@ -152,6 +160,131 @@ func (p *PageHandle) Execute(scriptOrFn any, args ...any) (any, error) {
 		return nil, err
 	}
 	return page.Execute(expression, args...)
+}
+
+func (p *PageHandle) Focus(selector string) error {
+	_, err := p.Execute(`(selector) => {
+		const element = document.querySelector(selector);
+		if (!element) {
+			throw new Error("element not found: " + selector);
+		}
+		if (typeof element.focus !== "function") {
+			throw new Error("element is not focusable: " + selector);
+		}
+		element.focus();
+		return true;
+	}`, selector)
+	return err
+}
+
+func (p *PageHandle) Click(selector string, opts ...map[string]any) error {
+	clickOpts := parseClickOptions(firstMap(opts))
+	_, err := p.Execute(`(selector, delayMS) => {
+		const element = document.querySelector(selector);
+		if (!element) {
+			throw new Error("element not found: " + selector);
+		}
+		if (typeof element.scrollIntoView === "function") {
+			element.scrollIntoView({ block: "center", inline: "center" });
+		}
+		const performClick = () => {
+			if (typeof element.click === "function") {
+				element.click();
+				return;
+			}
+			element.dispatchEvent(new MouseEvent("click", {
+				bubbles: true,
+				cancelable: true,
+				view: window,
+			}));
+		};
+		if (delayMS > 0) {
+			return new Promise((resolve) => {
+				setTimeout(() => {
+					performClick();
+					resolve(true);
+				}, delayMS);
+			});
+		}
+		performClick();
+		return true;
+	}`, selector, clickOpts.DelayMS)
+	return err
+}
+
+func (p *PageHandle) Type(selector string, text string, opts ...map[string]any) error {
+	typeOpts := parseTypeOptions(firstMap(opts))
+	_, err := p.Execute(`(selector, text, delayMS) => {
+		const element = document.querySelector(selector);
+		if (!element) {
+			throw new Error("element not found: " + selector);
+		}
+		if (typeof element.focus === "function") {
+			element.focus();
+		}
+		const emitInput = () => {
+			element.dispatchEvent(new Event("input", { bubbles: true }));
+		};
+		const insertIntoInput = (chunk) => {
+			if (element.disabled) {
+				throw new Error("element is disabled: " + selector);
+			}
+			if (element.readOnly) {
+				throw new Error("element is readonly: " + selector);
+			}
+			const value = typeof element.value === "string" ? element.value : "";
+			const hasSelection = typeof element.selectionStart === "number" && typeof element.selectionEnd === "number";
+			const start = hasSelection ? element.selectionStart : value.length;
+			const end = hasSelection ? element.selectionEnd : value.length;
+			element.value = value.slice(0, start) + chunk + value.slice(end);
+			const caret = start + chunk.length;
+			if (typeof element.setSelectionRange === "function") {
+				element.setSelectionRange(caret, caret);
+			}
+			emitInput();
+		};
+		const insertIntoEditable = (chunk) => {
+			if (element.isContentEditable) {
+				element.textContent = (element.textContent || "") + chunk;
+				emitInput();
+				return;
+			}
+			insertIntoInput(chunk);
+		};
+		const insertChunk = (chunk) => {
+			const tagName = (element.tagName || "").toUpperCase();
+			if (tagName === "INPUT" || tagName === "TEXTAREA" || typeof element.value === "string") {
+				insertIntoInput(chunk);
+				return;
+			}
+			if (element.isContentEditable) {
+				insertIntoEditable(chunk);
+				return;
+			}
+			throw new Error("element is not typable: " + selector);
+		};
+		const chars = Array.from(String(text));
+		if (delayMS > 0) {
+			return new Promise((resolve) => {
+				let index = 0;
+				const step = () => {
+					if (index >= chars.length) {
+						resolve(true);
+						return;
+					}
+					insertChunk(chars[index]);
+					index += 1;
+					setTimeout(step, delayMS);
+				};
+				step();
+			});
+		}
+		for (const char of chars) {
+			insertChunk(char);
+		}
+		return true;
+	}`, selector, text, typeOpts.DelayMS)
+	return err
 }
 
 func (p *PageHandle) WaitForLoad(opts ...map[string]any) error {
@@ -360,8 +493,16 @@ func parseOpenOptions(raw map[string]any) OpenOptions {
 	}
 }
 
-func parseNavigateOptions(raw map[string]any) NavigateOptions {
-	return NavigateOptions{TimeoutMS: parseInt64(raw["timeoutMs"])}
+func parseGotoOptions(raw map[string]any) GotoOptions {
+	return GotoOptions{TimeoutMS: parseInt64(raw["timeoutMs"])}
+}
+
+func parseClickOptions(raw map[string]any) ClickOptions {
+	return ClickOptions{DelayMS: parseInt64(raw["delay"])}
+}
+
+func parseTypeOptions(raw map[string]any) TypeOptions {
+	return TypeOptions{DelayMS: parseInt64(raw["delay"])}
 }
 
 func parseWaitOptions(raw map[string]any) WaitOptions {

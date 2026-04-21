@@ -981,7 +981,7 @@ func (fakeRestPage) AddInitScript(string) error {
 	return nil
 }
 
-func (fakeRestPage) Navigate(string, enginewebview.NavigateOptions) error {
+func (fakeRestPage) Goto(string, enginewebview.GotoOptions) error {
 	return nil
 }
 

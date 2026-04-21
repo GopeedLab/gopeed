@@ -1598,6 +1598,56 @@ func TestDownloader_ExtensionRuntimeWebViewAvailabilityFromProvider(t *testing.T
 	}
 }
 
+func TestDownloader_ExtensionRuntimeWebViewPageMethodsInjected(t *testing.T) {
+	downloader := NewDownloader(&DownloaderConfig{
+		Storage: NewMemStorage(),
+		WebViewProvider: fakeExtensionWebViewProvider{
+			available: true,
+			opener:    &fakeRuntimeWebViewOpener{},
+		},
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	runtime, err := downloader.NewExtMockRuntime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer runtime.Close()
+
+	value, err := runtime.Eval(`(async () => {
+		const page = await gopeed.runtime.webview.open();
+		return {
+			hasFocus: typeof page.focus,
+			hasClick: typeof page.click,
+			hasType: typeof page.type,
+			hasWaitForSelector: typeof page.waitForSelector,
+			hasWaitForFunction: typeof page.waitForFunction,
+		};
+	})()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, ok := value.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected page methods result type: %T", value)
+	}
+	for _, key := range []string{
+		"hasFocus",
+		"hasClick",
+		"hasType",
+		"hasWaitForSelector",
+		"hasWaitForFunction",
+	} {
+		if result[key] != "function" {
+			t.Fatalf("expected %s to be a function, got %#v", key, result[key])
+		}
+	}
+}
+
 func TestDownloader_ExtensionRuntimeWebViewExecuteAnonymousFunction(t *testing.T) {
 	opener := &capturingRuntimeWebViewOpener{
 		page: &capturingRuntimeWebViewPage{
@@ -1758,7 +1808,7 @@ func (fakeRuntimeWebViewPage) AddInitScript(string) error {
 	return nil
 }
 
-func (fakeRuntimeWebViewPage) Navigate(string, enginewebview.NavigateOptions) error {
+func (fakeRuntimeWebViewPage) Goto(string, enginewebview.GotoOptions) error {
 	return nil
 }
 
@@ -1804,7 +1854,7 @@ func (p *capturingRuntimeWebViewPage) AddInitScript(string) error {
 	return nil
 }
 
-func (p *capturingRuntimeWebViewPage) Navigate(string, enginewebview.NavigateOptions) error {
+func (p *capturingRuntimeWebViewPage) Goto(string, enginewebview.GotoOptions) error {
 	return nil
 }
 

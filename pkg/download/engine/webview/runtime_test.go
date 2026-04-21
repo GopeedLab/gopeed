@@ -1,6 +1,7 @@
 package webview
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/dop251/goja"
@@ -130,11 +131,11 @@ func TestRuntimeHelpers(t *testing.T) {
 	if opener.page.lastInitScript != "window.__TEST__ = true" {
 		t.Fatalf("unexpected init script: %q", opener.page.lastInitScript)
 	}
-	if err := page.Navigate("https://example.com"); err != nil {
+	if err := page.Goto("https://example.com"); err != nil {
 		t.Fatal(err)
 	}
-	if opener.page.lastNavigateURL != "https://example.com" {
-		t.Fatalf("unexpected navigate url: %q", opener.page.lastNavigateURL)
+	if opener.page.lastGotoURL != "https://example.com" {
+		t.Fatalf("unexpected goto url: %q", opener.page.lastGotoURL)
 	}
 	if err := page.WaitForLoad(map[string]any{"timeoutMs": 50, "pollIntervalMs": 1}); err != nil {
 		t.Fatal(err)
@@ -211,6 +212,47 @@ func TestRuntimeHelpers(t *testing.T) {
 	}
 }
 
+func TestRuntimeInteractionHelpers(t *testing.T) {
+	opener := &fakeOpener{
+		page: &fakePage{executeValue: true},
+	}
+	runtime := NewRuntime(opener, true)
+	page, err := runtime.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := page.Focus("#search"); err != nil {
+		t.Fatal(err)
+	}
+	if len(opener.page.lastExecuteArgs) != 1 || opener.page.lastExecuteArgs[0] != "#search" {
+		t.Fatalf("unexpected focus args: %#v", opener.page.lastExecuteArgs)
+	}
+	if !strings.Contains(opener.page.lastExecuteSource, "element.focus()") {
+		t.Fatalf("unexpected focus source: %q", opener.page.lastExecuteSource)
+	}
+
+	if err := page.Click("#submit", map[string]any{"delay": 12}); err != nil {
+		t.Fatal(err)
+	}
+	if len(opener.page.lastExecuteArgs) != 2 || opener.page.lastExecuteArgs[0] != "#submit" || opener.page.lastExecuteArgs[1] != int64(12) {
+		t.Fatalf("unexpected click args: %#v", opener.page.lastExecuteArgs)
+	}
+	if !strings.Contains(opener.page.lastExecuteSource, "performClick") {
+		t.Fatalf("unexpected click source: %q", opener.page.lastExecuteSource)
+	}
+
+	if err := page.Type("#search", "Gopeed", map[string]any{"delay": 5}); err != nil {
+		t.Fatal(err)
+	}
+	if len(opener.page.lastExecuteArgs) != 3 || opener.page.lastExecuteArgs[0] != "#search" || opener.page.lastExecuteArgs[1] != "Gopeed" || opener.page.lastExecuteArgs[2] != int64(5) {
+		t.Fatalf("unexpected type args: %#v", opener.page.lastExecuteArgs)
+	}
+	if !strings.Contains(opener.page.lastExecuteSource, "element is not typable") {
+		t.Fatalf("unexpected type source: %q", opener.page.lastExecuteSource)
+	}
+}
+
 type fakeOpener struct {
 	opts OpenOptions
 	page *fakePage
@@ -223,8 +265,8 @@ func (o *fakeOpener) Open(opts OpenOptions) (Page, error) {
 
 type fakePage struct {
 	lastInitScript    string
-	lastNavigateURL   string
-	lastNavigateOpts  NavigateOptions
+	lastGotoURL       string
+	lastGotoOpts      GotoOptions
 	lastExecuteSource string
 	lastExecuteArgs   []any
 	executeValue      any
@@ -241,9 +283,9 @@ func (p *fakePage) AddInitScript(script string) error {
 	return nil
 }
 
-func (p *fakePage) Navigate(url string, opts NavigateOptions) error {
-	p.lastNavigateURL = url
-	p.lastNavigateOpts = opts
+func (p *fakePage) Goto(url string, opts GotoOptions) error {
+	p.lastGotoURL = url
+	p.lastGotoOpts = opts
 	return nil
 }
 

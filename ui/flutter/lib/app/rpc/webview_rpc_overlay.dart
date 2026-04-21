@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import 'webview_rpc_service.dart';
 
@@ -13,7 +12,7 @@ class WebViewRpcOverlay extends StatefulWidget {
 class _WebViewRpcOverlayState extends State<WebViewRpcOverlay> {
   @override
   void initState() {
-      super.initState();
+    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       WebViewRpcService.instance.markOverlayReady();
     });
@@ -53,16 +52,7 @@ class _WebViewRpcPageViewState extends State<_WebViewRpcPageView> {
   @override
   Widget build(BuildContext context) {
     final page = widget.page;
-    final content = WebViewWidget(controller: page.controller);
-    if (page.headless) {
-      return Positioned(
-        left: -10000,
-        top: -10000,
-        width: page.width > 0 ? page.width.toDouble() : 1,
-        height: page.height > 0 ? page.height.toDouble() : 1,
-        child: IgnorePointer(child: content),
-      );
-    }
+    final content = page.buildWebView();
 
     return Positioned.fill(
       child: Material(

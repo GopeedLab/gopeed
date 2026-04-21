@@ -155,7 +155,7 @@ func (p *pageWrapper) AddInitScript(script string) error {
 	})
 }
 
-func (p *pageWrapper) Navigate(url string, opts enginewebview.NavigateOptions) error {
+func (p *pageWrapper) Goto(url string, opts enginewebview.GotoOptions) error {
 	startedAt := time.Now()
 	p.drainLoads()
 	if err := p.dispatch(func(w webview.WebView) error {
@@ -173,10 +173,10 @@ func (p *pageWrapper) Navigate(url string, opts enginewebview.NavigateOptions) e
 	}
 	err := p.waitForNavigation(url, timeout)
 	if err != nil {
-		p.tracef("navigate failed %dms url=%s err=%v", time.Since(startedAt).Milliseconds(), url, err)
+		p.tracef("goto failed %dms url=%s err=%v", time.Since(startedAt).Milliseconds(), url, err)
 		return err
 	}
-	p.tracef("navigate %dms url=%s", time.Since(startedAt).Milliseconds(), url)
+	p.tracef("goto %dms url=%s", time.Since(startedAt).Milliseconds(), url)
 	return nil
 }
 

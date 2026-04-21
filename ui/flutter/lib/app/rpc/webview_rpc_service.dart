@@ -1,17 +1,15 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../core/common/start_config.dart';
 import '../../util/log_util.dart';
 import '../../util/util.dart';
 import 'server.dart';
 
-// Keep the execute wrapper syntax conservative for cross-platform WebView
-// compatibility. WKWebView is the strictest target, so the shared wrapper
-// follows its constraints.
 String buildWebViewExecuteScript({
   required String channelName,
   required String requestId,
@@ -20,7 +18,7 @@ String buildWebViewExecuteScript({
 }) {
   return '''
 (() => {
-  var __channel = window[${jsonEncode(channelName)}];
+  var __bridge = window.flutter_inappwebview;
   var __id = ${jsonEncode(requestId)};
   var __expr = ${jsonEncode(expression)};
   var __args = ${jsonEncode(args)};
@@ -32,8 +30,8 @@ String buildWebViewExecuteScript({
     ].filter(Boolean).join(': ').replace(': @', '\\n@');
   };
   var __post = function(message) {
-    if (__channel && typeof __channel.postMessage === 'function') {
-      __channel.postMessage(JSON.stringify(message));
+    if (__bridge && typeof __bridge.callHandler === 'function') {
+      __bridge.callHandler(${jsonEncode(channelName)}, JSON.stringify(message));
     }
   };
   try {
@@ -76,7 +74,7 @@ class WebViewRpcService {
 
   final Map<String, WebViewRpcPageSession> _pagesById = {};
   final Completer<void> _overlayReady = Completer<void>();
-  late final WebViewCookieManager _cookieManager = WebViewCookieManager();
+  final CookieManager _cookieManager = CookieManager.instance();
 
   RpcServerHandle? _server;
   int _pageSeq = 0;
@@ -148,8 +146,8 @@ class WebViewRpcService {
         return _openPage(params);
       case 'page.addInitScript':
         return _page(params).addInitScript(_string(params, 'script'));
-      case 'page.navigate':
-        await _page(params).navigate(
+      case 'page.goto':
+        await _page(params).goto(
           _string(params, 'url'),
           timeoutMs: _int(params, 'timeoutMs'),
         );
@@ -193,9 +191,15 @@ class WebViewRpcService {
       height: (params['height'] as num?)?.toInt() ?? 800,
       userAgent: params['userAgent'] as String? ?? '',
     );
-    await session.init();
     _pagesById[pageId] = session;
-    pages.value = _pagesById.values.toList(growable: false);
+    _syncPages();
+    try {
+      await session.init();
+    } catch (e) {
+      _pagesById.remove(pageId);
+      _syncPages();
+      rethrow;
+    }
     return {'pageId': pageId};
   }
 
@@ -273,8 +277,14 @@ class WebViewRpcService {
         message: 'page not found',
       );
     }
-    pages.value = _pagesById.values.toList(growable: false);
+    _syncPages();
     await page.dispose();
+  }
+
+  void _syncPages() {
+    pages.value = _pagesById.values
+        .where((page) => !page.headless)
+        .toList(growable: false);
   }
 
   WebViewRpcConfig _toConfig(RpcBinding binding) {
@@ -292,7 +302,7 @@ class WebViewRpcService {
       };
     }
     final code = switch (method) {
-      'page.navigate' => 'NAVIGATION_FAILED',
+      'page.goto' => 'NAVIGATION_FAILED',
       'page.execute' => 'EVALUATION_FAILED',
       _ => 'INTERNAL_ERROR',
     };
@@ -316,7 +326,7 @@ class WebViewRpcPageSession {
   });
 
   final String pageId;
-  final WebViewCookieManager cookieManager;
+  final CookieManager cookieManager;
   final bool headless;
   final bool debug;
   final String title;
@@ -325,80 +335,73 @@ class WebViewRpcPageSession {
   final String userAgent;
   late final String callbackChannelName;
 
-  final List<String> _initScripts = [];
+  final List<UserScript> _initScripts = [];
   final Map<String, Completer<dynamic>> _pendingExecutions =
       <String, Completer<dynamic>>{};
 
-  late final WebViewController controller;
+  final Completer<void> _ready = Completer<void>();
+  HeadlessInAppWebView? _headlessWebView;
+  InAppWebViewController? _controller;
   Completer<void>? _navigation;
   String _currentUrl = '';
   int _executeSeq = 0;
+  bool _disposed = false;
 
   Future<void> init() async {
     callbackChannelName =
         '__gopeedWebViewCallback_${pageId.replaceAll('-', '_')}';
-    controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (url) {
-            _currentUrl = url;
-          },
-          onPageFinished: (url) async {
-            _currentUrl = url;
-            await _runInitScripts();
-            _navigation?.complete();
-            _navigation = null;
-          },
-          onWebResourceError: (error) {
-            _navigation?.completeError(
-              WebViewRpcException(
-                code: 'NAVIGATION_FAILED',
-                message: error.description,
-              ),
-            );
-            _navigation = null;
-          },
+    if (headless) {
+      _headlessWebView = HeadlessInAppWebView(
+        initialSize: Size(
+          width > 0 ? width.toDouble() : 1,
+          height > 0 ? height.toDouble() : 1,
         ),
+        initialSettings: _settings,
+        initialUserScripts: UnmodifiableListView(_initScripts),
+        onWebViewCreated: _attachController,
+        onLoadStart: _handleLoadStart,
+        onLoadStop: _handleLoadStop,
+        onReceivedError: _handleReceivedError,
+        onReceivedHttpError: _handleReceivedHttpError,
       );
-    await controller.addJavaScriptChannel(
-      callbackChannelName,
-      onMessageReceived: (message) {
-        _handleExecuteMessage(message.message);
-      },
-    );
-    if (!Util.isMacos()) {
-      controller.setBackgroundColor(const Color(0x00000000));
+      await _headlessWebView!.run();
     }
-    if (userAgent.isNotEmpty) {
-      await controller.setUserAgent(userAgent);
-    }
+    await _ready.future;
   }
 
   Future<void> addInitScript(String script) async {
-    _initScripts.add(script);
-    if (_currentUrl.isNotEmpty) {
+    final userScript = UserScript(
+      source: script,
+      injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+    );
+    _initScripts.add(userScript);
+    final controller = await _controllerOrThrow();
+    await controller.addUserScript(userScript: userScript);
+    if (_currentUrl.isNotEmpty && !_disposed) {
       try {
-        await controller.runJavaScript(script);
+        await controller.evaluateJavascript(source: script);
       } catch (_) {
-        // Best-effort only: webview_flutter does not expose a true
-        // evaluate-on-new-document hook. Future navigations still re-run it.
+        // Best-effort only for the current page. The user script persists
+        // for future navigations through the native user script registry.
       }
     }
   }
 
-  Future<void> navigate(String url, {int? timeoutMs}) async {
-    _navigation = Completer<void>();
+  Future<void> goto(String url, {int? timeoutMs}) async {
+    final controller = await _controllerOrThrow();
+    final navigation = _ensureNavigationCompleter();
     try {
-      await controller.loadRequest(Uri.parse(url));
+      await controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
     } catch (e) {
-      _navigation = null;
+      if (identical(_navigation, navigation)) {
+        _navigation = null;
+      }
       throw WebViewRpcException(
         code: 'NAVIGATION_FAILED',
         message: e.toString(),
       );
     }
-    final future = _navigation!.future;
+    final future = navigation.future;
     if (timeoutMs == null || timeoutMs <= 0) {
       await future;
       return;
@@ -416,13 +419,14 @@ class WebViewRpcPageSession {
   }
 
   Future<dynamic> execute(String expression, List<dynamic> args) async {
+    final controller = await _controllerOrThrow();
     final requestId = 'exec-$pageId-${++_executeSeq}';
     final completer = Completer<dynamic>();
     _pendingExecutions[requestId] = completer;
 
     try {
-      await controller.runJavaScript(
-        buildWebViewExecuteScript(
+      await controller.evaluateJavascript(
+        source: buildWebViewExecuteScript(
           channelName: callbackChannelName,
           requestId: requestId,
           expression: expression,
@@ -455,37 +459,33 @@ class WebViewRpcPageSession {
   }
 
   Future<List<Map<String, dynamic>>> getCookies() async {
-    final raw = await execute('() => document.cookie', const []);
-    final cookieText = raw?.toString() ?? '';
-    if (cookieText.isEmpty) {
+    if (_currentUrl.isEmpty) {
       return const [];
     }
-    final uri = _currentUrl.isEmpty ? null : Uri.tryParse(_currentUrl);
-    return cookieText
-        .split(';')
-        .map((entry) => entry.trim())
-        .where((entry) => entry.isNotEmpty)
-        .map((entry) {
-      final separator = entry.indexOf('=');
-      final name = separator >= 0 ? entry.substring(0, separator) : entry;
-      final value = separator >= 0 ? entry.substring(separator + 1) : '';
+    final cookies = await cookieManager.getCookies(url: WebUri(_currentUrl));
+    return cookies.map((cookie) {
       return <String, dynamic>{
-        'name': name,
-        'value': value,
-        'domain': uri?.host ?? '',
-        'path': '/',
+        'name': cookie.name,
+        'value': cookie.value,
+        'domain': cookie.domain ?? '',
+        'path': cookie.path ?? '/',
+        'secure': cookie.isSecure,
+        'httpOnly': cookie.isHttpOnly,
       };
     }).toList(growable: false);
   }
 
   Future<void> setCookie(Map<String, dynamic> cookie) async {
+    final targetUrl = _cookieUrl(cookie);
     await cookieManager.setCookie(
-      WebViewCookie(
-        name: cookie['name'] as String? ?? '',
-        value: cookie['value'] as String? ?? '',
-        domain: cookie['domain'] as String? ?? '',
-        path: cookie['path'] as String? ?? '/',
-      ),
+      url: targetUrl,
+      name: cookie['name'] as String? ?? '',
+      value: cookie['value'] as String? ?? '',
+      domain: cookie['domain'] as String?,
+      path: cookie['path'] as String? ?? '/',
+      expiresDate: _cookieExpires(cookie),
+      isSecure: cookie['secure'] as bool? ?? false,
+      isHttpOnly: cookie['httpOnly'] as bool? ?? false,
     );
   }
 
@@ -499,19 +499,36 @@ class WebViewRpcPageSession {
         message: 'cookie.name is required',
       );
     }
-    final cookieDomain = domain.isNotEmpty ? '; domain=$domain' : '';
-    final cookiePath = '; path=$path';
-    const expires = '; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    await controller.runJavaScript(
-      'document.cookie = ${jsonEncode('$name=$expires$cookiePath$cookieDomain')}',
+    await cookieManager.deleteCookie(
+      url: _cookieUrl(cookie),
+      name: name,
+      domain: domain.isNotEmpty ? domain : null,
+      path: path,
     );
   }
 
   Future<void> clearCookies() async {
-    await cookieManager.clearCookies();
+    await cookieManager.deleteAllCookies();
   }
 
   Future<void> dispose() async {
+    _disposed = true;
+    if (!_ready.isCompleted) {
+      _ready.completeError(
+        WebViewRpcException(
+          code: 'PAGE_NOT_FOUND',
+          message: 'webview page closed',
+        ),
+      );
+    }
+    if (_navigation != null) {
+      _completeNavigationError(
+        WebViewRpcException(
+          code: 'NAVIGATION_FAILED',
+          message: 'webview page closed',
+        ),
+      );
+    }
     for (final completer in _pendingExecutions.values) {
       if (!completer.isCompleted) {
         completer.completeError(
@@ -523,15 +540,149 @@ class WebViewRpcPageSession {
       }
     }
     _pendingExecutions.clear();
+    await Future.sync(() => _headlessWebView?.dispose());
+    _headlessWebView = null;
+    _controller = null;
   }
 
-  Future<void> _runInitScripts() async {
-    for (final script in _initScripts) {
-      await controller.runJavaScript(script);
+  Completer<void> _ensureNavigationCompleter() {
+    return _navigation ??= Completer<void>();
+  }
+
+  Widget buildWebView() {
+    return InAppWebView(
+      key: ValueKey<String>('webview-$pageId'),
+      initialSettings: _settings,
+      initialUserScripts: UnmodifiableListView(_initScripts),
+      onWebViewCreated: _attachController,
+      onLoadStart: _handleLoadStart,
+      onLoadStop: _handleLoadStop,
+      onReceivedError: _handleReceivedError,
+      onReceivedHttpError: _handleReceivedHttpError,
+    );
+  }
+
+  InAppWebViewSettings get _settings => InAppWebViewSettings(
+        javaScriptEnabled: true,
+        transparentBackground: true,
+        isInspectable: debug,
+        userAgent: userAgent.isNotEmpty ? userAgent : null,
+      );
+
+  Future<InAppWebViewController> _controllerOrThrow() async {
+    await _ready.future;
+    final controller = _controller;
+    if (controller != null && !_disposed) {
+      return controller;
+    }
+    throw WebViewRpcException(
+      code: 'PAGE_NOT_FOUND',
+      message: 'page not found',
+    );
+  }
+
+  void _attachController(InAppWebViewController controller) {
+    _controller = controller;
+    controller.addJavaScriptHandler(
+      handlerName: callbackChannelName,
+      callback: (args) {
+        if (args.isNotEmpty) {
+          _handleExecuteMessage(args.first?.toString() ?? '');
+        }
+        return null;
+      },
+    );
+    if (!_ready.isCompleted) {
+      _ready.complete();
     }
   }
 
+  void _handleLoadStart(InAppWebViewController controller, WebUri? url) {
+    _currentUrl = url?.toString() ?? _currentUrl;
+    _ensureNavigationCompleter();
+  }
+
+  Future<void> _handleLoadStop(
+    InAppWebViewController controller,
+    WebUri? url,
+  ) async {
+    _currentUrl = url?.toString() ?? _currentUrl;
+    _completeNavigation();
+  }
+
+  void _handleReceivedError(
+    InAppWebViewController controller,
+    WebResourceRequest request,
+    WebResourceError error,
+  ) {
+    _completeNavigationError(
+      WebViewRpcException(
+        code: 'NAVIGATION_FAILED',
+        message: error.description,
+      ),
+    );
+  }
+
+  void _handleReceivedHttpError(
+    InAppWebViewController controller,
+    WebResourceRequest request,
+    WebResourceResponse errorResponse,
+  ) {
+    _completeNavigationError(
+      WebViewRpcException(
+        code: 'NAVIGATION_FAILED',
+        message:
+            'HTTP ${errorResponse.statusCode}: ${errorResponse.reasonPhrase ?? 'navigation failed'}',
+      ),
+    );
+  }
+
+  void _completeNavigation() {
+    if (_navigation != null && !_navigation!.isCompleted) {
+      _navigation!.complete();
+    }
+    _navigation = null;
+  }
+
+  void _completeNavigationError(Object error) {
+    if (_navigation != null && !_navigation!.isCompleted) {
+      _navigation!.completeError(error);
+    }
+    _navigation = null;
+  }
+
+  WebUri _cookieUrl(Map<String, dynamic> cookie) {
+    final domain = (cookie['domain'] as String? ?? '').trim();
+    final path = cookie['path'] as String? ?? '/';
+    if (domain.isNotEmpty) {
+      final host = domain.startsWith('.') ? domain.substring(1) : domain;
+      final scheme = (cookie['secure'] as bool? ?? false) ? 'https' : 'http';
+      return WebUri('$scheme://$host$path');
+    }
+    if (_currentUrl.isNotEmpty) {
+      return WebUri(_currentUrl);
+    }
+    throw WebViewRpcException(
+      code: 'INVALID_REQUEST',
+      message: 'cookie target url is unavailable',
+    );
+  }
+
+  int? _cookieExpires(Map<String, dynamic> cookie) {
+    final raw = cookie['expires'];
+    if (raw is int) {
+      return raw;
+    }
+    if (raw is String && raw.isNotEmpty) {
+      return DateTime.tryParse(raw)?.millisecondsSinceEpoch;
+    }
+    return null;
+  }
+
   void _handleExecuteMessage(String payload) {
+    if (payload.isEmpty) {
+      return;
+    }
     final decoded = jsonDecode(payload);
     if (decoded is! Map) {
       return;
