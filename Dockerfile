@@ -1,4 +1,4 @@
-FROM golang:1.24.11-alpine3.23 AS go
+FROM golang:1.25.4-alpine3.23 AS go
 WORKDIR /app
 COPY ./go.mod ./go.sum ./
 RUN go mod download

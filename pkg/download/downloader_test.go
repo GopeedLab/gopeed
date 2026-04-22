@@ -311,6 +311,9 @@ func TestDownloader_CreateWithProxy(t *testing.T) {
 }
 
 func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildReqProxy func(reqProxy *base.RequestProxy) *base.RequestProxy, buildProxyConfig func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig, errHandler func(err error)) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
 	usr, pwd := "", ""
 	if auth {
 		usr, pwd = "admin", "123"
@@ -336,7 +339,7 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildReqProxy func
 	downloader.cfg.DownloaderStoreConfig.Proxy = globalProxyCfg
 
 	req := &base.Request{
-		URL: test.ExternalDownloadUrl,
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
 	if buildReqProxy != nil {
 		req.Proxy = buildReqProxy(&base.RequestProxy{
@@ -355,13 +358,13 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildReqProxy func
 		return
 	}
 	want := &base.Resource{
-		Size:  test.ExternalDownloadSize,
+		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
 			{
-				Name: test.ExternalDownloadName,
+				Name: test.BuildName,
 				Path: "",
-				Size: test.ExternalDownloadSize,
+				Size: test.BuildSize,
 			},
 		},
 	}
