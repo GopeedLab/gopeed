@@ -116,7 +116,7 @@ gopeed.events.onResolve(async function (ctx) {
         const url = URL.createObjectURL(new ReadableStream({
             async start(controller) {
                 controller.enqueue(encoder.encode("line 1\n"));
-                await new Promise((resolve) => setTimeout(resolve, 120));
+                await new Promise((resolve) => setTimeout(resolve, 350));
                 controller.enqueue(encoder.encode("line 2\n"));
                 controller.close();
             },

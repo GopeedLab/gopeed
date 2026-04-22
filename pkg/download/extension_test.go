@@ -125,29 +125,15 @@ func TestDownloader_Extension_GBlobReadableStream(t *testing.T) {
 			t.Fatalf("expected empty resolve id for extension resource, got %q", rr.ID)
 		}
 
-		doneCh := make(chan error, 1)
-		downloader.Listener(func(event *Event) {
-			if event.Key == EventKeyDone || event.Key == EventKeyError {
-				doneCh <- event.Err
-			}
-		})
-
 		dir := t.TempDir()
-		if _, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
+		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
 			Path: dir,
 			Name: rr.Res.Files[0].Name,
-		}); err != nil {
+		})
+		if err != nil {
 			t.Fatal(err)
 		}
-
-		select {
-		case err := <-doneCh:
-			if err != nil {
-				t.Fatal(err)
-			}
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for gblob readable stream download")
-		}
+		waitForTaskTerminal(t, downloader, id, 5*time.Second)
 
 		data, err := os.ReadFile(filepath.Join(dir, "stream.txt"))
 		if err != nil {
@@ -178,13 +164,6 @@ func TestDownloader_Extension_GBlobReadableStreamUnknownSize(t *testing.T) {
 			t.Fatalf("expected unknown size in resolve result, got %d", got)
 		}
 
-		doneCh := make(chan error, 1)
-		downloader.Listener(func(event *Event) {
-			if event.Key == EventKeyDone || event.Key == EventKeyError {
-				doneCh <- event.Err
-			}
-		})
-
 		dir := t.TempDir()
 		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
 			Path: dir,
@@ -202,15 +181,7 @@ func TestDownloader_Extension_GBlobReadableStreamUnknownSize(t *testing.T) {
 		if task.Status == base.DownloadStatusDone {
 			t.Fatal("task finished before writer.close()")
 		}
-
-		select {
-		case err := <-doneCh:
-			if err != nil {
-				t.Fatal(err)
-			}
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for unknown-size readable stream download")
-		}
+		waitForTaskTerminal(t, downloader, id, 5*time.Second)
 
 		data, err := os.ReadFile(filepath.Join(dir, "stream-unknown.txt"))
 		if err != nil {
@@ -988,13 +959,6 @@ func TestDownloader_Extension_GBlobReadableStreamPauseAndContinue(t *testing.T) 
 			t.Fatal(err)
 		}
 
-		doneCh := make(chan error, 1)
-		downloader.Listener(func(event *Event) {
-			if event.Key == EventKeyDone || event.Key == EventKeyError {
-				doneCh <- event.Err
-			}
-		})
-
 		dir := t.TempDir()
 		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
 			Path: dir,
@@ -1038,15 +1002,7 @@ func TestDownloader_Extension_GBlobReadableStreamPauseAndContinue(t *testing.T) 
 		if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
 			t.Fatal(err)
 		}
-
-		select {
-		case err := <-doneCh:
-			if err != nil {
-				t.Fatal(err)
-			}
-		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for pause/continue readable stream download")
-		}
+		waitForTaskTerminal(t, downloader, id, 5*time.Second)
 
 		data, err := os.ReadFile(filePath)
 		if err != nil {
@@ -1889,14 +1845,28 @@ func (p *capturingRuntimeWebViewPage) Close() error {
 }
 
 func setupDownloader(fn func(downloader *Downloader)) {
-	downloader := NewDownloader(nil)
-	downloader.Setup()
-	downloader.cfg.StorageDir = ".test_storage"
-	downloader.cfg.DownloadDir = ".test_download"
+	storageDir, err := os.MkdirTemp("", "gopeed-test-storage-")
+	if err != nil {
+		panic(err)
+	}
+	downloadDir, err := os.MkdirTemp("", "gopeed-test-download-")
+	if err != nil {
+		_ = os.RemoveAll(storageDir)
+		panic(err)
+	}
+	downloader := NewDownloader(&DownloaderConfig{
+		StorageDir: storageDir,
+	})
+	downloader.cfg.DownloadDir = downloadDir
+	if err := downloader.Setup(); err != nil {
+		_ = os.RemoveAll(storageDir)
+		_ = os.RemoveAll(downloadDir)
+		panic(err)
+	}
 	defer func() {
 		downloader.Clear()
 		os.RemoveAll(downloader.cfg.StorageDir)
-		os.RemoveAll(downloader.cfg.DownloadDir)
+		os.RemoveAll(downloadDir)
 	}()
 	fn(downloader)
 }
@@ -1928,6 +1898,35 @@ func waitForTaskTerminal(t *testing.T, downloader *Downloader, id string, timeou
 			}
 		}
 	})
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		task := downloader.GetTask(id)
+		if task != nil {
+			switch task.Status {
+			case base.DownloadStatusDone:
+				return
+			case base.DownloadStatusError:
+				select {
+				case err := <-doneCh:
+					if err == nil {
+						t.Fatalf("task %s ended with error status", id)
+					}
+					t.Fatal(err)
+				default:
+					t.Fatalf("task %s ended with error status", id)
+				}
+			}
+		}
+		select {
+		case err := <-doneCh:
+			if err != nil {
+				t.Fatal(err)
+			}
+			return
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 
 	select {
 	case err := <-doneCh:
