@@ -904,7 +904,13 @@ func TestBuildServerPropagatesWebViewProvider(t *testing.T) {
 		}
 	}()
 
-	runtime, err := Downloader.NewExtMockRuntime()
+	runtime, err := Downloader.NewExtensionEngine(&download.Extension{
+		Name:    "test-runtime",
+		Author:  "gopeed",
+		Title:   "Gopeed Test Script Runtime",
+		Version: "0.0.0",
+		DevMode: true,
+	}, map[string]any{})
 	if err != nil {
 		t.Fatal(err)
 	}

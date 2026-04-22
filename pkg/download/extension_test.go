@@ -397,17 +397,17 @@ func TestDownloader_Extension_GBlobHTTPStreamProxyReportsDownloadedBeforeComplet
 		}
 
 		payload := strings.Repeat("gopeed-progress-", 64*1024)
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method == http.MethodHead {
-					w.Header().Set("Connection", "close")
-					w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-					return
-				}
-
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodHead {
 				w.Header().Set("Connection", "close")
-				w.Header().Set("Content-Type", "application/octet-stream")
 				w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-				flusher, _ := w.(http.Flusher)
+				return
+			}
+
+			w.Header().Set("Connection", "close")
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
+			flusher, _ := w.(http.Flusher)
 			chunkSize := 4096
 			for start := 0; start < len(payload); start += chunkSize {
 				end := start + chunkSize
@@ -590,12 +590,12 @@ func TestDownloader_Extension_GBlobHTTPStreamDeleteWhileDownloading(t *testing.T
 				if flusher != nil {
 					flusher.Flush()
 				}
-					time.Sleep(20 * time.Millisecond)
-				}
-			}))
-			server.Config.SetKeepAlivesEnabled(false)
-			defer server.Close()
-			defer server.CloseClientConnections()
+				time.Sleep(20 * time.Millisecond)
+			}
+		}))
+		server.Config.SetKeepAlivesEnabled(false)
+		defer server.Close()
+		defer server.CloseClientConnections()
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://example.com/http-stream?target=" + server.URL + "&name=delete.bin",
@@ -1489,13 +1489,13 @@ func TestDownloader_Extension_Logger(t *testing.T) {
 }
 
 func TestDownloader_ExtensionRuntimeWebViewInjected(t *testing.T) {
-	downloader, cleanup, err := NewExtMockDownloader()
+	downloader, cleanup, err := newTestExtensionEngineDownloader()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cleanup()
 
-	runtime, err := downloader.NewExtMockRuntime()
+	runtime, err := newTestExtensionEngine(t, downloader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1543,7 +1543,7 @@ func TestDownloader_ExtensionRuntimeWebViewAvailabilityFromProvider(t *testing.T
 	}
 	defer downloader.Clear()
 
-	runtime, err := downloader.NewExtMockRuntime()
+	runtime, err := newTestExtensionEngine(t, downloader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1571,7 +1571,7 @@ func TestDownloader_ExtensionRuntimeWebViewPageMethodsInjected(t *testing.T) {
 	}
 	defer downloader.Clear()
 
-	runtime, err := downloader.NewExtMockRuntime()
+	runtime, err := newTestExtensionEngine(t, downloader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1635,7 +1635,7 @@ func TestDownloader_ExtensionRuntimeWebViewExecuteAnonymousFunction(t *testing.T
 	}
 	defer downloader.Clear()
 
-	runtime, err := downloader.NewExtMockRuntime()
+	runtime, err := newTestExtensionEngine(t, downloader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1884,6 +1884,30 @@ func setupDownloader(fn func(downloader *Downloader)) {
 		os.RemoveAll(downloadDir)
 	}()
 	fn(downloader)
+}
+
+func newTestExtensionEngineDownloader() (*Downloader, func(), error) {
+	downloader := NewDownloader(&DownloaderConfig{
+		Storage: NewMemStorage(),
+	})
+	if err := downloader.Setup(); err != nil {
+		return nil, nil, err
+	}
+	cleanup := func() {
+		_ = downloader.Clear()
+	}
+	return downloader, cleanup, nil
+}
+
+func newTestExtensionEngine(t *testing.T, downloader *Downloader) (*ExtensionEngine, error) {
+	t.Helper()
+	return downloader.NewExtensionEngine(&Extension{
+		Name:    "test-runtime",
+		Author:  "gopeed",
+		Title:   "Gopeed Test Script Runtime",
+		Version: "0.0.0",
+		DevMode: true,
+	}, map[string]any{})
 }
 
 func waitForFileSizeAtLeast(t *testing.T, path string, size int64, timeout time.Duration) {

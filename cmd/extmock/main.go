@@ -372,7 +372,7 @@ func runEval(args []string) error {
 	}
 	defer cleanup()
 
-	runtime, err := d.NewExtMockRuntime()
+	runtime, err := d.NewExtensionEngine(newExtMockExtension(), map[string]any{})
 	if err != nil {
 		return err
 	}
@@ -539,6 +539,16 @@ func newExtMockDownloader(cfg webViewConfig) (*download.Downloader, func(), erro
 		_ = d.Clear()
 	}
 	return d, cleanup, nil
+}
+
+func newExtMockExtension() *download.Extension {
+	return &download.Extension{
+		Name:    "extmock",
+		Author:  "gopeed",
+		Title:   "Gopeed ExtMock Runtime",
+		Version: "0.0.0",
+		DevMode: true,
+	}
 }
 
 func newExtMockWebViewProvider(cfg webViewConfig) (enginewebview.Provider, error) {
