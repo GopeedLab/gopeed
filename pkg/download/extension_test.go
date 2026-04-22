@@ -397,15 +397,17 @@ func TestDownloader_Extension_GBlobHTTPStreamProxyReportsDownloadedBeforeComplet
 		}
 
 		payload := strings.Repeat("gopeed-progress-", 64*1024)
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodHead {
-				w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-				return
-			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodHead {
+					w.Header().Set("Connection", "close")
+					w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
+					return
+				}
 
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-			flusher, _ := w.(http.Flusher)
+				w.Header().Set("Connection", "close")
+				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
+				flusher, _ := w.(http.Flusher)
 			chunkSize := 4096
 			for start := 0; start < len(payload); start += chunkSize {
 				end := start + chunkSize
@@ -588,10 +590,12 @@ func TestDownloader_Extension_GBlobHTTPStreamDeleteWhileDownloading(t *testing.T
 				if flusher != nil {
 					flusher.Flush()
 				}
-				time.Sleep(20 * time.Millisecond)
-			}
-		}))
-		defer server.Close()
+					time.Sleep(20 * time.Millisecond)
+				}
+			}))
+			server.Config.SetKeepAlivesEnabled(false)
+			defer server.Close()
+			defer server.CloseClientConnections()
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://example.com/http-stream?target=" + server.URL + "&name=delete.bin",
@@ -1945,7 +1949,11 @@ func waitForTaskTerminal(t *testing.T, downloader *Downloader, id string, timeou
 			t.Fatal(err)
 		}
 	case <-time.After(timeout):
-		t.Fatalf("timeout waiting for task %s", id)
+		task := downloader.GetTask(id)
+		if task == nil {
+			t.Fatalf("timeout waiting for task %s: task not found", id)
+		}
+		t.Fatalf("timeout waiting for task %s: status=%s downloaded=%d total=%d", id, task.Status, task.Progress.Downloaded, task.Meta.Res.Size)
 	}
 }
 

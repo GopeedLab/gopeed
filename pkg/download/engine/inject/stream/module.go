@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -254,8 +255,9 @@ type fetchRegistry struct {
 }
 
 type fetchStream struct {
-	body io.ReadCloser
-	mu   sync.Mutex
+	body      io.ReadCloser
+	cancel    context.CancelFunc
+	closeOnce sync.Once
 }
 
 type fetchRequest struct {
@@ -323,7 +325,9 @@ func (r *fetchRegistry) Open(runtime *goja.Runtime, proxyHandler func(r *http.Re
 	if err != nil {
 		return nil, err
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	reqBuilder := client.R()
+	reqBuilder.SetContext(ctx)
 	reqBuilder.DisableAutoReadResponse()
 	for _, header := range reqMeta.Headers {
 		reqBuilder.SetHeader(header[0], header[1])
@@ -375,7 +379,7 @@ func (r *fetchRegistry) Open(runtime *goja.Runtime, proxyHandler func(r *http.Re
 		bodyCloser = resp.Response.Body
 	}
 	r.mu.Lock()
-	r.streams[id] = &fetchStream{body: bodyCloser}
+	r.streams[id] = &fetchStream{body: bodyCloser, cancel: cancel}
 	r.mu.Unlock()
 	return meta, nil
 }
@@ -389,9 +393,7 @@ func (r *fetchRegistry) Read(id string, chunkSize int) ([]byte, bool, error) {
 		chunkSize = 64 * 1024
 	}
 	buf := make([]byte, chunkSize)
-	stream.mu.Lock()
 	n, err := stream.body.Read(buf)
-	stream.mu.Unlock()
 	if n > 0 {
 		return buf[:n], false, nil
 	}
@@ -412,9 +414,12 @@ func (r *fetchRegistry) Close(id string) {
 	delete(r.streams, id)
 	r.mu.Unlock()
 	if stream != nil {
-		stream.mu.Lock()
-		_ = stream.body.Close()
-		stream.mu.Unlock()
+		stream.closeOnce.Do(func() {
+			if stream.cancel != nil {
+				stream.cancel()
+			}
+			_ = stream.body.Close()
+		})
 	}
 }
 

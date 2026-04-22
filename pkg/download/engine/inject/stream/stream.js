@@ -580,48 +580,6 @@
     };
   }
 
-  function attachWritableObjectURL(url, value) {
-    value._addObserver({
-      write(chunk) {
-        return Promise.resolve(writeWritableObjectURL(url, chunk));
-      },
-      close() {
-        return Promise.resolve(closeWritableObjectURL(url));
-      },
-      abort(reason) {
-        return Promise.resolve(abortWritableObjectURL(url, reason == null ? "" : String(reason)));
-      }
-    });
-    value.__gopeedObjectURL = url;
-    return url;
-  }
-
-  function pipeReadableToWritable(readable, writable) {
-    const writer = writable.getWriter();
-    void (async () => {
-      const reader = readable.getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-          await writer.write(value);
-        }
-        await writer.close();
-      } catch (error) {
-        try {
-          await writer.abort(error);
-        } catch (_) {
-        }
-      } finally {
-        if (typeof reader.releaseLock === "function") {
-          reader.releaseLock();
-        }
-      }
-    })();
-  }
-
   function startReadableObjectURL(url, state) {
     activeReadableObjectURLs.set(url, state);
     setTimeout(() => {
@@ -661,6 +619,7 @@
   }
 
   async function pumpReadableObjectURL(url, state) {
+    let reader = null;
     try {
       let source;
       if (state.initialReadable) {
@@ -672,9 +631,10 @@
         }
         source = await state.openReadable(state.offset);
       }
-      const reader = toReadableStreamReader(source, state.sourceLabel);
+      reader = toReadableStreamReader(source, state.sourceLabel);
       if (activeReadableObjectURLs.get(url) !== state || state.cancelled) {
         releaseReader(reader, "stale gblob producer");
+        reader = null;
         return;
       }
       state.reader = reader;
@@ -683,6 +643,7 @@
         const current = activeReadableObjectURLs.get(url);
         if (current !== state) {
           releaseReader(reader, "stale gblob producer");
+          reader = null;
           return;
         }
         const { done, value } = await reader.read();
@@ -692,11 +653,13 @@
             await closeWritableObjectURL(url);
           }
           releaseReader(reader);
+          reader = null;
           return;
         }
         const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
         if (activeReadableObjectURLs.get(url) !== state || state.cancelled) {
           releaseReader(reader, "stale gblob producer");
+          reader = null;
           return;
         }
         await writeWritableObjectURL(url, chunk);
@@ -707,8 +670,16 @@
         }
       }
       releaseReader(reader, "gblob producer cancelled");
+      reader = null;
     } catch (error) {
       if (isIgnorableGBlobObjectURLError(error)) {
+        if (activeReadableObjectURLs.get(url) === state) {
+          activeReadableObjectURLs.delete(url);
+        }
+        if (reader) {
+          releaseReader(reader, "gblob source closed");
+          reader = null;
+        }
         return;
       }
       if (activeReadableObjectURLs.get(url) === state) {
@@ -717,6 +688,10 @@
           await abortWritableObjectURL(url, error == null ? "" : String(error && error.message ? error.message : error));
         } catch (_) {
         }
+      }
+      if (reader) {
+        releaseReader(reader, error);
+        reader = null;
       }
     }
   }
@@ -743,9 +718,15 @@
       return createBlobObjectURL(described.value._buffer, described.value.type || "");
     }
     if (described.kind === "readable") {
-      const transform = new TransformStream();
-      const url = attachWritableObjectURL(createWritableObjectURL(false), transform.writable);
-      pipeReadableToWritable(described.initialReadable, transform.writable);
+      const url = createWritableObjectURL(false);
+      startReadableObjectURL(url, {
+        initialReadable: described.initialReadable,
+        openReadable: null,
+        sourceLabel: described.sourceLabel,
+        offset: 0,
+        reader: null,
+        cancelled: false,
+      });
       return url;
     }
     if (described.kind === "opener") {
