@@ -1857,8 +1857,19 @@ func setupDownloader(fn func(downloader *Downloader)) {
 	downloader := NewDownloader(&DownloaderConfig{
 		StorageDir: storageDir,
 	})
-	downloader.cfg.DownloadDir = downloadDir
 	if err := downloader.Setup(); err != nil {
+		_ = os.RemoveAll(storageDir)
+		_ = os.RemoveAll(downloadDir)
+		panic(err)
+	}
+	cfg, err := downloader.GetConfig()
+	if err != nil {
+		_ = os.RemoveAll(storageDir)
+		_ = os.RemoveAll(downloadDir)
+		panic(err)
+	}
+	cfg.DownloadDir = downloadDir
+	if err := downloader.PutConfig(cfg); err != nil {
 		_ = os.RemoveAll(storageDir)
 		_ = os.RemoveAll(downloadDir)
 		panic(err)
