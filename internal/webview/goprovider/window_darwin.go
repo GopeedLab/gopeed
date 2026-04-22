@@ -1,4 +1,4 @@
-//go:build cgo && darwin
+//go:build cgo && webview && darwin
 
 package goprovider
 
