@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/GopeedLab/gopeed/cmd"
-	"github.com/GopeedLab/gopeed/internal/webview/goprovider"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
 
@@ -56,7 +55,6 @@ func main() {
 		WebEnable:         true,
 		WebFS:             sub,
 		WebAuth:           webAuth,
-		WebViewProvider:   goprovider.New(),
 	}
 	cmd.Start(cfg)
 }
