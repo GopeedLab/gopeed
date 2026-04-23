@@ -111,6 +111,7 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
       notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
       autoStartTasks: json['autoStartTasks'] as bool? ?? false,
       desktopNotification: json['desktopNotification'] as bool? ?? true,
+      browserCapturePopup: json['browserCapturePopup'] as bool? ?? true,
       downloadCategories: (json['downloadCategories'] as List<dynamic>?)
               ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -130,6 +131,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'notifyWhenNewVersion': instance.notifyWhenNewVersion,
       'autoStartTasks': instance.autoStartTasks,
       'desktopNotification': instance.desktopNotification,
+      'browserCapturePopup': instance.browserCapturePopup,
       'downloadCategories':
           instance.downloadCategories.map((e) => e.toJson()).toList(),
       'bt': instance.bt.toJson(),

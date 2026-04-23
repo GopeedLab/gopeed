@@ -60,5 +60,9 @@ std::string Utf8FromUtf16(const wchar_t* utf16_string) {
   if (converted_length == 0) {
     return std::string();
   }
+  // Remove the trailing '\0' so string comparisons on command-line args work.
+  if (!utf8_string.empty() && utf8_string.back() == '\0') {
+    utf8_string.pop_back();
+  }
   return utf8_string;
 }

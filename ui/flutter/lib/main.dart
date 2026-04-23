@@ -9,6 +9,7 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'api/api.dart' as api;
+import 'app/services/browser_download_popup.dart';
 import 'app/modules/app/controllers/app_controller.dart';
 import 'app/modules/app/views/app_view.dart';
 import 'core/libgopeed_boot.dart';
@@ -24,9 +25,24 @@ import 'util/util.dart';
 
 class StartupArgs {
   static const flagHidden = "hidden";
+  static const flagDownloadPopup = "download-popup";
+  static const popupTaskId = "popup-task-id";
+  static const popupNetwork = "popup-network";
+  static const popupAddress = "popup-address";
+  static const popupApiToken = "popup-api-token";
+  static const popupThemeMode = "popup-theme-mode";
+  static const popupLocale = "popup-locale";
 
   /// Command line --hidden flag (for auto-start)
   bool hiddenFromArgs = false;
+  bool isDownloadPopup = false;
+  String popupTaskIdValue = '';
+  String popupNetworkValue = '';
+  String popupAddressValue = '';
+  String popupApiTokenValue = '';
+  String popupThemeModeValue = ThemeMode.system.name;
+  String popupLocaleValue =
+      fallbackLocale.languageCode + '_' + (fallbackLocale.countryCode ?? 'US');
 
   StartupArgs._();
 
@@ -34,9 +50,26 @@ class StartupArgs {
   static StartupArgs parse(List<String> arguments) {
     final args = StartupArgs._();
     try {
-      final parser = ArgParser()..addFlag(flagHidden);
+      final parser = ArgParser()
+        ..addFlag(flagHidden)
+        ..addFlag(flagDownloadPopup)
+        ..addOption(popupTaskId)
+        ..addOption(popupNetwork)
+        ..addOption(popupAddress)
+        ..addOption(popupApiToken)
+        ..addOption(popupThemeMode)
+        ..addOption(popupLocale);
       final results = parser.parse(arguments);
       args.hiddenFromArgs = results.flag(flagHidden);
+      args.isDownloadPopup = results.flag(flagDownloadPopup);
+      args.popupTaskIdValue = results.option(popupTaskId) ?? '';
+      args.popupNetworkValue = results.option(popupNetwork) ?? '';
+      args.popupAddressValue = results.option(popupAddress) ?? '';
+      args.popupApiTokenValue = results.option(popupApiToken) ?? '';
+      args.popupThemeModeValue =
+          results.option(popupThemeMode) ?? ThemeMode.system.name;
+      args.popupLocaleValue =
+          results.option(popupLocale) ?? getLocaleKey(fallbackLocale);
     } catch (e) {
       // ignore parse errors
     }
@@ -50,6 +83,16 @@ void main(List<String> arguments) async {
   final args = StartupArgs.parse(arguments);
 
   await init(args);
+  if (args.isDownloadPopup) {
+    await appendPopupDebugLog(
+        'main enter popup mode task=${args.popupTaskIdValue} network=${args.popupNetworkValue} address=${args.popupAddressValue}');
+    runApp(BrowserDownloadPopupApp(
+      taskId: args.popupTaskIdValue,
+      themeMode: args.popupThemeModeValue,
+      localeKey: args.popupLocaleValue,
+    ));
+    return;
+  }
   onStart();
 
   runApp(const AppView());
@@ -61,38 +104,40 @@ Future<void> init(StartupArgs args) async {
     FlutterForegroundTask.initCommunicationPort();
   }
   await Util.initStorageDir();
-  await Database.instance.init();
   if (Util.isDesktop()) {
     await windowManager.ensureInitialized();
-    final windowState = Database.instance.getWindowState();
+    if (!args.isDownloadPopup) {
+      await Database.instance.init();
+      final windowState = Database.instance.getWindowState();
 
-    // Check if menubar mode is enabled (only for macOS)
-    final runAsMenubarApp =
-        Util.isMacos() && Database.instance.getRunAsMenubarApp();
+      // Check if menubar mode is enabled (only for macOS)
+      final runAsMenubarApp =
+          Util.isMacos() && Database.instance.getRunAsMenubarApp();
 
-    final windowOptions = WindowOptions(
-      size: Size(windowState?.width ?? 800, windowState?.height ?? 600),
-      center: true,
-      skipTaskbar: runAsMenubarApp,
-    );
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.setPreventClose(true);
-    });
-
-    // Register Cmd+W hotkey on macOS to close window
-    if (Util.isMacos()) {
-      await hotKeyManager.unregisterAll();
-      HotKey hotKey = HotKey(
-        key: PhysicalKeyboardKey.keyW,
-        modifiers: [HotKeyModifier.meta],
-        scope: HotKeyScope.inapp,
+      final windowOptions = WindowOptions(
+        size: Size(windowState?.width ?? 800, windowState?.height ?? 600),
+        center: true,
+        skipTaskbar: runAsMenubarApp,
       );
-      await hotKeyManager.register(
-        hotKey,
-        keyDownHandler: (hotKey) {
-          windowManager.hide();
-        },
-      );
+      await windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.setPreventClose(true);
+      });
+
+      // Register Cmd+W hotkey on macOS to close window
+      if (Util.isMacos()) {
+        await hotKeyManager.unregisterAll();
+        HotKey hotKey = HotKey(
+          key: PhysicalKeyboardKey.keyW,
+          modifiers: [HotKeyModifier.meta],
+          scope: HotKeyScope.inapp,
+        );
+        await hotKeyManager.register(
+          hotKey,
+          keyDownHandler: (hotKey) {
+            windowManager.hide();
+          },
+        );
+      }
     }
   }
 
@@ -102,6 +147,15 @@ Future<void> init(StartupArgs args) async {
     await initPackageInfo();
   } catch (e) {
     logger.e("init package info fail", e);
+  }
+
+  if (args.isDownloadPopup) {
+    api.init(
+      args.popupNetworkValue,
+      args.popupAddressValue,
+      args.popupApiTokenValue,
+    );
+    return;
   }
 
   final controller =

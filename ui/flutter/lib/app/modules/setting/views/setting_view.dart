@@ -521,6 +521,29 @@ class SettingView extends GetView<SettingController> {
             );
           });
 
+    final buildBrowserCapturePopup = !Util.isWindows()
+        ? () => null
+        : _buildConfigItem('browserCapturePopup', () {
+            return appController
+                    .downloaderConfig.value.extra.browserCapturePopup
+                ? 'on'.tr
+                : 'off'.tr;
+          }, (Key key) {
+            return Container(
+              alignment: Alignment.centerLeft,
+              child: Switch(
+                value: appController
+                    .downloaderConfig.value.extra.browserCapturePopup,
+                onChanged: (bool value) async {
+                  appController.downloaderConfig.update((val) {
+                    val!.extra.browserCapturePopup = value;
+                  });
+                  await debounceSave();
+                },
+              ),
+            );
+          });
+
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;
     final buildHttpUa =
@@ -1748,6 +1771,7 @@ class SettingView extends GetView<SettingController> {
                             buildAutoStartup(),
                             buildMenubarMode(),
                             buildDesktopNotification(),
+                            buildBrowserCapturePopup(),
                           ]),
                         )),
                         Text('archives'.tr),

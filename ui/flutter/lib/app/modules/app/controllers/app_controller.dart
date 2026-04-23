@@ -17,7 +17,6 @@ import 'package:uri_to_file/uri_to_file.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
-
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/downloader_config.dart';
@@ -38,6 +37,7 @@ import '../../../../util/updater.dart';
 import '../../../../util/util.dart';
 import '../../../routes/app_pages.dart';
 import '../../../rpc/rpc.dart';
+import '../../../services/browser_download_popup.dart';
 import '../../redirect/views/redirect_view.dart';
 import '../../../services/notification_service.dart';
 
@@ -89,6 +89,19 @@ class AppController extends GetxController with WindowListener, TrayListener {
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
 
+  Future<void> _writePopupDebugLog(String message) async {
+    try {
+      final logDir = Directory(path.join(Util.getStorageDir(), 'logs'));
+      if (!await logDir.exists()) {
+        await logDir.create(recursive: true);
+      }
+      final logFile = File(path.join(logDir.path, 'popup.log'));
+      final now = DateTime.now().toIso8601String();
+      await logFile.writeAsString('[$now] $message\n',
+          mode: FileMode.append, flush: true);
+    } catch (_) {}
+  }
+
   @override
   void onReady() {
     super.onReady();
@@ -98,8 +111,9 @@ class AppController extends GetxController with WindowListener, TrayListener {
 
     _initWindows().onError((error, stackTrace) =>
         logger.w("initWindows error", error, stackTrace));
-        
+
     if (Util.isDesktop()) {
+      Get.put(BrowserDownloadPopupLauncher());
       Get.put(NotificationService());
     }
 
@@ -337,14 +351,30 @@ class AppController extends GetxController with WindowListener, TrayListener {
           final jsonMeta = jsonDecode(meta);
           final silent = jsonMeta['silent'] as bool? ?? false;
           final params = await ctx.readText();
-          final createTaskParams = CreateTask.fromJson(_decodeParams(params));
+          await _writePopupDebugLog(
+              'rpc /create received silent=$silent body=${params.length > 200 ? '${params.substring(0, 200)}...' : params}');
+          final trimmedParams = params.trim();
+          final createTaskParams = CreateTask.fromJson(
+            trimmedParams.startsWith('{') || trimmedParams.startsWith('[')
+                ? jsonDecode(trimmedParams)
+                : _decodeParams(trimmedParams),
+          );
           if (!silent || pendingUpdateTask.value != null) {
+            await _writePopupDebugLog(
+                'rpc /create redirect to main window silent=$silent pendingUpdate=${pendingUpdateTask.value != null}');
             await windowManager.show();
             _handleToCreate0(createTaskParams);
           } else {
             try {
-              await createTask(createTaskParams);
+              final taskId = await createTask(createTaskParams);
+              await _writePopupDebugLog('rpc /create created task=$taskId');
+              if (jsonMeta['silent'] == true && Util.isWindows()) {
+                await _writePopupDebugLog(
+                    'rpc /create trigger popup task=$taskId');
+                await Get.find<BrowserDownloadPopupLauncher>().show(taskId);
+              }
             } catch (e) {
+              await _writePopupDebugLog('rpc /create failed error=$e');
               logger.w(
                   "create task from extension fail", e, StackTrace.current);
             }

@@ -43,15 +43,26 @@ bool SendAppLinkToInstance(const std::wstring& title) {
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
-  if (SendAppLinkToInstance(L"gopeed")) {
-    return EXIT_SUCCESS;
+  std::vector<std::string> command_line_arguments = GetCommandLineArguments();
+  bool is_popup_window = false;
+  for (const auto& arg : command_line_arguments) {
+    if (arg == "--download-popup") {
+      is_popup_window = true;
+      break;
+    }
   }
 
-  HWND hwnd = ::FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"gopeed");
-  if (hwnd != NULL) {
-    ::ShowWindow(hwnd, SW_NORMAL);
-    ::SetForegroundWindow(hwnd);
-    return EXIT_FAILURE;
+  if (!is_popup_window) {
+    if (SendAppLinkToInstance(L"gopeed")) {
+      return EXIT_SUCCESS;
+    }
+
+    HWND hwnd = ::FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", L"gopeed");
+    if (hwnd != NULL) {
+      ::ShowWindow(hwnd, SW_NORMAL);
+      ::SetForegroundWindow(hwnd);
+      return EXIT_FAILURE;
+    }
   }
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
@@ -64,16 +75,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
   flutter::DartProject project(L"data");
-
-  std::vector<std::string> command_line_arguments =
-      GetCommandLineArguments();
-
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  Win32Window::Size size(1280, 720);
-  if (!window.Create(L"gopeed", origin, size)) {
+  Win32Window::Size size = is_popup_window ? Win32Window::Size(860, 520)
+                                           : Win32Window::Size(1280, 720);
+  const wchar_t* title = is_popup_window ? L"gopeed-popup" : L"gopeed";
+  if (!window.Create(title, origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

@@ -8,6 +8,8 @@ const zhCN = {
     'cancel': '取消',
     'on': '开启',
     'off': '关闭',
+    'yes': '是',
+    'no': '否',
     'selectAll': '全选',
     'select': '选择',
     'task': '任务',
@@ -223,5 +225,14 @@ const zhCN = {
     'desktopNotification': '桌面通知',
     'notificationTaskDone': '任务完成',
     'notificationTaskError': '任务失败',
+    'browserCapturePopup': '浏览器捕获下载弹窗',
+    'taskStatus': '状态',
+    'popupBandwidth': '带宽',
+    'popupRemainingTime': '剩余时间',
+    'popupRecoverable': '可恢复',
+    'popupCompleted': '下载完成',
+    'popupOpenFolder': '打开目录',
+    'popupOpen': '打开',
+    'popupClose': '关闭',
   }
 };

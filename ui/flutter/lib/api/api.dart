@@ -153,6 +153,16 @@ Future<List<Task>> getTasks(List<Status> statuses) async {
       (data) => (data as List).map((e) => Task.fromJson(e)).toList());
 }
 
+Future<Task> getTask(String id) async {
+  return _parse<Task>(() => _client.dio.get("/api/v1/tasks/$id"),
+      (data) => Task.fromJson(data));
+}
+
+Future<dynamic> getTaskStats(String id) async {
+  return _parse<dynamic>(
+      () => _client.dio.get("/api/v1/tasks/$id/stats"), (data) => data);
+}
+
 Future<void> pauseTask(String id) async {
   return _parse(() => _client.dio.put("api/v1/tasks/$id/pause"), null);
 }
