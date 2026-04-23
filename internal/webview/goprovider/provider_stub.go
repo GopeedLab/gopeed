@@ -1,4 +1,4 @@
-//go:build !cgo || !webview
+//go:build !cgo
 
 package goprovider
 

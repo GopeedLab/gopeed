@@ -67,7 +67,7 @@ type Cookie struct {
 	Value    string    `json:"value"`
 	Domain   string    `json:"domain,omitempty"`
 	Path     string    `json:"path,omitempty"`
-	Expires  time.Time `json:"expires,omitempty"`
+	Expires  time.Time `json:"expires,omitempty,omitzero"`
 	Secure   bool      `json:"secure,omitempty"`
 	HTTPOnly bool      `json:"httpOnly,omitempty"`
 }

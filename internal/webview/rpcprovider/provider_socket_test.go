@@ -11,7 +11,7 @@ import (
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
 )
 
-func TestProviderSupportsUnixSocket(t *testing.T) {
+func TestProviderIsAvailableOverUnixSocket(t *testing.T) {
 	socketPath := filepath.Join("/tmp", "gopeed-rpcwebview-"+t.Name()+".sock")
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
 )
@@ -149,5 +151,36 @@ func TestProviderLaunchUnavailableWithoutEndpoint(t *testing.T) {
 	}
 	if _, err := opener.Open(enginewebview.OpenOptions{}); err == nil || err.Error() != enginewebview.ErrUnavailable.Error() {
 		t.Fatalf("unexpected launch error: %v", err)
+	}
+}
+
+func TestPageSetCookieParamsOmitsZeroExpires(t *testing.T) {
+	params := enginewebview.PageSetCookieParams{
+		PageID: "page-1",
+		Cookie: enginewebview.Cookie{
+			Name:   "visible",
+			Value:  "1",
+			Domain: "example.com",
+			Path:   "/",
+		},
+	}
+	payload, err := json.Marshal(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(payload) == "" {
+		t.Fatal("expected non-empty json payload")
+	}
+	if got := string(payload); strings.Contains(got, `"expires"`) {
+		t.Fatalf("unexpected zero expires in payload: %s", got)
+	}
+
+	params.Cookie.Expires = time.Now().UTC().Truncate(time.Second)
+	payload, err = json.Marshal(params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(payload); !strings.Contains(got, `"expires"`) {
+		t.Fatalf("expected expires in payload: %s", got)
 	}
 }
