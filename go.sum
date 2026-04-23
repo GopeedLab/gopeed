@@ -25,6 +25,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/GopeedLab/webview_go v0.0.0-20260416010719-fc58e7d53769 h1:iuMR7aHvckis8PKYUDXDa8elcmf34GksWpaYak1EYKw=
 github.com/GopeedLab/webview_go v0.0.0-20260416010719-fc58e7d53769/go.mod h1:FvV19lu9rQ9NcbczN5y8pbWecURRRbWa8tbfFARBDa0=
+github.com/GopeedLab/webview_go v0.0.0-20260423023243-b3f067ccab2f h1:yu//jtofUpHZB+IpB1xIH8z4o4JsFJ6pMvgA1Ww/ElY=
+github.com/GopeedLab/webview_go v0.0.0-20260423023243-b3f067ccab2f/go.mod h1:FvV19lu9rQ9NcbczN5y8pbWecURRRbWa8tbfFARBDa0=
 github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0rYXWg0=
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
