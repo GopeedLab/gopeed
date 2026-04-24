@@ -471,6 +471,89 @@ func TestDownloader_Extension_GBlobHTTPStreamProxyReportsDownloadedBeforeComplet
 	})
 }
 
+func TestDownloader_Extension_GBlobHTTPBlobReportsDownloadedBeforeCompletion(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		downloader.cfg.RefreshInterval = 50
+
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
+			t.Fatal(err)
+		}
+
+		payload := strings.Repeat("gopeed-blob-progress-", 64*1024)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodHead {
+				w.Header().Set("Connection", "close")
+				w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
+				return
+			}
+
+			w.Header().Set("Connection", "close")
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
+			flusher, _ := w.(http.Flusher)
+			chunkSize := 4096
+			for start := 0; start < len(payload); start += chunkSize {
+				end := start + chunkSize
+				if end > len(payload) {
+					end = len(payload)
+				}
+				if _, err := io.WriteString(w, payload[start:end]); err != nil {
+					return
+				}
+				if flusher != nil {
+					flusher.Flush()
+				}
+				time.Sleep(30 * time.Millisecond)
+			}
+		}))
+		defer server.Close()
+
+		rr, err := downloader.Resolve(&base.Request{
+			URL: "https://example.com/http-blob?target=" + server.URL + "&name=progress-blob.bin",
+		}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) != 1 {
+			t.Fatalf("unexpected resolved file count: %d", len(rr.Res.Files))
+		}
+
+		dir := t.TempDir()
+		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
+			Path: dir,
+			Name: rr.Res.Files[0].Name,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		waitForTaskStatus(t, downloader, id, base.DownloadStatusRunning, 2*time.Second)
+
+		deadline := time.Now().Add(2 * time.Second)
+		var observed int64
+		for time.Now().Before(deadline) {
+			task := downloader.GetTask(id)
+			if task == nil {
+				t.Fatal("task not found")
+			}
+			observed = task.Progress.Downloaded
+			if observed > 0 {
+				if task.Status == base.DownloadStatusDone {
+					t.Fatal("expected slow blob task to still be running when intermediate downloaded bytes become visible")
+				}
+				break
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		if observed <= 0 {
+			_ = downloader.Delete(&TaskFilter{IDs: []string{id}}, true)
+			t.Fatalf("expected downloaded bytes > 0 before completion, got %d", observed)
+		}
+
+		waitForTaskTerminal(t, downloader, id, 10*time.Second)
+	})
+}
+
 func TestDownloader_Extension_GBlobHTTPStreamPairReportsDownloadedConcurrently(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		downloader.cfg.RefreshInterval = 50

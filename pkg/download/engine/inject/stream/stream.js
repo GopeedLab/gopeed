@@ -447,6 +447,38 @@
     return merged;
   }
 
+  function createStreamBackedBlob(stream, contentType, size) {
+    const blob = new Blob([], { type: contentType || "" });
+    if (Number.isFinite(size) && size >= 0) {
+      try {
+        Object.defineProperty(blob, "size", {
+          configurable: true,
+          enumerable: true,
+          value: size,
+        });
+      } catch (_) {
+      }
+    }
+    blob.__gopeedStreamBackedBlob = true;
+    blob.__gopeedBodyStream = stream;
+    blob.stream = function () {
+      const bodyStream = this.__gopeedBodyStream;
+      this.__gopeedBodyStream = null;
+      if (bodyStream instanceof ReadableStream) {
+        return bodyStream;
+      }
+      return new Blob([], { type: this.type || "" }).stream();
+    };
+    blob.arrayBuffer = async function () {
+      const bytes = await readAllFromStream(this.stream(), false);
+      return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    };
+    blob.text = async function () {
+      return readAllFromStream(this.stream(), true);
+    };
+    return blob;
+  }
+
   function attachResponseStreaming(response, stream) {
     response.__gopeedBodyStream = stream;
     response.__gopeedBodyConsumed = false;
@@ -482,9 +514,9 @@
     response.blob = async function () {
       ensureUnused();
       markBodyUsed();
-      const bytes = await readAllFromStream(stream, false);
       const contentType = this.headers && this.headers.get ? (this.headers.get("content-type") || "") : "";
-      return new Blob([bytes], { type: contentType });
+      const contentLength = this.headers && this.headers.get ? parseInt(this.headers.get("content-length") || "", 10) : NaN;
+      return createStreamBackedBlob(stream, contentType, contentLength);
     };
     response.json = async function () {
       const text = await this.text();
@@ -552,6 +584,18 @@
   }
 
   function describeObjectURLValue(value) {
+    if (value && value.__gopeedStreamBackedBlob) {
+      const stream = value.__gopeedBodyStream;
+      value.__gopeedBodyStream = null;
+      if (stream instanceof ReadableStream) {
+        return {
+          kind: "readable",
+          initialReadable: stream,
+          openReadable: null,
+          sourceLabel: "URL.createObjectURL Response blob stream",
+        };
+      }
+    }
     if (value instanceof Blob) {
       return {
         kind: "blob",

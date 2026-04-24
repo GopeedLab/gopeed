@@ -71,6 +71,30 @@ gopeed.events.onResolve(async function (ctx) {
         return;
     }
 
+    if (ctx.req.url.includes("/http-blob")) {
+        const source = new URL(ctx.req.url);
+        const target = source.searchParams.get("target");
+        const fileName = source.searchParams.get("name") || "http-blob.bin";
+        const headResponse = await fetch(target, {method: "HEAD"});
+        const headLength = parseInt(headResponse.headers.get("content-length") || "", 10);
+        const response = await fetch(target);
+        const blob = await response.blob();
+
+        ctx.res = {
+            name: "gblob-http-blob",
+            files: [
+                {
+                    name: fileName,
+                    size: Number.isFinite(headLength) ? headLength : 0,
+                    req: {
+                        url: URL.createObjectURL(blob),
+                    }
+                }
+            ]
+        };
+        return;
+    }
+
     if (ctx.req.url.endsWith("/stream-range")) {
         const payload = encoder.encode("line 1\nline 2\nline 3\n");
         const firstChunkLength = encoder.encode("line 1\n").byteLength;
