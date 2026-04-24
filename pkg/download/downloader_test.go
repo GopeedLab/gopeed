@@ -21,12 +21,14 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 )
 
-var testDownloadOpt = &base.Options{
-	Path: test.Dir,
-	Name: test.DownloadName,
-	Extra: http.OptsExtra{
-		Connections: 4,
-	},
+func newTestDownloadOpt() *base.Options {
+	return &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	}
 }
 
 func TestDownloader_Resolve(t *testing.T) {
@@ -118,7 +120,7 @@ func TestDownloader_Create(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
+	rr, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +160,7 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 	}
 	// With new fetcher design, white list check happens during Resolve (not Create)
 	// because Resolve now requires Options which includes the download path
-	_, err := downloader.Resolve(req, testDownloadOpt)
+	_, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err == nil {
 		t.Error("TestDownloader_CreateNotInWhite() expected error but got nil")
 	}
@@ -207,7 +209,7 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 
 	_, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
 		Reqs: reqs,
-		Opts: testDownloadOpt,
+		Opts: newTestDownloadOpt(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -432,7 +434,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
+	rr, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -701,7 +703,7 @@ func TestDownloader_Stats(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
+	rr, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -756,7 +758,7 @@ func TestDownloader_Delete(t *testing.T) {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		taskId, err := downloader.CreateDirect(req, testDownloadOpt)
+		taskId, err := downloader.CreateDirect(req, newTestDownloadOpt())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -820,7 +822,7 @@ func TestDownloader_PauseAndContinue(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
+	rr, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -891,7 +893,7 @@ func TestDownloader_PauseAllAndContinueAll(t *testing.T) {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		rr, err := downloader.Resolve(req, testDownloadOpt)
+		rr, err := downloader.Resolve(req, newTestDownloadOpt())
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -289,6 +289,10 @@ func TestPatchTaskNotFound(t *testing.T) {
 
 func TestPauseAllAndContinueALLTasks(t *testing.T) {
 	doTest(func() {
+		slowListener := test.StartTestLowSpeedServer(5 * time.Nanosecond)
+		defer slowListener.Close()
+		taskReq.URL = "http://" + slowListener.Addr().String() + "/" + test.BuildName
+
 		cfg, err := Downloader.GetConfig()
 		if err != nil {
 			t.Fatal(err)
