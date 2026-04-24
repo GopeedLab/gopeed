@@ -144,7 +144,11 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 }
 
 func (d *Downloader) Setup() error {
-	d.gblob = protogblob.NewRegistry(filepath.Join(d.cfg.StorageDir, protogblob.Scheme))
+	gblobDir := filepath.Join(d.cfg.StorageDir, "gblob")
+	if err := os.RemoveAll(gblobDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	d.gblob = protogblob.NewRegistry(gblobDir)
 
 	// setup storage
 	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
@@ -498,6 +502,11 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	if err != nil {
 		return
 	}
+	if strings.HasPrefix(strings.ToLower(req.URL), protogblob.Scheme+":") {
+		if err = fetcher.Resolve(req, initOpt); err != nil {
+			return
+		}
+	}
 	return d.doCreate(fetcher, initOpt)
 }
 
@@ -802,7 +811,7 @@ func (d *Downloader) Stats(id string) (sr any, err error) {
 }
 
 func (d *Downloader) doDelete(task *Task, force bool) (err error) {
-	defer d.unpinGBlobTask(task)
+	defer d.releaseGBlobTask(task)
 	err = func() error {
 		if err := d.storage.Delete(bucketTask, task.ID); err != nil {
 			return err
@@ -1073,7 +1082,7 @@ func (d *Downloader) watch(task *Task) {
 		d.emit(EventKeyDone, task)
 		d.emit(EventKeyFinally, task, err)
 		d.notifyRunning()
-		d.unpinGBlobTask(task)
+		d.releaseGBlobTask(task)
 		d.triggerOnDone(task)
 		d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 		d.triggerScripts(ScriptEventDownloadDone, task, nil)
@@ -1141,9 +1150,11 @@ func (d *Downloader) watch(task *Task) {
 func (d *Downloader) doOnError(task *Task, err error) {
 	d.Logger.Warn().Err(err).Msgf("task download failed, task id: %s", task.ID)
 	task.updateStatus(base.DownloadStatusError)
-	d.unpinGBlobTask(task)
 	d.triggerOnError(task, err)
 	if task.Status == base.DownloadStatusError {
+		if !d.isResumableGBlobTask(task) {
+			d.releaseGBlobTask(task)
+		}
 		d.emit(EventKeyError, task, err)
 		d.emit(EventKeyFinally, task, err)
 		d.notifyRunning()
@@ -1281,7 +1292,7 @@ func (d *Downloader) statusMut(task *Task, fn func() (bool, error)) (bool, error
 }
 
 func (d *Downloader) doStart(task *Task) (err error) {
-	var needCreate bool
+	var isCreate bool
 	isReturn, err := d.statusMut(task, func() (isReturn bool, err error) {
 		if task.Status == base.DownloadStatusRunning || task.Status == base.DownloadStatusDone {
 			isReturn = true
@@ -1293,7 +1304,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			d.Logger.Error().Stack().Err(err).Msgf("restore fetcher failed, task id: %s", task.ID)
 			return
 		}
-		needCreate = !task.IsCreated
+		isCreate = task.Status == base.DownloadStatusReady
 		task.updateStatus(base.DownloadStatusRunning)
 
 		return
@@ -1311,6 +1322,11 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		defer task.lock.Unlock()
 
 		d.triggerOnStart(task)
+		if task.fetcher != nil {
+			task.fetcher.Meta().Req = task.Meta.Req
+			task.fetcher.Meta().Res = task.Meta.Res
+			task.fetcher.Meta().Opts = task.Meta.Opts
+		}
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req, task.Meta.Opts)
 			if err != nil {
@@ -1319,7 +1335,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			task.Meta.Res = task.fetcher.Meta().Res
 		}
 
-		if needCreate {
+		if isCreate {
 			if task.fetcherManager.AutoRename() {
 				d.checkDuplicateLock.Lock()
 				defer d.checkDuplicateLock.Unlock()
@@ -1343,9 +1359,10 @@ func (d *Downloader) doStart(task *Task) (err error) {
 					task.Meta.Opts.Name = newName
 				}
 			}
-			task.IsCreated = true
+
 			task.Meta.Res.CalcSize(task.Meta.Opts.SelectFiles)
 		}
+
 		task.Progress.Speed = 0
 		task.timer.Start()
 		if err := task.fetcher.Start(); err != nil {
@@ -1840,6 +1857,28 @@ func (d *Downloader) unpinGBlobTask(task *Task) {
 		return
 	}
 	d.gblob.Unpin(task.Meta.Req.URL)
+}
+
+func (d *Downloader) isResumableGBlobTask(task *Task) bool {
+	if task == nil || task.Meta == nil || task.Meta.Res == nil {
+		return false
+	}
+	return task.Protocol == protogblob.Scheme && task.Meta.Res.Range
+}
+
+func (d *Downloader) revokeGBlobTask(task *Task) {
+	if d.gblob == nil || task == nil || task.Meta == nil || task.Meta.Req == nil || task.Meta.Req.URL == "" {
+		return
+	}
+	if task.Protocol != protogblob.Scheme {
+		return
+	}
+	_ = d.gblob.Revoke(task.Meta.Req.URL)
+}
+
+func (d *Downloader) releaseGBlobTask(task *Task) {
+	d.revokeGBlobTask(task)
+	d.unpinGBlobTask(task)
 }
 
 var defaultDownloader = NewDownloader(nil)

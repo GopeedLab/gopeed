@@ -12,6 +12,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/protocol/gblob"
 	"github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -28,7 +29,6 @@ type Task struct {
 	Status    base.Status          `json:"status"`
 	Uploading bool                 `json:"uploading"`
 	Progress  *Progress            `json:"progress"`
-	IsCreated bool                 `json:"isCreated"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`
 
@@ -51,7 +51,6 @@ func NewTask() *Task {
 		Status:    base.DownloadStatusReady,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		IsCreated: false,
 	}
 }
 
@@ -154,6 +153,7 @@ type DownloaderConfig struct {
 	Storage           Storage
 	StorageDir        string
 	WhiteDownloadDirs []string
+	WebViewProvider   enginewebview.Provider
 
 	ProductionMode bool
 

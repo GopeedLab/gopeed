@@ -15,7 +15,8 @@ The `gblob` protocol provides an internal object-URL style transport so extensio
 The extension-facing model is intentionally close to the browser:
 
 - `URL.createObjectURL(new Blob(...))`
-- `URL.createObjectURL(writableStream)`
+- `URL.createObjectURL(readableStream)`
+- `URL.createObjectURL(openReadable)`
 - `URL.revokeObjectURL(url)`
 
 The returned URL looks like:
@@ -29,7 +30,7 @@ gblob:<id>
 ## Design Goals
 
 - make extension-generated data download as a normal task
-- support both eager `Blob` data and incremental `WritableStream` data
+- support eager `Blob` data, one-shot `ReadableStream` data, and resumable opener functions
 - avoid large in-memory buffering by spooling to disk
 - keep pause/continue behavior intuitive
 - allow an extension to recreate a new `gblob` URL after source expiration
@@ -43,7 +44,7 @@ The implementation has two layers in this directory:
 
 The end-to-end flow is:
 
-1. JavaScript creates a `Blob` or `WritableStream` object URL.
+1. JavaScript creates a `Blob`, `ReadableStream`, or opener-function object URL.
 2. Go registers a `gblob` source and assigns it a unique `gblob:<id>` URL.
 3. Source bytes are written into a local spool file.
 4. The downloader resolves the `gblob` URL through the `gblob` fetcher.
@@ -67,7 +68,8 @@ Each source tracks:
 Key behaviors:
 
 - `Blob` sources are written once and immediately closed.
-- `WritableStream` sources stay open until the writer closes or aborts.
+- `ReadableStream` sources are bridged into the internal writable-source pipeline.
+- opener-function sources are opened lazily and can be reopened from an offset.
 - readers wait on a per-source notification channel when no new bytes are available yet.
 - revocation only prevents future use; cleanup happens when the source is no longer pinned.
 
@@ -82,9 +84,9 @@ The fetcher treats `gblob` as a local file-backed download source.
 Behavior differences by source type:
 
 - `Blob`: resolved size is the current written size
-- `WritableStream`: resolved size is reported as `0` until the writer closes
+- `ReadableStream` / opener function: resolved size is whatever the extension declared; if unknown, it stays `0` until download completion updates the final size
 
-`Range` is always `false`.
+`Range` is `true` only when the extension provides a resumable opener and marks the resource as ranged.
 
 ### Start
 
@@ -123,7 +125,12 @@ For the same `gblob` id:
 
 - the partially downloaded output file is kept
 - the fetcher resumes from the current file size
-- `WritableStream` producers may continue writing while the task is paused
+- opener-function sources can be reopened from the current offset
+
+For non-reopenable one-shot `ReadableStream` sources:
+
+- a normal in-process pause/continue only works while the same in-memory source is still alive
+- they are not suitable for cross-session or reconstructable range resume
 
 ### Process restart
 
@@ -172,19 +179,19 @@ gopeed.events.onResolve(async function (ctx) {
 });
 ```
 
-### 2. Create a streaming object URL
+### 2. Create a one-shot `ReadableStream` object URL
 
 ```js
 gopeed.events.onResolve(async function (ctx) {
-  const stream = new TransformStream();
-  const writer = stream.writable.getWriter();
-  const url = URL.createObjectURL(stream.writable);
-
-  (async () => {
-    await writer.write(new TextEncoder().encode("line 1\n"));
-    await writer.write(new TextEncoder().encode("line 2\n"));
-    await writer.close();
-  })();
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode("line 1\n"));
+      controller.enqueue(encoder.encode("line 2\n"));
+      controller.close();
+    }
+  });
+  const url = URL.createObjectURL(stream);
 
   ctx.res = {
     name: "stream-example",
@@ -198,14 +205,53 @@ gopeed.events.onResolve(async function (ctx) {
 });
 ```
 
-### 3. Recover in `onError`
+### 3. Create a resumable opener object URL
+
+```js
+gopeed.events.onResolve(async function (ctx) {
+  const target = "https://example.com/file.bin";
+
+  const openReadable = async (offset) => {
+    const headers = {};
+    if (offset > 0) {
+      headers.Range = `bytes=${offset}-`;
+    }
+    const response = await fetch(target, { headers });
+    if (response.status !== 200 || response.status !== 206) {
+      throw new Error(`unexpected response status: ${response.status}, expected ${expectedStatus}`);
+    }
+    if (!response.body) {
+      throw new Error("empty response body");
+    }
+    return response.body;
+  };
+
+  ctx.res = {
+    name: "range-example",
+    range: true,
+    files: [
+      {
+        name: "file.bin",
+        req: { url: URL.createObjectURL(openReadable) }
+      }
+    ]
+  };
+});
+```
+
+Important:
+
+- opener functions must return a `ReadableStream`
+- do not return `response.body.getReader()`
+- use opener functions for resumable / range-aware sources
+- validate HTTP status codes explicitly:
+  first request usually expects `200`, resumed range requests usually expect `206`
+
+### 4. Recover in `onError`
 
 ```js
 gopeed.events.onError(async function (ctx) {
   const req = ctx.task.meta.req;
-  if (!req.rawUrl) return;
-  if (!req.url.startsWith("gblob:")) return;
-
   req.url = URL.createObjectURL(new Blob(["recovered\n"]));
   ctx.task.continue();
 });
@@ -215,11 +261,11 @@ This creates a new `gblob` id, so the downloader restarts from byte `0`.
 
 ## Limitations
 
-- `gblob` is not a network protocol and does not support range requests.
+- `gblob` is not a network protocol. Range support only exists when the extension recreates bytes through a resumable opener.
 - unfinished `gblob` sources do not survive process restarts.
 - recovery after restart depends on extension logic recreating a new source.
 - the current restart behavior is full restart on source-id change, not byte-range recovery across recreated sources.
-- `WritableStream` tasks with unknown total size report size `0` until the writer closes.
+- one-shot `ReadableStream` tasks with unknown total size report size `0` until completion updates the final size.
 
 ## Summary
 
@@ -231,3 +277,9 @@ The most important rule is simple:
 
 - same `gblob` id means resume
 - different `gblob` id means restart
+
+And for extension authors:
+
+- use `ReadableStream` for one-shot streaming content
+- use opener functions for resumable content
+- opener functions must return `ReadableStream`, not a reader

@@ -21,12 +21,14 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/util"
 )
 
-var testDownloadOpt = &base.Options{
-	Path: test.Dir,
-	Name: test.DownloadName,
-	Extra: http.OptsExtra{
-		Connections: 4,
-	},
+func newTestDownloadOpt() *base.Options {
+	return &base.Options{
+		Path: test.Dir,
+		Name: test.DownloadName,
+		Extra: http.OptsExtra{
+			Connections: 4,
+		},
+	}
 }
 
 func TestDownloader_Resolve(t *testing.T) {
@@ -61,6 +63,51 @@ func TestDownloader_Resolve(t *testing.T) {
 	}
 }
 
+func TestDownloader_UsesStorageDirForGBlobRegistry(t *testing.T) {
+	storageDir := t.TempDir()
+	downloader := NewDownloader(&DownloaderConfig{
+		Storage:    NewMemStorage(),
+		StorageDir: storageDir,
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	if downloader.gblob == nil {
+		t.Fatal("expected gblob registry to be initialized")
+	}
+	expectedDir := filepath.Join(storageDir, "gblob")
+	if filepath.Clean(downloader.gblob.Dir()) != filepath.Clean(expectedDir) {
+		t.Fatalf("expected gblob registry dir under storage dir, got %s want %s", downloader.gblob.Dir(), expectedDir)
+	}
+}
+
+func TestDownloader_SetupCleansStaleGBlobDir(t *testing.T) {
+	storageDir := t.TempDir()
+	gblobDir := filepath.Join(storageDir, "gblob")
+	if err := os.MkdirAll(gblobDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	staleFile := filepath.Join(gblobDir, "stale")
+	if err := os.WriteFile(staleFile, []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	downloader := NewDownloader(&DownloaderConfig{
+		Storage:    NewMemStorage(),
+		StorageDir: storageDir,
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	if _, err := os.Stat(staleFile); !os.IsNotExist(err) {
+		t.Fatalf("expected stale gblob file to be removed on setup, got err=%v", err)
+	}
+}
+
 func TestDownloader_Create(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
@@ -73,7 +120,7 @@ func TestDownloader_Create(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
+	rr, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +160,7 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 	}
 	// With new fetcher design, white list check happens during Resolve (not Create)
 	// because Resolve now requires Options which includes the download path
-	_, err := downloader.Resolve(req, testDownloadOpt)
+	_, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err == nil {
 		t.Error("TestDownloader_CreateNotInWhite() expected error but got nil")
 	}
@@ -162,7 +209,7 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 
 	_, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
 		Reqs: reqs,
-		Opts: testDownloadOpt,
+		Opts: newTestDownloadOpt(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -266,6 +313,9 @@ func TestDownloader_CreateWithProxy(t *testing.T) {
 }
 
 func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildReqProxy func(reqProxy *base.RequestProxy) *base.RequestProxy, buildProxyConfig func(proxyCfg *base.DownloaderProxyConfig) *base.DownloaderProxyConfig, errHandler func(err error)) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
 	usr, pwd := "", ""
 	if auth {
 		usr, pwd = "admin", "123"
@@ -291,7 +341,7 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildReqProxy func
 	downloader.cfg.DownloaderStoreConfig.Proxy = globalProxyCfg
 
 	req := &base.Request{
-		URL: test.ExternalDownloadUrl,
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
 	if buildReqProxy != nil {
 		req.Proxy = buildReqProxy(&base.RequestProxy{
@@ -310,13 +360,13 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildReqProxy func
 		return
 	}
 	want := &base.Resource{
-		Size:  test.ExternalDownloadSize,
+		Size:  test.BuildSize,
 		Range: true,
 		Files: []*base.FileInfo{
 			{
-				Name: test.ExternalDownloadName,
+				Name: test.BuildName,
 				Path: "",
-				Size: test.ExternalDownloadSize,
+				Size: test.BuildSize,
 			},
 		},
 	}
@@ -384,7 +434,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
+	rr, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -653,7 +703,7 @@ func TestDownloader_Stats(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
+	rr, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -708,7 +758,7 @@ func TestDownloader_Delete(t *testing.T) {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		taskId, err := downloader.CreateDirect(req, testDownloadOpt)
+		taskId, err := downloader.CreateDirect(req, newTestDownloadOpt())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -772,7 +822,7 @@ func TestDownloader_PauseAndContinue(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, testDownloadOpt)
+	rr, err := downloader.Resolve(req, newTestDownloadOpt())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -843,7 +893,7 @@ func TestDownloader_PauseAllAndContinueAll(t *testing.T) {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		rr, err := downloader.Resolve(req, testDownloadOpt)
+		rr, err := downloader.Resolve(req, newTestDownloadOpt())
 		if err != nil {
 			t.Fatal(err)
 		}

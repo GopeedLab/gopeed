@@ -46,7 +46,7 @@ class _Client {
       dio.options.contentType = Headers.jsonContentType;
       dio.options.sendTimeout = const Duration(seconds: 5);
       dio.options.connectTimeout = const Duration(seconds: 5);
-      dio.options.receiveTimeout = const Duration(seconds: 60);
+      dio.options.receiveTimeout = const Duration(seconds: 120);
       dio.interceptors.add(InterceptorsWrapper(
         onRequest: (options, handler) {
           if (apiToken.isNotEmpty) {

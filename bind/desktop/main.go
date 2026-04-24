@@ -16,6 +16,7 @@ func Start(cfg *C.char) (int, *C.char) {
 		return 0, C.CString(err.Error())
 	}
 	config.ProductionMode = true
+	applyWebViewProvider(&config)
 	realPort, err := rest.Start(&config)
 	if err != nil {
 		return 0, C.CString(err.Error())

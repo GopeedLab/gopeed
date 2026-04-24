@@ -119,7 +119,10 @@ class BuildTaskListView extends GetView {
     }
 
     Future<void> showUpdateUrlDialog(BuildContext context, Task task) async {
-      final urlController = TextEditingController(text: task.meta.req.url);
+      final displayUrl = (task.meta.req.rawUrl?.isNotEmpty ?? false)
+          ? task.meta.req.rawUrl!
+          : task.meta.req.url;
+      final urlController = TextEditingController(text: displayUrl);
       final headerControllers =
           <MapEntry<TextEditingController, TextEditingController>>[];
 

@@ -28,7 +28,7 @@ on:
   workflow_dispatch:
 
 env:
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.25"
   FLUTTER_VERSION: "3.41.6"
 
 jobs:
@@ -50,14 +50,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Install webview dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
       - name: Run Unit tests.
         run: |
           # Get packages for testing and coverage (including cmd/web for flags_test.go)
-          PACKAGES=$(go list ./... | grep -v /bind/ | grep -v -E '/cmd/(?!web)')
-          go test -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage.txt $PACKAGES
+          PACKAGES=$(go list ./... | awk '!/\/bind\// && (!/\/cmd\// || /\/cmd\/web$/)')
+          env CGO_ENABLED=1 xvfb-run -a go test -tags webview -v -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -coverprofile=coverage.txt $PACKAGES
           # Filter out main.go from coverage report to avoid lowering coverage percentage
           grep -v "main.go" coverage.txt > coverage_filtered.txt || true
           mv coverage_filtered.txt coverage.txt
@@ -65,6 +69,58 @@ jobs:
         with:
           files: ./coverage.txt
           token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
+  test-webview-integration:
+    name: Test webview integration (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+          - name: macOS
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: subosito/flutter-action@v2
+        if: runner.os == 'macOS'
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Test webview
+        if: runner.os == 'Windows'
+        run: go test -tags webview -v -timeout 300s ./internal/webview/goprovider/
+        env:
+          CGO_ENABLED: 1
+      - name: Test webview
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOCKET_PATH="$HOME/Library/Application Support/com.gopeed.gopeed/gopeed_webview.sock"
+          LOG_PATH="$RUNNER_TEMP/gopeed-webview-rpc.log"
+          rm -f "$SOCKET_PATH"
+
+          go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/macos/Frameworks/libgopeed.dylib github.com/GopeedLab/gopeed/bind/desktop
+
+          cd ui/flutter
+          flutter pub get
+          flutter run -d macos >"$LOG_PATH" 2>&1 &
+          FLUTTER_PID=$!
+          cd ../..
+
+          cleanup() {
+            kill "$FLUTTER_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          if ! go test -tags webview -v -timeout 600s ./internal/webview/rpcprovider/ -args -webview-rpc-network unix -webview-rpc-address "$SOCKET_PATH"; then
+            cat "$LOG_PATH"
+            exit 1
+          fi
+
   build-desktop:
     strategy:
       matrix:
@@ -80,7 +136,7 @@ jobs:
             flutter_channel: "main"
     name: Build desktop check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: [test]
+    needs: [ test ]
     steps:
       - uses: actions/checkout@v3
       - name: Enable long paths for flutter main branch checks
@@ -109,7 +165,7 @@ jobs:
           "CGO_ENABLED=1"           >> $env:GITHUB_ENV
           "CLANGARM64_ROOT=$target" >> $env:GITHUB_ENV
           $b >> $env:GITHUB_PATH
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2
@@ -129,7 +185,7 @@ jobs:
       - if: runner.os == 'Linux'
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev libkeybinder-3.0-dev
+          sudo apt-get install -y ninja-build libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev libkeybinder-3.0-dev
           go build -tags nosqlite -ldflags="-w -s" -buildmode=c-shared -o ui/flutter/linux/bundle/lib/libgopeed.so github.com/GopeedLab/gopeed/bind/desktop
           cd ui/flutter
           flutter build linux
@@ -138,11 +194,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-14, ubuntu-latest]
-    needs: [test]
+        os: [ macos-14, ubuntu-latest ]
+    needs: [ test ]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2
@@ -171,10 +227,10 @@ jobs:
   build-web:
     name: Build web check
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [ test ]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2
@@ -192,10 +248,10 @@ jobs:
   build-docker:
     name: Build docker check
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [ test ]
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
       - uses: subosito/flutter-action@v2

@@ -4,6 +4,7 @@ part 'request.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class Request {
+  String? rawUrl;
   String url;
   Object? extra;
   Map<String, String>? labels;
@@ -11,6 +12,7 @@ class Request {
   bool skipVerifyCert;
 
   Request({
+    this.rawUrl,
     required this.url,
     this.extra,
     this.labels,

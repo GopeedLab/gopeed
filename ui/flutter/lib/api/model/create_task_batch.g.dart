@@ -49,7 +49,7 @@ Map<String, dynamic> _$CreateTaskBatchItemToJson(CreateTaskBatchItem instance) {
     }
   }
 
-  writeNotNull('req', instance.req);
-  writeNotNull('opts', instance.opts);
+  writeNotNull('req', instance.req?.toJson());
+  writeNotNull('opts', instance.opts?.toJson());
   return val;
 }

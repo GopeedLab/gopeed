@@ -62,15 +62,21 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	if name == "" {
 		name = src.ID
 	}
-	size := src.Snapshot().Written
+	snapshot := src.Snapshot()
+	size := snapshot.Written
+	if snapshot.DeclaredSize > 0 {
+		size = snapshot.DeclaredSize
+	}
 	if src.Type == SourceTypeWritableStream {
 		// Writable streams may continue producing bytes after Resolve,
 		// so treat the total size as unknown until the writer closes.
-		size = 0
+		if snapshot.DeclaredSize == 0 {
+			size = 0
+		}
 	}
 	f.meta.Res = &base.Resource{
 		Size:  size,
-		Range: false,
+		Range: snapshot.Range,
 		Files: []*base.FileInfo{
 			{
 				Name: name,
@@ -102,45 +108,90 @@ func (f *Fetcher) Start() error {
 	f.cancel = cancel
 	f.runDone = runDone
 	f.mu.Unlock()
+	cleanupStartErr := func(err error) error {
+		f.mu.Lock()
+		if f.runDone == runDone {
+			f.runDone = nil
+			f.cancel = nil
+		}
+		f.mu.Unlock()
+		return err
+	}
 
 	path := f.meta.SingleFilepath()
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
+		return cleanupStartErr(err)
 	}
 	target, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return err
+		return cleanupStartErr(err)
 	}
 	offset := int64(0)
-	if f.lastSourceID != "" && f.lastSourceID != currentSourceID {
+	allowResumeAcrossSource := f.meta.Res != nil && f.meta.Res.Range
+	if f.lastSourceID != "" && f.lastSourceID != currentSourceID && !allowResumeAcrossSource {
 		if err := target.Truncate(0); err != nil {
 			target.Close()
-			return err
+			return cleanupStartErr(err)
 		}
 		if _, err := target.Seek(0, io.SeekStart); err != nil {
 			target.Close()
-			return err
+			return cleanupStartErr(err)
 		}
 	} else {
 		stat, err := target.Stat()
 		if err != nil {
 			target.Close()
-			return err
+			return cleanupStartErr(err)
 		}
 		offset = stat.Size()
 		if _, err := target.Seek(offset, io.SeekStart); err != nil {
 			target.Close()
-			return err
+			return cleanupStartErr(err)
 		}
 	}
 	f.lastSourceID = currentSourceID
 	f.downloaded.Store(offset)
 
-	go f.copyLoop(ctx, target, offset)
+	sourceOffset := offset
+	src, err := f.registry.Get(f.meta.Req.URL)
+	if err != nil {
+		target.Close()
+		return cleanupStartErr(err)
+	}
+	snapshot := src.Snapshot()
+	if snapshot.Written == 0 && !snapshot.Started {
+		if f.meta.Res != nil && f.meta.Res.Range && offset > 0 {
+			if err := f.registry.Reopen(f.meta.Req.URL, offset); err != nil {
+				target.Close()
+				return cleanupStartErr(err)
+			}
+			sourceOffset = 0
+		} else if err := f.registry.StartSource(f.meta.Req.URL); err != nil {
+			target.Close()
+			return cleanupStartErr(err)
+		}
+		src, err = f.registry.Get(f.meta.Req.URL)
+		if err != nil {
+			target.Close()
+			return cleanupStartErr(err)
+		}
+		snapshot = src.Snapshot()
+	}
+	if f.meta.Res != nil && f.meta.Res.Range && (snapshot.State == SourceStateAborted || snapshot.State == SourceStateFailed) {
+		if err := f.registry.Reopen(f.meta.Req.URL, offset); err != nil {
+			target.Close()
+			return cleanupStartErr(err)
+		}
+		sourceOffset = 0
+	}
+
+	go f.copyLoop(ctx, target, offset, sourceOffset)
 	return nil
 }
 
-func (f *Fetcher) copyLoop(ctx context.Context, target *os.File, offset int64) {
+func (f *Fetcher) copyLoop(ctx context.Context, target *os.File, targetOffset, sourceOffset int64) {
+	var finalErr error
+
 	defer target.Close()
 	defer func() {
 		f.mu.Lock()
@@ -161,85 +212,75 @@ func (f *Fetcher) copyLoop(ctx context.Context, target *os.File, offset int64) {
 		if paused {
 			return
 		}
+		select {
+		case f.doneCh <- finalErr:
+		default:
+		}
 	}()
 
 	src, err := f.registry.Get(f.meta.Req.URL)
 	if err != nil {
-		select {
-		case f.doneCh <- err:
-		default:
-		}
+		finalErr = err
 		return
 	}
 	sourceFile, err := os.Open(src.Path)
 	if err != nil {
-		select {
-		case f.doneCh <- err:
-		default:
-		}
+		finalErr = err
 		return
 	}
 	defer sourceFile.Close()
 
 	buf := make([]byte, 32*1024)
 	for {
-		if err := f.registry.WaitForReadable(ctx, f.meta.Req.URL, offset); err != nil {
+		if err := f.registry.WaitForReadable(ctx, f.meta.Req.URL, sourceOffset); err != nil {
 			if errors.Is(err, context.Canceled) {
 				return
 			}
-			select {
-			case f.doneCh <- err:
-			default:
-			}
+			finalErr = err
 			return
 		}
 
 		snapshot, serr := f.registry.Get(f.meta.Req.URL)
 		if serr != nil {
-			select {
-			case f.doneCh <- serr:
-			default:
-			}
+			finalErr = serr
 			return
 		}
 		current := snapshot.Snapshot()
-		for offset < current.Written {
-			remain := current.Written - offset
+		for sourceOffset < current.Written {
+			remain := current.Written - sourceOffset
 			readSize := int64(len(buf))
 			if remain < readSize {
 				readSize = remain
 			}
-			n, err := sourceFile.ReadAt(buf[:readSize], offset)
+			n, err := sourceFile.ReadAt(buf[:readSize], sourceOffset)
 			if err != nil && !errors.Is(err, io.EOF) {
-				select {
-				case f.doneCh <- err:
-				default:
-				}
+				finalErr = err
 				return
 			}
 			if n == 0 {
 				break
 			}
 			if _, err := target.Write(buf[:n]); err != nil {
-				select {
-				case f.doneCh <- err:
-				default:
-				}
+				finalErr = err
 				return
 			}
-			offset += int64(n)
-			f.downloaded.Store(offset)
+			sourceOffset += int64(n)
+			targetOffset += int64(n)
+			f.downloaded.Store(targetOffset)
 		}
 
-		if current.State == SourceStateClosed && offset >= current.Written {
+		if current.State == SourceStateClosed && sourceOffset >= current.Written {
 			if f.meta.Res != nil {
-				f.meta.Res.Size = current.Written
-				f.meta.Res.Files[0].Size = current.Written
+				if f.meta.Res.Size > 0 && targetOffset < f.meta.Res.Size {
+					finalErr = io.ErrUnexpectedEOF
+					return
+				}
+				if f.meta.Res.Size == 0 {
+					f.meta.Res.Size = targetOffset
+				}
+				f.meta.Res.Files[0].Size = f.meta.Res.Size
 			}
-			select {
-			case f.doneCh <- nil:
-			default:
-			}
+			finalErr = nil
 			return
 		}
 		if current.State == SourceStateAborted || current.State == SourceStateFailed {
@@ -247,10 +288,7 @@ func (f *Fetcher) copyLoop(ctx context.Context, target *os.File, offset int64) {
 			if err == nil {
 				err = ErrSourceAborted
 			}
-			select {
-			case f.doneCh <- err:
-			default:
-			}
+			finalErr = err
 			return
 		}
 	}

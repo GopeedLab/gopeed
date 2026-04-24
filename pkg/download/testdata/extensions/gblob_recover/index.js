@@ -3,15 +3,13 @@ gopeed.events.onResolve(async function (ctx) {
         return;
     }
 
-    const transform = new TransformStream();
-    const writer = transform.writable.getWriter();
-    const url = URL.createObjectURL(transform.writable);
-
-    (async () => {
-        await writer.write(new TextEncoder().encode("stale\n"));
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        await writer.abort("expired");
-    })();
+    const url = URL.createObjectURL(new ReadableStream({
+        async start(controller) {
+            controller.enqueue(new TextEncoder().encode("stale\n"));
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            controller.error(new Error("expired"));
+        },
+    }));
 
     ctx.res = {
         name: "gblob-recover",

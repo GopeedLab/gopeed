@@ -13,8 +13,10 @@ import (
 
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/download/engine"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	gojautil "github.com/GopeedLab/gopeed/pkg/download/engine/util"
+	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/dop251/goja"
 	"github.com/go-git/go-git/v5"
@@ -269,11 +271,25 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, er
 				}
 				ensureResourceRequestRawURLs(req, ctx.Res)
 				ctx.Res.CalcSize(nil)
+				d.applyGBlobResourceMetadata(ctx.Res)
 			}
 			res = ctx.Res
 		},
 	)
 	return
+}
+
+func (d *Downloader) applyGBlobResourceMetadata(res *base.Resource) {
+	if d.gblob == nil || res == nil {
+		return
+	}
+	for _, file := range res.Files {
+		if file == nil || file.Req == nil {
+			continue
+		}
+		_ = d.gblob.SetSize(file.Req.URL, file.Size)
+		_ = d.gblob.SetRange(file.Req.URL, res.Range)
+	}
 }
 
 func (d *Downloader) triggerOnStart(task *Task) {
@@ -363,7 +379,10 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					}
 					engine, session := d.newExtensionEngine()
 					defer session.CloseIfIdle()
-					err = engine.Runtime.Set("gopeed", gopeed)
+					gopeed.Runtime = &InstanceRuntime{
+						WebView: d.newExtensionWebViewRuntime(session),
+					}
+					err = injectGopeed(engine.Runtime, gopeed)
 					if err != nil {
 						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] engine inject failed", ext.buildIdentity())
 						return
@@ -603,32 +622,37 @@ type Option struct {
 
 // Instance inject to js context when extension script is activated
 type Instance struct {
-	Events   InstanceEvents  `json:"events"`
-	Info     *ExtensionInfo  `json:"info"`
-	Logger   *InstanceLogger `json:"logger"`
-	Settings map[string]any  `json:"settings"`
-	Storage  *ContextStorage `json:"storage"`
+	Events   InstanceEvents   `json:"events"`
+	Info     *ExtensionInfo   `json:"info"`
+	Logger   *InstanceLogger  `json:"logger"`
+	Settings map[string]any   `json:"settings"`
+	Storage  *ContextStorage  `json:"storage"`
+	Runtime  *InstanceRuntime `json:"runtime"`
 }
 
-type InstanceEvents map[ActivationEvent]goja.Callable
+type InstanceRuntime struct {
+	WebView *enginewebview.Runtime `json:"webview"`
+}
 
-func (h InstanceEvents) register(name ActivationEvent, fn goja.Callable) {
+type InstanceEvents map[ActivationEvent]engine.JSFunction
+
+func (h InstanceEvents) register(name ActivationEvent, fn engine.JSFunction) {
 	h[name] = fn
 }
 
-func (h InstanceEvents) OnResolve(fn goja.Callable) {
+func (h InstanceEvents) OnResolve(fn engine.JSFunction) {
 	h.register(EventOnResolve, fn)
 }
 
-func (h InstanceEvents) OnStart(fn goja.Callable) {
+func (h InstanceEvents) OnStart(fn engine.JSFunction) {
 	h.register(EventOnStart, fn)
 }
 
-func (h InstanceEvents) OnError(fn goja.Callable) {
+func (h InstanceEvents) OnError(fn engine.JSFunction) {
 	h.register(EventOnError, fn)
 }
 
-func (h InstanceEvents) OnDone(fn goja.Callable) {
+func (h InstanceEvents) OnDone(fn engine.JSFunction) {
 	h.register(EventOnDone, fn)
 }
 

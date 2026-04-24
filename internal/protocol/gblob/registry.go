@@ -42,11 +42,21 @@ type SessionRef interface {
 	Release()
 }
 
+type ResumeFunc func(offset int64) error
+
+type CreateWritableStreamOptions struct {
+	Session    SessionRef
+	Reopenable bool
+}
+
 type Snapshot struct {
-	Written int64
-	State   SourceState
-	Err     error
-	WaitCh  <-chan struct{}
+	Written      int64
+	DeclaredSize int64
+	Range        bool
+	Started      bool
+	State        SourceState
+	Err          error
+	WaitCh       <-chan struct{}
 }
 
 type Source struct {
@@ -66,16 +76,24 @@ type Source struct {
 	waitCh          chan struct{}
 	session         SessionRef
 	sessionReleased bool
+	reopenable      bool
+	rangeEnabled    bool
+	declaredSize    int64
+	started         bool
+	reopen          ResumeFunc
 }
 
 func (s *Source) Snapshot() Snapshot {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return Snapshot{
-		Written: s.written,
-		State:   s.state,
-		Err:     s.err,
-		WaitCh:  s.waitCh,
+		Written:      s.written,
+		DeclaredSize: s.declaredSize,
+		Range:        s.rangeEnabled,
+		Started:      s.started,
+		State:        s.state,
+		Err:          s.err,
+		WaitCh:       s.waitCh,
 	}
 }
 
@@ -122,6 +140,13 @@ func (s *Source) releaseSessionLocked() {
 	}
 }
 
+func (s *Source) retainSessionLocked() {
+	if s.session != nil && s.sessionReleased {
+		s.session.Retain()
+		s.sessionReleased = false
+	}
+}
+
 func (s *Source) write(data []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -146,7 +171,9 @@ func (s *Source) write(data []byte) error {
 		s.err = err
 		s.file.Close()
 		s.file = nil
-		s.releaseSessionLocked()
+		if !s.rangeEnabled {
+			s.releaseSessionLocked()
+		}
 		s.notifyLocked()
 		return err
 	}
@@ -187,7 +214,9 @@ func (s *Source) abort(err error) error {
 		_ = s.file.Close()
 		s.file = nil
 	}
-	s.releaseSessionLocked()
+	if !s.rangeEnabled {
+		s.releaseSessionLocked()
+	}
 	s.notifyLocked()
 	return nil
 }
@@ -196,6 +225,18 @@ func (s *Source) revoke() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.revoked = true
+	if s.state == SourceStateOpen {
+		s.state = SourceStateAborted
+		if s.err == nil {
+			s.err = ErrSourceRevoked
+		}
+		if s.file != nil {
+			_ = s.file.Close()
+			s.file = nil
+		}
+		s.releaseSessionLocked()
+		s.notifyLocked()
+	}
 	return s.shouldCleanupLocked()
 }
 
@@ -229,6 +270,13 @@ type Registry struct {
 	sources map[string]*Source
 }
 
+func (r *Registry) Dir() string {
+	if r == nil {
+		return ""
+	}
+	return r.dir
+}
+
 func NewRegistry(baseDir string) *Registry {
 	dir := baseDir
 	if dir == "" {
@@ -258,7 +306,7 @@ func ParseURL(raw string) (string, error) {
 	return id, nil
 }
 
-func (r *Registry) createSource(sourceType SourceType, contentType string, session SessionRef) (*Source, error) {
+func (r *Registry) createSource(sourceType SourceType, contentType string, session SessionRef, reopenable bool, declaredSize int64) (*Source, error) {
 	if err := os.MkdirAll(r.dir, 0755); err != nil {
 		return nil, err
 	}
@@ -275,15 +323,19 @@ func (r *Registry) createSource(sourceType SourceType, contentType string, sessi
 		session.Retain()
 	}
 	src := &Source{
-		ID:          id,
-		URL:         BuildURL(id),
-		Path:        filePath,
-		Type:        sourceType,
-		ContentType: contentType,
-		file:        file,
-		state:       SourceStateOpen,
-		waitCh:      make(chan struct{}),
-		session:     session,
+		ID:           id,
+		URL:          BuildURL(id),
+		Path:         filePath,
+		Type:         sourceType,
+		ContentType:  contentType,
+		file:         file,
+		state:        SourceStateOpen,
+		waitCh:       make(chan struct{}),
+		session:      session,
+		reopenable:   reopenable,
+		rangeEnabled: reopenable,
+		declaredSize: declaredSize,
+		started:      !reopenable,
 	}
 	r.mu.Lock()
 	r.sources[id] = src
@@ -292,7 +344,7 @@ func (r *Registry) createSource(sourceType SourceType, contentType string, sessi
 }
 
 func (r *Registry) CreateBlob(data []byte, contentType string) (string, error) {
-	src, err := r.createSource(SourceTypeBlob, contentType, nil)
+	src, err := r.createSource(SourceTypeBlob, contentType, nil, false, int64(len(data)))
 	if err != nil {
 		return "", err
 	}
@@ -307,12 +359,57 @@ func (r *Registry) CreateBlob(data []byte, contentType string) (string, error) {
 	return src.URL, nil
 }
 
-func (r *Registry) CreateWritableStream(session SessionRef) (string, error) {
-	src, err := r.createSource(SourceTypeWritableStream, "", session)
+func (r *Registry) CreateWritableStream(opts *CreateWritableStreamOptions) (string, error) {
+	if opts == nil {
+		opts = &CreateWritableStreamOptions{}
+	}
+	src, err := r.createSource(SourceTypeWritableStream, "", opts.Session, opts.Reopenable, 0)
 	if err != nil {
 		return "", err
 	}
 	return src.URL, nil
+}
+
+func (r *Registry) SetResumeOpener(raw string, reopen ResumeFunc) error {
+	src, err := r.get(raw)
+	if err != nil {
+		return err
+	}
+	src.mu.Lock()
+	defer src.mu.Unlock()
+	if !src.reopenable {
+		return nil
+	}
+	src.reopen = reopen
+	return nil
+}
+
+func (r *Registry) SetRange(raw string, enabled bool) error {
+	src, err := r.get(raw)
+	if err != nil {
+		return err
+	}
+	src.mu.Lock()
+	src.rangeEnabled = enabled
+	if !enabled && (src.state == SourceStateAborted || src.state == SourceStateFailed) {
+		src.releaseSessionLocked()
+	}
+	src.mu.Unlock()
+	return nil
+}
+
+func (r *Registry) SetSize(raw string, size int64) error {
+	src, err := r.get(raw)
+	if err != nil {
+		return err
+	}
+	src.mu.Lock()
+	if size < 0 {
+		size = 0
+	}
+	src.declaredSize = size
+	src.mu.Unlock()
+	return nil
 }
 
 func (r *Registry) get(raw string) (*Source, error) {
@@ -405,10 +502,80 @@ func (r *Registry) WaitForReadable(ctx context.Context, raw string, offset int64
 	return src.waitForReadable(ctx, offset)
 }
 
+func (r *Registry) Reopen(raw string, offset int64) error {
+	src, err := r.get(raw)
+	if err != nil {
+		return err
+	}
+
+	src.mu.Lock()
+	if !src.reopenable || src.reopen == nil {
+		src.mu.Unlock()
+		return ErrSourceNotFound
+	}
+	if src.revoked {
+		src.mu.Unlock()
+		return ErrSourceRevoked
+	}
+	if src.file != nil {
+		_ = src.file.Close()
+		src.file = nil
+	}
+	if err := os.MkdirAll(filepath.Dir(src.Path), 0755); err != nil {
+		src.mu.Unlock()
+		return err
+	}
+	file, err := os.Create(src.Path)
+	if err != nil {
+		src.mu.Unlock()
+		return err
+	}
+	src.file = file
+	src.written = 0
+	src.state = SourceStateOpen
+	src.err = nil
+	src.started = true
+	src.retainSessionLocked()
+	reopen := src.reopen
+	src.mu.Unlock()
+
+	if err := reopen(offset); err != nil {
+		src.mu.Lock()
+		if src.file != nil {
+			_ = src.file.Close()
+			src.file = nil
+		}
+		src.state = SourceStateFailed
+		src.err = err
+		src.releaseSessionLocked()
+		src.notifyLocked()
+		src.mu.Unlock()
+		return err
+	}
+	return nil
+}
+
+func (r *Registry) StartSource(raw string) error {
+	src, err := r.get(raw)
+	if err != nil {
+		return err
+	}
+	src.mu.Lock()
+	if !src.reopenable || src.started {
+		src.mu.Unlock()
+		return nil
+	}
+	src.mu.Unlock()
+	return r.Reopen(raw, 0)
+}
+
 func (r *Registry) cleanupIfNeeded(src *Source) {
 	src.mu.Lock()
 	shouldCleanup := src.shouldCleanupLocked()
 	file := src.file
+	if shouldCleanup {
+		src.releaseSessionLocked()
+	}
 	src.mu.Unlock()
 	if !shouldCleanup {
 		return
@@ -442,6 +609,9 @@ func (r *Registry) Close() error {
 		if err := os.Remove(src.Path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			lastErr = err
 		}
+	}
+	if err := os.RemoveAll(r.dir); err != nil && !errors.Is(err, os.ErrNotExist) {
+		lastErr = err
 	}
 	return lastErr
 }
