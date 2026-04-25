@@ -5,6 +5,7 @@ import 'dart:ui';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:get/get.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -69,6 +70,7 @@ class PendingUpdateTask {
 
 class AppController extends GetxController with WindowListener, TrayListener {
   static StartConfig? _defaultStartConfig;
+  static const _nativeChannel = MethodChannel('gopeed.com/libgopeed');
 
   /// Command line --hidden flag passed from main.dart
   final bool hiddenFromArgs;
@@ -79,6 +81,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
   final startConfig = StartConfig().obs;
   final runningPort = 0.obs;
   final downloaderConfig = DownloaderConfig().obs;
+  var androidDialogMode = false;
 
   /// The task that is pending URL update via listen mode.
   /// Stored here in AppController to persist across page navigations.
@@ -124,9 +127,11 @@ class AppController extends GetxController with WindowListener, TrayListener {
   void onClose() {
     _linkSubscription?.cancel();
     trayManager.removeListener(this);
-    HostRpcService.instance.stop();
-    WebViewRpcService.instance.stop();
-    LibgopeedBoot.instance.stop();
+    if (!androidDialogMode) {
+      HostRpcService.instance.stop();
+      WebViewRpcService.instance.stop();
+      LibgopeedBoot.instance.stop();
+    }
   }
 
   @override
@@ -182,6 +187,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
       // For web, just show window
       return;
     }
+    androidDialogMode = await _isAndroidDialogMode();
 
     // Handle deep link
     _appLinks = AppLinks();
@@ -238,6 +244,18 @@ class AppController extends GetxController with WindowListener, TrayListener {
           _handleDeepLink(Uri.parse(media!.content!));
         }
       }();
+    }
+  }
+
+  Future<bool> _isAndroidDialogMode() async {
+    if (!Util.isAndroid()) {
+      return false;
+    }
+    try {
+      return await _nativeChannel.invokeMethod<bool>('isDialogMode') ?? false;
+    } catch (e) {
+      logger.w("get android dialog mode fail", e);
+      return false;
     }
   }
 
@@ -440,9 +458,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     } else {
       path = (await toFile(uri.toString())).path;
     }
-    Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
-        arguments: RedirectArgs(Routes.CREATE,
-            arguments: CreateTask(req: Request(url: path))));
+    _handleToCreate0(CreateTask(req: Request(url: path)));
   }
 
   String runningAddress() {
@@ -697,8 +713,10 @@ class AppController extends GetxController with WindowListener, TrayListener {
   }
 
   _handleToCreate0(CreateTask createTaskParams) {
+    final targetRoute =
+        androidDialogMode ? Routes.QUICK_CREATE : Routes.CREATE;
     Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
-        arguments: RedirectArgs(Routes.CREATE, arguments: createTaskParams));
+        arguments: RedirectArgs(targetRoute, arguments: createTaskParams));
   }
 
   _handleToExtension(String params) {
