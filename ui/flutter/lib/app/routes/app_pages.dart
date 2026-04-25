@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 
 import '../modules/create/bindings/create_binding.dart';
+import '../modules/create/views/create_dialog_view.dart';
 import '../modules/create/views/create_view.dart';
 import '../modules/extension/bindings/extension_binding.dart';
 import '../modules/extension/views/extension_view.dart';
@@ -76,6 +77,12 @@ class AppPages {
             transition: Transition.downToUp,
             // preventDuplicates: true,
             page: () => CreateView(),
+            binding: CreateBinding(),
+          ),
+          GetPage(
+            name: _Paths.QUICK_CREATE,
+            transition: Transition.noTransition,
+            page: () => const CreateDialogView(),
             binding: CreateBinding(),
           ),
           GetPage(

@@ -10,6 +10,8 @@ import io.flutter.plugin.common.StandardMethodCodec
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "gopeed.com/libgopeed"
 
+    protected open fun isDialogMode(): Boolean = false
+
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val taskQueue =
@@ -33,6 +35,9 @@ class MainActivity : FlutterActivity() {
                 "stop" -> {
                     Libgopeed.stop()
                     result.success(null)
+                }
+                "isDialogMode" -> {
+                    result.success(isDialogMode())
                 }
                 else -> {
                     result.notImplemented()

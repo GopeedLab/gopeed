@@ -577,6 +577,12 @@ jobs:
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/Gopeed-v$VERSION-android-armeabi-v7a.apk
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/Gopeed-v$VERSION-android-arm64-v8a.apk
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk dist/Gopeed-v$VERSION-android-x86_64.apk
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gopeed-android-${{ needs.get-release.outputs.version }}
+          path: ui/flutter/dist/*.apk
+          if-no-files-found: error
       - name: Upload
         uses: shogo82148/actions-upload-release-asset@v1
         with:
