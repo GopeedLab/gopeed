@@ -569,39 +569,15 @@ jobs:
           gomobile init
           gomobile bind -tags nosqlite -ldflags="-w -s -checklinkname=0 -X github.com/GopeedLab/gopeed/pkg/base.Version=$VERSION" -o ui/flutter/android/app/libs/libgopeed.aar -target=android -androidapi 21 -javapkg=com.gopeed github.com/GopeedLab/gopeed/bind/mobile
           cd ui/flutter
-          ANDROID_BUILD_MODE=debug
-          echo "ANDROID_RELEASE_UPLOAD=false" >> "$GITHUB_ENV"
-          if [ -n "$APK_KEYSTORE" ] && [ -n "$APK_KEY_PASSWORD" ] && [ -n "$APK_STORE_PASSWORD" ]; then
-            if echo "$APK_KEYSTORE" | base64 -di > android/app/upload-keystore.jks && keytool -list -keystore android/app/upload-keystore.jks -storepass "$APK_STORE_PASSWORD" -alias upload >/dev/null 2>&1; then
-              ANDROID_BUILD_MODE=release
-              echo "ANDROID_RELEASE_UPLOAD=true" >> "$GITHUB_ENV"
-            else
-              echo "::warning::Invalid Android signing keystore; building debug APK artifact instead."
-              rm -f android/app/upload-keystore.jks
-              unset APK_KEY_PASSWORD APK_STORE_PASSWORD
-            fi
-          fi
-          mkdir -p dist
-          if [ "$ANDROID_BUILD_MODE" = "release" ]; then
-            flutter build apk --dart-define="UPDATE_CHANNEL=androidApk" --dart-define="GA4_MEASUREMENT_ID=${{ env.GA4_MEASUREMENT_ID }}" --dart-define="GA4_API_SECRET=${{ env.GA4_API_SECRET }}"
-            flutter build apk --split-per-abi --dart-define="UPDATE_CHANNEL=androidApk" --dart-define="GA4_MEASUREMENT_ID=${{ env.GA4_MEASUREMENT_ID }}" --dart-define="GA4_API_SECRET=${{ env.GA4_API_SECRET }}"
-            cp build/app/outputs/flutter-apk/app-release.apk dist/Gopeed-v$VERSION-android.apk
-            cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/Gopeed-v$VERSION-android-armeabi-v7a.apk
-            cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/Gopeed-v$VERSION-android-arm64-v8a.apk
-            cp build/app/outputs/flutter-apk/app-x86_64-release.apk dist/Gopeed-v$VERSION-android-x86_64.apk
-          else
-            echo "::warning::Android signing secrets are unavailable; building debug APK artifact."
-            flutter build apk --debug --dart-define="UPDATE_CHANNEL=androidApk" --dart-define="GA4_MEASUREMENT_ID=${{ env.GA4_MEASUREMENT_ID }}" --dart-define="GA4_API_SECRET=${{ env.GA4_API_SECRET }}"
-            cp build/app/outputs/flutter-apk/app-debug.apk dist/Gopeed-v$VERSION-android-debug.apk
-          fi
-      - name: Upload Android artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gopeed-android-${{ needs.get-release.outputs.version }}
-          path: ui/flutter/dist/*.apk
-          if-no-files-found: error
+          echo $APK_KEYSTORE | base64 -di > android/app/upload-keystore.jks
+          flutter build apk --dart-define="UPDATE_CHANNEL=androidApk" --dart-define="GA4_MEASUREMENT_ID=${{ env.GA4_MEASUREMENT_ID }}" --dart-define="GA4_API_SECRET=${{ env.GA4_API_SECRET }}"
+          flutter build apk --split-per-abi --dart-define="UPDATE_CHANNEL=androidApk" --dart-define="GA4_MEASUREMENT_ID=${{ env.GA4_MEASUREMENT_ID }}" --dart-define="GA4_API_SECRET=${{ env.GA4_API_SECRET }}"
+          mkdir dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/Gopeed-v$VERSION-android.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/Gopeed-v$VERSION-android-armeabi-v7a.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk dist/Gopeed-v$VERSION-android-arm64-v8a.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk dist/Gopeed-v$VERSION-android-x86_64.apk
       - name: Upload
-        if: env.ANDROID_RELEASE_UPLOAD == 'true'
         uses: shogo82148/actions-upload-release-asset@v1
         with:
           upload_url: ${{ needs.get-release.outputs.upload_url }}
