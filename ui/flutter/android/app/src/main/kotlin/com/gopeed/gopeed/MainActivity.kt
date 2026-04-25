@@ -7,7 +7,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMethodCodec
 
-class MainActivity : FlutterActivity() {
+open class MainActivity : FlutterActivity() {
     private val CHANNEL = "gopeed.com/libgopeed"
 
     protected open fun isDialogMode(): Boolean = false
