@@ -75,6 +75,22 @@ String renderPathPlaceholders(String path) {
       .replaceAll('%date%', date);
 }
 
+void updateDirectorySelection(
+  TextEditingController controller,
+  String value, {
+  VoidCallback? onChanged,
+}) {
+  if (controller.text == value) {
+    return;
+  }
+  controller.value = controller.value.copyWith(
+    text: value,
+    selection: TextSelection.collapsed(offset: value.length),
+    composing: TextRange.empty,
+  );
+  onChanged?.call();
+}
+
 class DirectorySelector extends StatefulWidget {
   final TextEditingController controller;
   final bool showLabel;
@@ -109,7 +125,8 @@ class _DirectorySelectorState extends State<DirectorySelector> {
             onPressed: () async {
               var dir = await FilePicker.platform.getDirectoryPath();
               if (dir != null) {
-                widget.controller.text = dir;
+                updateDirectorySelection(widget.controller, dir,
+                    onChanged: widget.onEditComplete);
               }
             });
       }
@@ -127,12 +144,18 @@ class _DirectorySelectorState extends State<DirectorySelector> {
           customWidths: const [50, 50],
           onToggle: (index) async {
             if (index == 0) {
-              widget.controller.text =
-                  (await getExternalStorageDirectory())?.path ??
-                      (await getApplicationDocumentsDirectory()).path;
+              updateDirectorySelection(
+                widget.controller,
+                (await getExternalStorageDirectory())?.path ??
+                    (await getApplicationDocumentsDirectory()).path,
+                onChanged: widget.onEditComplete,
+              );
             } else {
-              widget.controller.text =
-                  '${(await DownloadsPath.downloadsDirectory())!.path}/Gopeed';
+              updateDirectorySelection(
+                widget.controller,
+                '${(await DownloadsPath.downloadsDirectory())!.path}/Gopeed',
+                onChanged: widget.onEditComplete,
+              );
             }
           },
           cancelToggle: (index) async {
@@ -193,10 +216,14 @@ class _DirectorySelectorState extends State<DirectorySelector> {
           final newText = currentText.substring(0, cursorPosition) +
               placeholder +
               currentText.substring(cursorPosition);
-          widget.controller.text = newText;
-          widget.controller.selection = TextSelection.fromPosition(
-            TextPosition(offset: cursorPosition + placeholder.length),
+          widget.controller.value = widget.controller.value.copyWith(
+            text: newText,
+            selection: TextSelection.fromPosition(
+              TextPosition(offset: cursorPosition + placeholder.length),
+            ),
+            composing: TextRange.empty,
           );
+          widget.onEditComplete?.call();
         },
         itemBuilder: (BuildContext context) {
           final placeholders = getPathPlaceholders();

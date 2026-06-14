@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace 'com.gopeed.gopeed'
-    compileSdk 35
+    compileSdk 36
     ndkVersion flutter.ndkVersion
 
     compileOptions {

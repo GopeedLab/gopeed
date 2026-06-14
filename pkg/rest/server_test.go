@@ -20,6 +20,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
+	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
 
@@ -288,6 +289,10 @@ func TestPatchTaskNotFound(t *testing.T) {
 
 func TestPauseAllAndContinueALLTasks(t *testing.T) {
 	doTest(func() {
+		slowListener := test.StartTestLowSpeedServer(5 * time.Nanosecond)
+		defer slowListener.Close()
+		taskReq.URL = "http://" + slowListener.Addr().String() + "/" + test.BuildName
+
 		cfg, err := Downloader.GetConfig()
 		if err != nil {
 			t.Fatal(err)
@@ -875,6 +880,55 @@ func TestAuthorization(t *testing.T) {
 	}
 }
 
+func TestBuildServerPropagatesWebViewProvider(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := listener.Addr().String()
+	listener.Close()
+
+	cfg := &model.StartConfig{
+		Network:         "tcp",
+		Address:         addr,
+		Storage:         model.StorageMem,
+		WebViewProvider: fakeRestWebViewProvider{available: true},
+	}
+
+	server, serverListener, err := BuildServer(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer serverListener.Close()
+	defer server.Close()
+	defer func() {
+		if Downloader != nil {
+			Downloader.Clear()
+			Downloader = nil
+		}
+	}()
+
+	runtime, err := Downloader.NewExtensionEngine(&download.Extension{
+		Name:    "test-runtime",
+		Author:  "gopeed",
+		Title:   "Gopeed Test Script Runtime",
+		Version: "0.0.0",
+		DevMode: true,
+	}, map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer runtime.Close()
+
+	value, err := runtime.Eval("gopeed.runtime.webview.isAvailable()")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value != true {
+		t.Fatalf("expected provider to reach downloader runtime, got %#v", value)
+	}
+}
+
 func doTest(handler func()) {
 	doTest0(nil, handler)
 }
@@ -917,6 +971,52 @@ func doStart(cfg *model.StartConfig) net.Listener {
 	}
 	restPort = port
 	return test.StartTestFileServer()
+}
+
+type fakeRestWebViewProvider struct {
+	available bool
+}
+
+func (p fakeRestWebViewProvider) IsAvailable() bool {
+	return p.available
+}
+
+func (p fakeRestWebViewProvider) Open(enginewebview.OpenOptions) (enginewebview.Page, error) {
+	return fakeRestPage{}, nil
+}
+
+type fakeRestPage struct{}
+
+func (fakeRestPage) AddInitScript(string) error {
+	return nil
+}
+
+func (fakeRestPage) Goto(string, enginewebview.GotoOptions) error {
+	return nil
+}
+
+func (fakeRestPage) Execute(string, ...any) (any, error) {
+	return nil, nil
+}
+
+func (fakeRestPage) GetCookies() ([]enginewebview.Cookie, error) {
+	return nil, nil
+}
+
+func (fakeRestPage) SetCookie(enginewebview.Cookie) error {
+	return nil
+}
+
+func (fakeRestPage) DeleteCookie(enginewebview.Cookie) error {
+	return nil
+}
+
+func (fakeRestPage) ClearCookies() error {
+	return nil
+}
+
+func (fakeRestPage) Close() error {
+	return nil
 }
 
 func doHttpRequest0(method string, path string, headers map[string]string, body any) (int, []byte) {

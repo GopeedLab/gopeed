@@ -1,10 +1,9 @@
 module github.com/GopeedLab/gopeed
 
-go 1.24.9
-
-toolchain go1.24.11
+go 1.25.4
 
 require (
+	github.com/GopeedLab/webview_go v0.0.0-20260423085439-7a2f88b6e9b5
 	github.com/anacrolix/torrent v1.60.1-0.20251217073903-486bcbe758e0
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/bodgit/sevenzip v1.6.1
@@ -17,6 +16,7 @@ require (
 	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/mattn/go-ieproxy v0.0.12
 	github.com/mholt/archives v0.1.5
+	github.com/monkeyWie/goed2k v0.0.0-20260317100435-7a7575cf2447
 	github.com/pkg/errors v0.9.1
 	github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529
 	github.com/rs/zerolog v1.31.0
@@ -45,7 +45,6 @@ require (
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/mikelolasagasti/xz v1.0.1 // indirect
 	github.com/minio/minlz v1.0.1 // indirect
-	github.com/monkeyWie/goed2k v0.0.0-20260317100435-7a7575cf2447 // indirect
 	github.com/nwaples/rardecode/v2 v2.2.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.23.4 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect

@@ -1,0 +1,25 @@
+{
+  "name": "gblob-recover",
+  "title": "gopeed extension gblob recover test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onResolve",
+      "match": {
+        "urls": [
+          "*://example.com/*"
+        ]
+      },
+      "entry": "index.js"
+    },
+    {
+      "event": "onError",
+      "match": {
+        "urls": [
+          "*://example.com/*"
+        ]
+      },
+      "entry": "index.js"
+    }
+  ]
+}

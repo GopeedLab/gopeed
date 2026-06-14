@@ -17,6 +17,14 @@ import 'task_downloading_view.dart';
 class TaskView extends GetView<TaskController> {
   const TaskView({Key? key}) : super(key: key);
 
+  String? _displayTaskUrl(Task? task) {
+    final rawUrl = task?.meta.req.rawUrl;
+    if (rawUrl != null && rawUrl.isNotEmpty) {
+      return rawUrl;
+    }
+    return task?.meta.req.url;
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectTask = controller.selectTask;
@@ -85,9 +93,8 @@ class TaskView extends GetView<TaskController> {
                       subtitle: buildTooltipSubtitle(selectTask.value?.name)),
                   ListTile(
                     title: Text('taskUrl'.tr),
-                    subtitle:
-                        buildTooltipSubtitle(selectTask.value?.meta.req.url),
-                    trailing: CopyButton(selectTask.value?.meta.req.url),
+                    subtitle: buildTooltipSubtitle(_displayTaskUrl(selectTask.value)),
+                    trailing: CopyButton(_displayTaskUrl(selectTask.value)),
                   ),
                   ListTile(
                     title: Text('downloadPath'.tr),

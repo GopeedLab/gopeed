@@ -3,16 +3,19 @@ package engine
 import (
 	_ "embed"
 	"errors"
+	"fmt"
+	"sync"
+
 	"github.com/GopeedLab/gopeed/pkg/base"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
+	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/stream"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/vm"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/xhr"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
 	gojaurl "github.com/dop251/goja_nodejs/url"
-	"time"
 )
 
 //go:embed polyfill/out/index.js
@@ -24,93 +27,118 @@ type Engine struct {
 	Runtime *goja.Runtime
 }
 
+type JSFunction func(goja.FunctionCall) goja.Value
+
 // RunString executes the script and returns the go type value
 // if script result is promise, it will be resolved
 func (e *Engine) RunString(script string) (value any, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(error)
-		}
-	}()
-
-	var result goja.Value
-	e.loop.Run(func(runtime *goja.Runtime) {
-		result, err = runtime.RunString(script)
-		if err == nil {
-			go e.await(result)
-		}
+	return e.runOnLoop(func(runtime *goja.Runtime) (goja.Value, error) {
+		return runtime.RunString(script)
 	})
-	if err != nil {
-		return
-	}
-	return resolveResult(result)
 }
 
 // CallFunction calls the function and returns the go type value
 // if function result is promise, it will be resolved
-func (e *Engine) CallFunction(fn goja.Callable, args ...any) (value any, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = r.(error)
+func (e *Engine) CallFunction(fn any, args ...any) (value any, err error) {
+	return e.runOnLoop(func(runtime *goja.Runtime) (goja.Value, error) {
+		var jsArgs []goja.Value
+		for _, arg := range args {
+			jsArgs = append(jsArgs, runtime.ToValue(arg))
 		}
-	}()
-
-	var result goja.Value
-	e.loop.Run(func(runtime *goja.Runtime) {
-		if args == nil {
-			result, err = fn(nil)
-		} else {
-			var jsArgs []goja.Value
-			for _, arg := range args {
-				jsArgs = append(jsArgs, runtime.ToValue(arg))
+		switch f := fn.(type) {
+		case goja.Callable:
+			if args == nil {
+				return f(nil)
 			}
-			result, err = fn(nil, jsArgs...)
-		}
-		if err == nil {
-			go e.await(result)
+			return f(nil, jsArgs...)
+		case JSFunction:
+			return callExportedFunction(func(call goja.FunctionCall) goja.Value {
+				return f(call)
+			}, jsArgs...)
+		default:
+			return nil, fmt.Errorf("unsupported function type: %T", fn)
 		}
 	})
-	if err != nil {
-		return
-	}
-	return resolveResult(result)
 }
 
-// loop.Run will hang if the script result has a non-stop code, such as setInterval.
-// This method will stop the event loop when the promise result is resolved.
-func (e *Engine) await(value any) {
-	if value == nil {
-		return
+func (e *Engine) runOnLoop(fn func(runtime *goja.Runtime) (goja.Value, error)) (any, error) {
+	type result struct {
+		value any
+		err   error
 	}
-
-	if v, ok := value.(goja.Value); ok {
-		// if result is promise, wait for it to be resolved
-		if p, ok := v.Export().(*goja.Promise); ok {
-			if p.State() != goja.PromiseStatePending {
+	ch := make(chan result, 1)
+	ok := e.loop.RunOnLoop(func(runtime *goja.Runtime) {
+		var once sync.Once
+		sendResult := func(res result) {
+			once.Do(func() {
+				ch <- res
+			})
+		}
+		defer func() {
+			if r := recover(); r != nil {
+				switch v := r.(type) {
+				case error:
+					sendResult(result{err: v})
+				case goja.Value:
+					sendResult(result{err: exportJSError(v)})
+				default:
+					sendResult(result{err: fmt.Errorf("panic: %v", r)})
+				}
+			}
+		}()
+		value, err := fn(runtime)
+		if err != nil {
+			sendResult(result{err: err})
+			return
+		}
+		if p, ok := value.Export().(*goja.Promise); ok {
+			switch p.State() {
+			case goja.PromiseStateFulfilled:
+				sendResult(result{value: exportJSValue(p.Result())})
+				return
+			case goja.PromiseStateRejected:
+				sendResult(result{err: exportJSError(p.Result())})
 				return
 			}
-
-			// check promise state every 100 milliseconds, until it is resolved
-			for {
-				time.Sleep(time.Millisecond * 100)
-				if p.State() == goja.PromiseStatePending {
-					continue
-				}
-				break
+			promiseObj := value.ToObject(runtime)
+			thenVal := promiseObj.Get("then")
+			thenFn, ok := goja.AssertFunction(thenVal)
+			if !ok {
+				sendResult(result{err: errors.New("promise.then is not callable")})
+				return
 			}
-
-			// stop the event loop
-			e.loop.StopNoWait()
+			onFulfilled := runtime.ToValue(func(call goja.FunctionCall) goja.Value {
+				sendResult(result{value: exportJSValue(call.Argument(0))})
+				return goja.Undefined()
+			})
+			onRejected := runtime.ToValue(func(call goja.FunctionCall) goja.Value {
+				sendResult(result{err: exportJSError(call.Argument(0))})
+				return goja.Undefined()
+			})
+			if _, err := thenFn(promiseObj, onFulfilled, onRejected); err != nil {
+				sendResult(result{err: err})
+			}
+			return
 		}
+		sendResult(result{value: exportJSValue(value)})
+	})
+	if !ok {
+		return nil, errors.New("engine loop terminated")
 	}
+	res := <-ch
+	if res.err != nil {
+		return nil, res.err
+	}
+	return res.value, nil
 }
 
 func (e *Engine) Close() {
-	e.loop.StopNoWait()
+	e.loop.Terminate()
 }
 
 type Config struct {
-	ProxyConfig *base.DownloaderProxyConfig
+	ProxyConfig  *base.DownloaderProxyConfig
+	StreamConfig *stream.Config
 }
 
 func NewEngine(cfg *Config) *Engine {
@@ -121,7 +149,10 @@ func NewEngine(cfg *Config) *Engine {
 	engine := &Engine{
 		loop: loop,
 	}
-	loop.Run(func(runtime *goja.Runtime) {
+	loop.Start()
+	done := make(chan struct{})
+	loop.RunOnLoop(func(runtime *goja.Runtime) {
+		defer close(done)
 		engine.Runtime = runtime
 		runtime.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))
 		vm.Enable(runtime)
@@ -153,8 +184,12 @@ func NewEngine(cfg *Config) *Engine {
 		if _, err := runtime.RunString("global.location = new URL('http://localhost');"); err != nil {
 			return
 		}
+		if err := stream.Enable(runtime, loop, cfg.StreamConfig); err != nil {
+			return
+		}
 		return
 	})
+	<-done
 	return engine
 }
 
@@ -163,32 +198,45 @@ func Run(script string) (value any, err error) {
 	return engine.RunString(script)
 }
 
-// if the value is Promise, it will be resolved and return the result.
-func resolveResult(value goja.Value) (any, error) {
-	export := value.Export()
-	switch export.(type) {
-	case *goja.Promise:
-		p := export.(*goja.Promise)
-		switch p.State() {
-		case goja.PromiseStatePending:
-			return nil, nil
-		case goja.PromiseStateFulfilled:
-			return p.Result().Export(), nil
-		case goja.PromiseStateRejected:
-			if err, ok := p.Result().Export().(error); ok {
-				return nil, err
-			} else {
-				stack := p.Result().String()
-				result := p.Result()
-				if ro, ok := result.(*goja.Object); ok {
-					stackVal := ro.Get("stack")
-					if stackVal != nil && stackVal.String() != "" {
-						stack = stackVal.String()
-					}
-				}
-				return nil, errors.New(stack)
-			}
+func exportJSValue(value goja.Value) any {
+	if value == nil {
+		return nil
+	}
+	return value.Export()
+}
+
+func exportJSError(value goja.Value) error {
+	if value == nil || goja.IsUndefined(value) || goja.IsNull(value) {
+		return errors.New("promise rejected")
+	}
+	if err, ok := value.Export().(error); ok {
+		return err
+	}
+	stack := value.String()
+	if ro, ok := value.(*goja.Object); ok {
+		stackVal := ro.Get("stack")
+		if stackVal != nil && stackVal.String() != "" {
+			stack = stackVal.String()
 		}
 	}
-	return export, nil
+	return errors.New(stack)
+}
+
+func callExportedFunction(fn func(goja.FunctionCall) goja.Value, args ...goja.Value) (ret goja.Value, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch v := r.(type) {
+			case error:
+				err = v
+			case goja.Value:
+				err = exportJSError(v)
+			default:
+				err = fmt.Errorf("panic: %v", r)
+			}
+		}
+	}()
+	return fn(goja.FunctionCall{
+		This:      nil,
+		Arguments: args,
+	}), nil
 }

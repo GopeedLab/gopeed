@@ -6,7 +6,7 @@ part 'task.g.dart';
 
 enum Status { ready, running, pause, wait, error, done }
 
-enum Protocol { http, bt, ed2k }
+enum Protocol { http, bt, ed2k, gblob }
 
 // ExtractStatus enum matching Go backend
 enum ExtractStatus {

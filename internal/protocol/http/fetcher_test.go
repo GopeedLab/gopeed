@@ -376,7 +376,7 @@ func TestFetcher_DownloadError(t *testing.T) {
 }
 
 func TestFetcher_DownloadLimit(t *testing.T) {
-	listener := test.StartTestLimitServer(4, 0)
+	listener := test.StartTestConLimitServer(4)
 	defer listener.Close()
 
 	downloadNormal(listener, 1, t)
@@ -614,7 +614,7 @@ func TestFetcher_SlowStartExpansion(t *testing.T) {
 			os.Remove(test.DownloadFile)
 
 			// Use 100ns delay per byte for faster test (~10MB/s theoretical)
-			listener := test.StartTestSlowStartServer(100 * time.Nanosecond)
+			listener := test.StartTestLowSpeedServer(100 * time.Nanosecond)
 
 			// Ensure cleanup happens before next subtest
 			cleanup := func() {
@@ -758,7 +758,7 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 	t.Run("PrefetchPartial", func(t *testing.T) {
 		// Use slow server with 100 nanosecond delay per byte
 		// This means ~10MB/s speed, so 100ms should download ~1MB
-		listener := test.StartTestSlowStartServer(100 * time.Nanosecond)
+		listener := test.StartTestLowSpeedServer(100 * time.Nanosecond)
 		defer listener.Close()
 
 		fetcher := buildFetcher()
