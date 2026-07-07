@@ -63,7 +63,7 @@ func TestDownloader_Resolve(t *testing.T) {
 	}
 }
 
-func TestDownloader_UsesStorageDirForGBlobRegistry(t *testing.T) {
+func TestDownloader_BlobRegistryDoesNotUseStorageDirForSpooling(t *testing.T) {
 	storageDir := t.TempDir()
 	downloader := NewDownloader(&DownloaderConfig{
 		Storage:    NewMemStorage(),
@@ -74,22 +74,24 @@ func TestDownloader_UsesStorageDirForGBlobRegistry(t *testing.T) {
 	}
 	defer downloader.Clear()
 
-	if downloader.gblob == nil {
-		t.Fatal("expected gblob registry to be initialized")
+	if downloader.blob == nil {
+		t.Fatal("expected blob registry to be initialized")
 	}
-	expectedDir := filepath.Join(storageDir, "gblob")
-	if filepath.Clean(downloader.gblob.Dir()) != filepath.Clean(expectedDir) {
-		t.Fatalf("expected gblob registry dir under storage dir, got %s want %s", downloader.gblob.Dir(), expectedDir)
+	if downloader.blob.Dir() != "" {
+		t.Fatalf("expected blob registry not to use a spool dir, got %s", downloader.blob.Dir())
+	}
+	if _, err := os.Stat(filepath.Join(storageDir, "blob")); !os.IsNotExist(err) {
+		t.Fatalf("expected blob spool dir not to be created, got err=%v", err)
 	}
 }
 
-func TestDownloader_SetupCleansStaleGBlobDir(t *testing.T) {
+func TestDownloader_SetupCleansStaleBlobDir(t *testing.T) {
 	storageDir := t.TempDir()
-	gblobDir := filepath.Join(storageDir, "gblob")
-	if err := os.MkdirAll(gblobDir, 0o755); err != nil {
+	blobDir := filepath.Join(storageDir, "blob")
+	if err := os.MkdirAll(blobDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	staleFile := filepath.Join(gblobDir, "stale")
+	staleFile := filepath.Join(blobDir, "stale")
 	if err := os.WriteFile(staleFile, []byte("stale"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -104,8 +106,47 @@ func TestDownloader_SetupCleansStaleGBlobDir(t *testing.T) {
 	defer downloader.Clear()
 
 	if _, err := os.Stat(staleFile); !os.IsNotExist(err) {
-		t.Fatalf("expected stale gblob file to be removed on setup, got err=%v", err)
+		t.Fatalf("expected stale blob file to be removed on setup, got err=%v", err)
 	}
+}
+
+func TestDownloader_BlobTaskKeepsConfiguredHTTPConnections(t *testing.T) {
+	downloader := NewDownloader(&DownloaderConfig{
+		Storage:    NewMemStorage(),
+		StorageDir: t.TempDir(),
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	url, err := downloader.blob.CreateBlob([]byte("hello"), "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := downloader.CreateDirect(&base.Request{URL: url}, &base.Options{
+		Path:  t.TempDir(),
+		Name:  "blob-unmarked.txt",
+		Extra: &http.OptsExtra{Connections: 8},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	task := downloader.GetTask(id)
+	if task == nil {
+		t.Fatal("task not found")
+	}
+	if task.Protocol != "http" {
+		t.Fatalf("expected blob task protocol http, got %s", task.Protocol)
+	}
+	extra, ok := task.Meta.Opts.Extra.(*http.OptsExtra)
+	if !ok {
+		t.Fatalf("expected http extra, got %T", task.Meta.Opts.Extra)
+	}
+	if extra.Connections != 8 {
+		t.Fatalf("expected blob task connections to stay 8, got %d", extra.Connections)
+	}
+	waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 5*time.Second)
 }
 
 func TestDownloader_Create(t *testing.T) {

@@ -1,6 +1,6 @@
 {
-  "name": "gblob-recover",
-  "title": "gopeed extension gblob recover test",
+  "name": "blob-recover",
+  "title": "gopeed extension blob recover test",
   "version": "0.0.1",
   "scripts": [
     {

@@ -1,6 +1,6 @@
 {
-  "name": "gblob-restart",
-  "title": "gopeed extension gblob restart resume test",
+  "name": "blob-restart",
+  "title": "gopeed extension blob restart resume test",
   "version": "0.0.1",
   "scripts": [
     {

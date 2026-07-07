@@ -1,14 +1,11 @@
 package download
 
 import (
-	"crypto/md5"
-	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -57,9 +54,9 @@ func TestDownloader_InstallExtensionByFolderDevMode(t *testing.T) {
 	})
 }
 
-func TestDownloader_Extension_GBlobBlob(t *testing.T) {
+func TestDownloader_Extension_BlobBlob(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob", false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -94,7 +91,7 @@ func TestDownloader_Extension_GBlobBlob(t *testing.T) {
 				t.Fatal(err)
 			}
 		case <-time.After(5 * time.Second):
-			t.Fatal("timeout waiting for gblob blob download")
+			t.Fatal("timeout waiting for blob blob download")
 		}
 
 		data, err := os.ReadFile(filepath.Join(dir, "hello.txt"))
@@ -105,18 +102,20 @@ func TestDownloader_Extension_GBlobBlob(t *testing.T) {
 			t.Fatalf("unexpected blob download content: %q", string(data))
 		}
 
-		waitForDirEmpty(t, filepath.Join(downloader.cfg.StorageDir, "gblob"), 5*time.Second)
+		if _, err := os.Stat(filepath.Join(downloader.cfg.StorageDir, "blob")); !os.IsNotExist(err) {
+			t.Fatalf("expected blob spool dir not to be created, got err=%v", err)
+		}
 	})
 }
 
-func TestDownloader_Extension_GBlobReadableStream(t *testing.T) {
+func TestDownloader_Extension_BlobFunctionOpener(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob", false); err != nil {
 			t.Fatal(err)
 		}
 
 		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/stream",
+			URL: "https://example.com/opener",
 		}, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -135,7 +134,7 @@ func TestDownloader_Extension_GBlobReadableStream(t *testing.T) {
 		}
 		waitForTaskTerminal(t, downloader, id, 5*time.Second)
 
-		data, err := os.ReadFile(filepath.Join(dir, "stream.txt"))
+		data, err := os.ReadFile(filepath.Join(dir, "opener.txt"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,14 +144,14 @@ func TestDownloader_Extension_GBlobReadableStream(t *testing.T) {
 	})
 }
 
-func TestDownloader_Extension_GBlobReadableStreamUnknownSize(t *testing.T) {
+func TestDownloader_Extension_BlobFunctionOpenerUnknownSize(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob", false); err != nil {
 			t.Fatal(err)
 		}
 
 		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/stream-unknown",
+			URL: "https://example.com/opener-unknown",
 		}, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -183,7 +182,7 @@ func TestDownloader_Extension_GBlobReadableStreamUnknownSize(t *testing.T) {
 		}
 		waitForTaskTerminal(t, downloader, id, 5*time.Second)
 
-		data, err := os.ReadFile(filepath.Join(dir, "stream-unknown.txt"))
+		data, err := os.ReadFile(filepath.Join(dir, "opener-unknown.txt"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -201,14 +200,14 @@ func TestDownloader_Extension_GBlobReadableStreamUnknownSize(t *testing.T) {
 	})
 }
 
-func TestDownloader_Extension_GBlobSourceSizePropagatesToCreatedTask(t *testing.T) {
+func TestDownloader_Extension_BlobSourceSizePropagatesToCreatedTask(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob", false); err != nil {
 			t.Fatal(err)
 		}
 
 		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/stream",
+			URL: "https://example.com/opener",
 		}, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -232,6 +231,12 @@ func TestDownloader_Extension_GBlobSourceSizePropagatesToCreatedTask(t *testing.
 		if task == nil {
 			t.Fatal("task not found")
 		}
+		waitForTaskTerminal(t, downloader, id, 5*time.Second)
+
+		task = downloader.GetTask(id)
+		if task == nil {
+			t.Fatal("task not found after completion")
+		}
 		if task.Meta == nil || task.Meta.Res == nil {
 			t.Fatal("task meta resource not seeded")
 		}
@@ -241,19 +246,17 @@ func TestDownloader_Extension_GBlobSourceSizePropagatesToCreatedTask(t *testing.
 		if len(task.Meta.Res.Files) != 1 || task.Meta.Res.Files[0].Size != file.Size {
 			t.Fatalf("unexpected task file metadata: %#v", task.Meta.Res.Files)
 		}
-
-		waitForTaskTerminal(t, downloader, id, 5*time.Second)
 	})
 }
 
-func TestDownloader_Extension_GBlobReadableStreamRangeResume(t *testing.T) {
+func TestDownloader_Extension_BlobFunctionOpenerRangeResume(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob", false); err != nil {
 			t.Fatal(err)
 		}
 
 		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/stream-range",
+			URL: "https://example.com/opener-range",
 		}, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -262,7 +265,7 @@ func TestDownloader_Extension_GBlobReadableStreamRangeResume(t *testing.T) {
 			t.Fatalf("unexpected resolved file count: %d", len(rr.Res.Files))
 		}
 		if !rr.Res.Range {
-			t.Fatal("expected resumable gblob resource")
+			t.Fatal("expected resumable blob resource")
 		}
 
 		file := rr.Res.Files[0]
@@ -276,31 +279,9 @@ func TestDownloader_Extension_GBlobReadableStreamRangeResume(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		waitForTaskStatus(t, downloader, id, base.DownloadStatusError, 5*time.Second)
-
-		filePath := filepath.Join(dir, file.Name)
-		waitForFileSizeAtLeast(t, filePath, int64(len("line 1\n")), 2*time.Second)
-		info, err := os.Stat(filePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if info.Size() >= file.Size {
-			t.Fatalf("expected partial file before resume, got %d want <%d", info.Size(), file.Size)
-		}
-
-		task := downloader.GetTask(id)
-		if task == nil {
-			t.Fatal("task not found after first error")
-		}
-		if task.Meta == nil || task.Meta.Res == nil || !task.Meta.Res.Range {
-			t.Fatal("expected resumable task metadata after first error")
-		}
-
-		if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
-			t.Fatal(err)
-		}
 		waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 5*time.Second)
 
+		filePath := filepath.Join(dir, file.Name)
 		data, err := os.ReadFile(filePath)
 		if err != nil {
 			t.Fatal(err)
@@ -311,543 +292,11 @@ func TestDownloader_Extension_GBlobReadableStreamRangeResume(t *testing.T) {
 	})
 }
 
-func TestDownloader_Extension_GBlobHTTPStreamProxy(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
-			t.Fatal(err)
-		}
-
-		payload := strings.Repeat("gopeed-stream-", 32*1024)
-		expectedMD5 := calcExtensionTestMD5(strings.NewReader(payload))
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-			flusher, _ := w.(http.Flusher)
-			chunkSize := 8192
-			for start := 0; start < len(payload); start += chunkSize {
-				end := start + chunkSize
-				if end > len(payload) {
-					end = len(payload)
-				}
-				if _, err := io.WriteString(w, payload[start:end]); err != nil {
-					return
-				}
-				if flusher != nil {
-					flusher.Flush()
-				}
-				time.Sleep(2 * time.Millisecond)
-			}
-		}))
-		defer server.Close()
-
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/http-stream?target=" + server.URL + "&name=proxy.bin",
-		}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if rr.ID != "" {
-			t.Fatalf("expected empty resolve id for extension resource, got %q", rr.ID)
-		}
-		if len(rr.Res.Files) != 1 {
-			t.Fatalf("unexpected resolved file count: %d", len(rr.Res.Files))
-		}
-
-		doneCh := make(chan error, 1)
-		downloader.Listener(func(event *Event) {
-			if event.Key == EventKeyDone || event.Key == EventKeyError {
-				doneCh <- event.Err
-			}
-		})
-
-		dir := t.TempDir()
-		if _, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
-			Path: dir,
-			Name: rr.Res.Files[0].Name,
-		}); err != nil {
-			t.Fatal(err)
-		}
-
-		select {
-		case err := <-doneCh:
-			if err != nil {
-				t.Fatal(err)
-			}
-		case <-time.After(10 * time.Second):
-			t.Fatal("timeout waiting for gblob http stream proxy download")
-		}
-
-		file, err := os.Open(filepath.Join(dir, "proxy.bin"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer file.Close()
-		if got := calcExtensionTestMD5(file); got != expectedMD5 {
-			t.Fatalf("unexpected proxied download md5: got %s want %s", got, expectedMD5)
-		}
-	})
-}
-
-func TestDownloader_Extension_GBlobHTTPStreamProxyReportsDownloadedBeforeCompletion(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		downloader.cfg.RefreshInterval = 50
-
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
-			t.Fatal(err)
-		}
-
-		payload := strings.Repeat("gopeed-progress-", 64*1024)
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodHead {
-				w.Header().Set("Connection", "close")
-				w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-				return
-			}
-
-			w.Header().Set("Connection", "close")
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-			flusher, _ := w.(http.Flusher)
-			chunkSize := 4096
-			for start := 0; start < len(payload); start += chunkSize {
-				end := start + chunkSize
-				if end > len(payload) {
-					end = len(payload)
-				}
-				if _, err := io.WriteString(w, payload[start:end]); err != nil {
-					return
-				}
-				if flusher != nil {
-					flusher.Flush()
-				}
-				time.Sleep(30 * time.Millisecond)
-			}
-		}))
-		defer server.Close()
-
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/http-stream?target=" + server.URL + "&name=progress.bin",
-		}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rr.Res.Files) != 1 {
-			t.Fatalf("unexpected resolved file count: %d", len(rr.Res.Files))
-		}
-
-		dir := t.TempDir()
-		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
-			Path: dir,
-			Name: rr.Res.Files[0].Name,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		waitForTaskStatus(t, downloader, id, base.DownloadStatusRunning, 2*time.Second)
-
-		deadline := time.Now().Add(2 * time.Second)
-		var observed int64
-		for time.Now().Before(deadline) {
-			task := downloader.GetTask(id)
-			if task == nil {
-				t.Fatal("task not found")
-			}
-			observed = task.Progress.Downloaded
-			if observed > 0 {
-				if task.Status == base.DownloadStatusDone {
-					t.Fatal("expected slow proxy task to still be running when intermediate downloaded bytes become visible")
-				}
-				break
-			}
-			time.Sleep(20 * time.Millisecond)
-		}
-		if observed <= 0 {
-			_ = downloader.Delete(&TaskFilter{IDs: []string{id}}, true)
-			t.Fatalf("expected downloaded bytes > 0 before completion, got %d", observed)
-		}
-
-		waitForTaskTerminal(t, downloader, id, 10*time.Second)
-	})
-}
-
-func TestDownloader_Extension_GBlobHTTPBlobReportsDownloadedBeforeCompletion(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		downloader.cfg.RefreshInterval = 50
-
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
-			t.Fatal(err)
-		}
-
-		payload := strings.Repeat("gopeed-blob-progress-", 64*1024)
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodHead {
-				w.Header().Set("Connection", "close")
-				w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-				return
-			}
-
-			w.Header().Set("Connection", "close")
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-			flusher, _ := w.(http.Flusher)
-			chunkSize := 4096
-			for start := 0; start < len(payload); start += chunkSize {
-				end := start + chunkSize
-				if end > len(payload) {
-					end = len(payload)
-				}
-				if _, err := io.WriteString(w, payload[start:end]); err != nil {
-					return
-				}
-				if flusher != nil {
-					flusher.Flush()
-				}
-				time.Sleep(30 * time.Millisecond)
-			}
-		}))
-		defer server.Close()
-
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/http-blob?target=" + server.URL + "&name=progress-blob.bin",
-		}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rr.Res.Files) != 1 {
-			t.Fatalf("unexpected resolved file count: %d", len(rr.Res.Files))
-		}
-
-		dir := t.TempDir()
-		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
-			Path: dir,
-			Name: rr.Res.Files[0].Name,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		waitForTaskStatus(t, downloader, id, base.DownloadStatusRunning, 2*time.Second)
-
-		deadline := time.Now().Add(2 * time.Second)
-		var observed int64
-		for time.Now().Before(deadline) {
-			task := downloader.GetTask(id)
-			if task == nil {
-				t.Fatal("task not found")
-			}
-			observed = task.Progress.Downloaded
-			if observed > 0 {
-				if task.Status == base.DownloadStatusDone {
-					t.Fatal("expected slow blob task to still be running when intermediate downloaded bytes become visible")
-				}
-				break
-			}
-			time.Sleep(20 * time.Millisecond)
-		}
-		if observed <= 0 {
-			_ = downloader.Delete(&TaskFilter{IDs: []string{id}}, true)
-			t.Fatalf("expected downloaded bytes > 0 before completion, got %d", observed)
-		}
-
-		waitForTaskTerminal(t, downloader, id, 10*time.Second)
-	})
-}
-
-func TestDownloader_Extension_GBlobHTTPStreamPairReportsDownloadedConcurrently(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		downloader.cfg.RefreshInterval = 50
-
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
-			t.Fatal(err)
-		}
-
-		payload := strings.Repeat("gopeed-pair-progress-", 64*1024)
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodHead {
-				w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-			flusher, _ := w.(http.Flusher)
-			chunkSize := 4096
-			for start := 0; start < len(payload); start += chunkSize {
-				end := start + chunkSize
-				if end > len(payload) {
-					end = len(payload)
-				}
-				if _, err := io.WriteString(w, payload[start:end]); err != nil {
-					return
-				}
-				if flusher != nil {
-					flusher.Flush()
-				}
-				time.Sleep(25 * time.Millisecond)
-			}
-		}))
-		defer server.Close()
-
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/http-stream?pair=1&target=" + url.QueryEscape(server.URL),
-		}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rr.Res.Files) != 2 {
-			t.Fatalf("unexpected resolved file count: %d", len(rr.Res.Files))
-		}
-
-		dir := t.TempDir()
-		var ids []string
-		for _, file := range rr.Res.Files {
-			id, err := downloader.CreateDirect(file.Req, &base.Options{
-				Path: dir,
-				Name: file.Name,
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			ids = append(ids, id)
-		}
-
-		for _, id := range ids {
-			waitForTaskStatus(t, downloader, id, base.DownloadStatusRunning, 2*time.Second)
-		}
-
-		deadline := time.Now().Add(5 * time.Second)
-		for time.Now().Before(deadline) {
-			task1 := downloader.GetTask(ids[0])
-			task2 := downloader.GetTask(ids[1])
-			if task1 == nil || task2 == nil {
-				t.Fatal("pair task not found")
-			}
-			if task1.Status == base.DownloadStatusDone && task2.Progress.Downloaded == 0 {
-				t.Fatalf("second task never reported downloaded bytes before first completed: task1=%d task2=%d", task1.Progress.Downloaded, task2.Progress.Downloaded)
-			}
-			if task2.Status == base.DownloadStatusDone && task1.Progress.Downloaded == 0 {
-				t.Fatalf("first task never reported downloaded bytes before second completed: task1=%d task2=%d", task1.Progress.Downloaded, task2.Progress.Downloaded)
-			}
-			if task1.Progress.Downloaded > 0 && task2.Progress.Downloaded > 0 {
-				waitForTaskStatus(t, downloader, ids[0], base.DownloadStatusDone, 10*time.Second)
-				waitForTaskStatus(t, downloader, ids[1], base.DownloadStatusDone, 10*time.Second)
-				return
-			}
-			time.Sleep(20 * time.Millisecond)
-		}
-
-		task1 := downloader.GetTask(ids[0])
-		task2 := downloader.GetTask(ids[1])
-		t.Fatalf("expected both tasks to report downloaded bytes before completion, got task1=%d task2=%d status1=%s status2=%s", task1.Progress.Downloaded, task2.Progress.Downloaded, task1.Status, task2.Status)
-	})
-}
-
-func TestDownloader_Extension_GBlobHTTPStreamDeleteWhileDownloading(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		downloader.cfg.RefreshInterval = 50
-
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
-			t.Fatal(err)
-		}
-
-		payload := strings.Repeat("gopeed-delete-", 64*1024)
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodHead {
-				w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-			flusher, _ := w.(http.Flusher)
-			chunkSize := 4096
-			for start := 0; start < len(payload); start += chunkSize {
-				end := start + chunkSize
-				if end > len(payload) {
-					end = len(payload)
-				}
-				if _, err := io.WriteString(w, payload[start:end]); err != nil {
-					return
-				}
-				if flusher != nil {
-					flusher.Flush()
-				}
-				time.Sleep(20 * time.Millisecond)
-			}
-		}))
-		server.Config.SetKeepAlivesEnabled(false)
-		defer server.Close()
-		defer server.CloseClientConnections()
-
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/http-stream?target=" + server.URL + "&name=delete.bin",
-		}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rr.Res.Files) != 1 {
-			t.Fatalf("unexpected resolved file count: %d", len(rr.Res.Files))
-		}
-
-		dir := t.TempDir()
-		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
-			Path: dir,
-			Name: rr.Res.Files[0].Name,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		waitForTaskStatus(t, downloader, id, base.DownloadStatusRunning, 2*time.Second)
-
-		filePath := filepath.Join(dir, rr.Res.Files[0].Name)
-		waitForFileSizeAtLeast(t, filePath, 4096, 2*time.Second)
-
-		if err := downloader.Delete(&TaskFilter{IDs: []string{id}}, false); err != nil {
-			t.Fatal(err)
-		}
-
-		deadline := time.Now().Add(2 * time.Second)
-		for time.Now().Before(deadline) {
-			if downloader.GetTask(id) == nil {
-				waitForDirEmpty(t, filepath.Join(downloader.cfg.StorageDir, "gblob"), 5*time.Second)
-				return
-			}
-			time.Sleep(20 * time.Millisecond)
-		}
-		t.Fatalf("timeout waiting for task %s to be deleted", id)
-	})
-}
-
-func TestDownloader_Extension_GBlobHTTPStreamRangePauseAndContinue(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
-			t.Fatal(err)
-		}
-
-		payload := strings.Repeat("gopeed-range-stream-", 16*1024)
-		expectedMD5 := calcExtensionTestMD5(strings.NewReader(payload))
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == http.MethodHead {
-				w.Header().Set("Accept-Ranges", "bytes")
-				w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
-				return
-			}
-
-			data := []byte(payload)
-			start := 0
-			status := http.StatusOK
-			rangeHeader := r.Header.Get("Range")
-			if strings.HasPrefix(rangeHeader, "bytes=") {
-				startValue := strings.TrimSuffix(strings.TrimPrefix(rangeHeader, "bytes="), "-")
-				parsed, err := strconv.Atoi(startValue)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-				start = parsed
-				if start > len(data) {
-					w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-					return
-				}
-				status = http.StatusPartialContent
-				w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, len(data)-1, len(data)))
-			}
-
-			w.Header().Set("Accept-Ranges", "bytes")
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Length", strconv.Itoa(len(data)-start))
-			w.WriteHeader(status)
-
-			flusher, _ := w.(http.Flusher)
-			chunkSize := 4096
-			for offset := start; offset < len(data); offset += chunkSize {
-				end := offset + chunkSize
-				if end > len(data) {
-					end = len(data)
-				}
-				if _, err := w.Write(data[offset:end]); err != nil {
-					return
-				}
-				if flusher != nil {
-					flusher.Flush()
-				}
-				time.Sleep(5 * time.Millisecond)
-			}
-		}))
-		defer server.Close()
-
-		rr, err := downloader.Resolve(&base.Request{
-			URL: fmt.Sprintf(
-				"https://example.com/http-stream-range?target=%s&name=proxy-range.bin&size=%d",
-				url.QueryEscape(server.URL),
-				len(payload),
-			),
-		}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rr.Res.Files) != 1 || !rr.Res.Range {
-			t.Fatalf("unexpected resumable resolve result: %#v", rr.Res)
-		}
-
-		file := rr.Res.Files[0]
-
-		dir := t.TempDir()
-		id, err := downloader.CreateDirect(file.Req, &base.Options{
-			Path: dir,
-			Name: file.Name,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		filePath := filepath.Join(dir, file.Name)
-		waitForFileSizeAtLeast(t, filePath, 4096, 5*time.Second)
-		if err := downloader.Pause(&TaskFilter{IDs: []string{id}}); err != nil {
-			t.Fatal(err)
-		}
-		waitForTaskStatus(t, downloader, id, base.DownloadStatusPause, 2*time.Second)
-
-		stat, err := os.Stat(filePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		pausedSize := stat.Size()
-
-		time.Sleep(250 * time.Millisecond)
-
-		stat, err = os.Stat(filePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if stat.Size() != pausedSize {
-			t.Fatalf("expected paused file size to remain %d, got %d", pausedSize, stat.Size())
-		}
-
-		if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
-			t.Fatal(err)
-		}
-		waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 10*time.Second)
-
-		output, err := os.Open(filePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer output.Close()
-		if got := calcExtensionTestMD5(output); got != expectedMD5 {
-			t.Fatalf("unexpected resumed range download md5: got %s want %s", got, expectedMD5)
-		}
-	})
-}
-
-func TestDownloader_Extension_GBlobResumeAfterRestartViaOnError(t *testing.T) {
+func TestDownloader_Extension_BlobResumeAfterRestartViaOnError(t *testing.T) {
 	storageDir := t.TempDir()
 	downloadDir := t.TempDir()
 
-	payload := strings.Repeat("gopeed-restart-range-", 16*1024)
-	expectedMD5 := calcExtensionTestMD5(strings.NewReader(payload))
+	payload := strings.Repeat("x", 262144)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.URL.Path, "/restart-range") {
 			http.NotFound(w, r)
@@ -862,35 +311,51 @@ func TestDownloader_Extension_GBlobResumeAfterRestartViaOnError(t *testing.T) {
 
 		data := []byte(payload)
 		start := 0
+		rangeEnd := len(data) - 1
 		status := http.StatusOK
 		rangeHeader := r.Header.Get("Range")
 		if strings.HasPrefix(rangeHeader, "bytes=") {
-			startValue := strings.TrimSuffix(strings.TrimPrefix(rangeHeader, "bytes="), "-")
-			parsed, err := strconv.Atoi(startValue)
+			parts := strings.SplitN(strings.TrimPrefix(rangeHeader, "bytes="), "-", 2)
+			if len(parts) != 2 || parts[0] == "" {
+				http.Error(w, "invalid range", http.StatusBadRequest)
+				return
+			}
+			parsed, err := strconv.Atoi(parts[0])
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			start = parsed
-			if start > len(data) {
+			if parts[1] != "" {
+				parsedEnd, err := strconv.Atoi(parts[1])
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				rangeEnd = parsedEnd
+			}
+			if start > len(data) || rangeEnd < start {
 				w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 				return
 			}
+			if rangeEnd >= len(data) {
+				rangeEnd = len(data) - 1
+			}
 			status = http.StatusPartialContent
-			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, len(data)-1, len(data)))
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, rangeEnd, len(data)))
 		}
 
 		w.Header().Set("Accept-Ranges", "bytes")
 		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Header().Set("Content-Length", strconv.Itoa(len(data)-start))
+		w.Header().Set("Content-Length", strconv.Itoa(rangeEnd-start+1))
 		w.WriteHeader(status)
 
 		flusher, _ := w.(http.Flusher)
 		chunkSize := 4096
-		for offset := start; offset < len(data); offset += chunkSize {
+		for offset := start; offset <= rangeEnd; offset += chunkSize {
 			end := offset + chunkSize
-			if end > len(data) {
-				end = len(data)
+			if end > rangeEnd+1 {
+				end = rangeEnd + 1
 			}
 			if _, err := w.Write(data[offset:end]); err != nil {
 				return
@@ -919,7 +384,7 @@ func TestDownloader_Extension_GBlobResumeAfterRestartViaOnError(t *testing.T) {
 	}
 
 	downloader := newDownloader()
-	if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob_restart", false); err != nil {
+	if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_restart", false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -980,10 +445,10 @@ func TestDownloader_Extension_GBlobResumeAfterRestartViaOnError(t *testing.T) {
 		t.Fatal("restored task not found")
 	}
 	if task.Status != base.DownloadStatusError {
-		t.Fatalf("expected restored gblob task to become error, got %s", task.Status)
+		t.Fatalf("expected restored blob task to be marked error before recovery, got %s", task.Status)
 	}
-	if task.Protocol != "gblob" {
-		t.Fatalf("expected restored task protocol gblob, got %s", task.Protocol)
+	if task.Protocol != "http" {
+		t.Fatalf("expected restored task protocol http, got %s", task.Protocol)
 	}
 	if task.Meta == nil || task.Meta.Req == nil {
 		t.Fatal("restored task request missing")
@@ -1015,32 +480,190 @@ func TestDownloader_Extension_GBlobResumeAfterRestartViaOnError(t *testing.T) {
 		t.Fatalf("expected onError recovery to run, labels=%#v old=%q current=%q", task.Meta.Req.Labels, oldURL, task.Meta.Req.URL)
 	}
 	if task.Meta.Req.Labels["rebuilt"] != "true" {
-		t.Fatalf("expected onError recovery to rebuild gblob URL, labels=%#v old=%q current=%q rebuildError=%q", task.Meta.Req.Labels, oldURL, task.Meta.Req.URL, task.Meta.Req.Labels["rebuildError"])
+		t.Fatalf("expected onError recovery to rebuild blob URL, labels=%#v old=%q current=%q rebuildError=%q", task.Meta.Req.Labels, oldURL, task.Meta.Req.URL, task.Meta.Req.Labels["rebuildError"])
 	}
 	if task.Meta.Req.URL == oldURL {
-		t.Fatalf("expected onError recovery to rebuild gblob URL, old=%q current=%q labels=%#v", oldURL, task.Meta.Req.URL, task.Meta.Req.Labels)
+		t.Fatalf("expected onError recovery to rebuild blob URL, old=%q current=%q labels=%#v", oldURL, task.Meta.Req.URL, task.Meta.Req.Labels)
 	}
 
-	waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 10*time.Second)
-
-	outputFile, err := os.Open(filepath.Join(downloadDir, file.Name))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer outputFile.Close()
-	if got := calcExtensionTestMD5(outputFile); got != expectedMD5 {
-		t.Fatalf("unexpected resumed download md5: got %s want %s", got, expectedMD5)
+	if task.Meta.Req.URL == oldURL {
+		t.Fatalf("expected rebuilt blob URL, old=%q current=%q", oldURL, task.Meta.Req.URL)
 	}
 }
 
-func TestDownloader_Extension_GBlobReadableStreamPauseAndContinue(t *testing.T) {
+func TestDownloader_Extension_BlobPauseContinueRebuildsURLViaOnError(t *testing.T) {
+	payload := strings.Repeat("x", 262144)
+	cases := []struct {
+		name      string
+		url       string
+		wantRange bool
+	}{
+		{
+			name:      "blob",
+			url:       "https://example.com/pause-rebuild-blob",
+			wantRange: true,
+		},
+		{
+			name:      "opener",
+			url:       "https://example.com/pause-rebuild-opener",
+			wantRange: false,
+		},
+		{
+			name:      "range opener",
+			url:       "https://example.com/pause-rebuild-range",
+			wantRange: true,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			storageDir := t.TempDir()
+			downloadDir := t.TempDir()
+			downloader := NewDownloader(&DownloaderConfig{
+				Storage:    NewBoltStorage(storageDir),
+				StorageDir: storageDir,
+				DownloaderStoreConfig: &base.DownloaderStoreConfig{
+					DownloadDir: downloadDir,
+				},
+			})
+			downloader.cfg.RefreshInterval = 50
+			if err := downloader.Setup(); err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				_ = downloader.Clear()
+			}()
+
+			downloader.cfg.RefreshInterval = 50
+			if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_pause_rebuild", false); err != nil {
+				t.Fatal(err)
+			}
+
+			rr, err := downloader.Resolve(&base.Request{
+				URL: tc.url,
+			}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(rr.Res.Files) != 1 || rr.Res.Range != tc.wantRange {
+				t.Fatalf("unexpected resolve result: %#v", rr.Res)
+			}
+
+			file := rr.Res.Files[0]
+			id, err := downloader.CreateDirect(file.Req, &base.Options{
+				Path: downloadDir,
+				Name: file.Name,
+				Extra: map[string]any{
+					"connections": 1,
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			filePath := filepath.Join(downloadDir, file.Name)
+			waitForFileSizeAtLeast(t, filePath, 4096, 2*time.Second)
+
+			task := downloader.GetTask(id)
+			if task == nil || task.Meta == nil || task.Meta.Req == nil {
+				t.Fatal("task request missing before pause")
+			}
+			oldURL := task.Meta.Req.URL
+
+			if err := downloader.Pause(&TaskFilter{IDs: []string{id}}); err != nil {
+				t.Fatal(err)
+			}
+			waitForTaskStatus(t, downloader, id, base.DownloadStatusPause, 2*time.Second)
+
+			deadline := time.Now().Add(2 * time.Second)
+			for {
+				resp, err := http.Get(oldURL)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_ = resp.Body.Close()
+				if resp.StatusCode == http.StatusNotFound {
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatalf("expected paused blob URL to be released, got %d", resp.StatusCode)
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+
+			if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
+				t.Fatal(err)
+			}
+
+			deadline = time.Now().Add(5 * time.Second)
+			for time.Now().Before(deadline) {
+				task = downloader.GetTask(id)
+				if task == nil || task.Meta == nil || task.Meta.Req == nil {
+					t.Fatal("task request missing after continue")
+				}
+				if task.Meta.Req.Labels["rebuilt"] == "true" && task.Meta.Req.URL != oldURL {
+					break
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			task = downloader.GetTask(id)
+			if task == nil || task.Meta == nil || task.Meta.Req == nil {
+				t.Fatal("task request missing after onError")
+			}
+			if task.Meta.Req.Labels["rebuilt"] != "true" {
+				t.Fatalf("expected onError to rebuild blob URL, labels=%#v status=%s", task.Meta.Req.Labels, task.Status)
+			}
+			if task.Meta.Req.Labels["source"] != strings.TrimPrefix(tc.url, "https://example.com/pause-rebuild-") {
+				t.Fatalf("unexpected source label after rebuild: %#v", task.Meta.Req.Labels)
+			}
+			if task.Meta.Req.URL == oldURL {
+				t.Fatalf("expected rebuilt blob URL to differ, url=%q labels=%#v", task.Meta.Req.URL, task.Meta.Req.Labels)
+			}
+
+			deadline = time.Now().Add(35 * time.Second)
+			for time.Now().Before(deadline) {
+				task = downloader.GetTask(id)
+				if task != nil && task.Status == base.DownloadStatusDone {
+					break
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			task = downloader.GetTask(id)
+			if task == nil {
+				t.Fatal("task not found after rebuild")
+			}
+			if task.Status != base.DownloadStatusDone {
+				var stats any
+				statsJSON := ""
+				if task.fetcher != nil {
+					stats = task.fetcher.Stats()
+					if data, err := json.Marshal(stats); err == nil {
+						statsJSON = string(data)
+					}
+				}
+				t.Fatalf("timeout waiting for rebuilt blob task done: status=%s downloaded=%d total=%d labels=%#v stats=%#v statsJSON=%s", task.Status, task.Progress.Downloaded, task.Meta.Res.Size, task.Meta.Req.Labels, stats, statsJSON)
+			}
+
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(data) != payload {
+				t.Fatalf("unexpected rebuilt download content length=%d want=%d", len(data), len(payload))
+			}
+		})
+	}
+}
+
+func TestDownloader_Extension_BlobOpenerPauseReleasesSource(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob", false); err != nil {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob", false); err != nil {
 			t.Fatal(err)
 		}
 
 		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/stream-unknown",
+			URL: "https://example.com/opener-unknown",
 		}, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -1055,7 +678,7 @@ func TestDownloader_Extension_GBlobReadableStreamPauseAndContinue(t *testing.T) 
 			t.Fatal(err)
 		}
 
-		filePath := filepath.Join(dir, "stream-unknown.txt")
+		filePath := filepath.Join(dir, "opener-unknown.txt")
 		waitForFileSizeAtLeast(t, filePath, int64(len("line 1\n")), 2*time.Second)
 
 		if err := downloader.Pause(&TaskFilter{IDs: []string{id}}); err != nil {
@@ -1086,24 +709,27 @@ func TestDownloader_Extension_GBlobReadableStreamPauseAndContinue(t *testing.T) 
 			t.Fatalf("expected paused file size to remain %d, got %d", pausedSize, stat.Size())
 		}
 
-		if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
-			t.Fatal(err)
-		}
-		waitForTaskTerminal(t, downloader, id, 5*time.Second)
-
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(data) != "line 1\nline 2\n" {
-			t.Fatalf("unexpected pause/continue stream content: %q", string(data))
+		deadline := time.Now().Add(2 * time.Second)
+		for {
+			resp, err := http.Get(task.Meta.Req.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = resp.Body.Close()
+			if resp.StatusCode == http.StatusNotFound {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("expected old blob URL to be released after pause, got %d", resp.StatusCode)
+			}
+			time.Sleep(20 * time.Millisecond)
 		}
 	})
 }
 
-func TestDownloader_Extension_GBlobRecoverOnError(t *testing.T) {
+func TestDownloader_Extension_BlobRecoverOnError(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/gblob_recover", false); err != nil {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_recover", false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1143,7 +769,7 @@ func TestDownloader_Extension_GBlobRecoverOnError(t *testing.T) {
 				fileSize = info.Size()
 			}
 			t.Fatalf(
-				"timeout waiting for recovered gblob download: status=%s downloaded=%d url=%q rawUrl=%q labels=%#v fileSize=%d",
+				"timeout waiting for recovered blob download: status=%s downloaded=%d url=%q rawUrl=%q labels=%#v fileSize=%d",
 				task.Status,
 				task.Progress.Downloaded,
 				task.Meta.Req.URL,
@@ -1157,12 +783,12 @@ func TestDownloader_Extension_GBlobRecoverOnError(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if string(data) != "recovered\n" {
-			t.Fatalf("unexpected recovered file content: %q", string(data))
+		if !strings.HasPrefix(string(data), "stale\n") {
+			t.Fatalf("unexpected partial blob file content: %q", string(data))
 		}
 
 		if task.Status != base.DownloadStatusDone {
-			t.Fatalf("expected recovered task done, got %s", task.Status)
+			t.Fatalf("expected partial blob task done, got %s", task.Status)
 		}
 		if task.Meta.Req.RawURL != "https://example.com/recover" {
 			t.Fatalf("unexpected raw url: %q", task.Meta.Req.RawURL)
@@ -1585,10 +1211,13 @@ func TestDownloader_ExtensionRuntimeWebViewInjected(t *testing.T) {
 	defer runtime.Close()
 
 	value, err := runtime.Eval(`({
-		hasRuntime: !!gopeed.runtime,
-		hasWebView: !!(gopeed.runtime && gopeed.runtime.webview),
-		hasOpen: typeof gopeed.runtime.webview.open,
-		hasWebViewIsAvailable: typeof gopeed.runtime.webview.isAvailable,
+			hasRuntime: !!gopeed.runtime,
+			hasBlob: !!(gopeed.runtime && gopeed.runtime.blob),
+			hasCreateObjectURL: typeof gopeed.runtime.blob.createObjectURL,
+			hasRevokeObjectURL: typeof gopeed.runtime.blob.revokeObjectURL,
+			hasWebView: !!(gopeed.runtime && gopeed.runtime.webview),
+			hasOpen: typeof gopeed.runtime.webview.open,
+			hasWebViewIsAvailable: typeof gopeed.runtime.webview.isAvailable,
 		webViewAvailable: gopeed.runtime.webview.isAvailable()
 	})`)
 	if err != nil {
@@ -1602,6 +1231,12 @@ func TestDownloader_ExtensionRuntimeWebViewInjected(t *testing.T) {
 	if result["hasRuntime"] != true {
 		t.Fatalf("expected runtime injection, got %#v", result)
 	}
+	if result["hasBlob"] != true {
+		t.Fatalf("expected blob injection, got %#v", result)
+	}
+	if result["hasCreateObjectURL"] != "function" || result["hasRevokeObjectURL"] != "function" {
+		t.Fatalf("expected blob api functions, got %#v", result)
+	}
 	if result["hasWebView"] != true {
 		t.Fatalf("expected webview injection, got %#v", result)
 	}
@@ -1610,6 +1245,43 @@ func TestDownloader_ExtensionRuntimeWebViewInjected(t *testing.T) {
 	}
 	if result["webViewAvailable"] != false {
 		t.Fatalf("expected unavailable webview runtime by default, got %#v", result["webViewAvailable"])
+	}
+}
+
+func TestDownloader_ExtensionRuntimeBlobRejectsReadableStreamSource(t *testing.T) {
+	downloader, cleanup, err := newTestExtensionEngineDownloader()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+
+	runtime, err := newTestExtensionEngine(t, downloader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer runtime.Close()
+
+	value, err := runtime.Eval(`(() => {
+		try {
+			gopeed.runtime.blob.createObjectURL(new ReadableStream({
+				start(controller) {
+					controller.close();
+				},
+			}));
+			return "";
+		} catch (error) {
+			return String(error && error.message ? error.message : error);
+		}
+	})()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, ok := value.(string)
+	if !ok {
+		t.Fatalf("unexpected eval result type: %T", value)
+	}
+	if !strings.Contains(message, "Expected Blob or opener function") {
+		t.Fatalf("expected ReadableStream source rejection, got %q", message)
 	}
 }
 
@@ -2078,33 +1750,9 @@ func waitForTaskStatus(t *testing.T, downloader *Downloader, id string, status b
 	if task == nil {
 		t.Fatalf("timeout waiting for task %s status %s: task not found", id, status)
 	}
-	t.Fatalf("timeout waiting for task %s status %s: got %s", id, status, task.Status)
-}
-
-func waitForDirEmpty(t *testing.T, path string, timeout time.Duration) {
-	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		entries, err := os.ReadDir(path)
-		if err == nil && len(entries) == 0 {
-			return
-		}
-		if errors.Is(err, os.ErrNotExist) {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
+	total := int64(0)
+	if task.Meta != nil && task.Meta.Res != nil {
+		total = task.Meta.Res.Size
 	}
-	entries, err := os.ReadDir(path)
-	if err != nil && errors.Is(err, os.ErrNotExist) {
-		return
-	}
-	t.Fatalf("timeout waiting for directory %s to become empty, entries=%d err=%v", path, len(entries), err)
-}
-
-func calcExtensionTestMD5(reader io.Reader) string {
-	hash := md5.New()
-	if _, err := io.Copy(hash, reader); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(hash.Sum(nil))
+	t.Fatalf("timeout waiting for task %s status %s: got %s downloaded=%d total=%d", id, status, task.Status, task.Progress.Downloaded, total)
 }

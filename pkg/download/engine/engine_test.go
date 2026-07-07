@@ -47,21 +47,6 @@ func TestError(t *testing.T) {
 	}
 }
 
-func TestURLCreateObjectURLRejectsUnsupportedType(t *testing.T) {
-	engine := NewEngine(nil)
-	defer engine.Close()
-
-	_, err := engine.RunString(`
-		URL.createObjectURL({});
-	`)
-	if err == nil {
-		t.Fatal("expected unsupported type error")
-	}
-	if !strings.Contains(err.Error(), "Unsupported object type for URL.createObjectURL: Object") {
-		t.Fatalf("unexpected unsupported type error: %v", err)
-	}
-}
-
 func TestCallFunction_DetachedAsyncWorkDoesNotBlockReturn(t *testing.T) {
 	engine := NewEngine(nil)
 	defer engine.Close()

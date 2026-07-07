@@ -271,25 +271,11 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, er
 				}
 				ensureResourceRequestRawURLs(req, ctx.Res)
 				ctx.Res.CalcSize(nil)
-				d.applyGBlobResourceMetadata(ctx.Res)
 			}
 			res = ctx.Res
 		},
 	)
 	return
-}
-
-func (d *Downloader) applyGBlobResourceMetadata(res *base.Resource) {
-	if d.gblob == nil || res == nil {
-		return
-	}
-	for _, file := range res.Files {
-		if file == nil || file.Req == nil {
-			continue
-		}
-		_ = d.gblob.SetSize(file.Req.URL, file.Size)
-		_ = d.gblob.SetRange(file.Req.URL, res.Range)
-	}
 }
 
 func (d *Downloader) triggerOnStart(task *Task) {

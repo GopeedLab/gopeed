@@ -9,7 +9,6 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/protocol/bt"
 	"github.com/GopeedLab/gopeed/internal/protocol/ed2k"
-	"github.com/GopeedLab/gopeed/internal/protocol/gblob"
 	"github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
@@ -166,7 +165,6 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 	}
 	if len(cfg.FetchManagers) == 0 {
 		cfg.FetchManagers = []fetcher.FetcherManager{
-			new(gblob.FetcherManager),
 			new(http.FetcherManager),
 			new(bt.FetcherManager),
 			new(ed2k.FetcherManager),

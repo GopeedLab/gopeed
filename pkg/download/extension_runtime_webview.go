@@ -29,15 +29,46 @@ func injectGopeed(vm *goja.Runtime, gopeed *Instance) error {
 		return err
 	}
 	runtimeObject := vm.NewObject()
-	if gopeed.Runtime != nil && gopeed.Runtime.WebView != nil {
-		if err := runtimeObject.Set("webview", newJSWebViewRuntime(vm, gopeed.Runtime.WebView)); err != nil {
+	if gopeed.Runtime != nil {
+		if err := runtimeObject.Set("blob", newJSBlobRuntime(vm)); err != nil {
 			return err
+		}
+		if gopeed.Runtime.WebView != nil {
+			if err := runtimeObject.Set("webview", newJSWebViewRuntime(vm, gopeed.Runtime.WebView)); err != nil {
+				return err
+			}
 		}
 	}
 	if err := gopeedObject.Set("runtime", runtimeObject); err != nil {
 		return err
 	}
 	return vm.Set("gopeed", gopeedObject)
+}
+
+func newJSBlobRuntime(vm *goja.Runtime) *goja.Object {
+	obj := vm.NewObject()
+	_ = obj.Set("createObjectURL", func(call goja.FunctionCall) goja.Value {
+		fn, ok := goja.AssertFunction(vm.Get("__gopeed_blob_create_object_url"))
+		if !ok {
+			panic(vm.ToValue(fmt.Errorf("blob runtime is not available")))
+		}
+		value, err := fn(goja.Undefined(), call.Argument(0), call.Argument(1))
+		if err != nil {
+			panic(vm.ToValue(err))
+		}
+		return value
+	})
+	_ = obj.Set("revokeObjectURL", func(call goja.FunctionCall) goja.Value {
+		fn, ok := goja.AssertFunction(vm.Get("__gopeed_blob_revoke_object_url"))
+		if !ok {
+			panic(vm.ToValue(fmt.Errorf("blob runtime is not available")))
+		}
+		if _, err := fn(goja.Undefined(), call.Argument(0)); err != nil {
+			panic(vm.ToValue(err))
+		}
+		return goja.Undefined()
+	})
+	return obj
 }
 
 func newJSEventsRuntime(vm *goja.Runtime, events InstanceEvents) *goja.Object {

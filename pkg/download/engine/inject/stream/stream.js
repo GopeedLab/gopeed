@@ -1,9 +1,5 @@
 (function () {
   const createBlobObjectURL = globalThis.__gopeed_create_blob_object_url;
-  const createWritableObjectURL = globalThis.__gopeed_create_writable_stream_object_url;
-  const writeWritableObjectURL = globalThis.__gopeed_write_writable_stream_object_url;
-  const closeWritableObjectURL = globalThis.__gopeed_close_writable_stream_object_url;
-  const abortWritableObjectURL = globalThis.__gopeed_abort_writable_stream_object_url;
   const revokeObjectURL = globalThis.__gopeed_revoke_object_url;
   const fetchOpen = globalThis.__gopeed_fetch_open;
   const fetchRead = globalThis.__gopeed_fetch_read;
@@ -545,23 +541,7 @@
     }
   }
 
-  const originalCreateObjectURL = typeof URL.createObjectURL === "function"
-    ? URL.createObjectURL.bind(URL)
-    : null;
-  const originalRevokeObjectURL = typeof URL.revokeObjectURL === "function"
-    ? URL.revokeObjectURL.bind(URL)
-    : null;
-  const resumableReadableObjectURLs = new Map();
-  const activeReadableObjectURLs = new Map();
-  const readableObjectURLYieldBytes = 256 * 1024;
-
-  function isIgnorableGBlobObjectURLError(error) {
-    const message = error == null ? "" : String(error && error.message ? error.message : error);
-    return message.indexOf("gblob source revoked") >= 0 ||
-      message.indexOf("gblob source not found") >= 0 ||
-      message.indexOf("gblob source closed") >= 0 ||
-      message.indexOf("gblob source aborted") >= 0;
-  }
+  const blobReaders = new Map();
 
   function getValueTypeName(value) {
     if (value === null) {
@@ -577,58 +557,54 @@
   }
 
   function toReadableStreamReader(value, sourceLabel) {
-    if (value instanceof ReadableStream) {
+    if (value && typeof value.getReader === "function") {
       return value.getReader();
     }
     throw new TypeError(sourceLabel + " must return a ReadableStream, got " + getValueTypeName(value));
   }
 
-  function describeObjectURLValue(value) {
-    if (value && value.__gopeedStreamBackedBlob) {
-      const stream = value.__gopeedBodyStream;
-      value.__gopeedBodyStream = null;
-      if (stream instanceof ReadableStream) {
-        return {
-          kind: "readable",
-          initialReadable: stream,
-          openReadable: null,
-          sourceLabel: "URL.createObjectURL Response blob stream",
-        };
+  async function openBlobReadable(blob, request) {
+    const { offset, end } = request;
+    const sliced = blob.slice(offset, end >= offset ? end + 1 : undefined);
+    if (sliced && typeof sliced.stream === "function") {
+      try {
+        const stream = sliced.stream();
+        if (stream && typeof stream.getReader === "function") {
+          return stream;
+        }
+      } catch (_) {
       }
     }
+    if (sliced && typeof sliced.arrayBuffer === "function") {
+      const buffer = await sliced.arrayBuffer();
+      return new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(buffer));
+          controller.close();
+        },
+      });
+    }
+    throw new TypeError("Blob source cannot be converted to a ReadableStream");
+  }
+
+  function describeObjectURLValue(value) {
     if (value instanceof Blob) {
       return {
         kind: "blob",
         value,
       };
     }
-    if (value instanceof ReadableStream) {
-      return {
-        kind: "readable",
-        initialReadable: value,
-        openReadable: null,
-        sourceLabel: "URL.createObjectURL ReadableStream",
-      };
-    }
     if (typeof value === "function") {
       return {
         kind: "opener",
-        initialReadable: null,
         openReadable: value,
-        sourceLabel: "URL.createObjectURL opener function",
+        sourceLabel: "gopeed.runtime.blob.createObjectURL opener function",
       };
     }
     return {
       kind: "other",
       value,
     };
-  }
-
-  function startReadableObjectURL(url, state) {
-    activeReadableObjectURLs.set(url, state);
-    setTimeout(() => {
-      void pumpReadableObjectURL(url, state);
-    }, 0);
   }
 
   function releaseReader(reader, reason) {
@@ -652,144 +628,126 @@
     }
   }
 
-  function releaseActiveReadable(url, reason) {
-    const active = activeReadableObjectURLs.get(url);
-    if (!active) {
-      return;
+  function normalizeBlobObjectURLOptions(value, options, defaultRange) {
+    const normalized = {
+      contentType: "",
+      size: 0,
+      range: !!defaultRange,
+    };
+    if (options && typeof options === "object") {
+      if (typeof options.contentType === "string") {
+        normalized.contentType = options.contentType;
+      }
+      if (Number.isFinite(Number(options.size)) && Number(options.size) > 0) {
+        normalized.size = Number(options.size);
+      }
+      if (typeof options.range === "boolean") {
+        normalized.range = options.range;
+      }
     }
-    activeReadableObjectURLs.delete(url);
-    active.cancelled = true;
-    releaseReader(active.reader, reason);
+    if (!normalized.contentType && value && typeof value.type === "string") {
+      normalized.contentType = value.type;
+    }
+    if (!normalized.size && value) {
+      if (Number.isFinite(Number(value.size)) && Number(value.size) > 0) {
+        normalized.size = Number(value.size);
+      } else if (value._buffer && Number.isFinite(Number(value._buffer.byteLength))) {
+        normalized.size = Number(value._buffer.byteLength);
+      }
+    }
+    return normalized;
   }
 
-  async function pumpReadableObjectURL(url, state) {
-    let reader = null;
-    try {
-      let source;
-      if (state.initialReadable) {
-        source = state.initialReadable;
-        state.initialReadable = null;
-      } else {
-        if (typeof state.openReadable !== "function") {
-          throw new Error("gblob readable stream is not reopenable");
-        }
-        source = await state.openReadable(state.offset);
-      }
-      reader = toReadableStreamReader(source, state.sourceLabel);
-      if (activeReadableObjectURLs.get(url) !== state || state.cancelled) {
-        releaseReader(reader, "stale gblob producer");
-        reader = null;
-        return;
-      }
-      state.reader = reader;
-      let bytesSinceYield = 0;
-      while (!state.cancelled) {
-        const current = activeReadableObjectURLs.get(url);
-        if (current !== state) {
-          releaseReader(reader, "stale gblob producer");
-          reader = null;
-          return;
-        }
-        const { done, value } = await reader.read();
-        if (done) {
-          if (activeReadableObjectURLs.get(url) === state) {
-            activeReadableObjectURLs.delete(url);
-            await closeWritableObjectURL(url);
-          }
-          releaseReader(reader);
-          reader = null;
-          return;
-        }
-        const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
-        if (activeReadableObjectURLs.get(url) !== state || state.cancelled) {
-          releaseReader(reader, "stale gblob producer");
-          reader = null;
-          return;
-        }
-        await writeWritableObjectURL(url, chunk);
-        bytesSinceYield += chunk.byteLength;
-        if (bytesSinceYield >= readableObjectURLYieldBytes) {
-          bytesSinceYield = 0;
-          await new Promise((resolve) => setTimeout(resolve, 0));
-        }
-      }
-      releaseReader(reader, "gblob producer cancelled");
-      reader = null;
-    } catch (error) {
-      if (isIgnorableGBlobObjectURLError(error)) {
-        if (activeReadableObjectURLs.get(url) === state) {
-          activeReadableObjectURLs.delete(url);
-        }
-        if (reader) {
-          releaseReader(reader, "gblob source closed");
-          reader = null;
-        }
-        return;
-      }
-      if (activeReadableObjectURLs.get(url) === state) {
-        activeReadableObjectURLs.delete(url);
-        try {
-          await abortWritableObjectURL(url, error == null ? "" : String(error && error.message ? error.message : error));
-        } catch (_) {
-        }
-      }
-      if (reader) {
-        releaseReader(reader, error);
-        reader = null;
-      }
+  function validateBlobObjectURLOptions(options) {
+    if (options.range && !(Number.isFinite(Number(options.size)) && Number(options.size) > 0)) {
+      throw new TypeError("gopeed.runtime.blob.createObjectURL options.range requires a positive options.size");
     }
   }
 
-  globalThis.__gopeed_open_writable_stream_object_url = function (url, offset) {
-    const openReadable = resumableReadableObjectURLs.get(url);
+  function normalizeOpenRequest(request) {
+    const offset = Math.max(0, Number(request && request.offset) || 0);
+    const endValue = Number(request && request.end);
+    const end = Number.isFinite(endValue) ? endValue : -1;
+    return { offset, end };
+  }
+
+  globalThis.__gopeed_blob_open_source = async function (openReadable, request) {
     if (typeof openReadable !== "function") {
-      throw new Error("gblob resumable opener not found");
+      throw new TypeError("blob opener must be callable");
     }
-    releaseActiveReadable(url, "gblob source reopened");
-    startReadableObjectURL(url, {
-      initialReadable: null,
-      openReadable,
-      sourceLabel: "URL.createObjectURL opener function",
-      offset: Number(offset) || 0,
-      reader: null,
-      cancelled: false,
-    });
+    const source = await openReadable(normalizeOpenRequest(request));
+    const reader = toReadableStreamReader(source, "gopeed.runtime.blob.createObjectURL opener function");
+    const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + "-" + String(Math.random());
+    blobReaders.set(id, reader);
+    return id;
   };
 
-  URL.createObjectURL = function (value) {
+  globalThis.__gopeed_blob_read_source = async function (id, chunkSize) {
+    const reader = blobReaders.get(id);
+    if (!reader) {
+      return null;
+    }
+    const { done, value } = await reader.read();
+    if (done) {
+      blobReaders.delete(id);
+      releaseReader(reader);
+      return null;
+    }
+    const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+    const size = Math.max(1, Number(chunkSize) || chunk.byteLength);
+    if (chunk.byteLength <= size) {
+      return chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength);
+    }
+    const head = chunk.slice(0, size);
+    let offset = size;
+    blobReaders.set(id, {
+      read() {
+        if (offset >= chunk.byteLength) {
+          return reader.read();
+        }
+        const next = chunk.slice(offset, Math.min(offset + size, chunk.byteLength));
+        offset += next.byteLength;
+        return Promise.resolve({ done: false, value: next });
+      },
+      cancel(reason) {
+        return reader.cancel(reason);
+      },
+      releaseLock() {
+        return reader.releaseLock();
+      }
+    });
+    return head.buffer.slice(head.byteOffset, head.byteOffset + head.byteLength);
+  };
+
+  globalThis.__gopeed_blob_close_source = function (id) {
+    const reader = blobReaders.get(id);
+    if (!reader) {
+      return;
+    }
+    blobReaders.delete(id);
+    releaseReader(reader, "blob request closed");
+  };
+
+  globalThis.__gopeed_blob_create_object_url = function (value, options) {
     const described = describeObjectURLValue(value);
     if (described.kind === "blob") {
-      return createBlobObjectURL(described.value._buffer, described.value.type || "");
-    }
-    if (described.kind === "readable") {
-      const url = createWritableObjectURL(false);
-      startReadableObjectURL(url, {
-        initialReadable: described.initialReadable,
-        openReadable: null,
-        sourceLabel: described.sourceLabel,
-        offset: 0,
-        reader: null,
-        cancelled: false,
-      });
-      return url;
+      const blob = described.value;
+      const normalized = normalizeBlobObjectURLOptions(blob, options, true);
+      validateBlobObjectURLOptions(normalized);
+      const opener = async (request) => openBlobReadable(blob, request);
+      return createBlobObjectURL(opener, normalized);
     }
     if (described.kind === "opener") {
-      const url = createWritableObjectURL(true);
-      resumableReadableObjectURLs.set(url, described.openReadable);
-      return url;
+      const normalized = normalizeBlobObjectURLOptions(null, options, false);
+      validateBlobObjectURLOptions(normalized);
+      return createBlobObjectURL(described.openReadable, normalized);
     }
-    throw new TypeError("Unsupported object type for URL.createObjectURL: " + getValueTypeName(described.value) + ". Expected Blob, ReadableStream, or opener function");
+    throw new TypeError("Unsupported object type for gopeed.runtime.blob.createObjectURL: " + getValueTypeName(described.value) + ". Expected Blob or opener function");
   };
 
-  URL.revokeObjectURL = function (url) {
-    if (typeof url === "string" && url.indexOf("gblob:") === 0) {
-      resumableReadableObjectURLs.delete(url);
-      releaseActiveReadable(url, "gblob source revoked");
+  globalThis.__gopeed_blob_revoke_object_url = function (url) {
+    if (typeof url === "string") {
       revokeObjectURL(url);
-      return;
-    }
-    if (originalRevokeObjectURL) {
-      originalRevokeObjectURL(url);
     }
   };
 

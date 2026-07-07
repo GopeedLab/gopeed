@@ -15,10 +15,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	internalblob "github.com/GopeedLab/gopeed/internal/blob"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
-	protogblob "github.com/GopeedLab/gopeed/internal/protocol/gblob"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -100,6 +100,7 @@ type Downloader struct {
 	tasks        []*Task
 	waitTasks    []*Task
 	watchedTasks sync.Map
+	watchWG      sync.WaitGroup
 	listener     Listener
 
 	lock               *sync.Mutex
@@ -112,7 +113,7 @@ type Downloader struct {
 	claimedExtractions sync.Map
 
 	extensions []*Extension
-	gblob      *protogblob.Registry
+	blob       *internalblob.Registry
 }
 
 func NewDownloader(cfg *DownloaderConfig) *Downloader {
@@ -144,11 +145,11 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 }
 
 func (d *Downloader) Setup() error {
-	gblobDir := filepath.Join(d.cfg.StorageDir, "gblob")
-	if err := os.RemoveAll(gblobDir); err != nil && !errors.Is(err, os.ErrNotExist) {
+	blobDir := filepath.Join(d.cfg.StorageDir, "blob")
+	if err := os.RemoveAll(blobDir); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	d.gblob = protogblob.NewRegistry(gblobDir)
+	d.blob = internalblob.NewRegistry("")
 
 	// setup storage
 	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
@@ -175,9 +176,6 @@ func (d *Downloader) Setup() error {
 		if _, ok := d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol]; !ok {
 			d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol] = fm.DefaultConfig()
 		}
-		if gfm, ok := fm.(*protogblob.FetcherManager); ok {
-			gfm.SetRegistry(d.gblob)
-		}
 		if sfm, ok := fm.(fetcher.StatefulFetcherManager); ok {
 			sfm.SetStateStore(&protocolStateStore{
 				storage:  d.storage,
@@ -201,12 +199,11 @@ func (d *Downloader) Setup() error {
 				tasks = append(tasks[:i], tasks[i+1:]...)
 				continue
 			}
+			if task.Meta.Req != nil && isInternalBlobURLString(task.Meta.Req.URL) && task.Status != base.DownloadStatusDone && task.Status != base.DownloadStatusError {
+				task.Status = base.DownloadStatusError
+			}
 			d.assignFetcherManager(task)
 			initTask(task)
-			if task.Protocol == protogblob.Scheme && task.Status != base.DownloadStatusDone && task.Status != base.DownloadStatusError {
-				task.Status = base.DownloadStatusError
-				continue
-			}
 			if task.Status != base.DownloadStatusDone && task.Status != base.DownloadStatusError {
 				task.Status = base.DownloadStatusPause
 			}
@@ -501,11 +498,6 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	initOpt, err := d.initOptions(opts)
 	if err != nil {
 		return
-	}
-	if strings.HasPrefix(strings.ToLower(req.URL), protogblob.Scheme+":") {
-		if err = fetcher.Resolve(req, initOpt); err != nil {
-			return
-		}
 	}
 	return d.doCreate(fetcher, initOpt)
 }
@@ -811,7 +803,7 @@ func (d *Downloader) Stats(id string) (sr any, err error) {
 }
 
 func (d *Downloader) doDelete(task *Task, force bool) (err error) {
-	defer d.releaseGBlobTask(task)
+	defer d.releaseBlobTask(task)
 	err = func() error {
 		if err := d.storage.Delete(bucketTask, task.ID); err != nil {
 			return err
@@ -856,8 +848,8 @@ func (d *Downloader) Close() error {
 	for _, fm := range d.cfg.FetchManagers {
 		closeArr = append(closeArr, fm.Close)
 	}
-	if d.gblob != nil {
-		closeArr = append(closeArr, d.gblob.Close)
+	if d.blob != nil {
+		closeArr = append(closeArr, d.blob.Close)
 	}
 	closeArr = append(closeArr, d.storage.Close)
 	// Make sure all resources are released, if had error, return the last error
@@ -1024,9 +1016,11 @@ func (d *Downloader) watch(task *Task) {
 	if _, loaded := d.watchedTasks.LoadOrStore(task.ID, true); loaded {
 		return
 	}
+	d.watchWG.Add(1)
 
 	defer func() {
 		d.watchedTasks.Delete(task.ID)
+		d.watchWG.Done()
 	}()
 
 	// wait task upload done
@@ -1054,6 +1048,9 @@ func (d *Downloader) watch(task *Task) {
 	for {
 		err := task.fetcher.Wait()
 		if err != nil {
+			if task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusWait {
+				return
+			}
 			d.doOnError(task, err)
 			if task.Status == base.DownloadStatusRunning {
 				continue
@@ -1082,7 +1079,7 @@ func (d *Downloader) watch(task *Task) {
 		d.emit(EventKeyDone, task)
 		d.emit(EventKeyFinally, task, err)
 		d.notifyRunning()
-		d.releaseGBlobTask(task)
+		d.releaseBlobTask(task)
 		d.triggerOnDone(task)
 		d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 		d.triggerScripts(ScriptEventDownloadDone, task, nil)
@@ -1152,9 +1149,7 @@ func (d *Downloader) doOnError(task *Task, err error) {
 	task.updateStatus(base.DownloadStatusError)
 	d.triggerOnError(task, err)
 	if task.Status == base.DownloadStatusError {
-		if !d.isResumableGBlobTask(task) {
-			d.releaseGBlobTask(task)
-		}
+		d.releaseBlobTask(task)
 		d.emit(EventKeyError, task, err)
 		d.emit(EventKeyFinally, task, err)
 		d.notifyRunning()
@@ -1168,7 +1163,6 @@ func (d *Downloader) restoreTask(task *Task) error {
 			return err
 		}
 	}
-	go d.watch(task)
 	return nil
 }
 
@@ -1207,17 +1201,6 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	if err != nil {
 		return
 	}
-	if fm.Name() == protogblob.Scheme && d.gblob != nil {
-		if err = d.gblob.Pin(f.Meta().Req.URL); err != nil {
-			return "", err
-		}
-		defer func() {
-			if err != nil {
-				d.gblob.Unpin(f.Meta().Req.URL)
-			}
-		}()
-	}
-
 	task := NewTask()
 	task.fetcherManager = fm
 	task.fetcher = f
@@ -1247,7 +1230,6 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 		err = d.doStart(task)
 	}()
 
-	go d.watch(task)
 	return
 }
 
@@ -1321,11 +1303,20 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		task.lock.Lock()
 		defer task.lock.Unlock()
 
+		if task.fetcher == nil {
+			if err := d.restoreFetcher(task); err != nil {
+				return err
+			}
+		}
 		d.triggerOnStart(task)
 		if task.fetcher != nil {
 			task.fetcher.Meta().Req = task.Meta.Req
 			task.fetcher.Meta().Res = task.Meta.Res
 			task.fetcher.Meta().Opts = task.Meta.Opts
+		}
+		if task.Meta.Req != nil && isInternalBlobURLString(task.Meta.Req.URL) && (d.blob == nil || !d.blob.IsURL(task.Meta.Req.URL)) {
+			task.fetcher = nil
+			return internalblob.ErrSourceNotFound
 		}
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req, task.Meta.Opts)
@@ -1371,6 +1362,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		if err := d.saveTask(task); err != nil {
 			return err
 		}
+		go d.watch(task)
 		d.emit(EventKeyStart, task)
 		return nil
 	}
@@ -1411,6 +1403,7 @@ func (d *Downloader) doPause(task *Task) (err error) {
 				return err
 			}
 		}
+		d.releaseBlobTask(task)
 		if task.fetcherManager != nil && task.fetcher != nil {
 			if err := d.saveTask(task); err != nil {
 				return err
@@ -1849,36 +1842,22 @@ func initTask(task *Task) {
 	task.uploadSpeedArr = make([]int64, 0)
 }
 
-func (d *Downloader) unpinGBlobTask(task *Task) {
-	if d.gblob == nil || task == nil || task.Meta == nil || task.Meta.Req == nil || task.Meta.Req.URL == "" {
+func (d *Downloader) revokeBlobTask(task *Task) {
+	if d.blob == nil || task == nil || task.Meta == nil || task.Meta.Req == nil || task.Meta.Req.URL == "" {
 		return
 	}
-	if task.Protocol != protogblob.Scheme {
+	if !d.blob.IsURL(task.Meta.Req.URL) {
 		return
 	}
-	d.gblob.Unpin(task.Meta.Req.URL)
+	_ = d.blob.Revoke(task.Meta.Req.URL)
 }
 
-func (d *Downloader) isResumableGBlobTask(task *Task) bool {
-	if task == nil || task.Meta == nil || task.Meta.Res == nil {
-		return false
-	}
-	return task.Protocol == protogblob.Scheme && task.Meta.Res.Range
+func (d *Downloader) releaseBlobTask(task *Task) {
+	d.revokeBlobTask(task)
 }
 
-func (d *Downloader) revokeGBlobTask(task *Task) {
-	if d.gblob == nil || task == nil || task.Meta == nil || task.Meta.Req == nil || task.Meta.Req.URL == "" {
-		return
-	}
-	if task.Protocol != protogblob.Scheme {
-		return
-	}
-	_ = d.gblob.Revoke(task.Meta.Req.URL)
-}
-
-func (d *Downloader) releaseGBlobTask(task *Task) {
-	d.revokeGBlobTask(task)
-	d.unpinGBlobTask(task)
+func isInternalBlobURLString(raw string) bool {
+	return strings.Contains(raw, "/__gopeed_blob/")
 }
 
 var defaultDownloader = NewDownloader(nil)

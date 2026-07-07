@@ -1,0 +1,28 @@
+{
+  "name": "blob-pause-rebuild",
+  "title": "gopeed extension blob pause rebuild test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onResolve",
+      "match": {
+        "urls": [
+          "*://example.com/pause-rebuild*"
+        ]
+      },
+      "entry": "index.js"
+    },
+    {
+      "event": "onError",
+      "match": {
+        "labels": [
+          "mode"
+        ],
+        "urls": [
+          "*://example.com/pause-rebuild*"
+        ]
+      },
+      "entry": "index.js"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
-  "name": "gblob",
-  "title": "gopeed extension gblob test",
+  "name": "blob",
+  "title": "gopeed extension blob test",
   "version": "0.0.1",
   "scripts": [
     {

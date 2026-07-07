@@ -1,14 +1,14 @@
 package download
 
 import (
-	"fmt"
+	"context"
+	"io"
 	"sync"
 
-	"github.com/GopeedLab/gopeed/internal/protocol/gblob"
+	internalblob "github.com/GopeedLab/gopeed/internal/blob"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/stream"
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
-	"github.com/dop251/goja"
 )
 
 type engineSession struct {
@@ -96,55 +96,27 @@ func (s *engineSession) runClosers() {
 	}
 }
 
-func normalizeStreamChunk(data any) ([]byte, error) {
-	switch v := data.(type) {
-	case nil:
-		return nil, nil
-	case string:
-		return []byte(v), nil
-	case []byte:
-		return v, nil
-	case goja.ArrayBuffer:
-		return v.Bytes(), nil
-	default:
-		return nil, fmt.Errorf("unsupported stream chunk type: %T", data)
-	}
-}
-
 func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession) {
 	session := newEngineSession(nil)
 	engineCfg := &stream.Config{
-		CreateBlobObjectURL: func(data []byte, contentType string) (string, error) {
-			return d.gblob.CreateBlob(data, contentType)
-		},
-		CreateWritableStreamObjectURL: func(opts *stream.WritableStreamObjectURLOptions) (string, error) {
-			reopenable := false
+		CreateObjectURL: func(opts *stream.ObjectURLOptions, open stream.ObjectURLOpener) (string, error) {
+			createOpts := &internalblob.CreateOptions{
+				Session: session,
+			}
 			if opts != nil {
-				reopenable = opts.Reopenable
+				createOpts.ContentType = opts.ContentType
+				createOpts.Size = opts.Size
+				createOpts.Range = opts.Range
 			}
-			return d.gblob.CreateWritableStream(&gblob.CreateWritableStreamOptions{
-				Session:    session,
-				Reopenable: reopenable,
-			})
-		},
-		RegisterWritableStreamResume: func(url string, reopen func(offset int64) error) error {
-			return d.gblob.SetResumeOpener(url, reopen)
-		},
-		WriteWritableStreamObjectURL: func(url string, data any) error {
-			chunk, err := normalizeStreamChunk(data)
-			if err != nil {
-				return err
-			}
-			return d.gblob.Write(url, chunk)
-		},
-		CloseWritableStreamObjectURL: func(url string) error {
-			return d.gblob.CloseSource(url)
-		},
-		AbortWritableStreamObjectURL: func(url string, reason string) error {
-			return d.gblob.AbortSource(url, fmt.Errorf("%s", reason))
+			return d.blob.CreateOpener(func(ctx context.Context, req internalblob.OpenRequest) (io.ReadCloser, error) {
+				return open(ctx, stream.ObjectURLOpenRequest{
+					Offset: req.Offset,
+					End:    req.End,
+				})
+			}, createOpts)
 		},
 		RevokeObjectURL: func(url string) error {
-			return d.gblob.Revoke(url)
+			return d.blob.Revoke(url)
 		},
 		ProxyHandler: d.cfg.Proxy.ToHandler(),
 	}
