@@ -1853,7 +1853,7 @@ func (d *Downloader) releaseBlobTask(task *Task) {
 }
 
 func isInternalBlobURLString(raw string) bool {
-	return strings.Contains(raw, "/__gopeed_blob/")
+	return strings.Contains(raw, "/__blob/")
 }
 
 var defaultDownloader = NewDownloader(nil)

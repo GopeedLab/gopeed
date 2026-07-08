@@ -675,7 +675,7 @@ func (f *Fetcher) doStart() error {
 		return err
 	}
 	f.redirectLock.Lock()
-	if strings.Contains(f.redirectURL, "/__gopeed_blob/") && f.redirectURL != f.meta.Req.URL {
+	if strings.Contains(f.redirectURL, "/__blob/") && f.redirectURL != f.meta.Req.URL {
 		f.redirectURL = ""
 	}
 	f.redirectLock.Unlock()

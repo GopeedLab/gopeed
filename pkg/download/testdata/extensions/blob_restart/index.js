@@ -38,7 +38,7 @@ gopeed.events.onResolve(async function (ctx) {
 
 gopeed.events.onError(async function (ctx) {
   const req = ctx.task?.meta?.req;
-  if (!req || !req.rawUrl || !req.url || !req.url.includes('/__gopeed_blob/')) {
+  if (!req || !req.rawUrl || !req.url || !req.url.includes('/__blob/')) {
     return;
   }
   req.labels = req.labels || {};

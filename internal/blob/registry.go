@@ -17,7 +17,7 @@ import (
 	"sync"
 )
 
-const urlPathPrefix = "/__gopeed_blob/"
+const urlPathPrefix = "/__blob/"
 
 var (
 	ErrInvalidURL      = errors.New("invalid blob url")
