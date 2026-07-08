@@ -145,10 +145,6 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 }
 
 func (d *Downloader) Setup() error {
-	blobDir := filepath.Join(d.cfg.StorageDir, "blob")
-	if err := os.RemoveAll(blobDir); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
 	d.blob = internalblob.NewRegistry("")
 
 	// setup storage

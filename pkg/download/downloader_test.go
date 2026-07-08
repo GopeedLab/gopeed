@@ -85,31 +85,6 @@ func TestDownloader_BlobRegistryDoesNotUseStorageDirForSpooling(t *testing.T) {
 	}
 }
 
-func TestDownloader_SetupCleansStaleBlobDir(t *testing.T) {
-	storageDir := t.TempDir()
-	blobDir := filepath.Join(storageDir, "blob")
-	if err := os.MkdirAll(blobDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	staleFile := filepath.Join(blobDir, "stale")
-	if err := os.WriteFile(staleFile, []byte("stale"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	downloader := NewDownloader(&DownloaderConfig{
-		Storage:    NewMemStorage(),
-		StorageDir: storageDir,
-	})
-	if err := downloader.Setup(); err != nil {
-		t.Fatal(err)
-	}
-	defer downloader.Clear()
-
-	if _, err := os.Stat(staleFile); !os.IsNotExist(err) {
-		t.Fatalf("expected stale blob file to be removed on setup, got err=%v", err)
-	}
-}
-
 func TestDownloader_BlobTaskKeepsConfiguredHTTPConnections(t *testing.T) {
 	downloader := NewDownloader(&DownloaderConfig{
 		Storage:    NewMemStorage(),
