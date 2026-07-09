@@ -55,7 +55,6 @@ type Metadata struct {
 
 type Source struct {
 	ID          string
-	Token       string
 	URL         string
 	ContentType string
 
@@ -143,17 +142,12 @@ func (r *Registry) CreateOpener(open OpenFunc, opts *CreateOptions) (string, err
 	if err != nil {
 		return "", err
 	}
-	token, err := randomID(24)
-	if err != nil {
-		return "", err
-	}
 	if opts.Session != nil {
 		opts.Session.Retain()
 	}
-	srcURL := fmt.Sprintf("%s%s?token=%s", baseURL, id, url.QueryEscape(token))
+	srcURL := fmt.Sprintf("%s%s", baseURL, id)
 	src := &Source{
 		ID:           id,
-		Token:        token,
 		URL:          srcURL,
 		ContentType:  opts.ContentType,
 		size:         opts.Size,
@@ -248,13 +242,13 @@ func (r *Registry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	id, token := parseRequest(req)
-	if id == "" || token == "" {
+	id := parseRequest(req)
+	if id == "" {
 		http.NotFound(w, req)
 		return
 	}
 	src, err := r.getByID(id)
-	if err != nil || src.Token != token {
+	if err != nil {
 		http.NotFound(w, req)
 		return
 	}
@@ -412,16 +406,13 @@ func parseRange(header string, size int64, rangeEnabled bool) (start int64, end 
 }
 
 func (r *Registry) get(raw string) (*Source, error) {
-	id, token, ok := r.parseURL(raw)
+	id, ok := r.parseURL(raw)
 	if !ok {
 		return nil, ErrInvalidURL
 	}
 	src, err := r.getByID(id)
 	if err != nil {
 		return nil, err
-	}
-	if src.Token != token {
-		return nil, ErrInvalidURL
 	}
 	src.mu.Lock()
 	revoked := src.revoked
@@ -442,30 +433,30 @@ func (r *Registry) getByID(id string) (*Source, error) {
 	return src, nil
 }
 
-func (r *Registry) parseURL(raw string) (id string, token string, ok bool) {
+func (r *Registry) parseURL(raw string) (id string, ok bool) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "http" || !strings.HasPrefix(u.Path, urlPathPrefix) {
-		return "", "", false
+		return "", false
 	}
 	r.serverMu.Lock()
 	baseURL := r.baseURL
 	r.serverMu.Unlock()
 	if baseURL == "" || !strings.HasPrefix(raw, baseURL) {
-		return "", "", false
+		return "", false
 	}
 	id = strings.TrimPrefix(u.Path, urlPathPrefix)
 	if id == "" || path.Base(id) != id {
-		return "", "", false
+		return "", false
 	}
-	return id, u.Query().Get("token"), true
+	return id, true
 }
 
-func parseRequest(req *http.Request) (id string, token string) {
-	id = strings.TrimPrefix(req.URL.Path, urlPathPrefix)
+func parseRequest(req *http.Request) string {
+	id := strings.TrimPrefix(req.URL.Path, urlPathPrefix)
 	if id == "" || id == req.URL.Path || path.Base(id) != id {
-		return "", ""
+		return ""
 	}
-	return id, req.URL.Query().Get("token")
+	return id
 }
 
 func randomID(size int) (string, error) {

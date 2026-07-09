@@ -227,14 +227,14 @@ func TestRegistryHTTPErrorStatuses(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	badURL := strings.Replace(url, "token=", "token=bad", 1)
+	badURL := url + "-missing"
 	resp, err := http.Get(badURL)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("unexpected bad token status: %d", resp.StatusCode)
+		t.Fatalf("unexpected missing source status: %d", resp.StatusCode)
 	}
 
 	req, err := http.NewRequest(http.MethodHead, url, nil)

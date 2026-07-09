@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
@@ -48,6 +49,7 @@ func Enable(runtime *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error
 	if cfg == nil {
 		cfg = &Config{}
 	}
+	blobPipes := newBlobPipeRegistry()
 	if err := runtime.Set("__gopeed_create_blob_object_url", func(call goja.FunctionCall) goja.Value {
 		if cfg.CreateObjectURL == nil {
 			panic(runtime.NewGoError(fmt.Errorf("blob object url handler not configured")))
@@ -74,7 +76,7 @@ func Enable(runtime *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error
 			Range:       rangeEnabled,
 		}
 		url, err := cfg.CreateObjectURL(opts, func(ctx context.Context, req ObjectURLOpenRequest) (io.ReadCloser, error) {
-			return openBlobObjectURLReader(ctx, loop, openValue, req)
+			return openBlobObjectURLReader(ctx, loop, blobPipes, openValue, req)
 		})
 		if err != nil {
 			panic(runtime.NewGoError(err))
@@ -99,25 +101,47 @@ func Enable(runtime *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error
 		if err != nil {
 			panic(runtime.NewGoError(err))
 		}
-		meta, err := fetchRegistry.Open(runtime, cfg.ProxyHandler, reqMeta)
-		if err != nil {
-			panic(runtime.NewGoError(err))
-		}
-		return runtime.ToValue(meta)
+		fingerprint := util.SafeGet[string](runtime, xhr.FingerprintMagicKey)
+		promise, resolve, reject := runtime.NewPromise()
+		go func() {
+			meta, err := fetchRegistry.Open(fingerprint, cfg.ProxyHandler, reqMeta)
+			ok := loop.RunOnLoop(func(runtime *goja.Runtime) {
+				if err != nil {
+					reject(runtime.NewGoError(err))
+					return
+				}
+				resolve(runtime.ToValue(meta))
+			})
+			if !ok && meta != nil {
+				fetchRegistry.Close(meta.ID)
+			}
+		}()
+		return runtime.ToValue(promise)
 	}); err != nil {
 		return err
 	}
 	if err := runtime.Set("__gopeed_fetch_read", func(call goja.FunctionCall) goja.Value {
 		id := call.Argument(0).String()
 		chunkSize := int(call.Argument(1).ToInteger())
-		chunk, done, err := fetchRegistry.Read(id, chunkSize)
-		if err != nil {
-			panic(runtime.NewGoError(err))
-		}
-		if done {
-			return goja.Null()
-		}
-		return runtime.ToValue(runtime.NewArrayBuffer(chunk))
+		promise, resolve, reject := runtime.NewPromise()
+		go func() {
+			chunk, done, err := fetchRegistry.Read(id, chunkSize)
+			ok := loop.RunOnLoop(func(runtime *goja.Runtime) {
+				if err != nil {
+					reject(runtime.NewGoError(err))
+					return
+				}
+				if done {
+					resolve(goja.Null())
+					return
+				}
+				resolve(runtime.ToValue(runtime.NewArrayBuffer(chunk)))
+			})
+			if !ok {
+				fetchRegistry.Close(id)
+			}
+		}()
+		return runtime.ToValue(promise)
 	}); err != nil {
 		return err
 	}
@@ -131,36 +155,206 @@ func Enable(runtime *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error
 	}); err != nil {
 		return err
 	}
+	if err := runtime.Set("__gopeed_blob_pipe_chunk", func(call goja.FunctionCall) goja.Value {
+		id := call.Argument(0).String()
+		ok := blobPipes.Push(id, exportBytes(call.Argument(1)))
+		return runtime.ToValue(ok)
+	}); err != nil {
+		return err
+	}
+	if err := runtime.Set("__gopeed_blob_pipe_close", func(id string) {
+		blobPipes.Close(id, nil)
+	}); err != nil {
+		return err
+	}
+	if err := runtime.Set("__gopeed_blob_pipe_error", func(id string, message string) {
+		blobPipes.Close(id, errors.New(message))
+	}); err != nil {
+		return err
+	}
 	_, err := runtime.RunString(script)
 	return err
 }
 
-func openBlobObjectURLReader(ctx context.Context, loop *eventloop.EventLoop, openValue goja.Value, req ObjectURLOpenRequest) (io.ReadCloser, error) {
-	value, err := runOnLoop(loop, func(runtime *goja.Runtime) (goja.Value, error) {
-		fnVal := runtime.Get("__gopeed_blob_open_source")
+func openBlobObjectURLReader(ctx context.Context, loop *eventloop.EventLoop, pipes *blobPipeRegistry, openValue goja.Value, req ObjectURLOpenRequest) (io.ReadCloser, error) {
+	if pipes == nil {
+		return nil, fmt.Errorf("blob pipe registry not configured")
+	}
+	pipe := newBlobPipe(ctx, pipes)
+	pipes.Add(pipe)
+	_, err := runOnLoop(loop, func(runtime *goja.Runtime) (goja.Value, error) {
+		fnVal := runtime.Get("__gopeed_blob_pipe_source")
 		fn, ok := goja.AssertFunction(fnVal)
 		if !ok {
-			return nil, fmt.Errorf("blob open helper is not callable")
+			return nil, fmt.Errorf("blob pipe helper is not callable")
 		}
 		request := map[string]any{
 			"offset": req.Offset,
 			"end":    req.End,
 		}
-		return fn(nil, openValue, runtime.ToValue(request))
+		return fn(nil, openValue, runtime.ToValue(request), runtime.ToValue(pipe.id))
 	})
 	if err != nil {
+		pipe.Close()
 		return nil, err
 	}
-	id := value.String()
-	if id == "" {
-		return nil, fmt.Errorf("blob open helper returned empty reader id")
+	return pipe, nil
+}
+
+type blobPipeRegistry struct {
+	mu    sync.Mutex
+	pipes map[string]*blobPipe
+	next  atomic.Uint64
+}
+
+func newBlobPipeRegistry() *blobPipeRegistry {
+	return &blobPipeRegistry{
+		pipes: map[string]*blobPipe{},
 	}
-	reader := &blobObjectURLReader{
-		ctx:  ctx,
-		loop: loop,
-		id:   id,
+}
+
+func (r *blobPipeRegistry) Add(pipe *blobPipe) {
+	r.mu.Lock()
+	r.pipes[pipe.id] = pipe
+	r.mu.Unlock()
+}
+
+func (r *blobPipeRegistry) Remove(id string) {
+	r.mu.Lock()
+	delete(r.pipes, id)
+	r.mu.Unlock()
+}
+
+func (r *blobPipeRegistry) Push(id string, chunk []byte) bool {
+	r.mu.Lock()
+	pipe := r.pipes[id]
+	r.mu.Unlock()
+	if pipe == nil {
+		return false
 	}
-	return reader, nil
+	return pipe.Push(chunk)
+}
+
+func (r *blobPipeRegistry) Close(id string, err error) {
+	r.mu.Lock()
+	pipe := r.pipes[id]
+	r.mu.Unlock()
+	if pipe != nil {
+		pipe.CloseWithError(err)
+	}
+}
+
+func (r *blobPipeRegistry) NewID() string {
+	return fmt.Sprintf("pipe-%d", r.next.Add(1))
+}
+
+type blobPipeItem struct {
+	chunk []byte
+	err   error
+	done  bool
+}
+
+type blobPipe struct {
+	id       string
+	registry *blobPipeRegistry
+	ctx      context.Context
+	cancel   context.CancelFunc
+	ch       chan blobPipeItem
+
+	mu     sync.Mutex
+	buf    []byte
+	closed bool
+	once   sync.Once
+}
+
+func newBlobPipe(ctx context.Context, registry *blobPipeRegistry) *blobPipe {
+	pipeCtx, cancel := context.WithCancel(ctx)
+	return &blobPipe{
+		id:       registry.NewID(),
+		registry: registry,
+		ctx:      pipeCtx,
+		cancel:   cancel,
+		ch:       make(chan blobPipeItem, 8),
+	}
+}
+
+func (p *blobPipe) Push(chunk []byte) bool {
+	if len(chunk) == 0 {
+		return true
+	}
+	buf := append([]byte(nil), chunk...)
+	select {
+	case p.ch <- blobPipeItem{chunk: buf}:
+		return true
+	case <-p.ctx.Done():
+		return false
+	}
+}
+
+func (p *blobPipe) CloseWithError(err error) {
+	p.once.Do(func() {
+		p.registry.Remove(p.id)
+		select {
+		case p.ch <- blobPipeItem{done: true, err: err}:
+		case <-p.ctx.Done():
+		}
+	})
+}
+
+func (p *blobPipe) Read(dst []byte) (int, error) {
+	p.mu.Lock()
+	if len(p.buf) > 0 {
+		n := copy(dst, p.buf)
+		p.buf = p.buf[n:]
+		p.mu.Unlock()
+		return n, nil
+	}
+	p.mu.Unlock()
+
+	select {
+	case item := <-p.ch:
+		if item.done {
+			if item.err != nil {
+				return 0, item.err
+			}
+			return 0, io.EOF
+		}
+		n := copy(dst, item.chunk)
+		if n < len(item.chunk) {
+			p.mu.Lock()
+			p.buf = append(p.buf, item.chunk[n:]...)
+			p.mu.Unlock()
+		}
+		return n, nil
+	case <-p.ctx.Done():
+		return 0, p.ctx.Err()
+	}
+}
+
+func (p *blobPipe) Close() error {
+	p.mu.Lock()
+	if p.closed {
+		p.mu.Unlock()
+		return nil
+	}
+	p.closed = true
+	p.mu.Unlock()
+	p.registry.Remove(p.id)
+	p.cancel()
+	return nil
+}
+
+func exportBytes(value goja.Value) []byte {
+	if value == nil || goja.IsNull(value) || goja.IsUndefined(value) {
+		return nil
+	}
+	if ab, ok := value.Export().(goja.ArrayBuffer); ok {
+		return ab.Bytes()
+	}
+	if b, ok := value.Export().([]byte); ok {
+		return b
+	}
+	return nil
 }
 
 type blobObjectURLReader struct {
@@ -340,6 +534,13 @@ type fetchStream struct {
 	body      io.ReadCloser
 	cancel    context.CancelFunc
 	closeOnce sync.Once
+	ctx       context.Context
+	ch        chan fetchChunk
+}
+
+type fetchChunk struct {
+	data []byte
+	err  error
 }
 
 type fetchRequest struct {
@@ -397,12 +598,12 @@ func exportFetchRequest(runtime *goja.Runtime, value goja.Value) (*fetchRequest,
 	return meta, nil
 }
 
-func (r *fetchRegistry) Open(runtime *goja.Runtime, proxyHandler func(r *http.Request) (*url.URL, error), reqMeta *fetchRequest) (*fetchOpenMeta, error) {
+func (r *fetchRegistry) Open(fingerprint string, proxyHandler func(r *http.Request) (*url.URL, error), reqMeta *fetchRequest) (*fetchOpenMeta, error) {
 	client := req.C()
 	if proxyHandler != nil {
 		client.SetProxy(proxyHandler)
 	}
-	setFetchFingerprint(client, util.SafeGet[string](runtime, xhr.FingerprintMagicKey))
+	setFetchFingerprint(client, fingerprint)
 	contentType, body, err := buildFetchBody(reqMeta.Body)
 	if err != nil {
 		return nil, err
@@ -460,9 +661,16 @@ func (r *fetchRegistry) Open(runtime *goja.Runtime, proxyHandler func(r *http.Re
 	if resp.Response != nil && resp.Response.Body != nil {
 		bodyCloser = resp.Response.Body
 	}
+	stream := &fetchStream{
+		body:   bodyCloser,
+		cancel: cancel,
+		ctx:    ctx,
+		ch:     make(chan fetchChunk, 8),
+	}
 	r.mu.Lock()
-	r.streams[id] = &fetchStream{body: bodyCloser, cancel: cancel}
+	r.streams[id] = stream
 	r.mu.Unlock()
+	go stream.readLoop()
 	return meta, nil
 }
 
@@ -471,23 +679,55 @@ func (r *fetchRegistry) Read(id string, chunkSize int) ([]byte, bool, error) {
 	if stream == nil {
 		return nil, true, nil
 	}
-	if chunkSize <= 0 {
-		chunkSize = 64 * 1024
+	select {
+	case item, ok := <-stream.ch:
+		if !ok {
+			r.Close(id)
+			return nil, true, nil
+		}
+		if item.err != nil {
+			r.Close(id)
+			return nil, false, item.err
+		}
+		if chunkSize > 0 && len(item.data) > chunkSize {
+			head := append([]byte(nil), item.data[:chunkSize]...)
+			tail := append([]byte(nil), item.data[chunkSize:]...)
+			select {
+			case stream.ch <- fetchChunk{data: tail}:
+			case <-stream.ctx.Done():
+			}
+			return head, false, nil
+		}
+		return item.data, false, nil
+	case <-stream.ctx.Done():
+		return nil, false, stream.ctx.Err()
 	}
-	buf := make([]byte, chunkSize)
-	n, err := stream.body.Read(buf)
-	if n > 0 {
-		return buf[:n], false, nil
+}
+
+func (s *fetchStream) readLoop() {
+	defer close(s.ch)
+	buf := make([]byte, 64*1024)
+	for {
+		n, err := s.body.Read(buf)
+		if n > 0 {
+			chunk := append([]byte(nil), buf[:n]...)
+			select {
+			case s.ch <- fetchChunk{data: chunk}:
+			case <-s.ctx.Done():
+				return
+			}
+		}
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			select {
+			case s.ch <- fetchChunk{err: err}:
+			case <-s.ctx.Done():
+			}
+			return
+		}
 	}
-	if err == io.EOF {
-		r.Close(id)
-		return nil, true, nil
-	}
-	if err != nil {
-		r.Close(id)
-		return nil, false, err
-	}
-	return nil, false, nil
 }
 
 func (r *fetchRegistry) Close(id string) {

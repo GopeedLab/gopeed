@@ -671,14 +671,57 @@
     return { offset, end };
   }
 
-  globalThis.__gopeed_blob_open_source = async function (openReadable, request) {
+  function yieldBlobPipeTask() {
+    return new Promise((resolve) => {
+      if (typeof setTimeout === "function") {
+        setTimeout(resolve, 0);
+      } else {
+        Promise.resolve().then(resolve);
+      }
+    });
+  }
+
+  function createPendingBlobReader(openReadable, request) {
+    let activeReader;
+    let ready;
+    function ensureReader() {
+      if (ready) {
+        return ready;
+      }
+      ready = (async function () {
+        const source = await openReadable(normalizeOpenRequest(request));
+        activeReader = toReadableStreamReader(source, "gopeed.runtime.blob.createObjectURL opener function");
+        return activeReader;
+      })();
+      return ready;
+    }
+    return {
+      async read() {
+        const reader = await ensureReader();
+        return reader.read();
+      },
+      cancel(reason) {
+        return ensureReader().then(function (reader) {
+          return reader.cancel(reason);
+        }, function () {});
+      },
+      releaseLock() {
+        if (!ready) {
+          return;
+        }
+        return ready.then(function (reader) {
+          return reader.releaseLock();
+        }, function () {});
+      }
+    };
+  }
+
+  globalThis.__gopeed_blob_open_source = function (openReadable, request) {
     if (typeof openReadable !== "function") {
       throw new TypeError("blob opener must be callable");
     }
-    const source = await openReadable(normalizeOpenRequest(request));
-    const reader = toReadableStreamReader(source, "gopeed.runtime.blob.createObjectURL opener function");
     const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + "-" + String(Math.random());
-    blobReaders.set(id, reader);
+    blobReaders.set(id, createPendingBlobReader(openReadable, request));
     return id;
   };
 
@@ -726,6 +769,40 @@
     }
     blobReaders.delete(id);
     releaseReader(reader, "blob request closed");
+  };
+
+  globalThis.__gopeed_blob_pipe_source = function (openReadable, request, pipeId) {
+    if (typeof openReadable !== "function") {
+      throw new TypeError("blob opener must be callable");
+    }
+    const startPipe = async function () {
+      let reader;
+      try {
+        const source = await openReadable(normalizeOpenRequest(request));
+        reader = toReadableStreamReader(source, "gopeed.runtime.blob.createObjectURL opener function");
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            globalThis.__gopeed_blob_pipe_close(pipeId);
+            return;
+          }
+          const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+          const buffer = chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength);
+          if (!globalThis.__gopeed_blob_pipe_chunk(pipeId, buffer)) {
+            releaseReader(reader, "blob pipe closed");
+            return;
+          }
+          await yieldBlobPipeTask();
+        }
+      } catch (error) {
+        globalThis.__gopeed_blob_pipe_error(pipeId, error && error.stack ? error.stack : String(error));
+      }
+    };
+    if (typeof setTimeout === "function") {
+      setTimeout(startPipe, 0);
+    } else {
+      Promise.resolve().then(startPipe);
+    }
   };
 
   globalThis.__gopeed_blob_create_object_url = function (value, options) {
@@ -781,7 +858,7 @@
       });
       let meta;
       try {
-        meta = fetchOpen({
+        meta = await fetchOpen({
           url: request.url,
           method: request.method,
           headers,
@@ -793,10 +870,10 @@
         throw error instanceof Error ? error : new TypeError(String(error));
       }
       const stream = new ReadableStream({
-        pull(controller) {
+        async pull(controller) {
           let chunk;
           try {
-            chunk = fetchRead(meta.id, 64 * 1024);
+            chunk = await fetchRead(meta.id, 64 * 1024);
           } catch (error) {
             fetchClose(meta.id);
             controller.error(error instanceof Error ? error : new TypeError(String(error)));

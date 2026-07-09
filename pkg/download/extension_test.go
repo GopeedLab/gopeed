@@ -249,6 +249,285 @@ func TestDownloader_Extension_BlobSourceSizePropagatesToCreatedTask(t *testing.T
 	})
 }
 
+func TestDownloader_Extension_BlobFetchDrainedStreamReportsEarlyProgress(t *testing.T) {
+	chunkDelay := 350 * time.Millisecond
+	chunks := []string{
+		strings.Repeat("a", 4096),
+		strings.Repeat("b", 4096),
+		strings.Repeat("c", 4096),
+		strings.Repeat("d", 4096),
+		strings.Repeat("e", 4096),
+	}
+	payload := strings.Join(chunks, "")
+	upstreamDuration := time.Duration(len(chunks)) * chunkDelay
+	firstProgressTimeout := upstreamDuration * 3 / 5
+	completionTimeout := upstreamDuration + 4*time.Second
+	requireEarlyProgressWindow(t, firstProgressTimeout, upstreamDuration)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.URL.Path, "/single-fetch-stream") || r.URL.Query().Get("source") != "1" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
+		flusher, _ := w.(http.Flusher)
+		for _, chunk := range chunks {
+			if _, err := w.Write([]byte(chunk)); err != nil {
+				return
+			}
+			if flusher != nil {
+				flusher.Flush()
+			}
+			time.Sleep(chunkDelay)
+		}
+	}))
+	defer server.Close()
+
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_stream_bridge", false); err != nil {
+			t.Fatal(err)
+		}
+
+		rr, err := downloader.Resolve(&base.Request{
+			URL: fmt.Sprintf("%s/single-fetch-stream?size=%d", server.URL, len(payload)),
+		}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) != 1 {
+			t.Fatalf("unexpected resolve files: %#v", rr.Res.Files)
+		}
+
+		dir := t.TempDir()
+		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
+			Path: dir,
+			Name: rr.Res.Files[0].Name,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		filePath := filepath.Join(dir, "single.bin")
+		waitForFileSizeAtLeast(t, filePath, 1, firstProgressTimeout)
+		waitForTaskTerminal(t, downloader, id, completionTimeout)
+
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != payload {
+			t.Fatalf("unexpected single stream content length=%d want=%d", len(data), len(payload))
+		}
+	})
+}
+
+func TestDownloader_Extension_BlobRangeFetchDrainedStreamReportsEarlyProgress(t *testing.T) {
+	chunkDelay := 350 * time.Millisecond
+	chunkSize := 4096
+	chunks := []string{
+		strings.Repeat("a", chunkSize),
+		strings.Repeat("b", chunkSize),
+		strings.Repeat("c", chunkSize),
+		strings.Repeat("d", chunkSize),
+		strings.Repeat("e", chunkSize),
+		strings.Repeat("f", chunkSize),
+	}
+	payload := strings.Join(chunks, "")
+	upstreamDuration := time.Duration(len(chunks)) * chunkDelay
+	firstProgressTimeout := upstreamDuration * 3 / 5
+	completionTimeout := upstreamDuration + 4*time.Second
+	requireEarlyProgressWindow(t, firstProgressTimeout, upstreamDuration)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.URL.Path, "/range-fetch-stream") || r.URL.Query().Get("source") != "1" {
+			http.NotFound(w, r)
+			return
+		}
+
+		start := 0
+		end := len(payload) - 1
+		status := http.StatusOK
+		if rangeHeader := r.Header.Get("Range"); strings.HasPrefix(rangeHeader, "bytes=") {
+			parts := strings.SplitN(strings.TrimPrefix(rangeHeader, "bytes="), "-", 2)
+			if len(parts) != 2 || parts[0] == "" {
+				http.Error(w, "bad range", http.StatusBadRequest)
+				return
+			}
+			parsedStart, err := strconv.Atoi(parts[0])
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			start = parsedStart
+			if parts[1] != "" {
+				parsedEnd, err := strconv.Atoi(parts[1])
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				end = parsedEnd
+			}
+			if start >= len(payload) || end < start {
+				w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+				return
+			}
+			if end >= len(payload) {
+				end = len(payload) - 1
+			}
+			status = http.StatusPartialContent
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, len(payload)))
+		}
+
+		w.Header().Set("Accept-Ranges", "bytes")
+		w.Header().Set("Content-Length", strconv.Itoa(end-start+1))
+		w.WriteHeader(status)
+
+		flusher, _ := w.(http.Flusher)
+		for offset := start; offset <= end; offset += chunkSize {
+			next := offset + chunkSize
+			if next > end+1 {
+				next = end + 1
+			}
+			if _, err := w.Write([]byte(payload[offset:next])); err != nil {
+				return
+			}
+			if flusher != nil {
+				flusher.Flush()
+			}
+			time.Sleep(chunkDelay)
+		}
+	}))
+	defer server.Close()
+
+	setupDownloader(func(downloader *Downloader) {
+		downloader.cfg.RefreshInterval = 50
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_stream_bridge", false); err != nil {
+			t.Fatal(err)
+		}
+
+		rr, err := downloader.Resolve(&base.Request{
+			URL: fmt.Sprintf("%s/range-fetch-stream?size=%d", server.URL, len(payload)),
+		}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) != 1 || !rr.Res.Range {
+			t.Fatalf("unexpected resolve result: %#v", rr.Res)
+		}
+
+		dir := t.TempDir()
+		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
+			Path: dir,
+			Name: rr.Res.Files[0].Name,
+			Extra: map[string]any{
+				"connections": 1,
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		waitForTaskDownloadedBetween(t, downloader, id, 1, int64(len(payload)-1), firstProgressTimeout)
+		waitForTaskTerminal(t, downloader, id, completionTimeout)
+
+		data, err := os.ReadFile(filepath.Join(dir, "range.bin"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != payload {
+			t.Fatalf("unexpected range stream content length=%d want=%d", len(data), len(payload))
+		}
+	})
+}
+
+func TestDownloader_Extension_BlobMultiplexFetchStreamsReportEarlyProgress(t *testing.T) {
+	chunkDelay := 300 * time.Millisecond
+	videoChunks := []string{"video-0", "video-1", "video-2", "video-3"}
+	audioChunks := []string{"audio-0", "audio-1", "audio-2", "audio-3"}
+	videoPayload := strings.Join(videoChunks, "")
+	audioPayload := strings.Join(audioChunks, "")
+	upstreamDuration := time.Duration(len(videoChunks)+len(audioChunks)) * chunkDelay
+	firstProgressTimeout := upstreamDuration / 2
+	completionTimeout := upstreamDuration + 4*time.Second
+	requireEarlyProgressWindow(t, firstProgressTimeout, upstreamDuration)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.URL.Path, "/multiplex-fetch-stream") || r.URL.Query().Get("source") != "1" {
+			http.NotFound(w, r)
+			return
+		}
+		flusher, _ := w.(http.Flusher)
+		for i := range videoChunks {
+			if _, err := fmt.Fprintf(w, "v:%s\n", videoChunks[i]); err != nil {
+				return
+			}
+			if flusher != nil {
+				flusher.Flush()
+			}
+			time.Sleep(chunkDelay)
+			if _, err := fmt.Fprintf(w, "a:%s\n", audioChunks[i]); err != nil {
+				return
+			}
+			if flusher != nil {
+				flusher.Flush()
+			}
+			time.Sleep(chunkDelay)
+		}
+	}))
+	defer server.Close()
+
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_stream_bridge", false); err != nil {
+			t.Fatal(err)
+		}
+
+		rr, err := downloader.Resolve(&base.Request{
+			URL: server.URL + "/multiplex-fetch-stream",
+		}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rr.Res.Files) != 2 {
+			t.Fatalf("unexpected resolve files: %#v", rr.Res.Files)
+		}
+
+		dir := t.TempDir()
+		videoID, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
+			Path: dir,
+			Name: rr.Res.Files[0].Name,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		audioID, err := downloader.CreateDirect(rr.Res.Files[1].Req, &base.Options{
+			Path: dir,
+			Name: rr.Res.Files[1].Name,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		videoPath := filepath.Join(dir, "video.bin")
+		audioPath := filepath.Join(dir, "audio.bin")
+		waitForFileSizeAtLeast(t, videoPath, 1, firstProgressTimeout)
+		waitForFileSizeAtLeast(t, audioPath, 1, firstProgressTimeout)
+		waitForTaskTerminal(t, downloader, videoID, completionTimeout)
+		waitForTaskTerminal(t, downloader, audioID, completionTimeout)
+
+		videoData, err := os.ReadFile(videoPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		audioData, err := os.ReadFile(audioPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(videoData) != videoPayload {
+			t.Fatalf("unexpected video content %q want %q", string(videoData), videoPayload)
+		}
+		if string(audioData) != audioPayload {
+			t.Fatalf("unexpected audio content %q want %q", string(audioData), audioPayload)
+		}
+	})
+}
+
 func TestDownloader_Extension_BlobFunctionOpenerRangeResume(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob", false); err != nil {
@@ -1676,6 +1955,40 @@ func waitForFileSizeAtLeast(t *testing.T, path string, size int64, timeout time.
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatalf("timeout waiting for file %s size >= %d", path, size)
+}
+
+func requireEarlyProgressWindow(t *testing.T, earlyTimeout, upstreamDuration time.Duration) {
+	t.Helper()
+	if earlyTimeout <= 0 {
+		t.Fatalf("early progress timeout must be positive, got %s", earlyTimeout)
+	}
+	if upstreamDuration <= 0 {
+		t.Fatalf("upstream duration must be positive, got %s", upstreamDuration)
+	}
+	if earlyTimeout >= upstreamDuration {
+		t.Fatalf("early progress timeout %s must be shorter than upstream duration %s", earlyTimeout, upstreamDuration)
+	}
+}
+
+func waitForTaskDownloadedBetween(t *testing.T, downloader *Downloader, id string, min, max int64, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		task := downloader.GetTask(id)
+		if task != nil && task.Progress != nil && task.Progress.Downloaded >= min && task.Progress.Downloaded <= max {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	task := downloader.GetTask(id)
+	if task == nil {
+		t.Fatalf("timeout waiting for task %s downloaded between %d and %d: task not found", id, min, max)
+	}
+	downloaded := int64(0)
+	if task.Progress != nil {
+		downloaded = task.Progress.Downloaded
+	}
+	t.Fatalf("timeout waiting for task %s downloaded between %d and %d: got %d status=%s", id, min, max, downloaded, task.Status)
 }
 
 func waitForTaskTerminal(t *testing.T, downloader *Downloader, id string, timeout time.Duration) {
