@@ -984,52 +984,6 @@ func TestDownloader_Extension_BlobUnknownSizePauseContinueKeepsSource(t *testing
 	})
 }
 
-func TestDownloader_Extension_BlobOnStartURLChangePauseKeepsNewLease(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_onstart_pause", false); err != nil {
-			t.Fatal(err)
-		}
-		rr, err := downloader.Resolve(&base.Request{URL: "https://example.com/onstart-pause"}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		file := rr.Res.Files[0]
-		oldURL := file.Req.URL
-		dir := t.TempDir()
-		id, err := downloader.CreateDirect(file.Req, &base.Options{Path: dir, Name: file.Name})
-		if err != nil {
-			t.Fatal(err)
-		}
-		waitForTaskStatus(t, downloader, id, base.DownloadStatusPause, 5*time.Second)
-		task := downloader.GetTask(id)
-		if task == nil || task.Meta == nil || task.Meta.Req == nil {
-			t.Fatal("paused onStart task request missing")
-		}
-		newURL := task.Meta.Req.URL
-		if newURL == oldURL {
-			t.Fatal("onStart did not replace the Blob URL")
-		}
-		if downloader.blob.IsURL(oldURL) {
-			t.Fatal("onStart Pause retained the old Blob lease")
-		}
-		if !downloader.blob.IsURL(newURL) {
-			t.Fatal("onStart Pause did not acquire the replacement Blob lease")
-		}
-
-		if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
-			t.Fatal(err)
-		}
-		waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 5*time.Second)
-		data, err := os.ReadFile(filepath.Join(dir, file.Name))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(data) != "new-source" {
-			t.Fatalf("unexpected onStart replacement content: %q", data)
-		}
-	})
-}
-
 func TestDownloader_Extension_BlobRecoverOnError(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_recover", false); err != nil {
@@ -1058,7 +1012,7 @@ func TestDownloader_Extension_BlobRecoverOnError(t *testing.T) {
 				deadline := time.Now().Add(15 * time.Second)
 				for time.Now().Before(deadline) {
 					task := downloader.GetTask(id)
-					if task != nil && task.Status == base.DownloadStatusDone {
+					if task != nil && downloader.taskStatus(task) == base.DownloadStatusDone {
 						break
 					}
 					time.Sleep(20 * time.Millisecond)
@@ -1068,7 +1022,7 @@ func TestDownloader_Extension_BlobRecoverOnError(t *testing.T) {
 				if task == nil {
 					t.Fatal("task not found after recovery")
 				}
-				if task.Status != base.DownloadStatusDone {
+				if downloader.taskStatus(task) != base.DownloadStatusDone {
 					var fileSize int64 = -1
 					if info, statErr := os.Stat(filePath); statErr == nil {
 						fileSize = info.Size()

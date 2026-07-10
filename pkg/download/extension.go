@@ -278,14 +278,12 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, er
 	return
 }
 
-func (d *Downloader) triggerOnStart(task *Task) *ExtensionTask {
-	extTask := NewExtensionTask(d, task)
-	extTask.deferActions = true
+func (d *Downloader) triggerOnStart(task *Task) {
 	doTrigger(d,
 		EventOnStart,
 		task.Meta.Req,
 		&OnStartContext{
-			Task: extTask,
+			Task: newExtensionTaskSnapshot(task),
 		},
 		func(ext *Extension, gopeed *Instance, ctx *OnStartContext) {
 			// Validate request structure
@@ -297,30 +295,26 @@ func (d *Downloader) triggerOnStart(task *Task) *ExtensionTask {
 			}
 		},
 	)
-	return extTask
 }
 
-func (d *Downloader) triggerOnError(task *Task, err error) *ExtensionTask {
-	extTask := NewExtensionTask(d, task)
-	extTask.deferActions = true
+func (d *Downloader) triggerOnError(task *Task, err error) {
 	doTrigger(d,
 		EventOnError,
 		task.Meta.Req,
 		&OnErrorContext{
-			Task:  extTask,
+			Task:  NewExtensionTask(d, task),
 			Error: err,
 		},
 		nil,
 	)
-	return extTask
 }
 
 func (d *Downloader) triggerOnDone(task *Task) {
 	doTrigger(d,
 		EventOnDone,
 		task.Meta.Req,
-		&OnErrorContext{
-			Task: NewExtensionTask(d, task),
+		&OnDoneContext{
+			Task: newExtensionTaskSnapshot(task),
 		},
 		nil,
 	)
@@ -711,7 +705,7 @@ type OnResolveContext struct {
 }
 
 type OnStartContext struct {
-	Task *ExtensionTask `json:"task"`
+	Task *Task `json:"task"`
 }
 
 type OnErrorContext struct {
@@ -729,41 +723,27 @@ type OnDoneContext struct {
 type ExtensionTask struct {
 	download *Downloader
 
-	deferActions      bool
-	continueRequested bool
-	pauseRequested    bool
-
 	*Task
 }
 
-func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
+func newExtensionTaskSnapshot(task *Task) *Task {
 	// restricts extension scripts to only modify request info
 	newTask := task.clone()
 	newTask.Meta.Req = task.Meta.Req
+	return newTask
+}
+
+func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
 	return &ExtensionTask{
 		download: download,
-		Task:     newTask,
+		Task:     newExtensionTaskSnapshot(task),
 	}
 }
 
 func (t *ExtensionTask) Continue() error {
-	if t.deferActions {
-		t.continueRequested = true
-		t.pauseRequested = false
-		return nil
-	}
 	return t.download.Continue(&TaskFilter{
 		IDs: []string{t.ID},
 	})
-}
-
-func (t *ExtensionTask) Pause() error {
-	if t.deferActions {
-		t.pauseRequested = true
-		t.continueRequested = false
-		return nil
-	}
-	return t.download.Pause(&TaskFilter{IDs: []string{t.ID}})
 }
 
 func parseSettings(settings []*Setting) map[string]any {

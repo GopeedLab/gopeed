@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,6 +40,38 @@ type generationTestManager struct {
 	pauseStarted   chan struct{}
 	pauseRelease   <-chan struct{}
 	pauseOnce      sync.Once
+}
+
+func TestExtensionTaskControlMethodsOnlyExistOnError(t *testing.T) {
+	taskType := reflect.TypeOf((*Task)(nil))
+	if _, ok := taskType.MethodByName("Continue"); ok {
+		t.Fatal("regular task unexpectedly exposes Continue")
+	}
+	if _, ok := taskType.MethodByName("Pause"); ok {
+		t.Fatal("regular task unexpectedly exposes Pause")
+	}
+
+	errorTaskType := reflect.TypeOf((*ExtensionTask)(nil))
+	if _, ok := errorTaskType.MethodByName("Continue"); !ok {
+		t.Fatal("onError task does not expose Continue")
+	}
+	if _, ok := errorTaskType.MethodByName("Pause"); ok {
+		t.Fatal("onError task unexpectedly exposes Pause")
+	}
+
+	for name, contextType := range map[string]reflect.Type{
+		"onStart": reflect.TypeOf(OnStartContext{}),
+		"onDone":  reflect.TypeOf(OnDoneContext{}),
+	} {
+		field, _ := contextType.FieldByName("Task")
+		if field.Type != taskType {
+			t.Fatalf("%s unexpectedly injects a control wrapper: %v", name, field.Type)
+		}
+	}
+	errorTaskField, _ := reflect.TypeOf(OnErrorContext{}).FieldByName("Task")
+	if errorTaskField.Type != errorTaskType {
+		t.Fatalf("onError does not inject the Continue wrapper: %v", errorTaskField.Type)
+	}
 }
 
 func (m *generationTestManager) Name() string { return "generation" }
@@ -493,14 +526,14 @@ func TestDownloader_StaleStartGenerationCannotRestartTask(t *testing.T) {
 	}
 	pauseDone := make(chan error, 1)
 	go func() {
-		pauseDone <- downloader.doPauseBeforeStart(task)
+		pauseDone <- downloader.Pause(&TaskFilter{IDs: []string{id}})
 	}()
 	deadline := time.Now().Add(2 * time.Second)
 	for downloader.taskStatus(task) != base.DownloadStatusPause && time.Now().Before(deadline) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	if downloader.taskStatus(task) != base.DownloadStatusPause {
-		t.Fatal("deferred pre-start Pause did not update task status")
+		t.Fatal("Pause did not update task status")
 	}
 	if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
 		t.Fatal(err)
@@ -512,74 +545,12 @@ func TestDownloader_StaleStartGenerationCannotRestartTask(t *testing.T) {
 			t.Fatal(err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("deferred pre-start Pause did not finish")
+		t.Fatal("Pause did not finish")
 	}
 
 	waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 3*time.Second)
 	if got := manager.starts.Load(); got != 1 {
 		t.Fatalf("stale start generation reached Fetcher.Start: got %d starts, want 1", got)
-	}
-}
-
-func TestExtensionTaskDefersOnStartPauseUntilTaskUnlock(t *testing.T) {
-	downloader := NewDownloader(nil)
-	if err := downloader.Setup(); err != nil {
-		t.Fatal(err)
-	}
-	defer downloader.Clear()
-	downloader.cfg.MaxRunning = 0
-
-	blobURL, err := downloader.blob.CreateBlob([]byte("pause"), "text/plain")
-	if err != nil {
-		t.Fatal(err)
-	}
-	id, err := downloader.CreateDirect(&base.Request{URL: blobURL}, &base.Options{
-		Path: t.TempDir(),
-		Name: "pause.bin",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	liveTask := downloader.GetTask(id)
-	if liveTask == nil {
-		t.Fatal("task not found")
-	}
-	patched := make(chan error, 1)
-	downloader.Listener(func(event *Event) {
-		if event.Key == EventKeyPause && event.Task.ID == id {
-			patched <- downloader.Patch(id, &base.Request{Labels: map[string]string{"paused": "true"}}, nil)
-		}
-	})
-
-	// doStart invokes onStart while holding this lock. Record the action on the
-	// extension wrapper and apply it only after the handler unlocks.
-	extTask := NewExtensionTask(downloader, liveTask)
-	extTask.deferActions = true
-	liveTask.lock.Lock()
-	err = extTask.Pause()
-	liveTask.lock.Unlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !extTask.pauseRequested {
-		t.Fatal("onStart Pause was not deferred")
-	}
-	if err := downloader.doPauseBeforeStart(liveTask); err != nil {
-		t.Fatal(err)
-	}
-	liveTask.statusLock.Lock()
-	status := liveTask.Status
-	liveTask.statusLock.Unlock()
-	if status != base.DownloadStatusPause {
-		t.Fatalf("extension pause did not update live task: %s", status)
-	}
-	select {
-	case err := <-patched:
-		if err != nil {
-			t.Fatalf("Pause listener could not re-enter Patch: %v", err)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("Pause listener deadlocked while re-entering Patch")
 	}
 }
 

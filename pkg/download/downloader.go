@@ -1207,7 +1207,7 @@ func (d *Downloader) handleOnError(task *Task, err error, resetFetcher bool) {
 	if task.Meta != nil && task.Meta.Req != nil {
 		oldURL = task.Meta.Req.URL
 	}
-	extTask := d.triggerOnError(task, err)
+	d.triggerOnError(task, err)
 	newURL := ""
 	if task.Meta != nil && task.Meta.Req != nil {
 		newURL = task.Meta.Req.URL
@@ -1219,27 +1219,16 @@ func (d *Downloader) handleOnError(task *Task, err error, resetFetcher bool) {
 		if task.fetcher != nil {
 			if patchErr := task.fetcher.Patch(&base.Request{URL: newURL}, nil); patchErr != nil {
 				d.Logger.Warn().Err(patchErr).Msgf("patch recovered task url failed, task id: %s", task.ID)
-				extTask.continueRequested = false
 			}
 		}
 		d.releaseBlobTaskURL(task, oldURL)
 	}
-	if resetFetcher && extTask.continueRequested {
+	if resetFetcher && d.taskStatus(task) == base.DownloadStatusRunning {
 		if resetErr := d.resetTaskFetcher(task); resetErr != nil {
 			d.Logger.Warn().Err(resetErr).Msgf("reset recovered task fetcher failed, task id: %s", task.ID)
-			extTask.continueRequested = false
 		}
 	}
 	task.lock.Unlock()
-	if extTask.pauseRequested {
-		if pauseErr := d.Pause(&TaskFilter{IDs: []string{task.ID}}); pauseErr != nil {
-			d.Logger.Warn().Err(pauseErr).Msgf("extension pause task failed, task id: %s", task.ID)
-		}
-	} else if extTask.continueRequested {
-		if continueErr := d.Continue(&TaskFilter{IDs: []string{task.ID}}); continueErr != nil {
-			d.Logger.Warn().Err(continueErr).Msgf("extension continue task failed, task id: %s", task.ID)
-		}
-	}
 	if d.taskStatus(task) == base.DownloadStatusError {
 		d.releaseBlobTask(task)
 		d.emit(EventKeyError, task, err)
@@ -1434,7 +1423,6 @@ func (d *Downloader) doStart(task *Task) (err error) {
 	}
 
 	started := false
-	pauseBeforeStart := false
 	handler := func() error {
 		task.lock.Lock()
 		defer task.lock.Unlock()
@@ -1447,9 +1435,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				return err
 			}
 		}
-		extTask := d.triggerOnStart(task)
-		// onStart may synchronously request a pause through ExtensionTask.
-		// Do not resolve or start a task after that request changed its state.
+		d.triggerOnStart(task)
 		if !d.taskIsRunningGeneration(task, generation) {
 			return nil
 		}
@@ -1460,10 +1446,6 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		}
 		if err := d.syncBlobTaskLease(task); err != nil {
 			return err
-		}
-		if extTask.pauseRequested {
-			pauseBeforeStart = true
-			return nil
 		}
 		if task.Meta.Res == nil {
 			err := task.fetcher.Resolve(task.Meta.Req, task.Meta.Opts)
@@ -1522,13 +1504,6 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			}
 			return
 		}
-		if pauseBeforeStart {
-			if err := d.doPauseBeforeStart(task); err != nil {
-				d.Logger.Error().Stack().Err(err).Msgf("onStart pause task failed, task id: %s", task.ID)
-			}
-			d.notifyRunning()
-			return
-		}
 		if started {
 			if d.taskIsRunningGeneration(task, generation) {
 				d.emit(EventKeyStart, task)
@@ -1548,21 +1523,6 @@ func (d *Downloader) doPause(task *Task) (err error) {
 	handled, err := d.runPauseHandler(task, generation, true)
 	if err != nil {
 		d.Logger.Error().Stack().Err(err).Msgf("pause task handle failed, task id: %s", task.ID)
-		return err
-	}
-	if handled {
-		d.emit(EventKeyPause, task)
-	}
-	return nil
-}
-
-func (d *Downloader) doPauseBeforeStart(task *Task) (err error) {
-	generation, isReturn, err := d.preparePause(task)
-	if err != nil || isReturn {
-		return err
-	}
-	handled, err := d.runPauseHandler(task, generation, false)
-	if err != nil {
 		return err
 	}
 	if handled {
