@@ -150,9 +150,14 @@ func (f *generationTestFetcher) Meta() *fetcher.FetcherMeta { return f.meta }
 func (f *generationTestFetcher) Progress() fetcher.Progress { return fetcher.Progress{1} }
 func (f *generationTestFetcher) Wait() error                { return <-f.done }
 
-func newTestDownloadOpt() *base.Options {
+func newTestDownloadOpt(t *testing.T) *base.Options {
+	t.Helper()
+	return newTestDownloadOptAt(t.TempDir())
+}
+
+func newTestDownloadOptAt(path string) *base.Options {
 	return &base.Options{
-		Path: test.Dir,
+		Path: path,
 		Name: test.DownloadName,
 		Extra: http.OptsExtra{
 			Connections: 4,
@@ -698,7 +703,8 @@ func TestDownloader_Create(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, newTestDownloadOpt())
+	opts := newTestDownloadOpt(t)
+	rr, err := downloader.Resolve(req, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -716,7 +722,7 @@ func TestDownloader_Create(t *testing.T) {
 	}
 	wg.Wait()
 	want := test.FileMd5(test.BuildFile)
-	got := test.FileMd5(test.DownloadFile)
+	got := test.FileMd5(filepath.Join(opts.Path, opts.Name))
 	if want != got {
 		t.Errorf("Downloader_Create() got = %v, want %v", got, want)
 	}
@@ -738,7 +744,7 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 	}
 	// With new fetcher design, white list check happens during Resolve (not Create)
 	// because Resolve now requires Options which includes the download path
-	_, err := downloader.Resolve(req, newTestDownloadOpt())
+	_, err := downloader.Resolve(req, newTestDownloadOpt(t))
 	if err == nil {
 		t.Error("TestDownloader_CreateNotInWhite() expected error but got nil")
 	}
@@ -785,9 +791,10 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 		}
 	})
 
+	opts := newTestDownloadOpt(t)
 	_, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
 		Reqs: reqs,
-		Opts: newTestDownloadOpt(),
+		Opts: opts,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -813,7 +820,7 @@ func TestDownloader_CreateDirectBatch(t *testing.T) {
 
 	// Check that all task files exist
 	for name := range taskNames {
-		if _, err := os.Stat(test.Dir + "/" + name); os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(opts.Path, name)); os.IsNotExist(err) {
 			t.Errorf("CreateDirectBatch() file not exist: %v", name)
 		}
 	}
@@ -966,6 +973,7 @@ func TestDownloader_CreateRename(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
+	downloadDir := t.TempDir()
 	var wg sync.WaitGroup
 	wg.Add(2)
 	downloader.Listener(func(event *Event) {
@@ -975,7 +983,7 @@ func TestDownloader_CreateRename(t *testing.T) {
 	})
 	for i := 0; i < 2; i++ {
 		_, err := downloader.CreateDirect(req, &base.Options{
-			Path: test.Dir,
+			Path: downloadDir,
 			Name: test.DownloadName,
 			Extra: http.OptsExtra{
 				Connections: 4,
@@ -988,11 +996,11 @@ func TestDownloader_CreateRename(t *testing.T) {
 	wg.Wait()
 
 	want := test.FileMd5(test.BuildFile)
-	got := test.FileMd5(test.DownloadFile)
+	got := test.FileMd5(filepath.Join(downloadDir, test.DownloadName))
 	if want != got {
 		t.Errorf("Downloader_CreateRename() got = %v, want %v", got, want)
 	}
-	got = test.FileMd5(test.DownloadRenameFile)
+	got = test.FileMd5(filepath.Join(downloadDir, test.DownloadRename))
 	if want != got {
 		t.Errorf("Downloader_CreateRename() got = %v, want %v", got, want)
 	}
@@ -1002,8 +1010,9 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	listener := test.StartTestSlowFileServer(time.Millisecond * 2000)
 	defer listener.Close()
 
+	storageDir := t.TempDir()
 	downloader := NewDownloader(&DownloaderConfig{
-		Storage: NewBoltStorage("./"),
+		Storage: NewBoltStorage(storageDir),
 	})
 	if err := downloader.Setup(); err != nil {
 		t.Fatal(err)
@@ -1012,7 +1021,8 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, newTestDownloadOpt())
+	opts := newTestDownloadOpt(t)
+	rr, err := downloader.Resolve(req, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1029,7 +1039,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 	downloader.Close()
 
 	downloader = NewDownloader(&DownloaderConfig{
-		Storage: NewBoltStorage("./"),
+		Storage: NewBoltStorage(storageDir),
 	})
 	if err := downloader.Setup(); err != nil {
 		t.Fatal(err)
@@ -1052,7 +1062,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := test.FileMd5(test.BuildFile)
-	got := test.FileMd5(test.DownloadFile)
+	got := test.FileMd5(filepath.Join(opts.Path, opts.Name))
 	if want != got {
 		t.Errorf("StoreAndResume() got = %v, want %v", got, want)
 	}
@@ -1146,15 +1156,10 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 		}
 	})
 
+	batchOpts := newTestDownloadOpt(t)
 	taskIds, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
 		Reqs: reqs,
-		Opts: &base.Options{
-			Path: test.Dir,
-			Name: test.DownloadName,
-			Extra: http.OptsExtra{
-				Connections: 4,
-			},
-		},
+		Opts: batchOpts,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1281,7 +1286,7 @@ func TestDownloader_Stats(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, newTestDownloadOpt())
+	rr, err := downloader.Resolve(req, newTestDownloadOpt(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1324,6 +1329,7 @@ func TestDownloader_Delete(t *testing.T) {
 	// Create multiple tasks
 	var wg sync.WaitGroup
 	taskCount := 3
+	downloadDir := t.TempDir()
 	wg.Add(taskCount)
 	downloader.Listener(func(event *Event) {
 		if event.Key == EventKeyDone {
@@ -1336,7 +1342,7 @@ func TestDownloader_Delete(t *testing.T) {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		taskId, err := downloader.CreateDirect(req, newTestDownloadOpt())
+		taskId, err := downloader.CreateDirect(req, newTestDownloadOptAt(downloadDir))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1400,7 +1406,7 @@ func TestDownloader_PauseAndContinue(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, newTestDownloadOpt())
+	rr, err := downloader.Resolve(req, newTestDownloadOpt(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1471,7 +1477,7 @@ func TestDownloader_PauseAllAndContinueAll(t *testing.T) {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		rr, err := downloader.Resolve(req, newTestDownloadOpt())
+		rr, err := downloader.Resolve(req, newTestDownloadOpt(t))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -2131,6 +2137,7 @@ func TestDownloader_DeleteAll(t *testing.T) {
 	// Create multiple tasks
 	var wg sync.WaitGroup
 	taskCount := 3
+	downloadDir := t.TempDir()
 	wg.Add(taskCount)
 	downloader.Listener(func(event *Event) {
 		if event.Key == EventKeyDone {
@@ -2143,7 +2150,7 @@ func TestDownloader_DeleteAll(t *testing.T) {
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
 		_, err := downloader.CreateDirect(req, &base.Options{
-			Path: test.Dir,
+			Path: downloadDir,
 			Name: test.DownloadName,
 			Extra: http.OptsExtra{
 				Connections: 4,
@@ -3297,7 +3304,7 @@ func TestDownloader_PatchTask_HTTP(t *testing.T) {
 		},
 	}
 	opts := &base.Options{
-		Path: test.Dir,
+		Path: t.TempDir(),
 		Name: test.DownloadName,
 	}
 

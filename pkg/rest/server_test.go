@@ -935,10 +935,22 @@ func doTest(handler func()) {
 
 func doTest0(onStart func(cfg *model.StartConfig), handler func()) {
 	testFunc := func(storage model.Storage) {
+		downloadDir, err := os.MkdirTemp("", "gopeed-rest-test-download-")
+		if err != nil {
+			panic(err)
+		}
+		defer os.RemoveAll(downloadDir)
+		oldCreatePath := createOpts.Path
+		createOpts.Path = downloadDir
+		defer func() {
+			createOpts.Path = oldCreatePath
+		}()
+
 		var cfg = &model.StartConfig{}
 		cfg.Init()
 		cfg.Storage = storage
 		cfg.StorageDir = ".test_storage"
+		cfg.DownloadConfig = (&base.DownloaderStoreConfig{DownloadDir: downloadDir}).Init()
 		cfg.WebEnable = true
 		if onStart != nil {
 			onStart(cfg)

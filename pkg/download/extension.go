@@ -283,7 +283,7 @@ func (d *Downloader) triggerOnStart(task *Task) {
 		EventOnStart,
 		task.Meta.Req,
 		&OnStartContext{
-			Task: newExtensionTaskSnapshot(task),
+			Task: newOnStartExtensionTask(task),
 		},
 		func(ext *Extension, gopeed *Instance, ctx *OnStartContext) {
 			// Validate request structure
@@ -302,7 +302,7 @@ func (d *Downloader) triggerOnError(task *Task, err error) {
 		EventOnError,
 		task.Meta.Req,
 		&OnErrorContext{
-			Task:  NewExtensionTask(d, task),
+			Task:  newOnErrorExtensionTask(d, task),
 			Error: err,
 		},
 		nil,
@@ -314,7 +314,7 @@ func (d *Downloader) triggerOnDone(task *Task) {
 		EventOnDone,
 		task.Meta.Req,
 		&OnDoneContext{
-			Task: newExtensionTaskSnapshot(task),
+			Task: newOnDoneExtensionTask(task),
 		},
 		nil,
 	)
@@ -726,18 +726,25 @@ type ExtensionTask struct {
 	*Task
 }
 
-func newExtensionTaskSnapshot(task *Task) *Task {
-	// restricts extension scripts to only modify request info
+func cloneExtensionTask(task *Task) *Task {
 	newTask := task.clone()
 	newTask.Meta.Req = task.Meta.Req
 	return newTask
 }
 
-func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
+func newOnStartExtensionTask(task *Task) *Task {
+	return cloneExtensionTask(task)
+}
+
+func newOnErrorExtensionTask(download *Downloader, task *Task) *ExtensionTask {
 	return &ExtensionTask{
 		download: download,
-		Task:     newExtensionTaskSnapshot(task),
+		Task:     cloneExtensionTask(task),
 	}
+}
+
+func newOnDoneExtensionTask(task *Task) *Task {
+	return cloneExtensionTask(task)
 }
 
 func (t *ExtensionTask) Continue() error {
