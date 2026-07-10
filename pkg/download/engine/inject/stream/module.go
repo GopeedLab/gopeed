@@ -30,6 +30,7 @@ type Config struct {
 	CreateObjectURL func(opts *ObjectURLOptions, open ObjectURLOpener) (string, error)
 	RevokeObjectURL func(url string) error
 	ProxyHandler    func(r *http.Request) (*url.URL, error)
+	RegisterCleanup func(cleanup func())
 }
 
 type ObjectURLOptions struct {
@@ -96,6 +97,9 @@ func Enable(runtime *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error
 		return err
 	}
 	fetchRegistry := newFetchRegistry()
+	if cfg.RegisterCleanup != nil {
+		cfg.RegisterCleanup(fetchRegistry.CloseAll)
+	}
 	if err := runtime.Set("__gopeed_fetch_open", func(call goja.FunctionCall) goja.Value {
 		reqMeta, err := exportFetchRequest(runtime, call.Argument(0))
 		if err != nil {
@@ -180,7 +184,7 @@ func openBlobObjectURLReader(ctx context.Context, loop *eventloop.EventLoop, pip
 	if pipes == nil {
 		return nil, fmt.Errorf("blob pipe registry not configured")
 	}
-	pipe := newBlobPipe(ctx, pipes)
+	pipe := newBlobPipe(ctx, loop, pipes)
 	pipes.Add(pipe)
 	_, err := runOnLoop(loop, func(runtime *goja.Runtime) (goja.Value, error) {
 		fnVal := runtime.Get("__gopeed_blob_pipe_source")
@@ -256,6 +260,7 @@ type blobPipeItem struct {
 
 type blobPipe struct {
 	id       string
+	loop     *eventloop.EventLoop
 	registry *blobPipeRegistry
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -267,10 +272,11 @@ type blobPipe struct {
 	once   sync.Once
 }
 
-func newBlobPipe(ctx context.Context, registry *blobPipeRegistry) *blobPipe {
+func newBlobPipe(ctx context.Context, loop *eventloop.EventLoop, registry *blobPipeRegistry) *blobPipe {
 	pipeCtx, cancel := context.WithCancel(ctx)
 	return &blobPipe{
 		id:       registry.NewID(),
+		loop:     loop,
 		registry: registry,
 		ctx:      pipeCtx,
 		cancel:   cancel,
@@ -341,7 +347,27 @@ func (p *blobPipe) Close() error {
 	p.mu.Unlock()
 	p.registry.Remove(p.id)
 	p.cancel()
+	p.cancelSourceReader()
 	return nil
+}
+
+func (p *blobPipe) cancelSourceReader() {
+	if p.loop == nil {
+		return
+	}
+	// Invoke the JavaScript cancellation before returning from Close. The
+	// source session may be released immediately after the HTTP handler closes
+	// this reader, so merely queueing the callback could let the engine stop
+	// before reader.cancel() is called.
+	_, _ = runOnLoop(p.loop, func(runtime *goja.Runtime) (goja.Value, error) {
+		fnVal := runtime.Get("__gopeed_blob_cancel_pipe_source")
+		fn, ok := goja.AssertFunction(fnVal)
+		if !ok {
+			return goja.Undefined(), nil
+		}
+		_, err := fn(nil, runtime.ToValue(p.id), runtime.ToValue("blob request closed"))
+		return goja.Undefined(), err
+	})
 }
 
 func exportBytes(value goja.Value) []byte {
@@ -528,6 +554,9 @@ func exportJSError(value goja.Value) error {
 type fetchRegistry struct {
 	mu      sync.Mutex
 	streams map[string]*fetchStream
+	ctx     context.Context
+	cancel  context.CancelFunc
+	closed  bool
 }
 
 type fetchStream struct {
@@ -536,6 +565,8 @@ type fetchStream struct {
 	closeOnce sync.Once
 	ctx       context.Context
 	ch        chan fetchChunk
+	readMu    sync.Mutex
+	pending   []byte
 }
 
 type fetchChunk struct {
@@ -552,6 +583,15 @@ type fetchRequest struct {
 	Credentials string
 }
 
+type fetchFormDataEntry struct {
+	name  string
+	value any
+}
+
+type fetchFormDataSnapshot struct {
+	entries []fetchFormDataEntry
+}
+
 type fetchOpenMeta struct {
 	ID         string      `json:"id"`
 	Status     int         `json:"status"`
@@ -561,8 +601,11 @@ type fetchOpenMeta struct {
 }
 
 func newFetchRegistry() *fetchRegistry {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &fetchRegistry{
 		streams: make(map[string]*fetchStream),
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 }
 
@@ -593,12 +636,82 @@ func exportFetchRequest(runtime *goja.Runtime, value goja.Value) (*fetchRequest,
 	}
 	bodyVal := obj.Get("body")
 	if bodyVal != nil && !goja.IsUndefined(bodyVal) && !goja.IsNull(bodyVal) {
-		meta.Body = bodyVal.Export()
+		body, err := snapshotFetchBody(bodyVal.Export())
+		if err != nil {
+			return nil, err
+		}
+		meta.Body = body
 	}
 	return meta, nil
 }
 
+// snapshotFetchBody runs on the JavaScript event loop before fetch work is
+// handed to a background goroutine. Values exported by goja may still share
+// mutable storage with JavaScript (notably ArrayBuffer and FormData), so the
+// background request must only retain immutable Go-owned data.
+func snapshotFetchBody(body any) (any, error) {
+	switch v := body.(type) {
+	case nil, string:
+		return v, nil
+	case []byte:
+		return append([]byte(nil), v...), nil
+	case goja.ArrayBuffer:
+		return append([]byte(nil), v.Bytes()...), nil
+	case *file.File:
+		return snapshotFetchFile(v), nil
+	case *formdata.FormData:
+		entries := v.Entries()
+		snapshot := &fetchFormDataSnapshot{
+			entries: make([]fetchFormDataEntry, 0, len(entries)),
+		}
+		for _, entry := range entries {
+			pair, ok := entry.([]any)
+			if !ok || len(pair) != 2 {
+				return nil, fmt.Errorf("invalid FormData entry %T", entry)
+			}
+			name, ok := pair[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("invalid FormData field name %T", pair[0])
+			}
+			value := pair[1]
+			if formFile, ok := value.(*file.File); ok {
+				value = snapshotFetchFile(formFile)
+			}
+			snapshot.entries = append(snapshot.entries, fetchFormDataEntry{
+				name:  name,
+				value: value,
+			})
+		}
+		return snapshot, nil
+	default:
+		if typed, ok := v.(interface{ Bytes() []byte }); ok {
+			return append([]byte(nil), typed.Bytes()...), nil
+		}
+		return v, nil
+	}
+}
+
+func snapshotFetchFile(src *file.File) *file.File {
+	if src == nil {
+		return nil
+	}
+	return &file.File{
+		Reader: src.Reader,
+		Closer: src.Closer,
+		Name:   src.Name,
+		Size:   src.Size,
+	}
+}
+
 func (r *fetchRegistry) Open(fingerprint string, proxyHandler func(r *http.Request) (*url.URL, error), reqMeta *fetchRequest) (*fetchOpenMeta, error) {
+	r.mu.Lock()
+	if r.closed {
+		r.mu.Unlock()
+		return nil, context.Canceled
+	}
+	registryCtx := r.ctx
+	r.mu.Unlock()
+
 	client := req.C()
 	if proxyHandler != nil {
 		client.SetProxy(proxyHandler)
@@ -608,7 +721,13 @@ func (r *fetchRegistry) Open(fingerprint string, proxyHandler func(r *http.Reque
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(registryCtx)
+	keepCancel := false
+	defer func() {
+		if !keepCancel {
+			cancel()
+		}
+	}()
 	reqBuilder := client.R()
 	reqBuilder.SetContext(ctx)
 	reqBuilder.DisableAutoReadResponse()
@@ -668,8 +787,14 @@ func (r *fetchRegistry) Open(fingerprint string, proxyHandler func(r *http.Reque
 		ch:     make(chan fetchChunk, 8),
 	}
 	r.mu.Lock()
+	if r.closed {
+		r.mu.Unlock()
+		closeFetchStream(stream)
+		return nil, context.Canceled
+	}
 	r.streams[id] = stream
 	r.mu.Unlock()
+	keepCancel = true
 	go stream.readLoop()
 	return meta, nil
 }
@@ -678,6 +803,17 @@ func (r *fetchRegistry) Read(id string, chunkSize int) ([]byte, bool, error) {
 	stream := r.get(id)
 	if stream == nil {
 		return nil, true, nil
+	}
+	stream.readMu.Lock()
+	defer stream.readMu.Unlock()
+	if len(stream.pending) > 0 {
+		n := len(stream.pending)
+		if chunkSize > 0 && n > chunkSize {
+			n = chunkSize
+		}
+		chunk := append([]byte(nil), stream.pending[:n]...)
+		stream.pending = stream.pending[n:]
+		return chunk, false, nil
 	}
 	select {
 	case item, ok := <-stream.ch:
@@ -691,11 +827,7 @@ func (r *fetchRegistry) Read(id string, chunkSize int) ([]byte, bool, error) {
 		}
 		if chunkSize > 0 && len(item.data) > chunkSize {
 			head := append([]byte(nil), item.data[:chunkSize]...)
-			tail := append([]byte(nil), item.data[chunkSize:]...)
-			select {
-			case stream.ch <- fetchChunk{data: tail}:
-			case <-stream.ctx.Done():
-			}
+			stream.pending = append(stream.pending[:0], item.data[chunkSize:]...)
 			return head, false, nil
 		}
 		return item.data, false, nil
@@ -735,14 +867,43 @@ func (r *fetchRegistry) Close(id string) {
 	stream := r.streams[id]
 	delete(r.streams, id)
 	r.mu.Unlock()
-	if stream != nil {
-		stream.closeOnce.Do(func() {
-			if stream.cancel != nil {
-				stream.cancel()
-			}
-			_ = stream.body.Close()
-		})
+	closeFetchStream(stream)
+}
+
+// CloseAll permanently closes the registry and cancels both active and
+// in-flight fetches. It is safe to call more than once.
+func (r *fetchRegistry) CloseAll() {
+	if r == nil {
+		return
 	}
+	r.mu.Lock()
+	if r.closed {
+		r.mu.Unlock()
+		return
+	}
+	r.closed = true
+	if r.cancel != nil {
+		r.cancel()
+	}
+	streams := r.streams
+	r.streams = make(map[string]*fetchStream)
+	r.mu.Unlock()
+
+	for _, stream := range streams {
+		closeFetchStream(stream)
+	}
+}
+
+func closeFetchStream(stream *fetchStream) {
+	if stream == nil {
+		return
+	}
+	stream.closeOnce.Do(func() {
+		if stream.cancel != nil {
+			stream.cancel()
+		}
+		_ = stream.body.Close()
+	})
 }
 
 func (r *fetchRegistry) Abort(id string, _ string) {
@@ -767,24 +928,33 @@ func buildFetchBody(body any) (string, any, error) {
 		return "application/octet-stream", v.Bytes(), nil
 	case *file.File:
 		return "application/octet-stream", v.Reader, nil
-	case *formdata.FormData:
+	case *fetchFormDataSnapshot:
 		pr, pw := io.Pipe()
 		mw := xhr.NewMultipart(pw)
-		for _, e := range v.Entries() {
-			arr := e.([]any)
-			key := arr[0].(string)
-			val := arr[1]
-			switch vv := val.(type) {
+		for _, entry := range v.entries {
+			switch vv := entry.value.(type) {
 			case string:
-				mw.WriteField(key, vv)
+				if err := mw.WriteField(entry.name, vv); err != nil {
+					_ = pw.CloseWithError(err)
+					return "", nil, err
+				}
 			case *file.File:
-				mw.WriteFile(key, vv)
+				if err := mw.WriteFile(entry.name, vv); err != nil {
+					_ = pw.CloseWithError(err)
+					return "", nil, err
+				}
 			}
 		}
 		go func() {
-			defer pw.Close()
-			defer mw.Close()
-			mw.Send()
+			if err := mw.Send(); err != nil {
+				_ = pw.CloseWithError(err)
+				return
+			}
+			if err := mw.Close(); err != nil {
+				_ = pw.CloseWithError(err)
+				return
+			}
+			_ = pw.Close()
 		}()
 		return mw.FormDataContentType(), pr, nil
 	default:

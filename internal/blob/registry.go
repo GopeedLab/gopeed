@@ -15,9 +15,16 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const urlPathPrefix = "/__blob/"
+
+const rangeSourceFailureLimit = 2
+
+// unclaimedSourceTTL bounds how long a session-backed source may keep its
+// engine alive without ever being claimed by a download task.
+var unclaimedSourceTTL = 10 * time.Minute
 
 var (
 	ErrInvalidURL      = errors.New("invalid blob url")
@@ -58,12 +65,16 @@ type Source struct {
 	URL         string
 	ContentType string
 
-	mu           sync.Mutex
-	size         int64
-	rangeEnabled bool
-	revoked      bool
-	session      SessionRef
-	open         OpenFunc
+	mu            sync.Mutex
+	size          int64
+	rangeEnabled  bool
+	revoked       bool
+	taskRefs      int
+	readErr       error
+	rangeFailures int
+	session       SessionRef
+	open          OpenFunc
+	unclaimed     *time.Timer
 }
 
 type Registry struct {
@@ -114,7 +125,7 @@ func (r *Registry) CreateBlob(data []byte, contentType string) (string, error) {
 	}, &CreateOptions{
 		ContentType: contentType,
 		Size:        int64(len(buf)),
-		Range:       true,
+		Range:       len(buf) > 0,
 	})
 }
 
@@ -134,12 +145,16 @@ func (r *Registry) CreateOpener(open OpenFunc, opts *CreateOptions) (string, err
 	if opts.Range && opts.Size <= 0 {
 		return "", fmt.Errorf("%w: range requires positive size", ErrInvalidOptions)
 	}
-	baseURL, err := r.ensureServer()
+	// Keep server generation selection and source insertion atomic with Close.
+	r.serverMu.Lock()
+	baseURL, err := r.ensureServerLocked()
 	if err != nil {
+		r.serverMu.Unlock()
 		return "", err
 	}
 	id, err := randomID(18)
 	if err != nil {
+		r.serverMu.Unlock()
 		return "", err
 	}
 	if opts.Session != nil {
@@ -158,6 +173,16 @@ func (r *Registry) CreateOpener(open OpenFunc, opts *CreateOptions) (string, err
 	r.mu.Lock()
 	r.sources[id] = src
 	r.mu.Unlock()
+	r.serverMu.Unlock()
+	if opts.Session != nil && unclaimedSourceTTL > 0 {
+		src.mu.Lock()
+		if !src.revoked {
+			src.unclaimed = time.AfterFunc(unclaimedSourceTTL, func() {
+				r.expireUnclaimed(src)
+			})
+		}
+		src.mu.Unlock()
+	}
 	return src.URL, nil
 }
 
@@ -173,6 +198,50 @@ func (r *Registry) Metadata(raw string) (Metadata, error) {
 		Size:        src.size,
 		Range:       src.rangeEnabled,
 	}, nil
+}
+
+// Acquire retains a source for a task. A source remains available until every
+// task that acquired it calls Release, unless it is explicitly revoked.
+func (r *Registry) Acquire(raw string) error {
+	src, err := r.get(raw)
+	if err != nil {
+		return err
+	}
+	return src.acquireTask()
+}
+
+// Release releases a task's reference to a source. Releasing the final task
+// reference revokes the source. Sources that have never been acquired remain
+// registered until Revoke or Registry.Close is called; session-backed sources
+// are also bounded by the unclaimed-source TTL.
+func (r *Registry) Release(raw string) error {
+	src, err := r.get(raw)
+	if err != nil {
+		return err
+	}
+	session, last, err := src.releaseTask()
+	if err != nil {
+		return err
+	}
+	if !last {
+		return nil
+	}
+	r.deleteSource(src)
+	if session != nil {
+		session.Release()
+	}
+	return nil
+}
+
+// SourceError returns the first error encountered while opening or reading a
+// source. Invalid and missing sources have no source error. HTTP response write
+// errors are deliberately not recorded here.
+func (r *Registry) SourceError(raw string) error {
+	src, err := r.get(raw)
+	if err != nil {
+		return nil
+	}
+	return src.sourceError()
 }
 
 func (r *Registry) Revoke(raw string) error {
@@ -194,13 +263,6 @@ func (r *Registry) Close() error {
 	r.server = nil
 	r.listener = nil
 	r.baseURL = ""
-	r.serverMu.Unlock()
-	if server != nil {
-		_ = server.Close()
-	}
-	if listener != nil {
-		_ = listener.Close()
-	}
 	r.mu.Lock()
 	sources := make([]*Source, 0, len(r.sources))
 	for _, src := range r.sources {
@@ -208,15 +270,22 @@ func (r *Registry) Close() error {
 	}
 	r.sources = make(map[string]*Source)
 	r.mu.Unlock()
+	r.serverMu.Unlock()
+	if server != nil {
+		_ = server.Close()
+	}
+	if listener != nil {
+		_ = listener.Close()
+	}
 	for _, src := range sources {
 		src.close()
 	}
 	return nil
 }
 
-func (r *Registry) ensureServer() (string, error) {
-	r.serverMu.Lock()
-	defer r.serverMu.Unlock()
+// ensureServerLocked returns the current server URL or starts a new server.
+// The caller must hold serverMu.
+func (r *Registry) ensureServerLocked() (string, error) {
 	if r.baseURL != "" {
 		return r.baseURL, nil
 	}
@@ -252,9 +321,16 @@ func (r *Registry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.NotFound(w, req)
 		return
 	}
-	meta, open := src.snapshot()
+	meta, open, session := src.acquireOpen()
 	if open == nil {
 		http.NotFound(w, req)
+		return
+	}
+	if session != nil {
+		defer session.Release()
+	}
+	if src.sourceError() != nil {
+		http.Error(w, "blob source unavailable", http.StatusGone)
 		return
 	}
 	start, end, ranged, err := parseRange(req.Header.Get("Range"), meta.Size, meta.Range)
@@ -270,7 +346,16 @@ func (r *Registry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		End:    end,
 	})
 	if err != nil {
-		http.NotFound(w, req)
+		if req.Context().Err() == nil || !errors.Is(err, req.Context().Err()) {
+			src.recordSourceError(err, meta.Range)
+		}
+		http.Error(w, "blob source unavailable", http.StatusGone)
+		return
+	}
+	if reader == nil {
+		err = fmt.Errorf("%w: opener returned a nil reader", ErrSourceClosed)
+		src.recordSourceError(err, meta.Range)
+		http.Error(w, "blob source unavailable", http.StatusGone)
 		return
 	}
 	defer reader.Close()
@@ -279,24 +364,109 @@ func (r *Registry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if ranged {
 		w.WriteHeader(http.StatusPartialContent)
 	}
+	limit := int64(-1)
 	if end >= start {
-		_, _ = copyWithFlush(w, reader, end-start+1)
-		return
+		limit = end - start + 1
+	} else if meta.Size > 0 {
+		limit = meta.Size
 	}
-	_, _ = copyWithFlush(w, reader, -1)
+	_, readErr, writeErr := copyWithFlush(w, reader, limit)
+	if readErr != nil {
+		if ctxErr := req.Context().Err(); ctxErr == nil || !errors.Is(readErr, ctxErr) {
+			src.recordSourceError(readErr, meta.Range)
+		}
+	} else if writeErr == nil && req.Context().Err() == nil {
+		src.recordSourceSuccess(meta.Range)
+	}
 }
 
-func (s *Source) snapshot() (Metadata, OpenFunc) {
+func (s *Source) acquireOpen() (Metadata, OpenFunc, SessionRef) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.revoked {
-		return Metadata{}, nil
+		return Metadata{}, nil, nil
+	}
+	if s.session != nil {
+		// The source's own retain guarantees that the session cannot become
+		// closed while this additional active-reader retain is acquired.
+		s.session.Retain()
 	}
 	return Metadata{
 		ContentType: s.ContentType,
 		Size:        s.size,
 		Range:       s.rangeEnabled,
-	}, s.open
+	}, s.open, s.session
+}
+
+func (s *Source) acquireTask() error {
+	s.mu.Lock()
+	if s.revoked {
+		s.mu.Unlock()
+		return ErrSourceRevoked
+	}
+	s.taskRefs++
+	timer := s.unclaimed
+	s.unclaimed = nil
+	s.mu.Unlock()
+	if timer != nil {
+		timer.Stop()
+	}
+	return nil
+}
+
+func (s *Source) releaseTask() (session SessionRef, last bool, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.revoked {
+		return nil, false, ErrSourceRevoked
+	}
+	if s.taskRefs == 0 {
+		return nil, false, ErrSourceClosed
+	}
+	s.taskRefs--
+	if s.taskRefs > 0 {
+		return nil, false, nil
+	}
+	s.revoked = true
+	s.open = nil
+	session = s.session
+	s.session = nil
+	return session, true, nil
+}
+
+func (s *Source) sourceError() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.readErr
+}
+
+func (s *Source) recordSourceError(err error, ranged bool) {
+	if err == nil {
+		return
+	}
+	s.mu.Lock()
+	if s.readErr == nil && ranged {
+		s.rangeFailures++
+		if s.rangeFailures < rangeSourceFailureLimit {
+			s.mu.Unlock()
+			return
+		}
+	}
+	if s.readErr == nil {
+		s.readErr = err
+	}
+	s.mu.Unlock()
+}
+
+func (s *Source) recordSourceSuccess(ranged bool) {
+	if !ranged {
+		return
+	}
+	s.mu.Lock()
+	if s.readErr == nil {
+		s.rangeFailures = 0
+	}
+	s.mu.Unlock()
 }
 
 func (s *Source) close() {
@@ -306,19 +476,53 @@ func (s *Source) close() {
 	s.open = nil
 	session := s.session
 	s.session = nil
+	timer := s.unclaimed
+	s.unclaimed = nil
 	s.mu.Unlock()
+	if timer != nil {
+		timer.Stop()
+	}
 	if !alreadyRevoked && session != nil {
 		session.Release()
 	}
 }
 
+func (s *Source) expireUnclaimed() (SessionRef, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.unclaimed = nil
+	if s.revoked || s.taskRefs > 0 {
+		return nil, false
+	}
+	s.revoked = true
+	s.open = nil
+	session := s.session
+	s.session = nil
+	return session, true
+}
+
+func (r *Registry) expireUnclaimed(src *Source) {
+	session, expired := src.expireUnclaimed()
+	if !expired {
+		return
+	}
+	r.deleteSource(src)
+	if session != nil {
+		session.Release()
+	}
+}
+
 func (r *Registry) removeSource(src *Source) {
+	src.close()
+	r.deleteSource(src)
+}
+
+func (r *Registry) deleteSource(src *Source) {
 	r.mu.Lock()
 	if current := r.sources[src.ID]; current == src {
 		delete(r.sources, src.ID)
 	}
 	r.mu.Unlock()
-	src.close()
 }
 
 func writeHeaders(w http.ResponseWriter, meta Metadata, start, end int64, ranged bool) {
@@ -338,15 +542,17 @@ func writeHeaders(w http.ResponseWriter, meta Metadata, start, end int64, ranged
 	}
 }
 
-func copyWithFlush(w http.ResponseWriter, reader io.Reader, limit int64) (int64, error) {
+func copyWithFlush(w http.ResponseWriter, reader io.Reader, limit int64) (written int64, readErr error, writeErr error) {
 	if limit >= 0 {
 		reader = io.LimitReader(reader, limit)
 	}
 	buf := make([]byte, 32*1024)
-	var written int64
 	flusher, canFlush := w.(http.Flusher)
 	for {
 		nr, er := reader.Read(buf)
+		if er != nil && !errors.Is(er, io.EOF) {
+			readErr = er
+		}
 		if nr > 0 {
 			nw, ew := w.Write(buf[:nr])
 			if nw > 0 {
@@ -356,17 +562,20 @@ func copyWithFlush(w http.ResponseWriter, reader io.Reader, limit int64) (int64,
 				}
 			}
 			if ew != nil {
-				return written, ew
+				return written, readErr, ew
 			}
 			if nr != nw {
-				return written, io.ErrShortWrite
+				return written, readErr, io.ErrShortWrite
 			}
 		}
 		if er != nil {
 			if errors.Is(er, io.EOF) {
-				return written, nil
+				if limit >= 0 && written < limit {
+					return written, io.ErrUnexpectedEOF, nil
+				}
+				return written, nil, nil
 			}
-			return written, er
+			return written, readErr, nil
 		}
 	}
 }

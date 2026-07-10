@@ -278,12 +278,14 @@ func (d *Downloader) triggerOnResolve(req *base.Request) (res *base.Resource, er
 	return
 }
 
-func (d *Downloader) triggerOnStart(task *Task) {
+func (d *Downloader) triggerOnStart(task *Task) *ExtensionTask {
+	extTask := NewExtensionTask(d, task)
+	extTask.deferActions = true
 	doTrigger(d,
 		EventOnStart,
 		task.Meta.Req,
 		&OnStartContext{
-			Task: NewExtensionTask(d, task),
+			Task: extTask,
 		},
 		func(ext *Extension, gopeed *Instance, ctx *OnStartContext) {
 			// Validate request structure
@@ -295,19 +297,22 @@ func (d *Downloader) triggerOnStart(task *Task) {
 			}
 		},
 	)
-	return
+	return extTask
 }
 
-func (d *Downloader) triggerOnError(task *Task, err error) {
+func (d *Downloader) triggerOnError(task *Task, err error) *ExtensionTask {
+	extTask := NewExtensionTask(d, task)
+	extTask.deferActions = true
 	doTrigger(d,
 		EventOnError,
 		task.Meta.Req,
 		&OnErrorContext{
-			Task:  NewExtensionTask(d, task),
+			Task:  extTask,
 			Error: err,
 		},
 		nil,
 	)
+	return extTask
 }
 
 func (d *Downloader) triggerOnDone(task *Task) {
@@ -724,6 +729,10 @@ type OnDoneContext struct {
 type ExtensionTask struct {
 	download *Downloader
 
+	deferActions      bool
+	continueRequested bool
+	pauseRequested    bool
+
 	*Task
 }
 
@@ -738,15 +747,23 @@ func NewExtensionTask(download *Downloader, task *Task) *ExtensionTask {
 }
 
 func (t *ExtensionTask) Continue() error {
+	if t.deferActions {
+		t.continueRequested = true
+		t.pauseRequested = false
+		return nil
+	}
 	return t.download.Continue(&TaskFilter{
 		IDs: []string{t.ID},
 	})
 }
 
 func (t *ExtensionTask) Pause() error {
-	return t.download.Pause(&TaskFilter{
-		IDs: []string{t.ID},
-	})
+	if t.deferActions {
+		t.pauseRequested = true
+		t.continueRequested = false
+		return nil
+	}
+	return t.download.Pause(&TaskFilter{IDs: []string{t.ID}})
 }
 
 func parseSettings(settings []*Setting) map[string]any {

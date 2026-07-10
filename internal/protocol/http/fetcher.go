@@ -354,12 +354,64 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	// Record connection time as baseline for fast-fail timeout
 	f.updateMaxConnTime(time.Since(connStartTime))
 
+	// Parse response to get resource info
+	res := &base.Resource{
+		Range: false,
+		Files: []*base.FileInfo{},
+	}
+
 	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
 		resp.Body.Close()
 		f.setState(stateError)
 		return NewRequestError(resp.StatusCode)
 	}
-	res := parseResourceFromResponse(httpReq, resp)
+
+	// Check if server supports range requests
+	acceptRanges := resp.Header.Get(base.HttpHeaderAcceptRanges)
+	contentRange := resp.Header.Get(base.HttpHeaderContentRange)
+	if acceptRanges == base.HttpHeaderBytes || strings.HasPrefix(contentRange, base.HttpHeaderBytes) {
+		res.Range = true
+	}
+
+	// Get content length from Content-Length header
+	contentLength := resp.Header.Get(base.HttpHeaderContentLength)
+	if contentLength != "" {
+		parse, err := strconv.ParseInt(contentLength, 10, 64)
+		if err == nil {
+			res.Size = parse
+		}
+	}
+
+	// Parse last modified time
+	var lastModifiedTime *time.Time
+	lastModified := resp.Header.Get(base.HttpHeaderLastModified)
+	if lastModified != "" {
+		t, _ := time.Parse(time.RFC1123, lastModified)
+		lastModifiedTime = &t
+	}
+
+	file := &base.FileInfo{
+		Size:  res.Size,
+		Ctime: lastModifiedTime,
+	}
+
+	// Parse filename
+	contentDisposition := resp.Header.Get(base.HttpHeaderContentDisposition)
+	if contentDisposition != "" {
+		file.Name = parseFilename(contentDisposition)
+	}
+	if file.Name == "" {
+		file.Name = path.Base(httpReq.URL.Path)
+		if file.Name != "" {
+			// Use PathUnescape instead of QueryUnescape to correctly handle %2B (should decode to +, not space)
+			file.Name, _ = url.PathUnescape(file.Name)
+		}
+	}
+	if file.Name == "" || file.Name == "/" || file.Name == "." {
+		file.Name = httpReq.URL.Hostname()
+	}
+
+	res.Files = append(res.Files, file)
 	f.meta.Res = res
 
 	// Save redirect URL for later connections
@@ -391,56 +443,6 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	}
 
 	return nil
-}
-
-func parseResourceFromResponse(httpReq *http.Request, resp *http.Response) *base.Resource {
-	res := &base.Resource{
-		Range: false,
-		Files: []*base.FileInfo{},
-	}
-
-	acceptRanges := resp.Header.Get(base.HttpHeaderAcceptRanges)
-	contentRange := resp.Header.Get(base.HttpHeaderContentRange)
-	if acceptRanges == base.HttpHeaderBytes || strings.HasPrefix(contentRange, base.HttpHeaderBytes) {
-		res.Range = true
-	}
-
-	contentLength := resp.Header.Get(base.HttpHeaderContentLength)
-	if contentLength != "" {
-		parse, err := strconv.ParseInt(contentLength, 10, 64)
-		if err == nil {
-			res.Size = parse
-		}
-	}
-
-	var lastModifiedTime *time.Time
-	lastModified := resp.Header.Get(base.HttpHeaderLastModified)
-	if lastModified != "" {
-		t, _ := time.Parse(time.RFC1123, lastModified)
-		lastModifiedTime = &t
-	}
-
-	file := &base.FileInfo{
-		Size:  res.Size,
-		Ctime: lastModifiedTime,
-	}
-
-	contentDisposition := resp.Header.Get(base.HttpHeaderContentDisposition)
-	if contentDisposition != "" {
-		file.Name = parseFilename(contentDisposition)
-	}
-	if file.Name == "" {
-		file.Name = path.Base(httpReq.URL.Path)
-		if file.Name != "" {
-			file.Name, _ = url.PathUnescape(file.Name)
-		}
-	}
-	if file.Name == "" || file.Name == "/" || file.Name == "." {
-		file.Name = httpReq.URL.Hostname()
-	}
-
-	res.Files = append(res.Files, file)
-	return res
 }
 
 // asyncPrefetch downloads data in background during resolve phase
@@ -574,12 +576,6 @@ func (f *Fetcher) Start() error {
 
 	switch state {
 	case stateResolved, statePaused:
-		if state == statePaused {
-			select {
-			case <-f.doneCh:
-			default:
-			}
-		}
 		// Normal case: resolved or resuming from pause
 		return f.doStart()
 
@@ -674,11 +670,6 @@ func (f *Fetcher) doStart() error {
 	if err = base.ParseReqExtra[fhttp.ReqExtra](f.meta.Req); err != nil {
 		return err
 	}
-	f.redirectLock.Lock()
-	if strings.Contains(f.redirectURL, "/__blob/") && f.redirectURL != f.meta.Req.URL {
-		f.redirectURL = ""
-	}
-	f.redirectLock.Unlock()
 
 	// Initialize slow start controller
 	maxConns := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
@@ -1718,10 +1709,6 @@ func (f *Fetcher) Pause() error {
 	f.fileMu.Unlock()
 
 	f.setState(statePaused)
-	select {
-	case f.doneCh <- context.Canceled:
-	default:
-	}
 	return nil
 }
 

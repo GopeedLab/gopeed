@@ -1,11 +1,12 @@
 package download
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -704,10 +705,29 @@ func TestDownloader_Extension_BlobResumeAfterRestartViaOnError(t *testing.T) {
 	if partialSize <= 0 || partialSize >= int64(len(payload)) {
 		t.Fatalf("expected partial downloaded bytes before restart, got %d", partialSize)
 	}
+	oldURL := file.Req.URL
 
 	if err := downloader.Close(); err != nil {
 		t.Fatal(err)
 	}
+
+	// Keep the old loopback address reachable after the Registry is gone. This
+	// makes the stale capability URL exercise the ordinary HTTP failure path
+	// deterministically (404), rather than the HTTP fetcher's retry-forever
+	// policy for transient dial errors.
+	parsedOldURL, err := neturl.Parse(oldURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staleListener, err := net.Listen("tcp", parsedOldURL.Host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staleServer := &http.Server{Handler: http.NotFoundHandler()}
+	go func() {
+		_ = staleServer.Serve(staleListener)
+	}()
+	defer staleServer.Close()
 
 	downloader = newDownloader()
 	defer func() {
@@ -723,8 +743,8 @@ func TestDownloader_Extension_BlobResumeAfterRestartViaOnError(t *testing.T) {
 	if task == nil {
 		t.Fatal("restored task not found")
 	}
-	if task.Status != base.DownloadStatusError {
-		t.Fatalf("expected restored blob task to be marked error before recovery, got %s", task.Status)
+	if task.Status != base.DownloadStatusPause {
+		t.Fatalf("expected restored blob task to use normal paused HTTP state, got %s", task.Status)
 	}
 	if task.Protocol != "http" {
 		t.Fatalf("expected restored task protocol http, got %s", task.Protocol)
@@ -738,13 +758,18 @@ func TestDownloader_Extension_BlobResumeAfterRestartViaOnError(t *testing.T) {
 	if task.Meta.Req.Labels == nil || task.Meta.Req.Labels["mode"] != "restart" {
 		t.Fatalf("unexpected restored task labels: %#v", task.Meta.Req.Labels)
 	}
-	oldURL := task.Meta.Req.URL
+	if task.Meta.Req.URL != oldURL {
+		t.Fatalf("restored URL changed before ordinary HTTP handling: old=%q current=%q", oldURL, task.Meta.Req.URL)
+	}
 
 	if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
 		t.Fatal(err)
 	}
 
-	deadline = time.Now().Add(2 * time.Second)
+	// A missing Registry entry is deliberately handled as an ordinary HTTP URL.
+	// Wait for the HTTP fetcher's normal retry policy to exhaust before onError
+	// rebuilds the capability URL.
+	deadline = time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
 		task = downloader.GetTask(id)
 		if task == nil {
@@ -765,12 +790,17 @@ func TestDownloader_Extension_BlobResumeAfterRestartViaOnError(t *testing.T) {
 		t.Fatalf("expected onError recovery to rebuild blob URL, old=%q current=%q labels=%#v", oldURL, task.Meta.Req.URL, task.Meta.Req.Labels)
 	}
 
-	if task.Meta.Req.URL == oldURL {
-		t.Fatalf("expected rebuilt blob URL, old=%q current=%q", oldURL, task.Meta.Req.URL)
+	waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 15*time.Second)
+	data, err := os.ReadFile(filepath.Join(downloadDir, file.Name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != payload {
+		t.Fatalf("unexpected restarted blob content length=%d want=%d", len(data), len(payload))
 	}
 }
 
-func TestDownloader_Extension_BlobPauseContinueRebuildsURLViaOnError(t *testing.T) {
+func TestDownloader_Extension_BlobPauseContinueKeepsSource(t *testing.T) {
 	payload := strings.Repeat("x", 262144)
 	cases := []struct {
 		name      string
@@ -797,24 +827,13 @@ func TestDownloader_Extension_BlobPauseContinueRebuildsURLViaOnError(t *testing.
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			storageDir := t.TempDir()
-			downloadDir := t.TempDir()
-			downloader := NewDownloader(&DownloaderConfig{
-				Storage:    NewBoltStorage(storageDir),
-				StorageDir: storageDir,
-				DownloaderStoreConfig: &base.DownloaderStoreConfig{
-					DownloadDir: downloadDir,
-				},
-			})
+			downloader := NewDownloader(nil)
 			downloader.cfg.RefreshInterval = 50
 			if err := downloader.Setup(); err != nil {
 				t.Fatal(err)
 			}
-			defer func() {
-				_ = downloader.Clear()
-			}()
+			defer downloader.Clear()
 
-			downloader.cfg.RefreshInterval = 50
 			if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_pause_rebuild", false); err != nil {
 				t.Fatal(err)
 			}
@@ -830,6 +849,7 @@ func TestDownloader_Extension_BlobPauseContinueRebuildsURLViaOnError(t *testing.
 			}
 
 			file := rr.Res.Files[0]
+			downloadDir := t.TempDir()
 			id, err := downloader.CreateDirect(file.Req, &base.Options{
 				Path: downloadDir,
 				Name: file.Name,
@@ -853,75 +873,29 @@ func TestDownloader_Extension_BlobPauseContinueRebuildsURLViaOnError(t *testing.
 			if err := downloader.Pause(&TaskFilter{IDs: []string{id}}); err != nil {
 				t.Fatal(err)
 			}
-			waitForTaskStatus(t, downloader, id, base.DownloadStatusPause, 2*time.Second)
-
-			deadline := time.Now().Add(2 * time.Second)
-			for {
-				resp, err := http.Get(oldURL)
-				if err != nil {
-					t.Fatal(err)
-				}
-				_ = resp.Body.Close()
-				if resp.StatusCode == http.StatusNotFound {
-					break
-				}
-				if time.Now().After(deadline) {
-					t.Fatalf("expected paused blob URL to be released, got %d", resp.StatusCode)
-				}
-				time.Sleep(20 * time.Millisecond)
+			task = downloader.GetTask(id)
+			if task == nil || task.Status != base.DownloadStatusPause {
+				t.Fatalf("expected paused task, got %#v", task)
+			}
+			if !downloader.blob.IsURL(oldURL) {
+				t.Fatal("paused blob source should remain registered")
 			}
 
+			// Continue immediately after Pause returns. Pause is synchronous, so the
+			// previous run cannot race with this new Start.
 			if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
 				t.Fatal(err)
 			}
-
-			deadline = time.Now().Add(5 * time.Second)
-			for time.Now().Before(deadline) {
-				task = downloader.GetTask(id)
-				if task == nil || task.Meta == nil || task.Meta.Req == nil {
-					t.Fatal("task request missing after continue")
-				}
-				if task.Meta.Req.Labels["rebuilt"] == "true" && task.Meta.Req.URL != oldURL {
-					break
-				}
-				time.Sleep(20 * time.Millisecond)
-			}
+			waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 10*time.Second)
 			task = downloader.GetTask(id)
 			if task == nil || task.Meta == nil || task.Meta.Req == nil {
-				t.Fatal("task request missing after onError")
+				t.Fatal("task request missing after continue")
 			}
-			if task.Meta.Req.Labels["rebuilt"] != "true" {
-				t.Fatalf("expected onError to rebuild blob URL, labels=%#v status=%s", task.Meta.Req.Labels, task.Status)
+			if task.Meta.Req.URL != oldURL {
+				t.Fatalf("pause/continue unexpectedly rebuilt URL: old=%q new=%q", oldURL, task.Meta.Req.URL)
 			}
-			if task.Meta.Req.Labels["source"] != strings.TrimPrefix(tc.url, "https://example.com/pause-rebuild-") {
-				t.Fatalf("unexpected source label after rebuild: %#v", task.Meta.Req.Labels)
-			}
-			if task.Meta.Req.URL == oldURL {
-				t.Fatalf("expected rebuilt blob URL to differ, url=%q labels=%#v", task.Meta.Req.URL, task.Meta.Req.Labels)
-			}
-
-			deadline = time.Now().Add(35 * time.Second)
-			for time.Now().Before(deadline) {
-				task = downloader.GetTask(id)
-				if task != nil && task.Status == base.DownloadStatusDone {
-					break
-				}
-				time.Sleep(20 * time.Millisecond)
-			}
-			task = downloader.GetTask(id)
-			if task == nil {
-				t.Fatal("task not found after rebuild")
-			}
-			if task.Status != base.DownloadStatusDone {
-				var stats any
-				statsJSON := ""
-				if task.fetcher != nil {
-					stats = task.fetcher.Stats()
-					if data, err := json.Marshal(stats); err == nil {
-						statsJSON = string(data)
-					}
-				}
-				t.Fatalf("timeout waiting for rebuilt blob task done: status=%s downloaded=%d total=%d labels=%#v stats=%#v statsJSON=%s", task.Status, task.Progress.Downloaded, task.Meta.Res.Size, task.Meta.Req.Labels, stats, statsJSON)
+			if task.Meta.Req.Labels["rebuilt"] != "" {
+				t.Fatalf("pause/continue should not invoke recovery: %#v", task.Meta.Req.Labels)
 			}
 
 			data, err := os.ReadFile(filePath)
@@ -929,13 +903,13 @@ func TestDownloader_Extension_BlobPauseContinueRebuildsURLViaOnError(t *testing.
 				t.Fatal(err)
 			}
 			if string(data) != payload {
-				t.Fatalf("unexpected rebuilt download content length=%d want=%d", len(data), len(payload))
+				t.Fatalf("unexpected resumed content length=%d want=%d", len(data), len(payload))
 			}
 		})
 	}
 }
 
-func TestDownloader_Extension_BlobOpenerPauseReleasesSource(t *testing.T) {
+func TestDownloader_Extension_BlobUnknownSizePauseContinueKeepsSource(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob", false); err != nil {
 			t.Fatal(err)
@@ -988,20 +962,70 @@ func TestDownloader_Extension_BlobOpenerPauseReleasesSource(t *testing.T) {
 			t.Fatalf("expected paused file size to remain %d, got %d", pausedSize, stat.Size())
 		}
 
-		deadline := time.Now().Add(2 * time.Second)
-		for {
-			resp, err := http.Get(task.Meta.Req.URL)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusNotFound {
-				break
-			}
-			if time.Now().After(deadline) {
-				t.Fatalf("expected old blob URL to be released after pause, got %d", resp.StatusCode)
-			}
-			time.Sleep(20 * time.Millisecond)
+		oldURL := task.Meta.Req.URL
+		if !downloader.blob.IsURL(oldURL) {
+			t.Fatal("paused unknown-size source should remain registered")
+		}
+		if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
+			t.Fatal(err)
+		}
+		waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 5*time.Second)
+		task = downloader.GetTask(id)
+		if task.Meta.Req.URL != oldURL {
+			t.Fatalf("pause/continue unexpectedly replaced URL: old=%q new=%q", oldURL, task.Meta.Req.URL)
+		}
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != "line 1\nline 2\n" {
+			t.Fatalf("unexpected resumed unknown-size content %q", string(data))
+		}
+	})
+}
+
+func TestDownloader_Extension_BlobOnStartURLChangePauseKeepsNewLease(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/blob_onstart_pause", false); err != nil {
+			t.Fatal(err)
+		}
+		rr, err := downloader.Resolve(&base.Request{URL: "https://example.com/onstart-pause"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		file := rr.Res.Files[0]
+		oldURL := file.Req.URL
+		dir := t.TempDir()
+		id, err := downloader.CreateDirect(file.Req, &base.Options{Path: dir, Name: file.Name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		waitForTaskStatus(t, downloader, id, base.DownloadStatusPause, 5*time.Second)
+		task := downloader.GetTask(id)
+		if task == nil || task.Meta == nil || task.Meta.Req == nil {
+			t.Fatal("paused onStart task request missing")
+		}
+		newURL := task.Meta.Req.URL
+		if newURL == oldURL {
+			t.Fatal("onStart did not replace the Blob URL")
+		}
+		if downloader.blob.IsURL(oldURL) {
+			t.Fatal("onStart Pause retained the old Blob lease")
+		}
+		if !downloader.blob.IsURL(newURL) {
+			t.Fatal("onStart Pause did not acquire the replacement Blob lease")
+		}
+
+		if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
+			t.Fatal(err)
+		}
+		waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 5*time.Second)
+		data, err := os.ReadFile(filepath.Join(dir, file.Name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != "new-source" {
+			t.Fatalf("unexpected onStart replacement content: %q", data)
 		}
 	})
 }
@@ -1012,65 +1036,66 @@ func TestDownloader_Extension_BlobRecoverOnError(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://example.com/recover",
-		}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		for _, path := range []string{"recover", "recover-range"} {
+			path := path
+			t.Run(path, func(t *testing.T) {
+				rawURL := "https://example.com/" + path
+				rr, err := downloader.Resolve(&base.Request{URL: rawURL}, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
 
-		dir := t.TempDir()
-		id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
-			Path: dir,
-			Name: rr.Res.Files[0].Name,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
+				dir := t.TempDir()
+				id, err := downloader.CreateDirect(rr.Res.Files[0].Req, &base.Options{
+					Path: dir,
+					Name: rr.Res.Files[0].Name,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
 
-		filePath := filepath.Join(dir, "recover.txt")
-		deadline := time.Now().Add(5 * time.Second)
-		for time.Now().Before(deadline) {
-			task := downloader.GetTask(id)
-			if task != nil && task.Status == base.DownloadStatusDone {
-				break
-			}
-			time.Sleep(20 * time.Millisecond)
-		}
+				filePath := filepath.Join(dir, "recover.txt")
+				deadline := time.Now().Add(15 * time.Second)
+				for time.Now().Before(deadline) {
+					task := downloader.GetTask(id)
+					if task != nil && task.Status == base.DownloadStatusDone {
+						break
+					}
+					time.Sleep(20 * time.Millisecond)
+				}
 
-		task := downloader.GetTask(id)
-		if task == nil {
-			t.Fatal("task not found after recovery")
-		}
-		if task.Status != base.DownloadStatusDone {
-			var fileSize int64 = -1
-			if info, statErr := os.Stat(filePath); statErr == nil {
-				fileSize = info.Size()
-			}
-			t.Fatalf(
-				"timeout waiting for recovered blob download: status=%s downloaded=%d url=%q rawUrl=%q labels=%#v fileSize=%d",
-				task.Status,
-				task.Progress.Downloaded,
-				task.Meta.Req.URL,
-				task.Meta.Req.RawURL,
-				task.Meta.Req.Labels,
-				fileSize,
-			)
-		}
+				task := downloader.GetTask(id)
+				if task == nil {
+					t.Fatal("task not found after recovery")
+				}
+				if task.Status != base.DownloadStatusDone {
+					var fileSize int64 = -1
+					if info, statErr := os.Stat(filePath); statErr == nil {
+						fileSize = info.Size()
+					}
+					t.Fatalf(
+						"timeout waiting for recovered blob download: status=%s downloaded=%d url=%q rawUrl=%q labels=%#v fileSize=%d",
+						task.Status,
+						task.Progress.Downloaded,
+						task.Meta.Req.URL,
+						task.Meta.Req.RawURL,
+						task.Meta.Req.Labels,
+						fileSize,
+					)
+				}
 
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.HasPrefix(string(data), "stale\n") {
-			t.Fatalf("unexpected partial blob file content: %q", string(data))
-		}
+				data, err := os.ReadFile(filePath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(data) != "ok\n" {
+					t.Fatalf("unexpected recovered blob file content: %q", string(data))
+				}
 
-		if task.Status != base.DownloadStatusDone {
-			t.Fatalf("expected partial blob task done, got %s", task.Status)
-		}
-		if task.Meta.Req.RawURL != "https://example.com/recover" {
-			t.Fatalf("unexpected raw url: %q", task.Meta.Req.RawURL)
+				if task.Meta.Req.RawURL != rawURL {
+					t.Fatalf("unexpected raw url: %q", task.Meta.Req.RawURL)
+				}
+			})
 		}
 	})
 }

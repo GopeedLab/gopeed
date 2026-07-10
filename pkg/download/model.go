@@ -36,6 +36,9 @@ type Task struct {
 	timer          *util.Timer
 	statusLock     *sync.Mutex
 	lock           *sync.Mutex
+	blobRefLock    *sync.Mutex
+	blobURL        string
+	runGeneration  uint64
 	speedArr       []int64
 	uploadSpeedArr []int64
 }

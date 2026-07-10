@@ -2,24 +2,120 @@ package download
 
 import (
 	"archive/zip"
+	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	gohttp "net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	internalblob "github.com/GopeedLab/gopeed/internal/blob"
+	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
 )
+
+type generationTestManager struct {
+	starts         atomic.Int32
+	pauses         atomic.Int32
+	holdOpen       bool
+	resolveStarted chan struct{}
+	resolveRelease <-chan struct{}
+	resolveErr     error
+	resolveOnce    sync.Once
+	pauseStarted   chan struct{}
+	pauseRelease   <-chan struct{}
+	pauseOnce      sync.Once
+}
+
+func (m *generationTestManager) Name() string { return "generation" }
+func (m *generationTestManager) Filters() []*fetcher.SchemeFilter {
+	return []*fetcher.SchemeFilter{{Type: fetcher.FilterTypeUrl, Pattern: "generation"}}
+}
+func (m *generationTestManager) Build() fetcher.Fetcher {
+	return &generationTestFetcher{manager: m, meta: &fetcher.FetcherMeta{}}
+}
+func (m *generationTestManager) ParseName(string) string            { return "generation.bin" }
+func (m *generationTestManager) AutoRename() bool                   { return false }
+func (m *generationTestManager) DefaultConfig() any                 { return map[string]any{} }
+func (m *generationTestManager) Store(fetcher.Fetcher) (any, error) { return nil, nil }
+func (m *generationTestManager) Restore() (any, func(*fetcher.FetcherMeta, any) fetcher.Fetcher) {
+	return nil, func(meta *fetcher.FetcherMeta, _ any) fetcher.Fetcher {
+		return &generationTestFetcher{manager: m, meta: meta}
+	}
+}
+func (m *generationTestManager) Close() error { return nil }
+
+type generationTestFetcher struct {
+	manager *generationTestManager
+	meta    *fetcher.FetcherMeta
+	done    chan error
+}
+
+func (f *generationTestFetcher) Setup(*controller.Controller) {
+	if f.done == nil {
+		f.done = make(chan error, 2)
+	}
+}
+func (f *generationTestFetcher) Resolve(req *base.Request, opts *base.Options) error {
+	if f.manager.resolveStarted != nil {
+		f.manager.resolveOnce.Do(func() { close(f.manager.resolveStarted) })
+	}
+	if f.manager.resolveRelease != nil {
+		<-f.manager.resolveRelease
+	}
+	if f.manager.resolveErr != nil {
+		return f.manager.resolveErr
+	}
+	f.meta.Req = req
+	f.meta.Opts = opts
+	f.meta.Res = &base.Resource{Files: []*base.FileInfo{{Name: "generation.bin", Size: 1}}}
+	return nil
+}
+func (f *generationTestFetcher) Start() error {
+	f.manager.starts.Add(1)
+	if !f.manager.holdOpen {
+		f.done <- nil
+	}
+	return nil
+}
+func (f *generationTestFetcher) Patch(req *base.Request, opts *base.Options) error {
+	if req != nil && req.URL != "" {
+		f.meta.Req.URL = req.URL
+	}
+	if opts != nil {
+		f.meta.Opts = opts
+	}
+	return nil
+}
+func (f *generationTestFetcher) Pause() error {
+	f.manager.pauses.Add(1)
+	if f.manager.pauseStarted != nil {
+		f.manager.pauseOnce.Do(func() { close(f.manager.pauseStarted) })
+	}
+	if f.manager.pauseRelease != nil {
+		<-f.manager.pauseRelease
+	}
+	return nil
+}
+func (f *generationTestFetcher) Close() error               { return nil }
+func (f *generationTestFetcher) Stats() any                 { return nil }
+func (f *generationTestFetcher) Meta() *fetcher.FetcherMeta { return f.meta }
+func (f *generationTestFetcher) Progress() fetcher.Progress { return fetcher.Progress{1} }
+func (f *generationTestFetcher) Wait() error                { return <-f.done }
 
 func newTestDownloadOpt() *base.Options {
 	return &base.Options{
@@ -122,6 +218,501 @@ func TestDownloader_BlobTaskKeepsConfiguredHTTPConnections(t *testing.T) {
 		t.Fatalf("expected blob task connections to stay 8, got %d", extra.Connections)
 	}
 	waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 5*time.Second)
+}
+
+func TestDownloader_ExternalBlobLikePathUsesNormalHTTP(t *testing.T) {
+	payload := []byte("external blob-like path")
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if r.URL.Path != "/__blob/file.bin" {
+			gohttp.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	dir := t.TempDir()
+	id, err := downloader.CreateDirect(&base.Request{URL: server.URL + "/__blob/file.bin"}, &base.Options{
+		Path: dir,
+		Name: "external.bin",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 5*time.Second)
+	got, err := os.ReadFile(filepath.Join(dir, "external.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(payload) {
+		t.Fatalf("unexpected external payload %q", string(got))
+	}
+}
+
+func TestDownloader_InternalBlobBypassesGlobalProxy(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	downloader.cfg.DownloaderStoreConfig.Proxy = &base.DownloaderProxyConfig{
+		Enable: true,
+		Scheme: "http",
+		Host:   "127.0.0.1:1",
+	}
+
+	payload := []byte("direct blob")
+	blobURL, err := downloader.blob.CreateBlob(payload, "application/octet-stream")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	id, err := downloader.CreateDirect(&base.Request{URL: blobURL}, &base.Options{
+		Path: dir,
+		Name: "direct.bin",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 5*time.Second)
+	got, err := os.ReadFile(filepath.Join(dir, "direct.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(payload) {
+		t.Fatalf("unexpected blob payload %q", string(got))
+	}
+}
+
+func TestDownloader_RegistryMissUsesOrdinaryHTTPError(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	liveURL, err := downloader.blob.CreateBlob([]byte("unused"), "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	missingURL := liveURL[:len(liveURL)-1] + "x"
+	if downloader.blob.IsURL(missingURL) {
+		t.Fatal("test URL unexpectedly matched the Registry")
+	}
+
+	errorCh := make(chan error, 1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyError {
+			select {
+			case errorCh <- event.Err:
+			default:
+			}
+		}
+	})
+	_, err = downloader.CreateDirect(&base.Request{URL: missingURL}, &base.Options{
+		Path: t.TempDir(),
+		Name: "missing.bin",
+	})
+	if err != nil {
+		t.Fatalf("Registry miss was rejected before ordinary HTTP handling: %v", err)
+	}
+	select {
+	case got := <-errorCh:
+		if errors.Is(got, internalblob.ErrSourceNotFound) {
+			t.Fatalf("Registry miss surfaced Blob error instead of HTTP failure: %v", got)
+		}
+		if got == nil || !strings.Contains(got.Error(), "404") {
+			t.Fatalf("expected ordinary HTTP 404 failure, got %v", got)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Registry miss did not reach the ordinary HTTP error path")
+	}
+}
+
+func TestDownloader_TasksShareBlobLease(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	downloader.cfg.MaxRunning = 1
+
+	payload := bytes.Repeat([]byte("shared-blob-"), 8192)
+	allowLaterOpens := make(chan struct{})
+	var opens atomic.Int32
+	blobURL, err := downloader.blob.CreateOpener(func(ctx context.Context, req internalblob.OpenRequest) (io.ReadCloser, error) {
+		if opens.Add(1) > 1 {
+			select {
+			case <-allowLaterOpens:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		start := req.Offset
+		end := int64(len(payload))
+		if req.End >= start && req.End+1 < end {
+			end = req.End + 1
+		}
+		return io.NopCloser(bytes.NewReader(payload[start:end])), nil
+	}, &internalblob.CreateOptions{Size: int64(len(payload))})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dirA, dirB := t.TempDir(), t.TempDir()
+	idA, err := downloader.CreateDirect(&base.Request{URL: blobURL}, &base.Options{Path: dirA, Name: "a.bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	idB, err := downloader.CreateDirect(&base.Request{URL: blobURL}, &base.Options{Path: dirB, Name: "b.bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	waitForTaskStatus(t, downloader, idA, base.DownloadStatusDone, 5*time.Second)
+	if err := downloader.Delete(&TaskFilter{IDs: []string{idA}}, false); err != nil {
+		t.Fatal(err)
+	}
+	if !downloader.blob.IsURL(blobURL) {
+		t.Fatal("deleting the first task revoked a Blob still leased by the second task")
+	}
+	close(allowLaterOpens)
+	waitForTaskStatus(t, downloader, idB, base.DownloadStatusDone, 5*time.Second)
+	if downloader.blob.IsURL(blobURL) {
+		t.Fatal("final task completion did not release the shared Blob")
+	}
+	for _, file := range []string{filepath.Join(dirA, "a.bin"), filepath.Join(dirB, "b.bin")} {
+		got, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, payload) {
+			t.Fatalf("unexpected shared Blob content in %s", file)
+		}
+	}
+}
+
+func TestDownloader_EmptyBlob(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	blobURL, err := downloader.blob.CreateBlob(nil, "application/octet-stream")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	id, err := downloader.CreateDirect(&base.Request{URL: blobURL}, &base.Options{Path: dir, Name: "empty.bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 5*time.Second)
+	info, err := os.Stat(filepath.Join(dir, "empty.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Size() != 0 {
+		t.Fatalf("unexpected empty Blob size: %d", info.Size())
+	}
+}
+
+func TestDownloader_PatchTransfersBlobLease(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	// Keep the task waiting so Patch exercises only metadata and lease transfer.
+	downloader.cfg.MaxRunning = 0
+
+	urlA, err := downloader.blob.CreateBlob([]byte("a"), "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	urlB, err := downloader.blob.CreateBlob([]byte("b"), "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := downloader.CreateDirect(&base.Request{URL: urlA}, &base.Options{Path: t.TempDir(), Name: "patched.bin"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := downloader.Patch(id, &base.Request{URL: urlB}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if downloader.blob.IsURL(urlA) {
+		t.Fatal("Patch retained the old Blob lease")
+	}
+	if !downloader.blob.IsURL(urlB) {
+		t.Fatal("Patch did not acquire the new Blob lease")
+	}
+	if err := downloader.Delete(&TaskFilter{IDs: []string{id}}, false); err != nil {
+		t.Fatal(err)
+	}
+	if downloader.blob.IsURL(urlB) {
+		t.Fatal("deleting patched task did not release the new Blob lease")
+	}
+}
+
+func TestDownloader_StaleStartGenerationCannotRestartTask(t *testing.T) {
+	manager := &generationTestManager{}
+	downloader := NewDownloader(&DownloaderConfig{FetchManagers: []fetcher.FetcherManager{manager}})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	downloader.cfg.MaxRunning = 0
+
+	id, err := downloader.CreateDirect(&base.Request{URL: "generation://test"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "generation.bin",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	task := downloader.GetTask(id)
+	if task == nil || task.Status != base.DownloadStatusWait {
+		t.Fatalf("expected queued task, got %#v", task)
+	}
+
+	// Hold task.lock so the first Start, its Pause handler, and the second Start
+	// are all queued. Only the newest start generation may reach Fetcher.Start.
+	task.lock.Lock()
+	downloader.cfg.MaxRunning = 1
+	if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
+		t.Fatal(err)
+	}
+	pauseDone := make(chan error, 1)
+	go func() {
+		pauseDone <- downloader.doPauseBeforeStart(task)
+	}()
+	deadline := time.Now().Add(2 * time.Second)
+	for downloader.taskStatus(task) != base.DownloadStatusPause && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if downloader.taskStatus(task) != base.DownloadStatusPause {
+		t.Fatal("deferred pre-start Pause did not update task status")
+	}
+	if err := downloader.Continue(&TaskFilter{IDs: []string{id}}); err != nil {
+		t.Fatal(err)
+	}
+	task.lock.Unlock()
+	select {
+	case err := <-pauseDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("deferred pre-start Pause did not finish")
+	}
+
+	waitForTaskStatus(t, downloader, id, base.DownloadStatusDone, 3*time.Second)
+	if got := manager.starts.Load(); got != 1 {
+		t.Fatalf("stale start generation reached Fetcher.Start: got %d starts, want 1", got)
+	}
+}
+
+func TestExtensionTaskDefersOnStartPauseUntilTaskUnlock(t *testing.T) {
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	downloader.cfg.MaxRunning = 0
+
+	blobURL, err := downloader.blob.CreateBlob([]byte("pause"), "text/plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := downloader.CreateDirect(&base.Request{URL: blobURL}, &base.Options{
+		Path: t.TempDir(),
+		Name: "pause.bin",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	liveTask := downloader.GetTask(id)
+	if liveTask == nil {
+		t.Fatal("task not found")
+	}
+	patched := make(chan error, 1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyPause && event.Task.ID == id {
+			patched <- downloader.Patch(id, &base.Request{Labels: map[string]string{"paused": "true"}}, nil)
+		}
+	})
+
+	// doStart invokes onStart while holding this lock. Record the action on the
+	// extension wrapper and apply it only after the handler unlocks.
+	extTask := NewExtensionTask(downloader, liveTask)
+	extTask.deferActions = true
+	liveTask.lock.Lock()
+	err = extTask.Pause()
+	liveTask.lock.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !extTask.pauseRequested {
+		t.Fatal("onStart Pause was not deferred")
+	}
+	if err := downloader.doPauseBeforeStart(liveTask); err != nil {
+		t.Fatal(err)
+	}
+	liveTask.statusLock.Lock()
+	status := liveTask.Status
+	liveTask.statusLock.Unlock()
+	if status != base.DownloadStatusPause {
+		t.Fatalf("extension pause did not update live task: %s", status)
+	}
+	select {
+	case err := <-patched:
+		if err != nil {
+			t.Fatalf("Pause listener could not re-enter Patch: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Pause listener deadlocked while re-entering Patch")
+	}
+}
+
+func TestDownloader_PauseWinsAgainstStaleResolveError(t *testing.T) {
+	releaseResolve := make(chan struct{})
+	manager := &generationTestManager{
+		resolveStarted: make(chan struct{}),
+		resolveRelease: releaseResolve,
+		resolveErr:     errors.New("stale resolve failed"),
+	}
+	downloader := NewDownloader(&DownloaderConfig{FetchManagers: []fetcher.FetcherManager{manager}})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	errorEvent := make(chan error, 1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyError {
+			errorEvent <- event.Err
+		}
+	})
+	id, err := downloader.CreateDirect(&base.Request{URL: "generation://stale-resolve"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "stale.bin",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-manager.resolveStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Resolve did not start")
+	}
+
+	pauseDone := make(chan error, 1)
+	go func() {
+		pauseDone <- downloader.Pause(&TaskFilter{IDs: []string{id}})
+	}()
+	deadline := time.Now().Add(2 * time.Second)
+	for downloader.taskStatus(downloader.GetTask(id)) != base.DownloadStatusPause && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := downloader.taskStatus(downloader.GetTask(id)); got != base.DownloadStatusPause {
+		t.Fatalf("Pause did not win the status transition: %s", got)
+	}
+	close(releaseResolve)
+	select {
+	case err := <-pauseDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Pause did not finish after stale Resolve returned")
+	}
+	if got := downloader.taskStatus(downloader.GetTask(id)); got != base.DownloadStatusPause {
+		t.Fatalf("stale Resolve error overwrote Pause: %s", got)
+	}
+	select {
+	case err := <-errorEvent:
+		t.Fatalf("stale Resolve emitted onError after Pause: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestDownloader_SchedulingPauseCompletesBeforeReplacementStart(t *testing.T) {
+	releasePause := make(chan struct{})
+	manager := &generationTestManager{
+		holdOpen:     true,
+		pauseStarted: make(chan struct{}),
+		pauseRelease: releasePause,
+	}
+	downloader := NewDownloader(&DownloaderConfig{FetchManagers: []fetcher.FetcherManager{manager}})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	downloader.cfg.MaxRunning = 1
+
+	_, err := downloader.CreateDirect(&base.Request{URL: "generation://a"}, &base.Options{
+		Path: t.TempDir(), Name: "a.bin",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for manager.starts.Load() != 1 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if manager.starts.Load() != 1 {
+		t.Fatal("first task did not physically start")
+	}
+	idB, err := downloader.CreateDirect(&base.Request{URL: "generation://b"}, &base.Options{
+		Path: t.TempDir(), Name: "b.bin",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if downloader.taskStatus(downloader.GetTask(idB)) != base.DownloadStatusWait {
+		t.Fatal("second task was not queued")
+	}
+
+	continueDone := make(chan error, 1)
+	go func() {
+		continueDone <- downloader.Continue(&TaskFilter{IDs: []string{idB}})
+	}()
+	select {
+	case <-manager.pauseStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("running task was not physically paused")
+	}
+	if got := manager.starts.Load(); got != 1 {
+		t.Fatalf("replacement started before Pause completed: %d starts", got)
+	}
+	close(releasePause)
+	select {
+	case err := <-continueDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Continue did not return after Pause completed")
+	}
+	deadline = time.Now().Add(2 * time.Second)
+	for manager.starts.Load() != 2 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := manager.starts.Load(); got != 2 {
+		t.Fatalf("replacement task did not start: %d starts", got)
+	}
+	if got := manager.pauses.Load(); got != 1 {
+		t.Fatalf("unexpected physical Pause count: %d", got)
+	}
 }
 
 func TestDownloader_Create(t *testing.T) {

@@ -1,0 +1,25 @@
+{
+  "name": "blob-onstart-pause",
+  "title": "gopeed extension blob onStart pause test",
+  "version": "0.0.1",
+  "scripts": [
+    {
+      "event": "onResolve",
+      "match": {
+        "urls": [
+          "*://example.com/onstart-pause"
+        ]
+      },
+      "entry": "index.js"
+    },
+    {
+      "event": "onStart",
+      "match": {
+        "urls": [
+          "*://example.com/onstart-pause"
+        ]
+      },
+      "entry": "index.js"
+    }
+  ]
+}

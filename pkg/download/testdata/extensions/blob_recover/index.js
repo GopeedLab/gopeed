@@ -1,5 +1,6 @@
 gopeed.events.onResolve(async function (ctx) {
-    if (!ctx.req.url.endsWith("/recover")) {
+    const isRange = ctx.req.url.endsWith("/recover-range");
+    if (!isRange && !ctx.req.url.endsWith("/recover")) {
         return;
     }
 
@@ -9,18 +10,18 @@ gopeed.events.onResolve(async function (ctx) {
                 controller.close();
                 return;
             }
-            controller.enqueue(new TextEncoder().encode("stale\n"));
+            controller.enqueue(new TextEncoder().encode("stale-prefix-that-must-be-removed\n"));
             await new Promise((resolve) => setTimeout(resolve, 50));
             controller.error(new Error("expired"));
         },
-    }), { size: 10 });
+    }), { size: 64, range: isRange });
 
     ctx.res = {
         name: "blob-recover",
         files: [
             {
                 name: "recover.txt",
-                size: 10,
+                size: 64,
                 req: {
                     url,
                 }
@@ -31,7 +32,7 @@ gopeed.events.onResolve(async function (ctx) {
 
 gopeed.events.onError(async function (ctx) {
     const req = ctx.task.meta.req;
-    if (!req.rawUrl || !req.rawUrl.endsWith("/recover")) {
+    if (!req.rawUrl || (!req.rawUrl.endsWith("/recover") && !req.rawUrl.endsWith("/recover-range"))) {
         return;
     }
     req.labels = req.labels || {};
@@ -40,6 +41,6 @@ gopeed.events.onError(async function (ctx) {
     }
 
     req.labels.recovered = "true";
-    req.url = gopeed.runtime.blob.createObjectURL(new Blob(["recovered\n"], { type: "text/plain" }));
+    req.url = gopeed.runtime.blob.createObjectURL(new Blob(["ok\n"], { type: "text/plain" }));
     ctx.task.continue();
 });
