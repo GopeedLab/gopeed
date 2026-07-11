@@ -7,6 +7,7 @@ import 'langs/fr_fr.dart';
 import 'langs/id_id.dart';
 import 'langs/it_it.dart';
 import 'langs/ja_jp.dart';
+import 'langs/ko_kr.dart';
 import 'langs/pl_pl.dart';
 import 'langs/ru_ru.dart';
 import 'langs/ta_ta.dart';
@@ -33,6 +34,7 @@ class _Messages extends Translations {
         ...zhTW,
         ...faIR,
         ...jaJP,
+        ...koKR,
         ...viVN,
         ...taTA,
         ...trTR,
