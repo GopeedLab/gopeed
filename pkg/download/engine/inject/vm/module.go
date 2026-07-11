@@ -12,12 +12,22 @@ type Vm struct {
 }
 
 func (vm *Vm) Set(name string, value any) {
+	defer func() {
+		if r := recover(); r != nil {
+			// silently ignore panic in Set
+		}
+	}()
 	vm.loop.Run(func(runtime *goja.Runtime) {
 		runtime.Set(name, value)
 	})
 }
 
 func (vm *Vm) Get(name string) (value any) {
+	defer func() {
+		if r := recover(); r != nil {
+			// silently ignore panic in Get
+		}
+	}()
 	vm.loop.Run(func(runtime *goja.Runtime) {
 		value = runtime.Get(name)
 	})
@@ -42,10 +52,19 @@ func (vm *Vm) RunString(script string) (value any, err error) {
 	return
 }
 
+func (vm *Vm) Close() {
+	if vm.loop != nil {
+		vm.loop.Stop()
+	}
+}
+
 func Enable(runtime *goja.Runtime) error {
 	return runtime.Set("__gopeed_create_vm", func(call goja.FunctionCall) goja.Value {
-		return runtime.ToValue(&Vm{
-			loop: eventloop.NewEventLoop(),
-		})
+		loop := eventloop.NewEventLoop()
+		loop.Start()
+		v := &Vm{
+			loop: loop,
+		}
+		return runtime.ToValue(v)
 	})
 }

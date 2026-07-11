@@ -38,7 +38,10 @@ func TestPolyfill(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-	engine := NewEngine(nil)
+	engine, err := NewEngine(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	_, err := engine.RunString(`
 	      throw new MessageError('test');
 	`)
@@ -48,7 +51,10 @@ func TestError(t *testing.T) {
 }
 
 func TestURLCreateObjectURLRejectsUnsupportedType(t *testing.T) {
-	engine := NewEngine(nil)
+	engine, err := NewEngine(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer engine.Close()
 
 	_, err := engine.RunString(`
@@ -63,7 +69,10 @@ func TestURLCreateObjectURLRejectsUnsupportedType(t *testing.T) {
 }
 
 func TestCallFunction_DetachedAsyncWorkDoesNotBlockReturn(t *testing.T) {
-	engine := NewEngine(nil)
+	engine, err := NewEngine(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer engine.Close()
 	if _, err := engine.RunString(`
 		globalThis.__done = false;
@@ -96,7 +105,10 @@ func TestCallFunction_DetachedAsyncWorkDoesNotBlockReturn(t *testing.T) {
 }
 
 func TestCallFunction_AwaitedPromiseBlocksUntilSettled(t *testing.T) {
-	engine := NewEngine(nil)
+	engine, err := NewEngine(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer engine.Close()
 	if _, err := engine.RunString(`
 		async function testAwaited() {
@@ -127,7 +139,10 @@ func TestCallFunction_AwaitedPromiseBlocksUntilSettled(t *testing.T) {
 func TestFetch(t *testing.T) {
 	server := startServer()
 	defer server.Close()
-	engine := NewEngine(nil)
+	engine, err := NewEngine(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := engine.RunString(fmt.Sprintf("var host = 'http://%s';", server.Addr().String())); err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +505,7 @@ func doTestFetchWithProxy(t *testing.T, usr, pwd string) {
 
 	proxyListener := test.StartSocks5Server(usr, pwd)
 	defer proxyListener.Close()
-	engine := NewEngine(&Config{
+	engine, err := NewEngine(&Config{
 		ProxyConfig: &base.DownloaderProxyConfig{
 			Enable: true,
 			System: false,
@@ -500,6 +515,9 @@ func doTestFetchWithProxy(t *testing.T, usr, pwd string) {
 			Pwd:    pwd,
 		},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if _, err := engine.RunString(fmt.Sprintf("var host = 'http://%s';", httpListener.Addr().String())); err != nil {
 		t.Fatal(err)
@@ -520,7 +538,10 @@ func doTestFetchWithProxy(t *testing.T, usr, pwd string) {
 }
 
 func TestVm(t *testing.T) {
-	engine := NewEngine(nil)
+	engine, err := NewEngine(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	value, err := engine.RunString(`
 const vm = __gopeed_create_vm()
@@ -548,7 +569,10 @@ out
 }
 
 func TestNonStopLoop(t *testing.T) {
-	engine := NewEngine(nil)
+	engine, err := NewEngine(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := engine.RunString(`
 function leak(){

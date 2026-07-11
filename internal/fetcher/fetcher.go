@@ -56,6 +56,9 @@ func (m *FetcherMeta) FolderPath() string {
 
 // SingleFilepath return the single file path of the meta info.
 func (m *FetcherMeta) SingleFilepath() string {
+	if len(m.Res.Files) == 0 {
+		return ""
+	}
 	// check if rename file
 	file := m.Res.Files[0]
 	fileName := file.Name

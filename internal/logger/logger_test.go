@@ -14,7 +14,7 @@ func TestNewLoggerFile(t *testing.T) {
 	logPath := "./testdata/test.log"
 	logger := NewLogger(true, logPath)
 	defer func() {
-		logger.CLose()
+		logger.Close()
 		os.Remove(logPath)
 	}()
 	logger.Info().Msg("test")

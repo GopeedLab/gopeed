@@ -111,7 +111,7 @@ func normalizeStreamChunk(data any) ([]byte, error) {
 	}
 }
 
-func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession) {
+func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession, error) {
 	session := newEngineSession(nil)
 	engineCfg := &stream.Config{
 		CreateBlobObjectURL: func(data []byte, contentType string) (string, error) {
@@ -148,10 +148,14 @@ func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession) {
 		},
 		ProxyHandler: d.cfg.Proxy.ToHandler(),
 	}
-	e := engine.NewEngine(&engine.Config{
+	e, err := engine.NewEngine(&engine.Config{
 		ProxyConfig:  d.cfg.Proxy,
 		StreamConfig: engineCfg,
 	})
+	if err != nil {
+		session.Close()
+		return nil, nil, err
+	}
 	session.SetEngine(e)
 	return e, session
 }

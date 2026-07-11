@@ -18,11 +18,16 @@ class LibgopeedFFi implements LibgopeedInterface {
   @override
   Future<int> start(StartConfig cfg) {
     var completer = Completer<int>();
-    var result = _libgopeed.Start(jsonEncode(cfg).toNativeUtf8().cast());
-    if (result.r1 != nullptr) {
-      completer.completeError(Exception(result.r1.cast<Utf8>().toDartString()));
-    } else {
-      completer.complete(result.r0);
+    final nativeCfg = jsonEncode(cfg).toNativeUtf8();
+    try {
+      var result = _libgopeed.Start(nativeCfg.cast());
+      if (result.r1 != nullptr) {
+        completer.completeError(Exception(result.r1.cast<Utf8>().toDartString()));
+      } else {
+        completer.complete(result.r0);
+      }
+    } finally {
+      nativeCfg.free();
     }
     return completer.future;
   }

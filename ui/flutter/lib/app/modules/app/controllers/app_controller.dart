@@ -520,7 +520,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
         result.addAll(trackers);
       } catch (e) {
         logger.w("subscribe trackers fail, url: $u", e);
-        return;
+        continue;
       }
     }
     btExtConfig.subscribeTrackers.clear();
@@ -540,7 +540,7 @@ class AppController extends GetxController with WindowListener, TrayListener {
     btConfig.trackers.addAll(btExtConfig.subscribeTrackers);
     btConfig.trackers.addAll(btExtConfig.customTrackers);
     // remove duplicate
-    btConfig.trackers.toSet().toList();
+    btConfig.trackers = btConfig.trackers.toSet().toList();
   }
 
   Future<void> _initTrackerUpdate() async {

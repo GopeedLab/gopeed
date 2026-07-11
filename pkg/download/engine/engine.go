@@ -141,7 +141,7 @@ type Config struct {
 	StreamConfig *stream.Config
 }
 
-func NewEngine(cfg *Config) *Engine {
+func NewEngine(cfg *Config) (*Engine, error) {
 	if cfg == nil {
 		cfg = &Config{}
 	}
@@ -151,6 +151,7 @@ func NewEngine(cfg *Config) *Engine {
 	}
 	loop.Start()
 	done := make(chan struct{})
+	var initErr error
 	loop.RunOnLoop(func(runtime *goja.Runtime) {
 		defer close(done)
 		engine.Runtime = runtime
@@ -158,43 +159,60 @@ func NewEngine(cfg *Config) *Engine {
 		vm.Enable(runtime)
 		gojaurl.Enable(runtime)
 		if err := gojaerror.Enable(runtime); err != nil {
+			initErr = err
 			return
 		}
 		if err := file.Enable(runtime); err != nil {
+			initErr = err
 			return
 		}
 		if err := formdata.Enable(runtime); err != nil {
+			initErr = err
 			return
 		}
 		if err := xhr.Enable(runtime, cfg.ProxyConfig.ToHandler()); err != nil {
+			initErr = err
 			return
 		}
 		if _, err := runtime.RunString(polyfillScript); err != nil {
+			initErr = err
 			return
 		}
 		// polyfill global
 		if err := runtime.Set("global", runtime.GlobalObject()); err != nil {
+			initErr = err
 			return
 		}
 		// polyfill window
 		if err := runtime.Set("window", runtime.GlobalObject()); err != nil {
+			initErr = err
 			return
 		}
 		// polyfill window.location
 		if _, err := runtime.RunString("global.location = new URL('http://localhost');"); err != nil {
+			initErr = err
 			return
 		}
 		if err := stream.Enable(runtime, loop, cfg.StreamConfig); err != nil {
+			initErr = err
 			return
 		}
 		return
 	})
 	<-done
-	return engine
+	if initErr != nil {
+		loop.Stop()
+		return nil, initErr
+	}
+	return engine, nil
 }
 
 func Run(script string) (value any, err error) {
-	engine := NewEngine(nil)
+	engine, err := NewEngine(nil)
+	if err != nil {
+		return nil, err
+	}
+	defer engine.Close()
 	return engine.RunString(script)
 }
 

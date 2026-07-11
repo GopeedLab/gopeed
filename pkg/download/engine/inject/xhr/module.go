@@ -204,8 +204,14 @@ func (xhr *XMLHttpRequest) Send(data goja.Value) {
 			pr, pw := io.Pipe()
 			mw := NewMultipart(pw)
 			for _, e := range v.Entries() {
-				arr := e.([]any)
-				k := arr[0].(string)
+				arr, ok := e.([]any)
+				if !ok || len(arr) < 2 {
+					continue
+				}
+				k, ok := arr[0].(string)
+				if !ok {
+					continue
+				}
 				v := arr[1]
 				switch v := v.(type) {
 				case string:

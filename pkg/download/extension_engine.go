@@ -19,7 +19,10 @@ func (d *Downloader) NewExtensionEngine(ext *Extension, settings map[string]any)
 	if ext == nil {
 		return nil, fmt.Errorf("extension is nil")
 	}
-	engine, session := d.newExtensionEngine()
+	engine, session, err := d.newExtensionEngine()
+	if err != nil {
+		return nil, fmt.Errorf("create engine failed: %w", err)
+	}
 	gopeed := &Instance{
 		Events:   make(InstanceEvents),
 		Info:     NewExtensionInfo(ext),

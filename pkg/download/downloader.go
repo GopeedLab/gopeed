@@ -812,6 +812,7 @@ func (d *Downloader) Stats(id string) (sr any, err error) {
 
 func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 	defer d.releaseGBlobTask(task)
+	taskID := task.ID
 	err = func() error {
 		if err := d.storage.Delete(bucketTask, task.ID); err != nil {
 			return err
@@ -837,12 +838,11 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 			}
 		}
 		d.emit(EventKeyDelete, task)
-		task = nil
 		return nil
 	}()
 
 	if err != nil {
-		d.Logger.Error().Stack().Err(err).Msgf("delete task failed, task id: %s", task.ID)
+		d.Logger.Error().Stack().Err(err).Msgf("delete task failed, task id: %s", taskID)
 	}
 	return
 }

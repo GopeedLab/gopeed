@@ -377,7 +377,11 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					if req.Labels == nil {
 						req.Labels = make(map[string]string)
 					}
-					engine, session := d.newExtensionEngine()
+					engine, session, err := d.newExtensionEngine()
+					if err != nil {
+						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] create engine failed", ext.buildIdentity())
+						return
+					}
 					defer session.CloseIfIdle()
 					gopeed.Runtime = &InstanceRuntime{
 						WebView: d.newExtensionWebViewRuntime(session),

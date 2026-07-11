@@ -2,6 +2,7 @@ package rest
 
 import (
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -329,6 +330,31 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err.Error())
 		return
 	}
+	// SSRF protection: block private IP addresses
+	host := targetUrl.Hostname()
+	ip := net.ParseIP(host)
+	if ip != nil && !ip.IsGlobalUnicast() {
+		writeError(w, "access to private IP addresses is not allowed")
+		return
+	}
+	if ip == nil {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			writeError(w, "failed to resolve host")
+			return
+		}
+		for _, resolvedIP := range ips {
+			if ipv4 := resolvedIP.To4(); ipv4 != nil && !ipv4.IsGlobalUnicast() {
+				writeError(w, "access to private IP addresses is not allowed")
+				return
+			}
+		}
+	}
+	// Only allow http/https schemes
+	if targetUrl.Scheme != "http" && targetUrl.Scheme != "https" {
+		writeError(w, "only http and https schemes are allowed")
+		return
+	}
 	r.RequestURI = ""
 	r.URL = targetUrl
 	r.Host = targetUrl.Host
@@ -346,7 +372,8 @@ func DoProxy(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(resp.StatusCode)
-	buf, err := io.ReadAll(resp.Body)
+	// Limit response body size to 10MB to prevent OOM
+	buf, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
 		writeError(w, err.Error())
 		return

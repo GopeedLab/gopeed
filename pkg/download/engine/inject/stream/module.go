@@ -449,8 +449,14 @@ func buildFetchBody(body any) (string, any, error) {
 		pr, pw := io.Pipe()
 		mw := xhr.NewMultipart(pw)
 		for _, e := range v.Entries() {
-			arr := e.([]any)
-			key := arr[0].(string)
+			arr, ok := e.([]any)
+			if !ok || len(arr) < 2 {
+				continue
+			}
+			key, ok := arr[0].(string)
+			if !ok {
+				continue
+			}
 			val := arr[1]
 			switch vv := val.(type) {
 			case string:

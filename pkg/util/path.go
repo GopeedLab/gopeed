@@ -64,13 +64,14 @@ func CheckDuplicateAndRename(path string) (string, error) {
 		nameWithoutExt := name[:len(name)-len(ext)]
 		nameTpl = nameWithoutExt + " (%d)" + ext
 	}
-	for i := 1; ; i++ {
+	for i := 1; i <= 10000; i++ {
 		newName := fmt.Sprintf(nameTpl, i)
 		newPath := syspath.Join(dir, newName)
 		if _, err := os.Stat(newPath); os.IsNotExist(err) {
 			return newName, nil
 		}
 	}
+	return "", fmt.Errorf("too many duplicate files, giving up after 10000 attempts")
 }
 
 // CopyDir Copy all files to the target directory, if the file already exists, it will be overwritten.

@@ -13,8 +13,10 @@ type Logger struct {
 	logFile *os.File
 }
 
-func (l *Logger) CLose() {
-	l.logFile.Close()
+func (l *Logger) Close() {
+	if l.logFile != nil {
+		l.logFile.Close()
+	}
 }
 
 // NewLogger create a new logger
