@@ -67,6 +67,10 @@ var (
 	}
 )
 
+func currentTestDownloadFile() string {
+	return filepath.Join(createOpts.Path, createOpts.Name)
+}
+
 func TestInfo(t *testing.T) {
 	matchKeys := []string{"version", "runtime", "os", "arch", "inDocker"}
 	doTest(func() {
@@ -109,7 +113,7 @@ func TestCreateTask(t *testing.T) {
 
 		wg.Wait()
 		want := test.FileMd5(test.BuildFile)
-		got := test.FileMd5(test.DownloadFile)
+		got := test.FileMd5(currentTestDownloadFile())
 		if want != got {
 			t.Errorf("CreateTask() got = %v, want %v", got, want)
 		}
@@ -133,7 +137,7 @@ func TestCreateDirectTask(t *testing.T) {
 
 		wg.Wait()
 		want := test.FileMd5(test.BuildFile)
-		got := test.FileMd5(test.DownloadFile)
+		got := test.FileMd5(currentTestDownloadFile())
 		if want != got {
 			t.Errorf("CreateDirectTask() got = %v, want %v", got, want)
 		}
@@ -226,7 +230,7 @@ func TestPauseAndContinueTask(t *testing.T) {
 
 		wg.Wait()
 		want := test.FileMd5(test.BuildFile)
-		got := test.FileMd5(test.DownloadFile)
+		got := test.FileMd5(currentTestDownloadFile())
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("PauseAndContinueTask() got = %v, want %v", got, want)
 		}
@@ -344,7 +348,7 @@ func TestDeleteTaskForce(t *testing.T) {
 		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/tasks/"+taskId+"?force=true", nil)
 		code, _ := httpRequest[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
 		checkCode(code, model.CodeTaskNotFound)
-		if _, err := os.Stat(test.DownloadFile); !errors.Is(err, os.ErrNotExist) {
+		if _, err := os.Stat(currentTestDownloadFile()); !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("DeleteTaskForce() got = %v, want %v", err, os.ErrNotExist)
 		}
 	})
