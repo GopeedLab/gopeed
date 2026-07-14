@@ -1027,14 +1027,26 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	pauseResult := make(chan error, 1)
+	var pauseOnce sync.Once
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyStart {
+			pauseOnce.Do(func() {
+				pauseResult <- downloader.Pause(&TaskFilter{IDs: []string{event.Task.ID}})
+			})
+		}
+	})
 	id, err := downloader.Create(rr.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(time.Millisecond * 1001)
-	err = downloader.Pause(&TaskFilter{IDs: []string{id}})
-	if err != nil {
-		t.Fatal(err)
+	select {
+	case err = <-pauseResult:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for task to pause")
 	}
 	downloader.Close()
 
