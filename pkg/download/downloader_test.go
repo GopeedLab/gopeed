@@ -42,35 +42,42 @@ type generationTestManager struct {
 	pauseOnce      sync.Once
 }
 
-func TestExtensionTaskControlMethodsOnlyExistOnError(t *testing.T) {
+func TestExtensionTaskMethodsMatchEventCapabilities(t *testing.T) {
 	taskType := reflect.TypeOf((*Task)(nil))
 	if _, ok := taskType.MethodByName("Continue"); ok {
 		t.Fatal("regular task unexpectedly exposes Continue")
 	}
-	if _, ok := taskType.MethodByName("Pause"); ok {
-		t.Fatal("regular task unexpectedly exposes Pause")
+	if _, ok := taskType.MethodByName("SetUrl"); ok {
+		t.Fatal("regular task unexpectedly exposes SetUrl")
 	}
 
-	errorTaskType := reflect.TypeOf((*ExtensionTask)(nil))
+	extensionTaskType := reflect.TypeOf((*ExtensionTask)(nil))
+	if _, ok := extensionTaskType.MethodByName("SetUrl"); !ok {
+		t.Fatal("extension task does not expose SetUrl")
+	}
+	if _, ok := extensionTaskType.MethodByName("Continue"); ok {
+		t.Fatal("non-error extension task unexpectedly exposes Continue")
+	}
+
+	errorTaskType := reflect.TypeOf((*OnErrorExtensionTask)(nil))
+	if _, ok := errorTaskType.MethodByName("SetUrl"); !ok {
+		t.Fatal("onError task does not expose SetUrl")
+	}
 	if _, ok := errorTaskType.MethodByName("Continue"); !ok {
 		t.Fatal("onError task does not expose Continue")
 	}
-	if _, ok := errorTaskType.MethodByName("Pause"); ok {
-		t.Fatal("onError task unexpectedly exposes Pause")
-	}
 
-	for name, contextType := range map[string]reflect.Type{
-		"onStart": reflect.TypeOf(OnStartContext{}),
-		"onDone":  reflect.TypeOf(OnDoneContext{}),
-	} {
-		field, _ := contextType.FieldByName("Task")
-		if field.Type != taskType {
-			t.Fatalf("%s unexpectedly injects a control wrapper: %v", name, field.Type)
-		}
+	startTaskField, _ := reflect.TypeOf(OnStartContext{}).FieldByName("Task")
+	if startTaskField.Type != extensionTaskType {
+		t.Fatalf("onStart does not inject the request mutation wrapper: %v", startTaskField.Type)
+	}
+	doneTaskField, _ := reflect.TypeOf(OnDoneContext{}).FieldByName("Task")
+	if doneTaskField.Type != taskType {
+		t.Fatalf("onDone unexpectedly injects a mutation wrapper: %v", doneTaskField.Type)
 	}
 	errorTaskField, _ := reflect.TypeOf(OnErrorContext{}).FieldByName("Task")
 	if errorTaskField.Type != errorTaskType {
-		t.Fatalf("onError does not inject the Continue wrapper: %v", errorTaskField.Type)
+		t.Fatalf("onError does not inject the recovery wrapper: %v", errorTaskField.Type)
 	}
 }
 

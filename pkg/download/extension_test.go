@@ -26,14 +26,25 @@ func TestDownloader_InstallExtensionByFolder(t *testing.T) {
 		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/basic", false); err != nil {
 			t.Fatal(err)
 		}
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://github.com/test",
-		}, nil)
+		req := &base.Request{
+			URL:    "https://github.com/test",
+			Labels: map[string]string{"original": "true"},
+		}
+		rr, err := downloader.Resolve(req, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if len(rr.Res.Files) == 1 {
 			t.Fatal("resolve error")
+		}
+		if req.Labels["replaced"] != "true" || req.Labels["modified"] != "true" {
+			t.Fatalf("request label methods did not update labels: %#v", req.Labels)
+		}
+		if _, ok := req.Labels["original"]; ok {
+			t.Fatalf("setLabels did not replace existing labels: %#v", req.Labels)
+		}
+		if _, ok := req.Labels["removed"]; ok {
+			t.Fatalf("delLabel did not remove label: %#v", req.Labels)
 		}
 	})
 }

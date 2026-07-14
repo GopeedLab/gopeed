@@ -41,18 +41,17 @@ gopeed.events.onError(async function (ctx) {
   if (!req || !req.rawUrl || !req.url || !req.url.includes('/__blob/')) {
     return;
   }
-  req.labels = req.labels || {};
   if (req.labels.rebuilt === 'true') {
     return;
   }
 
   try {
-    req.url = createRangeBlobUrl(req.rawUrl);
-    req.labels.started = 'true';
-    req.labels.rebuilt = 'true';
+    ctx.task.setUrl(createRangeBlobUrl(req.rawUrl));
+    req.putLabel('started', 'true');
+    req.putLabel('rebuilt', 'true');
     ctx.task.continue();
   } catch (error) {
-    req.labels.rebuildError = String(error);
+    req.putLabel('rebuildError', String(error));
     throw error;
   }
 });

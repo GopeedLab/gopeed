@@ -25,6 +25,24 @@ type Request struct {
 	SkipVerifyCert bool `json:"skipVerifyCert"`
 }
 
+// SetLabels replaces all labels on the request.
+func (r *Request) SetLabels(labels map[string]string) {
+	r.Labels = labels
+}
+
+// PutLabel sets a label on the request.
+func (r *Request) PutLabel(key, value string) {
+	if r.Labels == nil {
+		r.Labels = make(map[string]string)
+	}
+	r.Labels[key] = value
+}
+
+// DelLabel deletes a label from the request.
+func (r *Request) DelLabel(key string) {
+	delete(r.Labels, key)
+}
+
 func (r *Request) Validate() error {
 	if r.URL == "" {
 		return fmt.Errorf("invalid request url")

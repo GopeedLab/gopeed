@@ -705,12 +705,12 @@ type OnResolveContext struct {
 }
 
 type OnStartContext struct {
-	Task *Task `json:"task"`
+	Task *ExtensionTask `json:"task"`
 }
 
 type OnErrorContext struct {
-	Task  *ExtensionTask `json:"task"`
-	Error error          `json:"error"`
+	Task  *OnErrorExtensionTask `json:"task"`
+	Error error                 `json:"error"`
 }
 
 type OnDoneContext struct {
@@ -721,9 +721,15 @@ type OnDoneContext struct {
 // Avoid extension scripts modifying task directly, use ExtensionTask to encapsulate task,
 // only some fields can be modified, such as request info.
 type ExtensionTask struct {
+	*Task
+}
+
+// OnErrorExtensionTask adds error-recovery controls to ExtensionTask.
+// Continue is intentionally only exposed to onError handlers.
+type OnErrorExtensionTask struct {
 	download *Downloader
 
-	*Task
+	*ExtensionTask
 }
 
 func cloneExtensionTask(task *Task) *Task {
@@ -732,14 +738,18 @@ func cloneExtensionTask(task *Task) *Task {
 	return newTask
 }
 
-func newOnStartExtensionTask(task *Task) *Task {
-	return cloneExtensionTask(task)
+func newExtensionTask(task *Task) *ExtensionTask {
+	return &ExtensionTask{Task: cloneExtensionTask(task)}
 }
 
-func newOnErrorExtensionTask(download *Downloader, task *Task) *ExtensionTask {
-	return &ExtensionTask{
-		download: download,
-		Task:     cloneExtensionTask(task),
+func newOnStartExtensionTask(task *Task) *ExtensionTask {
+	return newExtensionTask(task)
+}
+
+func newOnErrorExtensionTask(download *Downloader, task *Task) *OnErrorExtensionTask {
+	return &OnErrorExtensionTask{
+		download:      download,
+		ExtensionTask: newExtensionTask(task),
 	}
 }
 
@@ -747,7 +757,12 @@ func newOnDoneExtensionTask(task *Task) *Task {
 	return cloneExtensionTask(task)
 }
 
-func (t *ExtensionTask) Continue() error {
+// SetUrl replaces the task request URL.
+func (t *ExtensionTask) SetUrl(url string) {
+	t.Meta.Req.URL = url
+}
+
+func (t *OnErrorExtensionTask) Continue() error {
 	return t.download.Continue(&TaskFilter{
 		IDs: []string{t.ID},
 	})

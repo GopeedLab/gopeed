@@ -132,9 +132,8 @@ gopeed.events.onError(async function (ctx) {
     return;
   }
 
-  req.url = createPayloadURL(source, false);
-  req.labels = req.labels || {};
-  req.labels.started = 'true';
-  req.labels.rebuilt = 'true';
+  ctx.task.setUrl(createPayloadURL(source, false));
+  req.putLabel('started', 'true');
+  req.putLabel('rebuilt', 'true');
   ctx.task.continue();
 });
