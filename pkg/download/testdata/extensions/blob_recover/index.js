@@ -35,6 +35,7 @@ gopeed.events.onError(async function (ctx) {
     if (!req.rawUrl || (!req.rawUrl.endsWith("/recover") && !req.rawUrl.endsWith("/recover-range"))) {
         return;
     }
+    req.labels = req.labels || {};
     if (req.labels.recovered === "true") {
         return;
     }

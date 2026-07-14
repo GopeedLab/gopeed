@@ -705,7 +705,7 @@ type OnResolveContext struct {
 }
 
 type OnStartContext struct {
-	Task *ExtensionTask `json:"task"`
+	Task *Task `json:"task"`
 }
 
 type OnErrorContext struct {
