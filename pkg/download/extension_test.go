@@ -21,6 +21,24 @@ import (
 	"github.com/dop251/goja"
 )
 
+func TestDownloader_ResolveNilRequest(t *testing.T) {
+	setupDownloader(func(downloader *Downloader) {
+		if _, err := downloader.Resolve(nil, nil); err == nil {
+			t.Fatal("expected invalid request error")
+		}
+	})
+}
+
+func TestScript_MatchNilRequest(t *testing.T) {
+	script := &Script{
+		Event: string(EventOnResolve),
+		Match: &Match{Urls: []string{"*://*/*"}},
+	}
+	if script.match(EventOnResolve, nil) {
+		t.Fatal("expected nil request not to match")
+	}
+}
+
 func TestDownloader_InstallExtensionByFolder(t *testing.T) {
 	setupDownloader(func(downloader *Downloader) {
 		if _, err := downloader.InstallExtensionByFolder("./testdata/extensions/basic", false); err != nil {

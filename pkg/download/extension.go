@@ -548,7 +548,7 @@ func (s *Script) match(event ActivationEvent, req *base.Request) bool {
 	if s.Event != string(event) {
 		return false
 	}
-	if s.Match == nil || (len(s.Match.Urls) == 0 && len(s.Match.Labels) == 0) {
+	if req == nil || s.Match == nil || (len(s.Match.Urls) == 0 && len(s.Match.Labels) == 0) {
 		return false
 	}
 
