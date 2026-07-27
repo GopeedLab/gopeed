@@ -427,7 +427,7 @@ func ensureResourceRequestRawURLs(parentReq *base.Request, res *base.Resource) {
 
 func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *ResolveResult, err error) {
 	if req == nil {
-		return nil, errors.New("invalid request")
+		return nil, errors.New("request cannot be nil")
 	}
 	rrId, err := gonanoid.New()
 	if err != nil {
