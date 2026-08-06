@@ -136,14 +136,6 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	r.Methods(http.MethodGet).Path("/api/v1/tasks/{id}/stats").HandlerFunc(GetStats)
 	r.Methods(http.MethodGet).Path("/api/v1/config").HandlerFunc(GetConfig)
 	r.Methods(http.MethodPut).Path("/api/v1/config").HandlerFunc(PutConfig)
-	r.Methods(http.MethodPost).Path("/api/v1/extensions").HandlerFunc(InstallExtension)
-	r.Methods(http.MethodGet).Path("/api/v1/extensions").HandlerFunc(GetExtensions)
-	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}").HandlerFunc(GetExtension)
-	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/settings").HandlerFunc(UpdateExtensionSettings)
-	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/switch").HandlerFunc(SwitchExtension)
-	r.Methods(http.MethodDelete).Path("/api/v1/extensions/{identity}").HandlerFunc(DeleteExtension)
-	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateCheckExtension)
-	r.Methods(http.MethodPost).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateExtension)
 	r.Methods(http.MethodPost).Path("/api/v1/webhook/test").HandlerFunc(TestWebhook)
 	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
 
@@ -172,7 +164,6 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 			})
 		}
 		r.PathPrefix("/fs/tasks").Handler(http.FileServer(new(taskFileSystem)))
-		r.PathPrefix("/fs/extensions").Handler(http.FileServer(new(extensionFileSystem)))
 		r.PathPrefix("/").Handler(gzipMiddleware(http.FileServer(newEmbedCacheFileSystem(http.FS(startCfg.WebFS)))))
 	}
 	if enableApiToken || enableWebAuth {
@@ -264,7 +255,6 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 func resolvePath(urlPath string, prefix string) (identity string, path string, err error) {
 	// remove prefix
 	clearPath := strings.TrimPrefix(urlPath, prefix)
-	// match extension identity, eg: /fs/extensions/identity/xxx
 	reg := regexp.MustCompile(`^/([^/]+)/(.*)$`)
 	if !reg.MatchString(clearPath) {
 		err = os.ErrNotExist
@@ -283,7 +273,6 @@ type taskFileSystem struct {
 }
 
 func (e *taskFileSystem) Open(name string) (http.File, error) {
-	// get extension identity
 	identity, path, err := resolvePath(name, "/fs/tasks")
 	if err != nil {
 		return nil, err
@@ -293,24 +282,6 @@ func (e *taskFileSystem) Open(name string) (http.File, error) {
 		return nil, os.ErrNotExist
 	}
 	return os.Open(filepath.Join(task.Meta.RootDirPath(), path))
-}
-
-// handle extension file resource
-type extensionFileSystem struct {
-}
-
-func (e *extensionFileSystem) Open(name string) (http.File, error) {
-	// get extension identity
-	identity, path, err := resolvePath(name, "/fs/extensions")
-	if err != nil {
-		return nil, err
-	}
-	extension, err := Downloader.GetExtension(identity)
-	if err != nil {
-		return nil, os.ErrNotExist
-	}
-	extensionPath := Downloader.ExtensionPath(extension)
-	return os.Open(filepath.Join(extensionPath, path))
 }
 
 type embedCacheFileSystem struct {

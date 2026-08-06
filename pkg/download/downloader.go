@@ -36,10 +36,6 @@ const (
 	bucketProtocolState = "protocol_state"
 	// downloader config bucket
 	bucketConfig = "config"
-	// downloader extension bucket
-	bucketExtension = "extension"
-	// downloader extension storage bucket
-	bucketExtensionStorage = "extension_storage"
 )
 
 var (
@@ -92,7 +88,6 @@ type Progress struct {
 
 type Downloader struct {
 	Logger          *logger.Logger
-	ExtensionLogger *logger.Logger
 
 	cfg          *DownloaderConfig
 	fetcherCache map[string]fetcher.Fetcher
@@ -111,7 +106,6 @@ type Downloader struct {
 	// Key: fullBaseName (e.g., "/path/archive.7z"), Value: taskID that claimed it
 	claimedExtractions sync.Map
 
-	extensions []*Extension
 	blob       *internalblob.Registry
 }
 
@@ -130,13 +124,10 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		lock:               &sync.Mutex{},
 		fetcherMapLock:     &sync.RWMutex{},
 		checkDuplicateLock: &sync.Mutex{},
-
-		extensions: make([]*Extension, 0),
 	}
 
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	d.Logger = logger.NewLogger(cfg.ProductionMode, filepath.Join(cfg.StorageDir, "logs", "core.log"))
-	d.ExtensionLogger = logger.NewLogger(cfg.ProductionMode, filepath.Join(cfg.StorageDir, "logs", "extension.log"))
 	if cfg.ProductionMode {
 		logPanic(filepath.Join(cfg.StorageDir, "logs"))
 	}
@@ -147,7 +138,7 @@ func (d *Downloader) Setup() error {
 	d.blob = internalblob.NewRegistry("")
 
 	// setup storage
-	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
+	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketProtocolState, bucketConfig}); err != nil {
 		return err
 	}
 	// load config from storage
@@ -206,16 +197,6 @@ func (d *Downloader) Setup() error {
 	sort.Slice(d.tasks, func(i, j int) bool {
 		return d.tasks[i].CreatedAt.Before(d.tasks[j].CreatedAt)
 	})
-
-	// load extensions from storage
-	var extensions []*Extension
-	if err = d.storage.List(bucketExtension, &extensions); err != nil {
-		return err
-	}
-	if extensions == nil {
-		extensions = make([]*Extension, 0)
-	}
-	d.extensions = extensions
 
 	// Auto-cleanup non-existing tasks on startup
 	d.cleanupNonExistingTasks()
@@ -894,7 +875,6 @@ func (d *Downloader) Clear() error {
 		}
 	}
 	d.tasks = make([]*Task, 0)
-	d.extensions = make([]*Extension, 0)
 	if err := d.storage.Clear(); err != nil {
 		return err
 	}
@@ -1121,7 +1101,6 @@ func (d *Downloader) watch(task *Task) {
 		d.emit(EventKeyFinally, task, err)
 		d.notifyRunning()
 		d.releaseBlobTask(task)
-		d.triggerOnDone(task)
 		d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 		d.triggerScripts(ScriptEventDownloadDone, task, nil)
 
@@ -1203,19 +1182,14 @@ func (d *Downloader) handleOnError(task *Task, err error, resetFetcher bool) {
 		return
 	}
 	d.Logger.Warn().Err(err).Msgf("task download failed, task id: %s", task.ID)
-	oldURL := ""
 	if task.Meta != nil && task.Meta.Req != nil {
 		oldURL = task.Meta.Req.URL
 	}
-	d.triggerOnError(task, err)
 	newURL := ""
 	if task.Meta != nil && task.Meta.Req != nil {
 		newURL = task.Meta.Req.URL
 	}
 	if oldURL != "" && newURL != oldURL {
-		// Extensions are allowed to replace an expired URL from onError. Patch the
-		// existing fetcher through its public API so protocol-owned redirect state
-		// is reset without teaching the HTTP fetcher about blob URLs.
 		if task.fetcher != nil {
 			if patchErr := task.fetcher.Patch(&base.Request{URL: newURL}, nil); patchErr != nil {
 				d.Logger.Warn().Err(patchErr).Msgf("patch recovered task url failed, task id: %s", task.ID)
@@ -1435,7 +1409,6 @@ func (d *Downloader) doStart(task *Task) (err error) {
 				return err
 			}
 		}
-		d.triggerOnStart(task)
 		if !d.taskIsRunningGeneration(task, generation) {
 			return nil
 		}

@@ -11,16 +11,11 @@ import '../util/util.dart';
 import 'model/create_task.dart';
 import 'model/create_task_batch.dart';
 import 'model/downloader_config.dart';
-import 'model/extension.dart';
-import 'model/install_extension.dart';
 import 'model/login.dart';
 import 'model/resolve_result.dart';
 import 'model/resolve_task.dart';
 import 'model/result.dart';
-import 'model/switch_extension.dart';
 import 'model/task.dart';
-import 'model/update_check_extension_resp.dart';
-import 'model/update_extension_settings.dart';
 
 class _Client {
   static _Client? _instance;
@@ -198,47 +193,6 @@ Future<DownloaderConfig> getConfig() async {
 
 Future<void> putConfig(DownloaderConfig config) async {
   return _parse(() => _client.dio.put("api/v1/config", data: config), null);
-}
-
-Future<String> installExtension(InstallExtension installExtension) async {
-  return _parse<String>(
-      () => _client.dio.post("api/v1/extensions", data: installExtension),
-      (data) => data as String);
-}
-
-Future<List<Extension>> getExtensions() async {
-  return _parse<List<Extension>>(() => _client.dio.get("api/v1/extensions"),
-      (data) => (data as List).map((e) => Extension.fromJson(e)).toList());
-}
-
-Future<void> updateExtensionSettings(
-    String identity, UpdateExtensionSettings updateExtensionSettings) async {
-  return _parse(
-      () => _client.dio.put("api/v1/extensions/$identity/settings",
-          data: updateExtensionSettings),
-      null);
-}
-
-Future<void> switchExtension(
-    String identity, SwitchExtension switchExtension) async {
-  return _parse(
-      () => _client.dio
-          .put("api/v1/extensions/$identity/switch", data: switchExtension),
-      null);
-}
-
-Future<void> deleteExtension(String identity) async {
-  return _parse(() => _client.dio.delete("api/v1/extensions/$identity"), null);
-}
-
-Future<UpdateCheckExtensionResp> upgradeCheckExtension(String identity) async {
-  return _parse(() => _client.dio.get("api/v1/extensions/$identity/update"),
-      (data) => UpdateCheckExtensionResp.fromJson(data));
-}
-
-Future<void> updateExtension(String identity) async {
-  return _parse(
-      () => _client.dio.post("api/v1/extensions/$identity/update"), null);
 }
 
 Future<void> testWebhook(String url) async {
