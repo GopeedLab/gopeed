@@ -56,11 +56,6 @@ class HomeView extends GetView<HomeController> {
                           label: Text('task'.tr),
                         ),
                         NavigationRailDestination(
-                          icon: const Icon(Icons.extension),
-                          selectedIcon: const Icon(Icons.extension),
-                          label: Text('extensions'.tr),
-                        ),
-                        NavigationRailDestination(
                           icon: const Icon(Icons.settings),
                           selectedIcon: const Icon(Icons.settings),
                           label: Text('setting'.tr),
@@ -84,19 +79,15 @@ class HomeView extends GetView<HomeController> {
             ]),
         bottomNavigationBar: ResponsiveBuilder.isNarrow(context)
             ? BottomNavigationBar(
-                items: <BottomNavigationBarItem>[
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.task),
-                    label: 'task'.tr,
-                  ),
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.extension),
-                    label: 'extensions'.tr,
-                  ),
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.settings),
-                    label: 'setting'.tr,
-                  ),
+                items: <BottomNavigationBarItem>[\
+                  BottomNavigationBarItem(\
+                    icon: const Icon(Icons.task),\
+                    label: 'task'.tr,\
+                  ),\
+                  BottomNavigationBarItem(\
+                    icon: const Icon(Icons.settings),\
+                    label: 'setting'.tr,\
+                  ),\
                 ],
                 currentIndex: controller.currentIndex.value,
                 // selectedItemColor: Get.theme.highlightColor,

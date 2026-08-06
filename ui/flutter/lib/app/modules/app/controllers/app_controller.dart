@@ -20,7 +20,6 @@ import 'package:window_manager/window_manager.dart';
 import '../../../../api/api.dart';
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/downloader_config.dart';
-import '../../../../api/model/install_extension.dart';
 import '../../../../api/model/request.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../core/libgopeed_boot.dart';
@@ -433,16 +432,6 @@ class AppController extends GetxController with WindowListener, TrayListener {
         Get.rootDelegate.offAndToNamed(Routes.CREATE);
         return;
       }
-      // gopeed:///extension?params=eyJ1cmwiOiJodHRwczovL2dpdGh1Yi5jb20vbW9ua2V5V2llL2dvcGVlZC1leHRlbnNpb24tYmlsaWJpbGkiLCJkZXZNb2RlIjpmYWxzZX0=
-      if (uri.path == "/extension") {
-        final params = uri.queryParameters["params"];
-        if (params?.isNotEmpty == true) {
-          _handleToExtension(params!);
-          return;
-        }
-        Get.rootDelegate.offAndToNamed(Routes.EXTENSION);
-        return;
-      }
       Get.rootDelegate.offAndToNamed(Routes.HOME);
       return;
     }
@@ -717,11 +706,5 @@ class AppController extends GetxController with WindowListener, TrayListener {
         androidDialogMode ? Routes.QUICK_CREATE : Routes.CREATE;
     Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
         arguments: RedirectArgs(targetRoute, arguments: createTaskParams));
-  }
-
-  _handleToExtension(String params) {
-    final installExtension = InstallExtension.fromJson(_decodeParams(params));
-    Get.rootDelegate.offAndToNamed(Routes.REDIRECT,
-        arguments: RedirectArgs(Routes.EXTENSION, arguments: installExtension));
   }
 }

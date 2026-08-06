@@ -3,8 +3,6 @@ import 'package:get/get.dart';
 import '../modules/create/bindings/create_binding.dart';
 import '../modules/create/views/create_dialog_view.dart';
 import '../modules/create/views/create_view.dart';
-import '../modules/extension/bindings/extension_binding.dart';
-import '../modules/extension/views/extension_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/login/bindings/login_binding.dart';
@@ -54,11 +52,6 @@ class AppPages {
                           transition: Transition.noTransition,
                           binding: TaskFilesBinding()),
                     ]),
-                GetPage(
-                    name: _Paths.EXTENSION,
-                    page: () => ExtensionView(),
-                    transition: Transition.noTransition,
-                    binding: ExtensionBinding()),
                 GetPage(
                   name: _Paths.SETTING,
                   page: () => const SettingView(),
