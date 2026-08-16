@@ -104,5 +104,7 @@
 		<!-- Add for share_handler end -->
 		<key>UIFileSharingEnabled</key>
 		<true/>
+		<key>LSSupportsOpeningDocumentsInPlace</key>
+		<true/>
 	</dict>
 </plist>
