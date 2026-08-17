@@ -21,6 +21,8 @@
 		D0E623A929482D160001185E /* Libgopeed.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = D0E623A729482D030001185E /* Libgopeed.xcframework */; };
 		D0E623AA29482D160001185E /* Libgopeed.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D0E623A729482D030001185E /* Libgopeed.xcframework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		DCA5B0FA95A8007ADEDACA1B /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 70BC8D37FAC641C7F20125E8 /* Pods_Runner.framework */; };
+		A10000000000000000000001 /* LocationKeepAliveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* LocationKeepAliveManager.swift */;};
+		A10000000000000000000002 /* LocationKeepAliveManager.swift */ = {isa = PBXFileReference;lastKnownFileType = sourcecode.swift;path = LocationKeepAliveManager.swift;sourceTree = "<group>";};
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -153,18 +155,19 @@
 			sourceTree = "<group>";
 		};
 		97C146F01CF9000F007C117D /* Runner */ = {
-			isa = PBXGroup;
-			children = (
-				0C585CC72D41E36800FF2EC0 /* Runner.entitlements */,
-				97C146FA1CF9000F007C117D /* Main.storyboard */,
-				97C146FD1CF9000F007C117D /* Assets.xcassets */,
-				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
-				97C147021CF9000F007C117D /* Info.plist */,
-				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
-				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
-				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
-				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
-			);
+    			isa = PBXGroup;
+    			children = (
+        			0C585CC72D41E36800FF2EC0 /* Runner.entitlements */,
+        			97C146FA1CF9000F007C117D /* Main.storyboard */,
+        			97C146FD1CF9000F007C117D /* Assets.xcassets */,
+        			97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
+        			97C147021CF9000F007C117D /* Info.plist */,
+        			1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
+        			1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
+        			74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
+        			A10000000000000000000002 /* LocationKeepAliveManager.swift */,
+        			74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+    			);
 			path = Runner;
 			sourceTree = "<group>";
 		};
@@ -376,12 +379,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		97C146EA1CF9000F007C117D /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
-				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
-			);
+    			isa = PBXSourcesBuildPhase;
+    			buildActionMask = 2147483647;
+    			files = (
+        			74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
+        			A10000000000000000000001 /* LocationKeepAliveManager.swift in Sources */,
+        			1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+    		);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
