@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/task.dart';
-import '../../../../util/location_keep_alive.dart';
+import '../../../services/location_keep_alive.dart';
 import '../../app/controllers/app_controller.dart';
 
 abstract class TaskListController extends GetxController {
