@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 
 import '../../../../api/api.dart';
 import '../../../../api/model/task.dart';
+import '../../../../util/location_keep_alive.dart';
+import '../../app/controllers/app_controller.dart';
 
 abstract class TaskListController extends GetxController {
   List<Status> statuses;
@@ -46,8 +48,34 @@ abstract class TaskListController extends GetxController {
 
   getTasksState() async {
     final tasks = await getTasks(statuses);
+    // for ios
+    await _updateLocationKeepAlive(tasks);
     // sort tasks by create time
     tasks.sort(compare);
     this.tasks.value = tasks;
+  }
+
+  //for ios
+  Future<void> _updateLocationKeepAlive(List<Task> tasks) async {
+    if (!GetPlatform.isIOS) {
+      return;
+    }
+
+    final appController = Get.find<AppController>();
+    final enabled =
+        appController.downloaderConfig.value.extra.backgroundLocationKeepAlive;
+
+    if (!enabled) {
+      await LocationKeepAlive.stop();
+      return;
+    }
+
+    final hasRunningTask = tasks.any((task) => task.status == Status.running);
+
+    if (hasRunningTask) {
+      await LocationKeepAlive.start();
+    } else {
+      await LocationKeepAlive.stop();
+    }
   }
 }

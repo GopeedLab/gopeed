@@ -113,6 +113,7 @@ class ExtraConfig {
   bool notifyWhenNewVersion;
   bool autoStartTasks;
   bool desktopNotification;
+  bool backgroundLocationKeepAlive;
   List<DownloadCategory> downloadCategories;
 
   ExtraConfigBt bt = ExtraConfigBt();
@@ -127,6 +128,7 @@ class ExtraConfig {
     this.notifyWhenNewVersion = true,
     this.autoStartTasks = false,
     this.desktopNotification = true,
+    this.backgroundLocationKeepAlive = false,
     this.downloadCategories = const [],
   });
 

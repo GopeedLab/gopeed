@@ -226,6 +226,7 @@ const enUS = {
     'ed2kServerMetHint': 'Server.met URL or ed2k serverlist link, one per line',
     'ed2kNodesDatHint': 'nodes.dat path or URL, one per line',
     'desktopNotification': 'Desktop Notifications',
+    'backgroundLocationKeepAlive': 'Background Download Keep Alive',
     'notificationTaskDone': 'Task completed',
     'notificationTaskError': 'Task error',
   },

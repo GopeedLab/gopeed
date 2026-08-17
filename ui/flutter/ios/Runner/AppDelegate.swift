@@ -32,6 +32,34 @@ import Libgopeed
             }
         })
         
+        let locationChannel = FlutterMethodChannel(
+            name: "gopeed/location_keep_alive",
+            binaryMessenger: controller.binaryMessenger
+)
+
+        locationChannel.setMethodCallHandler {
+            (call: FlutterMethodCall, result: @escaping FlutterResult) in
+
+        switch call.method {
+
+        case "requestPermission":
+          LocationKeepAliveManager.shared.requestPermission { authorized in
+            result(authorized)
+    }
+
+        case "start":
+            LocationKeepAliveManager.shared.start()
+            result(nil)
+
+        case "stop":
+            LocationKeepAliveManager.shared.stop()
+            result(nil)
+
+        default:
+            result(FlutterMethodNotImplemented)
+    }
+}
+        
         GeneratedPluginRegistrant.register(with: self)
 
         SwiftFlutterForegroundTaskPlugin.setPluginRegistrantCallback(registerPlugins)

@@ -106,5 +106,15 @@
 		<true/>
 		<key>LSSupportsOpeningDocumentsInPlace</key>
 		<true/>
+		<key>UIBackgroundModes</key>
+		<array>
+    			<string>location</string>
+		</array>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Location permission is required to keep download tasks running in the background</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Location permission is required to keep download tasks running in the background</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>Location permission is required to keep download tasks running in the background</string>
 	</dict>
 </plist>

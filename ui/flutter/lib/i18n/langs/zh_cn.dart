@@ -221,6 +221,7 @@ const zhCN = {
     'ed2kServerMetHint': '请输入 Server.met 地址或 ed2k 服务器列表链接，每行一条',
     'ed2kNodesDatHint': '请输入 nodes.dat 本地路径或 URL，每行一条',
     'desktopNotification': '桌面通知',
+    'backgroundLocationKeepAlive': '常驻后台',
     'notificationTaskDone': '任务完成',
     'notificationTaskError': '任务失败',
   }
