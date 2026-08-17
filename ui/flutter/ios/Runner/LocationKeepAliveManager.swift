@@ -27,7 +27,7 @@ final class LocationKeepAliveManager: NSObject, CLLocationManagerDelegate {
     }
 
     func requestPermission(completion: @escaping (Bool) -> Void) {
-        let status = locationManager.authorizationStatus
+        let status = CLLocationManager.authorizationStatus()
 
         switch status {
         case .authorizedAlways:
@@ -48,7 +48,7 @@ final class LocationKeepAliveManager: NSObject, CLLocationManagerDelegate {
     func start() {
         guard !isRunning else { return }
 
-        guard locationManager.authorizationStatus == .authorizedAlways else {
+        guard CLLocationManager.authorizationStatus() == .authorizedAlways else {
             return
         }
 
@@ -63,11 +63,7 @@ final class LocationKeepAliveManager: NSObject, CLLocationManagerDelegate {
         isRunning = false
     }
 
-    func locationManagerDidChangeAuthorization(
-        _ manager: CLLocationManager
-    ) {
-        let status = manager.authorizationStatus
-
+    private func handleAuthorizationStatus(_ status: CLAuthorizationStatus) {
         switch status {
         case .authorizedAlways:
             permissionCompletion?(true)
@@ -80,6 +76,20 @@ final class LocationKeepAliveManager: NSObject, CLLocationManagerDelegate {
         default:
             break
         }
+    }
+
+    @available(iOS 14.0, *)
+    func locationManagerDidChangeAuthorization(
+        _ manager: CLLocationManager
+    ) {
+        handleAuthorizationStatus(manager.authorizationStatus)
+    }
+
+    func locationManager(
+        _ manager: CLLocationManager,
+        didChangeAuthorization status: CLAuthorizationStatus
+    ) {
+        handleAuthorizationStatus(status)
     }
 
     func locationManager(
