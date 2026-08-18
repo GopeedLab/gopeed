@@ -22,6 +22,7 @@ import 'util/package_info.dart';
 import 'util/scheme_register/scheme_register.dart';
 import 'util/updater.dart';
 import 'util/util.dart';
+import 'app/services/location_keep_alive_coordinator.dart';
 
 class StartupArgs {
   static const flagHidden = "hidden";
@@ -137,11 +138,11 @@ Future<void> init(StartupArgs args) async {
   }
   
   // iOS location keep-alive coordinator
-  if (Util.isIOS()) { 
+  if (Util.isIOS()) {
     try {
       await Get.putAsync(() => LocationKeepAliveCoordinator());
-      await LocationKeepAliveCoordinator.to.reconcile();
-      LocationKeepAliveCoordinator.to.startPolling();
+      await Get.find<LocationKeepAliveCoordinator>().reconcile();
+      Get.find<LocationKeepAliveCoordinator>().startPolling();
     } catch (e) {
       logger.e("location keep-alive coordinator init fail", e);
     }
