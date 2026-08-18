@@ -201,7 +201,7 @@ func TestAutoFallsBackOnForbiddenAndPinsBrowserPerURL(t *testing.T) {
 	}
 }
 
-func TestAutoDoesNotPinBrowserWhenFallbackStillFails(t *testing.T) {
+func TestAutoDisablesFallbackWhenBrowserReturnsHTTPFailure(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests.Add(1)
@@ -214,25 +214,61 @@ func TestAutoDoesNotPinBrowserWhenFallbackStillFails(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	client, err := httpclient.NewClient(httpclient.Options{
-		Impersonation: httpclient.ImpersonationOptions{Mode: httpclient.ImpersonationAuto},
+		Impersonation: httpclient.ImpersonationOptions{
+			Mode:    httpclient.ImpersonationAuto,
+			Session: httpclient.NewImpersonationSession(),
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	wantStatuses := []int{http.StatusNotFound, http.StatusForbidden}
+	for _, wantStatus := range wantStatuses {
+		response, err := client.Get(server.URL)
+		if err != nil {
+			t.Fatalf("Get() error = %v", err)
+		}
+		response.Body.Close()
+		if response.StatusCode != wantStatus {
+			t.Fatalf("status = %d, want %d", response.StatusCode, wantStatus)
+		}
+	}
+
+	if requests.Load() != 3 {
+		t.Fatalf("requests = %d, want 3 (native + one fallback + native)", requests.Load())
+	}
+}
+
+func TestAutoDoesNotDisableFallbackAfterTransportFailure(t *testing.T) {
+	server := httpclienttest.NewFingerprintServer(t, httpclienttest.FingerprintServerOptions{
+		RequiredProfile: httpclienttest.Profile("unsupported"),
+	})
+	client, err := httpclient.NewClient(httpclient.Options{
+		Transport: httpclient.TransportOptions{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		Impersonation: httpclient.ImpersonationOptions{
+			Mode:    httpclient.ImpersonationAuto,
+			Session: httpclient.NewImpersonationSession(),
+		},
 	})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
 	for range 2 {
-		response, err := client.Get(server.URL)
-		if err != nil {
-			t.Fatalf("Get() error = %v", err)
-		}
-		response.Body.Close()
-		if response.StatusCode != http.StatusNotFound {
-			t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusNotFound)
+		if _, err := client.Get(server.URL); err == nil {
+			t.Fatal("Get() error = nil, want TLS failure")
 		}
 	}
-
-	if requests.Load() != 4 {
-		t.Fatalf("requests = %d, want 4 (native + fallback for each request)", requests.Load())
+	if got, want := server.Profiles(), []httpclienttest.Profile{
+		httpclienttest.ProfileNative,
+		httpclienttest.ProfileChrome,
+		httpclienttest.ProfileNative,
+		httpclienttest.ProfileChrome,
+	}; !slices.Equal(got, want) {
+		t.Fatalf("ClientHello profiles = %v, want %v", got, want)
 	}
 }
 

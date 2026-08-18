@@ -57,26 +57,37 @@ type ImpersonationOptions struct {
 
 type ImpersonationSession struct {
 	mu         sync.RWMutex
-	selections map[string]Browser
+	selections map[string]impersonationSelection
+}
+
+type impersonationSelection struct {
+	browser          Browser
+	fallbackDisabled bool
 }
 
 func NewImpersonationSession() *ImpersonationSession {
 	return &ImpersonationSession{
-		selections: make(map[string]Browser),
+		selections: make(map[string]impersonationSelection),
 	}
 }
 
-func (s *ImpersonationSession) load(url string) (Browser, bool) {
+func (s *ImpersonationSession) load(url string) (impersonationSelection, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	browser, ok := s.selections[url]
-	return browser, ok
+	selection, ok := s.selections[url]
+	return selection, ok
 }
 
 func (s *ImpersonationSession) store(url string, browser Browser) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.selections[url] = browser
+	s.selections[url] = impersonationSelection{browser: browser}
+}
+
+func (s *ImpersonationSession) disableFallback(url string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.selections[url] = impersonationSelection{fallbackDisabled: true}
 }
 
 func (s *ImpersonationSession) Clear() {
@@ -200,7 +211,10 @@ func (t *adaptiveTransport) RoundTrip(request *http.Request) (*http.Response, er
 	cacheKey := requestCacheKey(request.URL)
 	if t.session != nil {
 		if selected, ok := t.session.load(cacheKey); ok {
-			return t.browsers[selected].RoundTrip(request)
+			if selected.fallbackDisabled {
+				return t.native.RoundTrip(request)
+			}
+			return t.browsers[selected.browser].RoundTrip(request)
 		}
 	}
 
@@ -220,8 +234,12 @@ func (t *adaptiveTransport) RoundTrip(request *http.Request) (*http.Response, er
 
 	browser := browserFromUserAgent(request.UserAgent())
 	response, err = t.browsers[browser].RoundTrip(retry)
-	if t.session != nil && isSuccessfulFallback(response, err) {
-		t.session.store(cacheKey, browser)
+	if t.session != nil {
+		if isSuccessfulFallback(response, err) {
+			t.session.store(cacheKey, browser)
+		} else if err == nil && response != nil {
+			t.session.disableFallback(cacheKey)
+		}
 	}
 	return response, err
 }
