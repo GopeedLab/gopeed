@@ -140,7 +140,7 @@ Future<void> init(StartupArgs args) async {
   // iOS location keep-alive coordinator
   if (Util.isIOS()) {
     try {
-      await Get.putAsync(() => LocationKeepAliveCoordinator());
+      await Get.putAsync(() async => LocationKeepAliveCoordinator());
       await Get.find<LocationKeepAliveCoordinator>().reconcile();
       Get.find<LocationKeepAliveCoordinator>().startPolling();
     } catch (e) {
