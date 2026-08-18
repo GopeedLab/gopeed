@@ -54,7 +54,60 @@ type ImpersonationOptions struct {
 	Browser Browser
 }
 
-var autoSelectedBrowsers sync.Map
+const autoSelectionTTL = 7 * 24 * time.Hour
+
+var autoSelectedBrowsers = newBrowserSelectionCache(autoSelectionTTL, time.Now)
+
+type browserSelection struct {
+	browser   Browser
+	expiresAt time.Time
+}
+
+type browserSelectionCache struct {
+	mu      sync.Mutex
+	entries map[string]browserSelection
+	ttl     time.Duration
+	now     func() time.Time
+}
+
+func newBrowserSelectionCache(ttl time.Duration, now func() time.Time) *browserSelectionCache {
+	return &browserSelectionCache{
+		entries: make(map[string]browserSelection),
+		ttl:     ttl,
+		now:     now,
+	}
+}
+
+func (c *browserSelectionCache) load(origin string) (Browser, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	selection, ok := c.entries[origin]
+	if !ok {
+		return "", false
+	}
+	if !c.now().Before(selection.expiresAt) {
+		delete(c.entries, origin)
+		return "", false
+	}
+	return selection.browser, true
+}
+
+func (c *browserSelectionCache) store(origin string, browser Browser) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	now := c.now()
+	for cachedOrigin, selection := range c.entries {
+		if !now.Before(selection.expiresAt) {
+			delete(c.entries, cachedOrigin)
+		}
+	}
+	c.entries[origin] = browserSelection{
+		browser:   browser,
+		expiresAt: now.Add(c.ttl),
+	}
+}
 
 func NewClient(options Options) (*http.Client, error) {
 	var transport http.RoundTripper
@@ -167,8 +220,8 @@ type adaptiveTransport struct {
 
 func (t *adaptiveTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	origin := request.URL.Scheme + "://" + request.URL.Host
-	if selected, ok := autoSelectedBrowsers.Load(origin); ok {
-		return t.browsers[selected.(Browser)].RoundTrip(request)
+	if selected, ok := autoSelectedBrowsers.load(origin); ok {
+		return t.browsers[selected].RoundTrip(request)
 	}
 
 	response, err := t.native.RoundTrip(request)
@@ -187,8 +240,8 @@ func (t *adaptiveTransport) RoundTrip(request *http.Request) (*http.Response, er
 
 	browser := browserFromUserAgent(request.UserAgent())
 	response, err = t.browsers[browser].RoundTrip(retry)
-	if !shouldFallback(response, err) {
-		autoSelectedBrowsers.Store(origin, browser)
+	if isSuccessfulFallback(response, err) {
+		autoSelectedBrowsers.store(origin, browser)
 	}
 	return response, err
 }
@@ -237,6 +290,12 @@ func shouldFallback(response *http.Response, err error) bool {
 	}
 	return response.StatusCode == http.StatusForbidden ||
 		strings.EqualFold(response.Header.Get("Cf-Mitigated"), "challenge")
+}
+
+func isSuccessfulFallback(response *http.Response, err error) bool {
+	return err == nil && response != nil &&
+		response.StatusCode >= http.StatusOK &&
+		response.StatusCode < http.StatusBadRequest
 }
 
 func cloneRequestForRetry(request *http.Request) (*http.Request, bool) {

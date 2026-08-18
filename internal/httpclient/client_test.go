@@ -186,6 +186,41 @@ func TestAutoFallsBackOnForbiddenAndPinsBrowserPerOrigin(t *testing.T) {
 	}
 }
 
+func TestAutoDoesNotPinBrowserWhenFallbackStillFails(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requests.Add(1)
+		if request.Header.Get("Sec-Ch-Ua") == "" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := httpclient.NewClient(httpclient.Options{
+		Impersonation: httpclient.ImpersonationOptions{Mode: httpclient.ImpersonationAuto},
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	for range 2 {
+		response, err := client.Get(server.URL)
+		if err != nil {
+			t.Fatalf("Get() error = %v", err)
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusNotFound {
+			t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusNotFound)
+		}
+	}
+
+	if requests.Load() != 4 {
+		t.Fatalf("requests = %d, want 4 (native + fallback for each request)", requests.Load())
+	}
+}
+
 func TestAutoSharesSelectedBrowserAcrossClientsGlobally(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
