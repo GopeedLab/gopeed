@@ -302,9 +302,6 @@ func (f *Fetcher) getState() fetcherState {
 
 func (f *Fetcher) setState(s fetcherState) {
 	f.state.Store(int32(s))
-	if s == stateDone && f.impersonationSession != nil {
-		f.impersonationSession.Clear()
-	}
 }
 
 // updateMaxConnTime updates maxConnTime if the new duration is larger

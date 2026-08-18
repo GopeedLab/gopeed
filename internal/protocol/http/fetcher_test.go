@@ -334,16 +334,18 @@ func TestFetcherSharesAndClearsImpersonationSession(t *testing.T) {
 		t.Fatalf("requests before completion = %d, want 3", requests.Load())
 	}
 
-	fetcher.setState(stateDone)
+	if err := fetcher.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
 	client := fetcher.buildClient()
 	response, err := client.Get(server.URL)
 	if err != nil {
-		t.Fatalf("Get() after completion error = %v", err)
+		t.Fatalf("Get() after close error = %v", err)
 	}
 	response.Body.Close()
 	client.CloseIdleConnections()
 	if requests.Load() != 5 {
-		t.Fatalf("requests after completion = %d, want 5", requests.Load())
+		t.Fatalf("requests after close = %d, want 5", requests.Load())
 	}
 }
 
