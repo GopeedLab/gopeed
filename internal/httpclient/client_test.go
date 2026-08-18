@@ -5,23 +5,25 @@ import (
 	"crypto/tls"
 	"errors"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/httpclient"
+	"github.com/GopeedLab/gopeed/internal/httpclient/httpclienttest"
 )
 
 func TestFixedChromeUsesBrowserTLSFingerprintAndHTTP2(t *testing.T) {
-	server := newBrowserFingerprintServer(t)
+	server := httpclienttest.NewFingerprintServer(t, httpclienttest.FingerprintServerOptions{
+		RequiredProfile: httpclienttest.ProfileAnyBrowser,
+	})
 
 	client, err := httpclient.NewClient(httpclient.Options{
 		Transport: httpclient.TransportOptions{
@@ -51,7 +53,9 @@ func TestFixedChromeUsesBrowserTLSFingerprintAndHTTP2(t *testing.T) {
 }
 
 func TestAutoFallsBackFromNativeToBrowserFingerprint(t *testing.T) {
-	server := newBrowserFingerprintServer(t)
+	server := httpclienttest.NewFingerprintServer(t, httpclienttest.FingerprintServerOptions{
+		RequiredProfile: httpclienttest.ProfileAnyBrowser,
+	})
 
 	client, err := httpclient.NewClient(httpclient.Options{
 		Transport: httpclient.TransportOptions{
@@ -80,8 +84,11 @@ func TestAutoFallsBackFromNativeToBrowserFingerprint(t *testing.T) {
 	if response.ProtoMajor != 2 {
 		t.Fatalf("protocol = %q, want HTTP/2", response.Proto)
 	}
-	if got, want := server.browserHellos(), []bool{false, true}; !equalBools(got, want) {
-		t.Fatalf("browser ClientHellos = %v, want %v", got, want)
+	if got, want := server.Profiles(), []httpclienttest.Profile{
+		httpclienttest.ProfileNative,
+		httpclienttest.ProfileChrome,
+	}; !slices.Equal(got, want) {
+		t.Fatalf("ClientHello profiles = %v, want %v", got, want)
 	}
 }
 
@@ -114,7 +121,9 @@ func TestAutoChoosesBrowserFingerprintFromUserAgent(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server := newProfileFingerprintServer(t, test.wantBrowser)
+			server := httpclienttest.NewFingerprintServer(t, httpclienttest.FingerprintServerOptions{
+				RequiredProfile: httpclienttest.Profile(test.wantBrowser),
+			})
 			client, err := httpclient.NewClient(httpclient.Options{
 				Transport: httpclient.TransportOptions{
 					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -139,7 +148,10 @@ func TestAutoChoosesBrowserFingerprintFromUserAgent(t *testing.T) {
 			if response.ProtoMajor != 2 {
 				t.Fatalf("protocol = %q, want HTTP/2", response.Proto)
 			}
-			if got, want := server.profilesSeen(), []string{"native", string(test.wantBrowser)}; !equalStrings(got, want) {
+			if got, want := server.Profiles(), []httpclienttest.Profile{
+				httpclienttest.ProfileNative,
+				httpclienttest.Profile(test.wantBrowser),
+			}; !slices.Equal(got, want) {
 				t.Fatalf("profiles = %v, want %v", got, want)
 			}
 		})
@@ -911,132 +923,4 @@ func TestFixedClientCloseIdleConnectionsReachesBrowserTransport(t *testing.T) {
 	if connections.Load() != 2 {
 		t.Fatalf("connections = %d, want 2", connections.Load())
 	}
-}
-
-type browserFingerprintServer struct {
-	*httptest.Server
-
-	mu     sync.Mutex
-	hellos []bool
-}
-
-func newBrowserFingerprintServer(t *testing.T) *browserFingerprintServer {
-	t.Helper()
-
-	server := &browserFingerprintServer{Server: httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))}
-	server.EnableHTTP2 = true
-	server.Config.ErrorLog = log.New(io.Discard, "", 0)
-	server.TLS = &tls.Config{
-		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
-			browser := false
-			for _, cipherSuite := range hello.CipherSuites {
-				if isGREASE(cipherSuite) {
-					browser = true
-					break
-				}
-			}
-			server.mu.Lock()
-			server.hellos = append(server.hellos, browser)
-			server.mu.Unlock()
-			if browser {
-				return nil, nil
-			}
-			return nil, errors.New("browser TLS fingerprint required")
-		},
-	}
-	server.StartTLS()
-	t.Cleanup(server.Close)
-	return server
-}
-
-func (s *browserFingerprintServer) browserHellos() []bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]bool(nil), s.hellos...)
-}
-
-func equalBools(a, b []bool) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-type profileFingerprintServer struct {
-	*httptest.Server
-
-	mu       sync.Mutex
-	profiles []string
-}
-
-func newProfileFingerprintServer(t *testing.T, required httpclient.Browser) *profileFingerprintServer {
-	t.Helper()
-
-	server := &profileFingerprintServer{Server: httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))}
-	server.EnableHTTP2 = true
-	server.Config.ErrorLog = log.New(io.Discard, "", 0)
-	server.TLS = &tls.Config{
-		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
-			profile := classifyProfile(hello.CipherSuites)
-			server.mu.Lock()
-			server.profiles = append(server.profiles, profile)
-			server.mu.Unlock()
-			if profile == string(required) {
-				return nil, nil
-			}
-			return nil, errors.New("different browser TLS fingerprint required")
-		},
-	}
-	server.StartTLS()
-	t.Cleanup(server.Close)
-	return server
-}
-
-func (s *profileFingerprintServer) profilesSeen() []string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]string(nil), s.profiles...)
-}
-
-func classifyProfile(cipherSuites []uint16) string {
-	if len(cipherSuites) >= 5 && isGREASE(cipherSuites[0]) {
-		switch cipherSuites[4] {
-		case tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:
-			return string(httpclient.BrowserChrome)
-		case tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:
-			return string(httpclient.BrowserSafari)
-		}
-	}
-	if len(cipherSuites) >= 3 &&
-		cipherSuites[0] == tls.TLS_AES_128_GCM_SHA256 &&
-		cipherSuites[1] == tls.TLS_CHACHA20_POLY1305_SHA256 &&
-		cipherSuites[2] == tls.TLS_AES_256_GCM_SHA384 {
-		return string(httpclient.BrowserFirefox)
-	}
-	return "native"
-}
-
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func isGREASE(value uint16) bool {
-	return value&0x0f0f == 0x0a0a && byte(value) == byte(value>>8)
 }

@@ -1,12 +1,8 @@
 package http
 
 import (
-	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"log"
 	"net"
 	gohttp "net/http"
 	"net/http/httptest"
@@ -19,6 +15,7 @@ import (
 
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/internal/httpclient/httpclienttest"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
@@ -266,25 +263,14 @@ func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 }
 
 func TestFetcher_ResolveAutomaticallyFallsBackToBrowserFingerprint(t *testing.T) {
-	server := httptest.NewUnstartedServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
-		w.Header().Set(base.HttpHeaderContentLength, "4")
-		w.Header().Set(base.HttpHeaderContentDisposition, `attachment; filename="file.bin"`)
-		_, _ = w.Write([]byte("data"))
-	}))
-	server.EnableHTTP2 = true
-	server.Config.ErrorLog = log.New(io.Discard, "", 0)
-	server.TLS = &tls.Config{
-		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
-			for _, cipherSuite := range hello.CipherSuites {
-				if cipherSuite&0x0f0f == 0x0a0a && byte(cipherSuite) == byte(cipherSuite>>8) {
-					return nil, nil
-				}
-			}
-			return nil, errors.New("browser TLS fingerprint required")
-		},
-	}
-	server.StartTLS()
-	defer server.Close()
+	server := httpclienttest.NewFingerprintServer(t, httpclienttest.FingerprintServerOptions{
+		RequiredProfile: httpclienttest.ProfileAnyBrowser,
+		Handler: gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+			w.Header().Set(base.HttpHeaderContentLength, "4")
+			w.Header().Set(base.HttpHeaderContentDisposition, `attachment; filename="file.bin"`)
+			_, _ = w.Write([]byte("data"))
+		}),
+	})
 
 	fetcher := buildFetcher()
 	defer fetcher.Pause()
