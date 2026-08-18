@@ -118,8 +118,6 @@ func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession) {
 		RevokeObjectURL: func(url string) error {
 			return d.blob.Revoke(url)
 		},
-		ProxyHandler:    d.cfg.Proxy.ToHandler(),
-		RegisterCleanup: session.OnClose,
 	}
 	e := engine.NewEngine(&engine.Config{
 		ProxyConfig:  d.cfg.Proxy,

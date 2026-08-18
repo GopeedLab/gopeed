@@ -8,8 +8,8 @@ import (
 
 	"github.com/GopeedLab/gopeed/pkg/base"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
+	fetchapi "github.com/GopeedLab/gopeed/pkg/download/engine/inject/fetch"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
-	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/formdata"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/stream"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/vm"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/xhr"
@@ -23,6 +23,10 @@ var polyfillScript string
 
 type Engine struct {
 	loop *eventloop.EventLoop
+
+	closeOnce sync.Once
+	cleanupMu sync.Mutex
+	cleanups  []func()
 
 	Runtime *goja.Runtime
 }
@@ -133,7 +137,25 @@ func (e *Engine) runOnLoop(fn func(runtime *goja.Runtime) (goja.Value, error)) (
 }
 
 func (e *Engine) Close() {
-	e.loop.Terminate()
+	e.closeOnce.Do(func() {
+		e.cleanupMu.Lock()
+		cleanups := e.cleanups
+		e.cleanups = nil
+		e.cleanupMu.Unlock()
+		for _, cleanup := range cleanups {
+			cleanup()
+		}
+		e.loop.Terminate()
+	})
+}
+
+func (e *Engine) addCleanup(cleanup func()) {
+	if cleanup == nil {
+		return
+	}
+	e.cleanupMu.Lock()
+	e.cleanups = append(e.cleanups, cleanup)
+	e.cleanupMu.Unlock()
 }
 
 type Config struct {
@@ -163,12 +185,6 @@ func NewEngine(cfg *Config) *Engine {
 		if err := file.Enable(runtime); err != nil {
 			return
 		}
-		if err := formdata.Enable(runtime); err != nil {
-			return
-		}
-		if err := xhr.Enable(runtime, cfg.ProxyConfig.ToHandler()); err != nil {
-			return
-		}
 		if _, err := runtime.RunString(polyfillScript); err != nil {
 			return
 		}
@@ -185,6 +201,15 @@ func NewEngine(cfg *Config) *Engine {
 			return
 		}
 		if err := stream.Enable(runtime, loop, cfg.StreamConfig); err != nil {
+			return
+		}
+		if err := fetchapi.Enable(runtime, loop, &fetchapi.Config{
+			ProxyHandler:    cfg.ProxyConfig.ToHandler(),
+			RegisterCleanup: engine.addCleanup,
+		}); err != nil {
+			return
+		}
+		if err := xhr.Enable(runtime); err != nil {
 			return
 		}
 		return

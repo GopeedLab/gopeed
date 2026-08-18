@@ -1,10 +1,15 @@
 package http
 
 import (
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net"
 	gohttp "net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
@@ -256,6 +261,47 @@ func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 	// Invalid header with \r should be sanitized by Go's http client, allowing the request to succeed
 	if err != nil {
 		t.Errorf("Resolve() got = %v, want nil (invalid headers should be sanitized)", err)
+	}
+}
+
+func TestFetcher_ResolveAutomaticallyFallsBackToBrowserFingerprint(t *testing.T) {
+	server := httptest.NewUnstartedServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+		w.Header().Set(base.HttpHeaderContentLength, "4")
+		w.Header().Set(base.HttpHeaderContentDisposition, `attachment; filename="file.bin"`)
+		_, _ = w.Write([]byte("data"))
+	}))
+	server.EnableHTTP2 = true
+	server.Config.ErrorLog = log.New(io.Discard, "", 0)
+	server.TLS = &tls.Config{
+		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+			for _, cipherSuite := range hello.CipherSuites {
+				if cipherSuite&0x0f0f == 0x0a0a && byte(cipherSuite) == byte(cipherSuite>>8) {
+					return nil, nil
+				}
+			}
+			return nil, errors.New("browser TLS fingerprint required")
+		},
+	}
+	server.StartTLS()
+	defer server.Close()
+
+	fetcher := buildFetcher()
+	defer fetcher.Pause()
+	err := fetcher.Resolve(&base.Request{
+		URL:            server.URL + "/file.bin",
+		SkipVerifyCert: true,
+	}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+	})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if fetcher.meta.Res == nil || len(fetcher.meta.Res.Files) != 1 {
+		t.Fatalf("resource = %+v, want one file", fetcher.meta.Res)
+	}
+	if fetcher.meta.Res.Files[0].Name != "file.bin" {
+		t.Fatalf("file name = %q, want file.bin", fetcher.meta.Res.Files[0].Name)
 	}
 }
 
