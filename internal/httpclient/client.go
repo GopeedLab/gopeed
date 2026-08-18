@@ -97,10 +97,6 @@ func NewClient(options Options) (*http.Client, error) {
 		}
 		transport = browserTransport
 	case ImpersonationAuto:
-		session := options.Impersonation.Session
-		if session == nil {
-			session = NewImpersonationSession()
-		}
 		browserTransports := make(map[Browser]http.RoundTripper, 3)
 		for _, browser := range []Browser{BrowserChrome, BrowserFirefox, BrowserSafari} {
 			browserTransport, err := newBrowserTransport(options.Transport, browser)
@@ -113,7 +109,7 @@ func NewClient(options Options) (*http.Client, error) {
 			native:   newNativeTransport(options.Transport),
 			browsers: browserTransports,
 			jar:      options.Client.Jar,
-			session:  session,
+			session:  options.Impersonation.Session,
 		}
 	default:
 		return nil, fmt.Errorf("unsupported impersonation mode %q", options.Impersonation.Mode)
@@ -202,8 +198,10 @@ type adaptiveTransport struct {
 
 func (t *adaptiveTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	cacheKey := requestCacheKey(request.URL)
-	if selected, ok := t.session.load(cacheKey); ok {
-		return t.browsers[selected].RoundTrip(request)
+	if t.session != nil {
+		if selected, ok := t.session.load(cacheKey); ok {
+			return t.browsers[selected].RoundTrip(request)
+		}
 	}
 
 	response, err := t.native.RoundTrip(request)
@@ -222,7 +220,7 @@ func (t *adaptiveTransport) RoundTrip(request *http.Request) (*http.Response, er
 
 	browser := browserFromUserAgent(request.UserAgent())
 	response, err = t.browsers[browser].RoundTrip(retry)
-	if isSuccessfulFallback(response, err) {
+	if t.session != nil && isSuccessfulFallback(response, err) {
 		t.session.store(cacheKey, browser)
 	}
 	return response, err

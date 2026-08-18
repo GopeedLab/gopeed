@@ -159,7 +159,10 @@ func TestAutoFallsBackOnForbiddenAndPinsBrowserPerURL(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	client, err := httpclient.NewClient(httpclient.Options{
-		Impersonation: httpclient.ImpersonationOptions{Mode: httpclient.ImpersonationAuto},
+		Impersonation: httpclient.ImpersonationOptions{
+			Mode:    httpclient.ImpersonationAuto,
+			Session: httpclient.NewImpersonationSession(),
+		},
 	})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
@@ -218,6 +221,37 @@ func TestAutoDoesNotPinBrowserWhenFallbackStillFails(t *testing.T) {
 
 	if requests.Load() != 4 {
 		t.Fatalf("requests = %d, want 4 (native + fallback for each request)", requests.Load())
+	}
+}
+
+func TestAutoWithoutSessionDoesNotCacheSelectedBrowser(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requests.Add(1)
+		if request.Header.Get("Sec-Ch-Ua") == "" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := httpclient.NewClient(httpclient.Options{
+		Impersonation: httpclient.ImpersonationOptions{Mode: httpclient.ImpersonationAuto},
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	for range 2 {
+		response, err := client.Get(server.URL)
+		if err != nil {
+			t.Fatalf("Get() error = %v", err)
+		}
+		response.Body.Close()
+	}
+
+	if requests.Load() != 4 {
+		t.Fatalf("requests = %d, want 4 (native + fallback without caching)", requests.Load())
 	}
 }
 
@@ -315,7 +349,10 @@ func TestAutoCachesSelectedBrowserByFullURL(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	client, err := httpclient.NewClient(httpclient.Options{
-		Impersonation: httpclient.ImpersonationOptions{Mode: httpclient.ImpersonationAuto},
+		Impersonation: httpclient.ImpersonationOptions{
+			Mode:    httpclient.ImpersonationAuto,
+			Session: httpclient.NewImpersonationSession(),
+		},
 	})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
