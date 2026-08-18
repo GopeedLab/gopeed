@@ -33,6 +33,7 @@ import '../../../views/text_button_loading.dart';
 import '../../app/controllers/app_controller.dart';
 import '../controllers/setting_controller.dart';
 import '../../../services/location_keep_alive.dart';
+import '../../../services/location_keep_alive_coordinator.dart';
 
 const _padding = SizedBox(height: 10);
 final _divider = const Divider().paddingOnly(left: 10, right: 10);
@@ -541,13 +542,11 @@ class SettingView extends GetView<SettingController> {
                   onChanged: (bool value) async {
                     if (value) {
                       final authorized =
-                          await LocationKeepAlive.requestPermission();
+                        await LocationKeepAlive.requestPermission();
 
-                      if (!authorized) {
-                        return;
+                    if (!authorized) {
+                      return;
                       }
-                    } else {
-                      await LocationKeepAlive.stop();
                     }
 
                     appController.downloaderConfig.update((val) {
@@ -555,6 +554,7 @@ class SettingView extends GetView<SettingController> {
                     });
 
                     await debounceSave();
+                    await Get.find<LocationKeepAliveCoordinator>().reconcile();
                   },
                 ),
               );

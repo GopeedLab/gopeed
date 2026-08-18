@@ -6,7 +6,9 @@ final class LocationKeepAliveManager: NSObject, CLLocationManagerDelegate {
     static let shared = LocationKeepAliveManager()
 
     private let locationManager = CLLocationManager()
+
     private(set) var isRunning = false
+
     private var permissionCompletion: ((Bool) -> Void)?
 
     override init() {
@@ -33,10 +35,13 @@ final class LocationKeepAliveManager: NSObject, CLLocationManagerDelegate {
         case .authorizedAlways:
             completion(true)
 
+        case .authorizedWhenInUse:
+            completion(false)
+
         case .denied, .restricted:
             completion(false)
 
-        case .notDetermined, .authorizedWhenInUse:
+        case .notDetermined:
             permissionCompletion = completion
             locationManager.requestAlwaysAuthorization()
 
@@ -45,11 +50,20 @@ final class LocationKeepAliveManager: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func start() {
-        guard !isRunning else { return }
 
-        guard CLLocationManager.authorizationStatus() == .authorizedAlways else {
+    func start() {
+        guard !isRunning else {
             return
+        }
+
+        let status = CLLocationManager.authorizationStatus()
+
+        guard status == .authorizedAlways else {
+            return
+        }
+
+        if #available(iOS 9.0, *) {
+            locationManager.allowsBackgroundLocationUpdates = true
         }
 
         locationManager.startUpdatingLocation()
@@ -57,24 +71,30 @@ final class LocationKeepAliveManager: NSObject, CLLocationManagerDelegate {
     }
 
     func stop() {
-        guard isRunning else { return }
-
         locationManager.stopUpdatingLocation()
         isRunning = false
     }
 
-    private func handleAuthorizationStatus(_ status: CLAuthorizationStatus) {
+    private func handleAuthorizationStatus(
+        _ status: CLAuthorizationStatus
+    ) {
         switch status {
         case .authorizedAlways:
             permissionCompletion?(true)
             permissionCompletion = nil
 
-        case .denied, .restricted:
+        case .authorizedWhenInUse,
+             .denied,
+             .restricted:
             permissionCompletion?(false)
             permissionCompletion = nil
 
-        default:
+        case .notDetermined:
             break
+
+        @unknown default:
+            permissionCompletion?(false)
+            permissionCompletion = nil
         }
     }
 
@@ -95,6 +115,12 @@ final class LocationKeepAliveManager: NSObject, CLLocationManagerDelegate {
     func locationManager(
         _ manager: CLLocationManager,
         didUpdateLocations locations: [CLLocation]
+    ) {
+    }
+
+    func locationManager(
+        _ manager: CLLocationManager,
+        didFailWithError error: Error
     ) {
     }
 }

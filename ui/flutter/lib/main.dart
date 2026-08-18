@@ -135,6 +135,17 @@ Future<void> init(StartupArgs args) async {
       logger.w("auto-start tasks fail", e);
     }
   }
+  
+  // iOS location keep-alive coordinator
+  if (Util.isIOS()) { 
+    try {
+      await Get.putAsync(() => LocationKeepAliveCoordinator());
+      await LocationKeepAliveCoordinator.to.reconcile();
+      LocationKeepAliveCoordinator.to.startPolling();
+    } catch (e) {
+      logger.e("location keep-alive coordinator init fail", e);
+    }
+  }
 
   () async {
     if (Util.isDesktop()) {
