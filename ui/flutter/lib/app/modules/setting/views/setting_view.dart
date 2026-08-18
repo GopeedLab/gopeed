@@ -32,6 +32,8 @@ import '../../../views/outlined_button_loading.dart';
 import '../../../views/text_button_loading.dart';
 import '../../app/controllers/app_controller.dart';
 import '../controllers/setting_controller.dart';
+import '../../../services/location_keep_alive.dart';
+import '../../../services/location_keep_alive_coordinator.dart';
 
 const _padding = SizedBox(height: 10);
 final _divider = const Divider().paddingOnly(left: 10, right: 10);
@@ -520,6 +522,44 @@ class SettingView extends GetView<SettingController> {
               ),
             );
           });
+
+    final buildBackgroundLocationKeepAlive = !Platform.isIOS
+        ? () => const SizedBox.shrink()
+        : _buildConfigItem(
+            'backgroundLocationKeepAlive',
+            () {
+              return appController
+                      .downloaderConfig.value.extra.backgroundLocationKeepAlive
+                  ? 'on'.tr
+                  : 'off'.tr;
+            },
+            (Key key) {
+              return Container(
+                alignment: Alignment.centerLeft,
+                child: Switch(
+                  value: appController
+                      .downloaderConfig.value.extra.backgroundLocationKeepAlive,
+                  onChanged: (bool value) async {
+                    if (value) {
+                      final authorized =
+                        await LocationKeepAlive.requestPermission();
+
+                    if (!authorized) {
+                      return;
+                      }
+                    }
+
+                    appController.downloaderConfig.update((val) {
+                      val!.extra.backgroundLocationKeepAlive = value;
+                    });
+
+                    await debounceSave();
+                    await Get.find<LocationKeepAliveCoordinator>().reconcile();
+                  },
+                ),
+              );
+            },
+          );
 
     // http config items start
     final httpConfig = downloaderCfg.value.protocolConfig.http;
@@ -1748,6 +1788,7 @@ class SettingView extends GetView<SettingController> {
                             buildAutoStartup(),
                             buildMenubarMode(),
                             buildDesktopNotification(),
+                            buildBackgroundLocationKeepAlive(),
                           ]),
                         )),
                         Text('archives'.tr),

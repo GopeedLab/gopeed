@@ -106,5 +106,15 @@
 		<true/>
 		<key>LSSupportsOpeningDocumentsInPlace</key>
 		<true/>
+		<key>UIBackgroundModes</key>
+		<array>
+    			<string>location</string>
+		</array>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Please go to Settings and change the location permission to "Always" so that the app can continue running in the background.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Please go to Settings and change the location permission to "Always" so that the app can continue running in the background.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>Please go to Settings and change the location permission to "Always" so that the app can continue running in the background.</string>
 	</dict>
 </plist>

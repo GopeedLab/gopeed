@@ -50,4 +50,5 @@ abstract class TaskListController extends GetxController {
     tasks.sort(compare);
     this.tasks.value = tasks;
   }
+
 }

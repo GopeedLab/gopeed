@@ -99,6 +99,17 @@ void init(String network, String address, String apiToken) {
   _client = _Client(network, address, apiToken);
 }
 
+/// Used by LocationKeepAliveCoordinator to reconcile keep-alive
+void Function()? _onTaskChanged;
+
+void setTaskChangedListener(void Function() listener) {
+  _onTaskChanged = listener;
+}
+
+void _notifyTaskChanged() {
+  _onTaskChanged?.call();
+}
+
 Future<T> _parse<T>(
   Future<Response> Function() fetch,
   T Function(dynamic json)? fromJsonT,
@@ -130,15 +141,19 @@ Future<ResolveResult> resolve(ResolveTask resolveTask) async {
 }
 
 Future<String> createTask(CreateTask createTask) async {
-  return _parse<String>(
+  final result = await _parse<String>(
       () => _client.dio.post("api/v1/tasks", data: createTask),
       (data) => data as String);
+  _notifyTaskChanged();
+  return result;
 }
 
 Future<List<String>> createTaskBatch(CreateTaskBatch createTaskBatch) async {
-  return _parse<List<String>>(
+  final result = await _parse<List<String>>(
       () => _client.dio.post("api/v1/tasks/batch", data: createTaskBatch),
       (data) => (data as List).map((e) => e as String).toList());
+  _notifyTaskChanged();
+  return result;
 }
 
 Future<void> patchTask(String id, ResolveTask patchTask) async {
@@ -154,41 +169,47 @@ Future<List<Task>> getTasks(List<Status> statuses) async {
 }
 
 Future<void> pauseTask(String id) async {
-  return _parse(() => _client.dio.put("api/v1/tasks/$id/pause"), null);
+  await _parse(() => _client.dio.put("api/v1/tasks/$id/pause"), null);
+  _notifyTaskChanged();
 }
 
 Future<void> continueTask(String id) async {
-  return _parse(() => _client.dio.put("api/v1/tasks/$id/continue"), null);
+  await _parse(() => _client.dio.put("api/v1/tasks/$id/continue"), null);
+  _notifyTaskChanged();
 }
 
 Future<void> pauseAllTasks(List<String>? ids) async {
-  return _parse(
+  await _parse(
       () => _client.dio.put("api/v1/tasks/pause", queryParameters: {
             "id": ids,
           }),
       null);
+  _notifyTaskChanged();
 }
 
 Future<void> continueAllTasks(List<String>? ids) async {
-  return _parse(
+  await _parse(
       () => _client.dio.put("api/v1/tasks/continue", queryParameters: {
             "id": ids,
           }),
       null);
+  _notifyTaskChanged();
 }
 
 Future<void> deleteTask(String id, bool force) async {
-  return _parse(
+  await _parse(
       () => _client.dio.delete("api/v1/tasks/$id?force=$force"), null);
+  _notifyTaskChanged();
 }
 
 Future<void> deleteTasks(List<String>? ids, bool force) async {
-  return _parse(
+  await _parse(
       () => _client.dio.delete("api/v1/tasks", queryParameters: {
             "id": ids,
             "force": force,
           }),
       null);
+  _notifyTaskChanged();
 }
 
 Future<DownloaderConfig> getConfig() async {
