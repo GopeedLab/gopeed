@@ -146,7 +146,7 @@ func TestAutoChoosesBrowserFingerprintFromUserAgent(t *testing.T) {
 	}
 }
 
-func TestAutoFallsBackOnForbiddenAndPinsBrowserPerOrigin(t *testing.T) {
+func TestAutoFallsBackOnForbiddenAndPinsBrowserPerURL(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests.Add(1)
@@ -221,7 +221,7 @@ func TestAutoDoesNotPinBrowserWhenFallbackStillFails(t *testing.T) {
 	}
 }
 
-func TestAutoSharesSelectedBrowserAcrossClientsGlobally(t *testing.T) {
+func TestAutoSharesSelectedBrowserAcrossClientsInSession(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests.Add(1)
@@ -232,11 +232,13 @@ func TestAutoSharesSelectedBrowserAcrossClientsGlobally(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	t.Cleanup(server.Close)
+	session := httpclient.NewImpersonationSession()
 
 	for range 2 {
 		client, err := httpclient.NewClient(httpclient.Options{
 			Impersonation: httpclient.ImpersonationOptions{
-				Mode: httpclient.ImpersonationAuto,
+				Mode:    httpclient.ImpersonationAuto,
+				Session: session,
 			},
 		})
 		if err != nil {
@@ -255,7 +257,121 @@ func TestAutoSharesSelectedBrowserAcrossClientsGlobally(t *testing.T) {
 	}
 
 	if requests.Load() != 3 {
-		t.Fatalf("requests = %d, want 3 (native + fallback + shared pinned)", requests.Load())
+		t.Fatalf("requests = %d, want 3 (native + fallback + session pinned)", requests.Load())
+	}
+}
+
+func TestAutoDoesNotShareSelectedBrowserAcrossSessions(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requests.Add(1)
+		if request.Header.Get("Sec-Ch-Ua") == "" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+
+	for range 2 {
+		client, err := httpclient.NewClient(httpclient.Options{
+			Impersonation: httpclient.ImpersonationOptions{
+				Mode:    httpclient.ImpersonationAuto,
+				Session: httpclient.NewImpersonationSession(),
+			},
+		})
+		if err != nil {
+			t.Fatalf("NewClient() error = %v", err)
+		}
+		response, err := client.Get(server.URL)
+		if err != nil {
+			t.Fatalf("Get() error = %v", err)
+		}
+		response.Body.Close()
+	}
+
+	if requests.Load() != 4 {
+		t.Fatalf("requests = %d, want 4 (native + fallback per session)", requests.Load())
+	}
+}
+
+func TestAutoCachesSelectedBrowserByFullURL(t *testing.T) {
+	var publicBrowserRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		browserRequest := request.Header.Get("Sec-Ch-Ua") != ""
+		switch request.URL.Query().Get("access") {
+		case "protected":
+			if !browserRequest {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+		case "public":
+			if browserRequest {
+				publicBrowserRequests.Add(1)
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := httpclient.NewClient(httpclient.Options{
+		Impersonation: httpclient.ImpersonationOptions{Mode: httpclient.ImpersonationAuto},
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	for range 2 {
+		response, err := client.Get(server.URL + "/file?access=protected")
+		if err != nil {
+			t.Fatalf("protected Get() error = %v", err)
+		}
+		response.Body.Close()
+	}
+	response, err := client.Get(server.URL + "/file?access=public")
+	if err != nil {
+		t.Fatalf("public Get() error = %v", err)
+	}
+	response.Body.Close()
+
+	if publicBrowserRequests.Load() != 0 {
+		t.Fatalf("public browser requests = %d, want 0", publicBrowserRequests.Load())
+	}
+}
+
+func TestImpersonationSessionClearRemovesSelections(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requests.Add(1)
+		if request.Header.Get("Sec-Ch-Ua") == "" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+
+	session := httpclient.NewImpersonationSession()
+	client, err := httpclient.NewClient(httpclient.Options{
+		Impersonation: httpclient.ImpersonationOptions{
+			Mode:    httpclient.ImpersonationAuto,
+			Session: session,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	for range 2 {
+		response, err := client.Get(server.URL)
+		if err != nil {
+			t.Fatalf("Get() error = %v", err)
+		}
+		response.Body.Close()
+		session.Clear()
+	}
+
+	if requests.Load() != 4 {
+		t.Fatalf("requests = %d, want 4 (native + fallback after each clear)", requests.Load())
 	}
 }
 

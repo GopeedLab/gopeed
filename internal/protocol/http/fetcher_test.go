@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -302,6 +303,47 @@ func TestFetcher_ResolveAutomaticallyFallsBackToBrowserFingerprint(t *testing.T)
 	}
 	if fetcher.meta.Res.Files[0].Name != "file.bin" {
 		t.Fatalf("file name = %q, want file.bin", fetcher.meta.Res.Files[0].Name)
+	}
+}
+
+func TestFetcherSharesAndClearsImpersonationSession(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, request *gohttp.Request) {
+		requests.Add(1)
+		if request.Header.Get("Sec-Ch-Ua") == "" {
+			w.WriteHeader(gohttp.StatusForbidden)
+			return
+		}
+		w.WriteHeader(gohttp.StatusOK)
+	}))
+	defer server.Close()
+
+	fetcher := buildFetcher()
+	fetcher.meta.Req = &base.Request{URL: server.URL}
+
+	for range 2 {
+		client := fetcher.buildClient()
+		response, err := client.Get(server.URL)
+		if err != nil {
+			t.Fatalf("Get() error = %v", err)
+		}
+		response.Body.Close()
+		client.CloseIdleConnections()
+	}
+	if requests.Load() != 3 {
+		t.Fatalf("requests before completion = %d, want 3", requests.Load())
+	}
+
+	fetcher.setState(stateDone)
+	client := fetcher.buildClient()
+	response, err := client.Get(server.URL)
+	if err != nil {
+		t.Fatalf("Get() after completion error = %v", err)
+	}
+	response.Body.Close()
+	client.CloseIdleConnections()
+	if requests.Load() != 5 {
+		t.Fatalf("requests after completion = %d, want 5", requests.Load())
 	}
 }
 

@@ -52,61 +52,37 @@ type TransportOptions struct {
 type ImpersonationOptions struct {
 	Mode    ImpersonationMode
 	Browser Browser
+	Session *ImpersonationSession
 }
 
-const autoSelectionTTL = 7 * 24 * time.Hour
-
-var autoSelectedBrowsers = newBrowserSelectionCache(autoSelectionTTL, time.Now)
-
-type browserSelection struct {
-	browser   Browser
-	expiresAt time.Time
+type ImpersonationSession struct {
+	mu         sync.RWMutex
+	selections map[string]Browser
 }
 
-type browserSelectionCache struct {
-	mu      sync.Mutex
-	entries map[string]browserSelection
-	ttl     time.Duration
-	now     func() time.Time
-}
-
-func newBrowserSelectionCache(ttl time.Duration, now func() time.Time) *browserSelectionCache {
-	return &browserSelectionCache{
-		entries: make(map[string]browserSelection),
-		ttl:     ttl,
-		now:     now,
+func NewImpersonationSession() *ImpersonationSession {
+	return &ImpersonationSession{
+		selections: make(map[string]Browser),
 	}
 }
 
-func (c *browserSelectionCache) load(origin string) (Browser, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	selection, ok := c.entries[origin]
-	if !ok {
-		return "", false
-	}
-	if !c.now().Before(selection.expiresAt) {
-		delete(c.entries, origin)
-		return "", false
-	}
-	return selection.browser, true
+func (s *ImpersonationSession) load(url string) (Browser, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	browser, ok := s.selections[url]
+	return browser, ok
 }
 
-func (c *browserSelectionCache) store(origin string, browser Browser) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (s *ImpersonationSession) store(url string, browser Browser) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.selections[url] = browser
+}
 
-	now := c.now()
-	for cachedOrigin, selection := range c.entries {
-		if !now.Before(selection.expiresAt) {
-			delete(c.entries, cachedOrigin)
-		}
-	}
-	c.entries[origin] = browserSelection{
-		browser:   browser,
-		expiresAt: now.Add(c.ttl),
-	}
+func (s *ImpersonationSession) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	clear(s.selections)
 }
 
 func NewClient(options Options) (*http.Client, error) {
@@ -121,6 +97,10 @@ func NewClient(options Options) (*http.Client, error) {
 		}
 		transport = browserTransport
 	case ImpersonationAuto:
+		session := options.Impersonation.Session
+		if session == nil {
+			session = NewImpersonationSession()
+		}
 		browserTransports := make(map[Browser]http.RoundTripper, 3)
 		for _, browser := range []Browser{BrowserChrome, BrowserFirefox, BrowserSafari} {
 			browserTransport, err := newBrowserTransport(options.Transport, browser)
@@ -133,6 +113,7 @@ func NewClient(options Options) (*http.Client, error) {
 			native:   newNativeTransport(options.Transport),
 			browsers: browserTransports,
 			jar:      options.Client.Jar,
+			session:  session,
 		}
 	default:
 		return nil, fmt.Errorf("unsupported impersonation mode %q", options.Impersonation.Mode)
@@ -216,11 +197,12 @@ type adaptiveTransport struct {
 	native   http.RoundTripper
 	browsers map[Browser]http.RoundTripper
 	jar      http.CookieJar
+	session  *ImpersonationSession
 }
 
 func (t *adaptiveTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	origin := request.URL.Scheme + "://" + request.URL.Host
-	if selected, ok := autoSelectedBrowsers.load(origin); ok {
+	cacheKey := requestCacheKey(request.URL)
+	if selected, ok := t.session.load(cacheKey); ok {
 		return t.browsers[selected].RoundTrip(request)
 	}
 
@@ -241,9 +223,16 @@ func (t *adaptiveTransport) RoundTrip(request *http.Request) (*http.Response, er
 	browser := browserFromUserAgent(request.UserAgent())
 	response, err = t.browsers[browser].RoundTrip(retry)
 	if isSuccessfulFallback(response, err) {
-		autoSelectedBrowsers.store(origin, browser)
+		t.session.store(cacheKey, browser)
 	}
 	return response, err
+}
+
+func requestCacheKey(requestURL *url.URL) string {
+	cacheURL := *requestURL
+	cacheURL.Fragment = ""
+	cacheURL.RawFragment = ""
+	return cacheURL.String()
 }
 
 func applyResponseCookies(jar http.CookieJar, request, retry *http.Request, response *http.Response) {

@@ -233,7 +233,8 @@ func (f *Fetcher) buildClientWithTimeout(timeout time.Duration) *http.Client {
 			TLSHandshakeTimeout: timeout,
 		},
 		Impersonation: httpclient.ImpersonationOptions{
-			Mode: httpclient.ImpersonationAuto,
+			Mode:    httpclient.ImpersonationAuto,
+			Session: f.impersonationSession,
 		},
 	})
 	if err != nil {
