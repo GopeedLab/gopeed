@@ -17,6 +17,7 @@ import (
 
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/internal/httpclient"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/xiaoqidun/setft"
@@ -213,6 +214,8 @@ type Fetcher struct {
 	config *config
 	doneCh chan error
 
+	impersonationSession *httpclient.ImpersonationSession
+
 	meta *fetcher.FetcherMeta
 
 	// State machine
@@ -277,6 +280,9 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 		f.meta = &fetcher.FetcherMeta{}
 	}
 	f.ctl.GetConfig(&f.config)
+	if f.impersonationSession == nil {
+		f.impersonationSession = httpclient.NewImpersonationSession()
+	}
 	f.resolvedCh = make(chan struct{})
 	f.primaryReadyCh = make(chan struct{})
 
@@ -1713,7 +1719,11 @@ func (f *Fetcher) Pause() error {
 }
 
 func (f *Fetcher) Close() error {
-	return f.Pause()
+	err := f.Pause()
+	if f.impersonationSession != nil {
+		f.impersonationSession.Clear()
+	}
+	return err
 }
 
 func (f *Fetcher) Meta() *fetcher.FetcherMeta {

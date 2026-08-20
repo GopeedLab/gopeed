@@ -1,10 +1,6 @@
 (function () {
   const createBlobObjectURL = globalThis.__gopeed_create_blob_object_url;
   const revokeObjectURL = globalThis.__gopeed_revoke_object_url;
-  const fetchOpen = globalThis.__gopeed_fetch_open;
-  const fetchRead = globalThis.__gopeed_fetch_read;
-  const fetchClose = globalThis.__gopeed_fetch_close;
-  const fetchAbort = globalThis.__gopeed_fetch_abort;
 
   if (typeof globalThis.ReadableStream === "undefined") {
     class ReadableStreamDefaultController {
@@ -30,7 +26,10 @@
         this._stream = stream;
       }
 
-      read() {
+      read(view) {
+        if (view !== undefined) {
+          return this._stream._readInto(view);
+        }
         return this._stream._read();
       }
 
@@ -59,6 +58,7 @@
         this._errored = null;
         this._reader = null;
         this._pulling = false;
+        this._disturbed = false;
         this.locked = false;
         this._controller = new ReadableStreamDefaultController(this);
         if (typeof source.start === "function") {
@@ -96,6 +96,7 @@
         if (this._errored) {
           return Promise.reject(this._errored);
         }
+        this._disturbed = true;
         this._markBodyUsed();
         if (this._queue.length > 0) {
           return Promise.resolve({ done: false, value: this._queue.shift() });
@@ -114,6 +115,26 @@
           this._waiters.push({ resolve, reject });
           this._maybePull();
         });
+      }
+
+      async _readInto(view) {
+        if (!ArrayBuffer.isView(view) || view.byteLength === 0) {
+          throw new TypeError("BYOB reads require a non-empty ArrayBufferView");
+        }
+        const result = await this._read();
+        if (result.done) {
+          return { done: true, value: new Uint8Array(view.buffer, view.byteOffset, 0) };
+        }
+        if (!(result.value instanceof Uint8Array)) {
+          throw new TypeError("Byte streams require Uint8Array chunks");
+        }
+        const length = Math.min(view.byteLength, result.value.byteLength);
+        const target = new Uint8Array(view.buffer, view.byteOffset, length);
+        target.set(result.value.subarray(0, length));
+        if (length < result.value.byteLength) {
+          this._queue.unshift(result.value.subarray(length));
+        }
+        return { done: false, value: target };
       }
 
       _maybePull() {
@@ -155,6 +176,7 @@
       }
 
       cancel(reason) {
+        this._disturbed = true;
         this._markBodyUsed();
         if (this._source && typeof this._source.cancel === "function") {
           return Promise.resolve(this._source.cancel(reason)).then(() => {
@@ -184,6 +206,69 @@
           reader.releaseLock();
           writer.releaseLock();
         }
+      }
+
+      tee() {
+        const reader = this.getReader();
+        let reading = false;
+        let currentRead = null;
+        let finished = false;
+        const waiting = [[], []];
+        const queues = [[], []];
+
+        const cloneChunk = (chunk) => {
+          if (chunk instanceof ArrayBuffer) return chunk.slice(0);
+          if (ArrayBuffer.isView(chunk)) {
+            const buffer = chunk.buffer.slice(0);
+            if (chunk instanceof DataView) return new DataView(buffer, chunk.byteOffset, chunk.byteLength);
+            return new chunk.constructor(buffer, chunk.byteOffset, chunk.length);
+          }
+          return chunk;
+        };
+        const flush = (index) => {
+          while (waiting[index].length && queues[index].length) {
+            waiting[index].shift().enqueue(queues[index].shift());
+          }
+          if (finished && queues[index].length === 0) {
+            while (waiting[index].length) waiting[index].shift().close();
+          }
+        };
+        const pump = () => {
+          if (reading) return currentRead;
+          if (finished) return Promise.resolve();
+          reading = true;
+          currentRead = (async () => {
+            try {
+              const result = await reader.read();
+              if (result.done) {
+                finished = true;
+              } else {
+                queues[0].push(result.value);
+                queues[1].push(cloneChunk(result.value));
+              }
+            } catch (error) {
+              finished = true;
+              for (const branches of waiting) {
+                while (branches.length) branches.shift().error(error);
+              }
+              throw error;
+            } finally {
+              reading = false;
+              currentRead = null;
+              flush(0);
+              flush(1);
+            }
+          })();
+          return currentRead;
+        };
+        const branch = (index) => new ReadableStream({
+          pull(controller) {
+            waiting[index].push(controller);
+            flush(index);
+            return pump();
+          },
+        });
+        return [branch(0), branch(1)];
       }
     }
 
@@ -349,167 +434,6 @@
         return 1;
       }
     };
-  }
-
-  function toUint8Array(chunk) {
-    if (chunk == null) {
-      return new Uint8Array(0);
-    }
-    if (chunk instanceof Uint8Array) {
-      return chunk;
-    }
-    if (typeof chunk === "string") {
-      return new TextEncoder().encode(chunk);
-    }
-    if (chunk instanceof ArrayBuffer) {
-      return new Uint8Array(chunk);
-    }
-    if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView && ArrayBuffer.isView(chunk)) {
-      return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-    }
-    if (typeof Blob !== "undefined" && chunk instanceof Blob) {
-      if (chunk._buffer instanceof Uint8Array) {
-        return chunk._buffer;
-      }
-    }
-    return new Uint8Array(0);
-  }
-
-  function createBodyReadableStream(owner) {
-    return new ReadableStream({
-      start(controller) {
-        Promise.resolve().then(async () => {
-          owner.bodyUsed = true;
-          if (owner._noBody) {
-            controller.close();
-            return;
-          }
-          if (owner._bodyArrayBuffer) {
-            controller.enqueue(toUint8Array(owner._bodyArrayBuffer));
-            controller.close();
-            return;
-          }
-          if (owner._bodyBlob) {
-            const data = await owner._bodyBlob.arrayBuffer();
-            controller.enqueue(new Uint8Array(data));
-            controller.close();
-            return;
-          }
-          if (owner._bodyText != null) {
-            controller.enqueue(toUint8Array(owner._bodyText));
-            controller.close();
-            return;
-          }
-          if (owner._bodyInit != null) {
-            controller.enqueue(toUint8Array(owner._bodyInit));
-          }
-          controller.close();
-        }).catch((err) => {
-          controller.error(err);
-        });
-      }
-    });
-  }
-
-  async function readAllFromStream(stream, asText) {
-    if (!stream) {
-      return asText ? "" : new Uint8Array(0);
-    }
-    const reader = stream.getReader();
-    const chunks = [];
-    let total = 0;
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        const chunk = toUint8Array(value);
-        chunks.push(chunk);
-        total += chunk.byteLength;
-      }
-    } finally {
-      reader.releaseLock();
-    }
-    const merged = new Uint8Array(total);
-    let offset = 0;
-    for (const chunk of chunks) {
-      merged.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    if (asText) {
-      return new TextDecoder().decode(merged);
-    }
-    return merged;
-  }
-
-  function attachResponseStreaming(response, stream) {
-    response.__gopeedBodyStream = stream;
-    response.__gopeedBodyConsumed = false;
-    const ensureUnused = () => {
-      if (response.__gopeedBodyConsumed) {
-        throw new TypeError("Already read");
-      }
-    };
-    const markBodyUsed = () => {
-      ensureUnused();
-      response.__gopeedBodyConsumed = true;
-      response.bodyUsed = true;
-    };
-    if (stream) {
-      stream.__gopeedMarkBodyUsed = () => {
-        if (!response.__gopeedBodyConsumed) {
-          response.__gopeedBodyConsumed = true;
-          response.bodyUsed = true;
-        }
-      };
-    }
-    response.text = async function () {
-      ensureUnused();
-      markBodyUsed();
-      return readAllFromStream(stream, true);
-    };
-    response.arrayBuffer = async function () {
-      ensureUnused();
-      markBodyUsed();
-      const bytes = await readAllFromStream(stream, false);
-      return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    };
-    response.blob = async function () {
-      ensureUnused();
-      markBodyUsed();
-      const contentType = this.headers && this.headers.get ? (this.headers.get("content-type") || "") : "";
-      // Response.blob() is a materializing body consumer. Keeping the live
-      // response stream behind an empty one-shot Blob makes retry, range and a
-      // second object-URL reader silently produce an empty file.
-      const bytes = await readAllFromStream(stream, false);
-      return new Blob([bytes], { type: contentType });
-    };
-    response.json = async function () {
-      const text = await this.text();
-      return JSON.parse(text);
-    };
-    return response;
-  }
-
-  if (typeof globalThis.Response === "function") {
-    const responseProto = globalThis.Response.prototype;
-    const bodyDescriptor = Object.getOwnPropertyDescriptor(responseProto, "body");
-    if (!bodyDescriptor || typeof bodyDescriptor.get !== "function") {
-      Object.defineProperty(responseProto, "body", {
-        configurable: true,
-        enumerable: true,
-        get() {
-          if (this.__gopeedBodyStream) {
-            return this.__gopeedBodyStream;
-          }
-          if (!this.__gopeedBodyStream) {
-            this.__gopeedBodyStream = createBodyReadableStream(this);
-          }
-          return this.__gopeedBodyStream;
-        }
-      });
-    }
   }
 
   const blobReaders = new Map();
@@ -883,82 +807,4 @@
     }
   };
 
-  const originalFetch = typeof globalThis.fetch === "function"
-    ? globalThis.fetch.bind(globalThis)
-    : null;
-
-  if (typeof fetchOpen === "function") {
-    globalThis.fetch = async function (input, init) {
-      const request = new Request(input, init);
-      if (originalFetch && (request.method === "HEAD" || request.redirect === "manual" || request.redirect === "error")) {
-        return originalFetch(input, init);
-      }
-      let body = null;
-      if (request._bodyFormData) {
-        body = request._bodyFormData;
-      } else if (request._bodyArrayBuffer) {
-        body = request._bodyArrayBuffer;
-      } else if (request._bodyBlob) {
-        body = await request._bodyBlob.arrayBuffer();
-      } else if (request._bodyInit != null && typeof request._bodyInit === "object") {
-        body = request._bodyInit;
-      } else if (request._bodyText != null) {
-        body = request._bodyText;
-      } else if (request._bodyInit != null) {
-        body = request._bodyInit;
-      }
-      const headers = [];
-      request.headers.forEach((value, key) => {
-        headers.push([key, value]);
-      });
-      let meta;
-      try {
-        meta = await fetchOpen({
-          url: request.url,
-          method: request.method,
-          headers,
-          body,
-          redirect: request.redirect,
-          credentials: request.credentials
-        });
-      } catch (error) {
-        throw error instanceof Error ? error : new TypeError(String(error));
-      }
-      const stream = new ReadableStream({
-        async pull(controller) {
-          let chunk;
-          try {
-            chunk = await fetchRead(meta.id, 64 * 1024);
-          } catch (error) {
-            fetchClose(meta.id);
-            controller.error(error instanceof Error ? error : new TypeError(String(error)));
-            return;
-          }
-          if (chunk == null) {
-            fetchClose(meta.id);
-            controller.close();
-            return;
-          }
-          const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
-          if (bytes.byteLength === 0) {
-            fetchClose(meta.id);
-            controller.close();
-            return;
-          }
-          controller.enqueue(bytes);
-        },
-        cancel(reason) {
-          fetchAbort(meta.id, reason == null ? "" : String(reason));
-        }
-      });
-      const response = new Response(null, {
-        status: meta.status,
-        statusText: meta.statusText,
-        headers: meta.headers,
-        url: meta.url
-      });
-      return attachResponseStreaming(response, stream);
-    };
-    globalThis.fetch.__gopeedOriginalFetch = originalFetch;
-  }
 })();

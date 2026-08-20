@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"net"
 	gohttp "net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/internal/httpclient/httpclienttest"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
@@ -256,6 +259,79 @@ func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 	// Invalid header with \r should be sanitized by Go's http client, allowing the request to succeed
 	if err != nil {
 		t.Errorf("Resolve() got = %v, want nil (invalid headers should be sanitized)", err)
+	}
+}
+
+func TestFetcher_ResolveAutomaticallyFallsBackToBrowserFingerprint(t *testing.T) {
+	server := httpclienttest.NewFingerprintServer(t, httpclienttest.FingerprintServerOptions{
+		RequiredProfile: httpclienttest.ProfileAnyBrowser,
+		Handler: gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+			w.Header().Set(base.HttpHeaderContentLength, "4")
+			w.Header().Set(base.HttpHeaderContentDisposition, `attachment; filename="file.bin"`)
+			_, _ = w.Write([]byte("data"))
+		}),
+	})
+
+	fetcher := buildFetcher()
+	defer fetcher.Pause()
+	err := fetcher.Resolve(&base.Request{
+		URL:            server.URL + "/file.bin",
+		SkipVerifyCert: true,
+	}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+	})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if fetcher.meta.Res == nil || len(fetcher.meta.Res.Files) != 1 {
+		t.Fatalf("resource = %+v, want one file", fetcher.meta.Res)
+	}
+	if fetcher.meta.Res.Files[0].Name != "file.bin" {
+		t.Fatalf("file name = %q, want file.bin", fetcher.meta.Res.Files[0].Name)
+	}
+}
+
+func TestFetcherSharesAndClearsImpersonationSession(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, request *gohttp.Request) {
+		requests.Add(1)
+		if request.Header.Get("Sec-Ch-Ua") == "" {
+			w.WriteHeader(gohttp.StatusForbidden)
+			return
+		}
+		w.WriteHeader(gohttp.StatusOK)
+	}))
+	defer server.Close()
+
+	fetcher := buildFetcher()
+	fetcher.meta.Req = &base.Request{URL: server.URL}
+
+	for range 2 {
+		client := fetcher.buildClient()
+		response, err := client.Get(server.URL)
+		if err != nil {
+			t.Fatalf("Get() error = %v", err)
+		}
+		response.Body.Close()
+		client.CloseIdleConnections()
+	}
+	if requests.Load() != 3 {
+		t.Fatalf("requests before completion = %d, want 3", requests.Load())
+	}
+
+	if err := fetcher.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	client := fetcher.buildClient()
+	response, err := client.Get(server.URL)
+	if err != nil {
+		t.Fatalf("Get() after close error = %v", err)
+	}
+	response.Body.Close()
+	client.CloseIdleConnections()
+	if requests.Load() != 5 {
+		t.Fatalf("requests after close = %d, want 5", requests.Load())
 	}
 }
 

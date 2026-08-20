@@ -16,6 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/GopeedLab/gopeed/internal/httpclient"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	fhttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -216,21 +217,30 @@ func (f *Fetcher) buildFastFailClient() *http.Client {
 
 // buildClientWithTimeout creates an HTTP client with the specified connection timeout.
 func (f *Fetcher) buildClientWithTimeout(timeout time.Duration) *http.Client {
-	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: timeout,
-		}).DialContext,
-		Proxy: f.ctl.GetProxy(f.meta.Req.Proxy),
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: f.meta.Req.SkipVerifyCert,
-		},
-		TLSHandshakeTimeout: timeout,
-	}
 	jar, _ := cookiejar.New(nil)
-	return &http.Client{
-		Transport: transport,
-		Jar:       jar,
+	client, err := httpclient.NewClient(httpclient.Options{
+		Client: httpclient.ClientOptions{
+			Jar: jar,
+		},
+		Transport: httpclient.TransportOptions{
+			DialContext: (&net.Dialer{
+				Timeout: timeout,
+			}).DialContext,
+			Proxy: f.ctl.GetProxy(f.meta.Req.Proxy),
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: f.meta.Req.SkipVerifyCert,
+			},
+			TLSHandshakeTimeout: timeout,
+		},
+		Impersonation: httpclient.ImpersonationOptions{
+			Mode:    httpclient.ImpersonationAuto,
+			Session: f.impersonationSession,
+		},
+	})
+	if err != nil {
+		panic(fmt.Sprintf("build HTTP client: %v", err))
 	}
+	return client
 }
 
 // ============================================================================

@@ -258,7 +258,6 @@ func waitForJSValue(t *testing.T, engine *engine.Engine, expression, want string
 func newStreamTestEngine(t *testing.T, created chan<- createdObjectURL) (*engine.Engine, func()) {
 	t.Helper()
 	var next atomic.Int64
-	var cleanup func()
 	e := engine.NewEngine(&engine.Config{
 		StreamConfig: &stream.Config{
 			CreateObjectURL: func(opts *stream.ObjectURLOptions, open stream.ObjectURLOpener) (string, error) {
@@ -266,13 +265,7 @@ func newStreamTestEngine(t *testing.T, created chan<- createdObjectURL) (*engine
 				return fmt.Sprintf("blob:test-%d", next.Add(1)), nil
 			},
 			RevokeObjectURL: func(string) error { return nil },
-			RegisterCleanup: func(fn func()) {
-				cleanup = fn
-			},
 		},
 	})
-	if cleanup == nil {
-		t.Fatal("stream cleanup was not registered")
-	}
-	return e, cleanup
+	return e, e.Close
 }
