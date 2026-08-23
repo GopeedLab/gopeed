@@ -24,12 +24,147 @@ import (
 )
 
 var (
-	cfg       *torrent.ClientConfig
-	client    *torrent.Client
-	lock      sync.Mutex
-	closeCtx  context.Context
-	closeFunc func()
+	cfg    *torrent.ClientConfig
+	client *torrent.Client
+	lock   sync.Mutex
+	// torrentLifecycleLock serializes client use with subscriber registration,
+	// last-owner Drop, and client shutdown.
+	torrentLifecycleLock sync.Mutex
+	closeCtx             context.Context
+	closeFunc            func()
+
+	writeErrorSubscribers = struct {
+		sync.Mutex
+		byTorrent map[*torrent.Torrent]map[*Fetcher]struct{}
+		errorOps  map[*torrent.Torrent]*torrentWriteErrorOp
+	}{
+		byTorrent: make(map[*torrent.Torrent]map[*Fetcher]struct{}),
+		errorOps:  make(map[*torrent.Torrent]*torrentWriteErrorOp),
+	}
 )
+
+type torrentWriteErrorOp struct {
+	sync.Mutex
+	epoch uint64
+}
+
+func registerTorrentWriteError(t *torrent.Torrent, f *Fetcher) *torrentWriteErrorOp {
+	if t == nil || f == nil {
+		return nil
+	}
+	writeErrorSubscribers.Lock()
+	errorOp := writeErrorSubscribers.errorOps[t]
+	if errorOp == nil {
+		errorOp = &torrentWriteErrorOp{}
+		writeErrorSubscribers.errorOps[t] = errorOp
+	}
+	subscribers := writeErrorSubscribers.byTorrent[t]
+	if subscribers == nil {
+		subscribers = make(map[*Fetcher]struct{})
+		writeErrorSubscribers.byTorrent[t] = subscribers
+		t.SetOnWriteChunkError(func(err error) {
+			dispatchTorrentWriteError(t, errorOp, 0, err)
+		})
+	}
+	subscribers[f] = struct{}{}
+	writeErrorSubscribers.Unlock()
+	return errorOp
+}
+
+func unregisterTorrentWriteError(t *torrent.Torrent, f *Fetcher) (last bool) {
+	if t == nil || f == nil {
+		return false
+	}
+	writeErrorSubscribers.Lock()
+	if subscribers := writeErrorSubscribers.byTorrent[t]; subscribers != nil {
+		delete(subscribers, f)
+		if len(subscribers) == 0 {
+			delete(writeErrorSubscribers.byTorrent, t)
+			delete(writeErrorSubscribers.errorOps, t)
+			last = true
+		}
+	}
+	writeErrorSubscribers.Unlock()
+	return last
+}
+
+func dispatchTorrentWriteError(t *torrent.Torrent, errorOp *torrentWriteErrorOp, epoch uint64, err error) {
+	if t == nil || err == nil {
+		return
+	}
+	writeErrorSubscribers.Lock()
+	registeredOp := writeErrorSubscribers.errorOps[t]
+	writeErrorSubscribers.Unlock()
+	if errorOp == nil || registeredOp != errorOp {
+		return
+	}
+	errorOp.Lock()
+	defer errorOp.Unlock()
+
+	writeErrorSubscribers.Lock()
+	subscribers := make([]*Fetcher, 0, len(writeErrorSubscribers.byTorrent[t]))
+	for subscriber := range writeErrorSubscribers.byTorrent[t] {
+		subscribers = append(subscribers, subscriber)
+	}
+	writeErrorSubscribers.Unlock()
+	eligible := make([]*Fetcher, 0, len(subscribers))
+	hasNewerRun := false
+	for _, subscriber := range subscribers {
+		if subscriber.downloadRunIsNewerThan(epoch) {
+			hasNewerRun = true
+			continue
+		}
+		if subscriber.downloadRunAccepts(epoch) {
+			eligible = append(eligible, subscriber)
+		}
+	}
+	if len(eligible) == 0 {
+		return
+	}
+
+	// Installing a callback replaces anacrolix/torrent's default handler.
+	// Stop the shared torrent before notifying waiters. If one subscriber has
+	// already started a newer generation, restore data flow for that run after
+	// the older generations have been failed.
+	t.DisallowDataDownload()
+	for _, subscriber := range eligible {
+		subscriber.reportWriteChunkError(epoch, err)
+	}
+	if hasNewerRun {
+		t.AllowDataDownload()
+	}
+}
+
+type torrentDownloadRun struct {
+	generation   uint64
+	torrentEpoch uint64
+	errCh        chan error
+	failed       atomic.Bool
+}
+
+func mergeTrackerTiers(lists ...[][]string) [][]string {
+	seen := make(map[string]struct{})
+	merged := make([][]string, 0)
+	for _, list := range lists {
+		for _, tier := range list {
+			uniqueTier := make([]string, 0, len(tier))
+			for _, tracker := range tier {
+				if tracker == "" {
+					continue
+				}
+				if _, ok := seen[tracker]; ok {
+					continue
+				}
+				seen[tracker] = struct{}{}
+				uniqueTier = append(uniqueTier, tracker)
+			}
+			if len(uniqueTier) > 0 {
+				merged = append(merged, uniqueTier)
+			}
+		}
+	}
+	return merged
+}
 
 type Fetcher struct {
 	ctl    *controller.Controller
@@ -44,6 +179,14 @@ type Fetcher struct {
 	torrentDropCtx  context.Context
 	torrentDropFunc func()
 	uploadDoneCh    chan any
+	downloadRunMu   sync.Mutex
+	downloadRun     *torrentDownloadRun
+	runChangedCh    chan struct{}
+	nextGeneration  uint64
+	writeErrorOp    *torrentWriteErrorOp
+	closed          atomic.Bool
+	closeOnce       sync.Once
+	closeErr        error
 }
 
 func (f *Fetcher) Setup(ctl *controller.Controller) {
@@ -55,6 +198,7 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 		f.data = &fetcherData{}
 	}
 	f.uploadDoneCh = make(chan any, 1)
+	f.runChangedCh = make(chan struct{})
 	f.torrentDropCtx, f.torrentDropFunc = context.WithCancel(context.Background())
 	f.ctl.GetConfig(&f.config)
 	return
@@ -110,6 +254,37 @@ func (f *Fetcher) Start() (err error) {
 			return
 		}
 	}
+	torrentLifecycleLock.Lock()
+	defer torrentLifecycleLock.Unlock()
+	if f.closed.Load() {
+		return fmt.Errorf("bt fetcher is closed")
+	}
+	if f.writeErrorOp != nil {
+		f.writeErrorOp.Lock()
+		defer f.writeErrorOp.Unlock()
+		f.writeErrorOp.epoch++
+	}
+	f.downloadRunMu.Lock()
+	f.nextGeneration++
+	run := &torrentDownloadRun{
+		generation: f.nextGeneration,
+		errCh:      make(chan error, 1),
+	}
+	if f.writeErrorOp != nil {
+		run.torrentEpoch = f.writeErrorOp.epoch
+		errorOp := f.writeErrorOp
+		epoch := run.torrentEpoch
+		activeTorrent := f.torrent
+		activeTorrent.SetOnWriteChunkError(func(err error) {
+			dispatchTorrentWriteError(activeTorrent, errorOp, epoch, err)
+		})
+	}
+	if f.runChangedCh != nil {
+		close(f.runChangedCh)
+	}
+	f.runChangedCh = make(chan struct{})
+	f.downloadRun = run
+	f.downloadRunMu.Unlock()
 
 	files := f.torrent.Files()
 	// If the user does not specify the file to download, all files will be downloaded by default
@@ -135,18 +310,43 @@ func (f *Fetcher) Start() (err error) {
 }
 
 func (f *Fetcher) Pause() (err error) {
+	torrentLifecycleLock.Lock()
+	defer torrentLifecycleLock.Unlock()
+	if f.closed.Load() {
+		return nil
+	}
+	if f.writeErrorOp != nil {
+		f.writeErrorOp.Lock()
+		defer f.writeErrorOp.Unlock()
+	}
 	f.torrent.DisallowDataDownload()
 	return
 }
 
 func (f *Fetcher) Close() (err error) {
-	f.safeDrop()
-	f.torrentDropFunc()
-	f.uploadDoneCh <- nil
-	if len(client.Torrents()) == 0 {
-		err = closeClient()
-	}
-	return nil
+	f.closeOnce.Do(func() {
+		torrentLifecycleLock.Lock()
+		defer torrentLifecycleLock.Unlock()
+		f.closed.Store(true)
+		if f.writeErrorOp != nil {
+			f.writeErrorOp.Lock()
+			defer f.writeErrorOp.Unlock()
+		}
+		if unregisterTorrentWriteError(f.torrent, f) {
+			f.safeDrop()
+		}
+		if f.torrentDropFunc != nil {
+			f.torrentDropFunc()
+		}
+		if f.uploadDoneCh != nil {
+			select {
+			case f.uploadDoneCh <- nil:
+			default:
+			}
+		}
+		f.closeErr = closeClientIfIdle()
+	})
+	return f.closeErr
 }
 
 func (f *Fetcher) safeDrop() {
@@ -193,10 +393,25 @@ func (f *Fetcher) Progress() fetcher.Progress {
 
 func (f *Fetcher) Wait() (err error) {
 	for {
+		f.downloadRunMu.Lock()
+		run := f.downloadRun
+		runChangedCh := f.runChangedCh
+		f.downloadRunMu.Unlock()
+		var runErrCh <-chan error
+		if run != nil {
+			runErrCh = run.errCh
+		}
 		select {
 		case <-f.torrentDropCtx.Done():
 			return
+		case <-runChangedCh:
+			continue
+		case err := <-runErrCh:
+			return err
 		case <-time.After(time.Second):
+			if run != nil && run.failed.Load() {
+				continue
+			}
 			if f.torrentReady.Load() && len(f.meta.Opts.SelectFiles) > 0 {
 				if f.isDone() {
 					// remove unselected files
@@ -391,10 +606,10 @@ func (f *Fetcher) WaitUpload() (err error) {
 }
 
 func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
-	if err = base.ParseReqExtra[bt.ReqExtra](req); err != nil {
-		return
+	if f.closed.Load() {
+		return fmt.Errorf("bt fetcher is closed")
 	}
-	if err = f.initClient(); err != nil {
+	if err = base.ParseReqExtra[bt.ReqExtra](req); err != nil {
 		return
 	}
 	schema := util.ParseSchema(req.URL)
@@ -407,6 +622,7 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 		}
 	} else {
 		var reader io.Reader
+		var readerCloser io.Closer
 		if schema == "FILE" {
 			fileUrl, _ := url.Parse(req.URL)
 			filePath := fileUrl.Path[1:]
@@ -414,6 +630,7 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 			if err != nil {
 				return
 			}
+			readerCloser = reader.(io.Closer)
 		} else if schema == "DATA" {
 			_, data := util.ParseDataUri(req.URL)
 			reader = bytes.NewBuffer(data)
@@ -422,7 +639,10 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 			if err != nil {
 				return
 			}
-			defer reader.(io.Closer).Close()
+			readerCloser = reader.(io.Closer)
+		}
+		if readerCloser != nil {
+			defer readerCloser.Close()
 		}
 
 		var metaInfo *metainfo.MetaInfo
@@ -446,47 +666,118 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 			return
 		}
 	}
+	// Tracker announcers are started as part of AddTorrentSpec. Include every
+	// tracker known at creation time so no live tracker state has to be mutated.
+	// anacrolix/torrent currently races internally when trackers are modified on
+	// an existing torrent while an announce attempt is still winding down.
+	if !privateTorrent {
+		extraTrackers := make([][]string, 0)
+		if req.Extra != nil {
+			extra := req.Extra.(*bt.ReqExtra)
+			for _, tracker := range extra.Trackers {
+				extraTrackers = append(extraTrackers, []string{tracker})
+			}
+		}
+		for _, tracker := range f.config.Trackers {
+			extraTrackers = append(extraTrackers, []string{tracker})
+		}
+		spec.Trackers = mergeTrackerTiers(spec.Trackers, extraTrackers)
+	}
+	torrentLifecycleLock.Lock()
+	if f.closed.Load() {
+		torrentLifecycleLock.Unlock()
+		return fmt.Errorf("bt fetcher is closed")
+	}
+	if err = f.initClient(); err != nil {
+		torrentLifecycleLock.Unlock()
+		return
+	}
+
 	spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
 		ClientBaseDir: cfg.DataDir,
 		TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
 			return f.meta.Opts.Path
 		},
 	})
-	f.torrent, _, err = client.AddTorrentSpec(spec)
+	previousTorrent := f.torrent
+	if existing, ok := client.Torrent(spec.InfoHash); spec.InfoHash != (metainfo.Hash{}) && ok {
+		// Merge every field except trackers. Changing trackers on a live torrent
+		// races inside anacrolix's announce dispatcher; the existing tracker set
+		// remains intact while webseeds, sources, peers and metadata are merged.
+		mergeSpec := *spec
+		mergeSpec.Trackers = nil
+		f.torrent = existing
+		err = existing.MergeSpec(&mergeSpec)
+	} else {
+		f.torrent, _, err = client.AddTorrentSpec(spec)
+	}
 	if err != nil {
+		torrentLifecycleLock.Unlock()
 		return
 	}
-
-	// Do not add external tracker to a private torrent.
-	if !privateTorrent {
-		// use map to deduplicate
-		trackers := make(map[string]bool)
-		if req.Extra != nil {
-			extra := req.Extra.(*bt.ReqExtra)
-			if len(extra.Trackers) > 0 {
-				for _, tracker := range extra.Trackers {
-					trackers[tracker] = true
-				}
-			}
+	if previousTorrent != nil && previousTorrent != f.torrent {
+		if f.writeErrorOp != nil {
+			f.writeErrorOp.Lock()
 		}
-		if len(f.config.Trackers) > 0 {
-			for _, tracker := range f.config.Trackers {
-				trackers[tracker] = true
-			}
+		if unregisterTorrentWriteError(previousTorrent, f) {
+			previousTorrent.Drop()
 		}
-		if len(trackers) > 0 {
-			announceList := make([][]string, 0)
-			for tracker := range trackers {
-				announceList = append(announceList, []string{tracker})
-			}
-			f.torrent.AddTrackers(announceList)
+		if f.writeErrorOp != nil {
+			f.writeErrorOp.Unlock()
 		}
 	}
+	f.writeErrorOp = registerTorrentWriteError(f.torrent, f)
+	torrentLifecycleLock.Unlock()
 	<-f.torrent.GotInfo()
 	f.torrentReady.Store(true)
 
 	go f.doUpload(fromUpload)
 	return
+}
+
+func (f *Fetcher) handleWriteChunkError(err error) {
+	if err == nil {
+		return
+	}
+	torrentLifecycleLock.Lock()
+	errorOp := f.writeErrorOp
+	activeTorrent := f.torrent
+	torrentLifecycleLock.Unlock()
+	if errorOp == nil || activeTorrent == nil {
+		return
+	}
+	errorOp.Lock()
+	epoch := errorOp.epoch
+	errorOp.Unlock()
+	dispatchTorrentWriteError(activeTorrent, errorOp, epoch, err)
+}
+
+func (f *Fetcher) downloadRunAccepts(epoch uint64) bool {
+	f.downloadRunMu.Lock()
+	defer f.downloadRunMu.Unlock()
+	return f.downloadRun != nil && f.downloadRun.torrentEpoch <= epoch && !f.downloadRun.failed.Load()
+}
+
+func (f *Fetcher) downloadRunIsNewerThan(epoch uint64) bool {
+	f.downloadRunMu.Lock()
+	defer f.downloadRunMu.Unlock()
+	return f.downloadRun != nil && f.downloadRun.torrentEpoch > epoch
+}
+
+func (f *Fetcher) reportWriteChunkError(epoch uint64, err error) {
+	if err == nil {
+		return
+	}
+	f.downloadRunMu.Lock()
+	run := f.downloadRun
+	f.downloadRunMu.Unlock()
+	if run == nil || run.torrentEpoch > epoch || !run.failed.CompareAndSwap(false, true) {
+		return
+	}
+	select {
+	case run.errCh <- fmt.Errorf("write torrent data: %w", err):
+	default:
+	}
 }
 
 func (f *Fetcher) seedRadio() float64 {
@@ -511,9 +802,23 @@ type fetcherData struct {
 }
 
 func closeClient() error {
+	torrentLifecycleLock.Lock()
+	defer torrentLifecycleLock.Unlock()
 	lock.Lock()
 	defer lock.Unlock()
+	return closeClientLocked()
+}
 
+func closeClientIfIdle() error {
+	lock.Lock()
+	defer lock.Unlock()
+	if client != nil && len(client.Torrents()) != 0 {
+		return nil
+	}
+	return closeClientLocked()
+}
+
+func closeClientLocked() error {
 	if closeFunc != nil {
 		closeFunc()
 	}
