@@ -876,16 +876,28 @@ func TestDownloader_Extension_BlobPauseContinueKeepsSource(t *testing.T) {
 			waitForFileSizeAtLeast(t, filePath, 4096, 2*time.Second)
 
 			task := downloader.GetTask(id)
-			if task == nil || task.Meta == nil || task.Meta.Req == nil {
+			if task == nil {
+				t.Fatal("task request missing before pause")
+			}
+			task.lock.Lock()
+			if task.Meta == nil || task.Meta.Req == nil {
+				task.lock.Unlock()
 				t.Fatal("task request missing before pause")
 			}
 			oldURL := task.Meta.Req.URL
+			task.lock.Unlock()
 
 			if err := downloader.Pause(&TaskFilter{IDs: []string{id}}); err != nil {
 				t.Fatal(err)
 			}
 			task = downloader.GetTask(id)
-			if task == nil || task.Status != base.DownloadStatusPause {
+			if task == nil {
+				t.Fatal("paused task disappeared")
+			}
+			task.statusLock.Lock()
+			paused := task.Status == base.DownloadStatusPause
+			task.statusLock.Unlock()
+			if !paused {
 				t.Fatalf("expected paused task, got %#v", task)
 			}
 			if !downloader.blob.IsURL(oldURL) {
@@ -2000,7 +2012,10 @@ func waitForTaskTerminal(t *testing.T, downloader *Downloader, id string, timeou
 	for time.Now().Before(deadline) {
 		task := downloader.GetTask(id)
 		if task != nil {
-			switch task.Status {
+			task.statusLock.Lock()
+			status := task.Status
+			task.statusLock.Unlock()
+			switch status {
 			case base.DownloadStatusDone:
 				return
 			case base.DownloadStatusError:
@@ -2035,7 +2050,10 @@ func waitForTaskTerminal(t *testing.T, downloader *Downloader, id string, timeou
 		if task == nil {
 			t.Fatalf("timeout waiting for task %s: task not found", id)
 		}
-		t.Fatalf("timeout waiting for task %s: status=%s downloaded=%d total=%d", id, task.Status, task.Progress.Downloaded, task.Meta.Res.Size)
+		task.statusLock.Lock()
+		status, downloaded := task.Status, task.Progress.Downloaded
+		task.statusLock.Unlock()
+		t.Fatalf("timeout waiting for task %s: status=%s downloaded=%d total=%d", id, status, downloaded, task.Meta.Res.Size)
 	}
 }
 
@@ -2044,8 +2062,13 @@ func waitForTaskStatus(t *testing.T, downloader *Downloader, id string, status b
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		task := downloader.GetTask(id)
-		if task != nil && task.Status == status {
-			return
+		if task != nil {
+			task.statusLock.Lock()
+			currentStatus := task.Status
+			task.statusLock.Unlock()
+			if currentStatus == status {
+				return
+			}
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
@@ -2057,5 +2080,8 @@ func waitForTaskStatus(t *testing.T, downloader *Downloader, id string, status b
 	if task.Meta != nil && task.Meta.Res != nil {
 		total = task.Meta.Res.Size
 	}
-	t.Fatalf("timeout waiting for task %s status %s: got %s downloaded=%d total=%d", id, status, task.Status, task.Progress.Downloaded, total)
+	task.statusLock.Lock()
+	currentStatus, downloaded := task.Status, task.Progress.Downloaded
+	task.statusLock.Unlock()
+	t.Fatalf("timeout waiting for task %s status %s: got %s downloaded=%d total=%d", id, status, currentStatus, downloaded, total)
 }
