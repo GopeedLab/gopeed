@@ -109,6 +109,99 @@ type connection struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+	run    *downloadRun
+}
+
+type targetFile interface {
+	WriteAt(p []byte, off int64) (n int, err error)
+	Close() error
+}
+
+type targetWriteError struct {
+	err error
+}
+
+// downloadRun owns all lifecycle state for one Start invocation. Keeping these
+// values run-local prevents an immediate retry from replacing channels or
+// cancellation functions that are still used by the previous run.
+type downloadRun struct {
+	ctx      context.Context
+	cancel   context.CancelFunc
+	loopDone chan struct{}
+
+	terminalErrMu sync.Mutex
+	terminalErr   error
+
+	completionOnce sync.Once
+	resultMu       sync.Mutex
+	resultErr      error
+	resultReady    bool
+}
+
+func newDownloadRun() *downloadRun {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &downloadRun{
+		ctx:      ctx,
+		cancel:   cancel,
+		loopDone: make(chan struct{}),
+	}
+}
+
+func (r *downloadRun) fail(err error) {
+	if err == nil {
+		return
+	}
+	r.terminalErrMu.Lock()
+	if r.terminalErr == nil {
+		r.terminalErr = err
+	}
+	r.terminalErrMu.Unlock()
+	r.cancel()
+}
+
+func (r *downloadRun) getTerminalErr() error {
+	r.terminalErrMu.Lock()
+	defer r.terminalErrMu.Unlock()
+	return r.terminalErr
+}
+
+func (r *downloadRun) setResult(err error) {
+	r.completionOnce.Do(func() {
+		r.resultMu.Lock()
+		r.resultErr = err
+		r.resultReady = true
+		r.resultMu.Unlock()
+	})
+}
+
+func (r *downloadRun) result() (error, bool) {
+	r.resultMu.Lock()
+	defer r.resultMu.Unlock()
+	return r.resultErr, r.resultReady
+}
+
+func (e *targetWriteError) Error() string {
+	return fmt.Sprintf("write http data: %v", e.err)
+}
+
+func (e *targetWriteError) Unwrap() error {
+	return e.err
+}
+
+func isTargetWriteError(err error) bool {
+	var targetErr *targetWriteError
+	return errors.As(err, &targetErr)
+}
+
+func waitForRetry(ctx context.Context, delay time.Duration) bool {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 // ============================================================================
@@ -219,7 +312,8 @@ type Fetcher struct {
 	meta *fetcher.FetcherMeta
 
 	// State machine
-	state atomic.Int32 // fetcherState
+	state  atomic.Int32 // fetcherState
+	closed atomic.Bool
 
 	// Connections
 	connMu      sync.Mutex
@@ -253,20 +347,20 @@ type Fetcher struct {
 	prefetchDone     atomic.Bool   // Prefetch completed or stopped
 	prefetchErr      error         // Error during prefetch (if any)
 	prefetchStopCh   chan struct{} // Signal to stop prefetch
+	prefetchDoneCh   chan struct{} // Closed after asyncPrefetch releases its resources
+	prefetchStopOnce sync.Once
 
 	// Target file
-	file         *os.File
+	file         targetFile
 	fileMu       sync.Mutex
 	redirectURL  string
 	redirectLock sync.Mutex
 
 	// Lifecycle control
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
-
-	// downloadLoop lifecycle tracking
-	downloadLoopDone chan struct{} // Closed when downloadLoop exits
+	startMu sync.Mutex
+	runMu   sync.Mutex
+	run     *downloadRun
+	wg      sync.WaitGroup
 
 	// Resolve connection control
 	resolveCtx    context.Context
@@ -302,6 +396,12 @@ func (f *Fetcher) getState() fetcherState {
 
 func (f *Fetcher) setState(s fetcherState) {
 	f.state.Store(int32(s))
+}
+
+func (f *Fetcher) currentRun() *downloadRun {
+	f.runMu.Lock()
+	defer f.runMu.Unlock()
+	return f.run
 }
 
 // updateMaxConnTime updates maxConnTime if the new duration is larger
@@ -440,6 +540,9 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	// For non-range resources, the response will be used directly in Start
 	if res.Range && res.Size > 0 {
 		f.prefetchStopCh = make(chan struct{})
+		f.prefetchDoneCh = make(chan struct{})
+		f.prefetchStopOnce = sync.Once{}
+		f.prefetchDone.Store(false)
 		go f.asyncPrefetch()
 	}
 
@@ -456,6 +559,7 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 func (f *Fetcher) asyncPrefetch() {
 	defer func() {
 		f.prefetchDone.Store(true)
+		close(f.prefetchDoneCh)
 	}()
 
 	// Get the resolve response
@@ -487,7 +591,6 @@ func (f *Fetcher) asyncPrefetch() {
 	}()
 
 	buf := make([]byte, 32*1024) // 32KB buffer
-	reader := NewTimeoutReader(resp.Body, readTimeout)
 
 	for {
 		select {
@@ -497,7 +600,7 @@ func (f *Fetcher) asyncPrefetch() {
 		default:
 		}
 
-		n, err := reader.Read(buf)
+		n, err := resp.Body.Read(buf)
 		if n > 0 {
 			_, writeErr := tmpFile.Write(buf[:n])
 			if writeErr != nil {
@@ -517,52 +620,117 @@ func (f *Fetcher) asyncPrefetch() {
 	}
 }
 
-// stopPrefetchAndGetData stops the async prefetch and returns prefetched bytes
-// It also copies prefetched data to the target file
-func (f *Fetcher) stopPrefetchAndCopyData() int64 {
-	// Signal prefetch to stop (safely)
-	if f.prefetchStopCh != nil {
-		select {
-		case <-f.prefetchStopCh:
-			// Already closed
-		default:
-			close(f.prefetchStopCh)
-		}
+// stopPrefetch closes the response body to unblock any in-flight read, then
+// waits until asyncPrefetch has stopped using the temporary file.
+func (f *Fetcher) stopPrefetch() {
+	if f.prefetchStopCh == nil {
+		return
 	}
+	f.prefetchStopOnce.Do(func() {
+		close(f.prefetchStopCh)
+	})
 
-	// Wait for prefetch to finish (with timeout)
-	for i := 0; i < 1000 && !f.prefetchDone.Load(); i++ {
-		time.Sleep(10 * time.Millisecond)
+	f.resolveRespLock.Lock()
+	if f.resolveResp != nil {
+		_ = f.resolveResp.Body.Close()
+		f.resolveResp = nil
 	}
+	f.resolveRespLock.Unlock()
+
+	if f.prefetchDoneCh != nil {
+		<-f.prefetchDoneCh
+	}
+}
+
+// stopPrefetchAndCopyData stops async prefetch and copies the available bytes
+// to the target file.
+func (f *Fetcher) stopPrefetchAndCopyData() (copied int64, err error) {
+	f.stopPrefetch()
 
 	prefetched := f.prefetchSize.Load()
 	if prefetched == 0 {
 		f.cleanupPrefetchFile()
-		return 0
+		return 0, nil
 	}
+	defer f.cleanupPrefetchFile()
 
 	// Copy prefetch data to target file
 	if f.prefetchFile != nil && f.file != nil {
 		// Seek to beginning of prefetch file
-		f.prefetchFile.Seek(0, io.SeekStart)
+		if _, err = f.prefetchFile.Seek(0, io.SeekStart); err != nil {
+			return 0, fmt.Errorf("seek http prefetch data: %w", err)
+		}
 
 		// Copy to target file at position 0
 		buf := make([]byte, 32*1024)
-		var copied int64
 		for copied < prefetched {
-			n, err := f.prefetchFile.Read(buf)
+			readBuf := buf
+			if remain := prefetched - copied; remain < int64(len(readBuf)) {
+				readBuf = readBuf[:remain]
+			}
+			n, readErr := f.prefetchFile.Read(readBuf)
 			if n > 0 {
-				f.file.WriteAt(buf[:n], copied)
+				if err = f.writeTargetAt(buf[:n], copied); err != nil {
+					return copied, err
+				}
 				copied += int64(n)
 			}
-			if err != nil {
-				break
+			if readErr != nil {
+				if readErr == io.EOF && copied == prefetched {
+					break
+				}
+				if readErr == io.EOF {
+					readErr = io.ErrUnexpectedEOF
+				}
+				return copied, fmt.Errorf("read http prefetch data: %w", readErr)
 			}
 		}
 	}
 
-	f.cleanupPrefetchFile()
-	return prefetched
+	return copied, nil
+}
+
+func (f *Fetcher) writeTargetAt(p []byte, offset int64) error {
+	f.fileMu.Lock()
+	defer f.fileMu.Unlock()
+
+	if f.file == nil {
+		return &targetWriteError{err: errors.New("target file is unavailable")}
+	}
+	written, err := f.file.WriteAt(p, offset)
+	if err != nil {
+		return &targetWriteError{err: err}
+	}
+	if written != len(p) {
+		return &targetWriteError{err: io.ErrShortWrite}
+	}
+	return nil
+}
+
+func (f *Fetcher) closeTargetFile() error {
+	f.fileMu.Lock()
+	defer f.fileMu.Unlock()
+
+	if f.file == nil {
+		return nil
+	}
+	err := f.file.Close()
+	f.file = nil
+	return err
+}
+
+func (f *Fetcher) markConnectionWriteFailed(conn *connection, err error) {
+	f.connMu.Lock()
+	conn.State = connFailed
+	conn.failed = true
+	conn.lastErr = err
+	f.connMu.Unlock()
+	if f.slowStart != nil {
+		f.slowStart.onConnectFailed()
+	}
+	if conn.run != nil {
+		conn.run.fail(err)
+	}
 }
 
 // cleanupPrefetchFile closes and removes the prefetch temporary file
@@ -578,6 +746,9 @@ func (f *Fetcher) cleanupPrefetchFile() {
 }
 
 func (f *Fetcher) Start() error {
+	if f.closed.Load() {
+		return errors.New("http fetcher is closed")
+	}
 	state := f.getState()
 
 	switch state {
@@ -591,8 +762,9 @@ func (f *Fetcher) Start() error {
 		return nil
 
 	case stateSlowStart, stateSteady:
-		// Already downloading, this is a resume from pause
-		return f.doStart()
+		// Already downloading. Pause transitions to statePaused before returning,
+		// so starting another run here would race the active WaitGroup and file.
+		return nil
 
 	case stateError:
 		// Retry after error: reset and restart
@@ -604,16 +776,28 @@ func (f *Fetcher) Start() error {
 }
 
 func (f *Fetcher) doStart() error {
+	f.startMu.Lock()
+	defer f.startMu.Unlock()
+	if f.closed.Load() {
+		return errors.New("http fetcher is closed")
+	}
+
 	// Wait for resolve to complete
 	<-f.resolvedCh
 
 	state := f.getState()
-	if state == stateDone {
+	if state == stateDone || state == stateSlowStart || state == stateSteady {
 		return nil
 	}
 
 	// If retrying after error, reset connection states for retry
 	if state == stateError {
+		// finishDownload sets stateError before downloadLoop publishes the result.
+		// A caller may retry based on state without first calling Wait, so ensure
+		// the old run has completely exited before replacing run-local state.
+		if previousRun := f.currentRun(); previousRun != nil {
+			<-previousRun.loopDone
+		}
 		// Drain any pending error from doneCh before retry
 		select {
 		case <-f.doneCh:
@@ -660,8 +844,8 @@ func (f *Fetcher) doStart() error {
 	var prefetchedBytes int64
 	if f.meta.Res.Range {
 		// Stop async prefetch and copy data to target file
-		prefetchedBytes = f.stopPrefetchAndCopyData()
-		f.resolveDataPos.Store(prefetchedBytes)
+		var copyErr error
+		prefetchedBytes, copyErr = f.stopPrefetchAndCopyData()
 
 		// Also close resolve response if still open
 		f.resolveRespLock.Lock()
@@ -670,10 +854,16 @@ func (f *Fetcher) doStart() error {
 			f.resolveResp = nil
 		}
 		f.resolveRespLock.Unlock()
+		if copyErr != nil {
+			_ = f.closeTargetFile()
+			return copyErr
+		}
+		f.resolveDataPos.Store(prefetchedBytes)
 	}
 
 	// Avoid request extra modified by extension
 	if err = base.ParseReqExtra[fhttp.ReqExtra](f.meta.Req); err != nil {
+		_ = f.closeTargetFile()
 		return err
 	}
 
@@ -681,71 +871,86 @@ func (f *Fetcher) doStart() error {
 	maxConns := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
 	f.slowStart = newSlowStartController(maxConns)
 
-	// Create main context
-	f.ctx, f.cancel = context.WithCancel(context.Background())
-
-	// Create downloadLoop lifecycle channel
-	f.downloadLoopDone = make(chan struct{})
+	// Create run-local lifecycle state. Wait is signalled only after this run's
+	// loop and all of its connection goroutines have exited.
+	run := newDownloadRun()
+	f.runMu.Lock()
+	f.run = run
+	f.runMu.Unlock()
 
 	// Start download
 	f.setState(stateSlowStart)
-	go f.downloadLoop()
+	go f.downloadLoop(run)
 
 	return nil
 }
 
-func (f *Fetcher) downloadLoop() {
+func (f *Fetcher) downloadLoop(run *downloadRun) {
 	defer func() {
 		// Update file last modified time before closing
 		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
 			setft.SetFileTime(f.meta.SingleFilepath(), time.Now(), *f.meta.Res.Files[0].Ctime, *f.meta.Res.Files[0].Ctime)
 		}
 
-		// Signal that downloadLoop has exited
-		if f.downloadLoopDone != nil {
-			close(f.downloadLoopDone)
+		if err, ok := run.result(); ok {
+			f.doneCh <- err
 		}
+		// Close only after the result has been published. A retry waiting on
+		// loopDone can now safely drain the previous result before replacing run.
+		close(run.loopDone)
 	}()
 
 	// Check if this is a resume or fresh start
+	f.connMu.Lock()
 	isResume := len(f.connections) > 0
+	f.connMu.Unlock()
 
 	if !isResume {
 		// Fresh start: begin with resolve connection
-		f.startResolveDownload()
+		f.startResolveDownload(run)
+		if _, completed := run.result(); completed {
+			return
+		}
+		if !f.meta.Res.Range || f.meta.Res.Size == 0 {
+			return
+		}
 	} else {
 		// Resume: restart existing connections
-		f.resumeConnections()
-		f.waitForCompletion()
+		f.resumeConnections(run)
+		f.waitForCompletion(run)
 		return
 	}
 
 	// Slow start loop
 	for {
 		select {
-		case <-f.ctx.Done():
-			// Paused or cancelled
+		case <-run.ctx.Done():
+			// A target write error is terminal for the whole run. Pause also
+			// cancels the context, but intentionally has no completion result.
+			if run.getTerminalErr() != nil {
+				f.waitForCompletion(run)
+			}
 			return
 		case <-f.slowStart.expansionCh:
 			// Batch completed, try to expand
 			if f.checkCompletion() {
 				// All work is done, wait for connections to finish
-				f.waitForCompletion()
+				f.waitForCompletion(run)
 				return
 			}
-			f.expandConnections()
+			f.expandConnections(run)
 
 			// Check if we've reached steady state (max connections)
 			if f.getState() == stateSteady {
 				// Wait for all connections to complete
-				f.waitForCompletion()
+				f.waitForCompletion(run)
 				return
 			}
 		}
 	}
 }
 
-func (f *Fetcher) startResolveDownload() {
+func (f *Fetcher) startResolveDownload(run *downloadRun) {
 	// If no range support or size unknown, just use single connection with resolve response
 	if !f.meta.Res.Range || f.meta.Res.Size == 0 {
 		// Create a single connection for the entire file
@@ -755,8 +960,11 @@ func (f *Fetcher) startResolveDownload() {
 			State: connNotStarted,
 			Chunk: newChunk(0, 0), // For non-range, end doesn't matter
 		}
-		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
+		conn.ctx, conn.cancel = context.WithCancel(run.ctx)
+		conn.run = run
+		f.connMu.Lock()
 		f.connections = append(f.connections, conn)
+		f.connMu.Unlock()
 
 		f.wg.Add(1)
 		// Use the resolve response directly
@@ -764,16 +972,16 @@ func (f *Fetcher) startResolveDownload() {
 
 		// For non-range downloads, wait for completion directly in this goroutine
 		// Don't create another goroutine to avoid WaitGroup reuse issues
-		f.waitForCompletion()
+		f.waitForCompletion(run)
 		return
 	}
 
 	// Range supported: use slow start to launch connections
 	// Start first batch of connections
-	f.expandConnections()
+	f.expandConnections(run)
 }
 
-func (f *Fetcher) expandConnections() {
+func (f *Fetcher) expandConnections(run *downloadRun) {
 	batchSize := f.slowStart.getNextBatchSize()
 	if batchSize <= 0 {
 		// Max reached, transition to steady state
@@ -795,17 +1003,7 @@ func (f *Fetcher) expandConnections() {
 		// If prefetched all data, mark as done
 		if prefetched >= totalSize {
 			f.connMu.Unlock()
-
-			// Close the file before signaling completion
-			f.fileMu.Lock()
-			if f.file != nil {
-				f.file.Close()
-				f.file = nil
-			}
-			f.fileMu.Unlock()
-
-			f.setState(stateDone)
-			f.doneCh <- nil
+			f.finishDownload(run, nil)
 			return
 		}
 
@@ -820,7 +1018,8 @@ func (f *Fetcher) expandConnections() {
 		conn.Chunk.Downloaded = 0    // Start fresh from prefetched position
 		conn.Downloaded = prefetched // Track total downloaded including prefetch
 
-		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
+		conn.ctx, conn.cancel = context.WithCancel(run.ctx)
+		conn.run = run
 		f.connections = append(f.connections, conn)
 		f.connMu.Unlock()
 
@@ -870,7 +1069,8 @@ func (f *Fetcher) expandConnections() {
 			State: connNotStarted,
 			Chunk: newChunk,
 		}
-		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
+		conn.ctx, conn.cancel = context.WithCancel(run.ctx)
+		conn.run = run
 
 		newConns = append(newConns, conn)
 		f.connections = append(f.connections, conn)
@@ -881,7 +1081,6 @@ func (f *Fetcher) expandConnections() {
 	if len(newConns) == 0 {
 		// No new connections could be created, stop expansion
 		f.setState(stateSteady)
-		go f.waitForCompletion()
 		return
 	}
 
@@ -900,6 +1099,7 @@ func (f *Fetcher) runConnection(conn *connection) {
 
 	f.connMu.Lock()
 	conn.State = connConnecting
+	conn.retryTimes = 0
 	f.connMu.Unlock()
 
 	// Use fast-fail client for quick retry during download phase
@@ -907,7 +1107,6 @@ func (f *Fetcher) runConnection(conn *connection) {
 	buf := make([]byte, 8192)
 
 	retries := 0
-	conn.retryTimes = 0
 
 	for {
 		// Rebuild client with updated fast-fail timeout on retries
@@ -927,19 +1126,27 @@ func (f *Fetcher) runConnection(conn *connection) {
 
 			// Reset counters after a successful help switch
 			retries = 0
+			f.connMu.Lock()
 			conn.retryTimes = 0
+			f.connMu.Unlock()
 			continue
 		}
 
 		if errors.Is(err, context.Canceled) {
 			return
 		}
+		if isTargetWriteError(err) {
+			f.markConnectionWriteFailed(conn, err)
+			return
+		}
 
+		f.connMu.Lock()
 		if re := extractRequestError(err); re != nil {
 			conn.lastErr = re
 		} else {
 			conn.lastErr = err
 		}
+		f.connMu.Unlock()
 
 		if shouldCountHTTPFailure(err) {
 			if re := extractRequestError(err); re != nil && re.Code == 403 {
@@ -952,14 +1159,15 @@ func (f *Fetcher) runConnection(conn *connection) {
 				}
 				return
 			}
-			conn.retryTimes++
 			f.connMu.Lock()
+			conn.retryTimes++
+			retryTimes := conn.retryTimes
 			conn.failed = true
 			f.connMu.Unlock()
 			if f.slowStart != nil {
 				f.slowStart.onConnectFailed()
 			}
-			if conn.retryTimes >= 3 {
+			if retryTimes >= 3 {
 				f.connMu.Lock()
 				conn.State = connFailed
 				f.connMu.Unlock()
@@ -975,7 +1183,9 @@ func (f *Fetcher) runConnection(conn *connection) {
 			retryDelay = 5 * time.Second
 		}
 		retries++
-		time.Sleep(retryDelay)
+		if !waitForRetry(conn.ctx, retryDelay) {
+			return
+		}
 	}
 }
 
@@ -1091,15 +1301,9 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			writeOffset = conn.Chunk.Begin + conn.Chunk.Downloaded
 			f.connMu.Unlock()
 
-			f.fileMu.Lock()
-			if f.file != nil {
-				_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
-				if writeErr != nil {
-					f.fileMu.Unlock()
-					return writeErr
-				}
+			if writeErr := f.writeTargetAt(buf[:n], writeOffset); writeErr != nil {
+				return writeErr
 			}
-			f.fileMu.Unlock()
 
 			// Lock again to update Downloaded atomically with the read above
 			f.connMu.Lock()
@@ -1181,25 +1385,18 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 		n, err := reader.Read(buf)
 		if n > 0 {
-			f.fileMu.Lock()
-			if f.file != nil {
-				_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
-				if writeErr != nil {
-					f.fileMu.Unlock()
-					f.connMu.Lock()
-					conn.State = connFailed
-					conn.failed = true
-					f.connMu.Unlock()
-					if f.slowStart != nil {
-						f.slowStart.onConnectFailed()
-					}
-					return
-				}
+			f.connMu.Lock()
+			writeOffset := conn.Chunk.Downloaded
+			f.connMu.Unlock()
+			if writeErr := f.writeTargetAt(buf[:n], writeOffset); writeErr != nil {
+				f.markConnectionWriteFailed(conn, writeErr)
+				return
 			}
-			f.fileMu.Unlock()
 
+			f.connMu.Lock()
 			conn.Chunk.Downloaded += int64(n)
 			conn.Downloaded += int64(n)
+			f.connMu.Unlock()
 		}
 		if err != nil {
 			if err == io.EOF {
@@ -1283,18 +1480,17 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 
 				n, err := reader.Read(buf)
 				if n > 0 {
-					f.fileMu.Lock()
-					if f.file != nil {
-						_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
-						if writeErr != nil {
-							f.fileMu.Unlock()
-							return writeErr
-						}
+					f.connMu.Lock()
+					writeOffset := conn.Chunk.Downloaded
+					f.connMu.Unlock()
+					if writeErr := f.writeTargetAt(buf[:n], writeOffset); writeErr != nil {
+						return writeErr
 					}
-					f.fileMu.Unlock()
 
+					f.connMu.Lock()
 					conn.Chunk.Downloaded += int64(n)
 					conn.Downloaded += int64(n)
+					f.connMu.Unlock()
 				}
 				if err != nil {
 					if err == io.EOF {
@@ -1316,12 +1512,18 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 		if errors.Is(err, context.Canceled) {
 			return
 		}
+		if isTargetWriteError(err) {
+			f.markConnectionWriteFailed(conn, err)
+			return
+		}
 
+		f.connMu.Lock()
 		if re := extractRequestError(err); re != nil {
 			conn.lastErr = re
 		} else {
 			conn.lastErr = err
 		}
+		f.connMu.Unlock()
 
 		if shouldCountHTTPFailure(err) {
 			// Immediate fail for server connection limit (403)
@@ -1335,7 +1537,9 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 				}
 				return
 			}
+			f.connMu.Lock()
 			conn.retryTimes++
+			f.connMu.Unlock()
 			countedRetries++
 			if countedRetries >= 3 {
 				f.connMu.Lock()
@@ -1356,7 +1560,9 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 				retryDelay = 5 * time.Second
 			}
 			retries++
-			time.Sleep(retryDelay)
+			if !waitForRetry(conn.ctx, retryDelay) {
+				return
+			}
 			continue
 		}
 
@@ -1369,7 +1575,9 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 			retryDelay = 5 * time.Second
 		}
 		retries++
-		time.Sleep(retryDelay)
+		if !waitForRetry(conn.ctx, retryDelay) {
+			return
+		}
 	}
 }
 
@@ -1441,7 +1649,7 @@ func (f *Fetcher) resetConnectionForRestart(conn *connection) {
 	conn.lastSpeedDownload = 0
 }
 
-func (f *Fetcher) resumeConnections() {
+func (f *Fetcher) resumeConnections(run *downloadRun) {
 	// Collect connections to resume while holding the lock
 	var toResume []*connection
 
@@ -1466,7 +1674,8 @@ func (f *Fetcher) resumeConnections() {
 		}
 		f.resetConnectionForRestart(conn)
 		// Reset the connection state for resume
-		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
+		conn.ctx, conn.cancel = context.WithCancel(run.ctx)
+		conn.run = run
 		conn.State = connNotStarted
 		conn.failed = false // Clear failed flag for resumed connection
 		toResume = append(toResume, conn)
@@ -1480,15 +1689,16 @@ func (f *Fetcher) resumeConnections() {
 	}
 }
 
-func (f *Fetcher) waitForCompletion() {
+func (f *Fetcher) waitForCompletion(run *downloadRun) {
 	f.wg.Wait()
-	// Only trigger completion if not cancelled/paused
-	if f.ctx != nil && f.ctx.Err() == nil {
-		f.onDownloadComplete()
+	// Target write errors cancel sibling connections but must still complete the
+	// run with the original local-storage error. A plain cancellation is Pause.
+	if run.getTerminalErr() != nil || run.ctx.Err() == nil {
+		f.onDownloadComplete(run)
 	}
 }
 
-func (f *Fetcher) onDownloadComplete() {
+func (f *Fetcher) onDownloadComplete(run *downloadRun) {
 	f.connMu.Lock()
 
 	// First, check if download actually completed successfully
@@ -1531,8 +1741,8 @@ func (f *Fetcher) onDownloadComplete() {
 	downloadComplete := f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size
 
 	// Check for any errors, but ignore 403 (server connection limit) errors if download completed
-	var finalErr error
-	if !downloadComplete && !allChunksComplete {
+	finalErr := run.getTerminalErr()
+	if finalErr == nil && !downloadComplete && !allChunksComplete {
 		for _, conn := range f.connections {
 			if conn.State == connFailed && conn.failed {
 				// Skip 403 errors (server connection limit) - these are expected when exceeding server's limit
@@ -1541,6 +1751,8 @@ func (f *Fetcher) onDownloadComplete() {
 				}
 				if re := extractRequestError(conn.lastErr); re != nil {
 					finalErr = fmt.Errorf("connection %d failed: retries=%d, status=%d", conn.ID, conn.retryTimes, re.Code)
+				} else if isTargetWriteError(conn.lastErr) {
+					finalErr = conn.lastErr
 				} else if conn.lastErr != nil {
 					finalErr = fmt.Errorf("connection %d failed: retries=%d, err=%v", conn.ID, conn.retryTimes, conn.lastErr)
 				} else {
@@ -1552,14 +1764,15 @@ func (f *Fetcher) onDownloadComplete() {
 	}
 	f.connMu.Unlock()
 
-	// Close the file before signaling completion
-	// This ensures the file handle is released before Wait() returns
-	f.fileMu.Lock()
-	if f.file != nil {
-		f.file.Close()
-		f.file = nil
+	f.finishDownload(run, finalErr)
+}
+
+// finishDownload closes the target and records exactly one terminal result.
+// downloadLoop publishes that result only after its defer closes loopDone.
+func (f *Fetcher) finishDownload(run *downloadRun, finalErr error) {
+	if closeErr := f.closeTargetFile(); closeErr != nil && finalErr == nil {
+		finalErr = fmt.Errorf("close http target file: %w", closeErr)
 	}
-	f.fileMu.Unlock()
 
 	if finalErr != nil {
 		f.setState(stateError)
@@ -1567,10 +1780,7 @@ func (f *Fetcher) onDownloadComplete() {
 		f.setState(stateDone)
 	}
 
-	select {
-	case f.doneCh <- finalErr:
-	default:
-	}
+	run.setResult(finalErr)
 }
 
 func (f *Fetcher) checkCompletion() bool {
@@ -1666,35 +1876,31 @@ func (f *Fetcher) Patch(req *base.Request, opts *base.Options) error {
 }
 
 func (f *Fetcher) Pause() error {
-	if f.cancel != nil {
-		f.cancel()
+	f.startMu.Lock()
+	defer f.startMu.Unlock()
+	return f.pauseLocked()
+}
+
+func (f *Fetcher) pauseLocked() error {
+	run := f.currentRun()
+	if run != nil {
+		run.cancel()
 	}
 	if f.resolveCancel != nil {
 		f.resolveCancel()
 	}
 
-	// Stop prefetch if running
-	if f.prefetchStopCh != nil {
-		select {
-		case <-f.prefetchStopCh:
-			// Already closed
-		default:
-			close(f.prefetchStopCh)
-		}
-	}
+	// Closing the resolve body unblocks prefetch before its temporary file is
+	// sought, copied, closed, or removed.
+	f.stopPrefetch()
 
-	// Wait for downloadLoop to exit first (it will call wg.Wait internally)
-	if f.downloadLoopDone != nil {
-		<-f.downloadLoopDone
+	// Wait for this exact run rather than a channel that a retry can replace.
+	if run != nil {
+		<-run.loopDone
 	}
 
 	// Wait for all connection goroutines to stop
 	f.wg.Wait()
-
-	// Wait for prefetch to finish
-	for f.prefetchStopCh != nil && !f.prefetchDone.Load() {
-		time.Sleep(10 * time.Millisecond)
-	}
 
 	// Clean up prefetch file
 	f.cleanupPrefetchFile()
@@ -1707,19 +1913,17 @@ func (f *Fetcher) Pause() error {
 	}
 	f.resolveRespLock.Unlock()
 
-	f.fileMu.Lock()
-	if f.file != nil {
-		f.file.Close()
-		f.file = nil
-	}
-	f.fileMu.Unlock()
+	_ = f.closeTargetFile()
 
 	f.setState(statePaused)
 	return nil
 }
 
 func (f *Fetcher) Close() error {
-	err := f.Pause()
+	f.startMu.Lock()
+	defer f.startMu.Unlock()
+	f.closed.Store(true)
+	err := f.pauseLocked()
 	if f.impersonationSession != nil {
 		f.impersonationSession.Clear()
 	}
@@ -1752,11 +1956,10 @@ func (f *Fetcher) Progress() fetcher.Progress {
 	p := make(fetcher.Progress, 0)
 
 	total := int64(0)
+	f.connMu.Lock()
 	if f.resolveConn != nil {
 		total += f.resolveConn.Downloaded
 	}
-
-	f.connMu.Lock()
 	for _, conn := range f.connections {
 		total += conn.Downloaded
 	}

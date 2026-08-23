@@ -72,11 +72,22 @@ func (fm *FetcherManager) DefaultConfig() any {
 
 func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
+	_f.connMu.Lock()
+	connections := make([]*connection, 0, len(_f.connections))
+	for _, conn := range _f.connections {
+		connCopy := *conn
+		if conn.Chunk != nil {
+			chunkCopy := *conn.Chunk
+			connCopy.Chunk = &chunkCopy
+		}
+		connections = append(connections, &connCopy)
+	}
+	_f.connMu.Unlock()
 	_f.redirectLock.Lock()
 	redirectURL := _f.redirectURL
 	_f.redirectLock.Unlock()
 	return &fetcherData{
-		Connections: _f.connections,
+		Connections: connections,
 		RedirectURL: redirectURL,
 	}, nil
 }
