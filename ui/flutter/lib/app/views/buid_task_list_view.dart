@@ -620,6 +620,27 @@ class BuildTaskListView extends GetView {
                       : LinearProgressIndicator(
                           value: getProgress(),
                         ),
+                  if (task.status == Status.error &&
+                      task.error?.isNotEmpty == true)
+                    Row(
+                      children: [
+                        const Icon(Icons.error_outline,
+                            size: 16, color: Colors.red),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Tooltip(
+                            message: task.error!,
+                            child: Text(
+                              task.error!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Get.textTheme.bodySmall
+                                  ?.copyWith(color: Colors.red),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ).padding(left: 18, right: 18, top: 4, bottom: 8),
                   // Extraction status row
                   if (task.progress.extractStatus != ExtractStatus.none)
                     Builder(builder: (context) {

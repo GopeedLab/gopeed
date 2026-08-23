@@ -2,14 +2,18 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	gohttp "net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -20,6 +24,47 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 )
+
+type failingTargetFile struct {
+	err    error
+	writes atomic.Int32
+	closed atomic.Bool
+}
+
+type blockingResponseBody struct {
+	readStarted chan struct{}
+	closed      chan struct{}
+	readOnce    sync.Once
+	closeOnce   sync.Once
+}
+
+func newBlockingResponseBody() *blockingResponseBody {
+	return &blockingResponseBody{
+		readStarted: make(chan struct{}),
+		closed:      make(chan struct{}),
+	}
+}
+
+func (b *blockingResponseBody) Read([]byte) (int, error) {
+	b.readOnce.Do(func() { close(b.readStarted) })
+	<-b.closed
+	return 0, gohttp.ErrServerClosed
+}
+
+func (b *blockingResponseBody) Close() error {
+	b.closeOnce.Do(func() { close(b.closed) })
+	return nil
+}
+
+func (f *failingTargetFile) WriteAt([]byte, int64) (int, error) {
+	f.writes.Add(1)
+	return 0, f.err
+}
+
+func (f *failingTargetFile) Close() error {
+	f.closed.Store(true)
+	return nil
+}
 
 func TestFetcher_Resolve(t *testing.T) {
 	testResolve(test.StartTestFileServer, test.BuildName, t, func(err error) (*base.Resource, error) {
@@ -221,7 +266,7 @@ func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 	listener := test.StartTestHostHeaderServer()
 	defer listener.Close()
 
-	fetcher := buildFetcher()
+	fetcher := buildFetcher(t)
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/",
 		Extra: &http.ReqExtra{
@@ -243,7 +288,7 @@ func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 	listener := test.StartTestCustomServer()
 	defer listener.Close()
 
-	fetcher := buildFetcher()
+	fetcher := buildFetcher(t)
 	defer fetcher.Pause() // Close the resolve response to allow server shutdown
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/",
@@ -272,7 +317,7 @@ func TestFetcher_ResolveAutomaticallyFallsBackToBrowserFingerprint(t *testing.T)
 		}),
 	})
 
-	fetcher := buildFetcher()
+	fetcher := buildFetcher(t)
 	defer fetcher.Pause()
 	err := fetcher.Resolve(&base.Request{
 		URL:            server.URL + "/file.bin",
@@ -304,7 +349,7 @@ func TestFetcherSharesAndClearsImpersonationSession(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := buildFetcher()
+	fetcher := buildFetcher(t)
 	fetcher.meta.Req = &base.Request{URL: server.URL}
 
 	for range 2 {
@@ -338,7 +383,7 @@ func TestFetcherSharesAndClearsImpersonationSession(t *testing.T) {
 func testResolve(startTestServer func() net.Listener, path string, t *testing.T, wantFn func(error) (*base.Resource, error)) {
 	listener := startTestServer()
 	defer listener.Close()
-	fetcher := buildFetcher()
+	fetcher := buildFetcher(t)
 	defer fetcher.Pause() // Close the resolve response to allow server shutdown
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + path,
@@ -637,7 +682,7 @@ func TestFetcher_DownloadOneTimeURL(t *testing.T) {
 	listener := test.StartTestOneTimeServer()
 	defer listener.Close()
 
-	fetcher := buildFetcher()
+	fetcher := buildFetcher(t)
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}, &base.Options{
@@ -766,7 +811,7 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 		listener := test.StartTestFileServer()
 		defer listener.Close()
 
-		fetcher := buildFetcher()
+		fetcher := buildFetcher(t)
 		err := fetcher.Resolve(&base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}, &base.Options{
@@ -837,7 +882,7 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 		listener := test.StartTestLowSpeedServer(100 * time.Nanosecond)
 		defer listener.Close()
 
-		fetcher := buildFetcher()
+		fetcher := buildFetcher(t)
 		err := fetcher.Resolve(&base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}, &base.Options{
@@ -901,6 +946,292 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 	})
 }
 
+func TestFetcher_RangeWriteErrorStopsWithoutRetry(t *testing.T) {
+	payload := []byte("range response")
+	var requests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+		requests.Add(1)
+		w.WriteHeader(gohttp.StatusPartialContent)
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	f := buildFetcher(t)
+	target := &failingTargetFile{err: syscall.ENOSPC}
+	f.file = target
+	f.meta = &fetcher.FetcherMeta{
+		Req: &base.Request{URL: server.URL},
+		Res: &base.Resource{Range: true, Size: int64(len(payload))},
+	}
+	f.slowStart = newSlowStartController(1)
+	startTestDownloadLoop(f)
+
+	assertFetcherWriteError(t, f, target)
+	if got := requests.Load(); got != 1 {
+		t.Fatalf("request count = %d, want 1 (write errors must not be retried)", got)
+	}
+}
+
+func TestFetcher_NonRangeWriteError(t *testing.T) {
+	payload := []byte("non-range response")
+
+	t.Run("resolve response", func(t *testing.T) {
+		f := buildFetcher(t)
+		target := &failingTargetFile{err: syscall.ENOSPC}
+		f.file = target
+		f.meta = &fetcher.FetcherMeta{
+			Req: &base.Request{URL: "https://example.com/file"},
+			Res: &base.Resource{Size: int64(len(payload))},
+		}
+		f.slowStart = newSlowStartController(1)
+		f.resolveResp = &gohttp.Response{Body: io.NopCloser(strings.NewReader(string(payload)))}
+		startTestDownloadLoop(f)
+
+		assertFetcherWriteError(t, f, target)
+	})
+
+	t.Run("fallback response", func(t *testing.T) {
+		var requests atomic.Int32
+		server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+			requests.Add(1)
+			_, _ = w.Write(payload)
+		}))
+		defer server.Close()
+
+		f := buildFetcher(t)
+		target := &failingTargetFile{err: syscall.ENOSPC}
+		f.file = target
+		f.meta = &fetcher.FetcherMeta{
+			Req: &base.Request{URL: server.URL},
+			Res: &base.Resource{Size: int64(len(payload))},
+		}
+		f.slowStart = newSlowStartController(1)
+		startTestDownloadLoop(f)
+
+		assertFetcherWriteError(t, f, target)
+		if got := requests.Load(); got != 1 {
+			t.Fatalf("request count = %d, want 1 (write errors must not be retried)", got)
+		}
+	})
+}
+
+func TestFetcher_WriteErrorCancelsSiblingConnections(t *testing.T) {
+	payload := []byte("x")
+	stalledStarted := make(chan struct{})
+	stalledCanceled := make(chan struct{})
+	var stalledStartOnce sync.Once
+	var stalledCancelOnce sync.Once
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if r.Header.Get("Range") == "bytes=0-0" {
+			select {
+			case <-stalledStarted:
+			case <-r.Context().Done():
+				return
+			}
+			w.Header().Set("Content-Range", "bytes 0-0/2")
+			w.WriteHeader(gohttp.StatusPartialContent)
+			_, _ = w.Write(payload)
+			return
+		}
+		stalledStartOnce.Do(func() { close(stalledStarted) })
+		<-r.Context().Done()
+		stalledCancelOnce.Do(func() { close(stalledCanceled) })
+	}))
+	defer server.Close()
+
+	f := buildFetcher(t)
+	target := &failingTargetFile{err: syscall.ENOSPC}
+	f.file = target
+	f.meta = &fetcher.FetcherMeta{
+		Req: &base.Request{URL: server.URL},
+		Res: &base.Resource{Range: true, Size: 2},
+	}
+	f.connections = []*connection{
+		{ID: 0, Role: rolePrimary, State: connNotStarted, Chunk: newChunk(0, 0)},
+		{ID: 1, Role: roleWorker, State: connNotStarted, Chunk: newChunk(1, 1)},
+	}
+	startTestDownloadLoop(f)
+
+	select {
+	case <-stalledStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("sibling request did not start")
+	}
+	errCh := make(chan error, 1)
+	go func() { errCh <- f.Wait() }()
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, syscall.ENOSPC) {
+			t.Fatalf("Wait error = %v, want ENOSPC", err)
+		}
+	case <-time.After(2 * time.Second):
+		f.currentRun().cancel()
+		t.Fatal("write error did not cancel the stalled sibling")
+	}
+	select {
+	case <-stalledCanceled:
+	case <-time.After(time.Second):
+		t.Fatal("stalled sibling request context was not canceled")
+	}
+}
+
+func TestFetcher_ConcurrentStatsDuringRetries(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+		requests.Add(1)
+		w.WriteHeader(gohttp.StatusBadRequest)
+	}))
+	defer server.Close()
+
+	f := buildFetcher(t)
+	target, err := os.CreateTemp(t.TempDir(), "gopeed-http-stats-race-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.file = target
+	f.meta = &fetcher.FetcherMeta{
+		Req: &base.Request{URL: server.URL},
+		Res: &base.Resource{Range: true, Size: 1},
+	}
+	f.connections = []*connection{
+		{ID: 0, Role: rolePrimary, State: connNotStarted, Chunk: newChunk(0, 0)},
+	}
+	startTestDownloadLoop(f)
+
+	stopStats := make(chan struct{})
+	var statsWG sync.WaitGroup
+	statsWG.Add(1)
+	go func() {
+		defer statsWG.Done()
+		ticker := time.NewTicker(100 * time.Microsecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopStats:
+				return
+			case <-ticker.C:
+				_ = f.Stats()
+				_ = f.Progress()
+			}
+		}
+	}()
+	err = f.Wait()
+	close(stopStats)
+	statsWG.Wait()
+	if err == nil {
+		t.Fatal("Wait succeeded after repeated HTTP 400 responses")
+	}
+	if got := requests.Load(); got != 3 {
+		t.Fatalf("request count = %d, want 3", got)
+	}
+}
+
+func TestFetcher_StopPrefetchUnblocksReadBeforeCleanup(t *testing.T) {
+	f := buildFetcher(t)
+	body := newBlockingResponseBody()
+	f.resolveResp = &gohttp.Response{Body: body}
+	f.prefetchStopCh = make(chan struct{})
+	f.prefetchDoneCh = make(chan struct{})
+	f.prefetchStopOnce = sync.Once{}
+	f.prefetchDone.Store(false)
+	go f.asyncPrefetch()
+
+	select {
+	case <-body.readStarted:
+	case <-time.After(time.Second):
+		t.Fatal("prefetch read did not start")
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := f.stopPrefetchAndCopyData()
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("stop prefetch: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("stopPrefetchAndCopyData remained blocked after closing the response")
+	}
+	if !f.prefetchDone.Load() {
+		t.Fatal("prefetch goroutine was still running during cleanup")
+	}
+	if f.prefetchFile != nil || f.prefetchFilePath != "" {
+		t.Fatal("prefetch temporary file was not cleaned up")
+	}
+}
+
+func TestFetcher_PrefetchCopyReturnsWriteError(t *testing.T) {
+	payload := []byte("prefetched response")
+	prefetchFile, err := os.CreateTemp(t.TempDir(), "gopeed-prefetch-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = prefetchFile.Write(payload); err != nil {
+		t.Fatal(err)
+	}
+
+	f := buildFetcher(t)
+	target := &failingTargetFile{err: syscall.ENOSPC}
+	f.file = target
+	f.prefetchFile = prefetchFile
+	f.prefetchFilePath = prefetchFile.Name()
+	f.prefetchSize.Store(int64(len(payload)))
+	f.prefetchDone.Store(true)
+
+	copied, err := f.stopPrefetchAndCopyData()
+	if !errors.Is(err, syscall.ENOSPC) {
+		t.Fatalf("copy error = %v, want ENOSPC", err)
+	}
+	if copied != 0 {
+		t.Fatalf("copied bytes = %d, want 0", copied)
+	}
+	if f.prefetchFile != nil || f.prefetchFilePath != "" {
+		t.Fatal("prefetch file was not cleaned up after copy failure")
+	}
+}
+
+func startTestDownloadLoop(f *Fetcher) {
+	run := newDownloadRun()
+	f.runMu.Lock()
+	f.run = run
+	f.runMu.Unlock()
+	f.setState(stateSlowStart)
+	go f.downloadLoop(run)
+}
+
+func assertFetcherWriteError(t *testing.T, f *Fetcher, target *failingTargetFile) {
+	t.Helper()
+	err := f.Wait()
+	<-f.currentRun().loopDone
+	select {
+	case duplicateErr := <-f.doneCh:
+		t.Fatalf("received duplicate completion error: %v", duplicateErr)
+	default:
+	}
+	if len(f.connections) != 1 {
+		t.Fatalf("connection count = %d, want 1", len(f.connections))
+	}
+	conn := f.connections[0]
+	if !errors.Is(err, syscall.ENOSPC) {
+		t.Fatalf("Wait() error = %v, want ENOSPC (state=%v connection=%v failed=%v lastErr=%v writes=%d)", err, f.getState(), conn.State, conn.failed, conn.lastErr, target.writes.Load())
+	}
+	if f.getState() != stateError {
+		t.Fatalf("fetcher state = %v, want %v", f.getState(), stateError)
+	}
+	if conn.State != connFailed || !conn.failed || !errors.Is(conn.lastErr, syscall.ENOSPC) {
+		t.Fatalf("connection state = %v, failed = %v, error = %v", conn.State, conn.failed, conn.lastErr)
+	}
+	if got := target.writes.Load(); got != 1 {
+		t.Fatalf("write count = %d, want 1", got)
+	}
+	if !target.closed.Load() {
+		t.Fatal("target file was not closed")
+	}
+}
+
 // TestFetcher_DownloadExpiringRedirectURL tests that the fetcher correctly handles
 // expiring redirect URLs by falling back to the original URL and getting a new redirect.
 func TestFetcher_DownloadExpiringRedirectURL(t *testing.T) {
@@ -919,7 +1250,7 @@ func TestFetcher_DownloadExpiringRedirectURL(t *testing.T) {
 		listener := test.StartTestExpiringRedirectServer(2, 100*time.Nanosecond)
 		defer listener.Close()
 
-		fetcher := buildFetcher()
+		fetcher := buildFetcher(t)
 		err := fetcher.Resolve(&base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}, &base.Options{
@@ -960,7 +1291,7 @@ func TestFetcher_DownloadExpiringRedirectURL(t *testing.T) {
 		listener := test.StartTestExpiringRedirectServer(5, 100*time.Nanosecond)
 		defer listener.Close()
 
-		fetcher := buildFetcher()
+		fetcher := buildFetcher(t)
 		err := fetcher.Resolve(&base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}, &base.Options{
@@ -1007,7 +1338,7 @@ func TestFetcher_RetryAfterError(t *testing.T) {
 	listener := test.StartTestFailThenRecoverServer(3)
 	defer listener.Close()
 
-	fetcher := buildFetcher()
+	fetcher := buildFetcher(t)
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}, &base.Options{
@@ -1040,11 +1371,16 @@ func TestFetcher_RetryAfterError(t *testing.T) {
 		t.Errorf("Expected fetcher to be in stateError, got %v", state)
 	}
 
-	// Verify that we can call Start() again after error
-	// This tests the stateError handling in Start()
-	err = fetcher.Start()
-	if err != nil {
-		t.Fatalf("Start() after error failed: %v", err)
+	// Concurrent retry requests must collapse into one new run. This exercises
+	// the state re-check after acquiring the lifecycle lock.
+	startErrCh := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		go func() { startErrCh <- fetcher.Start() }()
+	}
+	for i := 0; i < 2; i++ {
+		if err = <-startErrCh; err != nil {
+			t.Fatalf("concurrent Start() after error failed: %v", err)
+		}
 	}
 
 	// Wait for second attempt - should succeed now that server has recovered
@@ -1112,7 +1448,7 @@ func TestFetcherManager_ParseName(t *testing.T) {
 }
 
 func downloadReady(listener net.Listener, connections int, t *testing.T) fetcher.Fetcher {
-	return doDownloadReady(buildFetcher(), listener, connections, t)
+	return doDownloadReady(buildFetcher(t), listener, connections, t)
 }
 
 func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, t *testing.T) fetcher.Fetcher {
@@ -1156,7 +1492,7 @@ func downloadNormal(listener net.Listener, connections int, t *testing.T) {
 func downloadPost(listener net.Listener, connections int, t *testing.T) {
 	// POST parameters must be set before Resolve since the new design
 	// starts downloading during Resolve phase
-	f := buildFetcher()
+	f := buildFetcher(t)
 	var extra any = nil
 	if connections > 0 {
 		extra = &http.OptsExtra{
@@ -1223,7 +1559,7 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 }
 
 func downloadError(listener net.Listener, connections int, t *testing.T) {
-	fetcher := buildFetcher()
+	fetcher := buildFetcher(t)
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}, &base.Options{
@@ -1311,7 +1647,8 @@ func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t 
 	}
 }
 
-func buildFetcher() *Fetcher {
+func buildFetcher(t *testing.T) *Fetcher {
+	t.Helper()
 	fm := new(FetcherManager)
 	fetcher := fm.Build()
 	newController := controller.NewController()
@@ -1319,7 +1656,9 @@ func buildFetcher() *Fetcher {
 		json.Unmarshal([]byte(test.ToJson(fm.DefaultConfig())), v)
 	}
 	fetcher.Setup(newController)
-	return fetcher.(*Fetcher)
+	result := fetcher.(*Fetcher)
+	t.Cleanup(func() { _ = result.Close() })
+	return result
 }
 
 func buildConfigFetcher(cfg config) fetcher.Fetcher {
@@ -1341,7 +1680,7 @@ func TestFetcher_Patch_URLChange(t *testing.T) {
 	listener := test.StartTestPatchURLServer()
 	defer listener.Close()
 
-	f := buildFetcher()
+	f := buildFetcher(t)
 	badURL := "http://" + listener.Addr().String() + "/bad-url"
 	goodURL := "http://" + listener.Addr().String() + "/good-url"
 
@@ -1359,7 +1698,7 @@ func TestFetcher_Patch_URLChange(t *testing.T) {
 
 	// Step 2: Create a new fetcher and resolve with bad URL but don't wait
 	// We need to test patching a task that has been created
-	f2 := buildFetcher()
+	f2 := buildFetcher(t)
 
 	// First resolve with good URL to create a valid fetcher state
 	err = f2.Resolve(&base.Request{URL: goodURL}, opts)
@@ -1407,7 +1746,7 @@ func TestFetcher_Patch_Labels(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
 
-	f := buildFetcher()
+	f := buildFetcher(t)
 	opts := &base.Options{
 		Name:  test.DownloadName,
 		Path:  test.Dir,
@@ -1463,7 +1802,7 @@ func TestFetcher_Patch_Extra(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
 
-	f := buildFetcher()
+	f := buildFetcher(t)
 	opts := &base.Options{
 		Name:  test.DownloadName,
 		Path:  test.Dir,
@@ -1552,7 +1891,7 @@ func TestFetcher_Patch_NilData(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()
 
-	f := buildFetcher()
+	f := buildFetcher(t)
 	opts := &base.Options{
 		Name:  test.DownloadName,
 		Path:  test.Dir,
@@ -1610,7 +1949,7 @@ func TestFetcher_Patch_CookieExpired(t *testing.T) {
 	}
 
 	// Step 1: Resolve with old_token - should succeed (first request accepts old_token)
-	f := buildFetcher()
+	f := buildFetcher(t)
 	err := f.Resolve(&base.Request{
 		URL: downloadURL,
 		Extra: &http.ReqExtra{

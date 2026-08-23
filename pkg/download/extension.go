@@ -64,7 +64,9 @@ func (d *Downloader) InstallExtensionByFolder(path string, devMode bool) (*Exten
 	}
 
 	// if extension is not installed, add it to the list, otherwise update it
-	installedExt := d.getExtension(ext.Identity)
+	d.extensionMu.Lock()
+	defer d.extensionMu.Unlock()
+	installedExt := d.getExtensionLocked(ext.Identity)
 	if installedExt == nil {
 		ext.CreatedAt = time.Now()
 		ext.UpdatedAt = ext.CreatedAt
@@ -118,9 +120,11 @@ func (d *Downloader) UpgradeExtension(identity string) error {
 }
 
 func (d *Downloader) UpdateExtensionSettings(identity string, settings map[string]any) error {
-	ext, err := d.GetExtension(identity)
-	if err != nil {
-		return err
+	d.extensionMu.Lock()
+	defer d.extensionMu.Unlock()
+	ext := d.getExtensionLocked(identity)
+	if ext == nil {
+		return ErrExtensionNotFound
 	}
 	for _, setting := range ext.Settings {
 		if value, ok := settings[setting.Name]; ok {
@@ -131,18 +135,22 @@ func (d *Downloader) UpdateExtensionSettings(identity string, settings map[strin
 }
 
 func (d *Downloader) SwitchExtension(identity string, status bool) error {
-	ext, err := d.GetExtension(identity)
-	if err != nil {
-		return err
+	d.extensionMu.Lock()
+	defer d.extensionMu.Unlock()
+	ext := d.getExtensionLocked(identity)
+	if ext == nil {
+		return ErrExtensionNotFound
 	}
 	ext.Disabled = !status
 	return d.storage.Put(bucketExtension, ext.Identity, ext)
 }
 
 func (d *Downloader) DeleteExtension(identity string) error {
-	ext, err := d.GetExtension(identity)
-	if err != nil {
-		return err
+	d.extensionMu.Lock()
+	defer d.extensionMu.Unlock()
+	ext := d.getExtensionLocked(identity)
+	if ext == nil {
+		return ErrExtensionNotFound
 	}
 	// remove from disk
 	if !ext.DevMode {
@@ -157,28 +165,38 @@ func (d *Downloader) DeleteExtension(identity string) error {
 			break
 		}
 	}
-	if err = d.storage.Delete(bucketExtension, identity); err != nil {
+	if err := d.storage.Delete(bucketExtension, identity); err != nil {
 		return err
 	}
-	if err = d.storage.Delete(bucketExtensionStorage, identity); err != nil {
+	if err := d.storage.Delete(bucketExtensionStorage, identity); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (d *Downloader) GetExtensions() []*Extension {
-	return d.extensions
+	d.extensionMu.RLock()
+	defer d.extensionMu.RUnlock()
+	return *util.DeepClone(&d.extensions)
 }
 
 func (d *Downloader) GetExtension(identity string) (*Extension, error) {
-	extension := d.getExtension(identity)
+	d.extensionMu.RLock()
+	defer d.extensionMu.RUnlock()
+	extension := d.getExtensionLocked(identity)
 	if extension == nil {
 		return nil, ErrExtensionNotFound
 	}
-	return extension, nil
+	return util.DeepClone(extension), nil
 }
 
 func (d *Downloader) getExtension(identity string) *Extension {
+	d.extensionMu.RLock()
+	defer d.extensionMu.RUnlock()
+	return d.getExtensionLocked(identity)
+}
+
+func (d *Downloader) getExtensionLocked(identity string) *Extension {
 	for _, ext := range d.extensions {
 		if ext.Identity == identity {
 			return ext
@@ -326,7 +344,10 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 		Events: make(InstanceEvents),
 	}
 	var err error
-	for _, ext := range d.extensions {
+	d.extensionMu.RLock()
+	extensions := *util.DeepClone(&d.extensions)
+	d.extensionMu.RUnlock()
+	for _, ext := range extensions {
 		if ext.Disabled {
 			continue
 		}
@@ -733,6 +754,14 @@ type OnErrorExtensionTask struct {
 }
 
 func cloneExtensionTask(task *Task) *Task {
+	if task.blobRefLock != nil {
+		task.blobRefLock.Lock()
+		defer task.blobRefLock.Unlock()
+	}
+	if task.statusLock != nil {
+		task.statusLock.Lock()
+		defer task.statusLock.Unlock()
+	}
 	newTask := task.clone()
 	newTask.Meta.Req = task.Meta.Req
 	return newTask

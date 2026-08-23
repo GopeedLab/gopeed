@@ -3,12 +3,17 @@ package bt
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	gohttp "net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
+	"sync"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
@@ -18,11 +23,12 @@ import (
 )
 
 func TestFetcher_Resolve_Torrent(t *testing.T) {
-	doResolve(t, buildFetcher())
+	doResolve(t, buildFetcher)
 }
 
 func TestFetcher_Resolve_DataUri_Torrent(t *testing.T) {
 	fetcher := buildFetcher()
+	t.Cleanup(func() { _ = fetcher.Close() })
 	buf, err := os.ReadFile("./testdata/ubuntu-22.04-live-server-amd64.iso.torrent")
 	if err != nil {
 		t.Fatal(err)
@@ -52,8 +58,177 @@ func TestFetcher_Resolve_DataUri_Torrent(t *testing.T) {
 	}
 }
 
+func TestFetcherSurfacesChunkWriteError(t *testing.T) {
+	f := buildFetcher().(*Fetcher)
+	t.Cleanup(func() { _ = f.Close() })
+	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}, &base.Options{Path: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	f.handleWriteChunkError(syscall.ENOSPC)
+	if err := f.Wait(); !errors.Is(err, syscall.ENOSPC) {
+		t.Fatalf("Wait error = %v, want ENOSPC", err)
+	}
+}
+
+func TestFetcherSharedTorrentSurfacesWriteErrorToAllSubscribers(t *testing.T) {
+	f1 := buildFetcher().(*Fetcher)
+	f2 := buildFetcher().(*Fetcher)
+	t.Cleanup(func() {
+		_ = f2.Close()
+		_ = f1.Close()
+	})
+
+	request := &base.Request{URL: "./testdata/test.torrent"}
+	if err := f1.Resolve(request, &base.Options{Path: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f2.Resolve(request, &base.Options{Path: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	if f1.torrent != f2.torrent {
+		t.Fatal("expected the client to reuse the torrent for the same infohash")
+	}
+	if err := f1.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f2.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	f1.handleWriteChunkError(syscall.ENOSPC)
+	for i, f := range []*Fetcher{f1, f2} {
+		if err := f.Wait(); !errors.Is(err, syscall.ENOSPC) {
+			t.Fatalf("fetcher %d Wait error = %v, want ENOSPC", i+1, err)
+		}
+	}
+}
+
+func TestFetcherIgnoresDelayedErrorFromPreviousGeneration(t *testing.T) {
+	f := buildFetcher().(*Fetcher)
+	t.Cleanup(func() { _ = f.Close() })
+	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}, &base.Options{Path: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	errorOp := f.writeErrorOp
+	errorOp.Lock()
+	oldEpoch := errorOp.epoch
+	errorOp.Unlock()
+	f.handleWriteChunkError(syscall.ENOSPC)
+	if err := f.Wait(); !errors.Is(err, syscall.ENOSPC) {
+		t.Fatalf("first Wait error = %v, want ENOSPC", err)
+	}
+
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	waitCh := make(chan error, 1)
+	go func() { waitCh <- f.Wait() }()
+	dispatchTorrentWriteError(f.torrent, errorOp, oldEpoch, syscall.ENOSPC)
+	select {
+	case err := <-waitCh:
+		t.Fatalf("previous generation error completed the new run: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	f.handleWriteChunkError(syscall.ENOSPC)
+	select {
+	case err := <-waitCh:
+		if !errors.Is(err, syscall.ENOSPC) {
+			t.Fatalf("second Wait error = %v, want ENOSPC", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("current generation write error was not reported")
+	}
+}
+
+func TestFetcherConcurrentSharedResolveAndClose(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		f1 := buildFetcher().(*Fetcher)
+		f2 := buildFetcher().(*Fetcher)
+		request := &base.Request{URL: "./testdata/test.torrent"}
+		if err := f1.Resolve(request, &base.Options{Path: t.TempDir()}); err != nil {
+			t.Fatal(err)
+		}
+		if err := f2.Resolve(request, &base.Options{Path: t.TempDir()}); err != nil {
+			t.Fatal(err)
+		}
+
+		f3 := buildFetcher().(*Fetcher)
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			if err := f1.Close(); err != nil {
+				t.Errorf("close shared fetcher: %v", err)
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			if err := f3.Resolve(request, &base.Options{Path: t.TempDir()}); err != nil {
+				t.Errorf("resolve while shared fetcher closes: %v", err)
+			}
+		}()
+		wg.Wait()
+		if f3.torrent == nil || f3.torrent != f2.torrent {
+			t.Fatal("concurrent close dropped a torrent that still had subscribers")
+		}
+
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			_ = f2.Close()
+		}()
+		go func() {
+			defer wg.Done()
+			_ = f3.Close()
+		}()
+		wg.Wait()
+	}
+}
+
+func TestFetcherSharedTorrentPreservesTrackersAndMergesSpec(t *testing.T) {
+	f1 := buildFetcher().(*Fetcher)
+	f2 := buildFetcher().(*Fetcher)
+	t.Cleanup(func() {
+		_ = f2.Close()
+		_ = f1.Close()
+	})
+	tracker1 := "http://tracker-one.invalid/announce"
+	tracker2 := "http://tracker-two.invalid/announce"
+	if err := f1.Resolve(&base.Request{
+		URL:   "./testdata/test.torrent",
+		Extra: bt.ReqExtra{Trackers: []string{tracker1}},
+	}, &base.Options{Path: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	magnet := "magnet:?xt=urn:btih:ccbc92b0cd8deec16a2ef4be242a8c9243b1cedb" +
+		"&tr=" + url.QueryEscape(tracker2) +
+		"&ws=" + url.QueryEscape("http://webseed.invalid/files/")
+	if err := f2.Resolve(&base.Request{URL: magnet}, &base.Options{Path: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	if f1.torrent != f2.torrent {
+		t.Fatal("expected the same torrent instance")
+	}
+
+	metaInfo := f1.torrent.Metainfo()
+	trackers := strings.Join(metaInfo.UpvertedAnnounceList().DistinctValues(), "\n")
+	if !strings.Contains(trackers, tracker1) {
+		t.Errorf("shared torrent lost its existing tracker %q: %s", tracker1, trackers)
+	}
+	if got := len(f1.torrent.WebseedPeerConns()); got == 0 {
+		t.Fatal("existing torrent did not merge the magnet webseed")
+	}
+}
+
 func TestFetcher_Config(t *testing.T) {
-	doResolve(t, buildConfigFetcher(nil))
+	doResolve(t, func() fetcher.Fetcher { return buildConfigFetcher(nil) })
 }
 
 func TestFetcher_ResolveWithProxy(t *testing.T) {
@@ -61,18 +236,22 @@ func TestFetcher_ResolveWithProxy(t *testing.T) {
 	proxyListener := test.StartSocks5Server(usr, pwd)
 	defer proxyListener.Close()
 
-	doResolve(t, buildConfigFetcher(&base.DownloaderProxyConfig{
-		Enable: true,
-		System: false,
-		Scheme: "socks5",
-		Host:   proxyListener.Addr().String(),
-		Usr:    usr,
-		Pwd:    pwd,
-	}))
+	doResolve(t, func() fetcher.Fetcher {
+		return buildConfigFetcher(&base.DownloaderProxyConfig{
+			Enable: true,
+			System: false,
+			Scheme: "socks5",
+			Host:   proxyListener.Addr().String(),
+			Usr:    usr,
+			Pwd:    pwd,
+		})
+	})
 }
 
-func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
+func doResolve(t *testing.T, build func() fetcher.Fetcher) {
 	t.Run("Resolve Single File", func(t *testing.T) {
+		fetcher := build()
+		t.Cleanup(func() { _ = fetcher.Close() })
 		err := fetcher.Resolve(&base.Request{
 			URL: "./testdata/ubuntu-22.04-live-server-amd64.iso.torrent",
 			Extra: bt.ReqExtra{
@@ -103,6 +282,8 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 	})
 
 	t.Run("Resolve Multi Files", func(t *testing.T) {
+		fetcher := build()
+		t.Cleanup(func() { _ = fetcher.Close() })
 		err := fetcher.Resolve(&base.Request{
 			URL: "./testdata/test.torrent",
 			Extra: bt.ReqExtra{
@@ -143,6 +324,8 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 	})
 
 	t.Run("Resolve Unclean Torrent", func(t *testing.T) {
+		fetcher := build()
+		t.Cleanup(func() { _ = fetcher.Close() })
 		err := fetcher.Resolve(&base.Request{
 			URL: "./testdata/test.unclean.torrent",
 		}, nil)
@@ -152,6 +335,8 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 	})
 
 	t.Run("Resolve file scheme Torrent", func(t *testing.T) {
+		fetcher := build()
+		t.Cleanup(func() { _ = fetcher.Close() })
 		file, _ := filepath.Abs("./testdata/test.unclean.torrent")
 		uri := "file:///" + file
 		err := fetcher.Resolve(&base.Request{
@@ -244,6 +429,7 @@ func buildConfigFetcher(proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher
 // It tests modifying selected files after Resolve (without downloading).
 func TestFetcher_Patch(t *testing.T) {
 	f := buildFetcher()
+	t.Cleanup(func() { _ = f.Close() })
 
 	// Resolve a multi-file torrent
 	err := f.Resolve(&base.Request{

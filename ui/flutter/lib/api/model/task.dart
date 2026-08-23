@@ -30,6 +30,7 @@ class Task {
   Meta meta;
   Status status;
   bool uploading;
+  String? error;
   Progress progress;
   DateTime createdAt;
   DateTime updatedAt;
@@ -40,6 +41,7 @@ class Task {
     required this.meta,
     required this.status,
     required this.uploading,
+    this.error,
     required this.progress,
     required this.createdAt,
     required this.updatedAt,

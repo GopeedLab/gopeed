@@ -12,6 +12,7 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
       meta: Meta.fromJson(json['meta'] as Map<String, dynamic>),
       status: $enumDecode(_$StatusEnumMap, json['status']),
       uploading: json['uploading'] as bool,
+      error: json['error'] as String?,
       progress: Progress.fromJson(json['progress'] as Map<String, dynamic>),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -33,6 +34,7 @@ Map<String, dynamic> _$TaskToJson(Task instance) {
   val['meta'] = instance.meta.toJson();
   val['status'] = _$StatusEnumMap[instance.status]!;
   val['uploading'] = instance.uploading;
+  writeNotNull('error', instance.error);
   val['progress'] = instance.progress.toJson();
   val['createdAt'] = instance.createdAt.toIso8601String();
   val['updatedAt'] = instance.updatedAt.toIso8601String();
