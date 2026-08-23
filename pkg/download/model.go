@@ -27,6 +27,7 @@ type Task struct {
 	Meta      *fetcher.FetcherMeta `json:"meta"`
 	Status    base.Status          `json:"status"`
 	Uploading bool                 `json:"uploading"`
+	Error     string               `json:"error,omitempty"`
 	Progress  *Progress            `json:"progress"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`

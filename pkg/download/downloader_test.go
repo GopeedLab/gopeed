@@ -32,6 +32,7 @@ import (
 type generationTestManager struct {
 	starts         atomic.Int32
 	pauses         atomic.Int32
+	closes         atomic.Int32
 	holdOpen       bool
 	resolveStarted chan struct{}
 	resolveRelease <-chan struct{}
@@ -105,6 +106,18 @@ type generationTestFetcher struct {
 	done    chan error
 }
 
+type failingTaskPutStorage struct {
+	Storage
+	fail atomic.Bool
+}
+
+func (s *failingTaskPutStorage) Put(bucket string, key string, value any) error {
+	if s.fail.Load() && bucket == bucketTask {
+		return errors.New("injected task persistence failure")
+	}
+	return s.Storage.Put(bucket, key, value)
+}
+
 func (f *generationTestFetcher) Setup(*controller.Controller) {
 	if f.done == nil {
 		f.done = make(chan error, 2)
@@ -151,7 +164,10 @@ func (f *generationTestFetcher) Pause() error {
 	}
 	return nil
 }
-func (f *generationTestFetcher) Close() error               { return nil }
+func (f *generationTestFetcher) Close() error {
+	f.manager.closes.Add(1)
+	return nil
+}
 func (f *generationTestFetcher) Stats() any                 { return nil }
 func (f *generationTestFetcher) Meta() *fetcher.FetcherMeta { return f.meta }
 func (f *generationTestFetcher) Progress() fetcher.Progress { return fetcher.Progress{1} }
@@ -201,6 +217,80 @@ func TestDownloader_Resolve(t *testing.T) {
 	}
 	if !test.AssertResourceEqual(want, rr.Res) {
 		t.Errorf("Resolve() got = %v, want %v", rr.Res, want)
+	}
+}
+
+func TestDownloaderCloseReleasesCachedResolvedFetcher(t *testing.T) {
+	manager := &generationTestManager{}
+	downloader := NewDownloader(&DownloaderConfig{FetchManagers: []fetcher.FetcherManager{manager}})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := downloader.Resolve(
+		&base.Request{URL: "generation://cached"},
+		&base.Options{Path: t.TempDir(), Name: "generation.bin"},
+	); err != nil {
+		t.Fatal(err)
+	}
+	if got := manager.closes.Load(); got != 0 {
+		t.Fatalf("cached fetcher closed before Downloader.Close: %d", got)
+	}
+	if err := downloader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if got := manager.closes.Load(); got != 1 {
+		t.Fatalf("cached fetcher close count = %d, want 1", got)
+	}
+}
+
+func TestDownloaderCreateFailureClosesCachedFetcher(t *testing.T) {
+	manager := &generationTestManager{}
+	storage := &failingTaskPutStorage{Storage: NewMemStorage()}
+	downloader := NewDownloader(&DownloaderConfig{
+		FetchManagers: []fetcher.FetcherManager{manager},
+		Storage:       storage,
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = downloader.Close() })
+
+	resolved, err := downloader.Resolve(
+		&base.Request{URL: "generation://create-failure"},
+		&base.Options{Path: t.TempDir(), Name: "generation.bin"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage.fail.Store(true)
+	if _, err = downloader.Create(resolved.ID); err == nil {
+		t.Fatal("Create succeeded with injected persistence failure")
+	}
+	if got := manager.closes.Load(); got != 1 {
+		t.Fatalf("failed Create fetcher close count = %d, want 1", got)
+	}
+}
+
+func TestDownloaderCreateDirectOptionFailureClosesFetcher(t *testing.T) {
+	manager := &generationTestManager{}
+	downloader := NewDownloader(&DownloaderConfig{
+		FetchManagers:     []fetcher.FetcherManager{manager},
+		WhiteDownloadDirs: []string{filepath.Join(t.TempDir(), "allowed")},
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = downloader.Close() })
+
+	if _, err := downloader.CreateDirect(
+		&base.Request{URL: "generation://direct-option-failure"},
+		&base.Options{Path: t.TempDir(), Name: "generation.bin"},
+	); err == nil {
+		t.Fatal("CreateDirect succeeded outside the download directory allowlist")
+	}
+	if got := manager.closes.Load(); got != 1 {
+		t.Fatalf("failed CreateDirect fetcher close count = %d, want 1", got)
 	}
 }
 
@@ -378,6 +468,85 @@ func TestDownloader_RegistryMissUsesOrdinaryHTTPError(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("Registry miss did not reach the ordinary HTTP error path")
+	}
+}
+
+func TestDownloaderPersistsDownloadError(t *testing.T) {
+	storage := NewMemStorage()
+	if err := storage.Setup([]string{bucketTask}); err != nil {
+		t.Fatal(err)
+	}
+	downloader := NewDownloader(&DownloaderConfig{
+		Storage:               storage,
+		DownloaderStoreConfig: (&base.DownloaderStoreConfig{}).Init(),
+	})
+	task := NewTask()
+	task.Meta = &fetcher.FetcherMeta{
+		Req:  &base.Request{URL: "https://example.com/file"},
+		Opts: &base.Options{Path: t.TempDir(), Name: "file"},
+	}
+	task.Progress = &Progress{}
+	initTask(task)
+	task.Status = base.DownloadStatusRunning
+	if err := storage.Put(bucketTask, task.ID, task.clone()); err != nil {
+		t.Fatal(err)
+	}
+	diskErr := errors.New("no space left on device")
+	downloader.handleOnError(task, diskErr, false)
+
+	task.statusLock.Lock()
+	status, errorMessage := task.Status, task.Error
+	task.statusLock.Unlock()
+	if status != base.DownloadStatusError || errorMessage != diskErr.Error() {
+		t.Fatalf("unexpected disk-full task state: status=%s error=%q", status, errorMessage)
+	}
+	var persisted Task
+	if ok, err := storage.Get(bucketTask, task.ID, &persisted); err != nil || !ok {
+		t.Fatalf("load persisted task: ok=%v err=%v", ok, err)
+	}
+	if persisted.Status != base.DownloadStatusError || persisted.Error != diskErr.Error() {
+		t.Fatalf("unexpected persisted disk-full state: %#v", persisted)
+	}
+}
+
+func TestDownloaderErrorAndRestartStateRemainConsistent(t *testing.T) {
+	downloader := NewDownloader(nil)
+	diskErr := errors.New("no space left on device")
+
+	for i := 0; i < 1000; i++ {
+		task := NewTask()
+		task.Progress = &Progress{}
+		initTask(task)
+		task.Status = base.DownloadStatusRunning
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			downloader.markTaskError(task, diskErr)
+		}()
+		go func() {
+			defer wg.Done()
+			_, _ = downloader.statusMut(task, func() (bool, error) {
+				if task.Status == base.DownloadStatusError {
+					task.updateStatus(base.DownloadStatusRunning)
+					task.Error = ""
+					task.runGeneration++
+				}
+				return false, nil
+			})
+		}()
+		wg.Wait()
+
+		task.statusLock.Lock()
+		status, errorMessage := task.Status, task.Error
+		task.statusLock.Unlock()
+		if status == base.DownloadStatusRunning && errorMessage != "" {
+			t.Fatalf("iteration %d: running task retained error %q", i, errorMessage)
+		}
+		if status == base.DownloadStatusError && errorMessage != diskErr.Error() {
+			t.Fatalf("iteration %d: error task has message %q", i, errorMessage)
+		}
 	}
 }
 
