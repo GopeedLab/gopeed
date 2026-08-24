@@ -9,7 +9,6 @@ import (
 )
 
 func TestProviderContract(t *testing.T) {
-	warmUpWebView(t)
 	integrationtest.RunProviderContract(t, New(), integrationtest.ContractOptions{
 		CookieDomainMode: integrationtest.CookieDomainModeRequired,
 	})

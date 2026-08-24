@@ -422,6 +422,25 @@ func TestFetcher_DownloadContinue_NoRangeRestart(t *testing.T) {
 	}
 }
 
+func TestFetcher_DownloadNoRangeLeavesNoStaleCompletion(t *testing.T) {
+	listener := test.StartTestNoRangeSlowServer(0)
+	defer listener.Close()
+
+	f := downloadReady(listener, 1, t).(*Fetcher)
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case err := <-f.doneCh:
+		t.Fatalf("stale completion signal: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
 func TestFetcher_DownloadChunked(t *testing.T) {
 	listener := test.StartTestCustomServer()
 	defer listener.Close()
