@@ -142,7 +142,7 @@ func (p *pageWrapper) start() error {
 	case err := <-p.ready:
 		p.tracef("open %dms", time.Since(startedAt).Milliseconds())
 		return err
-	case <-time.After(webviewStartupTimeout):
+	case <-time.After(10 * time.Second):
 		p.tracef("open timeout %dms", time.Since(startedAt).Milliseconds())
 		return fmt.Errorf("webview startup timeout")
 	}
