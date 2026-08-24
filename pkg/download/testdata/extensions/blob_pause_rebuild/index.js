@@ -39,7 +39,7 @@ function fastPayloadStream(offset = 0, end = -1) {
   });
 }
 
-function createBlobSourceURL(delayed) {
+async function createBlobSourceURL(delayed) {
   const blob = new Blob([payloadText], { type: 'application/octet-stream' });
   const originalSlice = blob.slice.bind(blob);
   blob.slice = function (offset = 0, end) {
@@ -53,20 +53,20 @@ function createBlobSourceURL(delayed) {
       },
     };
   };
-  return gopeed.runtime.blob.createObjectURL(blob);
+  return await gopeed.runtime.blob.createObjectURL(blob);
 }
 
-function createOpenerSourceURL(delayed) {
+async function createOpenerSourceURL(delayed) {
   const open = async () => delayed ? delayedPayloadStream(0, -1) : fastPayloadStream(0, -1);
-  return gopeed.runtime.blob.createObjectURL(open, {
+  return await gopeed.runtime.blob.createObjectURL(open, {
     size: payloadSize,
     contentType: 'application/octet-stream',
   });
 }
 
-function createRangeSourceURL(delayed) {
+async function createRangeSourceURL(delayed) {
   const open = async ({ offset = 0, end = -1 }) => delayed ? delayedPayloadStream(offset, end) : fastPayloadStream(offset, end);
-  return gopeed.runtime.blob.createObjectURL(open, {
+  return await gopeed.runtime.blob.createObjectURL(open, {
     size: payloadSize,
     range: true,
     contentType: 'application/octet-stream',
@@ -86,14 +86,14 @@ function modeFromURL(url) {
   return '';
 }
 
-function createPayloadURL(mode, delayed) {
+async function createPayloadURL(mode, delayed) {
   switch (mode) {
     case 'blob':
-      return createBlobSourceURL(delayed);
+      return await createBlobSourceURL(delayed);
     case 'opener':
-      return createOpenerSourceURL(delayed);
+      return await createOpenerSourceURL(delayed);
     case 'range':
-      return createRangeSourceURL(delayed);
+      return await createRangeSourceURL(delayed);
     default:
       throw new Error('unsupported pause rebuild mode: ' + mode);
   }
@@ -113,7 +113,7 @@ gopeed.events.onResolve(async function (ctx) {
         name: 'pause-rebuild-' + mode + '.bin',
         size: payloadSize,
         req: {
-          url: createPayloadURL(mode, true),
+          url: await createPayloadURL(mode, true),
           rawUrl: ctx.req.rawUrl || ctx.req.url,
           labels: {
             mode: 'pause-rebuild',
@@ -132,8 +132,8 @@ gopeed.events.onError(async function (ctx) {
     return;
   }
 
-  ctx.task.setUrl(createPayloadURL(source, false));
-  req.putLabel('started', 'true');
-  req.putLabel('rebuilt', 'true');
-  ctx.task.continue();
+  await ctx.task.setUrl(await createPayloadURL(source, false));
+  await req.putLabel('started', 'true');
+  await req.putLabel('rebuilt', 'true');
+  await ctx.task.continue();
 });

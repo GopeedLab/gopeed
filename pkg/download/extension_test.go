@@ -838,7 +838,9 @@ func TestDownloader_Extension_BlobPauseContinueKeepsSource(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			downloader := NewDownloader(nil)
+			downloader := NewDownloader(&DownloaderConfig{
+				StorageDir: t.TempDir(),
+			})
 			downloader.cfg.RefreshInterval = 50
 			if err := downloader.Setup(); err != nil {
 				t.Fatal(err)
@@ -1479,7 +1481,7 @@ func TestDownloader_ExtensionRuntimeWebViewInjected(t *testing.T) {
 	}
 	defer runtime.Close()
 
-	value, err := runtime.Eval(`({
+	value, err := runtime.Eval(`(async () => ({
 			hasRuntime: !!gopeed.runtime,
 			hasBlob: !!(gopeed.runtime && gopeed.runtime.blob),
 			hasCreateObjectURL: typeof gopeed.runtime.blob.createObjectURL,
@@ -1487,8 +1489,8 @@ func TestDownloader_ExtensionRuntimeWebViewInjected(t *testing.T) {
 			hasWebView: !!(gopeed.runtime && gopeed.runtime.webview),
 			hasOpen: typeof gopeed.runtime.webview.open,
 			hasWebViewIsAvailable: typeof gopeed.runtime.webview.isAvailable,
-		webViewAvailable: gopeed.runtime.webview.isAvailable()
-	})`)
+		webViewAvailable: await gopeed.runtime.webview.isAvailable()
+	}))()`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1530,9 +1532,9 @@ func TestDownloader_ExtensionRuntimeBlobRejectsReadableStreamSource(t *testing.T
 	}
 	defer runtime.Close()
 
-	value, err := runtime.Eval(`(() => {
+	value, err := runtime.Eval(`(async () => {
 		try {
-			gopeed.runtime.blob.createObjectURL(new ReadableStream({
+			await gopeed.runtime.blob.createObjectURL(new ReadableStream({
 				start(controller) {
 					controller.close();
 				},
@@ -1573,7 +1575,7 @@ func TestDownloader_ExtensionRuntimeWebViewAvailabilityFromProvider(t *testing.T
 	}
 	defer runtime.Close()
 
-	value, err := runtime.Eval(`gopeed.runtime.webview.isAvailable()`)
+	value, err := runtime.Eval(`(async () => await gopeed.runtime.webview.isAvailable())()`)
 	if err != nil {
 		t.Fatal(err)
 	}

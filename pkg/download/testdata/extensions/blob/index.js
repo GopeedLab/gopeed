@@ -3,7 +3,7 @@ gopeed.events.onResolve(async function (ctx) {
 
     if (ctx.req.url.endsWith("/blob")) {
         const blob = new Blob(["hello world"], {type: "text/plain"});
-        const url = gopeed.runtime.blob.createObjectURL(blob);
+        const url = await gopeed.runtime.blob.createObjectURL(blob);
         ctx.res = {
             name: "blob-blob",
             files: [
@@ -42,7 +42,7 @@ gopeed.events.onResolve(async function (ctx) {
             }
         });
 
-        const url = gopeed.runtime.blob.createObjectURL(open, { size: payload.byteLength, range: true });
+        const url = await gopeed.runtime.blob.createObjectURL(open, { size: payload.byteLength, range: true });
 
         ctx.res = {
             name: "blob-opener-range",
@@ -61,7 +61,7 @@ gopeed.events.onResolve(async function (ctx) {
     }
 
     if (ctx.req.url.endsWith("/opener-unknown")) {
-        const url = gopeed.runtime.blob.createObjectURL(async ({ offset = 0 }) => new ReadableStream({
+        const url = await gopeed.runtime.blob.createObjectURL(async ({ offset = 0 }) => new ReadableStream({
             async start(controller) {
                 if (offset > 0) {
                     controller.close();
@@ -88,7 +88,7 @@ gopeed.events.onResolve(async function (ctx) {
         return;
     }
 
-    const url = gopeed.runtime.blob.createObjectURL(async ({ offset = 0, end = -1 }) => new ReadableStream({
+    const url = await gopeed.runtime.blob.createObjectURL(async ({ offset = 0, end = -1 }) => new ReadableStream({
         start(controller) {
             const payload = encoder.encode("line 1\nline 2\n");
             controller.enqueue(payload.slice(offset, end >= 0 ? end + 1 : undefined));
