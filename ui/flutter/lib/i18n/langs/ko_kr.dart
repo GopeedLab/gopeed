@@ -227,5 +227,6 @@ const koKR = {
     'desktopNotification': '데스크톱 알림',
     'notificationTaskDone': '작업 완료',
     'notificationTaskError': '작업 오류',
-  },
+      'backgroundLocationKeepAlive': 'Background Download Keep Alive',
+},
 };

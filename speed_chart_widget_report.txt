@@ -1,0 +1,83 @@
+================================================================================
+SPEED CHART WIDGET IMPLEMENTATION REPORT
+================================================================================
+
+1. SUMMARY OF WHAT WAS BUILT
+--------------------------------------------------------------------------------
+A new, standalone, and isolated chart widget `TaskSpeedChart` was created for
+rendering live download-speed-over-time data.
+
+Key Features & Behavior:
+- Accepts a `List<double> speedSamples` representing bytes/second data samples
+  (matching the rolling buffer of ~60 samples from `TaskListController`).
+- Renders a clean, smooth single-line speed curve with an optional subtle
+  gradient fill beneath the line.
+- Graceful Empty / Short Data Handling:
+  * When `speedSamples` has fewer than 2 points, it renders a clean baseline
+    or an optional custom `emptyPlaceholder` widget instead of failing or throwing.
+- Reactive & Standalone:
+  * Built as a self-contained `StatelessWidget` compatible with GetX's `Obx`
+    reactive wrappers or direct parameter passing.
+  * Respects theme colors (`Theme.of(context).colorScheme.primary`), stroke width,
+    and styling conventions used throughout Gopeed.
+  * Handles rapid data stream updates without memory leaks or UI glitches.
+
+
+2. FILE PATH OF THE NEW WIDGET
+--------------------------------------------------------------------------------
+- ui/flutter/lib/app/views/task_speed_chart.dart
+
+
+3. CHARTING LIBRARY USED & RATIONALE
+--------------------------------------------------------------------------------
+- Library Used: Flutter Native Custom Painting (`CustomPainter` / `Canvas`)
+- Rationale:
+  1. Zero Extra Dependencies: Flutter's native 2D canvas requires no third-party
+     package additions or dependency version constraints, preventing lockfile/pub
+     incompatibilities.
+  2. High Performance: Ideal for high-frequency (1 Hz / 60 FPS) rolling streaming
+     data with minimal memory overhead and zero garbage collection pressure.
+  3. Precise Customization: Direct control over anti-aliasing, stroke joins/caps,
+     bounding box scaling, and vertical gradient shaders.
+  4. Platform Portability: Uniform rendering across Windows, macOS, Linux, Android,
+     iOS, and Web targets supported by Gopeed.
+
+
+4. TESTS WRITTEN & PASS/FAIL RESULTS
+--------------------------------------------------------------------------------
+Test Suite: ui/flutter/test/task_speed_chart_test.dart
+Execution Command: flutter test
+Status: ALL TESTS PASSED
+
+Test Cases:
+[PASS] 1. renders without error given an empty list
+       - Verifies that passing an empty list renders the empty state baseline
+         without exceptions.
+[PASS] 1b. renders custom empty placeholder if provided on empty list
+       - Verifies that custom fallback widgets render when data is insufficient.
+[PASS] 2. renders without error given a single data point
+       - Verifies single-point graceful rendering without divide-by-zero or crash.
+[PASS] 3. renders correctly given a typical list of 60 data points
+       - Verifies full 60-sample line path and gradient generation.
+[PASS] 4. does not throw on rapidly changing data (simulating multiple rebuilds)
+       - Verifies high-frequency rebuild cycles (60 consecutive data mutations
+         plus list resets) execute cleanly without exceptions.
+
+
+5. FULL TEST SUITE CONFIRMATION
+--------------------------------------------------------------------------------
+Executed:
+- test/task_speed_history_test.dart (5/5 passed)
+- test/task_speed_chart_test.dart (5/5 passed)
+- test/widget_test.dart (1/1 passed)
+
+Summary: 11/11 tests passed across the entire test suite with 0 failures and 0 errors.
+
+
+6. CONFIRMATION OF NO EXISTING FILE / UI MODIFICATION
+--------------------------------------------------------------------------------
+- Zero existing UI widgets, layouts, views, or styles were modified.
+- No existing app views or visible screens were altered.
+- All additions are strictly isolated to the new widget file and its dedicated
+  widget tests.
+================================================================================

@@ -744,8 +744,9 @@ class CreateView extends GetView<CreateController> {
                         padding: const EdgeInsets.only(top: 15),
                         child: Column(
                           children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 CompactCheckbox(
                                     label: 'directDownload'.tr,
@@ -759,16 +760,19 @@ class CreateView extends GetView<CreateController> {
                                     controller.showAdvanced.value =
                                         !controller.showAdvanced.value;
                                   },
-                                  child: Row(children: [
-                                    Obx(() => Checkbox(
-                                          value: controller.showAdvanced.value,
-                                          onChanged: (bool? value) {
-                                            controller.showAdvanced.value =
-                                                value ?? false;
-                                          },
-                                        )),
-                                    Text('advancedOptions'.tr),
-                                  ]),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Obx(() => Checkbox(
+                                            value: controller.showAdvanced.value,
+                                            onChanged: (bool? value) {
+                                              controller.showAdvanced.value =
+                                                  value ?? false;
+                                            },
+                                          )),
+                                      Text('advancedOptions'.tr),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
