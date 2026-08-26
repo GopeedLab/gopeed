@@ -24,13 +24,16 @@ class GopeedSiteApi {
     StoreSortOrder order = StoreSortOrder.desc,
     String? query,
   }) async {
-    final json = await _getJson('/api/extensions', queryParameters: {
-      'page': page.toString(),
-      'limit': limit.clamp(1, 100).toString(),
-      'sort': sort.name,
-      'order': order.name,
-      if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
-    });
+    final json = await _getJson(
+      '/api/extensions',
+      queryParameters: {
+        'page': page.toString(),
+        'limit': limit.clamp(1, 100).toString(),
+        'sort': sort.name,
+        'order': order.name,
+        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      },
+    );
     return StoreExtensionPage.fromJson(json as Map<String, dynamic>);
   }
 
@@ -43,8 +46,7 @@ class GopeedSiteApi {
     );
   }
 
-  Future<dynamic> _getJson(String path,
-      {Map<String, String>? queryParameters}) async {
+  Future<dynamic> _getJson(String path, {Map<String, String>? queryParameters}) async {
     final uri = Uri.https(_host, path, queryParameters);
     final Response<String> response = await proxyRequest(uri.toString());
     if (response.data == null || response.data!.isEmpty) {

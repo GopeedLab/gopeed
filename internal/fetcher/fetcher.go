@@ -21,14 +21,23 @@ type Fetcher interface {
 	Pause() error
 	Close() error
 
-	// Stats refreshes health statistics and returns the latest information
-	Stats() any
+	// Stats returns both the durable protocol snapshot and transient runtime
+	// telemetry. Downloader persists Snapshot and keeps Runtime in memory only.
+	Stats() *Stats
 	// Meta returns the meta information of the download.
 	Meta() *FetcherMeta
 	// Progress returns the progress of the download.
 	Progress() Progress
 	// Wait for the download to complete, this method will block until the download is done.
 	Wait() error
+}
+
+// Stats separates protocol information that remains meaningful after a task
+// stops from telemetry that is valid only while the fetcher is active.
+// Protocols own both payload schemas; Downloader treats them as opaque values.
+type Stats struct {
+	Snapshot any `json:"snapshot"`
+	Runtime  any `json:"runtime"`
 }
 
 type Uploader interface {

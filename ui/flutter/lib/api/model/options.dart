@@ -9,15 +9,9 @@ class Options {
   List<int> selectFiles;
   Object? extra;
 
-  Options({
-    this.name = '',
-    this.path = '',
-    this.selectFiles = const [],
-    this.extra,
-  });
+  Options({this.name = '', this.path = '', this.selectFiles = const [], this.extra});
 
-  factory Options.fromJson(Map<String, dynamic> json) =>
-      _$OptionsFromJson(json);
+  factory Options.fromJson(Map<String, dynamic> json) => _$OptionsFromJson(json);
 
   Map<String, dynamic> toJson() => _$OptionsToJson(this);
 }
@@ -40,8 +34,7 @@ class OptsExtraHttp {
     this.deleteAfterExtract = false,
   });
 
-  factory OptsExtraHttp.fromJson(Map<String, dynamic> json) =>
-      _$OptsExtraHttpFromJson(json);
+  factory OptsExtraHttp.fromJson(Map<String, dynamic> json) => _$OptsExtraHttpFromJson(json);
 
   Map<String, dynamic> toJson() => _$OptsExtraHttpToJson(this);
 }

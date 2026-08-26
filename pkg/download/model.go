@@ -36,11 +36,40 @@ type Task struct {
 	timer          *util.Timer
 	statusLock     *sync.Mutex
 	lock           *sync.Mutex
+	statsLock      *sync.Mutex
+	statsLoaded    bool
+	stats          *fetcher.Stats
+	statsSnapshot  json.RawMessage
 	blobRefLock    *sync.Mutex
 	blobURL        string
 	runGeneration  uint64
 	speedArr       []int64
 	uploadSpeedArr []int64
+}
+
+// TaskRuntimeStatus is the lightweight, frequently refreshed view of a task.
+// It intentionally excludes request, resource and option metadata returned by
+// Task so detail pages can poll progress without repeatedly transferring the
+// full task object.
+type TaskRuntimeStatus struct {
+	Status          base.Status         `json:"status"`
+	Used            int64               `json:"used"`
+	Speed           int64               `json:"speed"`
+	Downloaded      int64               `json:"downloaded"`
+	Total           int64               `json:"total"`
+	UploadSpeed     int64               `json:"uploadSpeed"`
+	Uploaded        int64               `json:"uploaded"`
+	ExtractStatus   ExtractStatus       `json:"extractStatus"`
+	ExtractProgress int                 `json:"extractProgress"`
+	Files           []FileRuntimeStatus `json:"files"`
+}
+
+// FileRuntimeStatus maps one value returned by fetcher.Progress to its
+// original resource index. Fetchers return progress in SelectFiles order.
+type FileRuntimeStatus struct {
+	Index      int   `json:"index"`
+	Size       int64 `json:"size"`
+	Downloaded int64 `json:"downloaded"`
 }
 
 func NewTask() *Task {
@@ -88,10 +117,10 @@ func (t *Task) Name() string {
 func (t *Task) MarshalJSON() ([]byte, error) {
 	type rawTaskType Task
 	jsonTask := struct {
-		rawTaskType
+		*rawTaskType
 		Name string `json:"name"`
 	}{
-		rawTaskType(*t),
+		(*rawTaskType)(t),
 		t.Name(),
 	}
 	return json.Marshal(jsonTask)

@@ -10,8 +10,7 @@ class WebViewRpcConfig {
 
   WebViewRpcConfig();
 
-  factory WebViewRpcConfig.fromJson(Map<String, dynamic> json) =>
-      _$WebViewRpcConfigFromJson(json);
+  factory WebViewRpcConfig.fromJson(Map<String, dynamic> json) => _$WebViewRpcConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$WebViewRpcConfigToJson(this);
 }
@@ -28,8 +27,7 @@ class StartConfig {
 
   StartConfig();
 
-  factory StartConfig.fromJson(Map<String, dynamic> json) =>
-      _$StartConfigFromJson(json);
+  factory StartConfig.fromJson(Map<String, dynamic> json) => _$StartConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$StartConfigToJson(this);
 }

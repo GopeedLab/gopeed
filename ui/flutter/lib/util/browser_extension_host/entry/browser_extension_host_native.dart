@@ -31,8 +31,7 @@ const _firefoxNativeHostsKey = r'Software\Mozilla\NativeMessagingHosts';
 /// Install host binary for browser extension
 Future<void> doInstallHost() async {
   final hostPath = await Util.homePathJoin(_hostExecName);
-  await Util.installAsset('assets/exec/$_hostExecName', hostPath,
-      executable: true);
+  await Util.installAsset('assets/exec/$_hostExecName', hostPath, executable: true);
 }
 
 /// Check if specified browser is installed
@@ -40,21 +39,16 @@ Future<bool> doCheckBrowserInstalled(Browser browser) async {
   if (Platform.isWindows) {
     switch (browser) {
       case Browser.chrome:
-        return await _checkWindowsRegistry(
-                r'SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe') ||
-            await _checkWindowsRegistry(
-                r'SOFTWARE\WOW6432Node\Google\Chrome') ||
+        return await _checkWindowsRegistry(r'SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe') ||
+            await _checkWindowsRegistry(r'SOFTWARE\WOW6432Node\Google\Chrome') ||
             await _checkWindowsExecutable(browser);
       case Browser.edge:
-        return await _checkWindowsRegistry(
-                r'SOFTWARE\Microsoft\Edge\BLBeacon') ||
-            await _checkWindowsRegistry(
-                r'SOFTWARE\WOW6432Node\Microsoft\Edge\BLBeacon') ||
+        return await _checkWindowsRegistry(r'SOFTWARE\Microsoft\Edge\BLBeacon') ||
+            await _checkWindowsRegistry(r'SOFTWARE\WOW6432Node\Microsoft\Edge\BLBeacon') ||
             await _checkWindowsExecutable(browser);
       case Browser.firefox:
         return await _checkWindowsRegistry(r'SOFTWARE\Mozilla\Firefox') ||
-            await _checkWindowsRegistry(
-                r'SOFTWARE\WOW6432Node\Mozilla\Firefox') ||
+            await _checkWindowsRegistry(r'SOFTWARE\WOW6432Node\Mozilla\Firefox') ||
             await _checkWindowsRegistry(r'SOFTWARE\BrowserWorks\Waterfox') ||
             await _checkWindowsExecutable(browser);
     }
@@ -121,38 +115,22 @@ List<String> _getWindowsExecutablePaths(Browser browser) {
   switch (browser) {
     case Browser.chrome:
       return [
-        if (programFiles != null)
-          path.join(
-              programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
-        if (programFilesX86 != null)
-          path.join(
-              programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
-        if (localAppData != null)
-          path.join(
-              localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        if (programFiles != null) path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        if (programFilesX86 != null) path.join(programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        if (localAppData != null) path.join(localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe'),
       ];
     case Browser.edge:
       return [
-        if (programFiles != null)
-          path.join(
-              programFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
-        if (programFilesX86 != null)
-          path.join(programFilesX86, 'Microsoft', 'Edge', 'Application',
-              'msedge.exe'),
-        if (localAppData != null)
-          path.join(
-              localAppData, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+        if (programFiles != null) path.join(programFiles, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+        if (programFilesX86 != null) path.join(programFilesX86, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+        if (localAppData != null) path.join(localAppData, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
       ];
     case Browser.firefox:
       return [
-        if (programFiles != null)
-          path.join(programFiles, 'Mozilla Firefox', 'firefox.exe'),
-        if (programFilesX86 != null)
-          path.join(programFilesX86, 'Mozilla Firefox', 'firefox.exe'),
-        if (programFiles != null)
-          path.join(programFiles, 'Waterfox', 'waterfox.exe'),
-        if (programFilesX86 != null)
-          path.join(programFilesX86, 'Waterfox', 'waterfox.exe'),
+        if (programFiles != null) path.join(programFiles, 'Mozilla Firefox', 'firefox.exe'),
+        if (programFilesX86 != null) path.join(programFilesX86, 'Mozilla Firefox', 'firefox.exe'),
+        if (programFiles != null) path.join(programFiles, 'Waterfox', 'waterfox.exe'),
+        if (programFilesX86 != null) path.join(programFilesX86, 'Waterfox', 'waterfox.exe'),
       ];
   }
 }
@@ -175,13 +153,13 @@ List<String> _getUnixExecutablePaths(Browser browser) {
         return [
           '/Applications/Google Chrome.app',
           '~/Applications/Google Chrome.app',
-          '/Users/${Platform.environment['USER']}/Applications/Google Chrome.app'
+          '/Users/${Platform.environment['USER']}/Applications/Google Chrome.app',
         ];
       case Browser.edge:
         return [
           '/Applications/Microsoft Edge.app',
           '~/Applications/Microsoft Edge.app',
-          '/Users/${Platform.environment['USER']}/Applications/Microsoft Edge.app'
+          '/Users/${Platform.environment['USER']}/Applications/Microsoft Edge.app',
         ];
       case Browser.firefox:
         return [
@@ -190,7 +168,7 @@ List<String> _getUnixExecutablePaths(Browser browser) {
           '/Users/${Platform.environment['USER']}/Applications/Firefox.app',
           '/Applications/Waterfox.app',
           '~/Applications/Waterfox.app',
-          '/Users/${Platform.environment['USER']}/Applications/Waterfox.app'
+          '/Users/${Platform.environment['USER']}/Applications/Waterfox.app',
         ];
     }
   } else {
@@ -201,14 +179,14 @@ List<String> _getUnixExecutablePaths(Browser browser) {
           '/usr/bin/google-chrome-stable',
           '/usr/bin/chrome',
           '/snap/bin/google-chrome',
-          '/opt/google/chrome/google-chrome'
+          '/opt/google/chrome/google-chrome',
         ];
       case Browser.edge:
         return [
           '/usr/bin/microsoft-edge',
           '/usr/bin/microsoft-edge-stable',
           '/snap/bin/microsoft-edge',
-          '/opt/microsoft/msedge/msedge'
+          '/opt/microsoft/msedge/msedge',
         ];
       case Browser.firefox:
         return [
@@ -219,46 +197,53 @@ List<String> _getUnixExecutablePaths(Browser browser) {
           '/usr/bin/waterfox',
           '/snap/bin/waterfox',
           '/usr/lib/waterfox/waterfox',
-          '/opt/waterfox/waterfox'
+          '/opt/waterfox/waterfox',
         ];
     }
   }
 }
 
 Future<String?> _getManifestPath(Browser browser) async {
-  final manifestName =
-      browser == Browser.firefox ? '$_hostName.moz.json' : '$_hostName.json';
+  final manifestName = browser == Browser.firefox ? '$_hostName.moz.json' : '$_hostName.json';
   if (Platform.isWindows) {
     return await Util.homePathJoin(manifestName);
   }
 
-  final home =
-      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
   if (home == null) return null;
 
   if (Platform.isMacOS) {
     switch (browser) {
       case Browser.chrome:
-        return path.join(home, 'Library', 'Application Support', 'Google',
-            'Chrome', 'NativeMessagingHosts', manifestName);
+        return path.join(
+          home,
+          'Library',
+          'Application Support',
+          'Google',
+          'Chrome',
+          'NativeMessagingHosts',
+          manifestName,
+        );
       case Browser.edge:
-        return path.join(home, 'Library', 'Application Support',
-            'Microsoft Edge', 'NativeMessagingHosts', manifestName);
+        return path.join(
+          home,
+          'Library',
+          'Application Support',
+          'Microsoft Edge',
+          'NativeMessagingHosts',
+          manifestName,
+        );
       case Browser.firefox:
-        return path.join(home, 'Library', 'Application Support', 'Mozilla',
-            'NativeMessagingHosts', manifestName);
+        return path.join(home, 'Library', 'Application Support', 'Mozilla', 'NativeMessagingHosts', manifestName);
     }
   } else if (Platform.isLinux) {
     switch (browser) {
       case Browser.chrome:
-        return path.join(home, '.config', 'google-chrome',
-            'NativeMessagingHosts', manifestName);
+        return path.join(home, '.config', 'google-chrome', 'NativeMessagingHosts', manifestName);
       case Browser.edge:
-        return path.join(home, '.config', 'microsoft-edge',
-            'NativeMessagingHosts', manifestName);
+        return path.join(home, '.config', 'microsoft-edge', 'NativeMessagingHosts', manifestName);
       case Browser.firefox:
-        return path.join(
-            home, '.mozilla', 'native-messaging-hosts', manifestName);
+        return path.join(home, '.mozilla', 'native-messaging-hosts', manifestName);
     }
   }
   return null;

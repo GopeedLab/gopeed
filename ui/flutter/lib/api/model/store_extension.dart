@@ -11,8 +11,7 @@ class StoreExtensionPage {
       data: (json['data'] as List<dynamic>? ?? [])
           .map((e) => StoreExtension.fromJson(e as Map<String, dynamic>))
           .toList(),
-      pagination: StorePagination.fromJson(
-          json['pagination'] as Map<String, dynamic>? ?? {}),
+      pagination: StorePagination.fromJson(json['pagination'] as Map<String, dynamic>? ?? {}),
     );
   }
 }
@@ -137,13 +136,6 @@ class StoreExtension {
   }
 }
 
-enum StoreExtensionSort {
-  stars,
-  installs,
-  updated,
-}
+enum StoreExtensionSort { stars, installs, updated }
 
-enum StoreSortOrder {
-  asc,
-  desc,
-}
+enum StoreSortOrder { asc, desc }

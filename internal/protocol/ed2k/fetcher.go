@@ -210,23 +210,110 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 	return f.meta
 }
 
-func (f *Fetcher) Stats() any {
+func (f *Fetcher) Stats() *fetcher.Stats {
+	serverIDClass := f.serverIDClass()
 	handle := f.currentHandle()
 	if !handle.IsValid() {
-		return &ped2k.Stats{}
+		return &fetcher.Stats{
+			Runtime: &ped2k.StatsRuntime{
+				ServerIDClass: serverIDClass,
+				Peers:         make([]*base.PeerStats, 0),
+			},
+		}
 	}
 	status := handle.GetStatus()
-	return &ped2k.Stats{
-		State:         string(status.State),
-		ActivePeers:   handle.ActiveConnections(),
-		TotalPeers:    status.NumPeers,
-		DownloadRate:  status.DownloadRate,
-		Upload:        status.Upload,
-		UploadRate:    status.UploadRate,
-		TotalDone:     status.TotalDone,
-		TotalReceived: status.TotalReceived,
-		TotalWanted:   status.TotalWanted,
+	pieceMap := buildED2KPieceMap(handle.PieceSnapshots())
+	mapReady := pieceMap != nil && status.State != goed2k.LoadingResumeData && status.State != goed2k.Verifying
+	var snapshot any
+	if mapReady {
+		snapshot = &ped2k.StatsSnapshot{
+			Upload:        status.Upload,
+			TotalDone:     status.TotalDone,
+			TotalReceived: status.TotalReceived,
+			TotalWanted:   status.TotalWanted,
+			PieceMap:      pieceMap.Clone(),
+		}
 	}
+	// Resume loading and verification are transitional. A nil Snapshot retains
+	// the last trusted completion bitset until goed2k publishes a stable map.
+	return &fetcher.Stats{
+		Snapshot: snapshot,
+		Runtime: &ped2k.StatsRuntime{
+			State:         string(status.State),
+			Paused:        status.Paused,
+			ServerIDClass: serverIDClass,
+			ActivePeers:   handle.ActiveConnections(),
+			TotalPeers:    status.NumPeers,
+			DownloadRate:  status.DownloadRate,
+			UploadRate:    status.UploadRate,
+			Peers:         buildED2KPeers(handle.GetPeersInfo()),
+		},
+	}
+}
+
+func (f *Fetcher) serverIDClass() string {
+	if f.manager == nil {
+		return "unknown"
+	}
+	client := f.manager.currentClient()
+	if client == nil {
+		return "unknown"
+	}
+	return ed2kServerIDClass(client.ServerStatuses())
+}
+
+func ed2kServerIDClass(servers []goed2k.ServerSnapshot) string {
+	for _, server := range servers {
+		if !server.Primary {
+			continue
+		}
+		if !server.Connected || !server.HandshakeCompleted {
+			return "unknown"
+		}
+		switch server.IDClass() {
+		case "LOW_ID":
+			return "low"
+		case "HIGH_ID":
+			return "high"
+		default:
+			return "unknown"
+		}
+	}
+	return "unknown"
+}
+
+func buildED2KPieceMap(snapshots []goed2k.PieceSnapshot) *base.PieceMap {
+	if len(snapshots) == 0 {
+		return nil
+	}
+	pieceMap := base.NewPieceMap(len(snapshots), goed2k.PieceSize)
+	for _, snapshot := range snapshots {
+		if snapshot.Index < 0 || snapshot.Index >= pieceMap.PieceCount() {
+			continue
+		}
+		_ = pieceMap.Update(snapshot.Index, snapshot.State == goed2k.PieceSnapshotFinished)
+	}
+	return pieceMap
+}
+
+func buildED2KPeers(peerInfos []goed2k.PeerInfo) []*base.PeerStats {
+	peers := make([]*base.PeerStats, 0, len(peerInfos))
+	for _, peerInfo := range peerInfos {
+		peers = append(peers, &base.PeerStats{
+			Address:       peerInfo.Endpoint.String(),
+			Client:        ed2kPeerClient(peerInfo),
+			DownloadSpeed: int64(peerInfo.PayloadDownloadSpeed),
+			UploadSpeed:   int64(peerInfo.PayloadUploadSpeed),
+			PieceCount:    peerInfo.RemotePieces.Count(),
+			Source:        peerInfo.SourceString(),
+			Transport:     "tcp",
+		})
+	}
+	return peers
+}
+
+func ed2kPeerClient(peerInfo goed2k.PeerInfo) string {
+	return strings.TrimSpace(peerInfo.ModName + " " + peerInfo.StrModVersion)
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {

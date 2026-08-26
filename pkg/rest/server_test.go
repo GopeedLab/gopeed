@@ -144,6 +144,23 @@ func TestCreateDirectTask(t *testing.T) {
 	})
 }
 
+func TestGetTaskStatus(t *testing.T) {
+	doTest(func() {
+		resolved := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", resolveReq)
+		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", &model.CreateTask{Rid: resolved.ID})
+		status := httpRequestCheckOk[*download.TaskRuntimeStatus](http.MethodGet, "/api/v1/tasks/"+taskId+"/status", nil)
+		if status.Total != test.BuildSize {
+			t.Fatalf("task status total = %d, want %d", status.Total, test.BuildSize)
+		}
+		if status.Files == nil {
+			t.Fatal("task status files must be an empty array or contain file progress, not null")
+		}
+
+		code, _ := httpRequest[*download.TaskRuntimeStatus](http.MethodGet, "/api/v1/tasks/missing/status", nil)
+		checkCode(code, model.CodeTaskNotFound)
+	})
+}
+
 func TestCreateDirectTaskBatch(t *testing.T) {
 	doTest(func() {
 		reqs := make([]*base.CreateTaskBatchItem, 0)

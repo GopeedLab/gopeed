@@ -10,9 +10,7 @@ class LibgopeedChannel implements LibgopeedInterface {
 
   @override
   Future<int> start(StartConfig cfg) async {
-    final port = await _channel.invokeMethod('start', {
-      'cfg': jsonEncode(cfg),
-    });
+    final port = await _channel.invokeMethod('start', {'cfg': jsonEncode(cfg)});
     return port as int;
   }
 

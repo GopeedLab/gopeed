@@ -6,7 +6,7 @@ import 'util.dart';
 
 late final Logger logger;
 
-initLogger() {
+void initLogger() {
   // if is debug mode, don't log to file
   logger = Logger(
     filter: ProductionFilter(),
@@ -19,7 +19,7 @@ String logsDir() {
   return path.join(Util.getStorageDir(), 'logs');
 }
 
-_buildOutput() {
+LogOutput? _buildOutput() {
   // if is debug mode, don't log to file
   if (!kDebugMode && Util.isDesktop()) {
     final logDirPath = logsDir();

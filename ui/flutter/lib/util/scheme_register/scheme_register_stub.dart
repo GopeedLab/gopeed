@@ -1,7 +1,7 @@
-doRegisterUrlScheme(String scheme) => throw UnimplementedError();
+void doRegisterUrlScheme(String scheme) => throw UnimplementedError();
 
-doUnregisterUrlScheme(String scheme) => throw UnimplementedError();
+void doUnregisterUrlScheme(String scheme) => throw UnimplementedError();
 
-doRegisterDefaultTorrentClient() => throw UnimplementedError();
+void doRegisterDefaultTorrentClient() => throw UnimplementedError();
 
-doUnregisterDefaultTorrentClient() => throw UnimplementedError();
+void doUnregisterDefaultTorrentClient() => throw UnimplementedError();

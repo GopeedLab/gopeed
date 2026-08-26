@@ -11,17 +11,9 @@ class Request {
   RequestProxy? proxy;
   bool skipVerifyCert;
 
-  Request({
-    this.rawUrl,
-    required this.url,
-    this.extra,
-    this.labels,
-    this.proxy,
-    this.skipVerifyCert = false,
-  });
+  Request({this.rawUrl, required this.url, this.extra, this.labels, this.proxy, this.skipVerifyCert = false});
 
-  factory Request.fromJson(Map<String, dynamic> json) =>
-      _$RequestFromJson(json);
+  factory Request.fromJson(Map<String, dynamic> json) => _$RequestFromJson(json);
 
   Map<String, dynamic> toJson() => _$RequestToJson(this);
 }
@@ -32,14 +24,9 @@ class ReqExtraHttp {
   Map<String, String> header;
   String body;
 
-  ReqExtraHttp({
-    this.method = 'GET',
-    this.header = const {},
-    this.body = '',
-  });
+  ReqExtraHttp({this.method = 'GET', this.header = const {}, this.body = ''});
 
-  factory ReqExtraHttp.fromJson(Map<String, dynamic> json) =>
-      _$ReqExtraHttpFromJson(json);
+  factory ReqExtraHttp.fromJson(Map<String, dynamic> json) => _$ReqExtraHttpFromJson(json);
 
   Map<String, dynamic> toJson() => _$ReqExtraHttpToJson(this);
 }
@@ -48,21 +35,14 @@ class ReqExtraHttp {
 class ReqExtraBt {
   List<String> trackers;
 
-  ReqExtraBt({
-    this.trackers = const [],
-  });
+  ReqExtraBt({this.trackers = const []});
 
-  factory ReqExtraBt.fromJson(Map<String, dynamic> json) =>
-      _$ReqExtraBtFromJson(json);
+  factory ReqExtraBt.fromJson(Map<String, dynamic> json) => _$ReqExtraBtFromJson(json);
 
   Map<String, dynamic> toJson() => _$ReqExtraBtToJson(this);
 }
 
-enum RequestProxyMode {
-  follow,
-  none,
-  custom,
-}
+enum RequestProxyMode { follow, none, custom }
 
 @JsonSerializable()
 class RequestProxy {
@@ -80,8 +60,7 @@ class RequestProxy {
     this.pwd = '',
   });
 
-  factory RequestProxy.fromJson(Map<String, dynamic> json) =>
-      _$RequestProxyFromJson(json);
+  factory RequestProxy.fromJson(Map<String, dynamic> json) => _$RequestProxyFromJson(json);
 
   Map<String, dynamic> toJson() => _$RequestProxyToJson(this);
 }

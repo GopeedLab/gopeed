@@ -1,0 +1,558 @@
+{
+  "@@locale": "en",
+  "label": "English",
+  "error": "Error",
+  "tip": "Tip",
+  "confirm": "Confirm",
+  "confirmDelete": "Are you sure you want to delete?",
+  "cancel": "Cancel",
+  "on": "On",
+  "off": "Off",
+  "selectAll": "Select All",
+  "select": "Select",
+  "task": "Tasks",
+  "downloading": "Downloading",
+  "downloaded": "Downloaded",
+  "setting": "Settings",
+  "donate": "Donate",
+  "exit": "Exit",
+  "create": "Create Task",
+  "directDownload": "Direct Download",
+  "advancedOptions": "Advanced Options",
+  "followSettings": "Follow Settings",
+  "downloadLink": "Download Link",
+  "downloadLinkValid": "Please enter the download link",
+  "downloadLinkHit": "Please enter the download link, one per line@append",
+  "downloadLinkHitDesktop": ", or drag the torrent file here directly",
+  "download": "Download",
+  "noFileSelected": "Please select at least one file to continue.",
+  "noStoragePermission": "Storage permission required",
+  "selectFile": "Select File",
+  "rename": "Rename",
+  "basic": "Basic",
+  "advanced": "Advanced",
+  "general": "General",
+  "downloadDir": "Download Directory",
+  "downloadDirValid": "Please select the download directory",
+  "connections": "Connections",
+  "useServerCtime": "Use server time for file creation",
+  "maxRunning": "Concurrent Downloads",
+  "defaultDirectDownload": "Direct Download by Default",
+  "autoStartTasks": "Auto-start incomplete tasks on startup",
+  "autoTorrentEnable": "Auto create BT tasks from .torrent files",
+  "autoTorrentDeleteAfterDownload": "Delete .torrent file after BT task creation",
+  "autoDeleteMissingFileTasks": "Auto delete missing file tasks",
+  "items": "@count items",
+  "subscribeTracker": "Subscribe Tracker",
+  "subscribeFail": "Subscribe failed, please check network or try again later",
+  "update": "Update",
+  "updateDaily": "Update daily",
+  "lastUpdate": "Last update: @time",
+  "addTracker": "Add Tracker",
+  "addTrackerHit": "Please enter the tracker server url, one per line",
+  "ui": "UI",
+  "theme": "Theme",
+  "themeSystem": "System",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "locale": "Language",
+  "notifyWhenNewVersion": "Notify for updates",
+  "analyticsEnabled": "Usage Analytics",
+  "analyticsEnabledDesc": "Share anonymous usage data to help us improve",
+  "about": "About",
+  "homepage": "Homepage",
+  "version": "Version",
+  "protocol": "Protocol",
+  "port": "Port",
+  "apiToken": "API Token",
+  "notSet": "NS",
+  "set": "SET",
+  "portInUse": "Port [@port] is in use, please change the port",
+  "effectAfterRestart": "Effect after restart",
+  "developer": "Developer",
+  "logDirectory": "Log Directory",
+  "webhook": "Webhook",
+  "webhookEnable": "Enable Webhooks",
+  "webhookDesc": "Send HTTP POST notifications when tasks complete or fail",
+  "webhookUrlHint": "Enter webhook URL",
+  "webhookTest": "Test",
+  "webhookTestSuccess": "Webhook test successful",
+  "webhookTestFail": "Webhook test failed",
+  "script": "Script",
+  "scriptEnable": "Enable Scripts",
+  "scriptDesc": "Execute custom scripts when downloads complete successfully",
+  "scriptPathHint": "Enter script file path (e.g., /path/to/script.sh)",
+  "urlInvalid": "Please enter a valid HTTP or HTTPS URL",
+  "required": "This field is required",
+  "show": "Show",
+  "continueAction": "Continue",
+  "pause": "Pause",
+  "startAll": "Start All",
+  "pauseAll": "Pause All",
+  "deleteTask": "Delete @count tasks",
+  "deleteTaskTip": "Keep downloaded files",
+  "delete": "Delete",
+  "add": "Add",
+  "edit": "Edit",
+  "newVersionTitle": "Discover new version @version",
+  "newVersionUpdate": "Update Now",
+  "newVersionLater": "Later",
+  "extensions": "Extensions",
+  "extensionInstallUrl": "Install URL",
+  "extensionInstallSuccess": "Installed successfully",
+  "extensionUpdateSuccess": "Updated successfully",
+  "extensionDelete": "Delete Extension",
+  "extensionAlreadyLatest": "It's already the latest version",
+  "extensionFind": "Find Extensions",
+  "extensionDevelop": "Develop Extensions",
+  "extensionStoreTitle": "Extension Store",
+  "extensionStoreSection": "Store Extensions",
+  "extensionInstalledSection": "Installed Extensions",
+  "extensionInstalledEmpty": "No extensions installed yet",
+  "extensionStoreEmpty": "No matching extensions found",
+  "extensionSearchHint": "Search by name, title, description or author",
+  "extensionSortStars": "Most Stars",
+  "extensionSortInstalls": "Most Installs",
+  "extensionSortUpdated": "Recently Updated",
+  "extensionSortToggle": "Toggle sort direction",
+  "extensionLoadMore": "Load More",
+  "extensionNoMore": "No more extensions",
+  "extensionInstalled": "Installed",
+  "extensionCanUpdate": "Update Available",
+  "extensionInstall": "Install",
+  "extensionLoadLocal": "Install Local Folder",
+  "extensionFilterAll": "All",
+  "extensionFilterMarket": "Market",
+  "extensionFilterInstalled": "Installed",
+  "extensionManualInstall": "Manual Install",
+  "extensionInstallTools": "Install Options",
+  "history": "History",
+  "clearHistory": "Clear History",
+  "noHistoryFound": "No History Found",
+  "serviceTitle": "Download Service",
+  "serviceText": "Running",
+  "network": "Network",
+  "proxy": "Proxy",
+  "noProxy": "No Proxy",
+  "systemProxy": "System Proxy",
+  "customProxy": "Custom Proxy",
+  "server": "Server",
+  "username": "Username",
+  "password": "Password",
+  "thanks": "Thanks",
+  "thanksDesc": "Thanks to all the contributors who have helped build and develop the Gopeed community!",
+  "browserExtension": "Browser Extension",
+  "launchAtStartup": "Launch at Startup",
+  "runAsMenubarApp": "Run as menubar app",
+  "runAsMenubarAppDesc": "Hide dock icon and run in menubar only",
+  "seedConfig": "Seed Config",
+  "seedKeep": "Keep seeding until manually stopped",
+  "seedRatio": "Seed ratio",
+  "seedTime": "Seed time (minutes)",
+  "setAsDefaultBtClient": "Set as the default BT client",
+  "taskDetail": "Task Detail",
+  "taskName": "Task Name",
+  "taskUrl": "Task URL",
+  "downloadPath": "Download Path",
+  "skipVerifyCert": "Skip Certificate Verification",
+  "archives": "Archives",
+  "autoExtract": "Extract Archives Automatically",
+  "archivePassword": "Archive Password",
+  "archivePasswordHint": "Leave empty if not password protected",
+  "deleteAfterExtract": "Delete Archives After Extraction",
+  "extracting": "Extracting",
+  "extractDone": "Extraction completed",
+  "extractError": "Extraction failed",
+  "waitingParts": "Waiting for parts",
+  "name": "Name",
+  "size": "Size",
+  "unknown": "Unknown",
+  "fileSelectedCount": "Files: ",
+  "fileSelectedSize": "Size: ",
+  "httpHeader": "Header",
+  "httpHeaderName": "Header Name",
+  "httpHeaderValue": "Header Value",
+  "login": "Login",
+  "username_required": "Please enter your username",
+  "password_required": "Please enter your password",
+  "login_success": "Login successful",
+  "login_failed": "Login failed, please check your username and password",
+  "login_failed_network": "Login failed, please check your network connection",
+  "insertPlaceholder": "Insert Placeholder",
+  "placeholderYear": "Current year",
+  "placeholderMonth": "Current month (01-12)",
+  "placeholderDay": "Current day (01-31)",
+  "placeholderDate": "Full date (YYYY-MM-DD)",
+  "example": "e.g. @value",
+  "downloadCategories": "Download Categories",
+  "categoryMusic": "Music",
+  "categoryVideo": "Video",
+  "categoryDocument": "Document",
+  "categoryProgram": "Program",
+  "categoryName": "Category Name",
+  "categoryPath": "Category Path",
+  "builtInCategory": "Built-in category cannot be deleted",
+  "selectCategory": "Select Category",
+  "githubMirror": "GitHub Mirror",
+  "githubMirrorEnable": "Enable GitHub Mirror",
+  "githubMirrorDesc": "Use mirrors to accelerate GitHub content downloads",
+  "githubMirrorType": "Mirror Type",
+  "githubMirrorUrl": "Mirror URL",
+  "githubMirrorUrlHint": "Enter mirror URL",
+  "updateUrl": "Update URL",
+  "updateUrlManual": "Manual Update",
+  "updateUrlListen": "Listen Update",
+  "updateUrlListeningTip": "Waiting for URL update",
+  "updateUrlCancelListen": "Cancel Listen",
+  "updateUrlDialogHint": "Enter new download URL",
+  "pendingUpdateFound": "Pending Update Task Found",
+  "pendingUpdateConfirm": "Task \"@name\" is waiting for URL update. Do you want to update it with the new URL?",
+  "pendingUpdateYes": "Update Task",
+  "pendingUpdateNo": "Create New Task",
+  "ed2k": "ED2K",
+  "ed2kTcpPort": "TCP Listen Port",
+  "ed2kUdpPort": "UDP Listen Port",
+  "ed2kServerList": "Server Addresses",
+  "ed2kServerMet": "Server.met Sources",
+  "ed2kNodesDat": "nodes.dat Sources",
+  "ed2kAutoPort": "Auto assign",
+  "ed2kOnePerLine": "One entry per line",
+  "ed2kServersHint": "host:port, one per line",
+  "ed2kServerMetHint": "Server.met URL or ed2k serverlist link, one per line",
+  "ed2kNodesDatHint": "nodes.dat path or URL, one per line",
+  "desktopNotification": "Desktop Notifications",
+  "backgroundLocationKeepAlive": "Background Downloads",
+  "notificationTaskDone": "Task completed",
+  "notificationTaskError": "Task error",
+  "appTitle": "Gopeed Download Manager",
+  "unsupportedWindowPayload": "Unsupported window request",
+  "runtimeInitializationFailed": "Unable to initialize Gopeed runtime.\n{error}",
+  "save": "Save",
+  "retry": "Retry",
+  "close": "Close",
+  "open": "Open",
+  "copy": "Copy",
+  "copied": "Copied",
+  "refresh": "Refresh",
+  "status": "Status",
+  "speed": "Speed",
+  "uploadSpeed": "Upload speed",
+  "remaining": "Remaining",
+  "progress": "Progress",
+  "failed": "Failed",
+  "completed": "Completed",
+  "waiting": "Waiting",
+  "taskFailed": "Task failed",
+  "unknownSize": "Unknown size",
+  "secondsRemaining": "{count, plural, =1{1 second remaining} other{{count} seconds remaining}}",
+  "minutesRemaining": "{count, plural, =1{1 minute remaining} other{{count} minutes remaining}}",
+  "hoursRemaining": "{count, plural, =1{1 hour remaining} other{{count} hours remaining}}",
+  "followSystem": "System Default",
+  "basicSettings": "Basic",
+  "downloadSettings": "Downloads",
+  "advancedSettings": "Advanced",
+  "themeColor": "Accent Color",
+  "themeColorDescription": "Customize the app accent color",
+  "browserExtensionDescription": "Send browser downloads directly to Gopeed after installation",
+  "desktopNotificationDescription": "Show a system notification when a task completes or fails",
+  "backgroundLocationKeepAliveDescription": "Use location access to keep downloads active in the background",
+  "currentVersion": "Current version v{version}",
+  "contributors": "Contributors",
+  "viewContributors": "View contributors",
+  "maxRunningDescription": "Maximum number of tasks that may download at the same time",
+  "defaultUserAgentDescription": "Default User-Agent for HTTP and HTTPS downloads",
+  "listenPort": "Listening Port",
+  "onePerLine": "One entry per line",
+  "proxyProtocol": "Protocol",
+  "restartRequired": "This setting takes effect after restarting the app",
+  "socketPath": "Socket Path",
+  "listenAddress": "Listen Address",
+  "currentConnection": "Current Endpoint",
+  "webhookPush": "Endpoints",
+  "webhookPushDescription": "Send HTTP POST notifications to these endpoints when tasks complete or fail",
+  "scriptExecution": "Scripts",
+  "scriptExecutionDescription": "Run these scripts after a download completes successfully",
+  "addWebhook": "Add Webhook",
+  "editWebhook": "Edit Webhook",
+  "addScript": "Add Script",
+  "editScript": "Edit Script",
+  "openDirectory": "Open Directory",
+  "updateEveryDay": "Update daily",
+  "updateVersion": "Update",
+  "checkForUpdates": "Check for Updates",
+  "updating": "Updating…",
+  "colorGreen": "Green",
+  "colorRed": "Red",
+  "colorRose": "Rose",
+  "colorOrange": "Orange",
+  "colorCyan": "Cyan",
+  "colorBlue": "Blue",
+  "colorAmber": "Amber",
+  "colorPurple": "Purple",
+  "noExtensions": "No extensions",
+  "searchExtensions": "Search extensions…",
+  "extensionDeveloperGuide": "Extension developer guide",
+  "extensionInstallFromUrl": "Install extension from URL",
+  "unableOpenExtensionDocs": "Unable to open the extension developer guide",
+  "removeExtensionTitle": "Uninstall extension?",
+  "removeExtensionConfirm": "Are you sure you want to uninstall “{name}”?",
+  "uninstall": "Uninstall",
+  "unableLoadExtensions": "Unable to load extensions",
+  "filters": "Filters",
+  "allTasks": "All Tasks",
+  "searchDownloads": "Search downloads…",
+  "addTask": "Add Task",
+  "emptyTaskList": "No tasks in this list",
+  "noMatchingTasks": "No matching tasks found",
+  "taskList": "Tasks",
+  "selectedCount": "{selected} / {total} selected",
+  "unableOpenPath": "Unable to open {path}",
+  "unableLocatePath": "Unable to locate {path}",
+  "clearSelection": "Clear selection",
+  "deselectTask": "Deselect task",
+  "selectTask": "Select task",
+  "updateManually": "Update manually",
+  "stopListening": "Stop listening",
+  "listenForUrl": "Listen for URL",
+  "waitingForReplacementUrl": "Waiting for a replacement URL",
+  "taskNotFound": "Task not found",
+  "storagePath": "Storage Path",
+  "directory": "Directory",
+  "mode": "Mode",
+  "keepOriginalName": "Keep original name",
+  "enterCount": "Enter count",
+  "chooseDownloadDirectory": "Choose download directory",
+  "enterValue": "Enter value",
+  "trackers": "Trackers",
+  "oneTrackerPerLine": "One tracker URL per line",
+  "pasteDownloadLinks": "Paste HTTP, HTTPS, or MAGNET links, or drop a torrent file here",
+  "unableReadTorrent": "Unable to read torrent file: {error}",
+  "torrentOnly": "Only .torrent files are supported.",
+  "torrentDataEmpty": "Torrent file data is empty.",
+  "torrentPathUnavailable": "Unable to access the torrent file path.",
+  "selectAtLeastOneFile": "Select at least one file.",
+  "resolvedFiles": "Resolved Files",
+  "resolvedFileCount": "{count, plural, =1{1 file resolved} other{{count} files resolved}}",
+  "resourceHasNoFiles": "The resource has no selectable file list.",
+  "noFiles": "No files",
+  "createHistory": "Create History",
+  "noHistory": "No history",
+  "directDownloadDescription": "Skip resolving and create tasks immediately.",
+  "taskProgress": "Task progress",
+  "updateAndResume": "Update and resume",
+  "httpHeaders": "HTTP headers",
+  "piece": "Piece {number}",
+  "pieceRange": "Pieces {start}–{end}",
+  "connectionStatus": "Connection Status",
+  "connectionCount": "{count, plural, =1{1 connection} other{{count} connections}}",
+  "retrying": "Retrying",
+  "connectionFailed": "Connection failed",
+  "connectionFailedRetries": "Connection failed after {count} retries",
+  "retryingCount": "Retrying · {count} retries",
+  "pieceStatus": "Piece Status",
+  "peers": "Peers",
+  "seeders": "Seeders",
+  "leechers": "Leechers",
+  "downloadedAmount": "Downloaded",
+  "uploadedAmount": "Uploaded",
+  "shareRatio": "Share Ratio",
+  "connectedPeers": "{count} connected",
+  "active": "Active",
+  "completedPieces": "Completed Pieces",
+  "activePeers": "{count} active",
+  "incomplete": "Incomplete",
+  "address": "Address",
+  "client": "Client",
+  "pieces": "Pieces",
+  "source": "Source",
+  "fileRelevance": "File relevance",
+  "ed2kIdStatus": "ED2K ID",
+  "taskDetails": "Task Details",
+  "taskDetailsInfoTab": "Details",
+  "taskDetailsFilesTab": "Files",
+  "taskDetailsStatsTab": "Statistics",
+  "noStatistics": "No statistics available",
+  "noPeers": "No connections",
+  "deleteTasksTitle": "{count, plural, =1{Delete task?} other{Delete {count} tasks?}}",
+  "keepFilesDescription": "Only remove the task record from Gopeed.",
+  "readingRuntimeStatus": "Reading runtime status…",
+  "apiConfigSaved": "API settings saved. Restart the app to apply them.",
+  "socketPathRequired": "Socket path is required",
+  "serverRequired": "Server is required",
+  "portRangeError": "Enter a port between 0 and 65535",
+  "portInUseValue": "Port {port} is already in use",
+  "backgroundLocationPermissionRequired": "Always Allow location access is required for background downloads",
+  "scriptPath": "Script Path",
+  "logDirectoryUnavailable": "Log directory is not initialized",
+  "unableOpenExternalLink": "Unable to open the external link",
+  "neverUpdated": "Never updated",
+  "lastUpdated": "Last updated: {time}",
+  "unableLoadSettings": "Unable to load settings",
+  "fieldRequired": "{field} is required",
+  "addGithubMirror": "Add GitHub Mirror",
+  "editGithubMirror": "Edit GitHub Mirror",
+  "confirmDeleteTitle": "Confirm deletion?",
+  "confirmDeleteNamed": "Are you sure you want to delete “{name}”?",
+  "categoryFieldsRequired": "Category name and path are required",
+  "addCategory": "Add Category",
+  "editCategory": "Edit Category",
+  "deleteCategoryTitle": "Delete category?",
+  "updateFailed": "Update failed. Please try again later.",
+  "newVersionAvailable": "A new version is available",
+  "releaseNotes": "What’s new",
+  "noReleaseNotes": "No release notes available",
+  "preparingDownload": "Preparing download…",
+  "booleanValueHint": "true / false",
+  "@runtimeInitializationFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "@secondsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@currentVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "@removeExtensionConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "@selectedCount": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@unableOpenPath": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "@unableLocatePath": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "@unableReadTorrent": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "@resolvedFileCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@piece": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "@pieceRange": {
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      }
+    }
+  },
+  "@connectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@connectionFailedRetries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@retryingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@connectedPeers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@activePeers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@deleteTasksTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@portInUseValue": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "@lastUpdated": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "@fieldRequired": {
+    "placeholders": {
+      "field": {}
+    }
+  },
+  "@confirmDeleteNamed": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "androidForegroundServiceChannel": "Gopeed Background Service",
+  "androidForegroundNotificationTitle": "Gopeed is running",
+  "androidForegroundNotificationText": "Downloads can continue in the background."
+}

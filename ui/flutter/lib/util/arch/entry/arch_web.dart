@@ -1,5 +1,3 @@
 import '../arch.dart';
 
-Architecture doGetArch() {
-  return Architecture.x64;
-}
+Architecture doGetArch() => Architecture.x64;

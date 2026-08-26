@@ -93,7 +93,7 @@ BEGIN
             VALUE "FileDescription", "gopeed" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "gopeed" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2023 com. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 GopeedLab. All rights reserved." "\0"
             VALUE "OriginalFilename", "gopeed.exe" "\0"
             VALUE "ProductName", "gopeed" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

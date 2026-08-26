@@ -15,14 +15,9 @@ class DownloaderConfig {
   ArchiveConfig archive = ArchiveConfig();
   bool autoDeleteMissingFileTasks;
 
-  DownloaderConfig({
-    this.downloadDir = '',
-    this.maxRunning = 0,
-    this.autoDeleteMissingFileTasks = false,
-  });
+  DownloaderConfig({this.downloadDir = '', this.maxRunning = 0, this.autoDeleteMissingFileTasks = false});
 
-  factory DownloaderConfig.fromJson(Map<String, dynamic> json) =>
-      _$DownloaderConfigFromJson(json);
+  factory DownloaderConfig.fromJson(Map<String, dynamic> json) => _$DownloaderConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$DownloaderConfigToJson(this);
 }
@@ -47,14 +42,9 @@ class HttpConfig {
   int connections;
   bool useServerCtime;
 
-  HttpConfig({
-    this.userAgent = '',
-    this.connections = 0,
-    this.useServerCtime = false,
-  });
+  HttpConfig({this.userAgent = '', this.connections = 0, this.useServerCtime = false});
 
-  factory HttpConfig.fromJson(Map<String, dynamic> json) =>
-      _$HttpConfigFromJson(json);
+  factory HttpConfig.fromJson(Map<String, dynamic> json) => _$HttpConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$HttpConfigToJson(this);
 }
@@ -75,8 +65,7 @@ class BtConfig {
     this.seedTime = 0,
   });
 
-  factory BtConfig.fromJson(Map<String, dynamic> json) =>
-      _$BtConfigFromJson(json);
+  factory BtConfig.fromJson(Map<String, dynamic> json) => _$BtConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$BtConfigToJson(this);
 }
@@ -89,16 +78,9 @@ class Ed2kConfig {
   String serverMet;
   String nodesDat;
 
-  Ed2kConfig({
-    this.listenPort = 0,
-    this.udpPort = 0,
-    this.serverAddr = '',
-    this.serverMet = '',
-    this.nodesDat = '',
-  });
+  Ed2kConfig({this.listenPort = 0, this.udpPort = 0, this.serverAddr = '', this.serverMet = '', this.nodesDat = ''});
 
-  factory Ed2kConfig.fromJson(Map<String, dynamic> json) =>
-      _$Ed2kConfigFromJson(json);
+  factory Ed2kConfig.fromJson(Map<String, dynamic> json) => _$Ed2kConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$Ed2kConfigToJson(this);
 }
@@ -106,6 +88,7 @@ class Ed2kConfig {
 @JsonSerializable(explicitToJson: true)
 class ExtraConfig {
   String themeMode;
+  String themeColor;
   String locale;
   bool lastDeleteTaskKeep;
   bool defaultDirectDownload;
@@ -121,6 +104,7 @@ class ExtraConfig {
 
   ExtraConfig({
     this.themeMode = '',
+    this.themeColor = 'green',
     this.locale = '',
     this.lastDeleteTaskKeep = false,
     this.defaultDirectDownload = false,
@@ -144,8 +128,7 @@ class DownloadCategory {
   String path;
   bool isBuiltIn;
   String? nameKey; // i18n key for built-in categories (e.g., 'categoryMusic')
-  bool
-      isDeleted; // Mark built-in categories as deleted instead of removing them
+  bool isDeleted; // Mark built-in categories as deleted instead of removing them
 
   DownloadCategory({
     required this.name,
@@ -155,8 +138,7 @@ class DownloadCategory {
     this.isDeleted = false,
   });
 
-  factory DownloadCategory.fromJson(Map<String, dynamic> json) =>
-      _$DownloadCategoryFromJson(json);
+  factory DownloadCategory.fromJson(Map<String, dynamic> json) => _$DownloadCategoryFromJson(json);
 
   Map<String, dynamic> toJson() => _$DownloadCategoryToJson(this);
 }
@@ -166,10 +148,7 @@ class WebhookConfig {
   bool enable;
   List<String> urls;
 
-  WebhookConfig({
-    this.enable = false,
-    this.urls = const [],
-  });
+  WebhookConfig({this.enable = false, this.urls = const []});
 
   factory WebhookConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? WebhookConfig() : _$WebhookConfigFromJson(json);
@@ -182,10 +161,7 @@ class ScriptConfig {
   bool enable;
   List<String> paths;
 
-  ScriptConfig({
-    this.enable = false,
-    this.paths = const [],
-  });
+  ScriptConfig({this.enable = false, this.paths = const []});
 
   factory ScriptConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ScriptConfig() : _$ScriptConfigFromJson(json);
@@ -211,8 +187,7 @@ class ProxyConfig {
     this.pwd = '',
   });
 
-  factory ProxyConfig.fromJson(Map<String, dynamic> json) =>
-      _$ProxyConfigFromJson(json);
+  factory ProxyConfig.fromJson(Map<String, dynamic> json) => _$ProxyConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$ProxyConfigToJson(this);
 }
@@ -228,16 +203,12 @@ class ExtraConfigBt {
 
   ExtraConfigBt();
 
-  factory ExtraConfigBt.fromJson(Map<String, dynamic> json) =>
-      _$ExtraConfigBtFromJson(json);
+  factory ExtraConfigBt.fromJson(Map<String, dynamic> json) => _$ExtraConfigBtFromJson(json);
 
   Map<String, dynamic> toJson() => _$ExtraConfigBtToJson(this);
 }
 
-enum GithubMirrorType {
-  jsdelivr,
-  ghProxy,
-}
+enum GithubMirrorType { jsdelivr, ghProxy }
 
 @JsonSerializable()
 class GithubMirror {
@@ -246,15 +217,9 @@ class GithubMirror {
   bool isBuiltIn;
   bool isDeleted;
 
-  GithubMirror({
-    required this.type,
-    required this.url,
-    this.isBuiltIn = false,
-    this.isDeleted = false,
-  });
+  GithubMirror({required this.type, required this.url, this.isBuiltIn = false, this.isDeleted = false});
 
-  factory GithubMirror.fromJson(Map<String, dynamic> json) =>
-      _$GithubMirrorFromJson(json);
+  factory GithubMirror.fromJson(Map<String, dynamic> json) => _$GithubMirrorFromJson(json);
 
   Map<String, dynamic> toJson() => _$GithubMirrorToJson(this);
 }
@@ -264,15 +229,10 @@ class ExtraConfigGithubMirror {
   bool enabled;
   List<GithubMirror> mirrors;
 
-  ExtraConfigGithubMirror({
-    this.enabled = true,
-    this.mirrors = const [],
-  });
+  ExtraConfigGithubMirror({this.enabled = true, this.mirrors = const []});
 
   factory ExtraConfigGithubMirror.fromJson(Map<String, dynamic>? json) =>
-      json == null
-          ? ExtraConfigGithubMirror()
-          : _$ExtraConfigGithubMirrorFromJson(json);
+      json == null ? ExtraConfigGithubMirror() : _$ExtraConfigGithubMirrorFromJson(json);
 
   Map<String, dynamic> toJson() => _$ExtraConfigGithubMirrorToJson(this);
 }
@@ -282,10 +242,7 @@ class AutoTorrentConfig {
   bool enable;
   bool deleteAfterDownload;
 
-  AutoTorrentConfig({
-    this.enable = false,
-    this.deleteAfterDownload = false,
-  });
+  AutoTorrentConfig({this.enable = false, this.deleteAfterDownload = false});
 
   factory AutoTorrentConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? AutoTorrentConfig() : _$AutoTorrentConfigFromJson(json);
@@ -298,10 +255,7 @@ class ArchiveConfig {
   bool autoExtract;
   bool deleteAfterExtract;
 
-  ArchiveConfig({
-    this.autoExtract = true,
-    this.deleteAfterExtract = true,
-  });
+  ArchiveConfig({this.autoExtract = true, this.deleteAfterExtract = true});
 
   factory ArchiveConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ArchiveConfig() : _$ArchiveConfigFromJson(json);

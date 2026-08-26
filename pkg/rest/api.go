@@ -197,6 +197,25 @@ func GetTask(w http.ResponseWriter, r *http.Request) {
 	WriteJson(w, model.NewOkResult(task))
 }
 
+func GetTaskStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	taskId := vars["id"]
+	if taskId == "" {
+		WriteJson(w, model.NewErrorResult("param invalid: id", model.CodeInvalidParam))
+		return
+	}
+	status, err := Downloader.RuntimeStatus(taskId)
+	if err != nil {
+		if err == download.ErrTaskNotFound {
+			WriteJson(w, model.NewErrorResult("task not found", model.CodeTaskNotFound))
+			return
+		}
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewOkResult(status))
+}
+
 func GetTasks(w http.ResponseWriter, r *http.Request) {
 	filter, errResult := parseFilter(r)
 	if errResult != nil {

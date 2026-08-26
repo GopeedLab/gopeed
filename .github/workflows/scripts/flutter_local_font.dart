@@ -10,7 +10,7 @@
 //      (including the common pattern where Flutter concatenates the base URL with a relative path)
 //    - Download them into: build/web/assets/gstatic/<path>
 //    - Rewrite "https://fonts.gstatic.com/s/" -> "assets/gstatic/" so runtime loads locally
-//    - Only download font subsets needed by supported locales (parsed from message.dart)
+//    - Only download font subsets needed by supported locales (parsed from lib/l10n/*.arb)
 //
 // Notes:
 // - This script DOES NOT call `flutter build web`. It only patches the output.
@@ -23,15 +23,18 @@ import 'dart:io';
 /// Uses language code prefix to automatically detect the script system.
 /// Returns empty set if base fonts (Latin/Cyrillic/Greek) are sufficient.
 Set<String> _getFontFamiliesForLocale(String locale) {
-  final lang = locale.toLowerCase().split('_').first;
+  final normalizedLocale = locale.toLowerCase().replaceAll('-', '_');
+  final lang = normalizedLocale.split('_').first;
 
   // CJK languages - need specific large font files
   if (lang == 'zh') {
     // Simplified vs Traditional Chinese
-    if (locale.contains('cn') || locale.contains('sg')) {
-      return {'notosanssc'}; // Simplified Chinese
+    if (normalizedLocale.contains('_tw') ||
+        normalizedLocale.contains('_hk') ||
+        normalizedLocale.contains('_mo')) {
+      return {'notosanstc', 'notosanshk'}; // Traditional Chinese (TW, HK, MO)
     }
-    return {'notosanstc', 'notosanshk'}; // Traditional Chinese (TW, HK, MO)
+    return {'notosanssc'}; // Simplified Chinese, including generic zh
   }
   if (lang == 'ja') return {'notosansjp'}; // Japanese
   if (lang == 'ko') return {'notosanskr'}; // Korean
@@ -95,29 +98,25 @@ const _baseFontFamilies = <String>{
   // to reduce bundle size. Add them back if emoji support is needed.
 };
 
-/// Parse supported locales from message.dart file.
-/// Reads the import statements and extracts locale codes like 'zh_cn', 'en_us', etc.
-Set<String> _parseSupportedLocales(File messageFile) {
+/// Parse supported locales from Flutter gen-l10n ARB filenames.
+/// Filenames follow app_<locale>.arb, for example app_zh_CN.arb or app_en.arb.
+Set<String> _parseSupportedLocales(Directory l10nDirectory) {
   final locales = <String>{};
 
-  if (!messageFile.existsSync()) {
-    _fail('Warning: message.dart not found, only base fonts will be used');
+  if (!l10nDirectory.existsSync()) {
+    _fail('Localization directory not found: ${l10nDirectory.path}');
   }
 
-  final content = messageFile.readAsStringSync();
-
-  // Match import statements like: import 'langs/zh_cn.dart';
-  final importRegex = RegExp(r"import\s+'langs/(\w+)\.dart'");
-  for (final match in importRegex.allMatches(content)) {
-    final locale = match.group(1);
-    if (locale != null) {
-      locales.add(locale);
-    }
+  final arbName = RegExp(r'^app_(.+)\.arb$');
+  for (final entity in l10nDirectory.listSync()) {
+    if (entity is! File) continue;
+    final filename = entity.uri.pathSegments.last;
+    final locale = arbName.firstMatch(filename)?.group(1);
+    if (locale != null && locale.isNotEmpty) locales.add(locale);
   }
 
   if (locales.isEmpty) {
-    _fail(
-        'Warning: No locales found in message.dart, only base fonts will be used');
+    _fail('No app_<locale>.arb files found in ${l10nDirectory.path}');
   }
 
   return locales;
@@ -139,7 +138,9 @@ Set<String> _getRequiredFontFamilies(Set<String> locales) {
 /// Font paths have the format: "fontfamily/version/filename.ext"
 /// Example: "notosanssc/v36/xxx.ttf" -> font family is "notosanssc"
 bool _fontMatchesRequiredFamilies(
-    String fontPath, Set<String> requiredFamilies) {
+  String fontPath,
+  Set<String> requiredFamilies,
+) {
   // Extract font family from path (first segment before '/')
   final slashIndex = fontPath.indexOf('/');
   if (slashIndex == -1) {
@@ -158,10 +159,9 @@ Future<void> main(List<String> args) async {
     // but will also try to locate pubspec.yaml by walking up.
     final flutterDir = _findFlutterProjectRoot(Directory.current);
 
-    // Parse supported locales from message.dart
-    final messageFile =
-        File(_join(flutterDir.path, 'lib', 'i18n', 'message.dart'));
-    final supportedLocales = _parseSupportedLocales(messageFile);
+    // Parse supported locales from Flutter gen-l10n ARB files.
+    final l10nDirectory = Directory(_join(flutterDir.path, 'lib', 'l10n'));
+    final supportedLocales = _parseSupportedLocales(l10nDirectory);
     stdout.writeln('Supported locales: ${supportedLocales.join(', ')}');
 
     // Get required font families based on supported locales
@@ -203,7 +203,8 @@ Future<void> main(List<String> args) async {
       if (p.contains('://') || p.startsWith('data:')) continue;
       if (p.startsWith('/') ||
           p.startsWith('assets/') ||
-          p.startsWith('packages/')) continue;
+          p.startsWith('packages/'))
+        continue;
       if (p.contains('..')) continue;
       relAssetsUnderS.add(p);
     }

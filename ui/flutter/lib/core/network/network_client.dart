@@ -1,0 +1,3 @@
+class NetworkClient {
+  const NetworkClient();
+}

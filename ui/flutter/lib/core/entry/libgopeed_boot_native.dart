@@ -38,8 +38,7 @@ class LibgopeedBootNative implements LibgopeedBoot {
     cfg.storage = 'bolt';
     cfg.storageDir = Util.getStorageDir();
     cfg.refreshInterval = 0;
-    var port = await _libgopeed.start(cfg);
-    return port;
+    return _libgopeed.start(cfg);
   }
 
   @override

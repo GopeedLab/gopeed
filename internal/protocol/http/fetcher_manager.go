@@ -18,6 +18,34 @@ type fetcherData struct {
 	RedirectURL string // Saved redirect URL for resume
 }
 
+// cloneConnections creates a stable recovery snapshot while preserving the
+// existing JSON shape. Runtime-only fields remain intentionally excluded by
+// encoding/json because they are private.
+func cloneConnections(connections []*connection) []*connection {
+	clones := make([]*connection, 0, len(connections))
+	for _, source := range connections {
+		if source == nil {
+			continue
+		}
+		clone := &connection{
+			ID:         source.ID,
+			Role:       source.Role,
+			State:      source.State,
+			Downloaded: source.Downloaded,
+			Completed:  source.Completed,
+		}
+		if source.Chunk != nil {
+			clone.Chunk = &chunk{
+				Begin:      source.Chunk.Begin,
+				End:        source.Chunk.End,
+				Downloaded: source.Chunk.Downloaded,
+			}
+		}
+		clones = append(clones, clone)
+	}
+	return clones
+}
+
 // ============================================================================
 // Fetcher Manager
 // ============================================================================
@@ -72,11 +100,15 @@ func (fm *FetcherManager) DefaultConfig() any {
 
 func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
+	_f.connMu.Lock()
+	connections := cloneConnections(_f.connections)
+	_f.connMu.Unlock()
+
 	_f.redirectLock.Lock()
 	redirectURL := _f.redirectURL
 	_f.redirectLock.Unlock()
 	return &fetcherData{
-		Connections: _f.connections,
+		Connections: connections,
 		RedirectURL: redirectURL,
 	}, nil
 }

@@ -6,18 +6,16 @@ part of 'start_config.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-WebViewRpcConfig _$WebViewRpcConfigFromJson(Map<String, dynamic> json) =>
-    WebViewRpcConfig()
-      ..network = json['network'] as String
-      ..address = json['address'] as String
-      ..token = json['token'] as String?;
+WebViewRpcConfig _$WebViewRpcConfigFromJson(Map<String, dynamic> json) => WebViewRpcConfig()
+  ..network = json['network'] as String
+  ..address = json['address'] as String
+  ..token = json['token'] as String?;
 
-Map<String, dynamic> _$WebViewRpcConfigToJson(WebViewRpcConfig instance) =>
-    <String, dynamic>{
-      'network': instance.network,
-      'address': instance.address,
-      'token': instance.token,
-    };
+Map<String, dynamic> _$WebViewRpcConfigToJson(WebViewRpcConfig instance) => <String, dynamic>{
+  'network': instance.network,
+  'address': instance.address,
+  'token': ?instance.token,
+};
 
 StartConfig _$StartConfigFromJson(Map<String, dynamic> json) => StartConfig()
   ..network = json['network'] as String
@@ -28,16 +26,14 @@ StartConfig _$StartConfigFromJson(Map<String, dynamic> json) => StartConfig()
   ..apiToken = json['apiToken'] as String
   ..webViewRpcConfig = json['webViewRpcConfig'] == null
       ? null
-      : WebViewRpcConfig.fromJson(
-          json['webViewRpcConfig'] as Map<String, dynamic>);
+      : WebViewRpcConfig.fromJson(json['webViewRpcConfig'] as Map<String, dynamic>);
 
-Map<String, dynamic> _$StartConfigToJson(StartConfig instance) =>
-    <String, dynamic>{
-      'network': instance.network,
-      'address': instance.address,
-      'storage': instance.storage,
-      'storageDir': instance.storageDir,
-      'refreshInterval': instance.refreshInterval,
-      'apiToken': instance.apiToken,
-      'webViewRpcConfig': instance.webViewRpcConfig,
-    };
+Map<String, dynamic> _$StartConfigToJson(StartConfig instance) => <String, dynamic>{
+  'network': instance.network,
+  'address': instance.address,
+  'storage': instance.storage,
+  'storageDir': instance.storageDir,
+  'refreshInterval': instance.refreshInterval,
+  'apiToken': instance.apiToken,
+  'webViewRpcConfig': ?instance.webViewRpcConfig,
+};

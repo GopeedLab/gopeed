@@ -8,302 +8,238 @@ part of 'downloader_config.dart';
 
 DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
     DownloaderConfig(
-      downloadDir: json['downloadDir'] as String? ?? '',
-      maxRunning: (json['maxRunning'] as num?)?.toInt() ?? 0,
-      autoDeleteMissingFileTasks:
-          json['autoDeleteMissingFileTasks'] as bool? ?? false,
-    )
-      ..protocolConfig = ProtocolConfig.fromJson(
-          json['protocolConfig'] as Map<String, dynamic>?)
+        downloadDir: json['downloadDir'] as String? ?? '',
+        maxRunning: (json['maxRunning'] as num?)?.toInt() ?? 0,
+        autoDeleteMissingFileTasks: json['autoDeleteMissingFileTasks'] as bool? ?? false,
+      )
+      ..protocolConfig = ProtocolConfig.fromJson(json['protocolConfig'] as Map<String, dynamic>?)
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
       ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>)
-      ..webhook =
-          WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
+      ..webhook = WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
       ..script = ScriptConfig.fromJson(json['script'] as Map<String, dynamic>?)
-      ..autoTorrent = AutoTorrentConfig.fromJson(
-          json['autoTorrent'] as Map<String, dynamic>?)
-      ..archive =
-          ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?);
+      ..autoTorrent = AutoTorrentConfig.fromJson(json['autoTorrent'] as Map<String, dynamic>?)
+      ..archive = ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?);
 
-Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
-    <String, dynamic>{
-      'downloadDir': instance.downloadDir,
-      'maxRunning': instance.maxRunning,
-      'protocolConfig': instance.protocolConfig.toJson(),
-      'extra': instance.extra.toJson(),
-      'proxy': instance.proxy.toJson(),
-      'webhook': instance.webhook.toJson(),
-      'script': instance.script.toJson(),
-      'autoTorrent': instance.autoTorrent.toJson(),
-      'archive': instance.archive.toJson(),
-      'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
-    };
-
-ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) =>
-    ProtocolConfig()
-      ..http = HttpConfig.fromJson(json['http'] as Map<String, dynamic>)
-      ..bt = BtConfig.fromJson(json['bt'] as Map<String, dynamic>)
-      ..ed2k = Ed2kConfig.fromJson(
-          json['ed2k'] as Map<String, dynamic>? ?? <String, dynamic>{});
-
-Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) =>
-    <String, dynamic>{
-      'http': instance.http.toJson(),
-      'bt': instance.bt.toJson(),
-      'ed2k': instance.ed2k.toJson(),
-    };
-
-HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
-      userAgent: json['userAgent'] as String? ?? '',
-      connections: (json['connections'] as num?)?.toInt() ?? 0,
-      useServerCtime: json['useServerCtime'] as bool? ?? false,
-    );
-
-Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) =>
-    <String, dynamic>{
-      'userAgent': instance.userAgent,
-      'connections': instance.connections,
-      'useServerCtime': instance.useServerCtime,
-    };
-
-BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
-      listenPort: (json['listenPort'] as num?)?.toInt() ?? 0,
-      trackers: (json['trackers'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-      seedKeep: json['seedKeep'] as bool? ?? false,
-      seedRatio: (json['seedRatio'] as num?)?.toDouble() ?? 0,
-      seedTime: (json['seedTime'] as num?)?.toInt() ?? 0,
-    );
-
-Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
-      'listenPort': instance.listenPort,
-      'trackers': instance.trackers,
-      'seedKeep': instance.seedKeep,
-      'seedRatio': instance.seedRatio,
-      'seedTime': instance.seedTime,
-    };
-
-Ed2kConfig _$Ed2kConfigFromJson(Map<String, dynamic> json) => Ed2kConfig(
-      listenPort: (json['listenPort'] as num?)?.toInt() ?? 0,
-      udpPort: (json['udpPort'] as num?)?.toInt() ?? 0,
-      serverAddr: json['serverAddr'] as String? ?? '',
-      serverMet: json['serverMet'] as String? ?? '',
-      nodesDat: json['nodesDat'] as String? ?? '',
-    );
-
-Map<String, dynamic> _$Ed2kConfigToJson(Ed2kConfig instance) =>
-    <String, dynamic>{
-      'listenPort': instance.listenPort,
-      'udpPort': instance.udpPort,
-      'serverAddr': instance.serverAddr,
-      'serverMet': instance.serverMet,
-      'nodesDat': instance.nodesDat,
-    };
-
-ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
-      themeMode: json['themeMode'] as String? ?? '',
-      locale: json['locale'] as String? ?? '',
-      lastDeleteTaskKeep: json['lastDeleteTaskKeep'] as bool? ?? false,
-      defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
-      defaultBtClient: json['defaultBtClient'] as bool? ?? true,
-      notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
-      autoStartTasks: json['autoStartTasks'] as bool? ?? false,
-      desktopNotification: json['desktopNotification'] as bool? ?? true,
-      backgroundLocationKeepAlive:
-          json['backgroundLocationKeepAlive'] as bool? ?? false,
-      downloadCategories: (json['downloadCategories'] as List<dynamic>?)
-              ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-    )
-      ..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>)
-      ..githubMirror = ExtraConfigGithubMirror.fromJson(
-          json['githubMirror'] as Map<String, dynamic>?);
-
-Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
-    <String, dynamic>{
-      'themeMode': instance.themeMode,
-      'locale': instance.locale,
-      'lastDeleteTaskKeep': instance.lastDeleteTaskKeep,
-      'defaultDirectDownload': instance.defaultDirectDownload,
-      'defaultBtClient': instance.defaultBtClient,
-      'notifyWhenNewVersion': instance.notifyWhenNewVersion,
-      'autoStartTasks': instance.autoStartTasks,
-      'desktopNotification': instance.desktopNotification,
-      'backgroundLocationKeepAlive': instance.backgroundLocationKeepAlive,
-      'downloadCategories':
-          instance.downloadCategories.map((e) => e.toJson()).toList(),
-      'bt': instance.bt.toJson(),
-      'githubMirror': instance.githubMirror.toJson(),
-    };
-
-DownloadCategory _$DownloadCategoryFromJson(Map<String, dynamic> json) =>
-    DownloadCategory(
-      name: json['name'] as String,
-      path: json['path'] as String,
-      isBuiltIn: json['isBuiltIn'] as bool? ?? false,
-      nameKey: json['nameKey'] as String?,
-      isDeleted: json['isDeleted'] as bool? ?? false,
-    );
-
-Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) {
-  final val = <String, dynamic>{
-    'name': instance.name,
-    'path': instance.path,
-    'isBuiltIn': instance.isBuiltIn,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('nameKey', instance.nameKey);
-  val['isDeleted'] = instance.isDeleted;
-  return val;
-}
-
-WebhookConfig _$WebhookConfigFromJson(Map<String, dynamic> json) =>
-    WebhookConfig(
-      enable: json['enable'] as bool? ?? false,
-      urls:
-          (json['urls'] as List<dynamic>?)?.map((e) => e as String).toList() ??
-              const [],
-    );
-
-Map<String, dynamic> _$WebhookConfigToJson(WebhookConfig instance) =>
-    <String, dynamic>{
-      'enable': instance.enable,
-      'urls': instance.urls,
-    };
-
-ScriptConfig _$ScriptConfigFromJson(Map<String, dynamic> json) => ScriptConfig(
-      enable: json['enable'] as bool? ?? false,
-      paths:
-          (json['paths'] as List<dynamic>?)?.map((e) => e as String).toList() ??
-              const [],
-    );
-
-Map<String, dynamic> _$ScriptConfigToJson(ScriptConfig instance) =>
-    <String, dynamic>{
-      'enable': instance.enable,
-      'paths': instance.paths,
-    };
-
-ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig(
-      enable: json['enable'] as bool? ?? false,
-      system: json['system'] as bool? ?? false,
-      scheme: json['scheme'] as String? ?? '',
-      host: json['host'] as String? ?? '',
-      usr: json['usr'] as String? ?? '',
-      pwd: json['pwd'] as String? ?? '',
-    );
-
-Map<String, dynamic> _$ProxyConfigToJson(ProxyConfig instance) =>
-    <String, dynamic>{
-      'enable': instance.enable,
-      'system': instance.system,
-      'scheme': instance.scheme,
-      'host': instance.host,
-      'usr': instance.usr,
-      'pwd': instance.pwd,
-    };
-
-ExtraConfigBt _$ExtraConfigBtFromJson(Map<String, dynamic> json) =>
-    ExtraConfigBt()
-      ..trackerSubscribeUrls = (json['trackerSubscribeUrls'] as List<dynamic>)
-          .map((e) => e as String)
-          .toList()
-      ..subscribeTrackers = (json['subscribeTrackers'] as List<dynamic>)
-          .map((e) => e as String)
-          .toList()
-      ..autoUpdateTrackers = json['autoUpdateTrackers'] as bool
-      ..lastTrackerUpdateTime = json['lastTrackerUpdateTime'] == null
-          ? null
-          : DateTime.parse(json['lastTrackerUpdateTime'] as String)
-      ..customTrackers = (json['customTrackers'] as List<dynamic>)
-          .map((e) => e as String)
-          .toList();
-
-Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) {
-  final val = <String, dynamic>{
-    'trackerSubscribeUrls': instance.trackerSubscribeUrls,
-    'subscribeTrackers': instance.subscribeTrackers,
-    'autoUpdateTrackers': instance.autoUpdateTrackers,
-  };
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('lastTrackerUpdateTime',
-      instance.lastTrackerUpdateTime?.toIso8601String());
-  val['customTrackers'] = instance.customTrackers;
-  return val;
-}
-
-GithubMirror _$GithubMirrorFromJson(Map<String, dynamic> json) => GithubMirror(
-      type: $enumDecode(_$GithubMirrorTypeEnumMap, json['type']),
-      url: json['url'] as String,
-      isBuiltIn: json['isBuiltIn'] as bool? ?? false,
-      isDeleted: json['isDeleted'] as bool? ?? false,
-    );
-
-Map<String, dynamic> _$GithubMirrorToJson(GithubMirror instance) =>
-    <String, dynamic>{
-      'type': _$GithubMirrorTypeEnumMap[instance.type]!,
-      'url': instance.url,
-      'isBuiltIn': instance.isBuiltIn,
-      'isDeleted': instance.isDeleted,
-    };
-
-const _$GithubMirrorTypeEnumMap = {
-  GithubMirrorType.jsdelivr: 'jsdelivr',
-  GithubMirrorType.ghProxy: 'ghProxy',
+Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) => <String, dynamic>{
+  'downloadDir': instance.downloadDir,
+  'maxRunning': instance.maxRunning,
+  'protocolConfig': instance.protocolConfig.toJson(),
+  'extra': instance.extra.toJson(),
+  'proxy': instance.proxy.toJson(),
+  'webhook': instance.webhook.toJson(),
+  'script': instance.script.toJson(),
+  'autoTorrent': instance.autoTorrent.toJson(),
+  'archive': instance.archive.toJson(),
+  'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
 };
 
-ExtraConfigGithubMirror _$ExtraConfigGithubMirrorFromJson(
-        Map<String, dynamic> json) =>
-    ExtraConfigGithubMirror(
-      enabled: json['enabled'] as bool? ?? true,
-      mirrors: (json['mirrors'] as List<dynamic>?)
-              ?.map((e) => GithubMirror.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          const [],
-    );
+ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) => ProtocolConfig()
+  ..http = HttpConfig.fromJson(json['http'] as Map<String, dynamic>)
+  ..bt = BtConfig.fromJson(json['bt'] as Map<String, dynamic>)
+  ..ed2k = Ed2kConfig.fromJson(json['ed2k'] as Map<String, dynamic>);
 
-Map<String, dynamic> _$ExtraConfigGithubMirrorToJson(
-        ExtraConfigGithubMirror instance) =>
-    <String, dynamic>{
-      'enabled': instance.enabled,
-      'mirrors': instance.mirrors.map((e) => e.toJson()).toList(),
-    };
+Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) => <String, dynamic>{
+  'http': instance.http.toJson(),
+  'bt': instance.bt.toJson(),
+  'ed2k': instance.ed2k.toJson(),
+};
 
-AutoTorrentConfig _$AutoTorrentConfigFromJson(Map<String, dynamic> json) =>
-    AutoTorrentConfig(
-      enable: json['enable'] as bool? ?? false,
-      deleteAfterDownload: json['deleteAfterDownload'] as bool? ?? false,
-    );
+HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
+  userAgent: json['userAgent'] as String? ?? '',
+  connections: (json['connections'] as num?)?.toInt() ?? 0,
+  useServerCtime: json['useServerCtime'] as bool? ?? false,
+);
 
-Map<String, dynamic> _$AutoTorrentConfigToJson(AutoTorrentConfig instance) =>
-    <String, dynamic>{
-      'enable': instance.enable,
-      'deleteAfterDownload': instance.deleteAfterDownload,
-    };
+Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) => <String, dynamic>{
+  'userAgent': instance.userAgent,
+  'connections': instance.connections,
+  'useServerCtime': instance.useServerCtime,
+};
 
-ArchiveConfig _$ArchiveConfigFromJson(Map<String, dynamic> json) =>
-    ArchiveConfig(
-      autoExtract: json['autoExtract'] as bool? ?? true,
-      deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? true,
-    );
+BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
+  listenPort: (json['listenPort'] as num?)?.toInt() ?? 0,
+  trackers: (json['trackers'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+  seedKeep: json['seedKeep'] as bool? ?? false,
+  seedRatio: (json['seedRatio'] as num?)?.toDouble() ?? 0,
+  seedTime: (json['seedTime'] as num?)?.toInt() ?? 0,
+);
 
-Map<String, dynamic> _$ArchiveConfigToJson(ArchiveConfig instance) =>
-    <String, dynamic>{
-      'autoExtract': instance.autoExtract,
-      'deleteAfterExtract': instance.deleteAfterExtract,
-    };
+Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
+  'listenPort': instance.listenPort,
+  'trackers': instance.trackers,
+  'seedKeep': instance.seedKeep,
+  'seedRatio': instance.seedRatio,
+  'seedTime': instance.seedTime,
+};
+
+Ed2kConfig _$Ed2kConfigFromJson(Map<String, dynamic> json) => Ed2kConfig(
+  listenPort: (json['listenPort'] as num?)?.toInt() ?? 0,
+  udpPort: (json['udpPort'] as num?)?.toInt() ?? 0,
+  serverAddr: json['serverAddr'] as String? ?? '',
+  serverMet: json['serverMet'] as String? ?? '',
+  nodesDat: json['nodesDat'] as String? ?? '',
+);
+
+Map<String, dynamic> _$Ed2kConfigToJson(Ed2kConfig instance) => <String, dynamic>{
+  'listenPort': instance.listenPort,
+  'udpPort': instance.udpPort,
+  'serverAddr': instance.serverAddr,
+  'serverMet': instance.serverMet,
+  'nodesDat': instance.nodesDat,
+};
+
+ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) =>
+    ExtraConfig(
+        themeMode: json['themeMode'] as String? ?? '',
+        themeColor: json['themeColor'] as String? ?? 'green',
+        locale: json['locale'] as String? ?? '',
+        lastDeleteTaskKeep: json['lastDeleteTaskKeep'] as bool? ?? false,
+        defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
+        defaultBtClient: json['defaultBtClient'] as bool? ?? true,
+        notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
+        autoStartTasks: json['autoStartTasks'] as bool? ?? false,
+        desktopNotification: json['desktopNotification'] as bool? ?? true,
+        backgroundLocationKeepAlive: json['backgroundLocationKeepAlive'] as bool? ?? false,
+        downloadCategories:
+            (json['downloadCategories'] as List<dynamic>?)
+                ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
+      )
+      ..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>)
+      ..githubMirror = ExtraConfigGithubMirror.fromJson(json['githubMirror'] as Map<String, dynamic>?);
+
+Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynamic>{
+  'themeMode': instance.themeMode,
+  'themeColor': instance.themeColor,
+  'locale': instance.locale,
+  'lastDeleteTaskKeep': instance.lastDeleteTaskKeep,
+  'defaultDirectDownload': instance.defaultDirectDownload,
+  'defaultBtClient': instance.defaultBtClient,
+  'notifyWhenNewVersion': instance.notifyWhenNewVersion,
+  'autoStartTasks': instance.autoStartTasks,
+  'desktopNotification': instance.desktopNotification,
+  'backgroundLocationKeepAlive': instance.backgroundLocationKeepAlive,
+  'downloadCategories': instance.downloadCategories.map((e) => e.toJson()).toList(),
+  'bt': instance.bt.toJson(),
+  'githubMirror': instance.githubMirror.toJson(),
+};
+
+DownloadCategory _$DownloadCategoryFromJson(Map<String, dynamic> json) => DownloadCategory(
+  name: json['name'] as String,
+  path: json['path'] as String,
+  isBuiltIn: json['isBuiltIn'] as bool? ?? false,
+  nameKey: json['nameKey'] as String?,
+  isDeleted: json['isDeleted'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) => <String, dynamic>{
+  'name': instance.name,
+  'path': instance.path,
+  'isBuiltIn': instance.isBuiltIn,
+  'nameKey': ?instance.nameKey,
+  'isDeleted': instance.isDeleted,
+};
+
+WebhookConfig _$WebhookConfigFromJson(Map<String, dynamic> json) => WebhookConfig(
+  enable: json['enable'] as bool? ?? false,
+  urls: (json['urls'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+);
+
+Map<String, dynamic> _$WebhookConfigToJson(WebhookConfig instance) => <String, dynamic>{
+  'enable': instance.enable,
+  'urls': instance.urls,
+};
+
+ScriptConfig _$ScriptConfigFromJson(Map<String, dynamic> json) => ScriptConfig(
+  enable: json['enable'] as bool? ?? false,
+  paths: (json['paths'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+);
+
+Map<String, dynamic> _$ScriptConfigToJson(ScriptConfig instance) => <String, dynamic>{
+  'enable': instance.enable,
+  'paths': instance.paths,
+};
+
+ProxyConfig _$ProxyConfigFromJson(Map<String, dynamic> json) => ProxyConfig(
+  enable: json['enable'] as bool? ?? false,
+  system: json['system'] as bool? ?? false,
+  scheme: json['scheme'] as String? ?? '',
+  host: json['host'] as String? ?? '',
+  usr: json['usr'] as String? ?? '',
+  pwd: json['pwd'] as String? ?? '',
+);
+
+Map<String, dynamic> _$ProxyConfigToJson(ProxyConfig instance) => <String, dynamic>{
+  'enable': instance.enable,
+  'system': instance.system,
+  'scheme': instance.scheme,
+  'host': instance.host,
+  'usr': instance.usr,
+  'pwd': instance.pwd,
+};
+
+ExtraConfigBt _$ExtraConfigBtFromJson(Map<String, dynamic> json) => ExtraConfigBt()
+  ..trackerSubscribeUrls = (json['trackerSubscribeUrls'] as List<dynamic>).map((e) => e as String).toList()
+  ..subscribeTrackers = (json['subscribeTrackers'] as List<dynamic>).map((e) => e as String).toList()
+  ..autoUpdateTrackers = json['autoUpdateTrackers'] as bool
+  ..lastTrackerUpdateTime = json['lastTrackerUpdateTime'] == null
+      ? null
+      : DateTime.parse(json['lastTrackerUpdateTime'] as String)
+  ..customTrackers = (json['customTrackers'] as List<dynamic>).map((e) => e as String).toList();
+
+Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) => <String, dynamic>{
+  'trackerSubscribeUrls': instance.trackerSubscribeUrls,
+  'subscribeTrackers': instance.subscribeTrackers,
+  'autoUpdateTrackers': instance.autoUpdateTrackers,
+  'lastTrackerUpdateTime': ?instance.lastTrackerUpdateTime?.toIso8601String(),
+  'customTrackers': instance.customTrackers,
+};
+
+GithubMirror _$GithubMirrorFromJson(Map<String, dynamic> json) => GithubMirror(
+  type: $enumDecode(_$GithubMirrorTypeEnumMap, json['type']),
+  url: json['url'] as String,
+  isBuiltIn: json['isBuiltIn'] as bool? ?? false,
+  isDeleted: json['isDeleted'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$GithubMirrorToJson(GithubMirror instance) => <String, dynamic>{
+  'type': _$GithubMirrorTypeEnumMap[instance.type]!,
+  'url': instance.url,
+  'isBuiltIn': instance.isBuiltIn,
+  'isDeleted': instance.isDeleted,
+};
+
+const _$GithubMirrorTypeEnumMap = {GithubMirrorType.jsdelivr: 'jsdelivr', GithubMirrorType.ghProxy: 'ghProxy'};
+
+ExtraConfigGithubMirror _$ExtraConfigGithubMirrorFromJson(Map<String, dynamic> json) => ExtraConfigGithubMirror(
+  enabled: json['enabled'] as bool? ?? true,
+  mirrors:
+      (json['mirrors'] as List<dynamic>?)?.map((e) => GithubMirror.fromJson(e as Map<String, dynamic>)).toList() ??
+      const [],
+);
+
+Map<String, dynamic> _$ExtraConfigGithubMirrorToJson(ExtraConfigGithubMirror instance) => <String, dynamic>{
+  'enabled': instance.enabled,
+  'mirrors': instance.mirrors.map((e) => e.toJson()).toList(),
+};
+
+AutoTorrentConfig _$AutoTorrentConfigFromJson(Map<String, dynamic> json) => AutoTorrentConfig(
+  enable: json['enable'] as bool? ?? false,
+  deleteAfterDownload: json['deleteAfterDownload'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$AutoTorrentConfigToJson(AutoTorrentConfig instance) => <String, dynamic>{
+  'enable': instance.enable,
+  'deleteAfterDownload': instance.deleteAfterDownload,
+};
+
+ArchiveConfig _$ArchiveConfigFromJson(Map<String, dynamic> json) => ArchiveConfig(
+  autoExtract: json['autoExtract'] as bool? ?? true,
+  deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? true,
+);
+
+Map<String, dynamic> _$ArchiveConfigToJson(ArchiveConfig instance) => <String, dynamic>{
+  'autoExtract': instance.autoExtract,
+  'deleteAfterExtract': instance.deleteAfterExtract,
+};

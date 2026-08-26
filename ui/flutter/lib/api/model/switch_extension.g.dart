@@ -6,12 +6,6 @@ part of 'switch_extension.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-SwitchExtension _$SwitchExtensionFromJson(Map<String, dynamic> json) =>
-    SwitchExtension(
-      status: json['status'] as bool,
-    );
+SwitchExtension _$SwitchExtensionFromJson(Map<String, dynamic> json) => SwitchExtension(status: json['status'] as bool);
 
-Map<String, dynamic> _$SwitchExtensionToJson(SwitchExtension instance) =>
-    <String, dynamic>{
-      'status': instance.status,
-    };
+Map<String, dynamic> _$SwitchExtensionToJson(SwitchExtension instance) => <String, dynamic>{'status': instance.status};

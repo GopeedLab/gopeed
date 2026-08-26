@@ -1,6 +1,8 @@
 package download
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -32,6 +34,8 @@ const (
 	bucketTask = "task"
 	// task download data bucket
 	bucketSave = "save"
+	// task statistics snapshot bucket
+	bucketTaskStats = "task_stats"
 	// protocol-level shared client state bucket
 	bucketProtocolState = "protocol_state"
 	// downloader config bucket
@@ -147,7 +151,7 @@ func (d *Downloader) Setup() error {
 	d.blob = internalblob.NewRegistry("")
 
 	// setup storage
-	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
+	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketTaskStats, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
 		return err
 	}
 	// load config from storage
@@ -222,7 +226,10 @@ func (d *Downloader) Setup() error {
 
 	// handle upload
 	go func() {
-		for _, task := range d.tasks {
+		d.lock.Lock()
+		tasks := append([]*Task(nil), d.tasks...)
+		d.lock.Unlock()
+		for _, task := range tasks {
 			if task.Status == base.DownloadStatusDone && task.Uploading {
 				if err := d.restoreTask(task); err != nil {
 					d.Logger.Error().Stack().Err(err).Msgf("task upload restore fetcher failed, task id: %s", task.ID)
@@ -239,8 +246,11 @@ func (d *Downloader) Setup() error {
 	// calculate download speed every tick
 	go func() {
 		for !d.closed.Load() {
-			if len(d.tasks) > 0 {
-				for _, task := range d.tasks {
+			d.lock.Lock()
+			tasks := append([]*Task(nil), d.tasks...)
+			d.lock.Unlock()
+			if len(tasks) > 0 {
+				for _, task := range tasks {
 					func() {
 						// Do not acquire d.lock (via GetTask) while holding
 						// statusLock; scheduling uses the opposite lock order.
@@ -276,6 +286,12 @@ func (d *Downloader) Setup() error {
 							task.Progress.Uploaded = currentUploaded
 						}
 						task.statusLock.Unlock()
+						// Stats are pulled on the same cadence as speed so fetchers stay
+						// storage-agnostic. Runtime is refreshed in memory every tick, while
+						// only a changed durable Snapshot reaches bucketTaskStats.
+						if err := d.captureTaskStats(task, true, false); err != nil {
+							d.Logger.Warn().Err(err).Msgf("persist task stats failed, task id: %s", task.ID)
+						}
 						// Listener callbacks may Pause/Continue and acquire statusLock.
 						d.emit(EventKeyProgress, task)
 
@@ -811,19 +827,189 @@ func (d *Downloader) Stats(id string) (sr any, err error) {
 	if task == nil {
 		return sr, ErrTaskNotFound
 	}
-	if task.fetcher == nil {
-		err = func() error {
-			task.statusLock.Lock()
-			defer task.statusLock.Unlock()
 
-			return d.restoreFetcher(task)
-		}()
-		if err != nil {
-			return
+	// A loaded fetcher is authoritative. Query it directly without restoring a
+	// paused fetcher from bucketSave: statistics reads must never consume or
+	// otherwise mutate download recovery state.
+	task.lock.Lock()
+	if task.fetcher != nil {
+		status := d.taskStatus(task)
+		live := status == base.DownloadStatusRunning || task.Uploading
+		if captureErr := d.captureTaskStats(task, live, false); captureErr != nil {
+			d.Logger.Warn().Err(captureErr).Msgf("capture task stats failed, task id: %s", task.ID)
 		}
 	}
-	sr = task.fetcher.Stats()
-	return
+	task.lock.Unlock()
+
+	stats, err := d.loadTaskStats(task)
+	if err != nil || stats == nil {
+		return nil, err
+	}
+	return stats, nil
+}
+
+type storedTaskStats struct {
+	Snapshot json.RawMessage `json:"snapshot"`
+}
+
+// captureTaskStats updates the task-level cache from a loaded fetcher and
+// persists only the stable Snapshot payload. Runtime telemetry is deliberately
+// discarded as soon as a task is no longer active.
+func (d *Downloader) captureTaskStats(task *Task, live, force bool) error {
+	if task == nil || task.fetcher == nil {
+		return nil
+	}
+	stats := task.fetcher.Stats()
+	if stats == nil {
+		return nil
+	}
+	if !live {
+		stats = &fetcher.Stats{Snapshot: stats.Snapshot}
+	}
+
+	hasSnapshotUpdate := stats.Snapshot != nil
+	var snapshot json.RawMessage
+	if hasSnapshotUpdate {
+		encoded, err := json.Marshal(stats.Snapshot)
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(encoded, []byte("null")) {
+			snapshot = encoded
+		} else {
+			hasSnapshotUpdate = false
+		}
+	}
+
+	task.statsLock.Lock()
+	defer task.statsLock.Unlock()
+	if err := d.loadStoredTaskStatsLocked(task); err != nil {
+		return err
+	}
+	if !hasSnapshotUpdate {
+		// A nil Snapshot means the protocol is temporarily unable to provide a
+		// trustworthy stable view (for example while BT verifies restored
+		// storage). Keep the previous Snapshot and refresh Runtime only.
+		var previousSnapshot any
+		if task.stats != nil {
+			previousSnapshot = task.stats.Snapshot
+		}
+		if previousSnapshot == nil && len(task.statsSnapshot) > 0 {
+			previousSnapshot = append(json.RawMessage(nil), task.statsSnapshot...)
+		}
+		if previousSnapshot == nil && stats.Runtime == nil {
+			task.stats = nil
+		} else {
+			task.stats = &fetcher.Stats{Snapshot: previousSnapshot, Runtime: stats.Runtime}
+		}
+		return nil
+	}
+
+	task.stats = stats
+	if !force && bytes.Equal(snapshot, task.statsSnapshot) {
+		return nil
+	}
+
+	if err := d.storage.Put(bucketTaskStats, task.ID, &storedTaskStats{Snapshot: snapshot}); err != nil {
+		return err
+	}
+	task.statsSnapshot = append(task.statsSnapshot[:0], snapshot...)
+	return nil
+}
+
+// loadTaskStats lazily restores a task snapshot. The protocol payload stays as
+// json.RawMessage so Downloader remains independent from HTTP, BT, and ED2K
+// schemas and can return it without a second decode/encode cycle.
+func (d *Downloader) loadTaskStats(task *Task) (*fetcher.Stats, error) {
+	task.statsLock.Lock()
+	defer task.statsLock.Unlock()
+	if err := d.loadStoredTaskStatsLocked(task); err != nil {
+		return nil, err
+	}
+	return task.stats, nil
+}
+
+// loadStoredTaskStatsLocked initializes the cache from storage once. Caller
+// must hold statsLock. It is shared by reads and nil-Snapshot refreshes so the
+// latter can retain a trusted snapshot after process restart.
+func (d *Downloader) loadStoredTaskStatsLocked(task *Task) error {
+	if task.statsLoaded {
+		return nil
+	}
+	var stored storedTaskStats
+	exists, err := d.storage.Get(bucketTaskStats, task.ID, &stored)
+	if err != nil {
+		return err
+	}
+	task.statsLoaded = true
+	if !exists || len(stored.Snapshot) == 0 {
+		return nil
+	}
+	task.statsSnapshot = append(json.RawMessage(nil), stored.Snapshot...)
+	task.stats = &fetcher.Stats{
+		Snapshot: append(json.RawMessage(nil), stored.Snapshot...),
+	}
+	return nil
+}
+
+// RuntimeStatus returns the small task snapshot used by high-frequency detail
+// polling. Reading task.lock before statusLock follows the same lock order as
+// pause and patch operations, while also keeping fetcher and resource metadata
+// stable while file progress is collected.
+func (d *Downloader) RuntimeStatus(id string) (*TaskRuntimeStatus, error) {
+	task := d.GetTask(id)
+	if task == nil {
+		return nil, ErrTaskNotFound
+	}
+
+	task.lock.Lock()
+	defer task.lock.Unlock()
+	task.statusLock.Lock()
+	defer task.statusLock.Unlock()
+
+	result := &TaskRuntimeStatus{
+		Status: task.Status,
+		Files:  make([]FileRuntimeStatus, 0),
+	}
+	if task.Progress != nil {
+		result.Used = task.Progress.Used
+		result.Speed = task.Progress.Speed
+		result.Downloaded = task.Progress.Downloaded
+		result.UploadSpeed = task.Progress.UploadSpeed
+		result.Uploaded = task.Progress.Uploaded
+		result.ExtractStatus = task.Progress.ExtractStatus
+		result.ExtractProgress = task.Progress.ExtractProgress
+	}
+	if task.Meta == nil || task.Meta.Res == nil {
+		return result, nil
+	}
+
+	result.Total = task.Meta.Res.Size
+	if task.fetcher == nil {
+		return result, nil
+	}
+
+	fileProgress := task.fetcher.Progress()
+	var selectedFiles []int
+	if task.Meta.Opts != nil {
+		selectedFiles = task.Meta.Opts.SelectFiles
+	}
+	resourceFiles := task.Meta.Res.Files
+	for progressIndex, downloaded := range fileProgress {
+		resourceIndex := progressIndex
+		if progressIndex < len(selectedFiles) {
+			resourceIndex = selectedFiles[progressIndex]
+		}
+		if resourceIndex < 0 || resourceIndex >= len(resourceFiles) {
+			continue
+		}
+		result.Files = append(result.Files, FileRuntimeStatus{
+			Index:      resourceIndex,
+			Size:       resourceFiles[resourceIndex].Size,
+			Downloaded: downloaded,
+		})
+	}
+	return result, nil
 }
 
 func (d *Downloader) doDelete(task *Task, force bool) (err error) {
@@ -833,6 +1019,9 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 			return err
 		}
 		if err := d.storage.Delete(bucketSave, task.ID); err != nil {
+			return err
+		}
+		if err := d.storage.Delete(bucketTaskStats, task.ID); err != nil {
 			return err
 		}
 
@@ -1116,6 +1305,9 @@ func (d *Downloader) watch(task *Task) {
 		if !d.markTaskDone(task) {
 			return
 		}
+		if err := d.captureTaskStats(task, false, true); err != nil {
+			d.Logger.Error().Stack().Err(err).Msgf("persist completed task stats failed, task id: %s", task.ID)
+		}
 		d.storage.Put(bucketTask, task.ID, task.clone())
 		d.emit(EventKeyDone, task)
 		d.emit(EventKeyFinally, task, err)
@@ -1228,6 +1420,9 @@ func (d *Downloader) handleOnError(task *Task, err error, resetFetcher bool) {
 			d.Logger.Warn().Err(resetErr).Msgf("reset recovered task fetcher failed, task id: %s", task.ID)
 		}
 	}
+	if statsErr := d.captureTaskStats(task, false, true); statsErr != nil {
+		d.Logger.Warn().Err(statsErr).Msgf("persist failed task stats failed, task id: %s", task.ID)
+	}
 	task.lock.Unlock()
 	if d.taskStatus(task) == base.DownloadStatusError {
 		d.releaseBlobTask(task)
@@ -1265,6 +1460,14 @@ func (d *Downloader) resetTaskFetcher(task *Task) error {
 	if task.Progress != nil {
 		task.Progress.Downloaded = 0
 		task.Progress.Speed = 0
+	}
+	task.statsLock.Lock()
+	task.statsLoaded = true
+	task.stats = nil
+	task.statsSnapshot = nil
+	task.statsLock.Unlock()
+	if err := d.storage.Delete(bucketTaskStats, task.ID); err != nil {
+		return err
 	}
 	return d.storage.Delete(bucketSave, task.ID)
 }
@@ -1492,6 +1695,11 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			return err
 		}
 		started = true
+		if err := d.captureTaskStats(task, true, true); err != nil {
+			// Statistics are auxiliary. A storage or serialization failure must not
+			// turn an already-started download into a failed task.
+			d.Logger.Warn().Err(err).Msgf("persist started task stats failed, task id: %s", task.ID)
+		}
 		if err := d.saveTask(task); err != nil {
 			return err
 		}
@@ -1580,6 +1788,13 @@ func (d *Downloader) runPauseHandler(task *Task, generation uint64, pauseFetcher
 	if pauseFetcher && task.fetcher != nil {
 		if err := task.fetcher.Pause(); err != nil {
 			return false, err
+		}
+	}
+	if task.fetcher != nil {
+		if err := d.captureTaskStats(task, false, true); err != nil {
+			// The fetcher is already paused at this point. Keep the task lifecycle
+			// successful even if its optional statistics snapshot cannot be stored.
+			d.Logger.Warn().Err(err).Msgf("persist paused task stats failed, task id: %s", task.ID)
 		}
 	}
 	if task.fetcherManager != nil && task.fetcher != nil {
@@ -2063,6 +2278,7 @@ func initTask(task *Task) {
 
 	task.statusLock = &sync.Mutex{}
 	task.lock = &sync.Mutex{}
+	task.statsLock = &sync.Mutex{}
 	task.blobRefLock = &sync.Mutex{}
 	task.speedArr = make([]int64, 0)
 	task.uploadSpeedArr = make([]int64, 0)

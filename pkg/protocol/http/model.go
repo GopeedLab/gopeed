@@ -30,6 +30,11 @@ type Stats struct {
 
 type StatsConnection struct {
 	Downloaded int64 `json:"downloaded"`
+	// Total is the resource size divided by the current number of connections,
+	// rounded up to a whole byte. Every connection in one snapshot uses the same
+	// denominator so clients can compare their downloaded contributions. It is
+	// zero when the resource size is unknown.
+	Total      int64 `json:"total"`
 	Completed  bool  `json:"completed"`
 	Failed     bool  `json:"failed"`
 	RetryTimes int   `json:"retryTimes"`

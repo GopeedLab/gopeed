@@ -1,49 +1,41 @@
 package com.gopeed.gopeed
 
-import androidx.annotation.NonNull
 import com.gopeed.libgopeed.Libgopeed
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.StandardMethodCodec
 
-open class MainActivity : FlutterActivity() {
-    private val CHANNEL = "gopeed.com/libgopeed"
-
-    protected open fun isDialogMode(): Boolean = false
-
-    override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
+class MainActivity : FlutterActivity() {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
         val taskQueue =
             flutterEngine.dartExecutor.binaryMessenger.makeBackgroundTaskQueue()
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            CHANNEL,
+            LIBGOPEED_CHANNEL,
             StandardMethodCodec.INSTANCE,
-            taskQueue
+            taskQueue,
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "start" -> {
-                    val cfg = call.argument<String>("cfg")
                     try {
-                        val port = Libgopeed.start(cfg)
-                        result.success(port)
-                    } catch (e: Exception) {
-                        result.error("ERROR", e.message, null)
+                        result.success(Libgopeed.start(call.argument<String>("cfg")))
+                    } catch (error: Exception) {
+                        result.error("ERROR", error.message, null)
                     }
                 }
                 "stop" -> {
                     Libgopeed.stop()
                     result.success(null)
                 }
-                "isDialogMode" -> {
-                    result.success(isDialogMode())
-                }
-                else -> {
-                    result.notImplemented()
-                }
+                else -> result.notImplemented()
             }
         }
     }
 
+    private companion object {
+        const val LIBGOPEED_CHANNEL = "gopeed.com/libgopeed"
+    }
 }

@@ -1,5 +1,4 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '11.0'
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -33,12 +32,16 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # share_handler addition start
+  # The iOS share extension and the Flutter plugin exchange the incoming share
+  # payload through the models pod supplied by share_handler_ios.
   target 'ShareExtension' do
     inherit! :search_paths
-    pod "share_handler_ios_models", :path => ".symlinks/plugins/share_handler_ios/ios/Models"
+    pod 'share_handler_ios_models', :path => '.symlinks/plugins/share_handler_ios/ios/Models'
   end
-  # share_handler addition end
+
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
 end
 
 post_install do |installer|

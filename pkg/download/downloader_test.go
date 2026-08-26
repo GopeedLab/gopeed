@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -102,6 +103,7 @@ func (m *generationTestManager) Close() error { return nil }
 type generationTestFetcher struct {
 	manager *generationTestManager
 	meta    *fetcher.FetcherMeta
+	stats   *fetcher.Stats
 	done    chan error
 }
 
@@ -152,7 +154,7 @@ func (f *generationTestFetcher) Pause() error {
 	return nil
 }
 func (f *generationTestFetcher) Close() error               { return nil }
-func (f *generationTestFetcher) Stats() any                 { return nil }
+func (f *generationTestFetcher) Stats() *fetcher.Stats      { return f.stats }
 func (f *generationTestFetcher) Meta() *fetcher.FetcherMeta { return f.meta }
 func (f *generationTestFetcher) Progress() fetcher.Progress { return fetcher.Progress{1} }
 func (f *generationTestFetcher) Wait() error                { return <-f.done }
@@ -1333,6 +1335,241 @@ func TestDownloader_Stats(t *testing.T) {
 	if stats == nil {
 		t.Error("Stats() returned nil stats")
 	}
+	statsFrame, ok := stats.(*fetcher.Stats)
+	if !ok {
+		t.Fatalf("Stats() type = %T, want *fetcher.Stats", stats)
+	}
+	httpStats, ok := statsFrame.Snapshot.(*http.Stats)
+	if !ok {
+		t.Fatalf("Stats().Snapshot type = %T, want *http.Stats", statsFrame.Snapshot)
+	}
+	for index, connection := range httpStats.Connections {
+		if !connection.Completed && !connection.Failed {
+			t.Fatalf("completed task connection %d was still active", index)
+		}
+	}
+}
+
+func TestDownloader_TaskStatsPersistsSnapshotWithoutRuntime(t *testing.T) {
+	downloader := NewDownloader(&DownloaderConfig{Storage: NewBoltStorage(t.TempDir())})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	task := &Task{
+		ID:       "stats-snapshot",
+		Status:   base.DownloadStatusPause,
+		Progress: &Progress{},
+		fetcher: &generationTestFetcher{stats: &fetcher.Stats{
+			Snapshot: map[string]any{"downloaded": float64(42)},
+			Runtime:  map[string]any{"activePeers": float64(7)},
+		}},
+	}
+	initTask(task)
+
+	if err := downloader.captureTaskStats(task, true, true); err != nil {
+		t.Fatal(err)
+	}
+	task.statsLock.Lock()
+	liveFrame := task.stats
+	task.statsLock.Unlock()
+	if liveFrame.Runtime == nil {
+		t.Fatal("running task lost runtime stats")
+	}
+
+	// Simulate a freshly restored protocol that is still verifying its local
+	// pieces. A nil Snapshot must keep the last trusted persisted value while
+	// allowing current Runtime telemetry to refresh.
+	task.statsLock.Lock()
+	task.statsLoaded = false
+	task.stats = nil
+	task.statsSnapshot = nil
+	task.statsLock.Unlock()
+	task.fetcher.(*generationTestFetcher).stats = &fetcher.Stats{
+		Runtime: map[string]any{"activePeers": float64(9)},
+	}
+	if err := downloader.captureTaskStats(task, true, true); err != nil {
+		t.Fatal(err)
+	}
+	task.statsLock.Lock()
+	verifyingFrame := task.stats
+	task.statsLock.Unlock()
+	if verifyingFrame == nil || verifyingFrame.Runtime.(map[string]any)["activePeers"] != float64(9) {
+		t.Fatalf("verifying runtime = %+v", verifyingFrame)
+	}
+	if _, ok := verifyingFrame.Snapshot.(json.RawMessage); !ok {
+		t.Fatalf("verifying snapshot type = %T, want persisted json.RawMessage", verifyingFrame.Snapshot)
+	}
+
+	// Simulate a fresh process: no fetcher and an empty task-level cache.
+	task.fetcher = nil
+	task.Status = base.DownloadStatusPause
+	task.statsLock.Lock()
+	task.statsLoaded = false
+	task.stats = nil
+	task.statsSnapshot = nil
+	task.statsLock.Unlock()
+	downloader.lock.Lock()
+	downloader.tasks = append(downloader.tasks, task)
+	downloader.lock.Unlock()
+
+	restored, err := downloader.Stats(task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restoredFrame := restored.(*fetcher.Stats)
+	if restoredFrame.Runtime != nil {
+		t.Fatalf("persisted runtime = %+v, want nil", restoredFrame.Runtime)
+	}
+	raw, ok := restoredFrame.Snapshot.(json.RawMessage)
+	if !ok {
+		t.Fatalf("persisted snapshot type = %T", restoredFrame.Snapshot)
+	}
+	var snapshot map[string]any
+	if err := json.Unmarshal(raw, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot["downloaded"] != float64(42) {
+		t.Fatalf("persisted snapshot = %+v", snapshot)
+	}
+}
+
+func TestDownloader_StatsDoesNotRestoreOrConsumeFetcherSave(t *testing.T) {
+	downloader := NewDownloader(&DownloaderConfig{Storage: NewBoltStorage(t.TempDir())})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	task := &Task{ID: "stats-no-restore", Status: base.DownloadStatusPause, Progress: &Progress{}}
+	initTask(task)
+	downloader.lock.Lock()
+	downloader.tasks = append(downloader.tasks, task)
+	downloader.lock.Unlock()
+	if err := downloader.storage.Put(bucketSave, task.ID, map[string]any{"downloaded": 12}); err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := downloader.Stats(task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats != nil {
+		t.Fatalf("missing task stats = %+v, want nil", stats)
+	}
+	var recovery map[string]any
+	exists, err := downloader.storage.Get(bucketSave, task.ID, &recovery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists || recovery["downloaded"] != float64(12) {
+		t.Fatalf("fetcher recovery was consumed: exists=%v data=%+v", exists, recovery)
+	}
+}
+
+func TestDownloader_CompletedHTTPStatsSurviveRestore(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	storageDir := t.TempDir()
+	downloader := NewDownloader(&DownloaderConfig{Storage: NewBoltStorage(storageDir)})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	req := &base.Request{URL: "http://" + listener.Addr().String() + "/" + test.BuildName}
+	rr, err := downloader.Resolve(req, newTestDownloadOpt(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan struct{}, 1)
+	downloader.Listener(func(event *Event) {
+		if event.Key == EventKeyDone {
+			done <- struct{}{}
+		}
+	})
+	taskID, err := downloader.Create(rr.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("timed out waiting for HTTP task completion")
+	}
+	beforeRestoreValue, err := downloader.Stats(taskID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeRestore := decodeHTTPStatsSnapshot(t, beforeRestoreValue)
+	if err := downloader.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	downloader = NewDownloader(&DownloaderConfig{Storage: NewBoltStorage(storageDir)})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+
+	statsValue, err := downloader.Stats(taskID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stats := decodeHTTPStatsSnapshot(t, statsValue)
+	if len(stats.Connections) == 0 {
+		t.Fatal("restored completed task has no HTTP connection stats")
+	}
+	if !reflect.DeepEqual(stats, beforeRestore) {
+		t.Fatalf("restored stats changed\nbefore: %+v\nafter:  %+v", beforeRestore, stats)
+	}
+	var downloaded int64
+	for _, connection := range stats.Connections {
+		downloaded += connection.Downloaded
+	}
+	if downloaded != test.BuildSize {
+		t.Fatalf("restored connection downloads = %d, want %d", downloaded, test.BuildSize)
+	}
+	if err := downloader.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Restoring stats must not consume the persisted snapshot. Completed tasks
+	// do not write another checkpoint, so verify a second restart as well.
+	downloader = NewDownloader(&DownloaderConfig{Storage: NewBoltStorage(storageDir)})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+	statsValue, err = downloader.Stats(taskID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondRestore := decodeHTTPStatsSnapshot(t, statsValue)
+	if !reflect.DeepEqual(secondRestore, beforeRestore) {
+		t.Fatalf("stats changed after second restart\nbefore: %+v\nafter:  %+v", beforeRestore, secondRestore)
+	}
+}
+
+func decodeHTTPStatsSnapshot(t *testing.T, value any) *http.Stats {
+	t.Helper()
+	frame, ok := value.(*fetcher.Stats)
+	if !ok {
+		t.Fatalf("stats type = %T, want *fetcher.Stats", value)
+	}
+	switch snapshot := frame.Snapshot.(type) {
+	case *http.Stats:
+		return snapshot
+	case json.RawMessage:
+		var stats http.Stats
+		if err := json.Unmarshal(snapshot, &stats); err != nil {
+			t.Fatal(err)
+		}
+		return &stats
+	default:
+		t.Fatalf("HTTP snapshot type = %T", frame.Snapshot)
+		return nil
+	}
 }
 
 func TestDownloader_Delete(t *testing.T) {
@@ -1574,6 +1811,46 @@ func TestDownloader_GetTask(t *testing.T) {
 	task := downloader.GetTask("non-existent-id")
 	if task != nil {
 		t.Errorf("GetTask() expected nil for non-existent task, got %v", task)
+	}
+}
+
+func TestDownloader_RuntimeStatus(t *testing.T) {
+	meta := &fetcher.FetcherMeta{
+		Res: &base.Resource{
+			Size: 20,
+			Files: []*base.FileInfo{
+				{Name: "skipped.bin", Size: 10},
+				{Name: "selected.bin", Size: 20},
+			},
+		},
+		Opts: &base.Options{SelectFiles: []int{1}},
+	}
+	task := &Task{
+		ID:       "runtime-status",
+		Status:   base.DownloadStatusRunning,
+		Meta:     meta,
+		Progress: &Progress{Used: 11, Speed: 12, Downloaded: 13, UploadSpeed: 14, Uploaded: 15},
+		fetcher:  &generationTestFetcher{manager: &generationTestManager{}, meta: meta},
+	}
+	initTask(task)
+	downloader := &Downloader{lock: &sync.Mutex{}, tasks: []*Task{task}}
+
+	status, err := downloader.RuntimeStatus(task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Status != base.DownloadStatusRunning || status.Total != 20 || status.Downloaded != 13 {
+		t.Fatalf("unexpected runtime status: %+v", status)
+	}
+	if len(status.Files) != 1 {
+		t.Fatalf("len(status.Files) = %d, want 1", len(status.Files))
+	}
+	file := status.Files[0]
+	if file.Index != 1 || file.Size != 20 || file.Downloaded != 1 {
+		t.Fatalf("unexpected file runtime status: %+v", file)
+	}
+	if _, err := downloader.RuntimeStatus("missing"); !errors.Is(err, ErrTaskNotFound) {
+		t.Fatalf("missing task error = %v, want ErrTaskNotFound", err)
 	}
 }
 

@@ -1,0 +1,22 @@
+display_name: Gopeed
+
+icon: assets/icon/icon.svg
+
+keywords:
+  - Application
+  - DownloadManager
+  - Network
+  - Utility
+
+generic_name: Download Manager
+
+categories:
+  - Network
+  - Utility
+
+supported_mime_type:
+  - x-scheme-handler/gopeed
+  - x-scheme-handler/magnet
+  - application/x-bittorrent
+
+startup_notify: true

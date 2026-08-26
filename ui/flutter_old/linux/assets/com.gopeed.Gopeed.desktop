@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=Gopeed
+GenericName=Download Manager
+GenericName[zh_CN]=下载器
+GenericName[zh_TW]=下載器
+Comment=A modern download manager for all platforms
+Comment[zh_CN]=支持全平台的高速下载器
+Comment[zh_TW]=支持全平臺的高速下載器
+Terminal=false
+Exec=gopeed %U
+Icon=com.gopeed.Gopeed
+Type=Application
+Categories=Utility;Network;
+Keywords=Bittorrent;Downloader;
+MimeType=x-scheme-handler/gopeed;x-scheme-handler/magnet;application/x-bittorrent;
