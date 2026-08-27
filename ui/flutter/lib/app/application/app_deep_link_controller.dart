@@ -6,13 +6,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_handler/share_handler.dart';
-import 'package:uri_to_file/uri_to_file.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../api/model/create_task.dart';
 import '../../api/model/install_extension.dart';
 import '../../api/model/request.dart';
 import '../../core/entry/app_startup_options.dart';
+import '../../core/utils/content_uri_resolver.dart';
 import '../../core/window/app_window_launcher.dart';
 import '../../features/extensions/application/pending_extension_install.dart';
 import '../../features/tasks/application/pending_create_task.dart';
@@ -49,20 +49,12 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
     if (Util.isMobile()) {
       final shareHandler = ShareHandlerPlatform.instance;
       _sharedMediaSubscription = shareHandler.sharedMediaStream.listen((media) {
-        final content = media.content?.trim();
-        if (content == null || content.isEmpty) return;
-        final uri = Uri.tryParse(content);
-        if (uri == null || uri.scheme == 'content') return;
-        unawaited(_handleUri(uri));
+        unawaited(_handleSharedMedia(media, ignoreContentUri: true));
       });
       try {
         final media = await shareHandler.getInitialSharedMedia();
-        final content = media?.content?.trim();
-        if (content != null && content.isNotEmpty) {
-          final uri = Uri.tryParse(content);
-          if (uri != null) {
-            await _handleUri(uri);
-          }
+        if (media != null) {
+          await _handleSharedMedia(media);
         }
       } catch (_) {}
     }
@@ -77,6 +69,12 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
       }
     } catch (_) {}
     return const AppDeepLinkState(started: true);
+  }
+
+  Future<void> _handleSharedMedia(SharedMedia media, {bool ignoreContentUri = false}) async {
+    final uri = sharedMediaUri(media);
+    if (uri == null || (ignoreContentUri && uri.scheme == 'content')) return;
+    await _handleUri(uri);
   }
 
   Future<void> _handleUri(Uri uri) async {
@@ -152,11 +150,30 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
     if (uri.scheme == 'file') {
       return Util.isWindows() ? Uri.decodeFull(uri.path.substring(1)) : uri.path;
     }
-    // Android file pickers commonly expose torrent files as content:// URIs.
-    // Keep the old UI behavior: resolve them to a local readable file before
-    // handing the request to Gopeed rather than treating the URI as a path.
-    return (await toFile(uri.toString())).path;
+    if (uri.scheme == 'content' && Util.isAndroid()) {
+      return ContentUriResolver.copyToCache(uri);
+    }
+    throw ArgumentError.value(uri, 'uri', 'Unsupported task URI scheme');
   }
+}
+
+/// Picks the actionable URI from content received through the platform share UI.
+///
+/// File attachments take precedence over an optional text caption. Both the
+/// Android and iOS share-handler implementations expose attachments as local
+/// paths that are ready for the app to read.
+Uri? sharedMediaUri(SharedMedia media) {
+  final attachments = media.attachments;
+  if (attachments != null) {
+    for (final attachment in attachments) {
+      final path = attachment?.path.trim();
+      if (path != null && path.isNotEmpty) return Uri.file(path);
+    }
+  }
+
+  final content = media.content?.trim();
+  if (content == null || content.isEmpty) return null;
+  return Uri.tryParse(content);
 }
 
 /// Gopeed's established links use `gopeed:///create`, where the action is the
