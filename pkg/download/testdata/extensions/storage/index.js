@@ -2,36 +2,36 @@ gopeed.events.onResolve(async function (ctx) {
     const key = "key"
     const value1 = "value1", value2 = JSON.stringify({a: 1, b: "2"})
 
-    if (gopeed.storage.get(key) !== null) {
+    if ((await gopeed.storage.get(key)) !== null) {
         throw new Error("storage get null error")
     }
-    gopeed.storage.remove(key)
-    if(gopeed.storage.keys().length !== 0) {
+    await gopeed.storage.remove(key)
+    if((await gopeed.storage.keys()).length !== 0) {
         throw new Error("storage keys null error")
     }
 
-    gopeed.storage.set(key, value1)
-    if (gopeed.storage.get(key) !== value1) {
+    await gopeed.storage.set(key, value1)
+    if ((await gopeed.storage.get(key)) !== value1) {
         throw new Error("storage put1 error")
     }
 
-    gopeed.storage.set(key, value2)
-    if (gopeed.storage.get(key) !== value2) {
+    await gopeed.storage.set(key, value2)
+    if ((await gopeed.storage.get(key)) !== value2) {
         throw new Error("storage put2 error")
     }
 
-    if(gopeed.storage.keys().length !== 1) {
+    if((await gopeed.storage.keys()).length !== 1) {
         throw new Error("storage keys error")
     }
 
-    gopeed.storage.remove(key)
-    if (gopeed.storage.get(key) !== null) {
+    await gopeed.storage.remove(key)
+    if ((await gopeed.storage.get(key)) !== null) {
         throw new Error("storage delete error")
     }
 
-    gopeed.storage.set(key, value1)
-    gopeed.storage.clear()
-    if (gopeed.storage.get(key) !== null) {
+    await gopeed.storage.set(key, value1)
+    await gopeed.storage.clear()
+    if ((await gopeed.storage.get(key)) !== null) {
         throw new Error("storage clear error")
     }
 

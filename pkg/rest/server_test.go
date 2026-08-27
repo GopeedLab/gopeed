@@ -924,7 +924,7 @@ func TestBuildServerPropagatesWebViewProvider(t *testing.T) {
 	}
 	defer runtime.Close()
 
-	value, err := runtime.Eval("gopeed.runtime.webview.isAvailable()")
+	value, err := runtime.Eval("(async () => await gopeed.runtime.webview.isAvailable())()")
 	if err != nil {
 		t.Fatal(err)
 	}

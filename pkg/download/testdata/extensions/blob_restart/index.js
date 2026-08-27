@@ -1,5 +1,5 @@
-function createRangeBlobUrl(target) {
-  return gopeed.runtime.blob.createObjectURL(async ({ offset = 0, end = -1 }) => {
+async function createRangeBlobUrl(target) {
+  return await gopeed.runtime.blob.createObjectURL(async ({ offset = 0, end = -1 }) => {
     const headers = {};
     if (offset > 0 || end >= 0) {
       headers.Range = `bytes=${offset}-${end >= 0 ? end : ''}`;
@@ -25,7 +25,7 @@ gopeed.events.onResolve(async function (ctx) {
             name: 'restart.bin',
             size: 262144,
             req: {
-              url: createRangeBlobUrl(ctx.req.rawUrl || ctx.req.url),
+              url: await createRangeBlobUrl(ctx.req.rawUrl || ctx.req.url),
               rawUrl: ctx.req.rawUrl || ctx.req.url,
               labels: {
                 mode: 'restart',
@@ -46,12 +46,12 @@ gopeed.events.onError(async function (ctx) {
   }
 
   try {
-    ctx.task.setUrl(createRangeBlobUrl(req.rawUrl));
-    req.putLabel('started', 'true');
-    req.putLabel('rebuilt', 'true');
-    ctx.task.continue();
+    await ctx.task.setUrl(await createRangeBlobUrl(req.rawUrl));
+    await req.putLabel('started', 'true');
+    await req.putLabel('rebuilt', 'true');
+    await ctx.task.continue();
   } catch (error) {
-    req.putLabel('rebuildError', String(error));
+    await req.putLabel('rebuildError', String(error));
     throw error;
   }
 });
