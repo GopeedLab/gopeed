@@ -35,6 +35,7 @@ target 'Runner' do
   # The iOS share extension and the Flutter plugin exchange the incoming share
   # payload through the models pod supplied by share_handler_ios.
   target 'ShareExtension' do
+    platform :ios, '14.0'
     inherit! :search_paths
     pod 'share_handler_ios_models', :path => '.symlinks/plugins/share_handler_ios/ios/Models'
   end
