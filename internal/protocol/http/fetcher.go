@@ -612,14 +612,18 @@ func (f *Fetcher) doStart() error {
 		return nil
 	}
 
-	// If retrying after error, reset connection states for retry
-	if state == stateError {
-		// Drain any pending error from doneCh before retry
+	// Each Start/Wait cycle must observe only its own completion result.
+	// A paused or failed cycle may have completed concurrently with Pause and
+	// left a result buffered before its download loop fully stopped.
+	if state == statePaused || state == stateError {
 		select {
 		case <-f.doneCh:
 		default:
 		}
+	}
 
+	// If retrying after error, reset connection states for retry
+	if state == stateError {
 		f.connMu.Lock()
 		for _, conn := range f.connections {
 			// Reset connections that can be retried
@@ -695,6 +699,8 @@ func (f *Fetcher) doStart() error {
 }
 
 func (f *Fetcher) downloadLoop() {
+	ctx := f.ctx
+
 	defer func() {
 		// Update file last modified time before closing
 		if f.config.UseServerCtime && f.meta.Res.Files[0].Ctime != nil {
@@ -713,24 +719,30 @@ func (f *Fetcher) downloadLoop() {
 	if !isResume {
 		// Fresh start: begin with resolve connection
 		f.startResolveDownload()
+		// Non-range downloads wait for their only connection in
+		// startResolveDownload. Falling through would consume the connection's
+		// expansion signal and publish the same completion a second time.
+		if !f.meta.Res.Range || f.meta.Res.Size == 0 || f.getState() == stateDone {
+			return
+		}
 	} else {
 		// Resume: restart existing connections
 		f.resumeConnections()
-		f.waitForCompletion()
+		f.waitForCompletion(ctx)
 		return
 	}
 
 	// Slow start loop
 	for {
 		select {
-		case <-f.ctx.Done():
+		case <-ctx.Done():
 			// Paused or cancelled
 			return
 		case <-f.slowStart.expansionCh:
 			// Batch completed, try to expand
 			if f.checkCompletion() {
 				// All work is done, wait for connections to finish
-				f.waitForCompletion()
+				f.waitForCompletion(ctx)
 				return
 			}
 			f.expandConnections()
@@ -738,7 +750,7 @@ func (f *Fetcher) downloadLoop() {
 			// Check if we've reached steady state (max connections)
 			if f.getState() == stateSteady {
 				// Wait for all connections to complete
-				f.waitForCompletion()
+				f.waitForCompletion(ctx)
 				return
 			}
 		}
@@ -766,7 +778,7 @@ func (f *Fetcher) startResolveDownload() {
 
 		// For non-range downloads, wait for completion directly in this goroutine
 		// Don't create another goroutine to avoid WaitGroup reuse issues
-		f.waitForCompletion()
+		f.waitForCompletion(f.ctx)
 		return
 	}
 
@@ -883,7 +895,6 @@ func (f *Fetcher) expandConnections() {
 	if len(newConns) == 0 {
 		// No new connections could be created, stop expansion
 		f.setState(stateSteady)
-		go f.waitForCompletion()
 		return
 	}
 
@@ -1190,9 +1201,13 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 		n, err := reader.Read(buf)
 		if n > 0 {
+			f.connMu.Lock()
+			writeOffset := conn.Chunk.Downloaded
+			f.connMu.Unlock()
+
 			f.fileMu.Lock()
 			if f.file != nil {
-				_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
+				_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
 				if writeErr != nil {
 					f.fileMu.Unlock()
 					f.connMu.Lock()
@@ -1294,9 +1309,13 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 
 				n, err := reader.Read(buf)
 				if n > 0 {
+					f.connMu.Lock()
+					writeOffset := conn.Chunk.Downloaded
+					f.connMu.Unlock()
+
 					f.fileMu.Lock()
 					if f.file != nil {
-						_, writeErr := f.file.WriteAt(buf[:n], conn.Chunk.Downloaded)
+						_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
 						if writeErr != nil {
 							f.fileMu.Unlock()
 							return writeErr
@@ -1497,10 +1516,10 @@ func (f *Fetcher) resumeConnections() {
 	}
 }
 
-func (f *Fetcher) waitForCompletion() {
+func (f *Fetcher) waitForCompletion(ctx context.Context) {
 	f.wg.Wait()
-	// Only trigger completion if not cancelled/paused
-	if f.ctx != nil && f.ctx.Err() == nil {
+	// Only trigger completion for the Start cycle that launched this waiter.
+	if ctx != nil && ctx.Err() == nil {
 		f.onDownloadComplete()
 	}
 }
