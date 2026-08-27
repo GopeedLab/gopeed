@@ -124,7 +124,7 @@ function createMultiplexStreams(url) {
 gopeed.events.onResolve(async function (ctx) {
   if (ctx.req.url.includes("/single-fetch-stream")) {
     const payloadSize = Number(new URL(ctx.req.url).searchParams.get("size")) || 0;
-    const url = gopeed.runtime.blob.createObjectURL(async () => createFetchDrainedStream(sourceURL(ctx.req.url)), {
+    const url = await gopeed.runtime.blob.createObjectURL(async () => createFetchDrainedStream(sourceURL(ctx.req.url)), {
       size: payloadSize,
     });
     ctx.res = {
@@ -142,7 +142,7 @@ gopeed.events.onResolve(async function (ctx) {
 
   if (ctx.req.url.includes("/range-fetch-stream")) {
     const payloadSize = Number(new URL(ctx.req.url).searchParams.get("size")) || 0;
-    const url = gopeed.runtime.blob.createObjectURL(
+    const url = await gopeed.runtime.blob.createObjectURL(
       async ({ offset = 0, end = -1 }) => createFetchDrainedRangeStream(sourceURL(ctx.req.url), offset, end),
       {
         size: payloadSize,
@@ -173,10 +173,10 @@ gopeed.events.onResolve(async function (ctx) {
       }
       return streams;
     };
-    const videoUrl = gopeed.runtime.blob.createObjectURL(async () => openStreams().video, {
+    const videoUrl = await gopeed.runtime.blob.createObjectURL(async () => openStreams().video, {
       size: videoChunks.reduce((sum, chunk) => sum + byteLength(chunk), 0),
     });
-    const audioUrl = gopeed.runtime.blob.createObjectURL(async () => openStreams().audio, {
+    const audioUrl = await gopeed.runtime.blob.createObjectURL(async () => openStreams().audio, {
       size: audioChunks.reduce((sum, chunk) => sum + byteLength(chunk), 0),
     });
     ctx.res = {

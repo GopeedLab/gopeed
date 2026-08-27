@@ -4,7 +4,7 @@ gopeed.events.onResolve(async function (ctx) {
         return;
     }
 
-    const url = gopeed.runtime.blob.createObjectURL(async ({ offset = 0 }) => new ReadableStream({
+    const url = await gopeed.runtime.blob.createObjectURL(async ({ offset = 0 }) => new ReadableStream({
         async start(controller) {
             if (offset > 0) {
                 controller.close();
@@ -40,7 +40,7 @@ gopeed.events.onError(async function (ctx) {
         return;
     }
 
-    req.putLabel("recovered", "true");
-    ctx.task.setUrl(gopeed.runtime.blob.createObjectURL(new Blob(["ok\n"], { type: "text/plain" })));
-    ctx.task.continue();
+    await req.putLabel("recovered", "true");
+    await ctx.task.setUrl(await gopeed.runtime.blob.createObjectURL(new Blob(["ok\n"], { type: "text/plain" })));
+    await ctx.task.continue();
 });

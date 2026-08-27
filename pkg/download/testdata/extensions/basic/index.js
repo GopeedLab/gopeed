@@ -1,7 +1,7 @@
 gopeed.events.onResolve(async function (ctx) {
-    ctx.req.setLabels({ replaced: "true", removed: "true" });
-    ctx.req.putLabel("modified", "true");
-    ctx.req.delLabel("removed");
+    await ctx.req.setLabels({ replaced: "true", removed: "true" });
+    await ctx.req.putLabel("modified", "true");
+    await ctx.req.delLabel("removed");
     ctx.res = {
         name: "test",
         files: Array(2).fill(true).map((_, i) => ({
