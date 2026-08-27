@@ -1,0 +1,83 @@
+================================================================================
+SPEED CHART EDGE CASES IMPLEMENTATION REPORT
+================================================================================
+
+1. EDGE CASES HANDLED & SPECIFIC BEHAVIORS IMPLEMENTED
+--------------------------------------------------------------------------------
+1. Edge Case 1: Newly started task with fewer than 2 speed samples (0 or 1 point)
+   - Behavior: When `speedSamples.length < 2`, `TaskSpeedChart` renders a subtle,
+     theme-aware baseline painter (`_EmptySpeedChartPainter`) or an optional custom
+     `emptyPlaceholder` widget.
+   - Outcome: Guarantees zero crashes, divide-by-zero errors, or blank glitch
+     boxes during early download startup.
+
+2. Edge Case 2: Paused Task (`Status.pause` / `isPaused: true`)
+   - Decision & Behavior: Visual indication via dimmed line and fill styling.
+     When a task is paused, the speed line color is dimmed (`baseLineColor.withOpacity(0.4)`)
+     and fill area gradient opacity is reduced (`withOpacity(0.05)`).
+   - Rationale: Freezing the line chart while visually dimming it immediately
+     informs the user that download throughput is suspended, while preserving the
+     last recorded throughput history for review.
+
+3. Edge Case 3: Completed Task (`Status.done` / `isCompleted: true`)
+   - Decision & Behavior:
+     * If speed history exists from the active session, the chart displays the
+       settled final speed history with completion accent styling (`isCompleted: true`).
+     * If no speed history exists (e.g. historical completed downloads loaded from
+       storage), the chart section is cleanly omitted (`showChart = false`) in
+       `TaskView`'s detail drawer.
+   - Rationale: Consistent with Gopeed's established design pattern where active
+     progress indicators (e.g., `LinearProgressIndicator`) are hidden once a task
+     reaches `Status.done` to keep the UI clean and uncluttered.
+
+4. Edge Case 4: Rapid Rebuilds & High-Frequency Streaming Throttling
+   - Behavior: `TaskSpeedChart` converted to a stateful widget with internal
+     render throttling (`throttleDuration = 500ms`).
+   - Outcome: When parent widgets or data streams emit updates many times per
+     second, visual canvas repaints are throttled to at most once per 500ms,
+     preventing UI thread lag and frame drops while keeping numeric speed labels
+     in the rest of the application updating at their normal rate.
+
+
+2. FILES TOUCHED
+--------------------------------------------------------------------------------
+1. Modified:
+   - ui/flutter/lib/app/views/task_speed_chart.dart
+     Added `isPaused`, `isCompleted`, `throttleDuration`, stateful lifecycle
+     with internal render throttling, and dimmed paused/settled completion styles.
+   - ui/flutter/lib/app/modules/task/views/task_view.dart
+     Passed `isPaused: task.status == Status.pause` and
+     `isCompleted: task.status == Status.done`, and handled completed task chart
+     visibility.
+
+2. Added:
+   - ui/flutter/test/task_speed_chart_edge_cases_test.dart
+     Unit and widget tests verifying all four edge cases and state transitions.
+
+
+3. TEST SUITE & RESULTS
+--------------------------------------------------------------------------------
+Test Suites Executed via `flutter test`:
+1. test/task_speed_chart_edge_cases_test.dart:
+   [PASS] 1. Edge Case 1: handles < 2 samples without error or crash
+   [PASS] 2. Edge Case 2: paused task visually dims line while preserving data
+   [PASS] 3. Edge Case 3: completed task displays settled history or is gracefully handled
+   [PASS] 4. Edge Case 4: throttles visual repaints on high-frequency data changes
+   [PASS] 5. TaskView drawer passes isPaused=true when task is paused
+   [PASS] 6. TaskView drawer hides chart for completed task with no speed history
+2. test/task_speed_history_test.dart (5/5 passed)
+3. test/task_speed_chart_test.dart (5/5 passed)
+4. test/task_speed_chart_integration_test.dart (3/3 passed)
+5. test/widget_test.dart (1/1 passed)
+
+Total: 20/20 tests passed, 0 failures, 0 errors.
+
+
+4. CONFIRMATION OF UNRELATED UI & BACKEND PRESERVATION
+--------------------------------------------------------------------------------
+- No changes made to Go backend code.
+- No modifications made to unrelated task lifecycle logic, state machines, or
+  task list items.
+- All existing metadata, buttons, copy actions, and drawer components maintain
+  their original structure, styling, and behavior.
+================================================================================

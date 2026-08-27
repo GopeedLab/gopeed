@@ -223,5 +223,6 @@ const zhTW = {
     'desktopNotification': '桌面通知',
     'notificationTaskDone': '任務完成',
     'notificationTaskError': '任務失敗',
-  },
+      'backgroundLocationKeepAlive': 'Background Download Keep Alive',
+},
 };

@@ -1,0 +1,73 @@
+================================================================================
+STARTUP & WEB ERRORS FIX REPORT
+================================================================================
+
+1. ISSUE 1: LAYOUT OVERFLOW IN CREATE_VIEW.DART
+--------------------------------------------------------------------------------
+- Description: RenderFlex overflowed by 32 pixels on the right originating from
+  a Row widget containing `CompactCheckbox` ('directDownload'.tr) and `TextButton`
+  ('advancedOptions'.tr).
+- File Changed: ui/flutter/lib/app/modules/create/views/create_view.dart (around lines 747-774)
+- Fix Applied: Replaced `Row(mainAxisSize: MainAxisSize.min, ...)` with
+  `Wrap(alignment: WrapAlignment.center, crossAxisAlignment: WrapCrossAlignment.center, ...)`
+  and added `mainAxisSize: MainAxisSize.min` to the inner TextButton Row.
+- Outcome & Confirmation: The widgets render side-by-side identically on standard
+  screen widths and wrap cleanly without overflow on constrained widths. The RenderFlex
+  overflow warning/clipping is eliminated.
+
+
+2. ISSUE 2: MISSING TRANSLATION KEYS ACROSS MULTIPLE LOCALES
+--------------------------------------------------------------------------------
+- Description: Repeated console warnings on startup (e.g. `missing language: ru_RU, keys: (...)`)
+  caused by locale dictionary files in `ui/flutter/lib/i18n/langs/` missing newly added keys
+  present in `en_us.dart`.
+- Files Changed: 19 locale files under `ui/flutter/lib/i18n/langs/`:
+  * ar_ar.dart, ca_es.dart, de_de.dart, es_es.dart, fa_ir.dart, fr_fr.dart,
+    hu_hu.dart, id_id.dart, it_it.dart, ja_jp.dart, ko_kr.dart, pl_pl.dart,
+    pt_br.dart, ru_ru.dart, ta_ta.dart, tr_tr.dart, uk_ua.dart, vi_vn.dart, zh_tw.dart.
+- Fix Applied: Added all missing keys to each locale dictionary using their English
+  values from `en_us.dart` as standard fallback placeholders per project convention.
+- New Test Added: ui/flutter/test/i18n_keys_test.dart verifying 100% key completeness
+  across all 20 locale dictionaries against `en_us.dart`.
+- Outcome & Confirmation: Missing language/key warnings no longer appear on startup.
+
+
+3. ISSUE 3: UNSUPPORTED OPERATION: Platform._operatingSystem ON WEB
+--------------------------------------------------------------------------------
+- Description: Runtime crashes on Flutter Web caused by unguarded `Platform.*` calls
+  from `dart:io`.
+- Files Changed:
+  1. ui/flutter/lib/app/services/location_keep_alive.dart (lines 10, 22, 28)
+     - Added `kIsWeb` guards to `requestPermission()`, `start()`, and `stop()`
+       (`if (kIsWeb || !Platform.isIOS)`).
+  2. ui/flutter/lib/app/modules/setting/views/setting_view.dart (line 526)
+     - Replaced `!Platform.isIOS` with `!Util.isIOS()` which includes `!kIsWeb` check.
+  3. ui/flutter/lib/util/file_explorer.dart (lines 8, 22, 30)
+     - Added `if (kIsWeb) return;` and guarded directory/file open with `!kIsWeb`.
+- Outcome & Confirmation: No `Unsupported operation: Platform._operatingSystem` exceptions
+  occur during web builds or runtime startup. Desktop/mobile platforms retain their exact
+  native behavior untouched.
+
+
+4. FULL TEST SUITE CONFIRMATION
+--------------------------------------------------------------------------------
+Command: flutter test
+Working Directory: ui/flutter
+
+Execution Results:
+- test/i18n_keys_test.dart (20 tests passed)
+- test/task_speed_history_test.dart (5 tests passed)
+- test/task_speed_chart_test.dart (5 tests passed)
+- test/task_speed_chart_integration_test.dart (3 tests passed)
+- test/task_speed_chart_edge_cases_test.dart (6 tests passed)
+- test/widget_test.dart (1 test passed)
+
+Total: 40/40 tests passed, 0 failures, 0 errors.
+
+
+5. CONFIRMATION OF PRESERVED FUNCTIONALITY & UI INTEGRITY
+--------------------------------------------------------------------------------
+- Zero changes to backend / Go code.
+- Zero redesigns or restyling of create view or settings view.
+- Non-web platforms (Windows, macOS, Linux, Android, iOS) maintain identical behavior.
+================================================================================

@@ -1,0 +1,84 @@
+================================================================================
+SPEED CHART INTEGRATION REPORT
+================================================================================
+
+1. SUMMARY OF INTEGRATION
+--------------------------------------------------------------------------------
+The `TaskSpeedChart` widget (located at `ui/flutter/lib/app/views/task_speed_chart.dart`)
+has been integrated into the task detail drawer within `TaskView`
+(`ui/flutter/lib/app/modules/task/views/task_view.dart`).
+
+Key Details:
+- Wired to the per-task rolling speed buffer (`speedHistory` in `TaskListController`)
+  looked up by the active task ID (`selectTask.value?.id`).
+- Reactively updates via GetX `Obx` whenever new speed samples are recorded for
+  the task.
+- Cleanly scoped to only display speed metrics for the selected task.
+
+
+2. EXACT FILE(S) CHANGED
+--------------------------------------------------------------------------------
+1. Modified:
+   - ui/flutter/lib/app/modules/task/views/task_view.dart
+     Integrated `TaskSpeedChart` into the `endDrawer` (`taskDetail`) ListView,
+     positioned directly below the `DrawerHeader` and above the `taskName` ListTile.
+
+2. Added:
+   - ui/flutter/test/task_speed_chart_integration_test.dart
+     Integration tests verifying task detail rendering, element preservation,
+     and task-specific speed buffer mapping.
+
+
+3. PLACEMENT IN THE VIEW & RATIONALE
+--------------------------------------------------------------------------------
+- Placement: Located inside `TaskView`'s `endDrawer` (`DrawerHeader` -> `TaskSpeedChart` -> `taskName` ListTile -> `taskUrl` -> `downloadPath`).
+- Rationale:
+  1. Primary Task Detail Location: In Gopeed, clicking/tapping any task in the
+     task list opens the `endDrawer` which displays `'taskDetail'.tr` (Task Details).
+  2. Natural Information Hierarchy: Placing the speed chart at the top of the detail
+     drawer immediately below the header gives users instant visual feedback on the
+     live download speed before browsing static task metadata.
+  3. Visual Consistency: Wrapped with `EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0)`
+     to match the ListTile horizontal padding and drawer spacing used throughout
+     the application.
+
+
+4. TESTS WRITTEN & RESULTS
+--------------------------------------------------------------------------------
+Test Suite: ui/flutter/test/task_speed_chart_integration_test.dart
+Execution: flutter test
+Status: ALL TESTS PASSED
+
+Test Cases:
+[PASS] 1. renders task detail view correctly with new speed chart section
+       - Verifies that `TaskSpeedChart` renders inside the detail view drawer
+         and correctly receives the speed buffer data.
+[PASS] 2. verifies all pre-existing elements and functionality are preserved
+       - Confirmed that `taskName`, `taskUrl`, `CopyButton`, folder open action,
+         and navigation tab bars remain intact and functional.
+[PASS] 3. verifies chart displays data for the specific task being viewed and not another task
+       - Verified that selecting Task A displays Task A's speed samples only,
+         and switching selection to Task B dynamically switches to Task B's data.
+
+
+5. FULL TEST SUITE CONFIRMATION
+--------------------------------------------------------------------------------
+Command: flutter test
+All 14 tests across the test suite passed cleanly:
+- test/task_speed_history_test.dart (5 passed)
+- test/task_speed_chart_test.dart (5 passed)
+- test/task_speed_chart_integration_test.dart (3 passed)
+- test/widget_test.dart (1 passed)
+
+Total: 14/14 tests passed, 0 failures, 0 regressions.
+
+
+6. EXPLICIT CONFIRMATION OF PRE-EXISTING UI & FUNCTIONALITY PRESERVATION
+--------------------------------------------------------------------------------
+- No pre-existing UI element or functionality in the task detail view was
+  altered or removed.
+- All existing metadata fields (`taskName`, `taskUrl`, `downloadPath`), copy
+  buttons, and action icons maintain their original structure, styling, order,
+  and behavior.
+- The integration is purely additive.
+================================================================================

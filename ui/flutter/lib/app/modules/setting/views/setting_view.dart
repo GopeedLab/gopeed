@@ -523,7 +523,7 @@ class SettingView extends GetView<SettingController> {
             );
           });
 
-    final buildBackgroundLocationKeepAlive = !Platform.isIOS
+    final buildBackgroundLocationKeepAlive = !Util.isIOS()
         ? () => const SizedBox.shrink()
         : _buildConfigItem(
             'backgroundLocationKeepAlive',

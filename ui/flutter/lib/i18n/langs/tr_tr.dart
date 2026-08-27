@@ -238,5 +238,6 @@ const trTR = {
     'desktopNotification': 'Masaüstü Bildirimleri',
     'notificationTaskDone': 'Görev tamamlandı',
     'notificationTaskError': 'Görev hatası',
-  },
+      'backgroundLocationKeepAlive': 'Background Download Keep Alive',
+},
 };

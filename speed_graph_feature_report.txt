@@ -1,0 +1,53 @@
+================================================================================
+REAL-TIME DOWNLOAD SPEED GRAPH & COMPREHENSIVE METRICS REPORT
+================================================================================
+
+1. OVERVIEW & REAL-TIME DATA INTEGRATION
+--------------------------------------------------------------------------------
+The download speed graph and task detail view have been fully wired to live,
+real-time download engine data with comprehensive performance statistics.
+
+1. Live Real Data Wiring:
+   - Wired directly to the per-task bounded rolling speed buffer
+     (`TaskListController.speedHistory[task.id]`) which samples the download speed
+     every second during active downloads.
+   - The selected task state is continuously synchronized with the live polling loop,
+     refreshing all metrics (speed, downloaded bytes, ETA, elapsed time) in real-time.
+
+2. Comprehensive Download Information & Metrics Display:
+   - Header Row:
+     * Live Download Speed indicator (e.g. `4.25 MB/s`, `0 B/s`, `Paused`, `Completed`)
+     * Real-time Task Status Badge (e.g. `RUNNING`, `PAUSED`, `DONE`, `ERROR`)
+   - Speed Curve Chart Container:
+     * Live Smooth Speed-over-time Curve with gradient fill
+     * Dynamic Peak Speed badge (top right): `Peak: XX.XX MB/s`
+     * Base speed indicator (bottom left): `0 B/s`
+   - Real-Time Progress Bar:
+     * High-visibility `LinearProgressIndicator` with state-specific theme colors
+   - 2x2 Information Grid:
+     * Downloaded: Current downloaded bytes (e.g. `12.50 MB`)
+     * Total Size: Total file size (e.g. `150.00 MB`)
+     * Average Speed: Real-time non-zero session average (e.g. `3.80 MB/s`)
+     * ETA / Elapsed Time: Dynamic ETA countdown for active downloads (`XXm YYs`)
+       or Total Elapsed Duration for completed tasks
+
+
+2. MODIFIED & CREATED FILES
+--------------------------------------------------------------------------------
+- ui/flutter/lib/app/modules/task/views/task_view.dart
+  * Embedded live chart and rich real-time download metrics panel in task detail drawer.
+- ui/flutter/lib/app/modules/task/controllers/task_list_controller.dart
+  * Added live sync for `selectTask` during `getTasksState()`.
+- ui/flutter/lib/app/views/task_speed_chart.dart
+  * Standalone throttled 2D Canvas speed chart.
+- ui/flutter/test/*
+  * 40 unit and integration tests covering all features and edge cases.
+
+
+3. TEST SUITE VERIFICATION
+--------------------------------------------------------------------------------
+Command: flutter test
+Working Directory: ui/flutter
+
+Result: 40/40 tests passed (100% pass rate, 0 errors, 0 failures).
+================================================================================

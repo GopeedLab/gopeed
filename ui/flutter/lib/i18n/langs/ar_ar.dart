@@ -223,5 +223,6 @@ const arAR = {
     'desktopNotification': 'إشعارات سطح المكتب',
     'notificationTaskDone': 'تمت المهمة',
     'notificationTaskError': 'خطأ في المهمة',
-  },
+      'backgroundLocationKeepAlive': 'Background Download Keep Alive',
+},
 };

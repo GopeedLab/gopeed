@@ -241,5 +241,6 @@ const caES = {
     'desktopNotification': 'Notificacions d\'escriptori',
     'notificationTaskDone': 'Tasca completada',
     'notificationTaskError': 'Error de tasca',
-  },
+      'backgroundLocationKeepAlive': 'Background Download Keep Alive',
+},
 };

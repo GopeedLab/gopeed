@@ -1,0 +1,88 @@
+================================================================================
+SPEED BUFFER IMPLEMENTATION REPORT
+================================================================================
+
+1. SUMMARY OF IMPLEMENTATION
+--------------------------------------------------------------------------------
+A bounded, rolling speed history buffer was implemented for download tasks in the
+Gopeed Flutter client. This internal data structure maintains historical download
+speed samples for active tasks so future chart widgets can render live
+speed-over-time graphs.
+
+Key Characteristics:
+- Data Structure: `speedHistory` (`RxMap<String, List<double>>`), an observable
+  map keyed by task ID with in-memory rolling list of speed values.
+- Capacity: Capped at a maximum of 60 samples per task (FIFO: oldest sample dropped
+  when cap is exceeded).
+- Integrated Lifecycle: Hooks directly into the existing `TaskListController`
+  progress update path (`getTasksState()`), avoiding duplicate timers or polling loops.
+- Terminal State Handling: Updates stop appending new samples once a task reaches
+  a terminal state (`Status.done` or `Status.error`), preserving last recorded history.
+- Cleanup: Automatically clears and removes speed history buffers when tasks are
+  deleted or omitted from the active task list, plus provides a helper method
+  `clearSpeedHistory([String? taskId])` for programmatic resets.
+- Zero UI/Behavioral Impact: No UI layouts, widgets, styles, or existing displayed
+  speed labels/ETA metrics were modified.
+
+
+2. FILES CHANGED
+--------------------------------------------------------------------------------
+1. Modified:
+   - ui/flutter/lib/app/modules/task/controllers/task_list_controller.dart
+     Added `maxSpeedSamples`, `speedHistory`, `updateSpeedHistory()`,
+     `getSpeedHistory()`, and `clearSpeedHistory()`. Wired `updateSpeedHistory()`
+     into the existing `getTasksState()` execution flow.
+
+2. Added:
+   - ui/flutter/test/task_speed_history_test.dart
+     Comprehensive unit tests verifying buffer operations, capacity capping,
+     task independence, terminal state handling, and deletion cleanup.
+
+
+3. TESTS WRITTEN & RESULTS
+--------------------------------------------------------------------------------
+Test Suite: ui/flutter/test/task_speed_history_test.dart
+All tests executed via `flutter test` and passed successfully.
+
+Test Cases:
+[PASS] 1. correctly appends new speed samples as progress updates occur
+       - Verifies that new speed updates are recorded in chronological order.
+[PASS] 2. correctly caps at the maximum length (60 samples) and drops the oldest sample
+       - Verified by pushing 70 samples; list maintained length of 60 with the
+         first 10 oldest samples evicted and newest retained.
+[PASS] 3. verifies each task's buffer is independent of other tasks' buffers
+       - Verified concurrent updates on multiple task IDs remain isolated.
+[PASS] 4. stops appending once a task reaches terminal state (Done or Error)
+       - Verified that tasks transitioning to Status.done or Status.error do not
+         grow the buffer.
+[PASS] 5. clears buffer when task is deleted or removed from task list
+       - Verified buffer deletion when a task ID is removed from the active list
+         and via explicit clearSpeedHistory call.
+
+
+4. FULL TEST SUITE CONFIRMATION
+--------------------------------------------------------------------------------
+Command: flutter test
+Working Directory: ui/flutter
+
+Output:
+00:00 +0: loading D:/New folder (5)/gopeed/ui/flutter/test/task_speed_history_test.dart
+00:00 +0: D:/New folder (5)/gopeed/ui/flutter/test/task_speed_history_test.dart: Task Rolling Speed History Buffer Tests 1. correctly appends new speed samples as progress updates occur
+00:00 +1: D:/New folder (5)/gopeed/ui/flutter/test/task_speed_history_test.dart: Task Rolling Speed History Buffer Tests 2. correctly caps at the maximum length (60 samples) and drops the oldest sample
+00:00 +2: D:/New folder (5)/gopeed/ui/flutter/test/task_speed_history_test.dart: Task Rolling Speed History Buffer Tests 3. verifies each task's buffer is independent of other tasks' buffers
+00:00 +3: D:/New folder (5)/gopeed/ui/flutter/test/task_speed_history_test.dart: Task Rolling Speed History Buffer Tests 4. stops appending once a task reaches terminal state (Done or Error)
+00:00 +4: D:/New folder (5)/gopeed/ui/flutter/test/task_speed_history_test.dart: Task Rolling Speed History Buffer Tests 5. clears buffer when task is deleted or removed from task list
+00:01 +5: D:/New folder (5)/gopeed/ui/flutter/test/widget_test.dart: Counter increments smoke test
+00:01 +6: All tests passed!
+
+Status: PASSED (6/6 tests passing, 0 failures, 0 regressions)
+
+
+5. CONFIRMATION OF UI AND BACKEND INTEGRITY
+--------------------------------------------------------------------------------
+- UI Integrity: Zero modifications were made to any widget tree, list item view,
+  status indicators, ETA calculations, or existing text widgets.
+- Backend Integrity: Zero modifications were made to Go/backend files.
+- State Management: Uses existing GetX reactive patterns consistent with
+  `TaskListController`.
+================================================================================
