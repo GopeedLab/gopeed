@@ -1542,6 +1542,19 @@ void main() {
     expect(record.uploadSpeed, '0 B/s');
   });
 
+  test('task records expose the Go download duration in nanoseconds', () {
+    final task = _apiTransferTask(
+      id: 'completed-duration',
+      status: api_task.Status.done,
+      uploading: false,
+      speed: 0,
+      uploadSpeed: 0,
+    );
+    task.progress.used = 3500000000;
+
+    expect(TaskRecord.fromApi(task).downloadDuration, const Duration(milliseconds: 3500));
+  });
+
   test('task URL updates are limited to paused or failed HTTP tasks', () {
     expect(_taskRecord(id: 'http-paused', name: 'paused.bin', status: TaskStatus.paused).canUpdateUrl, isTrue);
     expect(_taskRecord(id: 'http-failed', name: 'failed.bin', status: TaskStatus.failed).canUpdateUrl, isTrue);
@@ -1915,6 +1928,7 @@ void main() {
       name: 'details.zip',
       status: TaskStatus.completed,
       remaining: '1 minute remaining',
+      downloadDuration: const Duration(hours: 1, minutes: 2, seconds: 3),
     );
 
     await tester.pumpWidget(
@@ -1966,9 +1980,11 @@ void main() {
     expect(find.text('Details'), findsOneWidget);
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Statistics'), findsOneWidget);
-    expect(find.text('Remaining'), findsOneWidget);
-    expect(find.text('—'), findsOneWidget);
+    expect(find.text('Remaining'), findsNothing);
+    expect(find.text('Download duration'), findsOneWidget);
+    expect(find.text('1:02:03'), findsOneWidget);
     expect(find.text('1 minute remaining'), findsNothing);
+    expect(find.text('Completed'), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('task-details-drawer'))).width,
       AppDesignTokens.taskDetailsDrawerMinWidth,
@@ -3222,6 +3238,7 @@ TaskRecord _taskRecord({
   List<TaskFileNode> files = const [],
   api_task.Protocol protocol = api_task.Protocol.http,
   String? remaining,
+  Duration? downloadDuration,
   bool isFolder = false,
 }) {
   return TaskRecord(
@@ -3239,6 +3256,7 @@ TaskRecord _taskRecord({
     isFolder: isFolder,
     protocol: protocol,
     remaining: remaining,
+    downloadDuration: downloadDuration,
   );
 }
 

@@ -239,6 +239,7 @@
   "speed": "速度",
   "uploadSpeed": "上傳速度",
   "remaining": "剩餘時間",
+  "downloadDuration": "下載耗時",
   "progress": "進度",
   "failed": "失敗",
   "completed": "已完成",

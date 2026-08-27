@@ -239,6 +239,7 @@
   "speed": "السرعة",
   "uploadSpeed": "سرعة التشغيل",
   "remaining": "البقايا",
+  "downloadDuration": "مدة التنزيل",
   "progress": "التقدم",
   "failed": "فشل",
   "completed": "مكتمل",

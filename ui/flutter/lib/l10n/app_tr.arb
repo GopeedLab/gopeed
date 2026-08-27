@@ -239,6 +239,7 @@
   "speed": "Hız",
   "uploadSpeed": "Yük hızı",
   "remaining": "Kalanlar",
+  "downloadDuration": "İndirme süresi",
   "progress": "İlerleme",
   "failed": "Başarısız",
   "completed": "Tamamlandı",

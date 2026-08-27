@@ -25,6 +25,4 @@ extension TaskRecordLocalizations on TaskRecord {
   }
 
   String localizedError(AppLocalizations l10n) => error ?? l10n.taskFailed;
-
-  String localizedCompletedLabel(AppLocalizations l10n) => completedLabel ?? l10n.downloaded;
 }

@@ -239,6 +239,7 @@
   "speed": "sebesség",
   "uploadSpeed": "Feltöltési sebesség",
   "remaining": "Maradt",
+  "downloadDuration": "Letöltési idő",
   "progress": "Haladás",
   "failed": "sikertelen",
   "completed": "Elkészült",

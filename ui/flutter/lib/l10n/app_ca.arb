@@ -239,6 +239,7 @@
   "speed": "Velocitat",
   "uploadSpeed": "Velocitat de pujada",
   "remaining": "Restant",
+  "downloadDuration": "Durada de la baixada",
   "progress": "Progrés",
   "failed": "Ha fallat",
   "completed": "Completat",

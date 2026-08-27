@@ -239,6 +239,7 @@
   "speed": "スピード",
   "uploadSpeed": "アップロード速度",
   "remaining": "メンテナンス",
+  "downloadDuration": "ダウンロード時間",
   "progress": "開発実績",
   "failed": "失敗した",
   "completed": "完了しました",

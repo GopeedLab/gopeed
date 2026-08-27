@@ -35,7 +35,9 @@ target 'Runner' do
   # The iOS share extension and the Flutter plugin exchange the incoming share
   # payload through the models pod supplied by share_handler_ios.
   target 'ShareExtension' do
-    platform :ios, '14.0'
+    # Keep the inherited CocoaPods platform here. The Xcode extension target is
+    # iOS 14; setting a second platform here makes CocoaPods emit two model
+    # frameworks with the same product path during archive builds.
     inherit! :search_paths
     pod 'share_handler_ios_models', :path => '.symlinks/plugins/share_handler_ios/ios/Models'
   end

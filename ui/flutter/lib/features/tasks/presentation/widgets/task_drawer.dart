@@ -9,6 +9,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../core/utils/duration_formatter.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../domain/task_record.dart';
@@ -367,11 +368,12 @@ class _TaskInfoTab extends StatelessWidget {
         if (task.speed != null) _InfoBlock(label: context.l10n.speed, value: task.speed!),
         if (task.uploading) _InfoBlock(label: context.l10n.uploadSpeed, value: task.uploadSpeed!),
         if (task.status == TaskStatus.completed)
-          _InfoBlock(label: context.l10n.remaining, value: '—')
+          _InfoBlock(
+            label: context.l10n.downloadDuration,
+            value: task.downloadDuration == null ? '—' : DurationFormatter.format(task.downloadDuration!),
+          )
         else if (task.localizedRemaining(context.l10n) case final remaining?)
           _InfoBlock(label: context.l10n.remaining, value: remaining),
-        if (task.status == TaskStatus.completed)
-          _InfoBlock(label: context.l10n.completed, value: task.localizedCompletedLabel(context.l10n)),
         if (task.status == TaskStatus.failed)
           _InfoBlock(label: context.l10n.error, value: task.localizedError(context.l10n), error: true),
         Container(height: 1, margin: const EdgeInsets.symmetric(vertical: 4), color: palette.border),

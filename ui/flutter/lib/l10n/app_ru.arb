@@ -239,6 +239,7 @@
   "speed": "Скорость",
   "uploadSpeed": "Скорость загрузки",
   "remaining": "оставаться",
+  "downloadDuration": "Время загрузки",
   "progress": "Прогресс",
   "failed": "неудачник",
   "completed": "завершенный",

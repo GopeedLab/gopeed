@@ -253,6 +253,7 @@
   "speed": "Speed",
   "uploadSpeed": "Upload speed",
   "remaining": "Remaining",
+  "downloadDuration": "Download duration",
   "progress": "Progress",
   "failed": "Failed",
   "completed": "Completed",

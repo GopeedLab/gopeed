@@ -239,6 +239,7 @@
   "speed": "ОДЯГ",
   "uploadSpeed": "Швидкість завантаження",
   "remaining": "Ременування",
+  "downloadDuration": "Тривалість завантаження",
   "progress": "Прогрес",
   "failed": "Неприємний",
   "completed": "Завершений",

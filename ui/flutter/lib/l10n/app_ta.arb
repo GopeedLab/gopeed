@@ -239,6 +239,7 @@
   "speed": "வேகம்",
   "uploadSpeed": "வேகம்",
   "remaining": "மீதம்",
+  "downloadDuration": "பதிவிறக்க நேரம்",
   "progress": "முன்னேற்றம்",
   "failed": "தோல்வியடைந்தது",
   "completed": "முடிவடைந்தது",

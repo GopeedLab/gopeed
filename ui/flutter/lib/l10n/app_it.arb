@@ -239,6 +239,7 @@
   "speed": "Velocità",
   "uploadSpeed": "Velocità di carico",
   "remaining": "Rimanere",
+  "downloadDuration": "Durata del download",
   "progress": "Progressi",
   "failed": "Non è successo",
   "completed": "Completato",
