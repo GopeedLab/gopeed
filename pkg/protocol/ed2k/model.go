@@ -11,12 +11,11 @@ type StatsSnapshot struct {
 }
 
 type StatsRuntime struct {
-	State         string            `json:"state"`
-	Paused        bool              `json:"paused"`
-	ServerIDClass string            `json:"serverIdClass"`
-	ActivePeers   int               `json:"activePeers"`
-	TotalPeers    int               `json:"totalPeers"`
-	DownloadRate  int               `json:"downloadRate"`
-	UploadRate    int               `json:"uploadRate"`
-	Peers         []*base.PeerStats `json:"peers"`
+	State        string            `json:"state"`
+	Paused       bool              `json:"paused"`
+	ActivePeers  int               `json:"activePeers"`
+	TotalPeers   int               `json:"totalPeers"`
+	DownloadRate int               `json:"downloadRate"`
+	UploadRate   int               `json:"uploadRate"`
+	Peers        []*base.PeerStats `json:"peers"`
 }

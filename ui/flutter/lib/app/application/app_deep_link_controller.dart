@@ -12,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../api/model/create_task.dart';
 import '../../api/model/install_extension.dart';
 import '../../api/model/request.dart';
+import '../../core/entry/app_startup_options.dart';
 import '../../core/window/app_window_launcher.dart';
 import '../../features/extensions/application/pending_extension_install.dart';
 import '../../features/tasks/application/pending_create_task.dart';
@@ -88,6 +89,9 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
   }
 
   Future<void> _handleGopeedUri(Uri uri) async {
+    if (isSilentGopeedWakeUri(uri)) {
+      return;
+    }
     final route = gopeedDeepLinkRoute(uri);
     if (route == '/create') {
       final params = uri.queryParameters['params'];
@@ -113,8 +117,11 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
 
   Future<void> _openCreate(CreateTask? createTask) async {
     if (Util.isDesktop()) {
-      await windowManager.show();
-      await AppWindowLauncher.openCreateTaskWindow(createTask: createTask);
+      final opened = await AppWindowLauncher.openCreateTaskWindow(createTask: createTask);
+      if (!opened) {
+        ref.read(pendingCreateTaskProvider.notifier).set(createTask);
+        await _go('/create');
+      }
       return;
     }
     ref.read(pendingCreateTaskProvider.notifier).set(createTask);

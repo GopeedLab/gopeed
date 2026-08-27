@@ -51,6 +51,7 @@ class FileTreeNode<T> {
 }
 
 typedef FileTreeNodeWidgetBuilder<T> = Widget Function(BuildContext context, FileTreeNode<T> node);
+typedef FileTreeNodeIconBuilder<T> = IconData Function(FileTreeNode<T> node);
 
 class FileTreeView<T> extends StatefulWidget {
   const FileTreeView({
@@ -58,6 +59,7 @@ class FileTreeView<T> extends StatefulWidget {
     required this.items,
     this.headerLeading,
     this.leadingBuilder,
+    this.iconBuilder,
     this.trailingBuilder,
     this.onNodePressed,
     this.keyPrefix = 'file-tree',
@@ -72,6 +74,7 @@ class FileTreeView<T> extends StatefulWidget {
   final List<FileTreeItem<T>> items;
   final Widget? headerLeading;
   final FileTreeNodeWidgetBuilder<T>? leadingBuilder;
+  final FileTreeNodeIconBuilder<T>? iconBuilder;
   final FileTreeNodeWidgetBuilder<T>? trailingBuilder;
   final ValueChanged<FileTreeNode<T>>? onNodePressed;
   final String keyPrefix;
@@ -274,9 +277,10 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
               children: [
                 if (leading != null) ...[leading, const SizedBox(width: 8)],
                 Icon(
-                  data.isFolder
-                      ? (visuallyExpanded ? BootstrapIcons.folder2Open : BootstrapIcons.folder2)
-                      : _fileIcon(data.label),
+                  widget.iconBuilder?.call(data) ??
+                      (data.isFolder
+                          ? (visuallyExpanded ? BootstrapIcons.folder2Open : BootstrapIcons.folder2)
+                          : _fileIcon(data.label)),
                   size: widget.iconSize,
                   color: palette.textSecondary,
                 ),

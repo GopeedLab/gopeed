@@ -89,17 +89,17 @@ class TasksController extends AsyncNotifier<TasksState> {
   }
 
   Future<void> updateUrl(String id, String url, {Map<String, String> headers = const {}}) async {
-    await ref
-        .read(gopeedServiceProvider)
-        .patchTask(
-          id,
-          ResolveTask(
-            req: Request(
-              url: url,
-              extra: ReqExtraHttp(header: headers).toJson(),
-            ),
-          ),
-        );
+    await updateRequest(
+      id,
+      Request(
+        url: url,
+        extra: ReqExtraHttp(header: headers).toJson(),
+      ),
+    );
+  }
+
+  Future<void> updateRequest(String id, Request request) async {
+    await ref.read(gopeedServiceProvider).patchTask(id, ResolveTask(req: request));
     await ref.read(gopeedServiceProvider).continueTask(id);
     await refresh(silent: true);
   }

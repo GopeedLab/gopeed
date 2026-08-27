@@ -6,8 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:gopeed/app/app.dart';
 import 'package:gopeed/app/application/app_appearance_controller.dart';
+import 'package:gopeed/app/application/app_deep_link_controller.dart';
+import 'package:gopeed/app/application/app_notification_controller.dart';
 import 'package:gopeed/app/application/app_platform_controller.dart';
 import 'package:gopeed/app/application/app_runtime_controller.dart';
+import 'package:gopeed/api/model/create_task.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/extension.dart' as api_extension;
 import 'package:gopeed/api/model/meta.dart';
@@ -17,12 +20,14 @@ import 'package:gopeed/api/model/resource.dart';
 import 'package:gopeed/api/model/store_extension.dart';
 import 'package:gopeed/api/model/task.dart' as api_task;
 import 'package:gopeed/core/common/start_config.dart';
+import 'package:gopeed/core/icons/gopeed_icons.dart';
 import 'package:gopeed/features/home/presentation/widgets/tasks_top_bar.dart';
 import 'package:gopeed/features/extensions/application/extensions_controller.dart';
 import 'package:gopeed/features/extensions/presentation/pages/extensions_page.dart';
 import 'package:gopeed/features/home/presentation/widgets/primary_rail.dart';
+import 'package:gopeed/features/tasks/application/pending_update_task.dart';
 import 'package:gopeed/features/tasks/application/task_batch_selection_controller.dart';
-import 'package:gopeed/features/tasks/application/task_stats_provider.dart';
+import 'package:gopeed/features/tasks/application/task_runtime_status_provider.dart';
 import 'package:gopeed/features/tasks/application/tasks_controller.dart';
 import 'package:gopeed/features/settings/application/settings_controller.dart';
 import 'package:gopeed/features/settings/presentation/pages/settings_page.dart';
@@ -36,11 +41,13 @@ import 'package:gopeed/features/tasks/presentation/widgets/resolve_file_tree.dar
 import 'package:gopeed/features/tasks/presentation/widgets/speed_monitor_card.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_batch_selection_builder.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_file_tree.dart';
+import 'package:gopeed/features/tasks/presentation/widgets/task_file_manager.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_progress_bar.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_card/task_card.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_context_menu.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_delete_dialog.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_drawer.dart';
+import 'package:gopeed/features/tasks/presentation/widgets/pending_update_dialog.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_statistics/piece_map.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_statistics/peer_table.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_statistics/task_statistics_tab.dart';
@@ -53,6 +60,7 @@ import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/theme/app_theme_color.dart';
 import 'package:gopeed/shared/widgets/app_primary_button.dart';
 import 'package:gopeed/shared/widgets/app_toast.dart';
+import 'package:gopeed/shared/widgets/gopeed_app_mark.dart';
 import 'package:gopeed/shared/widgets/responsive_menu_layout.dart';
 import 'package:gopeed/shared/widgets/virtual_tree_view.dart';
 import 'package:gopeed/util/updater.dart';
@@ -96,6 +104,13 @@ void main() {
       tester.widget<Container>(find.byKey(const ValueKey('primary-rail-active-indicator'))).color,
       AppPalette.light.textPrimary,
     );
+    expect(find.byType(GopeedAppMark), findsOneWidget);
+    expect(find.byKey(const ValueKey('primary-rail-app-mark')), findsOneWidget);
+    expect(tester.getSize(find.byKey(const ValueKey('primary-rail-app-mark'))), const Size.square(24));
+    expect(find.descendant(of: find.byType(GopeedAppMark), matching: find.byType(CustomPaint)), findsOneWidget);
+    expect(find.descendant(of: find.byType(GopeedAppMark), matching: find.byType(Image)), findsNothing);
+    expect(find.text('M'), findsNothing);
+    expect(find.text('V1.0'), findsNothing);
     expect(
       tester.getSize(find.byKey(const ValueKey('secondary-navigation-pane'))).width,
       AppDesignTokens.filterSidebarWidth,
@@ -1077,7 +1092,7 @@ void main() {
   testWidgets('create task advanced options scroll smoothly into view', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(700, 500));
     await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Advanced'));
     await tester.pumpAndSettle();
 
@@ -1099,6 +1114,21 @@ void main() {
     expect(settledOffset, lessThanOrEqualTo(controller.position.maxScrollExtent));
     expect(find.text('User-Agent'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('create task labels direct download without a mode field', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(700, 500));
+    await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
+    await tester.pump();
+
+    expect(find.text('Mode'), findsNothing);
+    expect(find.text('Direct Download'), findsOneWidget);
+    expect(find.text('Skip resolving and create tasks immediately'), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(shad.Checkbox)).left,
+      greaterThan(tester.getRect(find.text('Direct Download')).right),
+    );
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('app focus outlines use the compact global border', (WidgetTester tester) async {
@@ -1512,6 +1542,64 @@ void main() {
     expect(record.uploadSpeed, '0 B/s');
   });
 
+  test('task URL updates are limited to paused or failed HTTP tasks', () {
+    expect(_taskRecord(id: 'http-paused', name: 'paused.bin', status: TaskStatus.paused).canUpdateUrl, isTrue);
+    expect(_taskRecord(id: 'http-failed', name: 'failed.bin', status: TaskStatus.failed).canUpdateUrl, isTrue);
+    expect(_taskRecord(id: 'http-running', name: 'running.bin').canUpdateUrl, isFalse);
+    expect(
+      _taskRecord(
+        id: 'bt-paused',
+        name: 'paused.torrent',
+        status: TaskStatus.paused,
+        protocol: api_task.Protocol.bt,
+      ).canUpdateUrl,
+      isFalse,
+    );
+  });
+
+  test('task icons follow task type and file extension instead of status', () {
+    final extensionCases = <(String, IconData)>[
+      ('setup.exe', GopeedIcons.fileInstaller),
+      ('mobile.apk', GopeedIcons.fileAndroid),
+      ('mobile.ipa', GopeedIcons.fileIos),
+      ('backup.iso', GopeedIcons.fileDiskImage),
+      ('index.html', GopeedIcons.fileWeb),
+      ('notes.md', GopeedIcons.fileText),
+      ('manual.pdf', GopeedIcons.filePdf),
+      ('report.docx', GopeedIcons.fileDocument),
+      ('budget.xlsx', GopeedIcons.fileSpreadsheet),
+      ('slides.pptx', GopeedIcons.filePresentation),
+      ('source.tar.gz', GopeedIcons.fileArchive),
+      ('photo.PNG', GopeedIcons.fileImage),
+      ('track.flac', GopeedIcons.fileAudio),
+      ('movie.MKV', GopeedIcons.fileVideo),
+      ('main.dart', GopeedIcons.fileCode),
+      ('book.epub', GopeedIcons.fileEbook),
+      ('display.woff2', GopeedIcons.fileFont),
+      ('cache.sqlite', GopeedIcons.fileDatabase),
+      ('linux.torrent', GopeedIcons.protocolBt),
+    ];
+    for (final (name, icon) in extensionCases) {
+      expect(
+        _taskRecord(id: name, name: name).icon,
+        icon,
+        reason: name,
+      );
+    }
+
+    expect(_taskRecord(id: 'folder', name: 'Downloads', isFolder: true).icon, GopeedIcons.folder);
+    expect(
+      _taskRecord(id: 'bt-folder', name: 'Linux collection', isFolder: true, protocol: api_task.Protocol.bt).icon,
+      GopeedIcons.folderBt,
+    );
+    expect(_taskRecord(id: 'file', name: 'unknown').icon, GopeedIcons.file);
+    expect(_taskRecord(id: 'bt', name: 'unknown', protocol: api_task.Protocol.bt).icon, GopeedIcons.protocolBt);
+    expect(_taskRecord(id: 'ed2k', name: 'unknown', protocol: api_task.Protocol.ed2k).icon, GopeedIcons.protocolEd2k);
+    final runningIcon = _taskRecord(id: 'running-video', name: 'movie.mp4').icon;
+    final failedIcon = _taskRecord(id: 'failed-video', name: 'movie.mp4', status: TaskStatus.failed).icon;
+    expect(failedIcon, runningIcon);
+  });
+
   testWidgets('task cards label a missing total as unknown size', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 220));
     final record = TaskRecord.fromApi(
@@ -1579,6 +1667,32 @@ void main() {
     }
   });
 
+  testWidgets('completed task cards show the completed status only once', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 220));
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Padding(
+          padding: const EdgeInsets.all(24),
+          child: TaskCard(
+            task: _taskRecord(id: 'completed-card', name: 'completed.zip', status: TaskStatus.completed),
+            selected: false,
+            batchMode: false,
+            selectedInBatch: false,
+            onPressed: () {},
+            onToggleBatch: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('COMPLETED'), findsOneWidget);
+    expect(find.text('Downloaded'), findsNothing);
+  });
+
   testWidgets('speed monitor displays supplied task totals without simulated updates', (WidgetTester tester) async {
     await tester.pumpWidget(
       shad.ShadcnApp(
@@ -1624,7 +1738,6 @@ void main() {
       downloaded: '50 B',
       total: '100 B',
       progress: 0.5,
-      assetType: TaskAssetType.archive,
       url: 'https://example.com/album.torrent',
       storagePath: '/downloads/album',
       files: [
@@ -1662,6 +1775,8 @@ void main() {
     expect(find.text('Size'), findsOneWidget);
     expect(find.text('skipped.mp3'), findsOneWidget);
     expect(find.text('selected.mp3'), findsOneWidget);
+    expect(find.byIcon(GopeedIcons.folder), findsOneWidget);
+    expect(find.byIcon(GopeedIcons.fileAudio), findsNWidgets(2));
     expect(tester.widget<Text>(find.text('selected.mp3')).style?.fontSize, 11);
     final compactTree = tester.widget<VirtualTreeView<dynamic>>(
       find.byWidgetPredicate((widget) => widget is VirtualTreeView),
@@ -1689,7 +1804,6 @@ void main() {
       downloaded: '25 B',
       total: '100 B',
       progress: 0.25,
-      assetType: TaskAssetType.file,
       url: 'https://example.com/pending.bin',
       storagePath: '/downloads/pending.bin',
       files: [TaskFileNode(path: '', name: 'pending.bin', sizeBytes: 100)],
@@ -1723,7 +1837,6 @@ void main() {
       downloaded: '100 B',
       total: '100 B',
       progress: 1,
-      assetType: TaskAssetType.file,
       url: 'https://example.com/completed.bin',
       storagePath: '/downloads/completed.bin',
       files: [TaskFileNode(path: '', name: 'completed.bin', sizeBytes: 100)],
@@ -1754,7 +1867,6 @@ void main() {
       downloaded: '40 B',
       total: '100 B',
       progress: 0.4,
-      assetType: TaskAssetType.file,
       url: 'https://example.com/paused.bin',
       storagePath: '/downloads/paused.bin',
       files: [TaskFileNode(path: '', name: 'paused.bin', sizeBytes: 100)],
@@ -1767,7 +1879,6 @@ void main() {
       downloaded: '40 B',
       total: '100 B',
       progress: 0.4,
-      assetType: TaskAssetType.warning,
       url: 'https://example.com/failed.bin',
       storagePath: '/downloads/failed.bin',
       files: [TaskFileNode(path: '', name: 'failed.bin', sizeBytes: 100)],
@@ -1799,10 +1910,29 @@ void main() {
 
   testWidgets('task drawer aligns information labels beside their values', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(900, 700));
-    final task = _taskRecord(id: 'details', name: 'details.zip', status: TaskStatus.completed);
+    final task = _taskRecord(
+      id: 'details',
+      name: 'details.zip',
+      status: TaskStatus.completed,
+      remaining: '1 minute remaining',
+    );
 
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [
+          taskRuntimeStatusProvider(task.id).overrideWith(
+            (ref) async => api_task.TaskRuntimeStatus(
+              status: api_task.Status.done,
+              used: 0,
+              speed: 0,
+              downloaded: 100,
+              total: 100,
+              uploadSpeed: 0,
+              uploaded: 0,
+              files: const [],
+            ),
+          ),
+        ],
         child: shad.ShadcnApp(
           theme: AppTheme.light(),
           materialTheme: AppTheme.materialLight(),
@@ -1820,13 +1950,25 @@ void main() {
     expect(valueTopLeft.dx, greaterThan(labelTopLeft.dx));
 
     final storageLabelTopLeft = tester.getTopLeft(find.text('Storage Path'));
-    final storageValueTopLeft = tester.getTopLeft(find.text('/downloads/details.zip'));
+    final storageValueFinder = find.byKey(const ValueKey('task-details-storage-value'));
+    final storageValueTopLeft = tester.getTopLeft(storageValueFinder);
     expect((storageLabelTopLeft.dy - storageValueTopLeft.dy).abs(), lessThan(5));
     expect(storageValueTopLeft.dx, greaterThan(storageLabelTopLeft.dx));
+    final storageValue = tester.widget<Text>(storageValueFinder);
+    expect(storageValue.data, contains('\u200B'));
+    expect(storageValue.data!.replaceAll('\u200B', ''), '/downloads/details.zip');
+    expect(storageValue.semanticsLabel, '/downloads/details.zip');
+    final urlValue = tester.widget<Text>(find.byKey(const ValueKey('task-details-url-value')));
+    expect(urlValue.data, contains('\u200B'));
+    expect(urlValue.data!.replaceAll('\u200B', ''), task.url);
+    expect(urlValue.semanticsLabel, task.url);
     expect(find.text('Task Details'), findsOneWidget);
     expect(find.text('Details'), findsOneWidget);
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Statistics'), findsOneWidget);
+    expect(find.text('Remaining'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('1 minute remaining'), findsNothing);
     expect(
       tester.getSize(find.byKey(const ValueKey('task-details-drawer'))).width,
       AppDesignTokens.taskDetailsDrawerMinWidth,
@@ -1838,6 +1980,104 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('task-details-drawer'))).width,
       1600 * AppDesignTokens.taskDetailsDrawerViewportRatio,
     );
+
+    await tester.tap(find.text('Files'));
+    await tester.pump();
+    final browseFilesAction = find.byKey(const ValueKey('task-files-browse'));
+    expect(browseFilesAction, findsOneWidget);
+    final totalProgress = find.byKey(const ValueKey('task-files-total-progress'));
+    expect(totalProgress, findsOneWidget);
+    expect(tester.getTopLeft(browseFilesAction).dx, greaterThan(tester.getTopRight(totalProgress).dx));
+    expect(
+      find.descendant(of: browseFilesAction, matching: find.byIcon(Icons.snippet_folder_outlined)),
+      findsOneWidget,
+    );
+    final browseFilesTooltipFinder = find.descendant(of: browseFilesAction, matching: find.byType(shad.Tooltip));
+    final browseFilesTooltip = tester.widget<shad.Tooltip>(browseFilesTooltipFinder);
+    expect((browseFilesTooltip.tooltip(tester.element(browseFilesTooltipFinder)) as Text).data, 'Browse Files');
+
+    await tester.tap(browseFilesAction);
+    await tester.pumpAndSettle();
+    final browserDialog = find.byKey(const ValueKey('task-file-browser-dialog'));
+    expect(browserDialog, findsOneWidget);
+    expect(find.descendant(of: browserDialog, matching: find.byType(TaskFileManagerView)), findsOneWidget);
+    expect(tester.getCenter(browserDialog).dx, closeTo(tester.view.physicalSize.width / 2, 1));
+    expect(tester.getCenter(browserDialog).dy, closeTo(tester.view.physicalSize.height / 2, 1));
+  });
+
+  testWidgets('task drawer actions use icon buttons with hover labels', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(900, 700));
+    final task = _taskRecord(id: 'editable-details', name: 'editable.zip', status: TaskStatus.paused);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: Stack(
+            children: [TaskDrawer(task: task, onClose: () {}, onOpenStorage: () {}, onUpdateUrl: (_) async {})],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final key in [
+      'task-details-close',
+      'task-details-edit-url',
+      'task-details-copy-url',
+      'task-details-open-storage',
+    ]) {
+      final action = find.byKey(ValueKey(key));
+      expect(action, findsOneWidget);
+      expect(find.descendant(of: action, matching: find.byType(shad.IconButton)), findsOneWidget);
+      expect(find.descendant(of: action, matching: find.byType(shad.Tooltip)), findsOneWidget);
+    }
+    expect(find.text('Copy'), findsNothing);
+    expect(find.text('Edit'), findsNothing);
+    expect(find.text('Open'), findsNothing);
+
+    final editAction = find.byKey(const ValueKey('task-details-edit-url'));
+    final editTooltipFinder = find.descendant(of: editAction, matching: find.byType(shad.Tooltip));
+    final editTooltip = tester.widget<shad.Tooltip>(editTooltipFinder);
+    expect((editTooltip.tooltip(tester.element(editTooltipFinder)) as Text).data, 'Edit');
+
+    await tester.tap(editAction);
+    await tester.pumpAndSettle();
+    for (final key in ['task-details-cancel-url', 'task-details-save-url']) {
+      final action = find.byKey(ValueKey(key));
+      expect(action, findsOneWidget);
+      expect(find.descendant(of: action, matching: find.byType(shad.IconButton)), findsOneWidget);
+      expect(find.descendant(of: action, matching: find.byType(shad.Tooltip)), findsOneWidget);
+    }
+    expect(find.text('Cancel'), findsNothing);
+    expect(find.text('Save'), findsNothing);
+  });
+
+  testWidgets('task drawer hides URL editing for non-HTTP tasks', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(900, 700));
+    final task = _taskRecord(
+      id: 'bt-details',
+      name: 'paused.torrent',
+      status: TaskStatus.paused,
+      protocol: api_task.Protocol.bt,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: Stack(
+            children: [TaskDrawer(task: task, onClose: () {}, onOpenStorage: () {}, onUpdateUrl: (_) async {})],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('task-details-edit-url')), findsNothing);
+    expect(find.byKey(const ValueKey('task-details-copy-url')), findsOneWidget);
   });
 
   testWidgets('mobile task details use a standalone route without bottom navigation', (WidgetTester tester) async {
@@ -1865,6 +2105,74 @@ void main() {
     expect(find.text('Statistics'), findsOneWidget);
     expect(find.byType(PrimaryBottomNavigation), findsNothing);
     expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+
+    await tester.tap(find.text('Files'));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('task-files-browse')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('task-files-browse')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byType(TaskFileManagerView), findsOneWidget);
+    expect(find.text('first.zip'), findsWidgets);
+  });
+
+  testWidgets('task file manager uses flat directories and platform-specific file actions', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(390, 700));
+    final task = _taskRecord(
+      id: 'managed-files',
+      name: 'bundle',
+      status: TaskStatus.completed,
+      isFolder: true,
+      files: const [
+        TaskFileNode(path: '/', name: 'root.txt', sizeBytes: 128),
+        TaskFileNode(path: '/docs', name: 'guide.pdf', sizeBytes: 1024),
+      ],
+    );
+
+    Future<void> pumpManager({required bool webActions, required bool desktopActions}) async {
+      await tester.pumpWidget(
+        shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: TaskFileManagerView(task: task, webActions: webActions, desktopActions: desktopActions),
+        ),
+      );
+      await tester.pump();
+    }
+
+    await pumpManager(webActions: true, desktopActions: false);
+    expect(find.text('root.txt'), findsOneWidget);
+    expect(find.text('docs'), findsOneWidget);
+    expect(find.text('guide.pdf'), findsNothing);
+    expect(find.byIcon(GopeedIcons.fileText), findsOneWidget);
+    expect(find.byIcon(GopeedIcons.folder), findsOneWidget);
+    expect(find.byIcon(Icons.open_in_new), findsOneWidget);
+    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.share_outlined), findsNothing);
+
+    await tester.tap(find.text('docs'));
+    await tester.pump();
+    expect(find.text('guide.pdf'), findsOneWidget);
+    expect(find.byIcon(GopeedIcons.filePdf), findsOneWidget);
+    expect(find.text('1 items'), findsNothing);
+    expect(find.byKey(const ValueKey('file-breadcrumb-/docs')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('file-breadcrumb-/')));
+    await tester.pump();
+    expect(find.text('1 items'), findsOneWidget);
+
+    await pumpManager(webActions: false, desktopActions: false);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byIcon(Icons.share_outlined), findsOneWidget);
+
+    await pumpManager(webActions: false, desktopActions: true);
+    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byIcon(Icons.share_outlined), findsNothing);
+    expect(find.byIcon(Icons.open_in_new), findsOneWidget);
+    expect(find.byIcon(Icons.folder_open_outlined), findsNWidgets(2));
   });
 
   testWidgets('open desktop task details follow refreshed file metadata', (WidgetTester tester) async {
@@ -2082,43 +2390,6 @@ void main() {
     expect(find.text('ED2K'), findsOneWidget);
     expect(find.text('Progress'), findsNothing);
     expect(find.text('File relevance'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('ED2K statistics display the local server ID class', (WidgetTester tester) async {
-    await _setTestSize(tester, const Size(1024, 700));
-    final stats = Ed2kTaskStats(
-      serverIdClass: 'high',
-      activePeers: 2,
-      totalPeers: 10,
-      downloadRate: 2048,
-      upload: 0,
-      uploadRate: 1024,
-      totalDone: 50,
-      totalWanted: 100,
-      peers: [],
-      pieceMap: TaskPieceMap.empty(),
-    );
-    final task = _taskRecord(id: 'ed2k-id', name: 'sample.bin', protocol: api_task.Protocol.ed2k);
-    final request = (taskId: task.id, protocol: task.protocol);
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [taskStatsProvider(request).overrideWith((ref) async => stats)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: Padding(
-            padding: const EdgeInsets.all(16),
-            child: TaskStatisticsTab(task: task, mobile: false),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('ED2K ID'), findsOneWidget);
-    expect(find.text('High ID'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -2346,6 +2617,110 @@ void main() {
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
     expect(keepFiles, isFalse);
+  });
+
+  testWidgets('pending URL update asks whether to update, create, or cancel', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(520, 620));
+    PendingUpdateDecision? decision;
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Builder(
+          builder: (context) => shad.PrimaryButton(
+            onPressed: () async {
+              decision = await showPendingUpdateDialog(context, taskName: 'archive.zip');
+            },
+            child: const Text('Open pending update dialog'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open pending update dialog'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pending Update Task Found'), findsOneWidget);
+    expect(
+      find.text('Task "archive.zip" is waiting for URL update. Do you want to update it with the new URL?'),
+      findsOneWidget,
+    );
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Create New Task'), findsOneWidget);
+    expect(find.text('Update Task'), findsOneWidget);
+
+    await tester.tap(find.text('Create New Task'));
+    await tester.pumpAndSettle();
+    expect(decision, PendingUpdateDecision.createTask);
+  });
+
+  testWidgets('captured URL update preserves the full request and stops listening after confirmation', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(1024, 768));
+    late RecordingPendingUpdateTasksController tasksController;
+    final container = ProviderContainer(
+      overrides: [
+        appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+        appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+        appDeepLinkControllerProvider.overrideWith(FakeDeepLinkController.new),
+        appNotificationControllerProvider.overrideWith(FakeNotificationController.new),
+        tasksControllerProvider.overrideWith(() {
+          tasksController = RecordingPendingUpdateTasksController();
+          return tasksController;
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const GopeedApp()));
+    await tester.pumpAndSettle();
+
+    const listeningTask = PendingUpdateTask(id: 'paused-http', name: 'archive.zip');
+    final replacementRequest = Request(
+      url: 'https://example.com/replacement.zip',
+      extra: const {
+        'header': {'Authorization': 'Bearer replacement'},
+      },
+      skipVerifyCert: true,
+    );
+    container.read(pendingUpdateTaskProvider.notifier).set(listeningTask);
+    container
+        .read(pendingUpdateRequestProvider.notifier)
+        .set(
+          PendingUpdateRequest(
+            task: listeningTask,
+            createTask: CreateTask(req: replacementRequest),
+          ),
+        );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pending Update Task Found'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(tasksController.updatedTaskId, isNull);
+    expect(container.read(pendingUpdateTaskProvider), same(listeningTask));
+    expect(container.read(pendingUpdateRequestProvider), isNull);
+
+    container
+        .read(pendingUpdateRequestProvider.notifier)
+        .set(
+          PendingUpdateRequest(
+            task: listeningTask,
+            createTask: CreateTask(req: replacementRequest),
+          ),
+        );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Update Task'));
+    await tester.pumpAndSettle();
+
+    expect(tasksController.updatedTaskId, 'paused-http');
+    expect(tasksController.updatedRequest, same(replacementRequest));
+    expect(tasksController.updatedRequest?.skipVerifyCert, isTrue);
+    expect(tasksController.updatedRequest?.extra, replacementRequest.extra);
+    expect(container.read(pendingUpdateTaskProvider), isNull);
+    expect(container.read(pendingUpdateRequestProvider), isNull);
   });
 
   testWidgets('desktop batch pause sends only selected task ids', (WidgetTester tester) async {
@@ -2746,6 +3121,30 @@ class FakePlatformController extends AppPlatformController {
   Future<AppPlatformState> build() async => const AppPlatformState(started: true);
 }
 
+class FakeDeepLinkController extends AppDeepLinkController {
+  @override
+  Future<AppDeepLinkState> build() async => const AppDeepLinkState(started: true);
+}
+
+class FakeNotificationController extends AppNotificationController {
+  @override
+  Future<AppNotificationState> build() async => const AppNotificationState(started: true);
+}
+
+class RecordingPendingUpdateTasksController extends TasksController {
+  String? updatedTaskId;
+  Request? updatedRequest;
+
+  @override
+  Future<TasksState> build() async => const TasksState(tasks: []);
+
+  @override
+  Future<void> updateRequest(String id, Request request) async {
+    updatedTaskId = id;
+    updatedRequest = request;
+  }
+}
+
 class AvailableUpdatePlatformController extends AppPlatformController {
   @override
   Future<AppPlatformState> build() async => const AppPlatformState(
@@ -2822,6 +3221,8 @@ TaskRecord _taskRecord({
   TaskStatus status = TaskStatus.downloading,
   List<TaskFileNode> files = const [],
   api_task.Protocol protocol = api_task.Protocol.http,
+  String? remaining,
+  bool isFolder = false,
 }) {
   return TaskRecord(
     id: id,
@@ -2831,12 +3232,13 @@ TaskRecord _taskRecord({
     total: '100 B',
     speed: '10 B/s',
     progress: 0.5,
-    assetType: TaskAssetType.archive,
     url: 'https://example.com/$name',
     storagePath: '/downloads/$name',
     files: files,
     uploading: false,
+    isFolder: isFolder,
     protocol: protocol,
+    remaining: remaining,
   );
 }
 

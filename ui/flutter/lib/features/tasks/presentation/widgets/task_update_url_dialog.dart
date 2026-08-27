@@ -82,10 +82,12 @@ Future<TaskUrlUpdate?> showTaskUpdateUrlDialog(BuildContext context, TaskRecord 
                             style: TextStyle(color: palette.textPrimary, fontSize: 12),
                           ),
                         ),
-                        GhostButton(
-                          density: ButtonDensity.icon,
-                          onPressed: () => setDialogState(() => headerControllers.add(_HeaderControllers())),
-                          child: const Icon(Icons.add, size: 18),
+                        Tooltip(
+                          tooltip: (_) => Text(dialogContext.l10n.add),
+                          child: IconButton.ghost(
+                            onPressed: () => setDialogState(() => headerControllers.add(_HeaderControllers())),
+                            icon: const Icon(Icons.add, size: 18),
+                          ),
                         ),
                       ],
                     ),
@@ -107,16 +109,18 @@ Future<TaskUrlUpdate?> showTaskUpdateUrlDialog(BuildContext context, TaskRecord 
                             ),
                           ),
                           const SizedBox(width: 4),
-                          GhostButton(
-                            density: ButtonDensity.icon,
-                            onPressed: headerControllers.length == 1
-                                ? null
-                                : () {
-                                    final removed = headerControllers.removeAt(index);
-                                    removed.dispose();
-                                    setDialogState(() {});
-                                  },
-                            child: const Icon(Icons.remove, size: 18),
+                          Tooltip(
+                            tooltip: (_) => Text(dialogContext.l10n.delete),
+                            child: IconButton.ghost(
+                              onPressed: headerControllers.length == 1
+                                  ? null
+                                  : () {
+                                      final removed = headerControllers.removeAt(index);
+                                      removed.dispose();
+                                      setDialogState(() {});
+                                    },
+                              icon: const Icon(Icons.remove, size: 18),
+                            ),
                           ),
                         ],
                       ),

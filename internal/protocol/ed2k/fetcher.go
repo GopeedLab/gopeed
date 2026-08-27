@@ -211,13 +211,11 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 }
 
 func (f *Fetcher) Stats() *fetcher.Stats {
-	serverIDClass := f.serverIDClass()
 	handle := f.currentHandle()
 	if !handle.IsValid() {
 		return &fetcher.Stats{
 			Runtime: &ped2k.StatsRuntime{
-				ServerIDClass: serverIDClass,
-				Peers:         make([]*base.PeerStats, 0),
+				Peers: make([]*base.PeerStats, 0),
 			},
 		}
 	}
@@ -239,47 +237,15 @@ func (f *Fetcher) Stats() *fetcher.Stats {
 	return &fetcher.Stats{
 		Snapshot: snapshot,
 		Runtime: &ped2k.StatsRuntime{
-			State:         string(status.State),
-			Paused:        status.Paused,
-			ServerIDClass: serverIDClass,
-			ActivePeers:   handle.ActiveConnections(),
-			TotalPeers:    status.NumPeers,
-			DownloadRate:  status.DownloadRate,
-			UploadRate:    status.UploadRate,
-			Peers:         buildED2KPeers(handle.GetPeersInfo()),
+			State:        string(status.State),
+			Paused:       status.Paused,
+			ActivePeers:  handle.ActiveConnections(),
+			TotalPeers:   status.NumPeers,
+			DownloadRate: status.DownloadRate,
+			UploadRate:   status.UploadRate,
+			Peers:        buildED2KPeers(handle.GetPeersInfo()),
 		},
 	}
-}
-
-func (f *Fetcher) serverIDClass() string {
-	if f.manager == nil {
-		return "unknown"
-	}
-	client := f.manager.currentClient()
-	if client == nil {
-		return "unknown"
-	}
-	return ed2kServerIDClass(client.ServerStatuses())
-}
-
-func ed2kServerIDClass(servers []goed2k.ServerSnapshot) string {
-	for _, server := range servers {
-		if !server.Primary {
-			continue
-		}
-		if !server.Connected || !server.HandshakeCompleted {
-			return "unknown"
-		}
-		switch server.IDClass() {
-		case "LOW_ID":
-			return "low"
-		case "HIGH_ID":
-			return "high"
-		default:
-			return "unknown"
-		}
-	}
-	return "unknown"
 }
 
 func buildED2KPieceMap(snapshots []goed2k.PieceSnapshot) *base.PieceMap {

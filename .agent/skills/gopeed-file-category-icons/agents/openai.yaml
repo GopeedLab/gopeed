@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gopeed File Category Icons"
+  short_description: "Design cohesive Gopeed file-classification icons"
+  default_prompt: "Use $gopeed-file-category-icons to update the source materials and regenerate a consistent Gopeed file-category icon."

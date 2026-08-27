@@ -13,10 +13,10 @@ extension TaskRecordLocalizations on TaskRecord {
   String localizedStatusUppercase(AppLocalizations l10n) => localizedStatus(l10n).toUpperCase();
 
   String? localizedRemaining(AppLocalizations l10n) {
+    if (status == TaskStatus.completed) return null;
     if (remaining case final value?) return value;
     if (waiting) return l10n.waiting;
     if (status == TaskStatus.paused) return l10n.pause;
-    if (status == TaskStatus.completed) return l10n.completed;
     final seconds = remainingSeconds;
     if (seconds == null) return null;
     if (seconds < 60) return l10n.secondsRemaining(seconds);

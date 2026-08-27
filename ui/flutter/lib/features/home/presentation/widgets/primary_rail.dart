@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/gopeed_app_mark.dart';
 import '../../../../l10n/l10n.dart';
 
 enum RailSection { tasks, extensions, settings }
@@ -25,17 +26,7 @@ class PrimaryRail extends StatelessWidget {
         children: [
           SizedBox(
             height: AppDesignTokens.contentHeaderHeight,
-            child: Center(
-              child: Text(
-                'M',
-                style: TextStyle(
-                  color: palette.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.8,
-                ),
-              ),
-            ),
+            child: const Center(child: GopeedAppMark(key: ValueKey('primary-rail-app-mark'))),
           ),
           const SizedBox(height: 6),
           _RailItem(
@@ -56,14 +47,6 @@ class PrimaryRail extends StatelessWidget {
             onTap: () => context.go('/settings'),
           ),
           const Spacer(),
-          RotatedBox(
-            quarterTurns: 3,
-            child: Text(
-              'V1.0',
-              style: TextStyle(color: palette.textMuted, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.2),
-            ),
-          ),
-          const SizedBox(height: 20),
         ],
       ),
     );

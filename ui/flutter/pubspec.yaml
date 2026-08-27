@@ -51,8 +51,10 @@ dependencies:
   launch_at_startup: ^0.3.1
   app_links: ^6.3.3
   share_handler: ^0.0.22
+  share_plus: ^10.1.0
   uri_to_file: ^1.0.0
   dart_ipc: ^1.0.1
+  flutter_inappwebview: ^6.1.5
   flutter_local_notifications: 20.1.0
   desktop_drop: ^0.4.4
   file_picker: ^8.1.7
@@ -62,6 +64,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   url_launcher: ^6.3.1
+  web: ^1.1.1
   install_plugin:
     git:
       url: https://github.com/hui-z/flutter_install_plugin.git
@@ -107,6 +110,11 @@ flutter:
     - assets/tray_icon/
     - assets/icon/
     - assets/exec/
+
+  fonts:
+    - family: GopeedIcons
+      fonts:
+        - asset: assets/fonts/GopeedIcons.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

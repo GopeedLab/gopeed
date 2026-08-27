@@ -16,6 +16,8 @@ class AppWindowLauncher {
 
     await AppWindowCapabilityHost.instance.start(LocalAppCapabilities.instance.registry);
     final payload = AppWindowPayload.createTask(createTask: createTask?.toJson());
+    // Every request deliberately creates a new child window. Create-task
+    // windows are independent and are never reused.
     await WindowController.create(WindowConfiguration(arguments: payload.toRaw(), hiddenAtLaunch: true));
     return true;
   }

@@ -17,6 +17,7 @@ import '../../l10n/l10n.dart';
 import '../../util/log_util.dart';
 import '../../util/package_info.dart';
 import '../../util/util.dart';
+import '../rpc/webview_rpc_service.dart';
 import 'android_foreground_service.dart';
 import 'location_keep_alive.dart';
 
@@ -54,6 +55,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
 
   @override
   Future<AppRuntimeState> build() async {
+    ref.onDispose(() => unawaited(WebViewRpcService.instance.stop()));
     return _init();
   }
 
@@ -94,6 +96,11 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     initLogger();
 
     final startConfig = await _loadStartConfig();
+    try {
+      startConfig.webViewRpcConfig = await WebViewRpcService.instance.start();
+    } catch (error, stackTrace) {
+      logger.w('webview RPC initialization failed', error, stackTrace);
+    }
     Object? startupError;
     var runningPort = 0;
     var localBackendStarted = false;

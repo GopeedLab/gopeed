@@ -38,7 +38,7 @@ const _$StatusEnumMap = {
   Status.done: 'done',
 };
 
-const _$ProtocolEnumMap = {Protocol.http: 'http', Protocol.bt: 'bt', Protocol.ed2k: 'ed2k', Protocol.gblob: 'gblob'};
+const _$ProtocolEnumMap = {Protocol.http: 'http', Protocol.bt: 'bt', Protocol.ed2k: 'ed2k'};
 
 Progress _$ProgressFromJson(Map<String, dynamic> json) => Progress(
   used: (json['used'] as num).toInt(),

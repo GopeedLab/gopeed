@@ -513,6 +513,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _toggleUpdateListener(TaskRecord task) {
+    if (!task.canUpdateUrl) return;
     final notifier = ref.read(pendingUpdateTaskProvider.notifier);
     if (ref.read(pendingUpdateTaskProvider)?.id == task.id) {
       notifier.clear();

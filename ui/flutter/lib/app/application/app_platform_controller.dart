@@ -11,7 +11,6 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../api/api.dart' as api;
 import '../../api/model/downloader_config.dart';
-import '../../api/model/resolve_task.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../core/capabilities/app_capabilities.dart';
 import '../../core/window/app_window_launcher.dart';
@@ -130,7 +129,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
       await trayManager.setIcon('assets/tray_icon/icon.png');
     }
 
-    final version = _safeVersionLabel();
+    final version = _safeVersionLabel(locale.version);
     final menu = Menu(
       items: [
         MenuItem(label: locale.show, onClick: (_) => _showMainWindow()),
@@ -170,9 +169,9 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
       onCreate: (createTask, silent) async {
         final pendingUpdate = ref.read(pendingUpdateTaskProvider);
         if (pendingUpdate != null && createTask.req != null) {
-          await ref.read(gopeedServiceProvider).patchTask(pendingUpdate.id, ResolveTask(req: createTask.req));
-          await ref.read(gopeedServiceProvider).continueTask(pendingUpdate.id);
-          ref.read(pendingUpdateTaskProvider.notifier).clear();
+          ref
+              .read(pendingUpdateRequestProvider.notifier)
+              .set(PendingUpdateRequest(task: pendingUpdate, createTask: createTask));
           await _showMainWindow();
           return;
         }
@@ -180,7 +179,6 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
           await ref.read(gopeedServiceProvider).createTask(createTask);
           return;
         }
-        await _showMainWindow();
         final opened = await AppWindowLauncher.openCreateTaskWindow(createTask: createTask);
         if (!opened) {
           ref.read(pendingCreateTaskProvider.notifier).set(createTask);
@@ -306,11 +304,11 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
     state = AsyncValue.data(_snapshot());
   }
 
-  String _safeVersionLabel() {
+  String _safeVersionLabel(String label) {
     try {
-      return 'Version ${packageInfo.version}';
+      return '$label（${packageInfo.version}）';
     } catch (_) {
-      return 'Version';
+      return label;
     }
   }
 

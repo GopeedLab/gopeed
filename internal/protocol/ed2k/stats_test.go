@@ -20,56 +20,6 @@ func TestStatsSeparatesSnapshotAndRuntimeWithoutHandle(t *testing.T) {
 	if runtime.Peers == nil || len(runtime.Peers) != 0 {
 		t.Fatalf("unexpected runtime peers: %+v", runtime.Peers)
 	}
-	if runtime.ServerIDClass != "unknown" {
-		t.Fatalf("server ID class = %q, want unknown", runtime.ServerIDClass)
-	}
-}
-
-func TestED2KServerIDClassUsesConnectedPrimaryServer(t *testing.T) {
-	tests := []struct {
-		name    string
-		servers []goed2k.ServerSnapshot
-		want    string
-	}{
-		{name: "no server", want: "unknown"},
-		{
-			name: "high ID",
-			servers: []goed2k.ServerSnapshot{
-				{Connected: true, HandshakeCompleted: true, ClientID: 12345},
-				{Primary: true, Connected: true, HandshakeCompleted: true, ClientID: 0x7f000001},
-			},
-			want: "high",
-		},
-		{
-			name: "low ID",
-			servers: []goed2k.ServerSnapshot{
-				{Primary: true, Connected: true, HandshakeCompleted: true, ClientID: 12345},
-			},
-			want: "low",
-		},
-		{
-			name: "handshake pending",
-			servers: []goed2k.ServerSnapshot{
-				{Primary: true, Connected: true, ClientID: 0x7f000001},
-			},
-			want: "unknown",
-		},
-		{
-			name: "missing client ID",
-			servers: []goed2k.ServerSnapshot{
-				{Primary: true, Connected: true, HandshakeCompleted: true},
-			},
-			want: "unknown",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := ed2kServerIDClass(tt.servers); got != tt.want {
-				t.Fatalf("ed2kServerIDClass() = %q, want %q", got, tt.want)
-			}
-		})
-	}
 }
 
 func TestBuildED2KPieceMapPreservesIndexes(t *testing.T) {

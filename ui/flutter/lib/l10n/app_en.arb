@@ -25,7 +25,7 @@
   "downloadLinkHit": "Please enter the download link, one per line@append",
   "downloadLinkHitDesktop": ", or drag the torrent file here directly",
   "download": "Download",
-  "noFileSelected": "Please select at least one file to continue.",
+  "noFileSelected": "Please select at least one file to continue",
   "noStoragePermission": "Storage permission required",
   "selectFile": "Select File",
   "rename": "Rename",
@@ -42,7 +42,14 @@
   "autoTorrentEnable": "Auto create BT tasks from .torrent files",
   "autoTorrentDeleteAfterDownload": "Delete .torrent file after BT task creation",
   "autoDeleteMissingFileTasks": "Auto delete missing file tasks",
-  "items": "@count items",
+  "items": "{count} items",
+  "@items": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "subscribeTracker": "Subscribe Tracker",
   "subscribeFail": "Subscribe failed, please check network or try again later",
   "update": "Update",
@@ -206,7 +213,14 @@
   "updateUrlCancelListen": "Cancel Listen",
   "updateUrlDialogHint": "Enter new download URL",
   "pendingUpdateFound": "Pending Update Task Found",
-  "pendingUpdateConfirm": "Task \"@name\" is waiting for URL update. Do you want to update it with the new URL?",
+  "pendingUpdateConfirm": "Task \"{name}\" is waiting for URL update. Do you want to update it with the new URL?",
+  "@pendingUpdateConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "pendingUpdateYes": "Update Task",
   "pendingUpdateNo": "Create New Task",
   "ed2k": "ED2K",
@@ -231,6 +245,7 @@
   "retry": "Retry",
   "close": "Close",
   "open": "Open",
+  "share": "Share",
   "copy": "Copy",
   "copied": "Copied",
   "refresh": "Refresh",
@@ -277,6 +292,7 @@
   "addScript": "Add Script",
   "editScript": "Edit Script",
   "openDirectory": "Open Directory",
+  "browseFiles": "Browse Files",
   "updateEveryDay": "Update daily",
   "updateVersion": "Update",
   "checkForUpdates": "Check for Updates",
@@ -327,17 +343,17 @@
   "oneTrackerPerLine": "One tracker URL per line",
   "pasteDownloadLinks": "Paste HTTP, HTTPS, or MAGNET links, or drop a torrent file here",
   "unableReadTorrent": "Unable to read torrent file: {error}",
-  "torrentOnly": "Only .torrent files are supported.",
-  "torrentDataEmpty": "Torrent file data is empty.",
-  "torrentPathUnavailable": "Unable to access the torrent file path.",
-  "selectAtLeastOneFile": "Select at least one file.",
+  "torrentOnly": "Only .torrent files are supported",
+  "torrentDataEmpty": "Torrent file data is empty",
+  "torrentPathUnavailable": "Unable to access the torrent file path",
+  "selectAtLeastOneFile": "Select at least one file",
   "resolvedFiles": "Resolved Files",
   "resolvedFileCount": "{count, plural, =1{1 file resolved} other{{count} files resolved}}",
-  "resourceHasNoFiles": "The resource has no selectable file list.",
+  "resourceHasNoFiles": "The resource has no selectable file list",
   "noFiles": "No files",
   "createHistory": "Create History",
   "noHistory": "No history",
-  "directDownloadDescription": "Skip resolving and create tasks immediately.",
+  "directDownloadDescription": "Skip resolving and create tasks immediately",
   "taskProgress": "Task progress",
   "updateAndResume": "Update and resume",
   "httpHeaders": "HTTP headers",
@@ -366,7 +382,6 @@
   "pieces": "Pieces",
   "source": "Source",
   "fileRelevance": "File relevance",
-  "ed2kIdStatus": "ED2K ID",
   "taskDetails": "Task Details",
   "taskDetailsInfoTab": "Details",
   "taskDetailsFilesTab": "Files",
@@ -374,9 +389,9 @@
   "noStatistics": "No statistics available",
   "noPeers": "No connections",
   "deleteTasksTitle": "{count, plural, =1{Delete task?} other{Delete {count} tasks?}}",
-  "keepFilesDescription": "Only remove the task record from Gopeed.",
+  "keepFilesDescription": "Only remove the task record from Gopeed",
   "readingRuntimeStatus": "Reading runtime status…",
-  "apiConfigSaved": "API settings saved. Restart the app to apply them.",
+  "apiConfigSaved": "API settings saved. Restart the app to apply them",
   "socketPathRequired": "Socket path is required",
   "serverRequired": "Server is required",
   "portRangeError": "Enter a port between 0 and 65535",
@@ -397,7 +412,7 @@
   "addCategory": "Add Category",
   "editCategory": "Edit Category",
   "deleteCategoryTitle": "Delete category?",
-  "updateFailed": "Update failed. Please try again later.",
+  "updateFailed": "Update failed. Please try again later",
   "newVersionAvailable": "A new version is available",
   "releaseNotes": "What’s new",
   "noReleaseNotes": "No release notes available",
@@ -554,5 +569,5 @@
   },
   "androidForegroundServiceChannel": "Gopeed Background Service",
   "androidForegroundNotificationTitle": "Gopeed is running",
-  "androidForegroundNotificationText": "Downloads can continue in the background."
+  "androidForegroundNotificationText": "Downloads can continue in the background"
 }

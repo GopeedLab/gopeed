@@ -275,7 +275,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     ),
                     const SizedBox(height: 14),
                     _FormRow(
-                      label: context.l10n.mode,
+                      label: context.l10n.directDownload,
                       child: _DirectDownloadToggle(
                         value: _directDownload,
                         onChanged: (value) => setState(() => _directDownload = value),
@@ -995,11 +995,6 @@ class _DirectDownloadToggle extends StatelessWidget {
               size: 18,
             ),
             const SizedBox(width: 10),
-            Text(
-              context.l10n.directDownload,
-              style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 context.l10n.directDownloadDescription,

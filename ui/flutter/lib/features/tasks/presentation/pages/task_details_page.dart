@@ -6,6 +6,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../core/utils/file_explorer.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
 import '../../application/tasks_controller.dart';
 import '../../domain/task_record.dart';
@@ -44,10 +45,12 @@ class TaskDetailsPage extends ConsumerWidget {
                   children: [
                     SizedBox(
                       width: 44,
-                      child: shad.GhostButton(
-                        density: shad.ButtonDensity.icon,
-                        onPressed: () => context.canPop() ? context.pop() : context.go('/'),
-                        child: Icon(Icons.arrow_back, size: 20, color: palette.textPrimary),
+                      child: shad.Tooltip(
+                        tooltip: (_) => Text(context.l10n.close),
+                        child: shad.IconButton.ghost(
+                          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+                          icon: Icon(Icons.arrow_back, size: 20, color: palette.textPrimary),
+                        ),
                       ),
                     ),
                     Expanded(
@@ -74,9 +77,18 @@ class TaskDetailsPage extends ConsumerWidget {
                       task: task,
                       mobile: true,
                       onOpenStorage: () => FileExplorer.reveal(task!.storagePath),
-                      onUpdateUrl: (url) => ref
-                          .read(tasksControllerProvider.notifier)
-                          .updateUrl(task!.id, url, headers: task.requestHeaders),
+                      onUpdateUrl: (url) async {
+                        try {
+                          await ref
+                              .read(tasksControllerProvider.notifier)
+                              .updateUrl(task!.id, url, headers: task.requestHeaders);
+                        } catch (error) {
+                          if (context.mounted) {
+                            showAppToast(context, error.toString(), type: AppToastType.error);
+                          }
+                          rethrow;
+                        }
+                      },
                     ),
             ),
           ],

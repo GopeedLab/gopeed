@@ -167,40 +167,17 @@ void main() {
     final stats =
         TaskStats.fromJson(Protocol.ed2k, {
               'snapshot': {'upload': 320, 'totalDone': 68, 'totalWanted': 100},
-              'runtime': {
-                'serverIdClass': 'high',
-                'activePeers': 12,
-                'totalPeers': 86,
-                'downloadRate': 4800000,
-                'uploadRate': 320000,
-              },
+              'runtime': {'activePeers': 12, 'totalPeers': 86, 'downloadRate': 4800000, 'uploadRate': 320000},
             })
             as Ed2kTaskStats;
 
     expect(stats.totalPeers, 86);
-    expect(stats.serverIdClass, 'high');
     expect(stats.downloadRate, 4800000);
     expect(stats.totalDone / stats.totalWanted, 0.68);
     expect(stats.peers, isEmpty);
   });
 
-  test('ED2K server ID class defaults to unknown', () {
-    final stats =
-        TaskStats.fromJson(Protocol.ed2k, {
-              'runtime': {'activePeers': 0},
-            })
-            as Ed2kTaskStats;
-
-    expect(stats.serverIdClass, 'unknown');
-  });
-
-  test('unsupported protocols have no statistics panel', () {
-    expect(
-      TaskStats.fromJson(Protocol.gblob, {
-        'snapshot': {'value': 1},
-      }),
-      isNull,
-    );
+  test('a missing protocol has no statistics panel', () {
     expect(
       TaskStats.fromJson(null, {
         'snapshot': {'value': 1},

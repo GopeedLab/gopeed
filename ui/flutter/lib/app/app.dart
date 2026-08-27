@@ -11,6 +11,8 @@ import '../shared/theme/app_component_themes.dart';
 import '../shared/theme/app_theme.dart';
 import 'application/app_appearance_controller.dart';
 import 'application/app_runtime_controller.dart';
+import 'rpc/webview_rpc_overlay.dart';
+import 'rpc/webview_rpc_service.dart';
 import 'router/app_router.dart';
 
 class GopeedApp extends ConsumerStatefulWidget {
@@ -84,7 +86,16 @@ class _GopeedAppState extends ConsumerState<GopeedApp> with WidgetsBindingObserv
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) {
-        return AppComponentThemes(child: AppWindowFrame(child: child ?? const SizedBox.shrink()));
+        final content = AppComponentThemes(child: AppWindowFrame(child: child ?? const SizedBox.shrink()));
+        if (!WebViewRpcService.instance.supported) {
+          return content;
+        }
+        return Overlay(
+          initialEntries: [
+            OverlayEntry(builder: (_) => content),
+            OverlayEntry(builder: (_) => const WebViewRpcOverlay()),
+          ],
+        );
       },
       routerConfig: _router,
     );

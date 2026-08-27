@@ -53,14 +53,6 @@ class TaskCardIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final background = switch (task.status) {
-      TaskStatus.failed => palette.taskCardFailedIconBg,
-      _ => palette.taskCardIconBg,
-    };
-    final foreground = switch (task.status) {
-      TaskStatus.failed => palette.error,
-      _ => palette.textSecondary,
-    };
 
     return SizedBox(
       width: 32,
@@ -69,8 +61,8 @@ class TaskCardIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
         clipBehavior: Clip.hardEdge,
         child: ColoredBox(
-          color: background,
-          child: Center(child: Icon(task.icon, size: 11, color: foreground)),
+          color: palette.taskCardIconBg,
+          child: Center(child: Icon(task.icon, size: 20, color: palette.textSecondary)),
         ),
       ),
     );
@@ -164,13 +156,6 @@ class TaskCardCompletedMeta extends StatelessWidget {
           if (task.total != null) ...[
             TickDivider(color: palette.progressTrack),
             Text(task.total!, style: TextStyle(color: palette.taskMeta, fontSize: 10, height: 1)),
-          ],
-          if (task.status == TaskStatus.completed) ...[
-            TickDivider(color: palette.progressTrack),
-            Text(
-              task.localizedCompletedLabel(context.l10n),
-              style: TextStyle(color: palette.taskMeta, fontSize: 10, height: 1),
-            ),
           ],
           if (task.uploading) ...[
             TickDivider(color: palette.progressTrack),

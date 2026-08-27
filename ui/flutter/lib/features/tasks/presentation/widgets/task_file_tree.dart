@@ -11,10 +11,11 @@ import '../../domain/task_record.dart';
 import 'task_progress_bar.dart';
 
 class TaskFileTree extends StatefulWidget {
-  const TaskFileTree({super.key, required this.task, this.runtimeStatus});
+  const TaskFileTree({super.key, required this.task, this.runtimeStatus, this.progressAction});
 
   final TaskRecord task;
   final TaskRuntimeStatus? runtimeStatus;
+  final Widget? progressAction;
 
   @override
   State<TaskFileTree> createState() => _TaskFileTreeState();
@@ -46,7 +47,7 @@ class _TaskFileTreeState extends State<TaskFileTree> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _TaskDownloadProgress(task: widget.task, runtimeStatus: widget.runtimeStatus),
+        _TaskDownloadProgress(task: widget.task, runtimeStatus: widget.runtimeStatus, action: widget.progressAction),
         const SizedBox(height: 12),
         Expanded(
           child: FileTreeView<TaskFileNode>(
@@ -54,6 +55,7 @@ class _TaskFileTreeState extends State<TaskFileTree> {
             keyPrefix: 'task-file-tree',
             rowHeight: 27,
             iconSize: 15,
+            iconBuilder: (node) => taskFileTypeIcon(node.label, isFolder: node.isFolder),
             contentTextStyle: const TextStyle(fontSize: 11, height: 1.1),
             trailingHeader: const _TaskFileColumnsHeader(),
             trailingBuilder: (context, node) => _FileDownloadProgress(
@@ -87,10 +89,11 @@ class _TaskFileTreeState extends State<TaskFileTree> {
 }
 
 class _TaskDownloadProgress extends StatelessWidget {
-  const _TaskDownloadProgress({required this.task, required this.runtimeStatus});
+  const _TaskDownloadProgress({required this.task, required this.runtimeStatus, this.action});
 
   final TaskRecord task;
   final TaskRuntimeStatus? runtimeStatus;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -110,40 +113,49 @@ class _TaskDownloadProgress extends StatelessWidget {
         ? '${Util.fmtByte(downloadedBytes)} / ${Util.fmtByte(totalBytes)}'
         : Util.fmtByte(downloadedBytes);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                context.l10n.taskProgress,
-                style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.l10n.taskProgress,
+                      style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  Text(transferred, style: TextStyle(color: palette.textSecondary, fontSize: 11)),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 38,
+                    child: Text(
+                      progressLabel,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(color: palette.textPrimary, fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            Text(transferred, style: TextStyle(color: palette.textSecondary, fontSize: 11)),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 38,
-              child: Text(
-                progressLabel,
-                textAlign: TextAlign.right,
-                style: TextStyle(color: palette.textPrimary, fontSize: 11, fontWeight: FontWeight.w600),
+              const SizedBox(height: 7),
+              TaskProgressBar(
+                key: const ValueKey('task-files-total-progress'),
+                value: progress,
+                indeterminate: runtime == null && task.isIndeterminate,
+                shimmer: task.status == TaskStatus.downloading,
+                height: 4,
+                trackColor: palette.progressTrack,
+                fillColor: palette.brandProgress,
+                highlightStartColor: palette.brandProgress.withValues(alpha: 0),
+                highlightEndColor: palette.brandProgress.withValues(alpha: 0),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 7),
-        TaskProgressBar(
-          value: progress,
-          indeterminate: runtime == null && task.isIndeterminate,
-          shimmer: task.status == TaskStatus.downloading,
-          height: 4,
-          trackColor: palette.progressTrack,
-          fillColor: palette.brandProgress,
-          highlightStartColor: palette.brandProgress.withValues(alpha: 0),
-          highlightEndColor: palette.brandProgress.withValues(alpha: 0),
-        ),
+        if (action != null) ...[const SizedBox(width: 12), action!],
       ],
     );
   }

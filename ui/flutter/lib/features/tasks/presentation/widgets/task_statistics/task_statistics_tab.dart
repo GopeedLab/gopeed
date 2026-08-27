@@ -296,7 +296,6 @@ class _Ed2kStatistics extends StatelessWidget {
         const _SectionDivider(),
         _SummaryGrid(
           items: [
-            _SummaryItem(context.l10n.ed2kIdStatus, _formatEd2kServerId(context, stats.serverIdClass)),
             _SummaryItem(context.l10n.peers, stats.totalPeers.toString()),
             _SummaryItem(context.l10n.active, stats.activePeers.toString()),
             _SummaryItem(context.l10n.completedPieces, completedPieces),
@@ -313,12 +312,6 @@ class _Ed2kStatistics extends StatelessWidget {
     );
   }
 }
-
-String _formatEd2kServerId(BuildContext context, String idClass) => switch (idClass.toLowerCase()) {
-  'high' => 'High ID',
-  'low' => 'Low ID',
-  _ => context.l10n.unknown,
-};
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.label, {this.trailing});

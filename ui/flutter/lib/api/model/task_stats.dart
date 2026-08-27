@@ -55,7 +55,7 @@ sealed class TaskStats {
       Protocol.http => HttpTaskStats.fromJson(snapshot),
       Protocol.bt => BtTaskStats.fromJson(snapshot: snapshot, runtime: runtime),
       Protocol.ed2k => Ed2kTaskStats.fromJson(snapshot: snapshot, runtime: runtime),
-      Protocol.gblob || null => null,
+      null => null,
     };
   }
 }
@@ -133,7 +133,6 @@ class BtTaskStats extends TaskStats {
 
 class Ed2kTaskStats extends TaskStats {
   const Ed2kTaskStats({
-    required this.serverIdClass,
     required this.activePeers,
     required this.totalPeers,
     required this.downloadRate,
@@ -145,7 +144,6 @@ class Ed2kTaskStats extends TaskStats {
     required super.pieceMap,
   });
 
-  final String serverIdClass;
   final int activePeers;
   final int totalPeers;
   final int downloadRate;
@@ -157,7 +155,6 @@ class Ed2kTaskStats extends TaskStats {
 
   factory Ed2kTaskStats.fromJson({required Map<String, dynamic> snapshot, required Map<String, dynamic> runtime}) {
     return Ed2kTaskStats(
-      serverIdClass: _stringValue(runtime, 'serverIdClass', fallback: 'unknown'),
       activePeers: _integer(runtime, 'activePeers'),
       totalPeers: _integer(runtime, 'totalPeers'),
       downloadRate: _integer(runtime, 'downloadRate'),
@@ -204,9 +201,4 @@ double? _optionalDecimal(Map<String, dynamic> json, String key) => switch (json[
 String _string(Map<String, dynamic> json, String key) => switch (json[key]) {
   final String value when value.isNotEmpty => value,
   _ => '—',
-};
-
-String _stringValue(Map<String, dynamic> json, String key, {required String fallback}) => switch (json[key]) {
-  final String value when value.isNotEmpty => value,
-  _ => fallback,
 };

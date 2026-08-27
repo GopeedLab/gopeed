@@ -1,0 +1,2 @@
+fonttools==4.59.2
+Pillow==11.3.0

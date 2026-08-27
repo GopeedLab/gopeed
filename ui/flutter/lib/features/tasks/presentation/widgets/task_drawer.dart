@@ -4,15 +4,17 @@ import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
-import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../l10n/l10n.dart';
+import '../../../../util/util.dart';
 import '../../domain/task_record.dart';
 import '../task_record_localizations.dart';
 import '../../application/task_runtime_status_provider.dart';
+import 'task_file_browser_dialog.dart';
 import 'task_file_tree.dart';
 import 'task_statistics/task_statistics_tab.dart';
 
@@ -87,10 +89,11 @@ class _TaskDrawerState extends ConsumerState<TaskDrawer> {
                                       ),
                                     ),
                                   ),
-                                  shad.GhostButton(
-                                    density: shad.ButtonDensity.icon,
+                                  _TaskDetailIconButton(
+                                    key: const ValueKey('task-details-close'),
+                                    label: context.l10n.close,
+                                    icon: const Icon(Icons.close, size: 18),
                                     onPressed: widget.onClose,
-                                    child: const Icon(Icons.close),
                                   ),
                                 ],
                               ),
@@ -158,6 +161,11 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
     } else if (!_editingUrl && widget.task.url != oldWidget.task.url) {
       _urlController.text = widget.task.url;
     }
+    if (!widget.task.canUpdateUrl && _editingUrl) {
+      _editingUrl = false;
+      _updatingUrl = false;
+      _urlController.text = widget.task.url;
+    }
   }
 
   @override
@@ -186,22 +194,31 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
           ),
           child: Row(
             children: [
-              _DrawerTabButton(
-                label: context.l10n.taskDetailsInfoTab,
-                active: _tabIndex == 0,
-                onTap: () => setState(() => _tabIndex = 0),
-              ),
-              const SizedBox(width: 24),
-              _DrawerTabButton(
-                label: context.l10n.taskDetailsFilesTab,
-                active: _tabIndex == 1,
-                onTap: () => setState(() => _tabIndex = 1),
-              ),
-              const SizedBox(width: 24),
-              _DrawerTabButton(
-                label: context.l10n.taskDetailsStatsTab,
-                active: _tabIndex == 2,
-                onTap: () => setState(() => _tabIndex = 2),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _DrawerTabButton(
+                        label: context.l10n.taskDetailsInfoTab,
+                        active: _tabIndex == 0,
+                        onTap: () => setState(() => _tabIndex = 0),
+                      ),
+                      const SizedBox(width: 24),
+                      _DrawerTabButton(
+                        label: context.l10n.taskDetailsFilesTab,
+                        active: _tabIndex == 1,
+                        onTap: () => setState(() => _tabIndex = 1),
+                      ),
+                      const SizedBox(width: 24),
+                      _DrawerTabButton(
+                        label: context.l10n.taskDetailsStatsTab,
+                        active: _tabIndex == 2,
+                        onTap: () => setState(() => _tabIndex = 2),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -218,10 +235,12 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
                 updatingUrl: _updatingUrl,
                 urlController: _urlController,
                 onOpenStorage: widget.onOpenStorage,
-                onEditUrl: () => setState(() {
-                  _urlController.text = widget.task.url;
-                  _editingUrl = true;
-                }),
+                onEditUrl: widget.task.canUpdateUrl
+                    ? () => setState(() {
+                        _urlController.text = widget.task.url;
+                        _editingUrl = true;
+                      })
+                    : null,
                 onCancelEditUrl: () => setState(() {
                   _urlController.text = widget.task.url;
                   _editingUrl = false;
@@ -235,7 +254,16 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
             ),
             1 => Padding(
               padding: EdgeInsets.all(contentPadding),
-              child: TaskFileTree(task: widget.task, runtimeStatus: runtimeStatus),
+              child: TaskFileTree(
+                task: widget.task,
+                runtimeStatus: runtimeStatus,
+                progressAction: _TaskDetailIconButton(
+                  key: const ValueKey('task-files-browse'),
+                  label: context.l10n.browseFiles,
+                  icon: const Icon(Icons.snippet_folder_outlined, size: 18),
+                  onPressed: _browseFiles,
+                ),
+              ),
             ),
             _ => TaskStatisticsTab(task: widget.task, mobile: widget.mobile),
           },
@@ -244,9 +272,17 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
     );
   }
 
+  void _browseFiles() {
+    if (widget.mobile && !Util.isWeb()) {
+      context.push('/tasks/${Uri.encodeComponent(widget.task.id)}/files', extra: widget.task);
+      return;
+    }
+    unawaited(showTaskFileBrowserDialog(context, widget.task));
+  }
+
   Future<void> _saveUrl() async {
     final value = _urlController.text.trim();
-    if (value.isEmpty || _updatingUrl) return;
+    if (value.isEmpty || _updatingUrl || !widget.task.canUpdateUrl) return;
     setState(() => _updatingUrl = true);
     try {
       await widget.onUpdateUrl(value);
@@ -312,7 +348,7 @@ class _TaskInfoTab extends StatelessWidget {
   final TextEditingController urlController;
   final VoidCallback onCopy;
   final VoidCallback onOpenStorage;
-  final VoidCallback onEditUrl;
+  final VoidCallback? onEditUrl;
   final VoidCallback onCancelEditUrl;
   final VoidCallback onSaveUrl;
 
@@ -330,7 +366,9 @@ class _TaskInfoTab extends StatelessWidget {
         ),
         if (task.speed != null) _InfoBlock(label: context.l10n.speed, value: task.speed!),
         if (task.uploading) _InfoBlock(label: context.l10n.uploadSpeed, value: task.uploadSpeed!),
-        if (task.localizedRemaining(context.l10n) case final remaining?)
+        if (task.status == TaskStatus.completed)
+          _InfoBlock(label: context.l10n.remaining, value: '—')
+        else if (task.localizedRemaining(context.l10n) case final remaining?)
           _InfoBlock(label: context.l10n.remaining, value: remaining),
         if (task.status == TaskStatus.completed)
           _InfoBlock(label: context.l10n.completed, value: task.localizedCompletedLabel(context.l10n)),
@@ -348,15 +386,22 @@ class _TaskInfoTab extends StatelessWidget {
           _CopyableInfoBlock(
             label: context.l10n.downloadLink,
             value: task.url,
+            valueKey: const ValueKey('task-details-url-value'),
+            actionKey: const ValueKey('task-details-copy-url'),
             actionLabel: copied ? context.l10n.copied : context.l10n.copy,
-            secondaryActionLabel: context.l10n.edit,
+            actionIcon: copied ? Icons.check : Icons.copy_outlined,
+            secondaryActionLabel: onEditUrl == null ? null : context.l10n.edit,
+            secondaryActionIcon: Icons.edit_outlined,
             onSecondaryTap: onEditUrl,
             onTap: onCopy,
           ),
         _CopyableInfoBlock(
           label: context.l10n.storagePath,
           value: task.storagePath,
+          valueKey: const ValueKey('task-details-storage-value'),
+          actionKey: const ValueKey('task-details-open-storage'),
           actionLabel: context.l10n.open,
+          actionIcon: Icons.folder_open_outlined,
           onTap: onOpenStorage,
         ),
       ],
@@ -397,17 +442,25 @@ class _CopyableInfoBlock extends StatelessWidget {
   const _CopyableInfoBlock({
     required this.label,
     required this.value,
+    required this.valueKey,
+    required this.actionKey,
     required this.actionLabel,
+    required this.actionIcon,
     required this.onTap,
     this.secondaryActionLabel,
+    this.secondaryActionIcon,
     this.onSecondaryTap,
   });
 
   final String label;
   final String value;
+  final Key valueKey;
+  final Key actionKey;
   final String actionLabel;
+  final IconData actionIcon;
   final VoidCallback onTap;
   final String? secondaryActionLabel;
+  final IconData? secondaryActionIcon;
   final VoidCallback? onSecondaryTap;
 
   @override
@@ -425,27 +478,29 @@ class _CopyableInfoBlock extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(value, style: TextStyle(color: palette.textSecondary, fontSize: 11, height: 1.35)),
+                  child: Text(
+                    _softWrapAnywhere(value),
+                    key: valueKey,
+                    semanticsLabel: value,
+                    softWrap: true,
+                    style: TextStyle(color: palette.textSecondary, fontSize: 11, height: 1.35),
+                  ),
                 ),
                 const SizedBox(width: 8),
-                if (secondaryActionLabel != null && onSecondaryTap != null) ...[
-                  shad.GhostButton(
-                    density: shad.ButtonDensity.icon,
+                if (secondaryActionLabel != null && secondaryActionIcon != null && onSecondaryTap != null) ...[
+                  _TaskDetailIconButton(
+                    key: const ValueKey('task-details-edit-url'),
+                    label: secondaryActionLabel!,
+                    icon: Icon(secondaryActionIcon!, size: 16),
                     onPressed: onSecondaryTap,
-                    child: Text(
-                      secondaryActionLabel!,
-                      style: TextStyle(color: palette.textSecondary, fontSize: 10, fontWeight: FontWeight.w600),
-                    ),
                   ),
                   const SizedBox(width: 4),
                 ],
-                shad.GhostButton(
-                  density: shad.ButtonDensity.icon,
+                _TaskDetailIconButton(
+                  key: actionKey,
+                  label: actionLabel,
+                  icon: Icon(actionIcon, size: 16),
                   onPressed: onTap,
-                  child: Text(
-                    actionLabel,
-                    style: TextStyle(color: palette.textSecondary, fontSize: 10, fontWeight: FontWeight.w600),
-                  ),
                 ),
               ],
             ),
@@ -455,6 +510,8 @@ class _CopyableInfoBlock extends StatelessWidget {
     );
   }
 }
+
+String _softWrapAnywhere(String value) => value.characters.join('\u200B');
 
 class _InfoLabel extends StatelessWidget {
   const _InfoLabel(this.label);
@@ -531,13 +588,21 @@ class _EditableUrlBlock extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    shad.SecondaryButton(onPressed: updating ? null : onCancel, child: Text(context.l10n.cancel)),
+                    _TaskDetailIconButton(
+                      key: const ValueKey('task-details-cancel-url'),
+                      label: context.l10n.cancel,
+                      icon: const Icon(Icons.close, size: 17),
+                      onPressed: updating ? null : onCancel,
+                    ),
                     const SizedBox(width: 8),
-                    AppPrimaryButton(
-                      onPressed: updating ? null : onSave,
-                      child: updating
+                    _TaskDetailIconButton(
+                      key: const ValueKey('task-details-save-url'),
+                      label: context.l10n.updateAndResume,
+                      icon: updating
                           ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
-                          : Text(context.l10n.save),
+                          : const Icon(Icons.check, size: 17),
+                      onPressed: updating ? null : onSave,
+                      primary: true,
                     ),
                   ],
                 ),
@@ -546,6 +611,32 @@ class _EditableUrlBlock extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TaskDetailIconButton extends StatelessWidget {
+  const _TaskDetailIconButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.primary = false,
+  });
+
+  final String label;
+  final Widget icon;
+  final VoidCallback? onPressed;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = primary
+        ? shad.IconButton.primary(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: icon)
+        : shad.IconButton.ghost(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: icon);
+    return shad.Tooltip(
+      tooltip: (_) => Text(label),
+      child: SizedBox.square(dimension: 28, child: button),
     );
   }
 }
