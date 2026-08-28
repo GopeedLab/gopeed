@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
@@ -17,6 +19,7 @@ class SettingsLanguageSelect extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < Breakpoints.mobile;
+    final popupMaxHeight = isMobile ? math.min(MediaQuery.sizeOf(context).height * 0.62, 420.0) : 240.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -24,17 +27,20 @@ class SettingsLanguageSelect extends StatelessWidget {
         return shad.Select<String>(
           key: const ValueKey('settings-language-select'),
           value: value,
-          constraints: BoxConstraints.tightFor(width: width, height: 36),
-          popupConstraints: const BoxConstraints(maxHeight: 240),
+          constraints: BoxConstraints.tightFor(width: width, height: isMobile ? 44 : 36),
+          popupConstraints: BoxConstraints(maxHeight: popupMaxHeight),
           itemBuilder: (context, selectedValue) => Text(_labelFor(context, selectedValue)),
           popup: (context) => shad.SelectPopup<String>(
             items: shad.SelectItemList(
               children: [
-                shad.SelectItemButton<String>(value: 'system', child: Text(context.l10n.followSystem)),
+                shad.SelectItemButton<String>(
+                  value: 'system',
+                  child: _LanguageOptionLabel(label: context.l10n.followSystem, mobile: isMobile),
+                ),
                 for (final locale in supportedLocales)
                   shad.SelectItemButton<String>(
                     value: localeConfigValue(locale),
-                    child: Text(lookupAppLocalizations(locale).label),
+                    child: _LanguageOptionLabel(label: lookupAppLocalizations(locale).label, mobile: isMobile),
                   ),
               ],
             ),
@@ -56,5 +62,23 @@ class SettingsLanguageSelect extends StatelessWidget {
       return lookupAppLocalizations(locale).label;
     }
     return context.l10n.followSystem;
+  }
+}
+
+class _LanguageOptionLabel extends StatelessWidget {
+  const _LanguageOptionLabel({required this.label, required this.mobile});
+
+  final String label;
+  final bool mobile;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: mobile ? 28 : 20,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+    );
   }
 }

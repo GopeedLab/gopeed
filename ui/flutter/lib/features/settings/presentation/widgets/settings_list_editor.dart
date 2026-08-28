@@ -7,6 +7,7 @@ import '../../../../core/utils/breakpoints.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
+import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../l10n/l10n.dart';
 
@@ -181,23 +182,17 @@ Future<String?> showTextSettingDialog(
               children: [
                 Text(fieldLabel, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
-                shad.TextField(
-                  controller: controller,
-                  features: pickPath == null
-                      ? const []
-                      : [
-                          shad.InputFeature.trailing(
-                            shad.GhostButton(
-                              density: shad.ButtonDensity.icon,
-                              onPressed: () async {
-                                final path = await pickPath();
-                                if (path != null && path.isNotEmpty) controller.text = path;
-                              },
-                              child: const Icon(Icons.folder_open_outlined, size: 17),
-                            ),
-                          ),
-                        ],
-                ),
+                if (pickPath == null)
+                  shad.TextField(controller: controller)
+                else
+                  AppPathPickerField(
+                    controller: controller,
+                    desktopWidth: AppDesignTokens.settingsFormControlWidth,
+                    onPick: () async {
+                      final path = await pickPath();
+                      if (path != null && path.isNotEmpty) controller.text = path;
+                    },
+                  ),
                 if (validationMessage != null || testMessage != null) ...[
                   const SizedBox(height: 8),
                   Text(
@@ -246,6 +241,7 @@ Future<String?> showTextSettingDialog(
   try {
     return await overlay.future;
   } finally {
+    await WidgetsBinding.instance.endOfFrame;
     controller.dispose();
   }
 }

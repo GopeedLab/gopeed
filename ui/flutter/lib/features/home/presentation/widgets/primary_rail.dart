@@ -63,39 +63,46 @@ class PrimaryBottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return Container(
-      height: 64,
       decoration: BoxDecoration(
         color: palette.railBg,
         border: Border(top: BorderSide(color: palette.border)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: _BottomNavItem(
-              icon: Icons.download_rounded,
-              label: context.l10n.task,
-              active: activeSection == RailSection.tasks,
-              onTap: () => context.go('/'),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _BottomNavItem(
+                    icon: Icons.download_rounded,
+                    label: context.l10n.task,
+                    active: activeSection == RailSection.tasks,
+                    onTap: () => context.go('/'),
+                  ),
+                ),
+                Expanded(
+                  child: _BottomNavItem(
+                    icon: Icons.extension_outlined,
+                    label: context.l10n.extensions,
+                    active: activeSection == RailSection.extensions,
+                    onTap: () => context.go('/extensions'),
+                  ),
+                ),
+                Expanded(
+                  child: _BottomNavItem(
+                    icon: Icons.settings_outlined,
+                    label: context.l10n.setting,
+                    active: activeSection == RailSection.settings,
+                    onTap: () => context.go('/settings'),
+                  ),
+                ),
+              ],
             ),
           ),
-          Expanded(
-            child: _BottomNavItem(
-              icon: Icons.extension_outlined,
-              label: context.l10n.extensions,
-              active: activeSection == RailSection.extensions,
-              onTap: () => context.go('/extensions'),
-            ),
-          ),
-          Expanded(
-            child: _BottomNavItem(
-              icon: Icons.settings_outlined,
-              label: context.l10n.setting,
-              active: activeSection == RailSection.settings,
-              onTap: () => context.go('/settings'),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

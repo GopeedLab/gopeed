@@ -6,6 +6,7 @@ import '../../../../api/model/downloader_config.dart';
 import '../../../../core/utils/breakpoints.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../l10n/l10n.dart';
 
@@ -127,10 +128,10 @@ Future<DownloadCategoryDraft?> showDownloadCategoryDialog(
   BuildContext context, {
   DownloadCategory? category,
   required String initialName,
-  required Future<String?> Function() pickDirectory,
+  required String initialPath,
 }) async {
   final nameController = TextEditingController(text: initialName);
-  final pathController = TextEditingController(text: category?.path ?? '');
+  final pathController = TextEditingController(text: category?.path ?? initialPath);
   String? validationMessage;
 
   final overlay = const shad.DialogOverlayHandler().show<DownloadCategoryDraft?>(
@@ -166,21 +167,11 @@ Future<DownloadCategoryDraft?> showDownloadCategoryDialog(
                 const SizedBox(height: 14),
                 Text(dialogContext.l10n.categoryPath, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
-                shad.TextField(
-                  key: const ValueKey('download-category-path'),
+                AppPathPickerField.downloadDirectory(
+                  fieldKey: const ValueKey('download-category-path'),
                   controller: pathController,
-                  features: [
-                    shad.InputFeature.trailing(
-                      shad.GhostButton(
-                        density: shad.ButtonDensity.icon,
-                        onPressed: () async {
-                          final path = await pickDirectory();
-                          if (path != null && path.isNotEmpty) pathController.text = path;
-                        },
-                        child: const Icon(Icons.folder_open_outlined, size: 17),
-                      ),
-                    ),
-                  ],
+                  desktopWidth: AppDesignTokens.settingsFormControlWidth,
+                  allowAndroidEditing: true,
                 ),
                 if (validationMessage != null) ...[
                   const SizedBox(height: 8),
@@ -204,6 +195,7 @@ Future<DownloadCategoryDraft?> showDownloadCategoryDialog(
   try {
     return await overlay.future;
   } finally {
+    await WidgetsBinding.instance.endOfFrame;
     nameController.dispose();
     pathController.dispose();
   }

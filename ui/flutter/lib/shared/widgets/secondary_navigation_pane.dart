@@ -74,6 +74,7 @@ class SecondaryNavigationPane<T> extends StatelessWidget {
                     key: ValueKey('secondary-navigation-item-$index'),
                     item: item,
                     active: item.value == selectedValue,
+                    mobile: mobile,
                     showDisclosure: showDisclosure,
                     onTap: () => onSelected(item.value),
                   ),
@@ -92,12 +93,14 @@ class _SecondaryNavigationPaneItem<T> extends StatelessWidget {
     super.key,
     required this.item,
     required this.active,
+    required this.mobile,
     required this.showDisclosure,
     required this.onTap,
   });
 
   final SecondaryNavigationPaneItem<T> item;
   final bool active;
+  final bool mobile;
   final bool showDisclosure;
   final VoidCallback onTap;
 
@@ -110,8 +113,9 @@ class _SecondaryNavigationPaneItem<T> extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          constraints: BoxConstraints(minHeight: mobile ? 52 : 0),
+          margin: EdgeInsets.only(bottom: mobile ? 6 : 4),
+          padding: EdgeInsets.symmetric(horizontal: mobile ? 14 : 12, vertical: mobile ? 12 : 8),
           decoration: BoxDecoration(
             color: active ? palette.itemActiveBg : Colors.transparent,
             borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
@@ -119,8 +123,8 @@ class _SecondaryNavigationPaneItem<T> extends StatelessWidget {
           child: Row(
             children: [
               if (item.icon != null) ...[
-                Icon(item.icon, size: 16, color: active ? palette.textPrimary : palette.textSecondary),
-                const SizedBox(width: 12),
+                Icon(item.icon, size: mobile ? 20 : 16, color: active ? palette.textPrimary : palette.textSecondary),
+                SizedBox(width: mobile ? 14 : 12),
               ],
               Expanded(
                 child: Text(
@@ -129,8 +133,8 @@ class _SecondaryNavigationPaneItem<T> extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: active ? palette.textPrimary : palette.textSecondary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                    fontSize: mobile ? 16 : 14,
+                    fontWeight: mobile ? FontWeight.w600 : FontWeight.w500,
                   ),
                 ),
               ),
@@ -151,7 +155,7 @@ class _SecondaryNavigationPaneItem<T> extends StatelessWidget {
                   ),
                 )
               else if (showDisclosure)
-                Icon(Icons.chevron_right, size: 15, color: palette.textMuted),
+                Icon(Icons.chevron_right, size: mobile ? 19 : 15, color: palette.textMuted),
             ],
           ),
         ),

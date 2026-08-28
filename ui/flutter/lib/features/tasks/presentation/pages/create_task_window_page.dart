@@ -21,6 +21,7 @@ import '../../../../api/model/resolve_task.dart';
 import '../../../../core/capabilities/app_capabilities.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../shared/widgets/window/desktop_window_header.dart';
@@ -265,12 +266,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     const SizedBox(height: 16),
                     _FormRow(
                       label: context.l10n.directory,
-                      child: _WindowTextField(
+                      child: AppPathPickerField.downloadDirectory(
+                        fieldKey: const ValueKey('create-task-directory-input'),
+                        pickerKey: const ValueKey('create-task-directory-picker'),
                         controller: _directoryController,
                         hintText: context.l10n.chooseDownloadDirectory,
-                        trailing: kIsWeb
-                            ? null
-                            : _MiniInputAction(icon: Icons.folder_open_outlined, onPressed: _pickDirectory),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -526,15 +526,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       return;
     }
     _setUrlText(filePath);
-  }
-
-  Future<void> _pickDirectory() async {
-    if (kIsWeb) {
-      return;
-    }
-    final directory = await FilePicker.platform.getDirectoryPath();
-    if (directory == null || directory.isEmpty) return;
-    setState(() => _directoryController.text = directory);
   }
 
   Future<void> _confirm() async {
@@ -1011,11 +1002,10 @@ class _DirectDownloadToggle extends StatelessWidget {
 }
 
 class _WindowTextField extends StatelessWidget {
-  const _WindowTextField({required this.controller, required this.hintText, this.trailing});
+  const _WindowTextField({required this.controller, required this.hintText});
 
   final TextEditingController controller;
   final String hintText;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -1027,7 +1017,6 @@ class _WindowTextField extends StatelessWidget {
       border: Border.all(color: palette.border),
       borderRadius: BorderRadius.circular(4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      features: trailing == null ? const [] : [InputTrailingFeature(trailing!)],
     );
   }
 }

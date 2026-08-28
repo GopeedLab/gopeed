@@ -24,6 +24,8 @@ class ResponsiveMenuLayout<T> extends StatefulWidget {
     required this.onSelected,
     required this.contentBuilder,
     this.mobileContentTitleBuilder,
+    this.mobileContentVisible = false,
+    this.onMobileBack,
     this.sidebarFooter,
     this.breakpoint = Breakpoints.mobile,
   });
@@ -34,6 +36,8 @@ class ResponsiveMenuLayout<T> extends StatefulWidget {
   final ValueChanged<T> onSelected;
   final Widget Function(BuildContext context, T selectedValue) contentBuilder;
   final String Function(T selectedValue)? mobileContentTitleBuilder;
+  final bool mobileContentVisible;
+  final VoidCallback? onMobileBack;
   final Widget? sidebarFooter;
   final double breakpoint;
 
@@ -42,8 +46,6 @@ class ResponsiveMenuLayout<T> extends StatefulWidget {
 }
 
 class _ResponsiveMenuLayoutState<T> extends State<ResponsiveMenuLayout<T>> {
-  T? _mobileSelectedValue;
-
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.sizeOf(context).width >= widget.breakpoint;
@@ -71,39 +73,41 @@ class _ResponsiveMenuLayoutState<T> extends State<ResponsiveMenuLayout<T>> {
       );
     }
 
-    final selected = _mobileSelectedValue;
-    if (selected == null) {
-      return SecondaryNavigationPane<T>(
-        title: widget.title,
-        items: widget.items
-            .map(
-              (item) => SecondaryNavigationPaneItem<T>(
-                value: item.value,
-                label: item.label,
-                icon: item.icon,
-                trailing: item.trailing,
-              ),
-            )
-            .toList(),
-        selectedValue: widget.selectedValue,
-        onSelected: (value) {
-          widget.onSelected(value);
-          setState(() => _mobileSelectedValue = value);
-        },
-        footer: widget.sidebarFooter,
-        mobile: true,
-        showDisclosure: true,
+    if (!widget.mobileContentVisible) {
+      return SafeArea(
+        bottom: false,
+        child: SecondaryNavigationPane<T>(
+          title: widget.title,
+          items: widget.items
+              .map(
+                (item) => SecondaryNavigationPaneItem<T>(
+                  value: item.value,
+                  label: item.label,
+                  icon: item.icon,
+                  trailing: item.trailing,
+                ),
+              )
+              .toList(),
+          selectedValue: widget.selectedValue,
+          onSelected: widget.onSelected,
+          footer: widget.sidebarFooter,
+          mobile: true,
+          showDisclosure: true,
+        ),
       );
     }
 
-    return Column(
-      children: [
-        _MobileContentHeader(
-          title: widget.mobileContentTitleBuilder?.call(selected) ?? widget.title,
-          onBack: () => setState(() => _mobileSelectedValue = null),
-        ),
-        Expanded(child: widget.contentBuilder(context, selected)),
-      ],
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          _MobileContentHeader(
+            title: widget.mobileContentTitleBuilder?.call(widget.selectedValue) ?? widget.title,
+            onBack: widget.onMobileBack ?? () {},
+          ),
+          Expanded(child: widget.contentBuilder(context, widget.selectedValue)),
+        ],
+      ),
     );
   }
 }
@@ -118,7 +122,8 @@ class _MobileContentHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return Container(
-      height: 52,
+      key: const ValueKey('mobile-content-header'),
+      height: 56,
       decoration: BoxDecoration(
         color: palette.bg,
         border: Border(bottom: BorderSide(color: palette.border)),

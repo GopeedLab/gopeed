@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart' show Icons, Scrollbar;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kDoubleTapMinTime, kSecondaryMouseButton;
+import 'package:flutter/services.dart' show SystemChannels;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:gopeed/app/app.dart';
 import 'package:gopeed/app/application/app_appearance_controller.dart';
@@ -61,7 +64,9 @@ import 'package:gopeed/shared/theme/app_component_themes.dart';
 import 'package:gopeed/shared/theme/app_design_tokens.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/theme/app_theme_color.dart';
+import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/widgets/app_loading_button.dart';
+import 'package:gopeed/shared/widgets/app_path_picker_field.dart';
 import 'package:gopeed/shared/widgets/app_primary_button.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:gopeed/shared/widgets/app_toast.dart';
@@ -159,6 +164,41 @@ void main() {
     expect(find.byKey(const ValueKey('task-empty-illustration')), findsOneWidget);
     expect(find.text('Retry'), findsNothing);
     expect(find.text('Unable to load tasks'), findsNothing);
+  });
+
+  testWidgets('android root navigation requires a second back action to exit', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(390, 760));
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    var systemPopCalls = 0;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'SystemNavigator.pop') systemPopCalls++;
+      return null;
+    });
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          tasksControllerProvider.overrideWith(FakeTasksController.new),
+        ],
+        child: const GopeedApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.text('Press back again to exit'), findsOneWidget);
+    expect(systemPopCalls, 0);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(systemPopCalls, 1);
+    await tester.pump(const Duration(seconds: 6));
+    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets('task search uses a specific empty result message', (WidgetTester tester) async {
@@ -313,6 +353,8 @@ void main() {
     WidgetTester tester,
   ) async {
     await _setTestSize(tester, const Size(390, 760));
+    tester.view.padding = const FakeViewPadding(top: 32, bottom: 24);
+    addTearDown(tester.view.resetPadding);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
@@ -331,6 +373,7 @@ void main() {
     final installRect = tester.getRect(find.byKey(const ValueKey('install-extension-button')));
     final cardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-0')));
 
+    expect(searchRect.top, greaterThanOrEqualTo(32));
     expect(searchRect.width, closeTo(358, 0.01));
     expect(searchRect.width, closeTo(cardRect.width, 0.01));
     expect(sortRect.top, greaterThan(searchRect.bottom));
@@ -495,6 +538,28 @@ void main() {
     expect(find.text('SETTINGS'), findsNothing);
   });
 
+  testWidgets('responsive mobile menu reserves the safe area and uses comfortable entry sizes', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(390, 760));
+    tester.view.padding = const FakeViewPadding(top: 32, bottom: 24);
+    addTearDown(tester.view.resetPadding);
+    await tester.pumpWidget(const _ResponsiveMenuHarness());
+    await tester.pumpAndSettle();
+
+    final pane = find.byKey(const ValueKey('secondary-navigation-pane'));
+    final firstEntry = find.byKey(const ValueKey('secondary-navigation-item-0'));
+    expect(tester.getTopLeft(pane).dy, 32);
+    expect(tester.getSize(firstEntry).height, greaterThanOrEqualTo(52));
+
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final mobileHeader = find.byKey(const ValueKey('mobile-content-header'));
+    expect(tester.getTopLeft(mobileHeader).dy, 32);
+    expect(tester.getSize(mobileHeader).height, 56);
+  });
+
   testWidgets('settings use three top-level entries and ordered groups', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 768));
     await tester.pumpWidget(
@@ -504,11 +569,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(FakeSettingsController.new),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -606,11 +667,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(FakeSettingsController.new),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -651,11 +708,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(() => settingsController),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -686,6 +739,128 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('download directory keeps long text clear of its aligned picker action', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(CategorySettingsController.new),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    final directoryInput = find.byKey(const ValueKey('download-directory-input'));
+    final directoryPicker = find.byKey(const ValueKey('download-directory-picker'));
+    const longDirectory =
+        '/storage/emulated/0/Download/a-very-long-directory-name-that-must-not-run-under-the-picker-icon';
+    await tester.enterText(directoryInput, longDirectory);
+    await tester.pump();
+
+    final editableText = find.descendant(of: directoryInput, matching: find.byType(EditableText));
+    expect(tester.getRect(editableText).right, lessThan(tester.getRect(directoryPicker).left));
+    expect(tester.getRect(directoryPicker).left - tester.getRect(directoryInput).right, 2);
+    final pathTooltip = find.ancestor(of: directoryInput, matching: find.byType(AppTooltip));
+    expect(pathTooltip, findsOneWidget);
+    expect(tester.widget<AppTooltip>(pathTooltip).message, longDirectory);
+
+    final categoryActions = find.descendant(
+      of: find.byKey(const ValueKey('download-categories-editor')),
+      matching: find.byType(shad.GhostButton),
+    );
+    expect(categoryActions, findsWidgets);
+    expect(tester.getSize(directoryPicker), tester.getSize(categoryActions.last));
+    expect(tester.getTopRight(directoryPicker).dx, closeTo(tester.getTopRight(categoryActions.last).dx, 0.01));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('android download directory picker only switches to verified raw paths', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(390, 760));
+    DownloadDirectoryPicker.debugPlatformOverride = TargetPlatform.android;
+    addTearDown(() => DownloadDirectoryPicker.debugPlatformOverride = null);
+    final calls = <String>[];
+    DownloadDirectoryPicker.debugAndroidLocationsLoader = () async {
+      calls.add('getLocations');
+      return <String, String>{
+        'application': '/storage/emulated/0/Android/data/com.gopeed.gopeed/files',
+        'downloads': '/storage/emulated/0/Download/Gopeed',
+      };
+    };
+    DownloadDirectoryPicker.debugDownloadsPreparer = (path) async {
+      calls.add('prepareDownloads');
+      return path;
+    };
+    addTearDown(() {
+      DownloadDirectoryPicker.debugAndroidLocationsLoader = null;
+      DownloadDirectoryPicker.debugDownloadsPreparer = null;
+    });
+    final controller = TextEditingController(text: '/storage/emulated/0/Android/data/com.gopeed.gopeed/files');
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Padding(
+          padding: const EdgeInsets.all(20),
+          child: AppPathPickerField.downloadDirectory(
+            controller: controller,
+            fieldKey: const ValueKey('android-directory-input'),
+            pickerKey: const ValueKey('android-directory-picker'),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.widget<shad.TextField>(find.byKey(const ValueKey('android-directory-input'))).readOnly, isTrue);
+    await tester.tap(find.byKey(const ValueKey('android-directory-picker')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('android-download-directory-dialog')), findsOneWidget);
+    expect(find.text('App storage'), findsOneWidget);
+    expect(find.text('Download/Gopeed'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('android-downloads-directory-option')));
+    await tester.pumpAndSettle();
+    expect(controller.text, '/storage/emulated/0/Download/Gopeed');
+    expect(calls, ['getLocations', 'prepareDownloads']);
+    expect(find.byKey(const ValueKey('android-download-directory-dialog')), findsNothing);
+    expect(tester.takeException(), isNull);
+    DownloadDirectoryPicker.debugPlatformOverride = null;
+  });
+
+  testWidgets('ios download directory is fixed and has no picker action', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(390, 760));
+    DownloadDirectoryPicker.debugPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => DownloadDirectoryPicker.debugPlatformOverride = null);
+    final controller = TextEditingController(text: '/app/Documents');
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Padding(
+          padding: const EdgeInsets.all(20),
+          child: AppPathPickerField.downloadDirectory(
+            controller: controller,
+            fieldKey: const ValueKey('ios-directory-input'),
+            pickerKey: const ValueKey('ios-directory-picker'),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.widget<shad.TextField>(find.byKey(const ValueKey('ios-directory-input'))).readOnly, isTrue);
+    expect(find.byKey(const ValueKey('ios-directory-picker')), findsNothing);
+    expect(tester.takeException(), isNull);
+    DownloadDirectoryPicker.debugPlatformOverride = null;
+  });
+
   testWidgets('ED2K list settings use multiline text and persist comma-separated values', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     final settingsController = Ed2kSettingsController();
@@ -696,11 +871,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(() => settingsController),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -736,11 +907,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(() => settingsController),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -774,11 +941,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(FakeSettingsController.new),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.dark(),
-          materialTheme: AppTheme.materialDark(),
-          home: const AppComponentThemes(child: SettingsPage()),
-        ),
+        child: const _SettingsTestApp(dark: true, wrapComponentThemes: true),
       ),
     );
     await tester.pumpAndSettle();
@@ -873,11 +1036,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(() => settingsController),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -894,6 +1053,9 @@ void main() {
     expect(horizontalScrollbar.thumbVisibility, isTrue);
     expect(horizontalScrollbar.controller?.hasClients, isTrue);
     expect(horizontalScrollbar.controller!.position.maxScrollExtent, greaterThan(0));
+    final scrollbarRect = tester.getRect(find.byKey(const ValueKey('tracker-horizontal-scrollbar')));
+    final scrollViewRect = tester.getRect(find.byKey(const ValueKey('tracker-horizontal-scroll-view')));
+    expect(scrollbarRect.bottom - scrollViewRect.bottom, AppDesignTokens.space12);
     expect(find.text(allTrackerSubscribeUrls.first), findsOneWidget);
     horizontalScrollbar.controller!.jumpTo(horizontalScrollbar.controller!.position.maxScrollExtent);
     await tester.pump();
@@ -920,11 +1082,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(() => settingsController),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -965,11 +1123,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(() => settingsController),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -1006,11 +1160,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(FakeSettingsController.new),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -1045,11 +1195,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(CategorySettingsController.new),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -1100,11 +1246,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(FakeSettingsController.new),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -1186,11 +1328,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(AvailableUpdatePlatformController.new),
           settingsControllerProvider.overrideWith(FakeSettingsController.new),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -1213,11 +1351,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(CheckingUpdatePlatformController.new),
           settingsControllerProvider.overrideWith(FakeSettingsController.new),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const AppComponentThemes(child: SettingsPage()),
-        ),
+        child: const _SettingsTestApp(wrapComponentThemes: true),
       ),
     );
     await tester.pump();
@@ -1242,11 +1376,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(() => settingsController),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -1282,11 +1412,7 @@ void main() {
           appPlatformControllerProvider.overrideWith(FakePlatformController.new),
           settingsControllerProvider.overrideWith(FakeSettingsController.new),
         ],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
-        ),
+        child: const _SettingsTestApp(),
       ),
     );
     await tester.pumpAndSettle();
@@ -1295,7 +1421,70 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('theme-mode-system')), findsOneWidget);
     expect(find.byKey(const ValueKey('theme-color-green')), findsOneWidget);
+    final languageSelect = find.byKey(const ValueKey('settings-language-select'));
+    expect(tester.getSize(languageSelect).height, 44);
+
+    await tester.ensureVisible(languageSelect);
+    await tester.tap(languageSelect);
+    await tester.pumpAndSettle();
+    final languagePopup = find.byType(shad.SelectPopup<String>);
+    expect(languagePopup, findsOneWidget);
+    expect(tester.getSize(languagePopup).height, greaterThan(240));
+    final englishOption = find.ancestor(of: find.text('English'), matching: find.byType(shad.Button));
+    expect(tester.getSize(englishOption).height, greaterThanOrEqualTo(44));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings mobile back returns one level before requiring a second back to exit', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(390, 760));
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    var systemPopCalls = 0;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'SystemNavigator.pop') systemPopCalls++;
+      return null;
+    });
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(FakeSettingsController.new),
+          tasksControllerProvider.overrideWith(FakeTasksController.new),
+        ],
+        child: const GopeedApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Basic'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('theme-mode-system')), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('SETTINGS'), findsOneWidget);
+    expect(find.byKey(const ValueKey('theme-mode-system')), findsNothing);
+    expect(systemPopCalls, 0);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(find.text('Press back again to exit'), findsOneWidget);
+    expect(systemPopCalls, 0);
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(systemPopCalls, 1);
+    await tester.pump(const Duration(seconds: 6));
+    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets('light task card hover uses a distinct semantic surface', (WidgetTester tester) async {
@@ -1398,6 +1587,29 @@ void main() {
       tester.getRect(find.byType(shad.Checkbox)).left,
       greaterThan(tester.getRect(find.text('Direct Download')).right),
     );
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('create task directory reuses the separated path picker field', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(700, 500));
+    await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
+    await tester.pump();
+
+    final directoryInput = find.byKey(const ValueKey('create-task-directory-input'));
+    final directoryPicker = find.byKey(const ValueKey('create-task-directory-picker'));
+    expect(directoryInput, findsOneWidget);
+    expect(directoryPicker, findsOneWidget);
+
+    await tester.enterText(
+      directoryInput,
+      '/storage/emulated/0/Download/a-very-long-create-task-directory-that-must-not-run-under-the-picker-icon',
+    );
+    await tester.pump();
+
+    final editableText = find.descendant(of: directoryInput, matching: find.byType(EditableText));
+    expect(tester.getRect(editableText).right, lessThan(tester.getRect(directoryPicker).left));
+    expect(tester.getRect(directoryPicker).left - tester.getRect(directoryInput).right, 2);
+    expect(tester.takeException(), isNull);
     await tester.pump(const Duration(seconds: 1));
   });
 
@@ -3357,8 +3569,16 @@ Future<void> _setTestSize(WidgetTester tester, Size size) async {
   });
 }
 
-class _ResponsiveMenuHarness extends StatelessWidget {
+class _ResponsiveMenuHarness extends StatefulWidget {
   const _ResponsiveMenuHarness();
+
+  @override
+  State<_ResponsiveMenuHarness> createState() => _ResponsiveMenuHarnessState();
+}
+
+class _ResponsiveMenuHarnessState extends State<_ResponsiveMenuHarness> {
+  var _selected = 'general';
+  var _showMobileContent = false;
 
   @override
   Widget build(BuildContext context) {
@@ -3367,17 +3587,74 @@ class _ResponsiveMenuHarness extends StatelessWidget {
       materialTheme: AppTheme.materialLight(),
       home: ResponsiveMenuLayout<String>(
         title: 'Settings',
-        selectedValue: 'general',
-        onSelected: (_) {},
+        selectedValue: _selected,
+        onSelected: (value) => setState(() {
+          _selected = value;
+          _showMobileContent = true;
+        }),
         items: const [
           ResponsiveMenuItem(value: 'general', label: 'General', icon: Icons.settings_outlined),
           ResponsiveMenuItem(value: 'advanced', label: 'Advanced', icon: Icons.tune_outlined),
         ],
         mobileContentTitleBuilder: (value) => value == 'advanced' ? 'Advanced' : 'General',
+        mobileContentVisible: _showMobileContent,
+        onMobileBack: () => setState(() => _showMobileContent = false),
         contentBuilder: (context, selected) {
           return Text(selected == 'advanced' ? 'Advanced content' : 'General content');
         },
       ),
+    );
+  }
+}
+
+class _SettingsTestApp extends StatefulWidget {
+  const _SettingsTestApp({this.dark = false, this.wrapComponentThemes = false});
+
+  final bool dark;
+  final bool wrapComponentThemes;
+
+  @override
+  State<_SettingsTestApp> createState() => _SettingsTestAppState();
+}
+
+class _SettingsTestAppState extends State<_SettingsTestApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _router = GoRouter(
+      initialLocation: '/settings',
+      routes: [
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsPage(),
+          routes: [
+            GoRoute(
+              path: ':section',
+              builder: (context, state) => SettingsPage(sectionKey: state.pathParameters['section']),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _router.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return shad.ShadcnApp.router(
+      theme: widget.dark ? AppTheme.dark() : AppTheme.light(),
+      materialTheme: widget.dark ? AppTheme.materialDark() : AppTheme.materialLight(),
+      builder: widget.wrapComponentThemes
+          ? (context, child) => AppComponentThemes(child: child ?? const SizedBox.shrink())
+          : null,
+      routerConfig: _router,
     );
   }
 }

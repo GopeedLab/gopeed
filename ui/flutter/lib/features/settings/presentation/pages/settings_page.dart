@@ -7,6 +7,7 @@ import 'package:flutter/material.dart' show Divider, Icons, Scrollbar, Scrollbar
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -22,6 +23,7 @@ import '../../../../database/database.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
+import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../shared/widgets/responsive_menu_layout.dart';
 import '../../../../l10n/l10n.dart';
@@ -42,7 +44,9 @@ import '../widgets/theme_settings_control.dart';
 enum _SettingsSection { basic, downloads, advanced }
 
 class SettingsPage extends ConsumerStatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({super.key, this.sectionKey});
+
+  final String? sectionKey;
 
   @override
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
@@ -81,7 +85,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _savingStartConfig = false;
   String? _apiNetworkDraft;
   late bool _analyticsEnabled;
-  _SettingsSection _selectedSection = _SettingsSection.basic;
 
   List<TextEditingController> get _textControllers => [
     _downloadDirController,
@@ -142,6 +145,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final stateAsync = ref.watch(settingsControllerProvider);
     final runtimeState = ref.watch(appRuntimeControllerProvider).value;
     final isDesktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
+    final selectedSection = _sectionFromKey(widget.sectionKey) ?? _SettingsSection.basic;
     final content = stateAsync.when(
       loading: () => const Center(child: shad.CircularProgressIndicator()),
       error: (error, _) =>
@@ -154,9 +158,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return ResponsiveMenuLayout<_SettingsSection>(
           title: context.l10n.setting,
           items: _menuItems,
-          selectedValue: _selectedSection,
-          onSelected: (section) => setState(() => _selectedSection = section),
+          selectedValue: selectedSection,
+          onSelected: (section) => _selectSection(section, isDesktop: isDesktop),
           mobileContentTitleBuilder: _sectionTitle,
+          mobileContentVisible: widget.sectionKey != null,
+          onMobileBack: _leaveMobileSection,
           contentBuilder: (context, section) => _buildSectionContent(section, runtimeState),
         );
       },
@@ -178,6 +184,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ],
             ),
     );
+  }
+
+  void _selectSection(_SettingsSection section, {required bool isDesktop}) {
+    final location = '/settings/${section.name}';
+    if (isDesktop) {
+      context.go(location);
+    } else {
+      context.push(location);
+    }
+  }
+
+  void _leaveMobileSection() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/settings');
+    }
+  }
+
+  _SettingsSection? _sectionFromKey(String? key) {
+    for (final section in _SettingsSection.values) {
+      if (section.name == key) return section;
+    }
+    return null;
   }
 
   List<ResponsiveMenuItem<_SettingsSection>> get _menuItems => [
@@ -410,13 +440,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 children: [
                   SettingsItem(
                     title: context.l10n.downloadDir,
-                    child: _TextSettingControl(
+                    child: AppPathPickerField.downloadDirectory(
+                      fieldKey: const ValueKey('download-directory-input'),
                       controller: _downloadDirController,
-                      trailing: shad.GhostButton(
-                        density: shad.ButtonDensity.icon,
-                        onPressed: _pickDirectory,
-                        child: const Icon(Icons.folder_open),
-                      ),
+                      pickerKey: const ValueKey('download-directory-picker'),
+                      desktopWidth: AppDesignTokens.settingsFormControlWidth,
                     ),
                   ),
                   SettingsItem(
@@ -1074,13 +1102,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
-  Future<void> _pickDirectory() async {
-    final directory = await FilePicker.platform.getDirectoryPath();
-    if (directory == null || directory.isEmpty) return;
-    _downloadDirController.text = directory;
-    _scheduleTextSave();
-  }
-
   Future<void> _runAction(Future<void> Function() action) async {
     try {
       await action();
@@ -1133,7 +1154,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       context,
       category: category,
       initialName: category == null ? '' : _categoryName(category),
-      pickDirectory: () => FilePicker.platform.getDirectoryPath(),
+      initialPath: _downloadDirController.text.trim(),
     );
     if (draft == null || !mounted) return;
 
@@ -1501,7 +1522,6 @@ class _TextSettingControl extends StatelessWidget {
     required this.controller,
     this.fieldKey,
     this.hintText,
-    this.trailing,
     this.minLines = 1,
     this.obscureText = false,
   });
@@ -1509,7 +1529,6 @@ class _TextSettingControl extends StatelessWidget {
   final TextEditingController controller;
   final Key? fieldKey;
   final String? hintText;
-  final Widget? trailing;
   final int minLines;
   final bool obscureText;
 
@@ -1526,7 +1545,6 @@ class _TextSettingControl extends StatelessWidget {
         obscureText: obscureText,
         minLines: minLines,
         maxLines: minLines == 1 ? 1 : minLines,
-        features: trailing == null ? const [] : [shad.InputFeature.trailing(trailing!)],
       ),
     );
   }
@@ -1931,51 +1949,57 @@ class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsContr
                           )
                           .reduce(math.max);
                       final contentWidth = math.max(constraints.maxWidth, labelWidth + 58);
+                      final contentHeight = math.max(0.0, constraints.maxHeight - AppDesignTokens.space12);
                       return Scrollbar(
                         key: const ValueKey('tracker-horizontal-scrollbar'),
                         controller: _horizontalScrollController,
                         thumbVisibility: true,
                         scrollbarOrientation: ScrollbarOrientation.bottom,
                         notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
-                        child: SingleChildScrollView(
-                          key: const ValueKey('tracker-horizontal-scroll-view'),
-                          controller: _horizontalScrollController,
-                          scrollDirection: Axis.horizontal,
-                          child: SizedBox(
-                            width: contentWidth,
-                            height: constraints.maxHeight,
-                            child: Scrollbar(
-                              controller: _verticalScrollController,
-                              thumbVisibility: true,
-                              scrollbarOrientation: ScrollbarOrientation.right,
-                              notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
-                              child: ListView.separated(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: AppDesignTokens.space12),
+                          child: SingleChildScrollView(
+                            key: const ValueKey('tracker-horizontal-scroll-view'),
+                            controller: _horizontalScrollController,
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: contentWidth,
+                              height: contentHeight,
+                              child: Scrollbar(
                                 controller: _verticalScrollController,
-                                padding: const EdgeInsets.only(top: 4, bottom: 12),
-                                itemCount: allTrackerSubscribeUrls.length,
-                                separatorBuilder: (_, _) => Divider(height: 1, color: palette.border),
-                                itemBuilder: (context, index) {
-                                  final url = allTrackerSubscribeUrls[index];
-                                  final checked = widget.selected.contains(url);
-                                  return GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onTap: () => _toggle(url, checked),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                      child: Row(
-                                        children: [
-                                          shad.Checkbox(
-                                            state: checked ? shad.CheckboxState.checked : shad.CheckboxState.unchecked,
-                                            onChanged: (_) => _toggle(url, checked),
-                                            size: 17,
-                                          ),
-                                          const SizedBox(width: 9),
-                                          Text(url, maxLines: 1, style: labelStyle),
-                                        ],
+                                thumbVisibility: true,
+                                scrollbarOrientation: ScrollbarOrientation.right,
+                                notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
+                                child: ListView.separated(
+                                  controller: _verticalScrollController,
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  itemCount: allTrackerSubscribeUrls.length,
+                                  separatorBuilder: (_, _) => Divider(height: 1, color: palette.border),
+                                  itemBuilder: (context, index) {
+                                    final url = allTrackerSubscribeUrls[index];
+                                    final checked = widget.selected.contains(url);
+                                    return GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => _toggle(url, checked),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                        child: Row(
+                                          children: [
+                                            shad.Checkbox(
+                                              state: checked
+                                                  ? shad.CheckboxState.checked
+                                                  : shad.CheckboxState.unchecked,
+                                              onChanged: (_) => _toggle(url, checked),
+                                              size: 17,
+                                            ),
+                                            const SizedBox(width: 9),
+                                            Text(url, maxLines: 1, style: labelStyle),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
+                                    );
+                                  },
+                                ),
                               ),
                             ),
                           ),

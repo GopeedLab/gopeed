@@ -136,7 +136,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
           ? body
           : Column(
               children: [
-                Expanded(child: body),
+                Expanded(child: SafeArea(bottom: false, child: body)),
                 const PrimaryBottomNavigation(activeSection: RailSection.extensions),
               ],
             ),

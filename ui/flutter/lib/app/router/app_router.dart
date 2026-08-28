@@ -17,39 +17,44 @@ class AppRouter {
     return GoRouter(
       navigatorKey: rootNavigatorKey,
       routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => MainShell(child: const HomePage()),
-        ),
-        GoRoute(
-          path: '/extensions',
-          builder: (context, state) => MainShell(child: const ExtensionsPage()),
-        ),
-        GoRoute(
-          path: '/settings',
-          builder: (context, state) => MainShell(child: const SettingsPage()),
-        ),
-        GoRoute(
-          path: '/create',
-          builder: (context, state) => const MainShell(child: CreateTaskWindowPage()),
-        ),
-        GoRoute(
-          path: '/tasks/:id',
-          builder: (context, state) => MainShell(
-            child: TaskDetailsPage(
-              taskId: state.pathParameters['id'] ?? '',
-              initialTask: state.extra is TaskRecord ? state.extra as TaskRecord : null,
+        ShellRoute(
+          builder: (context, state, child) => MainShell(child: child),
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (context, state) => const HomePage(),
+              routes: [
+                GoRoute(path: 'create', builder: (context, state) => const CreateTaskWindowPage()),
+                GoRoute(
+                  path: 'tasks/:id',
+                  builder: (context, state) => TaskDetailsPage(
+                    taskId: state.pathParameters['id'] ?? '',
+                    initialTask: state.extra is TaskRecord ? state.extra as TaskRecord : null,
+                  ),
+                  routes: [
+                    GoRoute(
+                      path: 'files',
+                      builder: (context, state) => TaskFilesPage(
+                        taskId: state.pathParameters['id'] ?? '',
+                        initialTask: state.extra is TaskRecord ? state.extra as TaskRecord : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ),
-        ),
-        GoRoute(
-          path: '/tasks/:id/files',
-          builder: (context, state) => MainShell(
-            child: TaskFilesPage(
-              taskId: state.pathParameters['id'] ?? '',
-              initialTask: state.extra is TaskRecord ? state.extra as TaskRecord : null,
+            GoRoute(path: '/extensions', builder: (context, state) => const ExtensionsPage()),
+            GoRoute(
+              path: '/settings',
+              builder: (context, state) => const SettingsPage(),
+              routes: [
+                GoRoute(
+                  path: ':section',
+                  builder: (context, state) => SettingsPage(sectionKey: state.pathParameters['section']),
+                ),
+              ],
             ),
-          ),
+          ],
         ),
       ],
     );
