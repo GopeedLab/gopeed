@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../domain/task_record.dart';
 import '../../../../../shared/theme/app_design_tokens.dart';
 import '../../../../../shared/theme/app_palette.dart';
+import '../../../../../shared/widgets/app_tooltip.dart';
 import '../../../../../l10n/l10n.dart';
 import '../../task_record_localizations.dart';
 
@@ -38,8 +38,8 @@ class TaskUpdateListeningIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return shad.Tooltip(
-      tooltip: (_) => Text(context.l10n.waitingForReplacementUrl),
+    return AppTooltip(
+      message: context.l10n.waitingForReplacementUrl,
       child: Icon(Icons.hearing, size: 15, color: palette.brandProgress),
     );
   }
@@ -81,14 +81,12 @@ class TaskCardFooter extends StatelessWidget {
     final metaColor = palette.taskMeta;
     final leftColor = isError ? palette.error : metaColor;
     final rightColor = isError ? palette.taskErrorMeta : metaColor;
-    final statusText = isError
-        ? task.localizedError(context.l10n)
-        : switch (task.status) {
-            TaskStatus.downloading => task.localizedRemaining(context.l10n) ?? context.l10n.downloading,
-            TaskStatus.paused => task.localizedRemaining(context.l10n) ?? context.l10n.pause,
-            TaskStatus.completed => task.localizedRemaining(context.l10n) ?? context.l10n.completed,
-            TaskStatus.failed => task.localizedError(context.l10n),
-          };
+    final statusText = switch (task.status) {
+      TaskStatus.downloading => task.localizedRemaining(context.l10n) ?? context.l10n.downloading,
+      TaskStatus.paused => task.localizedRemaining(context.l10n) ?? context.l10n.pause,
+      TaskStatus.completed => context.l10n.completed,
+      TaskStatus.failed => context.l10n.failed,
+    };
 
     return SizedBox(
       height: 10,
@@ -136,31 +134,35 @@ class TaskCardCompletedMeta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
+    final metaColor = palette.taskMeta;
 
     return SizedBox(
       height: 10,
-      child: Wrap(
-        spacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            context.l10n.completed.toUpperCase(),
-            style: TextStyle(
-              color: palette.taskMetaSubtle,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              height: 1,
+          Expanded(
+            child: Text(
+              task.total ?? task.downloaded,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: metaColor, fontSize: 10, height: 1),
             ),
           ),
-          if (task.total != null) ...[
+          const SizedBox(width: 12),
+          if (task.speed != null) ...[
+            _TaskTransferSpeed(icon: Icons.south, value: task.speed!, color: metaColor),
+            const SizedBox(width: 8),
             TickDivider(color: palette.progressTrack),
-            Text(task.total!, style: TextStyle(color: palette.taskMeta, fontSize: 10, height: 1)),
+            const SizedBox(width: 8),
           ],
           if (task.uploading) ...[
+            _TaskTransferSpeed(icon: Icons.north, value: task.uploadSpeed!, color: metaColor),
+            const SizedBox(width: 8),
             TickDivider(color: palette.progressTrack),
-            _TaskTransferSpeed(icon: Icons.north, value: task.uploadSpeed!, color: palette.taskMeta),
+            const SizedBox(width: 8),
           ],
+          Text(context.l10n.completed, style: TextStyle(color: palette.taskMetaSubtle, fontSize: 10, height: 1)),
         ],
       ),
     );

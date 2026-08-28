@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart' show Icons, Tooltip;
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
@@ -13,6 +13,7 @@ import '../../../../core/utils/breakpoints.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../home/presentation/widgets/primary_rail.dart';
@@ -100,7 +101,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
                         : 0,
                   ),
                   child: stateAsync.when(
-                    loading: () => const Center(child: shad.CircularProgressIndicator()),
+                    loading: () => _buildContent(const ExtensionsState(loadingInstalled: true, loadingStore: true)),
                     error: (error, _) => _ErrorState(
                       error: error,
                       onRetry: () => ref.read(extensionsControllerProvider.notifier).loadInitialData(),
@@ -111,23 +112,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
                           !state.loadingMoreStore) {
                         WidgetsBinding.instance.addPostFrameCallback((_) => _loadNextPageIfNeeded());
                       }
-                      return _Content(
-                        state: state,
-                        scrollController: _listScrollController,
-                        searchController: _searchController,
-                        onSearch: (query) =>
-                            _runAction(() => ref.read(extensionsControllerProvider.notifier).searchStore(query)),
-                        onSort: (sort) =>
-                            _runAction(() => ref.read(extensionsControllerProvider.notifier).changeSort(sort)),
-                        onFilter: ref.read(extensionsControllerProvider.notifier).changeFilter,
-                        onOpenInstall: _openInstallPopover,
-                        onDevelopExtension: _openExtensionDevelopmentDocs,
-                        onInstallFolder: _installFromFolder,
-                        onRefresh: () =>
-                            _runAction(() => ref.read(extensionsControllerProvider.notifier).loadInitialData()),
-                        onItemAction: _runAction,
-                        onOpenSettings: _openExtensionSettings,
-                      );
+                      return _buildContent(state);
                     },
                   ),
                 ),
@@ -155,6 +140,23 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
                 const PrimaryBottomNavigation(activeSection: RailSection.extensions),
               ],
             ),
+    );
+  }
+
+  Widget _buildContent(ExtensionsState state) {
+    return _Content(
+      state: state,
+      scrollController: _listScrollController,
+      searchController: _searchController,
+      onSearch: (query) => _runAction(() => ref.read(extensionsControllerProvider.notifier).searchStore(query)),
+      onSort: (sort) => _runAction(() => ref.read(extensionsControllerProvider.notifier).changeSort(sort)),
+      onFilter: ref.read(extensionsControllerProvider.notifier).changeFilter,
+      onOpenInstall: _openInstallPopover,
+      onDevelopExtension: _openExtensionDevelopmentDocs,
+      onInstallFolder: _installFromFolder,
+      onRefresh: () => _runAction(() => ref.read(extensionsControllerProvider.notifier).loadInitialData()),
+      onItemAction: _runAction,
+      onOpenSettings: _openExtensionSettings,
     );
   }
 
@@ -290,27 +292,33 @@ class _Content extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final horizontalPadding = MediaQuery.sizeOf(context).width < Breakpoints.mobile ? 16.0 : 32.0;
+    final isDesktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
+    final horizontalPadding = isDesktop ? 32.0 : 16.0;
+    final toolbar = _Toolbar(
+      state: state,
+      searchController: searchController,
+      onSearch: onSearch,
+      onSort: onSort,
+      onRefresh: onRefresh,
+      onOpenInstall: onOpenInstall,
+      onDevelopExtension: onDevelopExtension,
+      onInstallFolder: onInstallFolder,
+    );
     return Column(
       children: [
+        if (isDesktop)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            child: SizedBox(
+              height: AppDesignTokens.contentHeaderHeight,
+              child: Align(alignment: Alignment.center, child: toolbar),
+            ),
+          )
+        else
+          Padding(padding: EdgeInsets.fromLTRB(horizontalPadding, 18, horizontalPadding, 0), child: toolbar),
         Padding(
-          padding: EdgeInsets.fromLTRB(horizontalPadding, 18, horizontalPadding, 12),
-          child: Column(
-            children: [
-              _Toolbar(
-                state: state,
-                searchController: searchController,
-                onSearch: onSearch,
-                onSort: onSort,
-                onRefresh: onRefresh,
-                onOpenInstall: onOpenInstall,
-                onDevelopExtension: onDevelopExtension,
-                onInstallFolder: onInstallFolder,
-              ),
-              const SizedBox(height: 12),
-              _FilterBar(state: state, onFilter: onFilter),
-            ],
-          ),
+          padding: EdgeInsets.fromLTRB(horizontalPadding, isDesktop ? 8 : 12, horizontalPadding, 12),
+          child: _FilterBar(state: state, onFilter: onFilter),
         ),
         Expanded(
           child: CustomScrollView(
@@ -318,7 +326,10 @@ class _Content extends StatelessWidget {
             controller: scrollController,
             slivers: [
               if ((state.loadingInstalled || state.loadingStore) && state.displayItems.isEmpty)
-                const SliverFillRemaining(child: Center(child: shad.CircularProgressIndicator()))
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
+                  sliver: const _ExtensionSkeletonGrid(key: ValueKey('extensions-initial-skeleton')),
+                )
               else if (state.displayItems.isEmpty)
                 SliverFillRemaining(
                   child: Center(
@@ -363,6 +374,23 @@ class _Content extends StatelessWidget {
                     child: Center(child: const SizedBox.square(dimension: 18, child: shad.CircularProgressIndicator())),
                   ),
                 ),
+              if (state.listFilter == ExtensionListFilter.market &&
+                  state.displayItems.isNotEmpty &&
+                  state.storePagination != null &&
+                  !state.storePagination!.hasNext &&
+                  !state.loadingMoreStore)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 24, top: 4),
+                    child: Center(
+                      child: Text(
+                        context.l10n.extensionNoMore,
+                        key: const ValueKey('extensions-no-more-indicator'),
+                        style: TextStyle(color: palette.textMuted, fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -393,6 +421,153 @@ class _Content extends StatelessWidget {
   }
 }
 
+class _ExtensionSkeletonGrid extends StatefulWidget {
+  const _ExtensionSkeletonGrid({super.key});
+
+  @override
+  State<_ExtensionSkeletonGrid> createState() => _ExtensionSkeletonGridState();
+}
+
+class _ExtensionSkeletonGridState extends State<_ExtensionSkeletonGrid> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return SliverLayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = _extensionGridColumnCount(constraints.crossAxisExtent);
+        final availableHeight = constraints.remainingPaintExtent.isFinite ? constraints.remainingPaintExtent : 600;
+        final rowCount = ((availableHeight + _extensionGridSpacing) / (178 + _extensionGridSpacing))
+            .ceil()
+            .clamp(1, 8)
+            .toInt();
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final color = palette.surfaceSoft.withValues(alpha: 0.55 + _controller.value * 0.35);
+            return SliverGrid(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) =>
+                    _ExtensionSkeletonCard(key: ValueKey('extension-skeleton-card-$index'), color: color),
+                childCount: crossAxisCount * rowCount,
+              ),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: _extensionGridSpacing,
+                crossAxisSpacing: _extensionGridSpacing,
+                mainAxisExtent: 178,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ExtensionSkeletonCard extends StatelessWidget {
+  const _ExtensionSkeletonCard({super.key, required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return ExcludeSemantics(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: palette.cardBg,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: palette.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _ExtensionSkeletonBlock(width: 40, height: 40, color: color, radius: 6),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FractionallySizedBox(
+                        widthFactor: 0.58,
+                        alignment: Alignment.centerLeft,
+                        child: _ExtensionSkeletonBlock(width: double.infinity, height: 13, color: color),
+                      ),
+                      const SizedBox(height: 7),
+                      FractionallySizedBox(
+                        widthFactor: 0.38,
+                        alignment: Alignment.centerLeft,
+                        child: _ExtensionSkeletonBlock(width: double.infinity, height: 9, color: color),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            FractionallySizedBox(
+              widthFactor: 0.92,
+              alignment: Alignment.centerLeft,
+              child: _ExtensionSkeletonBlock(width: double.infinity, height: 9, color: color),
+            ),
+            const SizedBox(height: 7),
+            FractionallySizedBox(
+              widthFactor: 0.7,
+              alignment: Alignment.centerLeft,
+              child: _ExtensionSkeletonBlock(width: double.infinity, height: 9, color: color),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                _ExtensionSkeletonBlock(width: 34, height: 9, color: color),
+                const SizedBox(width: 12),
+                _ExtensionSkeletonBlock(width: 42, height: 9, color: color),
+                const Spacer(),
+                _ExtensionSkeletonBlock(width: 24, height: 24, color: color, radius: 12),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExtensionSkeletonBlock extends StatelessWidget {
+  const _ExtensionSkeletonBlock({required this.width, required this.height, required this.color, this.radius = 4});
+
+  final double width;
+  final double height;
+  final Color color;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(radius)),
+    );
+  }
+}
+
 class _Toolbar extends StatelessWidget {
   const _Toolbar({
     required this.state,
@@ -417,6 +592,7 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
+    final manualInstallBusy = state.busyExtensionIds.contains(ExtensionsController.manualInstallBusyKey);
     final search = shad.TextField(
       key: const ValueKey('extension-search-input'),
       controller: searchController,
@@ -429,6 +605,7 @@ class _Toolbar extends StatelessWidget {
       children: [
         _Segmented<StoreExtensionSort>(
           key: const ValueKey('extension-sort-control'),
+          compact: true,
           value: state.storeSort,
           values: [
             (StoreExtensionSort.stars, context.l10n.extensionSortStars),
@@ -461,9 +638,8 @@ class _Toolbar extends StatelessWidget {
             key: const ValueKey('load-local-extension-button'),
             tooltip: context.l10n.extensionLoadLocal,
             icon: Icons.folder_open_outlined,
-            onPressed: state.busyExtensionIds.contains(ExtensionsController.manualInstallBusyKey)
-                ? null
-                : onInstallFolder,
+            loading: manualInstallBusy,
+            onPressed: onInstallFolder,
           ),
           const SizedBox(width: 8),
         ],
@@ -472,9 +648,8 @@ class _Toolbar extends StatelessWidget {
             key: const ValueKey('install-extension-button'),
             tooltip: context.l10n.extensionInstallFromUrl,
             icon: Icons.add_link,
-            onPressed: state.busyExtensionIds.contains(ExtensionsController.manualInstallBusyKey)
-                ? null
-                : () => onOpenInstall(buttonContext),
+            loading: manualInstallBusy,
+            onPressed: () => onOpenInstall(buttonContext),
           ),
         ),
       ],
@@ -486,11 +661,12 @@ class _Toolbar extends StatelessWidget {
             children: [
               SizedBox(width: _extensionGridCardWidth(constraints.maxWidth), child: search),
               const SizedBox(width: 10),
-              Flexible(
-                fit: FlexFit.loose,
-                child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: sorting),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: sorting),
+                ),
               ),
-              const Spacer(),
               installActions,
             ],
           );
@@ -541,19 +717,32 @@ class _FilterBar extends StatelessWidget {
 }
 
 class _OutlineToolbarIconButton extends StatelessWidget {
-  const _OutlineToolbarIconButton({super.key, required this.tooltip, required this.icon, required this.onPressed});
+  const _OutlineToolbarIconButton({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.loading = false,
+  });
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
+    return AppTooltip(
       message: tooltip,
       child: SizedBox.square(
         dimension: 32,
-        child: shad.IconButton.outline(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: Icon(icon, size: 17)),
+        child: shad.IconButton.outline(
+          size: shad.ButtonSize.xSmall,
+          onPressed: loading ? null : onPressed,
+          icon: loading
+              ? const SizedBox.square(dimension: 13, child: shad.CircularProgressIndicator())
+              : Icon(icon, size: 17),
+        ),
       ),
     );
   }
@@ -631,17 +820,25 @@ class _InstallPopoverState extends State<_InstallPopover> {
 }
 
 class _Segmented<T> extends StatelessWidget {
-  const _Segmented({super.key, required this.value, required this.values, required this.onChanged});
+  const _Segmented({
+    super.key,
+    required this.value,
+    required this.values,
+    required this.onChanged,
+    this.compact = false,
+  });
 
   final T value;
   final List<(T, String)> values;
   final ValueChanged<T> onChanged;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return Container(
-      padding: const EdgeInsets.all(3),
+      height: compact ? 32 : null,
+      padding: EdgeInsets.all(compact ? 2 : 3),
       decoration: BoxDecoration(
         color: palette.surfaceSoft,
         borderRadius: BorderRadius.circular(6),
@@ -654,7 +851,7 @@ class _Segmented<T> extends StatelessWidget {
           return GestureDetector(
             onTap: () => onChanged(entry.$1),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10, vertical: compact ? 4 : 7),
               decoration: BoxDecoration(
                 color: selected ? palette.cardBg : null,
                 borderRadius: BorderRadius.circular(4),
@@ -663,8 +860,8 @@ class _Segmented<T> extends StatelessWidget {
                 entry.$2,
                 style: TextStyle(
                   color: selected ? palette.textPrimary : palette.textSecondary,
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: compact ? 11 : 12,
+                  fontWeight: selected ? (compact ? FontWeight.w600 : FontWeight.w700) : FontWeight.w500,
                 ),
               ),
             ),
@@ -771,13 +968,16 @@ class _ExtensionCard extends ConsumerWidget {
                 ),
               if (installed == null && item.store != null)
                 shad.GhostButton(
+                  key: ValueKey('install-store-extension-${item.store!.id}'),
                   density: shad.ButtonDensity.icon,
                   onPressed: busy
                       ? null
                       : () => onAction(
                           () => ref.read(extensionsControllerProvider.notifier).installFromStore(item.store!),
                         ),
-                  child: const Icon(Icons.download),
+                  child: busy
+                      ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
+                      : const Icon(Icons.download),
                 ),
               if ((item.homepage ?? '').isNotEmpty)
                 shad.GhostButton(

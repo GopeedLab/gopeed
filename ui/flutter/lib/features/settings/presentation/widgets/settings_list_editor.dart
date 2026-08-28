@@ -6,6 +6,7 @@ import '../../../../api/model/downloader_config.dart';
 import '../../../../core/utils/breakpoints.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../l10n/l10n.dart';
 
@@ -93,7 +94,7 @@ class SettingsListEditor extends StatelessWidget {
           ],
           if (entries.isNotEmpty) const SizedBox(height: 10),
           Align(
-            alignment: Alignment.centerRight,
+            alignment: desktop ? Alignment.centerRight : Alignment.centerLeft,
             child: shad.SecondaryButton(
               key: addButtonKey,
               onPressed: onAdd,
@@ -216,11 +217,10 @@ Future<String?> showTextSettingDialog(
           ),
           actions: [
             if (onTest != null)
-              shad.SecondaryButton(
-                onPressed: testing ? null : () => test(),
-                leading: testing
-                    ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
-                    : const Icon(Icons.send_outlined, size: 16),
+              AppLoadingButton(
+                onPressed: test,
+                loading: testing,
+                icon: const Icon(Icons.send_outlined, size: 16),
                 child: Text(dialogContext.l10n.webhookTest),
               ),
             shad.SecondaryButton(

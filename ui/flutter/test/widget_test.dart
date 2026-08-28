@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' show Icons, Scrollbar;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kDoubleTapMinTime, kSecondaryMouseButton;
 import 'package:flutter/widgets.dart';
@@ -28,6 +30,7 @@ import 'package:gopeed/features/home/presentation/widgets/primary_rail.dart';
 import 'package:gopeed/features/tasks/application/pending_update_task.dart';
 import 'package:gopeed/features/tasks/application/task_batch_selection_controller.dart';
 import 'package:gopeed/features/tasks/application/task_runtime_status_provider.dart';
+import 'package:gopeed/features/tasks/application/task_stats_provider.dart';
 import 'package:gopeed/features/tasks/application/tasks_controller.dart';
 import 'package:gopeed/features/settings/application/settings_controller.dart';
 import 'package:gopeed/features/settings/presentation/pages/settings_page.dart';
@@ -58,7 +61,9 @@ import 'package:gopeed/shared/theme/app_component_themes.dart';
 import 'package:gopeed/shared/theme/app_design_tokens.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/theme/app_theme_color.dart';
+import 'package:gopeed/shared/widgets/app_loading_button.dart';
 import 'package:gopeed/shared/widgets/app_primary_button.dart';
+import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:gopeed/shared/widgets/app_toast.dart';
 import 'package:gopeed/shared/widgets/gopeed_app_mark.dart';
 import 'package:gopeed/shared/widgets/responsive_menu_layout.dart';
@@ -114,6 +119,15 @@ void main() {
     expect(
       tester.getSize(find.byKey(const ValueKey('secondary-navigation-pane'))).width,
       AppDesignTokens.filterSidebarWidth,
+    );
+    final primaryNavigationTop = tester.getTopLeft(find.byKey(const ValueKey('primary-rail-tasks-item'))).dy;
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('secondary-navigation-item-0'))).dy,
+      closeTo(primaryNavigationTop, 0.01),
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('tasks-content-start'))).dy,
+      closeTo(primaryNavigationTop, 0.01),
     );
     expect(tester.getSize(find.byKey(const ValueKey('speed-monitor-gauge'))), const Size(60, 32));
     final gaugeRect = tester.getRect(find.byKey(const ValueKey('speed-monitor-gauge')));
@@ -217,19 +231,81 @@ void main() {
     expect(gridColumns(), 3);
     final searchRect = tester.getRect(find.byKey(const ValueKey('extension-search-input')));
     final sortRect = tester.getRect(find.byKey(const ValueKey('extension-sort-control')));
+    final refreshRect = tester.getRect(find.byKey(const ValueKey('refresh-extensions-button')));
     final developRect = tester.getRect(find.byKey(const ValueKey('develop-extension-button')));
     final installRect = tester.getRect(find.byKey(const ValueKey('install-extension-button')));
     final cardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-0')));
+    final rightmostCardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-2')));
+    final appMarkRect = tester.getRect(find.byKey(const ValueKey('primary-rail-app-mark')));
     expect(searchRect.width, closeTo(cardRect.width, 0.01));
     expect(sortRect.left, closeTo(searchRect.right + 10, 0.01));
     expect(sortRect.center.dy, closeTo(searchRect.center.dy, 0.01));
+    expect(sortRect.height, closeTo(refreshRect.height, 0.01));
+    expect(searchRect.center.dy, closeTo(appMarkRect.center.dy, 0.01));
     expect(installRect.center.dy, closeTo(searchRect.center.dy, 0.01));
     expect(developRect.right, lessThan(installRect.left));
     expect(installRect.left, greaterThan(sortRect.right));
+    expect(installRect.right, closeTo(rightmostCardRect.right, 0.01));
+
+    tester.view.physicalSize = const Size(1100, 600);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byKey(const ValueKey('install-extension-button'))).right,
+      closeTo(tester.getRect(find.byKey(const ValueKey('extension-card-extension-2'))).right, 0.01),
+    );
+
+    tester.view.physicalSize = const Size(1028, 608);
+    await tester.pumpAndSettle();
+    expect(gridColumns(), 3);
+    expect(
+      tester.getRect(find.byKey(const ValueKey('install-extension-button'))).right,
+      closeTo(tester.getRect(find.byKey(const ValueKey('extension-card-extension-2'))).right, 0.01),
+    );
 
     tester.view.physicalSize = const Size(1400, 900);
     await tester.pumpAndSettle();
     expect(gridColumns(), 4);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('extension initial loading uses card skeletons without a progress spinner', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1100, 900));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [extensionsControllerProvider.overrideWith(LoadingExtensionsController.new)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const ExtensionsPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('extensions-initial-skeleton')), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-skeleton-card-0')), findsOneWidget);
+    expect(find.byType(shad.CircularProgressIndicator), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('extension pagination keeps the bottom progress spinner', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1100, 900));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [extensionsControllerProvider.overrideWith(LoadingMoreExtensionsController.new)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const ExtensionsPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const ValueKey('extensions-initial-skeleton')), findsNothing);
+    expect(find.byKey(const ValueKey('extension-card-extension-0')), findsOneWidget);
+    expect(find.byType(shad.CircularProgressIndicator), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -329,6 +405,33 @@ void main() {
 
     expect(controller.loadMoreCalls, 1);
     expect(find.text('Load More'), findsNothing);
+    expect(find.byKey(const ValueKey('extensions-no-more-indicator')), findsOneWidget);
+    expect(find.text('No more extensions'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('extension install actions show progress instead of a disabled icon while busy', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(1100, 900));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [extensionsControllerProvider.overrideWith(BusyInstallExtensionsController.new)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const ExtensionsPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final manualInstall = find.byKey(const ValueKey('install-extension-button'));
+    final storeInstall = find.byKey(const ValueKey('install-store-extension-extension-1'));
+    expect(find.descendant(of: manualInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+    expect(find.descendant(of: storeInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+    expect(find.descendant(of: storeInstall, matching: find.byIcon(Icons.download)), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -417,6 +520,15 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('secondary-navigation-pane'))).width,
       AppDesignTokens.filterSidebarWidth,
     );
+    final primaryNavigationTop = tester.getTopLeft(find.byKey(const ValueKey('primary-rail-tasks-item'))).dy;
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('secondary-navigation-item-0'))).dy,
+      closeTo(primaryNavigationTop, 0.01),
+    );
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('settings-body-content'))).dy,
+      closeTo(primaryNavigationTop, 0.01),
+    );
     expect(find.byKey(const ValueKey('theme-mode-system')), findsOneWidget);
     expect(find.text('Light'), findsOneWidget);
     expect(find.text('Dark'), findsOneWidget);
@@ -435,8 +547,31 @@ void main() {
     expect(find.text('Check for Updates'), findsOneWidget);
     expect(find.text('Usage Analytics'), findsOneWidget);
     expect(find.text('Contributors'), findsOneWidget);
+    expect(find.byKey(const ValueKey('gopeed-homepage')), findsOneWidget);
+    expect(find.byKey(const ValueKey('gopeed-github')), findsOneWidget);
     expect(find.byKey(const ValueKey('gopeed-contributors')), findsOneWidget);
-    expect(tester.getTopLeft(find.text('Notify for updates')).dy, lessThan(tester.getTopLeft(find.text('Version')).dy));
+    final aboutOrder = [
+      'Homepage',
+      'GitHub',
+      'Contributors',
+      'Usage Analytics',
+      'Notify for updates',
+      'Version',
+    ].map((label) => tester.getTopLeft(find.text(label)).dy).toList();
+    expect(aboutOrder, orderedEquals([...aboutOrder]..sort()));
+    for (final (key, label) in [
+      ('gopeed-homepage', 'gopeed.com'),
+      ('gopeed-github', 'github.com/GopeedLab/gopeed'),
+      ('gopeed-contributors', 'View contributors'),
+    ]) {
+      final link = find.byKey(ValueKey(key));
+      expect(find.descendant(of: link, matching: find.byType(shad.SecondaryButton)), findsNothing);
+      expect(find.descendant(of: link, matching: find.byIcon(Icons.open_in_new)), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.descendant(of: link, matching: find.text(label))).style?.decoration,
+        TextDecoration.underline,
+      );
+    }
     final swatchCenters = AppThemeColor.values
         .map((color) => tester.getCenter(find.byKey(ValueKey('theme-color-${color.key}'))).dy)
         .toList();
@@ -640,9 +775,9 @@ void main() {
           settingsControllerProvider.overrideWith(FakeSettingsController.new),
         ],
         child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
+          theme: AppTheme.dark(),
+          materialTheme: AppTheme.materialDark(),
+          home: const AppComponentThemes(child: SettingsPage()),
         ),
       ),
     );
@@ -653,16 +788,22 @@ void main() {
     final host = find.byKey(const ValueKey('api-host-input'));
     final port = find.byKey(const ValueKey('api-port-input'));
     final saveButton = find.byKey(const ValueKey('save-api-config-button'));
+    expect(tester.widget<AppLoadingButton>(saveButton).variant, AppLoadingButtonVariant.secondary);
+    final saveButtonClickable = find.descendant(of: saveButton, matching: find.byType(shad.Clickable));
+    final disabledDecoration =
+        tester.widget<shad.Clickable>(saveButtonClickable).decoration!.resolve({WidgetState.disabled}) as BoxDecoration;
+    expect(disabledDecoration.color, AppPalette.dark.surfaceSoft);
+    expect(disabledDecoration.color, isNot(AppPalette.dark.brand));
     expect(tester.widget<shad.TextField>(host).controller!.text, '192.168.1.20');
     expect(tester.widget<shad.TextField>(port).controller!.text, '4321');
-    expect(tester.widget<shad.SecondaryButton>(saveButton).onPressed, isNull);
+    expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
 
     await tester.enterText(host, '');
     await tester.enterText(port, '0');
     await tester.pump(const Duration(seconds: 1));
     expect(runtimeController.savedStartConfig, isNull);
     expect(find.text('Unsaved API changes'), findsNothing);
-    expect(tester.widget<shad.SecondaryButton>(saveButton).onPressed, isNotNull);
+    expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNotNull);
 
     await tester.ensureVisible(saveButton);
     await tester.pumpAndSettle();
@@ -675,9 +816,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(runtimeController.savedStartConfig?.network, 'tcp');
     expect(runtimeController.savedStartConfig?.address, '127.0.0.1:0');
-    expect(tester.widget<shad.SecondaryButton>(saveButton).onPressed, isNull);
+    expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
     expect(find.text('Restart required'), findsNothing);
     expect(find.text('Auto saved'), findsNothing);
+
+    tester.view.physicalSize = const Size(390, 900);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    final protocolItem = find.ancestor(of: find.text('Protocol'), matching: find.byType(SettingsItem));
+    final tcpChoice = find.byKey(const ValueKey('settings-choice-tcp'));
+    expect(tester.getRect(tcpChoice).left, closeTo(tester.getRect(protocolItem).left, 0.01));
+
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
@@ -740,6 +890,15 @@ void main() {
 
     await tester.ensureVisible(selectAll);
     await tester.pumpAndSettle();
+    final horizontalScrollbar = tester.widget<Scrollbar>(find.byKey(const ValueKey('tracker-horizontal-scrollbar')));
+    expect(horizontalScrollbar.thumbVisibility, isTrue);
+    expect(horizontalScrollbar.controller?.hasClients, isTrue);
+    expect(horizontalScrollbar.controller!.position.maxScrollExtent, greaterThan(0));
+    expect(find.text(allTrackerSubscribeUrls.first), findsOneWidget);
+    horizontalScrollbar.controller!.jumpTo(horizontalScrollbar.controller!.position.maxScrollExtent);
+    await tester.pump();
+    expect(horizontalScrollbar.controller!.offset, greaterThan(0));
+
     await tester.tap(selectAll);
     await tester.pumpAndSettle();
     expect(settingsController.state.requireValue.config.extra.bt.trackerSubscribeUrls, allTrackerSubscribeUrls);
@@ -750,7 +909,95 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('settings list add buttons align to the right edge', (WidgetTester tester) async {
+  testWidgets('tracker update button keeps its loading indicator circular', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final runtimeController = PendingTrackerRuntimeController();
+    final settingsController = StaticSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(() => runtimeController),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const SettingsPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    final updateButton = find.byKey(const ValueKey('tracker-update-button'));
+    await tester.ensureVisible(updateButton);
+    await tester.pumpAndSettle();
+    final sectionScrollView = find.byKey(const ValueKey('settings-section-scroll-view'));
+    final sectionScrollable = find.descendant(of: sectionScrollView, matching: find.byType(Scrollable)).first;
+    final offsetBeforeUpdate = tester.state<ScrollableState>(sectionScrollable).position.pixels;
+    expect(offsetBeforeUpdate, greaterThan(0));
+    await tester.tap(updateButton);
+    await tester.pump();
+
+    final progress = find.descendant(of: updateButton, matching: find.byType(shad.CircularProgressIndicator));
+    expect(progress, findsOneWidget);
+    expect(tester.getSize(progress), const Size.square(14));
+    expect(find.descendant(of: updateButton, matching: find.text('Update Now')), findsOneWidget);
+
+    runtimeController.completeTrackerUpdate();
+    await tester.pumpAndSettle();
+    expect(settingsController.reloadCalls, 1);
+    expect(settingsController.lastReloadShowLoading, isFalse);
+    expect(tester.state<ScrollableState>(sectionScrollable).position.pixels, closeTo(offsetBeforeUpdate, 0.01));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('failed tracker update does not reload or reset the settings page', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final runtimeController = FailingTrackerRuntimeController();
+    final settingsController = StaticSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(() => runtimeController),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const SettingsPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    final updateButton = find.byKey(const ValueKey('tracker-update-button'));
+    await tester.ensureVisible(updateButton);
+    await tester.pumpAndSettle();
+    final sectionScrollView = find.byKey(const ValueKey('settings-section-scroll-view'));
+    final sectionScrollable = find.descendant(of: sectionScrollView, matching: find.byType(Scrollable)).first;
+    final offsetBeforeUpdate = tester.state<ScrollableState>(sectionScrollable).position.pixels;
+
+    await tester.tap(updateButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(settingsController.reloadCalls, 0);
+    expect(tester.state<ScrollableState>(sectionScrollable).position.pixels, closeTo(offsetBeforeUpdate, 0.01));
+    expect(find.descendant(of: updateButton, matching: find.byType(shad.CircularProgressIndicator)), findsNothing);
+    expect(find.byKey(const ValueKey('app-toast-content')), findsOneWidget);
+    expect(find.textContaining('tracker update failed'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('settings list add buttons align responsively', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     await tester.pumpWidget(
       ProviderScope(
@@ -775,6 +1022,16 @@ void main() {
       expect(button, findsOneWidget);
       final editor = find.ancestor(of: button, matching: find.byType(SettingsListEditor));
       expect(tester.getRect(button).right, closeTo(tester.getRect(editor).right, 0.01));
+    }
+
+    tester.view.physicalSize = const Size(390, 900);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    for (final key in const [ValueKey('add-webhook-button'), ValueKey('add-script-button')]) {
+      final button = find.byKey(key);
+      final editor = find.ancestor(of: button, matching: find.byType(SettingsListEditor));
+      expect(tester.getRect(button).left, closeTo(tester.getRect(editor).left, 0.01));
     }
     expect(tester.takeException(), isNull);
   });
@@ -801,9 +1058,13 @@ void main() {
 
     expect(find.text('资料'), findsOneWidget);
     expect(find.text('/tmp/data'), findsOneWidget);
-    expect(find.byKey(const ValueKey('add-download-category')), findsOneWidget);
+    final categoryEditor = find.byKey(const ValueKey('download-categories-editor'));
+    final addCategoryButton = find.byKey(const ValueKey('add-download-category'));
+    expect(addCategoryButton, findsOneWidget);
+    expect(tester.getRect(addCategoryButton).right, closeTo(tester.getRect(categoryEditor).right, 0.01));
+    expect(tester.getRect(addCategoryButton).bottom, closeTo(tester.getRect(categoryEditor).bottom, 0.01));
 
-    await tester.tap(find.byKey(const ValueKey('add-download-category')));
+    await tester.tap(addCategoryButton);
     await tester.pumpAndSettle();
     expect(find.byType(DownloadCategoriesControl), findsOneWidget);
     await tester.enterText(find.byKey(const ValueKey('download-category-name')), '归档');
@@ -821,6 +1082,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Edit Category'), findsNothing);
     expect(find.text('资料'), findsOneWidget);
+
+    tester.view.physicalSize = const Size(390, 900);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(addCategoryButton).left, closeTo(tester.getRect(categoryEditor).left, 0.01));
     expect(tester.takeException(), isNull);
   });
 
@@ -937,7 +1204,7 @@ void main() {
     expect(find.ancestor(of: find.text('Update'), matching: find.byType(shad.SecondaryButton)), findsOneWidget);
   });
 
-  testWidgets('checking for updates replaces button content with a centered loader', (WidgetTester tester) async {
+  testWidgets('checking for updates replaces only the icon with a neutral loader', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 768));
     await tester.pumpWidget(
       ProviderScope(
@@ -949,7 +1216,7 @@ void main() {
         child: shad.ShadcnApp(
           theme: AppTheme.light(),
           materialTheme: AppTheme.materialLight(),
-          home: const SettingsPage(),
+          home: const AppComponentThemes(child: SettingsPage()),
         ),
       ),
     );
@@ -957,8 +1224,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     final button = find.byKey(const ValueKey('check-app-update-button'));
-    expect(find.descendant(of: button, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
-    expect(find.descendant(of: button, matching: find.text('Check for Updates')), findsNothing);
+    final progress = find.descendant(of: button, matching: find.byType(shad.CircularProgressIndicator));
+    expect(progress, findsOneWidget);
+    expect(tester.widget<shad.CircularProgressIndicator>(progress).color, AppPalette.light.textMuted);
+    expect(tester.widget<shad.CircularProgressIndicator>(progress).backgroundColor, AppPalette.light.border);
+    expect(find.descendant(of: button, matching: find.text('Check for Updates')), findsOneWidget);
     expect(find.text('正在检查'), findsNothing);
   });
 
@@ -1552,7 +1822,9 @@ void main() {
     );
     task.progress.used = 3500000000;
 
-    expect(TaskRecord.fromApi(task).downloadDuration, const Duration(milliseconds: 3500));
+    final record = TaskRecord.fromApi(task);
+    expect(record.downloadDuration, const Duration(milliseconds: 3500));
+    expect(record.createdAt, DateTime.fromMillisecondsSinceEpoch(0));
   });
 
   test('task URL updates are limited to paused or failed HTTP tasks', () {
@@ -1680,7 +1952,9 @@ void main() {
     }
   });
 
-  testWidgets('completed task cards show the completed status only once', (WidgetTester tester) async {
+  testWidgets('completed task cards omit progress and keep size left with speed and status right', (
+    WidgetTester tester,
+  ) async {
     await _setTestSize(tester, const Size(1024, 220));
 
     await tester.pumpWidget(
@@ -1702,8 +1976,59 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('COMPLETED'), findsOneWidget);
+    expect(find.text('Completed'), findsOneWidget);
+    expect(find.text('COMPLETED'), findsNothing);
+    expect(find.text('100 B'), findsOneWidget);
+    expect(find.text('10 B/s'), findsOneWidget);
+    final sizeRect = tester.getRect(find.text('100 B'));
+    final speedRect = tester.getRect(find.text('10 B/s'));
+    final statusRect = tester.getRect(find.text('Completed'));
+    expect(sizeRect.left, lessThan(speedRect.left));
+    expect(speedRect.right, lessThan(statusRect.left));
+    expect(find.byType(TaskProgressBar), findsNothing);
     expect(find.text('Downloaded'), findsNothing);
+  });
+
+  testWidgets('failed task cards show the shared failed label without an error reason', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 220));
+    const task = TaskRecord(
+      id: 'failed-card',
+      name: 'failed.zip',
+      status: TaskStatus.failed,
+      downloaded: '50 B',
+      total: '100 B',
+      speed: '10 B/s',
+      progress: 0.5,
+      url: 'https://example.com/failed.zip',
+      storagePath: '/downloads/failed.zip',
+      files: [],
+      uploading: false,
+      error: 'Connection refused',
+    );
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Padding(
+          padding: const EdgeInsets.all(24),
+          child: TaskCard(
+            task: task,
+            selected: false,
+            batchMode: false,
+            selectedInBatch: false,
+            onPressed: () {},
+            onToggleBatch: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Failed'), findsOneWidget);
+    expect(find.text('Connection refused'), findsNothing);
+    expect(find.text('10 B/s'), findsNothing);
+    expect(tester.getRect(find.text('50 B / 100 B')).left, lessThan(tester.getRect(find.text('Failed')).left));
   });
 
   testWidgets('speed monitor displays supplied task totals without simulated updates', (WidgetTester tester) async {
@@ -1929,6 +2254,7 @@ void main() {
       status: TaskStatus.completed,
       remaining: '1 minute remaining',
       downloadDuration: const Duration(hours: 1, minutes: 2, seconds: 3),
+      createdAt: DateTime(2026, 8, 27, 12, 34, 56),
     );
 
     await tester.pumpWidget(
@@ -1982,7 +2308,14 @@ void main() {
     expect(find.text('Statistics'), findsOneWidget);
     expect(find.text('Remaining'), findsNothing);
     expect(find.text('Download duration'), findsOneWidget);
-    expect(find.text('1:02:03'), findsOneWidget);
+    expect(find.text('2 hours'), findsOneWidget);
+    expect(find.text('100 B'), findsOneWidget);
+    expect(find.text('50 B / 100 B'), findsNothing);
+    expect(find.text('Created'), findsOneWidget);
+    expect(find.text('2026-08-27 12:34:56'), findsOneWidget);
+    final infoDivider = find.byKey(const ValueKey('task-details-info-divider'));
+    expect(tester.getBottomLeft(find.text('Created')).dy, lessThan(tester.getTopLeft(infoDivider).dy));
+    expect(tester.getBottomLeft(infoDivider).dy, lessThan(tester.getTopLeft(find.text('Download Link')).dy));
     expect(find.text('1 minute remaining'), findsNothing);
     expect(find.text('Completed'), findsOneWidget);
     expect(
@@ -2008,9 +2341,8 @@ void main() {
       find.descendant(of: browseFilesAction, matching: find.byIcon(Icons.snippet_folder_outlined)),
       findsOneWidget,
     );
-    final browseFilesTooltipFinder = find.descendant(of: browseFilesAction, matching: find.byType(shad.Tooltip));
-    final browseFilesTooltip = tester.widget<shad.Tooltip>(browseFilesTooltipFinder);
-    expect((browseFilesTooltip.tooltip(tester.element(browseFilesTooltipFinder)) as Text).data, 'Browse Files');
+    final browseFilesTooltipFinder = find.descendant(of: browseFilesAction, matching: find.byType(AppTooltip));
+    expect(tester.widget<AppTooltip>(browseFilesTooltipFinder).message, 'Browse Files');
 
     await tester.tap(browseFilesAction);
     await tester.pumpAndSettle();
@@ -2019,6 +2351,58 @@ void main() {
     expect(find.descendant(of: browserDialog, matching: find.byType(TaskFileManagerView)), findsOneWidget);
     expect(tester.getCenter(browserDialog).dx, closeTo(tester.view.physicalSize.width / 2, 1));
     expect(tester.getCenter(browserDialog).dy, closeTo(tester.view.physicalSize.height / 2, 1));
+  });
+
+  testWidgets('failed task details omit the unavailable error reason', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(900, 700));
+    final task = TaskRecord(
+      id: 'failed-details',
+      name: 'failed.zip',
+      status: TaskStatus.failed,
+      downloaded: '50 B',
+      total: '100 B',
+      progress: 0.5,
+      url: 'https://example.com/failed.zip',
+      storagePath: '/downloads/failed.zip',
+      files: const [],
+      uploading: false,
+      error: 'Connection refused',
+      createdAt: DateTime(2026, 8, 27, 12, 34, 56),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          taskRuntimeStatusProvider(task.id).overrideWith(
+            (ref) async => api_task.TaskRuntimeStatus(
+              status: api_task.Status.error,
+              used: 0,
+              speed: 0,
+              downloaded: 50,
+              total: 100,
+              uploadSpeed: 0,
+              uploaded: 0,
+              files: const [],
+            ),
+          ),
+        ],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: Stack(
+            children: [TaskDrawer(task: task, onClose: () {}, onOpenStorage: () {}, onUpdateUrl: (_) async {})],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final failedStatus = find.text('Failed');
+    expect(failedStatus, findsOneWidget);
+    expect(tester.widget<Text>(failedStatus).style?.color, AppPalette.of(tester.element(failedStatus)).error);
+    expect(find.text('Created'), findsOneWidget);
+    expect(find.text('Error'), findsNothing);
+    expect(find.text('Connection refused'), findsNothing);
   });
 
   testWidgets('task drawer actions use icon buttons with hover labels', (WidgetTester tester) async {
@@ -2047,16 +2431,15 @@ void main() {
       final action = find.byKey(ValueKey(key));
       expect(action, findsOneWidget);
       expect(find.descendant(of: action, matching: find.byType(shad.IconButton)), findsOneWidget);
-      expect(find.descendant(of: action, matching: find.byType(shad.Tooltip)), findsOneWidget);
+      expect(find.descendant(of: action, matching: find.byType(AppTooltip)), findsOneWidget);
     }
     expect(find.text('Copy'), findsNothing);
     expect(find.text('Edit'), findsNothing);
     expect(find.text('Open'), findsNothing);
 
     final editAction = find.byKey(const ValueKey('task-details-edit-url'));
-    final editTooltipFinder = find.descendant(of: editAction, matching: find.byType(shad.Tooltip));
-    final editTooltip = tester.widget<shad.Tooltip>(editTooltipFinder);
-    expect((editTooltip.tooltip(tester.element(editTooltipFinder)) as Text).data, 'Edit');
+    final editTooltipFinder = find.descendant(of: editAction, matching: find.byType(AppTooltip));
+    expect(tester.widget<AppTooltip>(editTooltipFinder).message, 'Edit');
 
     await tester.tap(editAction);
     await tester.pumpAndSettle();
@@ -2064,7 +2447,7 @@ void main() {
       final action = find.byKey(ValueKey(key));
       expect(action, findsOneWidget);
       expect(find.descendant(of: action, matching: find.byType(shad.IconButton)), findsOneWidget);
-      expect(find.descendant(of: action, matching: find.byType(shad.Tooltip)), findsOneWidget);
+      expect(find.descendant(of: action, matching: find.byType(AppTooltip)), findsOneWidget);
     }
     expect(find.text('Cancel'), findsNothing);
     expect(find.text('Save'), findsNothing);
@@ -2293,6 +2676,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('BT statistics show upload, share ratio, and share duration on the second row', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(440, 760));
+    final stats = BtTaskStats(
+      totalPeers: 24,
+      activePeers: 6,
+      connectedSeeders: 4,
+      connectedLeechers: 2,
+      seedBytes: 1536,
+      seedRatio: 1.25,
+      seedTime: 3723,
+      peers: const [],
+      pieceMap: TaskPieceMap.fromStates(const [TaskPieceState.completed, TaskPieceState.pending], pieceSize: 1024),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [taskStatsProvider.overrideWith((ref, request) async => stats)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: TaskStatisticsTab(
+            task: _taskRecord(id: 'bt-statistics', name: 'archive.torrent', protocol: api_task.Protocol.bt),
+            mobile: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Downloaded'), findsNothing);
+    expect(find.text('Uploaded'), findsOneWidget);
+    expect(find.text('Share Ratio'), findsOneWidget);
+    expect(find.text('Share Duration'), findsOneWidget);
+    expect(find.text('2 hours'), findsOneWidget);
+
+    final uploadRect = tester.getRect(find.text('Uploaded'));
+    final ratioRect = tester.getRect(find.text('Share Ratio'));
+    final durationRect = tester.getRect(find.text('Share Duration'));
+    expect(uploadRect.top, closeTo(ratioRect.top, 0.01));
+    expect(ratioRect.top, closeTo(durationRect.top, 0.01));
+    expect(uploadRect.center.dx, lessThan(ratioRect.center.dx));
+    expect(ratioRect.center.dx, lessThan(durationRect.center.dx));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('empty peer table keeps its sortable column headers', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(440, 500));
     await tester.pumpWidget(
@@ -2485,9 +2915,18 @@ void main() {
     expect(tester.widget<TaskProgressBar>(fourthProgress).shimmer, isFalse);
     expect(tester.widget<TaskProgressBar>(fourthProgress).value, 0.125);
     final retryIcon = find.byKey(const ValueKey('http-connection-status-1'));
-    expect(find.descendant(of: retryIcon, matching: find.byType(shad.Tooltip)), findsOneWidget);
+    final retryTooltip = find.descendant(of: retryIcon, matching: find.byType(AppTooltip));
+    expect(tester.widget<AppTooltip>(retryTooltip).message, 'Retrying · 2 retries');
     final failedIcon = find.byKey(const ValueKey('http-connection-status-3'));
-    expect(find.descendant(of: failedIcon, matching: find.byType(shad.Tooltip)), findsOneWidget);
+    expect(find.descendant(of: failedIcon, matching: find.byType(AppTooltip)), findsOneWidget);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(retryIcon));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Retrying · 2 retries'), findsOneWidget);
+    await mouse.removePointer();
     expect(
       tester.getRect(firstProgress).left - tester.getRect(find.byKey(const ValueKey('http-connection-status-0'))).right,
       closeTo(8, 0.01),
@@ -3020,6 +3459,24 @@ class FakeExtensionsController extends ExtensionsController {
   }
 }
 
+class LoadingExtensionsController extends ExtensionsController {
+  final _pending = Completer<ExtensionsState>();
+
+  @override
+  Future<ExtensionsState> build() => _pending.future;
+}
+
+class LoadingMoreExtensionsController extends FakeExtensionsController {
+  @override
+  Future<ExtensionsState> build() async {
+    final initial = await super.build();
+    return initial.copyWith(
+      loadingMoreStore: true,
+      storePagination: StorePagination(page: 1, limit: 8, total: 16, totalPages: 2, hasNext: true, hasPrev: false),
+    );
+  }
+}
+
 class PaginatedExtensionsController extends FakeExtensionsController {
   int loadMoreCalls = 0;
 
@@ -3047,6 +3504,14 @@ class PaginatedExtensionsController extends FakeExtensionsController {
   }
 }
 
+class BusyInstallExtensionsController extends FakeExtensionsController {
+  @override
+  Future<ExtensionsState> build() async {
+    final initial = await super.build();
+    return initial.copyWith(busyExtensionIds: {ExtensionsController.manualInstallBusyKey, 'extension-1'});
+  }
+}
+
 class FakeRuntimeController extends AppRuntimeController {
   @override
   Future<AppRuntimeState> build() async {
@@ -3058,6 +3523,22 @@ class FakeRuntimeController extends AppRuntimeController {
       ..storageDir = ''
       ..refreshInterval = 0;
     return AppRuntimeState(startConfig: cfg, runningPort: 9999, downloaderConfig: DownloaderConfig());
+  }
+}
+
+class PendingTrackerRuntimeController extends FakeRuntimeController {
+  final _trackerUpdateCompleter = Completer<void>();
+
+  @override
+  Future<void> updateTrackers(DownloaderConfig config) => _trackerUpdateCompleter.future;
+
+  void completeTrackerUpdate() => _trackerUpdateCompleter.complete();
+}
+
+class FailingTrackerRuntimeController extends FakeRuntimeController {
+  @override
+  Future<void> updateTrackers(DownloaderConfig config) async {
+    throw StateError('tracker update failed');
   }
 }
 
@@ -3095,6 +3576,20 @@ class FakeSettingsController extends SettingsController {
   @override
   Future<void> save(DownloaderConfig config) async {
     state = AsyncValue.data(SettingsState(config: config));
+  }
+}
+
+class StaticSettingsController extends FakeSettingsController {
+  int reloadCalls = 0;
+  bool? lastReloadShowLoading;
+
+  @override
+  Future<void> reload({bool showLoading = true}) async {
+    reloadCalls++;
+    lastReloadShowLoading = showLoading;
+    final current = state.requireValue;
+    if (showLoading) state = const AsyncValue.loading();
+    state = AsyncValue.data(current);
   }
 }
 
@@ -3239,6 +3734,7 @@ TaskRecord _taskRecord({
   api_task.Protocol protocol = api_task.Protocol.http,
   String? remaining,
   Duration? downloadDuration,
+  DateTime? createdAt,
   bool isFolder = false,
 }) {
   return TaskRecord(
@@ -3257,6 +3753,7 @@ TaskRecord _taskRecord({
     protocol: protocol,
     remaining: remaining,
     downloadDuration: downloadDuration,
+    createdAt: createdAt,
   );
 }
 

@@ -118,6 +118,9 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 	if err != nil {
 		return nil, nil, err
 	}
+	if err := Downloader.ContinueOnStartup(); err != nil {
+		Downloader.Logger.Warn().Err(err).Msg("auto-start tasks failed")
+	}
 
 	var r = mux.NewRouter()
 	r.Methods(http.MethodGet).Path("/api/v1/info").HandlerFunc(Info)

@@ -125,13 +125,6 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     final config = await _loadDownloaderConfig();
     unawaited(_initTrackerUpdate(config));
     unawaited(_initAndroidForegroundService(appLocalizationsFor(config.extra.locale)));
-    if (config.extra.autoStartTasks) {
-      try {
-        await ref.read(gopeedServiceProvider).continueAllTasks(null);
-      } catch (error, stackTrace) {
-        logger.w('auto-start tasks failed', error, stackTrace);
-      }
-    }
 
     final result = AppRuntimeState(
       startConfig: startConfig,

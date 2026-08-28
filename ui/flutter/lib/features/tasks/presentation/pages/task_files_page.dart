@@ -6,6 +6,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../application/tasks_controller.dart';
 import '../../domain/task_record.dart';
 import '../widgets/task_file_manager.dart';
@@ -46,8 +47,8 @@ class TaskFilesPage extends ConsumerWidget {
                   children: [
                     SizedBox(
                       width: 44,
-                      child: shad.Tooltip(
-                        tooltip: (_) => Text(context.l10n.close),
+                      child: AppTooltip(
+                        message: context.l10n.close,
                         child: shad.IconButton.ghost(
                           onPressed: () => context.canPop() ? context.pop() : context.go('/tasks/$taskId'),
                           icon: Icon(Icons.arrow_back, size: 20, color: palette.textPrimary),

@@ -12,6 +12,7 @@ import '../../../../core/utils/file_explorer.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_toast.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../util/browser_download/browser_download.dart';
 import '../../../../util/util.dart';
 import '../../domain/task_record.dart';
@@ -290,8 +291,8 @@ class _FileActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return shad.Tooltip(
-      tooltip: (_) => Text(label),
+    return AppTooltip(
+      message: label,
       child: shad.IconButton.ghost(
         size: shad.ButtonSize.small,
         onPressed: onPressed,

@@ -137,8 +137,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                       child: Stack(
                         children: [
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(32, 8, 32, 0),
+                            padding: const EdgeInsets.fromLTRB(32, AppDesignTokens.space8, 32, 0),
                             child: Column(
+                              key: const ValueKey('tasks-content-start'),
                               children: [
                                 AnimatedSize(
                                   duration: const Duration(milliseconds: 180),

@@ -19,10 +19,32 @@ extension TaskRecordLocalizations on TaskRecord {
     if (status == TaskStatus.paused) return l10n.pause;
     final seconds = remainingSeconds;
     if (seconds == null) return null;
-    if (seconds < 60) return l10n.secondsRemaining(seconds);
-    if (seconds < 3600) return l10n.minutesRemaining((seconds / 60).ceil());
-    return l10n.hoursRemaining((seconds / 3600).ceil());
+    return _formatTaskTime(l10n, seconds, remaining: true);
   }
 
-  String localizedError(AppLocalizations l10n) => error ?? l10n.taskFailed;
+  String? localizedDownloadDuration(AppLocalizations l10n) {
+    final duration = downloadDuration;
+    if (duration == null) return null;
+    return formatTaskDuration(l10n, duration);
+  }
+}
+
+String formatTaskDuration(AppLocalizations l10n, Duration duration) {
+  final microseconds = duration.inMicroseconds;
+  final seconds = microseconds <= 0
+      ? 0
+      : (microseconds + Duration.microsecondsPerSecond - 1) ~/ Duration.microsecondsPerSecond;
+  return _formatTaskTime(l10n, seconds, remaining: false);
+}
+
+String _formatTaskTime(AppLocalizations l10n, int seconds, {required bool remaining}) {
+  if (seconds < Duration.secondsPerMinute) {
+    return remaining ? l10n.secondsRemaining(seconds) : l10n.secondsDuration(seconds);
+  }
+  if (seconds < Duration.secondsPerHour) {
+    final minutes = (seconds / Duration.secondsPerMinute).ceil();
+    return remaining ? l10n.minutesRemaining(minutes) : l10n.minutesDuration(minutes);
+  }
+  final hours = (seconds / Duration.secondsPerHour).ceil();
+  return remaining ? l10n.hoursRemaining(hours) : l10n.hoursDuration(hours);
 }

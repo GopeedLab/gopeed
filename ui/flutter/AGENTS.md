@@ -102,6 +102,8 @@ Guidelines:
 - Material may remain only where required for platform/plugin interop or Flutter internals, not as the default product design system.
 - Product-facing interactive widgets must not use Flutter Material components such as `TextField`, `SnackBar`, `AlertDialog`, `showDialog`, `TextButton`, `ElevatedButton`, `OutlinedButton`, `IconButton`, `Drawer`, or similar Material UI controls when an equivalent `shadcn_flutter` primitive exists.
 - A `material.dart` import is acceptable only for low-level primitives such as `Icons`, `Colors`, `ChangeNotifier`, geometry, painting, focus, text editing, or platform/plugin interop. It must not be used as a shortcut to build product UI controls.
+- Tooltips are a documented exception to the Material-component restriction: always use the shared `AppTooltip` from `lib/shared/widgets/app_tooltip.dart`. It intentionally wraps Flutter's Material `Tooltip` because `shadcn_flutter`'s tooltip does not inherit the app's mixed Shadcn/Material theme consistently, which can produce a transparent-looking background and oversized text.
+- Never instantiate either Flutter's `Tooltip` or `shadcn_flutter`'s `Tooltip` directly in feature/page code. Keep tooltip messages localized and route all product tooltip styling and behavior through `AppTooltip`.
 - When auditing UI code, distinguish between:
   - acceptable Material foundation usage
   - forbidden Material product-component usage

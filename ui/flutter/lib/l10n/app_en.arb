@@ -250,6 +250,7 @@
   "copied": "Copied",
   "refresh": "Refresh",
   "status": "Status",
+  "createdAt": "Created",
   "speed": "Speed",
   "uploadSpeed": "Upload speed",
   "remaining": "Remaining",
@@ -263,6 +264,9 @@
   "secondsRemaining": "{count, plural, =1{1 second remaining} other{{count} seconds remaining}}",
   "minutesRemaining": "{count, plural, =1{1 minute remaining} other{{count} minutes remaining}}",
   "hoursRemaining": "{count, plural, =1{1 hour remaining} other{{count} hours remaining}}",
+  "secondsDuration": "{count, plural, =1{1 second} other{{count} seconds}}",
+  "minutesDuration": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "hoursDuration": "{count, plural, =1{1 hour} other{{count} hours}}",
   "followSystem": "System Default",
   "basicSettings": "Basic",
   "downloadSettings": "Downloads",
@@ -373,6 +377,7 @@
   "downloadedAmount": "Downloaded",
   "uploadedAmount": "Uploaded",
   "shareRatio": "Share Ratio",
+  "shareDuration": "Share Duration",
   "connectedPeers": "{count} connected",
   "active": "Active",
   "completedPieces": "Completed Pieces",
@@ -439,6 +444,27 @@
     }
   },
   "@hoursRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@secondsDuration": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesDuration": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursDuration": {
     "placeholders": {
       "count": {
         "type": "int"

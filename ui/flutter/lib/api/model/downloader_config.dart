@@ -13,9 +13,15 @@ class DownloaderConfig {
   ScriptConfig script = ScriptConfig();
   AutoTorrentConfig autoTorrent = AutoTorrentConfig();
   ArchiveConfig archive = ArchiveConfig();
+  bool autoStartTasks;
   bool autoDeleteMissingFileTasks;
 
-  DownloaderConfig({this.downloadDir = '', this.maxRunning = 0, this.autoDeleteMissingFileTasks = false});
+  DownloaderConfig({
+    this.downloadDir = '',
+    this.maxRunning = 0,
+    this.autoStartTasks = false,
+    this.autoDeleteMissingFileTasks = false,
+  });
 
   factory DownloaderConfig.fromJson(Map<String, dynamic> json) => _$DownloaderConfigFromJson(json);
 
@@ -94,7 +100,6 @@ class ExtraConfig {
   bool defaultDirectDownload;
   bool defaultBtClient;
   bool notifyWhenNewVersion;
-  bool autoStartTasks;
   bool desktopNotification;
   bool backgroundLocationKeepAlive;
   List<DownloadCategory> downloadCategories;
@@ -110,7 +115,6 @@ class ExtraConfig {
     this.defaultDirectDownload = false,
     this.defaultBtClient = true,
     this.notifyWhenNewVersion = true,
-    this.autoStartTasks = false,
     this.desktopNotification = true,
     this.backgroundLocationKeepAlive = false,
     this.downloadCategories = const [],

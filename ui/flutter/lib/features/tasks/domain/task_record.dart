@@ -68,6 +68,7 @@ class TaskRecord {
     this.uploadSpeed,
     this.remaining,
     this.downloadDuration,
+    this.createdAt,
     this.progress,
     this.error,
     this.completedLabel,
@@ -88,6 +89,7 @@ class TaskRecord {
   final String? uploadSpeed;
   final String? remaining;
   final Duration? downloadDuration;
+  final DateTime? createdAt;
   final double? progress;
   final String url;
   final String storagePath;
@@ -135,6 +137,7 @@ class TaskRecord {
       uploadSpeed: task.uploading ? TransferRateFormatter.format(task.progress.uploadSpeed).text : null,
       remainingSeconds: _remainingSeconds(task, totalBytes, downloadedBytes),
       downloadDuration: task.progress.used > 0 ? Duration(microseconds: (task.progress.used + 999) ~/ 1000) : null,
+      createdAt: task.createdAt,
       waiting: task.status == api_task.Status.wait,
       progress: progress,
       url: displayUrl,

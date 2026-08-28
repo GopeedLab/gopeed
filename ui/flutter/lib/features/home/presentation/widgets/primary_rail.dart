@@ -28,8 +28,9 @@ class PrimaryRail extends StatelessWidget {
             height: AppDesignTokens.contentHeaderHeight,
             child: const Center(child: GopeedAppMark(key: ValueKey('primary-rail-app-mark'))),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppDesignTokens.space8),
           _RailItem(
+            key: const ValueKey('primary-rail-tasks-item'),
             icon: Icons.download_rounded,
             active: activeSection == RailSection.tasks,
             onTap: () => context.go('/'),
@@ -101,7 +102,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
 }
 
 class _RailItem extends StatelessWidget {
-  const _RailItem({required this.icon, required this.onTap, this.active = false});
+  const _RailItem({super.key, required this.icon, required this.onTap, this.active = false});
 
   final IconData icon;
   final VoidCallback onTap;

@@ -455,6 +455,7 @@ func TestGetAndPutConfig(t *testing.T) {
 	doTest(func() {
 		cfg := httpRequestCheckOk[*base.DownloaderStoreConfig](http.MethodGet, "/api/v1/config", nil)
 		cfg.DownloadDir = "./download"
+		cfg.AutoStartTasks = true
 		cfg.Extra = map[string]any{
 			"serverConfig": &Config{
 				Host: "127.0.0.1",

@@ -9,7 +9,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
-import '../../../../core/utils/duration_formatter.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../domain/task_record.dart';
@@ -360,23 +360,33 @@ class _TaskInfoTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _InfoBlock(label: context.l10n.taskName, value: task.name),
-        _InfoBlock(label: context.l10n.status, value: task.localizedStatus(context.l10n)),
+        _InfoBlock(
+          label: context.l10n.status,
+          value: task.localizedStatus(context.l10n),
+          error: task.status == TaskStatus.failed,
+        ),
         _InfoBlock(
           label: context.l10n.size,
-          value: task.total != null ? '${task.downloaded} / ${task.total}' : task.downloaded,
+          value: task.status == TaskStatus.completed
+              ? task.total ?? task.downloaded
+              : task.total != null
+              ? '${task.downloaded} / ${task.total}'
+              : task.downloaded,
         ),
         if (task.speed != null) _InfoBlock(label: context.l10n.speed, value: task.speed!),
         if (task.uploading) _InfoBlock(label: context.l10n.uploadSpeed, value: task.uploadSpeed!),
         if (task.status == TaskStatus.completed)
-          _InfoBlock(
-            label: context.l10n.downloadDuration,
-            value: task.downloadDuration == null ? '—' : DurationFormatter.format(task.downloadDuration!),
-          )
+          _InfoBlock(label: context.l10n.downloadDuration, value: task.localizedDownloadDuration(context.l10n) ?? '—')
         else if (task.localizedRemaining(context.l10n) case final remaining?)
           _InfoBlock(label: context.l10n.remaining, value: remaining),
-        if (task.status == TaskStatus.failed)
-          _InfoBlock(label: context.l10n.error, value: task.localizedError(context.l10n), error: true),
-        Container(height: 1, margin: const EdgeInsets.symmetric(vertical: 4), color: palette.border),
+        if (task.createdAt case final createdAt?)
+          _InfoBlock(label: context.l10n.createdAt, value: _formatTaskDateTime(createdAt)),
+        Container(
+          key: const ValueKey('task-details-info-divider'),
+          height: 1,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          color: palette.border,
+        ),
         if (editingUrl)
           _EditableUrlBlock(
             controller: urlController,
@@ -409,6 +419,13 @@ class _TaskInfoTab extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatTaskDateTime(DateTime value) {
+  final local = value.toLocal();
+  String two(int number) => number.toString().padLeft(2, '0');
+  return '${local.year}-${two(local.month)}-${two(local.day)} '
+      '${two(local.hour)}:${two(local.minute)}:${two(local.second)}';
 }
 
 class _InfoBlock extends StatelessWidget {
@@ -636,8 +653,8 @@ class _TaskDetailIconButton extends StatelessWidget {
     final button = primary
         ? shad.IconButton.primary(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: icon)
         : shad.IconButton.ghost(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: icon);
-    return shad.Tooltip(
-      tooltip: (_) => Text(label),
+    return AppTooltip(
+      message: label,
       child: SizedBox.square(dimension: 28, child: button),
     );
   }

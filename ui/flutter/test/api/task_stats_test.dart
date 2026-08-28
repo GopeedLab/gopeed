@@ -29,6 +29,7 @@ void main() {
               'snapshot': {
                 'seedBytes': 820,
                 'seedRatio': 0.64,
+                'seedTime': 3723,
                 'pieceMap': {
                   'encoding': 'bitset-v1',
                   'pieceCount': 8,
@@ -61,6 +62,7 @@ void main() {
 
     expect(stats.activePeers, 16);
     expect(stats.connectedLeechers, 8);
+    expect(stats.seedTime, 3723);
     expect(stats.pieceMap.toStates(), [
       TaskPieceState.completed,
       TaskPieceState.pending,
@@ -86,6 +88,7 @@ void main() {
               'snapshot': {
                 'seedBytes': 820,
                 'seedRatio': 0.64,
+                'seedTime': 65,
                 'pieceMap': {
                   'encoding': 'bitset-v1',
                   'pieceCount': 4,
@@ -101,6 +104,7 @@ void main() {
     expect(stats.totalPeers, 0);
     expect(stats.activePeers, 0);
     expect(stats.connectedLeechers, 0);
+    expect(stats.seedTime, 65);
     expect(stats.peers, isEmpty);
     expect(stats.pieceMap.completedPieces, 2);
     expect(stats.pieceMap.toStates(), [

@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../shared/theme/app_palette.dart';
-import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/updater.dart';
 import '../../../../util/util.dart';
@@ -153,12 +153,12 @@ Future<void> showAppUpdateDialog(
                         onPressed: updating ? null : () => unawaited(shad.closeOverlay(dialogContext)),
                         child: Text(dialogContext.l10n.newVersionLater),
                       ),
-                      AppPrimaryButton(
-                        onPressed: updating ? null : () => unawaited(update()),
-                        leading: updating
-                            ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
-                            : null,
-                        child: Text(updating ? dialogContext.l10n.updating : dialogContext.l10n.newVersionUpdate),
+                      AppLoadingButton(
+                        onPressed: () => unawaited(update()),
+                        loading: updating,
+                        variant: AppLoadingButtonVariant.primary,
+                        icon: const Icon(Icons.system_update_alt_outlined, size: 17),
+                        child: Text(dialogContext.l10n.newVersionUpdate),
                       ),
                     ],
                   ),

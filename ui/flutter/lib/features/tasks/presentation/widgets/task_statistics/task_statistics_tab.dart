@@ -3,15 +3,16 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../../api/model/task_stats.dart';
 import '../../../../../core/utils/byte_size_formatter.dart';
 import '../../../../../shared/theme/app_design_tokens.dart';
 import '../../../../../shared/theme/app_palette.dart';
+import '../../../../../shared/widgets/app_tooltip.dart';
 import '../../../../../l10n/l10n.dart';
 import '../../../application/task_stats_provider.dart';
 import '../../../domain/task_record.dart';
+import '../../task_record_localizations.dart';
 import '../task_progress_bar.dart';
 import 'peer_table.dart';
 import 'piece_map.dart';
@@ -236,7 +237,7 @@ class _ConnectionStatusIcon extends StatelessWidget {
               ? context.l10n.connectionFailedRetries(retryTimes)
               : context.l10n.connectionFailed
         : context.l10n.retryingCount(retryTimes);
-    return shad.Tooltip(tooltip: (_) => Text(message), child: icon);
+    return AppTooltip(message: message, child: icon);
   }
 }
 
@@ -261,9 +262,12 @@ class _BtStatistics extends StatelessWidget {
             _SummaryItem(context.l10n.peers, '${stats.activePeers} / ${stats.totalPeers}'),
             _SummaryItem(context.l10n.seeders, stats.connectedSeeders.toString()),
             _SummaryItem(context.l10n.leechers, stats.connectedLeechers.toString()),
-            _SummaryItem(context.l10n.downloadedAmount, _formatBytes(task.downloadedBytes ?? 0)),
             _SummaryItem(context.l10n.uploadedAmount, _formatBytes(stats.seedBytes)),
             _SummaryItem(context.l10n.shareRatio, stats.seedRatio.toStringAsFixed(2)),
+            _SummaryItem(
+              context.l10n.shareDuration,
+              formatTaskDuration(context.l10n, Duration(seconds: stats.seedTime)),
+            ),
           ],
         ),
         const _SectionDivider(),

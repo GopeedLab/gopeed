@@ -30,6 +30,8 @@ import (
 )
 
 const (
+	uploadCheckpointInterval = 30 * time.Second
+
 	// task info bucket
 	bucketTask = "task"
 	// task download data bucket
@@ -245,7 +247,9 @@ func (d *Downloader) Setup() error {
 
 	// calculate download speed every tick
 	go func() {
+		lastUploadCheckpoint := time.Now()
 		for !d.closed.Load() {
+			uploadCheckpointDue := time.Since(lastUploadCheckpoint) >= uploadCheckpointInterval
 			d.lock.Lock()
 			tasks := append([]*Task(nil), d.tasks...)
 			d.lock.Unlock()
@@ -270,6 +274,7 @@ func (d *Downloader) Setup() error {
 						current := task.fetcher.Progress().TotalDownloaded()
 						tick := float64(d.cfg.RefreshInterval) / 1000
 						downloadDataChanged := false
+						uploading := task.Uploading
 						if task.Status == base.DownloadStatusRunning {
 							downloadDataChanged = current != task.Progress.Downloaded
 							task.Progress.Used = task.timer.Used()
@@ -278,7 +283,7 @@ func (d *Downloader) Setup() error {
 						}
 
 						uploadDataChanged := false
-						if task.Uploading {
+						if uploading {
 							uploader := task.fetcher.(fetcher.Uploader)
 							currentUploaded := uploader.UploadedBytes()
 							uploadDataChanged = currentUploaded != task.Progress.Uploaded
@@ -295,18 +300,33 @@ func (d *Downloader) Setup() error {
 						// Listener callbacks may Pause/Continue and acquire statusLock.
 						d.emit(EventKeyProgress, task)
 
-						// store fetcher progress when download/upload data changed
-						if !downloadDataChanged && !uploadDataChanged {
+						// Store active upload state periodically even without traffic so
+						// protocol-owned values such as BT seed time remain durable.
+						if !shouldSaveTaskCheckpoint(
+							downloadDataChanged,
+							uploadDataChanged,
+							uploading,
+							uploadCheckpointDue,
+						) {
 							return
 						}
-						d.saveTask(task)
+						if err := d.saveTask(task); err != nil {
+							d.Logger.Warn().Err(err).Msgf("persist task checkpoint failed, task id: %s", task.ID)
+						}
 					}()
 				}
+			}
+			if uploadCheckpointDue {
+				lastUploadCheckpoint = time.Now()
 			}
 			time.Sleep(time.Millisecond * time.Duration(d.cfg.RefreshInterval))
 		}
 	}()
 	return nil
+}
+
+func shouldSaveTaskCheckpoint(downloadChanged, uploadChanged, uploading, uploadCheckpointDue bool) bool {
+	return downloadChanged || uploadChanged || uploading && uploadCheckpointDue
 }
 
 // cleanupNonExistingTasks checks for tasks whose files are missing on disk
@@ -752,6 +772,16 @@ func (d *Downloader) ContinueBatch(filter *TaskFilter) (err error) {
 		}
 	}
 	return
+}
+
+// ContinueOnStartup applies the persisted startup policy after the backend is
+// ready to accept connections. Continue(nil) intentionally preserves the same
+// continue-all semantics exposed by the API, including retrying failed tasks.
+func (d *Downloader) ContinueOnStartup() error {
+	if !d.cfg.DownloaderStoreConfig.AutoStartTasks {
+		return nil
+	}
+	return d.Continue(nil)
 }
 
 func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
@@ -1423,6 +1453,11 @@ func (d *Downloader) handleOnError(task *Task, err error, resetFetcher bool) {
 	if statsErr := d.captureTaskStats(task, false, true); statsErr != nil {
 		d.Logger.Warn().Err(statsErr).Msgf("persist failed task stats failed, task id: %s", task.ID)
 	}
+	if d.taskStatus(task) == base.DownloadStatusError {
+		if persistErr := d.storage.Put(bucketTask, task.ID, task.clone()); persistErr != nil {
+			d.Logger.Error().Stack().Err(persistErr).Msgf("persist failed task failed, task id: %s", task.ID)
+		}
+	}
 	task.lock.Unlock()
 	if d.taskStatus(task) == base.DownloadStatusError {
 		d.releaseBlobTask(task)
@@ -1484,7 +1519,7 @@ func (d *Downloader) restoreTask(task *Task) error {
 func (d *Downloader) restoreFetcher(task *Task) error {
 	v, f := task.fetcherManager.Restore()
 	if v != nil {
-		err := d.storage.Pop(bucketSave, task.ID, v)
+		_, err := d.storage.Get(bucketSave, task.ID, v)
 		if err != nil {
 			return err
 		}
@@ -1761,7 +1796,7 @@ func (d *Downloader) doPauseForScheduling(task *Task) (bool, error) {
 
 func (d *Downloader) preparePause(task *Task) (generation uint64, isReturn bool, err error) {
 	isReturn, err = d.statusMut(task, func() (isReturn bool, err error) {
-		if task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusDone {
+		if task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusDone || task.Status == base.DownloadStatusError {
 			isReturn = true
 			return
 		}

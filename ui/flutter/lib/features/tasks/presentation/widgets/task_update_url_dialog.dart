@@ -3,6 +3,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' hide Column, Expanded, Row;
 
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../l10n/l10n.dart';
 import '../../domain/task_record.dart';
 
@@ -82,8 +83,8 @@ Future<TaskUrlUpdate?> showTaskUpdateUrlDialog(BuildContext context, TaskRecord 
                             style: TextStyle(color: palette.textPrimary, fontSize: 12),
                           ),
                         ),
-                        Tooltip(
-                          tooltip: (_) => Text(dialogContext.l10n.add),
+                        AppTooltip(
+                          message: dialogContext.l10n.add,
                           child: IconButton.ghost(
                             onPressed: () => setDialogState(() => headerControllers.add(_HeaderControllers())),
                             icon: const Icon(Icons.add, size: 18),
@@ -109,8 +110,8 @@ Future<TaskUrlUpdate?> showTaskUpdateUrlDialog(BuildContext context, TaskRecord 
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Tooltip(
-                            tooltip: (_) => Text(dialogContext.l10n.delete),
+                          AppTooltip(
+                            message: dialogContext.l10n.delete,
                             child: IconButton.ghost(
                               onPressed: headerControllers.length == 1
                                   ? null

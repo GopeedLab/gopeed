@@ -155,17 +155,17 @@ class SettingView extends GetView<SettingController> {
     });
 
     final buildAutoStartTasks = _buildConfigItem('autoStartTasks', () {
-      return appController.downloaderConfig.value.extra.autoStartTasks
+      return appController.downloaderConfig.value.autoStartTasks
           ? 'on'.tr
           : 'off'.tr;
     }, (Key key) {
       return Container(
         alignment: Alignment.centerLeft,
         child: Switch(
-          value: appController.downloaderConfig.value.extra.autoStartTasks,
+          value: appController.downloaderConfig.value.autoStartTasks,
           onChanged: (bool value) async {
             appController.downloaderConfig.update((val) {
-              val!.extra.autoStartTasks = value;
+              val!.autoStartTasks = value;
             });
             await debounceSave();
           },

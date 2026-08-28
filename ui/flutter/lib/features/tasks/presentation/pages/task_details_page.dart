@@ -7,6 +7,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../../../../core/utils/file_explorer.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_toast.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../l10n/l10n.dart';
 import '../../application/tasks_controller.dart';
 import '../../domain/task_record.dart';
@@ -45,8 +46,8 @@ class TaskDetailsPage extends ConsumerWidget {
                   children: [
                     SizedBox(
                       width: 44,
-                      child: shad.Tooltip(
-                        tooltip: (_) => Text(context.l10n.close),
+                      child: AppTooltip(
+                        message: context.l10n.close,
                         child: shad.IconButton.ghost(
                           onPressed: () => context.canPop() ? context.pop() : context.go('/'),
                           icon: Icon(Icons.arrow_back, size: 20, color: palette.textPrimary),

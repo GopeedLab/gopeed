@@ -106,6 +106,7 @@ class BtTaskStats extends TaskStats {
     required this.connectedLeechers,
     required this.seedBytes,
     required this.seedRatio,
+    required this.seedTime,
     required super.peers,
     required super.pieceMap,
   });
@@ -116,6 +117,7 @@ class BtTaskStats extends TaskStats {
   final int connectedLeechers;
   final int seedBytes;
   final double seedRatio;
+  final int seedTime;
 
   factory BtTaskStats.fromJson({required Map<String, dynamic> snapshot, required Map<String, dynamic> runtime}) {
     return BtTaskStats(
@@ -125,6 +127,7 @@ class BtTaskStats extends TaskStats {
       connectedLeechers: _integer(runtime, 'connectedLeechers'),
       seedBytes: _integer(snapshot, 'seedBytes'),
       seedRatio: _decimal(snapshot, 'seedRatio'),
+      seedTime: _integer(snapshot, 'seedTime'),
       peers: _peerList(runtime['peers']),
       pieceMap: TaskPieceMap.fromJson(snapshot['pieceMap']) ?? TaskPieceMap.empty(),
     );

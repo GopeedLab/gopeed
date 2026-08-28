@@ -24,8 +24,8 @@ class SettingsController extends AsyncNotifier<SettingsState> {
     return SettingsState(config: DownloaderConfig.fromJson(runtime.downloaderConfig.toJson()));
   }
 
-  Future<void> reload() async {
-    state = const AsyncValue.loading();
+  Future<void> reload({bool showLoading = true}) async {
+    if (showLoading) state = const AsyncValue.loading();
     state = AsyncValue.data(SettingsState(config: await ref.read(gopeedServiceProvider).getConfig()));
   }
 

@@ -64,13 +64,14 @@ class SecondaryNavigationPane<T> extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppDesignTokens.space8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
-                for (final item in items)
+                for (final (index, item) in items.indexed)
                   _SecondaryNavigationPaneItem<T>(
+                    key: ValueKey('secondary-navigation-item-$index'),
                     item: item,
                     active: item.value == selectedValue,
                     showDisclosure: showDisclosure,
@@ -88,6 +89,7 @@ class SecondaryNavigationPane<T> extends StatelessWidget {
 
 class _SecondaryNavigationPaneItem<T> extends StatelessWidget {
   const _SecondaryNavigationPaneItem({
+    super.key,
     required this.item,
     required this.active,
     required this.showDisclosure,

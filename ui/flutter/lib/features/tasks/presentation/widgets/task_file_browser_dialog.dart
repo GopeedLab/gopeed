@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../l10n/l10n.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../domain/task_record.dart';
 import 'task_file_manager.dart';
 
@@ -24,8 +25,8 @@ Future<void> showTaskFileBrowserDialog(BuildContext context, TaskRecord task) as
           child: Row(
             children: [
               Expanded(child: Text(dialogContext.l10n.browseFiles, maxLines: 1, overflow: TextOverflow.ellipsis)),
-              shad.Tooltip(
-                tooltip: (_) => Text(dialogContext.l10n.close),
+              AppTooltip(
+                message: dialogContext.l10n.close,
                 child: shad.IconButton.ghost(
                   size: shad.ButtonSize.xSmall,
                   onPressed: () => shad.closeOverlay(dialogContext),

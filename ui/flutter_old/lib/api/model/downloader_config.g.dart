@@ -10,6 +10,7 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
     DownloaderConfig(
       downloadDir: json['downloadDir'] as String? ?? '',
       maxRunning: (json['maxRunning'] as num?)?.toInt() ?? 0,
+      autoStartTasks: json['autoStartTasks'] as bool? ?? false,
       autoDeleteMissingFileTasks:
           json['autoDeleteMissingFileTasks'] as bool? ?? false,
     )
@@ -36,6 +37,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) =>
       'script': instance.script.toJson(),
       'autoTorrent': instance.autoTorrent.toJson(),
       'archive': instance.archive.toJson(),
+      'autoStartTasks': instance.autoStartTasks,
       'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
     };
 
@@ -109,7 +111,6 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
       defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
       defaultBtClient: json['defaultBtClient'] as bool? ?? true,
       notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
-      autoStartTasks: json['autoStartTasks'] as bool? ?? false,
       desktopNotification: json['desktopNotification'] as bool? ?? true,
       backgroundLocationKeepAlive:
           json['backgroundLocationKeepAlive'] as bool? ?? false,
@@ -130,7 +131,6 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) =>
       'defaultDirectDownload': instance.defaultDirectDownload,
       'defaultBtClient': instance.defaultBtClient,
       'notifyWhenNewVersion': instance.notifyWhenNewVersion,
-      'autoStartTasks': instance.autoStartTasks,
       'desktopNotification': instance.desktopNotification,
       'backgroundLocationKeepAlive': instance.backgroundLocationKeepAlive,
       'downloadCategories':

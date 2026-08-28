@@ -59,7 +59,7 @@ class DownloadCategoriesControl extends StatelessWidget {
           ],
           if (visibleCategories.isNotEmpty) const SizedBox(height: 10),
           Align(
-            alignment: Alignment.centerLeft,
+            alignment: desktop ? Alignment.centerRight : Alignment.centerLeft,
             child: shad.SecondaryButton(
               key: const ValueKey('add-download-category'),
               onPressed: onAdd,

@@ -1,8 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Divider, Icons, Scrollbar;
+import 'package:flutter/material.dart' show Divider, Icons, Scrollbar, ScrollbarOrientation;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,7 @@ import '../../../../core/utils/tcp_port_checker.dart';
 import '../../../../database/database.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../shared/widgets/responsive_menu_layout.dart';
 import '../../../../l10n/l10n.dart';
@@ -222,7 +224,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.only(top: 8, bottom: 28),
+              key: const ValueKey('settings-section-scroll-view'),
+              padding: const EdgeInsets.only(top: AppDesignTokens.space8, bottom: 28),
               children: [
                 SettingsContentFrame(
                   child: SizedBox(
@@ -345,23 +348,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 children: [
                   SettingsItem(
                     title: context.l10n.homepage,
-                    child: shad.SecondaryButton(
-                      onPressed: () => unawaited(launchUrl(Uri.parse('https://gopeed.com'))),
-                      leading: const Icon(Icons.open_in_new),
-                      child: const Text('gopeed.com'),
+                    child: _ExternalTextLink(
+                      key: const ValueKey('gopeed-homepage'),
+                      label: 'gopeed.com',
+                      onPressed: () => unawaited(_openExternalUri(Uri.parse('https://gopeed.com'))),
                     ),
                   ),
                   SettingsItem(
-                    title: context.l10n.notifyWhenNewVersion,
-                    child: shad.Switch(
-                      value: config.extra.notifyWhenNewVersion,
-                      onChanged: (value) => _mutateConfig((next) => next.extra.notifyWhenNewVersion = value),
+                    title: 'GitHub',
+                    child: _ExternalTextLink(
+                      key: const ValueKey('gopeed-github'),
+                      label: 'github.com/GopeedLab/gopeed',
+                      onPressed: () => unawaited(_openExternalUri(Uri.parse('https://github.com/GopeedLab/gopeed'))),
                     ),
                   ),
                   SettingsItem(
-                    title: context.l10n.version,
-                    subtitle: context.l10n.currentVersion(_versionLabel),
-                    child: _UpdateActionControl(platform: platform),
+                    title: context.l10n.contributors,
+                    subtitle: context.l10n.thanksDesc,
+                    child: _ExternalTextLink(
+                      key: const ValueKey('gopeed-contributors'),
+                      label: context.l10n.viewContributors,
+                      onPressed: () => unawaited(
+                        _openExternalUri(Uri.parse('https://github.com/GopeedLab/gopeed/graphs/contributors')),
+                      ),
+                    ),
                   ),
                   SettingsItem(
                     title: context.l10n.analyticsEnabled,
@@ -375,16 +385,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   SettingsItem(
-                    title: context.l10n.contributors,
-                    subtitle: context.l10n.thanksDesc,
-                    child: shad.SecondaryButton(
-                      key: const ValueKey('gopeed-contributors'),
-                      onPressed: () => unawaited(
-                        _openExternalUri(Uri.parse('https://github.com/GopeedLab/gopeed/graphs/contributors')),
-                      ),
-                      leading: const Icon(Icons.open_in_new, size: 17),
-                      child: Text(context.l10n.viewContributors),
+                    title: context.l10n.notifyWhenNewVersion,
+                    child: shad.Switch(
+                      value: config.extra.notifyWhenNewVersion,
+                      onChanged: (value) => _mutateConfig((next) => next.extra.notifyWhenNewVersion = value),
                     ),
+                  ),
+                  SettingsItem(
+                    title: context.l10n.version,
+                    subtitle: context.l10n.currentVersion(_versionLabel),
+                    child: _UpdateActionControl(platform: platform),
                   ),
                 ],
               ),
@@ -439,8 +449,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   SettingsItem(
                     title: context.l10n.autoStartTasks,
                     child: shad.Switch(
-                      value: config.extra.autoStartTasks,
-                      onChanged: (value) => _mutateConfig((next) => next.extra.autoStartTasks = value),
+                      value: config.autoStartTasks,
+                      onChanged: (value) => _mutateConfig((next) => next.autoStartTasks = value),
                     ),
                   ),
                   SettingsItem(
@@ -768,14 +778,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     subtitle: runtimeState == null
                         ? context.l10n.readingRuntimeStatus
                         : '${runtimeState.startConfig.network}://${runtimeState.runningAddress()}',
-                    child: shad.SecondaryButton(
+                    child: AppLoadingButton(
                       key: const ValueKey('save-api-config-button'),
-                      onPressed: runtimeState == null || _savingStartConfig || !apiConfigDirty
-                          ? null
-                          : _saveStartConfig,
-                      leading: _savingStartConfig
-                          ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
-                          : const Icon(Icons.save_outlined),
+                      onPressed: runtimeState == null || !apiConfigDirty ? null : _saveStartConfig,
+                      loading: _savingStartConfig,
+                      icon: const Icon(Icons.save_outlined),
                       child: Text(context.l10n.save),
                     ),
                   ),
@@ -1266,10 +1273,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _updateTrackers() async {
     final config = _config;
     if (config == null) return;
-    await _runAction(
-      () => ref.read(appRuntimeControllerProvider.notifier).updateTrackers(DownloaderConfig.fromJson(config.toJson())),
-    );
-    if (mounted) await ref.read(settingsControllerProvider.notifier).reload();
+    await _runAction(() async {
+      await ref.read(appRuntimeControllerProvider.notifier).updateTrackers(DownloaderConfig.fromJson(config.toJson()));
+      if (mounted) await ref.read(settingsControllerProvider.notifier).reload(showLoading: false);
+    });
   }
 
   String _signature(DownloaderConfig config) {
@@ -1733,6 +1740,64 @@ class _DecimalNumberFormatter extends TextInputFormatter {
   }
 }
 
+class _ExternalTextLink extends StatefulWidget {
+  const _ExternalTextLink({super.key, required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  State<_ExternalTextLink> createState() => _ExternalTextLinkState();
+}
+
+class _ExternalTextLinkState extends State<_ExternalTextLink> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final color = _hovered ? palette.brandProgress : palette.brand;
+    return Semantics(
+      link: true,
+      label: widget.label,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.underline,
+                      decorationColor: color,
+                      decorationThickness: _hovered ? 1.5 : 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Icon(Icons.open_in_new, size: 13, color: color),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _BrowserExtensionLinks extends StatelessWidget {
   const _BrowserExtensionLinks({required this.onOpen});
 
@@ -1792,12 +1857,14 @@ class _TrackerSubscriptionsControl extends StatefulWidget {
 }
 
 class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsControl> {
-  final _scrollController = ScrollController();
+  final _verticalScrollController = ScrollController();
+  final _horizontalScrollController = ScrollController();
   bool _updating = false;
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _verticalScrollController.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -1851,44 +1918,70 @@ class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsContr
                 ),
                 Divider(height: 1, color: palette.border),
                 Expanded(
-                  child: Scrollbar(
-                    controller: _scrollController,
-                    thumbVisibility: true,
-                    child: ListView.separated(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      itemCount: allTrackerSubscribeUrls.length,
-                      separatorBuilder: (_, _) => Divider(height: 1, color: palette.border),
-                      itemBuilder: (context, index) {
-                        final url = allTrackerSubscribeUrls[index];
-                        final checked = widget.selected.contains(url);
-                        return GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () => _toggle(url, checked),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            child: Row(
-                              children: [
-                                shad.Checkbox(
-                                  state: checked ? shad.CheckboxState.checked : shad.CheckboxState.unchecked,
-                                  onChanged: (_) => _toggle(url, checked),
-                                  size: 17,
-                                ),
-                                const SizedBox(width: 9),
-                                Expanded(
-                                  child: Text(
-                                    _trackerLabel(url),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: palette.textSecondary, fontSize: 11),
-                                  ),
-                                ),
-                              ],
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final labelStyle = TextStyle(color: palette.textSecondary, fontSize: 11);
+                      final labelWidth = allTrackerSubscribeUrls
+                          .map(
+                            (url) => (TextPainter(
+                              text: TextSpan(text: url, style: labelStyle),
+                              textDirection: Directionality.of(context),
+                              maxLines: 1,
+                            )..layout()).width,
+                          )
+                          .reduce(math.max);
+                      final contentWidth = math.max(constraints.maxWidth, labelWidth + 58);
+                      return Scrollbar(
+                        key: const ValueKey('tracker-horizontal-scrollbar'),
+                        controller: _horizontalScrollController,
+                        thumbVisibility: true,
+                        scrollbarOrientation: ScrollbarOrientation.bottom,
+                        notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
+                        child: SingleChildScrollView(
+                          key: const ValueKey('tracker-horizontal-scroll-view'),
+                          controller: _horizontalScrollController,
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: contentWidth,
+                            height: constraints.maxHeight,
+                            child: Scrollbar(
+                              controller: _verticalScrollController,
+                              thumbVisibility: true,
+                              scrollbarOrientation: ScrollbarOrientation.right,
+                              notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
+                              child: ListView.separated(
+                                controller: _verticalScrollController,
+                                padding: const EdgeInsets.only(top: 4, bottom: 12),
+                                itemCount: allTrackerSubscribeUrls.length,
+                                separatorBuilder: (_, _) => Divider(height: 1, color: palette.border),
+                                itemBuilder: (context, index) {
+                                  final url = allTrackerSubscribeUrls[index];
+                                  final checked = widget.selected.contains(url);
+                                  return GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => _toggle(url, checked),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      child: Row(
+                                        children: [
+                                          shad.Checkbox(
+                                            state: checked ? shad.CheckboxState.checked : shad.CheckboxState.unchecked,
+                                            onChanged: (_) => _toggle(url, checked),
+                                            size: 17,
+                                          ),
+                                          const SizedBox(width: 9),
+                                          Text(url, maxLines: 1, style: labelStyle),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -1897,11 +1990,11 @@ class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsContr
           const SizedBox(height: 10),
           Row(
             children: [
-              shad.SecondaryButton(
-                onPressed: _updating ? null : _update,
-                leading: _updating
-                    ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
-                    : const Icon(Icons.refresh, size: 17),
+              AppLoadingButton(
+                key: const ValueKey('tracker-update-button'),
+                onPressed: _update,
+                loading: _updating,
+                icon: const Icon(Icons.refresh, size: 17),
                 child: Text(context.l10n.newVersionUpdate),
               ),
               const SizedBox(width: 12),
@@ -1949,12 +2042,6 @@ class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsContr
     }
   }
 
-  String _trackerLabel(String value) {
-    final uri = Uri.tryParse(value);
-    if (uri == null) return value;
-    return '${uri.host}${uri.path}';
-  }
-
   String _formatDateTime(DateTime value) {
     String two(int number) => number.toString().padLeft(2, '0');
     return '${value.year}-${two(value.month)}-${two(value.day)} ${two(value.hour)}:${two(value.minute)}:${two(value.second)}';
@@ -1979,10 +2066,11 @@ class _ChoiceSegmentedControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
+    final desktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      alignment: WrapAlignment.end,
+      alignment: desktop ? WrapAlignment.end : WrapAlignment.start,
       children: [
         for (final option in options)
           _ChoiceButton(
@@ -2007,6 +2095,7 @@ class _ChoiceButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: ValueKey<String>('settings-choice-${option.value}'),
       behavior: HitTestBehavior.opaque,
       onTap: onPressed,
       child: AnimatedContainer(
@@ -2079,33 +2168,13 @@ class _UpdateActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final button = shad.SecondaryButton(
+    return AppLoadingButton(
       key: const ValueKey('check-app-update-button'),
-      onPressed: checking ? null : onPressed,
-      leading: checking ? null : Icon(available ? Icons.system_update_alt_outlined : Icons.refresh, size: 17),
-      child: checking
-          ? const SizedBox(
-              width: 64,
-              height: 16,
-              child: Center(child: SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())),
-            )
-          : Text(available ? context.l10n.updateVersion : context.l10n.checkForUpdates),
-    );
-    if (!available) return button;
-
-    final palette = AppPalette.of(context);
-    return shad.ButtonStyleOverride(
-      decoration: (context, states, value) => BoxDecoration(
-        color: states.contains(WidgetState.pressed)
-            ? Color.alphaBlend(palette.brandForeground.withValues(alpha: 0.12), palette.brand)
-            : states.contains(WidgetState.hovered)
-            ? Color.alphaBlend(palette.brandForeground.withValues(alpha: 0.08), palette.brand)
-            : palette.brand,
-        borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-      ),
-      textStyle: (context, states, value) => value.copyWith(color: palette.brandForeground),
-      iconTheme: (context, states, value) => value.copyWith(color: palette.brandForeground),
-      child: button,
+      onPressed: onPressed,
+      loading: checking,
+      icon: Icon(available ? Icons.system_update_alt_outlined : Icons.refresh, size: 17),
+      variant: available ? AppLoadingButtonVariant.brand : AppLoadingButtonVariant.secondary,
+      child: Text(available ? context.l10n.updateVersion : context.l10n.checkForUpdates),
     );
   }
 }
