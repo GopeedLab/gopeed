@@ -481,6 +481,7 @@ jobs:
                 \$CRAFT_PART_INSTALL/usr/bin/flutter doctor
               build-packages:
                 - clang
+                - lld
                 - cmake
                 - curl
                 - libgtk-3-dev
@@ -509,6 +510,7 @@ jobs:
                 set +e
                 dart pub get
                 set -eux
+                test -x "\$(dirname "\$(readlink -f "\$(command -v clang)")")/ld.lld"
                 flutter build linux --dart-define="UPDATE_CHANNEL=linuxSnap" --dart-define="GA4_MEASUREMENT_ID=$GA4_MEASUREMENT_ID" --dart-define="GA4_API_SECRET=$GA4_API_SECRET"
                 mkdir -p \$CRAFT_PART_INSTALL/bin/
                 cp -r build/linux/*/release/bundle/* \$CRAFT_PART_INSTALL/bin/
