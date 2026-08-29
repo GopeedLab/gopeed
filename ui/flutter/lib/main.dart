@@ -29,7 +29,7 @@ Future<void> main(List<String> args) async {
   if (launchContext.isSubWindow) {
     final windowController = launchContext.buildController()!;
     final session = await ChildWindowSession.connect(windowController);
-    await AppWindowBootstrap.setupSubWindow(launchContext.payload.type);
+    await AppWindowBootstrap.setupSubWindow(launchContext.payload.type, localeConfig: session.appearance.value.locale);
     runApp(
       ProviderScope(
         overrides: [appCapabilitiesProvider.overrideWithValue(session.capabilities)],

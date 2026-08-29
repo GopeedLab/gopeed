@@ -24,6 +24,9 @@ class DownloadDirectoryPicker {
   static TargetPlatform? debugPlatformOverride;
 
   @visibleForTesting
+  static bool? debugWebOverride;
+
+  @visibleForTesting
   static Future<Map<String, String>?> Function()? debugAndroidLocationsLoader;
 
   @visibleForTesting
@@ -35,16 +38,22 @@ class DownloadDirectoryPicker {
     return downloadDirectoryHostPlatform;
   }
 
-  static bool get isAndroid => !kIsWeb && _platform == TargetPlatform.android;
+  static bool get isWeb => debugWebOverride ?? kIsWeb;
 
-  static bool get isIOS => !kIsWeb && _platform == TargetPlatform.iOS;
+  static bool get isAndroid => !isWeb && _platform == TargetPlatform.android;
+
+  static bool get isIOS => !isWeb && _platform == TargetPlatform.iOS;
 
   static bool get isMobile => isAndroid || isIOS;
 
-  static bool get canPick => !kIsWeb && _platform != TargetPlatform.iOS;
+  static bool get canPick => !isWeb && _platform != TargetPlatform.iOS;
+
+  static bool canEditManually({bool allowAndroidEditing = false}) {
+    return isWeb || !isMobile || (isAndroid && allowAndroidEditing);
+  }
 
   static Future<String?> pick(BuildContext context, {required String currentPath}) async {
-    if (kIsWeb) return null;
+    if (isWeb) return null;
     if (_platform == TargetPlatform.android) {
       return _pickAndroid(context, currentPath: currentPath);
     }

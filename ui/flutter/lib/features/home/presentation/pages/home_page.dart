@@ -13,6 +13,7 @@ import '../../../../core/capabilities/app_capabilities.dart';
 import '../../../../core/utils/breakpoints.dart';
 import '../../../../core/utils/file_explorer.dart';
 import '../../../../core/window/app_window_launcher.dart';
+import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_toast.dart';
@@ -30,6 +31,7 @@ import '../../../tasks/presentation/widgets/task_drawer.dart';
 import '../../../tasks/presentation/widgets/task_context_menu.dart';
 import '../../../tasks/presentation/widgets/task_delete_dialog.dart';
 import '../../../tasks/presentation/widgets/task_empty_state.dart';
+import '../../../tasks/presentation/widgets/task_file_browser_dialog.dart';
 import '../../../tasks/presentation/widgets/task_update_url_dialog.dart';
 import '../widgets/primary_rail.dart';
 import '../widgets/tasks_top_bar.dart';
@@ -112,7 +114,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 uploadBytesPerSecond: tasksState?.uploadSpeedBytesPerSecond ?? 0,
               ),
               child: Padding(
-                padding: const EdgeInsets.only(top: AppDesignTokens.windowHeaderHeight),
+                padding: EdgeInsets.only(
+                  top: AppWindowChrome.reservesHeaderInset ? AppDesignTokens.windowHeaderHeight : 0,
+                ),
                 child: Column(
                   children: [
                     ListenableBuilder(
@@ -366,7 +370,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   void _handleTaskPressed(TaskRecord task) {
     if (_batchMode) {
       _toggleBatchTask(task.id);
-    } else if (MediaQuery.sizeOf(context).width < Breakpoints.mobile) {
+    } else {
+      _showTaskDetails(task);
+    }
+  }
+
+  void _showTaskDetails(TaskRecord task) {
+    if (MediaQuery.sizeOf(context).width < Breakpoints.mobile) {
       context.push('/tasks/${Uri.encodeComponent(task.id)}', extra: task);
     } else {
       setState(() {
@@ -440,6 +450,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       selected: selected,
       allSelected: allSelected,
       listeningForUpdate: listeningForUpdate,
+      onShowDetails: () => _showTaskDetails(task),
+      onBrowseFiles: () =>
+          unawaited(browseTaskFiles(context, task, mobile: MediaQuery.sizeOf(context).width < Breakpoints.mobile)),
       onToggleSelectAll: _toggleSelectAll,
       onToggleSelected: () {
         if (!_batchMode) {
@@ -866,9 +879,8 @@ class _MobileBatchToolbar extends StatelessWidget {
                   onChanged: (_) => onToggleSelectAll(),
                   borderColor: palette.border,
                   backgroundColor: palette.cardBg,
-                  size: 18,
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: AppDesignTokens.checkboxLabelGap),
                 Text(
                   '$selectedCount / $visibleCount',
                   style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w700),

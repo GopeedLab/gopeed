@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -19,9 +18,11 @@ import '../../../../app/application/location_keep_alive.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../core/utils/breakpoints.dart';
 import '../../../../core/utils/tcp_port_checker.dart';
+import '../../../../core/window/app_window_chrome.dart';
 import '../../../../database/database.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_choice_segmented_control.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_toast.dart';
@@ -231,7 +232,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final isDesktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
 
     return Padding(
-      padding: EdgeInsets.only(top: isDesktop ? AppDesignTokens.windowHeaderHeight : 0),
+      padding: EdgeInsets.only(
+        top: isDesktop && AppWindowChrome.reservesHeaderInset ? AppDesignTokens.windowHeaderHeight : 0,
+      ),
       child: Column(
         children: [
           if (isDesktop)
@@ -507,35 +510,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
             _SettingsBlock(
-              title: context.l10n.archives,
-              child: _SettingsGroup(
-                children: [
-                  SettingsItem(
-                    title: context.l10n.autoExtract,
-                    child: shad.Switch(
-                      value: config.archive.autoExtract,
-                      onChanged: (value) => _mutateConfig((next) => next.archive.autoExtract = value),
-                    ),
-                  ),
-                  if (config.archive.autoExtract)
-                    SettingsItem(
-                      title: context.l10n.deleteAfterExtract,
-                      child: shad.Switch(
-                        value: config.archive.deleteAfterExtract,
-                        onChanged: (value) => _mutateConfig((next) => next.archive.deleteAfterExtract = value),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            _SettingsBlock(
+              key: const ValueKey('settings-http-block'),
               title: 'HTTP',
               child: _SettingsGroup(
                 children: [
                   SettingsItem(
                     title: 'User-Agent',
                     subtitle: context.l10n.defaultUserAgentDescription,
-                    child: _TextSettingControl(controller: _httpUserAgentController),
+                    child: _TextSettingControl(
+                      fieldKey: const ValueKey('http-user-agent-input'),
+                      controller: _httpUserAgentController,
+                    ),
                   ),
                   SettingsItem(
                     title: context.l10n.connections,
@@ -553,6 +538,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onChanged: (value) => _mutateConfig((next) => next.protocolConfig.http.useServerCtime = value),
                     ),
                   ),
+                  SettingsItem(
+                    title: context.l10n.autoExtract,
+                    child: shad.Switch(
+                      value: config.archive.autoExtract,
+                      onChanged: (value) => _mutateConfig((next) => next.archive.autoExtract = value),
+                    ),
+                  ),
+                  if (config.archive.autoExtract)
+                    SettingsItem(
+                      title: context.l10n.deleteAfterExtract,
+                      child: shad.Switch(
+                        value: config.archive.deleteAfterExtract,
+                        onChanged: (value) => _mutateConfig((next) => next.archive.deleteAfterExtract = value),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -690,12 +690,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 children: [
                   SettingsItem(
                     title: context.l10n.proxy,
-                    child: _ChoiceSegmentedControl(
+                    child: AppChoiceSegmentedControl<String>(
                       value: _proxyMode,
+                      buttonKeyPrefix: 'settings-choice',
                       options: [
-                        _ChoiceOption(value: 'none', label: context.l10n.noProxy, icon: Icons.block_outlined),
-                        _ChoiceOption(value: 'system', label: context.l10n.systemProxy, icon: Icons.computer_outlined),
-                        _ChoiceOption(value: 'custom', label: context.l10n.customProxy, icon: Icons.tune_outlined),
+                        AppChoiceOption(value: 'none', label: context.l10n.noProxy, icon: Icons.block_outlined),
+                        AppChoiceOption(
+                          value: 'system',
+                          label: context.l10n.systemProxy,
+                          icon: Icons.computer_outlined,
+                        ),
+                        AppChoiceOption(value: 'custom', label: context.l10n.customProxy, icon: Icons.tune_outlined),
                       ],
                       onChanged: (value) => _mutateConfig((next) {
                         next.proxy.enable = value != 'none';
@@ -706,12 +711,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   if (_proxyMode == 'custom') ...[
                     SettingsItem(
                       title: context.l10n.proxyProtocol,
-                      child: _ChoiceSegmentedControl(
+                      child: AppChoiceSegmentedControl<String>(
                         value: _proxyScheme,
+                        buttonKeyPrefix: 'settings-choice',
                         options: const [
-                          _ChoiceOption(value: 'http', label: 'HTTP', icon: Icons.http_outlined),
-                          _ChoiceOption(value: 'https', label: 'HTTPS', icon: Icons.https_outlined),
-                          _ChoiceOption(value: 'socks5', label: 'SOCKS5', icon: Icons.security_outlined),
+                          AppChoiceOption(value: 'http', label: 'HTTP', icon: Icons.http_outlined),
+                          AppChoiceOption(value: 'https', label: 'HTTPS', icon: Icons.https_outlined),
+                          AppChoiceOption(value: 'socks5', label: 'SOCKS5', icon: Icons.security_outlined),
                         ],
                         onChanged: (value) => _mutateConfig((next) => next.proxy.scheme = value),
                       ),
@@ -769,12 +775,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   SettingsItem(
                     title: context.l10n.protocol,
                     subtitle: context.l10n.restartRequired,
-                    child: _ChoiceSegmentedControl(
+                    child: AppChoiceSegmentedControl<String>(
                       value: _apiNetworkValue,
+                      buttonKeyPrefix: 'settings-choice',
                       options: [
-                        const _ChoiceOption(value: 'tcp', label: 'TCP', icon: Icons.lan_outlined),
+                        const AppChoiceOption(value: 'tcp', label: 'TCP', icon: Icons.lan_outlined),
                         if (Util.supportUnixSocket())
-                          const _ChoiceOption(value: 'unix', label: 'Unix Socket', icon: Icons.cable_outlined),
+                          const AppChoiceOption(value: 'unix', label: 'Unix Socket', icon: Icons.cable_outlined),
                       ],
                       onChanged: _changeApiNetwork,
                     ),
@@ -1493,7 +1500,7 @@ class _SettingsSectionStack extends StatelessWidget {
 }
 
 class _SettingsBlock extends StatelessWidget {
-  const _SettingsBlock({required this.title, required this.child});
+  const _SettingsBlock({super.key, required this.title, required this.child});
 
   final String title;
   final Widget child;
@@ -1918,8 +1925,8 @@ class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsContr
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     child: Row(
                       children: [
-                        shad.Checkbox(state: selectAllState, onChanged: (_) => _toggleAll(allSelected), size: 17),
-                        const SizedBox(width: 9),
+                        shad.Checkbox(state: selectAllState, onChanged: (_) => _toggleAll(allSelected)),
+                        const SizedBox(width: AppDesignTokens.checkboxLabelGap),
                         Expanded(
                           child: Text(
                             context.l10n.selectAll,
@@ -1939,17 +1946,10 @@ class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsContr
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final labelStyle = TextStyle(color: palette.textSecondary, fontSize: 11);
-                      final labelWidth = allTrackerSubscribeUrls
-                          .map(
-                            (url) => (TextPainter(
-                              text: TextSpan(text: url, style: labelStyle),
-                              textDirection: Directionality.of(context),
-                              maxLines: 1,
-                            )..layout()).width,
-                          )
-                          .reduce(math.max);
-                      final contentWidth = math.max(constraints.maxWidth, labelWidth + 58);
-                      final contentHeight = math.max(0.0, constraints.maxHeight - AppDesignTokens.space12);
+                      final contentHeight = (constraints.maxHeight - AppDesignTokens.space12).clamp(
+                        0.0,
+                        double.infinity,
+                      );
                       return Scrollbar(
                         key: const ValueKey('tracker-horizontal-scrollbar'),
                         controller: _horizontalScrollController,
@@ -1963,42 +1963,57 @@ class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsContr
                             controller: _horizontalScrollController,
                             scrollDirection: Axis.horizontal,
                             child: SizedBox(
-                              width: contentWidth,
                               height: contentHeight,
                               child: Scrollbar(
+                                key: const ValueKey('tracker-vertical-scrollbar'),
                                 controller: _verticalScrollController,
                                 thumbVisibility: true,
                                 scrollbarOrientation: ScrollbarOrientation.right,
                                 notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
-                                child: ListView.separated(
+                                child: SingleChildScrollView(
+                                  key: const ValueKey('tracker-vertical-scroll-view'),
                                   controller: _verticalScrollController,
-                                  padding: const EdgeInsets.symmetric(vertical: 4),
-                                  itemCount: allTrackerSubscribeUrls.length,
-                                  separatorBuilder: (_, _) => Divider(height: 1, color: palette.border),
-                                  itemBuilder: (context, index) {
-                                    final url = allTrackerSubscribeUrls[index];
-                                    final checked = widget.selected.contains(url);
-                                    return GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTap: () => _toggle(url, checked),
+                                  child: IntrinsicWidth(
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                        child: Row(
+                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
                                           children: [
-                                            shad.Checkbox(
-                                              state: checked
-                                                  ? shad.CheckboxState.checked
-                                                  : shad.CheckboxState.unchecked,
-                                              onChanged: (_) => _toggle(url, checked),
-                                              size: 17,
-                                            ),
-                                            const SizedBox(width: 9),
-                                            Text(url, maxLines: 1, style: labelStyle),
+                                            for (final (index, url) in allTrackerSubscribeUrls.indexed) ...[
+                                              Builder(
+                                                builder: (context) {
+                                                  final checked = widget.selected.contains(url);
+                                                  return GestureDetector(
+                                                    behavior: HitTestBehavior.opaque,
+                                                    onTap: () => _toggle(url, checked),
+                                                    child: Padding(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                                      child: Row(
+                                                        children: [
+                                                          shad.Checkbox(
+                                                            state: checked
+                                                                ? shad.CheckboxState.checked
+                                                                : shad.CheckboxState.unchecked,
+                                                            onChanged: (_) => _toggle(url, checked),
+                                                          ),
+                                                          const SizedBox(width: AppDesignTokens.checkboxLabelGap),
+                                                          Text(url, maxLines: 1, style: labelStyle),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                              if (index != allTrackerSubscribeUrls.length - 1)
+                                                Divider(height: 1, color: palette.border),
+                                            ],
                                           ],
                                         ),
                                       ),
-                                    );
-                                  },
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -2069,85 +2084,6 @@ class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsContr
   String _formatDateTime(DateTime value) {
     String two(int number) => number.toString().padLeft(2, '0');
     return '${value.year}-${two(value.month)}-${two(value.day)} ${two(value.hour)}:${two(value.minute)}:${two(value.second)}';
-  }
-}
-
-class _ChoiceOption {
-  const _ChoiceOption({required this.value, required this.label, required this.icon});
-
-  final String value;
-  final String label;
-  final IconData icon;
-}
-
-class _ChoiceSegmentedControl extends StatelessWidget {
-  const _ChoiceSegmentedControl({required this.value, required this.options, required this.onChanged});
-
-  final String value;
-  final List<_ChoiceOption> options;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    final desktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: desktop ? WrapAlignment.end : WrapAlignment.start,
-      children: [
-        for (final option in options)
-          _ChoiceButton(
-            option: option,
-            selected: option.value == value,
-            palette: palette,
-            onPressed: () => onChanged(option.value),
-          ),
-      ],
-    );
-  }
-}
-
-class _ChoiceButton extends StatelessWidget {
-  const _ChoiceButton({required this.option, required this.selected, required this.palette, required this.onPressed});
-
-  final _ChoiceOption option;
-  final bool selected;
-  final AppPalette palette;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      key: ValueKey<String>('settings-choice-${option.value}'),
-      behavior: HitTestBehavior.opaque,
-      onTap: onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: selected ? palette.itemActiveBg : palette.cardBg,
-          borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-          border: Border.all(color: selected ? palette.textPrimary : palette.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(option.icon, size: 15, color: selected ? palette.textPrimary : palette.textSecondary),
-            const SizedBox(width: 7),
-            Text(
-              option.label,
-              style: TextStyle(
-                color: selected ? palette.textPrimary : palette.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

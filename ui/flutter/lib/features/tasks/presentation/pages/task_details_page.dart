@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +6,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../../../../core/utils/file_explorer.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_toast.dart';
-import '../../../../shared/widgets/app_tooltip.dart';
+import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../l10n/l10n.dart';
 import '../../application/tasks_controller.dart';
 import '../../domain/task_record.dart';
@@ -31,70 +30,33 @@ class TaskDetailsPage extends ConsumerWidget {
     }
     final palette = AppPalette.of(context);
 
-    return shad.Scaffold(
-      backgroundColor: palette.bg,
-      child: ColoredBox(
-        color: palette.bg,
-        child: Column(
-          children: [
-            SafeArea(
-              bottom: false,
-              child: Container(
-                height: 52,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 44,
-                      child: AppTooltip(
-                        message: context.l10n.close,
-                        child: shad.IconButton.ghost(
-                          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
-                          icon: Icon(Icons.arrow_back, size: 20, color: palette.textPrimary),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        context.l10n.taskDetails,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: palette.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    const SizedBox(width: 44),
-                  ],
-                ),
-              ),
+    return AppDetailPage(
+      title: context.l10n.taskDetails,
+      onBack: () => context.canPop() ? context.pop() : context.go('/'),
+      child: task == null
+          ? Center(
+              child: tasksAsync.isLoading
+                  ? const shad.CircularProgressIndicator()
+                  : Text(context.l10n.taskNotFound, style: TextStyle(color: palette.textMuted, fontSize: 13)),
+            )
+          : TaskDetailsView(
+              key: ValueKey(task.id),
+              task: task,
+              mobile: true,
+              onOpenStorage: () => FileExplorer.reveal(task!.storagePath),
+              onUpdateUrl: (url) async {
+                try {
+                  await ref
+                      .read(tasksControllerProvider.notifier)
+                      .updateUrl(task!.id, url, headers: task.requestHeaders);
+                } catch (error) {
+                  if (context.mounted) {
+                    showAppToast(context, error.toString(), type: AppToastType.error);
+                  }
+                  rethrow;
+                }
+              },
             ),
-            Expanded(
-              child: task == null
-                  ? Center(
-                      child: tasksAsync.isLoading
-                          ? const shad.CircularProgressIndicator()
-                          : Text(context.l10n.taskNotFound, style: TextStyle(color: palette.textMuted, fontSize: 13)),
-                    )
-                  : TaskDetailsView(
-                      key: ValueKey(task.id),
-                      task: task,
-                      mobile: true,
-                      onOpenStorage: () => FileExplorer.reveal(task!.storagePath),
-                      onUpdateUrl: (url) async {
-                        try {
-                          await ref
-                              .read(tasksControllerProvider.notifier)
-                              .updateUrl(task!.id, url, headers: task.requestHeaders);
-                        } catch (error) {
-                          if (context.mounted) {
-                            showAppToast(context, error.toString(), type: AppToastType.error);
-                          }
-                          rethrow;
-                        }
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

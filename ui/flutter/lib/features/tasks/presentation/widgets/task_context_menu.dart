@@ -10,6 +10,8 @@ class TaskContextActions {
     required this.selected,
     required this.allSelected,
     required this.listeningForUpdate,
+    required this.onShowDetails,
+    required this.onBrowseFiles,
     required this.onToggleSelectAll,
     required this.onToggleSelected,
     required this.onPause,
@@ -22,6 +24,8 @@ class TaskContextActions {
   final bool selected;
   final bool allSelected;
   final bool listeningForUpdate;
+  final VoidCallback onShowDetails;
+  final VoidCallback onBrowseFiles;
   final VoidCallback onToggleSelectAll;
   final VoidCallback onToggleSelected;
   final VoidCallback onPause;
@@ -93,6 +97,19 @@ class TaskContextMenu extends StatelessWidget {
             ),
           ],
           child: Text(context.l10n.updateUrl),
+        ),
+        const shad.MenuDivider(),
+        shad.MenuButton(
+          key: const ValueKey('task-context-details'),
+          leading: const Icon(Icons.info_outline, size: 16),
+          onPressed: (_) => actions.onShowDetails(),
+          child: Text(context.l10n.taskDetailsInfoTab),
+        ),
+        shad.MenuButton(
+          key: const ValueKey('task-context-browse-files'),
+          leading: const Icon(Icons.snippet_folder_outlined, size: 16),
+          onPressed: (_) => actions.onBrowseFiles(),
+          child: Text(context.l10n.browseFiles),
         ),
       ],
       child: child,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 
+import '../../core/window/app_window_chrome.dart';
 import '../theme/app_design_tokens.dart';
 import '../theme/app_palette.dart';
 
@@ -42,7 +43,9 @@ class SecondaryNavigationPane<T> extends StatelessWidget {
       key: const ValueKey('secondary-navigation-pane'),
       width: mobile ? double.infinity : width,
       color: palette.sideBg,
-      padding: EdgeInsets.only(top: mobile ? 0 : AppDesignTokens.windowHeaderHeight),
+      padding: EdgeInsets.only(
+        top: !mobile && AppWindowChrome.reservesHeaderInset ? AppDesignTokens.windowHeaderHeight : 0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

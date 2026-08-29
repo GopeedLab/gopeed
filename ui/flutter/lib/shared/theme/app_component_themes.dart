@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
+import 'app_design_tokens.dart';
 import 'app_palette.dart';
 
 class AppComponentThemes extends StatelessWidget {
@@ -33,9 +34,12 @@ class AppComponentThemes extends StatelessWidget {
               ? value.copyWith(color: palette.textMuted.withValues(alpha: 0.62))
               : value,
         ),
-        child: shad.ComponentTheme<shad.ToastTheme>(
-          data: const shad.ToastTheme(toastConstraints: BoxConstraints(maxWidth: 420)),
-          child: child,
+        child: shad.ComponentTheme<shad.CheckboxTheme>(
+          data: const shad.CheckboxTheme(size: AppDesignTokens.checkboxSize, gap: AppDesignTokens.checkboxLabelGap),
+          child: shad.ComponentTheme<shad.ToastTheme>(
+            data: const shad.ToastTheme(toastConstraints: BoxConstraints(maxWidth: 420)),
+            child: child,
+          ),
         ),
       ),
     );

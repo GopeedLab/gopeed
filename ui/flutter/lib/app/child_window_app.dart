@@ -3,6 +3,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../api/model/create_task.dart';
 import '../app/application/app_appearance_controller.dart';
+import '../core/window/app_window_bootstrap.dart';
 import '../core/window/app_window_frame.dart';
 import '../core/window/app_window_payload.dart';
 import '../core/window/window_capability_transport.dart';
@@ -66,7 +67,7 @@ class _ChildWindowAppState extends State<ChildWindowApp> with WidgetsBindingObse
 
     return shad.ShadcnApp(
       debugShowCheckedModeBanner: false,
-      onGenerateTitle: (context) => context.l10n.appTitle,
+      onGenerateTitle: (context) => AppWindowBootstrap.subWindowTitle(widget.payload.type, context.l10n),
       theme: AppTheme.light(themeColor),
       darkTheme: AppTheme.dark(themeColor),
       materialTheme: isLightTheme ? AppTheme.materialLight(themeColor) : AppTheme.materialDark(themeColor),

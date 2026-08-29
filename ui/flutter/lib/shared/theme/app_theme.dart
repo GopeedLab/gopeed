@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as material;
+import 'package:flutter/painting.dart' show TextStyle;
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import 'app_palette.dart';
@@ -7,6 +8,27 @@ import 'app_theme_color.dart';
 
 class AppTheme {
   const AppTheme._();
+
+  // Flutter's automatic CJK fallback can select faces with mismatched weights
+  // on Windows. Keep Geist for supported glyphs, but make the native Windows
+  // UI font the deterministic fallback for Chinese text.
+  static const _windowsFontFamilyFallback = <String>['Microsoft YaHei UI'];
+
+  static bool get _usesWindowsFontFallback => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+
+  static shad.Typography _typography() {
+    const typography = shad.Typography.geist();
+    if (!_usesWindowsFontFallback) return typography;
+
+    return typography.copyWith(
+      // Do not pass `package` here: Flutter prefixes every fallback family
+      // with the package name when it is set, including system font names.
+      sans: () => const TextStyle(
+        fontFamily: 'packages/shadcn_flutter/GeistSans',
+        fontFamilyFallback: _windowsFontFamilyFallback,
+      ),
+    );
+  }
 
   static shad.ThemeData light([AppThemeColor themeColor = AppThemeColor.green]) {
     return _buildTheme(palette: AppPalette.lightFor(themeColor), brightness: Brightness.light);
@@ -47,6 +69,7 @@ class AppTheme {
           'chart5': palette.cardHoverBg,
         },
       ),
+      typography: _typography(),
       radius: 0.5,
       scaling: 1,
       surfaceBlur: 0,
@@ -64,7 +87,7 @@ class AppTheme {
   }
 
   static material.ThemeData _buildMaterialTheme({required AppPalette palette, required Brightness brightness}) {
-    return material.ThemeData.from(
+    final theme = material.ThemeData.from(
       colorScheme: material.ColorScheme.fromSeed(
         seedColor: palette.brand,
         brightness: brightness,
@@ -72,6 +95,15 @@ class AppTheme {
         primary: palette.brand,
       ),
       useMaterial3: true,
-    ).copyWith(extensions: <material.ThemeExtension<dynamic>>[palette]);
+    );
+    return theme.copyWith(
+      extensions: <material.ThemeExtension<dynamic>>[palette],
+      textTheme: _usesWindowsFontFallback
+          ? theme.textTheme.apply(fontFamilyFallback: _windowsFontFamilyFallback)
+          : theme.textTheme,
+      primaryTextTheme: _usesWindowsFontFallback
+          ? theme.primaryTextTheme.apply(fontFamilyFallback: _windowsFontFamilyFallback)
+          : theme.primaryTextTheme,
+    );
   }
 }

@@ -52,9 +52,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
   static const Color lightAccent = Color(0xFF79C476);
 
   static const light = AppPalette(
-    bg: Color(0xFFF4F7F6),
-    railBg: Color(0xFFFFFFFF),
-    sideBg: Color(0xFFFCFDFD),
+    bg: Color(0xFFF6F8F7),
+    railBg: Color(0xFFE8EEEA),
+    sideBg: Color(0xFFF0F4F1),
     cardBg: Color(0xFFFFFFFF),
     cardHoverBg: Color(0xFFF5F7F5),
     surfaceSoft: Color(0xFFEDF0EE),

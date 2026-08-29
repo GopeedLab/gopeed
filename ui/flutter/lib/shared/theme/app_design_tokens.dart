@@ -3,13 +3,15 @@ import 'package:flutter/widgets.dart';
 class AppDesignTokens {
   const AppDesignTokens._();
 
-  static const double windowHeaderHeight = 24;
+  static const double windowHeaderHeight = 30;
   static const double windowRadius = 12;
   static const double railWidth = 68;
   static const double filterSidebarWidth = 192;
   static const double contentHeaderHeight = 48;
   static const double taskRowHeight = 72;
   static const double controlRadius = 4;
+  static const double checkboxSize = 18;
+  static const double checkboxLabelGap = 10;
   static const double taskDetailsDrawerMinWidth = 440;
   static const double taskDetailsDrawerMaxWidth = 720;
   static const double taskDetailsDrawerViewportRatio = 0.42;

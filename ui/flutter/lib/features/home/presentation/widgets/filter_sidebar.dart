@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 
+import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../l10n/l10n.dart';
@@ -29,7 +30,7 @@ class FilterSidebar extends StatelessWidget {
     return Container(
       width: AppDesignTokens.filterSidebarWidth,
       color: palette.sideBg,
-      padding: const EdgeInsets.only(top: AppDesignTokens.windowHeaderHeight),
+      padding: EdgeInsets.only(top: AppWindowChrome.reservesHeaderInset ? AppDesignTokens.windowHeaderHeight : 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

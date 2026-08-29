@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart' show Icons, Scrollbar;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kDoubleTapMinTime, kSecondaryMouseButton;
-import 'package:flutter/services.dart' show SystemChannels;
+import 'package:flutter/services.dart' show MethodChannel, SystemChannels;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,8 +27,11 @@ import 'package:gopeed/api/model/store_extension.dart';
 import 'package:gopeed/api/model/task.dart' as api_task;
 import 'package:gopeed/core/common/start_config.dart';
 import 'package:gopeed/core/icons/gopeed_icons.dart';
+import 'package:gopeed/core/window/app_window_chrome.dart';
+import 'package:gopeed/core/window/app_window_frame.dart';
 import 'package:gopeed/features/home/presentation/widgets/tasks_top_bar.dart';
 import 'package:gopeed/features/extensions/application/extensions_controller.dart';
+import 'package:gopeed/features/extensions/presentation/pages/extension_details_page.dart';
 import 'package:gopeed/features/extensions/presentation/pages/extensions_page.dart';
 import 'package:gopeed/features/home/presentation/widgets/primary_rail.dart';
 import 'package:gopeed/features/tasks/application/pending_update_task.dart';
@@ -57,6 +61,7 @@ import 'package:gopeed/features/tasks/presentation/widgets/pending_update_dialog
 import 'package:gopeed/features/tasks/presentation/widgets/task_statistics/piece_map.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_statistics/peer_table.dart';
 import 'package:gopeed/features/tasks/presentation/widgets/task_statistics/task_statistics_tab.dart';
+import 'package:gopeed/features/tasks/presentation/widgets/task_update_url_dialog.dart';
 import 'package:gopeed/api/model/task_stats.dart';
 import 'package:gopeed/l10n/l10n.dart';
 import 'package:gopeed/shared/theme/app_palette.dart';
@@ -66,6 +71,8 @@ import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/theme/app_theme_color.dart';
 import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/widgets/app_loading_button.dart';
+import 'package:gopeed/shared/widgets/app_choice_segmented_control.dart';
+import 'package:gopeed/shared/widgets/app_http_headers_editor.dart';
 import 'package:gopeed/shared/widgets/app_path_picker_field.dart';
 import 'package:gopeed/shared/widgets/app_primary_button.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
@@ -73,10 +80,56 @@ import 'package:gopeed/shared/widgets/app_toast.dart';
 import 'package:gopeed/shared/widgets/gopeed_app_mark.dart';
 import 'package:gopeed/shared/widgets/responsive_menu_layout.dart';
 import 'package:gopeed/shared/widgets/virtual_tree_view.dart';
+import 'package:gopeed/shared/widgets/window/desktop_window_header.dart';
 import 'package:gopeed/util/updater.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.localeTestValue = const Locale('en');
+
+  test('macOS reserves its native overlay header without custom chrome', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      expect(AppWindowChrome.isDesktopWindow, isTrue);
+      expect(AppWindowChrome.usesCustomChrome, isFalse);
+      expect(AppWindowChrome.reservesHeaderInset, isTrue);
+      expect(AppWindowChrome.clipsRoundedCorners, isFalse);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('desktop frame overlays global caption controls without insetting content', (WidgetTester tester) async {
+    const windowChannel = MethodChannel('window_manager');
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      windowChannel,
+      (call) async => call.method == 'isMaximized' ? false : null,
+    );
+    addTearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(windowChannel, null);
+    });
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: const AppWindowFrame(child: SizedBox.expand(key: ValueKey('window-content'))),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(DesktopWindowHeader), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(DesktopWindowHeader), matching: find.byType(WindowCaptionControls)),
+      findsOneWidget,
+    );
+    expect(tester.getSize(find.byType(DesktopWindowHeader)).height, AppDesignTokens.windowHeaderHeight);
+    expect(tester.getTopLeft(find.byKey(const ValueKey('window-content'))), Offset.zero);
+
+    debugDefaultTargetPlatformOverride = null;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(windowChannel, null);
+  });
 
   testWidgets('tasks page renders key content', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1024, 768);
@@ -100,19 +153,30 @@ void main() {
     expect(find.text('Downloading'), findsOneWidget);
     expect(find.text('Completed'), findsOneWidget);
     expect(find.text('Failed'), findsOneWidget);
-    expect(find.text('Add Task'), findsOneWidget);
+    expect(find.text('Create Task'), findsOneWidget);
     expect(find.text('No tasks in this list'), findsOneWidget);
-    expect(find.text('Create Task'), findsNothing);
+    expect(find.text('Add Task'), findsNothing);
     expect(find.byKey(const ValueKey('task-empty-illustration')), findsOneWidget);
     expect(find.text('Create a task or refresh the list.'), findsNothing);
     expect(find.text('Refresh'), findsNothing);
     expect(find.textContaining('ACTIVE CONNECTIONS'), findsNothing);
-    expect(find.ancestor(of: find.text('Add Task'), matching: find.byType(AppPrimaryButton)), findsOneWidget);
+    expect(find.ancestor(of: find.text('Create Task'), matching: find.byType(AppPrimaryButton)), findsOneWidget);
     final taskActions = find.byKey(const ValueKey('tasks-top-action-buttons'));
     expect(find.descendant(of: taskActions, matching: find.byType(shad.IconButton)), findsNWidgets(4));
     expect(
       tester.widget<Container>(find.byKey(const ValueKey('primary-rail-active-indicator'))).color,
       AppPalette.light.textPrimary,
+    );
+    expect(
+      tester
+          .widget<GestureDetector>(
+            find.descendant(
+              of: find.byKey(const ValueKey('primary-rail-tasks-item')),
+              matching: find.byType(GestureDetector),
+            ),
+          )
+          .behavior,
+      HitTestBehavior.opaque,
     );
     expect(find.byType(GopeedAppMark), findsOneWidget);
     expect(find.byKey(const ValueKey('primary-rail-app-mark')), findsOneWidget);
@@ -305,6 +369,136 @@ void main() {
     tester.view.physicalSize = const Size(1400, 900);
     await tester.pumpAndSettle();
     expect(gridColumns(), 4);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('extension details reuse the desktop detail drawer', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1100, 900));
+    final controller = FakeExtensionsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [extensionsControllerProvider.overrideWith(() => controller)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const ExtensionsPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('extension-card-extension-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('extension-details-drawer')), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-details-content')), findsOneWidget);
+    expect(find.text('Extension 1 README'), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-details-install')), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-details-close')), findsNothing);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('extension-details-drawer')), matching: find.byIcon(Icons.close)),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('extension-details-hero')), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-details-metadata')), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-details-readme')), findsOneWidget);
+    final drawerRect = tester.getRect(find.byKey(const ValueKey('extension-details-drawer')));
+    final listRect = tester.getRect(find.byKey(const ValueKey('extensions-list-scroll-view')));
+    expect(drawerRect.top, listRect.top);
+    expect(drawerRect.bottom, listRect.bottom);
+    expect(drawerRect.top, greaterThan(AppDesignTokens.windowHeaderHeight));
+
+    await tester.tap(find.byKey(const ValueKey('extension-details-install')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(controller.installCalls, 1);
+    expect(find.byKey(const ValueKey('app-toast-content')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('extension details open as a standalone route on mobile', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(320, 700));
+    final router = GoRouter(
+      initialLocation: '/extensions',
+      routes: [
+        GoRoute(
+          path: '/extensions',
+          builder: (context, state) => const ExtensionsPage(),
+          routes: [
+            GoRoute(
+              path: ':id',
+              builder: (context, state) => ExtensionDetailsPage(
+                extensionId: state.pathParameters['id'] ?? '',
+                initialItem: state.extra is ExtensionListItem ? state.extra as ExtensionListItem : null,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
+        child: shad.ShadcnApp.router(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final card = find.byKey(const ValueKey('open-extension-details-extension-0'));
+    expect(MediaQuery.sizeOf(tester.element(card)).width, 320);
+    tester.widget<GestureDetector>(card).onTap!();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('extension-details-content')), findsOneWidget);
+    expect(find.text('Extension 0 README'), findsOneWidget);
+    expect(find.byType(PrimaryBottomNavigation), findsNothing);
+    expect(find.byKey(const ValueKey('extensions-list-scroll-view')), findsNothing);
+    expect(find.byKey(const ValueKey('app-detail-back-button')), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-details-close')), findsNothing);
+    expect(
+      GoRouterState.of(tester.element(find.byKey(const ValueKey('extension-details-content')))).uri.path,
+      '/extensions/extension-0',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('installed extension details prefer the local README', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1100, 900));
+    late Directory extensionDirectory;
+    await tester.runAsync(() async {
+      extensionDirectory = await Directory.systemTemp.createTemp('gopeed-extension-readme-');
+      await File(
+        '${extensionDirectory.path}${Platform.pathSeparator}README.md',
+      ).writeAsString('# Local extension README\n\nLoaded from the installed extension.');
+    });
+    addTearDown(() => extensionDirectory.delete(recursive: true));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          extensionsControllerProvider.overrideWith(() => DevReadmeExtensionsController(extensionDirectory.path)),
+        ],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const ExtensionsPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('extension-card-extension-0')));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+
+    expect(find.text('Local extension README'), findsOneWidget);
+    expect(find.text('Extension 0 README'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -642,9 +836,10 @@ void main() {
     await tester.tap(find.text('Downloads'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('download-categories-editor')), findsOneWidget);
-    expect(find.text('Archives'), findsOneWidget);
-    expect(find.text('Extract Archives Automatically'), findsOneWidget);
-    expect(find.text('Delete Archives After Extraction'), findsOneWidget);
+    expect(find.text('Archives'), findsNothing);
+    final httpSettings = find.byKey(const ValueKey('settings-http-block'));
+    expect(find.descendant(of: httpSettings, matching: find.text('Extract Archives Automatically')), findsOneWidget);
+    expect(find.descendant(of: httpSettings, matching: find.text('Delete Archives After Extraction')), findsOneWidget);
     expect(find.text('Delete .torrent file after BT task creation'), findsNothing);
     expect(find.text('HTTP'), findsOneWidget);
     expect(find.text('BitTorrent'), findsOneWidget);
@@ -757,6 +952,15 @@ void main() {
 
     final directoryInput = find.byKey(const ValueKey('download-directory-input'));
     final directoryPicker = find.byKey(const ValueKey('download-directory-picker'));
+    final standardInput = find.byKey(const ValueKey('http-user-agent-input'));
+    expect(find.text('Automatically save last task directory'), findsNothing);
+    expect(tester.getSize(directoryInput).height, tester.getSize(standardInput).height);
+    final directoryField = tester.widget<shad.TextField>(directoryInput);
+    final standardField = tester.widget<shad.TextField>(standardInput);
+    expect(directoryField.filled, standardField.filled);
+    expect(directoryField.border, standardField.border);
+    expect(directoryField.borderRadius, standardField.borderRadius);
+    expect(directoryField.padding, standardField.padding);
     const longDirectory =
         '/storage/emulated/0/Download/a-very-long-directory-name-that-must-not-run-under-the-picker-icon';
     await tester.enterText(directoryInput, longDirectory);
@@ -859,6 +1063,34 @@ void main() {
     expect(find.byKey(const ValueKey('ios-directory-picker')), findsNothing);
     expect(tester.takeException(), isNull);
     DownloadDirectoryPicker.debugPlatformOverride = null;
+  });
+
+  testWidgets('web download directory supports manual input without a picker action', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(700, 300));
+    DownloadDirectoryPicker.debugWebOverride = true;
+    addTearDown(() => DownloadDirectoryPicker.debugWebOverride = null);
+    final controller = TextEditingController(text: '/downloads');
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Padding(
+          padding: const EdgeInsets.all(20),
+          child: AppPathPickerField.downloadDirectory(
+            controller: controller,
+            fieldKey: const ValueKey('web-directory-input'),
+            pickerKey: const ValueKey('web-directory-picker'),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.widget<shad.TextField>(find.byKey(const ValueKey('web-directory-input'))).readOnly, isFalse);
+    expect(find.byKey(const ValueKey('web-directory-picker')), findsNothing);
+    await tester.enterText(find.byKey(const ValueKey('web-directory-input')), '/downloads/manual');
+    expect(controller.text, '/downloads/manual');
   });
 
   testWidgets('ED2K list settings use multiline text and persist comma-separated values', (WidgetTester tester) async {
@@ -1020,6 +1252,8 @@ void main() {
     final toast = find.byKey(const ValueKey('app-toast-content'));
     expect(toast, findsOneWidget);
     expect(tester.getSize(toast).width, lessThan(320));
+    final decoration = tester.widget<Container>(toast).decoration! as BoxDecoration;
+    expect((decoration.border! as Border).top.color, AppPalette.light.border);
 
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
@@ -1028,6 +1262,8 @@ void main() {
 
   testWidgets('tracker subscriptions support selecting and clearing all entries', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
+    tester.platformDispatcher.textScaleFactorTestValue = 1.2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final settingsController = FakeSettingsController();
     await tester.pumpWidget(
       ProviderScope(
@@ -1053,6 +1289,9 @@ void main() {
     expect(horizontalScrollbar.thumbVisibility, isTrue);
     expect(horizontalScrollbar.controller?.hasClients, isTrue);
     expect(horizontalScrollbar.controller!.position.maxScrollExtent, greaterThan(0));
+    final verticalScrollbar = tester.widget<Scrollbar>(find.byKey(const ValueKey('tracker-vertical-scrollbar')));
+    expect(verticalScrollbar.controller?.hasClients, isTrue);
+    expect(verticalScrollbar.controller!.position.maxScrollExtent, greaterThan(0));
     final scrollbarRect = tester.getRect(find.byKey(const ValueKey('tracker-horizontal-scrollbar')));
     final scrollViewRect = tester.getRect(find.byKey(const ValueKey('tracker-horizontal-scroll-view')));
     expect(scrollbarRect.bottom - scrollViewRect.bottom, AppDesignTokens.space12);
@@ -1552,11 +1791,23 @@ void main() {
     await _setTestSize(tester, const Size(700, 500));
     await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
     await tester.pumpAndSettle();
+    final createDirectoryInput = find.byKey(const ValueKey('create-task-directory-input'));
+    final createRenameInput = find.byKey(const ValueKey('create-task-rename-input'));
+    expect(tester.getSize(createDirectoryInput).height, tester.getSize(createRenameInput).height);
+    final createDirectoryField = tester.widget<shad.TextField>(createDirectoryInput);
+    final createRenameField = tester.widget<shad.TextField>(
+      find.descendant(of: createRenameInput, matching: find.byType(shad.TextField)),
+    );
+    expect(createDirectoryField.filled, createRenameField.filled);
+    expect(createDirectoryField.border, createRenameField.border);
+    expect(createDirectoryField.borderRadius, createRenameField.borderRadius);
+    expect(createDirectoryField.padding, createRenameField.padding);
     await tester.ensureVisible(find.text('Advanced'));
     await tester.pumpAndSettle();
 
     final scrollView = tester.widget<SingleChildScrollView>(find.byKey(const ValueKey('create-task-form-scroll')));
     final controller = scrollView.controller!;
+    expect((scrollView.padding! as EdgeInsets).bottom, 20);
     final initialOffset = controller.offset;
 
     await tester.tap(find.text('Advanced'));
@@ -1571,7 +1822,72 @@ void main() {
     expect(movingOffset, greaterThan(initialOffset));
     expect(settledOffset, greaterThanOrEqualTo(movingOffset));
     expect(settledOffset, lessThanOrEqualTo(controller.position.maxScrollExtent));
+    expect(find.text('Header'), findsOneWidget);
+    expect(find.text('HTTP headers'), findsNothing);
+    expect(find.text('Add'), findsNothing);
+    expect(find.text('Delete'), findsNothing);
     expect(find.text('User-Agent'), findsOneWidget);
+
+    final proxyMode = find.byKey(const ValueKey('create-task-proxy-mode'));
+    expect(tester.widget(proxyMode), isA<AppChoiceSegmentedControl<RequestProxyMode>>());
+    expect(find.byKey(const ValueKey('create-task-proxy-mode-follow')), findsOneWidget);
+    expect(find.byKey(const ValueKey('create-task-proxy-mode-none')), findsOneWidget);
+    final customProxy = find.byKey(const ValueKey('create-task-proxy-mode-custom'));
+    expect(customProxy, findsOneWidget);
+    await tester.tap(customProxy);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('create-task-proxy-scheme')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('create-task-proxy-mode-follow')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('create-task-proxy-scheme')), findsNothing);
+
+    expect(find.byKey(const ValueKey('create-task-auto-extract')), findsOneWidget);
+    final bitTorrentTab = find.text('BitTorrent');
+    await tester.ensureVisible(bitTorrentTab);
+    await tester.pumpAndSettle();
+    await tester.tap(bitTorrentTab);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('create-task-auto-extract')), findsNothing);
+    await tester.tap(find.text('HTTP'));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('create-task-auto-extract')), findsOneWidget);
+
+    final advancedContent = tester.widget<Padding>(find.byKey(const ValueKey('create-task-advanced-content')));
+    expect((advancedContent.padding as EdgeInsets).bottom, 4);
+
+    final headerName = find.byKey(const ValueKey('create-task-http-header-name-0'));
+    final headerValue = find.byKey(const ValueKey('create-task-http-header-value-0'));
+    expect(tester.getSize(headerValue).width / tester.getSize(headerName).width, closeTo(1.618, 0.01));
+
+    var addHeader = find.byKey(const ValueKey('create-task-http-header-add'));
+    var lastRemoveHeader = find.byKey(const ValueKey('create-task-http-header-remove-2'));
+    expect(tester.getCenter(addHeader).dy, closeTo(tester.getCenter(lastRemoveHeader).dy, 0.01));
+    expect(tester.getRect(addHeader).left, greaterThan(tester.getRect(lastRemoveHeader).right));
+
+    await tester.ensureVisible(addHeader);
+    await tester.pumpAndSettle();
+    await tester.tap(addHeader);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('create-task-http-header-name-3')), findsOneWidget);
+    addHeader = find.byKey(const ValueKey('create-task-http-header-add'));
+    lastRemoveHeader = find.byKey(const ValueKey('create-task-http-header-remove-3'));
+    expect(tester.getCenter(addHeader).dy, closeTo(tester.getCenter(lastRemoveHeader).dy, 0.01));
+
+    for (var index = 3; index > 0; index--) {
+      final removeHeader = find.byKey(ValueKey('create-task-http-header-remove-$index'));
+      tester
+          .widget<shad.GhostButton>(find.descendant(of: removeHeader, matching: find.byType(shad.GhostButton)))
+          .onPressed!();
+      await tester.pump();
+    }
+    expect(find.byKey(const ValueKey('create-task-http-header-name-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('create-task-http-header-name-1')), findsNothing);
+    final onlyRemoveHeader = find.descendant(
+      of: find.byKey(const ValueKey('create-task-http-header-remove-0')),
+      matching: find.byType(shad.GhostButton),
+    );
+    expect(tester.widget<shad.GhostButton>(onlyRemoveHeader).onPressed, isNull);
+    expect(find.byKey(const ValueKey('create-task-http-header-name-0')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -1583,14 +1899,18 @@ void main() {
     expect(find.text('Mode'), findsNothing);
     expect(find.text('Direct Download'), findsOneWidget);
     expect(find.text('Skip resolving and create tasks immediately'), findsOneWidget);
+    final directDownloadCheckbox = find.descendant(
+      of: find.byKey(const ValueKey('create-task-direct-download-toggle')),
+      matching: find.byType(shad.Checkbox),
+    );
     expect(
-      tester.getRect(find.byType(shad.Checkbox)).left,
+      tester.getRect(directDownloadCheckbox).left,
       greaterThan(tester.getRect(find.text('Direct Download')).right),
     );
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testWidgets('create task directory reuses the separated path picker field', (WidgetTester tester) async {
+  testWidgets('create task directory attaches an outline picker to the input', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(700, 500));
     await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
     await tester.pump();
@@ -1608,7 +1928,9 @@ void main() {
 
     final editableText = find.descendant(of: directoryInput, matching: find.byType(EditableText));
     expect(tester.getRect(editableText).right, lessThan(tester.getRect(directoryPicker).left));
-    expect(tester.getRect(directoryPicker).left - tester.getRect(directoryInput).right, 2);
+    expect(find.descendant(of: directoryInput, matching: directoryPicker), findsOneWidget);
+    expect(tester.getRect(directoryPicker).right, closeTo(tester.getRect(directoryInput).right, 0.01));
+    expect(tester.widget<shad.IconButton>(directoryPicker).variance, same(shad.ButtonVariance.outline));
     expect(tester.takeException(), isNull);
     await tester.pump(const Duration(seconds: 1));
   });
@@ -1634,7 +1956,7 @@ void main() {
     expect(focusTheme.border?.top.width, 1);
   });
 
-  testWidgets('task toolbar actions have only neutral enabled and disabled colors', (WidgetTester tester) async {
+  testWidgets('task toolbar actions use native outline icon buttons', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 120));
     final searchController = TextEditingController();
     addTearDown(searchController.dispose);
@@ -1658,25 +1980,25 @@ void main() {
     );
     await tester.pump();
 
-    final actionStyles = find.descendant(
-      of: find.byKey(const ValueKey('tasks-top-action-buttons')),
-      matching: find.byType(shad.ButtonStyleOverride),
-    );
-    expect(actionStyles, findsNWidgets(4));
-    for (final element in actionStyles.evaluate()) {
-      final style = element.widget as shad.ButtonStyleOverride;
-      final enabledDecoration =
-          style.decoration!(element, const <WidgetState>{}, const BoxDecoration()) as BoxDecoration;
-      final disabledDecoration =
-          style.decoration!(element, <WidgetState>{WidgetState.disabled}, const BoxDecoration()) as BoxDecoration;
-      final enabledIcon = style.iconTheme!(element, const <WidgetState>{}, const IconThemeData());
-      final disabledIcon = style.iconTheme!(element, <WidgetState>{WidgetState.disabled}, const IconThemeData());
-
-      expect((enabledDecoration.border! as Border).top.color, AppPalette.light.border);
-      expect(enabledIcon.color, AppPalette.light.textSecondary);
-      expect((disabledDecoration.border! as Border).top.color, AppPalette.light.border.withValues(alpha: 0.5));
-      expect(disabledIcon.color, AppPalette.light.textMuted.withValues(alpha: 0.6));
+    final actions = tester
+        .widgetList<shad.IconButton>(
+          find.descendant(
+            of: find.byKey(const ValueKey('tasks-top-action-buttons')),
+            matching: find.byType(shad.IconButton),
+          ),
+        )
+        .toList(growable: false);
+    expect(actions, hasLength(4));
+    for (final action in actions) {
+      expect(action.variance, shad.ButtonVariance.outline);
     }
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('tasks-top-action-buttons')),
+        matching: find.byType(shad.ButtonStyleOverride),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('resolved file selector uses aligned tree header and sortable columns', (WidgetTester tester) async {
@@ -2565,6 +2887,26 @@ void main() {
     expect(tester.getCenter(browserDialog).dy, closeTo(tester.view.physicalSize.height / 2, 1));
   });
 
+  testWidgets('paused task details show a dash for remaining time', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(900, 700));
+    final task = _taskRecord(id: 'paused-details', name: 'paused.zip', status: TaskStatus.paused);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: TaskDetailsView(task: task, mobile: false, onOpenStorage: () {}, onUpdateUrl: (_) async {}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pause'), findsOneWidget);
+    expect(find.text('Remaining'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+  });
+
   testWidgets('failed task details omit the unavailable error reason', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(900, 700));
     final task = TaskRecord(
@@ -2618,6 +2960,8 @@ void main() {
   });
 
   testWidgets('task drawer actions use icon buttons with hover labels', (WidgetTester tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await _setTestSize(tester, const Size(900, 700));
     final task = _taskRecord(id: 'editable-details', name: 'editable.zip', status: TaskStatus.paused);
 
@@ -2634,17 +2978,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    for (final key in [
-      'task-details-close',
-      'task-details-edit-url',
-      'task-details-copy-url',
-      'task-details-open-storage',
-    ]) {
+    for (final key in ['task-details-edit-url', 'task-details-copy-url', 'task-details-open-storage']) {
       final action = find.byKey(ValueKey(key));
       expect(action, findsOneWidget);
       expect(find.descendant(of: action, matching: find.byType(shad.IconButton)), findsOneWidget);
       expect(find.descendant(of: action, matching: find.byType(AppTooltip)), findsOneWidget);
     }
+    expect(find.byKey(const ValueKey('task-details-close')), findsNothing);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('task-details-drawer')), matching: find.byIcon(Icons.close)),
+      findsNothing,
+    );
     expect(find.text('Copy'), findsNothing);
     expect(find.text('Edit'), findsNothing);
     expect(find.text('Open'), findsNothing);
@@ -2652,7 +2996,6 @@ void main() {
     final editAction = find.byKey(const ValueKey('task-details-edit-url'));
     final editTooltipFinder = find.descendant(of: editAction, matching: find.byType(AppTooltip));
     expect(tester.widget<AppTooltip>(editTooltipFinder).message, 'Edit');
-
     await tester.tap(editAction);
     await tester.pumpAndSettle();
     for (final key in ['task-details-cancel-url', 'task-details-save-url']) {
@@ -2663,6 +3006,66 @@ void main() {
     }
     expect(find.text('Cancel'), findsNothing);
     expect(find.text('Save'), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('mobile task details copy the storage path instead of opening it', (WidgetTester tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await _setTestSize(tester, const Size(390, 700));
+    final task = _taskRecord(id: 'mobile-storage', name: 'mobile.zip', status: TaskStatus.completed);
+    var openedStorage = false;
+    String? clipboardText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboardText = (call.arguments as Map<Object?, Object?>)['text'] as String?;
+      }
+      return null;
+    });
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: TaskDetailsView(
+            task: task,
+            mobile: true,
+            onOpenStorage: () => openedStorage = true,
+            onUpdateUrl: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final copyAction = find.byKey(const ValueKey('task-details-copy-storage'));
+    expect(copyAction, findsOneWidget);
+    expect(find.byKey(const ValueKey('task-details-open-storage')), findsNothing);
+    expect(find.descendant(of: copyAction, matching: find.byIcon(Icons.copy_outlined)), findsOneWidget);
+    expect(
+      tester.widget<AppTooltip>(find.descendant(of: copyAction, matching: find.byType(AppTooltip))).message,
+      'Copy',
+    );
+
+    await tester.ensureVisible(copyAction);
+    await tester.pumpAndSettle();
+    tester
+        .widget<shad.IconButton>(find.descendant(of: copyAction, matching: find.byType(shad.IconButton)))
+        .onPressed!();
+    await tester.pumpAndSettle();
+
+    expect(openedStorage, isFalse);
+    expect(clipboardText, task.storagePath);
+    expect(find.descendant(of: copyAction, matching: find.byIcon(Icons.check)), findsOneWidget);
+    expect(
+      tester.widget<AppTooltip>(find.descendant(of: copyAction, matching: find.byType(AppTooltip))).message,
+      'Copied',
+    );
+    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets('task drawer hides URL editing for non-HTTP tasks', (WidgetTester tester) async {
@@ -3210,11 +3613,15 @@ void main() {
     await _setTestSize(tester, const Size(520, 620));
     var paused = false;
     var selected = false;
+    var detailsShown = false;
+    var filesBrowsed = false;
     final task = _taskRecord(id: 'context-task', name: 'context.zip');
     final actions = TaskContextActions(
       selected: false,
       allSelected: false,
       listeningForUpdate: false,
+      onShowDetails: () => detailsShown = true,
+      onBrowseFiles: () => filesBrowsed = true,
       onToggleSelectAll: () {},
       onToggleSelected: () => selected = true,
       onPause: () => paused = true,
@@ -3242,10 +3649,26 @@ void main() {
 
     await tester.tapAt(tester.getCenter(find.byKey(const ValueKey('context-target'))), buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
+    expect(find.text('Details'), findsOneWidget);
+    expect(find.text('Browse Files'), findsOneWidget);
     expect(find.text('Pause'), findsOneWidget);
-    expect(find.text('Select task'), findsOneWidget);
+    expect(find.text('Select'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('Details')).dy, greaterThan(tester.getTopLeft(find.text('Update URL')).dy));
+    expect(tester.getTopLeft(find.text('Browse Files')).dy, greaterThan(tester.getTopLeft(find.text('Details')).dy));
 
-    await tester.tap(find.text('Select task'));
+    await tester.tap(find.text('Details'));
+    await tester.pumpAndSettle();
+    expect(detailsShown, isTrue);
+
+    await tester.tapAt(tester.getCenter(find.byKey(const ValueKey('context-target'))), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Browse Files'));
+    await tester.pumpAndSettle();
+    expect(filesBrowsed, isTrue);
+
+    await tester.tapAt(tester.getCenter(find.byKey(const ValueKey('context-target'))), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Select'));
     await tester.pumpAndSettle();
     expect(selected, isTrue);
 
@@ -3254,6 +3677,94 @@ void main() {
     await tester.tap(find.text('Pause'));
     await tester.pumpAndSettle();
     expect(paused, isTrue);
+  });
+
+  testWidgets('task URL update reuses the shared HTTP header editor', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(900, 700));
+    TaskUrlUpdate? update;
+    final task = _taskRecord(
+      id: 'update-url',
+      name: 'archive.zip',
+      status: TaskStatus.paused,
+      requestHeaders: const {'Authorization': 'Bearer old'},
+    );
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: AppComponentThemes(
+          child: Builder(
+            builder: (context) => shad.PrimaryButton(
+              onPressed: () async => update = await showTaskUpdateUrlDialog(context, task),
+              child: const Text('Open update dialog'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open update dialog'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AppHttpHeadersEditor), findsOneWidget);
+    final firstName = find.byKey(const ValueKey('update-task-http-header-name-0'));
+    final firstValue = find.byKey(const ValueKey('update-task-http-header-value-0'));
+    final firstNameField = find.descendant(of: firstName, matching: find.byType(shad.TextField));
+    final firstValueField = find.descendant(of: firstValue, matching: find.byType(shad.TextField));
+    expect(tester.widget<shad.TextField>(firstNameField).controller!.text, 'Authorization');
+    expect(tester.widget<shad.TextField>(firstValueField).controller!.text, 'Bearer old');
+    expect(tester.getSize(firstValue).width / tester.getSize(firstName).width, closeTo(1.618, 0.01));
+
+    await tester.tap(find.byKey(const ValueKey('update-task-http-header-add')));
+    await tester.pump();
+    final secondName = find.byKey(const ValueKey('update-task-http-header-name-1'));
+    final secondValue = find.byKey(const ValueKey('update-task-http-header-value-1'));
+    expect(secondName, findsOneWidget);
+    await tester.enterText(secondName, 'Referer');
+    await tester.enterText(secondValue, 'https://example.com/source');
+
+    final addHeader = find.byKey(const ValueKey('update-task-http-header-add'));
+    final removeHeader = find.byKey(const ValueKey('update-task-http-header-remove-1'));
+    expect(tester.getCenter(addHeader).dy, closeTo(tester.getCenter(removeHeader).dy, 0.01));
+
+    await tester.tap(find.text('Update and resume'));
+    await tester.pumpAndSettle();
+    expect(update?.headers, {'Authorization': 'Bearer old', 'Referer': 'https://example.com/source'});
+  });
+
+  testWidgets('task URL update can be cancelled without a result', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(900, 700));
+    TaskUrlUpdate? update;
+    var completed = false;
+    final task = _taskRecord(id: 'cancel-update-url', name: 'archive.zip', status: TaskStatus.paused);
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: AppComponentThemes(
+          child: Builder(
+            builder: (context) => shad.PrimaryButton(
+              onPressed: () async {
+                update = await showTaskUpdateUrlDialog(context, task);
+                completed = true;
+              },
+              child: const Text('Open update dialog'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open update dialog'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(completed, isTrue);
+    expect(update, isNull);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('delete dialog returns keep-files switch value', (WidgetTester tester) async {
@@ -3277,10 +3788,14 @@ void main() {
     await tester.tap(find.text('Open delete dialog'));
     await tester.pumpAndSettle();
     expect(find.text('Delete 2 tasks?'), findsOneWidget);
-    expect(tester.widget<shad.Switch>(find.byType(shad.Switch)).value, isTrue);
+    expect(find.text('Only remove the task record from Gopeed'), findsNothing);
+    expect(find.byKey(const ValueKey('task-delete-dialog-icon')), findsOneWidget);
+    expect(find.byKey(const ValueKey('task-delete-keep-files-option')), findsOneWidget);
+    final keepFilesSwitch = find.byKey(const ValueKey('task-delete-keep-files-switch'));
+    expect(tester.widget<shad.Switch>(keepFilesSwitch).value, isTrue);
 
-    await tester.tap(find.byType(shad.Switch));
-    await tester.pump();
+    await tester.tap(keepFilesSwitch);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
     expect(keepFiles, isFalse);
@@ -3683,6 +4198,7 @@ class FailingTasksController extends TasksController {
 }
 
 class FakeExtensionsController extends ExtensionsController {
+  int installCalls = 0;
   int removeCalls = 0;
 
   @override
@@ -3713,13 +4229,19 @@ class FakeExtensionsController extends ExtensionsController {
           author: 'Gopeed',
           title: 'Extension $index',
           description: 'Extension description $index',
+          readme: '# Extension $index README\n\nExtension details for testing.',
           version: '1.0.0',
           installCount: index,
           stars: index,
-          topics: const [],
+          topics: const ['download'],
         ),
       ),
     );
+  }
+
+  @override
+  Future<void> installFromStore(StoreExtension extension) async {
+    installCalls++;
   }
 
   @override
@@ -3733,6 +4255,21 @@ class FakeExtensionsController extends ExtensionsController {
   @override
   Future<void> removeExtension(api_extension.Extension extension) async {
     removeCalls++;
+  }
+}
+
+class DevReadmeExtensionsController extends FakeExtensionsController {
+  DevReadmeExtensionsController(this.extensionDirectory);
+
+  final String extensionDirectory;
+
+  @override
+  Future<ExtensionsState> build() async {
+    final initial = await super.build();
+    final installed = initial.installedExtensions.first
+      ..devMode = true
+      ..devPath = extensionDirectory;
+    return initial.copyWith(installedExtensions: [installed]);
   }
 }
 
@@ -4013,6 +4550,7 @@ TaskRecord _taskRecord({
   Duration? downloadDuration,
   DateTime? createdAt,
   bool isFolder = false,
+  Map<String, String> requestHeaders = const {},
 }) {
   return TaskRecord(
     id: id,
@@ -4031,6 +4569,7 @@ TaskRecord _taskRecord({
     remaining: remaining,
     downloadDuration: downloadDuration,
     createdAt: createdAt,
+    requestHeaders: requestHeaders,
   );
 }
 

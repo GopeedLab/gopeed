@@ -4,7 +4,9 @@ import '../../../api/model/downloader_config.dart';
 import '../../../app/application/app_runtime_controller.dart';
 import '../../../core/capabilities/app_capabilities.dart';
 
-final settingsControllerProvider = AsyncNotifierProvider<SettingsController, SettingsState>(SettingsController.new);
+final settingsControllerProvider = AsyncNotifierProvider.autoDispose<SettingsController, SettingsState>(
+  SettingsController.new,
+);
 
 class SettingsState {
   const SettingsState({required this.config, this.saving = false});
@@ -20,8 +22,8 @@ class SettingsState {
 class SettingsController extends AsyncNotifier<SettingsState> {
   @override
   Future<SettingsState> build() async {
-    final runtime = await ref.read(appRuntimeControllerProvider.future);
-    return SettingsState(config: DownloaderConfig.fromJson(runtime.downloaderConfig.toJson()));
+    await ref.read(appRuntimeControllerProvider.future);
+    return SettingsState(config: await ref.read(gopeedServiceProvider).getConfig());
   }
 
   Future<void> reload({bool showLoading = true}) async {

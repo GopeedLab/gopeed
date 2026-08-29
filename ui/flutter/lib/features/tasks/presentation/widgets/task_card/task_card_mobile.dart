@@ -104,7 +104,7 @@ class _TaskCardMobileState extends State<TaskCardMobile> {
                             curve: Curves.easeOutCubic,
                             child: widget.batchMode
                                 ? Padding(
-                                    padding: const EdgeInsets.only(right: 10),
+                                    padding: const EdgeInsets.only(right: AppDesignTokens.checkboxLabelGap),
                                     child: shad.Checkbox(
                                       state: widget.selectedInBatch
                                           ? shad.CheckboxState.checked
@@ -112,7 +112,6 @@ class _TaskCardMobileState extends State<TaskCardMobile> {
                                       onChanged: (_) => widget.onToggleBatch(),
                                       borderColor: palette.border,
                                       backgroundColor: palette.cardBg,
-                                      size: 18,
                                     ),
                                   )
                                 : const SizedBox.shrink(),

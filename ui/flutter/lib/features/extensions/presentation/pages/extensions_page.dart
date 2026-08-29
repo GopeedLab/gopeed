@@ -4,12 +4,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../api/model/extension.dart' as api_extension;
 import '../../../../api/model/store_extension.dart';
 import '../../../../core/utils/breakpoints.dart';
+import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
@@ -19,6 +21,7 @@ import '../../../../l10n/l10n.dart';
 import '../../../home/presentation/widgets/primary_rail.dart';
 import '../../application/extensions_controller.dart';
 import '../../application/pending_extension_install.dart';
+import '../widgets/extension_detail_view.dart';
 
 const _extensionCardMinWidth = 280.0;
 const _extensionGridSpacing = 10.0;
@@ -47,6 +50,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   final _installController = TextEditingController();
   final _listScrollController = ScrollController();
   final Map<String, TextEditingController> _settingControllers = {};
+  ExtensionListItem? _detailItem;
   api_extension.Extension? _settingsExtension;
   shad.OverlayCompleter<dynamic>? _installPopover;
   bool _requestingNextPage = false;
@@ -96,7 +100,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(
-                    top: MediaQuery.sizeOf(context).width >= Breakpoints.mobile
+                    top: MediaQuery.sizeOf(context).width >= Breakpoints.mobile && AppWindowChrome.reservesHeaderInset
                         ? AppDesignTokens.windowHeaderHeight
                         : 0,
                   ),
@@ -156,7 +160,10 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       onInstallFolder: _installFromFolder,
       onRefresh: () => _runAction(() => ref.read(extensionsControllerProvider.notifier).loadInitialData()),
       onItemAction: _runAction,
+      onOpenDetails: _openExtensionDetails,
       onOpenSettings: _openExtensionSettings,
+      detailItem: _detailItem == null ? null : state.findItem(_detailItem!.id) ?? _detailItem,
+      onCloseDetails: () => setState(() => _detailItem = null),
     );
   }
 
@@ -229,7 +236,17 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
           (setting) => MapEntry(setting.name, TextEditingController(text: setting.value?.toString() ?? '')),
         ),
       );
-    setState(() => _settingsExtension = extension);
+    setState(() {
+      _detailItem = null;
+      _settingsExtension = extension;
+    });
+  }
+
+  void _openExtensionDetails(ExtensionListItem item) {
+    setState(() {
+      _settingsExtension = null;
+      _detailItem = item;
+    });
   }
 
   Future<void> _saveExtensionSettings() async {
@@ -273,7 +290,10 @@ class _Content extends StatelessWidget {
     required this.onInstallFolder,
     required this.onRefresh,
     required this.onItemAction,
+    required this.onOpenDetails,
     required this.onOpenSettings,
+    required this.detailItem,
+    required this.onCloseDetails,
   });
 
   final ExtensionsState state;
@@ -287,7 +307,10 @@ class _Content extends StatelessWidget {
   final VoidCallback onInstallFolder;
   final VoidCallback onRefresh;
   final Future<void> Function(Future<void> Function() action) onItemAction;
+  final ValueChanged<ExtensionListItem> onOpenDetails;
   final ValueChanged<api_extension.Extension> onOpenSettings;
+  final ExtensionListItem? detailItem;
+  final VoidCallback onCloseDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -321,76 +344,85 @@ class _Content extends StatelessWidget {
           child: _FilterBar(state: state, onFilter: onFilter),
         ),
         Expanded(
-          child: CustomScrollView(
-            key: const ValueKey('extensions-list-scroll-view'),
-            controller: scrollController,
-            slivers: [
-              if ((state.loadingInstalled || state.loadingStore) && state.displayItems.isEmpty)
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
-                  sliver: const _ExtensionSkeletonGrid(key: ValueKey('extensions-initial-skeleton')),
-                )
-              else if (state.displayItems.isEmpty)
-                SliverFillRemaining(
-                  child: Center(
-                    child: Text(
-                      context.l10n.noExtensions,
-                      style: TextStyle(color: palette.textSecondary, fontSize: 14),
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
-                  sliver: SliverLayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = constraints.crossAxisExtent;
-                      final crossAxisCount = _extensionGridColumnCount(width);
-                      return SliverGrid(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _ExtensionCard(
-                            item: state.displayItems[index],
-                            busy: state.busyExtensionIds.contains(state.displayItems[index].id),
-                            canUpdate: _canUpdate(state, state.displayItems[index]),
-                            onAction: onItemAction,
-                            onOpenSettings: onOpenSettings,
-                          ),
-                          childCount: state.displayItems.length,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CustomScrollView(
+                key: const ValueKey('extensions-list-scroll-view'),
+                controller: scrollController,
+                slivers: [
+                  if ((state.loadingInstalled || state.loadingStore) && state.displayItems.isEmpty)
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
+                      sliver: const _ExtensionSkeletonGrid(key: ValueKey('extensions-initial-skeleton')),
+                    )
+                  else if (state.displayItems.isEmpty)
+                    SliverFillRemaining(
+                      child: Center(
+                        child: Text(
+                          context.l10n.noExtensions,
+                          style: TextStyle(color: palette.textSecondary, fontSize: 14),
                         ),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          mainAxisSpacing: _extensionGridSpacing,
-                          crossAxisSpacing: _extensionGridSpacing,
-                          mainAxisExtent: 178,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              if (state.listFilter == ExtensionListFilter.market && state.loadingMoreStore)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24, top: 4),
-                    child: Center(child: const SizedBox.square(dimension: 18, child: shad.CircularProgressIndicator())),
-                  ),
-                ),
-              if (state.listFilter == ExtensionListFilter.market &&
-                  state.displayItems.isNotEmpty &&
-                  state.storePagination != null &&
-                  !state.storePagination!.hasNext &&
-                  !state.loadingMoreStore)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24, top: 4),
-                    child: Center(
-                      child: Text(
-                        context.l10n.extensionNoMore,
-                        key: const ValueKey('extensions-no-more-indicator'),
-                        style: TextStyle(color: palette.textMuted, fontSize: 12),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
+                      sliver: SliverLayoutBuilder(
+                        builder: (context, constraints) {
+                          final width = constraints.crossAxisExtent;
+                          final crossAxisCount = _extensionGridColumnCount(width);
+                          return SliverGrid(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _ExtensionCard(
+                                item: state.displayItems[index],
+                                busy: state.busyExtensionIds.contains(state.displayItems[index].id),
+                                canUpdate: _canUpdate(state, state.displayItems[index]),
+                                onAction: onItemAction,
+                                onOpenDetails: onOpenDetails,
+                                onOpenSettings: onOpenSettings,
+                              ),
+                              childCount: state.displayItems.length,
+                            ),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              mainAxisSpacing: _extensionGridSpacing,
+                              crossAxisSpacing: _extensionGridSpacing,
+                              mainAxisExtent: 178,
+                            ),
+                          );
+                        },
                       ),
                     ),
-                  ),
-                ),
+                  if (state.listFilter == ExtensionListFilter.market && state.loadingMoreStore)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 24, top: 4),
+                        child: Center(
+                          child: const SizedBox.square(dimension: 18, child: shad.CircularProgressIndicator()),
+                        ),
+                      ),
+                    ),
+                  if (state.listFilter == ExtensionListFilter.market &&
+                      state.displayItems.isNotEmpty &&
+                      state.storePagination != null &&
+                      !state.storePagination!.hasNext &&
+                      !state.loadingMoreStore)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 24, top: 4),
+                        child: Center(
+                          child: Text(
+                            context.l10n.extensionNoMore,
+                            key: const ValueKey('extensions-no-more-indicator'),
+                            style: TextStyle(color: palette.textMuted, fontSize: 12),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              ExtensionDetailDrawer(item: detailItem, onClose: onCloseDetails),
             ],
           ),
         ),
@@ -878,6 +910,7 @@ class _ExtensionCard extends ConsumerWidget {
     required this.busy,
     required this.canUpdate,
     required this.onAction,
+    required this.onOpenDetails,
     required this.onOpenSettings,
   });
 
@@ -885,13 +918,14 @@ class _ExtensionCard extends ConsumerWidget {
   final bool busy;
   final bool canUpdate;
   final Future<void> Function(Future<void> Function() action) onAction;
+  final ValueChanged<ExtensionListItem> onOpenDetails;
   final ValueChanged<api_extension.Extension> onOpenSettings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = AppPalette.of(context);
     final installed = item.installed;
-    return Container(
+    final card = Container(
       key: ValueKey('extension-card-${item.id}'),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1015,6 +1049,22 @@ class _ExtensionCard extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+    );
+    if (item.store == null) return card;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        key: ValueKey('open-extension-details-${item.id}'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (MediaQuery.sizeOf(context).width < Breakpoints.mobile) {
+            context.push('/extensions/${Uri.encodeComponent(item.id)}', extra: item);
+            return;
+          }
+          onOpenDetails(item);
+        },
+        child: card,
       ),
     );
   }

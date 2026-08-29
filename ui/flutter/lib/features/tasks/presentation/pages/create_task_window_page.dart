@@ -5,7 +5,9 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart' as multi_window;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show Clipboard, TextInputAction, TextInputType;
+import 'package:flutter/services.dart'
+    show Clipboard, FilteringTextInputFormatter, TextInputAction, TextInputType, TextInputFormatter;
+import 'package:flutter/widgets.dart' as flutter show Flexible, Row;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as path;
@@ -14,17 +16,21 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/model/create_task.dart';
 import '../../../../api/model/create_task_batch.dart';
+import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/options.dart' as api_options;
 import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
 import '../../../../api/model/resolve_task.dart';
 import '../../../../core/capabilities/app_capabilities.dart';
+import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_choice_segmented_control.dart';
+import '../../../../shared/widgets/app_http_headers_editor.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
-import '../../../../shared/widgets/window/desktop_window_header.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
@@ -45,11 +51,27 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   final _renameController = TextEditingController();
   final _connectionsController = TextEditingController(text: '16');
   final _directoryController = TextEditingController();
-  final _userAgentController = TextEditingController();
-  final _cookieController = TextEditingController();
-  final _refererController = TextEditingController();
+  final _proxyServerController = TextEditingController();
+  final _proxyPortController = TextEditingController();
+  final _proxyUsernameController = TextEditingController();
+  final _proxyPasswordController = TextEditingController();
+  final _httpHeadersController = AppHttpHeadersController(defaultNames: const ['User-Agent', 'Cookie', 'Referer']);
   final _trackersController = TextEditingController();
+  final _archivePasswordController = TextEditingController();
   final _formScrollController = ScrollController();
+
+  String _httpMethod = 'GET';
+  String _httpBody = '';
+  String? _initialRawUrl;
+  Map<String, String>? _initialLabels;
+  RequestProxyMode _proxyMode = RequestProxyMode.follow;
+  String _proxyScheme = 'http';
+  bool _skipVerifyCert = false;
+  bool? _autoTorrent;
+  bool? _deleteTorrentAfterDownload;
+  bool? _autoExtract;
+  bool _deleteAfterExtract = false;
+  List<DownloadCategory> _downloadCategories = const [];
 
   bool _showAdvanced = false;
   int _advancedScrollRequest = 0;
@@ -57,6 +79,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   int _protocolTab = 0;
   bool _creating = false;
   bool _draggingTorrent = false;
+  bool _asDefaultPath = false;
+  String _configuredDownloadDirectory = '';
   String _fileDataUri = '';
   bool _programmaticUrlChange = false;
 
@@ -84,10 +108,13 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     _renameController.dispose();
     _connectionsController.dispose();
     _directoryController.dispose();
-    _userAgentController.dispose();
-    _cookieController.dispose();
-    _refererController.dispose();
+    _proxyServerController.dispose();
+    _proxyPortController.dispose();
+    _proxyUsernameController.dispose();
+    _proxyPasswordController.dispose();
+    _httpHeadersController.dispose();
     _trackersController.dispose();
+    _archivePasswordController.dispose();
     _formScrollController.dispose();
     super.dispose();
   }
@@ -144,8 +171,36 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     setState(() {
       if (req?.url.isNotEmpty == true) {
         _urlController.text = req!.url;
-        if (req.url.startsWith('magnet:') || req.url.toLowerCase().endsWith('.torrent')) {
-          _protocolTab = 1;
+        _initialRawUrl = req.rawUrl;
+        _initialLabels = req.labels == null ? null : Map<String, String>.of(req.labels!);
+        _applyInitialProxy(req.proxy);
+        _skipVerifyCert = req.skipVerifyCert;
+        if (req.proxy != null || req.skipVerifyCert) {
+          _showAdvanced = true;
+        }
+        switch (_parseProtocol(req.url)) {
+          case _TaskProtocol.http:
+            if (req.extra is Map) {
+              final extra = ReqExtraHttp.fromJson(Map<String, dynamic>.from(req.extra! as Map));
+              _httpMethod = extra.method;
+              _httpBody = extra.body;
+              if (extra.header.isNotEmpty) {
+                _replaceHttpHeaders(extra.header);
+              }
+              _showAdvanced = true;
+            }
+            break;
+          case _TaskProtocol.bt:
+            _protocolTab = 1;
+            if (req.extra is Map) {
+              final extra = ReqExtraBt.fromJson(Map<String, dynamic>.from(req.extra! as Map));
+              _trackersController.text = extra.trackers.join('\n');
+              _showAdvanced = true;
+            }
+            break;
+          case _TaskProtocol.ed2k:
+          case null:
+            break;
         }
       }
       if (opts != null) {
@@ -155,26 +210,63 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         if (opts.path.isNotEmpty) {
           _directoryController.text = opts.path;
         }
-        if (opts.extra is Map<String, dynamic>) {
-          final extra = api_options.OptsExtraHttp.fromJson(opts.extra as Map<String, dynamic>);
+        if (opts.extra is Map) {
+          final extra = api_options.OptsExtraHttp.fromJson(Map<String, dynamic>.from(opts.extra! as Map));
           if (extra.connections > 0) {
             _connectionsController.text = extra.connections.toString();
+          }
+          _autoTorrent = extra.autoTorrent;
+          _deleteTorrentAfterDownload = extra.deleteTorrentAfterDownload;
+          _autoExtract = extra.autoExtract;
+          _archivePasswordController.text = extra.archivePassword;
+          _deleteAfterExtract = extra.deleteAfterExtract;
+          if (extra.autoTorrent != null ||
+              extra.deleteTorrentAfterDownload != null ||
+              extra.autoExtract != null ||
+              extra.archivePassword.isNotEmpty ||
+              extra.deleteAfterExtract) {
+            _showAdvanced = true;
           }
         }
       }
     });
   }
 
+  void _applyInitialProxy(RequestProxy? proxy) {
+    _proxyMode = proxy?.mode ?? RequestProxyMode.follow;
+    const supportedSchemes = {'http', 'https', 'socks5'};
+    _proxyScheme = supportedSchemes.contains(proxy?.scheme) ? proxy!.scheme : 'http';
+    _proxyUsernameController.text = proxy?.usr ?? '';
+    _proxyPasswordController.text = proxy?.pwd ?? '';
+
+    final host = proxy?.host.trim() ?? '';
+    if (host.isEmpty) {
+      _proxyServerController.clear();
+      _proxyPortController.clear();
+      return;
+    }
+    final parsed = Uri.tryParse('$_proxyScheme://$host');
+    if (parsed != null && parsed.host.isNotEmpty) {
+      _proxyServerController.text = parsed.host;
+      _proxyPortController.text = parsed.hasPort ? parsed.port.toString() : '';
+      return;
+    }
+    _proxyServerController.text = host;
+    _proxyPortController.clear();
+  }
+
+  void _replaceHttpHeaders(Map<String, String> headers) {
+    _httpHeadersController.replace(headers);
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final showCaptionControls =
-        !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux);
 
     final page = Scaffold(
       backgroundColor: palette.sideBg,
       child: Padding(
-        padding: const EdgeInsets.only(top: AppDesignTokens.windowHeaderHeight),
+        padding: EdgeInsets.only(top: AppWindowChrome.reservesHeaderInset ? AppDesignTokens.windowHeaderHeight : 0),
         child: Column(
           children: [
             Container(
@@ -186,8 +278,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     context.l10n.create,
                     style: TextStyle(color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
                   ),
-                  const Spacer(),
-                  if (showCaptionControls) const WindowCaptionControls(),
                 ],
               ),
             ),
@@ -195,7 +285,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
               child: SingleChildScrollView(
                 key: const ValueKey('create-task-form-scroll'),
                 controller: _formScrollController,
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
                 child: Column(
                   children: [
                     _FormRow(
@@ -256,7 +346,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     const SizedBox(height: 16),
                     _FormRow(
                       label: context.l10n.rename,
-                      child: _WindowTextField(controller: _renameController, hintText: context.l10n.keepOriginalName),
+                      child: _WindowTextField(
+                        key: const ValueKey('create-task-rename-input'),
+                        controller: _renameController,
+                        hintText: context.l10n.keepOriginalName,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     _FormRow(
@@ -266,11 +360,68 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     const SizedBox(height: 16),
                     _FormRow(
                       label: context.l10n.directory,
-                      child: AppPathPickerField.downloadDirectory(
-                        fieldKey: const ValueKey('create-task-directory-input'),
-                        pickerKey: const ValueKey('create-task-directory-picker'),
-                        controller: _directoryController,
-                        hintText: context.l10n.chooseDownloadDirectory,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppPathPickerField.downloadDirectory(
+                            key: const ValueKey('create-task-directory-component'),
+                            fieldKey: const ValueKey('create-task-directory-input'),
+                            pickerKey: const ValueKey('create-task-directory-picker'),
+                            controller: _directoryController,
+                            hintText: context.l10n.chooseDownloadDirectory,
+                            filled: true,
+                            border: Border.all(color: palette.border),
+                            borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            pickerButtonStyle: AppPathPickerButtonStyle.outline,
+                            onChanged: (_) {
+                              if (_asDefaultPath) {
+                                setState(() => _asDefaultPath = false);
+                              }
+                            },
+                            onDirectoryPicked: (pickedDirectory) => setState(
+                              () => _asDefaultPath = !_sameDirectory(pickedDirectory, _configuredDownloadDirectory),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            key: const ValueKey('create-task-directory-options-row'),
+                            width: double.infinity,
+                            height: 30,
+                            child: flutter.Row(
+                              key: const ValueKey('create-task-directory-options-layout'),
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                _AsDefaultPathToggle(
+                                  value: _asDefaultPath,
+                                  onChanged: (value) => setState(() => _asDefaultPath = value),
+                                ),
+                                if (_downloadCategories.isNotEmpty)
+                                  flutter.Flexible(
+                                    child: Padding(
+                                      padding: const EdgeInsetsDirectional.only(start: 16),
+                                      child: _DirectoryShortcuts(
+                                        shortcuts: [
+                                          for (final entry in _downloadCategories.indexed)
+                                            _DirectoryShortcut(
+                                              index: entry.$1,
+                                              label: _categoryDisplayName(context, entry.$2),
+                                              path: _renderPathPlaceholders(entry.$2.path),
+                                            ),
+                                        ],
+                                        onSelected: (shortcut) {
+                                          _directoryController.text = shortcut.path;
+                                          if (_asDefaultPath) {
+                                            setState(() => _asDefaultPath = false);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -306,9 +457,110 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       sizeCurve: Curves.easeOutCubic,
                       crossFadeState: _showAdvanced ? CrossFadeState.showFirst : CrossFadeState.showSecond,
                       firstChild: Padding(
-                        padding: const EdgeInsets.only(top: 18),
+                        key: const ValueKey('create-task-advanced-content'),
+                        padding: const EdgeInsets.only(top: 18, bottom: 4),
                         child: Column(
                           children: [
+                            _FormRow(
+                              label: context.l10n.proxy,
+                              child: AppChoiceSegmentedControl<RequestProxyMode>(
+                                key: const ValueKey('create-task-proxy-mode'),
+                                value: _proxyMode,
+                                buttonKeyPrefix: 'create-task-proxy-mode',
+                                options: [
+                                  AppChoiceOption(
+                                    value: RequestProxyMode.follow,
+                                    key: 'follow',
+                                    label: context.l10n.followSettings,
+                                    icon: Icons.settings_suggest_outlined,
+                                  ),
+                                  AppChoiceOption(
+                                    value: RequestProxyMode.none,
+                                    key: 'none',
+                                    label: context.l10n.noProxy,
+                                    icon: Icons.block_outlined,
+                                  ),
+                                  AppChoiceOption(
+                                    value: RequestProxyMode.custom,
+                                    key: 'custom',
+                                    label: context.l10n.customProxy,
+                                    icon: Icons.tune_outlined,
+                                  ),
+                                ],
+                                onChanged: (value) => setState(() => _proxyMode = value),
+                              ),
+                            ),
+                            if (_proxyMode == RequestProxyMode.custom) ...[
+                              const SizedBox(height: 12),
+                              _FormRow(
+                                label: context.l10n.proxyProtocol,
+                                child: AppChoiceSegmentedControl<String>(
+                                  key: const ValueKey('create-task-proxy-scheme'),
+                                  value: _proxyScheme,
+                                  buttonKeyPrefix: 'create-task-proxy-scheme',
+                                  options: const [
+                                    AppChoiceOption(value: 'http', label: 'HTTP', icon: Icons.http_outlined),
+                                    AppChoiceOption(value: 'https', label: 'HTTPS', icon: Icons.https_outlined),
+                                    AppChoiceOption(value: 'socks5', label: 'SOCKS5', icon: Icons.security_outlined),
+                                  ],
+                                  onChanged: (value) => setState(() => _proxyScheme = value),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              _FormRow(
+                                label: context.l10n.server,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 618,
+                                      child: _WindowTextField(
+                                        key: const ValueKey('create-task-proxy-server'),
+                                        controller: _proxyServerController,
+                                        hintText: context.l10n.server,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      flex: 382,
+                                      child: _WindowTextField(
+                                        key: const ValueKey('create-task-proxy-port'),
+                                        controller: _proxyPortController,
+                                        hintText: context.l10n.port,
+                                        keyboardType: TextInputType.number,
+                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              _FormRow(
+                                label: context.l10n.username,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _WindowTextField(
+                                        key: const ValueKey('create-task-proxy-username'),
+                                        controller: _proxyUsernameController,
+                                        hintText: context.l10n.username,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _WindowTextField(
+                                        key: const ValueKey('create-task-proxy-password'),
+                                        controller: _proxyPasswordController,
+                                        hintText: context.l10n.password,
+                                        obscureText: true,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 18),
+                            Container(height: 1, color: palette.border),
+                            const SizedBox(height: 16),
                             Align(
                               alignment: Alignment.centerLeft,
                               child: Container(
@@ -337,29 +589,70 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                             ),
                             const SizedBox(height: 16),
                             if (_protocolTab == 0) ...[
+                              AppHttpHeadersEditor(
+                                controller: _httpHeadersController,
+                                label: context.l10n.httpHeader,
+                                keyPrefix: 'create-task-http-header',
+                              ),
+                              const SizedBox(height: 14),
                               _FormRow(
-                                label: 'User-Agent',
-                                child: _WindowTextField(
-                                  controller: _userAgentController,
-                                  hintText: context.l10n.enterValue,
+                                label: context.l10n.skipVerifyCert,
+                                child: _OptionSwitch(
+                                  key: const ValueKey('create-task-skip-verify-cert'),
+                                  value: _skipVerifyCert,
+                                  onChanged: (value) => setState(() => _skipVerifyCert = value),
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 14),
                               _FormRow(
-                                label: 'Cookie',
-                                child: _WindowTextField(
-                                  controller: _cookieController,
-                                  hintText: context.l10n.enterValue,
+                                label: context.l10n.autoTorrentEnable,
+                                child: _OptionSwitch(
+                                  key: const ValueKey('create-task-auto-torrent'),
+                                  value: _autoTorrent ?? false,
+                                  onChanged: (value) => setState(() => _autoTorrent = value),
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              if (_autoTorrent == true) ...[
+                                const SizedBox(height: 12),
+                                _FormRow(
+                                  label: context.l10n.autoTorrentDeleteAfterDownload,
+                                  child: _OptionSwitch(
+                                    key: const ValueKey('create-task-delete-torrent'),
+                                    value: _deleteTorrentAfterDownload ?? false,
+                                    onChanged: (value) => setState(() => _deleteTorrentAfterDownload = value),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 14),
                               _FormRow(
-                                label: 'Referer',
-                                child: _WindowTextField(
-                                  controller: _refererController,
-                                  hintText: context.l10n.enterValue,
+                                label: context.l10n.autoExtract,
+                                child: _OptionSwitch(
+                                  key: const ValueKey('create-task-auto-extract'),
+                                  value: _autoExtract ?? false,
+                                  onChanged: (value) => setState(() => _autoExtract = value),
                                 ),
                               ),
+                              if (_autoExtract == true) ...[
+                                const SizedBox(height: 12),
+                                _FormRow(
+                                  label: context.l10n.archivePassword,
+                                  child: _WindowTextField(
+                                    key: const ValueKey('create-task-archive-password'),
+                                    controller: _archivePasswordController,
+                                    hintText: context.l10n.archivePasswordHint,
+                                    obscureText: true,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                _FormRow(
+                                  label: context.l10n.deleteAfterExtract,
+                                  child: _OptionSwitch(
+                                    key: const ValueKey('create-task-delete-after-extract'),
+                                    value: _deleteAfterExtract,
+                                    onChanged: (value) => setState(() => _deleteAfterExtract = value),
+                                  ),
+                                ),
+                              ],
                             ] else ...[
                               _FormRow(
                                 label: context.l10n.trackers,
@@ -442,15 +735,22 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       final config = await ref.read(gopeedServiceProvider).getConfig();
       if (!mounted) return;
       setState(() {
+        _configuredDownloadDirectory = config.downloadDir.trim();
         if (config.downloadDir.isNotEmpty &&
             (_directoryController.text.isEmpty || _directoryController.text == 'C:/Users/levi/Downloads')) {
           _directoryController.text = config.downloadDir;
+        }
+        if (_asDefaultPath && _sameDirectory(_directoryController.text, _configuredDownloadDirectory)) {
+          _asDefaultPath = false;
         }
         final connections = config.protocolConfig.http.connections;
         if (connections > 0 && (_connectionsController.text.isEmpty || _connectionsController.text == '16')) {
           _connectionsController.text = connections.toString();
         }
         _directDownload = config.extra.defaultDirectDownload;
+        _downloadCategories = config.extra.downloadCategories
+            .where((category) => !category.isDeleted)
+            .toList(growable: false);
       });
     } catch (_) {
       // Keep local defaults when the backend is not available yet.
@@ -537,6 +837,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       _showToast(context.l10n.downloadLinkValid);
       return;
     }
+    if (!_validateAdvancedOptions()) {
+      return;
+    }
 
     setState(() {
       _creating = true;
@@ -600,15 +903,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   Request _buildRequest(String url, {String? protocolUrl}) {
     final protocol = _parseProtocol(protocolUrl ?? url);
     Object? extra;
-    final headers = <String, String>{
-      if (_userAgentController.text.trim().isNotEmpty) 'User-Agent': _userAgentController.text.trim(),
-      if (_cookieController.text.trim().isNotEmpty) 'Cookie': _cookieController.text.trim(),
-      if (_refererController.text.trim().isNotEmpty) 'Referer': _refererController.text.trim(),
-    };
+    final headers = _httpHeadersController.toMap(requireValue: true);
     switch (protocol) {
       case _TaskProtocol.http:
-        if (headers.isNotEmpty) {
-          extra = ReqExtraHttp(header: headers).toJson();
+        if (headers.isNotEmpty || _httpMethod != 'GET' || _httpBody.isNotEmpty) {
+          extra = ReqExtraHttp(method: _httpMethod, header: headers, body: _httpBody).toJson();
         }
         break;
       case _TaskProtocol.bt:
@@ -623,7 +922,51 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       case null:
         break;
     }
-    return Request(url: url, extra: extra);
+    return Request(
+      rawUrl: _initialRawUrl,
+      url: url,
+      extra: extra,
+      labels: _initialLabels,
+      proxy: _buildProxy(),
+      skipVerifyCert: _skipVerifyCert,
+    );
+  }
+
+  bool _validateAdvancedOptions() {
+    if (_proxyMode != RequestProxyMode.custom) {
+      return true;
+    }
+    if (_proxyServerController.text.trim().isEmpty) {
+      _showToast(context.l10n.serverRequired);
+      return false;
+    }
+    final portText = _proxyPortController.text.trim();
+    if (portText.isNotEmpty) {
+      final port = int.tryParse(portText);
+      if (port == null || port < 0 || port > 65535) {
+        _showToast(context.l10n.portRangeError);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  RequestProxy _buildProxy() {
+    if (_proxyMode != RequestProxyMode.custom) {
+      return RequestProxy(mode: _proxyMode);
+    }
+    var server = _proxyServerController.text.trim();
+    final port = _proxyPortController.text.trim();
+    if (server.contains(':') && !server.startsWith('[')) {
+      server = '[$server]';
+    }
+    return RequestProxy(
+      mode: RequestProxyMode.custom,
+      scheme: _proxyScheme,
+      host: port.isEmpty ? server : '$server:$port',
+      usr: _proxyUsernameController.text.trim(),
+      pwd: _proxyPasswordController.text,
+    );
   }
 
   _TaskProtocol? _parseProtocol(String url) {
@@ -667,9 +1010,24 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     return api_options.Options(
       name: name ?? _renameController.text.trim(),
       path: _directoryController.text.trim(),
+      asDefaultPath: _asDefaultPath,
       selectFiles: selectFiles,
-      extra: api_options.OptsExtraHttp(connections: connections).toJson(),
+      extra: api_options.OptsExtraHttp(
+        connections: connections,
+        autoTorrent: _autoTorrent,
+        deleteTorrentAfterDownload: _deleteTorrentAfterDownload,
+        autoExtract: _autoExtract,
+        archivePassword: _archivePasswordController.text,
+        deleteAfterExtract: _deleteAfterExtract,
+      ).toJson(),
     );
+  }
+
+  bool _sameDirectory(String left, String right) {
+    final normalizedLeft = left.trim();
+    final normalizedRight = right.trim();
+    if (normalizedLeft.isEmpty || normalizedRight.isEmpty) return false;
+    return path.equals(path.normalize(normalizedLeft), path.normalize(normalizedRight));
   }
 
   Future<void> _submitResolved(Request request, ResolveResult result, List<int> selectedIndexes) async {
@@ -699,7 +1057,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           ),
         );
       }).toList();
-      await ref.read(gopeedServiceProvider).createTaskBatch(CreateTaskBatch(reqs: reqs));
+      await ref.read(gopeedServiceProvider).createTaskBatch(CreateTaskBatch(reqs: reqs, opts: _buildOptions()));
       return;
     }
 
@@ -928,6 +1286,27 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     await ref.read(appStorageServiceProvider).saveCreateHistory(urls);
   }
 
+  String _categoryDisplayName(BuildContext context, DownloadCategory category) {
+    return switch (category.nameKey) {
+      'categoryMusic' => context.l10n.categoryMusic,
+      'categoryVideo' => context.l10n.categoryVideo,
+      'categoryDocument' => context.l10n.categoryDocument,
+      'categoryProgram' => context.l10n.categoryProgram,
+      _ => category.name,
+    };
+  }
+
+  String _renderPathPlaceholders(String value) {
+    final now = DateTime.now();
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    return value
+        .replaceAll('%year%', now.year.toString())
+        .replaceAll('%month%', month)
+        .replaceAll('%day%', day)
+        .replaceAll('%date%', '${now.year}-$month-$day');
+  }
+
   void _showToast(String message) {
     showAppToast(context, message, type: AppToastType.error);
   }
@@ -974,6 +1353,7 @@ class _DirectDownloadToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return GestureDetector(
+      key: const ValueKey('create-task-direct-download-toggle'),
       behavior: HitTestBehavior.opaque,
       onTap: () => onChanged(!value),
       child: SizedBox(
@@ -981,11 +1361,11 @@ class _DirectDownloadToggle extends StatelessWidget {
         child: Row(
           children: [
             Checkbox(
+              key: const ValueKey('create-task-direct-download-checkbox'),
               state: value ? CheckboxState.checked : CheckboxState.unchecked,
               onChanged: (_) => onChanged(!value),
-              size: 18,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppDesignTokens.checkboxLabelGap),
             Expanded(
               child: Text(
                 context.l10n.directDownloadDescription,
@@ -1001,11 +1381,161 @@ class _DirectDownloadToggle extends StatelessWidget {
   }
 }
 
+class _AsDefaultPathToggle extends StatelessWidget {
+  const _AsDefaultPathToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return GestureDetector(
+      key: const ValueKey('create-task-remember-download-directory'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onChanged(!value),
+      child: SizedBox(
+        height: 24,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Checkbox(
+              key: const ValueKey('create-task-remember-download-directory-checkbox'),
+              state: value ? CheckboxState.checked : CheckboxState.unchecked,
+              onChanged: (_) => onChanged(!value),
+            ),
+            const SizedBox(width: AppDesignTokens.checkboxLabelGap),
+            Flexible(
+              child: Text(
+                key: const ValueKey('create-task-remember-download-directory-label'),
+                context.l10n.rememberLastDownloadDir,
+                style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DirectoryShortcut {
+  const _DirectoryShortcut({required this.index, required this.label, required this.path});
+
+  final int index;
+  final String label;
+  final String path;
+}
+
+class _DirectoryShortcuts extends StatelessWidget {
+  const _DirectoryShortcuts({required this.shortcuts, required this.onSelected});
+
+  final List<_DirectoryShortcut> shortcuts;
+  final ValueChanged<_DirectoryShortcut> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      key: const ValueKey('create-task-directory-shortcuts'),
+      height: 28,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        reverse: true,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final shortcut in shortcuts) ...[
+              if (shortcut.index != shortcuts.first.index) const SizedBox(width: 6),
+              _DirectoryShortcutButton(
+                key: ValueKey('create-task-category-${shortcut.index}'),
+                shortcut: shortcut,
+                onPressed: () => onSelected(shortcut),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DirectoryShortcutButton extends StatefulWidget {
+  const _DirectoryShortcutButton({super.key, required this.shortcut, required this.onPressed});
+
+  final _DirectoryShortcut shortcut;
+  final VoidCallback onPressed;
+
+  @override
+  State<_DirectoryShortcutButton> createState() => _DirectoryShortcutButtonState();
+}
+
+class _DirectoryShortcutButtonState extends State<_DirectoryShortcutButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return AppTooltip(
+      message: widget.shortcut.path,
+      child: Semantics(
+        button: true,
+        label: widget.shortcut.label,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onPressed,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              curve: Curves.easeOutCubic,
+              height: 28,
+              constraints: const BoxConstraints(maxWidth: 168),
+              padding: const EdgeInsets.symmetric(horizontal: 9),
+              decoration: BoxDecoration(
+                color: _hovered ? palette.surfaceSoft : palette.cardBg,
+                borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
+                border: Border.all(color: palette.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.folder_outlined, size: 14, color: palette.textMuted),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      widget.shortcut.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: palette.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _WindowTextField extends StatelessWidget {
-  const _WindowTextField({required this.controller, required this.hintText});
+  const _WindowTextField({
+    super.key,
+    required this.controller,
+    required this.hintText,
+    this.keyboardType,
+    this.inputFormatters,
+    this.obscureText = false,
+  });
 
   final TextEditingController controller;
   final String hintText;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool obscureText;
 
   @override
   Widget build(BuildContext context) {
@@ -1013,10 +1543,31 @@ class _WindowTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       hintText: hintText,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      obscureText: obscureText,
       filled: true,
       border: Border.all(color: palette.border),
       borderRadius: BorderRadius.circular(4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    );
+  }
+}
+
+class _OptionSwitch extends StatelessWidget {
+  const _OptionSwitch({super.key, required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 38,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Switch(value: value, onChanged: onChanged),
+      ),
     );
   }
 }

@@ -109,6 +109,7 @@ type Downloader struct {
 	listener     Listener
 
 	lock               *sync.Mutex
+	configLock         *sync.RWMutex
 	fetcherMapLock     *sync.RWMutex
 	checkDuplicateLock *sync.Mutex
 	closed             atomic.Bool
@@ -134,6 +135,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		storage:      cfg.Storage,
 
 		lock:               &sync.Mutex{},
+		configLock:         &sync.RWMutex{},
 		fetcherMapLock:     &sync.RWMutex{},
 		checkDuplicateLock: &sync.Mutex{},
 
@@ -529,6 +531,18 @@ func (d *Downloader) remainRunningCount() int {
 }
 
 func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId string, err error) {
+	defaultPath, err := d.prepareDefaultPath(opts)
+	if err != nil {
+		return "", err
+	}
+	taskId, err = d.createDirect(req, opts)
+	if err == nil {
+		d.persistDefaultPathBestEffort(defaultPath)
+	}
+	return
+}
+
+func (d *Downloader) createDirect(req *base.Request, opts *base.Options) (taskId string, err error) {
 	ensureRequestRawURL(req)
 	var fetcher fetcher.Fetcher
 	fetcher, err = d.buildFetcher(req.URL)
@@ -544,18 +558,26 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 }
 
 func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []string, err error) {
+	defaultPath, err := d.prepareDefaultPath(req.Opts)
+	if err != nil {
+		return nil, err
+	}
 	taskIds := make([]string, 0)
 	for _, ir := range req.Reqs {
 		opts := ir.Opts
 		if opts == nil {
 			opts = req.Opts
 		}
-		taskId, err := d.CreateDirect(ir.Req, opts.Clone())
+		if opts != nil {
+			opts = opts.Clone()
+		}
+		taskId, err := d.createDirect(ir.Req, opts)
 		if err != nil {
 			return nil, err
 		}
 		taskIds = append(taskIds, taskId)
 	}
+	d.persistDefaultPathBestEffort(defaultPath)
 	return taskIds, nil
 }
 
@@ -571,7 +593,15 @@ func (d *Downloader) Create(rrId string) (taskId string, err error) {
 		delete(d.fetcherCache, rrId)
 		d.fetcherMapLock.Unlock()
 	}()
-	return d.doCreate(fetcher, nil)
+	defaultPath, err := d.prepareDefaultPath(fetcher.Meta().Opts)
+	if err != nil {
+		return "", err
+	}
+	taskId, err = d.doCreate(fetcher, nil)
+	if err == nil {
+		d.persistDefaultPathBestEffort(defaultPath)
+	}
+	return
 }
 
 // Patch modifies task-specific data based on the protocol.
@@ -1231,12 +1261,60 @@ func (d *Downloader) GetTasksByFilter(filter *TaskFilter) []*Task {
 }
 
 func (d *Downloader) GetConfig() (*base.DownloaderStoreConfig, error) {
+	d.configLock.RLock()
+	defer d.configLock.RUnlock()
 	return d.cfg.DownloaderStoreConfig, nil
 }
 
 func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
-	d.cfg.DownloaderStoreConfig = v
-	return d.storage.Put(bucketConfig, "config", v)
+	if v == nil {
+		return errors.New("config is nil")
+	}
+	next := util.DeepClone(v)
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+	if err := d.storage.Put(bucketConfig, "config", next); err != nil {
+		return err
+	}
+	d.cfg.DownloaderStoreConfig = next
+	return nil
+}
+
+func (d *Downloader) prepareDefaultPath(opts *base.Options) (string, error) {
+	if opts == nil || !opts.AsDefaultPath || strings.TrimSpace(opts.Path) == "" {
+		return "", nil
+	}
+	selectedPath := strings.TrimSpace(opts.Path)
+	selectedPath, err := d.initDownloadPath(selectedPath)
+	if err != nil {
+		return "", err
+	}
+	return selectedPath, nil
+}
+
+func (d *Downloader) persistDefaultPathBestEffort(defaultPath string) {
+	if defaultPath == "" {
+		return
+	}
+	if err := d.persistDefaultPath(defaultPath); err != nil {
+		d.Logger.Warn().Err(err).Msg("persist default download path failed")
+	}
+}
+
+func (d *Downloader) persistDefaultPath(defaultPath string) error {
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+
+	next := util.DeepClone(d.cfg.DownloaderStoreConfig)
+	if next.DownloadDir == defaultPath {
+		return nil
+	}
+	next.DownloadDir = defaultPath
+	if err := d.storage.Put(bucketConfig, "config", next); err != nil {
+		return err
+	}
+	d.cfg.DownloaderStoreConfig = next
+	return nil
 }
 
 func (d *Downloader) getProtocolConfig(name string, v any) bool {
@@ -1605,23 +1683,32 @@ func (d *Downloader) initOptions(opts *base.Options) (*base.Options, error) {
 		}
 		opts.Path = storeConfig.DownloadDir
 	}
+	path, err := d.initDownloadPath(opts.Path)
+	if err != nil {
+		return nil, err
+	}
+	opts.Path = path
+	return opts, nil
+}
+
+func (d *Downloader) initDownloadPath(path string) (string, error) {
 	// Replace placeholders in download path (e.g., %year%, %month%, %day%, %date%)
-	opts.Path = util.ReplacePathPlaceholders(opts.Path)
+	path = util.ReplacePathPlaceholders(path)
 
 	// if enable white download directory, check if the download directory is in the white list
 	if len(d.cfg.WhiteDownloadDirs) > 0 {
 		inWhiteList := false
 		for _, dir := range d.cfg.WhiteDownloadDirs {
-			if match, err := filepath.Match(dir, opts.Path); match && err == nil {
+			if match, err := filepath.Match(dir, path); match && err == nil {
 				inWhiteList = true
 				break
 			}
 		}
 		if !inWhiteList {
-			return nil, errors.New("download directory is not in white list")
+			return "", errors.New("download directory is not in white list")
 		}
 	}
-	return opts, nil
+	return path, nil
 }
 
 func (d *Downloader) statusMut(task *Task, fn func() (bool, error)) (bool, error) {

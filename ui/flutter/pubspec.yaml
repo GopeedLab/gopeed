@@ -58,11 +58,12 @@ dependencies:
   flutter_local_notifications: 20.1.0
   desktop_drop: ^0.4.4
   external_path: ^2.2.0
-  file_picker: ^8.1.7
+  file_picker: 9.0.2
   open_dir: ^0.0.2+1
   open_filex: ^4.7.0
   permission_handler: ^11.3.1
   flutter_foreground_task: ^8.2.0
+  flutter_markdown_plus: ^1.0.7
   path: ^1.9.1
   path_provider: ^2.1.5
   url_launcher: ^6.3.1

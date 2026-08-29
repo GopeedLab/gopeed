@@ -9,6 +9,7 @@ part of 'options.dart';
 Options _$OptionsFromJson(Map<String, dynamic> json) => Options(
   name: json['name'] as String? ?? '',
   path: json['path'] as String? ?? '',
+  asDefaultPath: json['asDefaultPath'] as bool? ?? false,
   selectFiles: (json['selectFiles'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList() ?? const [],
   extra: json['extra'],
 );
@@ -16,6 +17,7 @@ Options _$OptionsFromJson(Map<String, dynamic> json) => Options(
 Map<String, dynamic> _$OptionsToJson(Options instance) => <String, dynamic>{
   'name': instance.name,
   'path': instance.path,
+  'asDefaultPath': instance.asDefaultPath,
   'selectFiles': instance.selectFiles,
   'extra': ?instance.extra,
 };

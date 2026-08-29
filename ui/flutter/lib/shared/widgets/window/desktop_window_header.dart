@@ -1,26 +1,29 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../../core/window/app_window_chrome.dart';
 import '../../theme/app_design_tokens.dart';
 import '../../theme/app_palette.dart';
 
 class DesktopWindowHeader extends StatelessWidget {
   const DesktopWindowHeader({super.key});
 
-  bool get _supportsCustomChrome =>
-      !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux);
-
   @override
   Widget build(BuildContext context) {
-    if (!_supportsCustomChrome) {
+    if (!AppWindowChrome.usesCustomChrome) {
       return const SizedBox.shrink();
     }
 
     return SizedBox(
       height: AppDesignTokens.windowHeaderHeight,
-      child: const DragToMoveArea(child: SizedBox.expand()),
+      child: const Row(
+        children: [
+          Expanded(child: DragToMoveArea(child: SizedBox.expand())),
+          WindowCaptionControls(),
+        ],
+      ),
     );
   }
 }
@@ -35,9 +38,6 @@ class WindowCaptionControls extends StatefulWidget {
 class _WindowCaptionControlsState extends State<WindowCaptionControls> with WindowListener {
   static const double _captionGlyphSize = 20;
   bool _isMaximized = false;
-
-  bool get _showControls =>
-      !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux);
 
   @override
   void initState() {
@@ -67,7 +67,7 @@ class _WindowCaptionControlsState extends State<WindowCaptionControls> with Wind
 
   @override
   Widget build(BuildContext context) {
-    if (!_showControls) {
+    if (!AppWindowChrome.usesCustomChrome) {
       return const SizedBox.shrink();
     }
 

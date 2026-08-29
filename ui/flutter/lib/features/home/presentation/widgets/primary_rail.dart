@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/gopeed_app_mark.dart';
@@ -21,7 +22,7 @@ class PrimaryRail extends StatelessWidget {
     return Container(
       width: AppDesignTokens.railWidth,
       color: palette.railBg,
-      padding: const EdgeInsets.only(top: AppDesignTokens.windowHeaderHeight),
+      padding: EdgeInsets.only(top: AppWindowChrome.reservesHeaderInset ? AppDesignTokens.windowHeaderHeight : 0),
       child: Column(
         children: [
           SizedBox(
@@ -121,6 +122,7 @@ class _RailItem extends StatelessWidget {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: SizedBox(
           width: AppDesignTokens.railWidth,

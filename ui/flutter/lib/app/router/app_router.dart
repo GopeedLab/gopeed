@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/extensions/presentation/pages/extensions_page.dart';
+import '../../features/extensions/presentation/pages/extension_details_page.dart';
+import '../../features/extensions/application/extensions_controller.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/tasks/presentation/pages/create_task_window_page.dart';
@@ -43,7 +45,19 @@ class AppRouter {
                 ),
               ],
             ),
-            GoRoute(path: '/extensions', builder: (context, state) => const ExtensionsPage()),
+            GoRoute(
+              path: '/extensions',
+              builder: (context, state) => const ExtensionsPage(),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) => ExtensionDetailsPage(
+                    extensionId: state.pathParameters['id'] ?? '',
+                    initialItem: state.extra is ExtensionListItem ? state.extra as ExtensionListItem : null,
+                  ),
+                ),
+              ],
+            ),
             GoRoute(
               path: '/settings',
               builder: (context, state) => const SettingsPage(),

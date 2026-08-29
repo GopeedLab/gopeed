@@ -80,6 +80,13 @@ class ExtensionsState {
     return storeExtensions.map((ext) => ExtensionListItem(installed: installedMap[ext.id], store: ext)).toList();
   }
 
+  ExtensionListItem? findItem(String id) {
+    final installed = installedMap[id];
+    final store = storeMap[id];
+    if (installed == null && store == null) return null;
+    return ExtensionListItem(installed: installed, store: store);
+  }
+
   ExtensionsState copyWith({
     List<Extension>? installedExtensions,
     List<StoreExtension>? storeExtensions,

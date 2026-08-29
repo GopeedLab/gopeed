@@ -774,6 +774,74 @@ func TestDownloader_Create(t *testing.T) {
 	}
 }
 
+func TestDownloader_CreateDirectUsesPathAsDefault(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		downloader.Delete(nil, true)
+		downloader.Clear()
+	}()
+
+	initialDir := t.TempDir()
+	cfg, err := downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.DownloadDir = initialDir
+	if err := downloader.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	createAndWait := func(opts *base.Options) {
+		t.Helper()
+		done := make(chan struct{}, 1)
+		downloader.Listener(func(event *Event) {
+			if event.Key == EventKeyDone {
+				done <- struct{}{}
+			}
+		})
+		req := &base.Request{URL: "http://" + listener.Addr().String() + "/" + test.BuildName}
+		if _, err := downloader.CreateDirect(req, opts); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("task did not finish")
+		}
+	}
+
+	selectedRoot := t.TempDir()
+	defaultPathOpts := newTestDownloadOptAt(selectedRoot)
+	defaultPathOpts.AsDefaultPath = true
+	createAndWait(defaultPathOpts)
+	cfg, err = downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DownloadDir != selectedRoot {
+		t.Fatalf("DownloadDir = %q, want selected root %q", cfg.DownloadDir, selectedRoot)
+	}
+
+	cfg.DownloadDir = initialDir
+	if err := downloader.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	createAndWait(newTestDownloadOpt(t))
+	cfg, err = downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DownloadDir != initialDir {
+		t.Fatalf("DownloadDir = %q, want unchanged %q", cfg.DownloadDir, initialDir)
+	}
+}
+
 func TestDownloader_CreateNotInWhite(t *testing.T) {
 	listener := test.StartTestFileServer()
 	defer listener.Close()

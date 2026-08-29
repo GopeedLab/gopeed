@@ -1,17 +1,17 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
+import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../l10n/l10n.dart';
-import '../../../../util/util.dart';
 import '../../domain/task_record.dart';
 import '../task_record_localizations.dart';
 import '../../application/task_runtime_status_provider.dart';
@@ -40,81 +40,21 @@ class TaskDrawer extends ConsumerStatefulWidget {
 class _TaskDrawerState extends ConsumerState<TaskDrawer> {
   @override
   Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
     final isOpen = widget.task != null;
     final task = widget.task;
-    final drawerWidth = AppDesignTokens.taskDetailsDrawerWidth(MediaQuery.sizeOf(context).width);
-
-    return IgnorePointer(
-      ignoring: !isOpen,
-      child: Stack(
-        children: [
-          AnimatedOpacity(
-            opacity: isOpen ? 1 : 0,
-            duration: const Duration(milliseconds: 180),
-            child: GestureDetector(
-              onTap: widget.onClose,
-              child: ColoredBox(color: Colors.black.withValues(alpha: 0.35), child: const SizedBox.expand()),
+    return AppDetailDrawer(
+      open: isOpen,
+      title: context.l10n.taskDetails,
+      onClose: widget.onClose,
+      drawerKey: const ValueKey('task-details-drawer'),
+      child: task == null
+          ? const SizedBox.shrink()
+          : TaskDetailsView(
+              task: task,
+              mobile: false,
+              onOpenStorage: widget.onOpenStorage,
+              onUpdateUrl: widget.onUpdateUrl,
             ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: AnimatedSlide(
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutCubic,
-              offset: isOpen ? Offset.zero : const Offset(1, 0),
-              child: Container(
-                key: const ValueKey('task-details-drawer'),
-                width: drawerWidth,
-                decoration: BoxDecoration(
-                  color: palette.bg,
-                  border: Border(left: BorderSide(color: palette.border)),
-                ),
-                child: task == null
-                    ? const SizedBox.shrink()
-                    : Column(
-                        children: [
-                          SizedBox(
-                            height: AppDesignTokens.contentHeaderHeight,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      context.l10n.taskDetails,
-                                      style: TextStyle(
-                                        color: palette.textPrimary,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  _TaskDetailIconButton(
-                                    key: const ValueKey('task-details-close'),
-                                    label: context.l10n.close,
-                                    icon: const Icon(Icons.close, size: 18),
-                                    onPressed: widget.onClose,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: TaskDetailsView(
-                              task: task,
-                              mobile: false,
-                              onOpenStorage: widget.onOpenStorage,
-                              onUpdateUrl: widget.onUpdateUrl,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -141,6 +81,7 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
   final _urlController = TextEditingController();
   int _tabIndex = 0;
   bool _copied = false;
+  bool _storagePathCopied = false;
   bool _editingUrl = false;
   bool _updatingUrl = false;
 
@@ -156,6 +97,7 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
     if (widget.task.id != oldWidget.task.id) {
       _tabIndex = 0;
       _copied = false;
+      _storagePathCopied = false;
       _editingUrl = false;
       _updatingUrl = false;
       _urlController.text = widget.task.url;
@@ -232,6 +174,8 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
               child: _TaskInfoTab(
                 task: widget.task,
                 copied: _copied,
+                storagePathCopied: _storagePathCopied,
+                canOpenStorage: _canOpenStoragePath,
                 editingUrl: _editingUrl,
                 updatingUrl: _updatingUrl,
                 urlController: _urlController,
@@ -250,6 +194,10 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
                 onCopy: () async {
                   await Clipboard.setData(ClipboardData(text: widget.task.url));
                   if (mounted) setState(() => _copied = true);
+                },
+                onCopyStorage: () async {
+                  await Clipboard.setData(ClipboardData(text: widget.task.storagePath));
+                  if (mounted) setState(() => _storagePathCopied = true);
                 },
               ),
             ),
@@ -273,12 +221,16 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
     );
   }
 
+  bool get _canOpenStoragePath {
+    if (kIsWeb) return false;
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.linux => true,
+      _ => false,
+    };
+  }
+
   void _browseFiles() {
-    if (widget.mobile && !Util.isWeb()) {
-      context.push('/tasks/${Uri.encodeComponent(widget.task.id)}/files', extra: widget.task);
-      return;
-    }
-    unawaited(showTaskFileBrowserDialog(context, widget.task));
+    unawaited(browseTaskFiles(context, widget.task, mobile: widget.mobile));
   }
 
   Future<void> _saveUrl() async {
@@ -332,10 +284,13 @@ class _TaskInfoTab extends StatelessWidget {
   const _TaskInfoTab({
     required this.task,
     required this.copied,
+    required this.storagePathCopied,
+    required this.canOpenStorage,
     required this.editingUrl,
     required this.updatingUrl,
     required this.urlController,
     required this.onCopy,
+    required this.onCopyStorage,
     required this.onOpenStorage,
     required this.onEditUrl,
     required this.onCancelEditUrl,
@@ -344,10 +299,13 @@ class _TaskInfoTab extends StatelessWidget {
 
   final TaskRecord task;
   final bool copied;
+  final bool storagePathCopied;
+  final bool canOpenStorage;
   final bool editingUrl;
   final bool updatingUrl;
   final TextEditingController urlController;
   final VoidCallback onCopy;
+  final VoidCallback onCopyStorage;
   final VoidCallback onOpenStorage;
   final VoidCallback? onEditUrl;
   final VoidCallback onCancelEditUrl;
@@ -377,6 +335,8 @@ class _TaskInfoTab extends StatelessWidget {
         if (task.uploading) _InfoBlock(label: context.l10n.uploadSpeed, value: task.uploadSpeed!),
         if (task.status == TaskStatus.completed)
           _InfoBlock(label: context.l10n.downloadDuration, value: task.localizedDownloadDuration(context.l10n) ?? '—')
+        else if (task.status == TaskStatus.paused)
+          _InfoBlock(label: context.l10n.remaining, value: '—')
         else if (task.localizedRemaining(context.l10n) case final remaining?)
           _InfoBlock(label: context.l10n.remaining, value: remaining),
         if (task.createdAt case final createdAt?)
@@ -411,10 +371,18 @@ class _TaskInfoTab extends StatelessWidget {
           label: context.l10n.storagePath,
           value: task.storagePath,
           valueKey: const ValueKey('task-details-storage-value'),
-          actionKey: const ValueKey('task-details-open-storage'),
-          actionLabel: context.l10n.open,
-          actionIcon: Icons.folder_open_outlined,
-          onTap: onOpenStorage,
+          actionKey: ValueKey(canOpenStorage ? 'task-details-open-storage' : 'task-details-copy-storage'),
+          actionLabel: canOpenStorage
+              ? context.l10n.open
+              : storagePathCopied
+              ? context.l10n.copied
+              : context.l10n.copy,
+          actionIcon: canOpenStorage
+              ? Icons.folder_open_outlined
+              : storagePathCopied
+              ? Icons.check
+              : Icons.copy_outlined,
+          onTap: canOpenStorage ? onOpenStorage : onCopyStorage,
         ),
       ],
     );

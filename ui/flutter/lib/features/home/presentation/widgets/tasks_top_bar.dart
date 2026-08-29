@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
@@ -6,7 +5,6 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
-import '../../../../shared/widgets/window/desktop_window_header.dart';
 import '../../../../l10n/l10n.dart';
 
 class TasksTopBar extends StatelessWidget {
@@ -39,8 +37,6 @@ class TasksTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final headerBorder = palette.border;
-    final showCaptionControls =
-        !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux);
 
     return SizedBox(
       height: AppDesignTokens.contentHeaderHeight,
@@ -64,29 +60,20 @@ class TasksTopBar extends StatelessWidget {
                 children: [
                   _ActionIconButton(
                     icon: Icons.pause_outlined,
-                    palette: palette,
                     onPressed: !batchMode || canPauseSelected ? onPauseSelected : null,
                   ),
                   const SizedBox(width: 4),
                   _ActionIconButton(
                     icon: Icons.play_arrow_outlined,
-                    palette: palette,
                     onPressed: !batchMode || canResumeSelected ? onResumeSelected : null,
                   ),
                   const SizedBox(width: 4),
                   _ActionIconButton(
                     icon: Icons.delete_outline,
-                    palette: palette,
                     onPressed: selectedBatchCount > 0 ? onDeleteSelected : null,
                   ),
                   const SizedBox(width: 4),
-                  _ActionIconButton(icon: Icons.checklist_rtl_outlined, palette: palette, onPressed: onToggleBatchMode),
-                  if (showCaptionControls) ...[
-                    const SizedBox(width: 12),
-                    Container(width: 1, height: 24, color: palette.headerDivider),
-                    const SizedBox(width: 4),
-                    const WindowCaptionControls(),
-                  ],
+                  _ActionIconButton(icon: Icons.checklist_rtl_outlined, onPressed: onToggleBatchMode),
                 ],
               ),
             ],
@@ -140,40 +127,21 @@ class _AddTaskButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppPrimaryButton(onPressed: onPressed, leading: const Icon(Icons.add), child: Text(context.l10n.addTask));
+    return AppPrimaryButton(onPressed: onPressed, leading: const Icon(Icons.add), child: Text(context.l10n.create));
   }
 }
 
 class _ActionIconButton extends StatelessWidget {
-  const _ActionIconButton({required this.icon, required this.palette, required this.onPressed});
+  const _ActionIconButton({required this.icon, required this.onPressed});
 
   final IconData icon;
-  final AppPalette palette;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox.square(
       dimension: 30,
-      child: shad.ButtonStyleOverride(
-        decoration: (context, states, value) {
-          final disabled = states.contains(WidgetState.disabled);
-          final hovered = states.contains(WidgetState.hovered);
-          return BoxDecoration(
-            color: hovered && !disabled ? palette.cardHoverBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-            border: Border.all(color: disabled ? palette.border.withValues(alpha: 0.5) : palette.border),
-          );
-        },
-        iconTheme: (context, states, value) {
-          final disabled = states.contains(WidgetState.disabled);
-          return value.copyWith(
-            color: disabled ? palette.textMuted.withValues(alpha: 0.6) : palette.textSecondary,
-            size: 18,
-          );
-        },
-        child: shad.IconButton.outline(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: Icon(icon, size: 18)),
-      ),
+      child: shad.IconButton.outline(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: Icon(icon, size: 18)),
     );
   }
 }

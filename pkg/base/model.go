@@ -133,6 +133,8 @@ type Options struct {
 	Name string `json:"name"`
 	// Download file path
 	Path string `json:"path"`
+	// Use this path as the default download directory after creation succeeds
+	AsDefaultPath bool `json:"asDefaultPath,omitempty"`
 	// Select file indexes to download
 	SelectFiles []int `json:"selectFiles"`
 	// Extra info for specific fetcher

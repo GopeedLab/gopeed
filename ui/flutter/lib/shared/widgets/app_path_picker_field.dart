@@ -6,6 +6,8 @@ import '../../core/utils/breakpoints.dart';
 import '../services/download_directory_picker.dart';
 import 'app_tooltip.dart';
 
+enum AppPathPickerButtonStyle { ghost, outline }
+
 class AppPathPickerField extends StatefulWidget {
   const AppPathPickerField({
     super.key,
@@ -15,6 +17,12 @@ class AppPathPickerField extends StatefulWidget {
     this.pickerKey,
     this.hintText,
     this.desktopWidth,
+    this.filled,
+    this.border,
+    this.borderRadius,
+    this.padding,
+    this.onChanged,
+    this.pickerButtonStyle = AppPathPickerButtonStyle.ghost,
   }) : platformDownloadDirectory = false,
        onDirectoryPicked = null,
        allowAndroidEditing = false;
@@ -28,6 +36,12 @@ class AppPathPickerField extends StatefulWidget {
     this.desktopWidth,
     this.onDirectoryPicked,
     this.allowAndroidEditing = false,
+    this.filled,
+    this.border,
+    this.borderRadius,
+    this.padding,
+    this.onChanged,
+    this.pickerButtonStyle = AppPathPickerButtonStyle.ghost,
   }) : onPick = null,
        platformDownloadDirectory = true;
 
@@ -37,6 +51,12 @@ class AppPathPickerField extends StatefulWidget {
   final Key? pickerKey;
   final String? hintText;
   final double? desktopWidth;
+  final bool? filled;
+  final Border? border;
+  final BorderRadiusGeometry? borderRadius;
+  final EdgeInsetsGeometry? padding;
+  final ValueChanged<String>? onChanged;
+  final AppPathPickerButtonStyle pickerButtonStyle;
   final bool platformDownloadDirectory;
   final ValueChanged<String>? onDirectoryPicked;
   final bool allowAndroidEditing;
@@ -105,13 +125,21 @@ class _AppPathPickerFieldState extends State<AppPathPickerField> {
                   hintText: widget.hintText,
                   readOnly:
                       widget.platformDownloadDirectory &&
-                      DownloadDirectoryPicker.isMobile &&
-                      !(DownloadDirectoryPicker.isAndroid && widget.allowAndroidEditing),
+                      !DownloadDirectoryPicker.canEditManually(allowAndroidEditing: widget.allowAndroidEditing),
+                  filled: widget.filled,
+                  border: widget.border,
+                  borderRadius: widget.borderRadius,
+                  padding: widget.padding,
+                  onChanged: widget.onChanged,
+                  features: [
+                    if (onPick != null && widget.pickerButtonStyle == AppPathPickerButtonStyle.outline)
+                      _PathPickerSuffixFeature(pickerKey: widget.pickerKey, onPressed: onPick),
+                  ],
                 ),
               ),
             ),
           ),
-          if (onPick != null) ...[
+          if (onPick != null && widget.pickerButtonStyle == AppPathPickerButtonStyle.ghost) ...[
             const SizedBox(width: 2),
             shad.GhostButton(
               key: widget.pickerKey,
@@ -122,6 +150,27 @@ class _AppPathPickerFieldState extends State<AppPathPickerField> {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _PathPickerSuffixFeature extends shad.InputFeature {
+  const _PathPickerSuffixFeature({required this.pickerKey, required this.onPressed}) : super(skipFocusTraversal: false);
+
+  final Key? pickerKey;
+  final VoidCallback onPressed;
+
+  @override
+  shad.InputFeatureState createState() => _PathPickerSuffixFeatureState();
+}
+
+class _PathPickerSuffixFeatureState extends shad.InputFeatureState<_PathPickerSuffixFeature> {
+  @override
+  Iterable<Widget> buildSuffix() sync* {
+    yield shad.IconButton.outline(
+      key: feature.pickerKey,
+      onPressed: feature.onPressed,
+      icon: const Icon(Icons.folder_open_outlined, size: 17),
     );
   }
 }

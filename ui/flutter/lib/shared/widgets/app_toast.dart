@@ -14,8 +14,7 @@ void showAppToast(BuildContext context, String message, {AppToastType type = App
   final palette = AppPalette.of(context);
   final borderColor = switch (type) {
     AppToastType.error => palette.error.withValues(alpha: 0.55),
-    AppToastType.success => palette.success.withValues(alpha: 0.55),
-    AppToastType.info => palette.border,
+    AppToastType.success || AppToastType.info => palette.border,
   };
   shad.showToast(
     context: context,

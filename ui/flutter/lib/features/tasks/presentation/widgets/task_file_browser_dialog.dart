@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
+import '../../../../util/util.dart';
 import '../../domain/task_record.dart';
 import 'task_file_manager.dart';
+
+Future<void> browseTaskFiles(BuildContext context, TaskRecord task, {required bool mobile}) async {
+  if (mobile && !Util.isWeb()) {
+    await context.push('/tasks/${Uri.encodeComponent(task.id)}/files', extra: task);
+    return;
+  }
+  await showTaskFileBrowserDialog(context, task);
+}
 
 Future<void> showTaskFileBrowserDialog(BuildContext context, TaskRecord task) async {
   final overlay = const shad.DialogOverlayHandler().show<void>(
