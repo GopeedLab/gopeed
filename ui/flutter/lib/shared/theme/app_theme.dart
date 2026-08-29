@@ -17,6 +17,8 @@ class AppTheme {
   static bool get _usesWindowsFontFallback => !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
   static shad.Typography _typography() {
+    if (defaultTargetPlatform == TargetPlatform.android) return _androidTypography;
+
     const typography = shad.Typography.geist();
     if (!_usesWindowsFontFallback) return typography;
 
@@ -77,6 +79,12 @@ class AppTheme {
       platform: defaultTargetPlatform,
     );
   }
+
+  static const shad.Typography _androidTypography = shad.Typography.geist(
+    sans: material.TextStyle(),
+    mono: material.TextStyle(fontFamily: 'monospace'),
+    inlineCode: material.TextStyle(fontFamily: 'monospace', fontSize: 14, fontWeight: material.FontWeight.w600),
+  );
 
   static material.ThemeData materialLight([AppThemeColor themeColor = AppThemeColor.green]) {
     return _buildMaterialTheme(palette: AppPalette.lightFor(themeColor), brightness: Brightness.light);

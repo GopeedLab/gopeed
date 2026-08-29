@@ -7,6 +7,18 @@ import 'package:gopeed/shared/widgets/detail/app_detail_surface_desktop.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
+  test('Android themes use platform fonts', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      final typography = AppTheme.light().typography;
+
+      expect(typography.sans.fontFamily, isNull);
+      expect(typography.mono.fontFamily, 'monospace');
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   test('Windows themes use a deterministic CJK font fallback', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     try {
