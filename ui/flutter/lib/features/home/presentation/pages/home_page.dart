@@ -1,12 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
-import 'package:window_manager/window_manager.dart';
 
 import '../../../../app/application/app_runtime_controller.dart';
 import '../../../../core/capabilities/app_capabilities.dart';
@@ -302,11 +300,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       );
     }
 
-    if (kIsWeb || defaultTargetPlatform == TargetPlatform.macOS) {
-      return desktopBody;
-    }
-
-    return DragToResizeArea(resizeEdgeSize: 6, child: desktopBody);
+    return desktopBody;
   }
 
   void _setActiveFilter(_TaskFilter filter) {

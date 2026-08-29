@@ -130,10 +130,7 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
           height: 48,
           padding: EdgeInsets.symmetric(horizontal: contentPadding),
           decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: palette.border),
-              bottom: BorderSide(color: palette.border),
-            ),
+            border: Border(bottom: BorderSide(color: palette.border)),
           ),
           child: Row(
             children: [
@@ -317,7 +314,7 @@ class _TaskInfoTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _InfoBlock(label: context.l10n.taskName, value: task.name),
+        _InfoBlock(label: context.l10n.name, value: task.name),
         _InfoBlock(
           label: context.l10n.status,
           value: task.localizedStatus(context.l10n),

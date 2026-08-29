@@ -22,6 +22,7 @@ import '../../../../api/model/request.dart';
 import '../../../../api/model/resolve_result.dart';
 import '../../../../api/model/resolve_task.dart';
 import '../../../../core/capabilities/app_capabilities.dart';
+import '../../../../core/utils/breakpoints.dart';
 import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
@@ -373,7 +374,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                             border: Border.all(color: palette.border),
                             borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            pickerButtonStyle: AppPathPickerButtonStyle.outline,
                             onChanged: (_) {
                               if (_asDefaultPath) {
                                 setState(() => _asDefaultPath = false);
@@ -384,42 +384,24 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          SizedBox(
+                          _DirectoryOptions(
                             key: const ValueKey('create-task-directory-options-row'),
-                            width: double.infinity,
-                            height: 30,
-                            child: flutter.Row(
-                              key: const ValueKey('create-task-directory-options-layout'),
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _AsDefaultPathToggle(
-                                  value: _asDefaultPath,
-                                  onChanged: (value) => setState(() => _asDefaultPath = value),
+                            asDefaultPath: _asDefaultPath,
+                            onAsDefaultPathChanged: (value) => setState(() => _asDefaultPath = value),
+                            shortcuts: [
+                              for (final entry in _downloadCategories.indexed)
+                                _DirectoryShortcut(
+                                  index: entry.$1,
+                                  label: _categoryDisplayName(context, entry.$2),
+                                  path: _renderPathPlaceholders(entry.$2.path),
                                 ),
-                                if (_downloadCategories.isNotEmpty)
-                                  flutter.Flexible(
-                                    child: Padding(
-                                      padding: const EdgeInsetsDirectional.only(start: 16),
-                                      child: _DirectoryShortcuts(
-                                        shortcuts: [
-                                          for (final entry in _downloadCategories.indexed)
-                                            _DirectoryShortcut(
-                                              index: entry.$1,
-                                              label: _categoryDisplayName(context, entry.$2),
-                                              path: _renderPathPlaceholders(entry.$2.path),
-                                            ),
-                                        ],
-                                        onSelected: (shortcut) {
-                                          _directoryController.text = shortcut.path;
-                                          if (_asDefaultPath) {
-                                            setState(() => _asDefaultPath = false);
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
+                            ],
+                            onShortcutSelected: (shortcut) {
+                              _directoryController.text = shortcut.path;
+                              if (_asDefaultPath) {
+                                setState(() => _asDefaultPath = false);
+                              }
+                            },
                           ),
                         ],
                       ),
@@ -714,10 +696,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         ),
       ),
     );
-
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-      return DragToResizeArea(resizeEdgeSize: 6, child: page);
-    }
 
     return page;
   }
@@ -1427,10 +1405,63 @@ class _DirectoryShortcut {
   final String path;
 }
 
+class _DirectoryOptions extends StatelessWidget {
+  const _DirectoryOptions({
+    super.key,
+    required this.asDefaultPath,
+    required this.onAsDefaultPathChanged,
+    required this.shortcuts,
+    required this.onShortcutSelected,
+  });
+
+  final bool asDefaultPath;
+  final ValueChanged<bool> onAsDefaultPathChanged;
+  final List<_DirectoryShortcut> shortcuts;
+  final ValueChanged<_DirectoryShortcut> onShortcutSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final stacked = shortcuts.isNotEmpty && MediaQuery.sizeOf(context).width < Breakpoints.mobile;
+    final toggle = _AsDefaultPathToggle(value: asDefaultPath, onChanged: onAsDefaultPathChanged);
+    final shortcutList = _DirectoryShortcuts(shortcuts: shortcuts, alignEnd: !stacked, onSelected: onShortcutSelected);
+
+    if (stacked) {
+      return Column(
+        key: const ValueKey('create-task-directory-options-layout'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 30,
+            child: Align(alignment: Alignment.centerLeft, child: toggle),
+          ),
+          const SizedBox(height: 8),
+          shortcutList,
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 30,
+      child: flutter.Row(
+        key: const ValueKey('create-task-directory-options-layout'),
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          toggle,
+          if (shortcuts.isNotEmpty)
+            flutter.Flexible(
+              child: Padding(padding: const EdgeInsetsDirectional.only(start: 16), child: shortcutList),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DirectoryShortcuts extends StatelessWidget {
-  const _DirectoryShortcuts({required this.shortcuts, required this.onSelected});
+  const _DirectoryShortcuts({required this.shortcuts, required this.alignEnd, required this.onSelected});
 
   final List<_DirectoryShortcut> shortcuts;
+  final bool alignEnd;
   final ValueChanged<_DirectoryShortcut> onSelected;
 
   @override
@@ -1440,8 +1471,9 @@ class _DirectoryShortcuts extends StatelessWidget {
       height: 28,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        reverse: true,
+        reverse: alignEnd,
         child: Row(
+          key: const ValueKey('create-task-directory-shortcuts-content'),
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final shortcut in shortcuts) ...[

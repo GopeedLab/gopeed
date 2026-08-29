@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart' show Colors;
+import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
+import '../../../l10n/l10n.dart';
 import '../../theme/app_design_tokens.dart';
 import '../../theme/app_palette.dart';
+import '../app_tooltip.dart';
 
 class AppDetailDrawer extends StatelessWidget {
   const AppDetailDrawer({
@@ -52,7 +54,10 @@ class AppDetailDrawer extends StatelessWidget {
                 width: drawerWidth,
                 decoration: BoxDecoration(
                   color: light ? palette.cardBg : palette.bg,
-                  border: Border(left: BorderSide(color: light ? palette.headerDivider : palette.border)),
+                  border: Border(
+                    left: BorderSide(color: light ? palette.headerDivider : palette.border),
+                    top: BorderSide(color: palette.headerDivider),
+                  ),
                   boxShadow: light
                       ? [
                           BoxShadow(
@@ -66,16 +71,42 @@ class AppDetailDrawer extends StatelessWidget {
                 child: Column(
                   children: [
                     SizedBox(
+                      key: const ValueKey('app-detail-drawer-header'),
                       height: AppDesignTokens.contentHeaderHeight,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border(bottom: BorderSide(color: palette.headerDivider)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsetsDirectional.only(start: 24, end: 16),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: palette.textPrimary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              AppTooltip(
+                                message: context.l10n.close,
+                                child: SizedBox.square(
+                                  dimension: 28,
+                                  child: shad.IconButton.ghost(
+                                    key: const ValueKey('app-detail-drawer-close-button'),
+                                    size: shad.ButtonSize.xSmall,
+                                    onPressed: onClose,
+                                    icon: Icon(Icons.close, size: 18, color: palette.textSecondary),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

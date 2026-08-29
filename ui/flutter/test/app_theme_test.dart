@@ -69,6 +69,8 @@ void main() {
       final decoration = drawer.decoration! as BoxDecoration;
       final border = decoration.border! as Border;
       expect(border.left.color, light ? palette.headerDivider : palette.border);
+      expect(border.top.color, palette.headerDivider);
+      expect(find.byKey(const ValueKey('app-detail-drawer-close-button')), findsOneWidget);
       return decoration;
     }
 

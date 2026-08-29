@@ -1,3 +1,3 @@
 class Breakpoints {
-  static const double mobile = 900;
+  static const double mobile = 720;
 }

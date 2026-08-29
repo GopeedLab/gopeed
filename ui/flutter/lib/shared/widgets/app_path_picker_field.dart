@@ -41,7 +41,7 @@ class AppPathPickerField extends StatefulWidget {
     this.borderRadius,
     this.padding,
     this.onChanged,
-    this.pickerButtonStyle = AppPathPickerButtonStyle.ghost,
+    this.pickerButtonStyle = AppPathPickerButtonStyle.outline,
   }) : onPick = null,
        platformDownloadDirectory = true;
 

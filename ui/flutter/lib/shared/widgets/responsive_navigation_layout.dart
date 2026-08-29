@@ -23,7 +23,7 @@ class ResponsiveNavigationLayout<T> extends StatelessWidget {
     required this.desktopTitle,
     this.desktopFooter,
     this.mobileHeader,
-    this.breakpoint = Breakpoints.mobile,
+    this.mobileBreakpoint = Breakpoints.mobile,
   });
 
   final List<ResponsiveNavigationItem<T>> items;
@@ -33,12 +33,13 @@ class ResponsiveNavigationLayout<T> extends StatelessWidget {
   final String desktopTitle;
   final Widget? desktopFooter;
   final Widget? mobileHeader;
-  final double breakpoint;
+  final double mobileBreakpoint;
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= breakpoint;
-    if (isDesktop) {
+    final width = MediaQuery.sizeOf(context).width;
+    final mobile = width < mobileBreakpoint;
+    if (!mobile) {
       return Row(
         children: [
           SecondaryNavigationPane<T>(

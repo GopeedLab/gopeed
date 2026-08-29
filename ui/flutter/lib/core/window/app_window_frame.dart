@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../../shared/widgets/window/desktop_window_header.dart';
 import 'app_window_chrome.dart';
@@ -29,10 +30,14 @@ class AppWindowFrame extends StatelessWidget {
     }
 
     if (AppWindowChrome.clipsRoundedCorners) {
-      return DecoratedBox(
+      framedChild = DecoratedBox(
         decoration: const BoxDecoration(color: Colors.transparent),
         child: framedChild,
       );
+    }
+
+    if (AppWindowChrome.usesCustomChrome) {
+      framedChild = DragToResizeArea(resizeEdgeSize: 6, child: framedChild);
     }
 
     return framedChild;

@@ -47,12 +47,22 @@ class TasksTopBar extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 240,
-                child: _SearchField(controller: searchController, palette: palette, borderColor: headerBorder),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                    key: const ValueKey('tasks-search-field-container'),
+                    constraints: const BoxConstraints(maxWidth: 240),
+                    child: _SearchField(controller: searchController, palette: palette, borderColor: headerBorder),
+                  ),
+                ),
               ),
-              const Spacer(),
-              _AddTaskButton(onPressed: onAddTask),
+              const SizedBox(width: 16),
+              ConstrainedBox(
+                key: const ValueKey('tasks-create-button-container'),
+                constraints: const BoxConstraints(maxWidth: 190),
+                child: _AddTaskButton(onPressed: onAddTask),
+              ),
               const SizedBox(width: 16),
               Row(
                 key: const ValueKey('tasks-top-action-buttons'),
@@ -127,7 +137,11 @@ class _AddTaskButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppPrimaryButton(onPressed: onPressed, leading: const Icon(Icons.add), child: Text(context.l10n.create));
+    return AppPrimaryButton(
+      onPressed: onPressed,
+      leading: const Icon(Icons.add),
+      child: Text(context.l10n.create, maxLines: 1, overflow: TextOverflow.ellipsis),
+    );
   }
 }
 

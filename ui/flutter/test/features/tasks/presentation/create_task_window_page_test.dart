@@ -23,7 +23,7 @@ void main() {
   testWidgets('browser extension request parameters populate the form and survive submission', (
     WidgetTester tester,
   ) async {
-    tester.view.physicalSize = const Size(760, 720);
+    tester.view.physicalSize = const Size(1024, 720);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -160,6 +160,32 @@ void main() {
       tester.getTopRight(find.byKey(const ValueKey('create-task-category-3'))).dx,
       closeTo(tester.getTopRight(directoryComponent).dx, 0.5),
     );
+
+    tester.view.physicalSize = const Size(520, 720);
+    await tester.pumpAndSettle();
+    final shortcutContent = find.byKey(const ValueKey('create-task-directory-shortcuts-content'));
+    expect(tester.getTopLeft(shortcutRow).dy, greaterThan(tester.getBottomLeft(rememberDirectoryRow).dy));
+    expect(tester.getSize(shortcutRow).width, closeTo(tester.getSize(directoryComponent).width, 0.5));
+    expect(tester.getSize(shortcutContent).width, greaterThan(tester.getSize(shortcutRow).width));
+    final shortcutScrollable = find.descendant(of: shortcutRow, matching: find.byType(Scrollable));
+    expect(tester.state<ScrollableState>(shortcutScrollable).position.maxScrollExtent, greaterThan(0));
+
+    tester.view.physicalSize = const Size(719, 720);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<shad.Column>(find.byKey(const ValueKey('create-task-directory-options-layout'))),
+      isA<shad.Column>(),
+    );
+
+    tester.view.physicalSize = const Size(720, 720);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<flutter.Row>(find.byKey(const ValueKey('create-task-directory-options-layout'))).mainAxisAlignment,
+      MainAxisAlignment.spaceBetween,
+    );
+
+    tester.view.physicalSize = const Size(1024, 720);
+    await tester.pumpAndSettle();
 
     await tester.tap(directoryPicker);
     await tester.pumpAndSettle();

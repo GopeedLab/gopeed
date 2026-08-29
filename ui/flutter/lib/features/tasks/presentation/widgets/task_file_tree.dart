@@ -124,7 +124,7 @@ class _TaskDownloadProgress extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      context.l10n.taskProgress,
+                      context.l10n.progress,
                       style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ),

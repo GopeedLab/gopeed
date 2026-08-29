@@ -110,7 +110,7 @@ class _SecondaryNavigationPaneItem<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return MouseRegion(
+    final content = MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -164,5 +164,6 @@ class _SecondaryNavigationPaneItem<T> extends StatelessWidget {
         ),
       ),
     );
+    return content;
   }
 }

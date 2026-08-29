@@ -94,6 +94,7 @@ class ExtensionDetailView extends ConsumerWidget {
                         'v${current.version}',
                         style: TextStyle(color: palette.textMuted, fontSize: 11.5, fontWeight: FontWeight.w600),
                       ),
+                      if (store != null) _ExtensionStats(store: store),
                       if (installed != null)
                         _ExtensionStatus(
                           label: canUpdate ? context.l10n.extensionCanUpdate : context.l10n.extensionInstalled,
@@ -137,22 +138,20 @@ class ExtensionDetailView extends ConsumerWidget {
                 child: Text(context.l10n.newVersionUpdate),
               ),
             if ((current.homepage ?? '').isNotEmpty)
-              shad.GhostButton(
+              shad.SecondaryButton(
+                key: const ValueKey('extension-details-homepage'),
                 onPressed: () => unawaited(_openUrl(current.homepage!)),
                 child: _LinkButtonContent(icon: Icons.home_outlined, label: context.l10n.homepage),
               ),
             if ((current.repoUrl ?? '').isNotEmpty)
-              shad.GhostButton(
+              shad.SecondaryButton(
+                key: const ValueKey('extension-details-github'),
                 onPressed: () => unawaited(_openUrl(current.repoUrl!)),
                 child: const _LinkButtonContent(icon: Icons.code, label: 'GitHub'),
               ),
           ],
         ),
-        if (store != null) ...[
-          SizedBox(height: mobile ? 24 : 28),
-          _ExtensionMetadata(store: store),
-          _ExtensionReadme(item: current, mobile: mobile),
-        ],
+        if (store != null) ...[SizedBox(height: mobile ? 24 : 28), _ExtensionReadme(item: current, mobile: mobile)],
       ],
     );
   }
@@ -340,50 +339,21 @@ class _LinkButtonContent extends StatelessWidget {
   }
 }
 
-class _ExtensionMetadata extends StatelessWidget {
-  const _ExtensionMetadata({required this.store});
+class _ExtensionStats extends StatelessWidget {
+  const _ExtensionStats({required this.store});
 
   final StoreExtension store;
 
   @override
   Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    return Container(
-      key: const ValueKey('extension-details-metadata'),
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: palette.border),
-          bottom: BorderSide(color: palette.border),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: 18,
-            runSpacing: 8,
-            children: [
-              _MetadataItem(icon: Icons.star_rounded, value: store.stars.toString()),
-              _MetadataItem(icon: Icons.download_outlined, value: store.installCount.toString()),
-            ],
-          ),
-          if (store.topics.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 6,
-              children: [
-                for (final topic in store.topics)
-                  Text(
-                    topic.startsWith('#') ? topic : '#$topic',
-                    style: TextStyle(color: palette.textMuted, fontSize: 11.5, fontWeight: FontWeight.w600),
-                  ),
-              ],
-            ),
-          ],
-        ],
-      ),
+    return Row(
+      key: const ValueKey('extension-details-stats'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _MetadataItem(icon: Icons.star_rounded, value: store.stars.toString()),
+        const SizedBox(width: 12),
+        _MetadataItem(icon: Icons.download_outlined, value: store.installCount.toString()),
+      ],
     );
   }
 }

@@ -27,7 +27,7 @@ class ResponsiveMenuLayout<T> extends StatefulWidget {
     this.mobileContentVisible = false,
     this.onMobileBack,
     this.sidebarFooter,
-    this.breakpoint = Breakpoints.mobile,
+    this.mobileBreakpoint = Breakpoints.mobile,
   });
 
   final String title;
@@ -39,7 +39,7 @@ class ResponsiveMenuLayout<T> extends StatefulWidget {
   final bool mobileContentVisible;
   final VoidCallback? onMobileBack;
   final Widget? sidebarFooter;
-  final double breakpoint;
+  final double mobileBreakpoint;
 
   @override
   State<ResponsiveMenuLayout<T>> createState() => _ResponsiveMenuLayoutState<T>();
@@ -48,8 +48,9 @@ class ResponsiveMenuLayout<T> extends StatefulWidget {
 class _ResponsiveMenuLayoutState<T> extends State<ResponsiveMenuLayout<T>> {
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= widget.breakpoint;
-    if (isDesktop) {
+    final width = MediaQuery.sizeOf(context).width;
+    final mobile = width < widget.mobileBreakpoint;
+    if (!mobile) {
       return Row(
         children: [
           SecondaryNavigationPane<T>(

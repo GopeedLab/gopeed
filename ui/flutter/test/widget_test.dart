@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
+import 'package:window_manager/window_manager.dart';
 import 'package:gopeed/app/app.dart';
 import 'package:gopeed/app/application/app_appearance_controller.dart';
 import 'package:gopeed/app/application/app_deep_link_controller.dart';
@@ -120,6 +121,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(DesktopWindowHeader), findsOneWidget);
+    expect(find.byType(DragToResizeArea), findsOneWidget);
     expect(
       find.descendant(of: find.byType(DesktopWindowHeader), matching: find.byType(WindowCaptionControls)),
       findsOneWidget,
@@ -162,7 +164,14 @@ void main() {
     expect(find.textContaining('ACTIVE CONNECTIONS'), findsNothing);
     expect(find.ancestor(of: find.text('Create Task'), matching: find.byType(AppPrimaryButton)), findsOneWidget);
     final taskActions = find.byKey(const ValueKey('tasks-top-action-buttons'));
+    final taskSearch = find.byKey(const ValueKey('tasks-search-field-container'));
+    final createButton = find.byKey(const ValueKey('tasks-create-button-container'));
     expect(find.descendant(of: taskActions, matching: find.byType(shad.IconButton)), findsNWidgets(4));
+    expect(tester.getSize(taskSearch).width, 240);
+    expect(
+      tester.getRect(taskActions).right,
+      closeTo(tester.getRect(find.byType(TasksTopBar)).right - AppDesignTokens.space32, 0.01),
+    );
     expect(
       tester.widget<Container>(find.byKey(const ValueKey('primary-rail-active-indicator'))).color,
       AppPalette.light.textPrimary,
@@ -209,6 +218,53 @@ void main() {
       find.descendant(of: find.byKey(const ValueKey('speed-monitor-values')), matching: find.byType(Icon)),
       findsNWidgets(2),
     );
+
+    tester.view.physicalSize = const Size(800, 768);
+    await tester.pumpAndSettle();
+    final compactSearchWidth = tester.getSize(taskSearch).width;
+    expect(tester.getSize(find.byType(PrimaryRail)).width, AppDesignTokens.railWidth);
+    expect(compactSearchWidth, lessThan(240));
+    expect(tester.getRect(createButton).left - tester.getRect(taskSearch).right, greaterThanOrEqualTo(16));
+    expect(
+      tester.getSize(find.byKey(const ValueKey('secondary-navigation-pane'))).width,
+      AppDesignTokens.filterSidebarWidth,
+    );
+    expect(find.byKey(const ValueKey('speed-monitor-gauge')), findsOneWidget);
+    expect(
+      tester.getRect(taskActions).right,
+      closeTo(tester.getRect(find.byType(TasksTopBar)).right - AppDesignTokens.space32, 0.01),
+    );
+    expect(tester.takeException(), isNull);
+
+    final primaryRailGesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await primaryRailGesture.addPointer(
+      location: tester.getCenter(find.byKey(const ValueKey('primary-rail-tasks-item'))),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Tasks'), findsOneWidget);
+    await primaryRailGesture.removePointer();
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(720, 768);
+    await tester.pumpAndSettle();
+    expect(find.byType(PrimaryRail), findsOneWidget);
+    expect(tester.getSize(find.byType(PrimaryRail)).width, AppDesignTokens.railWidth);
+    expect(tester.getSize(taskSearch).width, lessThan(compactSearchWidth));
+    expect(tester.getRect(createButton).left - tester.getRect(taskSearch).right, greaterThanOrEqualTo(16));
+    expect(
+      tester.getSize(find.byKey(const ValueKey('secondary-navigation-pane'))).width,
+      AppDesignTokens.filterSidebarWidth,
+    );
+    expect(
+      tester.getRect(taskActions).right,
+      closeTo(tester.getRect(find.byType(TasksTopBar)).right - AppDesignTokens.space32, 0.01),
+    );
+    expect(tester.takeException(), isNull);
+
+    tester.view.physicalSize = const Size(719, 768);
+    await tester.pumpAndSettle();
+    expect(find.byType(PrimaryRail), findsNothing);
+    expect(find.byType(PrimaryBottomNavigation), findsOneWidget);
   });
 
   testWidgets('task loading failures use the empty state without retry controls', (WidgetTester tester) async {
@@ -397,11 +453,20 @@ void main() {
     expect(find.byKey(const ValueKey('extension-details-close')), findsNothing);
     expect(
       find.descendant(of: find.byKey(const ValueKey('extension-details-drawer')), matching: find.byIcon(Icons.close)),
-      findsNothing,
+      findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('app-detail-drawer-close-button')), findsOneWidget);
     expect(find.byKey(const ValueKey('extension-details-hero')), findsOneWidget);
-    expect(find.byKey(const ValueKey('extension-details-metadata')), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-details-metadata')), findsNothing);
+    final stats = find.byKey(const ValueKey('extension-details-stats'));
+    expect(stats, findsOneWidget);
+    expect(find.descendant(of: stats, matching: find.byIcon(Icons.star_rounded)), findsOneWidget);
+    expect(find.descendant(of: stats, matching: find.byIcon(Icons.download_outlined)), findsOneWidget);
     expect(find.byKey(const ValueKey('extension-details-readme')), findsOneWidget);
+    expect(find.text('#download'), findsNothing);
+    for (final key in ['extension-details-homepage', 'extension-details-github']) {
+      expect(tester.widget(find.byKey(ValueKey(key))), isA<shad.SecondaryButton>());
+    }
     final drawerRect = tester.getRect(find.byKey(const ValueKey('extension-details-drawer')));
     final listRect = tester.getRect(find.byKey(const ValueKey('extensions-list-scroll-view')));
     expect(drawerRect.top, listRect.top);
@@ -412,6 +477,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(controller.installCalls, 1);
     expect(find.byKey(const ValueKey('app-toast-content')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('app-detail-drawer-close-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('extension-details-content')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -732,6 +801,18 @@ void main() {
     expect(find.text('SETTINGS'), findsNothing);
   });
 
+  testWidgets('responsive menu keeps the full desktop sidebar from 720 pixels', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(800, 760));
+    await tester.pumpWidget(const _ResponsiveMenuHarness());
+    await tester.pumpAndSettle();
+
+    final pane = find.byKey(const ValueKey('secondary-navigation-pane'));
+    expect(tester.getSize(pane).width, AppDesignTokens.filterSidebarWidth);
+    expect(find.text('SETTINGS'), findsOneWidget);
+    expect(find.text('General'), findsOneWidget);
+    expect(find.text('General content'), findsOneWidget);
+  });
+
   testWidgets('responsive mobile menu reserves the safe area and uses comfortable entry sizes', (
     WidgetTester tester,
   ) async {
@@ -853,6 +934,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('settings keep the desktop shell at the 720 pixel boundary', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(720, 900));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(FakeSettingsController.new),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PrimaryRail), findsOneWidget);
+    expect(find.byType(PrimaryBottomNavigation), findsNothing);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('secondary-navigation-pane'))).width,
+      AppDesignTokens.filterSidebarWidth,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('dependent settings follow the legacy visibility rules', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     await tester.pumpWidget(
@@ -968,7 +1072,9 @@ void main() {
 
     final editableText = find.descendant(of: directoryInput, matching: find.byType(EditableText));
     expect(tester.getRect(editableText).right, lessThan(tester.getRect(directoryPicker).left));
-    expect(tester.getRect(directoryPicker).left - tester.getRect(directoryInput).right, 2);
+    expect(find.descendant(of: directoryInput, matching: directoryPicker), findsOneWidget);
+    expect(tester.getRect(directoryPicker).right, closeTo(tester.getRect(directoryInput).right, 0.01));
+    expect(tester.widget<shad.IconButton>(directoryPicker).variance, same(shad.ButtonVariance.outline));
     final pathTooltip = find.ancestor(of: directoryInput, matching: find.byType(AppTooltip));
     expect(pathTooltip, findsOneWidget);
     expect(tester.widget<AppTooltip>(pathTooltip).message, longDirectory);
@@ -978,7 +1084,7 @@ void main() {
       matching: find.byType(shad.GhostButton),
     );
     expect(categoryActions, findsWidgets);
-    expect(tester.getSize(directoryPicker), tester.getSize(categoryActions.last));
+    expect(tester.getSize(directoryPicker).height, tester.getSize(directoryInput).height);
     expect(tester.getTopRight(directoryPicker).dx, closeTo(tester.getTopRight(categoryActions.last).dx, 0.01));
     expect(tester.takeException(), isNull);
   });
@@ -2643,7 +2749,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Progress'), findsOneWidget);
+    expect(find.text('Progress'), findsNWidgets(2));
     expect(find.text('Size'), findsOneWidget);
     expect(find.text('skipped.mp3'), findsOneWidget);
     expect(find.text('selected.mp3'), findsOneWidget);
@@ -2818,7 +2924,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final labelTopLeft = tester.getTopLeft(find.text('Task Name'));
+    final labelTopLeft = tester.getTopLeft(find.text('Name'));
     final valueTopLeft = tester.getTopLeft(find.text('details.zip'));
     expect((labelTopLeft.dy - valueTopLeft.dy).abs(), lessThan(5));
     expect(valueTopLeft.dx, greaterThan(labelTopLeft.dx));
@@ -2837,6 +2943,11 @@ void main() {
     expect(urlValue.data!.replaceAll('\u200B', ''), task.url);
     expect(urlValue.semanticsLabel, task.url);
     expect(find.text('Task Details'), findsOneWidget);
+    expect(find.text('Task Name'), findsNothing);
+    final detailHeader = tester.widget<DecoratedBox>(
+      find.descendant(of: find.byKey(const ValueKey('app-detail-drawer-header')), matching: find.byType(DecoratedBox)),
+    );
+    expect(((detailHeader.decoration as BoxDecoration).border! as Border).bottom.width, 1);
     expect(find.text('Details'), findsOneWidget);
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Statistics'), findsOneWidget);
@@ -2866,6 +2977,8 @@ void main() {
 
     await tester.tap(find.text('Files'));
     await tester.pump();
+    expect(find.text('Progress'), findsWidgets);
+    expect(find.text('Task progress'), findsNothing);
     final browseFilesAction = find.byKey(const ValueKey('task-files-browse'));
     expect(browseFilesAction, findsOneWidget);
     final totalProgress = find.byKey(const ValueKey('task-files-total-progress'));
@@ -2987,8 +3100,9 @@ void main() {
     expect(find.byKey(const ValueKey('task-details-close')), findsNothing);
     expect(
       find.descendant(of: find.byKey(const ValueKey('task-details-drawer')), matching: find.byIcon(Icons.close)),
-      findsNothing,
+      findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('app-detail-drawer-close-button')), findsOneWidget);
     expect(find.text('Copy'), findsNothing);
     expect(find.text('Edit'), findsNothing);
     expect(find.text('Open'), findsNothing);
@@ -4230,6 +4344,7 @@ class FakeExtensionsController extends ExtensionsController {
           title: 'Extension $index',
           description: 'Extension description $index',
           readme: '# Extension $index README\n\nExtension details for testing.',
+          homepage: 'https://gopeed.com/extensions/extension-$index',
           version: '1.0.0',
           installCount: index,
           stars: index,
