@@ -14,6 +14,7 @@ class AppLoadingButton extends StatelessWidget {
     required this.loading,
     required this.child,
     this.icon,
+    this.alignment,
     this.variant = AppLoadingButtonVariant.secondary,
   });
 
@@ -21,24 +22,29 @@ class AppLoadingButton extends StatelessWidget {
   final bool loading;
   final Widget child;
   final Widget? icon;
+  final AlignmentGeometry? alignment;
   final AppLoadingButtonVariant variant;
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final leading = loading ? _LoadingIcon(variant: variant) : icon;
+    final replaceChild = loading && icon == null;
+    final leading = loading && icon != null ? _LoadingIcon(variant: variant) : icon;
+    final effectiveChild = replaceChild ? _LoadingIcon(variant: variant) : child;
     final effectiveOnPressed = loading ? null : onPressed;
 
     return switch (variant) {
       AppLoadingButtonVariant.secondary => shad.SecondaryButton(
         onPressed: effectiveOnPressed,
         leading: leading,
-        child: child,
+        alignment: alignment,
+        child: effectiveChild,
       ),
       AppLoadingButtonVariant.primary => AppPrimaryButton(
         onPressed: effectiveOnPressed,
         leading: leading,
-        child: child,
+        alignment: alignment,
+        child: effectiveChild,
       ),
       AppLoadingButtonVariant.brand => shad.ButtonStyleOverride(
         decoration: (context, states, value) {
@@ -64,7 +70,12 @@ class AppLoadingButton extends StatelessWidget {
               ? palette.brandForeground.withValues(alpha: 0.55)
               : palette.brandForeground,
         ),
-        child: shad.SecondaryButton(onPressed: effectiveOnPressed, leading: leading, child: child),
+        child: shad.SecondaryButton(
+          onPressed: effectiveOnPressed,
+          leading: leading,
+          alignment: alignment,
+          child: effectiveChild,
+        ),
       ),
     };
   }

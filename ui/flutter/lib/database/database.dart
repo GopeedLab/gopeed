@@ -97,6 +97,10 @@ class Database {
     return get<String>(_webToken, (json) => json.toString());
   }
 
+  void clearWebToken() {
+    clear(_webToken);
+  }
+
   void saveCreateHistory(String url) {
     var list = getCreateHistory() ?? [];
     list.remove(url);

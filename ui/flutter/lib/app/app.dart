@@ -9,6 +9,7 @@ import '../core/window/window_capability_transport.dart';
 import '../l10n/l10n.dart';
 import '../shared/theme/app_component_themes.dart';
 import '../shared/theme/app_theme.dart';
+import '../features/auth/application/web_auth_controller.dart';
 import 'application/app_appearance_controller.dart';
 import 'application/app_runtime_controller.dart';
 import 'rpc/webview_rpc_overlay.dart';
@@ -29,7 +30,7 @@ class _GopeedAppState extends ConsumerState<GopeedApp> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _router = AppRouter.build();
+    _router = AppRouter.build(ref.read(webAuthControllerProvider));
   }
 
   @override

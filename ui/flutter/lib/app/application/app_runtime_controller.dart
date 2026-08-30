@@ -13,6 +13,7 @@ import '../../core/entry/app_initializer.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../database/database.dart';
 import '../../database/entity.dart';
+import '../../features/auth/application/web_auth_controller.dart';
 import '../../l10n/l10n.dart';
 import '../../util/log_util.dart';
 import '../../util/package_info.dart';
@@ -120,7 +121,13 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       runningPort = int.tryParse(startConfig.address.split(':').last) ?? 9999;
     }
 
-    api.init(startConfig.network, _runningAddress(startConfig, runningPort), startConfig.apiToken);
+    api.init(
+      startConfig.network,
+      _runningAddress(startConfig, runningPort),
+      startConfig.apiToken,
+      webTokenProvider: Database.instance.getWebToken,
+      onUnauthorized: ref.read(webAuthControllerProvider).requireLogin,
+    );
 
     final config = await _loadDownloaderConfig();
     unawaited(_initTrackerUpdate(config));

@@ -64,6 +64,10 @@ void main() {
     final primaryProgress = tester.widget<shad.CircularProgressIndicator>(
       find.descendant(of: primary, matching: find.byType(shad.CircularProgressIndicator)),
     );
+    expect(
+      tester.widget<shad.Clickable>(find.descendant(of: primary, matching: find.byType(shad.Clickable))).enabled,
+      isFalse,
+    );
     expect(secondaryProgress.color, AppPalette.dark.textMuted);
     expect(secondaryProgress.color, isNot(AppPalette.dark.brand));
     expect(brandProgress.color, AppPalette.dark.brandForeground);
@@ -83,5 +87,41 @@ void main() {
             as BoxDecoration;
     expect(secondaryDecoration.color, AppPalette.dark.surfaceSoft);
     expect(brandDecoration.color, AppPalette.dark.brand);
+  });
+
+  testWidgets('text-only loading buttons replace their label with a centered loader', (tester) async {
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.dark(),
+        materialTheme: AppTheme.materialDark(),
+        home: AppComponentThemes(
+          child: Center(
+            child: SizedBox(
+              key: const ValueKey('text-only-loading-bounds'),
+              width: 148,
+              height: 40,
+              child: AppLoadingButton(
+                key: const ValueKey('text-only-loading-button'),
+                onPressed: () {},
+                loading: true,
+                alignment: Alignment.center,
+                variant: AppLoadingButtonVariant.primary,
+                child: const Text('Login'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final bounds = tester.getRect(find.byKey(const ValueKey('text-only-loading-bounds')));
+    final loader = find.descendant(
+      of: find.byKey(const ValueKey('text-only-loading-button')),
+      matching: find.byType(shad.CircularProgressIndicator),
+    );
+    expect(find.text('Login'), findsNothing);
+    expect(loader, findsOneWidget);
+    expect(tester.getRect(loader).center, bounds.center);
   });
 }

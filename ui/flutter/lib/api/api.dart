@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart';
 
 import 'model/create_task.dart';
 import 'model/create_task_batch.dart';
@@ -34,9 +35,21 @@ class _Client {
   late Dio dio;
   bool initialized = false;
 
-  void init(String network, String address, String apiToken) {
+  void init(
+    String network,
+    String address,
+    String apiToken, {
+    String? Function()? webTokenProvider,
+    VoidCallback? onUnauthorized,
+  }) {
     final isUnixSocket = network == 'unix';
-    final baseUrl = isUnixSocket ? 'http://127.0.0.1/' : 'http://$address/';
+    final baseUrl = isUnixSocket
+        ? 'http://127.0.0.1/'
+        : kIsWeb
+        ? kDebugMode
+              ? 'http://127.0.0.1:9999/'
+              : ''
+        : 'http://$address/';
     dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
@@ -52,7 +65,19 @@ class _Client {
           if (apiToken.isNotEmpty) {
             options.headers['X-Api-Token'] = apiToken;
           }
+          if (kIsWeb && options.path != 'api/web/login') {
+            final token = webTokenProvider?.call();
+            if (token != null && token.isNotEmpty) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          }
           handler.next(options);
+        },
+        onError: (error, handler) {
+          if (kIsWeb && error.response?.statusCode == 401) {
+            onUnauthorized?.call();
+          }
+          handler.next(error);
         },
       ),
     );
@@ -69,8 +94,14 @@ class _Client {
   }
 }
 
-void init(String network, String address, String apiToken) {
-  _Client.instance.init(network, address, apiToken);
+void init(
+  String network,
+  String address,
+  String apiToken, {
+  String? Function()? webTokenProvider,
+  VoidCallback? onUnauthorized,
+}) {
+  _Client.instance.init(network, address, apiToken, webTokenProvider: webTokenProvider, onUnauthorized: onUnauthorized);
 }
 
 void initDefault({String address = '127.0.0.1:9999', String apiToken = ''}) {
