@@ -6,6 +6,7 @@ import 'package:gopeed/core/capabilities/app_capabilities.dart';
 import 'package:gopeed/core/capabilities/capability_rpc.dart';
 import 'package:gopeed/core/capabilities/gopeed_capability.dart';
 import 'package:gopeed/core/common/start_config.dart';
+import 'package:gopeed/core/common/api_server_state.dart';
 import 'package:gopeed/features/settings/application/settings_controller.dart';
 
 void main() {
@@ -36,13 +37,51 @@ void main() {
     expect((await container.read(settingsControllerProvider.future)).config.downloadDir, 'E:/Created task');
     expect(getConfigCalls, 2);
   });
+
+  test('settings save preserves backend-owned client preferences', () async {
+    final backend = DownloaderConfig()
+      ..extra.windowState = WindowStateConfig(isMaximized: true, width: 1200, height: 800)
+      ..extra.createHistory = ['https://example.com/existing.zip']
+      ..extra.analyticsClientId = 'existing-client';
+    DownloaderConfig? saved;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig.fromJson(backend.toJson()))
+      ..bind(GopeedMethods.putConfig, (config) {
+        saved = DownloaderConfig.fromJson(config.toJson());
+        return const RpcUnit();
+      });
+    final container = ProviderContainer(
+      overrides: [
+        appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry))),
+        appRuntimeControllerProvider.overrideWith(_TestRuntimeController.new),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final controller = container.read(settingsControllerProvider.notifier);
+    await container.read(settingsControllerProvider.future);
+    await controller.save(DownloaderConfig(downloadDir: 'E:/New'));
+
+    expect(saved?.downloadDir, 'E:/New');
+    expect(saved?.extra.windowState.isMaximized, isTrue);
+    expect(saved?.extra.createHistory, ['https://example.com/existing.zip']);
+    expect(saved?.extra.analyticsClientId, 'existing-client');
+  });
 }
 
 class _TestRuntimeController extends AppRuntimeController {
   @override
   Future<AppRuntimeState> build() async => AppRuntimeState(
     startConfig: StartConfig(),
-    runningPort: 0,
+    apiServerState: const ApiServerState(
+      enabled: false,
+      running: false,
+      network: '',
+      address: '',
+      runningPort: 0,
+      pendingApply: false,
+      lastError: '',
+    ),
     downloaderConfig: DownloaderConfig(downloadDir: 'C:/Stale runtime snapshot'),
   );
 }

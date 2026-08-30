@@ -643,7 +643,7 @@ func TestWebFsEnhance(t *testing.T) {
 
 func TestDoProxy(t *testing.T) {
 	doTest(func() {
-		code, respBody := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
+		code, respBody := doHttpRequest0(http.MethodGet, "/api/web/proxy", map[string]string{
 			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
 		}, nil)
 		if code != http.StatusOK {
@@ -657,7 +657,7 @@ func TestDoProxy(t *testing.T) {
 	})
 
 	doTest(func() {
-		code, _ := doHttpRequest0(http.MethodGet, "/api/v1/proxy", map[string]string{
+		code, _ := doHttpRequest0(http.MethodGet, "/api/web/proxy", map[string]string{
 			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/NOT_FOUND",
 		}, nil)
 		if code != http.StatusNotFound {
@@ -802,6 +802,28 @@ func TestApiToken(t *testing.T) {
 
 }
 
+func TestBuildServerRejectsWebAPITokenWithoutWebAuth(t *testing.T) {
+	cfg := (&model.StartConfig{
+		Storage:   model.StorageMem,
+		WebEnable: true,
+		ApiToken:  "123456",
+	}).Init()
+
+	server, listener, err := BuildServer(cfg)
+	if err == nil {
+		if listener != nil {
+			listener.Close()
+		}
+		if server != nil {
+			server.Close()
+		}
+		t.Fatal("BuildServer() should reject an API token without web authentication")
+	}
+	if server != nil || listener != nil {
+		t.Fatal("invalid web authentication config must fail before opening a listener")
+	}
+}
+
 func TestAuthorization(t *testing.T) {
 	var cfg = &model.StartConfig{}
 	cfg.Init()
@@ -827,55 +849,58 @@ func TestAuthorization(t *testing.T) {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
 	}
 
-	token := httpRequestCheckOk[string](http.MethodPost, "/api/web/login", cfg.WebAuth)
-	authToken := fmt.Sprintf("Bearer %s", token)
-	authHeaders := map[string]string{
-		"Authorization": authToken,
-	}
-
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", nil, nil)
 	if status != http.StatusUnauthorized {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
 	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": "xxx",
+		"Cookie": webAuthCookieName + "=invalid-session",
 	}, nil)
 	if status != http.StatusUnauthorized {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
 	}
 
-	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": "xxx",
-	}, nil)
-	if status != http.StatusUnauthorized {
-		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
-	}
-
-	buildToken := func(username, password string, ts int64) string {
-		token, _ := aesEncrypt(aesKey, []byte(fmt.Sprintf("%s:%s:%d", username, password, ts)))
-		return token
-	}
-
-	fakeToken := buildToken("fake", "fake", time.Now().Unix())
-	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", fakeToken),
-	}, nil)
-	if status != http.StatusUnauthorized {
-		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
-	}
-
-	expireToken := buildToken(cfg.WebAuth.Username, cfg.WebAuth.Password, time.Now().Add(-time.Hour*8*24).Unix())
-	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", expireToken),
-	}, nil)
-	if status != http.StatusUnauthorized {
-		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
-	}
-
-	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", authHeaders, nil)
+	status, loginHeaders, loginBody := doHttpRequest1(http.MethodPost, "/api/web/login", nil, cfg.WebAuth)
 	if status != http.StatusOK {
-		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
+		t.Fatalf("cookie login got = %v, want %v", status, http.StatusOK)
+	}
+	setCookie := loginHeaders["Set-Cookie"]
+	if !strings.Contains(setCookie, webAuthCookieName+"=") ||
+		!strings.Contains(setCookie, "HttpOnly") ||
+		!strings.Contains(setCookie, "SameSite=Lax") {
+		t.Fatalf("unexpected auth cookie: %q", setCookie)
+	}
+	cookieHeader := strings.SplitN(setCookie, ";", 2)[0]
+	sessionID := strings.TrimPrefix(cookieHeader, webAuthCookieName+"=")
+	if sessionID == "" || strings.Contains(string(loginBody), sessionID) {
+		t.Fatalf("session id must only be returned in the HttpOnly cookie")
+	}
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Cookie": cookieHeader,
+	}, nil)
+	if status != http.StatusOK {
+		t.Errorf("cookie authorization got = %v, want %v", status, http.StatusOK)
+	}
+	status, _ = doHttpRequest0(http.MethodGet, "/fs/extensions/not_exist/icon.png", nil, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("unauthenticated fs request got = %v, want %v", status, http.StatusUnauthorized)
+	}
+	status, _ = doHttpRequest0(http.MethodGet, "/fs/extensions/not_exist/icon.png", map[string]string{
+		"Cookie": cookieHeader,
+	}, nil)
+	if status != http.StatusNotFound {
+		t.Errorf("authenticated fs request got = %v, want %v", status, http.StatusNotFound)
+	}
+	status, _ = doHttpRequest0(http.MethodGet, "/fs/tasks/not_exist/file.png", nil, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("unauthenticated task fs request got = %v, want %v", status, http.StatusUnauthorized)
+	}
+	status, _ = doHttpRequest0(http.MethodGet, "/fs/tasks/not_exist/file.png", map[string]string{
+		"Cookie": cookieHeader,
+	}, nil)
+	if status != http.StatusNotFound {
+		t.Errorf("authenticated task fs request got = %v, want %v", status, http.StatusNotFound)
 	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
@@ -886,19 +911,33 @@ func TestAuthorization(t *testing.T) {
 	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": authToken,
-		"X-Api-Token":   cfg.ApiToken,
-	}, nil)
-	if status != http.StatusOK {
-		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
-	}
-
-	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
-		"Authorization": authToken,
-		"X-Api-Token":   "",
+		"Cookie":      cookieHeader,
+		"X-Api-Token": "",
 	}, nil)
 	if status != http.StatusUnauthorized {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
+	}
+}
+
+func TestWebSessionStoreExpiry(t *testing.T) {
+	now := time.Date(2026, time.August, 30, 12, 0, 0, 0, time.UTC)
+	store := newWebSessionStore()
+	store.now = func() time.Time { return now }
+
+	sessionID, expiresAt, err := store.create()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sessionID == "" || expiresAt != now.Add(webAuthSessionTTL) {
+		t.Fatalf("unexpected session: id=%q expiresAt=%v", sessionID, expiresAt)
+	}
+	if !store.valid(sessionID) {
+		t.Fatal("new session should be valid")
+	}
+
+	now = expiresAt
+	if store.valid(sessionID) {
+		t.Fatal("expired session should be invalid")
 	}
 }
 

@@ -1387,7 +1387,7 @@ class _AsDefaultPathToggle extends StatelessWidget {
               child: Text(
                 key: const ValueKey('create-task-remember-download-directory-label'),
                 context.l10n.rememberLastDownloadDir,
-                style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                style: TextStyle(color: palette.textMuted, fontSize: 12),
               ),
             ),
           ],

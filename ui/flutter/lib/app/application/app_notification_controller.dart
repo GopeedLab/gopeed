@@ -7,8 +7,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../../api/model/task.dart';
-import '../../core/capabilities/app_capabilities.dart';
+import '../../core/common/task_event.dart';
+import '../../core/libgopeed_boot.dart';
 import '../../l10n/l10n.dart';
 import '../../util/util.dart';
 import 'app_runtime_controller.dart';
@@ -25,8 +25,7 @@ class AppNotificationState {
 
 class AppNotificationController extends AsyncNotifier<AppNotificationState> {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
-  final Map<String, Status> _previousStatus = {};
-  Timer? _timer;
+  StreamSubscription<TaskEvent>? _taskEventSubscription;
   var _notificationId = 0;
 
   @override
@@ -36,9 +35,9 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
       return const AppNotificationState();
     }
     await _initNotifications(appLocalizationsFor(runtime.downloaderConfig.extra.locale));
-    _startPolling();
+    _listenTaskEvents();
     ref.onDispose(() {
-      _timer?.cancel();
+      unawaited(_taskEventSubscription?.cancel());
     });
     return const AppNotificationState(started: true);
   }
@@ -77,30 +76,18 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
     );
   }
 
-  void _startPolling() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) async {
-      try {
-        final runtime = ref.read(appRuntimeControllerProvider).value;
-        if (runtime?.downloaderConfig.extra.desktopNotification == false) {
-          return;
-        }
-        final tasks = await ref.read(gopeedServiceProvider).getTasks(Status.values);
-        final locale = appLocalizationsFor(runtime?.downloaderConfig.extra.locale ?? '');
-        for (final task in tasks) {
-          final previous = _previousStatus[task.id];
-          if (previous != null && previous != task.status) {
-            if (task.status == Status.done) {
-              await _showNotification(title: locale.notificationTaskDone, body: task.name);
-            } else if (task.status == Status.error) {
-              await _showNotification(title: locale.notificationTaskError, body: task.name);
-            }
-          }
-          _previousStatus[task.id] = task.status;
-        }
-        final currentIds = tasks.map((task) => task.id).toSet();
-        _previousStatus.removeWhere((id, _) => !currentIds.contains(id));
-      } catch (_) {}
+  void _listenTaskEvents() {
+    _taskEventSubscription?.cancel();
+    _taskEventSubscription = LibgopeedBoot.instance.taskEvents.listen((event) async {
+      final runtime = ref.read(appRuntimeControllerProvider).value;
+      if (runtime?.downloaderConfig.extra.desktopNotification == false) return;
+      final locale = appLocalizationsFor(runtime?.downloaderConfig.extra.locale ?? '');
+      switch (event.type) {
+        case TaskEventType.done:
+          await _showNotification(title: locale.notificationTaskDone, body: event.name);
+        case TaskEventType.error:
+          await _showNotification(title: locale.notificationTaskError, body: event.name);
+      }
     });
   }
 

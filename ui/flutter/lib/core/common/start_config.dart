@@ -19,6 +19,7 @@ class WebViewRpcConfig {
 class StartConfig {
   late String network;
   late String address;
+  bool apiEnable = false;
   late String storage;
   late String storageDir;
   late int refreshInterval;

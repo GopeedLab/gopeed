@@ -27,6 +27,7 @@ import 'package:gopeed/api/model/resource.dart';
 import 'package:gopeed/api/model/store_extension.dart';
 import 'package:gopeed/api/model/task.dart' as api_task;
 import 'package:gopeed/core/common/start_config.dart';
+import 'package:gopeed/core/common/api_server_state.dart';
 import 'package:gopeed/core/icons/gopeed_icons.dart';
 import 'package:gopeed/core/window/app_window_chrome.dart';
 import 'package:gopeed/core/window/app_window_frame.dart';
@@ -1285,16 +1286,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
+    expect(find.text('Runtime status'), findsOneWidget);
+    expect(find.text('tcp://192.168.1.20:4321'), findsOneWidget);
+    expect(find.byKey(const ValueKey('api-server-status-dot')), findsOneWidget);
 
     final host = find.byKey(const ValueKey('api-host-input'));
     final port = find.byKey(const ValueKey('api-port-input'));
     final saveButton = find.byKey(const ValueKey('save-api-config-button'));
-    expect(tester.widget<AppLoadingButton>(saveButton).variant, AppLoadingButtonVariant.secondary);
-    final saveButtonClickable = find.descendant(of: saveButton, matching: find.byType(shad.Clickable));
-    final disabledDecoration =
-        tester.widget<shad.Clickable>(saveButtonClickable).decoration!.resolve({WidgetState.disabled}) as BoxDecoration;
-    expect(disabledDecoration.color, AppPalette.dark.surfaceSoft);
-    expect(disabledDecoration.color, isNot(AppPalette.dark.brand));
+    expect(tester.widget<AppLoadingButton>(saveButton).variant, AppLoadingButtonVariant.primary);
     expect(tester.widget<shad.TextField>(host).controller!.text, '192.168.1.20');
     expect(tester.widget<shad.TextField>(port).controller!.text, '4321');
     expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
@@ -1315,6 +1314,10 @@ void main() {
     await tester.enterText(host, '127.0.0.1');
     await tester.tap(saveButton);
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('restart-api-server-dialog')), findsOneWidget);
+    expect(runtimeController.savedStartConfig, isNull);
+    await tester.tap(find.byKey(const ValueKey('confirm-restart-api-server-button')));
+    await tester.pumpAndSettle();
     expect(runtimeController.savedStartConfig?.network, 'tcp');
     expect(runtimeController.savedStartConfig?.address, '127.0.0.1:0');
     expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
@@ -1329,6 +1332,54 @@ void main() {
     final tcpChoice = find.byKey(const ValueKey('settings-choice-tcp'));
     expect(tester.getRect(tcpChoice).left, closeTo(tester.getRect(protocolItem).left, 0.01));
 
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('disabling the API server requires confirmation and keeps listener fields visible', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final runtimeController = RecordingStartConfigRuntimeController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(() => runtimeController),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(FakeSettingsController.new),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final hostInput = find.byKey(const ValueKey('api-host-input'));
+    await tester.enterText(hostInput, 'unsaved.example.com');
+    final toggleButton = find.byKey(const ValueKey('toggle-api-server-button'));
+    await tester.ensureVisible(toggleButton);
+    await tester.pumpAndSettle();
+    await tester.tap(toggleButton);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('disable-api-server-dialog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('api-host-input')), findsOneWidget);
+    expect(find.byKey(const ValueKey('api-port-input')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('cancel-disable-api-server-button')));
+    await tester.pumpAndSettle();
+    expect(runtimeController.savedStartConfig, isNull);
+
+    await tester.tap(toggleButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('confirm-disable-api-server-button')));
+    await tester.pumpAndSettle();
+    expect(runtimeController.savedStartConfig?.apiEnable, isFalse);
+    expect(runtimeController.savedStartConfig?.address, '192.168.1.20:4321');
+    expect(tester.widget<shad.TextField>(hostInput).controller!.text, 'unsaved.example.com');
+    final statusDot = tester.widget<AnimatedContainer>(find.byKey(const ValueKey('api-server-status-dot')));
+    expect((statusDot.decoration! as BoxDecoration).color, AppPalette.light.textMuted.withValues(alpha: 0.72));
+    expect(find.text('tcp://192.168.1.20:4321'), findsNothing);
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
@@ -4280,9 +4331,14 @@ class _SettingsTestAppState extends State<_SettingsTestApp> {
     return shad.ShadcnApp.router(
       theme: widget.dark ? AppTheme.dark() : AppTheme.light(),
       materialTheme: widget.dark ? AppTheme.materialDark() : AppTheme.materialLight(),
-      builder: widget.wrapComponentThemes
-          ? (context, child) => AppComponentThemes(child: child ?? const SizedBox.shrink())
-          : null,
+      builder: (context, child) {
+        final content = widget.wrapComponentThemes
+            ? AppComponentThemes(child: child ?? const SizedBox.shrink())
+            : child ?? const SizedBox.shrink();
+        final mediaQuery = MediaQuery.maybeOf(context);
+        if (mediaQuery == null) return content;
+        return MediaQuery(data: mediaQuery.copyWith(disableAnimations: true), child: content);
+      },
       routerConfig: _router,
     );
   }
@@ -4447,11 +4503,16 @@ class FakeRuntimeController extends AppRuntimeController {
     final cfg = StartConfig()
       ..network = 'tcp'
       ..address = '127.0.0.1:9999'
+      ..apiEnable = true
       ..apiToken = ''
       ..storage = 'bolt'
       ..storageDir = ''
       ..refreshInterval = 0;
-    return AppRuntimeState(startConfig: cfg, runningPort: 9999, downloaderConfig: DownloaderConfig());
+    return AppRuntimeState(
+      startConfig: cfg,
+      apiServerState: _testApiServerState(running: true, port: 9999),
+      downloaderConfig: DownloaderConfig(),
+    );
   }
 }
 
@@ -4479,23 +4540,73 @@ class RecordingStartConfigRuntimeController extends AppRuntimeController {
     final config = StartConfig()
       ..network = 'tcp'
       ..address = '192.168.1.20:4321'
+      ..apiEnable = true
       ..apiToken = 'token'
       ..storage = 'bolt'
       ..storageDir = ''
       ..refreshInterval = 0;
-    return AppRuntimeState(startConfig: config, runningPort: 4321, downloaderConfig: DownloaderConfig());
+    return AppRuntimeState(
+      startConfig: config,
+      apiServerState: _testApiServerState(running: true, port: 4321, address: config.address),
+      downloaderConfig: DownloaderConfig(),
+    );
   }
 
   @override
-  Future<void> saveStartConfig(StartConfig config) async {
+  Future<void> saveApiServerConfig(StartConfig config) async =>
+      _record(config, running: state.requireValue.apiServerState.running);
+
+  @override
+  Future<void> startApiServer() async => _record(state.requireValue.startConfig..apiEnable = true, running: true);
+
+  @override
+  Future<void> stopApiServer() async => _record(state.requireValue.startConfig..apiEnable = false, running: false);
+
+  @override
+  Future<void> restartApiServer(StartConfig config) async => _record(config..apiEnable = true, running: true);
+
+  void _record(StartConfig config, {required bool running}) {
     savedStartConfig = StartConfig()
       ..network = config.network
       ..address = config.address
+      ..apiEnable = config.apiEnable
       ..apiToken = config.apiToken
       ..storage = config.storage
       ..storageDir = config.storageDir
       ..refreshInterval = config.refreshInterval;
+    final current = state.requireValue;
+    state = AsyncValue.data(
+      AppRuntimeState(
+        startConfig: savedStartConfig!,
+        apiServerState: _testApiServerState(
+          running: running,
+          port: running ? 54321 : 0,
+          address: config.address,
+          enabled: config.apiEnable,
+        ),
+        downloaderConfig: current.downloaderConfig,
+        localBackendStarted: current.localBackendStarted,
+        startupError: current.startupError,
+      ),
+    );
   }
+}
+
+ApiServerState _testApiServerState({
+  required bool running,
+  required int port,
+  String address = '127.0.0.1:9999',
+  bool? enabled,
+}) {
+  return ApiServerState(
+    enabled: enabled ?? running,
+    running: running,
+    network: running ? 'tcp' : '',
+    address: running ? address : '',
+    runningPort: port,
+    pendingApply: false,
+    lastError: '',
+  );
 }
 
 class FakeSettingsController extends SettingsController {

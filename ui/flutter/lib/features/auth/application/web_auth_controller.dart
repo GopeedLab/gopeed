@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/api.dart' as api;
 import '../../../api/model/login.dart';
-import '../../../database/database.dart';
 
 final webAuthControllerProvider = Provider<WebAuthController>((ref) {
   final controller = WebAuthController();
@@ -21,7 +20,6 @@ class WebAuthController extends ChangeNotifier {
   bool get isLoggingIn => _isLoggingIn;
 
   void requireLogin() {
-    Database.instance.clearWebToken();
     if (_loginRequired) return;
     _loginRequired = true;
     notifyListeners();
@@ -32,8 +30,7 @@ class WebAuthController extends ChangeNotifier {
     _isLoggingIn = true;
     notifyListeners();
     try {
-      final token = await api.login(LoginReq(username: username, password: password));
-      Database.instance.saveWebToken(token);
+      await api.login(LoginReq(username: username, password: password));
       return null;
     } on api.ApiTimeoutException {
       return WebLoginFailure.network;

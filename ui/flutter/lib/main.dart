@@ -13,9 +13,6 @@ import 'core/entry/app_startup_options.dart';
 import 'core/window/app_window_bootstrap.dart';
 import 'core/window/app_window_launch_context.dart';
 import 'core/window/window_capability_transport.dart';
-import 'database/database.dart';
-import 'util/analytics.dart';
-import 'util/log_util.dart';
 import 'util/util.dart';
 
 Future<void> main(List<String> args) async {
@@ -46,18 +43,7 @@ Future<void> main(List<String> args) async {
     } catch (_) {}
   }
 
-  await AppInitializer.ensureDatabaseInitialized();
+  await AppInitializer.ensureStorageInitialized();
   await AppWindowBootstrap.setupMainWindow(hidden: startupOptions.hidden);
   runApp(const ProviderScope(child: GopeedApp()));
-  unawaited(_logAppOpen());
-}
-
-Future<void> _logAppOpen() async {
-  if (!AnalyticsConfig.isConfigured || !Database.instance.getAnalyticsEnabled()) return;
-  try {
-    await Analytics.instance.init();
-    await Analytics.instance.logAppOpen();
-  } catch (error) {
-    logger.w('GA4 init failed: $error');
-  }
 }

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
-import '../../database/database.dart';
 import '../../l10n/l10n.dart';
 import 'app_window_chrome.dart';
 import 'app_window_payload.dart';
@@ -16,9 +15,8 @@ class AppWindowBootstrap {
 
     await windowManager.ensureInitialized();
 
-    final windowState = Database.instance.getWindowState();
     final windowOptions = WindowOptions(
-      size: Size(windowState?.width ?? 1024, windowState?.height ?? 768),
+      size: const Size(1024, 768),
       center: true,
       skipTaskbar: false,
       backgroundColor: Colors.transparent,
