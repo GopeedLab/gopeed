@@ -1938,6 +1938,10 @@ void main() {
     expect(tester.widget(proxyMode), isA<AppChoiceSegmentedControl<RequestProxyMode>>());
     expect(find.byKey(const ValueKey('create-task-proxy-mode-follow')), findsOneWidget);
     expect(find.byKey(const ValueKey('create-task-proxy-mode-none')), findsOneWidget);
+    expect(
+      tester.getRect(find.byKey(const ValueKey('create-task-proxy-mode-follow'))).left,
+      closeTo(tester.getRect(createRenameInput).left, 0.01),
+    );
     final customProxy = find.byKey(const ValueKey('create-task-proxy-mode-custom'));
     expect(customProxy, findsOneWidget);
     await tester.tap(customProxy);

@@ -1031,13 +1031,14 @@ packages:
     source: hosted
     version: "4.4.0"
   permission_handler_windows:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: permission_handler_windows
-      sha256: caeae01858a0a7d2df67a445ac98e1ad95e55a0e77c73044f4e9b1c8c2289cbd
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.2"
+      path: permission_handler_windows
+      ref: "35fc72c30262b9b49e1965b48a7524b44ba9daa7"
+      resolved-ref: "35fc72c30262b9b49e1965b48a7524b44ba9daa7"
+      url: "https://github.com/monkeyWie/flutter-permission-handler.git"
+    source: git
+    version: "0.2.1"
   petitparser:
     dependency: transitive
     description:

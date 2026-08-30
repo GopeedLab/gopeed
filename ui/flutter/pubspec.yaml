@@ -81,6 +81,16 @@ dependencies:
   desktop_multi_window: ^0.3.0
   go_router: ^16.2.1
 
+dependency_overrides:
+  # Upstream initializes a Windows Geolocator when the plugin registers, which
+  # makes Windows report location access even when the app never requests it.
+  # Keep this fork until https://github.com/Baseflow/flutter-permission-handler/issues/1394 is fixed and released.
+  permission_handler_windows:
+    git:
+      url: https://github.com/monkeyWie/flutter-permission-handler.git
+      ref: 35fc72c30262b9b49e1965b48a7524b44ba9daa7
+      path: permission_handler_windows
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
