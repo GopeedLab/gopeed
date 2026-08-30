@@ -397,8 +397,9 @@ void main() {
     final cardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-0')));
     final rightmostCardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-2')));
     final appMarkRect = tester.getRect(find.byKey(const ValueKey('primary-rail-app-mark')));
-    expect(searchRect.width, closeTo(cardRect.width, 0.01));
-    expect(sortRect.left, closeTo(searchRect.right + 10, 0.01));
+    expect(searchRect.width, 240);
+    expect(searchRect.width, lessThan(cardRect.width));
+    expect(sortRect.left - searchRect.right, greaterThanOrEqualTo(10));
     expect(sortRect.center.dy, closeTo(searchRect.center.dy, 0.01));
     expect(sortRect.height, closeTo(refreshRect.height, 0.01));
     expect(searchRect.center.dy, closeTo(appMarkRect.center.dy, 0.01));
@@ -417,10 +418,22 @@ void main() {
     tester.view.physicalSize = const Size(1028, 608);
     await tester.pumpAndSettle();
     expect(gridColumns(), 3);
+    expect(tester.getSize(find.byKey(const ValueKey('extension-search-field-container'))).width, 240);
     expect(
       tester.getRect(find.byKey(const ValueKey('install-extension-button'))).right,
       closeTo(tester.getRect(find.byKey(const ValueKey('extension-card-extension-2'))).right, 0.01),
     );
+
+    tester.view.physicalSize = const Size(720, 608);
+    await tester.pumpAndSettle();
+    expect(find.byType(PrimaryRail), findsOneWidget);
+    final compactSearchRect = tester.getRect(find.byKey(const ValueKey('extension-search-field-container')));
+    expect(compactSearchRect.width, lessThan(240));
+    expect(
+      tester.getRect(find.byKey(const ValueKey('extension-sort-control'))).center.dy,
+      closeTo(compactSearchRect.center.dy, 0.01),
+    );
+    expect(tester.takeException(), isNull);
 
     tester.view.physicalSize = const Size(1400, 900);
     await tester.pumpAndSettle();

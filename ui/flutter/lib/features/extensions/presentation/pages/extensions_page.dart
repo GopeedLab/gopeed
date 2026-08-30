@@ -33,11 +33,6 @@ int _extensionGridColumnCount(double width) {
       .toInt();
 }
 
-double _extensionGridCardWidth(double width) {
-  final columns = _extensionGridColumnCount(width);
-  return (width - _extensionGridSpacing * (columns - 1)) / columns;
-}
-
 class ExtensionsPage extends ConsumerStatefulWidget {
   const ExtensionsPage({super.key});
 
@@ -686,42 +681,52 @@ class _Toolbar extends StatelessWidget {
         ),
       ],
     );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 720) {
-          return Row(
-            children: [
-              SizedBox(width: _extensionGridCardWidth(constraints.maxWidth), child: search),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: sorting),
-                ),
-              ),
-              installActions,
-            ],
-          );
-        }
-        return Column(
-          children: [
-            SizedBox(width: double.infinity, child: search),
-            const SizedBox(height: 10),
-            Row(
+    if (MediaQuery.sizeOf(context).width >= Breakpoints.mobile) {
+      return Row(
+        children: [
+          Expanded(
+            child: Row(
               children: [
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: sorting),
+                    child: ConstrainedBox(
+                      key: const ValueKey('extension-search-field-container'),
+                      constraints: const BoxConstraints(maxWidth: 240),
+                      child: search,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                installActions,
+                Flexible(
+                  flex: 2,
+                  child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: sorting),
+                ),
               ],
             ),
+          ),
+          const SizedBox(width: 10),
+          installActions,
+        ],
+      );
+    }
+    return Column(
+      children: [
+        SizedBox(width: double.infinity, child: search),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: sorting),
+              ),
+            ),
+            const SizedBox(width: 10),
+            installActions,
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
