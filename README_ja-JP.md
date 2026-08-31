@@ -10,153 +10,37 @@
 
 <a href="https://trendshift.io/repositories/7953" target="_blank"><img src="https://trendshift.io/api/badge/repositories/7953" alt="GopeedLab%2Fgopeed | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R6IJGN6)
-
 [English](/README.md) | [中文](/README_zh-CN.md) | [日本語](/README_ja-JP.md) | [正體中文](/README_zh-TW.md) | [Tiếng Việt](/README_vi-VN.md)
 
 ## 🚀 はじめに
 
-Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された高速ダウンローダーで、(HTTP、BitTorrent、Magnet、ED2K) プロトコルをサポートし、すべてのプラットフォームをサポートします。基本的なダウンロード機能に加え、[APIs](https://gopeed.com/docs/dev-api)との連動や[拡張機能](https://gopeed.com/docs/dev-extension)のインストール・開発による追加機能にも対応した、カスタマイズ性の高いダウンローダーです。
+Gopeed（**Go Speed** の略）は、Go と Flutter で開発された高速でモダンな無料オープンソース・ダウンロードマネージャーです。HTTP、HTTPS、BitTorrent、Magnet、ed2k に対応し、デスクトップ、モバイル、Web で利用できます。
 
-見て下さい ✈ [公式ウェブサイト](https://gopeed.com) | 📖 [開発ドキュメント](https://gopeed.com/docs)
+ブラウザー連携、JavaScript 拡張、REST API、CLI、セルフホスト可能な Web UI により、日常利用から高度な自動化まで幅広く対応します。
+
+✈ [公式サイト](https://gopeed.com) | 📖 [公式ドキュメント](https://gopeed.com/docs)
+
+![Gopeed のデスクトップ・モバイル画面](_docs/img/ui-concept-en.png)
+
+## ✨ 主な機能
+
+- ⚡ **高速ダウンロード** — 複数タスク、HTTP のマルチ接続分割転送、BitTorrent の P2P ダウンロードで帯域を最大限に活用します。
+- 🧲 **マルチプロトコル** — HTTP、HTTPS、BitTorrent、Magnet、ed2k を一つの画面で管理します。
+- 🌱 **充実した BT 機能** — ファイル選択、Tracker 管理、Peer/ピース統計、共有率または時間によるシード制御。
+- 📋 **タスク管理** — 一時停止、再開、再試行、一括操作、検索、状態フィルター、カテゴリ、起動時復元。
+- 💻 **クロスプラットフォーム** — Windows、macOS、Linux、Android、iOS、Web、Docker、QNAP に対応。
+- 🎨 **カスタマイズ可能なテーマ** — システム連動、ライト、ダークの各モードと 8 色のアクセントカラーに対応。
+- 📐 **レスポンシブ UI** — タスクリスト、ナビゲーション、設定、詳細画面がスマートフォン、タブレット、サイズ変更可能なデスクトップウィンドウに適応。
+- 🗣️ **20 以上の UI 言語** — 日本語、英語、簡体字・繁体字中国語、韓国語など多くの言語に対応。
+- 🌐 **ブラウザー連携** — Chrome、Edge、Firefox などのダウンロードを Gopeed に送信できます。
+- 🧩 **JavaScript 拡張** — 動画サイト、AI モデルハブ、クラウドストレージなどのダウンロード元を追加できます。
+- 🔌 **オープンなインターフェース** — REST API、CLI、認証付き Web UI、Webhook、完了後スクリプトに対応。
+- 🛠️ **便利な内蔵機能** — カスタム Header/User-Agent、Proxy、GitHub ミラー、通知、自動展開。
 
 ## ⬇️ インストール
 
-<table>
-  <tbody>
-    <tr>
-      <td rowspan="2">🪟 Windows</td>
-      <td><code>EXE</code></td>
-      <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64.zip">📥</a></td>
-    </tr>
-    <tr>
-      <td><code>Portable</code></td>
-      <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-windows-amd64-portable.zip">📥</a></td>
-    </tr>
-    <tr>
-      <td rowspan="3">🍎 MacOS</td>
-      <td rowspan="3"><code>DMG</code></td>
-      <td>universal</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos.dmg">📥</a></td>
-    </tr>
-    <tr>
-      <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos-amd64.dmg">📥</a></td>
-    </tr>
-    <tr>
-      <td>arm64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-macos-arm64.dmg">📥</a></td>
-    </tr>
-    <tr>
-      <td rowspan="6">🐧 Linux</td>
-      <td><code>Flathub</code></td>
-      <td>amd64</td>
-      <td><a href="https://flathub.org/apps/com.gopeed.Gopeed">📥</a></td>
-    </tr>
-    <tr>
-      <td><code>SNAP</code></td>
-      <td>amd64</td>
-      <td><a href="https://snapcraft.io/gopeed">📥</a></td>
-    </tr>
-    <tr>
-      <td rowspan="2"><code>DEB</code></td>
-      <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.deb">📥</a></td>
-    </tr>
-    <tr>
-      <td>arm64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-arm64.deb">📥</a></td>
-    </tr>
-    <tr>
-      <td rowspan="2"><code>AppImage</code></td>
-      <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-amd64.AppImage">📥</a></td>
-    </tr>
-    <tr>
-      <td>arm64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-linux-arm64.AppImage">📥</a></td>
-    </tr>
-    <tr>
-      <td rowspan="4">🤖 Android</td>
-      <td rowspan="4"><code>APK</code></td>
-      <td>universal</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android.apk">📥</a></td>
-    </tr>
-     <tr>
-      <td>armeabi-v7a</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android-armeabi-v7a.apk">📥</a></td>
-    </tr>
-     <tr>
-      <td>arm64-v8a</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android-arm64-v8a.apk">📥</a></td>
-    </tr>
-    <tr>
-      <td>x86_64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-android-x86_64.apk">📥</a></td>
-    </tr>
-    <tr>
-      <td>📱 iOS</td>
-      <td><code>IPA</code></td>
-      <td>universal</td>
-      <td><a href="https://gopeed.com/api/download?tpl=Gopeed-$version-ios.ipa">📥</a></td>
-    </tr>
-    <tr>
-      <td>🐳 Docker</td>
-      <td>-</td>
-      <td>universal</td>
-      <td><a href="https://hub.docker.com/r/liwei2633/gopeed">📥</a></td>
-    </tr>
-    <tr>
-      <td rowspan="2">💾 Qnap</td>
-      <td rowspan="2"><code>QPKG</code></td>
-      <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-$version-qnap-amd64.qpkg">📥</a></td>
-    </tr>
-    <tr>
-      <td>arm64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-$version-qnap-arm64.qpkg">📥</a></td>
-    </tr>
-    <tr>
-      <td rowspan="8">🌐 Web</td>
-      <td rowspan="3"><code>Windows</code></td>
-      <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-windows-amd64.zip">📥</a></td>
-    </tr>
-    <tr>
-      <td>arm64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-windows-arm64.zip">📥</a></td>
-    </tr>
-    <tr>
-      <td>386</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-windows-386.zip">📥</a></td>
-    </tr>
-    <tr>
-      <td rowspan="2"><code>MacOS</code></td>
-      <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-macos-amd64.zip">📥</a></td>
-    </tr>
-    <tr>
-      <td>arm64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-macos-arm64.zip">📥</a></td>
-    </tr>
-    <tr>
-      <td rowspan="3"><code>Linux</code></td>
-      <td>amd64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-linux-amd64.zip">📥</a></td>
-    </tr>
-    <tr>
-      <td>arm64</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-linux-arm64.zip">📥</a></td>
-    </tr>
-    <tr>
-      <td>386</td>
-      <td><a href="https://gopeed.com/api/download?tpl=gopeed-web-$version-linux-386.zip">📥</a></td>
-    </tr>
-  </tbody>
-</table>
-インストールについての詳細は、[インストール](https://gopeed.com/docs/install)を参照してください。
+- [公式サイトからダウンロード](https://gopeed.com)
+- [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
 
 ### 🛠️ コマンドツール
 
@@ -169,10 +53,6 @@ Gopeed (正式名 Go Speed) は `Golang` + `Flutter` によって開発された
 ## 💝 寄付
 
 もしこのプロジェクトがお気に召しましたら、このプロジェクトの発展を支援するために[寄付](https://gopeed.com/docs/donate)をご検討ください！
-
-## 🖼️ ショーケース
-
-![](_docs/img/ui-demo.png)
 
 ## 👨‍💻 開発
 
