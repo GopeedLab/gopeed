@@ -1,7 +1,11 @@
 package http
 
 import (
+	"bytes"
+	"context"
+	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	gohttp "net/http"
@@ -375,6 +379,59 @@ func TestFetcher_DownloadContinue(t *testing.T) {
 	downloadContinue(listener, 16, t)
 }
 
+func TestFetcher_PauseBeforeStartDiscardsPrefetchProgress(t *testing.T) {
+	payload := make([]byte, 32*1024*1024)
+	for i := range payload {
+		payload[i] = byte(i % 251)
+	}
+	prefetchServed := make(chan struct{}, 1)
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if r.Header.Get(base.HttpHeaderRange) == "" {
+			w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+			w.WriteHeader(gohttp.StatusOK)
+			if _, err := w.Write(payload); err == nil {
+				prefetchServed <- struct{}{}
+			}
+			return
+		}
+		gohttp.ServeContent(w, r, test.BuildName, time.Unix(0, 0), bytes.NewReader(payload))
+	}))
+	defer server.Close()
+
+	fetcher := buildFetcher()
+	if err := fetcher.Resolve(&base.Request{URL: server.URL + "/" + test.BuildName}, &base.Options{
+		Path: t.TempDir(),
+		Name: test.DownloadName,
+		Extra: &http.OptsExtra{
+			Connections: 2,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-prefetchServed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for resolve prefetch response")
+	}
+
+	if err := fetcher.Pause(); err != nil {
+		t.Fatal(err)
+	}
+	if err := fetcher.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := fetcher.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	want := fmt.Sprintf("%x", md5.Sum(payload))
+	got := test.FileMd5(fetcher.Meta().SingleFilepath())
+	if want != got {
+		t.Fatalf("download after pause before start got MD5 %s, want %s", got, want)
+	}
+}
+
 func TestFetcher_DownloadContinue_NoRangeRestart(t *testing.T) {
 	listener := test.StartTestNoRangeSlowServer(time.Millisecond)
 	defer listener.Close()
@@ -438,6 +495,317 @@ func TestFetcher_DownloadNoRangeLeavesNoStaleCompletion(t *testing.T) {
 	case err := <-f.doneCh:
 		t.Fatalf("stale completion signal: %v", err)
 	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestFetcher_DownloadIgnoredRangeFallsBackToSequential(t *testing.T) {
+	for _, connections := range []int{1, 4} {
+		t.Run(fmt.Sprintf("connections_%d", connections), func(t *testing.T) {
+			os.Remove(test.DownloadFile)
+			t.Cleanup(func() { os.Remove(test.DownloadFile) })
+
+			listener := test.StartTestIgnoredRangeServer(time.Millisecond)
+			defer listener.Close()
+
+			f := downloadReady(listener, connections, t).(*Fetcher)
+			if err := f.Start(); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.Wait(); err != nil {
+				t.Fatal(err)
+			}
+
+			if f.meta.Res.Range {
+				t.Fatal("expected ignored Range response to disable range mode")
+			}
+			stats := f.Stats().(*http.Stats)
+			if len(stats.Connections) != 1 {
+				t.Fatalf("expected one sequential connection, got %d", len(stats.Connections))
+			}
+			if got, want := test.FileMd5(test.DownloadFile), test.FileMd5(test.BuildFile); got != want {
+				t.Fatalf("download checksum = %s, want %s", got, want)
+			}
+		})
+	}
+}
+
+func TestFetcher_RejectsInvalidPartialContent(t *testing.T) {
+	const (
+		requestedStart = int64(1024)
+		requestedEnd   = int64(2047)
+		totalSize      = int64(4096)
+		rangeLength    = requestedEnd - requestedStart + 1
+	)
+
+	tests := []struct {
+		name          string
+		contentRange  string
+		contentLength int64
+		bodyLength    int
+		chunked       bool
+		wantError     bool
+	}{
+		{
+			name:          "valid",
+			contentRange:  "bytes 1024-2047/4096",
+			contentLength: rangeLength,
+			bodyLength:    int(rangeLength),
+		},
+		{
+			name:          "missing content range",
+			contentLength: rangeLength,
+			bodyLength:    int(rangeLength),
+			wantError:     true,
+		},
+		{
+			name:          "invalid unit",
+			contentRange:  "items 1024-2047/4096",
+			contentLength: rangeLength,
+			bodyLength:    int(rangeLength),
+			wantError:     true,
+		},
+		{
+			name:          "malformed content range",
+			contentRange:  "bytes 1024/4096",
+			contentLength: rangeLength,
+			bodyLength:    int(rangeLength),
+			wantError:     true,
+		},
+		{
+			name:          "missing total separator",
+			contentRange:  "bytes 1024-2047",
+			contentLength: rangeLength,
+			bodyLength:    int(rangeLength),
+			wantError:     true,
+		},
+		{
+			name:          "unknown total size",
+			contentRange:  "bytes 1024-2047/*",
+			contentLength: rangeLength,
+			bodyLength:    int(rangeLength),
+			wantError:     true,
+		},
+		{
+			name:          "shifted content range",
+			contentRange:  "bytes 0-1023/4096",
+			contentLength: rangeLength,
+			bodyLength:    int(rangeLength),
+			wantError:     true,
+		},
+		{
+			name:          "wrong total size",
+			contentRange:  "bytes 1024-2047/8192",
+			contentLength: rangeLength,
+			bodyLength:    int(rangeLength),
+			wantError:     true,
+		},
+		{
+			name:          "content length mismatch",
+			contentRange:  "bytes 1024-2047/4096",
+			contentLength: rangeLength - 1,
+			bodyLength:    int(rangeLength - 1),
+			wantError:     true,
+		},
+		{
+			name:          "short chunked body",
+			contentRange:  "bytes 1024-2047/4096",
+			contentLength: -1,
+			bodyLength:    int(rangeLength - 1),
+			chunked:       true,
+			wantError:     true,
+		},
+		{
+			name:          "long chunked body",
+			contentRange:  "bytes 1024-2047/4096",
+			contentLength: -1,
+			bodyLength:    int(rangeLength + 1),
+			chunked:       true,
+			wantError:     true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(gohttp.HandlerFunc(func(writer gohttp.ResponseWriter, request *gohttp.Request) {
+				if got, want := request.Header.Get(base.HttpHeaderRange), "bytes=1024-2047"; got != want {
+					t.Errorf("Range header = %q, want %q", got, want)
+				}
+				if tc.contentRange != "" {
+					writer.Header().Set(base.HttpHeaderContentRange, tc.contentRange)
+				}
+				if tc.contentLength >= 0 {
+					writer.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", tc.contentLength))
+				}
+				writer.WriteHeader(base.HttpCodePartialContent)
+				if tc.chunked {
+					writer.(gohttp.Flusher).Flush()
+				}
+				_, _ = writer.Write([]byte(strings.Repeat("x", tc.bodyLength)))
+			}))
+			defer server.Close()
+
+			f := buildFetcher()
+			f.meta.Req = &base.Request{URL: server.URL}
+			f.meta.Res = &base.Resource{Range: true, Size: totalSize}
+			output, err := os.CreateTemp(t.TempDir(), "range-response-*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer output.Close()
+			f.file = output
+
+			conn := &connection{
+				ID:    0,
+				Role:  rolePrimary,
+				State: connNotStarted,
+				Chunk: newChunk(requestedStart, requestedEnd),
+				ctx:   context.Background(),
+			}
+			f.connections = []*connection{conn}
+			f.wg.Add(1)
+			go f.runConnection(conn)
+			f.wg.Wait()
+
+			if tc.wantError {
+				if !conn.failed || conn.State != connFailed || conn.Completed {
+					t.Fatalf("connection state = %v, failed = %v, completed = %v; want permanent failure", conn.State, conn.failed, conn.Completed)
+				}
+				if !errors.Is(conn.lastErr, errInvalidRangeResponse) {
+					t.Fatalf("connection error = %v, want %v", conn.lastErr, errInvalidRangeResponse)
+				}
+				return
+			}
+
+			if conn.failed || conn.State != connCompleted || !conn.Completed {
+				t.Fatalf("connection state = %v, failed = %v, completed = %v; want success", conn.State, conn.failed, conn.Completed)
+			}
+			if conn.Downloaded != rangeLength {
+				t.Fatalf("downloaded = %d, want %d", conn.Downloaded, rangeLength)
+			}
+		})
+	}
+}
+
+func TestFetcher_InvalidResponseLengthFailsTask(t *testing.T) {
+	const (
+		totalSize      = int64(4096)
+		requestedStart = int64(1024)
+		requestedEnd   = totalSize - 1
+		rangeLength    = requestedEnd - requestedStart + 1
+	)
+
+	tests := []struct {
+		name               string
+		status             int
+		contentRange       string
+		contentLength      int64
+		bodyChunks         []int
+		resolvedDownloaded int64
+		wantDownloaded     int64
+	}{
+		{
+			name:           "sequential declared short body",
+			status:         base.HttpCodeOK,
+			contentLength:  1024,
+			bodyChunks:     []int{1024},
+			wantDownloaded: 0,
+		},
+		{
+			name:           "sequential short chunked body",
+			status:         base.HttpCodeOK,
+			contentLength:  -1,
+			bodyChunks:     []int{1024},
+			wantDownloaded: 1024,
+		},
+		{
+			name:           "sequential long chunked body",
+			status:         base.HttpCodeOK,
+			contentLength:  -1,
+			bodyChunks:     []int{int(totalSize), 1},
+			wantDownloaded: totalSize,
+		},
+		{
+			name:               "partial content long chunked body",
+			status:             base.HttpCodePartialContent,
+			contentRange:       "bytes 1024-4095/4096",
+			contentLength:      -1,
+			bodyChunks:         []int{int(rangeLength), 1},
+			resolvedDownloaded: requestedStart,
+			wantDownloaded:     rangeLength,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(gohttp.HandlerFunc(func(writer gohttp.ResponseWriter, request *gohttp.Request) {
+				if got, want := request.Header.Get(base.HttpHeaderRange), "bytes=1024-4095"; got != want {
+					t.Errorf("Range header = %q, want %q", got, want)
+				}
+				if tc.contentRange != "" {
+					writer.Header().Set(base.HttpHeaderContentRange, tc.contentRange)
+				}
+				if tc.contentLength >= 0 {
+					writer.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", tc.contentLength))
+				}
+				writer.WriteHeader(tc.status)
+				writer.(gohttp.Flusher).Flush()
+				for i, chunkSize := range tc.bodyChunks {
+					_, _ = writer.Write([]byte(strings.Repeat("x", chunkSize)))
+					writer.(gohttp.Flusher).Flush()
+					if i+1 < len(tc.bodyChunks) {
+						time.Sleep(50 * time.Millisecond)
+					}
+				}
+			}))
+			defer server.Close()
+
+			f := buildFetcher()
+			f.meta.Req = &base.Request{URL: server.URL}
+			f.meta.Res = &base.Resource{Range: true, Size: totalSize}
+			output, err := os.CreateTemp(t.TempDir(), "range-task-*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := output.Truncate(totalSize); err != nil {
+				t.Fatal(err)
+			}
+			f.file = output
+
+			conn := &connection{
+				ID:    0,
+				Role:  rolePrimary,
+				State: connNotStarted,
+				Chunk: newChunk(requestedStart, requestedEnd),
+				ctx:   context.Background(),
+			}
+			f.connections = []*connection{conn}
+			if tc.resolvedDownloaded > 0 {
+				f.resolveConn = &connection{
+					Role:       roleResolve,
+					State:      connCompleted,
+					Downloaded: tc.resolvedDownloaded,
+					Completed:  true,
+				}
+			}
+
+			f.wg.Add(1)
+			go f.runConnection(conn)
+			f.wg.Wait()
+			f.onDownloadComplete()
+
+			if err := f.Wait(); !errors.Is(err, errInvalidRangeResponse) {
+				t.Fatalf("Wait() error = %v, want %v", err, errInvalidRangeResponse)
+			}
+			if f.getState() != stateError {
+				t.Fatalf("fetcher state = %v, want %v", f.getState(), stateError)
+			}
+			if conn.Completed || conn.State != connFailed || !conn.failed {
+				t.Fatalf("connection state = %v, failed = %v, completed = %v; want permanent failure", conn.State, conn.failed, conn.Completed)
+			}
+			if conn.Downloaded != tc.wantDownloaded {
+				t.Fatalf("downloaded = %d, want %d", conn.Downloaded, tc.wantDownloaded)
+			}
+		})
 	}
 }
 
@@ -555,7 +923,14 @@ func TestFetcher_DownloadOnBugFileServer(t *testing.T) {
 	defer listener.Close()
 
 	downloadNormal(listener, 1, t)
-	downloadNormal(listener, 4, t)
+
+	fetcher := downloadReady(listener, 4, t)
+	if err := fetcher.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := fetcher.Wait(); err == nil || !strings.Contains(err.Error(), errInvalidRangeResponse.Error()) {
+		t.Fatalf("Wait() error = %v, want %v", err, errInvalidRangeResponse)
+	}
 }
 
 func TestFetcher_DownloadResume(t *testing.T) {
