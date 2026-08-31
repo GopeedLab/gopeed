@@ -39,6 +39,10 @@ var (
 	errInvalidRangeResponse = errors.New("invalid HTTP range response")
 )
 
+func isRangeIntegrityError(err error) bool {
+	return errors.Is(err, errRangeRequestIgnored) || errors.Is(err, errInvalidRangeResponse)
+}
+
 // ============================================================================
 // State Machine
 // ============================================================================
@@ -961,7 +965,7 @@ func (f *Fetcher) runConnection(conn *connection) {
 		if errors.Is(err, context.Canceled) {
 			return
 		}
-		if errors.Is(err, errRangeRequestIgnored) || errors.Is(err, errInvalidRangeResponse) {
+		if isRangeIntegrityError(err) {
 			f.connMu.Lock()
 			conn.lastErr = err
 			conn.State = connFailed
@@ -1082,18 +1086,25 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		}
 	}
 
+	expectedResponseLength := int64(-1)
 	if rangeRequested && resp.StatusCode == base.HttpCodeOK {
 		if err := f.fallbackToSequentialDownload(conn); err != nil {
 			resp.Body.Close()
 			return fmt.Errorf("%w: expected 206 Partial Content, got 200 OK", err)
 		}
 	}
-	var expectedResponseLength int64 = -1
 	if rangeRequested && resp.StatusCode == base.HttpCodePartialContent {
 		expectedResponseLength, err = validateRangeResponse(resp, rangeStart, rangeEnd, f.meta.Res.Size)
 		if err != nil {
 			resp.Body.Close()
 			return err
+		}
+	}
+	if !f.meta.Res.Range && resp.StatusCode == base.HttpCodeOK && f.meta.Res.Size > 0 {
+		expectedResponseLength = f.meta.Res.Size
+		if resp.ContentLength >= 0 && resp.ContentLength != expectedResponseLength {
+			resp.Body.Close()
+			return fmt.Errorf("%w: Content-Length %d does not match resource size %d", errInvalidRangeResponse, resp.ContentLength, expectedResponseLength)
 		}
 	}
 	defer resp.Body.Close()
@@ -1126,7 +1137,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		if n > 0 {
 			responseBytesRead += int64(n)
 			if expectedResponseLength >= 0 && responseBytesRead > expectedResponseLength {
-				return fmt.Errorf("%w: response body exceeds range length %d", errInvalidRangeResponse, expectedResponseLength)
+				return fmt.Errorf("%w: response body exceeds expected length %d", errInvalidRangeResponse, expectedResponseLength)
 			}
 
 			finished := false
@@ -1664,9 +1675,18 @@ func (f *Fetcher) onDownloadComplete() {
 	// If total downloaded matches file size, consider it a success regardless of connection failures
 	downloadComplete := f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size
 
-	// Check for any errors, but ignore 403 (server connection limit) errors if download completed
+	// Integrity errors must win over byte-count completion. A malformed response
+	// may be detected only after the expected bytes have already been written.
 	var finalErr error
-	if !downloadComplete && !allChunksComplete {
+	for _, conn := range f.connections {
+		if conn.State == connFailed && conn.failed && isRangeIntegrityError(conn.lastErr) {
+			finalErr = fmt.Errorf("connection %d failed: retries=%d, err=%w", conn.ID, conn.retryTimes, conn.lastErr)
+			break
+		}
+	}
+
+	// Check for other errors, but ignore 403 (server connection limit) errors if download completed.
+	if finalErr == nil && !downloadComplete && !allChunksComplete {
 		for _, conn := range f.connections {
 			if conn.State == connFailed && conn.failed {
 				// Skip 403 errors (server connection limit) - these are expected when exceeding server's limit

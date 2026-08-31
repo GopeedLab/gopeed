@@ -631,6 +631,129 @@ func TestFetcher_RejectsInvalidPartialContent(t *testing.T) {
 	}
 }
 
+func TestFetcher_InvalidResponseLengthFailsTask(t *testing.T) {
+	const (
+		totalSize      = int64(4096)
+		requestedStart = int64(1024)
+		requestedEnd   = totalSize - 1
+		rangeLength    = requestedEnd - requestedStart + 1
+	)
+
+	tests := []struct {
+		name               string
+		status             int
+		contentRange       string
+		contentLength      int64
+		bodyChunks         []int
+		resolvedDownloaded int64
+		wantDownloaded     int64
+	}{
+		{
+			name:           "sequential declared short body",
+			status:         base.HttpCodeOK,
+			contentLength:  1024,
+			bodyChunks:     []int{1024},
+			wantDownloaded: 0,
+		},
+		{
+			name:           "sequential short chunked body",
+			status:         base.HttpCodeOK,
+			contentLength:  -1,
+			bodyChunks:     []int{1024},
+			wantDownloaded: 1024,
+		},
+		{
+			name:           "sequential long chunked body",
+			status:         base.HttpCodeOK,
+			contentLength:  -1,
+			bodyChunks:     []int{int(totalSize), 1},
+			wantDownloaded: totalSize,
+		},
+		{
+			name:               "partial content long chunked body",
+			status:             base.HttpCodePartialContent,
+			contentRange:       "bytes 1024-4095/4096",
+			contentLength:      -1,
+			bodyChunks:         []int{int(rangeLength), 1},
+			resolvedDownloaded: requestedStart,
+			wantDownloaded:     rangeLength,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(gohttp.HandlerFunc(func(writer gohttp.ResponseWriter, request *gohttp.Request) {
+				if got, want := request.Header.Get(base.HttpHeaderRange), "bytes=1024-4095"; got != want {
+					t.Errorf("Range header = %q, want %q", got, want)
+				}
+				if tc.contentRange != "" {
+					writer.Header().Set(base.HttpHeaderContentRange, tc.contentRange)
+				}
+				if tc.contentLength >= 0 {
+					writer.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", tc.contentLength))
+				}
+				writer.WriteHeader(tc.status)
+				writer.(gohttp.Flusher).Flush()
+				for i, chunkSize := range tc.bodyChunks {
+					_, _ = writer.Write([]byte(strings.Repeat("x", chunkSize)))
+					writer.(gohttp.Flusher).Flush()
+					if i+1 < len(tc.bodyChunks) {
+						time.Sleep(50 * time.Millisecond)
+					}
+				}
+			}))
+			defer server.Close()
+
+			f := buildFetcher()
+			f.meta.Req = &base.Request{URL: server.URL}
+			f.meta.Res = &base.Resource{Range: true, Size: totalSize}
+			output, err := os.CreateTemp(t.TempDir(), "range-task-*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := output.Truncate(totalSize); err != nil {
+				t.Fatal(err)
+			}
+			f.file = output
+
+			conn := &connection{
+				ID:    0,
+				Role:  rolePrimary,
+				State: connNotStarted,
+				Chunk: newChunk(requestedStart, requestedEnd),
+				ctx:   context.Background(),
+			}
+			f.connections = []*connection{conn}
+			if tc.resolvedDownloaded > 0 {
+				f.resolveConn = &connection{
+					Role:       roleResolve,
+					State:      connCompleted,
+					Downloaded: tc.resolvedDownloaded,
+					Completed:  true,
+				}
+			}
+
+			f.wg.Add(1)
+			go f.runConnection(conn)
+			f.wg.Wait()
+			f.onDownloadComplete()
+
+			if err := f.Wait(); !errors.Is(err, errInvalidRangeResponse) {
+				t.Fatalf("Wait() error = %v, want %v", err, errInvalidRangeResponse)
+			}
+			if f.getState() != stateError {
+				t.Fatalf("fetcher state = %v, want %v", f.getState(), stateError)
+			}
+			if conn.Completed || conn.State != connFailed || !conn.failed {
+				t.Fatalf("connection state = %v, failed = %v, completed = %v; want permanent failure", conn.State, conn.failed, conn.Completed)
+			}
+			if conn.Downloaded != tc.wantDownloaded {
+				t.Fatalf("downloaded = %d, want %d", conn.Downloaded, tc.wantDownloaded)
+			}
+		})
+	}
+}
+
 func TestFetcher_DownloadChunked(t *testing.T) {
 	listener := test.StartTestCustomServer()
 	defer listener.Close()
