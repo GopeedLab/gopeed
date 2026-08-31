@@ -34,7 +34,10 @@ const (
 	stealMinChunkSize     = 512 * 1024 // Min steal size: 512KB (avoid tiny chunks)
 )
 
-var errRangeRequestIgnored = errors.New("server ignored HTTP range request")
+var (
+	errRangeRequestIgnored  = errors.New("server ignored HTTP range request")
+	errInvalidRangeResponse = errors.New("invalid HTTP range response")
+)
 
 // ============================================================================
 // State Machine
@@ -958,7 +961,7 @@ func (f *Fetcher) runConnection(conn *connection) {
 		if errors.Is(err, context.Canceled) {
 			return
 		}
-		if errors.Is(err, errRangeRequestIgnored) {
+		if errors.Is(err, errRangeRequestIgnored) || errors.Is(err, errInvalidRangeResponse) {
 			f.connMu.Lock()
 			conn.lastErr = err
 			conn.State = connFailed
@@ -1085,6 +1088,14 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			return fmt.Errorf("%w: expected 206 Partial Content, got 200 OK", err)
 		}
 	}
+	var expectedResponseLength int64 = -1
+	if rangeRequested && resp.StatusCode == base.HttpCodePartialContent {
+		expectedResponseLength, err = validateRangeResponse(resp, rangeStart, rangeEnd, f.meta.Res.Size)
+		if err != nil {
+			resp.Body.Close()
+			return err
+		}
+	}
 	defer resp.Body.Close()
 
 	// Record successful connection time for adaptive timeout
@@ -1105,6 +1116,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	}
 
 	reader := NewTimeoutReader(resp.Body, readTimeout)
+	var responseBytesRead int64
 	for {
 		if conn.ctx.Err() != nil {
 			return conn.ctx.Err()
@@ -1112,6 +1124,11 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 
 		n, err := reader.Read(buf)
 		if n > 0 {
+			responseBytesRead += int64(n)
+			if expectedResponseLength >= 0 && responseBytesRead > expectedResponseLength {
+				return fmt.Errorf("%w: response body exceeds range length %d", errInvalidRangeResponse, expectedResponseLength)
+			}
+
 			finished := false
 			var writeOffset int64
 
@@ -1170,11 +1187,50 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 
 		if err != nil {
 			if err == io.EOF {
+				if expectedResponseLength >= 0 && responseBytesRead != expectedResponseLength {
+					return fmt.Errorf("%w: response body length %d, expected %d", errInvalidRangeResponse, responseBytesRead, expectedResponseLength)
+				}
 				return nil
 			}
 			return err
 		}
 	}
+}
+
+func validateRangeResponse(resp *http.Response, requestedStart, requestedEnd, totalSize int64) (int64, error) {
+	contentRange := resp.Header.Get(base.HttpHeaderContentRange)
+	fields := strings.Fields(contentRange)
+	if len(fields) != 2 || !strings.EqualFold(fields[0], base.HttpHeaderBytes) {
+		return 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+	}
+
+	rangeAndTotal := strings.Split(fields[1], "/")
+	if len(rangeAndTotal) != 2 {
+		return 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+	}
+	bounds := strings.Split(rangeAndTotal[0], "-")
+	if len(bounds) != 2 {
+		return 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+	}
+
+	start, startErr := strconv.ParseInt(bounds[0], 10, 64)
+	end, endErr := strconv.ParseInt(bounds[1], 10, 64)
+	total, totalErr := strconv.ParseInt(rangeAndTotal[1], 10, 64)
+	if startErr != nil || endErr != nil || totalErr != nil || start < 0 || end < start || total <= end {
+		return 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+	}
+	if start != requestedStart || end != requestedEnd {
+		return 0, fmt.Errorf("%w: Content-Range %d-%d does not match requested range %d-%d", errInvalidRangeResponse, start, end, requestedStart, requestedEnd)
+	}
+	if totalSize > 0 && total != totalSize {
+		return 0, fmt.Errorf("%w: Content-Range total %d does not match resource size %d", errInvalidRangeResponse, total, totalSize)
+	}
+
+	expectedLength := end - start + 1
+	if resp.ContentLength >= 0 && resp.ContentLength != expectedLength {
+		return 0, fmt.Errorf("%w: Content-Length %d does not match range length %d", errInvalidRangeResponse, resp.ContentLength, expectedLength)
+	}
+	return expectedLength, nil
 }
 
 // fallbackToSequentialDownload handles origins that advertise byte ranges but
