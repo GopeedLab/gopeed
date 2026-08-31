@@ -1,7 +1,9 @@
 package http
 
 import (
+	"bytes"
 	"context"
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -375,6 +377,59 @@ func TestFetcher_DownloadContinue(t *testing.T) {
 	downloadContinue(listener, 5, t)
 	downloadContinue(listener, 8, t)
 	downloadContinue(listener, 16, t)
+}
+
+func TestFetcher_PauseBeforeStartDiscardsPrefetchProgress(t *testing.T) {
+	payload := make([]byte, 32*1024*1024)
+	for i := range payload {
+		payload[i] = byte(i % 251)
+	}
+	prefetchServed := make(chan struct{}, 1)
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if r.Header.Get(base.HttpHeaderRange) == "" {
+			w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+			w.WriteHeader(gohttp.StatusOK)
+			if _, err := w.Write(payload); err == nil {
+				prefetchServed <- struct{}{}
+			}
+			return
+		}
+		gohttp.ServeContent(w, r, test.BuildName, time.Unix(0, 0), bytes.NewReader(payload))
+	}))
+	defer server.Close()
+
+	fetcher := buildFetcher()
+	if err := fetcher.Resolve(&base.Request{URL: server.URL + "/" + test.BuildName}, &base.Options{
+		Path: t.TempDir(),
+		Name: test.DownloadName,
+		Extra: &http.OptsExtra{
+			Connections: 2,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-prefetchServed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for resolve prefetch response")
+	}
+
+	if err := fetcher.Pause(); err != nil {
+		t.Fatal(err)
+	}
+	if err := fetcher.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := fetcher.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	want := fmt.Sprintf("%x", md5.Sum(payload))
+	got := test.FileMd5(fetcher.Meta().SingleFilepath())
+	if want != got {
+		t.Fatalf("download after pause before start got MD5 %s, want %s", got, want)
+	}
 }
 
 func TestFetcher_DownloadContinue_NoRangeRestart(t *testing.T) {

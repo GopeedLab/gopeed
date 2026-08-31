@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/GopeedLab/gopeed/internal/webview/integrationtest"
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
@@ -26,9 +25,8 @@ func TestProviderContract(t *testing.T) {
 		Token:   *webViewRPCToken,
 	})
 	integrationtest.RunProviderContract(t, provider, integrationtest.ContractOptions{
-		AvailabilityTimeout: 5 * time.Minute,
-		CookieDomainMode:    integrationtest.CookieDomainModeRequired,
-		CookieTestURL:       "https://example.com/",
+		CookieDomainMode: integrationtest.CookieDomainModeRequired,
+		CookieTestURL:    "https://example.com/",
 	})
 }
 

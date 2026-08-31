@@ -584,6 +584,10 @@ func (f *Fetcher) cleanupPrefetchFile() {
 		os.Remove(f.prefetchFilePath)
 		f.prefetchFilePath = ""
 	}
+	// The byte count is only reusable while the backing prefetch file exists.
+	// Pause may discard that file before the first Start, so retaining the
+	// count would make the next Start skip bytes that were never copied.
+	f.prefetchSize.Store(0)
 }
 
 func (f *Fetcher) Start() error {
