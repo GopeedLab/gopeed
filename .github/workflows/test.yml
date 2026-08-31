@@ -91,7 +91,7 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Test webview
         if: runner.os == 'Windows'
-        run: go test -tags webview -v -timeout 300s ./internal/webview/goprovider/
+        run: go test -tags webview -v -count=1 -timeout 300s ./internal/webview/goprovider/
         env:
           CGO_ENABLED: 1
       - name: Test webview
@@ -107,7 +107,7 @@ jobs:
 
           cd ui/flutter
           flutter pub get
-          flutter run -d macos >"$LOG_PATH" 2>&1 &
+          flutter run --machine -d macos >"$LOG_PATH" 2>&1 &
           FLUTTER_PID=$!
           cd ../..
 
@@ -116,7 +116,26 @@ jobs:
           }
           trap cleanup EXIT
 
-          if ! go test -tags webview -v -timeout 600s ./internal/webview/rpcprovider/ -args -webview-rpc-network unix -webview-rpc-address "$SOCKET_PATH"; then
+          FLUTTER_STARTED=false
+          for _ in $(seq 1 600); do
+            if grep -Eq '"event"[[:space:]]*:[[:space:]]*"app\.started"' "$LOG_PATH"; then
+              FLUTTER_STARTED=true
+              break
+            fi
+            if ! kill -0 "$FLUTTER_PID" >/dev/null 2>&1; then
+              echo "Flutter exited before reporting app.started"
+              cat "$LOG_PATH"
+              exit 1
+            fi
+            sleep 1
+          done
+          if [[ "$FLUTTER_STARTED" != true ]]; then
+            echo "Timed out waiting for Flutter to report app.started"
+            cat "$LOG_PATH"
+            exit 1
+          fi
+
+          if ! go test -tags webview -v -count=1 -timeout 600s ./internal/webview/rpcprovider/ -args -webview-rpc-network unix -webview-rpc-address "$SOCKET_PATH"; then
             cat "$LOG_PATH"
             exit 1
           fi
