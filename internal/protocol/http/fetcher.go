@@ -34,6 +34,8 @@ const (
 	stealMinChunkSize     = 512 * 1024 // Min steal size: 512KB (avoid tiny chunks)
 )
 
+var errRangeRequestIgnored = errors.New("server ignored HTTP range request")
+
 // ============================================================================
 // State Machine
 // ============================================================================
@@ -717,12 +719,16 @@ func (f *Fetcher) downloadLoop() {
 	isResume := len(f.connections) > 0
 
 	if !isResume {
+		// Capture the mode before launching the first connection. The server may
+		// ignore that connection's Range request and switch the fetcher to a
+		// sequential download while the request is in flight.
+		startedWithRanges := f.meta.Res.Range && f.meta.Res.Size > 0
 		// Fresh start: begin with resolve connection
 		f.startResolveDownload()
 		// Non-range downloads wait for their only connection in
 		// startResolveDownload. Falling through would consume the connection's
 		// expansion signal and publish the same completion a second time.
-		if !f.meta.Res.Range || f.meta.Res.Size == 0 || f.getState() == stateDone {
+		if !startedWithRanges || f.getState() == stateDone {
 			return
 		}
 	} else {
@@ -924,6 +930,13 @@ func (f *Fetcher) runConnection(conn *connection) {
 		// Rebuild client with updated fast-fail timeout on retries
 		if retries > 0 {
 			client = f.buildFastFailClient()
+
+			// A sequential response always starts at byte zero. If a read failed
+			// after falling back from Range mode, overwrite from the beginning on
+			// the next request instead of appending duplicate prefix bytes.
+			f.connMu.Lock()
+			f.resetConnectionForRestart(conn)
+			f.connMu.Unlock()
 		}
 
 		err := f.downloadChunkOnce(conn, client, buf)
@@ -943,6 +956,17 @@ func (f *Fetcher) runConnection(conn *connection) {
 		}
 
 		if errors.Is(err, context.Canceled) {
+			return
+		}
+		if errors.Is(err, errRangeRequestIgnored) {
+			f.connMu.Lock()
+			conn.lastErr = err
+			conn.State = connFailed
+			conn.failed = true
+			f.connMu.Unlock()
+			if f.slowStart != nil {
+				f.slowStart.onConnectFailed()
+			}
 			return
 		}
 
@@ -1018,6 +1042,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		httpReq.Header.Set(base.HttpHeaderRange,
 			fmt.Sprintf(base.HttpHeaderRangeFormat, rangeStart, rangeEnd))
 	}
+	rangeRequested := httpReq.Header.Get(base.HttpHeaderRange) != ""
 
 	// Record connection start time for adaptive timeout tracking
 	connStartTime := time.Now()
@@ -1051,6 +1076,13 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			}
 		} else {
 			return originalErr
+		}
+	}
+
+	if rangeRequested && resp.StatusCode == base.HttpCodeOK {
+		if err := f.fallbackToSequentialDownload(conn); err != nil {
+			resp.Body.Close()
+			return fmt.Errorf("%w: expected 206 Partial Content, got 200 OK", err)
 		}
 	}
 	defer resp.Body.Close()
@@ -1143,6 +1175,29 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			return err
 		}
 	}
+}
+
+// fallbackToSequentialDownload handles origins that advertise byte ranges but
+// ignore the first Range request and return the full representation with 200.
+// Slow start launches only the primary connection initially, so it is safe to
+// reset the prefetch offset and consume that response from byte zero. If the
+// server changes behavior after parallel connections have started, fail rather
+// than risk assembling a corrupt file.
+func (f *Fetcher) fallbackToSequentialDownload(conn *connection) error {
+	f.connMu.Lock()
+	defer f.connMu.Unlock()
+
+	if !f.meta.Res.Range {
+		return nil
+	}
+	if conn.ID != 0 || len(f.connections) != 1 {
+		return errRangeRequestIgnored
+	}
+
+	f.meta.Res.Range = false
+	f.resetConnectionForRestart(conn)
+	f.resolveDataPos.Store(0)
+	return nil
 }
 
 // runConnectionWithResolveResp uses the response body from Resolve phase

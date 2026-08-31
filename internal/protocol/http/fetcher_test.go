@@ -441,6 +441,37 @@ func TestFetcher_DownloadNoRangeLeavesNoStaleCompletion(t *testing.T) {
 	}
 }
 
+func TestFetcher_DownloadIgnoredRangeFallsBackToSequential(t *testing.T) {
+	for _, connections := range []int{1, 4} {
+		t.Run(fmt.Sprintf("connections_%d", connections), func(t *testing.T) {
+			os.Remove(test.DownloadFile)
+			t.Cleanup(func() { os.Remove(test.DownloadFile) })
+
+			listener := test.StartTestIgnoredRangeServer(time.Millisecond)
+			defer listener.Close()
+
+			f := downloadReady(listener, connections, t).(*Fetcher)
+			if err := f.Start(); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.Wait(); err != nil {
+				t.Fatal(err)
+			}
+
+			if f.meta.Res.Range {
+				t.Fatal("expected ignored Range response to disable range mode")
+			}
+			stats := f.Stats().(*http.Stats)
+			if len(stats.Connections) != 1 {
+				t.Fatalf("expected one sequential connection, got %d", len(stats.Connections))
+			}
+			if got, want := test.FileMd5(test.DownloadFile), test.FileMd5(test.BuildFile); got != want {
+				t.Fatalf("download checksum = %s, want %s", got, want)
+			}
+		})
+	}
+}
+
 func TestFetcher_DownloadChunked(t *testing.T) {
 	listener := test.StartTestCustomServer()
 	defer listener.Close()
