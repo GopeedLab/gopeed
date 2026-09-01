@@ -208,7 +208,7 @@ func buildBTPieceMap(t *torrent.Torrent) (pieceMap *base.PieceMap, ready bool) {
 	if info == nil {
 		return nil, false
 	}
-	pieceMap = base.NewPieceMap(int(t.NumPieces()), info.PieceLength)
+	pieceMap = base.NewPieceMap(info.NumPieces(), info.PieceLength)
 	ready = applyBTPieceRuns(pieceMap, t.PieceStateRuns())
 	return pieceMap, ready
 }
@@ -234,8 +234,15 @@ func applyBTPieceRuns(pieceMap *base.PieceMap, runs []torrent.PieceStateRun) (re
 
 func buildBTPeers(t *torrent.Torrent) []*base.PeerStats {
 	connections := t.PeerConns()
-	totalPieces := int(t.NumPieces())
-	missingWantedPieces := btMissingWantedPieces(t.PieceStateRuns(), totalPieces)
+	totalPieces := 0
+	var missingWantedPieces *roaring.Bitmap
+	// Magnet torrents can connect to peers before their metadata arrives. Keep
+	// those runtime peer stats, but leave completion and relevance unavailable
+	// until the metadata provides a trusted total piece count.
+	if info := t.Info(); info != nil {
+		totalPieces = info.NumPieces()
+		missingWantedPieces = btMissingWantedPieces(t.PieceStateRuns(), totalPieces)
+	}
 	peers := make([]*base.PeerStats, 0, len(connections))
 	for _, connection := range connections {
 		peerStats := connection.Stats()
