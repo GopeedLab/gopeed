@@ -518,7 +518,7 @@ func TestFetcher_DownloadIgnoredRangeFallsBackToSequential(t *testing.T) {
 			if f.meta.Res.Range {
 				t.Fatal("expected ignored Range response to disable range mode")
 			}
-			stats := f.Stats().(*http.Stats)
+			stats := f.Stats().Snapshot.(*http.Stats)
 			if len(stats.Connections) != 1 {
 				t.Fatalf("expected one sequential connection, got %d", len(stats.Connections))
 			}
