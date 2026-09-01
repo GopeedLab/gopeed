@@ -166,15 +166,18 @@ func isRedirectExpiredError(err error) bool {
 
 // tryFallbackToOriginalURL attempts to make a request using the original URL
 // when the redirect URL has expired. Returns the response if successful.
-func (f *Fetcher) tryFallbackToOriginalURL(ctx context.Context, client *http.Client, rangeStart, rangeEnd int64) (*http.Response, error) {
+func (f *Fetcher) tryFallbackToOriginalURL(ctx context.Context, client *http.Client, rangeStart, rangeEnd int64, rangeRequested bool) (*http.Response, error) {
 	httpReq, err := f.buildRequestWithOriginalURL(ctx, f.meta.Req)
 	if err != nil {
 		return nil, err
 	}
 
-	if f.meta.Res.Range && rangeEnd > 0 {
+	if rangeRequested {
 		httpReq.Header.Set(base.HttpHeaderRange,
 			fmt.Sprintf(base.HttpHeaderRangeFormat, rangeStart, rangeEnd))
+		if !f.meta.Res.Range && f.ifRange != "" {
+			httpReq.Header.Set(base.HttpHeaderIfRange, f.ifRange)
+		}
 	}
 
 	resp, err := client.Do(httpReq)

@@ -529,6 +529,105 @@ func TestFetcher_DownloadIgnoredRangeFallsBackToSequential(t *testing.T) {
 	}
 }
 
+func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
+	payload := make([]byte, 1024*1024)
+	for i := range payload {
+		payload[i] = byte(i % 251)
+	}
+
+	const (
+		etag       = `"range-reprobe-v1"`
+		failedSize = 128 * 1024
+	)
+	var rangeRequests atomic.Int32
+	var resumedAt atomic.Int64
+	var sawIfRange atomic.Bool
+
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		rangeHeader := r.Header.Get(base.HttpHeaderRange)
+		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+		w.Header().Set(base.HttpHeaderETag, etag)
+
+		if rangeHeader == "" {
+			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+			w.WriteHeader(gohttp.StatusOK)
+			if flusher, ok := w.(gohttp.Flusher); ok {
+				flusher.Flush()
+			}
+			for offset := 0; offset < len(payload); offset += 8 * 1024 {
+				end := min(offset+8*1024, len(payload))
+				if _, err := w.Write(payload[offset:end]); err != nil {
+					return
+				}
+				time.Sleep(time.Millisecond)
+			}
+			return
+		}
+
+		requestNumber := rangeRequests.Add(1)
+		if requestNumber == 1 {
+			// Simulate the real origin: it first ignores Range, then drops the
+			// sequential response after a useful prefix has been written.
+			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+			w.WriteHeader(gohttp.StatusOK)
+			if flusher, ok := w.(gohttp.Flusher); ok {
+				flusher.Flush()
+			}
+			_, _ = w.Write(payload[:failedSize])
+			return
+		}
+
+		var start, end int64
+		if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-%d", &start, &end); err != nil {
+			w.WriteHeader(gohttp.StatusBadRequest)
+			return
+		}
+		resumedAt.Store(start)
+		sawIfRange.Store(r.Header.Get(base.HttpHeaderIfRange) == etag)
+		w.Header().Set(base.HttpHeaderContentRange,
+			fmt.Sprintf("bytes %d-%d/%d", start, end, len(payload)))
+		w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", end-start+1))
+		w.WriteHeader(gohttp.StatusPartialContent)
+		_, _ = w.Write(payload[start : end+1])
+	}))
+	defer server.Close()
+
+	downloadDir := t.TempDir()
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/dynamic-range.data"}, &base.Options{
+		Path: downloadDir,
+		Name: "dynamic-range.data",
+		Extra: &http.OptsExtra{
+			Connections: 4,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := resumedAt.Load(); got != failedSize {
+		t.Fatalf("resume Range started at %d, want %d", got, failedSize)
+	}
+	if !sawIfRange.Load() {
+		t.Fatal("resume probe did not include the strong ETag in If-Range")
+	}
+	if !f.meta.Res.Range {
+		t.Fatal("expected successful resume probe to restore range mode")
+	}
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatal("downloaded file differs after sequential Range recovery")
+	}
+}
+
 func TestFetcher_RejectsInvalidPartialContent(t *testing.T) {
 	const (
 		requestedStart = int64(1024)

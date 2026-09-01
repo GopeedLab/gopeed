@@ -16,6 +16,7 @@ import (
 type fetcherData struct {
 	Connections []*connection
 	RedirectURL string // Saved redirect URL for resume
+	IfRange     string // Strong ETag or Last-Modified validator for safe resume
 }
 
 // ============================================================================
@@ -78,6 +79,7 @@ func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	return &fetcherData{
 		Connections: _f.connections,
 		RedirectURL: redirectURL,
+		IfRange:     _f.ifRange,
 	}, nil
 }
 
@@ -96,6 +98,7 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		if fd.RedirectURL != "" {
 			fetcher.redirectURL = fd.RedirectURL
 		}
+		fetcher.ifRange = fd.IfRange
 		return fetcher
 	}
 }
