@@ -18,6 +18,7 @@ type fetcherData struct {
 	RedirectURL          string // Saved redirect URL for resume
 	IfRange              string // Strong ETag or Last-Modified validator for safe resume
 	RangeReprobeEligible bool   // Origin advertised Range before falling back to sequential mode
+	RangeValidatorPinned bool   // Recovered Range mode must keep the same If-Range validator
 	Range                *bool  // Authoritative Range mode; nil for records saved by older versions
 }
 
@@ -87,6 +88,7 @@ func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	connections := snapshotConnectionsLocked(_f.connections)
 	ifRange := _f.ifRange
 	rangeReprobeEligible := _f.rangeReprobeEligible
+	rangeValidatorPinned := _f.rangeValidatorPinned
 	var rangeMode *bool
 	if _f.meta != nil && _f.meta.Res != nil {
 		value := _f.meta.Res.Range
@@ -99,6 +101,7 @@ func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 		RedirectURL:          redirectURL,
 		IfRange:              ifRange,
 		RangeReprobeEligible: rangeReprobeEligible,
+		RangeValidatorPinned: rangeValidatorPinned,
 		Range:                rangeMode,
 	}, nil
 }
@@ -144,6 +147,7 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		}
 		fetcher.ifRange = fd.IfRange
 		fetcher.rangeReprobeEligible = fd.RangeReprobeEligible
+		fetcher.rangeValidatorPinned = fd.RangeValidatorPinned
 		if fd.Range != nil && fetcher.meta.Res != nil {
 			// Range lives in the same persisted snapshot as Connections, making it
 			// authoritative over task metadata that may have been saved just before

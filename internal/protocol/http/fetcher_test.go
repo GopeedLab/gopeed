@@ -530,93 +530,138 @@ func TestFetcher_DownloadIgnoredRangeFallsBackToSequential(t *testing.T) {
 }
 
 func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
-	payload := make([]byte, 1024*1024)
+	payload := make([]byte, 4*1024*1024)
 	for i := range payload {
 		payload[i] = byte(i % 251)
 	}
+	shortReplacement := make([]byte, 2*1024*1024)
+	chunkedReplacement := make([]byte, 5*1024*1024)
+	for i := range shortReplacement {
+		shortReplacement[i] = byte((i*3 + 17) % 251)
+	}
+	for i := range chunkedReplacement {
+		chunkedReplacement[i] = byte((i*7 + 29) % 251)
+	}
 
 	const (
-		etag            = `"range-reprobe-v1"`
-		lastModified    = "Wed, 21 Oct 2015 07:28:00 GMT"
-		invalidModified = "not-a-date"
-		failedSize      = 128 * 1024
+		etagA        = `"range-reprobe-a"`
+		etagB        = `"range-reprobe-b"`
+		weakETag     = `W/"range-reprobe-b"`
+		lastModified = "Wed, 21 Oct 2015 07:28:00 GMT"
+		laterDate    = "Wed, 21 Oct 2015 07:28:02 GMT"
+		failedSize   = 128 * 1024
 	)
 
 	tests := []struct {
-		name              string
-		etag              string
-		lastModified      string
-		wantIfRange       string
-		resumeStatus      int
-		wantErr           bool
-		wantRangeRequests int32
+		name             string
+		resolveETag      string
+		ignoredETag      string
+		lastModified     string
+		date             string
+		wantIfRange      string
+		resumeStatus     int
+		wantRangeMode    bool
+		wantParallel     bool
+		wantRangeRequest int32
+		wantFullRestart  bool
+		replacement      []byte
+		chunked200       bool
 	}{
 		{
-			name:              "valid validator resumes with 206",
-			etag:              etag,
-			wantIfRange:       etag,
-			resumeStatus:      gohttp.StatusPartialContent,
-			wantRangeRequests: 2,
+			name:             "ignored response replaces Resolve ETag",
+			resolveETag:      etagA,
+			ignoredETag:      etagB,
+			wantIfRange:      etagB,
+			resumeStatus:     gohttp.StatusPartialContent,
+			wantRangeMode:    true,
+			wantParallel:     true,
+			wantRangeRequest: 2,
 		},
 		{
-			name:              "valid Last-Modified resumes with 206",
-			lastModified:      lastModified,
-			wantIfRange:       lastModified,
-			resumeStatus:      gohttp.StatusPartialContent,
-			wantRangeRequests: 2,
+			name:             "strong Last-Modified resumes with 206",
+			lastModified:     lastModified,
+			date:             laterDate,
+			wantIfRange:      lastModified,
+			resumeStatus:     gohttp.StatusPartialContent,
+			wantRangeMode:    true,
+			wantParallel:     true,
+			wantRangeRequest: 2,
 		},
 		{
-			name:              "missing validator preserves prefix",
-			resumeStatus:      gohttp.StatusPartialContent,
-			wantErr:           true,
-			wantRangeRequests: 1,
+			name:             "missing validator restarts from zero",
+			resumeStatus:     gohttp.StatusPartialContent,
+			wantRangeRequest: 1,
+			wantFullRestart:  true,
 		},
 		{
-			name:              "invalid Last-Modified preserves prefix",
-			lastModified:      invalidModified,
-			resumeStatus:      gohttp.StatusPartialContent,
-			wantErr:           true,
-			wantRangeRequests: 1,
+			name:             "weak ETag blocks Last-Modified fallback",
+			ignoredETag:      weakETag,
+			lastModified:     lastModified,
+			date:             laterDate,
+			resumeStatus:     gohttp.StatusPartialContent,
+			wantRangeRequest: 1,
+			wantFullRestart:  true,
 		},
 		{
-			name:              "guarded probe returning 200 preserves prefix",
-			etag:              etag,
-			wantIfRange:       etag,
-			resumeStatus:      gohttp.StatusOK,
-			wantErr:           true,
-			wantRangeRequests: 2,
+			name:             "same-second Last-Modified restarts from zero",
+			lastModified:     lastModified,
+			date:             lastModified,
+			resumeStatus:     gohttp.StatusPartialContent,
+			wantRangeRequest: 1,
+			wantFullRestart:  true,
+		},
+		{
+			name:             "guarded probe returning shorter 200 replaces resource",
+			ignoredETag:      etagB,
+			wantIfRange:      etagB,
+			resumeStatus:     gohttp.StatusOK,
+			wantRangeRequest: 2,
+			replacement:      shortReplacement,
+		},
+		{
+			name:             "guarded probe returning larger chunked 200 replaces resource",
+			ignoredETag:      etagB,
+			wantIfRange:      etagB,
+			resumeStatus:     gohttp.StatusOK,
+			wantRangeRequest: 2,
+			replacement:      chunkedReplacement,
+			chunked200:       true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var rangeRequests atomic.Int32
+			var fullRequests atomic.Int32
 			var resumedAt atomic.Int64
 			var sawIfRange atomic.Bool
+			var workerValidatorMismatch atomic.Bool
 
 			server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
 				rangeHeader := r.Header.Get(base.HttpHeaderRange)
 				w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
-				if tt.etag != "" {
-					w.Header().Set(base.HttpHeaderETag, tt.etag)
-				}
-				if tt.lastModified != "" {
-					w.Header().Set(base.HttpHeaderLastModified, tt.lastModified)
-				}
 
 				if rangeHeader == "" {
+					requestNumber := fullRequests.Add(1)
+					if requestNumber == 1 && tt.resolveETag != "" {
+						w.Header().Set(base.HttpHeaderETag, tt.resolveETag)
+					}
 					w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
 					w.WriteHeader(gohttp.StatusOK)
-					if flusher, ok := w.(gohttp.Flusher); ok {
-						flusher.Flush()
-					}
-					for offset := 0; offset < len(payload); offset += 8 * 1024 {
-						end := min(offset+8*1024, len(payload))
-						if _, err := w.Write(payload[offset:end]); err != nil {
-							return
+					if requestNumber == 1 {
+						if flusher, ok := w.(gohttp.Flusher); ok {
+							flusher.Flush()
 						}
-						time.Sleep(time.Millisecond)
+						for offset := 0; offset < len(payload); offset += 8 * 1024 {
+							end := min(offset+8*1024, len(payload))
+							if _, err := w.Write(payload[offset:end]); err != nil {
+								return
+							}
+							time.Sleep(time.Millisecond)
+						}
+						return
 					}
+					_, _ = w.Write(payload)
 					return
 				}
 
@@ -624,6 +669,15 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 				if requestNumber == 1 {
 					// Simulate the real origin: it first ignores Range, then drops the
 					// sequential response after a useful prefix has been written.
+					if tt.ignoredETag != "" {
+						w.Header().Set(base.HttpHeaderETag, tt.ignoredETag)
+					}
+					if tt.lastModified != "" {
+						w.Header().Set(base.HttpHeaderLastModified, tt.lastModified)
+					}
+					if tt.date != "" {
+						w.Header().Set("Date", tt.date)
+					}
 					w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
 					w.WriteHeader(gohttp.StatusOK)
 					if flusher, ok := w.(gohttp.Flusher); ok {
@@ -638,19 +692,51 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 					w.WriteHeader(gohttp.StatusBadRequest)
 					return
 				}
-				resumedAt.Store(start)
-				sawIfRange.Store(r.Header.Get(base.HttpHeaderIfRange) == tt.wantIfRange)
-				if tt.resumeStatus == gohttp.StatusOK {
-					w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+				if requestNumber == 2 {
+					resumedAt.Store(start)
+					sawIfRange.Store(r.Header.Get(base.HttpHeaderIfRange) == tt.wantIfRange)
+				} else if tt.wantParallel && r.Header.Get(base.HttpHeaderIfRange) != tt.wantIfRange {
+					workerValidatorMismatch.Store(true)
+				}
+				if requestNumber == 2 && tt.resumeStatus == gohttp.StatusOK {
+					responsePayload := payload
+					if tt.replacement != nil {
+						responsePayload = tt.replacement
+					}
+					w.Header().Set(base.HttpHeaderETag, `"replacement"`)
+					if !tt.chunked200 {
+						w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(responsePayload)))
+					}
 					w.WriteHeader(gohttp.StatusOK)
-					_, _ = w.Write(payload)
+					if tt.chunked200 {
+						w.(gohttp.Flusher).Flush()
+					}
+					for offset := 0; offset < len(responsePayload); offset += 8 * 1024 {
+						end := min(offset+8*1024, len(responsePayload))
+						if _, err := w.Write(responsePayload[offset:end]); err != nil {
+							return
+						}
+					}
 					return
 				}
 				w.Header().Set(base.HttpHeaderContentRange,
 					fmt.Sprintf("bytes %d-%d/%d", start, end, len(payload)))
 				w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", end-start+1))
 				w.WriteHeader(gohttp.StatusPartialContent)
-				_, _ = w.Write(payload[start : end+1])
+				if requestNumber == 2 && tt.wantParallel {
+					w.(gohttp.Flusher).Flush()
+					deadline := time.Now().Add(2 * time.Second)
+					for rangeRequests.Load() < 3 && time.Now().Before(deadline) {
+						time.Sleep(10 * time.Millisecond)
+					}
+				}
+				for offset := start; offset <= end; offset += 8 * 1024 {
+					chunkEnd := min(offset+8*1024, end+1)
+					if _, err := w.Write(payload[offset:chunkEnd]); err != nil {
+						return
+					}
+					time.Sleep(time.Millisecond)
+				}
 			}))
 			defer server.Close()
 
@@ -667,49 +753,126 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 			if err := f.Start(); err != nil {
 				t.Fatal(err)
 			}
-			err := f.Wait()
-			if tt.wantErr {
-				if !errors.Is(err, errSequentialResumeUnavailable) {
-					t.Fatalf("Wait() error = %v, want %v", err, errSequentialResumeUnavailable)
-				}
-			} else if err != nil {
+			if err := f.Wait(); err != nil {
 				t.Fatal(err)
 			}
 
-			if got := rangeRequests.Load(); got != tt.wantRangeRequests {
-				t.Fatalf("Range requests = %d, want %d", got, tt.wantRangeRequests)
+			if got := rangeRequests.Load(); got < tt.wantRangeRequest {
+				t.Fatalf("Range requests = %d, want at least %d", got, tt.wantRangeRequest)
 			}
 			got, err := os.ReadFile(f.meta.SingleFilepath())
 			if err != nil {
 				t.Fatal(err)
 			}
-			if tt.wantErr {
-				f.connMu.Lock()
-				downloaded := f.connections[0].Chunk.Downloaded
-				f.connMu.Unlock()
-				if downloaded != failedSize {
-					t.Fatalf("preserved prefix = %d, want %d", downloaded, failedSize)
+			if tt.wantFullRestart && fullRequests.Load() < 2 {
+				t.Fatal("missing validator did not issue a full restart request")
+			}
+			if tt.wantIfRange != "" && resumedAt.Load() != failedSize {
+				t.Fatalf("resume Range started at %d, want %d", resumedAt.Load(), failedSize)
+			}
+			if tt.wantIfRange != "" && !sawIfRange.Load() {
+				t.Fatalf("resume probe did not include If-Range %q", tt.wantIfRange)
+			}
+			if f.meta.Res.Range != tt.wantRangeMode {
+				t.Fatalf("Range mode = %v, want %v", f.meta.Res.Range, tt.wantRangeMode)
+			}
+			if tt.wantParallel {
+				stats := f.Stats().(*http.Stats)
+				if len(stats.Connections) <= 1 {
+					f.slowStart.mu.Lock()
+					totalLaunched := f.slowStart.totalLaunched
+					batchPending := f.slowStart.batchPending
+					batchReady := f.slowStart.batchReady
+					maxConnections := f.slowStart.maxConnections
+					nextBatchSize := f.slowStart.nextBatchSize
+					paused := f.slowStart.paused
+					f.slowStart.mu.Unlock()
+					t.Fatalf("successful re-probe kept %d connection, want expansion (requests=%d state=%d launched=%d pending=%d ready=%d max=%d next=%d paused=%v)", len(stats.Connections), rangeRequests.Load(), f.getState(), totalLaunched, batchPending, batchReady, maxConnections, nextBatchSize, paused)
 				}
-				if len(got) < failedSize || !bytes.Equal(got[:failedSize], payload[:failedSize]) {
-					t.Fatal("preserved prefix differs from downloaded payload")
+				if workerValidatorMismatch.Load() {
+					t.Fatalf("expanded Range worker omitted pinned If-Range %q", tt.wantIfRange)
 				}
-				return
 			}
-
-			if got := resumedAt.Load(); got != failedSize {
-				t.Fatalf("resume Range started at %d, want %d", got, failedSize)
+			wantPayload := payload
+			if tt.replacement != nil {
+				wantPayload = tt.replacement
 			}
-			if !sawIfRange.Load() {
-				t.Fatal("resume probe did not include the strong ETag in If-Range")
+			if !bytes.Equal(got, wantPayload) {
+				t.Fatal("downloaded file differs after sequential recovery")
 			}
-			if !f.meta.Res.Range {
-				t.Fatal("expected successful resume probe to restore range mode")
-			}
-			if !bytes.Equal(got, payload) {
-				t.Fatal("downloaded file differs after sequential Range recovery")
+			if f.meta.Res.Size != int64(len(wantPayload)) || f.meta.Res.Files[0].Size != int64(len(wantPayload)) {
+				t.Fatalf("resource size = %d/%d, want %d", f.meta.Res.Size, f.meta.Res.Files[0].Size, len(wantPayload))
 			}
 		})
 	}
+}
+
+func TestExtractIfRangeValidator(t *testing.T) {
+	const (
+		lastModified = "Wed, 21 Oct 2015 07:28:00 GMT"
+		laterDate    = "Wed, 21 Oct 2015 07:28:02 GMT"
+	)
+	tests := []struct {
+		name string
+		etag string
+		lm   string
+		date string
+		want string
+	}{
+		{name: "strong ETag", etag: `"v1"`, want: `"v1"`},
+		{name: "malformed ETag", etag: `"bad value"`},
+		{name: "weak ETag blocks date", etag: `W/"v1"`, lm: lastModified, date: laterDate},
+		{name: "strong Last-Modified", lm: lastModified, date: laterDate, want: lastModified},
+		{name: "same-second Last-Modified", lm: lastModified, date: lastModified},
+		{name: "Last-Modified without Date", lm: lastModified},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			header := make(gohttp.Header)
+			if tt.etag != "" {
+				header.Set(base.HttpHeaderETag, tt.etag)
+			}
+			if tt.lm != "" {
+				header.Set(base.HttpHeaderLastModified, tt.lm)
+			}
+			if tt.date != "" {
+				header.Set("Date", tt.date)
+			}
+			if got := extractIfRangeValidator(header); got != tt.want {
+				t.Fatalf("extractIfRangeValidator() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFetcher_OriginalURLFallbackPreservesResumeHeaders(t *testing.T) {
+	const (
+		start   = int64(128)
+		end     = int64(255)
+		ifRange = `"resume-v2"`
+	)
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if got, want := r.Header.Get(base.HttpHeaderRange), "bytes=128-255"; got != want {
+			t.Errorf("Range = %q, want %q", got, want)
+		}
+		if got := r.Header.Get(base.HttpHeaderIfRange); got != ifRange {
+			t.Errorf("If-Range = %q, want %q", got, ifRange)
+		}
+		w.Header().Set(base.HttpHeaderContentRange, "bytes 128-255/256")
+		w.WriteHeader(gohttp.StatusPartialContent)
+	}))
+	defer server.Close()
+
+	f := &Fetcher{
+		config: &config{},
+		meta:   &fetcher.FetcherMeta{Req: &base.Request{URL: server.URL}},
+	}
+	resp, err := f.tryFallbackToOriginalURL(context.Background(), server.Client(), start, end, true, ifRange)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
 }
 
 func TestFetcher_RejectsInvalidPartialContent(t *testing.T) {
@@ -1695,7 +1858,8 @@ func TestFetcherManager_StoreCreatesAtomicSnapshot(t *testing.T) {
 			Res:  &base.Resource{Size: 100, Range: true},
 			Opts: &base.Options{},
 		},
-		ifRange: `"snapshot-v1"`,
+		ifRange:              `"snapshot-v1"`,
+		rangeValidatorPinned: true,
 		connections: []*connection{{
 			ID:    0,
 			Role:  rolePrimary,
@@ -1720,11 +1884,13 @@ func TestFetcherManager_StoreCreatesAtomicSnapshot(t *testing.T) {
 			if sequential {
 				f.meta.Res.Range = false
 				f.rangeReprobeEligible = true
+				f.rangeValidatorPinned = false
 				f.connections[0].Downloaded = 64
 				f.connections[0].Chunk.Downloaded = 64
 			} else {
 				f.meta.Res.Range = true
 				f.rangeReprobeEligible = false
+				f.rangeValidatorPinned = true
 				f.connections[0].Downloaded = 0
 				f.connections[0].Chunk.Downloaded = 0
 			}
@@ -1759,15 +1925,15 @@ func TestFetcherManager_StoreCreatesAtomicSnapshot(t *testing.T) {
 
 		downloaded := fd.Connections[0].Chunk.Downloaded
 		if *fd.Range {
-			if fd.RangeReprobeEligible || downloaded != 0 {
+			if fd.RangeReprobeEligible || !fd.RangeValidatorPinned || downloaded != 0 {
 				close(stop)
 				<-done
-				t.Fatalf("mixed ranged snapshot: eligible=%v downloaded=%d", fd.RangeReprobeEligible, downloaded)
+				t.Fatalf("mixed ranged snapshot: eligible=%v pinned=%v downloaded=%d", fd.RangeReprobeEligible, fd.RangeValidatorPinned, downloaded)
 			}
-		} else if !fd.RangeReprobeEligible || downloaded != 64 {
+		} else if !fd.RangeReprobeEligible || fd.RangeValidatorPinned || downloaded != 64 {
 			close(stop)
 			<-done
-			t.Fatalf("mixed sequential snapshot: eligible=%v downloaded=%d", fd.RangeReprobeEligible, downloaded)
+			t.Fatalf("mixed sequential snapshot: eligible=%v pinned=%v downloaded=%d", fd.RangeReprobeEligible, fd.RangeValidatorPinned, downloaded)
 		}
 	}
 	close(stop)
@@ -1813,6 +1979,21 @@ func TestFetcherManager_RestoreUsesSnapshotRangeMode(t *testing.T) {
 	}
 	if got := restored.connections[0].Chunk.Downloaded; got != 64 {
 		t.Fatalf("restored prefix = %d, want 64", got)
+	}
+
+	pinnedRangeMode := true
+	pinnedMeta := &fetcher.FetcherMeta{
+		Req:  &base.Request{},
+		Res:  &base.Resource{Size: 100, Range: false},
+		Opts: &base.Options{},
+	}
+	pinned := restore(pinnedMeta, &fetcherData{
+		IfRange:              `"snapshot-v2"`,
+		RangeValidatorPinned: true,
+		Range:                &pinnedRangeMode,
+	}).(*Fetcher)
+	if !pinned.meta.Res.Range || !pinned.rangeValidatorPinned || pinned.ifRange != `"snapshot-v2"` {
+		t.Fatalf("restored pinned range state = range:%v pinned:%v If-Range:%q", pinned.meta.Res.Range, pinned.rangeValidatorPinned, pinned.ifRange)
 	}
 
 	// Records written before the Range snapshot field existed must retain the
