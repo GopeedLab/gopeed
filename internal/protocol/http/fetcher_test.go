@@ -1688,6 +1688,146 @@ func TestFetcherManager_ParseName(t *testing.T) {
 	}
 }
 
+func TestFetcherManager_StoreCreatesAtomicSnapshot(t *testing.T) {
+	f := &Fetcher{
+		meta: &fetcher.FetcherMeta{
+			Req:  &base.Request{},
+			Res:  &base.Resource{Size: 100, Range: true},
+			Opts: &base.Options{},
+		},
+		ifRange: `"snapshot-v1"`,
+		connections: []*connection{{
+			ID:    0,
+			Role:  rolePrimary,
+			State: connDownloading,
+			Chunk: newChunk(0, 99),
+		}},
+	}
+	fm := new(FetcherManager)
+
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		sequential := false
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			f.connMu.Lock()
+			if sequential {
+				f.meta.Res.Range = false
+				f.rangeReprobeEligible = true
+				f.connections[0].Downloaded = 64
+				f.connections[0].Chunk.Downloaded = 64
+			} else {
+				f.meta.Res.Range = true
+				f.rangeReprobeEligible = false
+				f.connections[0].Downloaded = 0
+				f.connections[0].Chunk.Downloaded = 0
+			}
+			f.connMu.Unlock()
+			sequential = !sequential
+		}
+	}()
+
+	for i := 0; i < 1000; i++ {
+		data, err := fm.Store(f)
+		if err != nil {
+			close(stop)
+			<-done
+			t.Fatal(err)
+		}
+		fd := data.(*fetcherData)
+		if fd.Range == nil {
+			close(stop)
+			<-done
+			t.Fatal("snapshot Range mode is nil")
+		}
+		if len(fd.Connections) != 1 || fd.Connections[0] == nil || fd.Connections[0].Chunk == nil {
+			close(stop)
+			<-done
+			t.Fatalf("invalid connection snapshot: %#v", fd.Connections)
+		}
+		if fd.Connections[0] == f.connections[0] || fd.Connections[0].Chunk == f.connections[0].Chunk {
+			close(stop)
+			<-done
+			t.Fatal("Store returned live connection state instead of a deep snapshot")
+		}
+
+		downloaded := fd.Connections[0].Chunk.Downloaded
+		if *fd.Range {
+			if fd.RangeReprobeEligible || downloaded != 0 {
+				close(stop)
+				<-done
+				t.Fatalf("mixed ranged snapshot: eligible=%v downloaded=%d", fd.RangeReprobeEligible, downloaded)
+			}
+		} else if !fd.RangeReprobeEligible || downloaded != 64 {
+			close(stop)
+			<-done
+			t.Fatalf("mixed sequential snapshot: eligible=%v downloaded=%d", fd.RangeReprobeEligible, downloaded)
+		}
+	}
+	close(stop)
+	<-done
+}
+
+func TestFetcherManager_RestoreUsesSnapshotRangeMode(t *testing.T) {
+	fm := new(FetcherManager)
+	rangeMode := false
+	saved := &fetcherData{
+		Connections: []*connection{{
+			ID:         0,
+			Role:       rolePrimary,
+			State:      connFailed,
+			Chunk:      &chunk{Begin: 0, End: 99, Downloaded: 64},
+			Downloaded: 64,
+		}},
+		IfRange:              `"snapshot-v1"`,
+		RangeReprobeEligible: true,
+		Range:                &rangeMode,
+	}
+	encoded, err := json.Marshal(saved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var persisted fetcherData
+	if err := json.Unmarshal(encoded, &persisted); err != nil {
+		t.Fatal(err)
+	}
+
+	staleMeta := &fetcher.FetcherMeta{
+		Req:  &base.Request{},
+		Res:  &base.Resource{Size: 100, Range: true},
+		Opts: &base.Options{},
+	}
+	_, restore := fm.Restore()
+	restored := restore(staleMeta, &persisted).(*Fetcher)
+	if restored.meta.Res.Range {
+		t.Fatal("Restore kept stale task Range mode instead of the connection snapshot mode")
+	}
+	if !restored.rangeReprobeEligible || restored.ifRange != `"snapshot-v1"` {
+		t.Fatalf("restored recovery state = eligible:%v If-Range:%q", restored.rangeReprobeEligible, restored.ifRange)
+	}
+	if got := restored.connections[0].Chunk.Downloaded; got != 64 {
+		t.Fatalf("restored prefix = %d, want 64", got)
+	}
+
+	// Records written before the Range snapshot field existed must retain the
+	// mode from task metadata for backward compatibility.
+	legacyMeta := &fetcher.FetcherMeta{
+		Req:  &base.Request{},
+		Res:  &base.Resource{Size: 100, Range: true},
+		Opts: &base.Options{},
+	}
+	legacy := restore(legacyMeta, &fetcherData{}).(*Fetcher)
+	if !legacy.meta.Res.Range {
+		t.Fatal("legacy record unexpectedly overrode task Range mode")
+	}
+}
+
 func downloadReady(listener net.Listener, connections int, t *testing.T) fetcher.Fetcher {
 	return doDownloadReady(buildFetcher(), listener, connections, t)
 }
