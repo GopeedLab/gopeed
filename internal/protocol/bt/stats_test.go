@@ -28,6 +28,43 @@ func TestStatsSeparatesSnapshotAndRuntime(t *testing.T) {
 	}
 }
 
+func TestStatsBeforeTorrentMetadataIsAvailable(t *testing.T) {
+	config := torrent.TestingConfig(t)
+	config.DisableTCP = true
+	config.DisableUTP = true
+	client, err := torrent.NewClient(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	torrentWithoutMetadata, err := client.AddMagnet(
+		"magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info := torrentWithoutMetadata.Info(); info != nil {
+		t.Fatalf("torrent info = %+v, want nil before metadata is available", info)
+	}
+
+	frame := (&Fetcher{
+		torrent: torrentWithoutMetadata,
+		meta:    &fetcher.FetcherMeta{},
+		data:    &fetcherData{},
+	}).Stats()
+	if frame.Snapshot != nil {
+		t.Fatalf("snapshot = %T, want nil before metadata is available", frame.Snapshot)
+	}
+	runtime, ok := frame.Runtime.(*protocolbt.StatsRuntime)
+	if !ok {
+		t.Fatalf("runtime type = %T", frame.Runtime)
+	}
+	if len(runtime.Peers) != 0 || runtime.TotalPeers != 0 {
+		t.Fatalf("unexpected runtime before metadata is available: %+v", runtime)
+	}
+}
+
 func TestApplyBTPieceRunsPublishesVerifiedCompletionOnly(t *testing.T) {
 	pieceMap := base.NewPieceMap(4, 1024)
 	ready := applyBTPieceRuns(pieceMap, []torrent.PieceStateRun{

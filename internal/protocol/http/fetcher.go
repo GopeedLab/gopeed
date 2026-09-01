@@ -34,6 +34,15 @@ const (
 	stealMinChunkSize     = 512 * 1024 // Min steal size: 512KB (avoid tiny chunks)
 )
 
+var (
+	errRangeRequestIgnored  = errors.New("server ignored HTTP range request")
+	errInvalidRangeResponse = errors.New("invalid HTTP range response")
+)
+
+func isRangeIntegrityError(err error) bool {
+	return errors.Is(err, errRangeRequestIgnored) || errors.Is(err, errInvalidRangeResponse)
+}
+
 // ============================================================================
 // State Machine
 // ============================================================================
@@ -575,6 +584,10 @@ func (f *Fetcher) cleanupPrefetchFile() {
 		os.Remove(f.prefetchFilePath)
 		f.prefetchFilePath = ""
 	}
+	// The byte count is only reusable while the backing prefetch file exists.
+	// Pause may discard that file before the first Start, so retaining the
+	// count would make the next Start skip bytes that were never copied.
+	f.prefetchSize.Store(0)
 }
 
 func (f *Fetcher) Start() error {
@@ -717,12 +730,16 @@ func (f *Fetcher) downloadLoop() {
 	isResume := len(f.connections) > 0
 
 	if !isResume {
+		// Capture the mode before launching the first connection. The server may
+		// ignore that connection's Range request and switch the fetcher to a
+		// sequential download while the request is in flight.
+		startedWithRanges := f.meta.Res.Range && f.meta.Res.Size > 0
 		// Fresh start: begin with resolve connection
 		f.startResolveDownload()
 		// Non-range downloads wait for their only connection in
 		// startResolveDownload. Falling through would consume the connection's
 		// expansion signal and publish the same completion a second time.
-		if !f.meta.Res.Range || f.meta.Res.Size == 0 || f.getState() == stateDone {
+		if !startedWithRanges || f.getState() == stateDone {
 			return
 		}
 	} else {
@@ -928,6 +945,13 @@ func (f *Fetcher) runConnection(conn *connection) {
 		// Rebuild client with updated fast-fail timeout on retries
 		if retries > 0 {
 			client = f.buildFastFailClient()
+
+			// A sequential response always starts at byte zero. If a read failed
+			// after falling back from Range mode, overwrite from the beginning on
+			// the next request instead of appending duplicate prefix bytes.
+			f.connMu.Lock()
+			f.resetConnectionForRestart(conn)
+			f.connMu.Unlock()
 		}
 
 		err := f.downloadChunkOnce(conn, client, buf)
@@ -949,6 +973,17 @@ func (f *Fetcher) runConnection(conn *connection) {
 		}
 
 		if errors.Is(err, context.Canceled) {
+			return
+		}
+		if isRangeIntegrityError(err) {
+			f.connMu.Lock()
+			conn.lastErr = err
+			conn.State = connFailed
+			conn.failed = true
+			f.connMu.Unlock()
+			if f.slowStart != nil {
+				f.slowStart.onConnectFailed()
+			}
 			return
 		}
 
@@ -1027,6 +1062,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		httpReq.Header.Set(base.HttpHeaderRange,
 			fmt.Sprintf(base.HttpHeaderRangeFormat, rangeStart, rangeEnd))
 	}
+	rangeRequested := httpReq.Header.Get(base.HttpHeaderRange) != ""
 
 	// Record connection start time for adaptive timeout tracking
 	connStartTime := time.Now()
@@ -1062,6 +1098,28 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			return originalErr
 		}
 	}
+
+	expectedResponseLength := int64(-1)
+	if rangeRequested && resp.StatusCode == base.HttpCodeOK {
+		if err := f.fallbackToSequentialDownload(conn); err != nil {
+			resp.Body.Close()
+			return fmt.Errorf("%w: expected 206 Partial Content, got 200 OK", err)
+		}
+	}
+	if rangeRequested && resp.StatusCode == base.HttpCodePartialContent {
+		expectedResponseLength, err = validateRangeResponse(resp, rangeStart, rangeEnd, f.meta.Res.Size)
+		if err != nil {
+			resp.Body.Close()
+			return err
+		}
+	}
+	if !f.meta.Res.Range && resp.StatusCode == base.HttpCodeOK && f.meta.Res.Size > 0 {
+		expectedResponseLength = f.meta.Res.Size
+		if resp.ContentLength >= 0 && resp.ContentLength != expectedResponseLength {
+			resp.Body.Close()
+			return fmt.Errorf("%w: Content-Length %d does not match resource size %d", errInvalidRangeResponse, resp.ContentLength, expectedResponseLength)
+		}
+	}
 	defer resp.Body.Close()
 
 	// Record successful connection time for adaptive timeout
@@ -1082,6 +1140,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	}
 
 	reader := NewTimeoutReader(resp.Body, readTimeout)
+	var responseBytesRead int64
 	for {
 		if conn.ctx.Err() != nil {
 			return conn.ctx.Err()
@@ -1089,6 +1148,11 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 
 		n, err := reader.Read(buf)
 		if n > 0 {
+			responseBytesRead += int64(n)
+			if expectedResponseLength >= 0 && responseBytesRead > expectedResponseLength {
+				return fmt.Errorf("%w: response body exceeds expected length %d", errInvalidRangeResponse, expectedResponseLength)
+			}
+
 			finished := false
 			var writeOffset int64
 
@@ -1147,11 +1211,73 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 
 		if err != nil {
 			if err == io.EOF {
+				if expectedResponseLength >= 0 && responseBytesRead != expectedResponseLength {
+					return fmt.Errorf("%w: response body length %d, expected %d", errInvalidRangeResponse, responseBytesRead, expectedResponseLength)
+				}
 				return nil
 			}
 			return err
 		}
 	}
+}
+
+func validateRangeResponse(resp *http.Response, requestedStart, requestedEnd, totalSize int64) (int64, error) {
+	contentRange := resp.Header.Get(base.HttpHeaderContentRange)
+	fields := strings.Fields(contentRange)
+	if len(fields) != 2 || !strings.EqualFold(fields[0], base.HttpHeaderBytes) {
+		return 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+	}
+
+	rangeAndTotal := strings.Split(fields[1], "/")
+	if len(rangeAndTotal) != 2 {
+		return 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+	}
+	bounds := strings.Split(rangeAndTotal[0], "-")
+	if len(bounds) != 2 {
+		return 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+	}
+
+	start, startErr := strconv.ParseInt(bounds[0], 10, 64)
+	end, endErr := strconv.ParseInt(bounds[1], 10, 64)
+	total, totalErr := strconv.ParseInt(rangeAndTotal[1], 10, 64)
+	if startErr != nil || endErr != nil || totalErr != nil || start < 0 || end < start || total <= end {
+		return 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+	}
+	if start != requestedStart || end != requestedEnd {
+		return 0, fmt.Errorf("%w: Content-Range %d-%d does not match requested range %d-%d", errInvalidRangeResponse, start, end, requestedStart, requestedEnd)
+	}
+	if totalSize > 0 && total != totalSize {
+		return 0, fmt.Errorf("%w: Content-Range total %d does not match resource size %d", errInvalidRangeResponse, total, totalSize)
+	}
+
+	expectedLength := end - start + 1
+	if resp.ContentLength >= 0 && resp.ContentLength != expectedLength {
+		return 0, fmt.Errorf("%w: Content-Length %d does not match range length %d", errInvalidRangeResponse, resp.ContentLength, expectedLength)
+	}
+	return expectedLength, nil
+}
+
+// fallbackToSequentialDownload handles origins that advertise byte ranges but
+// ignore the first Range request and return the full representation with 200.
+// Slow start launches only the primary connection initially, so it is safe to
+// reset the prefetch offset and consume that response from byte zero. If the
+// server changes behavior after parallel connections have started, fail rather
+// than risk assembling a corrupt file.
+func (f *Fetcher) fallbackToSequentialDownload(conn *connection) error {
+	f.connMu.Lock()
+	defer f.connMu.Unlock()
+
+	if !f.meta.Res.Range {
+		return nil
+	}
+	if conn.ID != 0 || len(f.connections) != 1 {
+		return errRangeRequestIgnored
+	}
+
+	f.meta.Res.Range = false
+	f.resetConnectionForRestart(conn)
+	f.resolveDataPos.Store(0)
+	return nil
 }
 
 // runConnectionWithResolveResp uses the response body from Resolve phase
@@ -1566,9 +1692,18 @@ func (f *Fetcher) onDownloadComplete() {
 	// If total downloaded matches file size, consider it a success regardless of connection failures
 	downloadComplete := f.meta.Res.Size > 0 && totalDownloaded >= f.meta.Res.Size
 
-	// Check for any errors, but ignore 403 (server connection limit) errors if download completed
+	// Integrity errors must win over byte-count completion. A malformed response
+	// may be detected only after the expected bytes have already been written.
 	var finalErr error
-	if !downloadComplete && !allChunksComplete {
+	for _, conn := range f.connections {
+		if conn.State == connFailed && conn.failed && isRangeIntegrityError(conn.lastErr) {
+			finalErr = fmt.Errorf("connection %d failed: retries=%d, err=%w", conn.ID, conn.retryTimes, conn.lastErr)
+			break
+		}
+	}
+
+	// Check for other errors, but ignore 403 (server connection limit) errors if download completed.
+	if finalErr == nil && !downloadComplete && !allChunksComplete {
 		for _, conn := range f.connections {
 			if conn.State == connFailed && conn.failed {
 				// Skip 403 errors (server connection limit) - these are expected when exceeding server's limit

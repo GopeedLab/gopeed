@@ -14,6 +14,10 @@ import (
 
 const TestUserAgent = "GopeedWebViewIntegration/1.0"
 
+// Providers may need to initialize an external host or a native browser runtime
+// before the first page can be created.
+const defaultAvailabilityTimeout = time.Minute
+
 type ContractOptions struct {
 	AvailabilityTimeout time.Duration
 	CookieDomainMode    CookieDomainMode
@@ -32,7 +36,7 @@ func RunProviderContract(t *testing.T, provider enginewebview.Provider, opts Con
 
 	timeout := opts.AvailabilityTimeout
 	if timeout <= 0 {
-		timeout = 10 * time.Second
+		timeout = defaultAvailabilityTimeout
 	}
 	waitForProviderAvailable(t, provider, timeout)
 

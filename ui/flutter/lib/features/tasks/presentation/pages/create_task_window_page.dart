@@ -449,6 +449,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 key: const ValueKey('create-task-proxy-mode'),
                                 value: _proxyMode,
                                 buttonKeyPrefix: 'create-task-proxy-mode',
+                                alignment: WrapAlignment.start,
                                 options: [
                                   AppChoiceOption(
                                     value: RequestProxyMode.follow,
@@ -480,6 +481,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                   key: const ValueKey('create-task-proxy-scheme'),
                                   value: _proxyScheme,
                                   buttonKeyPrefix: 'create-task-proxy-scheme',
+                                  alignment: WrapAlignment.start,
                                   options: const [
                                     AppChoiceOption(value: 'http', label: 'HTTP', icon: Icons.http_outlined),
                                     AppChoiceOption(value: 'https', label: 'HTTPS', icon: Icons.https_outlined),

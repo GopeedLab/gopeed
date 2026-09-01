@@ -20,12 +20,14 @@ class AppChoiceSegmentedControl<T extends Object> extends StatelessWidget {
     required this.options,
     required this.onChanged,
     this.buttonKeyPrefix = 'choice',
+    this.alignment,
   });
 
   final T value;
   final List<AppChoiceOption<T>> options;
   final ValueChanged<T> onChanged;
   final String buttonKeyPrefix;
+  final WrapAlignment? alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +36,7 @@ class AppChoiceSegmentedControl<T extends Object> extends StatelessWidget {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      alignment: desktop ? WrapAlignment.end : WrapAlignment.start,
+      alignment: alignment ?? (desktop ? WrapAlignment.end : WrapAlignment.start),
       children: [
         for (final option in options)
           _ChoiceButton<T>(
