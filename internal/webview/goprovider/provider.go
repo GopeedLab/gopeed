@@ -81,6 +81,10 @@ type nativeCookieJSON struct {
 
 var providerSeq atomic.Uint64
 
+// Keep native page creation aligned with the provider availability budget used
+// by the integration contract. Cold WebView2 startup can exceed ten seconds.
+const startupTimeout = time.Minute
+
 func newPageWrapper(opts enginewebview.OpenOptions) *pageWrapper {
 	seq := providerSeq.Add(1)
 	return &pageWrapper{
@@ -142,7 +146,7 @@ func (p *pageWrapper) start() error {
 	case err := <-p.ready:
 		p.tracef("open %dms", time.Since(startedAt).Milliseconds())
 		return err
-	case <-time.After(10 * time.Second):
+	case <-time.After(startupTimeout):
 		p.tracef("open timeout %dms", time.Since(startedAt).Milliseconds())
 		return fmt.Errorf("webview startup timeout")
 	}
