@@ -536,95 +536,179 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 	}
 
 	const (
-		etag       = `"range-reprobe-v1"`
-		failedSize = 128 * 1024
+		etag            = `"range-reprobe-v1"`
+		lastModified    = "Wed, 21 Oct 2015 07:28:00 GMT"
+		invalidModified = "not-a-date"
+		failedSize      = 128 * 1024
 	)
-	var rangeRequests atomic.Int32
-	var resumedAt atomic.Int64
-	var sawIfRange atomic.Bool
 
-	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
-		rangeHeader := r.Header.Get(base.HttpHeaderRange)
-		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
-		w.Header().Set(base.HttpHeaderETag, etag)
+	tests := []struct {
+		name              string
+		etag              string
+		lastModified      string
+		wantIfRange       string
+		resumeStatus      int
+		wantErr           bool
+		wantRangeRequests int32
+	}{
+		{
+			name:              "valid validator resumes with 206",
+			etag:              etag,
+			wantIfRange:       etag,
+			resumeStatus:      gohttp.StatusPartialContent,
+			wantRangeRequests: 2,
+		},
+		{
+			name:              "valid Last-Modified resumes with 206",
+			lastModified:      lastModified,
+			wantIfRange:       lastModified,
+			resumeStatus:      gohttp.StatusPartialContent,
+			wantRangeRequests: 2,
+		},
+		{
+			name:              "missing validator preserves prefix",
+			resumeStatus:      gohttp.StatusPartialContent,
+			wantErr:           true,
+			wantRangeRequests: 1,
+		},
+		{
+			name:              "invalid Last-Modified preserves prefix",
+			lastModified:      invalidModified,
+			resumeStatus:      gohttp.StatusPartialContent,
+			wantErr:           true,
+			wantRangeRequests: 1,
+		},
+		{
+			name:              "guarded probe returning 200 preserves prefix",
+			etag:              etag,
+			wantIfRange:       etag,
+			resumeStatus:      gohttp.StatusOK,
+			wantErr:           true,
+			wantRangeRequests: 2,
+		},
+	}
 
-		if rangeHeader == "" {
-			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
-			w.WriteHeader(gohttp.StatusOK)
-			if flusher, ok := w.(gohttp.Flusher); ok {
-				flusher.Flush()
-			}
-			for offset := 0; offset < len(payload); offset += 8 * 1024 {
-				end := min(offset+8*1024, len(payload))
-				if _, err := w.Write(payload[offset:end]); err != nil {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var rangeRequests atomic.Int32
+			var resumedAt atomic.Int64
+			var sawIfRange atomic.Bool
+
+			server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+				rangeHeader := r.Header.Get(base.HttpHeaderRange)
+				w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+				if tt.etag != "" {
+					w.Header().Set(base.HttpHeaderETag, tt.etag)
+				}
+				if tt.lastModified != "" {
+					w.Header().Set(base.HttpHeaderLastModified, tt.lastModified)
+				}
+
+				if rangeHeader == "" {
+					w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+					w.WriteHeader(gohttp.StatusOK)
+					if flusher, ok := w.(gohttp.Flusher); ok {
+						flusher.Flush()
+					}
+					for offset := 0; offset < len(payload); offset += 8 * 1024 {
+						end := min(offset+8*1024, len(payload))
+						if _, err := w.Write(payload[offset:end]); err != nil {
+							return
+						}
+						time.Sleep(time.Millisecond)
+					}
 					return
 				}
-				time.Sleep(time.Millisecond)
+
+				requestNumber := rangeRequests.Add(1)
+				if requestNumber == 1 {
+					// Simulate the real origin: it first ignores Range, then drops the
+					// sequential response after a useful prefix has been written.
+					w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+					w.WriteHeader(gohttp.StatusOK)
+					if flusher, ok := w.(gohttp.Flusher); ok {
+						flusher.Flush()
+					}
+					_, _ = w.Write(payload[:failedSize])
+					return
+				}
+
+				var start, end int64
+				if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-%d", &start, &end); err != nil {
+					w.WriteHeader(gohttp.StatusBadRequest)
+					return
+				}
+				resumedAt.Store(start)
+				sawIfRange.Store(r.Header.Get(base.HttpHeaderIfRange) == tt.wantIfRange)
+				if tt.resumeStatus == gohttp.StatusOK {
+					w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+					w.WriteHeader(gohttp.StatusOK)
+					_, _ = w.Write(payload)
+					return
+				}
+				w.Header().Set(base.HttpHeaderContentRange,
+					fmt.Sprintf("bytes %d-%d/%d", start, end, len(payload)))
+				w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", end-start+1))
+				w.WriteHeader(gohttp.StatusPartialContent)
+				_, _ = w.Write(payload[start : end+1])
+			}))
+			defer server.Close()
+
+			f := buildFetcher()
+			if err := f.Resolve(&base.Request{URL: server.URL + "/dynamic-range.data"}, &base.Options{
+				Path: t.TempDir(),
+				Name: "dynamic-range.data",
+				Extra: &http.OptsExtra{
+					Connections: 4,
+				},
+			}); err != nil {
+				t.Fatal(err)
 			}
-			return
-		}
-
-		requestNumber := rangeRequests.Add(1)
-		if requestNumber == 1 {
-			// Simulate the real origin: it first ignores Range, then drops the
-			// sequential response after a useful prefix has been written.
-			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
-			w.WriteHeader(gohttp.StatusOK)
-			if flusher, ok := w.(gohttp.Flusher); ok {
-				flusher.Flush()
+			if err := f.Start(); err != nil {
+				t.Fatal(err)
 			}
-			_, _ = w.Write(payload[:failedSize])
-			return
-		}
+			err := f.Wait()
+			if tt.wantErr {
+				if !errors.Is(err, errSequentialResumeUnavailable) {
+					t.Fatalf("Wait() error = %v, want %v", err, errSequentialResumeUnavailable)
+				}
+			} else if err != nil {
+				t.Fatal(err)
+			}
 
-		var start, end int64
-		if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-%d", &start, &end); err != nil {
-			w.WriteHeader(gohttp.StatusBadRequest)
-			return
-		}
-		resumedAt.Store(start)
-		sawIfRange.Store(r.Header.Get(base.HttpHeaderIfRange) == etag)
-		w.Header().Set(base.HttpHeaderContentRange,
-			fmt.Sprintf("bytes %d-%d/%d", start, end, len(payload)))
-		w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", end-start+1))
-		w.WriteHeader(gohttp.StatusPartialContent)
-		_, _ = w.Write(payload[start : end+1])
-	}))
-	defer server.Close()
+			if got := rangeRequests.Load(); got != tt.wantRangeRequests {
+				t.Fatalf("Range requests = %d, want %d", got, tt.wantRangeRequests)
+			}
+			got, err := os.ReadFile(f.meta.SingleFilepath())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tt.wantErr {
+				f.connMu.Lock()
+				downloaded := f.connections[0].Chunk.Downloaded
+				f.connMu.Unlock()
+				if downloaded != failedSize {
+					t.Fatalf("preserved prefix = %d, want %d", downloaded, failedSize)
+				}
+				if len(got) < failedSize || !bytes.Equal(got[:failedSize], payload[:failedSize]) {
+					t.Fatal("preserved prefix differs from downloaded payload")
+				}
+				return
+			}
 
-	downloadDir := t.TempDir()
-	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/dynamic-range.data"}, &base.Options{
-		Path: downloadDir,
-		Name: "dynamic-range.data",
-		Extra: &http.OptsExtra{
-			Connections: 4,
-		},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if err := f.Wait(); err != nil {
-		t.Fatal(err)
-	}
-
-	if got := resumedAt.Load(); got != failedSize {
-		t.Fatalf("resume Range started at %d, want %d", got, failedSize)
-	}
-	if !sawIfRange.Load() {
-		t.Fatal("resume probe did not include the strong ETag in If-Range")
-	}
-	if !f.meta.Res.Range {
-		t.Fatal("expected successful resume probe to restore range mode")
-	}
-	got, err := os.ReadFile(f.meta.SingleFilepath())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(got, payload) {
-		t.Fatal("downloaded file differs after sequential Range recovery")
+			if got := resumedAt.Load(); got != failedSize {
+				t.Fatalf("resume Range started at %d, want %d", got, failedSize)
+			}
+			if !sawIfRange.Load() {
+				t.Fatal("resume probe did not include the strong ETag in If-Range")
+			}
+			if !f.meta.Res.Range {
+				t.Fatal("expected successful resume probe to restore range mode")
+			}
+			if !bytes.Equal(got, payload) {
+				t.Fatal("downloaded file differs after sequential Range recovery")
+			}
+		})
 	}
 }
 

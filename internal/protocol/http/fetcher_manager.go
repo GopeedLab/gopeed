@@ -14,9 +14,10 @@ import (
 // ============================================================================
 
 type fetcherData struct {
-	Connections []*connection
-	RedirectURL string // Saved redirect URL for resume
-	IfRange     string // Strong ETag or Last-Modified validator for safe resume
+	Connections          []*connection
+	RedirectURL          string // Saved redirect URL for resume
+	IfRange              string // Strong ETag or Last-Modified validator for safe resume
+	RangeReprobeEligible bool   // Origin advertised Range before falling back to sequential mode
 }
 
 // ============================================================================
@@ -77,9 +78,10 @@ func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	redirectURL := _f.redirectURL
 	_f.redirectLock.Unlock()
 	return &fetcherData{
-		Connections: _f.connections,
-		RedirectURL: redirectURL,
-		IfRange:     _f.ifRange,
+		Connections:          _f.connections,
+		RedirectURL:          redirectURL,
+		IfRange:              _f.ifRange,
+		RangeReprobeEligible: _f.rangeReprobeEligible,
 	}, nil
 }
 
@@ -99,6 +101,7 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 			fetcher.redirectURL = fd.RedirectURL
 		}
 		fetcher.ifRange = fd.IfRange
+		fetcher.rangeReprobeEligible = fd.RangeReprobeEligible
 		return fetcher
 	}
 }
