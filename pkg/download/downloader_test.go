@@ -167,10 +167,12 @@ func newTestDownloadOptAt(path string) *base.Options {
 		Path: path,
 		Name: test.DownloadName,
 		Extra: http.OptsExtra{
-			Connections: 4,
+			Connections: testDownloadConnections,
 		},
 	}
 }
+
+const testDownloadConnections = 4
 
 func TestDownloader_Resolve(t *testing.T) {
 	listener := test.StartTestFileServer()
@@ -1479,7 +1481,11 @@ func TestDownloader_PauseAndContinue(t *testing.T) {
 }
 
 func TestDownloader_PauseAllAndContinueAll(t *testing.T) {
-	listener := test.StartTestSlowFileServer(time.Millisecond * 2000)
+	const targetDownloadDuration = time.Second
+	// Scale the per-byte delay with the configured connection count so a full
+	// ranged transfer stays near one second and is still running at Pause.
+	delayPerByte := targetDownloadDuration * testDownloadConnections / test.BuildSize
+	listener := test.StartTestLowSpeedServer(delayPerByte)
 	defer listener.Close()
 
 	downloader := NewDownloader(nil)

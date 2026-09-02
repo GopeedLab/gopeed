@@ -1060,6 +1060,183 @@ func TestFetcher_OriginalURLFallbackPreservesResumeHeaders(t *testing.T) {
 	resp.Body.Close()
 }
 
+func TestFetcher_UsesResolveResponseWhenRangeTakeoverFails(t *testing.T) {
+	tests := []struct {
+		name         string
+		rangeHandler func(gohttp.ResponseWriter, *gohttp.Request)
+	}{
+		{
+			name: "forbidden",
+			rangeHandler: func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+				w.WriteHeader(gohttp.StatusForbidden)
+			},
+		},
+		{
+			name: "invalid partial content",
+			rangeHandler: func(w gohttp.ResponseWriter, r *gohttp.Request) {
+				var start, end int64
+				if _, err := fmt.Sscanf(r.Header.Get(base.HttpHeaderRange), "bytes=%d-%d", &start, &end); err != nil {
+					w.WriteHeader(gohttp.StatusBadRequest)
+					return
+				}
+				w.Header().Set(base.HttpHeaderContentRange, fmt.Sprintf("bytes %d-%d/%d", start+1, end, 2*1024*1024))
+				w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", end-start))
+				w.WriteHeader(gohttp.StatusPartialContent)
+			},
+		},
+		{
+			name: "connection closes before response",
+			rangeHandler: func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+				conn, _, err := w.(gohttp.Hijacker).Hijack()
+				if err == nil {
+					conn.Close()
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			payload := make([]byte, 2*1024*1024)
+			for i := range payload {
+				payload[i] = byte(i % 251)
+			}
+
+			var requests atomic.Int32
+			var rangeRequests atomic.Int32
+			server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+				requestNumber := requests.Add(1)
+				if requestNumber == 1 {
+					w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+					w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+					w.WriteHeader(gohttp.StatusOK)
+					w.(gohttp.Flusher).Flush()
+					for offset := 0; offset < len(payload); offset += 8 * 1024 {
+						end := min(offset+8*1024, len(payload))
+						if _, err := w.Write(payload[offset:end]); err != nil {
+							return
+						}
+						time.Sleep(time.Millisecond)
+					}
+					return
+				}
+
+				if r.Header.Get(base.HttpHeaderRange) != "" {
+					rangeRequests.Add(1)
+				}
+				tt.rangeHandler(w, r)
+			}))
+			defer server.Close()
+
+			f := buildFetcher()
+			if err := f.Resolve(&base.Request{URL: server.URL + "/resolve-fallback.data"}, &base.Options{
+				Path: t.TempDir(),
+				Name: "resolve-fallback.data",
+				Extra: &http.OptsExtra{
+					Connections: 1,
+				},
+			}); err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+
+			if err := f.Start(); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.Wait(); err != nil {
+				t.Fatalf("download should continue from the Resolve response when Range takeover fails: %v", err)
+			}
+			if rangeRequests.Load() == 0 {
+				t.Fatal("download did not attempt a Range request")
+			}
+			got, err := os.ReadFile(f.meta.SingleFilepath())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(got, payload) {
+				t.Fatal("downloaded file differs from the Resolve response")
+			}
+		})
+	}
+}
+
+func TestFetcher_ValidRangeTakesOverResolveResponse(t *testing.T) {
+	const resolveETag = `"resolve-v1"`
+	payload := make([]byte, 4*1024*1024)
+	for i := range payload {
+		payload[i] = byte(i % 251)
+	}
+
+	var rangeRequests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		rangeHeader := r.Header.Get(base.HttpHeaderRange)
+		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+		if rangeHeader == "" {
+			w.Header().Set(base.HttpHeaderETag, resolveETag)
+			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+			w.WriteHeader(gohttp.StatusOK)
+			w.(gohttp.Flusher).Flush()
+			for offset := 0; offset < len(payload); offset += 8 * 1024 {
+				end := min(offset+8*1024, len(payload))
+				if _, err := w.Write(payload[offset:end]); err != nil {
+					return
+				}
+				time.Sleep(time.Millisecond)
+			}
+			return
+		}
+
+		rangeRequests.Add(1)
+		if got := r.Header.Get(base.HttpHeaderIfRange); got != resolveETag {
+			t.Errorf("If-Range = %q, want Resolve ETag %q", got, resolveETag)
+		}
+		var start, end int64
+		if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-%d", &start, &end); err != nil {
+			w.WriteHeader(gohttp.StatusBadRequest)
+			return
+		}
+		w.Header().Set(base.HttpHeaderContentRange, fmt.Sprintf("bytes %d-%d/%d", start, end, len(payload)))
+		w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", end-start+1))
+		w.WriteHeader(gohttp.StatusPartialContent)
+		for offset := start; offset <= end; offset += 8 * 1024 {
+			chunkEnd := min(offset+8*1024, end+1)
+			if _, err := w.Write(payload[offset:chunkEnd]); err != nil {
+				return
+			}
+		}
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/resolve-takeover.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "resolve-takeover.data",
+		Extra: &http.OptsExtra{
+			Connections: 4,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	if rangeRequests.Load() == 0 {
+		t.Fatal("download did not attempt a Range takeover")
+	}
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatal("downloaded file differs after valid Range takeover")
+	}
+}
+
 func TestFetcher_RejectsInvalidPartialContent(t *testing.T) {
 	const (
 		requestedStart = int64(1024)
@@ -1953,6 +2130,11 @@ func TestFetcher_RetryAfterError(t *testing.T) {
 		},
 	})
 	if err != nil {
+		t.Fatal(err)
+	}
+	// This test exercises retrying a failed ranged download. Discard the live
+	// Resolve response first so it cannot satisfy the task as a fallback.
+	if err := fetcher.Pause(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2864,6 +3046,12 @@ func TestFetcher_Patch_CookieExpired(t *testing.T) {
 	initialExtra := f.meta.Req.Extra.(*http.ReqExtra)
 	if initialExtra.Header["Cookie"] != "session=old_token" {
 		t.Errorf("Initial Cookie = %v, want session=old_token", initialExtra.Header["Cookie"])
+	}
+	// This test exercises patching credentials after an authenticated request
+	// fails. Discard the already-authorized Resolve response so the stale cookie
+	// is observable on the first Start.
+	if err := f.Pause(); err != nil {
+		t.Fatal(err)
 	}
 
 	// Step 2: Start download - should fail because old_token is now expired
