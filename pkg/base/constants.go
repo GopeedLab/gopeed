@@ -23,6 +23,8 @@ const (
 	HttpHeaderContentDisposition = "Content-Disposition"
 	HttpHeaderUserAgent          = "User-Agent"
 	HttpHeaderLastModified       = "Last-Modified"
+	HttpHeaderETag               = "ETag"
+	HttpHeaderIfRange            = "If-Range"
 
 	HttpHeaderBytes       = "bytes"
 	HttpHeaderRangeFormat = "bytes=%d-%d"
