@@ -27,6 +27,45 @@ type RequestError struct {
 	Code int
 }
 
+// extractIfRangeValidator returns only validators that are strong enough for
+// If-Range. Any entity-tag header blocks Last-Modified fallback: a weak or
+// malformed ETag does not make the date validator strong.
+func extractIfRangeValidator(header http.Header) string {
+	etag := strings.TrimSpace(header.Get(base.HttpHeaderETag))
+	if etag != "" {
+		if isStrongETag(etag) {
+			return etag
+		}
+		return ""
+	}
+
+	lastModified := strings.TrimSpace(header.Get(base.HttpHeaderLastModified))
+	date := strings.TrimSpace(header.Get("Date"))
+	if lastModified == "" || date == "" {
+		return ""
+	}
+	modifiedAt, modifiedErr := http.ParseTime(lastModified)
+	responseAt, responseErr := http.ParseTime(date)
+	if modifiedErr != nil || responseErr != nil || responseAt.Sub(modifiedAt) < time.Second {
+		return ""
+	}
+	return lastModified
+}
+
+func isStrongETag(value string) bool {
+	if len(value) < 2 || value[0] != '"' || value[len(value)-1] != '"' {
+		return false
+	}
+	for i := 1; i < len(value)-1; i++ {
+		b := value[i]
+		if b == 0x21 || (b >= 0x23 && b <= 0x7e) || b >= 0x80 {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 func NewRequestError(code int) *RequestError {
 	return &RequestError{Code: code}
 }
@@ -166,15 +205,18 @@ func isRedirectExpiredError(err error) bool {
 
 // tryFallbackToOriginalURL attempts to make a request using the original URL
 // when the redirect URL has expired. Returns the response if successful.
-func (f *Fetcher) tryFallbackToOriginalURL(ctx context.Context, client *http.Client, rangeStart, rangeEnd int64) (*http.Response, error) {
+func (f *Fetcher) tryFallbackToOriginalURL(ctx context.Context, client *http.Client, rangeStart, rangeEnd int64, rangeRequested bool, ifRange string) (*http.Response, error) {
 	httpReq, err := f.buildRequestWithOriginalURL(ctx, f.meta.Req)
 	if err != nil {
 		return nil, err
 	}
 
-	if f.meta.Res.Range && rangeEnd > 0 {
+	if rangeRequested {
 		httpReq.Header.Set(base.HttpHeaderRange,
 			fmt.Sprintf(base.HttpHeaderRangeFormat, rangeStart, rangeEnd))
+		if ifRange != "" {
+			httpReq.Header.Set(base.HttpHeaderIfRange, ifRange)
+		}
 	}
 
 	resp, err := client.Do(httpReq)
