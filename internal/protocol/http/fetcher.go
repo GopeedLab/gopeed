@@ -276,13 +276,14 @@ type Fetcher struct {
 	prefetchStopCh   chan struct{} // Signal to stop prefetch
 
 	// Target file
-	file                 *os.File
-	fileMu               sync.Mutex
-	redirectURL          string
-	redirectLock         sync.Mutex
-	ifRange              string
-	rangeReprobeEligible bool
-	rangeValidatorPinned bool
+	file                  *os.File
+	fileMu                sync.Mutex
+	redirectURL           string
+	redirectLock          sync.Mutex
+	ifRange               string
+	rangeReprobeEligible  bool
+	rangeValidatorPinned  bool
+	sequentialSizeUnknown bool
 
 	// Lifecycle control
 	ctx    context.Context
@@ -1092,12 +1093,15 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	// without a safe validator cannot be resumed, so restart it before building
 	// the request; the returned full response will overwrite from byte zero.
 	f.connMu.Lock()
+	sequentialSizeUnknown := f.sequentialSizeUnknown
 	hasSequentialPrefix := f.hasSequentialPrefixLocked(conn)
 	resumeProbe := f.canProbeSequentialResumeLocked(conn)
-	if hasSequentialPrefix && !resumeProbe {
+	intentionalRestart := sequentialSizeUnknown
+	if sequentialSizeUnknown || (hasSequentialPrefix && !resumeProbe) {
 		f.resetConnectionForRestart(conn)
 		f.resolveDataPos.Store(0)
 		f.rangeValidatorPinned = false
+		intentionalRestart = true
 	}
 	if f.meta.Res.Range && conn.Chunk.remain() <= 0 {
 		f.connMu.Unlock()
@@ -1165,18 +1169,18 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	}
 
 	expectedResponseLength := int64(-1)
-	representationReplaced := false
 	if rangeRequested && resp.StatusCode == base.HttpCodeOK {
 		if resumeProbe {
 			// If-Range returning 200 provides the complete current representation.
 			// Discard the old prefix counters and consume this response from byte 0.
 			f.restartSequentialDownload(conn, extractIfRangeValidator(resp.Header))
-			representationReplaced = true
+			intentionalRestart = true
 		} else {
 			if err := f.fallbackToSequentialDownload(conn, extractIfRangeValidator(resp.Header)); err != nil {
 				resp.Body.Close()
 				return fmt.Errorf("%w: expected 206 Partial Content, got 200 OK", err)
 			}
+			intentionalRestart = true
 		}
 	}
 	if rangeRequested && resp.StatusCode == base.HttpCodePartialContent {
@@ -1192,6 +1196,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			f.meta.Res.Range = true
 			f.rangeReprobeEligible = false
 			f.rangeValidatorPinned = true
+			f.sequentialSizeUnknown = false
 			conn.Chunk.Begin = 0
 			conn.Chunk.End = f.meta.Res.Size - 1
 			f.connMu.Unlock()
@@ -1207,13 +1212,16 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		f.connMu.Unlock()
 	}
 	if !f.meta.Res.Range && resp.StatusCode == base.HttpCodeOK {
-		if representationReplaced {
+		if intentionalRestart {
 			if resp.ContentLength >= 0 {
 				if err := f.resizeSequentialResource(resp.ContentLength); err != nil {
 					resp.Body.Close()
 					return err
 				}
 				expectedResponseLength = resp.ContentLength
+			} else if err := f.beginUnknownSizeSequentialResource(); err != nil {
+				resp.Body.Close()
+				return err
 			}
 		} else if f.meta.Res.Size > 0 {
 			expectedResponseLength = f.meta.Res.Size
@@ -1314,7 +1322,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 
 		if err != nil {
 			if err == io.EOF {
-				if representationReplaced && resp.ContentLength < 0 {
+				if intentionalRestart && resp.ContentLength < 0 {
 					if err := f.resizeSequentialResource(responseBytesRead); err != nil {
 						return err
 					}
@@ -1414,22 +1422,58 @@ func (f *Fetcher) resizeSequentialResource(size int64) error {
 		return fmt.Errorf("invalid sequential response size %d", size)
 	}
 
+	// Keep the file mutation and its recovery metadata in one connMu critical
+	// section so Store cannot persist one side of the transition without the
+	// other. Other download paths never hold fileMu while acquiring connMu.
+	f.connMu.Lock()
 	f.fileMu.Lock()
 	if f.file == nil {
 		f.fileMu.Unlock()
+		f.connMu.Unlock()
 		return errors.New("target file is not open")
 	}
 	err := f.file.Truncate(size)
 	f.fileMu.Unlock()
 	if err != nil {
+		f.connMu.Unlock()
 		return err
 	}
 
-	f.connMu.Lock()
 	f.meta.Res.Size = size
 	if len(f.meta.Res.Files) > 0 {
 		f.meta.Res.Files[0].Size = size
 	}
+	f.sequentialSizeUnknown = false
+	f.connMu.Unlock()
+	return nil
+}
+
+// beginUnknownSizeSequentialResource discards all stale bytes and records that
+// a restarted chunked response has no authoritative total size yet. If this
+// response is interrupted, the persisted flag forces the next attempt to start
+// from byte zero instead of validating a Range response against an old size.
+func (f *Fetcher) beginUnknownSizeSequentialResource() error {
+	f.connMu.Lock()
+	f.fileMu.Lock()
+	if f.file == nil {
+		f.fileMu.Unlock()
+		f.connMu.Unlock()
+		return errors.New("target file is not open")
+	}
+	err := f.file.Truncate(0)
+	f.fileMu.Unlock()
+	if err != nil {
+		f.connMu.Unlock()
+		return err
+	}
+
+	f.meta.Res.Size = 0
+	if len(f.meta.Res.Files) > 0 {
+		f.meta.Res.Files[0].Size = 0
+	}
+	f.sequentialSizeUnknown = true
+	f.ifRange = ""
+	f.rangeValidatorPinned = false
 	f.connMu.Unlock()
 	return nil
 }
@@ -1769,7 +1813,7 @@ func (f *Fetcher) hasSequentialPrefixLocked(conn *connection) bool {
 // canProbeSequentialResumeLocked reports whether the prefix can be resumed
 // safely with If-Range. The caller must hold connMu.
 func (f *Fetcher) canProbeSequentialResumeLocked(conn *connection) bool {
-	return f.ifRange != "" && f.hasSequentialPrefixLocked(conn)
+	return !f.sequentialSizeUnknown && f.ifRange != "" && f.hasSequentialPrefixLocked(conn)
 }
 
 func (f *Fetcher) hasSequentialRecoveryCandidate() bool {

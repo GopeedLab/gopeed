@@ -553,19 +553,20 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 	)
 
 	tests := []struct {
-		name             string
-		resolveETag      string
-		ignoredETag      string
-		lastModified     string
-		date             string
-		wantIfRange      string
-		resumeStatus     int
-		wantRangeMode    bool
-		wantParallel     bool
-		wantRangeRequest int32
-		wantFullRestart  bool
-		replacement      []byte
-		chunked200       bool
+		name                   string
+		resolveETag            string
+		ignoredETag            string
+		lastModified           string
+		date                   string
+		wantIfRange            string
+		resumeStatus           int
+		wantRangeMode          bool
+		wantParallel           bool
+		wantRangeRequest       int32
+		wantFullRestart        bool
+		replacement            []byte
+		fullRestartReplacement []byte
+		chunked200             bool
 	}{
 		{
 			name:             "ignored response replaces Resolve ETag",
@@ -588,10 +589,11 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 			wantRangeRequest: 2,
 		},
 		{
-			name:             "missing validator restarts from zero",
-			resumeStatus:     gohttp.StatusPartialContent,
-			wantRangeRequest: 1,
-			wantFullRestart:  true,
+			name:                   "missing validator restarts from zero",
+			resumeStatus:           gohttp.StatusPartialContent,
+			wantRangeRequest:       1,
+			wantFullRestart:        true,
+			fullRestartReplacement: shortReplacement,
 		},
 		{
 			name:             "weak ETag blocks Last-Modified fallback",
@@ -643,10 +645,14 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 
 				if rangeHeader == "" {
 					requestNumber := fullRequests.Add(1)
+					responsePayload := payload
+					if requestNumber > 1 && tt.fullRestartReplacement != nil {
+						responsePayload = tt.fullRestartReplacement
+					}
 					if requestNumber == 1 && tt.resolveETag != "" {
 						w.Header().Set(base.HttpHeaderETag, tt.resolveETag)
 					}
-					w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+					w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(responsePayload)))
 					w.WriteHeader(gohttp.StatusOK)
 					if requestNumber == 1 {
 						if flusher, ok := w.(gohttp.Flusher); ok {
@@ -661,7 +667,7 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 						}
 						return
 					}
-					_, _ = w.Write(payload)
+					_, _ = w.Write(responsePayload)
 					return
 				}
 
@@ -796,6 +802,8 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 			wantPayload := payload
 			if tt.replacement != nil {
 				wantPayload = tt.replacement
+			} else if tt.fullRestartReplacement != nil {
+				wantPayload = tt.fullRestartReplacement
 			}
 			if !bytes.Equal(got, wantPayload) {
 				t.Fatal("downloaded file differs after sequential recovery")
@@ -803,7 +811,184 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 			if f.meta.Res.Size != int64(len(wantPayload)) || f.meta.Res.Files[0].Size != int64(len(wantPayload)) {
 				t.Fatalf("resource size = %d/%d, want %d", f.meta.Res.Size, f.meta.Res.Files[0].Size, len(wantPayload))
 			}
+			if got := f.Progress().TotalDownloaded(); got != int64(len(wantPayload)) {
+				t.Fatalf("progress = %d, want %d", got, len(wantPayload))
+			}
+			info, err := os.Stat(f.meta.SingleFilepath())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := info.Size(); got != int64(len(wantPayload)) {
+				t.Fatalf("file size = %d, want %d", got, len(wantPayload))
+			}
 		})
+	}
+}
+
+func TestFetcher_InitialIgnoredRangeUsesResponseSize(t *testing.T) {
+	resolvePayload := bytes.Repeat([]byte("resolve"), 64*1024)
+	replacement := bytes.Repeat([]byte("replacement"), 24*1024)
+	var rangeRequests atomic.Int32
+
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+		if r.Header.Get(base.HttpHeaderRange) == "" {
+			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(resolvePayload)))
+			w.WriteHeader(gohttp.StatusOK)
+			_, _ = w.Write(resolvePayload)
+			return
+		}
+
+		rangeRequests.Add(1)
+		w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(replacement)))
+		w.WriteHeader(gohttp.StatusOK)
+		_, _ = w.Write(replacement)
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/ignored-range.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "ignored-range.data",
+		Extra: &http.OptsExtra{
+			Connections: 4,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, replacement) {
+		t.Fatal("initial ignored-Range response did not replace the resolved representation")
+	}
+	if rangeRequests.Load() != 1 {
+		t.Fatalf("Range requests = %d, want 1", rangeRequests.Load())
+	}
+	wantSize := int64(len(replacement))
+	if f.meta.Res.Size != wantSize || f.meta.Res.Files[0].Size != wantSize {
+		t.Fatalf("resource size = %d/%d, want %d", f.meta.Res.Size, f.meta.Res.Files[0].Size, wantSize)
+	}
+	if got := f.Progress().TotalDownloaded(); got != wantSize {
+		t.Fatalf("progress = %d, want %d", got, wantSize)
+	}
+	info, err := os.Stat(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Size(); got != wantSize {
+		t.Fatalf("file size = %d, want %d", got, wantSize)
+	}
+}
+
+func TestFetcher_InterruptedChunkedReplacementRestartsFromZero(t *testing.T) {
+	payload := bytes.Repeat([]byte("original"), 512*1024)
+	replacement := bytes.Repeat([]byte("replacement"), 256*1024)
+	const firstPrefix = 128 * 1024
+	const replacementPrefix = 96 * 1024
+	var rangeRequests atomic.Int32
+	var fullRequests atomic.Int32
+	var sawFullRestart atomic.Bool
+
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+		rangeHeader := r.Header.Get(base.HttpHeaderRange)
+		if rangeHeader == "" {
+			requestNumber := fullRequests.Add(1)
+			responsePayload := payload
+			if requestNumber > 1 {
+				responsePayload = replacement
+				sawFullRestart.Store(true)
+			}
+			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(responsePayload)))
+			w.WriteHeader(gohttp.StatusOK)
+			_, _ = w.Write(responsePayload)
+			return
+		}
+
+		requestNumber := rangeRequests.Add(1)
+		switch requestNumber {
+		case 1:
+			w.Header().Set(base.HttpHeaderETag, `"prefix-v1"`)
+			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+			w.WriteHeader(gohttp.StatusOK)
+			w.(gohttp.Flusher).Flush()
+			_, _ = w.Write(payload[:firstPrefix])
+		case 2:
+			if got := r.Header.Get(base.HttpHeaderIfRange); got != `"prefix-v1"` {
+				t.Errorf("If-Range = %q, want %q", got, `"prefix-v1"`)
+			}
+			conn, rw, err := w.(gohttp.Hijacker).Hijack()
+			if err != nil {
+				t.Errorf("Hijack() error = %v", err)
+				return
+			}
+			defer conn.Close()
+			_, _ = fmt.Fprintf(rw, "HTTP/1.1 200 OK\r\nETag: \"replacement-v2\"\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n%x\r\n", replacementPrefix)
+			_, _ = rw.Write(replacement[:replacementPrefix])
+			_, _ = rw.WriteString("\r\n")
+			_ = rw.Flush()
+		default:
+			t.Errorf("unexpected Range retry after unknown-size replacement: %q", rangeHeader)
+			w.WriteHeader(gohttp.StatusBadRequest)
+		}
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/chunked-replacement.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "chunked-replacement.data",
+		Extra: &http.OptsExtra{
+			Connections: 4,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, replacement) {
+		t.Fatal("downloaded file differs after interrupted chunked replacement")
+	}
+	if rangeRequests.Load() != 2 {
+		t.Fatalf("Range requests = %d, want 2", rangeRequests.Load())
+	}
+	if !sawFullRestart.Load() {
+		t.Fatal("interrupted chunked replacement did not restart with a full request")
+	}
+	wantSize := int64(len(replacement))
+	if f.meta.Res.Size != wantSize || f.meta.Res.Files[0].Size != wantSize {
+		t.Fatalf("resource size = %d/%d, want %d", f.meta.Res.Size, f.meta.Res.Files[0].Size, wantSize)
+	}
+	if got := f.Progress().TotalDownloaded(); got != wantSize {
+		t.Fatalf("progress = %d, want %d", got, wantSize)
+	}
+	info, err := os.Stat(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Size(); got != wantSize {
+		t.Fatalf("file size = %d, want %d", got, wantSize)
+	}
+	if f.sequentialSizeUnknown {
+		t.Fatal("completed replacement kept unknown-size recovery state")
 	}
 }
 
@@ -1048,6 +1233,7 @@ func TestFetcher_InvalidResponseLengthFailsTask(t *testing.T) {
 		bodyChunks         []int
 		resolvedDownloaded int64
 		wantDownloaded     int64
+		rangeMode          bool
 	}{
 		{
 			name:           "sequential declared short body",
@@ -1078,14 +1264,19 @@ func TestFetcher_InvalidResponseLengthFailsTask(t *testing.T) {
 			bodyChunks:         []int{int(rangeLength), 1},
 			resolvedDownloaded: requestedStart,
 			wantDownloaded:     rangeLength,
+			rangeMode:          true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			server := httptest.NewServer(gohttp.HandlerFunc(func(writer gohttp.ResponseWriter, request *gohttp.Request) {
-				if got, want := request.Header.Get(base.HttpHeaderRange), "bytes=1024-4095"; got != want {
-					t.Errorf("Range header = %q, want %q", got, want)
+				wantRange := ""
+				if tc.rangeMode {
+					wantRange = "bytes=1024-4095"
+				}
+				if got := request.Header.Get(base.HttpHeaderRange); got != wantRange {
+					t.Errorf("Range header = %q, want %q", got, wantRange)
 				}
 				if tc.contentRange != "" {
 					writer.Header().Set(base.HttpHeaderContentRange, tc.contentRange)
@@ -1107,7 +1298,7 @@ func TestFetcher_InvalidResponseLengthFailsTask(t *testing.T) {
 
 			f := buildFetcher()
 			f.meta.Req = &base.Request{URL: server.URL}
-			f.meta.Res = &base.Resource{Range: true, Size: totalSize}
+			f.meta.Res = &base.Resource{Range: tc.rangeMode, Size: totalSize}
 			output, err := os.CreateTemp(t.TempDir(), "range-task-*")
 			if err != nil {
 				t.Fatal(err)
@@ -1117,11 +1308,15 @@ func TestFetcher_InvalidResponseLengthFailsTask(t *testing.T) {
 			}
 			f.file = output
 
+			connChunk := newChunk(0, totalSize-1)
+			if tc.rangeMode {
+				connChunk = newChunk(requestedStart, requestedEnd)
+			}
 			conn := &connection{
 				ID:    0,
 				Role:  rolePrimary,
 				State: connNotStarted,
-				Chunk: newChunk(requestedStart, requestedEnd),
+				Chunk: connChunk,
 				ctx:   context.Background(),
 			}
 			f.connections = []*connection{conn}
@@ -1854,8 +2049,12 @@ func TestFetcherManager_ParseName(t *testing.T) {
 func TestFetcherManager_StoreCreatesAtomicSnapshot(t *testing.T) {
 	f := &Fetcher{
 		meta: &fetcher.FetcherMeta{
-			Req:  &base.Request{},
-			Res:  &base.Resource{Size: 100, Range: true},
+			Req: &base.Request{},
+			Res: &base.Resource{
+				Size:  100,
+				Range: true,
+				Files: []*base.FileInfo{{Size: 100}},
+			},
 			Opts: &base.Options{},
 		},
 		ifRange:              `"snapshot-v1"`,
@@ -1883,14 +2082,20 @@ func TestFetcherManager_StoreCreatesAtomicSnapshot(t *testing.T) {
 			f.connMu.Lock()
 			if sequential {
 				f.meta.Res.Range = false
+				f.meta.Res.Size = 0
+				f.meta.Res.Files[0].Size = 0
 				f.rangeReprobeEligible = true
 				f.rangeValidatorPinned = false
+				f.sequentialSizeUnknown = true
 				f.connections[0].Downloaded = 64
 				f.connections[0].Chunk.Downloaded = 64
 			} else {
 				f.meta.Res.Range = true
+				f.meta.Res.Size = 100
+				f.meta.Res.Files[0].Size = 100
 				f.rangeReprobeEligible = false
 				f.rangeValidatorPinned = true
+				f.sequentialSizeUnknown = false
 				f.connections[0].Downloaded = 0
 				f.connections[0].Chunk.Downloaded = 0
 			}
@@ -1912,6 +2117,11 @@ func TestFetcherManager_StoreCreatesAtomicSnapshot(t *testing.T) {
 			<-done
 			t.Fatal("snapshot Range mode is nil")
 		}
+		if fd.ResourceSize == nil || fd.FileSize == nil {
+			close(stop)
+			<-done
+			t.Fatal("snapshot sizes are nil")
+		}
 		if len(fd.Connections) != 1 || fd.Connections[0] == nil || fd.Connections[0].Chunk == nil {
 			close(stop)
 			<-done
@@ -1925,15 +2135,15 @@ func TestFetcherManager_StoreCreatesAtomicSnapshot(t *testing.T) {
 
 		downloaded := fd.Connections[0].Chunk.Downloaded
 		if *fd.Range {
-			if fd.RangeReprobeEligible || !fd.RangeValidatorPinned || downloaded != 0 {
+			if fd.RangeReprobeEligible || !fd.RangeValidatorPinned || fd.SequentialSizeUnknown || downloaded != 0 || *fd.ResourceSize != 100 || *fd.FileSize != 100 {
 				close(stop)
 				<-done
-				t.Fatalf("mixed ranged snapshot: eligible=%v pinned=%v downloaded=%d", fd.RangeReprobeEligible, fd.RangeValidatorPinned, downloaded)
+				t.Fatalf("mixed ranged snapshot: eligible=%v pinned=%v unknown=%v downloaded=%d size=%d/%d", fd.RangeReprobeEligible, fd.RangeValidatorPinned, fd.SequentialSizeUnknown, downloaded, *fd.ResourceSize, *fd.FileSize)
 			}
-		} else if !fd.RangeReprobeEligible || fd.RangeValidatorPinned || downloaded != 64 {
+		} else if !fd.RangeReprobeEligible || fd.RangeValidatorPinned || !fd.SequentialSizeUnknown || downloaded != 64 || *fd.ResourceSize != 0 || *fd.FileSize != 0 {
 			close(stop)
 			<-done
-			t.Fatalf("mixed sequential snapshot: eligible=%v pinned=%v downloaded=%d", fd.RangeReprobeEligible, fd.RangeValidatorPinned, downloaded)
+			t.Fatalf("mixed sequential snapshot: eligible=%v pinned=%v unknown=%v downloaded=%d size=%d/%d", fd.RangeReprobeEligible, fd.RangeValidatorPinned, fd.SequentialSizeUnknown, downloaded, *fd.ResourceSize, *fd.FileSize)
 		}
 	}
 	close(stop)
@@ -1943,6 +2153,8 @@ func TestFetcherManager_StoreCreatesAtomicSnapshot(t *testing.T) {
 func TestFetcherManager_RestoreUsesSnapshotRangeMode(t *testing.T) {
 	fm := new(FetcherManager)
 	rangeMode := false
+	resourceSize := int64(0)
+	fileSize := int64(0)
 	saved := &fetcherData{
 		Connections: []*connection{{
 			ID:         0,
@@ -1951,9 +2163,12 @@ func TestFetcherManager_RestoreUsesSnapshotRangeMode(t *testing.T) {
 			Chunk:      &chunk{Begin: 0, End: 99, Downloaded: 64},
 			Downloaded: 64,
 		}},
-		IfRange:              `"snapshot-v1"`,
-		RangeReprobeEligible: true,
-		Range:                &rangeMode,
+		IfRange:               `"snapshot-v1"`,
+		RangeReprobeEligible:  true,
+		SequentialSizeUnknown: true,
+		Range:                 &rangeMode,
+		ResourceSize:          &resourceSize,
+		FileSize:              &fileSize,
 	}
 	encoded, err := json.Marshal(saved)
 	if err != nil {
@@ -1965,8 +2180,12 @@ func TestFetcherManager_RestoreUsesSnapshotRangeMode(t *testing.T) {
 	}
 
 	staleMeta := &fetcher.FetcherMeta{
-		Req:  &base.Request{},
-		Res:  &base.Resource{Size: 100, Range: true},
+		Req: &base.Request{},
+		Res: &base.Resource{
+			Size:  100,
+			Range: true,
+			Files: []*base.FileInfo{{Size: 100}},
+		},
 		Opts: &base.Options{},
 	}
 	_, restore := fm.Restore()
@@ -1974,11 +2193,20 @@ func TestFetcherManager_RestoreUsesSnapshotRangeMode(t *testing.T) {
 	if restored.meta.Res.Range {
 		t.Fatal("Restore kept stale task Range mode instead of the connection snapshot mode")
 	}
-	if !restored.rangeReprobeEligible || restored.ifRange != `"snapshot-v1"` {
-		t.Fatalf("restored recovery state = eligible:%v If-Range:%q", restored.rangeReprobeEligible, restored.ifRange)
+	if !restored.rangeReprobeEligible || !restored.sequentialSizeUnknown || restored.ifRange != `"snapshot-v1"` {
+		t.Fatalf("restored recovery state = eligible:%v unknown:%v If-Range:%q", restored.rangeReprobeEligible, restored.sequentialSizeUnknown, restored.ifRange)
+	}
+	if restored.meta.Res.Size != 0 || restored.meta.Res.Files[0].Size != 0 {
+		t.Fatalf("restored snapshot size = %d/%d, want 0/0", restored.meta.Res.Size, restored.meta.Res.Files[0].Size)
 	}
 	if got := restored.connections[0].Chunk.Downloaded; got != 64 {
 		t.Fatalf("restored prefix = %d, want 64", got)
+	}
+	restored.connMu.Lock()
+	canProbe := restored.canProbeSequentialResumeLocked(restored.connections[0])
+	restored.connMu.Unlock()
+	if canProbe {
+		t.Fatal("unknown-size restored state attempted an If-Range resume against stale size")
 	}
 
 	pinnedRangeMode := true
@@ -2006,6 +2234,117 @@ func TestFetcherManager_RestoreUsesSnapshotRangeMode(t *testing.T) {
 	legacy := restore(legacyMeta, &fetcherData{}).(*Fetcher)
 	if !legacy.meta.Res.Range {
 		t.Fatal("legacy record unexpectedly overrode task Range mode")
+	}
+}
+
+func TestFetcherManager_RestoreUsesAtomicSizeSnapshotForDownload(t *testing.T) {
+	original := bytes.Repeat([]byte("old-representation"), 16*1024)
+	replacement := bytes.Repeat([]byte("new-representation"), 12*1024)
+	const savedPrefix = 64 * 1024
+	const replacementPrefix = 96 * 1024
+	var sawGuardedProbe atomic.Bool
+
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		wantRange := fmt.Sprintf("bytes=%d-%d", savedPrefix, len(original)-1)
+		if got := r.Header.Get(base.HttpHeaderRange); got != wantRange {
+			t.Errorf("Range = %q, want %q", got, wantRange)
+		}
+		if got := r.Header.Get(base.HttpHeaderIfRange); got != `"old-v1"` {
+			t.Errorf("If-Range = %q, want %q", got, `"old-v1"`)
+		}
+		sawGuardedProbe.Store(true)
+		w.Header().Set(base.HttpHeaderETag, `"new-v2"`)
+		w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(replacement)))
+		w.WriteHeader(gohttp.StatusOK)
+		_, _ = w.Write(replacement)
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	const filename = "restored-replacement.data"
+	filepath := tempDir + string(os.PathSeparator) + filename
+	if err := os.WriteFile(filepath, replacement[:replacementPrefix], 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rangeMode := false
+	resourceSize := int64(len(original))
+	fileSize := resourceSize
+	saved := &fetcherData{
+		Connections: []*connection{{
+			ID:         0,
+			Role:       rolePrimary,
+			State:      connFailed,
+			Chunk:      &chunk{Begin: 0, End: resourceSize - 1, Downloaded: savedPrefix},
+			Downloaded: savedPrefix,
+		}},
+		IfRange:              `"old-v1"`,
+		RangeReprobeEligible: true,
+		Range:                &rangeMode,
+		ResourceSize:         &resourceSize,
+		FileSize:             &fileSize,
+	}
+	// Simulate task metadata serialized after an interrupted chunked replacement
+	// while the fetcher snapshot still describes the preceding representation.
+	staleMeta := &fetcher.FetcherMeta{
+		Req: &base.Request{URL: server.URL},
+		Res: &base.Resource{
+			Size:  0,
+			Range: false,
+			Files: []*base.FileInfo{{Name: filename, Size: 0}},
+		},
+		Opts: &base.Options{
+			Path: tempDir,
+			Name: filename,
+			Extra: &http.OptsExtra{
+				Connections: 1,
+			},
+		},
+	}
+
+	fm := new(FetcherManager)
+	_, restore := fm.Restore()
+	restored := restore(staleMeta, saved).(*Fetcher)
+	if restored.meta.Res.Size != resourceSize || restored.meta.Res.Files[0].Size != fileSize {
+		t.Fatalf("restored size = %d/%d, want %d/%d", restored.meta.Res.Size, restored.meta.Res.Files[0].Size, resourceSize, fileSize)
+	}
+	ctl := controller.NewController()
+	ctl.GetConfig = func(v any) {
+		if err := json.Unmarshal([]byte(test.ToJson(fm.DefaultConfig())), v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	restored.Setup(ctl)
+	if err := restored.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := restored.Wait(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !sawGuardedProbe.Load() {
+		t.Fatal("restored download did not issue the guarded Range probe")
+	}
+	got, err := os.ReadFile(filepath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, replacement) {
+		t.Fatal("restored download retained bytes from the interrupted replacement")
+	}
+	wantSize := int64(len(replacement))
+	if restored.meta.Res.Size != wantSize || restored.meta.Res.Files[0].Size != wantSize {
+		t.Fatalf("completed size = %d/%d, want %d", restored.meta.Res.Size, restored.meta.Res.Files[0].Size, wantSize)
+	}
+	if got := restored.Progress().TotalDownloaded(); got != wantSize {
+		t.Fatalf("progress = %d, want %d", got, wantSize)
+	}
+	info, err := os.Stat(filepath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Size(); got != wantSize {
+		t.Fatalf("file size = %d, want %d", got, wantSize)
 	}
 }
 

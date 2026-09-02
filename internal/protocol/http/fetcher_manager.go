@@ -14,12 +14,15 @@ import (
 // ============================================================================
 
 type fetcherData struct {
-	Connections          []*connection
-	RedirectURL          string // Saved redirect URL for resume
-	IfRange              string // Strong ETag or Last-Modified validator for safe resume
-	RangeReprobeEligible bool   // Origin advertised Range before falling back to sequential mode
-	RangeValidatorPinned bool   // Recovered Range mode must keep the same If-Range validator
-	Range                *bool  // Authoritative Range mode; nil for records saved by older versions
+	Connections           []*connection
+	RedirectURL           string // Saved redirect URL for resume
+	IfRange               string // Strong ETag or Last-Modified validator for safe resume
+	RangeReprobeEligible  bool   // Origin advertised Range before falling back to sequential mode
+	RangeValidatorPinned  bool   // Recovered Range mode must keep the same If-Range validator
+	SequentialSizeUnknown bool   // Interrupted chunked restart must retry from byte zero
+	Range                 *bool  // Authoritative Range mode; nil for records saved by older versions
+	ResourceSize          *int64 // Authoritative resource size from the same snapshot as Connections
+	FileSize              *int64 // Authoritative single-file size; nil for older records
 }
 
 // ============================================================================
@@ -89,20 +92,32 @@ func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	ifRange := _f.ifRange
 	rangeReprobeEligible := _f.rangeReprobeEligible
 	rangeValidatorPinned := _f.rangeValidatorPinned
+	sequentialSizeUnknown := _f.sequentialSizeUnknown
 	var rangeMode *bool
+	var resourceSize *int64
+	var fileSize *int64
 	if _f.meta != nil && _f.meta.Res != nil {
 		value := _f.meta.Res.Range
 		rangeMode = &value
+		size := _f.meta.Res.Size
+		resourceSize = &size
+		if len(_f.meta.Res.Files) > 0 && _f.meta.Res.Files[0] != nil {
+			size := _f.meta.Res.Files[0].Size
+			fileSize = &size
+		}
 	}
 	_f.connMu.Unlock()
 
 	return &fetcherData{
-		Connections:          connections,
-		RedirectURL:          redirectURL,
-		IfRange:              ifRange,
-		RangeReprobeEligible: rangeReprobeEligible,
-		RangeValidatorPinned: rangeValidatorPinned,
-		Range:                rangeMode,
+		Connections:           connections,
+		RedirectURL:           redirectURL,
+		IfRange:               ifRange,
+		RangeReprobeEligible:  rangeReprobeEligible,
+		RangeValidatorPinned:  rangeValidatorPinned,
+		SequentialSizeUnknown: sequentialSizeUnknown,
+		Range:                 rangeMode,
+		ResourceSize:          resourceSize,
+		FileSize:              fileSize,
 	}, nil
 }
 
@@ -148,11 +163,18 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		fetcher.ifRange = fd.IfRange
 		fetcher.rangeReprobeEligible = fd.RangeReprobeEligible
 		fetcher.rangeValidatorPinned = fd.RangeValidatorPinned
+		fetcher.sequentialSizeUnknown = fd.SequentialSizeUnknown
 		if fd.Range != nil && fetcher.meta.Res != nil {
-			// Range lives in the same persisted snapshot as Connections, making it
-			// authoritative over task metadata that may have been saved just before
-			// or after this record.
+			// Recovery-critical resource fields live in the same persisted snapshot
+			// as Connections, making them authoritative over task metadata that may
+			// have been saved just before or after this record.
 			fetcher.meta.Res.Range = *fd.Range
+		}
+		if fd.ResourceSize != nil && fetcher.meta.Res != nil {
+			fetcher.meta.Res.Size = *fd.ResourceSize
+		}
+		if fd.FileSize != nil && fetcher.meta.Res != nil && len(fetcher.meta.Res.Files) > 0 && fetcher.meta.Res.Files[0] != nil {
+			fetcher.meta.Res.Files[0].Size = *fd.FileSize
 		}
 		return fetcher
 	}
