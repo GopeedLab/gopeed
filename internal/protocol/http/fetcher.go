@@ -274,6 +274,7 @@ type Fetcher struct {
 	prefetchDone     atomic.Bool   // Prefetch completed or stopped
 	prefetchErr      error         // Error during prefetch (if any)
 	prefetchStopCh   chan struct{} // Signal to stop prefetch
+	resolveFallback  atomic.Bool   // Resolve prefetch is still available until the first Range request takes over
 
 	// Target file
 	file                  *os.File
@@ -467,6 +468,7 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	// For non-range resources, the response will be used directly in Start
 	if res.Range && res.Size > 0 {
 		f.prefetchStopCh = make(chan struct{})
+		f.resolveFallback.Store(true)
 		go f.asyncPrefetch()
 	}
 
@@ -606,6 +608,7 @@ func (f *Fetcher) cleanupPrefetchFile() {
 	// Pause may discard that file before the first Start, so retaining the
 	// count would make the next Start skip bytes that were never copied.
 	f.prefetchSize.Store(0)
+	f.resolveFallback.Store(false)
 }
 
 func (f *Fetcher) Start() error {
@@ -696,17 +699,26 @@ func (f *Fetcher) doStart() error {
 	// For non-range resources, the response will be used directly
 	var prefetchedBytes int64
 	if f.meta.Res.Range {
-		// Stop async prefetch and copy data to target file
-		prefetchedBytes = f.stopPrefetchAndCopyData()
+		if f.resolveFallback.Load() && !(f.prefetchDone.Load() && f.prefetchErr == nil && f.prefetchSize.Load() >= f.meta.Res.Size) {
+			// Keep Resolve downloading until the first Range response has been
+			// validated. The Range request starts at a stable snapshot; a valid
+			// takeover discards any overlap downloaded by Resolve in the meantime.
+			prefetchedBytes = f.prefetchSize.Load()
+		} else {
+			// Resolve already completed, or no live Resolve fallback remains.
+			prefetchedBytes = f.stopPrefetchAndCopyData()
+		}
 		f.resolveDataPos.Store(prefetchedBytes)
 
-		// Also close resolve response if still open
-		f.resolveRespLock.Lock()
-		if f.resolveResp != nil {
-			f.resolveResp.Body.Close()
-			f.resolveResp = nil
+		if !f.resolveFallback.Load() {
+			// Also close resolve response if still open.
+			f.resolveRespLock.Lock()
+			if f.resolveResp != nil {
+				f.resolveResp.Body.Close()
+				f.resolveResp = nil
+			}
+			f.resolveRespLock.Unlock()
 		}
-		f.resolveRespLock.Unlock()
 	}
 
 	// Avoid request extra modified by extension
@@ -722,16 +734,17 @@ func (f *Fetcher) doStart() error {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
 	// Create downloadLoop lifecycle channel
-	f.downloadLoopDone = make(chan struct{})
+	downloadLoopDone := make(chan struct{})
+	f.downloadLoopDone = downloadLoopDone
 
 	// Start download
 	f.setState(stateSlowStart)
-	go f.downloadLoop()
+	go f.downloadLoop(downloadLoopDone)
 
 	return nil
 }
 
-func (f *Fetcher) downloadLoop() {
+func (f *Fetcher) downloadLoop(done chan struct{}) {
 	ctx := f.ctx
 
 	defer func() {
@@ -741,8 +754,8 @@ func (f *Fetcher) downloadLoop() {
 		}
 
 		// Signal that downloadLoop has exited
-		if f.downloadLoopDone != nil {
-			close(f.downloadLoopDone)
+		if done != nil {
+			close(done)
 		}
 	}()
 
@@ -971,7 +984,7 @@ func (f *Fetcher) runConnection(conn *connection) {
 		// response-ready signal was intentionally not used to expand.
 		f.connMu.Lock()
 		conn.exited = true
-		sequentialRecovery := !f.meta.Res.Range && f.rangeReprobeEligible && len(f.connections) == 1
+		sequentialRecovery := !f.meta.Res.Range && (f.rangeReprobeEligible || conn.Completed) && len(f.connections) == 1
 		f.connMu.Unlock()
 		f.wg.Done()
 		if sequentialRecovery && f.slowStart != nil {
@@ -1023,6 +1036,11 @@ func (f *Fetcher) runConnection(conn *connection) {
 		}
 
 		if errors.Is(err, context.Canceled) {
+			return
+		}
+		requestErr := extractRequestError(err)
+		shouldUseResolveFallback := requestErr == nil || !isFailureExemptHTTPCode(requestErr.Code)
+		if shouldUseResolveFallback && f.completeFromResolveFallback(conn) {
 			return
 		}
 		if isTerminalRangeError(err) {
@@ -1114,7 +1132,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	if resumeProbe {
 		rangeEnd = f.meta.Res.Size - 1
 		ifRange = f.ifRange
-	} else if rangeMode && f.rangeValidatorPinned {
+	} else if rangeMode && (f.rangeValidatorPinned || f.resolveFallback.Load()) {
 		ifRange = f.ifRange
 	}
 	f.connMu.Unlock()
@@ -1169,7 +1187,14 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	}
 
 	expectedResponseLength := int64(-1)
+	var responseBytesToDiscard int64
 	if rangeRequested && resp.StatusCode == base.HttpCodeOK {
+		if conn.ID == 0 && f.resolveFallback.CompareAndSwap(true, false) {
+			// This response is itself a complete representation, so the older
+			// Resolve stream is no longer needed. Stop and copy its prefix before
+			// the sequential restart truncates/overwrites the target from zero.
+			f.stopPrefetchAndCopyData()
+		}
 		if resumeProbe {
 			// If-Range returning 200 provides the complete current representation.
 			// Discard the old prefix counters and consume this response from byte 0.
@@ -1185,6 +1210,11 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	}
 	if rangeRequested && resp.StatusCode == base.HttpCodePartialContent {
 		expectedResponseLength, err = validateRangeResponse(resp, rangeStart, rangeEnd, f.meta.Res.Size)
+		if err != nil {
+			resp.Body.Close()
+			return err
+		}
+		responseBytesToDiscard, err = f.commitResolveTakeover(conn, rangeStart)
 		if err != nil {
 			resp.Body.Close()
 			return err
@@ -1264,59 +1294,68 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 				return fmt.Errorf("%w: response body exceeds expected length %d", errInvalidRangeResponse, expectedResponseLength)
 			}
 
+			data := buf[:n]
+			if responseBytesToDiscard > 0 {
+				discard := min(int64(len(data)), responseBytesToDiscard)
+				data = data[discard:]
+				responseBytesToDiscard -= discard
+			}
+
 			finished := false
 			var writeOffset int64
 
-			// Lock to safely read chunk state and calculate write parameters
-			// This protects against concurrent chunk splitting by helpOtherConnection
-			f.connMu.Lock()
-			if f.meta.Res.Range {
-				// Check current chunk boundaries - this respects any concurrent chunk splitting
-				remain := conn.Chunk.remain()
-				if remain <= 0 {
-					// Chunk has been fully downloaded (possibly split and reduced)
-					f.connMu.Unlock()
+			if len(data) > 0 {
+				// Lock to safely read chunk state and calculate write parameters
+				// This protects against concurrent chunk splitting by helpOtherConnection
+				f.connMu.Lock()
+				if f.meta.Res.Range {
+					// Check current chunk boundaries - this respects any concurrent chunk splitting
+					remain := conn.Chunk.remain()
+					if remain <= 0 {
+						// Chunk has been fully downloaded (possibly split and reduced)
+						f.connMu.Unlock()
+						return nil
+					}
+					if remain < int64(len(data)) {
+						data = data[:remain]
+						finished = true
+					}
+				}
+				writeOffset = conn.Chunk.Begin + conn.Chunk.Downloaded
+				f.connMu.Unlock()
+
+				f.fileMu.Lock()
+				if f.file != nil {
+					_, writeErr := f.file.WriteAt(data, writeOffset)
+					if writeErr != nil {
+						f.fileMu.Unlock()
+						return writeErr
+					}
+				}
+				f.fileMu.Unlock()
+
+				// Lock again to update Downloaded atomically with the read above
+				f.connMu.Lock()
+				conn.Chunk.Downloaded += int64(len(data))
+				conn.Downloaded += int64(len(data))
+				// Update connection speed periodically
+				now := time.Now().UnixNano()
+				if conn.lastSpeedCheck == 0 {
+					conn.lastSpeedCheck = now
+					conn.lastSpeedDownload = conn.Downloaded
+				} else if now-conn.lastSpeedCheck >= int64(500*time.Millisecond) {
+					elapsed := float64(now-conn.lastSpeedCheck) / float64(time.Second)
+					if elapsed > 0 {
+						conn.speed = int64(float64(conn.Downloaded-conn.lastSpeedDownload) / elapsed)
+					}
+					conn.lastSpeedCheck = now
+					conn.lastSpeedDownload = conn.Downloaded
+				}
+				f.connMu.Unlock()
+
+				if finished {
 					return nil
 				}
-				if remain < int64(n) {
-					n = int(remain)
-					finished = true
-				}
-			}
-			writeOffset = conn.Chunk.Begin + conn.Chunk.Downloaded
-			f.connMu.Unlock()
-
-			f.fileMu.Lock()
-			if f.file != nil {
-				_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
-				if writeErr != nil {
-					f.fileMu.Unlock()
-					return writeErr
-				}
-			}
-			f.fileMu.Unlock()
-
-			// Lock again to update Downloaded atomically with the read above
-			f.connMu.Lock()
-			conn.Chunk.Downloaded += int64(n)
-			conn.Downloaded += int64(n)
-			// Update connection speed periodically
-			now := time.Now().UnixNano()
-			if conn.lastSpeedCheck == 0 {
-				conn.lastSpeedCheck = now
-				conn.lastSpeedDownload = conn.Downloaded
-			} else if now-conn.lastSpeedCheck >= int64(500*time.Millisecond) {
-				elapsed := float64(now-conn.lastSpeedCheck) / float64(time.Second)
-				if elapsed > 0 {
-					conn.speed = int64(float64(conn.Downloaded-conn.lastSpeedDownload) / elapsed)
-				}
-				conn.lastSpeedCheck = now
-				conn.lastSpeedDownload = conn.Downloaded
-			}
-			f.connMu.Unlock()
-
-			if finished {
-				return nil
 			}
 		}
 
@@ -1335,6 +1374,73 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			return err
 		}
 	}
+}
+
+// commitResolveTakeover stops the still-live Resolve download only after the
+// first Range response has been validated. Resolve may have advanced beyond
+// requestedStart while the speculative request was in flight, so the overlap
+// is returned for the caller to discard from the Range response body.
+func (f *Fetcher) commitResolveTakeover(conn *connection, requestedStart int64) (int64, error) {
+	if conn.ID != 0 || !f.resolveFallback.CompareAndSwap(true, false) {
+		return 0, nil
+	}
+
+	prefetched := f.stopPrefetchAndCopyData()
+	if prefetched < requestedStart || prefetched > f.meta.Res.Size {
+		return 0, fmt.Errorf("resolve prefetch advanced to invalid offset %d for range start %d", prefetched, requestedStart)
+	}
+	f.resolveDataPos.Store(prefetched)
+
+	overlap := prefetched - requestedStart
+	f.connMu.Lock()
+	if f.ifRange != "" {
+		f.rangeValidatorPinned = true
+	}
+	conn.Chunk.Downloaded = overlap
+	conn.Downloaded = prefetched
+	f.connMu.Unlock()
+	return overlap, nil
+}
+
+// completeFromResolveFallback keeps the original full response authoritative
+// when the speculative first Range request cannot take over. It waits for that
+// response to finish, copies it once, and converts the task to one completed
+// sequential connection instead of accepting an incomplete Range result.
+func (f *Fetcher) completeFromResolveFallback(conn *connection) bool {
+	if conn.ID != 0 || !f.resolveFallback.CompareAndSwap(true, false) {
+		return false
+	}
+
+	for !f.prefetchDone.Load() {
+		if conn.ctx.Err() != nil {
+			return false
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if f.prefetchErr != nil || f.prefetchSize.Load() != f.meta.Res.Size {
+		f.cleanupPrefetchFile()
+		return false
+	}
+
+	prefetched := f.stopPrefetchAndCopyData()
+	if prefetched != f.meta.Res.Size {
+		return false
+	}
+	f.resolveDataPos.Store(prefetched)
+
+	f.connMu.Lock()
+	f.meta.Res.Range = false
+	f.rangeReprobeEligible = false
+	f.rangeValidatorPinned = false
+	conn.Chunk = newChunk(0, prefetched-1)
+	conn.Chunk.Downloaded = prefetched
+	conn.Downloaded = prefetched
+	conn.Completed = true
+	conn.State = connCompleted
+	conn.failed = false
+	conn.lastErr = nil
+	f.connMu.Unlock()
+	return true
 }
 
 func validateRangeResponse(resp *http.Response, requestedStart, requestedEnd, totalSize int64) (int64, error) {
@@ -2091,8 +2197,30 @@ func (f *Fetcher) Pause() error {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	// Clean up prefetch file
-	f.cleanupPrefetchFile()
+	// If Pause wins before the first Range response is validated, materialize
+	// the Resolve prefix before discarding its temporary file. The first
+	// connection was allocated after the earlier prefetch snapshot, so advance
+	// its range start to the final copied offset for a safe persisted resume.
+	if f.meta != nil && f.meta.Res != nil && f.meta.Res.Range && f.prefetchFile != nil {
+		f.resolveFallback.Store(false)
+		prefetched := f.stopPrefetchAndCopyData()
+		if prefetched > 0 {
+			f.resolveDataPos.Store(prefetched)
+			f.connMu.Lock()
+			if len(f.connections) == 1 {
+				conn := f.connections[0]
+				if conn != nil && conn.ID == 0 && conn.Chunk != nil && !conn.Completed {
+					conn.Chunk.Begin = prefetched
+					conn.Chunk.End = f.meta.Res.Size - 1
+					conn.Chunk.Downloaded = 0
+					conn.Downloaded = prefetched
+				}
+			}
+			f.connMu.Unlock()
+		}
+	} else {
+		f.cleanupPrefetchFile()
+	}
 
 	// Clean up resolve response if still held
 	f.resolveRespLock.Lock()
