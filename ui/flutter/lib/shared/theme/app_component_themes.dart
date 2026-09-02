@@ -35,7 +35,11 @@ class AppComponentThemes extends StatelessWidget {
               : value,
         ),
         child: shad.ComponentTheme<shad.CheckboxTheme>(
-          data: const shad.CheckboxTheme(size: AppDesignTokens.checkboxSize, gap: AppDesignTokens.checkboxLabelGap),
+          data: shad.CheckboxTheme(
+            size: AppDesignTokens.checkboxSize,
+            gap: AppDesignTokens.checkboxLabelGap,
+            borderColor: theme.brightness == Brightness.dark ? palette.textMuted : palette.border,
+          ),
           child: shad.ComponentTheme<shad.ToastTheme>(
             data: const shad.ToastTheme(toastConstraints: BoxConstraints(maxWidth: 420)),
             child: child,

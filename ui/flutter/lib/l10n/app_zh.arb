@@ -266,7 +266,7 @@
   "browserExtensionDescription": "安装后可将浏览器中的下载直接发送到 Gopeed",
   "desktopNotificationDescription": "任务完成或失败时显示系统通知",
   "backgroundLocationKeepAliveDescription": "下载任务运行时使用定位权限帮助应用在后台保持活动",
-  "currentVersion": "当前版本 v{version}",
+  "currentVersion": "当前版本 {version}",
   "contributors": "贡献者",
   "viewContributors": "查看贡献者",
   "maxRunningDescription": "同时允许下载的最大任务数",

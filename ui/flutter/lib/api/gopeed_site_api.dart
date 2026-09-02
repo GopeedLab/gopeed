@@ -12,9 +12,12 @@ class GopeedSiteApi {
 
   static const _host = 'gopeed.com';
 
-  Future<Map<String, dynamic>> getRelease() async {
-    final json = await _getJson('/api/release');
-    return json as Map<String, dynamic>;
+  Future<List<dynamic>> getReleases({int perPage = 10}) async {
+    final json = await _getJson('/api/releases', queryParameters: {'per_page': perPage.clamp(1, 100).toString()});
+    if (json is! List<dynamic>) {
+      throw const FormatException('Invalid releases response');
+    }
+    return json;
   }
 
   Future<StoreExtensionPage> getExtensions({

@@ -266,7 +266,7 @@
   "browserExtensionDescription": "Küldje el a böngésző letöltéseit közvetlenül a Gopeednek a telepítés után",
   "desktopNotificationDescription": "Rendszerértesítés megjelenítése, ha egy feladat befejeződik vagy meghiúsul",
   "backgroundLocationKeepAliveDescription": "Használja a helyhozzáférést, hogy a letöltések aktívak maradjanak a háttérben",
-  "currentVersion": "Jelenlegi verzió v{version}",
+  "currentVersion": "Jelenlegi verzió {version}",
   "contributors": "Közreműködők",
   "viewContributors": "Közreműködők megtekintése",
   "maxRunningDescription": "Az egyidejűleg letölthető feladatok maximális száma",

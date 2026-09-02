@@ -266,7 +266,7 @@
   "browserExtensionDescription": "Envia les baixades del navegador directament a Gopeed després de la instal· lació",
   "desktopNotificationDescription": "Mostra una notificació del sistema quan una tasca completa o falla",
   "backgroundLocationKeepAliveDescription": "Usa l' accés de localització per a mantenir les baixades actives en el fons",
-  "currentVersion": "Versió actual v{version}",
+  "currentVersion": "Versió actual {version}",
   "contributors": "Col· laboradors",
   "viewContributors": "Visualitza col· laboradors",
   "maxRunningDescription": "Nombre màxim de tasques que poden descarregar alhora",

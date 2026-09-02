@@ -266,7 +266,7 @@
   "browserExtensionDescription": "브라우저를 설치 후 Gopeed에 직접 다운로드",
   "desktopNotificationDescription": "작업이 완료되거나 실패할 때 시스템 알림 표시",
   "backgroundLocationKeepAliveDescription": "배경에서 다운로드를 계속하려면 위치 액세스",
-  "currentVersion": "현재 버전 v{version}",
+  "currentVersion": "현재 버전 {version}",
   "contributors": "기여자",
   "viewContributors": "기여자보기",
   "maxRunningDescription": "동시에 다운로드 할 수있는 작업의 최대 수",

@@ -280,7 +280,7 @@
   "browserExtensionDescription": "Send browser downloads directly to Gopeed after installation",
   "desktopNotificationDescription": "Show a system notification when a task completes or fails",
   "backgroundLocationKeepAliveDescription": "Use location access to keep downloads active in the background",
-  "currentVersion": "Current version v{version}",
+  "currentVersion": "Current version {version}",
   "contributors": "Contributors",
   "viewContributors": "View contributors",
   "maxRunningDescription": "Maximum number of tasks that may download at the same time",

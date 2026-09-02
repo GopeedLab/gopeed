@@ -266,7 +266,7 @@
   "browserExtensionDescription": "Tarayıcı yüklemeleri doğrudan yüklemeden sonra atılır",
   "desktopNotificationDescription": "Bir görev tamamlandığında bir sistem bildirimini gösterin veya başarısız olur",
   "backgroundLocationKeepAliveDescription": "Arka planda aktif indirmeleri tutmak için yer erişim kullanın",
-  "currentVersion": "Şimdiki sürüm v{version}",
+  "currentVersion": "Şimdiki sürüm {version}",
   "contributors": "Katkıda bulunanlar",
   "viewContributors": "Katkıda bulunanları görüntüle",
   "maxRunningDescription": "Aynı zamanda indirilebilecek en fazla görev sayısı",

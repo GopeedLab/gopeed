@@ -266,7 +266,7 @@
   "browserExtensionDescription": "நிறுவலுக்குப் பிறகு உலாவி பதிவிறக்கங்களை நேரடியாக Gopeed க்கு அனுப்பவும்",
   "desktopNotificationDescription": "ஒரு பணி முடிவடையும் போது அல்லது தோல்வியடையும் போது கணினி அறிவிப்பைக் காட்டவும்",
   "backgroundLocationKeepAliveDescription": "பின்னணியில் பதிவிறக்கங்களை செயலில் வைத்திருக்க இருப்பிட அணுகலைப் பயன்படுத்தவும்",
-  "currentVersion": "தற்போதைய பதிப்பு v{version}",
+  "currentVersion": "தற்போதைய பதிப்பு {version}",
   "contributors": "பங்களிப்போர்:",
   "viewContributors": "பங்களிப்பாளர்களைக் காண்க",
   "maxRunningDescription": "ஒரே நேரத்தில் பதிவிறக்கம் செய்யக்கூடிய அதிகபட்ச பணிகளின் எண்ணிக்கை",

@@ -152,6 +152,13 @@ void main() {
     expect(tester.widget<shad.Checkbox>(rememberDirectory).size, isNull);
     expect(tester.getSize(rememberDirectory), const Size.square(AppDesignTokens.checkboxSize));
     expect(tester.getCenter(rememberDirectory).dx, closeTo(tester.getCenter(directDownloadCheckbox).dx, 0.5));
+    final rememberDirectoryLabel = tester.widget<Text>(
+      find.byKey(const ValueKey('create-task-remember-download-directory-label')),
+    );
+    final directDownloadLabel = tester.widget<Text>(find.byKey(const ValueKey('create-task-direct-download-label')));
+    expect(rememberDirectoryLabel.style, directDownloadLabel.style);
+    expect(rememberDirectoryLabel.maxLines, directDownloadLabel.maxLines);
+    expect(rememberDirectoryLabel.overflow, directDownloadLabel.overflow);
     expect(tester.widget<shad.IconButton>(directoryPicker).variance, same(shad.ButtonVariance.outline));
     expect(tester.widget<flutter.Row>(directoryOptionsLayout).mainAxisAlignment, MainAxisAlignment.spaceBetween);
     expect(tester.getCenter(rememberDirectoryRow).dy, closeTo(tester.getCenter(shortcutRow).dy, 0.5));

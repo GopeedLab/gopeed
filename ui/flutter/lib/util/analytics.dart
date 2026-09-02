@@ -52,7 +52,7 @@ class Analytics {
             'session_id': _sessionId.toString(),
             'engagement_time_msec': 100,
             'platform': _platformName(),
-            'app_version': packageInfo.version,
+            'app_version': appVersion,
             ...?params,
           },
         },

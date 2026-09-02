@@ -266,7 +266,7 @@
   "browserExtensionDescription": "Gửi trực tiếp các tập tin tải về cho trình duyệt sau khi cài đặt",
   "desktopNotificationDescription": "Hiển thị thông báo hệ thống khi hoàn thành hay không thành công",
   "backgroundLocationKeepAliveDescription": "Dùng quyền truy cập vị trí để giữ cho việc tải về hoạt động ở nền",
-  "currentVersion": "Phiên bản hiện thời v{version}",
+  "currentVersion": "Phiên bản hiện thời {version}",
   "contributors": "Người đóng góp",
   "viewContributors": "Đóng góp xem",
   "maxRunningDescription": "Số tác vụ tối đa có thể tải về cùng một lúc",

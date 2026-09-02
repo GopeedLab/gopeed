@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:install_plugin/install_plugin.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart' as api;
@@ -45,6 +46,9 @@ UpdateChannel? get updateChannel {
 
 String get _updaterBinaryName => 'updater${Util.isWindows() ? '.exe' : ''}';
 
+const _releasePageSize = 10;
+const _githubReleasesUrl = 'https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=$_releasePageSize';
+
 class VersionInfo {
   const VersionInfo({required this.version, required this.changeLog, required this.releaseUrl});
 
@@ -68,47 +72,89 @@ Future<void> installUpdater() async {
 }
 
 Future<VersionInfo?> checkUpdate() async {
-  String? releaseDataStr;
+  List<dynamic> releases;
   try {
-    releaseDataStr = (await api.proxyRequest('https://api.github.com/repos/GopeedLab/gopeed/releases/latest')).data;
+    final releaseDataStr = (await api.proxyRequest(_githubReleasesUrl)).data;
+    if (releaseDataStr == null || releaseDataStr.isEmpty) {
+      throw const FormatException('Empty GitHub releases response');
+    }
+    final releaseData = jsonDecode(releaseDataStr);
+    if (releaseData is! List<dynamic>) {
+      throw const FormatException('Invalid GitHub releases response');
+    }
+    releases = releaseData;
   } catch (_) {
-    releaseDataStr = jsonEncode(await GopeedSiteApi.instance.getRelease());
+    releases = await GopeedSiteApi.instance.getReleases(perPage: _releasePageSize);
   }
-  if (releaseDataStr == null || releaseDataStr.isEmpty) return null;
-
-  final releaseData = jsonDecode(releaseDataStr) as Map<String, dynamic>;
-  final tagName = releaseData['tag_name'] as String?;
-  if (tagName == null || tagName.isEmpty) return null;
-  final latestVersion = tagName.startsWith('v') ? tagName.substring(1) : tagName;
-  if (!isNewerVersion(latestVersion, packageInfo.version)) return null;
-
-  return VersionInfo(
-    version: latestVersion,
-    changeLog: (releaseData['body'] ?? '').toString(),
-    releaseUrl: (releaseData['html_url'] ?? 'https://github.com/GopeedLab/gopeed/releases/latest').toString(),
-  );
+  return selectUpdateRelease(releases, appVersion);
 }
 
 bool isNewerVersion(String latest, String current) {
-  final latestParts = _versionParts(latest);
-  final currentParts = _versionParts(current);
-  final length = latestParts.length > currentParts.length ? latestParts.length : currentParts.length;
-  for (var index = 0; index < length; index++) {
-    final latestPart = index < latestParts.length ? latestParts[index] : 0;
-    final currentPart = index < currentParts.length ? currentParts[index] : 0;
-    if (latestPart > currentPart) return true;
-    if (latestPart < currentPart) return false;
+  try {
+    return _parseVersion(latest).compareTo(_parseVersion(current)) > 0;
+  } on FormatException {
+    return false;
   }
-  return false;
 }
 
-List<int> _versionParts(String version) {
-  return version
-      .split(RegExp(r'[^0-9]+'))
-      .where((part) => part.isNotEmpty)
-      .map((part) => int.tryParse(part) ?? 0)
-      .toList();
+VersionInfo? selectUpdateRelease(List<dynamic> releases, String currentVersionText) {
+  late final Version currentVersion;
+  try {
+    currentVersion = _parseVersion(currentVersionText);
+  } on FormatException {
+    return null;
+  }
+
+  Map<String, dynamic>? selectedRelease;
+  Version? selectedVersion;
+
+  for (final item in releases) {
+    if (item is! Map) continue;
+    final release = Map<String, dynamic>.from(item);
+    if (release['draft'] == true) continue;
+
+    final tagName = release['tag_name'];
+    if (tagName is! String || tagName.isEmpty) continue;
+
+    late final Version candidateVersion;
+    try {
+      candidateVersion = _parseVersion(tagName);
+    } on FormatException {
+      continue;
+    }
+
+    if (candidateVersion.compareTo(currentVersion) <= 0) continue;
+
+    final candidateIsPrerelease = release['prerelease'] == true || candidateVersion.isPreRelease;
+    if (!currentVersion.isPreRelease) {
+      if (candidateIsPrerelease) continue;
+    } else if (candidateIsPrerelease && !_hasSameReleaseCore(candidateVersion, currentVersion)) {
+      // Preview builds graduate through their own beta/rc line before returning
+      // to stable; they do not jump into the next version's preview line.
+      continue;
+    }
+
+    if (selectedVersion == null || candidateVersion.compareTo(selectedVersion) > 0) {
+      selectedRelease = release;
+      selectedVersion = candidateVersion;
+    }
+  }
+
+  if (selectedRelease == null || selectedVersion == null) return null;
+  final tagName = selectedRelease['tag_name'] as String;
+  return VersionInfo(
+    version: _versionText(tagName),
+    changeLog: (selectedRelease['body'] ?? '').toString(),
+    releaseUrl: (selectedRelease['html_url'] ?? 'https://github.com/GopeedLab/gopeed/releases/tag/$tagName').toString(),
+  );
 }
+
+Version _parseVersion(String version) => Version.parse(_versionText(version));
+
+String _versionText(String version) => version.startsWith('v') ? version.substring(1) : version;
+
+bool _hasSameReleaseCore(Version first, Version second) =>
+    first.major == second.major && first.minor == second.minor && first.patch == second.patch;
 
 /// Extracts the matching section from Gopeed's bilingual GitHub release notes.
 String localizedReleaseNotes(String fullChangeLog, String languageCode) {

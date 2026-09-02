@@ -18,7 +18,7 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 
 除了日常下载任务管理，Gopeed 还提供浏览器接管、JavaScript 扩展、REST API、命令行工具和可自托管 Web UI，方便高级用户扩展和自动化自己的下载流程。
 
-访问 ✈ [官方网站](https://gopeed.com) | 📖 [官方文档](https://gopeed.com/docs)
+访问 ✈ [官方网站](https://gopeed.com)
 
 ![Gopeed 桌面端与移动端界面](_docs/img/ui-concept-zh-CN.png)
 
@@ -27,6 +27,7 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 - ⚡ **高速下载** — 多任务并发、HTTP 多连接分段传输和 BitTorrent P2P 下载，充分利用可用带宽。
 - 🧲 **多协议支持** — 在同一个界面管理 HTTP、HTTPS、BitTorrent、磁力链接和 ed2k。
 - 🌱 **完整 BT 能力** — 按文件选择下载、Tracker 管理、Peer/分片统计，以及按分享率或时间控制做种。
+- 🪶 **轻量原生体验** — 主界面使用 Flutter 原生渲染，不是 Electron，也不是基于 WebView 的套壳应用，安装包更轻量、运行开销更低、响应更流畅。
 - 📋 **实用任务管理** — 暂停、续传、重试、批量操作、搜索、状态筛选、下载分类和启动恢复。
 - 💻 **全平台覆盖** — 支持 Windows、macOS、Linux、Android、iOS 和 Web，并提供 Docker、QNAP 部署方式。
 - 🎨 **个性化主题** — 支持跟随系统、浅色、深色三种模式，以及 8 种主题强调色。
@@ -38,6 +39,16 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 - 🛠️ **常用内置能力** — 自定义 Header 与 User-Agent、代理、GitHub 镜像、通知和自动解压。
 
 ## ⬇️ 下载
+
+### 🧪 Gopeed 2.0.0 Beta
+
+Gopeed 2.0.0 目前处于公开 Beta 测试阶段，带来了全新的 2.0.0 使用体验，但部分功能仍可能不够完善或稳定。欢迎提前体验，并向我们反馈使用过程中遇到的问题。
+
+- [下载 Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
+
+当功能完整度和稳定性达到正式发布标准后，我们会发布 Gopeed 2.0.0 正式版。已安装 Beta 版本的用户可以直接升级到最终正式版，现有稳定版用户则不会被自动切换到 Beta 渠道。
+
+### 正式稳定版
 
 - [官方网站下载](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
@@ -73,7 +84,7 @@ Gopeed 还提供了浏览器扩展用于接管浏览器下载，支持 Chrome、
 ### 🌍 环境要求
 
 1. Golang 1.25+
-2. Flutter 3.38+
+2. Flutter 3.41+
 
 ### 📋 克隆项目
 

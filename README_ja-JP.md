@@ -18,7 +18,7 @@ Gopeed（**Go Speed** の略）は、Go と Flutter で開発された高速で�
 
 ブラウザー連携、JavaScript 拡張、REST API、CLI、セルフホスト可能な Web UI により、日常利用から高度な自動化まで幅広く対応します。
 
-✈ [公式サイト](https://gopeed.com) | 📖 [公式ドキュメント](https://gopeed.com/docs)
+✈ [公式サイト](https://gopeed.com)
 
 ![Gopeed のデスクトップ・モバイル画面](_docs/img/ui-concept-en.png)
 
@@ -27,6 +27,7 @@ Gopeed（**Go Speed** の略）は、Go と Flutter で開発された高速で�
 - ⚡ **高速ダウンロード** — 複数タスク、HTTP のマルチ接続分割転送、BitTorrent の P2P ダウンロードで帯域を最大限に活用します。
 - 🧲 **マルチプロトコル** — HTTP、HTTPS、BitTorrent、Magnet、ed2k を一つの画面で管理します。
 - 🌱 **充実した BT 機能** — ファイル選択、Tracker 管理、Peer/ピース統計、共有率または時間によるシード制御。
+- 🪶 **軽量なネイティブ体験** — メイン UI は Flutter でネイティブ描画され、Electron や WebView ベースのラッパーではありません。パッケージサイズと実行時オーバーヘッドを抑え、軽快な応答性を実現します。
 - 📋 **タスク管理** — 一時停止、再開、再試行、一括操作、検索、状態フィルター、カテゴリ、起動時復元。
 - 💻 **クロスプラットフォーム** — Windows、macOS、Linux、Android、iOS、Web、Docker、QNAP に対応。
 - 🎨 **カスタマイズ可能なテーマ** — システム連動、ライト、ダークの各モードと 8 色のアクセントカラーに対応。
@@ -38,6 +39,16 @@ Gopeed（**Go Speed** の略）は、Go と Flutter で開発された高速で�
 - 🛠️ **便利な内蔵機能** — カスタム Header/User-Agent、Proxy、GitHub ミラー、通知、自動展開。
 
 ## ⬇️ インストール
+
+### 🧪 Gopeed 2.0.0 Beta
+
+Gopeed 2.0.0 は現在パブリックベータ版です。新しい 2.0.0 のユーザー体験を先行してお試しいただけますが、一部の機能はまだ不完全または不安定な場合があります。ぜひお試しいただき、問題があればフィードバックをお寄せください。
+
+- [Gopeed 2.0.0 Beta 1 をダウンロード](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
+
+機能と安定性が正式リリースの基準に達した時点で、Gopeed 2.0.0 正式版を公開します。ベータ版のユーザーは正式版へ直接アップデートできます。既存の安定版ユーザーが自動的にベータチャンネルへ移行することはありません。
+
+### 安定版
 
 - [公式サイトからダウンロード](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
@@ -63,7 +74,7 @@ Gopeed（**Go Speed** の略）は、Go と Flutter で開発された高速で�
 ### 🌍 環境
 
 1. Go 言語 1.25+
-2. Flutter 3.38+
+2. Flutter 3.41+
 
 ### 📋 クローン
 

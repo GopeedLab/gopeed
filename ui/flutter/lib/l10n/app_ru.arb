@@ -266,7 +266,7 @@
   "browserExtensionDescription": "Отправьте загрузку браузера непосредственно в Gopeed после установки",
   "desktopNotificationDescription": "Показать системное уведомление, когда задача завершается или выходит из строя",
   "backgroundLocationKeepAliveDescription": "Используйте доступ к местоположению, чтобы поддерживать активные загрузки в фоновом режиме",
-  "currentVersion": "Версия v{version}",
+  "currentVersion": "Версия {version}",
   "contributors": "Вкладчики",
   "viewContributors": "Посмотреть вкладчики",
   "maxRunningDescription": "Максимальное количество задач, которые можно скачать одновременно",

@@ -266,7 +266,7 @@
   "browserExtensionDescription": "Browser-Downloads nach der Installation direkt an Gopeed senden",
   "desktopNotificationDescription": "Zeigt eine Systembenachrichtigung an, wenn eine Aufgabe abgeschlossen wird oder fehlschlägt",
   "backgroundLocationKeepAliveDescription": "Verwenden Sie den Standortzugriff, um Downloads im Hintergrund aktiv zu halten",
-  "currentVersion": "Aktuelle Version v{version}",
+  "currentVersion": "Aktuelle Version {version}",
   "contributors": "Mitwirkende",
   "viewContributors": "Mitwirkende anzeigen",
   "maxRunningDescription": "Maximale Anzahl von Aufgaben, die gleichzeitig heruntergeladen werden dürfen",

@@ -18,7 +18,7 @@ Gopeed (viết tắt của **Go Speed**) là trình quản lý tải xuống nha
 
 Ngoài việc quản lý tải xuống hằng ngày, Gopeed còn hỗ trợ tích hợp trình duyệt, tiện ích JavaScript, REST API, CLI và Web UI có thể tự lưu trữ để mở rộng và tự động hóa quy trình.
 
-Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu chính thức](https://gopeed.com/docs)
+Truy cập ✈ [Trang web chính thức](https://gopeed.com)
 
 ![Giao diện Gopeed trên máy tính và thiết bị di động](_docs/img/ui-concept-en.png)
 
@@ -27,6 +27,7 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
 - ⚡ **Tải xuống tốc độ cao** — kết hợp nhiều tác vụ, truyền HTTP phân đoạn qua nhiều kết nối và tải BitTorrent P2P để tận dụng tối đa băng thông.
 - 🧲 **Đa giao thức** — quản lý HTTP, HTTPS, BitTorrent, Magnet và ed2k trong một giao diện.
 - 🌱 **Bộ công cụ BT đầy đủ** — chọn tệp, quản lý Tracker, xem Peer/mảnh và kiểm soát seed theo tỷ lệ hoặc thời gian.
+- 🪶 **Trải nghiệm native gọn nhẹ** — giao diện chính được Flutter kết xuất native, không đóng gói bằng Electron và không phải ứng dụng bọc WebView, giúp giảm kích thước, giảm chi phí tài nguyên và phản hồi nhanh hơn.
 - 📋 **Quản lý tác vụ thực tế** — tạm dừng, tiếp tục, thử lại, thao tác hàng loạt, tìm kiếm, bộ lọc, danh mục và khôi phục khi khởi động.
 - 💻 **Đa nền tảng** — Windows, macOS, Linux, Android, iOS, Web, Docker và QNAP.
 - 🎨 **Giao diện tùy biến** — hỗ trợ chế độ theo hệ thống, sáng, tối và 8 màu nhấn.
@@ -38,6 +39,16 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com) | 📖 [Tài liệu
 - 🛠️ **Công cụ tích hợp** — Header/User-Agent tùy chỉnh, proxy, mirror GitHub, thông báo và tự động giải nén.
 
 ## ⬇️ Tải về
+
+### 🧪 Gopeed 2.0.0 Beta
+
+Gopeed 2.0.0 hiện đang trong giai đoạn beta công khai. Phiên bản này mang đến trải nghiệm 2.0.0 mới, nhưng một số tính năng có thể vẫn chưa hoàn thiện hoặc chưa ổn định. Hãy dùng thử và gửi phản hồi cho chúng tôi nếu bạn gặp vấn đề.
+
+- [Tải Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
+
+Khi các tính năng và độ ổn định đáp ứng tiêu chuẩn phát hành, chúng tôi sẽ phát hành Gopeed 2.0.0 chính thức. Người dùng bản beta có thể nâng cấp trực tiếp lên bản chính thức, trong khi người dùng bản ổn định hiện tại sẽ không tự động được chuyển sang kênh beta.
+
+### Bản ổn định
 
 - [Tải xuống từ trang web chính thức](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
@@ -69,7 +80,7 @@ Dự án này được chia thành hai phần, phần giao diện sử dụng `f
 ### 🌍 Environment
 
 1. Golang 1.25+
-2. Flutter 3.38+
+2. Flutter 3.41+
 
 ### 📋 Clone
 

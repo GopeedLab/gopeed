@@ -266,7 +266,7 @@
   "browserExtensionDescription": "إرسال حمولات بروزر مباشرة إلى غوبيد بعد التركيب",
   "desktopNotificationDescription": "تقديم إخطار النظام عندما تنتهي المهمة أو تفشل",
   "backgroundLocationKeepAliveDescription": "استخدام الوصول إلى الموقع لإبقاء التحميلات نشطة في الخلفية",
-  "currentVersion": "الإصدار الحالي v{version}",
+  "currentVersion": "الإصدار الحالي {version}",
   "contributors": "المساهمون",
   "viewContributors": "المساهمون في المشاهدة",
   "maxRunningDescription": "العدد الأقصى للمهام التي يمكن تنزيلها في الوقت نفسه",

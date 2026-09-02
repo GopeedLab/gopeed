@@ -96,25 +96,25 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
-  app_links: c3185399a5cabc2e610ee5ad52fb7269b84ff869
-  desktop_drop: 69eeff437544aa619c8db7f4481b3a65f7696898
-  desktop_multi_window: 566489c048b501134f9d7fb6a2354c60a9126486
-  device_info_plus: 1b14eed9bf95428983aed283a8d51cce3d8c4215
-  file_picker: e716a70a9fe5fd9e09ebc922d7541464289443af
-  flutter_inappwebview_macos: bdf207b8f4ebd58e86ae06cd96b147de99a67c9b
-  flutter_local_notifications: 4ccab5b7a22835214a6672e3f9c5e8ae207dab36
+  app_links: 05a6ec2341985eb05e9f97dc63f5837c39895c3f
+  desktop_drop: e0b672a7d84c0a6cbc378595e82cdb15f2970a43
+  desktop_multi_window: 93667594ccc4b88d91a97972fd3b1b89667fa80a
+  device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
+  file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
+  flutter_inappwebview_macos: c2d68649f9f8f1831bfcd98d73fd6256366d9d1d
+  flutter_local_notifications: 4bf37a31afde695b56091b4ae3e4d9c7a7e6cda0
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  open_dir_macos: 9649018f88e71eb9fb8aa3d95caec30a73c08c5b
+  open_dir_macos: 79810d7921d777f8732bf6358b3a0839a8fad9b5
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
-  package_info_plus: 12f1c5c2cfe8727ca46cbd0b26677728972d9a5b
-  screen_retriever_macos: 038d3f7b34a779b06f536842003e41e8ec1fb4b7
-  share_plus: 1fa619de8392a4398bfaf176d441853922614e89
-  shared_preferences_foundation: 5086985c1d43c5ba4d5e69a4e8083a389e2909e6
-  tray_manager: 9064e219c56d75c476e46b9a21182087930baf90
-  uri_content: e002074bcf6fbf905a3909603f9a2b1b490fce67
-  url_launcher_macos: 175a54c831f4375a6cf895875f716ee5af3888ce
-  window_manager: e25faf20d88283a0d46e7b1a759d07261ca27575
+  package_info_plus: f0052d280d17aa382b932f399edf32507174e870
+  screen_retriever_macos: c5508cc3c66ff0d4db650480cf0ab691e220d933
+  share_plus: 510bf0af1a42cd602274b4629920c9649c52f4cc
+  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+  tray_manager: a104b5c81b578d83f3c3d0f40a997c8b10810166
+  uri_content: 5f98ff12ded3f2e1681b689828d747bafb03ba5f
+  url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
+  window_manager: b729e31d38fb04905235df9ea896128991cad99e
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.17.0

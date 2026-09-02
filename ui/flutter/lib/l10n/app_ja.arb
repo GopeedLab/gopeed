@@ -266,7 +266,7 @@
   "browserExtensionDescription": "インストール後にGopeedに直接ブラウザのダウンロードを送信",
   "desktopNotificationDescription": "タスクが完了したり失敗したときにシステム通知を表示する",
   "backgroundLocationKeepAliveDescription": "背景でダウンロードをアクティブに保つために、場所へのアクセスを使用する",
-  "currentVersion": "現在のバージョンv{version}",
+  "currentVersion": "現在のバージョン{version}",
   "contributors": "参加者",
   "viewContributors": "貢献者を見る",
   "maxRunningDescription": "同時にダウンロードできるタスクの最大数",

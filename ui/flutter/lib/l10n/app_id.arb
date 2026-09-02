@@ -266,7 +266,7 @@
   "browserExtensionDescription": "Kirim peramban diunduh langsung ke Gopeed setelah instalasi",
   "desktopNotificationDescription": "Tampilkan pemberitahuan sistem ketika suatu tugas komplit atau gagal",
   "backgroundLocationKeepAliveDescription": "Gunakan akses lokasi untuk menjaga pengunduhan aktif di latar belakang",
-  "currentVersion": "Versi saat ini v{version}",
+  "currentVersion": "Versi saat ini {version}",
   "contributors": "Kontributor",
   "viewContributors": "Tilik kontributor",
   "maxRunningDescription": "Jumlah tugas maksimum yang dapat diunduh pada saat bersamaan",

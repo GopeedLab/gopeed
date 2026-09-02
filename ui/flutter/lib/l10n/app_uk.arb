@@ -266,7 +266,7 @@
   "browserExtensionDescription": "Після установки натисніть кнопку \"Завантажити\"",
   "desktopNotificationDescription": "Показати системне повідомлення при заповненні завдання або не вдається",
   "backgroundLocationKeepAliveDescription": "Використовуйте доступ до місця розташування для збереження завантаження активних у фоновому режимі",
-  "currentVersion": "Поточна версія v{version}",
+  "currentVersion": "Поточна версія {version}",
   "contributors": "Сприяння",
   "viewContributors": "Переглядати вкладників",
   "maxRunningDescription": "Максимальна кількість завдань, які можуть завантажити одночасно",

@@ -95,11 +95,8 @@ class ExtensionDetailView extends ConsumerWidget {
                         style: TextStyle(color: palette.textMuted, fontSize: 11.5, fontWeight: FontWeight.w600),
                       ),
                       if (store != null) _ExtensionStats(store: store),
-                      if (installed != null)
-                        _ExtensionStatus(
-                          label: canUpdate ? context.l10n.extensionCanUpdate : context.l10n.extensionInstalled,
-                          emphasized: canUpdate,
-                        ),
+                      if (installed != null && canUpdate)
+                        _ExtensionStatus(label: context.l10n.extensionCanUpdate, emphasized: true),
                     ],
                   ),
                 ],
@@ -136,6 +133,15 @@ class ExtensionDetailView extends ConsumerWidget {
                   successMessage: context.l10n.extensionUpdateSuccess,
                 ),
                 child: Text(context.l10n.newVersionUpdate),
+              ),
+            if (installed != null && !canUpdate)
+              AppLoadingButton(
+                key: const ValueKey('extension-details-installed'),
+                loading: false,
+                variant: AppLoadingButtonVariant.primary,
+                icon: const Icon(Icons.check_circle_outline, size: 16),
+                onPressed: null,
+                child: Text(context.l10n.extensionInstalled),
               ),
             if ((current.homepage ?? '').isNotEmpty)
               shad.SecondaryButton(

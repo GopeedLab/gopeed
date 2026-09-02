@@ -76,7 +76,7 @@ Future<void> showAppUpdateDialog(
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'v${packageInfo.version}  →  v${versionInfo.version}',
+                    '$appVersion  →  ${versionInfo.version}',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w400),
                   ),

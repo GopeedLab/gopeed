@@ -266,7 +266,7 @@
   "browserExtensionDescription": "دانلود مستقیم مرورگر را به Gopeed ارسال کنید پس از نصب",
   "desktopNotificationDescription": "یک اعلان سیستم را زمانی که یک کار کامل یا شکست می خورد نشان دهید",
   "backgroundLocationKeepAliveDescription": "استفاده از دسترسی به مکان برای نگه داشتن بارگیری فعال در پس زمینه",
-  "currentVersion": "نسخه فعلی v{version}",
+  "currentVersion": "نسخه فعلی {version}",
   "contributors": "مشارکت کنندگان",
   "viewContributors": "مشاهده کنندگان",
   "maxRunningDescription": "حداکثر تعداد کارهایی که ممکن است در همان زمان بارگیری شوند",

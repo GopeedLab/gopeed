@@ -306,7 +306,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
 
   String _safeVersionLabel(String label) {
     try {
-      return '$label（${packageInfo.version}）';
+      return '$label（$appVersion）';
     } catch (_) {
       return label;
     }

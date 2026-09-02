@@ -18,7 +18,7 @@ Gopeed (short for **Go Speed**) is a fast, modern, free, and open-source downloa
 
 Beyond core download management, Gopeed offers browser integration, JavaScript extensions, a REST API, a CLI, and a self-hosted web UI for customization and automation.
 
-Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://gopeed.com/docs)
+Visit ✈ [Official Website](https://gopeed.com)
 
 ![Gopeed desktop and mobile interface](_docs/img/ui-concept-en.png)
 
@@ -27,6 +27,7 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://
 - ⚡ **High-speed downloads** — combine concurrent tasks, multi-connection HTTP transfers, and peer-to-peer BitTorrent downloads to make the most of your bandwidth.
 - 🧲 **Multiple protocols** — download HTTP/HTTPS files, torrents, magnet links, and ed2k resources from a single app.
 - 🌱 **Full-featured BitTorrent** — choose files, manage trackers, inspect peers and pieces, and set seeding limits by ratio or time.
+- 🪶 **Lightweight native experience** — the main interface is rendered natively with Flutter, not packaged with Electron or built as a WebView shell, resulting in a smaller footprint, lower overhead, and responsive performance.
 - 📋 **Flexible task management** — pause, resume, retry, run batch operations, search, filter by status, organize with categories, and recover tasks after a restart.
 - 💻 **Cross-platform** — available for Windows, macOS, Linux, Android, iOS, and the web, with Docker and QNAP deployment options.
 - 🎨 **Customizable appearance** — follow your system theme or choose light or dark mode, with eight accent colors.
@@ -38,6 +39,16 @@ Visit ✈ [Official Website](https://gopeed.com) | 📖 [Official Docs](https://
 - 🛠️ **Built-in essentials** — customize headers and the User-Agent, use proxies and GitHub mirrors, receive notifications, and extract archives automatically.
 
 ## ⬇️ Download
+
+### 🧪 Gopeed 2.0.0 Beta
+
+Gopeed 2.0.0 is currently in public beta. It introduces the new 2.0.0 experience, but some features may still be incomplete or unstable. Please try it and report any issues you encounter.
+
+- [Download Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
+
+Once the features and stability meet our release standards, we will publish the official Gopeed 2.0.0 release. Beta users will be able to upgrade directly to the final release, while existing stable users will not be automatically moved onto the beta channel.
+
+### Stable release
 
 - [Official Download](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
@@ -73,7 +84,7 @@ Gopeed consists of a Flutter front end and a Go back end. They communicate over 
 ### 🌍 Environment
 
 1. Go 1.25+
-2. Flutter 3.38+
+2. Flutter 3.41+
 
 ### 📋 Clone
 

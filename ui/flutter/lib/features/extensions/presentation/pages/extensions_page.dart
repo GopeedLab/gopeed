@@ -334,87 +334,95 @@ class _Content extends StatelessWidget {
           )
         else
           Padding(padding: EdgeInsets.fromLTRB(horizontalPadding, 18, horizontalPadding, 0), child: toolbar),
-        Padding(
-          padding: EdgeInsets.fromLTRB(horizontalPadding, isDesktop ? 8 : 12, horizontalPadding, 12),
-          child: _FilterBar(state: state, onFilter: onFilter),
-        ),
+        SizedBox(height: isDesktop ? 8 : 12),
         Expanded(
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CustomScrollView(
-                key: const ValueKey('extensions-list-scroll-view'),
-                controller: scrollController,
-                slivers: [
-                  if ((state.loadingInstalled || state.loadingStore) && state.displayItems.isEmpty)
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
-                      sliver: const _ExtensionSkeletonGrid(key: ValueKey('extensions-initial-skeleton')),
-                    )
-                  else if (state.displayItems.isEmpty)
-                    SliverFillRemaining(
-                      child: Center(
-                        child: Text(
-                          context.l10n.noExtensions,
-                          style: TextStyle(color: palette.textSecondary, fontSize: 14),
-                        ),
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
-                      sliver: SliverLayoutBuilder(
-                        builder: (context, constraints) {
-                          final width = constraints.crossAxisExtent;
-                          final crossAxisCount = _extensionGridColumnCount(width);
-                          return SliverGrid(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) => _ExtensionCard(
-                                item: state.displayItems[index],
-                                busy: state.busyExtensionIds.contains(state.displayItems[index].id),
-                                canUpdate: _canUpdate(state, state.displayItems[index]),
-                                onAction: onItemAction,
-                                onOpenDetails: onOpenDetails,
-                                onOpenSettings: onOpenSettings,
+              Column(
+                children: [
+                  Padding(
+                    key: const ValueKey('extensions-filter-bar'),
+                    padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 12),
+                    child: _FilterBar(state: state, onFilter: onFilter),
+                  ),
+                  Expanded(
+                    child: CustomScrollView(
+                      key: const ValueKey('extensions-list-scroll-view'),
+                      controller: scrollController,
+                      slivers: [
+                        if ((state.loadingInstalled || state.loadingStore) && state.displayItems.isEmpty)
+                          SliverPadding(
+                            padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
+                            sliver: const _ExtensionSkeletonGrid(key: ValueKey('extensions-initial-skeleton')),
+                          )
+                        else if (state.displayItems.isEmpty)
+                          SliverFillRemaining(
+                            child: Center(
+                              child: Text(
+                                context.l10n.noExtensions,
+                                style: TextStyle(color: palette.textSecondary, fontSize: 14),
                               ),
-                              childCount: state.displayItems.length,
                             ),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: crossAxisCount,
-                              mainAxisSpacing: _extensionGridSpacing,
-                              crossAxisSpacing: _extensionGridSpacing,
-                              mainAxisExtent: 178,
+                          )
+                        else
+                          SliverPadding(
+                            padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
+                            sliver: SliverLayoutBuilder(
+                              builder: (context, constraints) {
+                                final width = constraints.crossAxisExtent;
+                                final crossAxisCount = _extensionGridColumnCount(width);
+                                return SliverGrid(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) => _ExtensionCard(
+                                      item: state.displayItems[index],
+                                      busy: state.busyExtensionIds.contains(state.displayItems[index].id),
+                                      canUpdate: _canUpdate(state, state.displayItems[index]),
+                                      onAction: onItemAction,
+                                      onOpenDetails: onOpenDetails,
+                                      onOpenSettings: onOpenSettings,
+                                    ),
+                                    childCount: state.displayItems.length,
+                                  ),
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    mainAxisSpacing: _extensionGridSpacing,
+                                    crossAxisSpacing: _extensionGridSpacing,
+                                    mainAxisExtent: 178,
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                  if (state.listFilter == ExtensionListFilter.market && state.loadingMoreStore)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 24, top: 4),
-                        child: Center(
-                          child: const SizedBox.square(dimension: 18, child: shad.CircularProgressIndicator()),
-                        ),
-                      ),
-                    ),
-                  if (state.listFilter == ExtensionListFilter.market &&
-                      state.displayItems.isNotEmpty &&
-                      state.storePagination != null &&
-                      !state.storePagination!.hasNext &&
-                      !state.loadingMoreStore)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 24, top: 4),
-                        child: Center(
-                          child: Text(
-                            context.l10n.extensionNoMore,
-                            key: const ValueKey('extensions-no-more-indicator'),
-                            style: TextStyle(color: palette.textMuted, fontSize: 12),
                           ),
-                        ),
-                      ),
+                        if (state.listFilter == ExtensionListFilter.market && state.loadingMoreStore)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 24, top: 4),
+                              child: Center(
+                                child: const SizedBox.square(dimension: 18, child: shad.CircularProgressIndicator()),
+                              ),
+                            ),
+                          ),
+                        if (state.listFilter == ExtensionListFilter.market &&
+                            state.displayItems.isNotEmpty &&
+                            state.storePagination != null &&
+                            !state.storePagination!.hasNext &&
+                            !state.loadingMoreStore)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 24, top: 4),
+                              child: Center(
+                                child: Text(
+                                  context.l10n.extensionNoMore,
+                                  key: const ValueKey('extensions-no-more-indicator'),
+                                  style: TextStyle(color: palette.textMuted, fontSize: 12),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
+                  ),
                 ],
               ),
               ExtensionDetailDrawer(item: detailItem, onClose: onCloseDetails),

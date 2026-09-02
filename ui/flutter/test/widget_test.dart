@@ -481,8 +481,10 @@ void main() {
       expect(tester.widget(find.byKey(ValueKey(key))), isA<shad.SecondaryButton>());
     }
     final drawerRect = tester.getRect(find.byKey(const ValueKey('extension-details-drawer')));
+    final filterBarRect = tester.getRect(find.byKey(const ValueKey('extensions-filter-bar')));
     final listRect = tester.getRect(find.byKey(const ValueKey('extensions-list-scroll-view')));
-    expect(drawerRect.top, listRect.top);
+    expect(drawerRect.top, filterBarRect.top);
+    expect(drawerRect.top, lessThan(listRect.top));
     expect(drawerRect.bottom, listRect.bottom);
     expect(drawerRect.top, greaterThan(AppDesignTokens.windowHeaderHeight));
 
@@ -546,6 +548,35 @@ void main() {
       GoRouterState.of(tester.element(find.byKey(const ValueKey('extension-details-content')))).uri.path,
       '/extensions/extension-0',
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('installed extension details use a disabled installed button without a hero status', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(1100, 900));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const ExtensionsPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('extension-card-extension-0')));
+    await tester.pumpAndSettle();
+
+    final hero = find.byKey(const ValueKey('extension-details-hero'));
+    final installedButton = find.byKey(const ValueKey('extension-details-installed'));
+    final primaryButton = find.descendant(of: installedButton, matching: find.byType(shad.PrimaryButton));
+    expect(find.descendant(of: hero, matching: find.text('Installed')), findsNothing);
+    expect(installedButton, findsOneWidget);
+    expect(find.descendant(of: installedButton, matching: find.text('Installed')), findsOneWidget);
+    expect(tester.widget<shad.PrimaryButton>(primaryButton).onPressed, isNull);
     expect(tester.takeException(), isNull);
   });
 
@@ -891,7 +922,7 @@ void main() {
     expect(find.byKey(const ValueKey('browser-extension-edge')), findsOneWidget);
     expect(find.byKey(const ValueKey('browser-extension-firefox')), findsOneWidget);
     expect(find.text('Version'), findsOneWidget);
-    expect(find.text('Current version v-'), findsOneWidget);
+    expect(find.text('Current version -'), findsOneWidget);
     expect(find.byKey(const ValueKey('check-app-update-button')), findsOneWidget);
     expect(find.text('Check for Updates'), findsOneWidget);
     expect(find.text('Usage Analytics'), findsOneWidget);
@@ -1691,7 +1722,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Current version v-'), findsOneWidget);
+    expect(find.text('Current version -'), findsOneWidget);
     expect(find.textContaining('9.9.9'), findsNothing);
     expect(find.byKey(const ValueKey('app-update-available-indicator')), findsNothing);
     expect(find.text('Update'), findsOneWidget);

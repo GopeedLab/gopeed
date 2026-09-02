@@ -1358,7 +1358,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   String get _versionLabel {
     try {
-      return packageInfo.version;
+      return appVersion;
     } catch (_) {
       return '-';
     }

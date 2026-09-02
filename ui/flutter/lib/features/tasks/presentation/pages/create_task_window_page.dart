@@ -1348,6 +1348,7 @@ class _DirectDownloadToggle extends StatelessWidget {
             const SizedBox(width: AppDesignTokens.checkboxLabelGap),
             Expanded(
               child: Text(
+                key: const ValueKey('create-task-direct-download-label'),
                 context.l10n.directDownloadDescription,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1389,7 +1390,9 @@ class _AsDefaultPathToggle extends StatelessWidget {
               child: Text(
                 key: const ValueKey('create-task-remember-download-directory-label'),
                 context.l10n.rememberLastDownloadDir,
-                style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: palette.textMuted, fontSize: 12),
               ),
             ),
           ],
