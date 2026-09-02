@@ -1060,6 +1060,68 @@ func TestFetcher_OriginalURLFallbackPreservesResumeHeaders(t *testing.T) {
 	resp.Body.Close()
 }
 
+func TestFetcher_UsesResolveResponseWhenRangeRequestsFail(t *testing.T) {
+	payload := make([]byte, 2*1024*1024)
+	for i := range payload {
+		payload[i] = byte(i % 251)
+	}
+
+	var requests atomic.Int32
+	var rangeRequests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		requestNumber := requests.Add(1)
+		if requestNumber == 1 {
+			w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(payload)))
+			w.WriteHeader(gohttp.StatusOK)
+			w.(gohttp.Flusher).Flush()
+			for offset := 0; offset < len(payload); offset += 8 * 1024 {
+				end := min(offset+8*1024, len(payload))
+				if _, err := w.Write(payload[offset:end]); err != nil {
+					return
+				}
+				time.Sleep(time.Millisecond)
+			}
+			return
+		}
+
+		if r.Header.Get(base.HttpHeaderRange) != "" {
+			rangeRequests.Add(1)
+		}
+		w.WriteHeader(gohttp.StatusForbidden)
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/resolve-fallback.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "resolve-fallback.data",
+		Extra: &http.OptsExtra{
+			Connections: 1,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatalf("download should continue from the Resolve response when Range requests return 403: %v", err)
+	}
+	if rangeRequests.Load() == 0 {
+		t.Fatal("download did not attempt a Range request")
+	}
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatal("downloaded file differs from the Resolve response")
+	}
+}
+
 func TestFetcher_RejectsInvalidPartialContent(t *testing.T) {
 	const (
 		requestedStart = int64(1024)
