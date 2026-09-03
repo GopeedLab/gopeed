@@ -33,7 +33,6 @@ class ExtensionListItem {
   String? get repoUrl => installed?.repository?.url.isNotEmpty == true ? installed!.repository!.url : store?.repoUrl;
   int get stars => store?.stars ?? 0;
   int get installCount => store?.installCount ?? 0;
-  String? get icon => store?.icon;
 }
 
 class ExtensionsState {

@@ -853,6 +853,12 @@ func TestAuthorization(t *testing.T) {
 	if status != http.StatusUnauthorized {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusUnauthorized)
 	}
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": "Bearer invalid-session",
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("Bearer-authenticated API status = %v, want %v", status, http.StatusUnauthorized)
+	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
 		"Cookie": webAuthCookieName + "=invalid-session",
@@ -902,12 +908,29 @@ func TestAuthorization(t *testing.T) {
 	if status != http.StatusNotFound {
 		t.Errorf("authenticated task fs request got = %v, want %v", status, http.StatusNotFound)
 	}
+	status, _ = doHttpRequest0(http.MethodGet, "/fs/future-resource", nil, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("unauthenticated future /fs route got = %v, want %v", status, http.StatusUnauthorized)
+	}
+	status, _ = doHttpRequest0(http.MethodGet, "/fs/future-resource", map[string]string{
+		"Authorization": "Bearer " + sessionID,
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("Bearer-only future /fs route got = %v, want %v", status, http.StatusUnauthorized)
+	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
 		"X-Api-Token": cfg.ApiToken,
 	}, nil)
 	if status != http.StatusOK {
 		t.Errorf("TestAuthorization() got = %v, want %v", status, http.StatusOK)
+	}
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Cookie":      cookieHeader,
+		"X-Api-Token": cfg.ApiToken,
+	}, nil)
+	if status != http.StatusOK {
+		t.Errorf("cookie and API token authorization got = %v, want %v", status, http.StatusOK)
 	}
 
 	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{

@@ -18,7 +18,7 @@ Gopeed（**Go Speed** 的縮寫）是一款以 Go 與 Flutter 開發的高速、
 
 除了日常任務管理，Gopeed 也提供瀏覽器整合、JavaScript 擴充、REST API、命令列工具及可自行託管的 Web UI，方便進階使用者擴充與自動化下載流程。
 
-瀏覽 ✈ [官方網站](https://gopeed.com) | 📖 [官方文件](https://gopeed.com/docs)
+瀏覽 ✈ [官方網站](https://gopeed.com)
 
 ![Gopeed 桌面與行動裝置介面](_docs/img/ui-concept-en.png)
 
@@ -27,6 +27,7 @@ Gopeed（**Go Speed** 的縮寫）是一款以 Go 與 Flutter 開發的高速、
 - ⚡ **高速下載** — 多任務並行、HTTP 多連線分段傳輸與 BitTorrent P2P 下載，充分利用可用頻寬。
 - 🧲 **多協定支援** — 在同一介面管理 HTTP、HTTPS、BitTorrent、磁力連結與 ed2k。
 - 🌱 **完整 BT 功能** — 逐檔選擇、Tracker 管理、Peer/分片統計，以及依分享率或時間控制做種。
+- 🪶 **輕量原生體驗** — 主介面使用 Flutter 原生渲染，不是 Electron，也不是以 WebView 封裝的應用程式，安裝包更輕量、執行開銷更低、操作回應更流暢。
 - 📋 **實用任務管理** — 暫停、續傳、重試、批次操作、搜尋、狀態篩選、分類及啟動恢復。
 - 💻 **跨平台** — 支援 Windows、macOS、Linux、Android、iOS、Web、Docker 與 QNAP。
 - 🎨 **個人化主題** — 支援跟隨系統、淺色、深色模式及 8 種主題強調色。
@@ -38,6 +39,16 @@ Gopeed（**Go Speed** 的縮寫）是一款以 Go 與 Flutter 開發的高速、
 - 🛠️ **實用內建能力** — 自訂 Header/User-Agent、Proxy、GitHub 鏡像、通知及自動解壓縮。
 
 ## ⬇️ 下載
+
+### 🧪 Gopeed 2.0.0 Beta
+
+Gopeed 2.0.0 目前處於公開 Beta 測試階段，帶來全新的 2.0.0 使用體驗，但部分功能仍可能不夠完善或穩定。歡迎搶先體驗，並向我們回報使用過程中遇到的問題。
+
+- [下載 Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
+
+當功能完整度與穩定性達到正式發布標準後，我們會發布 Gopeed 2.0.0 正式版。已安裝 Beta 版本的使用者可以直接升級至最終正式版，現有穩定版使用者則不會被自動切換至 Beta 頻道。
+
+### 正式穩定版
 
 - [官方網站下載](https://gopeed.com)
 - [GitHub Releases](https://github.com/GopeedLab/gopeed/releases/latest)
@@ -69,7 +80,7 @@ go install github.com/GopeedLab/gopeed/cmd/gopeed@latest
 ### 🌍 開發環境
 
 1. Golang 1.25+
-2. Flutter 3.38+
+2. Flutter 3.41+
 
 ### 📋 克隆項目
 

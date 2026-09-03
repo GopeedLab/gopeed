@@ -21,11 +21,22 @@ class AppComponentThemes extends StatelessWidget {
       child: shad.ComponentTheme<shad.SecondaryButtonTheme>(
         data: shad.SecondaryButtonTheme(
           decoration: (context, states, value) {
-            if (!states.contains(WidgetState.disabled)) return value;
-            return switch (value) {
-              final BoxDecoration decoration => decoration.copyWith(color: palette.surfaceSoft),
-              _ => BoxDecoration(color: palette.surfaceSoft, borderRadius: BorderRadius.circular(theme.radiusMd)),
+            final decoration = switch (value) {
+              final BoxDecoration decoration => decoration,
+              _ => BoxDecoration(borderRadius: BorderRadius.circular(theme.radiusMd)),
             };
+            if (states.contains(WidgetState.disabled)) {
+              return decoration.copyWith(color: palette.surfaceSoft);
+            }
+            if (theme.brightness == Brightness.light) {
+              final background = Color.alphaBlend(palette.textPrimary.withValues(alpha: 0.08), palette.surfaceSoft);
+              final hoverBackground = Color.alphaBlend(
+                palette.textPrimary.withValues(alpha: 0.13),
+                palette.surfaceSoft,
+              );
+              return decoration.copyWith(color: states.contains(WidgetState.hovered) ? hoverBackground : background);
+            }
+            return value;
           },
           textStyle: (context, states, value) => states.contains(WidgetState.disabled)
               ? value.copyWith(color: palette.textMuted.withValues(alpha: 0.62))
@@ -35,7 +46,11 @@ class AppComponentThemes extends StatelessWidget {
               : value,
         ),
         child: shad.ComponentTheme<shad.CheckboxTheme>(
-          data: const shad.CheckboxTheme(size: AppDesignTokens.checkboxSize, gap: AppDesignTokens.checkboxLabelGap),
+          data: shad.CheckboxTheme(
+            size: AppDesignTokens.checkboxSize,
+            gap: AppDesignTokens.checkboxLabelGap,
+            borderColor: theme.brightness == Brightness.dark ? palette.textMuted : palette.border,
+          ),
           child: shad.ComponentTheme<shad.ToastTheme>(
             data: const shad.ToastTheme(toastConstraints: BoxConstraints(maxWidth: 420)),
             child: child,

@@ -482,8 +482,10 @@ void main() {
       expect(tester.widget(find.byKey(ValueKey(key))), isA<shad.SecondaryButton>());
     }
     final drawerRect = tester.getRect(find.byKey(const ValueKey('extension-details-drawer')));
+    final filterBarRect = tester.getRect(find.byKey(const ValueKey('extensions-filter-bar')));
     final listRect = tester.getRect(find.byKey(const ValueKey('extensions-list-scroll-view')));
-    expect(drawerRect.top, listRect.top);
+    expect(drawerRect.top, filterBarRect.top);
+    expect(drawerRect.top, lessThan(listRect.top));
     expect(drawerRect.bottom, listRect.bottom);
     expect(drawerRect.top, greaterThan(AppDesignTokens.windowHeaderHeight));
 
@@ -547,6 +549,35 @@ void main() {
       GoRouterState.of(tester.element(find.byKey(const ValueKey('extension-details-content')))).uri.path,
       '/extensions/extension-0',
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('installed extension details use a disabled installed button without a hero status', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(1100, 900));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const ExtensionsPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('extension-card-extension-0')));
+    await tester.pumpAndSettle();
+
+    final hero = find.byKey(const ValueKey('extension-details-hero'));
+    final installedButton = find.byKey(const ValueKey('extension-details-installed'));
+    final primaryButton = find.descendant(of: installedButton, matching: find.byType(shad.PrimaryButton));
+    expect(find.descendant(of: hero, matching: find.text('Installed')), findsNothing);
+    expect(installedButton, findsOneWidget);
+    expect(find.descendant(of: installedButton, matching: find.text('Installed')), findsOneWidget);
+    expect(tester.widget<shad.PrimaryButton>(primaryButton).onPressed, isNull);
     expect(tester.takeException(), isNull);
   });
 
@@ -892,7 +923,7 @@ void main() {
     expect(find.byKey(const ValueKey('browser-extension-edge')), findsOneWidget);
     expect(find.byKey(const ValueKey('browser-extension-firefox')), findsOneWidget);
     expect(find.text('Version'), findsOneWidget);
-    expect(find.text('Current version v-'), findsOneWidget);
+    expect(find.text('Current version -'), findsOneWidget);
     expect(find.byKey(const ValueKey('check-app-update-button')), findsOneWidget);
     expect(find.text('Check for Updates'), findsOneWidget);
     expect(find.text('Usage Analytics'), findsOneWidget);
@@ -1742,7 +1773,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Current version v-'), findsOneWidget);
+    expect(find.text('Current version -'), findsOneWidget);
     expect(find.textContaining('9.9.9'), findsNothing);
     expect(find.byKey(const ValueKey('app-update-available-indicator')), findsNothing);
     expect(find.text('Update'), findsOneWidget);
@@ -3012,10 +3043,9 @@ void main() {
     expect(urlValue.semanticsLabel, task.url);
     expect(find.text('Task Details'), findsOneWidget);
     expect(find.text('Task Name'), findsNothing);
-    final detailHeader = tester.widget<DecoratedBox>(
-      find.descendant(of: find.byKey(const ValueKey('app-detail-drawer-header')), matching: find.byType(DecoratedBox)),
-    );
-    expect(((detailHeader.decoration as BoxDecoration).border! as Border).bottom.width, 1);
+    final detailHeader = tester.widget<SizedBox>(find.byKey(const ValueKey('app-detail-drawer-header')));
+    final detailHeaderDecoration = (detailHeader.child! as DecoratedBox).decoration as BoxDecoration;
+    expect((detailHeaderDecoration.border! as Border).bottom.width, 1);
     expect(find.text('Details'), findsOneWidget);
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Statistics'), findsOneWidget);
@@ -3346,6 +3376,8 @@ void main() {
     expect(find.byIcon(GopeedIcons.fileText), findsOneWidget);
     expect(find.byIcon(GopeedIcons.folder), findsOneWidget);
     expect(find.byIcon(Icons.open_in_new), findsOneWidget);
+    final openFileTooltip = find.ancestor(of: find.byIcon(Icons.open_in_new), matching: find.byType(AppTooltip));
+    expect(tester.widget<AppTooltip>(openFileTooltip).message, 'Open File');
     expect(find.byIcon(Icons.download_outlined), findsOneWidget);
     expect(find.byIcon(Icons.share_outlined), findsNothing);
 
@@ -3796,6 +3828,7 @@ void main() {
     var paused = false;
     var selected = false;
     var detailsShown = false;
+    var directoryOpened = false;
     var filesBrowsed = false;
     final task = _taskRecord(id: 'context-task', name: 'context.zip');
     final actions = TaskContextActions(
@@ -3803,6 +3836,8 @@ void main() {
       allSelected: false,
       listeningForUpdate: false,
       onShowDetails: () => detailsShown = true,
+      onOpenFile: () {},
+      onOpenDirectory: () => directoryOpened = true,
       onBrowseFiles: () => filesBrowsed = true,
       onToggleSelectAll: () {},
       onToggleSelected: () => selected = true,
@@ -3832,15 +3867,27 @@ void main() {
     await tester.tapAt(tester.getCenter(find.byKey(const ValueKey('context-target'))), buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
     expect(find.text('Details'), findsOneWidget);
+    expect(find.text('Open File'), findsNothing);
+    expect(find.text('Open Directory'), findsOneWidget);
     expect(find.text('Browse Files'), findsOneWidget);
     expect(find.text('Pause'), findsOneWidget);
     expect(find.text('Select'), findsOneWidget);
     expect(tester.getTopLeft(find.text('Details')).dy, greaterThan(tester.getTopLeft(find.text('Update URL')).dy));
-    expect(tester.getTopLeft(find.text('Browse Files')).dy, greaterThan(tester.getTopLeft(find.text('Details')).dy));
+    expect(tester.getTopLeft(find.text('Open Directory')).dy, greaterThan(tester.getTopLeft(find.text('Details')).dy));
+    expect(
+      tester.getTopLeft(find.text('Browse Files')).dy,
+      greaterThan(tester.getTopLeft(find.text('Open Directory')).dy),
+    );
 
     await tester.tap(find.text('Details'));
     await tester.pumpAndSettle();
     expect(detailsShown, isTrue);
+
+    await tester.tapAt(tester.getCenter(find.byKey(const ValueKey('context-target'))), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open Directory'));
+    await tester.pumpAndSettle();
+    expect(directoryOpened, isTrue);
 
     await tester.tapAt(tester.getCenter(find.byKey(const ValueKey('context-target'))), buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
@@ -3859,6 +3906,25 @@ void main() {
     await tester.tap(find.text('Pause'));
     await tester.pumpAndSettle();
     expect(paused, isTrue);
+  });
+
+  test('task context menu exposes system-open actions by platform and task type', () {
+    final completedFileTask = _taskRecord(id: 'completed-file-task', name: 'file.zip', status: TaskStatus.completed);
+    final downloadingFileTask = _taskRecord(id: 'downloading-file-task', name: 'file.zip');
+    final completedDirectoryTask = _taskRecord(
+      id: 'completed-directory-task',
+      name: 'directory',
+      status: TaskStatus.completed,
+      isFolder: true,
+    );
+
+    expect(shouldShowTaskOpenFileAction(completedFileTask, web: false), isTrue);
+    expect(shouldShowTaskOpenFileAction(downloadingFileTask, web: false), isFalse);
+    expect(shouldShowTaskOpenFileAction(completedDirectoryTask, web: false), isFalse);
+    expect(shouldShowTaskOpenFileAction(completedFileTask, web: true), isFalse);
+    expect(shouldShowTaskOpenDirectoryAction(web: false, desktop: true), isTrue);
+    expect(shouldShowTaskOpenDirectoryAction(web: false, desktop: false), isFalse);
+    expect(shouldShowTaskOpenDirectoryAction(web: true, desktop: true), isFalse);
   });
 
   testWidgets('task URL update reuses the shared HTTP header editor', (WidgetTester tester) async {

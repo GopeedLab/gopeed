@@ -238,7 +238,7 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 							MaxAge:   int(webAuthSessionTTL.Seconds()),
 							Expires:  expiresAt,
 							HttpOnly: true,
-							Secure:   r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https"),
+							Secure:   requestUsesHTTPS(r),
 							SameSite: http.SameSiteLaxMode,
 						})
 
@@ -260,9 +260,7 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				protectedPath := strings.HasPrefix(r.URL.Path, "/api/") ||
-					r.URL.Path == "/fs/tasks" || strings.HasPrefix(r.URL.Path, "/fs/tasks/") ||
-					r.URL.Path == "/fs/extensions" || strings.HasPrefix(r.URL.Path, "/fs/extensions/")
+				protectedPath := strings.HasPrefix(r.URL.Path, "/api/") || isProtectedWebFilePath(r.URL.Path)
 				if r.URL.Path == "/api/web/login" || !protectedPath {
 					h.ServeHTTP(w, r)
 					return
@@ -381,6 +379,18 @@ func initializeCore(startCfg *model.StartConfig) error {
 	}
 	APIService = service
 	return nil
+}
+
+func isProtectedWebFilePath(urlPath string) bool {
+	return urlPath == "/fs" || strings.HasPrefix(urlPath, "/fs/")
+}
+
+func requestUsesHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	forwardedProto := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-Proto"), ",")[0])
+	return strings.EqualFold(forwardedProto, "https")
 }
 
 func resolvePath(urlPath string, prefix string) (identity string, path string, err error) {

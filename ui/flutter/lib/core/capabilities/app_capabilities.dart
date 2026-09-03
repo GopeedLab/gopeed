@@ -162,6 +162,13 @@ void _bindStorage(CapabilityRegistry registry) {
       await api.putConfig(config);
       return const RpcUnit();
     })
+    ..bind(StorageMethods.removeCreateHistory, (url) async {
+      final config = await api.getConfig();
+      final history = List<String>.of(config.extra.createHistory)..remove(url);
+      config.extra.createHistory = history;
+      await api.putConfig(config);
+      return const RpcUnit();
+    })
     ..bind(StorageMethods.clearCreateHistory, (_) async {
       final config = await api.getConfig();
       config.extra.createHistory = const [];

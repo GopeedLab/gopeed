@@ -23,11 +23,71 @@ void main() {
   });
 
   group('version comparison', () {
-    test('compares every numeric component', () {
+    test('uses semantic version precedence', () {
       expect(isNewerVersion('1.10.0', '1.9.9'), isTrue);
-      expect(isNewerVersion('2.0', '1.99.99'), isTrue);
+      expect(isNewerVersion('2.0.0-beta.2', '2.0.0-beta.1'), isTrue);
+      expect(isNewerVersion('2.0.0-rc.1', '2.0.0-beta.2'), isTrue);
+      expect(isNewerVersion('2.0.0', '2.0.0-rc.1'), isTrue);
       expect(isNewerVersion('1.2.3', '1.2.3'), isFalse);
       expect(isNewerVersion('1.2.2', '1.2.3'), isFalse);
+      expect(isNewerVersion('invalid', '1.2.3'), isFalse);
+    });
+  });
+
+  group('release selection', () {
+    Map<String, dynamic> release(String version, {bool prerelease = false, bool draft = false}) => {
+      'tag_name': 'v$version',
+      'prerelease': prerelease,
+      'draft': draft,
+      'body': '$version notes',
+      'html_url': 'https://example.com/$version',
+    };
+
+    test('stable builds ignore preview releases', () {
+      final selected = selectUpdateRelease([release('2.1.0-beta.1', prerelease: true), release('2.0.1')], '2.0.0');
+
+      expect(selected?.version, '2.0.1');
+    });
+
+    test('preview builds advance within the same preview line', () {
+      final selected = selectUpdateRelease([
+        release('2.0.0-beta.2', prerelease: true),
+        release('1.9.9'),
+        release('2.1.0-beta.1', prerelease: true),
+      ], '2.0.0-beta.1');
+
+      expect(selected?.version, '2.0.0-beta.2');
+    });
+
+    test('four-part platform beta selects the next GitHub prerelease and matching asset', () {
+      final currentVersion = app_package.normalizeAppVersion('2.0.0.1');
+      final selected = selectUpdateRelease([release('2.0.0-beta.2', prerelease: true)], currentVersion);
+
+      expect(selected?.version, '2.0.0-beta.2');
+      expect(
+        updateAssetName(selected!.version, channel: UpdateChannel.macosDmg, architecture: Architecture.arm64),
+        'Gopeed-v2.0.0-beta.2-macos-arm64.dmg',
+      );
+    });
+
+    test('preview builds graduate to the final stable release', () {
+      final selected = selectUpdateRelease([
+        release('2.0.0-beta.2', prerelease: true),
+        release('2.0.0'),
+      ], '2.0.0-beta.1');
+
+      expect(selected?.version, '2.0.0');
+    });
+
+    test('selects the greatest eligible version and ignores invalid releases', () {
+      final selected = selectUpdateRelease([
+        release('2.0.0-beta.3', prerelease: true),
+        release('2.0.0-beta.4', prerelease: true, draft: true),
+        {'tag_name': 'not-a-version'},
+        release('2.0.0-beta.2', prerelease: true),
+      ], '2.0.0-beta.1');
+
+      expect(selected?.version, '2.0.0-beta.3');
     });
   });
 
@@ -82,7 +142,7 @@ void main() {
     );
   });
 
-  testWidgets('update dialog keeps release notes inside a focused modal', (tester) async {
+  testWidgets('update dialog shows beta versions without tag prefixes', (tester) async {
     tester.view.physicalSize = const Size(390, 760);
     tester.view.devicePixelRatio = 1;
     addTearDown(() {
@@ -90,8 +150,23 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
+    app_package.packageInfo = PackageInfo(
+      appName: 'Gopeed',
+      packageName: 'com.gopeed.Gopeed',
+      version: '2.0.0.1',
+      buildNumber: '1',
+    );
+    addTearDown(() {
+      app_package.packageInfo = PackageInfo(
+        appName: 'Gopeed',
+        packageName: 'com.gopeed.Gopeed',
+        version: '1.7.0',
+        buildNumber: '1',
+      );
+    });
+
     const version = VersionInfo(
-      version: '1.8.0',
+      version: '2.0.0-beta.2',
       changeLog: '# Release notes\n\n- Faster downloads\n\n# 更新日志\n\n- 下载更快',
       releaseUrl: 'https://example.com/release',
     );
@@ -112,7 +187,8 @@ void main() {
 
     expect(find.byKey(const ValueKey('app-update-dialog')), findsOneWidget);
     expect(find.text('A new version is available'), findsOneWidget);
-    expect(find.text('v1.7.0  →  v1.8.0'), findsOneWidget);
+    expect(find.text('2.0.0-beta.1  →  2.0.0-beta.2'), findsOneWidget);
+    expect(find.textContaining('v2.0.0'), findsNothing);
     expect(find.text('Faster downloads'), findsOneWidget);
     expect(find.text('下载更快'), findsNothing);
     expect(find.text('Later'), findsOneWidget);

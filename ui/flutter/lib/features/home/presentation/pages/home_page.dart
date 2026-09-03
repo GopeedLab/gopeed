@@ -445,6 +445,8 @@ class _HomePageState extends ConsumerState<HomePage> {
       allSelected: allSelected,
       listeningForUpdate: listeningForUpdate,
       onShowDetails: () => _showTaskDetails(task),
+      onOpenFile: () => unawaited(_openTask(task)),
+      onOpenDirectory: () => unawaited(_revealTask(task)),
       onBrowseFiles: () =>
           unawaited(browseTaskFiles(context, task, mobile: MediaQuery.sizeOf(context).width < Breakpoints.mobile)),
       onToggleSelectAll: _toggleSelectAll,

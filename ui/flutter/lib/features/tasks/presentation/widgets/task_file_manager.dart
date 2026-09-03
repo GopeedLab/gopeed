@@ -254,7 +254,7 @@ class _FileManagerRow extends StatelessWidget {
               ],
               Icon(Icons.chevron_right, size: 18, color: palette.textMuted),
             ] else ...[
-              _FileActionButton(label: context.l10n.open, icon: Icons.open_in_new, onPressed: onOpenFile),
+              _FileActionButton(label: context.l10n.openFile, icon: Icons.open_in_new, onPressed: onOpenFile),
               if (desktopActions) ...[
                 const SizedBox(width: 4),
                 _FileActionButton(
