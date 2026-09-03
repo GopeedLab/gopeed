@@ -9,7 +9,6 @@ const String _startConfig = 'startConfig';
 const String _windowState = 'windowState';
 const String _bookmark = 'bookmark';
 const String _createHistory = 'createHistory';
-const String _webToken = 'webToken';
 const String _runAsMenubarApp = 'runAsMenubarApp';
 const String _analyticsEnabled = 'analyticsEnabled';
 const String _analyticsClientId = 'analyticsClientId';
@@ -89,18 +88,6 @@ class Database {
     });
   }
 
-  void saveWebToken(String token) {
-    save<String>(_webToken, token);
-  }
-
-  String? getWebToken() {
-    return get<String>(_webToken, (json) => json.toString());
-  }
-
-  void clearWebToken() {
-    clear(_webToken);
-  }
-
   void saveCreateHistory(String url) {
     var list = getCreateHistory() ?? [];
     list.remove(url);
@@ -115,6 +102,16 @@ class Database {
     return get<List<String>>(_createHistory, (json) {
       return (json as List<dynamic>).map((e) => e.toString()).toList();
     });
+  }
+
+  void removeCreateHistory(String url) {
+    final list = getCreateHistory() ?? [];
+    list.remove(url);
+    if (list.isEmpty) {
+      clearCreateHistory();
+    } else {
+      save<List<String>>(_createHistory, list);
+    }
   }
 
   void clearCreateHistory() {

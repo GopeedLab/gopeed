@@ -35,13 +35,7 @@ class _Client {
   late Dio dio;
   bool initialized = false;
 
-  void init(
-    String network,
-    String address,
-    String apiToken, {
-    String? Function()? webTokenProvider,
-    VoidCallback? onUnauthorized,
-  }) {
+  void init(String network, String address, String apiToken, {VoidCallback? onUnauthorized}) {
     final isUnixSocket = network == 'unix';
     final baseUrl = isUnixSocket
         ? 'http://127.0.0.1/'
@@ -64,12 +58,6 @@ class _Client {
         onRequest: (options, handler) {
           if (apiToken.isNotEmpty) {
             options.headers['X-Api-Token'] = apiToken;
-          }
-          if (kIsWeb && options.path != 'api/web/login') {
-            final token = webTokenProvider?.call();
-            if (token != null && token.isNotEmpty) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
           }
           handler.next(options);
         },
@@ -94,14 +82,8 @@ class _Client {
   }
 }
 
-void init(
-  String network,
-  String address,
-  String apiToken, {
-  String? Function()? webTokenProvider,
-  VoidCallback? onUnauthorized,
-}) {
-  _Client.instance.init(network, address, apiToken, webTokenProvider: webTokenProvider, onUnauthorized: onUnauthorized);
+void init(String network, String address, String apiToken, {VoidCallback? onUnauthorized}) {
+  _Client.instance.init(network, address, apiToken, onUnauthorized: onUnauthorized);
 }
 
 void initDefault({String address = '127.0.0.1:9999', String apiToken = ''}) {
@@ -265,11 +247,8 @@ Future<void> testWebhook(String url) {
   return _parse<void>(() => _Client.instance.dio.post('api/v1/webhook/test', data: {'url': url}), null);
 }
 
-Future<String> login(LoginReq loginReq) {
-  return _parse<String>(
-    () => _Client.instance.dio.post('api/web/login', data: loginReq.toJson()),
-    (data) => data as String,
-  );
+Future<void> login(LoginReq loginReq) {
+  return _parse<void>(() => _Client.instance.dio.post('api/web/login', data: loginReq.toJson()), null);
 }
 
 Future<Response<String>> proxyRequest<T>(String uri, {dynamic data, Options? options}) async {

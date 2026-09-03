@@ -3326,6 +3326,8 @@ void main() {
     expect(find.byIcon(GopeedIcons.fileText), findsOneWidget);
     expect(find.byIcon(GopeedIcons.folder), findsOneWidget);
     expect(find.byIcon(Icons.open_in_new), findsOneWidget);
+    final openFileTooltip = find.ancestor(of: find.byIcon(Icons.open_in_new), matching: find.byType(AppTooltip));
+    expect(tester.widget<AppTooltip>(openFileTooltip).message, 'Open File');
     expect(find.byIcon(Icons.download_outlined), findsOneWidget);
     expect(find.byIcon(Icons.share_outlined), findsNothing);
 
@@ -3776,6 +3778,7 @@ void main() {
     var paused = false;
     var selected = false;
     var detailsShown = false;
+    var directoryOpened = false;
     var filesBrowsed = false;
     final task = _taskRecord(id: 'context-task', name: 'context.zip');
     final actions = TaskContextActions(
@@ -3783,6 +3786,8 @@ void main() {
       allSelected: false,
       listeningForUpdate: false,
       onShowDetails: () => detailsShown = true,
+      onOpenFile: () {},
+      onOpenDirectory: () => directoryOpened = true,
       onBrowseFiles: () => filesBrowsed = true,
       onToggleSelectAll: () {},
       onToggleSelected: () => selected = true,
@@ -3812,15 +3817,27 @@ void main() {
     await tester.tapAt(tester.getCenter(find.byKey(const ValueKey('context-target'))), buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
     expect(find.text('Details'), findsOneWidget);
+    expect(find.text('Open File'), findsNothing);
+    expect(find.text('Open Directory'), findsOneWidget);
     expect(find.text('Browse Files'), findsOneWidget);
     expect(find.text('Pause'), findsOneWidget);
     expect(find.text('Select'), findsOneWidget);
     expect(tester.getTopLeft(find.text('Details')).dy, greaterThan(tester.getTopLeft(find.text('Update URL')).dy));
-    expect(tester.getTopLeft(find.text('Browse Files')).dy, greaterThan(tester.getTopLeft(find.text('Details')).dy));
+    expect(tester.getTopLeft(find.text('Open Directory')).dy, greaterThan(tester.getTopLeft(find.text('Details')).dy));
+    expect(
+      tester.getTopLeft(find.text('Browse Files')).dy,
+      greaterThan(tester.getTopLeft(find.text('Open Directory')).dy),
+    );
 
     await tester.tap(find.text('Details'));
     await tester.pumpAndSettle();
     expect(detailsShown, isTrue);
+
+    await tester.tapAt(tester.getCenter(find.byKey(const ValueKey('context-target'))), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open Directory'));
+    await tester.pumpAndSettle();
+    expect(directoryOpened, isTrue);
 
     await tester.tapAt(tester.getCenter(find.byKey(const ValueKey('context-target'))), buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
@@ -3839,6 +3856,25 @@ void main() {
     await tester.tap(find.text('Pause'));
     await tester.pumpAndSettle();
     expect(paused, isTrue);
+  });
+
+  test('task context menu exposes system-open actions by platform and task type', () {
+    final completedFileTask = _taskRecord(id: 'completed-file-task', name: 'file.zip', status: TaskStatus.completed);
+    final downloadingFileTask = _taskRecord(id: 'downloading-file-task', name: 'file.zip');
+    final completedDirectoryTask = _taskRecord(
+      id: 'completed-directory-task',
+      name: 'directory',
+      status: TaskStatus.completed,
+      isFolder: true,
+    );
+
+    expect(shouldShowTaskOpenFileAction(completedFileTask, web: false), isTrue);
+    expect(shouldShowTaskOpenFileAction(downloadingFileTask, web: false), isFalse);
+    expect(shouldShowTaskOpenFileAction(completedDirectoryTask, web: false), isFalse);
+    expect(shouldShowTaskOpenFileAction(completedFileTask, web: true), isFalse);
+    expect(shouldShowTaskOpenDirectoryAction(web: false, desktop: true), isTrue);
+    expect(shouldShowTaskOpenDirectoryAction(web: false, desktop: false), isFalse);
+    expect(shouldShowTaskOpenDirectoryAction(web: true, desktop: true), isFalse);
   });
 
   testWidgets('task URL update reuses the shared HTTP header editor', (WidgetTester tester) async {

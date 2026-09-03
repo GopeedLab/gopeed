@@ -23,6 +23,7 @@ import '../../../../api/model/resolve_result.dart';
 import '../../../../api/model/resolve_task.dart';
 import '../../../../core/capabilities/app_capabilities.dart';
 import '../../../../core/utils/breakpoints.dart';
+import '../../../../core/utils/text_wrap.dart';
 import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
@@ -1162,71 +1163,151 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   Future<void> _showCreateHistory() async {
     List<String> histories;
     try {
-      histories = await ref.read(appStorageServiceProvider).getCreateHistory();
+      histories = List<String>.of(await ref.read(appStorageServiceProvider).getCreateHistory());
     } catch (_) {
       histories = const [];
     }
     if (!mounted) return;
+    final filterController = TextEditingController();
+    var filterQuery = '';
     final dialog = const DialogOverlayHandler().show<void>(
       context: context,
       alignment: Alignment.center,
       builder: (dialogContext) {
-        final palette = AppPalette.of(dialogContext);
-        final screenSize = MediaQuery.sizeOf(dialogContext);
-        return AlertDialog(
-          padding: const EdgeInsets.all(18),
-          title: Text(dialogContext.l10n.createHistory),
-          content: SizedBox(
-            width: screenSize.width < 620 ? screenSize.width - 32 : 560,
-            height: screenSize.height < 560 ? screenSize.height * 0.55 : 360,
-            child: histories.isEmpty
-                ? Center(
-                    child: Text(dialogContext.l10n.noHistory, style: TextStyle(color: palette.textMuted, fontSize: 13)),
-                  )
-                : ListView.separated(
-                    itemCount: histories.length,
-                    separatorBuilder: (_, _) => Container(height: 1, color: palette.border),
-                    itemBuilder: (context, index) {
-                      final value = histories[index];
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          _setUrlText(value);
-                          closeOverlay(dialogContext);
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                          child: Text(
-                            value,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: palette.textPrimary, fontSize: 12),
-                          ),
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final palette = AppPalette.of(dialogContext);
+            final screenSize = MediaQuery.sizeOf(dialogContext);
+            final contentWidth = screenSize.width < 620 ? screenSize.width - 68 : 560.0;
+            final normalizedQuery = filterQuery.trim().toLowerCase();
+            final visibleHistories = normalizedQuery.isEmpty
+                ? histories
+                : histories.where((value) => value.toLowerCase().contains(normalizedQuery)).toList(growable: false);
+            return AlertDialog(
+              padding: const EdgeInsets.all(18),
+              title: SizedBox(
+                key: const ValueKey('create-history-title-bar'),
+                width: contentWidth,
+                child: Row(
+                  children: [
+                    Expanded(child: Text(dialogContext.l10n.createHistory)),
+                    AppTooltip(
+                      message: dialogContext.l10n.clearHistory,
+                      child: GhostButton(
+                        key: const ValueKey('create-history-clear'),
+                        density: ButtonDensity.icon,
+                        onPressed: histories.isEmpty
+                            ? null
+                            : () async {
+                                await ref.read(appStorageServiceProvider).clearCreateHistory();
+                                if (!dialogContext.mounted) return;
+                                filterController.clear();
+                                setDialogState(() {
+                                  histories = [];
+                                  filterQuery = '';
+                                });
+                              },
+                        child: const Icon(Icons.history_toggle_off_rounded, size: 17),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    AppTooltip(
+                      message: dialogContext.l10n.close,
+                      child: GhostButton(
+                        key: const ValueKey('create-history-close'),
+                        density: ButtonDensity.icon,
+                        onPressed: () => closeOverlay(dialogContext),
+                        child: const Icon(Icons.close_rounded, size: 18),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              content: SizedBox(
+                key: const ValueKey('create-history-content'),
+                width: contentWidth,
+                height: screenSize.height < 560 ? screenSize.height * 0.55 : 360,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 38,
+                      child: TextField(
+                        key: const ValueKey('create-history-filter'),
+                        controller: filterController,
+                        placeholder: Text(
+                          dialogContext.l10n.searchHistory,
+                          style: TextStyle(color: palette.searchHint, fontSize: 13),
                         ),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            GhostButton(
-              density: ButtonDensity.icon,
-              onPressed: histories.isEmpty
-                  ? null
-                  : () async {
-                      await ref.read(appStorageServiceProvider).clearCreateHistory();
-                      if (dialogContext.mounted) closeOverlay(dialogContext);
-                    },
-              child: const Icon(Icons.history_toggle_off_rounded, size: 16),
-            ),
-            SecondaryButton(
-              onPressed: () => closeOverlay(dialogContext),
-              child: SizedBox(width: 68, child: Center(child: Text(dialogContext.l10n.close))),
-            ),
-          ],
+                        features: [
+                          InputFeature.leading(Icon(Icons.search_rounded, size: 15, color: palette.textMuted)),
+                        ],
+                        onChanged: (value) => setDialogState(() => filterQuery = value),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: visibleHistories.isEmpty
+                          ? Center(
+                              child: Text(
+                                normalizedQuery.isEmpty
+                                    ? dialogContext.l10n.noHistory
+                                    : dialogContext.l10n.noHistoryFound,
+                                style: TextStyle(color: palette.textMuted, fontSize: 13),
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: visibleHistories.length,
+                              separatorBuilder: (_, _) => Container(height: 1, color: palette.border),
+                              itemBuilder: (context, index) {
+                                final value = visibleHistories[index];
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        key: ValueKey('create-history-item-$value'),
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () {
+                                          _setUrlText(value);
+                                          closeOverlay(dialogContext);
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                                          child: Text(
+                                            softWrapAnywhere(value),
+                                            semanticsLabel: value,
+                                            style: TextStyle(color: palette.textPrimary, fontSize: 12),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    AppTooltip(
+                                      message: dialogContext.l10n.delete,
+                                      child: GhostButton(
+                                        key: ValueKey('create-history-delete-$value'),
+                                        density: ButtonDensity.icon,
+                                        onPressed: () async {
+                                          await ref.read(appStorageServiceProvider).removeCreateHistory(value);
+                                          if (!dialogContext.mounted) return;
+                                          setDialogState(() => histories.remove(value));
+                                        },
+                                        child: Icon(Icons.delete_outline_rounded, size: 16, color: palette.textMuted),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
     await dialog.future;
+    filterController.dispose();
   }
 
   void _syncResolvedName(ResolveResult result) {

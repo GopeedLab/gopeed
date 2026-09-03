@@ -18,6 +18,7 @@ import '../../../../shared/widgets/app_toast.dart';
 import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../util/util.dart';
 import '../../application/extensions_controller.dart';
+import 'extension_icon.dart';
 
 class ExtensionDetailDrawer extends StatelessWidget {
   const ExtensionDetailDrawer({super.key, required this.item, required this.onClose});
@@ -62,7 +63,13 @@ class ExtensionDetailView extends ConsumerWidget {
           key: const ValueKey('extension-details-hero'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ExtensionDetailIcon(item: current, size: mobile ? 60 : 68),
+            ExtensionIcon(
+              item: current,
+              size: mobile ? 60 : 68,
+              borderRadius: BorderRadius.circular(14),
+              fallbackPadding: EdgeInsets.all((mobile ? 60 : 68) * 0.16),
+              fallbackBackgroundColor: palette.surfaceSoft,
+            ),
             SizedBox(width: mobile ? 16 : 20),
             Expanded(
               child: Column(
@@ -267,31 +274,6 @@ class _ExtensionReadmeState extends State<_ExtensionReadme> {
           ),
         );
       },
-    );
-  }
-}
-
-class _ExtensionDetailIcon extends StatelessWidget {
-  const _ExtensionDetailIcon({required this.item, required this.size});
-
-  final ExtensionListItem item;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    final icon = item.icon;
-    final fallback = Container(
-      width: size,
-      height: size,
-      padding: EdgeInsets.all(size * 0.16),
-      decoration: BoxDecoration(color: palette.surfaceSoft, borderRadius: BorderRadius.circular(14)),
-      child: Image.asset('assets/extension/default_icon.png'),
-    );
-    if (icon == null || icon.isEmpty) return fallback;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Image.network(icon, width: size, height: size, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback),
     );
   }
 }

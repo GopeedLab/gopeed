@@ -50,6 +50,41 @@ void main() {
     expect(checkboxTheme.borderColor, AppPalette.dark.textMuted);
     expect(_contrastRatio(checkboxTheme.borderColor!, AppPalette.dark.bg), greaterThanOrEqualTo(3));
   });
+
+  testWidgets('uses distinct borderless secondary button fills in the light theme', (tester) async {
+    late shad.SecondaryButtonTheme buttonTheme;
+    late BuildContext themedContext;
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: AppComponentThemes(
+          child: Builder(
+            builder: (context) {
+              themedContext = context;
+              buttonTheme = shad.ComponentTheme.of<shad.SecondaryButtonTheme>(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+
+    final decoration =
+        buttonTheme.decoration!(themedContext, const <WidgetState>{}, const BoxDecoration()) as BoxDecoration;
+    final hoveredDecoration =
+        buttonTheme.decoration!(themedContext, const <WidgetState>{WidgetState.hovered}, const BoxDecoration())
+            as BoxDecoration;
+    final disabledDecoration =
+        buttonTheme.decoration!(themedContext, const <WidgetState>{WidgetState.disabled}, const BoxDecoration())
+            as BoxDecoration;
+    expect(decoration.border, isNull);
+    expect(hoveredDecoration.border, isNull);
+    expect(disabledDecoration.border, isNull);
+    expect(decoration.color, isNot(AppPalette.light.surfaceSoft));
+    expect(hoveredDecoration.color, isNot(decoration.color));
+  });
 }
 
 double _contrastRatio(Color first, Color second) {

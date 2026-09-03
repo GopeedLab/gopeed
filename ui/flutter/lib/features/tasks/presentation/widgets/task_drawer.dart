@@ -11,6 +11,7 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/detail/app_detail_surface.dart';
+import '../../../../core/utils/text_wrap.dart';
 import '../../../../l10n/l10n.dart';
 import '../../domain/task_record.dart';
 import '../task_record_localizations.dart';
@@ -463,7 +464,7 @@ class _CopyableInfoBlock extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    _softWrapAnywhere(value),
+                    softWrapAnywhere(value),
                     key: valueKey,
                     semanticsLabel: value,
                     softWrap: true,
@@ -494,8 +495,6 @@ class _CopyableInfoBlock extends StatelessWidget {
     );
   }
 }
-
-String _softWrapAnywhere(String value) => value.characters.join('\u200B');
 
 class _InfoLabel extends StatelessWidget {
   const _InfoLabel(this.label);

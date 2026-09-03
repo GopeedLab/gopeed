@@ -154,6 +154,10 @@ void _bindStorage(CapabilityRegistry registry) {
       }
       return const RpcUnit();
     })
+    ..bind(StorageMethods.removeCreateHistory, (url) async {
+      Database.instance.removeCreateHistory(url);
+      return const RpcUnit();
+    })
     ..bind(StorageMethods.clearCreateHistory, (_) async {
       Database.instance.clearCreateHistory();
       return const RpcUnit();

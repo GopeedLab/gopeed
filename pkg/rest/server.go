@@ -35,6 +35,11 @@ var (
 	Downloader *download.Downloader
 )
 
+const (
+	webAuthCookieName = "gopeed_web_auth"
+	webAuthTokenTTL   = 7 * 24 * time.Hour
+)
+
 func Start(startCfg *model.StartConfig) (port int, err error) {
 	// avoid repeat start
 	if srv != nil {
@@ -168,7 +173,17 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 							return
 						}
 
-						WriteJson(w, model.NewOkResult(token))
+						http.SetCookie(w, &http.Cookie{
+							Name:     webAuthCookieName,
+							Value:    token,
+							Path:     "/",
+							Expires:  time.Now().Add(webAuthTokenTTL),
+							MaxAge:   int(webAuthTokenTTL.Seconds()),
+							HttpOnly: true,
+							Secure:   requestUsesHTTPS(r),
+							SameSite: http.SameSiteLaxMode,
+						})
+						WriteJson(w, model.NewNilResult())
 						return
 					}
 				}
@@ -186,6 +201,16 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if enableWebAuth && isProtectedWebFilePath(r.URL.Path) {
+					cookie, err := r.Cookie(webAuthCookieName)
+					if err != nil || !validWebAuthToken(cookie.Value, startCfg.WebAuth) {
+						writeUnauthorized(w, r)
+						return
+					}
+					h.ServeHTTP(w, r)
+					return
+				}
+
 				if enableApiToken {
 					apiTokenHeader := r.Header["X-Api-Token"]
 					// If api token header is set, only check api token ignore basic auth
@@ -206,30 +231,8 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 						return
 					}
 
-					token := r.Header.Get("Authorization")
-					if token == "" {
-						writeUnauthorized(w, r)
-						return
-					}
-
-					token = strings.TrimPrefix(token, "Bearer ")
-					tokenData, err := aesDecrypt(aesKey, token)
-					if err != nil {
-						writeUnauthorized(w, r)
-						return
-					}
-					parts := strings.SplitN(string(tokenData), ":", 3)
-					username := parts[0]
-					password := parts[1]
-					timestamp, _ := strconv.Atoi(parts[2])
-
-					if username != startCfg.WebAuth.Username || password != startCfg.WebAuth.Password {
-						writeUnauthorized(w, r)
-						return
-					}
-
-					// Check if the token is expired (7 days)
-					if time.Now().Unix()-int64(timestamp) > 7*24*3600 {
+					cookie, err := r.Cookie(webAuthCookieName)
+					if err != nil || !validWebAuthToken(cookie.Value, startCfg.WebAuth) {
 						writeUnauthorized(w, r)
 						return
 					}
@@ -263,6 +266,37 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		handlers.AllowCredentials(),
 	)(r)}
 	return srv, listener, nil
+}
+
+func isProtectedWebFilePath(urlPath string) bool {
+	return urlPath == "/fs" || strings.HasPrefix(urlPath, "/fs/")
+}
+
+func validWebAuthToken(token string, auth *model.WebAuth) bool {
+	if token == "" || auth == nil {
+		return false
+	}
+	tokenData, err := aesDecrypt(aesKey, token)
+	if err != nil {
+		return false
+	}
+	parts := strings.SplitN(string(tokenData), ":", 3)
+	if len(parts) != 3 || parts[0] != auth.Username || parts[1] != auth.Password {
+		return false
+	}
+	timestamp, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		return false
+	}
+	return time.Now().Unix()-timestamp <= int64(webAuthTokenTTL.Seconds())
+}
+
+func requestUsesHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	forwardedProto := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-Proto"), ",")[0])
+	return strings.EqualFold(forwardedProto, "https")
 }
 
 func resolvePath(urlPath string, prefix string) (identity string, path string, err error) {

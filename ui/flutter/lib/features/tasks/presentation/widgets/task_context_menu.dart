@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../domain/task_record.dart';
 import '../../../../l10n/l10n.dart';
+import '../../../../util/util.dart';
 
 class TaskContextActions {
   const TaskContextActions({
@@ -11,6 +13,8 @@ class TaskContextActions {
     required this.allSelected,
     required this.listeningForUpdate,
     required this.onShowDetails,
+    required this.onOpenFile,
+    required this.onOpenDirectory,
     required this.onBrowseFiles,
     required this.onToggleSelectAll,
     required this.onToggleSelected,
@@ -25,6 +29,8 @@ class TaskContextActions {
   final bool allSelected;
   final bool listeningForUpdate;
   final VoidCallback onShowDetails;
+  final VoidCallback onOpenFile;
+  final VoidCallback onOpenDirectory;
   final VoidCallback onBrowseFiles;
   final VoidCallback onToggleSelectAll;
   final VoidCallback onToggleSelected;
@@ -105,6 +111,20 @@ class TaskContextMenu extends StatelessWidget {
           onPressed: (_) => actions.onShowDetails(),
           child: Text(context.l10n.taskDetailsInfoTab),
         ),
+        if (shouldShowTaskOpenFileAction(task))
+          shad.MenuButton(
+            key: const ValueKey('task-context-open-file'),
+            leading: const Icon(Icons.open_in_new, size: 16),
+            onPressed: (_) => actions.onOpenFile(),
+            child: Text(context.l10n.openFile),
+          ),
+        if (shouldShowTaskOpenDirectoryAction())
+          shad.MenuButton(
+            key: const ValueKey('task-context-open-directory'),
+            leading: const Icon(Icons.folder_open_outlined, size: 16),
+            onPressed: (_) => actions.onOpenDirectory(),
+            child: Text(context.l10n.openDirectory),
+          ),
         shad.MenuButton(
           key: const ValueKey('task-context-browse-files'),
           leading: const Icon(Icons.snippet_folder_outlined, size: 16),
@@ -115,4 +135,14 @@ class TaskContextMenu extends StatelessWidget {
       child: child,
     );
   }
+}
+
+@visibleForTesting
+bool shouldShowTaskOpenFileAction(TaskRecord task, {bool? web}) {
+  return !(web ?? kIsWeb) && !task.isFolder && task.status == TaskStatus.completed;
+}
+
+@visibleForTesting
+bool shouldShowTaskOpenDirectoryAction({bool? web, bool? desktop}) {
+  return !(web ?? kIsWeb) && (desktop ?? Util.isDesktop());
 }

@@ -125,7 +125,6 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       startConfig.network,
       _runningAddress(startConfig, runningPort),
       startConfig.apiToken,
-      webTokenProvider: Database.instance.getWebToken,
       onUnauthorized: ref.read(webAuthControllerProvider).requireLogin,
     );
 

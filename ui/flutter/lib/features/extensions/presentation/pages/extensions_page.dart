@@ -22,6 +22,7 @@ import '../../../home/presentation/widgets/primary_rail.dart';
 import '../../application/extensions_controller.dart';
 import '../../application/pending_extension_install.dart';
 import '../widgets/extension_detail_view.dart';
+import '../widgets/extension_icon.dart';
 
 const _extensionCardMinWidth = 280.0;
 const _extensionGridSpacing = 10.0;
@@ -951,7 +952,7 @@ class _ExtensionCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              _ExtensionIcon(item: item),
+              ExtensionIcon(item: item, size: 40, borderRadius: BorderRadius.circular(6), fallbackFit: BoxFit.cover),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -1107,26 +1108,6 @@ Future<bool> _showRemoveExtensionDialog(BuildContext context, String extensionNa
     ),
   );
   return await overlay.future ?? false;
-}
-
-class _ExtensionIcon extends StatelessWidget {
-  const _ExtensionIcon({required this.item});
-
-  final ExtensionListItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = item.icon;
-    Widget image;
-    if (icon != null && icon.isNotEmpty) {
-      image = Image.network(icon, width: 40, height: 40, fit: BoxFit.cover, errorBuilder: (_, _, _) => _fallback());
-    } else {
-      image = _fallback();
-    }
-    return ClipRRect(borderRadius: BorderRadius.circular(6), child: image);
-  }
-
-  Widget _fallback() => Image.asset('assets/extension/default_icon.png', width: 40, height: 40, fit: BoxFit.cover);
 }
 
 class _ExtensionSettingsPanel extends StatelessWidget {

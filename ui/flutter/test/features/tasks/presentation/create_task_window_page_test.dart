@@ -17,6 +17,7 @@ import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
 import 'package:gopeed/shared/theme/app_design_tokens.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
+import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
@@ -255,6 +256,99 @@ void main() {
     expect(options.archivePassword, 'archive-password');
     expect(options.deleteAfterExtract, isTrue);
     expect(submitted?.opts?.asDefaultPath, isTrue);
+  });
+
+  testWidgets('create history supports filtering, deleting one entry, and clearing all entries', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final histories = <String>[
+      'https://example.com/alpha.zip',
+      'https://example.com/beta.iso',
+      'magnet:?xt=urn:btih:gamma',
+    ];
+    String? removedHistory;
+    var cleared = false;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(StorageMethods.getCreateHistory, (_) => List<String>.unmodifiable(histories))
+      ..bind(StorageMethods.removeCreateHistory, (value) {
+        removedHistory = value;
+        histories.remove(value);
+        return const RpcUnit();
+      })
+      ..bind(StorageMethods.clearCreateHistory, (_) {
+        cleared = true;
+        histories.clear();
+        return const RpcUnit();
+      });
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.history));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byKey(const ValueKey('create-history-title-bar'))).width,
+      tester.getSize(find.byKey(const ValueKey('create-history-content'))).width,
+    );
+    final alphaItem = find.byKey(const ValueKey('create-history-item-https://example.com/alpha.zip'));
+    final betaItem = find.byKey(const ValueKey('create-history-item-https://example.com/beta.iso'));
+    final gammaItem = find.byKey(const ValueKey('create-history-item-magnet:?xt=urn:btih:gamma'));
+    expect(alphaItem, findsOneWidget);
+    expect(betaItem, findsOneWidget);
+    expect(gammaItem, findsOneWidget);
+    final clearAction = find.byKey(const ValueKey('create-history-clear'));
+    final closeAction = find.byKey(const ValueKey('create-history-close'));
+    expect(
+      tester.widget<AppTooltip>(find.ancestor(of: clearAction, matching: find.byType(AppTooltip))).message,
+      'Clear History',
+    );
+    expect(
+      tester.widget<AppTooltip>(find.ancestor(of: closeAction, matching: find.byType(AppTooltip))).message,
+      'Close',
+    );
+    final historyText = tester.widget<Text>(find.descendant(of: alphaItem, matching: find.byType(Text)));
+    expect(historyText.data, contains('\u200B'));
+    expect(historyText.semanticsLabel, 'https://example.com/alpha.zip');
+
+    final filter = find.byKey(const ValueKey('create-history-filter'));
+    await tester.enterText(filter, 'beta');
+    await tester.pump();
+    expect(alphaItem, findsNothing);
+    expect(betaItem, findsOneWidget);
+    expect(gammaItem, findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('create-history-delete-https://example.com/beta.iso')));
+    await tester.pumpAndSettle();
+    expect(removedHistory, 'https://example.com/beta.iso');
+    expect(find.text('No History Found'), findsOneWidget);
+
+    await tester.enterText(filter, '');
+    await tester.pump();
+    expect(alphaItem, findsOneWidget);
+    expect(gammaItem, findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('create-history-clear')));
+    await tester.pumpAndSettle();
+    expect(cleared, isTrue);
+    expect(find.text('No history'), findsOneWidget);
+    expect(find.byKey(const ValueKey('create-history-clear')), findsOneWidget);
+    expect(find.byKey(const ValueKey('create-history-close')), findsOneWidget);
   });
 }
 
