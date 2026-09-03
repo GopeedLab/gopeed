@@ -138,6 +138,10 @@ func snapshotConnectionsLocked(connections []*connection) []*connection {
 		}
 		if conn.Chunk != nil {
 			copyChunk := *conn.Chunk
+			if conn.Chunk.End != nil {
+				end := *conn.Chunk.End
+				copyChunk.End = &end
+			}
 			copyConn.Chunk = &copyChunk
 		}
 		snapshot[i] = copyConn
