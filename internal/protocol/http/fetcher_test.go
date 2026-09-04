@@ -1053,7 +1053,8 @@ func TestFetcher_OriginalURLFallbackPreservesResumeHeaders(t *testing.T) {
 		config: &config{},
 		meta:   &fetcher.FetcherMeta{Req: &base.Request{URL: server.URL}},
 	}
-	resp, err := f.tryFallbackToOriginalURL(context.Background(), server.Client(), start, end, true, ifRange)
+	rangeEnd := int64(end)
+	resp, err := f.tryFallbackToOriginalURL(context.Background(), server.Client(), start, &rangeEnd, true, ifRange)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1237,6 +1238,430 @@ func TestFetcher_ValidRangeTakesOverResolveResponse(t *testing.T) {
 	}
 }
 
+func TestFetcher_UnknownSizeRangeUsesOpenEndedWorker(t *testing.T) {
+	const resolveETag = `"unknown-size-v1"`
+	payload := make([]byte, 4*1024*1024)
+	for i := range payload {
+		payload[i] = byte((i*11 + 7) % 251)
+	}
+
+	var openEndedRequests atomic.Int32
+	var rangeRequests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		rangeHeader := r.Header.Get(base.HttpHeaderRange)
+		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+		w.Header().Set(base.HttpHeaderETag, resolveETag)
+		if rangeHeader == "" {
+			w.WriteHeader(gohttp.StatusOK)
+			w.(gohttp.Flusher).Flush()
+			for offset := 0; offset < len(payload); offset += 8 * 1024 {
+				end := min(offset+8*1024, len(payload))
+				if _, err := w.Write(payload[offset:end]); err != nil {
+					return
+				}
+				w.(gohttp.Flusher).Flush()
+				time.Sleep(2 * time.Millisecond)
+			}
+			return
+		}
+
+		rangeRequests.Add(1)
+		if got := r.Header.Get(base.HttpHeaderIfRange); got != resolveETag {
+			t.Errorf("If-Range = %q, want %q", got, resolveETag)
+		}
+		var start, end int64
+		if strings.HasSuffix(rangeHeader, "-") {
+			openEndedRequests.Add(1)
+			if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-", &start); err != nil {
+				t.Errorf("parse open-ended Range %q: %v", rangeHeader, err)
+				w.WriteHeader(gohttp.StatusBadRequest)
+				return
+			}
+			end = int64(len(payload) - 1)
+		} else if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-%d", &start, &end); err != nil {
+			t.Errorf("parse bounded Range %q: %v", rangeHeader, err)
+			w.WriteHeader(gohttp.StatusBadRequest)
+			return
+		}
+		if start > end {
+			w.Header().Set(base.HttpHeaderContentRange, fmt.Sprintf("bytes */%d", len(payload)))
+			w.WriteHeader(gohttp.StatusRequestedRangeNotSatisfiable)
+			return
+		}
+		w.Header().Set(base.HttpHeaderContentRange, fmt.Sprintf("bytes %d-%d/%d", start, end, len(payload)))
+		w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", end-start+1))
+		w.WriteHeader(gohttp.StatusPartialContent)
+		for offset := start; offset <= end; offset += 8 * 1024 {
+			chunkEnd := min(offset+8*1024, end+1)
+			if _, err := w.Write(payload[offset:chunkEnd]); err != nil {
+				return
+			}
+			w.(gohttp.Flusher).Flush()
+			time.Sleep(time.Millisecond)
+		}
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/unknown-size-range.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "unknown-size-range.data",
+		Extra: &http.OptsExtra{
+			Connections: 4,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	if f.meta.Res.Size != 0 || !f.meta.Res.Range {
+		t.Fatalf("resolved resource = %+v, want unknown size with Range support", f.meta.Res)
+	}
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	if got := openEndedRequests.Load(); got != 1 {
+		t.Fatalf("open-ended Range requests = %d, want 1", got)
+	}
+	if got := rangeRequests.Load(); got < 2 {
+		t.Fatalf("Range requests = %d, want slow-start expansion after size discovery", got)
+	}
+	if got, want := f.meta.Res.Size, int64(len(payload)); got != want {
+		t.Fatalf("resource size = %d, want %d", got, want)
+	}
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatal("downloaded file differs after unknown-size Range takeover")
+	}
+}
+
+func TestFetcher_UnknownSizeRangeRetriesShortPartialBody(t *testing.T) {
+	payload := make([]byte, 1024*1024)
+	for i := range payload {
+		payload[i] = byte((i*13 + 5) % 251)
+	}
+
+	var rangeRequests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		rangeHeader := r.Header.Get(base.HttpHeaderRange)
+		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+		w.Header().Set(base.HttpHeaderETag, `"short-range-v1"`)
+		if rangeHeader == "" {
+			w.WriteHeader(gohttp.StatusOK)
+			w.(gohttp.Flusher).Flush()
+			for offset := 0; offset < len(payload); offset += 8 * 1024 {
+				end := min(offset+8*1024, len(payload))
+				if _, err := w.Write(payload[offset:end]); err != nil {
+					return
+				}
+				w.(gohttp.Flusher).Flush()
+				time.Sleep(2 * time.Millisecond)
+			}
+			return
+		}
+
+		requestNumber := rangeRequests.Add(1)
+		var start, requestedEnd int64
+		openEnded := strings.HasSuffix(rangeHeader, "-")
+		if openEnded {
+			if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-", &start); err != nil {
+				t.Errorf("parse open-ended Range %q: %v", rangeHeader, err)
+				w.WriteHeader(gohttp.StatusBadRequest)
+				return
+			}
+			requestedEnd = int64(len(payload) - 1)
+		} else if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-%d", &start, &requestedEnd); err != nil {
+			t.Errorf("parse Range %q: %v", rangeHeader, err)
+			w.WriteHeader(gohttp.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set(base.HttpHeaderContentRange, fmt.Sprintf("bytes %d-%d/%d", start, requestedEnd, len(payload)))
+		w.WriteHeader(gohttp.StatusPartialContent)
+		w.(gohttp.Flusher).Flush()
+		if requestNumber == 1 {
+			// End the chunked response cleanly after only part of the declared
+			// Content-Range. The worker must retry from the materialized offset.
+			shortEnd := min(start+64*1024, requestedEnd+1)
+			_, _ = w.Write(payload[start:shortEnd])
+			return
+		}
+		_, _ = w.Write(payload[start : requestedEnd+1])
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/short-range.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "short-range.data",
+		Extra: &http.OptsExtra{
+			Connections: 1,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	if got := rangeRequests.Load(); got < 2 {
+		t.Fatalf("Range requests = %d, want a retry after the short body", got)
+	}
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatal("downloaded file differs after retrying the short Range body")
+	}
+}
+
+func TestFetcher_UnknownSizeRangeFallsBackToResolve(t *testing.T) {
+	payload := make([]byte, 512*1024)
+	for i := range payload {
+		payload[i] = byte((i*17 + 3) % 251)
+	}
+
+	var rangeRequests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+		if r.Header.Get(base.HttpHeaderRange) == "" {
+			w.WriteHeader(gohttp.StatusOK)
+			w.(gohttp.Flusher).Flush()
+			for offset := 0; offset < len(payload); offset += 8 * 1024 {
+				end := min(offset+8*1024, len(payload))
+				if _, err := w.Write(payload[offset:end]); err != nil {
+					return
+				}
+				w.(gohttp.Flusher).Flush()
+				time.Sleep(time.Millisecond)
+			}
+			return
+		}
+
+		rangeRequests.Add(1)
+		w.Header().Set(base.HttpHeaderContentRange, fmt.Sprintf("bytes 1-%d/%d", len(payload)-1, len(payload)))
+		w.WriteHeader(gohttp.StatusPartialContent)
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/unknown-size-fallback.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "unknown-size-fallback.data",
+		Extra: &http.OptsExtra{
+			Connections: 1,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatalf("Wait() should use the complete Resolve response: %v", err)
+	}
+	if got := rangeRequests.Load(); got != 1 {
+		t.Fatalf("Range requests = %d, want 1", got)
+	}
+	if f.meta.Res.Range {
+		t.Fatal("Resolve fallback should switch the task to sequential mode")
+	}
+	if got, want := f.meta.Res.Size, int64(len(payload)); got != want {
+		t.Fatalf("resource size = %d, want %d", got, want)
+	}
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatal("downloaded file differs from the unknown-size Resolve fallback")
+	}
+}
+
+func TestFetcher_UnknownSizeRangeRemainsOpenEndedAfterPause(t *testing.T) {
+	payload := make([]byte, 1024*1024)
+	for i := range payload {
+		payload[i] = byte((i*19 + 1) % 251)
+	}
+
+	firstRangeStarted := make(chan struct{})
+	var rangeRequests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		rangeHeader := r.Header.Get(base.HttpHeaderRange)
+		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
+		w.Header().Set(base.HttpHeaderETag, `"pause-open-range-v1"`)
+		if rangeHeader == "" {
+			w.WriteHeader(gohttp.StatusOK)
+			w.(gohttp.Flusher).Flush()
+			for offset := 0; offset < len(payload); offset += 8 * 1024 {
+				end := min(offset+8*1024, len(payload))
+				if _, err := w.Write(payload[offset:end]); err != nil {
+					return
+				}
+				w.(gohttp.Flusher).Flush()
+				time.Sleep(2 * time.Millisecond)
+			}
+			return
+		}
+
+		requestNumber := rangeRequests.Add(1)
+		if requestNumber == 1 {
+			close(firstRangeStarted)
+			<-r.Context().Done()
+			return
+		}
+		if !strings.HasSuffix(rangeHeader, "-") {
+			t.Errorf("resumed Range = %q, want an open-ended range", rangeHeader)
+			w.WriteHeader(gohttp.StatusBadRequest)
+			return
+		}
+		var start int64
+		if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-", &start); err != nil {
+			t.Errorf("parse resumed Range %q: %v", rangeHeader, err)
+			w.WriteHeader(gohttp.StatusBadRequest)
+			return
+		}
+		end := int64(len(payload) - 1)
+		w.Header().Set(base.HttpHeaderContentRange, fmt.Sprintf("bytes %d-%d/%d", start, end, len(payload)))
+		w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", end-start+1))
+		w.WriteHeader(gohttp.StatusPartialContent)
+		_, _ = w.Write(payload[start:])
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/pause-open-range.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "pause-open-range.data",
+		Extra: &http.OptsExtra{
+			Connections: 1,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-firstRangeStarted:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for the first open-ended worker")
+	}
+	if err := f.Pause(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	if got := rangeRequests.Load(); got != 2 {
+		t.Fatalf("Range requests = %d, want an open-ended retry after pause", got)
+	}
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatal("downloaded file differs after pausing an unknown-size Range")
+	}
+}
+
+func TestFetcher_UnknownSizeResolveReadErrorFailsTask(t *testing.T) {
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+		conn, rw, err := w.(gohttp.Hijacker).Hijack()
+		if err != nil {
+			t.Errorf("hijack response: %v", err)
+			return
+		}
+		defer conn.Close()
+		_, _ = fmt.Fprint(rw, "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n800\r\n")
+		_, _ = rw.Write(make([]byte, 1024))
+		_ = rw.Flush()
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/broken-chunked.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "broken-chunked.data",
+		Extra: &http.OptsExtra{
+			Connections: 1,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err == nil {
+		t.Fatal("Wait() succeeded after the unknown-size response ended unexpectedly")
+	}
+	if got := f.getState(); got != stateError {
+		t.Fatalf("fetcher state = %v, want %v", got, stateError)
+	}
+}
+
+func TestFetcher_UnknownSizeResolveCleanEOFUpdatesSize(t *testing.T) {
+	payload := bytes.Repeat([]byte("gopeed-unknown-size\n"), 8192)
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+		w.WriteHeader(gohttp.StatusOK)
+		w.(gohttp.Flusher).Flush()
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: server.URL + "/unknown-size.data"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "unknown-size.data",
+		Extra: &http.OptsExtra{
+			Connections: 1,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := f.meta.Res.Size, int64(len(payload)); got != want {
+		t.Fatalf("resource size = %d, want %d", got, want)
+	}
+	if got, want := f.meta.Res.Files[0].Size, int64(len(payload)); got != want {
+		t.Fatalf("file size = %d, want %d", got, want)
+	}
+	got, err := os.ReadFile(f.meta.SingleFilepath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatal("downloaded file differs for a clean unknown-size response")
+	}
+}
+
 func TestFetcher_RejectsInvalidPartialContent(t *testing.T) {
 	const (
 		requestedStart = int64(1024)
@@ -1312,14 +1737,6 @@ func TestFetcher_RejectsInvalidPartialContent(t *testing.T) {
 			contentRange:  "bytes 1024-2047/4096",
 			contentLength: rangeLength - 1,
 			bodyLength:    int(rangeLength - 1),
-			wantError:     true,
-		},
-		{
-			name:          "short chunked body",
-			contentRange:  "bytes 1024-2047/4096",
-			contentLength: -1,
-			bodyLength:    int(rangeLength - 1),
-			chunked:       true,
 			wantError:     true,
 		},
 		{
@@ -2407,7 +2824,7 @@ func TestFetcherManager_RestoreUsesSnapshotRangeMode(t *testing.T) {
 			ID:         0,
 			Role:       rolePrimary,
 			State:      connFailed,
-			Chunk:      &chunk{Begin: 0, End: 99, Downloaded: 64},
+			Chunk:      newChunk(0, 99),
 			Downloaded: 64,
 		}},
 		IfRange:               `"snapshot-v1"`,
@@ -2417,6 +2834,7 @@ func TestFetcherManager_RestoreUsesSnapshotRangeMode(t *testing.T) {
 		ResourceSize:          &resourceSize,
 		FileSize:              &fileSize,
 	}
+	saved.Connections[0].Chunk.Downloaded = 64
 	encoded, err := json.Marshal(saved)
 	if err != nil {
 		t.Fatal(err)
@@ -2522,7 +2940,7 @@ func TestFetcherManager_RestoreUsesAtomicSizeSnapshotForDownload(t *testing.T) {
 			ID:         0,
 			Role:       rolePrimary,
 			State:      connFailed,
-			Chunk:      &chunk{Begin: 0, End: resourceSize - 1, Downloaded: savedPrefix},
+			Chunk:      newChunk(0, resourceSize-1),
 			Downloaded: savedPrefix,
 		}},
 		IfRange:              `"old-v1"`,
@@ -2531,6 +2949,7 @@ func TestFetcherManager_RestoreUsesAtomicSizeSnapshotForDownload(t *testing.T) {
 		ResourceSize:         &resourceSize,
 		FileSize:             &fileSize,
 	}
+	saved.Connections[0].Chunk.Downloaded = savedPrefix
 	// Simulate task metadata serialized after an interrupted chunked replacement
 	// while the fetcher snapshot still describes the preceding representation.
 	staleMeta := &fetcher.FetcherMeta{
