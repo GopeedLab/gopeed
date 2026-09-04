@@ -2171,9 +2171,9 @@ func TestFetcher_StatsMarksTerminalNonFailedConnectionsComplete(t *testing.T) {
 	fetcher := &Fetcher{
 		meta: &fetcher.FetcherMeta{Res: &base.Resource{Size: 4096, Range: true}},
 		connections: []*connection{
-			{State: connDownloading, Chunk: &chunk{Begin: 0, End: 2047, Downloaded: 1024}, Downloaded: 1024},
-			{State: connCompleted, Chunk: &chunk{Begin: 2048, End: 3071, Downloaded: 1024}, Downloaded: 2048},
-			{State: connFailed, Chunk: &chunk{Begin: 3072, End: 4095, Downloaded: 512}, Downloaded: 512, failed: true, retryTimes: 3},
+			{State: connDownloading, Chunk: newChunk(0, 2047), Downloaded: 1024},
+			{State: connCompleted, Chunk: newChunk(2048, 3071), Downloaded: 2048},
+			{State: connFailed, Chunk: newChunk(3072, 4095), Downloaded: 512, failed: true, retryTimes: 3},
 		},
 	}
 	fetcher.setState(stateDone)
