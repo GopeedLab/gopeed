@@ -20,15 +20,15 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 
 访问 ✈ [官方网站](https://gopeed.com)
 
-![Gopeed 桌面端与移动端界面](_docs/img/ui-concept-zh-CN.png)
+![应用截图](_docs/img/ui-concept-zh-CN.png)
 
 ## ✨ 主要特性
 
 - ⚡ **高速下载** — 多任务并发、HTTP 多连接分段传输和 BitTorrent P2P 下载，充分利用可用带宽。
 - 🧲 **多协议支持** — 在同一个界面管理 HTTP、HTTPS、BitTorrent、磁力链接和 ed2k。
-- 🌱 **完整 BT 能力** — 按文件选择下载、Tracker 管理、Peer/分片统计，以及按分享率或时间控制做种。
-- 🪶 **轻量原生体验** — 主界面使用 Flutter 原生渲染，不是 Electron，也不是基于 WebView 的套壳应用，安装包更轻量、运行开销更低、响应更流畅。
+- 🌱 **完整 BT 能力** — 支持 DHT 节点发现、uTP 传输、Web Seed、按文件选择下载、Tracker 管理、Peer/分片统计，以及按分享率或时间控制做种。
 - 📋 **实用任务管理** — 暂停、续传、重试、批量操作、搜索、状态筛选、下载分类和启动恢复。
+- 🪶 **轻量原生体验** — 主界面使用 Flutter 原生渲染，非 Electron，非 WebView 的套壳，安装包更轻量、运行开销更低、响应更流畅。
 - 💻 **全平台覆盖** — 支持 Windows、macOS、Linux、Android、iOS 和 Web，并提供 Docker、QNAP 部署方式。
 - 🎨 **个性化主题** — 支持跟随系统、浅色、深色三种模式，以及 8 种主题强调色。
 - 📐 **响应式界面** — 任务列表、导航、设置和详情视图会针对手机、平板及可调整大小的桌面窗口自动布局。

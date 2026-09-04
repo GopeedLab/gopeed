@@ -20,15 +20,15 @@ Ngoài việc quản lý tải xuống hằng ngày, Gopeed còn hỗ trợ tíc
 
 Truy cập ✈ [Trang web chính thức](https://gopeed.com)
 
-![Giao diện Gopeed trên máy tính và thiết bị di động](_docs/img/ui-concept-en.png)
+![Ảnh chụp màn hình ứng dụng](_docs/img/ui-concept-en.png)
 
 ## ✨ Tính năng chính
 
 - ⚡ **Tải xuống tốc độ cao** — kết hợp nhiều tác vụ, truyền HTTP phân đoạn qua nhiều kết nối và tải BitTorrent P2P để tận dụng tối đa băng thông.
 - 🧲 **Đa giao thức** — quản lý HTTP, HTTPS, BitTorrent, Magnet và ed2k trong một giao diện.
-- 🌱 **Bộ công cụ BT đầy đủ** — chọn tệp, quản lý Tracker, xem Peer/mảnh và kiểm soát seed theo tỷ lệ hoặc thời gian.
-- 🪶 **Trải nghiệm native gọn nhẹ** — giao diện chính được Flutter kết xuất native, không đóng gói bằng Electron và không phải ứng dụng bọc WebView, giúp giảm kích thước, giảm chi phí tài nguyên và phản hồi nhanh hơn.
+- 🌱 **Bộ công cụ BT đầy đủ** — hỗ trợ khám phá Peer qua DHT, truyền tải uTP, Web Seed, chọn tệp, quản lý Tracker, xem Peer/mảnh và kiểm soát seed theo tỷ lệ hoặc thời gian.
 - 📋 **Quản lý tác vụ thực tế** — tạm dừng, tiếp tục, thử lại, thao tác hàng loạt, tìm kiếm, bộ lọc, danh mục và khôi phục khi khởi động.
+- 🪶 **Trải nghiệm native gọn nhẹ** — giao diện chính được Flutter kết xuất native. Không Electron. Không vỏ bọc WebView. Kích thước nhỏ hơn, ít tốn tài nguyên hơn và phản hồi nhanh hơn.
 - 💻 **Đa nền tảng** — Windows, macOS, Linux, Android, iOS, Web, Docker và QNAP.
 - 🎨 **Giao diện tùy biến** — hỗ trợ chế độ theo hệ thống, sáng, tối và 8 màu nhấn.
 - 📐 **Bố cục thích ứng** — danh sách tác vụ, điều hướng, cài đặt và màn hình chi tiết tự điều chỉnh cho điện thoại, máy tính bảng và cửa sổ desktop có thể thay đổi kích thước.

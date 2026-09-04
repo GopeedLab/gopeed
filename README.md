@@ -20,15 +20,15 @@ Beyond core download management, Gopeed offers browser integration, JavaScript e
 
 Visit ✈ [Official Website](https://gopeed.com)
 
-![Gopeed desktop and mobile interface](_docs/img/ui-concept-en.png)
+![Application screenshot](_docs/img/ui-concept-en.png)
 
 ## ✨ Features
 
 - ⚡ **High-speed downloads** — combine concurrent tasks, multi-connection HTTP transfers, and peer-to-peer BitTorrent downloads to make the most of your bandwidth.
 - 🧲 **Multiple protocols** — download HTTP/HTTPS files, torrents, magnet links, and ed2k resources from a single app.
-- 🌱 **Full-featured BitTorrent** — choose files, manage trackers, inspect peers and pieces, and set seeding limits by ratio or time.
-- 🪶 **Lightweight native experience** — the main interface is rendered natively with Flutter, not packaged with Electron or built as a WebView shell, resulting in a smaller footprint, lower overhead, and responsive performance.
+- 🌱 **Full-featured BitTorrent** — use DHT peer discovery, uTP transport, Web Seeds, selective file downloads, tracker management, peer and piece statistics, and ratio- or time-based seeding limits.
 - 📋 **Flexible task management** — pause, resume, retry, run batch operations, search, filter by status, organize with categories, and recover tasks after a restart.
+- 🪶 **Lightweight native experience** — the main interface is rendered natively with Flutter. No Electron. No WebView shell. Enjoy a smaller footprint, lower overhead, and responsive performance.
 - 💻 **Cross-platform** — available for Windows, macOS, Linux, Android, iOS, and the web, with Docker and QNAP deployment options.
 - 🎨 **Customizable appearance** — follow your system theme or choose light or dark mode, with eight accent colors.
 - 📐 **Responsive interface** — task lists, navigation, settings, and detail views adapt to phones, tablets, and resizable desktop windows.
