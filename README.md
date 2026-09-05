@@ -61,7 +61,7 @@ Connect Gopeed to an AI agent and manage downloads with natural language. For ex
 
 ### 🧪 Gopeed 2.0.0 Beta
 
-Gopeed 2.0.0 is currently in public beta. It introduces the new 2.0.0 experience, but some features may still be incomplete or unstable. Please try it and report any issues you encounter.
+Gopeed 2.0.0 is currently in public beta, introducing a redesigned interface, a native communication architecture that connects desktop and mobile clients directly to the Go core through FFI, a more consistent cross-platform experience, improved task management, more flexible API support, and MCP-based AI agent integration. Some features may still be incomplete or unstable, so please try it and report any issues you encounter.
 
 - [Download Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
 

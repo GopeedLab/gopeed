@@ -61,7 +61,7 @@ Gopeed（**Go Speed** 的縮寫）是一款以 Go 與 Flutter 開發的高速、
 
 ### 🧪 Gopeed 2.0.0 Beta
 
-Gopeed 2.0.0 目前處於公開 Beta 測試階段，帶來全新的 2.0.0 使用體驗，但部分功能仍可能不夠完善或穩定。歡迎搶先體驗，並向我們回報使用過程中遇到的問題。
+Gopeed 2.0.0 目前處於公開 Beta 測試階段，引入了全新介面、透過 FFI 直連 Go 核心的原生通訊架構、更一致的跨平台體驗、更完善的任務管理、更靈活的 API，以及透過 MCP 串接 AI Agent 的能力。部分功能仍可能不夠完善或穩定，歡迎搶先體驗並向我們回報問題。
 
 - [下載 Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
 

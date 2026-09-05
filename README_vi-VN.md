@@ -61,7 +61,7 @@ Sau khi kết nối Gopeed với AI Agent, bạn có thể quản lý tải xu�
 
 ### 🧪 Gopeed 2.0.0 Beta
 
-Gopeed 2.0.0 hiện đang trong giai đoạn beta công khai. Phiên bản này mang đến trải nghiệm 2.0.0 mới, nhưng một số tính năng có thể vẫn chưa hoàn thiện hoặc chưa ổn định. Hãy dùng thử và gửi phản hồi cho chúng tôi nếu bạn gặp vấn đề.
+Gopeed 2.0.0 hiện đang trong giai đoạn beta công khai, với giao diện được thiết kế lại, kiến trúc giao tiếp native kết nối trực tiếp ứng dụng desktop và di động với lõi Go qua FFI, trải nghiệm đa nền tảng nhất quán hơn, khả năng quản lý tác vụ được cải thiện, API linh hoạt hơn và khả năng tích hợp AI Agent qua MCP. Một số tính năng có thể vẫn chưa hoàn thiện hoặc chưa ổn định, vì vậy hãy dùng thử và gửi phản hồi nếu bạn gặp vấn đề.
 
 - [Tải Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
 
