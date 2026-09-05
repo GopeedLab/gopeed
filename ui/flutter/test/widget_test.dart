@@ -1378,7 +1378,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shared toast uses content-driven width', (WidgetTester tester) async {
+  testWidgets('shared toast appears at top center with content-driven width', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 700));
     await tester.pumpWidget(
       shad.ShadcnApp(
@@ -1402,6 +1402,9 @@ void main() {
     final toast = find.byKey(const ValueKey('app-toast-content'));
     expect(toast, findsOneWidget);
     expect(tester.getSize(toast).width, lessThan(320));
+    final toastRect = tester.getRect(toast);
+    expect(toastRect.center.dx, closeTo(512, 0.01));
+    expect(toastRect.top, lessThan(80));
     final decoration = tester.widget<Container>(toast).decoration! as BoxDecoration;
     expect((decoration.border! as Border).top.color, AppPalette.light.border);
 
