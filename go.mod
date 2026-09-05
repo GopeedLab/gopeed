@@ -23,6 +23,7 @@ require (
 	github.com/xiaoqidun/setft v0.0.0-20220310121541-be86327699ad
 	go.etcd.io/bbolt v1.4.3
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93
+	golang.org/x/sys v0.40.0
 )
 
 require (
@@ -150,7 +151,6 @@ require (
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/mod v0.31.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.40.0 // indirect

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -29,6 +31,7 @@ class _CreateDialogViewState extends State<CreateDialogView> {
   Object? _error;
   bool _resolving = true;
   bool _creating = false;
+  bool _closing = false;
 
   @override
   void initState() {
@@ -42,6 +45,10 @@ class _CreateDialogViewState extends State<CreateDialogView> {
 
   @override
   void dispose() {
+    final resolveID = _resolveResult?.id ?? '';
+    if (resolveID.isNotEmpty) {
+      unawaited(cancelResolve(resolveID).catchError((_) {}));
+    }
     _pathController.dispose();
     _nameController.dispose();
     super.dispose();
@@ -87,7 +94,10 @@ class _CreateDialogViewState extends State<CreateDialogView> {
       final result = await resolve(
         ResolveTask(req: createTask.req!, opts: opt),
       );
-      if (!mounted) return;
+      if (!mounted || _closing) {
+        await cancelResolve(result.id);
+        return;
+      }
       setState(() {
         _resolveResult = result;
         if (_nameController.text.trim().isEmpty ||
@@ -160,6 +170,8 @@ class _CreateDialogViewState extends State<CreateDialogView> {
           ),
         );
       }
+      // A successful Create has consumed the resolve ID server-side.
+      _resolveResult = null;
       await SystemNavigator.pop();
     } catch (e) {
       showErrorMessage(e);
@@ -168,6 +180,26 @@ class _CreateDialogViewState extends State<CreateDialogView> {
           _creating = false;
         });
       }
+    }
+  }
+
+  Future<void> _cancelAndClose() async {
+    if (_closing) return;
+    setState(() {
+      _closing = true;
+    });
+
+    final resolveResult = _resolveResult;
+    _resolveResult = null;
+    try {
+      if (resolveResult?.id.isNotEmpty == true) {
+        await cancelResolve(resolveResult!.id);
+      }
+    } catch (_) {
+      // Downloader shutdown is the final cleanup fallback. A failed cleanup
+      // request must not trap the user in the quick-create window.
+    } finally {
+      await SystemNavigator.pop();
     }
   }
 
@@ -227,7 +259,8 @@ class _CreateDialogViewState extends State<CreateDialogView> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.close),
-                          onPressed: _creating ? null : SystemNavigator.pop,
+                          onPressed:
+                              (_creating || _closing) ? null : _cancelAndClose,
                           tooltip: 'cancel'.tr,
                         ),
                       ],
@@ -269,7 +302,8 @@ class _CreateDialogViewState extends State<CreateDialogView> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          onPressed: _creating ? null : SystemNavigator.pop,
+                          onPressed:
+                              (_creating || _closing) ? null : _cancelAndClose,
                           child: Text('cancel'.tr),
                         ),
                         const SizedBox(width: 8),

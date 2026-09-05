@@ -45,6 +45,7 @@ const (
 var (
 	ErrTaskNotFound        = errors.New("task not found")
 	ErrUnSupportedProtocol = errors.New("unsupported protocol")
+	ErrDownloaderClosed    = errors.New("downloader is closed")
 )
 
 type Listener func(event *Event)
@@ -106,6 +107,9 @@ type Downloader struct {
 	fetcherMapLock     *sync.RWMutex
 	checkDuplicateLock *sync.Mutex
 	closed             atomic.Bool
+	lifecycleWG        sync.WaitGroup
+	closeOnce          sync.Once
+	closeErr           error
 
 	// claimedExtractions tracks which multi-part archives have been claimed for extraction
 	// Key: fullBaseName (e.g., "/path/archive.7z"), Value: taskID that claimed it
@@ -222,7 +226,7 @@ func (d *Downloader) Setup() error {
 
 	// handle upload
 	go func() {
-		for _, task := range d.tasks {
+		for _, task := range d.snapshotTasks() {
 			if task.Status == base.DownloadStatusDone && task.Uploading {
 				if err := d.restoreTask(task); err != nil {
 					d.Logger.Error().Stack().Err(err).Msgf("task upload restore fetcher failed, task id: %s", task.ID)
@@ -239,8 +243,9 @@ func (d *Downloader) Setup() error {
 	// calculate download speed every tick
 	go func() {
 		for !d.closed.Load() {
-			if len(d.tasks) > 0 {
-				for _, task := range d.tasks {
+			tasks := d.snapshotTasks()
+			if len(tasks) > 0 {
+				for _, task := range tasks {
 					func() {
 						// Do not acquire d.lock (via GetTask) while holding
 						// statusLock; scheduling uses the opposite lock order.
@@ -426,9 +431,13 @@ func ensureResourceRequestRawURLs(parentReq *base.Request, res *base.Resource) {
 }
 
 func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *ResolveResult, err error) {
+	if d.closed.Load() {
+		return nil, ErrDownloaderClosed
+	}
+
 	rrId, err := gonanoid.New()
 	if err != nil {
-		return
+		return nil, err
 	}
 	ensureRequestRawURL(req)
 
@@ -449,13 +458,17 @@ func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *Resolve
 	}
 	initOpt, err := d.initOptions(opts)
 	if err != nil {
-		return
+		return nil, err
 	}
 	err = fetcher.Resolve(req, initOpt)
 	if err != nil {
-		return
+		return nil, err
 	}
 	d.fetcherMapLock.Lock()
+	if d.closed.Load() {
+		d.fetcherMapLock.Unlock()
+		return nil, errors.Join(ErrDownloaderClosed, fetcher.Close())
+	}
 	d.fetcherCache[rrId] = fetcher
 	d.fetcherMapLock.Unlock()
 	rr = &ResolveResult{
@@ -493,6 +506,11 @@ func (d *Downloader) remainRunningCount() int {
 }
 
 func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId string, err error) {
+	if err = d.beginLifecycleOperation(); err != nil {
+		return "", err
+	}
+	defer d.lifecycleWG.Done()
+
 	ensureRequestRawURL(req)
 	var fetcher fetcher.Fetcher
 	fetcher, err = d.buildFetcher(req.URL)
@@ -502,7 +520,7 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	fetcher.Meta().Req = req
 	initOpt, err := d.initOptions(opts)
 	if err != nil {
-		return
+		return "", err
 	}
 	return d.doCreate(fetcher, initOpt)
 }
@@ -524,18 +542,83 @@ func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []stri
 }
 
 func (d *Downloader) Create(rrId string) (taskId string, err error) {
-	d.fetcherMapLock.RLock()
-	fetcher, ok := d.fetcherCache[rrId]
-	d.fetcherMapLock.RUnlock()
+	if err = d.beginLifecycleOperation(); err != nil {
+		return "", err
+	}
+	defer d.lifecycleWG.Done()
+
+	fetcher, ok := d.takeResolveFetcher(rrId)
 	if !ok {
 		return "", errors.New("invalid resource id")
 	}
-	defer func() {
-		d.fetcherMapLock.Lock()
+	taskId, err = d.doCreate(fetcher, nil)
+	if err != nil {
+		err = errors.Join(err, fetcher.Close())
+	}
+	return taskId, err
+}
+
+// CancelResolve releases a resolved fetcher that will not be used to create a
+// task. It is intentionally idempotent so clients can call it from cleanup
+// paths even when Create has already consumed the resolve result.
+func (d *Downloader) CancelResolve(rrId string) error {
+	if err := d.beginLifecycleOperation(); err != nil {
+		// Close has already claimed every cached resolve. Cancellation remains
+		// an idempotent cleanup operation even while the downloader shuts down.
+		if errors.Is(err, ErrDownloaderClosed) {
+			return nil
+		}
+		return err
+	}
+	defer d.lifecycleWG.Done()
+
+	fetcher, ok := d.takeResolveFetcher(rrId)
+	if !ok {
+		return nil
+	}
+	return fetcher.Close()
+}
+
+// beginLifecycleOperation linearizes public fetcher ownership operations with
+// Close. Close sets closed while holding the same lock, so no WaitGroup Add can
+// race with its Wait.
+func (d *Downloader) beginLifecycleOperation() error {
+	d.fetcherMapLock.Lock()
+	defer d.fetcherMapLock.Unlock()
+	if d.closed.Load() {
+		return ErrDownloaderClosed
+	}
+	d.lifecycleWG.Add(1)
+	return nil
+}
+
+func (d *Downloader) takeResolveFetcher(rrId string) (fetcher.Fetcher, bool) {
+	d.fetcherMapLock.Lock()
+	defer d.fetcherMapLock.Unlock()
+
+	f, ok := d.fetcherCache[rrId]
+	if ok {
 		delete(d.fetcherCache, rrId)
-		d.fetcherMapLock.Unlock()
-	}()
-	return d.doCreate(fetcher, nil)
+	}
+	return f, ok
+}
+
+func (d *Downloader) takeResolveFetchersForClose() []fetcher.Fetcher {
+	d.fetcherMapLock.Lock()
+	d.closed.Store(true)
+
+	cache := d.fetcherCache
+	d.fetcherCache = make(map[string]fetcher.Fetcher)
+	d.fetcherMapLock.Unlock()
+
+	fetchers := make([]fetcher.Fetcher, 0, len(cache))
+	for _, f := range cache {
+		if f == nil {
+			continue
+		}
+		fetchers = append(fetchers, f)
+	}
+	return fetchers
 }
 
 // Patch modifies task-specific data based on the protocol.
@@ -864,27 +947,42 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 }
 
 func (d *Downloader) Close() error {
-	d.closed.Store(true)
-
-	closeArr := []func() error{
-		d.pauseAll,
-	}
-	for _, fm := range d.cfg.FetchManagers {
-		closeArr = append(closeArr, fm.Close)
-	}
-	if d.blob != nil {
-		closeArr = append(closeArr, d.blob.Close)
-	}
-	closeArr = append(closeArr, d.storage.Close)
-	// Make sure all resources are released, if had error, return the last error
-	var lastErr error
-	for i, close := range closeArr {
-		if err := close(); err != nil {
-			lastErr = err
-			d.Logger.Error().Stack().Err(err).Msgf("downloader close failed, index: %d", i)
+	d.closeOnce.Do(func() {
+		var errs []error
+		for _, f := range d.takeResolveFetchersForClose() {
+			if err := f.Close(); err != nil {
+				errs = append(errs, err)
+			}
 		}
-	}
-	return lastErr
+
+		// Create and cancellation operations that started before Close finish
+		// their ownership transfer before managers and storage are closed. No
+		// new operation can join the WaitGroup after this wait begins.
+		d.lifecycleWG.Wait()
+
+		closeArr := []func() error{d.pauseAll}
+		for _, fm := range d.cfg.FetchManagers {
+			closeArr = append(closeArr, fm.Close)
+		}
+		if d.blob != nil {
+			closeArr = append(closeArr, d.blob.Close)
+		}
+		closeArr = append(closeArr, d.storage.Close)
+		for i, close := range closeArr {
+			if err := close(); err != nil {
+				errs = append(errs, err)
+				d.Logger.Error().Stack().Err(err).Msgf("downloader close failed, index: %d", i)
+			}
+		}
+		d.closeErr = errors.Join(errs...)
+	})
+	return d.closeErr
+}
+
+func (d *Downloader) snapshotTasks() []*Task {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	return append([]*Task(nil), d.tasks...)
 }
 
 func (d *Downloader) Clear() error {
@@ -893,7 +991,10 @@ func (d *Downloader) Clear() error {
 			return err
 		}
 	}
+	d.lock.Lock()
 	d.tasks = make([]*Task, 0)
+	d.waitTasks = make([]*Task, 0)
+	d.lock.Unlock()
 	d.extensions = make([]*Extension, 0)
 	if err := d.storage.Clear(); err != nil {
 		return err

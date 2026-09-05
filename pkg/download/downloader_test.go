@@ -32,9 +32,11 @@ import (
 type generationTestManager struct {
 	starts         atomic.Int32
 	pauses         atomic.Int32
+	closes         atomic.Int32
 	holdOpen       bool
+	closeErr       error
 	resolveStarted chan struct{}
-	resolveRelease <-chan struct{}
+	resolveRelease chan struct{}
 	resolveErr     error
 	resolveOnce    sync.Once
 	pauseStarted   chan struct{}
@@ -151,7 +153,10 @@ func (f *generationTestFetcher) Pause() error {
 	}
 	return nil
 }
-func (f *generationTestFetcher) Close() error               { return nil }
+func (f *generationTestFetcher) Close() error {
+	f.manager.closes.Add(1)
+	return f.manager.closeErr
+}
 func (f *generationTestFetcher) Stats() any                 { return nil }
 func (f *generationTestFetcher) Meta() *fetcher.FetcherMeta { return f.meta }
 func (f *generationTestFetcher) Progress() fetcher.Progress { return fetcher.Progress{1} }
@@ -203,6 +208,165 @@ func TestDownloader_Resolve(t *testing.T) {
 	}
 	if !test.AssertResourceEqual(want, rr.Res) {
 		t.Errorf("Resolve() got = %v, want %v", rr.Res, want)
+	}
+}
+
+func TestDownloader_CancelResolveClosesCachedFetcher(t *testing.T) {
+	manager := &generationTestManager{}
+	downloader := NewDownloader(&DownloaderConfig{FetchManagers: []fetcher.FetcherManager{manager}})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	rr, err := downloader.Resolve(
+		&base.Request{URL: "generation://cancel"},
+		&base.Options{Path: t.TempDir()},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := downloader.CancelResolve(rr.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := manager.closes.Load(); got != 1 {
+		t.Fatalf("Close calls = %d, want 1", got)
+	}
+	if len(downloader.fetcherCache) != 0 {
+		t.Fatalf("cached fetchers = %d, want 0", len(downloader.fetcherCache))
+	}
+
+	// Cleanup code may run after Create has consumed the ID, so cancellation is
+	// deliberately idempotent.
+	if err := downloader.CancelResolve(rr.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := manager.closes.Load(); got != 1 {
+		t.Fatalf("Close calls after repeated cancel = %d, want 1", got)
+	}
+}
+
+func TestDownloader_CloseClosesAllCachedFetchers(t *testing.T) {
+	manager := &generationTestManager{closeErr: errors.New("close failed")}
+	downloader := NewDownloader(&DownloaderConfig{FetchManagers: []fetcher.FetcherManager{manager}})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{"first", "second", "third"} {
+		if _, err := downloader.Resolve(
+			&base.Request{URL: "generation://" + name},
+			&base.Options{Path: t.TempDir()},
+		); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := downloader.Close(); !errors.Is(err, manager.closeErr) {
+		t.Fatalf("Close error = %v, want %v", err, manager.closeErr)
+	}
+	if got := manager.closes.Load(); got != 3 {
+		t.Fatalf("Close calls = %d, want 3", got)
+	}
+	if len(downloader.fetcherCache) != 0 {
+		t.Fatalf("cached fetchers = %d, want 0", len(downloader.fetcherCache))
+	}
+}
+
+func TestDownloader_ResolveAfterCloseDoesNotBuildFetcher(t *testing.T) {
+	manager := &generationTestManager{}
+	downloader := NewDownloader(&DownloaderConfig{FetchManagers: []fetcher.FetcherManager{manager}})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	if err := downloader.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := downloader.Resolve(
+		&base.Request{URL: "generation://closed"},
+		&base.Options{Path: t.TempDir()},
+	)
+	if err == nil {
+		t.Fatal("Resolve after Close succeeded")
+	}
+	if got := manager.closes.Load(); got != 0 {
+		t.Fatalf("Close calls = %d, want 0 because no fetcher should be built", got)
+	}
+	if len(downloader.fetcherCache) != 0 {
+		t.Fatalf("cached fetchers = %d, want 0", len(downloader.fetcherCache))
+	}
+}
+
+func TestDownloader_CloseWaitsForCreateThatAlreadyOwnsFetcher(t *testing.T) {
+	manager := &generationTestManager{}
+	downloader := NewDownloader(&DownloaderConfig{FetchManagers: []fetcher.FetcherManager{manager}})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	downloader.cfg.MaxRunning = 0
+
+	rr, err := downloader.Resolve(
+		&base.Request{URL: "generation://create-close-race"},
+		&base.Options{Path: t.TempDir()},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Hold the task-list lock after Create has taken ownership from the resolve
+	// cache. Close must wait for that in-flight ownership transfer.
+	downloader.lock.Lock()
+	locked := true
+	defer func() {
+		if locked {
+			downloader.lock.Unlock()
+		}
+	}()
+	createDone := make(chan error, 1)
+	go func() {
+		_, err := downloader.Create(rr.ID)
+		createDone <- err
+	}()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		downloader.fetcherMapLock.RLock()
+		_, cached := downloader.fetcherCache[rr.ID]
+		downloader.fetcherMapLock.RUnlock()
+		if !cached {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("Create did not take ownership of the cached fetcher")
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	closeDone := make(chan error, 1)
+	go func() { closeDone <- downloader.Close() }()
+	select {
+	case err := <-closeDone:
+		t.Fatalf("Close returned before in-flight Create completed: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	downloader.lock.Unlock()
+	locked = false
+	select {
+	case err := <-createDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Create did not complete")
+	}
+	select {
+	case err := <-closeDone:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Close did not finish after Create transferred ownership")
 	}
 }
 
