@@ -19,14 +19,15 @@ String logsDir() {
   return path.join(Util.getStorageDir(), 'logs');
 }
 
+Directory ensureLogDirectory(String logDirPath) {
+  return Directory(logDirPath)..createSync(recursive: true);
+}
+
 LogOutput? _buildOutput() {
   // if is debug mode, don't log to file
   if (!kDebugMode && Util.isDesktop()) {
     final logDirPath = logsDir();
-    var logDir = Directory(logsDir());
-    if (!logDir.existsSync()) {
-      logDir.createSync();
-    }
+    ensureLogDirectory(logDirPath);
     return FileOutput(file: File('$logDirPath/client.log'));
   }
   return null;
