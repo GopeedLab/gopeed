@@ -439,5 +439,7 @@
   "mcpAgentDialogDescription": "Válaszd ki a használt ügynököt, majd másold ki a kapcsolódási beállításait.",
   "mcpNotRunningHint": "Az MCP szolgáltatás nincs engedélyezve. Engedélyezd",
   "webApiConfigReadOnlyHelp": "A webes verzióban az API-beállítások nem módosíthatók online. Módosítsd a kiszolgáló indítási beállításait vagy a konfigurációs fájlt, majd indítsd újra a szolgáltatást.",
+  "webMcpApiTokenHint": "Ha API-tokent állítottál be, az ügynök csatlakoztatásakor meg kell adni a hitelesítési adatokat",
+  "useMcpApiTokenTemplate": "Váltás hitelesített konfigurációra",
   "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP."
 }

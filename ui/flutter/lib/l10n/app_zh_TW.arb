@@ -439,5 +439,7 @@
   "mcpAgentDialogDescription": "選擇你使用的 Agent，然後複製對應的接入設定。",
   "mcpNotRunningHint": "尚未啟用 MCP 服務，請先開啟",
   "webApiConfigReadOnlyHelp": "Web 版本不支援線上修改 API 設定。請修改伺服器啟動參數或設定檔，並重新啟動服務後使設定生效。",
+  "webMcpApiTokenHint": "若已設定 API Token，接入 Agent 時需要傳遞認證資訊",
+  "useMcpApiTokenTemplate": "切換為認證設定",
   "mcpRequiresTcp": "API 通訊協定為 TCP 時才能使用 Agent 接入指引。"
 }

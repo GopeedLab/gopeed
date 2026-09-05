@@ -439,5 +439,7 @@
   "mcpAgentDialogDescription": "Wybierz używanego agenta, a następnie skopiuj jego konfigurację połączenia.",
   "mcpNotRunningHint": "Usługa MCP nie jest włączona. Włącz ją",
   "webApiConfigReadOnlyHelp": "Wersja webowa nie obsługuje edycji ustawień API online. Zmień opcje uruchamiania serwera lub plik konfiguracyjny, a następnie uruchom usługę ponownie.",
+  "webMcpApiTokenHint": "Jeśli skonfigurowano token API, podczas łączenia agenta należy przekazać dane uwierzytelniające",
+  "useMcpApiTokenTemplate": "Przełącz na konfigurację z uwierzytelnianiem",
   "mcpRequiresTcp": "Instrukcje łączenia agentów są dostępne, gdy protokół API to TCP."
 }

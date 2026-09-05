@@ -439,5 +439,7 @@
   "mcpAgentDialogDescription": "Wähle deinen Agenten aus und kopiere die zugehörige Verbindungskonfiguration.",
   "mcpNotRunningHint": "Der MCP-Dienst ist nicht aktiviert. Bitte aktiviere ihn",
   "webApiConfigReadOnlyHelp": "In der Web-Version können API-Einstellungen nicht online geändert werden. Ändere die Server-Startoptionen oder die Konfigurationsdatei und starte den Dienst neu, damit die Änderungen wirksam werden.",
+  "webMcpApiTokenHint": "Wenn du ein API-Token konfiguriert hast, müssen beim Verbinden des Agents Authentifizierungsinformationen übermittelt werden",
+  "useMcpApiTokenTemplate": "Zur authentifizierten Konfiguration wechseln",
   "mcpRequiresTcp": "Anweisungen zur Agent-Verbindung sind verfügbar, wenn das API-Protokoll TCP ist."
 }

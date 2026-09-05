@@ -439,5 +439,7 @@
   "mcpAgentDialogDescription": "使用するエージェントを選択し、接続設定をコピーしてください。",
   "mcpNotRunningHint": "MCP サービスが有効になっていません。有効にしてください",
   "webApiConfigReadOnlyHelp": "Web 版では API 設定をオンラインで変更できません。サーバーの起動オプションまたは設定ファイルを変更し、サービスを再起動して反映してください。",
+  "webMcpApiTokenHint": "API トークンを設定している場合、エージェント接続時に認証情報を渡す必要があります",
+  "useMcpApiTokenTemplate": "認証付き設定に切り替える",
   "mcpRequiresTcp": "API プロトコルが TCP の場合にエージェント接続手順を利用できます。"
 }
