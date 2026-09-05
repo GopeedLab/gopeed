@@ -2,20 +2,6 @@ import Flutter
 import Libgopeed
 import UIKit
 
-private final class GopeedTaskEventForwarder: NSObject, LibgopeedTaskEventListener {
-  private let channel: FlutterMethodChannel
-
-  init(channel: FlutterMethodChannel) {
-    self.channel = channel
-  }
-
-  func onTaskEvent(_ payload: String?) {
-    DispatchQueue.main.async { [channel] in
-      channel.invokeMethod("taskEvent", arguments: payload ?? "")
-    }
-  }
-}
-
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   override func application(
@@ -74,7 +60,7 @@ private final class GopeedTaskEventForwarder: NSObject, LibgopeedTaskEventListen
       case "subscribeTaskEvents":
         let arguments = call.arguments as? [String: Any]
         let mask = (arguments?["mask"] as? NSNumber)?.int64Value ?? 0
-        LibgopeedSubscribeTaskEvents(mask, mask == 0 ? nil : taskEventForwarder)
+        GopeedSubscribeTaskEventsWithForwarder(mask, mask == 0 ? nil : taskEventForwarder)
         result(nil)
       default:
         result(FlutterMethodNotImplemented)
