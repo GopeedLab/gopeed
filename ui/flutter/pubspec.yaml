@@ -83,6 +83,18 @@ dependencies:
   go_router: ^16.2.1
 
 dependency_overrides:
+  # Prevent a native Windows crash when the push notification service is unavailable.
+  # Keep this fork until https://github.com/MaikuB/flutter_local_notifications/pull/2813 is merged and released.
+  flutter_local_notifications:
+    git:
+      url: https://github.com/j-bibodi/flutter_local_notifications.git
+      ref: windows-fixCrashPushNotificationServiceUnavailable
+      path: flutter_local_notifications
+  flutter_local_notifications_windows:
+    git:
+      url: https://github.com/j-bibodi/flutter_local_notifications.git
+      ref: windows-fixCrashPushNotificationServiceUnavailable
+      path: flutter_local_notifications_windows
   # Upstream initializes a Windows Geolocator when the plugin registers, which
   # makes Windows report location access even when the app never requests it.
   # Keep this fork until https://github.com/Baseflow/flutter-permission-handler/issues/1394 is fixed and released.
