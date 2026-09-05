@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,6 +11,50 @@ import (
 
 	"github.com/GopeedLab/gopeed/pkg/base"
 )
+
+func TestLoadCliArgsLongNames(t *testing.T) {
+	originalCommandLine := flag.CommandLine
+	originalArgs := os.Args
+	t.Cleanup(func() {
+		flag.CommandLine = originalCommandLine
+		os.Args = originalArgs
+	})
+
+	flags := flag.NewFlagSet("gopeed-web-test", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flag.CommandLine = flags
+	os.Args = []string{
+		"gopeed-web",
+		"--address", "127.0.0.2",
+		"--port", "8080",
+		"--username", "admin",
+		"--password", "password",
+		"--api-token", "token",
+		"--mcp-enable",
+		"--storage-dir", "/tmp/gopeed",
+		"--white-download-dirs", "/tmp/one,/tmp/two",
+		"--config", "/tmp/gopeed.json",
+	}
+
+	cfg := loadCliArgs()
+	if *cfg.Address != "127.0.0.2" || *cfg.Port != 8080 || *cfg.Username != "admin" ||
+		*cfg.Password != "password" || *cfg.ApiToken != "token" || !cfg.MCPEnable ||
+		*cfg.StorageDir != "/tmp/gopeed" || !reflect.DeepEqual(cfg.WhiteDownloadDirs, []string{"/tmp/one", "/tmp/two"}) ||
+		*cfg.configPath != "/tmp/gopeed.json" {
+		t.Fatalf("unexpected long-name CLI config: %+v", cfg)
+	}
+
+	for _, name := range []string{"A", "P", "u", "p", "T", "d", "c"} {
+		if flags.Lookup(name) == nil {
+			t.Errorf("legacy short flag %q is missing", name)
+		}
+	}
+	for _, name := range []string{"M", "w"} {
+		if flags.Lookup(name) != nil {
+			t.Errorf("new option unexpectedly has short flag %q", name)
+		}
+	}
+}
 
 func TestSetDefaults(t *testing.T) {
 	// Create mock CLI configuration with command line default values
@@ -165,14 +211,15 @@ func TestOverrideWithCliArgs(t *testing.T) {
 	t.Run("flag override documentation", func(t *testing.T) {
 		// Document the expected behavior for each flag:
 		flagBehaviors := map[string]string{
-			"A": "Should override cfg.Address with cliConfig.Address",
-			"P": "Should override cfg.Port with cliConfig.Port",
-			"u": "Should override cfg.Username with cliConfig.Username",
-			"p": "Should override cfg.Password with cliConfig.Password",
-			"T": "Should override cfg.ApiToken with cliConfig.ApiToken",
-			"d": "Should override cfg.StorageDir with cliConfig.StorageDir",
-			"w": "Should override cfg.WhiteDownloadDirs with cliConfig.WhiteDownloadDirs",
-			"c": "Should override cfg.configPath with cliConfig.configPath",
+			"A/address":           "Should override cfg.Address with cliConfig.Address",
+			"P/port":              "Should override cfg.Port with cliConfig.Port",
+			"u/username":          "Should override cfg.Username with cliConfig.Username",
+			"p/password":          "Should override cfg.Password with cliConfig.Password",
+			"T/api-token":         "Should override cfg.ApiToken with cliConfig.ApiToken",
+			"mcp-enable":          "Should override cfg.MCPEnable with cliConfig.MCPEnable",
+			"d/storage-dir":       "Should override cfg.StorageDir with cliConfig.StorageDir",
+			"white-download-dirs": "Should override cfg.WhiteDownloadDirs with cliConfig.WhiteDownloadDirs",
+			"c/config":            "Should override cfg.configPath with cliConfig.configPath",
 		}
 
 		t.Log("Expected flag override behaviors:")
@@ -187,21 +234,23 @@ func TestOverrideWithCliArgs(t *testing.T) {
 		mockFlagVisit := func(config *args, cliConfig *args, flagName string) {
 			// Simulate the switch statement in overrideWithCliArgs
 			switch flagName {
-			case "A":
+			case "A", "address":
 				config.Address = cliConfig.Address
-			case "P":
+			case "P", "port":
 				config.Port = cliConfig.Port
-			case "u":
+			case "u", "username":
 				config.Username = cliConfig.Username
-			case "p":
+			case "p", "password":
 				config.Password = cliConfig.Password
-			case "T":
+			case "T", "api-token":
 				config.ApiToken = cliConfig.ApiToken
-			case "d":
+			case "mcp-enable":
+				config.MCPEnable = cliConfig.MCPEnable
+			case "d", "storage-dir":
 				config.StorageDir = cliConfig.StorageDir
-			case "w":
+			case "white-download-dirs":
 				config.WhiteDownloadDirs = cliConfig.WhiteDownloadDirs
-			case "c":
+			case "c", "config":
 				config.configPath = cliConfig.configPath
 			default:
 				t.Errorf("Unknown flag: %s", flagName)
@@ -286,6 +335,20 @@ func TestOverrideWithCliArgs(t *testing.T) {
 				},
 			},
 			{
+				flagName: "mcp-enable",
+				setupConfig: func() *args {
+					return &args{MCPEnable: false}
+				},
+				setupCliConfig: func() *args {
+					return &args{MCPEnable: true}
+				},
+				verify: func(t *testing.T, cfg *args) {
+					if !cfg.MCPEnable {
+						t.Error("MCPEnable flag override failed: got false, want true")
+					}
+				},
+			},
+			{
 				flagName: "d",
 				setupConfig: func() *args {
 					return &args{StorageDir: stringPtr("/original/storage")}
@@ -300,7 +363,7 @@ func TestOverrideWithCliArgs(t *testing.T) {
 				},
 			},
 			{
-				flagName: "w",
+				flagName: "white-download-dirs",
 				setupConfig: func() *args {
 					return &args{WhiteDownloadDirs: []string{"/original/dir1", "/original/dir2"}}
 				},
@@ -402,6 +465,7 @@ func TestLoadConfigFile(t *testing.T) {
 				"username": "testuser",
 				"password": "testpass",
 				"apiToken": "testtoken",
+				"mcpEnable": true,
 				"storageDir": "/test/storage",
 				"downloadConfig": {
 					"downloadDir": "/test/downloads",
@@ -415,6 +479,7 @@ func TestLoadConfigFile(t *testing.T) {
 				Username:   stringPtr("testuser"),
 				Password:   stringPtr("testpass"),
 				ApiToken:   stringPtr("testtoken"),
+				MCPEnable:  true,
 				StorageDir: stringPtr("/test/storage"),
 				DownloadConfig: &base.DownloaderStoreConfig{
 					DownloadDir: "/test/downloads",
@@ -476,7 +541,7 @@ func TestLoadEnvVars(t *testing.T) {
 	originalEnv := make(map[string]string)
 	envKeys := []string{
 		"GOPEED_ADDRESS", "GOPEED_PORT", "GOPEED_USERNAME",
-		"GOPEED_PASSWORD", "GOPEED_APITOKEN", "GOPEED_STORAGEDIR",
+		"GOPEED_PASSWORD", "GOPEED_APITOKEN", "GOPEED_MCPENABLE", "GOPEED_STORAGEDIR",
 		"GOPEED_DOWNLOADCONFIG", "GOPEED_WHITEDOWNLOADDIRS",
 	}
 	for _, key := range envKeys {
@@ -508,6 +573,7 @@ func TestLoadEnvVars(t *testing.T) {
 				"GOPEED_USERNAME":   "envuser",
 				"GOPEED_PASSWORD":   "envpass",
 				"GOPEED_APITOKEN":   "envtoken",
+				"GOPEED_MCPENABLE":  "true",
 				"GOPEED_STORAGEDIR": "/env/storage",
 			},
 			expected: &args{
@@ -516,6 +582,7 @@ func TestLoadEnvVars(t *testing.T) {
 				Username:   stringPtr("envuser"),
 				Password:   stringPtr("envpass"),
 				ApiToken:   stringPtr("envtoken"),
+				MCPEnable:  true,
 				StorageDir: stringPtr("/env/storage"),
 			},
 		},

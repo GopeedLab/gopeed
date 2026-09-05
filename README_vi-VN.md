@@ -35,14 +35,33 @@ Truy cập ✈ [Trang web chính thức](https://gopeed.com)
 - 🗣️ **Hơn 20 ngôn ngữ giao diện** — gồm tiếng Việt, tiếng Anh, tiếng Trung giản thể và phồn thể, tiếng Nhật, tiếng Hàn cùng nhiều ngôn ngữ khác.
 - 🌐 **Tích hợp trình duyệt** — gửi tải xuống từ Chrome, Edge, Firefox và các trình duyệt tương thích sang Gopeed.
 - 🧩 **Tiện ích JavaScript** — thêm nguồn tải từ nền tảng video, kho mô hình AI, lưu trữ đám mây và nhiều dịch vụ khác.
+- 🤖 **Tích hợp AI** — cung cấp giao diện MCP để kết nối với các AI Agent tương thích và tạo, kiểm tra hoặc quản lý tác vụ tải xuống bằng ngôn ngữ tự nhiên.
 - 🔌 **Giao diện mở** — REST API, CLI, Web UI có xác thực, webhook và script sau khi tải.
 - 🛠️ **Công cụ tích hợp** — Header/User-Agent tùy chỉnh, proxy, mirror GitHub, thông báo và tự động giải nén.
+
+## 🤖 Tích hợp AI
+
+Sau khi kết nối Gopeed với AI Agent, bạn có thể quản lý tải xuống bằng ngôn ngữ tự nhiên. Ví dụ, hãy nói với AI Agent:
+
+> Hãy tải xuống phiên bản Gopeed mới nhất dành cho Windows
+
+| Tool | Mô tả |
+| --- | --- |
+| `resolve_task` | Phân tích URL hoặc URI tải xuống và trả về thông tin tài nguyên cùng danh sách tệp trước khi tạo tác vụ. |
+| `create_task` | Tạo và bắt đầu tác vụ từ ID tài nguyên đã phân tích hoặc từ yêu cầu tải xuống trực tiếp. |
+| `list_tasks` | Liệt kê tác vụ và có thể lọc theo ID hoặc trạng thái. |
+| `get_task` | Lấy yêu cầu, tài nguyên, tùy chọn và tiến độ hiện tại của một tác vụ. |
+| `get_task_status` | Lấy trạng thái chạy rút gọn và tiến độ của từng tệp trong một tác vụ. |
+| `get_task_stats` | Lấy số liệu thống kê theo giao thức, gồm kết nối HTTP hoặc Peer và dữ liệu seed của BitTorrent. |
+| `pause_task` | Tạm dừng tác vụ. |
+| `continue_task` | Tiếp tục tác vụ đã tạm dừng hoặc bị lỗi. |
+| `delete_task` | Xóa tác vụ và có thể xóa cả các tệp đã tải xuống. |
 
 ## ⬇️ Tải về
 
 ### 🧪 Gopeed 2.0.0 Beta
 
-Gopeed 2.0.0 hiện đang trong giai đoạn beta công khai. Phiên bản này mang đến trải nghiệm 2.0.0 mới, nhưng một số tính năng có thể vẫn chưa hoàn thiện hoặc chưa ổn định. Hãy dùng thử và gửi phản hồi cho chúng tôi nếu bạn gặp vấn đề.
+Gopeed 2.0.0 hiện đang trong giai đoạn beta công khai, với giao diện được thiết kế lại, kiến trúc giao tiếp native kết nối trực tiếp ứng dụng desktop và di động với lõi Go qua FFI, trải nghiệm đa nền tảng nhất quán hơn, khả năng quản lý tác vụ được cải thiện, API linh hoạt hơn và khả năng tích hợp AI Agent qua MCP. Một số tính năng có thể vẫn chưa hoàn thiện hoặc chưa ổn định, vì vậy hãy dùng thử và gửi phản hồi nếu bạn gặp vấn đề.
 
 - [Tải Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
 

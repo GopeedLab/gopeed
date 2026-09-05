@@ -780,6 +780,7 @@ func TestApiToken(t *testing.T) {
 	var cfg = &model.StartConfig{}
 	cfg.Init()
 	cfg.ApiToken = "123456"
+	cfg.MCPEnable = true
 	fileListener := doStart(cfg)
 	defer func() {
 		if err := fileListener.Close(); err != nil {
@@ -800,6 +801,112 @@ func TestApiToken(t *testing.T) {
 		t.Errorf("TestApiToken() got = %v, want %v", status, http.StatusOK)
 	}
 
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": "Bearer " + cfg.ApiToken,
+	}, nil)
+	if status != http.StatusOK {
+		t.Errorf("Bearer API token status = %v, want %v", status, http.StatusOK)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": "bearer " + cfg.ApiToken,
+	}, nil)
+	if status != http.StatusOK {
+		t.Errorf("case-insensitive Bearer API token status = %v, want %v", status, http.StatusOK)
+	}
+
+	status, _ = doHttpRequest0(http.MethodGet, "/api/v1/config", map[string]string{
+		"Authorization": "Bearer invalid",
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Errorf("invalid Bearer API token status = %v, want %v", status, http.StatusUnauthorized)
+	}
+
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://127.0.0.1:%d/api/v1/config", restPort), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("X-Api-Token", "invalid")
+	request.Header.Set("Authorization", "Bearer "+cfg.ApiToken)
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Errorf("one valid token header status = %v, want %v", response.StatusCode, http.StatusOK)
+	}
+
+	mcpInitialize := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params": map[string]any{
+			"protocolVersion": "2025-11-25",
+			"capabilities":    map[string]any{},
+			"clientInfo":      map[string]any{"name": "gopeed-test", "version": "1.0.0"},
+		},
+	}
+	status, _ = doHttpRequest0(http.MethodPost, "/mcp", map[string]string{
+		"Accept":       "application/json, text/event-stream",
+		"Content-Type": "application/json",
+	}, mcpInitialize)
+	if status != http.StatusUnauthorized {
+		t.Errorf("unauthenticated MCP status = %v, want %v", status, http.StatusUnauthorized)
+	}
+	status, _ = doHttpRequest0(http.MethodPost, "/mcp", map[string]string{
+		"Accept":        "application/json, text/event-stream",
+		"Content-Type":  "application/json",
+		"Authorization": "Bearer " + cfg.ApiToken,
+	}, mcpInitialize)
+	if status != http.StatusOK {
+		t.Errorf("Bearer-authenticated MCP status = %v, want %v", status, http.StatusOK)
+	}
+
+}
+
+func TestMCPRouteToggle(t *testing.T) {
+	initialize := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params": map[string]any{
+			"protocolVersion": "2025-11-25",
+			"capabilities":    map[string]any{},
+			"clientInfo": map[string]any{
+				"name":    "gopeed-test",
+				"version": "1.0.0",
+			},
+		},
+	}
+	headers := map[string]string{
+		"Accept":       "application/json, text/event-stream",
+		"Content-Type": "application/json",
+	}
+
+	t.Run("disabled", func(t *testing.T) {
+		cfg := (&model.StartConfig{Storage: model.StorageMem, ApiToken: "secret"}).Init()
+		fileListener := doStart(cfg)
+		defer fileListener.Close()
+		defer Stop()
+
+		status, _ := doHttpRequest0(http.MethodPost, "/mcp", headers, initialize)
+		if status != http.StatusNotFound {
+			t.Fatalf("disabled MCP status = %d, want %d", status, http.StatusNotFound)
+		}
+	})
+
+	t.Run("enabled", func(t *testing.T) {
+		cfg := (&model.StartConfig{Storage: model.StorageMem, MCPEnable: true}).Init()
+		fileListener := doStart(cfg)
+		defer fileListener.Close()
+		defer Stop()
+
+		status, _ := doHttpRequest0(http.MethodPost, "/mcp", headers, initialize)
+		if status != http.StatusOK {
+			t.Fatalf("enabled MCP status = %d, want %d", status, http.StatusOK)
+		}
+	})
 }
 
 func TestBuildServerRejectsWebAPITokenWithoutWebAuth(t *testing.T) {

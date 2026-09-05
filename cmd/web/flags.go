@@ -18,6 +18,7 @@ type args struct {
 	Username          *string  `json:"username"`
 	Password          *string  `json:"password"`
 	ApiToken          *string  `json:"apiToken"`
+	MCPEnable         bool     `json:"mcpEnable"`
 	StorageDir        *string  `json:"storageDir"`
 	WhiteDownloadDirs []string `json:"whiteDownloadDirs"`
 	// DownloadConfig when the first time to start the server, it will be configured as initial value
@@ -43,13 +44,21 @@ func parse() *args {
 func loadCliArgs() *args {
 	cfg := &args{}
 	cfg.Address = flag.String("A", "0.0.0.0", "Bind Address")
+	flag.StringVar(cfg.Address, "address", "0.0.0.0", "Bind Address")
 	cfg.Port = flag.Int("P", 9999, "Bind Port")
+	flag.IntVar(cfg.Port, "port", 9999, "Bind Port")
 	cfg.Username = flag.String("u", "gopeed", "Web Authentication Username")
+	flag.StringVar(cfg.Username, "username", "gopeed", "Web Authentication Username")
 	cfg.Password = flag.String("p", "", "Web Authentication Password, if no password is set, web authentication will not be enabled")
+	flag.StringVar(cfg.Password, "password", "", "Web Authentication Password, if no password is set, web authentication will not be enabled")
 	cfg.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
+	flag.StringVar(cfg.ApiToken, "api-token", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
+	flag.BoolVar(&cfg.MCPEnable, "mcp-enable", false, "Enable MCP endpoint")
 	cfg.StorageDir = flag.String("d", "", "Storage directory")
-	whiteDownloadDirs := flag.String("w", "", "White download directories, comma-separated")
+	flag.StringVar(cfg.StorageDir, "storage-dir", "", "Storage directory")
+	whiteDownloadDirs := flag.String("white-download-dirs", "", "White download directories, comma-separated")
 	cfg.configPath = flag.String("c", "./config.json", "Config file path")
+	flag.StringVar(cfg.configPath, "config", "./config.json", "Config file path")
 	flag.Parse()
 
 	// Parse white download directories from comma-separated string
@@ -68,21 +77,23 @@ func loadCliArgs() *args {
 func overrideWithCliArgs(cfg *args, cliConfig *args) {
 	flag.Visit(func(f *flag.Flag) {
 		switch f.Name {
-		case "A":
+		case "A", "address":
 			cfg.Address = cliConfig.Address
-		case "P":
+		case "P", "port":
 			cfg.Port = cliConfig.Port
-		case "u":
+		case "u", "username":
 			cfg.Username = cliConfig.Username
-		case "p":
+		case "p", "password":
 			cfg.Password = cliConfig.Password
-		case "T":
+		case "T", "api-token":
 			cfg.ApiToken = cliConfig.ApiToken
-		case "d":
+		case "mcp-enable":
+			cfg.MCPEnable = cliConfig.MCPEnable
+		case "d", "storage-dir":
 			cfg.StorageDir = cliConfig.StorageDir
-		case "w":
+		case "white-download-dirs":
 			cfg.WhiteDownloadDirs = cliConfig.WhiteDownloadDirs
-		case "c":
+		case "c", "config":
 			cfg.configPath = cliConfig.configPath
 		}
 	})
@@ -193,6 +204,10 @@ func loadEnvVars(cfg *args) {
 					dirs[i] = strings.TrimSpace(dirs[i])
 				}
 				field.Set(reflect.ValueOf(dirs))
+			}
+		} else if field.Kind() == reflect.Bool {
+			if boolVal, err := strconv.ParseBool(envValue); err == nil {
+				field.SetBool(boolVal)
 			}
 		}
 	}

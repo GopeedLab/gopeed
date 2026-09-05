@@ -432,5 +432,14 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "خدمة Gopeed في الخلفية",
   "androidForegroundNotificationTitle": "Gopeed قيد التشغيل",
-  "androidForegroundNotificationText": "يمكن متابعة التنزيلات في الخلفية"
+  "androidForegroundNotificationText": "يمكن متابعة التنزيلات في الخلفية",
+  "mcpDescription": "تعاون مع وكلاء الذكاء الاصطناعي واستكشف إمكانات بلا حدود",
+  "connectAgent": "دليل الإعداد",
+  "connectMcpAgent": "ربط وكيل MCP",
+  "mcpAgentDialogDescription": "اختر الوكيل الذي تستخدمه، ثم انسخ إعدادات الاتصال الخاصة به.",
+  "mcpNotRunningHint": "خدمة MCP غير مفعّلة. يرجى تفعيلها",
+  "webApiConfigReadOnlyHelp": "لا يدعم إصدار الويب تعديل إعدادات API مباشرة. عدّل خيارات بدء تشغيل الخادم أو ملف الإعدادات، ثم أعد تشغيل الخدمة لتطبيق التغييرات.",
+  "webMcpApiTokenHint": "إذا قمت بتكوين رمز API، فيجب تمرير معلومات المصادقة عند ربط الوكيل",
+  "useMcpApiTokenTemplate": "التبديل إلى إعدادات المصادقة",
+  "mcpRequiresTcp": "تتوفر إرشادات ربط الوكيل عندما يكون بروتوكول API هو TCP."
 }

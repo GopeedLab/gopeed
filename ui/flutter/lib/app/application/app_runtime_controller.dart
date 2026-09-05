@@ -13,6 +13,7 @@ import '../../core/common/start_config.dart';
 import '../../core/common/task_event.dart';
 import '../../core/entry/app_initializer.dart';
 import '../../core/libgopeed_boot.dart';
+import '../../core/network/gopeed/gopeed_transport.dart';
 import '../../features/auth/application/web_auth_controller.dart';
 import '../../l10n/l10n.dart';
 import '../../util/log_util.dart';
@@ -64,11 +65,22 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     if (current == null) return;
     final config = await ref.read(gopeedServiceProvider).getConfig();
     final apiState = kIsWeb ? current.apiServerState : (await LibgopeedBoot.instance.getApiServerState()).state;
-    final startConfig = _copyStartConfig(current.startConfig)
-      ..apiEnable = config.api.enable
-      ..network = config.api.network
-      ..address = config.api.address
-      ..apiToken = config.api.token;
+    final startConfig = _copyStartConfig(current.startConfig);
+    if (kIsWeb) {
+      // The Web client connection may point at a separate development server
+      // from the page itself. Downloader config describes the remote process
+      // and must not replace that client-side endpoint after reload.
+      startConfig
+        ..apiEnable = true
+        ..mcpEnable = config.api.mcpEnable;
+    } else {
+      startConfig
+        ..apiEnable = config.api.enable
+        ..mcpEnable = config.api.mcpEnable
+        ..network = config.api.network
+        ..address = config.api.address
+        ..apiToken = config.api.token;
+    }
     state = AsyncValue.data(
       AppRuntimeState(
         startConfig: startConfig,
@@ -112,6 +124,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     var runningPort = 0;
     var apiServerState = const ApiServerState(
       enabled: false,
+      mcpEnabled: false,
       running: false,
       network: '',
       address: '',
@@ -141,7 +154,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
 
     if (kIsWeb) {
       final webAuth = ref.read(webAuthControllerProvider);
-      api.init('tcp', Uri.base.authority, '', onUnauthorized: webAuth.requireLogin);
+      api.init('tcp', startConfig.address, '', onUnauthorized: webAuth.requireLogin);
     } else {
       api.init(startConfig.network, _runningAddress(startConfig, runningPort), startConfig.apiToken);
     }
@@ -150,6 +163,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     if (!kIsWeb) {
       startConfig
         ..apiEnable = config.api.enable
+        ..mcpEnable = config.api.mcpEnable
         ..network = config.api.network
         ..address = config.api.address
         ..apiToken = config.api.token;
@@ -206,7 +220,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     if (kIsWeb) {
       cfg
         ..network = 'tcp'
-        ..address = Uri.base.authority;
+        ..address = webApiBaseUrl(Uri.base);
       _defaultStartConfig = cfg;
       return cfg;
     }
@@ -404,6 +418,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     final downloaderConfig = await ref.read(gopeedServiceProvider).getConfig();
     downloaderConfig.api
       ..enable = nextConfig.apiEnable
+      ..mcpEnable = nextConfig.mcpEnable
       ..network = nextConfig.network
       ..address = nextConfig.address
       ..token = nextConfig.apiToken;
@@ -459,6 +474,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       ..network = config.network
       ..address = config.address
       ..apiEnable = config.apiEnable
+      ..mcpEnable = config.mcpEnable
       ..storage = config.storage
       ..storageDir = config.storageDir
       ..refreshInterval = config.refreshInterval

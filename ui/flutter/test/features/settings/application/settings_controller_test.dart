@@ -75,6 +75,7 @@ class _TestRuntimeController extends AppRuntimeController {
     startConfig: StartConfig(),
     apiServerState: const ApiServerState(
       enabled: false,
+      mcpEnabled: false,
       running: false,
       network: '',
       address: '',

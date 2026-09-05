@@ -39,6 +39,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) => <Str
 
 ApiServerConfig _$ApiServerConfigFromJson(Map<String, dynamic> json) => ApiServerConfig(
   enable: json['enable'] as bool? ?? false,
+  mcpEnable: json['mcpEnable'] as bool? ?? false,
   network: json['network'] as String? ?? 'tcp',
   address: json['address'] as String? ?? '127.0.0.1:9999',
   token: json['token'] as String? ?? '',
@@ -46,6 +47,7 @@ ApiServerConfig _$ApiServerConfigFromJson(Map<String, dynamic> json) => ApiServe
 
 Map<String, dynamic> _$ApiServerConfigToJson(ApiServerConfig instance) => <String, dynamic>{
   'enable': instance.enable,
+  'mcpEnable': instance.mcpEnable,
   'network': instance.network,
   'address': instance.address,
   'token': instance.token,

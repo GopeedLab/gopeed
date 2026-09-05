@@ -31,6 +31,16 @@ class AppPrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
+    final content = leading == null && trailing == null
+        ? child
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (leading != null) ...[leading!, const SizedBox(width: AppDesignTokens.space8)],
+              child,
+              if (trailing != null) ...[const SizedBox(width: AppDesignTokens.space8), trailing!],
+            ],
+          );
 
     return shad.ButtonStyleOverride(
       decoration: (context, states, value) {
@@ -48,14 +58,12 @@ class AppPrimaryButton extends StatelessWidget {
       },
       child: shad.PrimaryButton(
         onPressed: onPressed,
-        leading: leading,
-        trailing: trailing,
         alignment: alignment,
         size: size,
         density: density,
         shape: shape,
         disableTransition: disableTransition,
-        child: child,
+        child: content,
       ),
     );
   }

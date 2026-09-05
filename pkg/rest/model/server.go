@@ -19,6 +19,7 @@ type StartConfig struct {
 	Network           string                      `json:"network"`
 	Address           string                      `json:"address"`
 	ApiEnable         *bool                       `json:"apiEnable,omitempty"`
+	MCPEnable         bool                        `json:"mcpEnable"`
 	RefreshInterval   int                         `json:"refreshInterval"`
 	Storage           Storage                     `json:"storage"`
 	StorageDir        string                      `json:"storageDir"`
@@ -84,6 +85,7 @@ type WebAuth struct {
 // persisted APIServerConfig remains the desired state.
 type APIServerState struct {
 	Enabled      bool   `json:"enabled"`
+	MCPEnabled   bool   `json:"mcpEnabled"`
 	Running      bool   `json:"running"`
 	Network      string `json:"network"`
 	Address      string `json:"address"`

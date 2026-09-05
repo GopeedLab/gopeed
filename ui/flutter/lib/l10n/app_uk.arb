@@ -432,5 +432,14 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Фонова служба Gopeed",
   "androidForegroundNotificationTitle": "Gopeed працює",
-  "androidForegroundNotificationText": "Завантаження можуть продовжуватися у фоновому режимі"
+  "androidForegroundNotificationText": "Завантаження можуть продовжуватися у фоновому режимі",
+  "mcpDescription": "Співпрацюйте з ШІ-агентами та відкривайте безмежні можливості",
+  "connectAgent": "Посібник із підключення",
+  "connectMcpAgent": "Підключити MCP-агента",
+  "mcpAgentDialogDescription": "Виберіть агента, якого використовуєте, і скопіюйте його конфігурацію підключення.",
+  "mcpNotRunningHint": "Службу MCP не ввімкнено. Увімкніть її",
+  "webApiConfigReadOnlyHelp": "У вебверсії не можна змінювати налаштування API онлайн. Змініть параметри запуску сервера або файл конфігурації, а потім перезапустіть службу.",
+  "webMcpApiTokenHint": "Якщо налаштовано API-токен, під час підключення агента потрібно передати дані автентифікації",
+  "useMcpApiTokenTemplate": "Перейти до конфігурації з автентифікацією",
+  "mcpRequiresTcp": "Інструкції з підключення агентів доступні, коли протокол API — TCP."
 }

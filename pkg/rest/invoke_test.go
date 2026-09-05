@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -45,10 +46,11 @@ func TestAPIServerLifecycleUsesPersistedConfigWithoutRestartingCore(t *testing.T
 	}
 
 	putAPIServerConfig(t, &base.APIServerConfig{
-		Enable:  true,
-		Network: "tcp",
-		Address: "127.0.0.1:0",
-		Token:   "secret",
+		Enable:    true,
+		MCPEnable: true,
+		Network:   "tcp",
+		Address:   "127.0.0.1:0",
+		Token:     "secret",
 	})
 	state, err := StartAPIServer()
 	if err != nil {
@@ -57,6 +59,9 @@ func TestAPIServerLifecycleUsesPersistedConfigWithoutRestartingCore(t *testing.T
 	port = state.RunningPort
 	if port == 0 {
 		t.Fatal("enabling the REST API did not open a TCP listener")
+	}
+	if !state.MCPEnabled {
+		t.Fatal("persisted MCP endpoint setting was not applied")
 	}
 
 	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://127.0.0.1:%d/api/v1/info", port), nil)
@@ -73,10 +78,30 @@ func TestAPIServerLifecycleUsesPersistedConfigWithoutRestartingCore(t *testing.T
 		t.Fatalf("REST API returned status %d", response.StatusCode)
 	}
 
+	mcpRequest, err := http.NewRequest(
+		http.MethodPost,
+		fmt.Sprintf("http://127.0.0.1:%d/mcp", port),
+		strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"gopeed-test","version":"1.0.0"}}}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mcpRequest.Header.Set("Accept", "application/json, text/event-stream")
+	mcpRequest.Header.Set("Content-Type", "application/json")
+	mcpRequest.Header.Set("Authorization", "Bearer secret")
+	mcpResponse, err := http.DefaultClient.Do(mcpRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mcpResponse.Body.Close()
+	if mcpResponse.StatusCode != http.StatusOK {
+		t.Fatalf("MCP endpoint returned status %d", mcpResponse.StatusCode)
+	}
+
 	putAPIServerConfig(t, &base.APIServerConfig{Enable: false})
 	if state, err := StopAPIServer(); err != nil {
 		t.Fatal(err)
-	} else if state.Running || state.RunningPort != 0 || state.PendingApply {
+	} else if state.Running || state.MCPEnabled || state.RunningPort != 0 || state.PendingApply {
 		t.Fatalf("unexpected stopped API server state: %#v", state)
 	}
 

@@ -35,14 +35,33 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 - 🗣️ **20+ 种界面语言** — 支持简体中文、繁体中文、英语、日语、韩语等多种语言。
 - 🌐 **浏览器接管** — 支持 Chrome、Edge、Firefox 等兼容浏览器，将下载任务直接发送到 Gopeed。
 - 🧩 **JavaScript 扩展** — 扩展视频网站、AI 模型站、网盘等更多下载源。
+- 🤖 **AI 接入** — 开放 MCP 接口，可接入 AI Agent，通过自然语言创建、查询和管理下载任务。
 - 🔌 **开放接口** — 通过 REST API、CLI、带身份认证的 Web UI、Webhook 和下载后脚本进行自动化。
 - 🛠️ **常用内置能力** — 自定义 Header 与 User-Agent、代理、GitHub 镜像、通知和自动解压。
+
+## 🤖 AI 接入
+
+将 Gopeed 接入 AI Agent 后，即可通过自然语言管理下载。例如，直接对 AI Agent 说：
+
+> 帮我下载最新的 Gopeed Windows 客户端
+
+| Tool | 功能说明 |
+| --- | --- |
+| `resolve_task` | 解析下载 URL 或 URI，在创建任务前返回资源信息及文件列表。 |
+| `create_task` | 使用已解析的资源 ID 或直接下载请求创建并启动任务。 |
+| `list_tasks` | 查询任务列表，并可按任务 ID 或状态筛选。 |
+| `get_task` | 获取单个任务的请求、资源、选项及当前进度等完整信息。 |
+| `get_task_status` | 获取单个任务的轻量运行状态和各文件下载进度。 |
+| `get_task_stats` | 获取协议相关统计信息，包括 HTTP 连接或 BitTorrent Peer 与做种数据。 |
+| `pause_task` | 暂停任务。 |
+| `continue_task` | 继续已暂停或失败的任务。 |
+| `delete_task` | 删除任务，并可选择同时删除已下载文件。 |
 
 ## ⬇️ 下载
 
 ### 🧪 Gopeed 2.0.0 Beta
 
-Gopeed 2.0.0 目前处于公开 Beta 测试阶段，带来了全新的 2.0.0 使用体验，但部分功能仍可能不够完善或稳定。欢迎提前体验，并向我们反馈使用过程中遇到的问题。
+Gopeed 2.0.0 目前处于公开 Beta 测试阶段，引入了全新界面、通过 FFI 直连 Go 核心的原生通信架构、更一致的跨平台体验、更完善的任务管理、更灵活的 API，以及用于 AI Agent 接入的 MCP 能力。部分功能仍可能不够完善或稳定，欢迎提前体验并向我们反馈问题。
 
 - [下载 Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
 

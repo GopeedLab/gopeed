@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_copy_icon_button.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../core/utils/text_wrap.dart';
@@ -81,8 +81,6 @@ class TaskDetailsView extends ConsumerStatefulWidget {
 class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
   final _urlController = TextEditingController();
   int _tabIndex = 0;
-  bool _copied = false;
-  bool _storagePathCopied = false;
   bool _editingUrl = false;
   bool _updatingUrl = false;
 
@@ -97,8 +95,6 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
     super.didUpdateWidget(oldWidget);
     if (widget.task.id != oldWidget.task.id) {
       _tabIndex = 0;
-      _copied = false;
-      _storagePathCopied = false;
       _editingUrl = false;
       _updatingUrl = false;
       _urlController.text = widget.task.url;
@@ -171,8 +167,6 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
               padding: EdgeInsets.all(contentPadding),
               child: _TaskInfoTab(
                 task: widget.task,
-                copied: _copied,
-                storagePathCopied: _storagePathCopied,
                 canOpenStorage: _canOpenStoragePath,
                 editingUrl: _editingUrl,
                 updatingUrl: _updatingUrl,
@@ -189,14 +183,6 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
                   _editingUrl = false;
                 }),
                 onSaveUrl: () => unawaited(_saveUrl()),
-                onCopy: () async {
-                  await Clipboard.setData(ClipboardData(text: widget.task.url));
-                  if (mounted) setState(() => _copied = true);
-                },
-                onCopyStorage: () async {
-                  await Clipboard.setData(ClipboardData(text: widget.task.storagePath));
-                  if (mounted) setState(() => _storagePathCopied = true);
-                },
               ),
             ),
             1 => Padding(
@@ -281,14 +267,10 @@ class _DrawerTabButton extends StatelessWidget {
 class _TaskInfoTab extends StatelessWidget {
   const _TaskInfoTab({
     required this.task,
-    required this.copied,
-    required this.storagePathCopied,
     required this.canOpenStorage,
     required this.editingUrl,
     required this.updatingUrl,
     required this.urlController,
-    required this.onCopy,
-    required this.onCopyStorage,
     required this.onOpenStorage,
     required this.onEditUrl,
     required this.onCancelEditUrl,
@@ -296,14 +278,10 @@ class _TaskInfoTab extends StatelessWidget {
   });
 
   final TaskRecord task;
-  final bool copied;
-  final bool storagePathCopied;
   final bool canOpenStorage;
   final bool editingUrl;
   final bool updatingUrl;
   final TextEditingController urlController;
-  final VoidCallback onCopy;
-  final VoidCallback onCopyStorage;
   final VoidCallback onOpenStorage;
   final VoidCallback? onEditUrl;
   final VoidCallback onCancelEditUrl;
@@ -357,30 +335,23 @@ class _TaskInfoTab extends StatelessWidget {
             label: context.l10n.downloadLink,
             value: task.url,
             valueKey: const ValueKey('task-details-url-value'),
-            actionKey: const ValueKey('task-details-copy-url'),
-            actionLabel: copied ? context.l10n.copied : context.l10n.copy,
-            actionIcon: copied ? Icons.check : Icons.copy_outlined,
+            action: AppCopyIconButton(key: const ValueKey('task-details-copy-url'), text: task.url),
             secondaryActionLabel: onEditUrl == null ? null : context.l10n.edit,
             secondaryActionIcon: Icons.edit_outlined,
             onSecondaryTap: onEditUrl,
-            onTap: onCopy,
           ),
         _CopyableInfoBlock(
           label: context.l10n.storagePath,
           value: task.storagePath,
           valueKey: const ValueKey('task-details-storage-value'),
-          actionKey: ValueKey(canOpenStorage ? 'task-details-open-storage' : 'task-details-copy-storage'),
-          actionLabel: canOpenStorage
-              ? context.l10n.open
-              : storagePathCopied
-              ? context.l10n.copied
-              : context.l10n.copy,
-          actionIcon: canOpenStorage
-              ? Icons.folder_open_outlined
-              : storagePathCopied
-              ? Icons.check
-              : Icons.copy_outlined,
-          onTap: canOpenStorage ? onOpenStorage : onCopyStorage,
+          action: canOpenStorage
+              ? _TaskDetailIconButton(
+                  key: const ValueKey('task-details-open-storage'),
+                  label: context.l10n.open,
+                  icon: const Icon(Icons.folder_open_outlined, size: 16),
+                  onPressed: onOpenStorage,
+                )
+              : AppCopyIconButton(key: const ValueKey('task-details-copy-storage'), text: task.storagePath),
         ),
       ],
     );
@@ -428,10 +399,7 @@ class _CopyableInfoBlock extends StatelessWidget {
     required this.label,
     required this.value,
     required this.valueKey,
-    required this.actionKey,
-    required this.actionLabel,
-    required this.actionIcon,
-    required this.onTap,
+    required this.action,
     this.secondaryActionLabel,
     this.secondaryActionIcon,
     this.onSecondaryTap,
@@ -440,10 +408,7 @@ class _CopyableInfoBlock extends StatelessWidget {
   final String label;
   final String value;
   final Key valueKey;
-  final Key actionKey;
-  final String actionLabel;
-  final IconData actionIcon;
-  final VoidCallback onTap;
+  final Widget action;
   final String? secondaryActionLabel;
   final IconData? secondaryActionIcon;
   final VoidCallback? onSecondaryTap;
@@ -481,12 +446,7 @@ class _CopyableInfoBlock extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                 ],
-                _TaskDetailIconButton(
-                  key: actionKey,
-                  label: actionLabel,
-                  icon: Icon(actionIcon, size: 16),
-                  onPressed: onTap,
-                ),
+                action,
               ],
             ),
           ),

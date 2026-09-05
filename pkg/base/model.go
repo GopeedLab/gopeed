@@ -282,10 +282,11 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 }
 
 type APIServerConfig struct {
-	Enable  bool   `json:"enable"`
-	Network string `json:"network"`
-	Address string `json:"address"`
-	Token   string `json:"token"`
+	Enable    bool   `json:"enable"`
+	MCPEnable bool   `json:"mcpEnable"`
+	Network   string `json:"network"`
+	Address   string `json:"address"`
+	Token     string `json:"token"`
 }
 
 func (cfg *APIServerConfig) Init() *APIServerConfig {

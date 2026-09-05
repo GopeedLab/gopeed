@@ -2,6 +2,7 @@ package rest
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	goapi "github.com/GopeedLab/gopeed/pkg/api"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
+	"github.com/GopeedLab/gopeed/pkg/mcpserver"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	"github.com/gorilla/handlers"
@@ -119,6 +121,7 @@ func Start(startCfg *model.StartConfig) (port int, err error) {
 			apiConfig.Init()
 		}
 		startCfg.ApiEnable = &apiConfig.Enable
+		startCfg.MCPEnable = apiConfig.MCPEnable
 		startCfg.Network = apiConfig.Network
 		startCfg.Address = apiConfig.Address
 		startCfg.ApiToken = apiConfig.Token
@@ -130,10 +133,11 @@ func Start(startCfg *model.StartConfig) (port int, err error) {
 		return 0, nil
 	}
 	config := &base.APIServerConfig{
-		Enable:  true,
-		Network: startCfg.Network,
-		Address: startCfg.Address,
-		Token:   startCfg.ApiToken,
+		Enable:    true,
+		MCPEnable: startCfg.MCPEnable,
+		Network:   startCfg.Network,
+		Address:   startCfg.Address,
+		Token:     startCfg.ApiToken,
 	}
 	port, startErr := apiServer.startWithConfigLocked(startCfg, config)
 	if startErr != nil && startCfg.NativeMode {
@@ -213,6 +217,13 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 		})
 	}
 	r.Path("/api/web/proxy").HandlerFunc(DoProxy)
+	if startCfg.MCPEnable {
+		r.Path("/mcp").Handler(mcpserver.NewHandler(Downloader))
+	} else {
+		r.Path("/mcp").Handler(http.NotFoundHandler())
+	}
+	// Reserve the endpoint namespace so the web UI catch-all cannot serve it.
+	r.PathPrefix("/mcp/").Handler(http.NotFoundHandler())
 
 	enableApiToken := startCfg.ApiToken != ""
 	enableWebAuth := startCfg.WebEnable && startCfg.WebAuth != nil
@@ -260,17 +271,17 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				protectedPath := strings.HasPrefix(r.URL.Path, "/api/") || isProtectedWebFilePath(r.URL.Path)
+				protectedPath := strings.HasPrefix(r.URL.Path, "/api/") || isProtectedWebFilePath(r.URL.Path) ||
+					(startCfg.MCPEnable && isMCPPath(r.URL.Path))
 				if r.URL.Path == "/api/web/login" || !protectedPath {
 					h.ServeHTTP(w, r)
 					return
 				}
 
 				if enableApiToken {
-					apiTokenHeader := r.Header["X-Api-Token"]
 					// If an API token header is set, validate it before other authentication methods.
-					if len(apiTokenHeader) > 0 {
-						if apiTokenHeader[0] == startCfg.ApiToken {
+					if provided, valid := validateAPITokenHeaders(r, startCfg.ApiToken); provided {
+						if valid {
 							h.ServeHTTP(w, r)
 							return
 						}
@@ -314,9 +325,10 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 	})
 
 	server := &http.Server{Handler: handlers.CORS(
-		handlers.AllowedHeaders([]string{"Content-Type", "Authorization", "X-Api-Token", "X-Target-Uri"}),
+		handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Authorization", "X-Api-Token", "X-Target-Uri", "Mcp-Method", "Mcp-Name", "Mcp-Protocol-Version", "Mcp-Session-Id", "Last-Event-ID"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
 		handlers.AllowedOrigins([]string{"*"}),
+		handlers.ExposedHeaders([]string{"Mcp-Session-Id"}),
 		handlers.AllowCredentials(),
 	)(r)}
 	return server, listener, nil
@@ -328,6 +340,7 @@ func startConfigForAPIServer(config *base.APIServerConfig) *model.StartConfig {
 		Network:        config.Network,
 		Address:        config.Address,
 		ApiEnable:      &enabled,
+		MCPEnable:      config.MCPEnable,
 		ApiToken:       config.Token,
 		NativeMode:     true,
 		Storage:        model.StorageMem,
@@ -346,8 +359,32 @@ func cloneAPIServerConfig(config *base.APIServerConfig) *base.APIServerConfig {
 
 func sameAPIServerConfig(left, right *base.APIServerConfig) bool {
 	return left != nil && right != nil &&
-		left.Enable == right.Enable && left.Network == right.Network &&
+		left.Enable == right.Enable && left.MCPEnable == right.MCPEnable && left.Network == right.Network &&
 		left.Address == right.Address && left.Token == right.Token
+}
+
+func validateAPITokenHeaders(r *http.Request, expected string) (provided bool, valid bool) {
+	for _, token := range r.Header.Values("X-Api-Token") {
+		provided = true
+		if constantTimeTokenEqual(strings.TrimSpace(token), expected) {
+			valid = true
+		}
+	}
+	for _, authorization := range r.Header.Values("Authorization") {
+		parts := strings.Fields(authorization)
+		if len(parts) == 0 || !strings.EqualFold(parts[0], "Bearer") {
+			continue
+		}
+		provided = true
+		if len(parts) == 2 && constantTimeTokenEqual(parts[1], expected) {
+			valid = true
+		}
+	}
+	return provided, valid
+}
+
+func constantTimeTokenEqual(actual, expected string) bool {
+	return len(actual) == len(expected) && subtle.ConstantTimeCompare([]byte(actual), []byte(expected)) == 1
 }
 
 func initializeCore(startCfg *model.StartConfig) error {
@@ -383,6 +420,10 @@ func initializeCore(startCfg *model.StartConfig) error {
 
 func isProtectedWebFilePath(urlPath string) bool {
 	return urlPath == "/fs" || strings.HasPrefix(urlPath, "/fs/")
+}
+
+func isMCPPath(urlPath string) bool {
+	return urlPath == "/mcp" || strings.HasPrefix(urlPath, "/mcp/")
 }
 
 func requestUsesHTTPS(r *http.Request) bool {

@@ -696,14 +696,11 @@ class _Toolbar extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: ConstrainedBox(
-                      key: const ValueKey('extension-search-field-container'),
-                      constraints: const BoxConstraints(maxWidth: 240),
-                      child: search,
-                    ),
+                Flexible(
+                  child: ConstrainedBox(
+                    key: const ValueKey('extension-search-field-container'),
+                    constraints: const BoxConstraints(maxWidth: 240),
+                    child: search,
                   ),
                 ),
                 const SizedBox(width: 10),

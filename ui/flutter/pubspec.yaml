@@ -64,6 +64,7 @@ dependencies:
   permission_handler: ^11.3.1
   flutter_foreground_task: ^8.2.0
   flutter_markdown_plus: ^1.0.7
+  flutter_svg: ^2.3.0
   path: ^1.9.1
   path_provider: ^2.1.5
   url_launcher: ^6.3.1
@@ -122,6 +123,7 @@ flutter:
     - assets/extension/
     - assets/tray_icon/
     - assets/icon/
+    - assets/agent_icons/
     - assets/exec/
 
   fonts:

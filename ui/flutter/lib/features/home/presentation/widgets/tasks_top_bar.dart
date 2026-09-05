@@ -60,7 +60,7 @@ class TasksTopBar extends StatelessWidget {
               const SizedBox(width: 16),
               ConstrainedBox(
                 key: const ValueKey('tasks-create-button-container'),
-                constraints: const BoxConstraints(maxWidth: 190),
+                constraints: const BoxConstraints(minWidth: 120, maxWidth: 190),
                 child: _AddTaskButton(onPressed: onAddTask),
               ),
               const SizedBox(width: 16),
@@ -139,8 +139,14 @@ class _AddTaskButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppPrimaryButton(
       onPressed: onPressed,
-      leading: const Icon(Icons.add),
-      child: Text(context.l10n.create, maxLines: 1, overflow: TextOverflow.ellipsis),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.add),
+          const SizedBox(width: AppDesignTokens.space8),
+          Flexible(child: Text(context.l10n.create, maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ],
+      ),
     );
   }
 }

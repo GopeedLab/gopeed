@@ -16,6 +16,7 @@ import '../../../../app/application/app_platform_controller.dart';
 import '../../../../app/application/app_runtime_controller.dart';
 import '../../../../app/application/location_keep_alive.dart';
 import '../../../../core/common/start_config.dart';
+import '../../../../core/network/gopeed/gopeed_transport.dart';
 import '../../../../core/utils/breakpoints.dart';
 import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
@@ -23,6 +24,7 @@ import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_choice_segmented_control.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../shared/widgets/responsive_menu_layout.dart';
 import '../../../../l10n/l10n.dart';
@@ -34,6 +36,7 @@ import '../../../home/presentation/widgets/primary_rail.dart';
 import '../../application/settings_controller.dart';
 import '../widgets/app_update_dialog.dart';
 import '../widgets/download_categories_setting.dart';
+import '../widgets/mcp_agent_setup.dart';
 import '../widgets/settings_language_select.dart';
 import '../widgets/settings_content_frame.dart';
 import '../widgets/settings_item.dart';
@@ -41,6 +44,11 @@ import '../widgets/settings_list_editor.dart';
 import '../widgets/theme_settings_control.dart';
 
 enum _SettingsSection { basic, downloads, advanced }
+
+String webApiDisplayAddress(Uri pageUri) {
+  final host = pageUri.host.toLowerCase() == 'localhost' ? '127.0.0.1' : pageUri.host;
+  return Uri(host: host, port: pageUri.hasPort ? pageUri.port : null).authority;
+}
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key, this.sectionKey});
@@ -69,7 +77,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _proxyUserController = TextEditingController();
   final _proxyPasswordController = TextEditingController();
   final _customTrackersController = TextEditingController();
-  final _apiAddressController = TextEditingController();
   final _apiHostController = TextEditingController();
   final _apiPortController = TextEditingController();
   final _apiTokenController = TextEditingController();
@@ -82,7 +89,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _syncingControllers = false;
   bool _syncingStartControllers = false;
   bool _savingStartConfig = false;
-  String? _apiNetworkDraft;
 
   List<TextEditingController> get _textControllers => [
     _downloadDirController,
@@ -105,7 +111,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   ];
 
   List<TextEditingController> get _startTextControllers => [
-    _apiAddressController,
     _apiHostController,
     _apiPortController,
     _apiTokenController,
@@ -149,7 +154,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _ErrorState(error: error, onRetry: () => ref.read(settingsControllerProvider.notifier).reload()),
       data: (state) {
         _syncConfig(state.config);
-        if (runtimeState != null) {
+        if (kIsWeb) {
+          _syncWebStartConfig(state.config.api, runtimeState);
+        } else if (runtimeState != null) {
           _syncStartConfig(runtimeState.startConfig);
         }
         return ResponsiveMenuLayout<_SettingsSection>(
@@ -279,6 +286,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   ) {
     final apiConfigDirty = _startConfig != null && _startDraftSignature() != _loadedStartSignature;
     final apiServerVisualState = _apiServerVisualState(runtimeState);
+    final palette = AppPalette.of(context);
     switch (section) {
       case _SettingsSection.basic:
         return _SettingsSectionStack(
@@ -679,6 +687,90 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return _SettingsSectionStack(
           children: [
             _SettingsBlock(
+              title: 'API',
+              child: _SettingsGroup(
+                children: [
+                  SettingsItem(
+                    title: context.l10n.apiServerRuntimeStatus,
+                    subtitle: _apiServerRuntimeDetails(runtimeState),
+                    child: _ApiServerStatusLight(
+                      key: const ValueKey('api-server-runtime-status'),
+                      state: apiServerVisualState,
+                      label: switch (apiServerVisualState) {
+                        _ApiServerVisualState.loading => context.l10n.readingRuntimeStatus,
+                        _ApiServerVisualState.running => context.l10n.apiServerRunning,
+                        _ApiServerVisualState.stopped => context.l10n.apiServerStopped,
+                        _ApiServerVisualState.failed => context.l10n.apiServerFailed,
+                      },
+                    ),
+                  ),
+                  SettingsItem(
+                    title: context.l10n.listenAddress,
+                    child: _HostPortControl(
+                      hostController: _apiHostController,
+                      portController: _apiPortController,
+                      hostKey: const ValueKey('api-host-input'),
+                      portKey: const ValueKey('api-port-input'),
+                      enabled: !kIsWeb,
+                    ),
+                  ),
+                  if (!kIsWeb)
+                    SettingsItem(
+                      title: context.l10n.apiToken,
+                      child: _TextSettingControl(controller: _apiTokenController, obscureText: true),
+                    ),
+                  McpSettingsItem(
+                    enabled: _startConfig?.mcpEnable ?? false,
+                    readOnly: kIsWeb,
+                    onChanged: (value) => setState(() => _startConfig?.mcpEnable = value),
+                    onOpenAgentSetup: () => unawaited(_openMcpAgentSetup(runtimeState)),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        if (kIsWeb)
+                          AppTooltip(
+                            message: context.l10n.webApiConfigReadOnlyHelp,
+                            child: Padding(
+                              key: const ValueKey('web-api-config-help'),
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(Icons.help_outline, size: 17, color: palette.textMuted),
+                            ),
+                          ),
+                        AppLoadingButton(
+                          key: const ValueKey('toggle-api-server-button'),
+                          onPressed: kIsWeb || runtimeState == null ? null : _toggleApiServer,
+                          loading: _savingStartConfig,
+                          icon: Icon(
+                            kIsWeb || (runtimeState?.apiServerState.running ?? false)
+                                ? Icons.stop_circle_outlined
+                                : Icons.play_circle_outline,
+                          ),
+                          child: Text(
+                            kIsWeb || (runtimeState?.apiServerState.running ?? false)
+                                ? context.l10n.stopApiServer
+                                : context.l10n.startApiServer,
+                          ),
+                        ),
+                        AppLoadingButton(
+                          key: const ValueKey('save-api-config-button'),
+                          onPressed: kIsWeb || runtimeState == null || !apiConfigDirty ? null : _saveApiServerConfig,
+                          loading: _savingStartConfig,
+                          icon: const Icon(Icons.save_outlined),
+                          variant: AppLoadingButtonVariant.primary,
+                          child: Text(context.l10n.save),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _SettingsBlock(
               title: context.l10n.network,
               child: _SettingsGroup(
                 children: [
@@ -762,94 +854,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ],
               ),
             ),
-            if (!kIsWeb)
-              _SettingsBlock(
-                title: 'API',
-                child: _SettingsGroup(
-                  children: [
-                    SettingsItem(
-                      title: context.l10n.apiServerRuntimeStatus,
-                      subtitle: _apiServerRuntimeDetails(runtimeState),
-                      child: _ApiServerStatusLight(
-                        key: const ValueKey('api-server-runtime-status'),
-                        state: apiServerVisualState,
-                        label: switch (apiServerVisualState) {
-                          _ApiServerVisualState.loading => context.l10n.readingRuntimeStatus,
-                          _ApiServerVisualState.running => context.l10n.apiServerRunning,
-                          _ApiServerVisualState.stopped => context.l10n.apiServerStopped,
-                          _ApiServerVisualState.failed => context.l10n.apiServerFailed,
-                        },
-                      ),
-                    ),
-                    SettingsItem(
-                      title: context.l10n.protocol,
-                      child: AppChoiceSegmentedControl<String>(
-                        value: _apiNetworkValue,
-                        buttonKeyPrefix: 'settings-choice',
-                        options: [
-                          const AppChoiceOption(value: 'tcp', label: 'TCP', icon: Icons.lan_outlined),
-                          if (Util.supportUnixSocket())
-                            const AppChoiceOption(value: 'unix', label: 'Unix Socket', icon: Icons.cable_outlined),
-                        ],
-                        onChanged: _changeApiNetwork,
-                      ),
-                    ),
-                    if (_apiNetworkValue == 'unix')
-                      SettingsItem(
-                        title: context.l10n.socketPath,
-                        child: _TextSettingControl(controller: _apiAddressController),
-                      )
-                    else
-                      SettingsItem(
-                        title: context.l10n.listenAddress,
-                        child: _HostPortControl(
-                          hostController: _apiHostController,
-                          portController: _apiPortController,
-                          hostKey: const ValueKey('api-host-input'),
-                          portKey: const ValueKey('api-port-input'),
-                        ),
-                      ),
-                    if (_apiNetworkValue == 'tcp')
-                      SettingsItem(
-                        title: context.l10n.apiToken,
-                        child: _TextSettingControl(controller: _apiTokenController, obscureText: true),
-                      ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.end,
-                        children: [
-                          AppLoadingButton(
-                            key: const ValueKey('toggle-api-server-button'),
-                            onPressed: runtimeState == null ? null : _toggleApiServer,
-                            loading: _savingStartConfig,
-                            icon: Icon(
-                              runtimeState?.apiServerState.running ?? false
-                                  ? Icons.stop_circle_outlined
-                                  : Icons.play_circle_outline,
-                            ),
-                            child: Text(
-                              runtimeState?.apiServerState.running ?? false
-                                  ? context.l10n.stopApiServer
-                                  : context.l10n.startApiServer,
-                            ),
-                          ),
-                          AppLoadingButton(
-                            key: const ValueKey('save-api-config-button'),
-                            onPressed: runtimeState == null || !apiConfigDirty ? null : _saveApiServerConfig,
-                            loading: _savingStartConfig,
-                            icon: const Icon(Icons.save_outlined),
-                            variant: AppLoadingButtonVariant.primary,
-                            child: Text(context.l10n.save),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             _SettingsBlock(
               title: context.l10n.developer,
               child: _SettingsGroup(
@@ -905,8 +909,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     subtitle: _logDirectoryLabel,
                     child: shad.SecondaryButton(
                       onPressed: kIsWeb ? null : _openLogDirectory,
-                      leading: const Icon(Icons.folder_open_outlined),
-                      child: Text(context.l10n.open),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.folder_open_outlined),
+                          const SizedBox(width: AppDesignTokens.space8),
+                          Text(context.l10n.open),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -957,15 +967,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         _startConfig!.address == config.address &&
         _startConfig!.apiToken == config.apiToken) {
       _startConfig!.apiEnable = config.apiEnable;
+      _startConfig!.mcpEnable = config.mcpEnable;
       _loadedStartSignature = signature;
       return;
     }
     _loadedStartSignature = signature;
     _startConfig = _copyStartConfig(config);
-    _apiNetworkDraft = config.network == 'unix' && Util.supportUnixSocket() ? 'unix' : 'tcp';
     _syncingStartControllers = true;
-    _apiAddressController.text = _startConfig!.address;
-    if (_apiNetworkDraft == 'tcp' && _looksLikeTcpAddress(_startConfig!.address)) {
+    if (config.network == 'tcp' && _looksLikeTcpAddress(_startConfig!.address)) {
       final apiAddress = _splitHostPort(_startConfig!.address);
       _apiHostController.text = apiAddress.host;
       _apiPortController.text = apiAddress.port;
@@ -975,6 +984,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
     _apiTokenController.text = _startConfig!.apiToken;
     _syncingStartControllers = false;
+  }
+
+  void _syncWebStartConfig(ApiServerConfig config, AppRuntimeState? runtimeState) {
+    final webConfig = StartConfig()
+      ..network = 'tcp'
+      ..address = webApiDisplayAddress(_webApiUri(runtimeState))
+      ..apiEnable = true
+      ..mcpEnable = config.mcpEnable
+      ..storage = ''
+      ..storageDir = ''
+      ..refreshInterval = 0
+      ..apiToken = config.token;
+    _syncStartConfig(webConfig);
   }
 
   void _scheduleTextSave() {
@@ -1055,10 +1077,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _applyStartControllers(StartConfig config) {
-    config.network = _apiNetworkDraft ?? config.network;
-    config.address = config.network == 'unix'
-        ? _apiAddressController.text.trim()
-        : _joinHostPort(_apiHostController.text, _apiPortController.text);
+    config.network = 'tcp';
+    config.address = _joinHostPort(_apiHostController.text, _apiPortController.text);
     config.apiToken = _apiTokenController.text.trim();
   }
 
@@ -1184,39 +1204,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<String?> _validateStartConfig(StartConfig candidate) async {
     final l10n = context.l10n;
-    if (candidate.network == 'unix') {
-      return candidate.address.trim().isEmpty ? l10n.socketPathRequired : null;
-    }
-
     final address = _splitHostPort(candidate.address);
     if (address.host.isEmpty) return l10n.serverRequired;
     final port = int.tryParse(address.port);
     if (port == null || port < 0 || port > 65535) return l10n.portRangeError;
 
     return null;
-  }
-
-  void _changeApiNetwork(String value) {
-    final config = _startConfig;
-    if (config == null || _apiNetworkDraft == value) return;
-    setState(() {
-      _apiNetworkDraft = value;
-      _syncingStartControllers = true;
-      if (value == 'tcp' && (_apiHostController.text.isEmpty || _apiPortController.text.isEmpty)) {
-        if (_looksLikeTcpAddress(config.address)) {
-          final address = _splitHostPort(config.address);
-          _apiHostController.text = address.host;
-          _apiPortController.text = address.port;
-        } else {
-          _apiHostController.text = '127.0.0.1';
-          _apiPortController.text = '9999';
-        }
-      }
-      if (value == 'unix' && (_apiAddressController.text.isEmpty || _looksLikeTcpAddress(_apiAddressController.text))) {
-        _apiAddressController.text = '${Util.getStorageDir()}/$unixSocketPath';
-      }
-      _syncingStartControllers = false;
-    });
   }
 
   Future<void> _runAction(Future<void> Function() action) async {
@@ -1422,15 +1415,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   String _startSignature(StartConfig config) {
-    return '${config.apiEnable}|${config.network}|${config.address}|${config.apiToken}';
+    return '${config.apiEnable}|${config.mcpEnable}|${config.network}|${config.address}|${config.apiToken}';
   }
 
   String _startDraftSignature() {
-    final network = _apiNetworkDraft ?? _startConfig?.network ?? 'tcp';
-    final address = network == 'unix'
-        ? _apiAddressController.text.trim()
-        : _joinHostPort(_apiHostController.text, _apiPortController.text);
-    return '${_startConfig?.apiEnable ?? false}|$network|$address|${_apiTokenController.text.trim()}';
+    final address = _joinHostPort(_apiHostController.text, _apiPortController.text);
+    return '${_startConfig?.apiEnable ?? false}|${_startConfig?.mcpEnable ?? false}|tcp|$address|${_apiTokenController.text.trim()}';
   }
 
   StartConfig _copyStartConfig(StartConfig config) {
@@ -1438,19 +1428,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ..network = config.network
       ..address = config.address
       ..apiEnable = config.apiEnable
+      ..mcpEnable = config.mcpEnable
       ..storage = config.storage
       ..storageDir = config.storageDir
       ..refreshInterval = config.refreshInterval
       ..apiToken = config.apiToken
       ..webViewRpcConfig = config.webViewRpcConfig;
-  }
-
-  String get _apiNetworkValue {
-    final network = _apiNetworkDraft ?? _startConfig?.network ?? 'tcp';
-    if (network == 'unix' && Util.supportUnixSocket()) {
-      return 'unix';
-    }
-    return 'tcp';
   }
 
   String get _proxyMode {
@@ -1506,6 +1489,40 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
+  Future<void> _openMcpAgentSetup(AppRuntimeState? runtimeState) async {
+    final mcpRunning = kIsWeb
+        ? (_startConfig?.mcpEnable ?? false)
+        : runtimeState?.apiServerState.running == true && runtimeState?.apiServerState.mcpEnabled == true;
+    await showMcpAgentSetupDialog(
+      context,
+      endpoint: _mcpEndpoint(runtimeState),
+      apiToken: _apiTokenController.text.trim(),
+      mcpRunning: mcpRunning,
+      allowManualApiTokenTemplate: kIsWeb,
+    );
+  }
+
+  String _mcpEndpoint(AppRuntimeState? runtimeState) {
+    if (kIsWeb) {
+      return webMcpEndpoint(_webApiUri(runtimeState));
+    }
+
+    final apiState = runtimeState?.apiServerState;
+    final address = apiState != null && apiState.running && apiState.network == 'tcp'
+        ? apiState.runningAddress()
+        : _joinHostPort(_apiHostController.text, _apiPortController.text);
+    final parts = _splitHostPort(address);
+    var host = parts.host;
+    if (host.startsWith('[') && host.endsWith(']')) {
+      host = host.substring(1, host.length - 1);
+    }
+    if (host == '0.0.0.0' || host == '::') {
+      host = host == '::' ? '::1' : '127.0.0.1';
+    }
+    final port = int.tryParse(parts.port);
+    return Uri(scheme: 'http', host: host, port: port, path: '/mcp').toString();
+  }
+
   bool _looksLikeTcpAddress(String address) {
     final separator = address.lastIndexOf(':');
     if (separator <= 0 || separator == address.length - 1) {
@@ -1556,10 +1573,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   String? _apiServerRuntimeDetails(AppRuntimeState? runtimeState) {
     if (runtimeState == null) return null;
+    if (kIsWeb) {
+      final apiUri = _webApiUri(runtimeState);
+      return '${apiUri.scheme}://${webApiDisplayAddress(apiUri)}';
+    }
     final apiState = runtimeState.apiServerState;
     final details = <String>[];
     if (apiState.running) {
-      details.add('${apiState.network}://${apiState.runningAddress()}');
+      details.add('http://${apiState.runningAddress()}');
     }
     if (apiState.lastError.isNotEmpty) {
       details.add(apiState.lastError);
@@ -1569,8 +1590,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return details.isEmpty ? null : details.join('\n');
   }
 
+  Uri _webApiUri(AppRuntimeState? runtimeState) {
+    final address = runtimeState?.startConfig.address ?? '';
+    return Uri.parse(normalizeWebApiBaseUrl(address, Uri.base));
+  }
+
   _ApiServerVisualState _apiServerVisualState(AppRuntimeState? runtimeState) {
     if (runtimeState == null) return _ApiServerVisualState.loading;
+    if (kIsWeb) return _ApiServerVisualState.running;
     final apiState = runtimeState.apiServerState;
     if (apiState.running) return _ApiServerVisualState.running;
     if (apiState.lastError.isNotEmpty) return _ApiServerVisualState.failed;
@@ -1875,12 +1902,14 @@ class _HostPortControl extends StatelessWidget {
     required this.portController,
     required this.hostKey,
     required this.portKey,
+    this.enabled = true,
   });
 
   final TextEditingController hostController;
   final TextEditingController portController;
   final Key hostKey;
   final Key portKey;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -1890,7 +1919,12 @@ class _HostPortControl extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: shad.TextField(key: hostKey, controller: hostController, hintText: context.l10n.server),
+            child: shad.TextField(
+              key: hostKey,
+              controller: hostController,
+              hintText: context.l10n.server,
+              enabled: enabled,
+            ),
           ),
           const SizedBox(width: AppDesignTokens.space8),
           SizedBox(
@@ -1903,6 +1937,7 @@ class _HostPortControl extends StatelessWidget {
               step: 1,
               decimalPlaces: 0,
               hintText: context.l10n.port,
+              enabled: enabled,
             ),
           ),
         ],
@@ -1920,6 +1955,7 @@ class _NumberInput extends StatefulWidget {
     this.fieldKey,
     this.max,
     this.hintText,
+    this.enabled = true,
   });
 
   final TextEditingController controller;
@@ -1929,6 +1965,7 @@ class _NumberInput extends StatefulWidget {
   final int decimalPlaces;
   final Key? fieldKey;
   final String? hintText;
+  final bool enabled;
 
   @override
   State<_NumberInput> createState() => _NumberInputState();
@@ -1993,6 +2030,7 @@ class _NumberInputState extends State<_NumberInput> {
           ? const TextInputType.numberWithOptions(decimal: true)
           : TextInputType.number,
       inputFormatters: formatters,
+      enabled: widget.enabled,
       features: [
         shad.InputFeature.spinner(
           step: widget.step,
@@ -2130,8 +2168,14 @@ class _BrowserExtensionLinks extends StatelessWidget {
           shad.SecondaryButton(
             key: ValueKey('browser-extension-${link.label.toLowerCase()}'),
             onPressed: () => onOpen(link.uri),
-            leading: const Icon(Icons.open_in_new, size: 15),
-            child: Text(link.label),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.open_in_new, size: 15),
+                const SizedBox(width: AppDesignTokens.space8),
+                Text(link.label),
+              ],
+            ),
           ),
       ],
     );

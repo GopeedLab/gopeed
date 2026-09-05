@@ -23,6 +23,7 @@ StartConfig _$StartConfigFromJson(Map<String, dynamic> json) => StartConfig()
   ..network = json['network'] as String
   ..address = json['address'] as String
   ..apiEnable = json['apiEnable'] as bool
+  ..mcpEnable = json['mcpEnable'] as bool? ?? false
   ..storage = json['storage'] as String
   ..storageDir = json['storageDir'] as String
   ..refreshInterval = (json['refreshInterval'] as num).toInt()
@@ -38,6 +39,7 @@ Map<String, dynamic> _$StartConfigToJson(StartConfig instance) =>
       'network': instance.network,
       'address': instance.address,
       'apiEnable': instance.apiEnable,
+      'mcpEnable': instance.mcpEnable,
       'storage': instance.storage,
       'storageDir': instance.storageDir,
       'refreshInterval': instance.refreshInterval,

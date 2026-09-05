@@ -432,5 +432,14 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Service d’arrière-plan Gopeed",
   "androidForegroundNotificationTitle": "Gopeed est en cours d’exécution",
-  "androidForegroundNotificationText": "Les téléchargements peuvent continuer en arrière-plan"
+  "androidForegroundNotificationText": "Les téléchargements peuvent continuer en arrière-plan",
+  "mcpDescription": "Collaborez avec des agents IA et explorez des possibilités infinies",
+  "connectAgent": "Guide de connexion",
+  "connectMcpAgent": "Connecter un agent MCP",
+  "mcpAgentDialogDescription": "Choisissez votre agent, puis copiez sa configuration de connexion.",
+  "mcpNotRunningHint": "Le service MCP n’est pas activé. Activez-le",
+  "webApiConfigReadOnlyHelp": "La version web ne permet pas de modifier les paramètres de l’API en ligne. Modifiez les options de démarrage du serveur ou le fichier de configuration, puis redémarrez le service pour appliquer les changements.",
+  "webMcpApiTokenHint": "Si vous avez configuré un jeton API, les informations d’authentification doivent être transmises lors de la connexion de l’agent",
+  "useMcpApiTokenTemplate": "Passer à la configuration authentifiée",
+  "mcpRequiresTcp": "Les instructions de connexion des agents sont disponibles lorsque le protocole de l’API est TCP."
 }

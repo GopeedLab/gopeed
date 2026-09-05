@@ -99,8 +99,14 @@ class SettingsListEditor extends StatelessWidget {
             child: shad.SecondaryButton(
               key: addButtonKey,
               onPressed: onAdd,
-              leading: const Icon(Icons.add, size: 17),
-              child: Text(addLabel ?? context.l10n.add),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add, size: 17),
+                  const SizedBox(width: AppDesignTokens.space8),
+                  Text(addLabel ?? context.l10n.add),
+                ],
+              ),
             ),
           ),
         ],
@@ -280,8 +286,16 @@ Future<GithubMirrorDraft?> showGithubMirrorDialog(BuildContext context, {GithubM
                     for (final type in GithubMirrorType.values)
                       shad.SecondaryButton(
                         onPressed: () => setDialogState(() => selectedType = type),
-                        leading: selectedType == type ? const Icon(Icons.check, size: 15) : null,
-                        child: Text(type.name),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (selectedType == type) ...[
+                              const Icon(Icons.check, size: 15),
+                              const SizedBox(width: AppDesignTokens.space8),
+                            ],
+                            Text(type.name),
+                          ],
+                        ),
                       ),
                   ],
                 ),

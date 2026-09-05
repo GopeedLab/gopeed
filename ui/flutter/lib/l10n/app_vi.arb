@@ -432,5 +432,14 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Dịch vụ nền Gopeed",
   "androidForegroundNotificationTitle": "Gopeed đang chạy",
-  "androidForegroundNotificationText": "Các lượt tải xuống có thể tiếp tục trong nền"
+  "androidForegroundNotificationText": "Các lượt tải xuống có thể tiếp tục trong nền",
+  "mcpDescription": "Cộng tác cùng AI Agent và khám phá khả năng vô hạn",
+  "connectAgent": "Hướng dẫn kết nối",
+  "connectMcpAgent": "Kết nối tác nhân MCP",
+  "mcpAgentDialogDescription": "Chọn tác nhân bạn sử dụng rồi sao chép cấu hình kết nối tương ứng.",
+  "mcpNotRunningHint": "Dịch vụ MCP chưa được bật. Hãy bật dịch vụ",
+  "webApiConfigReadOnlyHelp": "Phiên bản web không hỗ trợ sửa cấu hình API trực tuyến. Hãy cập nhật tùy chọn khởi động máy chủ hoặc tệp cấu hình rồi khởi động lại dịch vụ để áp dụng thay đổi.",
+  "webMcpApiTokenHint": "Nếu đã cấu hình API Token, bạn cần truyền thông tin xác thực khi kết nối tác nhân",
+  "useMcpApiTokenTemplate": "Chuyển sang cấu hình có xác thực",
+  "mcpRequiresTcp": "Hướng dẫn kết nối tác nhân khả dụng khi giao thức API là TCP."
 }

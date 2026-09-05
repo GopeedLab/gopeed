@@ -432,5 +432,14 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Gopeed 后台服务",
   "androidForegroundNotificationTitle": "Gopeed 正在运行",
-  "androidForegroundNotificationText": "下载可在后台继续"
+  "androidForegroundNotificationText": "下载可在后台继续",
+  "mcpDescription": "与 AI Agent 的协同，探索无限可能",
+  "connectAgent": "接入指南",
+  "connectMcpAgent": "接入 MCP Agent",
+  "mcpAgentDialogDescription": "选择你使用的 Agent，然后复制对应的接入配置。",
+  "mcpNotRunningHint": "尚未启用 MCP 服务，请先开启",
+  "webMcpApiTokenHint": "若已配置 API Token，接入 Agent 时需要传递认证信息",
+  "useMcpApiTokenTemplate": "切换为认证配置",
+  "webApiConfigReadOnlyHelp": "Web 版本不支持在线修改 API 配置。请修改服务端启动参数或配置文件，并重启服务后使配置生效。",
+  "mcpRequiresTcp": "API 通讯协议为 TCP 时才能使用 Agent 接入指引。"
 }

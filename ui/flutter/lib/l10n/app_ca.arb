@@ -432,5 +432,14 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Servei en segon pla de Gopeed",
   "androidForegroundNotificationTitle": "Gopeed s'està executant",
-  "androidForegroundNotificationText": "Les baixades poden continuar en segon pla"
+  "androidForegroundNotificationText": "Les baixades poden continuar en segon pla",
+  "mcpDescription": "Col·labora amb agents d’IA i explora possibilitats infinites",
+  "connectAgent": "Guia de connexió",
+  "connectMcpAgent": "Connecta un agent MCP",
+  "mcpAgentDialogDescription": "Tria l’agent que utilitzes i copia’n la configuració de connexió.",
+  "mcpNotRunningHint": "El servei MCP no està activat. Activa’l",
+  "webApiConfigReadOnlyHelp": "La versió web no permet modificar la configuració de l’API en línia. Actualitza les opcions d’inici del servidor o el fitxer de configuració i reinicia el servei perquè els canvis tinguin efecte.",
+  "webMcpApiTokenHint": "Si heu configurat un token d’API, cal proporcionar la informació d’autenticació en connectar l’agent",
+  "useMcpApiTokenTemplate": "Canvia a la configuració autenticada",
+  "mcpRequiresTcp": "Les instruccions de connexió d’agents estan disponibles quan el protocol de l’API és TCP."
 }
