@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Size;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -15,8 +16,6 @@ import '../../core/libgopeed_boot.dart';
 import '../../core/capabilities/app_capabilities.dart';
 import '../../core/window/app_window_launcher.dart';
 import '../../core/window/window_capability_transport.dart';
-import '../../database/database.dart';
-import '../../database/entity.dart';
 import '../../features/tasks/application/pending_create_task.dart';
 import '../../features/tasks/application/pending_update_task.dart';
 import '../../l10n/l10n.dart';
@@ -64,9 +63,13 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
   VersionInfo? _latestVersion;
   String? _updateError;
   Future<VersionInfo?>? _checkUpdateFuture;
-  final _windowsResizeSave = Util.debounce(() async {
+  late final void Function() _windowsResizeSave = Util.debounce(() async {
     final size = await windowManager.getSize();
-    Database.instance.saveWindowState(WindowStateEntity(width: size.width, height: size.height));
+    await ref.read(appRuntimeControllerProvider.notifier).updateExtraConfig((extra) {
+      extra.windowState
+        ..width = size.width
+        ..height = size.height;
+    });
   }, 500);
 
   @override
@@ -103,11 +106,13 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
 
   Future<void> _start() async {
     _started = true;
+    final extra = ref.read(appRuntimeControllerProvider).value!.downloaderConfig.extra;
     await AppWindowCapabilityHost.instance.start(LocalAppCapabilities.instance.registry);
+    await _restoreWindowState(extra.windowState);
     windowManager.addListener(this);
     await windowManager.setPreventClose(true);
     if (Util.isMacos()) {
-      _runAsMenubarApp = Database.instance.getRunAsMenubarApp();
+      _runAsMenubarApp = extra.runAsMenubarApp;
       await windowManager.setSkipTaskbar(_runAsMenubarApp);
     }
     await _initTray();
@@ -245,7 +250,9 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
     if (!Util.isMacos()) {
       return;
     }
-    Database.instance.saveRunAsMenubarApp(enabled);
+    await ref.read(appRuntimeControllerProvider.notifier).updateExtraConfig((extra) {
+      extra.runAsMenubarApp = enabled;
+    });
     _runAsMenubarApp = enabled;
     await windowManager.setSkipTaskbar(enabled);
     await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -369,16 +376,36 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
 
   @override
   void onWindowMaximize() {
-    Database.instance.saveWindowState(WindowStateEntity(isMaximized: true));
+    unawaited(
+      ref.read(appRuntimeControllerProvider.notifier).updateExtraConfig((extra) {
+        extra.windowState.isMaximized = true;
+      }),
+    );
   }
 
   @override
   void onWindowUnmaximize() {
-    Database.instance.saveWindowState(WindowStateEntity(isMaximized: false));
+    unawaited(
+      ref.read(appRuntimeControllerProvider.notifier).updateExtraConfig((extra) {
+        extra.windowState.isMaximized = false;
+      }),
+    );
   }
 
   @override
   void onWindowResize() {
     _windowsResizeSave();
+  }
+
+  Future<void> _restoreWindowState(WindowStateConfig windowState) async {
+    final width = windowState.width;
+    final height = windowState.height;
+    if (width != null && height != null && width > 0 && height > 0) {
+      await windowManager.setSize(Size(width, height));
+      await windowManager.center();
+    }
+    if (windowState.isMaximized) {
+      await windowManager.maximize();
+    }
   }
 }

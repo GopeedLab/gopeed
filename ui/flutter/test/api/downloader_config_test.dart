@@ -17,4 +17,36 @@ void main() {
 
     expect(DownloaderConfig.fromJson(json).autoStartTasks, isFalse);
   });
+
+  test('REST server settings round-trip through the Go downloader config', () {
+    final config = DownloaderConfig()
+      ..api = ApiServerConfig(enable: true, network: 'tcp', address: '127.0.0.1:4321', token: 'secret');
+
+    final decoded = DownloaderConfig.fromJson(config.toJson()).api;
+    expect(decoded.enable, isTrue);
+    expect(decoded.network, 'tcp');
+    expect(decoded.address, '127.0.0.1:4321');
+    expect(decoded.token, 'secret');
+  });
+
+  test('Flutter preferences round-trip through the Go-owned extra config', () {
+    final config = DownloaderConfig();
+    config.extra
+      ..windowState = WindowStateConfig(isMaximized: true, width: 1280, height: 720)
+      ..bookmarks = {'downloads': 'D:/Downloads'}
+      ..createHistory = ['https://example.com/file.zip']
+      ..runAsMenubarApp = true
+      ..analyticsEnabled = false
+      ..analyticsClientId = 'client-id';
+
+    final decoded = DownloaderConfig.fromJson(config.toJson()).extra;
+    expect(decoded.windowState.isMaximized, isTrue);
+    expect(decoded.windowState.width, 1280);
+    expect(decoded.windowState.height, 720);
+    expect(decoded.bookmarks, {'downloads': 'D:/Downloads'});
+    expect(decoded.createHistory, ['https://example.com/file.zip']);
+    expect(decoded.runAsMenubarApp, isTrue);
+    expect(decoded.analyticsEnabled, isFalse);
+    expect(decoded.analyticsClientId, 'client-id');
+  });
 }

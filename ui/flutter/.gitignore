@@ -80,5 +80,3 @@ windows/flutter/generated_plugins.cmake
 
 # Runtime data
 /extensions
-database.hive
-database.lock

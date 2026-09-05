@@ -13,6 +13,7 @@ class DownloaderConfig {
   ScriptConfig script = ScriptConfig();
   AutoTorrentConfig autoTorrent = AutoTorrentConfig();
   ArchiveConfig archive = ArchiveConfig();
+  ApiServerConfig api = ApiServerConfig();
   bool autoStartTasks;
   bool autoDeleteMissingFileTasks;
 
@@ -26,6 +27,21 @@ class DownloaderConfig {
   factory DownloaderConfig.fromJson(Map<String, dynamic> json) => _$DownloaderConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$DownloaderConfigToJson(this);
+}
+
+@JsonSerializable()
+class ApiServerConfig {
+  bool enable;
+  String network;
+  String address;
+  String token;
+
+  ApiServerConfig({this.enable = false, this.network = 'tcp', this.address = '127.0.0.1:9999', this.token = ''});
+
+  factory ApiServerConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? ApiServerConfig() : _$ApiServerConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ApiServerConfigToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true)
@@ -102,6 +118,12 @@ class ExtraConfig {
   bool notifyWhenNewVersion;
   bool desktopNotification;
   bool backgroundLocationKeepAlive;
+  WindowStateConfig windowState;
+  Map<String, String> bookmarks;
+  List<String> createHistory;
+  bool runAsMenubarApp;
+  bool analyticsEnabled;
+  String analyticsClientId;
   List<DownloadCategory> downloadCategories;
 
   ExtraConfigBt bt = ExtraConfigBt();
@@ -117,13 +139,33 @@ class ExtraConfig {
     this.notifyWhenNewVersion = true,
     this.desktopNotification = true,
     this.backgroundLocationKeepAlive = false,
+    WindowStateConfig? windowState,
+    this.bookmarks = const {},
+    this.createHistory = const [],
+    this.runAsMenubarApp = false,
+    this.analyticsEnabled = true,
+    this.analyticsClientId = '',
     this.downloadCategories = const [],
-  });
+  }) : windowState = windowState ?? WindowStateConfig();
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ExtraConfig() : _$ExtraConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$ExtraConfigToJson(this);
+}
+
+@JsonSerializable()
+class WindowStateConfig {
+  bool isMaximized;
+  double? width;
+  double? height;
+
+  WindowStateConfig({this.isMaximized = false, this.width, this.height});
+
+  factory WindowStateConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? WindowStateConfig() : _$WindowStateConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$WindowStateConfigToJson(this);
 }
 
 @JsonSerializable()

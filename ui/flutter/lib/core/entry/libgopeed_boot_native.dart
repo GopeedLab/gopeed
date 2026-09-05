@@ -6,7 +6,9 @@ import '../../util/util.dart';
 import '../common/libgopeed_channel.dart';
 import '../common/libgopeed_ffi.dart';
 import '../common/libgopeed_interface.dart';
+import '../common/api_server_state.dart';
 import '../common/start_config.dart';
+import '../common/task_event.dart';
 import '../ffi/libgopeed_bind.dart';
 import '../libgopeed_boot.dart';
 
@@ -43,6 +45,32 @@ class LibgopeedBootNative implements LibgopeedBoot {
 
   @override
   Future<void> stop() async {
+    await _libgopeed.subscribeTaskEvents({});
     await _libgopeed.stop();
+  }
+
+  @override
+  Future<ApiServerOperationResult> getApiServerState() => _libgopeed.getApiServerState();
+
+  @override
+  Future<ApiServerOperationResult> startApiServer() => _libgopeed.startApiServer();
+
+  @override
+  Future<ApiServerOperationResult> stopApiServer() => _libgopeed.stopApiServer();
+
+  @override
+  Future<ApiServerOperationResult> restartApiServer() => _libgopeed.restartApiServer();
+
+  @override
+  Future<String> invoke(String method, String path, {String query = '', String body = ''}) {
+    return _libgopeed.invoke(method, path, query: query, body: body);
+  }
+
+  @override
+  Stream<TaskEvent> get taskEvents => _libgopeed.taskEvents;
+
+  @override
+  Future<void> subscribeTaskEvents(Set<TaskEventType> events) {
+    return _libgopeed.subscribeTaskEvents(events);
   }
 }

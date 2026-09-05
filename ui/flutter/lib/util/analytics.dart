@@ -4,7 +4,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import '../database/database.dart';
 import 'log_util.dart';
 import 'package_info.dart';
 
@@ -18,8 +17,8 @@ class AnalyticsConfig {
   static bool get isConfigured => measurementId.isNotEmpty && apiSecret.isNotEmpty;
 }
 
-/// Sends only anonymous application events. The preference is stored outside
-/// downloader configuration so it remains local to the current installation.
+/// Sends only anonymous application events. Its preference and fallback
+/// client ID are persisted by the Go downloader configuration.
 class Analytics {
   Analytics._();
 
@@ -30,9 +29,11 @@ class Analytics {
   late final Dio _dio;
   bool _initialized = false;
 
-  Future<void> init() async {
+  String get clientId => _initialized ? _clientId : '';
+
+  Future<void> init({String fallbackClientId = ''}) async {
     if (_initialized || !AnalyticsConfig.isConfigured) return;
-    _clientId = await _getDeviceId();
+    _clientId = await _getDeviceId(fallbackClientId);
     _sessionId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     _dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 10)));
     _initialized = true;
@@ -69,7 +70,7 @@ class Analytics {
     }
   }
 
-  Future<String> _getDeviceId() async {
+  Future<String> _getDeviceId(String fallbackClientId) async {
     String? deviceId;
     try {
       final info = DeviceInfoPlugin();
@@ -91,12 +92,11 @@ class Analytics {
     }
 
     if (deviceId == null || deviceId.isEmpty) {
-      deviceId = Database.instance.getAnalyticsClientId();
-      if (deviceId == null || deviceId.isEmpty) {
+      deviceId = fallbackClientId;
+      if (deviceId.isEmpty) {
         final random = DateTime.now().microsecondsSinceEpoch % 2147483647;
         final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
         deviceId = '$random.$timestamp';
-        Database.instance.saveAnalyticsClientId(deviceId);
       }
     }
     return deviceId;

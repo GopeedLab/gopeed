@@ -82,6 +82,13 @@ struct Start_return {
 };
 extern struct Start_return Start(char* cfg);
 extern void Stop();
+extern char* GetAPIServerState();
+extern char* StartAPIServer();
+extern char* StopAPIServer();
+extern char* RestartAPIServer();
+extern char* Invoke(char* method, char* path, char* query, char* body);
+extern void SubscribeTaskEvents(GoUint64 mask, GoUintptr callback);
+extern void FreeCString(char* value);
 
 #ifdef __cplusplus
 }

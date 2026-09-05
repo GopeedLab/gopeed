@@ -33,6 +33,13 @@ class SettingsController extends AsyncNotifier<SettingsState> {
 
   Future<void> save(DownloaderConfig config) async {
     state = AsyncValue.data(SettingsState(config: config, saving: true));
+    final latest = await ref.read(gopeedServiceProvider).getConfig();
+    config.extra
+      ..windowState = latest.extra.windowState
+      ..bookmarks = latest.extra.bookmarks
+      ..createHistory = latest.extra.createHistory
+      ..runAsMenubarApp = latest.extra.runAsMenubarApp
+      ..analyticsClientId = latest.extra.analyticsClientId;
     await ref.read(gopeedServiceProvider).putConfig(config);
     ref.read(appRuntimeControllerProvider.notifier).replaceDownloaderConfig(config);
     state = AsyncValue.data(SettingsState(config: config));

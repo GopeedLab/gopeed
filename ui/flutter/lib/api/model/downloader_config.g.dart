@@ -19,7 +19,8 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       ..webhook = WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
       ..script = ScriptConfig.fromJson(json['script'] as Map<String, dynamic>?)
       ..autoTorrent = AutoTorrentConfig.fromJson(json['autoTorrent'] as Map<String, dynamic>?)
-      ..archive = ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?);
+      ..archive = ArchiveConfig.fromJson(json['archive'] as Map<String, dynamic>?)
+      ..api = ApiServerConfig.fromJson(json['api'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) => <String, dynamic>{
   'downloadDir': instance.downloadDir,
@@ -31,8 +32,23 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) => <Str
   'script': instance.script.toJson(),
   'autoTorrent': instance.autoTorrent.toJson(),
   'archive': instance.archive.toJson(),
+  'api': instance.api.toJson(),
   'autoStartTasks': instance.autoStartTasks,
   'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
+};
+
+ApiServerConfig _$ApiServerConfigFromJson(Map<String, dynamic> json) => ApiServerConfig(
+  enable: json['enable'] as bool? ?? false,
+  network: json['network'] as String? ?? 'tcp',
+  address: json['address'] as String? ?? '127.0.0.1:9999',
+  token: json['token'] as String? ?? '',
+);
+
+Map<String, dynamic> _$ApiServerConfigToJson(ApiServerConfig instance) => <String, dynamic>{
+  'enable': instance.enable,
+  'network': instance.network,
+  'address': instance.address,
+  'token': instance.token,
 };
 
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) => ProtocolConfig()
@@ -101,6 +117,14 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) =>
         notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
         desktopNotification: json['desktopNotification'] as bool? ?? true,
         backgroundLocationKeepAlive: json['backgroundLocationKeepAlive'] as bool? ?? false,
+        windowState: json['windowState'] == null
+            ? null
+            : WindowStateConfig.fromJson(json['windowState'] as Map<String, dynamic>?),
+        bookmarks: (json['bookmarks'] as Map<String, dynamic>?)?.map((k, e) => MapEntry(k, e as String)) ?? const {},
+        createHistory: (json['createHistory'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+        runAsMenubarApp: json['runAsMenubarApp'] as bool? ?? false,
+        analyticsEnabled: json['analyticsEnabled'] as bool? ?? true,
+        analyticsClientId: json['analyticsClientId'] as String? ?? '',
         downloadCategories:
             (json['downloadCategories'] as List<dynamic>?)
                 ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
@@ -120,9 +144,27 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynam
   'notifyWhenNewVersion': instance.notifyWhenNewVersion,
   'desktopNotification': instance.desktopNotification,
   'backgroundLocationKeepAlive': instance.backgroundLocationKeepAlive,
+  'windowState': instance.windowState.toJson(),
+  'bookmarks': instance.bookmarks,
+  'createHistory': instance.createHistory,
+  'runAsMenubarApp': instance.runAsMenubarApp,
+  'analyticsEnabled': instance.analyticsEnabled,
+  'analyticsClientId': instance.analyticsClientId,
   'downloadCategories': instance.downloadCategories.map((e) => e.toJson()).toList(),
   'bt': instance.bt.toJson(),
   'githubMirror': instance.githubMirror.toJson(),
+};
+
+WindowStateConfig _$WindowStateConfigFromJson(Map<String, dynamic> json) => WindowStateConfig(
+  isMaximized: json['isMaximized'] as bool? ?? false,
+  width: (json['width'] as num?)?.toDouble(),
+  height: (json['height'] as num?)?.toDouble(),
+);
+
+Map<String, dynamic> _$WindowStateConfigToJson(WindowStateConfig instance) => <String, dynamic>{
+  'isMaximized': instance.isMaximized,
+  'width': ?instance.width,
+  'height': ?instance.height,
 };
 
 DownloadCategory _$DownloadCategoryFromJson(Map<String, dynamic> json) => DownloadCategory(

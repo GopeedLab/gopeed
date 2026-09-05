@@ -17,9 +17,7 @@ import '../../../../app/application/app_runtime_controller.dart';
 import '../../../../app/application/location_keep_alive.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../core/utils/breakpoints.dart';
-import '../../../../core/utils/tcp_port_checker.dart';
 import '../../../../core/window/app_window_chrome.dart';
-import '../../../../database/database.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_choice_segmented_control.dart';
@@ -85,7 +83,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _syncingStartControllers = false;
   bool _savingStartConfig = false;
   String? _apiNetworkDraft;
-  late bool _analyticsEnabled;
 
   List<TextEditingController> get _textControllers => [
     _downloadDirController,
@@ -117,7 +114,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    _analyticsEnabled = Database.instance.initialized ? Database.instance.getAnalyticsEnabled() : true;
     for (final controller in _textControllers) {
       controller.addListener(_scheduleTextSave);
     }
@@ -281,7 +277,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     AppPlatformState? platform,
     AppRuntimeState? runtimeState,
   ) {
-    final apiConfigDirty = _startConfig != null && _startDraftSignature() != _startSignature(_startConfig!);
+    final apiConfigDirty = _startConfig != null && _startDraftSignature() != _loadedStartSignature;
+    final apiServerVisualState = _apiServerVisualState(runtimeState);
     switch (section) {
       case _SettingsSection.basic:
         return _SettingsSectionStack(
@@ -410,11 +407,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     title: context.l10n.analyticsEnabled,
                     subtitle: context.l10n.analyticsEnabledDesc,
                     child: shad.Switch(
-                      value: _analyticsEnabled,
-                      onChanged: (value) {
-                        setState(() => _analyticsEnabled = value);
-                        if (Database.instance.initialized) Database.instance.saveAnalyticsEnabled(value);
-                      },
+                      value: config.extra.analyticsEnabled,
+                      onChanged: (value) => _mutateConfig((next) => next.extra.analyticsEnabled = value),
                     ),
                   ),
                   SettingsItem(
@@ -768,62 +762,94 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ],
               ),
             ),
-            _SettingsBlock(
-              title: 'API',
-              child: _SettingsGroup(
-                children: [
-                  SettingsItem(
-                    title: context.l10n.protocol,
-                    subtitle: context.l10n.restartRequired,
-                    child: AppChoiceSegmentedControl<String>(
-                      value: _apiNetworkValue,
-                      buttonKeyPrefix: 'settings-choice',
-                      options: [
-                        const AppChoiceOption(value: 'tcp', label: 'TCP', icon: Icons.lan_outlined),
-                        if (Util.supportUnixSocket())
-                          const AppChoiceOption(value: 'unix', label: 'Unix Socket', icon: Icons.cable_outlined),
-                      ],
-                      onChanged: _changeApiNetwork,
-                    ),
-                  ),
-                  if (_apiNetworkValue == 'unix')
+            if (!kIsWeb)
+              _SettingsBlock(
+                title: 'API',
+                child: _SettingsGroup(
+                  children: [
                     SettingsItem(
-                      title: context.l10n.socketPath,
-                      subtitle: context.l10n.restartRequired,
-                      child: _TextSettingControl(controller: _apiAddressController),
-                    )
-                  else
-                    SettingsItem(
-                      title: context.l10n.listenAddress,
-                      subtitle: context.l10n.restartRequired,
-                      child: _HostPortControl(
-                        hostController: _apiHostController,
-                        portController: _apiPortController,
-                        hostKey: const ValueKey('api-host-input'),
-                        portKey: const ValueKey('api-port-input'),
+                      title: context.l10n.apiServerRuntimeStatus,
+                      subtitle: _apiServerRuntimeDetails(runtimeState),
+                      child: _ApiServerStatusLight(
+                        key: const ValueKey('api-server-runtime-status'),
+                        state: apiServerVisualState,
+                        label: switch (apiServerVisualState) {
+                          _ApiServerVisualState.loading => context.l10n.readingRuntimeStatus,
+                          _ApiServerVisualState.running => context.l10n.apiServerRunning,
+                          _ApiServerVisualState.stopped => context.l10n.apiServerStopped,
+                          _ApiServerVisualState.failed => context.l10n.apiServerFailed,
+                        },
                       ),
                     ),
-                  if (Util.isDesktop() && _apiNetworkValue == 'tcp')
                     SettingsItem(
-                      title: context.l10n.apiToken,
-                      child: _TextSettingControl(controller: _apiTokenController, obscureText: true),
+                      title: context.l10n.protocol,
+                      child: AppChoiceSegmentedControl<String>(
+                        value: _apiNetworkValue,
+                        buttonKeyPrefix: 'settings-choice',
+                        options: [
+                          const AppChoiceOption(value: 'tcp', label: 'TCP', icon: Icons.lan_outlined),
+                          if (Util.supportUnixSocket())
+                            const AppChoiceOption(value: 'unix', label: 'Unix Socket', icon: Icons.cable_outlined),
+                        ],
+                        onChanged: _changeApiNetwork,
+                      ),
                     ),
-                  SettingsItem(
-                    title: context.l10n.currentConnection,
-                    subtitle: runtimeState == null
-                        ? context.l10n.readingRuntimeStatus
-                        : '${runtimeState.startConfig.network}://${runtimeState.runningAddress()}',
-                    child: AppLoadingButton(
-                      key: const ValueKey('save-api-config-button'),
-                      onPressed: runtimeState == null || !apiConfigDirty ? null : _saveStartConfig,
-                      loading: _savingStartConfig,
-                      icon: const Icon(Icons.save_outlined),
-                      child: Text(context.l10n.save),
+                    if (_apiNetworkValue == 'unix')
+                      SettingsItem(
+                        title: context.l10n.socketPath,
+                        child: _TextSettingControl(controller: _apiAddressController),
+                      )
+                    else
+                      SettingsItem(
+                        title: context.l10n.listenAddress,
+                        child: _HostPortControl(
+                          hostController: _apiHostController,
+                          portController: _apiPortController,
+                          hostKey: const ValueKey('api-host-input'),
+                          portKey: const ValueKey('api-port-input'),
+                        ),
+                      ),
+                    if (_apiNetworkValue == 'tcp')
+                      SettingsItem(
+                        title: context.l10n.apiToken,
+                        child: _TextSettingControl(controller: _apiTokenController, obscureText: true),
+                      ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.end,
+                        children: [
+                          AppLoadingButton(
+                            key: const ValueKey('toggle-api-server-button'),
+                            onPressed: runtimeState == null ? null : _toggleApiServer,
+                            loading: _savingStartConfig,
+                            icon: Icon(
+                              runtimeState?.apiServerState.running ?? false
+                                  ? Icons.stop_circle_outlined
+                                  : Icons.play_circle_outline,
+                            ),
+                            child: Text(
+                              runtimeState?.apiServerState.running ?? false
+                                  ? context.l10n.stopApiServer
+                                  : context.l10n.startApiServer,
+                            ),
+                          ),
+                          AppLoadingButton(
+                            key: const ValueKey('save-api-config-button'),
+                            onPressed: runtimeState == null || !apiConfigDirty ? null : _saveApiServerConfig,
+                            loading: _savingStartConfig,
+                            icon: const Icon(Icons.save_outlined),
+                            variant: AppLoadingButtonVariant.primary,
+                            child: Text(context.l10n.save),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             _SettingsBlock(
               title: context.l10n.developer,
               child: _SettingsGroup(
@@ -923,6 +949,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _syncStartConfig(StartConfig config, {bool force = false}) {
     final signature = _startSignature(config);
     if (!force && _loadedStartSignature == signature && _startConfig != null) {
+      return;
+    }
+    if (!force &&
+        _startConfig != null &&
+        _startConfig!.network == config.network &&
+        _startConfig!.address == config.address &&
+        _startConfig!.apiToken == config.apiToken) {
+      _startConfig!.apiEnable = config.apiEnable;
+      _loadedStartSignature = signature;
       return;
     }
     _loadedStartSignature = signature;
@@ -1042,24 +1077,31 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  Future<void> _saveStartConfig() async {
+  Future<void> _saveApiServerConfig() async {
     final config = _startConfig;
-    final runtimeConfig = ref.read(appRuntimeControllerProvider).value?.startConfig;
-    if (config == null || runtimeConfig == null || _savingStartConfig) {
+    final runtimeState = ref.read(appRuntimeControllerProvider).value;
+    if (config == null || runtimeState == null || _savingStartConfig) {
       return;
     }
     final snapshot = _copyStartConfig(config);
     _applyStartControllers(snapshot);
+    final validationMessage = await _validateStartConfig(snapshot);
+    if (validationMessage != null) {
+      if (mounted) _toast(validationMessage);
+      return;
+    }
+    if (runtimeState.apiServerState.running && !await _confirmRestartApiServer()) {
+      return;
+    }
     setState(() => _savingStartConfig = true);
     try {
-      final validationMessage = await _validateStartConfig(snapshot, runtimeConfig);
-      if (validationMessage != null) {
-        if (mounted) _toast(validationMessage);
-        return;
+      final controller = ref.read(appRuntimeControllerProvider.notifier);
+      if (runtimeState.apiServerState.running) {
+        await controller.restartApiServer(snapshot);
+      } else {
+        await controller.saveApiServerConfig(snapshot);
       }
-      await ref.read(appRuntimeControllerProvider.notifier).saveStartConfig(snapshot);
-      _startConfig = snapshot;
-      _apiNetworkDraft = snapshot.network;
+      _syncStartConfig(ref.read(appRuntimeControllerProvider).requireValue.startConfig, force: true);
       if (mounted) _toast(context.l10n.apiConfigSaved, type: AppToastType.success);
     } catch (error) {
       if (mounted) _toast(error.toString());
@@ -1068,7 +1110,79 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  Future<String?> _validateStartConfig(StartConfig candidate, StartConfig current) async {
+  Future<void> _toggleApiServer() async {
+    final runtimeState = ref.read(appRuntimeControllerProvider).value;
+    if (runtimeState == null || _savingStartConfig) return;
+    if (runtimeState.apiServerState.running && !await _confirmDisableApiServer()) return;
+
+    setState(() => _savingStartConfig = true);
+    try {
+      final controller = ref.read(appRuntimeControllerProvider.notifier);
+      if (runtimeState.apiServerState.running) {
+        await controller.stopApiServer();
+      } else {
+        await controller.startApiServer();
+      }
+    } catch (error) {
+      if (mounted) _toast(error.toString());
+    } finally {
+      if (mounted) setState(() => _savingStartConfig = false);
+    }
+  }
+
+  Future<bool> _confirmDisableApiServer() async {
+    final overlay = const shad.DialogOverlayHandler().show<bool>(
+      context: context,
+      alignment: Alignment.center,
+      barrierDismissable: false,
+      builder: (dialogContext) => shad.AlertDialog(
+        key: const ValueKey('disable-api-server-dialog'),
+        title: Text(dialogContext.l10n.stopListening),
+        content: Text(dialogContext.l10n.disableApiServerConfirm),
+        actions: [
+          shad.SecondaryButton(
+            key: const ValueKey('cancel-disable-api-server-button'),
+            onPressed: () => shad.closeOverlay(dialogContext, false),
+            child: Text(dialogContext.l10n.cancel),
+          ),
+          shad.DestructiveButton(
+            key: const ValueKey('confirm-disable-api-server-button'),
+            onPressed: () => shad.closeOverlay(dialogContext, true),
+            child: Text(dialogContext.l10n.confirm),
+          ),
+        ],
+      ),
+    );
+    return await overlay.future ?? false;
+  }
+
+  Future<bool> _confirmRestartApiServer() async {
+    final overlay = const shad.DialogOverlayHandler().show<bool>(
+      context: context,
+      alignment: Alignment.center,
+      barrierDismissable: false,
+      builder: (dialogContext) => shad.AlertDialog(
+        key: const ValueKey('restart-api-server-dialog'),
+        title: Text(dialogContext.l10n.saveAndRestartApiServer),
+        content: Text(dialogContext.l10n.restartApiServerConfirm),
+        actions: [
+          shad.SecondaryButton(
+            key: const ValueKey('cancel-restart-api-server-button'),
+            onPressed: () => shad.closeOverlay(dialogContext, false),
+            child: Text(dialogContext.l10n.cancel),
+          ),
+          shad.PrimaryButton(
+            key: const ValueKey('confirm-restart-api-server-button'),
+            onPressed: () => shad.closeOverlay(dialogContext, true),
+            child: Text(dialogContext.l10n.saveAndRestartApiServer),
+          ),
+        ],
+      ),
+    );
+    return await overlay.future ?? false;
+  }
+
+  Future<String?> _validateStartConfig(StartConfig candidate) async {
     final l10n = context.l10n;
     if (candidate.network == 'unix') {
       return candidate.address.trim().isEmpty ? l10n.socketPathRequired : null;
@@ -1079,10 +1193,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final port = int.tryParse(address.port);
     if (port == null || port < 0 || port > 65535) return l10n.portRangeError;
 
-    final addressChanged = current.network != candidate.network || current.address != candidate.address;
-    if (addressChanged && port != 0 && await isTcpPortInUse(address.host, port)) {
-      return l10n.portInUseValue(port);
-    }
     return null;
   }
 
@@ -1312,7 +1422,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   String _startSignature(StartConfig config) {
-    return '${config.network}|${config.address}|${config.apiToken}';
+    return '${config.apiEnable}|${config.network}|${config.address}|${config.apiToken}';
   }
 
   String _startDraftSignature() {
@@ -1320,13 +1430,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final address = network == 'unix'
         ? _apiAddressController.text.trim()
         : _joinHostPort(_apiHostController.text, _apiPortController.text);
-    return '$network|$address|${_apiTokenController.text.trim()}';
+    return '${_startConfig?.apiEnable ?? false}|$network|$address|${_apiTokenController.text.trim()}';
   }
 
   StartConfig _copyStartConfig(StartConfig config) {
     return StartConfig()
       ..network = config.network
       ..address = config.address
+      ..apiEnable = config.apiEnable
       ..storage = config.storage
       ..storageDir = config.storageDir
       ..refreshInterval = config.refreshInterval
@@ -1443,6 +1554,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     };
   }
 
+  String? _apiServerRuntimeDetails(AppRuntimeState? runtimeState) {
+    if (runtimeState == null) return null;
+    final apiState = runtimeState.apiServerState;
+    final details = <String>[];
+    if (apiState.running) {
+      details.add('${apiState.network}://${apiState.runningAddress()}');
+    }
+    if (apiState.lastError.isNotEmpty) {
+      details.add(apiState.lastError);
+    } else if (apiState.pendingApply) {
+      details.add(context.l10n.apiConfigPendingApply);
+    }
+    return details.isEmpty ? null : details.join('\n');
+  }
+
+  _ApiServerVisualState _apiServerVisualState(AppRuntimeState? runtimeState) {
+    if (runtimeState == null) return _ApiServerVisualState.loading;
+    final apiState = runtimeState.apiServerState;
+    if (apiState.running) return _ApiServerVisualState.running;
+    if (apiState.lastError.isNotEmpty) return _ApiServerVisualState.failed;
+    return _ApiServerVisualState.stopped;
+  }
+
   String _languageValue(DownloaderConfig config) {
     final locale = supportedLocaleFromConfig(config.extra.locale);
     return locale == null ? 'system' : localeConfigValue(locale);
@@ -1450,6 +1584,150 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   void _toast(String message, {AppToastType type = AppToastType.error}) {
     showAppToast(context, message, type: type);
+  }
+}
+
+enum _ApiServerVisualState { loading, running, stopped, failed }
+
+class _ApiServerStatusLight extends StatefulWidget {
+  const _ApiServerStatusLight({super.key, required this.state, required this.label});
+
+  final _ApiServerVisualState state;
+  final String label;
+
+  @override
+  State<_ApiServerStatusLight> createState() => _ApiServerStatusLightState();
+}
+
+class _ApiServerStatusLightState extends State<_ApiServerStatusLight> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  bool _disableAnimations = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400), value: 0.35);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _disableAnimations = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    _syncPulseAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ApiServerStatusLight oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state != widget.state) _syncPulseAnimation();
+  }
+
+  void _syncPulseAnimation() {
+    final shouldPulse =
+        !_disableAnimations &&
+        (widget.state == _ApiServerVisualState.running || widget.state == _ApiServerVisualState.loading);
+    if (shouldPulse) {
+      if (!_pulseController.isAnimating) _pulseController.repeat(reverse: true);
+      return;
+    }
+    _pulseController
+      ..stop()
+      ..value = switch (widget.state) {
+        _ApiServerVisualState.running => 0.55,
+        _ApiServerVisualState.loading => 0.3,
+        _ApiServerVisualState.failed => 0.5,
+        _ApiServerVisualState.stopped => 0,
+      };
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final color = switch (widget.state) {
+      _ApiServerVisualState.running => palette.success,
+      _ApiServerVisualState.failed => palette.error,
+      _ApiServerVisualState.loading || _ApiServerVisualState.stopped => palette.textMuted,
+    };
+    final labelColor = widget.state == _ApiServerVisualState.stopped ? palette.textSecondary : color;
+    return Semantics(
+      label: widget.label,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, child) {
+              final pulse = Curves.easeInOut.transform(_pulseController.value);
+              final glowSize = switch (widget.state) {
+                _ApiServerVisualState.running => 12.0 + pulse * 8,
+                _ApiServerVisualState.loading => 10.0 + pulse * 5,
+                _ApiServerVisualState.failed => 16.0,
+                _ApiServerVisualState.stopped => 10.0,
+              };
+              final glowAlpha = switch (widget.state) {
+                _ApiServerVisualState.running => 0.08 + pulse * 0.12,
+                _ApiServerVisualState.loading => 0.05 + pulse * 0.06,
+                _ApiServerVisualState.failed => 0.13,
+                _ApiServerVisualState.stopped => 0.08,
+              };
+              final glowShadow = switch (widget.state) {
+                _ApiServerVisualState.running => [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.18 + pulse * 0.2),
+                    blurRadius: 4 + pulse * 8,
+                    spreadRadius: pulse * 1.5,
+                  ),
+                ],
+                _ApiServerVisualState.failed => [
+                  BoxShadow(color: color.withValues(alpha: 0.28), blurRadius: 7, spreadRadius: 0.5),
+                ],
+                _ApiServerVisualState.loading || _ApiServerVisualState.stopped => const <BoxShadow>[],
+              };
+              return SizedBox.square(
+                dimension: 24,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      key: const ValueKey('api-server-status-glow'),
+                      width: glowSize,
+                      height: glowSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color.withValues(alpha: glowAlpha),
+                        boxShadow: glowShadow,
+                      ),
+                    ),
+                    child!,
+                  ],
+                ),
+              );
+            },
+            child: AnimatedContainer(
+              key: const ValueKey('api-server-status-dot'),
+              duration: const Duration(milliseconds: 300),
+              width: widget.state == _ApiServerVisualState.loading ? 6 : 8,
+              height: widget.state == _ApiServerVisualState.loading ? 6 : 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.state == _ApiServerVisualState.stopped ? color.withValues(alpha: 0.72) : color,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            widget.label,
+            style: TextStyle(color: labelColor, fontSize: 12, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
   }
 }
 

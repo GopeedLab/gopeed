@@ -12,7 +12,6 @@ import '../../api/model/switch_extension.dart';
 import '../../api/model/task.dart';
 import '../../api/model/update_check_extension_resp.dart';
 import '../../api/model/update_extension_settings.dart';
-import '../../database/database.dart';
 import '../window/app_window_appearance.dart';
 import 'capability_rpc.dart';
 import 'gopeed_capability.dart';
@@ -147,19 +146,33 @@ void _bindGopeed(CapabilityRegistry registry) {
 
 void _bindStorage(CapabilityRegistry registry) {
   registry
-    ..bind(StorageMethods.getCreateHistory, (_) async => Database.instance.getCreateHistory() ?? const <String>[])
+    ..bind(StorageMethods.getCreateHistory, (_) async {
+      final config = await api.getConfig();
+      return config.extra.createHistory;
+    })
     ..bind(StorageMethods.saveCreateHistory, (urls) async {
+      final config = await api.getConfig();
+      final history = List<String>.of(config.extra.createHistory);
       for (final url in urls) {
-        Database.instance.saveCreateHistory(url);
+        history.remove(url);
+        history.insert(0, url);
+        if (history.length > 64) history.removeLast();
       }
+      config.extra.createHistory = history;
+      await api.putConfig(config);
       return const RpcUnit();
     })
     ..bind(StorageMethods.removeCreateHistory, (url) async {
-      Database.instance.removeCreateHistory(url);
+      final config = await api.getConfig();
+      final history = List<String>.of(config.extra.createHistory)..remove(url);
+      config.extra.createHistory = history;
+      await api.putConfig(config);
       return const RpcUnit();
     })
     ..bind(StorageMethods.clearCreateHistory, (_) async {
-      Database.instance.clearCreateHistory();
+      final config = await api.getConfig();
+      config.extra.createHistory = const [];
+      await api.putConfig(config);
       return const RpcUnit();
     });
 }

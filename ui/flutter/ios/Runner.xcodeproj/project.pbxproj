@@ -20,6 +20,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A10000000000000000000001 /* LocationKeepAliveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* LocationKeepAliveManager.swift */; };
+		A20000000000000000000001 /* GopeedTaskEventForwarder.m in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* GopeedTaskEventForwarder.m */; };
 		B44F54F47E581A39546303C9 /* libresolv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 029EF293EAA92EB3D18BBF19 /* libresolv.tbd */; };
 		C164A2AA80F148015630B8E9 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5B918B8D5281BAE2DEA6BE3C /* Pods_Runner.framework */; };
 		D081C25C294826C0006EB10B /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D081C25B294826C0006EB10B /* libc++.tbd */; };
@@ -104,6 +105,8 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000002 /* LocationKeepAliveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationKeepAliveManager.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* GopeedTaskEventForwarder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GopeedTaskEventForwarder.m; sourceTree = "<group>"; };
+		A20000000000000000000003 /* GopeedTaskEventForwarder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GopeedTaskEventForwarder.h; sourceTree = "<group>"; };
 		BE83526BCA48EE87CB910236 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		BFA76EAE38733F2444C8A609 /* Pods-ShareExtension.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ShareExtension.debug.xcconfig"; path = "Target Support Files/Pods-ShareExtension/Pods-ShareExtension.debug.xcconfig"; sourceTree = "<group>"; };
 		D554135997A5C7A2C62E1B64 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
@@ -238,6 +241,8 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				A10000000000000000000002 /* LocationKeepAliveManager.swift */,
+				A20000000000000000000003 /* GopeedTaskEventForwarder.h */,
+				A20000000000000000000002 /* GopeedTaskEventForwarder.m */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -521,6 +526,7 @@
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				A10000000000000000000001 /* LocationKeepAliveManager.swift in Sources */,
+				A20000000000000000000001 /* GopeedTaskEventForwarder.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

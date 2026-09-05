@@ -19,6 +19,7 @@ import UIKit
       name: "gopeed.com/libgopeed",
       binaryMessenger: messenger
     )
+    let taskEventForwarder = GopeedTaskEventForwarder(channel: libgopeedChannel)
     libgopeedChannel.setMethodCallHandler { call, result in
       switch call.method {
       case "start":
@@ -40,6 +41,26 @@ import UIKit
         }
       case "stop":
         LibgopeedStop()
+        result(nil)
+      case "getApiServerState":
+        result(LibgopeedGetAPIServerState())
+      case "startApiServer":
+        result(LibgopeedStartAPIServer())
+      case "stopApiServer":
+        result(LibgopeedStopAPIServer())
+      case "restartApiServer":
+        result(LibgopeedRestartAPIServer())
+      case "invoke":
+        let arguments = call.arguments as? [String: Any]
+        let method = arguments?["method"] as? String ?? ""
+        let path = arguments?["path"] as? String ?? ""
+        let query = arguments?["query"] as? String ?? ""
+        let body = arguments?["body"] as? String ?? ""
+        result(LibgopeedInvoke(method, path, query, body))
+      case "subscribeTaskEvents":
+        let arguments = call.arguments as? [String: Any]
+        let mask = (arguments?["mask"] as? NSNumber)?.int64Value ?? 0
+        GopeedSubscribeTaskEventsWithForwarder(mask, mask == 0 ? nil : taskEventForwarder)
         result(nil)
       default:
         result(FlutterMethodNotImplemented)

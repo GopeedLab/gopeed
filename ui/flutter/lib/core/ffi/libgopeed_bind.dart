@@ -29,6 +29,72 @@ class LibgopeedBind {
 
   late final _StopPtr = _lookup<ffi.NativeFunction<ffi.Void Function()>>('Stop');
   late final _Stop = _StopPtr.asFunction<void Function()>();
+
+  ffi.Pointer<ffi.Char> GetAPIServerState() => _GetAPIServerState();
+
+  late final _GetAPIServerStatePtr = _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('GetAPIServerState');
+  late final _GetAPIServerState = _GetAPIServerStatePtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  ffi.Pointer<ffi.Char> StartAPIServer() => _StartAPIServer();
+
+  late final _StartAPIServerPtr = _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('StartAPIServer');
+  late final _StartAPIServer = _StartAPIServerPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  ffi.Pointer<ffi.Char> StopAPIServer() => _StopAPIServer();
+
+  late final _StopAPIServerPtr = _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('StopAPIServer');
+  late final _StopAPIServer = _StopAPIServerPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  ffi.Pointer<ffi.Char> RestartAPIServer() => _RestartAPIServer();
+
+  late final _RestartAPIServerPtr = _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('RestartAPIServer');
+  late final _RestartAPIServer = _RestartAPIServerPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
+
+  ffi.Pointer<ffi.Char> Invoke(
+    ffi.Pointer<ffi.Char> method,
+    ffi.Pointer<ffi.Char> path,
+    ffi.Pointer<ffi.Char> query,
+    ffi.Pointer<ffi.Char> body,
+  ) {
+    return _Invoke(method, path, query, body);
+  }
+
+  late final _InvokePtr =
+      _lookup<
+        ffi.NativeFunction<
+          ffi.Pointer<ffi.Char> Function(
+            ffi.Pointer<ffi.Char>,
+            ffi.Pointer<ffi.Char>,
+            ffi.Pointer<ffi.Char>,
+            ffi.Pointer<ffi.Char>,
+          )
+        >
+      >('Invoke');
+  late final _Invoke =
+      _InvokePtr.asFunction<
+        ffi.Pointer<ffi.Char> Function(
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+          ffi.Pointer<ffi.Char>,
+        )
+      >();
+
+  void SubscribeTaskEvents(int mask, int callback) {
+    return _SubscribeTaskEvents(mask, callback);
+  }
+
+  late final _SubscribeTaskEventsPtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Uint64, ffi.UintPtr)>>(
+    'SubscribeTaskEvents',
+  );
+  late final _SubscribeTaskEvents = _SubscribeTaskEventsPtr.asFunction<void Function(int, int)>();
+
+  void FreeCString(ffi.Pointer<ffi.Char> value) {
+    return _FreeCString(value);
+  }
+
+  late final _FreeCStringPtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>)>>('FreeCString');
+  late final _FreeCString = _FreeCStringPtr.asFunction<void Function(ffi.Pointer<ffi.Char>)>();
 }
 
 final class Start_return extends ffi.Struct {

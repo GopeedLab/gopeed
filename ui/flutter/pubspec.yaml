@@ -42,7 +42,6 @@ dependencies:
   dio: ^5.9.0
   json_annotation: ^4.12.0
   ffi: ^2.1.3
-  hive: ^2.2.3
   crypto: ^3.0.6
   logger: ^1.4.0
   package_info_plus: ^8.1.0
@@ -191,6 +190,13 @@ ffigen:
     include:
       - "Start"
       - "Stop"
+      - "GetAPIServerState"
+      - "StartAPIServer"
+      - "StopAPIServer"
+      - "RestartAPIServer"
+      - "Invoke"
+      - "SubscribeTaskEvents"
+      - "FreeCString"
   structs:
     include:
       - "Start_return"

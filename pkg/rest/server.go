@@ -1,9 +1,6 @@
 package rest
 
 import (
-	"context"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -15,10 +12,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	goapi "github.com/GopeedLab/gopeed/pkg/api"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -28,83 +27,154 @@ import (
 )
 
 var (
-	srv         *http.Server
-	runningPort int
-	aesKey      []byte
+	runtimeMu sync.Mutex
 
 	Downloader *download.Downloader
+	APIService *goapi.Service
 )
 
 const (
-	webAuthCookieName = "gopeed_web_auth"
-	webAuthTokenTTL   = 7 * 24 * time.Hour
+	webAuthCookieName = "gopeed-session"
+	webAuthSessionTTL = 7 * 24 * time.Hour
 )
 
-func Start(startCfg *model.StartConfig) (port int, err error) {
-	// avoid repeat start
-	if srv != nil {
-		return runningPort, nil
+type webSessionStore struct {
+	mu       sync.Mutex
+	sessions map[string]time.Time
+	now      func() time.Time
+}
+
+func newWebSessionStore() *webSessionStore {
+	return &webSessionStore{
+		sessions: make(map[string]time.Time),
+		now:      time.Now,
+	}
+}
+
+func (s *webSessionStore) create() (string, time.Time, error) {
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		return "", time.Time{}, errors.Wrap(err, "generate web session failed")
 	}
 
-	var listener net.Listener
-	srv, listener, err = BuildServer(startCfg)
-	if err != nil {
-		return
-	}
+	sessionID := base64.RawURLEncoding.EncodeToString(rawToken)
+	expiresAt := s.now().Add(webAuthSessionTTL)
 
-	go func() {
-		if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			panic(err)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for existingToken, expiry := range s.sessions {
+		if !expiry.After(s.now()) {
+			delete(s.sessions, existingToken)
 		}
-	}()
-
-	if addr, ok := listener.Addr().(*net.TCPAddr); ok {
-		port = addr.Port
-		runningPort = port
 	}
-	return
+	s.sessions[sessionID] = expiresAt
+	return sessionID, expiresAt, nil
+}
+
+func (s *webSessionStore) valid(sessionID string) bool {
+	if sessionID == "" {
+		return false
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	expiresAt, ok := s.sessions[sessionID]
+	if !ok {
+		return false
+	}
+	if !expiresAt.After(s.now()) {
+		delete(s.sessions, sessionID)
+		return false
+	}
+	return true
+}
+
+func Start(startCfg *model.StartConfig) (port int, err error) {
+	runtimeMu.Lock()
+	defer runtimeMu.Unlock()
+
+	// avoid repeat start
+	if APIService != nil {
+		return apiServer.runningPort, nil
+	}
+	if startCfg == nil {
+		startCfg = &model.StartConfig{}
+	}
+	startCfg.Init()
+	if err = startCfg.Validate(); err != nil {
+		return 0, err
+	}
+	if err = initializeCore(startCfg); err != nil {
+		return 0, err
+	}
+	if startCfg.NativeMode {
+		storedConfig, configErr := Downloader.GetConfig()
+		if configErr != nil {
+			return 0, configErr
+		}
+		apiConfig := storedConfig.API
+		if apiConfig == nil {
+			apiConfig = (&base.APIServerConfig{}).Init()
+		} else {
+			apiConfig.Init()
+		}
+		startCfg.ApiEnable = &apiConfig.Enable
+		startCfg.Network = apiConfig.Network
+		startCfg.Address = apiConfig.Address
+		startCfg.ApiToken = apiConfig.Token
+	}
+	if err := Downloader.ContinueOnStartup(); err != nil {
+		Downloader.Logger.Warn().Err(err).Msg("auto-start tasks failed")
+	}
+	if !startCfg.APIEnabled() {
+		return 0, nil
+	}
+	config := &base.APIServerConfig{
+		Enable:  true,
+		Network: startCfg.Network,
+		Address: startCfg.Address,
+		Token:   startCfg.ApiToken,
+	}
+	port, startErr := apiServer.startWithConfigLocked(startCfg, config)
+	if startErr != nil && startCfg.NativeMode {
+		Downloader.Logger.Error().Err(startErr).Msg("optional API server failed to start")
+		return 0, nil
+	}
+	return port, startErr
 }
 
 func Stop() {
-	defer func() {
-		srv = nil
-	}()
-
-	if srv != nil {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
-		if err := srv.Shutdown(shutdownCtx); err != nil {
-			Downloader.Logger.Warn().Err(err).Msg("shutdown server failed")
-		}
+	runtimeMu.Lock()
+	defer runtimeMu.Unlock()
+	if err := apiServer.stopLocked(); err != nil && Downloader != nil {
+		Downloader.Logger.Warn().Err(err).Msg("shutdown server failed")
+	}
+	if APIService != nil {
+		APIService.SubscribeTaskEvents(0, nil)
 	}
 	if Downloader != nil {
 		if err := Downloader.Close(); err != nil {
 			Downloader.Logger.Warn().Err(err).Msg("close downloader failed")
 		}
 	}
+	APIService = nil
+	apiServer = &apiServerManager{}
 }
 
 func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error) {
+	return buildServer(startCfg, true)
+}
+
+func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Server, net.Listener, error) {
 	if startCfg == nil {
 		startCfg = &model.StartConfig{}
 	}
 	startCfg.Init()
+	if err := startCfg.Validate(); err != nil {
+		return nil, nil, err
+	}
 
-	downloadCfg := &download.DownloaderConfig{
-		ProductionMode:    startCfg.ProductionMode,
-		RefreshInterval:   startCfg.RefreshInterval,
-		WhiteDownloadDirs: startCfg.WhiteDownloadDirs,
-		WebViewProvider:   startCfg.WebViewProvider,
-	}
-	if startCfg.Storage == model.StorageBolt {
-		downloadCfg.Storage = download.NewBoltStorage(startCfg.StorageDir)
-	} else {
-		downloadCfg.Storage = download.NewMemStorage()
-	}
-	downloadCfg.StorageDir = startCfg.StorageDir
-	downloadCfg.Init()
-	Downloader = download.NewDownloader(downloadCfg)
-	if err := Downloader.Setup(); err != nil {
+	if err := initializeCore(startCfg); err != nil {
 		return nil, nil, err
 	}
 
@@ -112,77 +182,66 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		util.SafeRemove(startCfg.Address)
 	}
 
-	if startCfg.WebEnable {
-		aesKey = make([]byte, 32)
-		if _, err := rand.Read(aesKey); err != nil {
-			return nil, nil, errors.Wrap(err, "generate aes key failed")
-		}
-	}
-
 	listener, err := net.Listen(startCfg.Network, startCfg.Address)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := Downloader.ContinueOnStartup(); err != nil {
-		Downloader.Logger.Warn().Err(err).Msg("auto-start tasks failed")
+	if continueOnStartup {
+		if err := Downloader.ContinueOnStartup(); err != nil {
+			Downloader.Logger.Warn().Err(err).Msg("auto-start tasks failed")
+		}
 	}
 
 	var r = mux.NewRouter()
-	r.Methods(http.MethodGet).Path("/api/v1/info").HandlerFunc(Info)
-	r.Methods(http.MethodPost).Path("/api/v1/resolve").HandlerFunc(Resolve)
-	r.Methods(http.MethodPost).Path("/api/v1/tasks").HandlerFunc(CreateTask)
-	r.Methods(http.MethodPost).Path("/api/v1/tasks/batch").HandlerFunc(CreateTaskBatch)
-	r.Methods(http.MethodPatch).Path("/api/v1/tasks/{id}").HandlerFunc(PatchTask)
-	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/pause").HandlerFunc(PauseTask)
-	r.Methods(http.MethodPut).Path("/api/v1/tasks/pause").HandlerFunc(PauseTasks)
-	r.Methods(http.MethodPut).Path("/api/v1/tasks/{id}/continue").HandlerFunc(ContinueTask)
-	r.Methods(http.MethodPut).Path("/api/v1/tasks/continue").HandlerFunc(ContinueTasks)
-	r.Methods(http.MethodDelete).Path("/api/v1/tasks/{id}").HandlerFunc(DeleteTask)
-	r.Methods(http.MethodDelete).Path("/api/v1/tasks").HandlerFunc(DeleteTasks)
-	r.Methods(http.MethodGet).Path("/api/v1/tasks/{id}").HandlerFunc(GetTask)
-	r.Methods(http.MethodGet).Path("/api/v1/tasks/{id}/status").HandlerFunc(GetTaskStatus)
-	r.Methods(http.MethodGet).Path("/api/v1/tasks").HandlerFunc(GetTasks)
-	r.Methods(http.MethodGet).Path("/api/v1/tasks/{id}/stats").HandlerFunc(GetStats)
-	r.Methods(http.MethodGet).Path("/api/v1/config").HandlerFunc(GetConfig)
-	r.Methods(http.MethodPut).Path("/api/v1/config").HandlerFunc(PutConfig)
-	r.Methods(http.MethodPost).Path("/api/v1/extensions").HandlerFunc(InstallExtension)
-	r.Methods(http.MethodGet).Path("/api/v1/extensions").HandlerFunc(GetExtensions)
-	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}").HandlerFunc(GetExtension)
-	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/settings").HandlerFunc(UpdateExtensionSettings)
-	r.Methods(http.MethodPut).Path("/api/v1/extensions/{identity}/switch").HandlerFunc(SwitchExtension)
-	r.Methods(http.MethodDelete).Path("/api/v1/extensions/{identity}").HandlerFunc(DeleteExtension)
-	r.Methods(http.MethodGet).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateCheckExtension)
-	r.Methods(http.MethodPost).Path("/api/v1/extensions/{identity}/update").HandlerFunc(UpdateExtension)
-	r.Methods(http.MethodPost).Path("/api/v1/webhook/test").HandlerFunc(TestWebhook)
-	r.Path("/api/v1/proxy").HandlerFunc(DoProxy)
+	for _, route := range APIService.RouteSpecs() {
+		route := route
+		r.Methods(route.Method).Path(route.Pattern).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				WriteJson(w, model.NewErrorResult(err.Error()))
+				return
+			}
+			response := route.Handler(&goapi.Context{
+				Method:     r.Method,
+				Path:       r.URL.Path,
+				Query:      r.URL.Query(),
+				Body:       body,
+				Headers:    r.Header,
+				PathParams: mux.Vars(r),
+			})
+			WriteStatusJson(w, response.StatusCode, response.Body)
+		})
+	}
+	r.Path("/api/web/proxy").HandlerFunc(DoProxy)
 
 	enableApiToken := startCfg.ApiToken != ""
 	enableWebAuth := startCfg.WebEnable && startCfg.WebAuth != nil
+	var webSessions *webSessionStore
+	if enableWebAuth {
+		webSessions = newWebSessionStore()
+	}
 	if startCfg.WebEnable {
 		if enableWebAuth {
 			r.Methods(http.MethodPost).Path("/api/web/login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				var loginReq model.WebAuth
 				if ReadJson(r, w, &loginReq) {
 					if loginReq.Username == startCfg.WebAuth.Username && loginReq.Password == startCfg.WebAuth.Password {
-						// Generate a login token, Username:Password:Timestamp
-						timestamp := time.Now().Unix()
-						tokenData := fmt.Sprintf("%s:%s:%d", loginReq.Username, loginReq.Password, timestamp)
-						token, err := aesEncrypt(aesKey, []byte(tokenData))
+						sessionID, expiresAt, err := webSessions.create()
 						if err != nil {
 							WriteJson(w, model.NewErrorResult(err.Error()))
 							return
 						}
-
 						http.SetCookie(w, &http.Cookie{
 							Name:     webAuthCookieName,
-							Value:    token,
+							Value:    sessionID,
 							Path:     "/",
-							Expires:  time.Now().Add(webAuthTokenTTL),
-							MaxAge:   int(webAuthTokenTTL.Seconds()),
+							MaxAge:   int(webAuthSessionTTL.Seconds()),
+							Expires:  expiresAt,
 							HttpOnly: true,
 							Secure:   requestUsesHTTPS(r),
 							SameSite: http.SameSiteLaxMode,
 						})
+
 						WriteJson(w, model.NewNilResult())
 						return
 					}
@@ -201,19 +260,15 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 
 		r.Use(func(h http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if enableWebAuth && isProtectedWebFilePath(r.URL.Path) {
-					cookie, err := r.Cookie(webAuthCookieName)
-					if err != nil || !validWebAuthToken(cookie.Value, startCfg.WebAuth) {
-						writeUnauthorized(w, r)
-						return
-					}
+				protectedPath := strings.HasPrefix(r.URL.Path, "/api/") || isProtectedWebFilePath(r.URL.Path)
+				if r.URL.Path == "/api/web/login" || !protectedPath {
 					h.ServeHTTP(w, r)
 					return
 				}
 
 				if enableApiToken {
 					apiTokenHeader := r.Header["X-Api-Token"]
-					// If api token header is set, only check api token ignore basic auth
+					// If an API token header is set, validate it before other authentication methods.
 					if len(apiTokenHeader) > 0 {
 						if apiTokenHeader[0] == startCfg.ApiToken {
 							h.ServeHTTP(w, r)
@@ -226,13 +281,12 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 				}
 
 				if enableWebAuth {
-					if !strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/api/web/login" {
-						h.ServeHTTP(w, r)
+					cookie, err := r.Cookie(webAuthCookieName)
+					if err != nil {
+						writeUnauthorized(w, r)
 						return
 					}
-
-					cookie, err := r.Cookie(webAuthCookieName)
-					if err != nil || !validWebAuthToken(cookie.Value, startCfg.WebAuth) {
+					if !webSessions.valid(cookie.Value) {
 						writeUnauthorized(w, r)
 						return
 					}
@@ -259,36 +313,76 @@ func BuildServer(startCfg *model.StartConfig) (*http.Server, net.Listener, error
 		})
 	})
 
-	srv = &http.Server{Handler: handlers.CORS(
+	server := &http.Server{Handler: handlers.CORS(
 		handlers.AllowedHeaders([]string{"Content-Type", "Authorization", "X-Api-Token", "X-Target-Uri"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowCredentials(),
 	)(r)}
-	return srv, listener, nil
+	return server, listener, nil
+}
+
+func startConfigForAPIServer(config *base.APIServerConfig) *model.StartConfig {
+	enabled := config.Enable
+	return &model.StartConfig{
+		Network:        config.Network,
+		Address:        config.Address,
+		ApiEnable:      &enabled,
+		ApiToken:       config.Token,
+		NativeMode:     true,
+		Storage:        model.StorageMem,
+		WebEnable:      false,
+		ProductionMode: true,
+	}
+}
+
+func cloneAPIServerConfig(config *base.APIServerConfig) *base.APIServerConfig {
+	if config == nil {
+		return nil
+	}
+	cloned := *config
+	return &cloned
+}
+
+func sameAPIServerConfig(left, right *base.APIServerConfig) bool {
+	return left != nil && right != nil &&
+		left.Enable == right.Enable && left.Network == right.Network &&
+		left.Address == right.Address && left.Token == right.Token
+}
+
+func initializeCore(startCfg *model.StartConfig) error {
+	if APIService != nil {
+		return nil
+	}
+	downloadCfg := &download.DownloaderConfig{
+		ProductionMode:    startCfg.ProductionMode,
+		RefreshInterval:   startCfg.RefreshInterval,
+		WhiteDownloadDirs: startCfg.WhiteDownloadDirs,
+		WebViewProvider:   startCfg.WebViewProvider,
+	}
+	if startCfg.Storage == model.StorageBolt {
+		downloadCfg.Storage = download.NewBoltStorage(startCfg.StorageDir)
+	} else {
+		downloadCfg.Storage = download.NewMemStorage()
+	}
+	downloadCfg.StorageDir = startCfg.StorageDir
+	downloadCfg.Init()
+	Downloader = download.NewDownloader(downloadCfg)
+	if err := Downloader.Setup(); err != nil {
+		return err
+	}
+	service, err := goapi.NewService(Downloader)
+	if err != nil {
+		_ = Downloader.Close()
+		Downloader = nil
+		return err
+	}
+	APIService = service
+	return nil
 }
 
 func isProtectedWebFilePath(urlPath string) bool {
 	return urlPath == "/fs" || strings.HasPrefix(urlPath, "/fs/")
-}
-
-func validWebAuthToken(token string, auth *model.WebAuth) bool {
-	if token == "" || auth == nil {
-		return false
-	}
-	tokenData, err := aesDecrypt(aesKey, token)
-	if err != nil {
-		return false
-	}
-	parts := strings.SplitN(string(tokenData), ":", 3)
-	if len(parts) != 3 || parts[0] != auth.Username || parts[1] != auth.Password {
-		return false
-	}
-	timestamp, err := strconv.ParseInt(parts[2], 10, 64)
-	if err != nil {
-		return false
-	}
-	return time.Now().Unix()-timestamp <= int64(webAuthTokenTTL.Seconds())
 }
 
 func requestUsesHTTPS(r *http.Request) bool {
@@ -429,48 +523,4 @@ func WriteStatusJson(w http.ResponseWriter, statusCode int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(v)
-}
-
-func aesEncrypt(key, data []byte) (string, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", err
-	}
-
-	cipherText := gcm.Seal(nonce, nonce, data, nil)
-	return base64.StdEncoding.EncodeToString(cipherText), nil
-}
-
-func aesDecrypt(key []byte, encryptedData string) ([]byte, error) {
-	cipherText, err := base64.StdEncoding.DecodeString(encryptedData)
-	if err != nil {
-		return nil, err
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(cipherText) < gcm.NonceSize() {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	nonce, cipherText := cipherText[:gcm.NonceSize()], cipherText[gcm.NonceSize():]
-	return gcm.Open(nil, nonce, cipherText, nil)
 }
