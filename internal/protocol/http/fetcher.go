@@ -284,11 +284,15 @@ type Fetcher struct {
 
 	// Async prefetch during resolve phase
 	prefetchFile     *os.File      // Temporary file for prefetch data
-	prefetchFilePath string        // Path to temporary file
+	prefetchFilePath string        // Path used to create the temporary file (unlinked immediately on POSIX)
+	prefetchDirPath  string        // Private temporary directory used on Windows
 	prefetchSize     atomic.Int64  // Bytes prefetched so far
 	prefetchDone     atomic.Bool   // Prefetch completed or stopped
 	prefetchErr      error         // Error during prefetch (if any)
 	prefetchStopCh   chan struct{} // Signal to stop prefetch
+	prefetchDoneCh   chan struct{} // Closed after the prefetch goroutine has completely exited
+	prefetchStopOnce sync.Once     // Makes stopping safe across Start/Pause/takeover races
+	prefetchDoneOnce sync.Once     // Makes the goroutine completion signal single-shot
 	resolveFallback  atomic.Bool   // Resolve prefetch is still available until the first Range request takes over
 
 	// Target file
@@ -408,7 +412,7 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	}
 
 	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		f.setState(stateError)
 		return NewRequestError(resp.StatusCode)
 	}
@@ -483,6 +487,9 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	// For non-range resources, the response will be used directly in Start
 	if res.Range {
 		f.prefetchStopCh = make(chan struct{})
+		f.prefetchDoneCh = make(chan struct{})
+		f.prefetchDone.Store(false)
+		f.prefetchErr = nil
 		f.resolveFallback.Store(true)
 		go f.asyncPrefetch()
 	}
@@ -498,37 +505,35 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 // asyncPrefetch downloads data in background during resolve phase
 // This data can be reused when Start is called to save time
 func (f *Fetcher) asyncPrefetch() {
-	defer func() {
-		f.prefetchDone.Store(true)
-	}()
-
 	// Get the resolve response
 	f.resolveRespLock.Lock()
 	resp := f.resolveResp
 	f.resolveRespLock.Unlock()
 
+	defer func() {
+		if resp != nil {
+			f.closeResolveResponseIfCurrent(resp)
+		}
+		f.prefetchDone.Store(true)
+		f.prefetchDoneOnce.Do(func() {
+			close(f.prefetchDoneCh)
+		})
+	}()
+
 	if resp == nil {
 		return
 	}
 
-	// Create temporary file for prefetch data
-	tmpFile, err := os.CreateTemp("", "gopeed-prefetch-*")
+	// POSIX unlinks the file immediately while retaining the open descriptor.
+	// Windows opens a file in a private directory with delete-on-close.
+	tmpFile, tmpPath, tmpDir, err := openPrefetchTempFile()
 	if err != nil {
 		f.prefetchErr = err
 		return
 	}
 	f.prefetchFile = tmpFile
-	f.prefetchFilePath = tmpFile.Name()
-
-	defer func() {
-		// Close response body when prefetch stops
-		f.resolveRespLock.Lock()
-		if f.resolveResp != nil {
-			f.resolveResp.Body.Close()
-			f.resolveResp = nil
-		}
-		f.resolveRespLock.Unlock()
-	}()
+	f.prefetchFilePath = tmpPath
+	f.prefetchDirPath = tmpDir
 
 	buf := make([]byte, 32*1024) // 32KB buffer
 	reader := NewTimeoutReader(resp.Body, readTimeout)
@@ -561,23 +566,61 @@ func (f *Fetcher) asyncPrefetch() {
 	}
 }
 
+// takeResolveResponse transfers ownership of the Resolve response to the
+// caller. Closing the body outside the lock is important because Close may
+// need to wake a concurrently blocked Read.
+func (f *Fetcher) takeResolveResponse() *http.Response {
+	f.resolveRespLock.Lock()
+	resp := f.resolveResp
+	f.resolveResp = nil
+	f.resolveRespLock.Unlock()
+	return resp
+}
+
+func (f *Fetcher) closeResolveResponse() {
+	if resp := f.takeResolveResponse(); resp != nil {
+		_ = resp.Body.Close()
+	}
+}
+
+// closeResolveResponseIfCurrent closes resp only if the Fetcher still owns
+// that exact response. Another path may already have taken ownership.
+func (f *Fetcher) closeResolveResponseIfCurrent(resp *http.Response) {
+	f.resolveRespLock.Lock()
+	owned := f.resolveResp == resp
+	if owned {
+		f.resolveResp = nil
+	}
+	f.resolveRespLock.Unlock()
+	if owned {
+		_ = resp.Body.Close()
+	}
+}
+
+// stopPrefetch is idempotent. Closing the response body is what interrupts a
+// Read that is blocked in the HTTP transport; closing the signal alone cannot
+// wake that Read.
+func (f *Fetcher) stopPrefetch() {
+	if f.prefetchStopCh == nil {
+		return
+	}
+	f.prefetchStopOnce.Do(func() {
+		close(f.prefetchStopCh)
+		f.closeResolveResponse()
+	})
+}
+
+func (f *Fetcher) waitPrefetch() {
+	if f.prefetchDoneCh != nil {
+		<-f.prefetchDoneCh
+	}
+}
+
 // stopPrefetchAndGetData stops the async prefetch and returns prefetched bytes
 // It also copies prefetched data to the target file
 func (f *Fetcher) stopPrefetchAndCopyData() int64 {
-	// Signal prefetch to stop (safely)
-	if f.prefetchStopCh != nil {
-		select {
-		case <-f.prefetchStopCh:
-			// Already closed
-		default:
-			close(f.prefetchStopCh)
-		}
-	}
-
-	// Wait for prefetch to finish (with timeout)
-	for i := 0; i < 1000 && !f.prefetchDone.Load(); i++ {
-		time.Sleep(10 * time.Millisecond)
-	}
+	f.stopPrefetch()
+	f.waitPrefetch()
 
 	prefetched := f.prefetchSize.Load()
 	if prefetched == 0 {
@@ -612,13 +655,12 @@ func (f *Fetcher) stopPrefetchAndCopyData() int64 {
 // cleanupPrefetchFile closes and removes the prefetch temporary file
 func (f *Fetcher) cleanupPrefetchFile() {
 	if f.prefetchFile != nil {
-		f.prefetchFile.Close()
+		_ = f.prefetchFile.Close()
 		f.prefetchFile = nil
 	}
-	if f.prefetchFilePath != "" {
-		os.Remove(f.prefetchFilePath)
-		f.prefetchFilePath = ""
-	}
+	cleanupPrefetchTempArtifacts(f.prefetchFilePath, f.prefetchDirPath)
+	f.prefetchFilePath = ""
+	f.prefetchDirPath = ""
 	// The byte count is only reusable while the backing prefetch file exists.
 	// Pause may discard that file before the first Start, so retaining the
 	// count would make the next Start skip bytes that were never copied.
@@ -728,12 +770,7 @@ func (f *Fetcher) doStart() error {
 
 		if !f.resolveFallback.Load() {
 			// Also close resolve response if still open.
-			f.resolveRespLock.Lock()
-			if f.resolveResp != nil {
-				f.resolveResp.Body.Close()
-				f.resolveResp = nil
-			}
-			f.resolveRespLock.Unlock()
+			f.closeResolveResponse()
 		}
 	}
 
@@ -1453,11 +1490,12 @@ func (f *Fetcher) completeFromResolveFallback(conn *connection) bool {
 		return false
 	}
 
-	for !f.prefetchDone.Load() {
-		if conn.ctx.Err() != nil {
+	if f.prefetchDoneCh != nil {
+		select {
+		case <-f.prefetchDoneCh:
+		case <-conn.ctx.Done():
 			return false
 		}
-		time.Sleep(10 * time.Millisecond)
 	}
 	knownSize := f.meta.Res.Size > 0
 	if f.prefetchErr != nil || (knownSize && f.prefetchSize.Load() != f.meta.Res.Size) {
@@ -1674,10 +1712,7 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 	buf := make([]byte, 8192)
 
 	// Get the resolve response
-	f.resolveRespLock.Lock()
-	resp := f.resolveResp
-	f.resolveResp = nil // Take ownership
-	f.resolveRespLock.Unlock()
+	resp := f.takeResolveResponse()
 
 	if resp == nil {
 		// No resolve response available, fall back to normal connection
@@ -2265,15 +2300,8 @@ func (f *Fetcher) Pause() error {
 		f.resolveCancel()
 	}
 
-	// Stop prefetch if running
-	if f.prefetchStopCh != nil {
-		select {
-		case <-f.prefetchStopCh:
-			// Already closed
-		default:
-			close(f.prefetchStopCh)
-		}
-	}
+	// Stop prefetch and close its response body to wake a blocked Read.
+	f.stopPrefetch()
 
 	// Wait for downloadLoop to exit first (it will call wg.Wait internally)
 	if f.downloadLoopDone != nil {
@@ -2283,10 +2311,8 @@ func (f *Fetcher) Pause() error {
 	// Wait for all connection goroutines to stop
 	f.wg.Wait()
 
-	// Wait for prefetch to finish
-	for f.prefetchStopCh != nil && !f.prefetchDone.Load() {
-		time.Sleep(10 * time.Millisecond)
-	}
+	// Wait until the prefetch goroutine has released the response completely.
+	f.waitPrefetch()
 
 	// If Pause wins before the first Range response is validated, materialize
 	// the Resolve prefix before discarding its temporary file. The first
@@ -2318,12 +2344,7 @@ func (f *Fetcher) Pause() error {
 	}
 
 	// Clean up resolve response if still held
-	f.resolveRespLock.Lock()
-	if f.resolveResp != nil {
-		f.resolveResp.Body.Close()
-		f.resolveResp = nil
-	}
-	f.resolveRespLock.Unlock()
+	f.closeResolveResponse()
 
 	f.fileMu.Lock()
 	if f.file != nil {

@@ -92,6 +92,19 @@ func TestResolve(t *testing.T) {
 	})
 }
 
+func TestCancelResolve(t *testing.T) {
+	doTest(func() {
+		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", resolveReq)
+		if resp.ID == "" {
+			t.Fatal("Resolve() returned an empty ID")
+		}
+		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/resolve/"+resp.ID, nil)
+		// Cancellation is idempotent so callers can always release in a finally
+		// block, even if Create has already consumed the resolve result.
+		httpRequestCheckOk[any](http.MethodDelete, "/api/v1/resolve/"+resp.ID, nil)
+	})
+}
+
 func TestCreateTask(t *testing.T) {
 	doTest(func() {
 		resp := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", resolveReq)

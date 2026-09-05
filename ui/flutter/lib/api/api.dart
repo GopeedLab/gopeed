@@ -140,6 +140,11 @@ Future<ResolveResult> resolve(ResolveTask resolveTask) async {
       (data) => ResolveResult.fromJson(data));
 }
 
+Future<void> cancelResolve(String id) async {
+  if (id.isEmpty) return;
+  await _parse(() => _client.dio.delete("api/v1/resolve/$id"), null);
+}
+
 Future<String> createTask(CreateTask createTask) async {
   final result = await _parse<String>(
       () => _client.dio.post("api/v1/tasks", data: createTask),

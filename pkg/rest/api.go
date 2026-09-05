@@ -35,6 +35,19 @@ func Resolve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func CancelResolve(w http.ResponseWriter, r *http.Request) {
+	resolveID := mux.Vars(r)["id"]
+	if resolveID == "" {
+		WriteJson(w, model.NewErrorResult("param invalid: id", model.CodeInvalidParam))
+		return
+	}
+	if err := Downloader.CancelResolve(resolveID); err != nil {
+		WriteJson(w, model.NewErrorResult(err.Error()))
+		return
+	}
+	WriteJson(w, model.NewNilResult())
+}
+
 func CreateTask(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateTask
 	if ReadJson(r, w, &req) {

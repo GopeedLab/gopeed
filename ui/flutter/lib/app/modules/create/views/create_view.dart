@@ -1039,7 +1039,8 @@ class CreateView extends GetView<CreateController> {
   Future<void> _showResolveDialog(ResolveResult rr) async {
     final createFormKey = GlobalKey<FormState>();
     final downloadController = RoundedLoadingButtonController();
-    return showDialog<void>(
+    try {
+      await showDialog<void>(
         context: Get.context!,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
@@ -1144,6 +1145,16 @@ class CreateView extends GetView<CreateController> {
                 ),
               ],
             ));
+    } finally {
+      // Create consumes the resolve ID. If the dialog was cancelled or failed,
+      // this idempotent call releases the still-cached fetcher instead.
+      try {
+        await cancelResolve(rr.id);
+      } catch (_) {
+        // Cleanup failure must not replace a successful create/navigation
+        // result. Downloader shutdown remains the final cleanup fallback.
+      }
+    }
   }
 
   Widget _buildCategorySelector(AppController appController) {
