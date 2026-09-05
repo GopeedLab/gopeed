@@ -35,8 +35,27 @@ Visit ✈ [Official Website](https://gopeed.com)
 - 🗣️ **Available in 20+ languages** — including English, Simplified and Traditional Chinese, Japanese, Korean, and many more.
 - 🌐 **Browser integration** — send downloads from Chrome, Edge, Firefox, and other compatible browsers directly to Gopeed.
 - 🧩 **JavaScript extensions** — add support for video platforms, AI model hubs, cloud storage services, and other download sources.
+- 🤖 **AI integration** — use Gopeed's MCP endpoint to connect compatible AI agents and create, inspect, or manage downloads with natural language.
 - 🔌 **Automation-ready** — integrate with Gopeed through its REST API, CLI, authenticated web UI, webhooks, and post-download scripts.
 - 🛠️ **Built-in essentials** — customize headers and the User-Agent, use proxies and GitHub mirrors, receive notifications, and extract archives automatically.
+
+## 🤖 AI Integration
+
+Connect Gopeed to an AI agent and manage downloads with natural language. For example, you can say:
+
+> Download the latest Gopeed client for Windows.
+
+| Tool | Description |
+| --- | --- |
+| `resolve_task` | Resolve a download URL or URI and return its resource metadata and files before creating a task. |
+| `create_task` | Create and start a task from a resolved resource ID or a direct download request. |
+| `list_tasks` | List tasks, optionally filtering them by ID or status. |
+| `get_task` | Get the request, resource, options, and current progress for one task. |
+| `get_task_status` | Get lightweight runtime status and per-file progress for one task. |
+| `get_task_stats` | Get protocol-specific statistics, including HTTP connections or BitTorrent peers and seeding data. |
+| `pause_task` | Pause a task. |
+| `continue_task` | Continue a paused or failed task. |
+| `delete_task` | Delete a task, optionally deleting its downloaded files. |
 
 ## ⬇️ Download
 

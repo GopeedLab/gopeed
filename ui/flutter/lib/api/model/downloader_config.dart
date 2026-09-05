@@ -32,11 +32,18 @@ class DownloaderConfig {
 @JsonSerializable()
 class ApiServerConfig {
   bool enable;
+  bool mcpEnable;
   String network;
   String address;
   String token;
 
-  ApiServerConfig({this.enable = false, this.network = 'tcp', this.address = '127.0.0.1:9999', this.token = ''});
+  ApiServerConfig({
+    this.enable = false,
+    this.mcpEnable = false,
+    this.network = 'tcp',
+    this.address = '127.0.0.1:9999',
+    this.token = '',
+  });
 
   factory ApiServerConfig.fromJson(Map<String, dynamic>? json) =>
       json == null ? ApiServerConfig() : _$ApiServerConfigFromJson(json);

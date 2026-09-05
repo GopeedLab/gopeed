@@ -1,6 +1,7 @@
 class ApiServerState {
   const ApiServerState({
     required this.enabled,
+    required this.mcpEnabled,
     required this.running,
     required this.network,
     required this.address,
@@ -10,6 +11,7 @@ class ApiServerState {
   });
 
   final bool enabled;
+  final bool mcpEnabled;
   final bool running;
   final String network;
   final String address;
@@ -20,6 +22,7 @@ class ApiServerState {
   factory ApiServerState.fromJson(Map<String, dynamic> json) {
     return ApiServerState(
       enabled: json['enabled'] as bool? ?? false,
+      mcpEnabled: json['mcpEnabled'] as bool? ?? false,
       running: json['running'] as bool? ?? false,
       network: json['network'] as String? ?? '',
       address: json['address'] as String? ?? '',
@@ -50,6 +53,7 @@ class ApiServerOperationResult {
       state: rawState == null
           ? const ApiServerState(
               enabled: false,
+              mcpEnabled: false,
               running: false,
               network: '',
               address: '',

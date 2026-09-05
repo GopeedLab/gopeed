@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart' show Icons, Scrollbar;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kDoubleTapMinTime, kSecondaryMouseButton;
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart' show MethodChannel, SystemChannels;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,7 @@ import 'package:gopeed/api/model/task.dart' as api_task;
 import 'package:gopeed/core/common/start_config.dart';
 import 'package:gopeed/core/common/api_server_state.dart';
 import 'package:gopeed/core/icons/gopeed_icons.dart';
+import 'package:gopeed/core/network/gopeed/gopeed_transport.dart';
 import 'package:gopeed/core/window/app_window_chrome.dart';
 import 'package:gopeed/core/window/app_window_frame.dart';
 import 'package:gopeed/features/home/presentation/widgets/tasks_top_bar.dart';
@@ -44,6 +46,7 @@ import 'package:gopeed/features/tasks/application/tasks_controller.dart';
 import 'package:gopeed/features/settings/application/settings_controller.dart';
 import 'package:gopeed/features/settings/presentation/pages/settings_page.dart';
 import 'package:gopeed/features/settings/presentation/widgets/download_categories_setting.dart';
+import 'package:gopeed/features/settings/presentation/widgets/mcp_agent_setup.dart';
 import 'package:gopeed/features/settings/presentation/widgets/settings_item.dart';
 import 'package:gopeed/features/settings/presentation/widgets/settings_language_select.dart';
 import 'package:gopeed/features/settings/presentation/widgets/settings_list_editor.dart';
@@ -74,6 +77,7 @@ import 'package:gopeed/shared/theme/app_theme_color.dart';
 import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/widgets/app_loading_button.dart';
 import 'package:gopeed/shared/widgets/app_choice_segmented_control.dart';
+import 'package:gopeed/shared/widgets/app_copy_icon_button.dart';
 import 'package:gopeed/shared/widgets/app_http_headers_editor.dart';
 import 'package:gopeed/shared/widgets/app_path_picker_field.dart';
 import 'package:gopeed/shared/widgets/app_primary_button.dart';
@@ -88,6 +92,29 @@ import 'package:gopeed/util/updater.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.localeTestValue = const Locale('en');
 
+  test('Web MCP endpoint excludes page path, query, and hash route', () {
+    expect(
+      webMcpEndpoint(Uri.parse('https://gopeed.example:8443/app?source=desktop#/settings/advanced')),
+      'https://gopeed.example:8443/mcp',
+    );
+    expect(webMcpEndpoint(Uri.parse('http://127.0.0.1:9999/#/settings?tab=advanced')), 'http://127.0.0.1:9999/mcp');
+  });
+
+  test('Web API display address normalizes localhost', () {
+    expect(webApiDisplayAddress(Uri.parse('http://localhost:9999/#/settings/advanced')), '127.0.0.1:9999');
+    expect(webApiDisplayAddress(Uri.parse('https://example.com/settings')), 'example.com');
+    expect(webApiDisplayAddress(Uri.parse('http://[::1]:9999/settings')), '[::1]:9999');
+  });
+
+  test('Flutter Web debug API defaults to port 9999', () {
+    final pageUri = Uri.parse('http://localhost:52143/app?build=debug#/settings/advanced');
+
+    expect(webApiBaseUrl(pageUri, debugMode: true), 'http://127.0.0.1:9999/');
+    expect(webApiBaseUrl(pageUri, debugMode: false), 'http://localhost:52143/');
+    expect(webTransportBaseUrl('http://127.0.0.1:9999/', pageUri, debugMode: true), 'http://127.0.0.1:9999/');
+    expect(webTransportBaseUrl('http://127.0.0.1:9999/', pageUri, debugMode: false), '');
+  });
+
   test('macOS reserves its native overlay header without custom chrome', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
@@ -98,6 +125,14 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  test('Web reserves the same top content inset as desktop platforms', () {
+    expect(AppWindowChrome.reservesHeaderInsetFor(web: true, platform: TargetPlatform.android), isTrue);
+    expect(AppWindowChrome.reservesHeaderInsetFor(web: false, platform: TargetPlatform.windows), isTrue);
+    expect(AppWindowChrome.reservesHeaderInsetFor(web: false, platform: TargetPlatform.macOS), isTrue);
+    expect(AppWindowChrome.reservesHeaderInsetFor(web: false, platform: TargetPlatform.linux), isTrue);
+    expect(AppWindowChrome.reservesHeaderInsetFor(web: false, platform: TargetPlatform.android), isFalse);
   });
 
   testWidgets('desktop frame overlays global caption controls without insetting content', (WidgetTester tester) async {
@@ -400,7 +435,7 @@ void main() {
     final appMarkRect = tester.getRect(find.byKey(const ValueKey('primary-rail-app-mark')));
     expect(searchRect.width, 240);
     expect(searchRect.width, lessThan(cardRect.width));
-    expect(sortRect.left - searchRect.right, greaterThanOrEqualTo(10));
+    expect(sortRect.left - searchRect.right, closeTo(10, 0.01));
     expect(sortRect.center.dy, closeTo(searchRect.center.dy, 0.01));
     expect(sortRect.height, closeTo(refreshRect.height, 0.01));
     expect(searchRect.center.dy, closeTo(appMarkRect.center.dy, 0.01));
@@ -439,6 +474,11 @@ void main() {
     tester.view.physicalSize = const Size(1400, 900);
     await tester.pumpAndSettle();
     expect(gridColumns(), 4);
+    expect(
+      tester.getRect(find.byKey(const ValueKey('extension-sort-control'))).left -
+          tester.getRect(find.byKey(const ValueKey('extension-search-input'))).right,
+      closeTo(10, 0.01),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -976,6 +1016,7 @@ void main() {
     expect(find.text('Network'), findsOneWidget);
     expect(find.text('API'), findsOneWidget);
     expect(find.text('Developer'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('API')).dy, lessThan(tester.getTopLeft(find.text('Network')).dy));
     expect(tester.takeException(), isNull);
   });
 
@@ -1033,11 +1074,12 @@ void main() {
 
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
-    expect(find.text('Protocol'), findsOneWidget);
+    expect(find.text('Protocol'), findsNothing);
+    expect(find.text('Unix Socket'), findsNothing);
     expect(find.text('Username'), findsNothing);
     await tester.tap(find.text('Custom Proxy'));
     await tester.pumpAndSettle();
-    expect(find.text('Protocol'), findsNWidgets(2));
+    expect(find.text('Protocol'), findsOneWidget);
     expect(find.text('Username'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
   });
@@ -1317,6 +1359,16 @@ void main() {
   testWidgets('API settings keep a validated draft until the save button is pressed', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     final runtimeController = RecordingStartConfigRuntimeController();
+    String? clipboardText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboardText = (call.arguments as Map<Object?, Object?>)['text'] as String?;
+      }
+      return null;
+    });
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -1331,7 +1383,7 @@ void main() {
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
     expect(find.text('Runtime status'), findsOneWidget);
-    expect(find.text('tcp://192.168.1.20:4321'), findsOneWidget);
+    expect(find.text('http://192.168.1.20:4321'), findsOneWidget);
     expect(find.byKey(const ValueKey('api-server-status-dot')), findsOneWidget);
 
     final host = find.byKey(const ValueKey('api-host-input'));
@@ -1341,6 +1393,68 @@ void main() {
     expect(tester.widget<shad.TextField>(host).controller!.text, '192.168.1.20');
     expect(tester.widget<shad.TextField>(port).controller!.text, '4321');
     expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
+    expect(find.byKey(const ValueKey('mcp-endpoint-switch')), findsOneWidget);
+    expect(find.byType(McpSettingsItem), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-ai-icon')), findsOneWidget);
+    expect(find.text('Collaborate with AI agents and explore limitless possibilities'), findsOneWidget);
+    expect(find.text('Setup guide'), findsOneWidget);
+
+    final agentSetupLink = find.byKey(const ValueKey('open-mcp-agent-setup'));
+    expect(
+      tester.getRect(agentSetupLink).left,
+      lessThan(tester.getRect(find.byKey(const ValueKey('mcp-endpoint-switch'))).left),
+    );
+    await tester.ensureVisible(agentSetupLink);
+    await tester.tap(agentSetupLink);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('mcp-agent-setup-dialog')), findsOneWidget);
+    expect(find.byTooltip('Cursor'), findsOneWidget);
+    expect(find.text('Codex · MCP'), findsOneWidget);
+    expect(find.textContaining('http://192.168.1.20:4321/mcp'), findsOneWidget);
+    expect(find.textContaining("GOPEED_API_TOKEN='••••••••'"), findsOneWidget);
+    expect(find.textContaining('bearer-token-env-var GOPEED_API_TOKEN'), findsOneWidget);
+    expect(find.textContaining("GOPEED_API_TOKEN='token'"), findsNothing);
+    expect(find.textContaining('token placeholder'), findsNothing);
+    final copySnippet = find.byKey(const ValueKey('copy-mcp-agent-snippet'));
+    expect(tester.widget(copySnippet), isA<AppCopyIconButton>());
+    expect(find.descendant(of: copySnippet, matching: find.byIcon(Icons.copy_outlined)), findsOneWidget);
+    expect(
+      tester.widget<AppTooltip>(find.descendant(of: copySnippet, matching: find.byType(AppTooltip))).message,
+      'Copy',
+    );
+    await tester.tap(copySnippet);
+    await tester.pump();
+    expect(clipboardText, contains("export GOPEED_API_TOKEN='token'"));
+    expect(clipboardText, contains('--bearer-token-env-var GOPEED_API_TOKEN'));
+    expect(clipboardText, isNot(contains('••••••••')));
+    expect(find.descendant(of: copySnippet, matching: find.byIcon(Icons.check)), findsOneWidget);
+    expect(
+      tester.widget<AppTooltip>(find.descendant(of: copySnippet, matching: find.byType(AppTooltip))).message,
+      'Copied',
+    );
+    await tester.tap(find.byKey(const ValueKey('mcp-agent-cursor')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Authorization'), findsOneWidget);
+    expect(find.textContaining('Bearer ••••••••'), findsOneWidget);
+    expect(find.textContaining('Bearer token'), findsNothing);
+    expect(find.descendant(of: copySnippet, matching: find.byIcon(Icons.copy_outlined)), findsOneWidget);
+    expect(
+      tester.widget<AppTooltip>(find.descendant(of: copySnippet, matching: find.byType(AppTooltip))).message,
+      'Copy',
+    );
+    await tester.tap(copySnippet);
+    await tester.pump();
+    expect(clipboardText, contains('Bearer token'));
+    await tester.tap(find.byKey(const ValueKey('mcp-agent-claude-code')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('claude mcp add --transport http'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('close-mcp-agent-setup')));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const ValueKey('mcp-endpoint-switch')));
+    await tester.tap(find.byKey(const ValueKey('mcp-endpoint-switch')));
+    await tester.pump();
+    expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNotNull);
 
     await tester.enterText(host, '');
     await tester.enterText(port, '0');
@@ -1364,6 +1478,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(runtimeController.savedStartConfig?.network, 'tcp');
     expect(runtimeController.savedStartConfig?.address, '127.0.0.1:0');
+    expect(runtimeController.savedStartConfig?.mcpEnable, isTrue);
     expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNull);
     expect(find.text('Restart required'), findsNothing);
     expect(find.text('Auto saved'), findsNothing);
@@ -1372,13 +1487,200 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
-    final protocolItem = find.ancestor(of: find.text('Protocol'), matching: find.byType(SettingsItem));
-    final tcpChoice = find.byKey(const ValueKey('settings-choice-tcp'));
-    expect(tester.getRect(tcpChoice).left, closeTo(tester.getRect(protocolItem).left, 0.01));
+    expect(find.text('Unix Socket'), findsNothing);
 
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('read-only MCP settings keep the Agent setup link available', (WidgetTester tester) async {
+    var changeCount = 0;
+    var openCount = 0;
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Center(
+          child: McpSettingsItem(
+            enabled: true,
+            readOnly: true,
+            onChanged: (_) => changeCount += 1,
+            onOpenAgentSetup: () => openCount += 1,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final switchFinder = find.byKey(const ValueKey('mcp-endpoint-switch'));
+    expect(tester.widget<shad.Switch>(switchFinder).enabled, isFalse);
+    await tester.tap(switchFinder);
+    await tester.pump();
+    expect(changeCount, 0);
+
+    await tester.tap(find.byKey(const ValueKey('open-mcp-agent-setup')));
+    await tester.pump();
+    expect(openCount, 1);
+  });
+
+  testWidgets('Web MCP Agent setup switches once to an API token template and resets on reopen', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(800, 700));
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Builder(
+          builder: (context) => Center(
+            child: shad.PrimaryButton(
+              onPressed: () => unawaited(
+                showMcpAgentSetupDialog(
+                  context,
+                  endpoint: 'https://example.com/mcp',
+                  apiToken: 'stale-web-token',
+                  mcpRunning: true,
+                  allowManualApiTokenTemplate: true,
+                ),
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    final tokenHelp = find.byKey(const ValueKey('mcp-api-token-template-help'));
+    expect(tokenHelp, findsOneWidget);
+    expect(find.descendant(of: tokenHelp, matching: find.byIcon(Icons.help_outline)), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-api-token-template-enabled')), findsNothing);
+    expect(find.textContaining('<API_TOKEN>'), findsNothing);
+    expect(find.textContaining('stale-web-token'), findsNothing);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(tokenHelp));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('mcp-api-token-template-hint')), findsOneWidget);
+    expect(
+      find.text('If you configured an API token, authentication information is required when connecting the agent'),
+      findsOneWidget,
+    );
+    final useTokenTemplate = find.byKey(const ValueKey('use-mcp-api-token-template'));
+    expect(useTokenTemplate, findsOneWidget);
+    expect(find.text('Switch to authenticated configuration'), findsOneWidget);
+
+    await tester.tap(useTokenTemplate);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('mcp-api-token-template-help')), findsOneWidget);
+    expect(find.descendant(of: tokenHelp, matching: find.byIcon(Icons.help_outline)), findsOneWidget);
+    expect(find.textContaining("GOPEED_API_TOKEN='<API_TOKEN>'"), findsOneWidget);
+    expect(find.textContaining('--bearer-token-env-var GOPEED_API_TOKEN'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('close-mcp-agent-setup')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('mcp-api-token-template-help')), findsOneWidget);
+    expect(find.textContaining('<API_TOKEN>'), findsNothing);
+  });
+
+  testWidgets('MCP Agent setup dialog fits a compact mobile viewport', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(320, 568));
+    var mcpRunning = false;
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Builder(
+          builder: (context) => Center(
+            child: shad.PrimaryButton(
+              onPressed: () => unawaited(
+                showMcpAgentSetupDialog(
+                  context,
+                  endpoint: 'http://127.0.0.1:9999/mcp',
+                  apiToken: mcpRunning ? '' : 'mobile-secret-token',
+                  mcpRunning: mcpRunning,
+                ),
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('mcp-agent-setup-dialog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-codex')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-claude-code')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-cursor')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-github-copilot')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-windsurf')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-gemini-cli')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-cline')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-opencode')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-trae')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-qoder')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-codebuddy')), findsNothing);
+    expect(find.byKey(const ValueKey('mcp-agent-workbuddy')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-zcode')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-deepseek-harness')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-agent-pi')), findsOneWidget);
+    expect(find.byTooltip('DeepSeek Harness'), findsOneWidget);
+    expect(find.text('Codex · MCP'), findsOneWidget);
+    expect(find.text('Cursor'), findsNothing);
+    expect(find.textContaining('mobi••••••••oken'), findsOneWidget);
+    expect(find.textContaining('mobile-secret-token'), findsNothing);
+    final codexPosition = tester.getTopLeft(find.byKey(const ValueKey('mcp-agent-codex')));
+    final claudePosition = tester.getTopLeft(find.byKey(const ValueKey('mcp-agent-claude-code')));
+    final cursorPosition = tester.getTopLeft(find.byKey(const ValueKey('mcp-agent-cursor')));
+    expect(codexPosition.dy, claudePosition.dy);
+    expect(claudePosition.dy, cursorPosition.dy);
+    expect(codexPosition.dx, lessThan(claudePosition.dx));
+    expect(claudePosition.dx, lessThan(cursorPosition.dx));
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('mcp-agent-cursor'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(const ValueKey('mcp-agent-pi'))).dy),
+    );
+    expect(find.byKey(const ValueKey('mcp-not-running-hint')), findsOneWidget);
+    expect(find.text('The MCP service is not enabled. Please enable it'), findsOneWidget);
+    expect(find.text('Generic'), findsNothing);
+    expect(tester.getSize(find.byKey(const ValueKey('mcp-agent-snippet'))).height, 176);
+    expect(find.byKey(const ValueKey('mcp-snippet-horizontal-scrollbar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mcp-snippet-vertical-scrollbar')), findsOneWidget);
+    expect(tester.getRect(find.byKey(const ValueKey('mcp-agent-snippet'))).right, lessThanOrEqualTo(320));
+    expect(tester.getRect(find.byKey(const ValueKey('close-mcp-agent-setup'))).right, lessThanOrEqualTo(320));
+    expect(find.byKey(const ValueKey('finish-mcp-agent-setup')), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    final deepSeek = find.byKey(const ValueKey('mcp-agent-deepseek-harness'));
+    await tester.ensureVisible(deepSeek);
+    await tester.tap(deepSeek);
+    await tester.pumpAndSettle();
+    expect(find.text('DeepSeek Harness · MCP'), findsOneWidget);
+    expect(find.textContaining('@deepseek-ai/dsh-mcp-client'), findsOneWidget);
+    expect(tester.getSize(find.byKey(const ValueKey('mcp-agent-snippet'))).height, 176);
+
+    final pi = find.byKey(const ValueKey('mcp-agent-pi'));
+    await tester.ensureVisible(pi);
+    await tester.tap(pi);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('pi install npm:pi-codemcp'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('close-mcp-agent-setup')));
+    await tester.pumpAndSettle();
+    mcpRunning = true;
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('mcp-not-running-hint')), findsNothing);
+    expect(find.textContaining('codex mcp add gopeed --url'), findsOneWidget);
   });
 
   testWidgets('disabling the API server requires confirmation and keeps listener fields visible', (
@@ -1423,7 +1725,7 @@ void main() {
     expect(tester.widget<shad.TextField>(hostInput).controller!.text, 'unsaved.example.com');
     final statusDot = tester.widget<AnimatedContainer>(find.byKey(const ValueKey('api-server-status-dot')));
     expect((statusDot.decoration! as BoxDecoration).color, AppPalette.light.textMuted.withValues(alpha: 0.72));
-    expect(find.text('tcp://192.168.1.20:4321'), findsNothing);
+    expect(find.text('http://192.168.1.20:4321'), findsNothing);
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
@@ -2204,6 +2506,56 @@ void main() {
       ),
       findsNothing,
     );
+  });
+
+  testWidgets('create task button fits Chinese and caps longer translations', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 120));
+    final searchController = TextEditingController();
+    addTearDown(searchController.dispose);
+
+    Widget appFor(Locale locale) {
+      return shad.ShadcnApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Builder(
+          builder: (context) => Localizations.override(
+            context: context,
+            locale: locale,
+            delegates: const [AppLocalizations.delegate],
+            child: TasksTopBar(
+              searchController: searchController,
+              onAddTask: () {},
+              batchMode: false,
+              selectedBatchCount: 0,
+              canPauseSelected: false,
+              canResumeSelected: false,
+              onToggleBatchMode: () {},
+              onPauseSelected: () {},
+              onResumeSelected: () {},
+              onDeleteSelected: () {},
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(appFor(const Locale('zh')));
+    await tester.pumpAndSettle();
+    final chineseText = find.text('创建任务');
+    expect(chineseText, findsOneWidget);
+    expect(tester.renderObject<RenderParagraph>(chineseText).didExceedMaxLines, isFalse);
+    final chineseWidth = tester.getSize(find.byKey(const ValueKey('tasks-create-button-container'))).width;
+    expect(chineseWidth, greaterThanOrEqualTo(120));
+
+    await tester.pumpWidget(appFor(const Locale('hu')));
+    await tester.pumpAndSettle();
+    final hungarianText = find.text('Feladat létrehozása');
+    expect(hungarianText, findsOneWidget);
+    final hungarianWidth = tester.getSize(find.byKey(const ValueKey('tasks-create-button-container'))).width;
+    expect(hungarianWidth, greaterThan(chineseWidth));
+    expect(hungarianWidth, lessThanOrEqualTo(190));
   });
 
   testWidgets('resolved file selector uses aligned tree header and sortable columns', (WidgetTester tester) async {
@@ -3175,6 +3527,16 @@ void main() {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await _setTestSize(tester, const Size(900, 700));
     final task = _taskRecord(id: 'editable-details', name: 'editable.zip', status: TaskStatus.paused);
+    String? clipboardText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        clipboardText = (call.arguments as Map<Object?, Object?>)['text'] as String?;
+      }
+      return null;
+    });
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
 
     await tester.pumpWidget(
       ProviderScope(
@@ -3204,6 +3566,22 @@ void main() {
     expect(find.text('Copy'), findsNothing);
     expect(find.text('Edit'), findsNothing);
     expect(find.text('Open'), findsNothing);
+
+    final copyAction = find.byKey(const ValueKey('task-details-copy-url'));
+    expect(tester.widget(copyAction), isA<AppCopyIconButton>());
+    expect(find.descendant(of: copyAction, matching: find.byIcon(Icons.copy_outlined)), findsOneWidget);
+    expect(
+      tester.widget<AppTooltip>(find.descendant(of: copyAction, matching: find.byType(AppTooltip))).message,
+      'Copy',
+    );
+    await tester.tap(copyAction);
+    await tester.pump();
+    expect(clipboardText, task.url);
+    expect(find.descendant(of: copyAction, matching: find.byIcon(Icons.check)), findsOneWidget);
+    expect(
+      tester.widget<AppTooltip>(find.descendant(of: copyAction, matching: find.byType(AppTooltip))).message,
+      'Copied',
+    );
 
     final editAction = find.byKey(const ValueKey('task-details-edit-url'));
     final editTooltipFinder = find.descendant(of: editAction, matching: find.byType(AppTooltip));
@@ -4653,6 +5031,7 @@ class RecordingStartConfigRuntimeController extends AppRuntimeController {
       ..network = config.network
       ..address = config.address
       ..apiEnable = config.apiEnable
+      ..mcpEnable = config.mcpEnable
       ..apiToken = config.apiToken
       ..storage = config.storage
       ..storageDir = config.storageDir
@@ -4683,6 +5062,7 @@ ApiServerState _testApiServerState({
 }) {
   return ApiServerState(
     enabled: enabled ?? running,
+    mcpEnabled: false,
     running: running,
     network: running ? 'tcp' : '',
     address: running ? address : '',

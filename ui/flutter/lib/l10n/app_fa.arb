@@ -432,5 +432,12 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "سرویس پس‌زمینه Gopeed",
   "androidForegroundNotificationTitle": "Gopeed در حال اجرا است",
-  "androidForegroundNotificationText": "دانلودها می‌توانند در پس‌زمینه ادامه پیدا کنند"
+  "androidForegroundNotificationText": "دانلودها می‌توانند در پس‌زمینه ادامه پیدا کنند",
+  "mcpDescription": "با عامل‌های هوش مصنوعی همکاری کنید و امکان‌های نامحدود را کشف کنید",
+  "connectAgent": "راهنمای اتصال",
+  "connectMcpAgent": "اتصال عامل MCP",
+  "mcpAgentDialogDescription": "عامل مورد استفاده را انتخاب کنید و پیکربندی اتصال آن را کپی کنید.",
+  "mcpNotRunningHint": "سرویس MCP فعال نیست. لطفاً آن را فعال کنید",
+  "webApiConfigReadOnlyHelp": "نسخه وب از ویرایش آنلاین تنظیمات API پشتیبانی نمی‌کند. گزینه‌های راه‌اندازی سرور یا فایل پیکربندی را تغییر دهید و برای اعمال تغییرات سرویس را دوباره راه‌اندازی کنید.",
+  "mcpRequiresTcp": "راهنمای اتصال عامل زمانی در دسترس است که پروتکل API روی TCP باشد."
 }

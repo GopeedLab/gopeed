@@ -432,5 +432,12 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Gopeed háttérszolgáltatás",
   "androidForegroundNotificationTitle": "A Gopeed fut",
-  "androidForegroundNotificationText": "A letöltések a háttérben is folytatódhatnak"
+  "androidForegroundNotificationText": "A letöltések a háttérben is folytatódhatnak",
+  "mcpDescription": "Működj együtt AI-ügynökökkel, és fedezz fel korlátlan lehetőségeket",
+  "connectAgent": "Csatlakoztatási útmutató",
+  "connectMcpAgent": "MCP-ügynök csatlakoztatása",
+  "mcpAgentDialogDescription": "Válaszd ki a használt ügynököt, majd másold ki a kapcsolódási beállításait.",
+  "mcpNotRunningHint": "Az MCP szolgáltatás nincs engedélyezve. Engedélyezd",
+  "webApiConfigReadOnlyHelp": "A webes verzióban az API-beállítások nem módosíthatók online. Módosítsd a kiszolgáló indítási beállításait vagy a konfigurációs fájlt, majd indítsd újra a szolgáltatást.",
+  "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP."
 }

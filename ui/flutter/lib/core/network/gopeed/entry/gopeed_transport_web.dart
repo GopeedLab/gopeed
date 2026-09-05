@@ -8,7 +8,9 @@ class RestGopeedTransport implements GopeedTransport {
   RestGopeedTransport(GopeedTransportConfig config)
     : _dio = Dio(
         BaseOptions(
-          baseUrl: '${Uri.base.origin}/',
+          // Keep release requests relative so deployments under a reverse
+          // proxy path continue to work, matching the legacy Web client.
+          baseUrl: webTransportBaseUrl(config.address, Uri.base),
           contentType: Headers.jsonContentType,
           sendTimeout: const Duration(seconds: 5),
           connectTimeout: const Duration(seconds: 5),

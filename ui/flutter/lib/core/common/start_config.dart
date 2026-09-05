@@ -20,6 +20,7 @@ class StartConfig {
   late String network;
   late String address;
   bool apiEnable = false;
+  bool mcpEnable = false;
   late String storage;
   late String storageDir;
   late int refreshInterval;

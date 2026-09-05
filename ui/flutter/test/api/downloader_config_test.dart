@@ -20,10 +20,17 @@ void main() {
 
   test('REST server settings round-trip through the Go downloader config', () {
     final config = DownloaderConfig()
-      ..api = ApiServerConfig(enable: true, network: 'tcp', address: '127.0.0.1:4321', token: 'secret');
+      ..api = ApiServerConfig(
+        enable: true,
+        mcpEnable: true,
+        network: 'tcp',
+        address: '127.0.0.1:4321',
+        token: 'secret',
+      );
 
     final decoded = DownloaderConfig.fromJson(config.toJson()).api;
     expect(decoded.enable, isTrue);
+    expect(decoded.mcpEnable, isTrue);
     expect(decoded.network, 'tcp');
     expect(decoded.address, '127.0.0.1:4321');
     expect(decoded.token, 'secret');

@@ -50,6 +50,7 @@ func main() {
 		StorageDir:        storageDir,
 		WhiteDownloadDirs: args.WhiteDownloadDirs,
 		ApiToken:          *args.ApiToken,
+		MCPEnable:         args.MCPEnable,
 		DownloadConfig:    args.DownloadConfig,
 		ProductionMode:    true,
 		WebEnable:         true,

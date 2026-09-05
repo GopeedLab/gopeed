@@ -432,5 +432,12 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Layanan latar belakang Gopeed",
   "androidForegroundNotificationTitle": "Gopeed sedang berjalan",
-  "androidForegroundNotificationText": "Unduhan dapat dilanjutkan di latar belakang"
+  "androidForegroundNotificationText": "Unduhan dapat dilanjutkan di latar belakang",
+  "mcpDescription": "Berkolaborasi dengan agen AI dan jelajahi kemungkinan tanpa batas",
+  "connectAgent": "Panduan koneksi",
+  "connectMcpAgent": "Hubungkan agen MCP",
+  "mcpAgentDialogDescription": "Pilih agen yang Anda gunakan, lalu salin konfigurasi koneksinya.",
+  "mcpNotRunningHint": "Layanan MCP belum diaktifkan. Silakan aktifkan",
+  "webApiConfigReadOnlyHelp": "Versi web tidak dapat mengubah pengaturan API secara online. Perbarui opsi startup server atau file konfigurasi, lalu mulai ulang layanan agar perubahan diterapkan.",
+  "mcpRequiresTcp": "Petunjuk koneksi agen tersedia saat protokol API menggunakan TCP."
 }

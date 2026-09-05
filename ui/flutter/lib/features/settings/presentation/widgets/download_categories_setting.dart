@@ -64,8 +64,14 @@ class DownloadCategoriesControl extends StatelessWidget {
             child: shad.SecondaryButton(
               key: const ValueKey('add-download-category'),
               onPressed: onAdd,
-              leading: const Icon(Icons.add, size: 17),
-              child: Text(context.l10n.add),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add, size: 17),
+                  const SizedBox(width: AppDesignTokens.space8),
+                  Text(context.l10n.add),
+                ],
+              ),
             ),
           ),
         ],

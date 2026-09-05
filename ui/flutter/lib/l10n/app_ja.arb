@@ -432,5 +432,12 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Gopeed バックグラウンドサービス",
   "androidForegroundNotificationTitle": "Gopeed は実行中です",
-  "androidForegroundNotificationText": "バックグラウンドでダウンロードを続行できます"
+  "androidForegroundNotificationText": "バックグラウンドでダウンロードを続行できます",
+  "mcpDescription": "AI エージェントと連携し、無限の可能性を探る",
+  "connectAgent": "接続ガイド",
+  "connectMcpAgent": "MCP エージェントを接続",
+  "mcpAgentDialogDescription": "使用するエージェントを選択し、接続設定をコピーしてください。",
+  "mcpNotRunningHint": "MCP サービスが有効になっていません。有効にしてください",
+  "webApiConfigReadOnlyHelp": "Web 版では API 設定をオンラインで変更できません。サーバーの起動オプションまたは設定ファイルを変更し、サービスを再起動して反映してください。",
+  "mcpRequiresTcp": "API プロトコルが TCP の場合にエージェント接続手順を利用できます。"
 }

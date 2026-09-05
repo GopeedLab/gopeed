@@ -432,5 +432,12 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Gopeed arka plan hizmeti",
   "androidForegroundNotificationTitle": "Gopeed çalışıyor",
-  "androidForegroundNotificationText": "İndirmeler arka planda devam edebilir"
+  "androidForegroundNotificationText": "İndirmeler arka planda devam edebilir",
+  "mcpDescription": "Yapay zekâ ajanlarıyla iş birliği yapın, sınırsız olanakları keşfedin",
+  "connectAgent": "Bağlantı rehberi",
+  "connectMcpAgent": "MCP ajanı bağla",
+  "mcpAgentDialogDescription": "Kullandığınız ajanı seçin ve bağlantı yapılandırmasını kopyalayın.",
+  "mcpNotRunningHint": "MCP hizmeti etkin değil. Lütfen etkinleştirin",
+  "webApiConfigReadOnlyHelp": "Web sürümü API ayarlarının çevrimiçi değiştirilmesini desteklemez. Sunucu başlatma seçeneklerini veya yapılandırma dosyasını güncelleyin ve değişikliklerin etkili olması için hizmeti yeniden başlatın.",
+  "mcpRequiresTcp": "Ajan bağlantı yönergeleri API protokolü TCP olduğunda kullanılabilir."
 }

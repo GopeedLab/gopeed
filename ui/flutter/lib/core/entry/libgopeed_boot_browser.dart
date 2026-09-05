@@ -43,6 +43,7 @@ class LibgopeedBootBrowser implements LibgopeedBoot {
 const _unsupportedApiServerResult = ApiServerOperationResult(
   state: ApiServerState(
     enabled: false,
+    mcpEnabled: false,
     running: false,
     network: '',
     address: '',

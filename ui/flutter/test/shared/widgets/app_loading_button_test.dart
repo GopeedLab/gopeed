@@ -51,6 +51,20 @@ void main() {
     expect(find.descendant(of: secondary, matching: find.text('Check for Updates')), findsOneWidget);
     expect(find.descendant(of: brand, matching: find.text('Update')), findsOneWidget);
     expect(find.descendant(of: primary, matching: find.text('Save')), findsOneWidget);
+    expect(
+      tester
+          .widget<shad.SecondaryButton>(find.descendant(of: secondary, matching: find.byType(shad.SecondaryButton)))
+          .leading,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<shad.PrimaryButton>(find.descendant(of: primary, matching: find.byType(shad.PrimaryButton)))
+          .leading,
+      isNull,
+    );
+    expect(find.descendant(of: secondary, matching: find.byType(Row)), findsWidgets);
+    expect(find.descendant(of: primary, matching: find.byType(Row)), findsWidgets);
     expect(find.descendant(of: secondary, matching: find.byIcon(shad.LucideIcons.refreshCw)), findsNothing);
     expect(find.descendant(of: brand, matching: find.byIcon(shad.LucideIcons.download)), findsNothing);
     expect(find.descendant(of: primary, matching: find.byIcon(shad.LucideIcons.save)), findsNothing);

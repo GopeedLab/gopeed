@@ -432,5 +432,12 @@
   "booleanValueHint": "true / false",
   "androidForegroundServiceChannel": "Gopeed பின்னணி சேவை",
   "androidForegroundNotificationTitle": "Gopeed இயங்குகிறது",
-  "androidForegroundNotificationText": "பதிவிறக்கங்கள் பின்னணியில் தொடரலாம்"
+  "androidForegroundNotificationText": "பதிவிறக்கங்கள் பின்னணியில் தொடரலாம்",
+  "mcpDescription": "AI முகவர்களுடன் இணைந்து எல்லையற்ற வாய்ப்புகளை ஆராயுங்கள்",
+  "connectAgent": "இணைப்பு வழிகாட்டி",
+  "connectMcpAgent": "MCP முகவரை இணை",
+  "mcpAgentDialogDescription": "நீங்கள் பயன்படுத்தும் முகவரைத் தேர்ந்தெடுத்து அதன் இணைப்பு உள்ளமைவை நகலெடுக்கவும்.",
+  "mcpNotRunningHint": "MCP சேவை இயக்கப்படவில்லை. அதை இயக்கவும்",
+  "webApiConfigReadOnlyHelp": "இணையப் பதிப்பில் API அமைப்புகளை ஆன்லைனில் மாற்ற முடியாது. சேவையக தொடக்க விருப்பங்கள் அல்லது உள்ளமைவு கோப்பை மாற்றி, மாற்றங்கள் செயல்பட சேவையை மறுதொடக்கம் செய்யவும்.",
+  "mcpRequiresTcp": "API நெறிமுறை TCP ஆக இருக்கும்போது முகவர் இணைப்பு வழிமுறைகள் கிடைக்கும்."
 }

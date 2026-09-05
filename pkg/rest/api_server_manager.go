@@ -196,6 +196,7 @@ func (m *apiServerManager) stateLocked(desired *base.APIServerConfig) *model.API
 		state.Enabled = desired.Enable
 	}
 	if m.activeConfig != nil {
+		state.MCPEnabled = m.activeConfig.MCPEnable
 		state.Network = m.activeConfig.Network
 		state.Address = m.activeConfig.Address
 	}
