@@ -11,15 +11,9 @@ class Resource {
   List<FileInfo> files;
   String hash;
 
-  Resource(
-      {this.name = "",
-      this.size = 0,
-      this.range = false,
-      required this.files,
-      this.hash = ""});
+  Resource({this.name = "", this.size = 0, this.range = false, required this.files, this.hash = ""});
 
-  factory Resource.fromJson(Map<String, dynamic> json) =>
-      _$ResourceFromJson(json);
+  factory Resource.fromJson(Map<String, dynamic> json) => _$ResourceFromJson(json);
 
   Map<String, dynamic> toJson() => _$ResourceToJson(this);
 }
@@ -31,15 +25,9 @@ class FileInfo {
   int size;
   Request? req;
 
-  FileInfo({
-    this.path = "",
-    required this.name,
-    this.size = 0,
-    this.req,
-  });
+  FileInfo({this.path = "", required this.name, this.size = 0, this.req});
 
-  factory FileInfo.fromJson(Map<String, dynamic> json) =>
-      _$FileInfoFromJson(json);
+  factory FileInfo.fromJson(Map<String, dynamic> json) => _$FileInfoFromJson(json);
 
   Map<String, dynamic> toJson() => _$FileInfoToJson(this);
 }

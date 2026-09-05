@@ -1,0 +1,37 @@
+display_name: Gopeed
+package_name: gopeed
+maintainer:
+  name: monkeyWie
+  email: liwei-8466@qq.com
+co_authors:
+  - name: madoka773
+    email: valigarmanda55@gmail.com
+priority: optional
+section: x11
+installed_size: 52360
+essential: false
+icon: assets/icon/icon.svg
+
+dependencies:
+  - libayatana-appindicator3-1
+  - gir1.2-ayatanaappindicator3-0.1
+  - libkeybinder-3.0-0
+
+keywords:
+  - Application
+  - DownloadManager
+  - Network
+  - Utility
+
+generic_name: Download Manager
+
+categories:
+  - Network
+  - Utility
+
+supported_mime_type:
+  - x-scheme-handler/gopeed
+  - x-scheme-handler/magnet
+  - application/x-bittorrent
+
+startup_notify: true

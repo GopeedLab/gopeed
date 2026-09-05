@@ -857,7 +857,9 @@ func (f *Fetcher) startResolveDownload() {
 			Chunk: newChunk(0, 0), // For non-range, end doesn't matter
 		}
 		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
+		f.connMu.Lock()
 		f.connections = append(f.connections, conn)
+		f.connMu.Unlock()
 
 		f.wg.Add(1)
 		// Use the resolve response directly
@@ -1029,7 +1031,9 @@ func (f *Fetcher) runConnection(conn *connection) {
 	buf := make([]byte, 8192)
 
 	retries := 0
+	f.connMu.Lock()
 	conn.retryTimes = 0
+	f.connMu.Unlock()
 
 	for {
 		// Rebuild client with updated fast-fail timeout on retries
@@ -1058,7 +1062,9 @@ func (f *Fetcher) runConnection(conn *connection) {
 
 			// Reset counters after a successful help switch
 			retries = 0
+			f.connMu.Lock()
 			conn.retryTimes = 0
+			f.connMu.Unlock()
 			continue
 		}
 
@@ -1082,11 +1088,13 @@ func (f *Fetcher) runConnection(conn *connection) {
 			return
 		}
 
+		f.connMu.Lock()
 		if re := extractRequestError(err); re != nil {
 			conn.lastErr = re
 		} else {
 			conn.lastErr = err
 		}
+		f.connMu.Unlock()
 
 		if shouldCountHTTPFailure(err) {
 			if re := extractRequestError(err); re != nil && re.Code == 403 {
@@ -1099,14 +1107,15 @@ func (f *Fetcher) runConnection(conn *connection) {
 				}
 				return
 			}
-			conn.retryTimes++
 			f.connMu.Lock()
+			conn.retryTimes++
+			retryTimes := conn.retryTimes
 			conn.failed = true
 			f.connMu.Unlock()
 			if f.slowStart != nil {
 				f.slowStart.onConnectFailed()
 			}
-			if conn.retryTimes >= 3 {
+			if retryTimes >= 3 {
 				f.connMu.Lock()
 				conn.State = connFailed
 				f.connMu.Unlock()
@@ -1866,11 +1875,13 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 			return
 		}
 
+		f.connMu.Lock()
 		if re := extractRequestError(err); re != nil {
 			conn.lastErr = re
 		} else {
 			conn.lastErr = err
 		}
+		f.connMu.Unlock()
 
 		if shouldCountHTTPFailure(err) {
 			// Immediate fail for server connection limit (403)
@@ -1884,7 +1895,9 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 				}
 				return
 			}
+			f.connMu.Lock()
 			conn.retryTimes++
+			f.connMu.Unlock()
 			countedRetries++
 			if countedRetries >= 3 {
 				f.connMu.Lock()
@@ -2348,22 +2361,72 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 	return f.meta
 }
 
-func (f *Fetcher) Stats() any {
+func (f *Fetcher) Stats() *fetcher.Stats {
 	f.connMu.Lock()
 	defer f.connMu.Unlock()
 
+	terminal := f.getState() == stateDone
+	prefetched := int64(0)
+	connectionCount := len(f.connections)
+	if connectionCount == 0 {
+		prefetched = f.resolveDataPos.Load()
+		if terminal && f.meta != nil && f.meta.Res != nil && f.meta.Res.Size > prefetched {
+			// A small range response can finish entirely during resolve prefetch,
+			// before a formal connection is created. The fetcher owns this fact, so
+			// expose one aggregate connection here instead of making Downloader
+			// infer protocol state from task-level progress.
+			prefetched = f.meta.Res.Size
+		}
+		if prefetched > 0 {
+			connectionCount = 1
+		}
+	}
+	connectionTotal := f.averageConnectionTotal(connectionCount)
 	statsConnections := make([]*fhttp.StatsConnection, 0)
 	for _, connection := range f.connections {
+		completed := connection.Completed || connection.State == connCompleted
+		// A successful fetcher has no active downloads left. Work stealing and
+		// completion-by-total-size can leave a helper connection's last internal
+		// state non-terminal even though the whole HTTP transfer is finished.
+		if terminal && !connection.failed {
+			completed = true
+		}
 		statsConnections = append(statsConnections, &fhttp.StatsConnection{
 			Downloaded: connection.Downloaded,
-			Completed:  connection.Completed,
+			Total:      connectionTotal,
+			Completed:  completed,
 			Failed:     connection.failed,
 			RetryTimes: connection.retryTimes,
 		})
 	}
-	return &fhttp.Stats{
-		Connections: statsConnections,
+	if len(statsConnections) == 0 && prefetched > 0 {
+		statsConnections = append(statsConnections, &fhttp.StatsConnection{
+			Downloaded: prefetched,
+			Total:      connectionTotal,
+			Completed:  terminal,
+		})
 	}
+	return &fetcher.Stats{
+		Snapshot: &fhttp.Stats{
+			Connections: statsConnections,
+		},
+	}
+}
+
+// averageConnectionTotal returns the nominal equal share used to compare how
+// much work each currently visible connection has contributed. HTTP slow start
+// can add connections over time, so all lanes are recalculated against the
+// current connection count whenever stats are requested. A remainder is
+// rounded up to avoid reporting 100% before a connection reaches its share.
+func (f *Fetcher) averageConnectionTotal(connectionCount int) int64 {
+	if f.meta == nil || f.meta.Res == nil || f.meta.Res.Size <= 0 || connectionCount <= 0 {
+		return 0
+	}
+	total := f.meta.Res.Size / int64(connectionCount)
+	if f.meta.Res.Size%int64(connectionCount) != 0 {
+		total++
+	}
+	return total
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {

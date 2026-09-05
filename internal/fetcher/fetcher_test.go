@@ -1,6 +1,23 @@
 package fetcher
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
+
+func TestStatsMarshalRawSnapshotWithoutRuntime(t *testing.T) {
+	stats := &Stats{
+		Snapshot: json.RawMessage(`{"value":1}`),
+	}
+
+	data, err := json.Marshal(stats)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	if got, want := string(data), `{"snapshot":{"value":1},"runtime":null}`; got != want {
+		t.Fatalf("Marshal() = %s, want %s", got, want)
+	}
+}
 
 func TestSchemeFilter_Match(t *testing.T) {
 	type fields struct {

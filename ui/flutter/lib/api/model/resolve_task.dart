@@ -10,12 +10,8 @@ class ResolveTask {
   Request? req;
   Options? opts;
 
-  ResolveTask({
-    this.req,
-    this.opts,
-  });
+  ResolveTask({this.req, this.opts});
 
-  factory ResolveTask.fromJson(Map<String, dynamic> json) =>
-      _$ResolveTaskFromJson(json);
+  factory ResolveTask.fromJson(Map<String, dynamic> json) => _$ResolveTaskFromJson(json);
   Map<String, dynamic> toJson() => _$ResolveTaskToJson(this);
 }

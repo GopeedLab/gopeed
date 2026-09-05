@@ -11,10 +11,7 @@ class Meta {
   Resource? res;
   Options opts;
 
-  Meta({
-    required this.req,
-    required this.opts,
-  });
+  Meta({required this.req, required this.opts});
 
   factory Meta.fromJson(Map<String, dynamic> json) => _$MetaFromJson(json);
   Map<String, dynamic> toJson() => _$MetaToJson(this);

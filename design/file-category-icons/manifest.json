@@ -1,0 +1,130 @@
+{
+  "fontFamily": "GopeedIcons",
+  "fontOutput": "../../ui/flutter/assets/fonts/GopeedIcons.ttf",
+  "dartOutput": "../../ui/flutter/lib/core/icons/gopeed_icons.dart",
+  "previewOutput": "preview/gopeed_icons_preview.png",
+  "dartClass": "GopeedIcons",
+  "codepointStart": "0xE900",
+  "unitsPerEm": 1024,
+  "ascent": 896,
+  "descent": -128,
+  "padding": 0,
+  "version": "1.3.2",
+  "icons": [
+    {
+      "name": "protocol_bt",
+      "source": "svg/protocol-bt.svg",
+      "codepoint": "0xE900"
+    },
+    {
+      "name": "protocol_ed2k",
+      "source": "svg/protocol-ed2k.svg",
+      "codepoint": "0xE901"
+    },
+    {
+      "name": "folder",
+      "source": "svg/folder.svg",
+      "codepoint": "0xE902"
+    },
+    {
+      "name": "folder_bt",
+      "source": "svg/folder-bt.svg",
+      "codepoint": "0xE903"
+    },
+    {
+      "name": "file",
+      "source": "svg/file.svg",
+      "codepoint": "0xE904"
+    },
+    {
+      "name": "file_installer",
+      "source": "svg/file-installer.svg",
+      "codepoint": "0xE905"
+    },
+    {
+      "name": "file_android",
+      "source": "svg/file-android.svg",
+      "codepoint": "0xE906"
+    },
+    {
+      "name": "file_ios",
+      "source": "svg/file-ios.svg",
+      "codepoint": "0xE907"
+    },
+    {
+      "name": "file_disk_image",
+      "source": "svg/file-disk-image.svg",
+      "codepoint": "0xE908"
+    },
+    {
+      "name": "file_web",
+      "source": "svg/file-web.svg",
+      "codepoint": "0xE909"
+    },
+    {
+      "name": "file_text",
+      "source": "svg/file-text.svg",
+      "codepoint": "0xE90A"
+    },
+    {
+      "name": "file_pdf",
+      "source": "svg/file-pdf.svg",
+      "codepoint": "0xE90B"
+    },
+    {
+      "name": "file_document",
+      "source": "svg/file-document.svg",
+      "codepoint": "0xE90C"
+    },
+    {
+      "name": "file_spreadsheet",
+      "source": "svg/file-spreadsheet.svg",
+      "codepoint": "0xE90D"
+    },
+    {
+      "name": "file_presentation",
+      "source": "svg/file-presentation.svg",
+      "codepoint": "0xE90E"
+    },
+    {
+      "name": "file_archive",
+      "source": "svg/file-archive.svg",
+      "codepoint": "0xE90F"
+    },
+    {
+      "name": "file_image",
+      "source": "svg/file-image.svg",
+      "codepoint": "0xE910"
+    },
+    {
+      "name": "file_audio",
+      "source": "svg/file-audio.svg",
+      "codepoint": "0xE911"
+    },
+    {
+      "name": "file_video",
+      "source": "svg/file-video.svg",
+      "codepoint": "0xE912"
+    },
+    {
+      "name": "file_code",
+      "source": "svg/file-code.svg",
+      "codepoint": "0xE913"
+    },
+    {
+      "name": "file_ebook",
+      "source": "svg/file-ebook.svg",
+      "codepoint": "0xE914"
+    },
+    {
+      "name": "file_font",
+      "source": "svg/file-font.svg",
+      "codepoint": "0xE915"
+    },
+    {
+      "name": "file_database",
+      "source": "svg/file-database.svg",
+      "codepoint": "0xE916"
+    }
+  ]
+}

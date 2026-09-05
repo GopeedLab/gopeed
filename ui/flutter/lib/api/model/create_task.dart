@@ -11,16 +11,9 @@ class CreateTask {
   Request? req;
   Options? opts;
 
-  CreateTask({
-    this.rid,
-    this.req,
-    this.opts,
-  });
+  CreateTask({this.rid, this.req, this.opts});
 
-  factory CreateTask.fromJson(
-    Map<String, dynamic> json,
-  ) =>
-      _$CreateTaskFromJson(json);
+  factory CreateTask.fromJson(Map<String, dynamic> json) => _$CreateTaskFromJson(json);
 
   Map<String, dynamic> toJson() => _$CreateTaskToJson(this);
 }

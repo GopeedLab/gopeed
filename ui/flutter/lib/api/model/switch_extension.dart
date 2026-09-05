@@ -6,11 +6,8 @@ part 'switch_extension.g.dart';
 class SwitchExtension {
   bool status;
 
-  SwitchExtension({
-    required this.status,
-  });
+  SwitchExtension({required this.status});
 
-  factory SwitchExtension.fromJson(Map<String, dynamic> json) =>
-      _$SwitchExtensionFromJson(json);
+  factory SwitchExtension.fromJson(Map<String, dynamic> json) => _$SwitchExtensionFromJson(json);
   Map<String, dynamic> toJson() => _$SwitchExtensionToJson(this);
 }

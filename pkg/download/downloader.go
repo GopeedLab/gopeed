@@ -1,6 +1,8 @@
 package download
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -28,10 +30,14 @@ import (
 )
 
 const (
+	uploadCheckpointInterval = 30 * time.Second
+
 	// task info bucket
 	bucketTask = "task"
 	// task download data bucket
 	bucketSave = "save"
+	// task statistics snapshot bucket
+	bucketTaskStats = "task_stats"
 	// protocol-level shared client state bucket
 	bucketProtocolState = "protocol_state"
 	// downloader config bucket
@@ -103,6 +109,7 @@ type Downloader struct {
 	listener     Listener
 
 	lock               *sync.Mutex
+	configLock         *sync.RWMutex
 	fetcherMapLock     *sync.RWMutex
 	checkDuplicateLock *sync.Mutex
 	closed             atomic.Bool
@@ -128,6 +135,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		storage:      cfg.Storage,
 
 		lock:               &sync.Mutex{},
+		configLock:         &sync.RWMutex{},
 		fetcherMapLock:     &sync.RWMutex{},
 		checkDuplicateLock: &sync.Mutex{},
 
@@ -147,7 +155,7 @@ func (d *Downloader) Setup() error {
 	d.blob = internalblob.NewRegistry("")
 
 	// setup storage
-	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
+	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketTaskStats, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
 		return err
 	}
 	// load config from storage
@@ -222,7 +230,10 @@ func (d *Downloader) Setup() error {
 
 	// handle upload
 	go func() {
-		for _, task := range d.tasks {
+		d.lock.Lock()
+		tasks := append([]*Task(nil), d.tasks...)
+		d.lock.Unlock()
+		for _, task := range tasks {
 			if task.Status == base.DownloadStatusDone && task.Uploading {
 				if err := d.restoreTask(task); err != nil {
 					d.Logger.Error().Stack().Err(err).Msgf("task upload restore fetcher failed, task id: %s", task.ID)
@@ -238,9 +249,14 @@ func (d *Downloader) Setup() error {
 
 	// calculate download speed every tick
 	go func() {
+		lastUploadCheckpoint := time.Now()
 		for !d.closed.Load() {
-			if len(d.tasks) > 0 {
-				for _, task := range d.tasks {
+			uploadCheckpointDue := time.Since(lastUploadCheckpoint) >= uploadCheckpointInterval
+			d.lock.Lock()
+			tasks := append([]*Task(nil), d.tasks...)
+			d.lock.Unlock()
+			if len(tasks) > 0 {
+				for _, task := range tasks {
 					func() {
 						// Do not acquire d.lock (via GetTask) while holding
 						// statusLock; scheduling uses the opposite lock order.
@@ -260,6 +276,7 @@ func (d *Downloader) Setup() error {
 						current := task.fetcher.Progress().TotalDownloaded()
 						tick := float64(d.cfg.RefreshInterval) / 1000
 						downloadDataChanged := false
+						uploading := task.Uploading
 						if task.Status == base.DownloadStatusRunning {
 							downloadDataChanged = current != task.Progress.Downloaded
 							task.Progress.Used = task.timer.Used()
@@ -268,7 +285,7 @@ func (d *Downloader) Setup() error {
 						}
 
 						uploadDataChanged := false
-						if task.Uploading {
+						if uploading {
 							uploader := task.fetcher.(fetcher.Uploader)
 							currentUploaded := uploader.UploadedBytes()
 							uploadDataChanged = currentUploaded != task.Progress.Uploaded
@@ -276,21 +293,42 @@ func (d *Downloader) Setup() error {
 							task.Progress.Uploaded = currentUploaded
 						}
 						task.statusLock.Unlock()
+						// Stats are pulled on the same cadence as speed so fetchers stay
+						// storage-agnostic. Runtime is refreshed in memory every tick, while
+						// only a changed durable Snapshot reaches bucketTaskStats.
+						if err := d.captureTaskStats(task, true, false); err != nil {
+							d.Logger.Warn().Err(err).Msgf("persist task stats failed, task id: %s", task.ID)
+						}
 						// Listener callbacks may Pause/Continue and acquire statusLock.
 						d.emit(EventKeyProgress, task)
 
-						// store fetcher progress when download/upload data changed
-						if !downloadDataChanged && !uploadDataChanged {
+						// Store active upload state periodically even without traffic so
+						// protocol-owned values such as BT seed time remain durable.
+						if !shouldSaveTaskCheckpoint(
+							downloadDataChanged,
+							uploadDataChanged,
+							uploading,
+							uploadCheckpointDue,
+						) {
 							return
 						}
-						d.saveTask(task)
+						if err := d.saveTask(task); err != nil {
+							d.Logger.Warn().Err(err).Msgf("persist task checkpoint failed, task id: %s", task.ID)
+						}
 					}()
 				}
+			}
+			if uploadCheckpointDue {
+				lastUploadCheckpoint = time.Now()
 			}
 			time.Sleep(time.Millisecond * time.Duration(d.cfg.RefreshInterval))
 		}
 	}()
 	return nil
+}
+
+func shouldSaveTaskCheckpoint(downloadChanged, uploadChanged, uploading, uploadCheckpointDue bool) bool {
+	return downloadChanged || uploadChanged || uploading && uploadCheckpointDue
 }
 
 // cleanupNonExistingTasks checks for tasks whose files are missing on disk
@@ -493,6 +531,18 @@ func (d *Downloader) remainRunningCount() int {
 }
 
 func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId string, err error) {
+	defaultPath, err := d.prepareDefaultPath(opts)
+	if err != nil {
+		return "", err
+	}
+	taskId, err = d.createDirect(req, opts)
+	if err == nil {
+		d.persistDefaultPathBestEffort(defaultPath)
+	}
+	return
+}
+
+func (d *Downloader) createDirect(req *base.Request, opts *base.Options) (taskId string, err error) {
 	ensureRequestRawURL(req)
 	var fetcher fetcher.Fetcher
 	fetcher, err = d.buildFetcher(req.URL)
@@ -508,18 +558,26 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 }
 
 func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []string, err error) {
+	defaultPath, err := d.prepareDefaultPath(req.Opts)
+	if err != nil {
+		return nil, err
+	}
 	taskIds := make([]string, 0)
 	for _, ir := range req.Reqs {
 		opts := ir.Opts
 		if opts == nil {
 			opts = req.Opts
 		}
-		taskId, err := d.CreateDirect(ir.Req, opts.Clone())
+		if opts != nil {
+			opts = opts.Clone()
+		}
+		taskId, err := d.createDirect(ir.Req, opts)
 		if err != nil {
 			return nil, err
 		}
 		taskIds = append(taskIds, taskId)
 	}
+	d.persistDefaultPathBestEffort(defaultPath)
 	return taskIds, nil
 }
 
@@ -535,7 +593,15 @@ func (d *Downloader) Create(rrId string) (taskId string, err error) {
 		delete(d.fetcherCache, rrId)
 		d.fetcherMapLock.Unlock()
 	}()
-	return d.doCreate(fetcher, nil)
+	defaultPath, err := d.prepareDefaultPath(fetcher.Meta().Opts)
+	if err != nil {
+		return "", err
+	}
+	taskId, err = d.doCreate(fetcher, nil)
+	if err == nil {
+		d.persistDefaultPathBestEffort(defaultPath)
+	}
+	return
 }
 
 // Patch modifies task-specific data based on the protocol.
@@ -738,6 +804,16 @@ func (d *Downloader) ContinueBatch(filter *TaskFilter) (err error) {
 	return
 }
 
+// ContinueOnStartup applies the persisted startup policy after the backend is
+// ready to accept connections. Continue(nil) intentionally preserves the same
+// continue-all semantics exposed by the API, including retrying failed tasks.
+func (d *Downloader) ContinueOnStartup() error {
+	if !d.cfg.DownloaderStoreConfig.AutoStartTasks {
+		return nil
+	}
+	return d.Continue(nil)
+}
+
 func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 	if filter == nil || filter.IsEmpty() {
 		return d.deleteAll(force)
@@ -811,19 +887,189 @@ func (d *Downloader) Stats(id string) (sr any, err error) {
 	if task == nil {
 		return sr, ErrTaskNotFound
 	}
-	if task.fetcher == nil {
-		err = func() error {
-			task.statusLock.Lock()
-			defer task.statusLock.Unlock()
 
-			return d.restoreFetcher(task)
-		}()
-		if err != nil {
-			return
+	// A loaded fetcher is authoritative. Query it directly without restoring a
+	// paused fetcher from bucketSave: statistics reads must never consume or
+	// otherwise mutate download recovery state.
+	task.lock.Lock()
+	if task.fetcher != nil {
+		status := d.taskStatus(task)
+		live := status == base.DownloadStatusRunning || task.Uploading
+		if captureErr := d.captureTaskStats(task, live, false); captureErr != nil {
+			d.Logger.Warn().Err(captureErr).Msgf("capture task stats failed, task id: %s", task.ID)
 		}
 	}
-	sr = task.fetcher.Stats()
-	return
+	task.lock.Unlock()
+
+	stats, err := d.loadTaskStats(task)
+	if err != nil || stats == nil {
+		return nil, err
+	}
+	return stats, nil
+}
+
+type storedTaskStats struct {
+	Snapshot json.RawMessage `json:"snapshot"`
+}
+
+// captureTaskStats updates the task-level cache from a loaded fetcher and
+// persists only the stable Snapshot payload. Runtime telemetry is deliberately
+// discarded as soon as a task is no longer active.
+func (d *Downloader) captureTaskStats(task *Task, live, force bool) error {
+	if task == nil || task.fetcher == nil {
+		return nil
+	}
+	stats := task.fetcher.Stats()
+	if stats == nil {
+		return nil
+	}
+	if !live {
+		stats = &fetcher.Stats{Snapshot: stats.Snapshot}
+	}
+
+	hasSnapshotUpdate := stats.Snapshot != nil
+	var snapshot json.RawMessage
+	if hasSnapshotUpdate {
+		encoded, err := json.Marshal(stats.Snapshot)
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(encoded, []byte("null")) {
+			snapshot = encoded
+		} else {
+			hasSnapshotUpdate = false
+		}
+	}
+
+	task.statsLock.Lock()
+	defer task.statsLock.Unlock()
+	if err := d.loadStoredTaskStatsLocked(task); err != nil {
+		return err
+	}
+	if !hasSnapshotUpdate {
+		// A nil Snapshot means the protocol is temporarily unable to provide a
+		// trustworthy stable view (for example while BT verifies restored
+		// storage). Keep the previous Snapshot and refresh Runtime only.
+		var previousSnapshot any
+		if task.stats != nil {
+			previousSnapshot = task.stats.Snapshot
+		}
+		if previousSnapshot == nil && len(task.statsSnapshot) > 0 {
+			previousSnapshot = append(json.RawMessage(nil), task.statsSnapshot...)
+		}
+		if previousSnapshot == nil && stats.Runtime == nil {
+			task.stats = nil
+		} else {
+			task.stats = &fetcher.Stats{Snapshot: previousSnapshot, Runtime: stats.Runtime}
+		}
+		return nil
+	}
+
+	task.stats = stats
+	if !force && bytes.Equal(snapshot, task.statsSnapshot) {
+		return nil
+	}
+
+	if err := d.storage.Put(bucketTaskStats, task.ID, &storedTaskStats{Snapshot: snapshot}); err != nil {
+		return err
+	}
+	task.statsSnapshot = append(task.statsSnapshot[:0], snapshot...)
+	return nil
+}
+
+// loadTaskStats lazily restores a task snapshot. The protocol payload stays as
+// json.RawMessage so Downloader remains independent from HTTP, BT, and ED2K
+// schemas and can return it without a second decode/encode cycle.
+func (d *Downloader) loadTaskStats(task *Task) (*fetcher.Stats, error) {
+	task.statsLock.Lock()
+	defer task.statsLock.Unlock()
+	if err := d.loadStoredTaskStatsLocked(task); err != nil {
+		return nil, err
+	}
+	return task.stats, nil
+}
+
+// loadStoredTaskStatsLocked initializes the cache from storage once. Caller
+// must hold statsLock. It is shared by reads and nil-Snapshot refreshes so the
+// latter can retain a trusted snapshot after process restart.
+func (d *Downloader) loadStoredTaskStatsLocked(task *Task) error {
+	if task.statsLoaded {
+		return nil
+	}
+	var stored storedTaskStats
+	exists, err := d.storage.Get(bucketTaskStats, task.ID, &stored)
+	if err != nil {
+		return err
+	}
+	task.statsLoaded = true
+	if !exists || len(stored.Snapshot) == 0 {
+		return nil
+	}
+	task.statsSnapshot = append(json.RawMessage(nil), stored.Snapshot...)
+	task.stats = &fetcher.Stats{
+		Snapshot: append(json.RawMessage(nil), stored.Snapshot...),
+	}
+	return nil
+}
+
+// RuntimeStatus returns the small task snapshot used by high-frequency detail
+// polling. Reading task.lock before statusLock follows the same lock order as
+// pause and patch operations, while also keeping fetcher and resource metadata
+// stable while file progress is collected.
+func (d *Downloader) RuntimeStatus(id string) (*TaskRuntimeStatus, error) {
+	task := d.GetTask(id)
+	if task == nil {
+		return nil, ErrTaskNotFound
+	}
+
+	task.lock.Lock()
+	defer task.lock.Unlock()
+	task.statusLock.Lock()
+	defer task.statusLock.Unlock()
+
+	result := &TaskRuntimeStatus{
+		Status: task.Status,
+		Files:  make([]FileRuntimeStatus, 0),
+	}
+	if task.Progress != nil {
+		result.Used = task.Progress.Used
+		result.Speed = task.Progress.Speed
+		result.Downloaded = task.Progress.Downloaded
+		result.UploadSpeed = task.Progress.UploadSpeed
+		result.Uploaded = task.Progress.Uploaded
+		result.ExtractStatus = task.Progress.ExtractStatus
+		result.ExtractProgress = task.Progress.ExtractProgress
+	}
+	if task.Meta == nil || task.Meta.Res == nil {
+		return result, nil
+	}
+
+	result.Total = task.Meta.Res.Size
+	if task.fetcher == nil {
+		return result, nil
+	}
+
+	fileProgress := task.fetcher.Progress()
+	var selectedFiles []int
+	if task.Meta.Opts != nil {
+		selectedFiles = task.Meta.Opts.SelectFiles
+	}
+	resourceFiles := task.Meta.Res.Files
+	for progressIndex, downloaded := range fileProgress {
+		resourceIndex := progressIndex
+		if progressIndex < len(selectedFiles) {
+			resourceIndex = selectedFiles[progressIndex]
+		}
+		if resourceIndex < 0 || resourceIndex >= len(resourceFiles) {
+			continue
+		}
+		result.Files = append(result.Files, FileRuntimeStatus{
+			Index:      resourceIndex,
+			Size:       resourceFiles[resourceIndex].Size,
+			Downloaded: downloaded,
+		})
+	}
+	return result, nil
 }
 
 func (d *Downloader) doDelete(task *Task, force bool) (err error) {
@@ -833,6 +1079,9 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 			return err
 		}
 		if err := d.storage.Delete(bucketSave, task.ID); err != nil {
+			return err
+		}
+		if err := d.storage.Delete(bucketTaskStats, task.ID); err != nil {
 			return err
 		}
 
@@ -1012,12 +1261,60 @@ func (d *Downloader) GetTasksByFilter(filter *TaskFilter) []*Task {
 }
 
 func (d *Downloader) GetConfig() (*base.DownloaderStoreConfig, error) {
+	d.configLock.RLock()
+	defer d.configLock.RUnlock()
 	return d.cfg.DownloaderStoreConfig, nil
 }
 
 func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
-	d.cfg.DownloaderStoreConfig = v
-	return d.storage.Put(bucketConfig, "config", v)
+	if v == nil {
+		return errors.New("config is nil")
+	}
+	next := util.DeepClone(v)
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+	if err := d.storage.Put(bucketConfig, "config", next); err != nil {
+		return err
+	}
+	d.cfg.DownloaderStoreConfig = next
+	return nil
+}
+
+func (d *Downloader) prepareDefaultPath(opts *base.Options) (string, error) {
+	if opts == nil || !opts.AsDefaultPath || strings.TrimSpace(opts.Path) == "" {
+		return "", nil
+	}
+	selectedPath := strings.TrimSpace(opts.Path)
+	selectedPath, err := d.initDownloadPath(selectedPath)
+	if err != nil {
+		return "", err
+	}
+	return selectedPath, nil
+}
+
+func (d *Downloader) persistDefaultPathBestEffort(defaultPath string) {
+	if defaultPath == "" {
+		return
+	}
+	if err := d.persistDefaultPath(defaultPath); err != nil {
+		d.Logger.Warn().Err(err).Msg("persist default download path failed")
+	}
+}
+
+func (d *Downloader) persistDefaultPath(defaultPath string) error {
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+
+	next := util.DeepClone(d.cfg.DownloaderStoreConfig)
+	if next.DownloadDir == defaultPath {
+		return nil
+	}
+	next.DownloadDir = defaultPath
+	if err := d.storage.Put(bucketConfig, "config", next); err != nil {
+		return err
+	}
+	d.cfg.DownloaderStoreConfig = next
+	return nil
 }
 
 func (d *Downloader) getProtocolConfig(name string, v any) bool {
@@ -1115,6 +1412,9 @@ func (d *Downloader) watch(task *Task) {
 		task.Progress.Downloaded = totalSize
 		if !d.markTaskDone(task) {
 			return
+		}
+		if err := d.captureTaskStats(task, false, true); err != nil {
+			d.Logger.Error().Stack().Err(err).Msgf("persist completed task stats failed, task id: %s", task.ID)
 		}
 		d.storage.Put(bucketTask, task.ID, task.clone())
 		d.emit(EventKeyDone, task)
@@ -1228,6 +1528,14 @@ func (d *Downloader) handleOnError(task *Task, err error, resetFetcher bool) {
 			d.Logger.Warn().Err(resetErr).Msgf("reset recovered task fetcher failed, task id: %s", task.ID)
 		}
 	}
+	if statsErr := d.captureTaskStats(task, false, true); statsErr != nil {
+		d.Logger.Warn().Err(statsErr).Msgf("persist failed task stats failed, task id: %s", task.ID)
+	}
+	if d.taskStatus(task) == base.DownloadStatusError {
+		if persistErr := d.storage.Put(bucketTask, task.ID, task.clone()); persistErr != nil {
+			d.Logger.Error().Stack().Err(persistErr).Msgf("persist failed task failed, task id: %s", task.ID)
+		}
+	}
 	task.lock.Unlock()
 	if d.taskStatus(task) == base.DownloadStatusError {
 		d.releaseBlobTask(task)
@@ -1266,6 +1574,14 @@ func (d *Downloader) resetTaskFetcher(task *Task) error {
 		task.Progress.Downloaded = 0
 		task.Progress.Speed = 0
 	}
+	task.statsLock.Lock()
+	task.statsLoaded = true
+	task.stats = nil
+	task.statsSnapshot = nil
+	task.statsLock.Unlock()
+	if err := d.storage.Delete(bucketTaskStats, task.ID); err != nil {
+		return err
+	}
 	return d.storage.Delete(bucketSave, task.ID)
 }
 
@@ -1281,7 +1597,7 @@ func (d *Downloader) restoreTask(task *Task) error {
 func (d *Downloader) restoreFetcher(task *Task) error {
 	v, f := task.fetcherManager.Restore()
 	if v != nil {
-		err := d.storage.Pop(bucketSave, task.ID, v)
+		_, err := d.storage.Get(bucketSave, task.ID, v)
 		if err != nil {
 			return err
 		}
@@ -1367,23 +1683,32 @@ func (d *Downloader) initOptions(opts *base.Options) (*base.Options, error) {
 		}
 		opts.Path = storeConfig.DownloadDir
 	}
+	path, err := d.initDownloadPath(opts.Path)
+	if err != nil {
+		return nil, err
+	}
+	opts.Path = path
+	return opts, nil
+}
+
+func (d *Downloader) initDownloadPath(path string) (string, error) {
 	// Replace placeholders in download path (e.g., %year%, %month%, %day%, %date%)
-	opts.Path = util.ReplacePathPlaceholders(opts.Path)
+	path = util.ReplacePathPlaceholders(path)
 
 	// if enable white download directory, check if the download directory is in the white list
 	if len(d.cfg.WhiteDownloadDirs) > 0 {
 		inWhiteList := false
 		for _, dir := range d.cfg.WhiteDownloadDirs {
-			if match, err := filepath.Match(dir, opts.Path); match && err == nil {
+			if match, err := filepath.Match(dir, path); match && err == nil {
 				inWhiteList = true
 				break
 			}
 		}
 		if !inWhiteList {
-			return nil, errors.New("download directory is not in white list")
+			return "", errors.New("download directory is not in white list")
 		}
 	}
-	return opts, nil
+	return path, nil
 }
 
 func (d *Downloader) statusMut(task *Task, fn func() (bool, error)) (bool, error) {
@@ -1492,6 +1817,11 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			return err
 		}
 		started = true
+		if err := d.captureTaskStats(task, true, true); err != nil {
+			// Statistics are auxiliary. A storage or serialization failure must not
+			// turn an already-started download into a failed task.
+			d.Logger.Warn().Err(err).Msgf("persist started task stats failed, task id: %s", task.ID)
+		}
 		if err := d.saveTask(task); err != nil {
 			return err
 		}
@@ -1553,7 +1883,7 @@ func (d *Downloader) doPauseForScheduling(task *Task) (bool, error) {
 
 func (d *Downloader) preparePause(task *Task) (generation uint64, isReturn bool, err error) {
 	isReturn, err = d.statusMut(task, func() (isReturn bool, err error) {
-		if task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusDone {
+		if task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusDone || task.Status == base.DownloadStatusError {
 			isReturn = true
 			return
 		}
@@ -1580,6 +1910,13 @@ func (d *Downloader) runPauseHandler(task *Task, generation uint64, pauseFetcher
 	if pauseFetcher && task.fetcher != nil {
 		if err := task.fetcher.Pause(); err != nil {
 			return false, err
+		}
+	}
+	if task.fetcher != nil {
+		if err := d.captureTaskStats(task, false, true); err != nil {
+			// The fetcher is already paused at this point. Keep the task lifecycle
+			// successful even if its optional statistics snapshot cannot be stored.
+			d.Logger.Warn().Err(err).Msgf("persist paused task stats failed, task id: %s", task.ID)
 		}
 	}
 	if task.fetcherManager != nil && task.fetcher != nil {
@@ -2063,6 +2400,7 @@ func initTask(task *Task) {
 
 	task.statusLock = &sync.Mutex{}
 	task.lock = &sync.Mutex{}
+	task.statsLock = &sync.Mutex{}
 	task.blobRefLock = &sync.Mutex{}
 	task.speedArr = make([]int64, 0)
 	task.uploadSpeedArr = make([]int64, 0)

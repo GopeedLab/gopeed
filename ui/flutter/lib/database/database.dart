@@ -9,7 +9,6 @@ const String _startConfig = 'startConfig';
 const String _windowState = 'windowState';
 const String _bookmark = 'bookmark';
 const String _createHistory = 'createHistory';
-const String _webToken = 'webToken';
 const String _runAsMenubarApp = 'runAsMenubarApp';
 const String _analyticsEnabled = 'analyticsEnabled';
 const String _analyticsClientId = 'analyticsClientId';
@@ -24,12 +23,19 @@ class Database {
   }
 
   late Box box;
+  bool _initialized = false;
 
   Database._internal();
 
+  bool get initialized => _initialized;
+
   Future<void> init() async {
+    if (_initialized) {
+      return;
+    }
     Hive.init(Util.getStorageDir());
     box = await Hive.openBox('database');
+    _initialized = true;
   }
 
   void save<T>(String key, T entity) {
@@ -53,8 +59,7 @@ class Database {
   }
 
   StartConfigEntity? getStartConfig() {
-    return get<StartConfigEntity>(
-        _startConfig, (json) => StartConfigEntity.fromJson(json));
+    return get<StartConfigEntity>(_startConfig, (json) => StartConfigEntity.fromJson(json));
   }
 
   /// Patch non-null fields with the original value
@@ -67,8 +72,7 @@ class Database {
   }
 
   WindowStateEntity? getWindowState() {
-    return get<WindowStateEntity>(
-        _windowState, (json) => WindowStateEntity.fromJson(json));
+    return get<WindowStateEntity>(_windowState, (json) => WindowStateEntity.fromJson(json));
   }
 
   /// Use map to ensure that the same directory only saves the latest bookmark
@@ -80,17 +84,8 @@ class Database {
 
   Map<String, String>? getBookmark() {
     return get<Map<String, String>>(_bookmark, (json) {
-      return (json as Map<String, dynamic>)
-          .map((key, value) => MapEntry(key, value.toString()));
+      return (json as Map<String, dynamic>).map((key, value) => MapEntry(key, value.toString()));
     });
-  }
-
-  void saveWebToken(String token) {
-    save<String>(_webToken, token);
-  }
-
-  String? getWebToken() {
-    return get<String>(_webToken, (json) => json.toString());
   }
 
   void saveCreateHistory(String url) {
@@ -107,6 +102,16 @@ class Database {
     return get<List<String>>(_createHistory, (json) {
       return (json as List<dynamic>).map((e) => e.toString()).toList();
     });
+  }
+
+  void removeCreateHistory(String url) {
+    final list = getCreateHistory() ?? [];
+    list.remove(url);
+    if (list.isEmpty) {
+      clearCreateHistory();
+    } else {
+      save<List<String>>(_createHistory, list);
+    }
   }
 
   void clearCreateHistory() {

@@ -18,6 +18,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
 	"github.com/GopeedLab/gopeed/pkg/util"
+	"github.com/RoaringBitmap/roaring"
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
@@ -162,20 +163,209 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 	return f.meta
 }
 
-func (f *Fetcher) Stats() any {
+func (f *Fetcher) Stats() *fetcher.Stats {
 	var stats torrent.TorrentStats
+	var pieceMap *base.PieceMap
+	pieceMapReady := false
+	peers := make([]*base.PeerStats, 0)
 	if f.torrent != nil {
 		stats = f.torrent.Stats()
+		pieceMap, pieceMapReady = buildBTPieceMap(f.torrent)
+		peers = buildBTPeers(f.torrent)
 	} else {
 		stats = torrent.TorrentStats{}
 	}
-	return &bt.Stats{
-		TotalPeers:       stats.TotalPeers,
-		ActivePeers:      stats.ActivePeers,
-		ConnectedSeeders: stats.ConnectedSeeders,
-		SeedBytes:        f.data.SeedBytes,
-		SeedRatio:        f.seedRadio(),
-		SeedTime:         f.data.SeedTime,
+	var snapshot any
+	if pieceMapReady {
+		snapshot = &bt.StatsSnapshot{
+			SeedBytes: f.data.SeedBytes,
+			SeedRatio: f.seedRadio(),
+			SeedTime:  f.data.SeedTime,
+			PieceMap:  pieceMap.Clone(),
+		}
+	}
+	// When completion is temporarily unknown while anacrolix restores storage
+	// or verifies pieces, the nil Snapshot tells Downloader to retain the last
+	// trusted bitset instead of replacing it with an all-empty map.
+	return &fetcher.Stats{
+		Snapshot: snapshot,
+		Runtime: &bt.StatsRuntime{
+			TotalPeers:        stats.TotalPeers,
+			ActivePeers:       stats.ActivePeers,
+			ConnectedSeeders:  stats.ConnectedSeeders,
+			ConnectedLeechers: stats.ActivePeers - stats.ConnectedSeeders,
+			Peers:             peers,
+		},
+	}
+}
+
+// buildBTPieceMap converts anacrolix's ordered completion runs to Gopeed's
+// one-bit map. ready is false until storage knows the completion state of every
+// piece; this prevents initial hash checking from briefly replacing a restored
+// map with an all-empty value.
+func buildBTPieceMap(t *torrent.Torrent) (pieceMap *base.PieceMap, ready bool) {
+	info := t.Info()
+	if info == nil {
+		return nil, false
+	}
+	pieceMap = base.NewPieceMap(info.NumPieces(), info.PieceLength)
+	ready = applyBTPieceRuns(pieceMap, t.PieceStateRuns())
+	return pieceMap, ready
+}
+
+func applyBTPieceRuns(pieceMap *base.PieceMap, runs []torrent.PieceStateRun) (ready bool) {
+	ready = true
+	pieceIndex := 0
+	for _, run := range runs {
+		if !run.Ok {
+			ready = false
+		}
+		completed := run.Ok && run.Complete
+		for range run.Length {
+			if pieceIndex >= pieceMap.PieceCount() {
+				return ready
+			}
+			_ = pieceMap.Update(pieceIndex, completed)
+			pieceIndex++
+		}
+	}
+	return ready && pieceIndex == pieceMap.PieceCount()
+}
+
+func buildBTPeers(t *torrent.Torrent) []*base.PeerStats {
+	connections := t.PeerConns()
+	totalPieces := 0
+	var missingWantedPieces *roaring.Bitmap
+	// Magnet torrents can connect to peers before their metadata arrives. Keep
+	// those runtime peer stats, but leave completion and relevance unavailable
+	// until the metadata provides a trusted total piece count.
+	if info := t.Info(); info != nil {
+		totalPieces = info.NumPieces()
+		missingWantedPieces = btMissingWantedPieces(t.PieceStateRuns(), totalPieces)
+	}
+	peers := make([]*base.PeerStats, 0, len(connections))
+	for _, connection := range connections {
+		peerStats := connection.Stats()
+		peers = append(peers, &base.PeerStats{
+			Address:       safeBTPeerAddress(connection),
+			Client:        btPeerClient(connection),
+			DownloadSpeed: int64(peerStats.DownloadRate),
+			UploadSpeed:   int64(peerStats.LastWriteUploadRate),
+			PieceCount:    peerStats.RemotePieceCount,
+			Completion:    btPeerCompletion(peerStats.RemotePieceCount, totalPieces),
+			Relevance:     btPeerRelevance(connection.PeerPieces(), missingWantedPieces),
+			Source:        normalizeBTPeerSource(connection.Discovery),
+			Transport:     normalizeBTTransport(connection.Network),
+		})
+	}
+	return peers
+}
+
+// btPeerCompletion converts anacrolix's remote piece count into the ratio the
+// API exposes. A nil value distinguishes unavailable metadata from a real 0%.
+func btPeerCompletion(pieceCount, totalPieces int) *float64 {
+	if totalPieces <= 0 {
+		return nil
+	}
+	if pieceCount < 0 {
+		pieceCount = 0
+	} else if pieceCount > totalPieces {
+		pieceCount = totalPieces
+	}
+	completion := float64(pieceCount) / float64(totalPieces)
+	return &completion
+}
+
+// btMissingWantedPieces builds the denominator used by peer relevance. Pieces
+// belonging only to skipped files are excluded because their priority is none.
+func btMissingWantedPieces(runs []torrent.PieceStateRun, totalPieces int) *roaring.Bitmap {
+	if totalPieces <= 0 {
+		return nil
+	}
+	missing := roaring.New()
+	pieceIndex := 0
+	for _, run := range runs {
+		for range run.Length {
+			if pieceIndex >= totalPieces {
+				return nil
+			}
+			if run.Priority != torrent.PiecePriorityNone && !(run.Ok && run.Complete) {
+				missing.Add(uint32(pieceIndex))
+			}
+			pieceIndex++
+		}
+	}
+	if pieceIndex != totalPieces {
+		return nil
+	}
+	return missing
+}
+
+// btPeerRelevance reports how much of the local wanted, missing set the remote
+// peer can provide. A zero value is meaningful; nil means there is no denominator.
+func btPeerRelevance(peerPieces, missingWantedPieces *roaring.Bitmap) *float64 {
+	if peerPieces == nil || missingWantedPieces == nil || missingWantedPieces.IsEmpty() {
+		return nil
+	}
+	relevantPieces := roaring.And(peerPieces, missingWantedPieces).GetCardinality()
+	relevance := float64(relevantPieces) / float64(missingWantedPieces.GetCardinality())
+	return &relevance
+}
+
+// A uTP socket may close between PeerConns and this snapshot. Some uTP address
+// implementations panic after close, so one disappearing address must not make
+// the entire stats endpoint fail.
+func safeBTPeerAddress(connection *torrent.PeerConn) (address string) {
+	defer func() {
+		if recover() != nil {
+			address = ""
+		}
+	}()
+	if connection.RemoteAddr == nil {
+		return ""
+	}
+	return connection.RemoteAddr.String()
+}
+
+func btPeerClient(connection *torrent.PeerConn) string {
+	value := connection.PeerClientName.Load()
+	if value == nil {
+		return ""
+	}
+	return fmt.Sprint(value)
+}
+
+func normalizeBTPeerSource(source torrent.PeerSource) string {
+	switch source {
+	case torrent.PeerSourceTracker:
+		return "tracker"
+	case torrent.PeerSourceDhtGetPeers, torrent.PeerSourceDhtAnnouncePeer:
+		return "dht"
+	case torrent.PeerSourcePex:
+		return "pex"
+	case torrent.PeerSourceIncoming:
+		return "incoming"
+	case torrent.PeerSourceDirect:
+		return "direct"
+	case torrent.PeerSourceUtHolepunch:
+		return "holepunch"
+	default:
+		return "unknown"
+	}
+}
+
+func normalizeBTTransport(network string) string {
+	network = strings.ToLower(network)
+	switch {
+	case strings.Contains(network, "webrtc"):
+		return "webrtc"
+	case strings.Contains(network, "udp"):
+		// anacrolix labels uTP sockets with their underlying udp network.
+		return "utp"
+	case strings.Contains(network, "tcp"):
+		return "tcp"
+	default:
+		return "unknown"
 	}
 }
 

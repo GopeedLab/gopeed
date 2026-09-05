@@ -69,12 +69,11 @@ class WebViewRpcService {
 
   static final WebViewRpcService instance = WebViewRpcService._();
 
-  final ValueNotifier<List<WebViewRpcPageSession>> pages =
-      ValueNotifier<List<WebViewRpcPageSession>>([]);
+  final ValueNotifier<List<WebViewRpcPageSession>> pages = ValueNotifier<List<WebViewRpcPageSession>>([]);
 
   final Map<String, WebViewRpcPageSession> _pagesById = {};
   final Completer<void> _overlayReady = Completer<void>();
-  final CookieManager _cookieManager = CookieManager.instance();
+  late final CookieManager _cookieManager = CookieManager.instance();
 
   RpcServerHandle? _server;
   int _pageSeq = 0;
@@ -95,12 +94,7 @@ class WebViewRpcService {
       return _toConfig(_server!.binding);
     }
     final binding = await defaultWebViewRpcBinding();
-    _server = await startRpcServer(
-      binding: binding,
-      routes: {
-        '/webview': _handleWebViewRequest,
-      },
-    );
+    _server = await startRpcServer(binding: binding, routes: {'/webview': _handleWebViewRequest});
     return _toConfig(_server!.binding);
   }
 
@@ -121,20 +115,13 @@ class WebViewRpcService {
     await _overlayReady.future;
     final body = await ctx.readJSON();
     final method = body['method'] as String? ?? '';
-    final params = (body['params'] as Map?)?.cast<String, dynamic>() ??
-        const <String, dynamic>{};
+    final params = (body['params'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
     try {
       final result = await _dispatch(method, params);
-      await ctx.writeJSON({
-        'result': result,
-        'error': null,
-      });
+      await ctx.writeJSON({'result': result, 'error': null});
     } catch (e, stackTrace) {
       logger.w('webview rpc request failed: $method', e, stackTrace);
-      await ctx.writeJSON({
-        'result': null,
-        'error': _toRpcError(method, e),
-      });
+      await ctx.writeJSON({'result': null, 'error': _toRpcError(method, e)});
     }
   }
 
@@ -154,10 +141,7 @@ class WebViewRpcService {
         );
         return {};
       case 'page.execute':
-        return _page(params).execute(
-          _string(params, 'expression'),
-          (_list(params, 'args') ?? const []),
-        );
+        return _page(params).execute(_string(params, 'expression'), (_list(params, 'args') ?? const []));
       case 'page.getCookies':
         return _page(params).getCookies();
       case 'page.setCookie':
@@ -173,10 +157,7 @@ class WebViewRpcService {
         await _closePage(_pageId(params));
         return {};
       default:
-        throw WebViewRpcException(
-          code: 'UNKNOWN_METHOD',
-          message: 'unknown method: $method',
-        );
+        throw WebViewRpcException(code: 'UNKNOWN_METHOD', message: 'unknown method: $method');
     }
   }
 
@@ -207,10 +188,7 @@ class WebViewRpcService {
   WebViewRpcPageSession _page(Map<String, dynamic> params) {
     final page = _pagesById[_pageId(params)];
     if (page == null) {
-      throw WebViewRpcException(
-        code: 'PAGE_NOT_FOUND',
-        message: 'page not found',
-      );
+      throw WebViewRpcException(code: 'PAGE_NOT_FOUND', message: 'page not found');
     }
     return page;
   }
@@ -222,10 +200,7 @@ class WebViewRpcService {
     if (value is String && value.isNotEmpty) {
       return value;
     }
-    throw WebViewRpcException(
-      code: 'INVALID_REQUEST',
-      message: 'missing or invalid "$key"',
-    );
+    throw WebViewRpcException(code: 'INVALID_REQUEST', message: 'missing or invalid "$key"');
   }
 
   String? _stringOrNull(Map<String, dynamic> params, String key) {
@@ -236,10 +211,7 @@ class WebViewRpcService {
     if (value is String && value.isNotEmpty) {
       return value;
     }
-    throw WebViewRpcException(
-      code: 'INVALID_REQUEST',
-      message: 'invalid "$key"',
-    );
+    throw WebViewRpcException(code: 'INVALID_REQUEST', message: 'invalid "$key"');
   }
 
   int? _int(Map<String, dynamic> params, String key) {
@@ -250,10 +222,7 @@ class WebViewRpcService {
     if (value is num) {
       return value.toInt();
     }
-    throw WebViewRpcException(
-      code: 'INVALID_REQUEST',
-      message: 'invalid "$key"',
-    );
+    throw WebViewRpcException(code: 'INVALID_REQUEST', message: 'invalid "$key"');
   }
 
   List<dynamic>? _list(Map<String, dynamic> params, String key) {
@@ -264,10 +233,7 @@ class WebViewRpcService {
     if (value is List<dynamic>) {
       return value;
     }
-    throw WebViewRpcException(
-      code: 'INVALID_REQUEST',
-      message: 'invalid "$key"',
-    );
+    throw WebViewRpcException(code: 'INVALID_REQUEST', message: 'invalid "$key"');
   }
 
   Map<String, dynamic> _cookie(Map<String, dynamic> params) {
@@ -278,28 +244,20 @@ class WebViewRpcService {
     if (value is Map) {
       return value.cast<String, dynamic>();
     }
-    throw WebViewRpcException(
-      code: 'INVALID_REQUEST',
-      message: 'missing or invalid "cookie"',
-    );
+    throw WebViewRpcException(code: 'INVALID_REQUEST', message: 'missing or invalid "cookie"');
   }
 
   Future<void> _closePage(String pageId) async {
     final page = _pagesById.remove(pageId);
     if (page == null) {
-      throw WebViewRpcException(
-        code: 'PAGE_NOT_FOUND',
-        message: 'page not found',
-      );
+      throw WebViewRpcException(code: 'PAGE_NOT_FOUND', message: 'page not found');
     }
     _syncPages();
     await page.dispose();
   }
 
   void _syncPages() {
-    pages.value = _pagesById.values
-        .where((page) => !page.headless)
-        .toList(growable: false);
+    pages.value = _pagesById.values.where((page) => !page.headless).toList(growable: false);
   }
 
   WebViewRpcConfig _toConfig(RpcBinding binding) {
@@ -311,20 +269,14 @@ class WebViewRpcService {
 
   Map<String, dynamic> _toRpcError(String method, Object error) {
     if (error is WebViewRpcException) {
-      return {
-        'code': error.code,
-        'message': error.message,
-      };
+      return {'code': error.code, 'message': error.message};
     }
     final code = switch (method) {
       'page.goto' => 'NAVIGATION_FAILED',
       'page.execute' => 'EVALUATION_FAILED',
       _ => 'INTERNAL_ERROR',
     };
-    return {
-      'code': code,
-      'message': error.toString(),
-    };
+    return {'code': code, 'message': error.toString()};
   }
 }
 
@@ -351,8 +303,7 @@ class WebViewRpcPageSession {
   late final String callbackChannelName;
 
   final List<UserScript> _initScripts = [];
-  final Map<String, Completer<dynamic>> _pendingExecutions =
-      <String, Completer<dynamic>>{};
+  final Map<String, Completer<dynamic>> _pendingExecutions = <String, Completer<dynamic>>{};
 
   final Completer<void> _ready = Completer<void>();
   HeadlessInAppWebView? _headlessWebView;
@@ -363,14 +314,10 @@ class WebViewRpcPageSession {
   bool _disposed = false;
 
   Future<void> init() async {
-    callbackChannelName =
-        '__gopeedWebViewCallback_${pageId.replaceAll('-', '_')}';
+    callbackChannelName = '__gopeedWebViewCallback_${pageId.replaceAll('-', '_')}';
     if (headless) {
       _headlessWebView = HeadlessInAppWebView(
-        initialSize: Size(
-          width > 0 ? width.toDouble() : 1,
-          height > 0 ? height.toDouble() : 1,
-        ),
+        initialSize: Size(width > 0 ? width.toDouble() : 1, height > 0 ? height.toDouble() : 1),
         initialSettings: _settings,
         initialUserScripts: UnmodifiableListView(_initScripts),
         onWebViewCreated: _attachController,
@@ -385,10 +332,7 @@ class WebViewRpcPageSession {
   }
 
   Future<void> addInitScript(String script) async {
-    final userScript = UserScript(
-      source: script,
-      injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-    );
+    final userScript = UserScript(source: script, injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START);
     _initScripts.add(userScript);
     final controller = await _controllerOrThrow();
     await controller.addUserScript(userScript: userScript);
@@ -412,16 +356,10 @@ class WebViewRpcPageSession {
       if (identical(_navigation, navigation)) {
         _navigation = null;
       }
-      throw WebViewRpcException(
-        code: 'NAVIGATION_FAILED',
-        message: e.toString(),
-      );
+      throw WebViewRpcException(code: 'NAVIGATION_FAILED', message: e.toString());
     }
     final future = switch (waitStrategy) {
-      'domcontentloaded' => Future.any<void>([
-          _waitForDomReady(),
-          navigation.future,
-        ]),
+      'domcontentloaded' => Future.any<void>([_waitForDomReady(), navigation.future]),
       _ => navigation.future,
     };
     if (timeoutMs == null || timeoutMs <= 0) {
@@ -432,10 +370,7 @@ class WebViewRpcPageSession {
       Duration(milliseconds: timeoutMs),
       onTimeout: () {
         _navigation = null;
-        throw WebViewRpcException(
-          code: 'TIMEOUT',
-          message: 'navigation timeout after ${timeoutMs}ms',
-        );
+        throw WebViewRpcException(code: 'TIMEOUT', message: 'navigation timeout after ${timeoutMs}ms');
       },
     );
   }
@@ -457,10 +392,7 @@ class WebViewRpcPageSession {
       );
     } catch (e) {
       _pendingExecutions.remove(requestId);
-      throw WebViewRpcException(
-        code: 'EVALUATION_FAILED',
-        message: e.toString(),
-      );
+      throw WebViewRpcException(code: 'EVALUATION_FAILED', message: e.toString());
     }
 
     try {
@@ -468,10 +400,7 @@ class WebViewRpcPageSession {
         const Duration(seconds: 30),
         onTimeout: () {
           _pendingExecutions.remove(requestId);
-          throw WebViewRpcException(
-            code: 'TIMEOUT',
-            message: 'javascript execution timeout',
-          );
+          throw WebViewRpcException(code: 'TIMEOUT', message: 'javascript execution timeout');
         },
       );
       return result;
@@ -490,19 +419,14 @@ class WebViewRpcPageSession {
       case 'domcontentloaded':
         return 'domcontentloaded';
       default:
-        throw WebViewRpcException(
-          code: 'INVALID_REQUEST',
-          message: 'invalid "waitUntil"',
-        );
+        throw WebViewRpcException(code: 'INVALID_REQUEST', message: 'invalid "waitUntil"');
     }
   }
 
   Future<void> _waitForDomReady() async {
     final controller = await _controllerOrThrow();
     while (true) {
-      final readyState = await controller.evaluateJavascript(
-        source: 'document.readyState',
-      );
+      final readyState = await controller.evaluateJavascript(source: 'document.readyState');
       final state = readyState?.toString() ?? '';
       if (state == 'interactive' || state == 'complete') {
         return;
@@ -516,16 +440,18 @@ class WebViewRpcPageSession {
       return const [];
     }
     final cookies = await cookieManager.getCookies(url: WebUri(_currentUrl));
-    return cookies.map((cookie) {
-      return <String, dynamic>{
-        'name': cookie.name,
-        'value': cookie.value,
-        'domain': cookie.domain ?? '',
-        'path': cookie.path ?? '/',
-        'secure': cookie.isSecure,
-        'httpOnly': cookie.isHttpOnly,
-      };
-    }).toList(growable: false);
+    return cookies
+        .map((cookie) {
+          return <String, dynamic>{
+            'name': cookie.name,
+            'value': cookie.value,
+            'domain': cookie.domain ?? '',
+            'path': cookie.path ?? '/',
+            'secure': cookie.isSecure,
+            'httpOnly': cookie.isHttpOnly,
+          };
+        })
+        .toList(growable: false);
   }
 
   Future<void> setCookie(Map<String, dynamic> cookie) async {
@@ -547,10 +473,7 @@ class WebViewRpcPageSession {
     final path = cookie['path'] as String? ?? '/';
     final domain = cookie['domain'] as String? ?? '';
     if (name.isEmpty) {
-      throw WebViewRpcException(
-        code: 'INVALID_REQUEST',
-        message: 'cookie.name is required',
-      );
+      throw WebViewRpcException(code: 'INVALID_REQUEST', message: 'cookie.name is required');
     }
     await cookieManager.deleteCookie(
       url: _cookieUrl(cookie),
@@ -567,29 +490,14 @@ class WebViewRpcPageSession {
   Future<void> dispose() async {
     _disposed = true;
     if (!_ready.isCompleted) {
-      _ready.completeError(
-        WebViewRpcException(
-          code: 'PAGE_NOT_FOUND',
-          message: 'webview page closed',
-        ),
-      );
+      _ready.completeError(WebViewRpcException(code: 'PAGE_NOT_FOUND', message: 'webview page closed'));
     }
     if (_navigation != null) {
-      _completeNavigationError(
-        WebViewRpcException(
-          code: 'NAVIGATION_FAILED',
-          message: 'webview page closed',
-        ),
-      );
+      _completeNavigationError(WebViewRpcException(code: 'NAVIGATION_FAILED', message: 'webview page closed'));
     }
     for (final completer in _pendingExecutions.values) {
       if (!completer.isCompleted) {
-        completer.completeError(
-          WebViewRpcException(
-            code: 'EVALUATION_FAILED',
-            message: 'webview page closed',
-          ),
-        );
+        completer.completeError(WebViewRpcException(code: 'EVALUATION_FAILED', message: 'webview page closed'));
       }
     }
     _pendingExecutions.clear();
@@ -616,11 +524,11 @@ class WebViewRpcPageSession {
   }
 
   InAppWebViewSettings get _settings => InAppWebViewSettings(
-        javaScriptEnabled: true,
-        transparentBackground: true,
-        isInspectable: debug,
-        userAgent: userAgent.isNotEmpty ? userAgent : null,
-      );
+    javaScriptEnabled: true,
+    transparentBackground: true,
+    isInspectable: debug,
+    userAgent: userAgent.isNotEmpty ? userAgent : null,
+  );
 
   Future<InAppWebViewController> _controllerOrThrow() async {
     await _ready.future;
@@ -628,10 +536,7 @@ class WebViewRpcPageSession {
     if (controller != null && !_disposed) {
       return controller;
     }
-    throw WebViewRpcException(
-      code: 'PAGE_NOT_FOUND',
-      message: 'page not found',
-    );
+    throw WebViewRpcException(code: 'PAGE_NOT_FOUND', message: 'page not found');
   }
 
   void _attachController(InAppWebViewController controller) {
@@ -655,25 +560,13 @@ class WebViewRpcPageSession {
     _ensureNavigationCompleter();
   }
 
-  Future<void> _handleLoadStop(
-    InAppWebViewController controller,
-    WebUri? url,
-  ) async {
+  Future<void> _handleLoadStop(InAppWebViewController controller, WebUri? url) async {
     _currentUrl = url?.toString() ?? _currentUrl;
     _completeNavigation();
   }
 
-  void _handleReceivedError(
-    InAppWebViewController controller,
-    WebResourceRequest request,
-    WebResourceError error,
-  ) {
-    _completeNavigationError(
-      WebViewRpcException(
-        code: 'NAVIGATION_FAILED',
-        message: error.description,
-      ),
-    );
+  void _handleReceivedError(InAppWebViewController controller, WebResourceRequest request, WebResourceError error) {
+    _completeNavigationError(WebViewRpcException(code: 'NAVIGATION_FAILED', message: error.description));
   }
 
   void _handleReceivedHttpError(
@@ -684,8 +577,7 @@ class WebViewRpcPageSession {
     _completeNavigationError(
       WebViewRpcException(
         code: 'NAVIGATION_FAILED',
-        message:
-            'HTTP ${errorResponse.statusCode}: ${errorResponse.reasonPhrase ?? 'navigation failed'}',
+        message: 'HTTP ${errorResponse.statusCode}: ${errorResponse.reasonPhrase ?? 'navigation failed'}',
       ),
     );
   }
@@ -715,10 +607,7 @@ class WebViewRpcPageSession {
     if (_currentUrl.isNotEmpty) {
       return WebUri(_currentUrl);
     }
-    throw WebViewRpcException(
-      code: 'INVALID_REQUEST',
-      message: 'cookie target url is unavailable',
-    );
+    throw WebViewRpcException(code: 'INVALID_REQUEST', message: 'cookie target url is unavailable');
   }
 
   int? _cookieExpires(Map<String, dynamic> cookie) {
@@ -766,10 +655,7 @@ class WebViewRpcException implements Exception {
   final String code;
   final String message;
 
-  WebViewRpcException({
-    required this.code,
-    required this.message,
-  });
+  WebViewRpcException({required this.code, required this.message});
 
   @override
   String toString() => message;

@@ -16,7 +16,7 @@ Map<String, dynamic> _$WebViewRpcConfigToJson(WebViewRpcConfig instance) =>
     <String, dynamic>{
       'network': instance.network,
       'address': instance.address,
-      'token': instance.token,
+      'token': ?instance.token,
     };
 
 StartConfig _$StartConfigFromJson(Map<String, dynamic> json) => StartConfig()
@@ -29,7 +29,8 @@ StartConfig _$StartConfigFromJson(Map<String, dynamic> json) => StartConfig()
   ..webViewRpcConfig = json['webViewRpcConfig'] == null
       ? null
       : WebViewRpcConfig.fromJson(
-          json['webViewRpcConfig'] as Map<String, dynamic>);
+          json['webViewRpcConfig'] as Map<String, dynamic>,
+        );
 
 Map<String, dynamic> _$StartConfigToJson(StartConfig instance) =>
     <String, dynamic>{
@@ -39,5 +40,5 @@ Map<String, dynamic> _$StartConfigToJson(StartConfig instance) =>
       'storageDir': instance.storageDir,
       'refreshInterval': instance.refreshInterval,
       'apiToken': instance.apiToken,
-      'webViewRpcConfig': instance.webViewRpcConfig,
+      'webViewRpcConfig': ?instance.webViewRpcConfig,
     };

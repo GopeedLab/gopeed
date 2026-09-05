@@ -1,10 +1,9 @@
-import 'scheme_register_stub.dart'
-    if (dart.library.io) 'entry/scheme_register_native.dart';
+import 'scheme_register_stub.dart' if (dart.library.io) 'entry/scheme_register_native.dart';
 
-registerUrlScheme(String scheme) => doRegisterUrlScheme(scheme);
+void registerUrlScheme(String scheme) => doRegisterUrlScheme(scheme);
 
-unregisterUrlScheme(String scheme) => doUnregisterUrlScheme(scheme);
+void unregisterUrlScheme(String scheme) => doUnregisterUrlScheme(scheme);
 
-registerDefaultTorrentClient() => doRegisterDefaultTorrentClient();
+void registerDefaultTorrentClient() => doRegisterDefaultTorrentClient();
 
-unregisterDefaultTorrentClient() => doUnregisterDefaultTorrentClient();
+void unregisterDefaultTorrentClient() => doUnregisterDefaultTorrentClient();

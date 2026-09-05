@@ -9,12 +9,8 @@ class ResolveResult {
   String id;
   Resource res;
 
-  ResolveResult({
-    this.id = "",
-    required this.res,
-  });
+  ResolveResult({this.id = "", required this.res});
 
-  factory ResolveResult.fromJson(Map<String, dynamic> json) =>
-      _$ResolveResultFromJson(json);
+  factory ResolveResult.fromJson(Map<String, dynamic> json) => _$ResolveResultFromJson(json);
   Map<String, dynamic> toJson() => _$ResolveResultToJson(this);
 }

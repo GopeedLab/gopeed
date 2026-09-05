@@ -7,13 +7,9 @@ part of 'resolve_result.dart';
 // **************************************************************************
 
 ResolveResult _$ResolveResultFromJson(Map<String, dynamic> json) =>
-    ResolveResult(
-      id: json['id'] as String? ?? "",
-      res: Resource.fromJson(json['res'] as Map<String, dynamic>),
-    );
+    ResolveResult(id: json['id'] as String? ?? "", res: Resource.fromJson(json['res'] as Map<String, dynamic>));
 
-Map<String, dynamic> _$ResolveResultToJson(ResolveResult instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'res': instance.res.toJson(),
-    };
+Map<String, dynamic> _$ResolveResultToJson(ResolveResult instance) => <String, dynamic>{
+  'id': instance.id,
+  'res': instance.res.toJson(),
+};

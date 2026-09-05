@@ -6,11 +6,8 @@ part 'update_extension_settings.g.dart';
 class UpdateExtensionSettings {
   Map<String, dynamic> settings;
 
-  UpdateExtensionSettings({
-    required this.settings,
-  });
+  UpdateExtensionSettings({required this.settings});
 
-  factory UpdateExtensionSettings.fromJson(Map<String, dynamic> json) =>
-      _$UpdateExtensionSettingsFromJson(json);
+  factory UpdateExtensionSettings.fromJson(Map<String, dynamic> json) => _$UpdateExtensionSettingsFromJson(json);
   Map<String, dynamic> toJson() => _$UpdateExtensionSettingsToJson(this);
 }

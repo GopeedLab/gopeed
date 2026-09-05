@@ -13,7 +13,7 @@ on:
         default: "false"
 
 env:
-  GO_VERSION: "1.25"
+  GO_VERSION: "1.25.4"
   FLUTTER_VERSION: "3.41.6"
   GA4_MEASUREMENT_ID: ${{ secrets.GA4_MEASUREMENT_ID }}
   GA4_API_SECRET: ${{ secrets.GA4_API_SECRET }}
@@ -93,7 +93,7 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.version }}
           GOARCH: ${{ matrix.arch }}
         run: |
-          Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/Unofficial/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
+          Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/raw/main/Files/Languages/ChineseSimplified.isl" -OutFile "ChineseSimplified.isl"
           mv ChineseSimplified.isl "C:\Program Files (x86)\Inno Setup 6\Languages\"
 
           go build -tags nosqlite -ldflags="-w -s -X github.com/GopeedLab/gopeed/pkg/base.Version=$env:VERSION" -buildmode=c-shared -o ui/flutter/windows/libgopeed.dll github.com/GopeedLab/gopeed/bind/desktop
@@ -407,13 +407,17 @@ jobs:
           overwrite: true
   build-snap:
     if: ${{ github.event.inputs.platform == 'all' || github.event.inputs.platform == 'snap' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [get-release]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+      - name: Install Snap host build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
       - name: Setup LXD
         uses: canonical/setup-lxd@v0.1.1
         with:
@@ -477,6 +481,8 @@ jobs:
                 \$CRAFT_PART_INSTALL/usr/bin/flutter doctor
               build-packages:
                 - clang
+                - llvm-18
+                - lld
                 - cmake
                 - curl
                 - libgtk-3-dev
@@ -505,6 +511,9 @@ jobs:
                 set +e
                 dart pub get
                 set -eux
+                llvm_bin_dir="\$(dirname "\$(readlink -f "\$(command -v clang)")")"
+                test -x "\$llvm_bin_dir/llvm-ar"
+                test -x "\$llvm_bin_dir/ld.lld"
                 flutter build linux --dart-define="UPDATE_CHANNEL=linuxSnap" --dart-define="GA4_MEASUREMENT_ID=$GA4_MEASUREMENT_ID" --dart-define="GA4_API_SECRET=$GA4_API_SECRET"
                 mkdir -p \$CRAFT_PART_INSTALL/bin/
                 cp -r build/linux/*/release/bundle/* \$CRAFT_PART_INSTALL/bin/
@@ -687,12 +696,15 @@ jobs:
           VERSION: ${{ needs.get-release.outputs.version }}
         run: |
           sudo apt update -y
-          sudo apt install -y pv bsdmainutils
-          wget -O qdk2_0.32.bionic_amd64.deb "https://github.com/qnap-dev/qdk2/releases/download/v0.32/qdk2_0.32.bionic_amd64.deb"
-          dpkg -X qdk2_0.32.bionic_amd64.deb qdk2 # Direct installs will fail due to missing dependencies!
-          [[ -d qdk2 ]] || exit 1
+          qdk_version=2.5.3
+          qdk_package="qdk_${qdk_version}_amd64.deb"
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output "${qdk_package}" \
+            "https://github.com/qnap-dev/QDK/releases/download/v${qdk_version}/${qdk_package}"
+          echo "17b3841b7d4590a4ee025844ba583304b5e3c497d9fa8934d5175131d3908022  ${qdk_package}" | sha256sum --check --strict
+          sudo apt-get install -y "./${qdk_package}"
+          command -v qbuild
 
-          export PATH=$(pwd)/qdk2/usr/bin:$(pwd)/qdk2/usr/share/qdk2/QDK/bin:${PATH}
           wget -O Gopeed.template.tar.gz "https://github.com/GopeedLab/QpkgBuild/raw/refs/heads/master/template/Gopeed.template.tar.gz"
           tar -zxf Gopeed.template.tar.gz
           [[ -d Gopeed ]] || exit 1

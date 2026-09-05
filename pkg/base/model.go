@@ -133,6 +133,8 @@ type Options struct {
 	Name string `json:"name"`
 	// Download file path
 	Path string `json:"path"`
+	// Use this path as the default download directory after creation succeeds
+	AsDefaultPath bool `json:"asDefaultPath,omitempty"`
 	// Select file indexes to download
 	SelectFiles []int `json:"selectFiles"`
 	// Extra info for specific fetcher
@@ -206,6 +208,7 @@ type DownloaderStoreConfig struct {
 	Script                     *ScriptConfig          `json:"script"`                     // Script is the script execution configuration
 	AutoTorrent                *AutoTorrentConfig     `json:"autoTorrent"`                // AutoTorrent is the auto torrent task creation configuration
 	Archive                    *ArchiveConfig         `json:"archive"`                    // Archive is the archive extraction configuration
+	AutoStartTasks             bool                   `json:"autoStartTasks"`             // AutoStartTasks continues all unfinished tasks when the backend starts
 	AutoDeleteMissingFileTasks bool                   `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
 }
 

@@ -27,17 +27,9 @@ WindowStateEntity _$WindowStateEntityFromJson(Map<String, dynamic> json) =>
       height: (json['height'] as num?)?.toDouble(),
     );
 
-Map<String, dynamic> _$WindowStateEntityToJson(WindowStateEntity instance) {
-  final val = <String, dynamic>{};
-
-  void writeNotNull(String key, dynamic value) {
-    if (value != null) {
-      val[key] = value;
-    }
-  }
-
-  writeNotNull('isMaximized', instance.isMaximized);
-  writeNotNull('width', instance.width);
-  writeNotNull('height', instance.height);
-  return val;
-}
+Map<String, dynamic> _$WindowStateEntityToJson(WindowStateEntity instance) =>
+    <String, dynamic>{
+      'isMaximized': ?instance.isMaximized,
+      'width': ?instance.width,
+      'height': ?instance.height,
+    };

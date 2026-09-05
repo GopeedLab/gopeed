@@ -3,9 +3,9 @@
     "short_name": "gopeed",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#hexcode",
-    "theme_color": "#hexcode",
-    "description": "A new Flutter project.",
+    "background_color": "#0175C2",
+    "theme_color": "#0175C2",
+    "description": "A modern download manager.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

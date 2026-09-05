@@ -1,75 +1,70 @@
-import UIKit
 import Flutter
 import Libgopeed
+import UIKit
 
-@UIApplicationMain
-@objc class AppDelegate: FlutterAppDelegate {
-    override func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-    ) -> Bool {
-        let controller : FlutterViewController = window?.rootViewController as! FlutterViewController
-        let batteryChannel = FlutterMethodChannel(name: "gopeed.com/libgopeed",
-                                                  binaryMessenger: controller.binaryMessenger)
-        batteryChannel.setMethodCallHandler({
-            (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
-            switch call.method {
-            case "start":
-                let args = call.arguments as? Dictionary<String, Any>
-                let cfg = args?["cfg"] as? String
-                let portPrt = UnsafeMutablePointer<Int>.allocate(capacity: MemoryLayout<Int>.stride)
-                var error: NSError?
-                if LibgopeedStart(cfg, portPrt, &error){
-                    result(portPrt.pointee)
-                }else{
-                    result(FlutterError(code: "ERROR", message: error.debugDescription, details: nil))
-                }
-            case "stop":
-                LibgopeedStop()
-                result(nil)
-            default:
-                result(FlutterMethodNotImplemented)
-            }
-        })
-        
-        let locationChannel = FlutterMethodChannel(
-            name: "gopeed/location_keep_alive",
-            binaryMessenger: controller.binaryMessenger
-)
+@main
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
 
-        locationChannel.setMethodCallHandler {
-            (call: FlutterMethodCall, result: @escaping FlutterResult) in
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    let messenger = engineBridge.applicationRegistrar.messenger()
 
-        switch call.method {
-
-        case "requestPermission":
-          LocationKeepAliveManager.shared.requestPermission { authorized in
-            result(authorized)
-    }
-
-        case "start":
-            LocationKeepAliveManager.shared.start()
-            result(nil)
-
-        case "stop":
-            LocationKeepAliveManager.shared.stop()
-            result(nil)
-
-        default:
-            result(FlutterMethodNotImplemented)
-    }
-}
-        
-        GeneratedPluginRegistrant.register(with: self)
-
-        SwiftFlutterForegroundTaskPlugin.setPluginRegistrantCallback(registerPlugins)
-        if #available(iOS 10.0, *) {
-            UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
+    let libgopeedChannel = FlutterMethodChannel(
+      name: "gopeed.com/libgopeed",
+      binaryMessenger: messenger
+    )
+    libgopeedChannel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "start":
+        let arguments = call.arguments as? [String: Any]
+        let config = arguments?["cfg"] as? String
+        let port = UnsafeMutablePointer<Int>.allocate(capacity: 1)
+        defer { port.deallocate() }
+        var error: NSError?
+        if LibgopeedStart(config, port, &error) {
+          result(port.pointee)
+        } else {
+          result(
+            FlutterError(
+              code: "ERROR",
+              message: error?.localizedDescription ?? "Failed to start Libgopeed",
+              details: nil
+            )
+          )
         }
-        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+      case "stop":
+        LibgopeedStop()
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
     }
-}
 
-func registerPlugins(registry: FlutterPluginRegistry) {
-  GeneratedPluginRegistrant.register(with: registry)
+    let locationChannel = FlutterMethodChannel(
+      name: "gopeed/location_keep_alive",
+      binaryMessenger: messenger
+    )
+    locationChannel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "requestPermission":
+        LocationKeepAliveManager.shared.requestPermission { authorized in
+          result(authorized)
+        }
+      case "start":
+        LocationKeepAliveManager.shared.start()
+        result(nil)
+      case "stop":
+        LocationKeepAliveManager.shared.stop()
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
 }

@@ -69,10 +69,7 @@ class RpcBinding {
   final String network;
   final String address;
 
-  const RpcBinding({
-    required this.network,
-    required this.address,
-  });
+  const RpcBinding({required this.network, required this.address});
 }
 
 class RpcServerHandle {
@@ -80,50 +77,32 @@ class RpcServerHandle {
   final HttpServer server;
   final Future<void> Function()? _cleanup;
 
-  RpcServerHandle({
-    required this.binding,
-    required this.server,
-    Future<void> Function()? cleanup,
-  }) : _cleanup = cleanup;
+  RpcServerHandle({required this.binding, required this.server, Future<void> Function()? cleanup}) : _cleanup = cleanup;
 
   Future<void> close({bool force = true}) async {
     await server.close(force: force);
-    if (_cleanup != null) {
-      await _cleanup!();
+    final cleanup = _cleanup;
+    if (cleanup != null) {
+      await cleanup();
     }
   }
 }
 
 Future<RpcBinding> defaultHostRpcBinding() async {
   if (Util.isWindows()) {
-    return const RpcBinding(
-      network: 'pipe',
-      address: r'\\.\pipe\gopeed_host',
-    );
+    return const RpcBinding(network: 'pipe', address: r'\\.\pipe\gopeed_host');
   }
-  return RpcBinding(
-    network: 'unix',
-    address: await Util.homePathJoin('gopeed_host.sock'),
-  );
+  return RpcBinding(network: 'unix', address: await Util.homePathJoin('gopeed_host.sock'));
 }
 
 Future<RpcBinding> defaultWebViewRpcBinding() async {
   if (Util.supportUnixSocket()) {
-    return RpcBinding(
-      network: 'unix',
-      address: await Util.homePathJoin('gopeed_webview.sock'),
-    );
+    return RpcBinding(network: 'unix', address: await Util.homePathJoin('gopeed_webview.sock'));
   }
-  return const RpcBinding(
-    network: 'tcp',
-    address: '127.0.0.1:0',
-  );
+  return const RpcBinding(network: 'tcp', address: '127.0.0.1:0');
 }
 
-Future<RpcServerHandle> startRpcServer({
-  RpcBinding? binding,
-  Map<String, RouteHandler>? routes,
-}) async {
+Future<RpcServerHandle> startRpcServer({RpcBinding? binding, Map<String, RouteHandler>? routes}) async {
   final rpcBinding = binding ?? await defaultHostRpcBinding();
   Future<void> Function()? cleanup;
   late final HttpServer httpServer;
@@ -190,9 +169,5 @@ Future<RpcServerHandle> startRpcServer({
     );
   }
 
-  return RpcServerHandle(
-    binding: resolvedBinding,
-    server: httpServer,
-    cleanup: cleanup,
-  );
+  return RpcServerHandle(binding: resolvedBinding, server: httpServer, cleanup: cleanup);
 }

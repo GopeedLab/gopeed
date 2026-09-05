@@ -33,8 +33,7 @@ class Extension {
     required this.devPath,
   });
 
-  factory Extension.fromJson(Map<String, dynamic> json) =>
-      _$ExtensionFromJson(json);
+  factory Extension.fromJson(Map<String, dynamic> json) => _$ExtensionFromJson(json);
   Map<String, dynamic> toJson() => _$ExtensionToJson(this);
 }
 
@@ -43,13 +42,9 @@ class Repository {
   String url;
   String directory;
 
-  Repository({
-    required this.url,
-    required this.directory,
-  });
+  Repository({required this.url, required this.directory});
 
-  factory Repository.fromJson(Map<String, dynamic> json) =>
-      _$RepositoryFromJson(json);
+  factory Repository.fromJson(Map<String, dynamic> json) => _$RepositoryFromJson(json);
   Map<String, dynamic> toJson() => _$RepositoryToJson(this);
 }
 
@@ -71,8 +66,7 @@ class Setting {
     required this.type,
   });
 
-  factory Setting.fromJson(Map<String, dynamic> json) =>
-      _$SettingFromJson(json);
+  factory Setting.fromJson(Map<String, dynamic> json) => _$SettingFromJson(json);
   Map<String, dynamic> toJson() => _$SettingToJson(this);
 }
 
@@ -81,17 +75,10 @@ class Option {
   String label;
   Object value;
 
-  Option({
-    required this.label,
-    required this.value,
-  });
+  Option({required this.label, required this.value});
 
   factory Option.fromJson(Map<String, dynamic> json) => _$OptionFromJson(json);
   Map<String, dynamic> toJson() => _$OptionToJson(this);
 }
 
-enum SettingType {
-  string,
-  number,
-  boolean,
-}
+enum SettingType { string, number, boolean }

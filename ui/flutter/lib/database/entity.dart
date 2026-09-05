@@ -8,14 +8,9 @@ class StartConfigEntity {
   String address;
   String apiToken;
 
-  StartConfigEntity({
-    required this.network,
-    required this.address,
-    required this.apiToken,
-  });
+  StartConfigEntity({required this.network, required this.address, required this.apiToken});
 
-  factory StartConfigEntity.fromJson(Map<String, dynamic> json) =>
-      _$StartConfigEntityFromJson(json);
+  factory StartConfigEntity.fromJson(Map<String, dynamic> json) => _$StartConfigEntityFromJson(json);
   Map<String, dynamic> toJson() => _$StartConfigEntityToJson(this);
 }
 
@@ -25,13 +20,8 @@ class WindowStateEntity {
   double? width;
   double? height;
 
-  WindowStateEntity({
-    this.isMaximized,
-    this.width,
-    this.height,
-  });
+  WindowStateEntity({this.isMaximized, this.width, this.height});
 
-  factory WindowStateEntity.fromJson(Map<String, dynamic> json) =>
-      _$WindowStateEntityFromJson(json);
+  factory WindowStateEntity.fromJson(Map<String, dynamic> json) => _$WindowStateEntityFromJson(json);
   Map<String, dynamic> toJson() => _$WindowStateEntityToJson(this);
 }

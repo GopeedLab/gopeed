@@ -28,11 +28,7 @@ class _WebViewRpcOverlayState extends State<WebViewRpcOverlay> {
         }
         return IgnorePointer(
           ignoring: false,
-          child: Stack(
-            children: pages
-                .map((page) => _WebViewRpcPageView(page: page))
-                .toList(growable: false),
-          ),
+          child: Stack(children: pages.map((page) => _WebViewRpcPageView(page: page)).toList(growable: false)),
         );
       },
     );
@@ -65,12 +61,7 @@ class _WebViewRpcPageViewState extends State<_WebViewRpcPageView> {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  blurRadius: 24,
-                  color: Colors.black26,
-                ),
-              ],
+              boxShadow: const [BoxShadow(blurRadius: 24, color: Colors.black26)],
             ),
             child: Column(
               children: [

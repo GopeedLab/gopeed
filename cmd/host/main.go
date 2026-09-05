@@ -99,12 +99,10 @@ var apiMap = map[string]func(message *Message) (data any, err error){
 			return
 		}
 
-		silent := false
-		if v, ok := message.Meta["silent"]; ok {
-			silent, _ = v.(bool)
-		}
-
-		if err := wakeup(silent); err != nil {
+		// Task creation owns its presentation: silent requests stay in the
+		// background, while non-silent requests open a dedicated create window.
+		// Always bootstrap the main process hidden so it never flashes first.
+		if err := wakeup(true); err != nil {
 			return nil, err
 		}
 

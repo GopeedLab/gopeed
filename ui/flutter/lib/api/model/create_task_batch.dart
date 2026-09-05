@@ -10,15 +10,9 @@ class CreateTaskBatch {
   List<CreateTaskBatchItem>? reqs;
   Options? opts;
 
-  CreateTaskBatch({
-    this.reqs,
-    this.opts,
-  });
+  CreateTaskBatch({this.reqs, this.opts});
 
-  factory CreateTaskBatch.fromJson(
-    Map<String, dynamic> json,
-  ) =>
-      _$CreateTaskBatchFromJson(json);
+  factory CreateTaskBatch.fromJson(Map<String, dynamic> json) => _$CreateTaskBatchFromJson(json);
 
   Map<String, dynamic> toJson() => _$CreateTaskBatchToJson(this);
 }
@@ -28,12 +22,8 @@ class CreateTaskBatchItem {
   Request? req;
   Options? opts;
 
-  CreateTaskBatchItem({
-    this.req,
-    this.opts,
-  });
+  CreateTaskBatchItem({this.req, this.opts});
 
-  factory CreateTaskBatchItem.fromJson(Map<String, dynamic> json) =>
-      _$CreateTaskBatchItemFromJson(json);
+  factory CreateTaskBatchItem.fromJson(Map<String, dynamic> json) => _$CreateTaskBatchItemFromJson(json);
   Map<String, dynamic> toJson() => _$CreateTaskBatchItemToJson(this);
 }

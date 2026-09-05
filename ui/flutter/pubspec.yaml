@@ -1,6 +1,5 @@
 name: gopeed
-description: A new Flutter project.
-
+description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -12,13 +11,15 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # build by specifying --build-name and --build-number, respectively.
 # In Android, build-name is used as versionName while build-number used as versionCode.
 # Read more about Android versioning at https://developer.android.com/studio/publish/versioning
-# In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.9.3+1
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 2.0.0-beta.1+1
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ^3.11.4
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -34,63 +35,63 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.2
-  get: ^4.6.6
-  styled_widget: ^0.4.0+3
-  flutter_context_menu: ^0.4.1
-  json_annotation: ^4.8.1
-  dio: ^5.2.1
-  path_provider: ^2.1.4
-  file_picker: ^8.1.2
-  rounded_loading_button_plus: ^3.0.1
-  url_launcher: ^6.3.1
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.3.2
+  shadcn_flutter: 0.0.53
+  flutter_riverpod: ^3.0.3
+  dio: ^5.9.0
+  json_annotation: ^4.12.0
+  ffi: ^2.1.3
+  hive: ^2.2.3
+  crypto: ^3.0.6
   logger: ^1.4.0
-  desktop_drop: ^0.4.4
   package_info_plus: ^8.1.0
-  path: ^1.9.0
-  badges: ^3.0.3
+  pub_semver: ^2.2.0
+  device_info_plus: ^11.1.0
+  win32_registry: ^1.1.5
+  launch_at_startup: ^0.3.1
   app_links: ^6.3.3
-  uri_to_file: ^1.0.0
-  window_manager: ^0.4.2
-  hotkey_manager: ^0.2.3
+  share_handler: ^0.0.22
   share_plus: ^10.1.0
-  flutter_form_builder: ^10.2.0
-  form_builder_validators: ^11.0.0
-  flutter_foreground_task: ^8.2.0
+  uri_content: ^3.1.3
+  dart_ipc: ^1.0.1
+  flutter_inappwebview: ^6.1.5
+  flutter_local_notifications: 20.1.0
+  desktop_drop: ^0.4.4
+  external_path: ^2.2.0
+  file_picker: 9.0.2
+  open_dir: ^0.0.2+1
   open_filex: ^4.7.0
+  permission_handler: ^11.3.1
+  flutter_foreground_task: ^8.2.0
+  flutter_markdown_plus: ^1.0.7
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  url_launcher: ^6.3.1
+  web: ^1.1.1
+  install_plugin:
+    git:
+      url: https://github.com/hui-z/flutter_install_plugin.git
+      ref: cf08af829f4a4145634f8a047108f505fdbe5eaa
+  window_manager: ^0.5.1
   tray_manager:
     git:
       url: https://github.com/monkeyWie/tray_manager.git
       ref: main
       path: packages/tray_manager
-  lecle_downloads_path_provider: ^0.0.2+8
-  hive: ^2.2.3
-  launch_at_startup: ^0.3.1
-  args: ^2.5.0
-  toggle_switch: ^2.3.0
-  permission_handler: ^11.3.1
-  device_info_plus: ^11.1.0
-  checkable_treeview: ^1.3.1
-  contentsize_tabbarview: ^0.0.2
-  win32_registry: ^1.1.5
-  share_handler: ^0.0.22
-  crypto: ^3.0.6
-  open_dir: ^0.0.2+1
-  install_plugin:
-    git:
-      url: https://github.com/hui-z/flutter_install_plugin.git
-      ref: cf08af829f4a4145634f8a047108f505fdbe5eaa
-  flutter_svg: ^2.0.17
-  flutter_markdown_plus: ^1.0.3
-  dart_ipc: ^1.0.1
-  flutter_inappwebview: ^6.1.5
-  flutter_local_notifications: 20.1.0
+  desktop_multi_window: ^0.3.0
+  go_router: ^16.2.1
+
 dependency_overrides:
+  # Upstream initializes a Windows Geolocator when the plugin registers, which
+  # makes Windows report location access even when the app never requests it.
+  # Keep this fork until https://github.com/Baseflow/flutter-permission-handler/issues/1394 is fixed and released.
   permission_handler_windows:
     git:
       url: https://github.com/monkeyWie/flutter-permission-handler.git
       ref: 35fc72c30262b9b49e1965b48a7524b44ba9daa7
       path: permission_handler_windows
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -100,46 +101,57 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^2.0.0
+  flutter_lints: ^6.0.0
   ffigen: ^8.0.2
-  # build json model: flutter pub run build_runner build --delete-conflicting-outputs
-  build_runner: ^2.2.1
-  json_serializable: ^6.3.2
-  flutter_launcher_icons: ^0.13.1
+  build_runner: ^2.15.1
+  json_serializable: ^6.14.1
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
+
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/tray_icon/
     - assets/extension/
+    - assets/tray_icon/
     - assets/icon/
-    # Browser extension native host binary, see https://github.com/GopeedLab/gopeed/tree/main/cmd/host
     - assets/exec/
 
+  fonts:
+    - family: GopeedIcons
+      fonts:
+        - asset: assets/fonts/GopeedIcons.ttf
+
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
   # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/assets-and-images/#resolution-aware
+  # https://flutter.dev/to/resolution-aware-images
 
   # For details regarding adding assets from package dependencies, see
-  # https://flutter.dev/assets-and-images/#from-packages
+  # https://flutter.dev/to/asset-from-package
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  fonts:
-    - family: Gopeed
-      fonts:
-        - asset: assets/fonts/Gopeed.ttf
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
   #   - family: Trajan Pro
   #     fonts:
   #       - asset: fonts/TrajanPro.ttf
@@ -147,12 +159,13 @@ flutter:
   #         weight: 700
   #
   # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/custom-fonts/#from-packages
+  # see https://flutter.dev/to/font-from-package
 
-# flutter pub run flutter_launcher_icons:main
-flutter_icons:
+# Generate native launcher icons from the same source assets as the legacy UI:
+# dart run flutter_launcher_icons
+flutter_launcher_icons:
   image_path: "assets/icon/icon_1024.png"
-  android: true # can specify file name here e.g. "ic_launcher"
+  android: true
   ios: true
   remove_alpha_ios: true
   web:
@@ -165,11 +178,19 @@ flutter_icons:
     generate: true
     image_path: "assets/icon/icon_macos_1024.png"
 
-# flutter pub run ffigen
+# Regenerate desktop native bindings with: flutter pub run ffigen
 ffigen:
   name: LibgopeedBind
   description: Bindings to gopeed library.
   output: "lib/core/ffi/libgopeed_bind.dart"
+  exclude-all-by-default: true
   headers:
     entry-points:
       - "include/libgopeed.h"
+  functions:
+    include:
+      - "Start"
+      - "Stop"
+  structs:
+    include:
+      - "Start_return"

@@ -6,11 +6,8 @@ part 'update_check_extension_resp.g.dart';
 class UpdateCheckExtensionResp {
   String newVersion;
 
-  UpdateCheckExtensionResp({
-    required this.newVersion,
-  });
+  UpdateCheckExtensionResp({required this.newVersion});
 
-  factory UpdateCheckExtensionResp.fromJson(Map<String, dynamic> json) =>
-      _$UpdateCheckExtensionRespFromJson(json);
+  factory UpdateCheckExtensionResp.fromJson(Map<String, dynamic> json) => _$UpdateCheckExtensionRespFromJson(json);
   Map<String, dynamic> toJson() => _$UpdateCheckExtensionRespToJson(this);
 }

@@ -443,7 +443,7 @@ func TestFetcher_DownloadContinue_NoRangeRestart(t *testing.T) {
 
 	time.Sleep(20 * time.Millisecond)
 
-	stats := fetcher.Stats().(*http.Stats)
+	stats := fetcher.Stats().Snapshot.(*http.Stats)
 	if len(stats.Connections) != 1 {
 		t.Fatalf("expected a single non-range connection, got %d", len(stats.Connections))
 	}
@@ -461,7 +461,7 @@ func TestFetcher_DownloadContinue_NoRangeRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	finalStats := fetcher.Stats().(*http.Stats)
+	finalStats := fetcher.Stats().Snapshot.(*http.Stats)
 	if len(finalStats.Connections) != 1 {
 		t.Fatalf("expected a single non-range connection after resume, got %d", len(finalStats.Connections))
 	}
@@ -518,7 +518,7 @@ func TestFetcher_DownloadIgnoredRangeFallsBackToSequential(t *testing.T) {
 			if f.meta.Res.Range {
 				t.Fatal("expected ignored Range response to disable range mode")
 			}
-			stats := f.Stats().(*http.Stats)
+			stats := f.Stats().Snapshot.(*http.Stats)
 			if len(stats.Connections) != 1 {
 				t.Fatalf("expected one sequential connection, got %d", len(stats.Connections))
 			}
@@ -783,7 +783,7 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 				t.Fatalf("Range mode = %v, want %v", f.meta.Res.Range, tt.wantRangeMode)
 			}
 			if tt.wantParallel {
-				stats := f.Stats().(*http.Stats)
+				stats := f.Stats().Snapshot.(*http.Stats)
 				if len(stats.Connections) <= 1 {
 					f.slowStart.mu.Lock()
 					totalLaunched := f.slowStart.totalLaunched
@@ -1999,7 +1999,7 @@ func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		stats := fetcher.Stats().(*http.Stats)
+		stats := fetcher.Stats().Snapshot.(*http.Stats)
 		if len(stats.Connections) == 0 {
 			t.Fatalf("expected connections stats for timeout test")
 		}
@@ -2045,7 +2045,7 @@ func TestFetcher_Download500Recovery(t *testing.T) {
 	}
 
 	// Verify 500 errors don't count as failures (retryTimes should be 0)
-	stats := fetcher.Stats().(*http.Stats)
+	stats := fetcher.Stats().Snapshot.(*http.Stats)
 	for _, conn := range stats.Connections {
 		if conn.RetryTimes != 0 {
 			t.Errorf("Expected retryTimes to be 0 for 500 errors (exempt), got %d", conn.RetryTimes)
@@ -2144,19 +2144,84 @@ func TestFetcher_Stats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stats := fetcher.Stats().(*http.Stats)
+	stats := fetcher.Stats().Snapshot.(*http.Stats)
 	// With slow-start strategy, connection count may be less than max if download is fast
 	// Just verify we have at least 1 connection and no more than max
 	if len(stats.Connections) < 1 || len(stats.Connections) > 16 {
 		t.Errorf("Stats() connection count got = %v, want between 1 and 16", len(stats.Connections))
 	}
 	totalDownloaded := int64(0)
+	expectedConnectionTotal := test.BuildSize / int64(len(stats.Connections))
+	if test.BuildSize%int64(len(stats.Connections)) != 0 {
+		expectedConnectionTotal++
+	}
 	for i, conn := range stats.Connections {
 		t.Logf("Connection %d: Downloaded=%d, Completed=%v", i, conn.Downloaded, conn.Completed)
 		totalDownloaded += conn.Downloaded
+		if conn.Total != expectedConnectionTotal {
+			t.Errorf("connection %d total = %d, want shared total %d", i, conn.Total, expectedConnectionTotal)
+		}
 	}
 	if totalDownloaded != test.BuildSize {
 		t.Errorf("Stats() got = %v, want %v", totalDownloaded, test.BuildSize)
+	}
+}
+
+func TestFetcher_StatsMarksTerminalNonFailedConnectionsComplete(t *testing.T) {
+	fetcher := &Fetcher{
+		meta: &fetcher.FetcherMeta{Res: &base.Resource{Size: 4096, Range: true}},
+		connections: []*connection{
+			{State: connDownloading, Chunk: newChunk(0, 2047), Downloaded: 1024},
+			{State: connCompleted, Chunk: newChunk(2048, 3071), Downloaded: 2048},
+			{State: connFailed, Chunk: newChunk(3072, 4095), Downloaded: 512, failed: true, retryTimes: 3},
+		},
+	}
+	fetcher.setState(stateDone)
+
+	stats := fetcher.Stats().Snapshot.(*http.Stats)
+	if !stats.Connections[0].Completed {
+		t.Fatal("terminal non-failed connection was reported as downloading")
+	}
+	if !stats.Connections[1].Completed {
+		t.Fatal("completed connection was not reported as completed")
+	}
+	if stats.Connections[2].Completed || !stats.Connections[2].Failed {
+		t.Fatal("failed connection lost its failure state")
+	}
+	const averageTotal = int64(1366) // ceil(4096 / 3)
+	for index, connection := range stats.Connections {
+		if connection.Total != averageTotal {
+			t.Fatalf("connection %d total = %d, want shared total %d", index, connection.Total, averageTotal)
+		}
+	}
+}
+
+func TestFetcher_StatsUsesUnknownTotalWithoutResourceSize(t *testing.T) {
+	fetcher := &Fetcher{
+		meta: &fetcher.FetcherMeta{Res: &base.Resource{}},
+		connections: []*connection{
+			{State: connDownloading, Chunk: newChunk(0, 0), Downloaded: 1024},
+		},
+	}
+
+	stats := fetcher.Stats().Snapshot.(*http.Stats)
+	if stats.Connections[0].Total != 0 {
+		t.Fatalf("unknown resource total = %d, want 0", stats.Connections[0].Total)
+	}
+}
+
+func TestFetcher_StatsExposesCompletedResolvePrefetch(t *testing.T) {
+	fetcher := &Fetcher{meta: &fetcher.FetcherMeta{Res: &base.Resource{Size: 100}}}
+	fetcher.resolveDataPos.Store(100)
+	fetcher.setState(stateDone)
+
+	stats := fetcher.Stats().Snapshot.(*http.Stats)
+	if len(stats.Connections) != 1 {
+		t.Fatalf("connection count = %d, want 1", len(stats.Connections))
+	}
+	connection := stats.Connections[0]
+	if connection.Downloaded != 100 || connection.Total != 100 || !connection.Completed {
+		t.Fatalf("unexpected prefetch connection: %+v", connection)
 	}
 }
 
@@ -2261,7 +2326,7 @@ func TestFetcher_SlowStartExpansion(t *testing.T) {
 			}
 
 			// Check final connection count equals maxConns exactly
-			stats := fetcher.Stats().(*http.Stats)
+			stats := fetcher.Stats().Snapshot.(*http.Stats)
 			finalConns := len(stats.Connections)
 
 			// Debug: show connection details and metadata
@@ -2407,7 +2472,7 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 		}
 
 		// Check stats - should have connections that downloaded remaining data
-		stats := fetcher.Stats().(*http.Stats)
+		stats := fetcher.Stats().Snapshot.(*http.Stats)
 		t.Logf("Final connections: %d", len(stats.Connections))
 
 		prefetchedUsed := fetcher.resolveDataPos.Load()
