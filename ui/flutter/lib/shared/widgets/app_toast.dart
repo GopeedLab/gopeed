@@ -18,8 +18,9 @@ void showAppToast(BuildContext context, String message, {AppToastType type = App
   };
   shad.showToast(
     context: context,
+    location: shad.ToastLocation.topCenter,
     builder: (context, overlay) => Align(
-      alignment: Alignment.centerRight,
+      alignment: Alignment.topCenter,
       widthFactor: 1,
       heightFactor: 1,
       child: Container(
