@@ -209,6 +209,7 @@ ffigen:
       - "StopAPIServer"
       - "RestartAPIServer"
       - "Invoke"
+      - "InvokeAsync"
       - "SubscribeTaskEvents"
       - "FreeCString"
   structs:

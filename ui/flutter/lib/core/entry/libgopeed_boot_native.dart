@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:ffi';
-import 'dart:io';
 
 import '../../util/util.dart';
 import '../common/libgopeed_channel.dart';
@@ -9,7 +7,6 @@ import '../common/libgopeed_interface.dart';
 import '../common/api_server_state.dart';
 import '../common/start_config.dart';
 import '../common/task_event.dart';
-import '../ffi/libgopeed_bind.dart';
 import '../libgopeed_boot.dart';
 
 LibgopeedBoot create() => LibgopeedBootNative();
@@ -19,17 +16,7 @@ class LibgopeedBootNative implements LibgopeedBoot {
 
   LibgopeedBootNative() {
     if (Util.isDesktop()) {
-      var libName = "libgopeed.";
-      if (Platform.isWindows) {
-        libName += "dll";
-      }
-      if (Platform.isMacOS) {
-        libName += "dylib";
-      }
-      if (Platform.isLinux) {
-        libName += "so";
-      }
-      _libgopeed = LibgopeedFFi(LibgopeedBind(DynamicLibrary.open(libName)));
+      _libgopeed = LibgopeedFFi();
     } else {
       _libgopeed = LibgopeedChannel();
     }

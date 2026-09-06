@@ -16,6 +16,8 @@ const (
 // Invoke dispatches a Core API request without using an HTTP listener. It is
 // the shared entry point for Desktop FFI and gomobile bindings.
 func Invoke(method, path, rawQuery, body string) string {
+	runtimeMu.RLock()
+	defer runtimeMu.RUnlock()
 	service := APIService
 	if service == nil {
 		return marshalInvokeResult(model.NewErrorResult("service not started"))
@@ -29,6 +31,8 @@ func Invoke(method, path, rawQuery, body string) string {
 }
 
 func SubscribeTaskEvents(mask uint64, listener func(payload string)) {
+	runtimeMu.RLock()
+	defer runtimeMu.RUnlock()
 	if APIService == nil {
 		return
 	}

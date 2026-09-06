@@ -260,6 +260,7 @@ StartAPIServer
 StopAPIServer
 RestartAPIServer
 Invoke
+InvokeAsync
 FreeCString
 SubscribeTaskEvents
 ```
@@ -268,9 +269,12 @@ Requirements:
 
 - Use the cgo C-string ABI in the first phase. Reconsider pointer-and-length parameters only during a future ABI-breaking revision.
 - Memory allocated by Go must be released with `FreeCString`.
-- Dart-owned input memory must be released after the synchronous native call returns.
+- `InvokeAsync` copies every Dart-owned input string before returning, queues the request in a bounded-concurrency Go executor, and completes it through a `NativeCallable.listener` callback.
+- The async executor uses `clamp(GOMAXPROCS * 2, 4, 32)` workers. Requests wait in FIFO order when every worker is busy; pool saturation is backpressure, not an API error.
+- Dart-owned input memory must be released after the synchronous native entry call returns. Go-owned callback payloads remain valid until Dart copies them and calls `FreeCString`.
 - `Invoke` returns the same Result JSON as REST; business errors do not use a separate ABI error model.
-- Run blocking Desktop FFI work outside the Flutter UI isolate. Mobile MethodChannel handlers likewise run blocking Go work on a background task queue.
+- Keep `Invoke` as a compatibility entry point, but route Desktop application requests through `InvokeAsync` in the FFI bridge isolate.
+- Run blocking Desktop FFI work outside the Flutter UI isolate. The bridge isolate owns the dynamic library and native callbacks, decodes callback JSON, and forwards sendable Dart values to the UI isolate. Mobile MethodChannel handlers likewise run blocking Go work on a background task queue.
 - Dart bindings are generated from `include/libgopeed.h` with `ffigen`. Every exported Desktop symbol must be added to the `ffigen.functions.include` allowlist.
 - Never hand-edit `lib/core/ffi/libgopeed_bind.dart`; regenerate it with `flutter pub run ffigen` after changing the C header.
 

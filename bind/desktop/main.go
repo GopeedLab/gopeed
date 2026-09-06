@@ -6,14 +6,21 @@ package main
 
 typedef void (*TaskEventCallback)(char* payload);
 
+typedef void (*InvokeResultCallback)(uint64_t request_id, int success, char* payload);
+
 static void callTaskEventCallback(uintptr_t callback, char* payload) {
 	((TaskEventCallback)callback)(payload);
+}
+
+static void callInvokeResultCallback(uintptr_t callback, uint64_t request_id, int success, char* payload) {
+	((InvokeResultCallback)callback)(request_id, success, payload);
 }
 */
 import "C"
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"unsafe"
 
 	"github.com/GopeedLab/gopeed/pkg/rest"
@@ -21,6 +28,20 @@ import (
 )
 
 func main() {}
+
+var (
+	invokeExecutorOnce sync.Once
+	desktopInvoker     *invokeExecutor
+)
+
+func getInvokeExecutor() *invokeExecutor {
+	invokeExecutorOnce.Do(func() {
+		desktopInvoker = newDefaultInvokeExecutor(func(request invokeRequest) string {
+			return rest.Invoke(request.method, request.path, request.query, request.body)
+		})
+	})
+	return desktopInvoker
+}
 
 //export Start
 func Start(cfg *C.char) (int, *C.char) {
@@ -83,6 +104,43 @@ func Invoke(method *C.char, path *C.char, query *C.char, body *C.char) *C.char {
 		C.GoString(query),
 		C.GoString(body),
 	))
+}
+
+//export InvokeAsync
+func InvokeAsync(
+	method *C.char,
+	path *C.char,
+	query *C.char,
+	body *C.char,
+	requestID C.ulonglong,
+	callback C.uintptr_t,
+) {
+	if callback == 0 {
+		return
+	}
+	request := invokeRequest{
+		method: C.GoString(method),
+		path:   C.GoString(path),
+		query:  C.GoString(query),
+		body:   C.GoString(body),
+	}
+	complete := func(result string, err error) {
+		success := C.int(1)
+		payload := result
+		if err != nil {
+			success = 0
+			payload = err.Error()
+		}
+		C.callInvokeResultCallback(
+			callback,
+			C.uint64_t(requestID),
+			success,
+			C.CString(payload),
+		)
+	}
+	if !getInvokeExecutor().submit(invokeTask{request: request, complete: complete}) {
+		complete("", fmt.Errorf("invoke executor is closed"))
+	}
 }
 
 //export SubscribeTaskEvents
