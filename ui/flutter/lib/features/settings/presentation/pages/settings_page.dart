@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Divider, Icons, Scrollbar, ScrollbarOrientation;
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,7 +22,9 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_choice_segmented_control.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
+import '../../../../shared/widgets/app_number_input.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../shared/widgets/responsive_menu_layout.dart';
@@ -1849,7 +1850,7 @@ class _TextSettingControl extends StatelessWidget {
     final desktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
     return SizedBox(
       width: desktop ? AppDesignTokens.settingsFormControlWidth : double.infinity,
-      child: shad.TextField(
+      child: AppTextField(
         key: fieldKey,
         controller: controller,
         hintText: hintText,
@@ -1884,7 +1885,7 @@ class _NumberSettingControl extends StatelessWidget {
     final desktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
     return SizedBox(
       width: desktop ? AppDesignTokens.settingsNumberControlWidth : double.infinity,
-      child: _NumberInput(
+      child: AppNumberInput(
         fieldKey: fieldKey,
         controller: controller,
         min: min,
@@ -1919,7 +1920,7 @@ class _HostPortControl extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: shad.TextField(
+            child: AppTextField(
               key: hostKey,
               controller: hostController,
               hintText: context.l10n.server,
@@ -1929,7 +1930,7 @@ class _HostPortControl extends StatelessWidget {
           const SizedBox(width: AppDesignTokens.space8),
           SizedBox(
             width: AppDesignTokens.settingsNumberControlWidth,
-            child: _NumberInput(
+            child: AppNumberInput(
               fieldKey: portKey,
               controller: portController,
               min: 0,
@@ -1943,141 +1944,6 @@ class _HostPortControl extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _NumberInput extends StatefulWidget {
-  const _NumberInput({
-    required this.controller,
-    required this.min,
-    required this.step,
-    required this.decimalPlaces,
-    this.fieldKey,
-    this.max,
-    this.hintText,
-    this.enabled = true,
-  });
-
-  final TextEditingController controller;
-  final num min;
-  final num? max;
-  final double step;
-  final int decimalPlaces;
-  final Key? fieldKey;
-  final String? hintText;
-  final bool enabled;
-
-  @override
-  State<_NumberInput> createState() => _NumberInputState();
-}
-
-class _NumberInputState extends State<_NumberInput> {
-  bool _normalizing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_normalizeDecimalStepValue);
-  }
-
-  @override
-  void didUpdateWidget(covariant _NumberInput oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller == widget.controller) return;
-    oldWidget.controller.removeListener(_normalizeDecimalStepValue);
-    widget.controller.addListener(_normalizeDecimalStepValue);
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_normalizeDecimalStepValue);
-    super.dispose();
-  }
-
-  void _normalizeDecimalStepValue() {
-    if (_normalizing || widget.decimalPlaces <= 0) return;
-    final text = widget.controller.text;
-    final separator = text.indexOf('.');
-    if (separator < 0 || text.length - separator - 1 <= widget.decimalPlaces) return;
-    final value = double.tryParse(text);
-    if (value == null) return;
-
-    var normalized = value.toStringAsFixed(widget.decimalPlaces);
-    normalized = normalized.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
-    if (normalized == text) return;
-
-    _normalizing = true;
-    widget.controller.value = TextEditingValue(
-      text: normalized,
-      selection: TextSelection.collapsed(offset: normalized.length),
-    );
-    _normalizing = false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final formatters = widget.decimalPlaces > 0
-        ? <TextInputFormatter>[_DecimalNumberFormatter(decimalPlaces: widget.decimalPlaces)]
-        : <TextInputFormatter>[
-            FilteringTextInputFormatter.digitsOnly,
-            _NumericalRangeFormatter(min: widget.min.toInt(), max: widget.max?.toInt()),
-          ];
-    return shad.TextField(
-      key: widget.fieldKey,
-      controller: widget.controller,
-      hintText: widget.hintText,
-      keyboardType: widget.decimalPlaces > 0
-          ? const TextInputType.numberWithOptions(decimal: true)
-          : TextInputType.number,
-      inputFormatters: formatters,
-      enabled: widget.enabled,
-      features: [
-        shad.InputFeature.spinner(
-          step: widget.step,
-          min: widget.min.toDouble(),
-          max: widget.max?.toDouble(),
-          invalidValue: widget.min.toDouble(),
-          enableGesture: false,
-        ),
-      ],
-    );
-  }
-}
-
-/// Keeps integer text within the same inclusive bounds as the legacy settings UI.
-/// Empty text is allowed while editing; the previous valid value remains in config
-/// until the user enters a number again.
-class _NumericalRangeFormatter extends TextInputFormatter {
-  const _NumericalRangeFormatter({required this.min, this.max});
-
-  final int min;
-  final int? max;
-
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    if (newValue.text.isEmpty) return newValue;
-    final parsed = int.tryParse(newValue.text);
-    if (parsed == null) return oldValue;
-    final bounded = parsed.clamp(min, max ?? parsed).toInt();
-    if (bounded == parsed) return newValue;
-    final text = bounded.toString();
-    return TextEditingValue(
-      text: text,
-      selection: TextSelection.collapsed(offset: text.length),
-    );
-  }
-}
-
-/// Allows a non-negative decimal number with a bounded number of fractional digits.
-class _DecimalNumberFormatter extends TextInputFormatter {
-  _DecimalNumberFormatter({required this.decimalPlaces}) : _pattern = RegExp('^\\d*(?:\\.\\d{0,$decimalPlaces})?\$');
-
-  final int decimalPlaces;
-  final RegExp _pattern;
-
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    return _pattern.hasMatch(newValue.text) ? newValue : oldValue;
   }
 }
 

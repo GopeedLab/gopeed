@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter/widgets.dart' as flutter show Row;
+import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,6 +22,39 @@ import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
+  testWidgets('mobile create task page starts below the system status bar', (WidgetTester tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    tester.view.physicalSize = const Size(700, 760);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 32, bottom: 24);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPadding);
+
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'));
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: AppComponentThemes(child: const CreateTaskWindowPage()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final contentPadding = tester.widget<Padding>(find.byKey(const ValueKey('create-task-safe-content')));
+      expect((contentPadding.padding as EdgeInsets).top, 32);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('browser extension request parameters populate the form and survive submission', (
     WidgetTester tester,
   ) async {
@@ -118,6 +152,19 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+
+    final connectionsInput = find.byKey(const ValueKey('create-task-connections-input'));
+    expect(connectionsInput, findsOneWidget);
+    expect(tester.getSize(connectionsInput).width, AppDesignTokens.settingsNumberControlWidth);
+    final connectionsField = tester.widget<shad.TextField>(connectionsInput);
+    expect(connectionsField.controller!.text, '12');
+    expect(connectionsField.features.single, isA<shad.InputSpinnerFeature>());
+
+    final advancedSection = find.byKey(const ValueKey('create-task-advanced-section'));
+    expect(tester.widget<AnimatedCrossFade>(advancedSection).crossFadeState, CrossFadeState.showSecond);
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<AnimatedCrossFade>(advancedSection).crossFadeState, CrossFadeState.showFirst);
 
     expect(_fieldText(tester, 'create-task-http-header-name-0'), 'User-Agent');
     expect(_fieldText(tester, 'create-task-http-header-value-0'), 'Browser UA');

@@ -9,6 +9,7 @@ import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../l10n/l10n.dart';
 
 class SettingsListEntry {
@@ -189,7 +190,7 @@ Future<String?> showTextSettingDialog(
                 Text(fieldLabel, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
                 if (pickPath == null)
-                  shad.TextField(controller: controller)
+                  AppTextField(controller: controller)
                 else
                   AppPathPickerField(
                     controller: controller,
@@ -302,7 +303,7 @@ Future<GithubMirrorDraft?> showGithubMirrorDialog(BuildContext context, {GithubM
                 const SizedBox(height: 14),
                 Text(dialogContext.l10n.githubMirrorUrl, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
-                shad.TextField(controller: controller),
+                AppTextField(controller: controller),
                 if (validationMessage != null) ...[
                   const SizedBox(height: 8),
                   Text(validationMessage!, style: TextStyle(color: palette.error, fontSize: 12)),

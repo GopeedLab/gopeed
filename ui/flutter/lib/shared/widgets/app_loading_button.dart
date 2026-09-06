@@ -38,7 +38,7 @@ class AppLoadingButton extends StatelessWidget {
             children: [
               leading,
               const SizedBox(width: AppDesignTokens.space8),
-              effectiveChild,
+              Flexible(child: effectiveChild),
             ],
           );
     final effectiveOnPressed = loading ? null : onPressed;
