@@ -158,7 +158,10 @@ void main() {
 
     final connectionsInput = find.byKey(const ValueKey('create-task-connections-input'));
     expect(connectionsInput, findsOneWidget);
-    expect(tester.getSize(connectionsInput).width, AppDesignTokens.settingsNumberControlWidth);
+    expect(
+      tester.getSize(connectionsInput).width,
+      tester.getSize(find.byKey(const ValueKey('create-task-rename-input'))).width,
+    );
     final connectionsField = tester.widget<shad.TextField>(connectionsInput);
     expect(connectionsField.controller!.text, '12');
     expect(connectionsField.features.single, isA<shad.InputSpinnerFeature>());

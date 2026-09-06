@@ -356,18 +356,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     const SizedBox(height: 16),
                     _FormRow(
                       label: context.l10n.connections,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: AppDesignTokens.settingsNumberControlWidth,
-                          child: AppNumberInput(
-                            fieldKey: const ValueKey('create-task-connections-input'),
-                            controller: _connectionsController,
-                            min: 1,
-                            max: 256,
-                            hintText: context.l10n.enterCount,
-                          ),
-                        ),
+                      child: AppNumberInput(
+                        fieldKey: const ValueKey('create-task-connections-input'),
+                        controller: _connectionsController,
+                        min: 1,
+                        max: 256,
+                        hintText: context.l10n.enterCount,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -382,10 +376,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                             pickerKey: const ValueKey('create-task-directory-picker'),
                             controller: _directoryController,
                             hintText: context.l10n.chooseDownloadDirectory,
-                            filled: true,
-                            border: Border.all(color: palette.border),
-                            borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             onChanged: (_) {
                               if (_asDefaultPath) {
                                 setState(() => _asDefaultPath = false);
@@ -1654,17 +1644,12 @@ class _WindowTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
     return AppTextField(
       controller: controller,
       hintText: hintText,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       obscureText: obscureText,
-      filled: true,
-      border: Border.all(color: palette.border),
-      borderRadius: BorderRadius.circular(4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     );
   }
 }

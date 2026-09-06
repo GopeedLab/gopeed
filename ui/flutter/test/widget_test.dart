@@ -2336,7 +2336,9 @@ void main() {
     await tester.pumpAndSettle();
     final createDirectoryInput = find.byKey(const ValueKey('create-task-directory-input'));
     final createRenameInput = find.byKey(const ValueKey('create-task-rename-input'));
+    final createConnectionsInput = find.byKey(const ValueKey('create-task-connections-input'));
     expect(tester.getSize(createDirectoryInput).height, tester.getSize(createRenameInput).height);
+    expect(tester.getSize(createConnectionsInput), tester.getSize(createRenameInput));
     final createDirectoryField = tester.widget<shad.TextField>(createDirectoryInput);
     final createRenameField = tester.widget<shad.TextField>(
       find.descendant(of: createRenameInput, matching: find.byType(AppTextField)),
@@ -4875,7 +4877,7 @@ class _CreateTaskPageHarness extends StatelessWidget {
     return shad.ShadcnApp(
       theme: AppTheme.light(),
       materialTheme: AppTheme.materialLight(),
-      home: const CreateTaskWindowPage(),
+      home: const AppComponentThemes(child: CreateTaskWindowPage()),
     );
   }
 }
