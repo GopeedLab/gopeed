@@ -48,8 +48,7 @@ func Start(cfg *C.char) (int, *C.char) {
 
 //export Stop
 func Stop() {
-	nativebridge.PauseInvokesAndWait()
-	rest.Stop()
+	nativebridge.Stop()
 }
 
 //export GetAPIServerState

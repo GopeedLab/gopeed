@@ -26,10 +26,8 @@ class LibgopeedWorker {
   final ReceivePort _errorPort = ReceivePort();
   final Map<int, Completer<Object?>> _pending = {};
   final StreamController<Map<String, dynamic>> _taskEvents = StreamController<Map<String, dynamic>>.broadcast();
-  final Set<int> _invokeRequests = {};
   late final Future<Isolate> _isolateReady;
   final Completer<SendPort> _sendPort = Completer<SendPort>();
-  Completer<void>? _invokeDrain;
   Future<void>? _stopFuture;
   int _requestID = 0;
   bool _stopping = false;
@@ -43,19 +41,22 @@ class LibgopeedWorker {
 
   Future<void> _stop() async {
     _stopping = true;
-    if (_invokeRequests.isNotEmpty) {
-      _invokeDrain ??= Completer<void>();
-      await _invokeDrain!.future;
-    }
+    // The native bridge owns the bounded drain. Sending Stop immediately is
+    // important because an InvokeAsync handler such as Resolve may never return.
     await _request<Object?>('stop', const [], allowWhileStopping: true);
     _stopped = true;
+    final stoppingError = StateError('libgopeed worker stopped before the request completed');
+    for (final completer in _pending.values) {
+      completer.completeError(stoppingError);
+    }
+    _pending.clear();
     await _taskEvents.close();
     _receivePort.close();
     _errorPort.close();
   }
 
   Future<Object?> invoke(String method, String path, String query, String body) {
-    return _request<Object?>('invoke', [method, path, query, body], trackInvoke: true);
+    return _request<Object?>('invoke', [method, path, query, body]);
   }
 
   Future<String> apiServer(String operation) => _request<String>('apiServer', [operation]);
@@ -64,12 +65,7 @@ class LibgopeedWorker {
     await _request<Object?>('subscribeTaskEvents', [mask]);
   }
 
-  Future<T> _request<T>(
-    String type,
-    List<Object?> arguments, {
-    bool trackInvoke = false,
-    bool allowWhileStopping = false,
-  }) async {
+  Future<T> _request<T>(String type, List<Object?> arguments, {bool allowWhileStopping = false}) async {
     if (_stopped || (_stopping && !allowWhileStopping)) {
       throw StateError('libgopeed worker is stopping');
     }
@@ -78,7 +74,6 @@ class LibgopeedWorker {
     final requestID = _requestID++;
     final completer = Completer<Object?>();
     _pending[requestID] = completer;
-    if (trackInvoke) _invokeRequests.add(requestID);
     sendPort.send([type, requestID, ...arguments]);
     return (await completer.future) as T;
   }
@@ -94,10 +89,6 @@ class LibgopeedWorker {
         final requestID = response[1] as int;
         final completer = _pending.remove(requestID);
         if (completer == null) return;
-        if (_invokeRequests.remove(requestID) && _invokeRequests.isEmpty) {
-          _invokeDrain?.complete();
-          _invokeDrain = null;
-        }
         if (response[2] as bool) {
           completer.complete(response[3]);
         } else {
@@ -116,9 +107,6 @@ class LibgopeedWorker {
       completer.completeError(error);
     }
     _pending.clear();
-    _invokeRequests.clear();
-    _invokeDrain?.completeError(error);
-    _invokeDrain = null;
     _taskEvents.addError(error);
   }
 

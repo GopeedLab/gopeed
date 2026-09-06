@@ -3,17 +3,18 @@
 package nativebridge
 
 import (
+	"errors"
 	"fmt"
-	"runtime"
 	"sync"
+	"time"
 
 	"github.com/GopeedLab/gopeed/pkg/rest"
 )
 
-const (
-	minInvokeConcurrency = 4
-	maxInvokeConcurrency = 32
-)
+// StopTimeout bounds native shutdown even when an in-process request never returns.
+const StopTimeout = 3 * time.Second
+
+var errNativeBridgeStopping = errors.New("native bridge is stopping")
 
 type invokeRequest struct {
 	method string
@@ -23,11 +24,19 @@ type invokeRequest struct {
 }
 
 type invokeTask struct {
+	id       uint64
 	request  invokeRequest
 	complete func(result string, err error)
+	once     sync.Once
 }
 
-// InvokeAsync queues an in-process API request and completes it through the
+func (t *invokeTask) finish(result string, err error) {
+	t.once.Do(func() {
+		completeCallback(t.complete, result, err)
+	})
+}
+
+// InvokeAsync starts an in-process API request and completes it through the
 // supplied callback. Desktop and mobile adapters share this executor.
 func InvokeAsync(method, path, query, body string, callback func(result string, err error)) {
 	if callback == nil {
@@ -43,7 +52,7 @@ func InvokeAsync(method, path, query, body string, callback func(result string, 
 		complete: callback,
 	}
 	if !getInvokeExecutor().submit(task) {
-		completeCallback(callback, "", fmt.Errorf("native bridge is stopping"))
+		completeCallback(callback, "", errNativeBridgeStopping)
 	}
 }
 
@@ -52,10 +61,41 @@ func ResumeInvokes() {
 	getInvokeExecutor().resume()
 }
 
-// PauseInvokesAndWait prevents new submissions and waits for every queued or
-// running request to finish before a native runtime is stopped.
-func PauseInvokesAndWait() {
-	getInvokeExecutor().pauseAndWait()
+// PauseInvokesAndWait prevents new submissions and gives running requests a
+// bounded opportunity to finish before a native runtime is stopped.
+// Requests still pending after StopTimeout are failed and detached so shutdown
+// can continue without invoking their callbacks a second time.
+func PauseInvokesAndWait() bool {
+	return getInvokeExecutor().pauseAndWait(StopTimeout)
+}
+
+// Stop pauses native requests and shuts down the shared runtime, but never
+// keeps the host application waiting longer than StopTimeout. Cleanup that
+// cannot finish within the deadline is allowed to continue in the background.
+func Stop() {
+	stopWithin(getInvokeExecutor(), rest.Stop, StopTimeout)
+}
+
+func stopWithin(executor *invokeExecutor, cleanup func(), timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	executor.pauseAndWait(time.Until(deadline))
+
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		cleanup()
+	}()
+
+	remaining := time.Until(deadline)
+	if remaining <= 0 {
+		return
+	}
+	timer := time.NewTimer(remaining)
+	defer timer.Stop()
+	select {
+	case <-stopped:
+	case <-timer.C:
+	}
 }
 
 var (
@@ -65,64 +105,56 @@ var (
 
 func getInvokeExecutor() *invokeExecutor {
 	invokeExecutorOnce.Do(func() {
-		sharedInvoker = newDefaultInvokeExecutor(func(request invokeRequest) string {
+		sharedInvoker = newInvokeExecutor(func(request invokeRequest) string {
 			return rest.Dispatch(request.method, request.path, request.query, request.body)
 		})
 	})
 	return sharedInvoker
 }
 
-// invokeExecutor keeps native API work concurrent without rejecting requests
-// when every worker is busy. Additional requests wait in FIFO order and are
-// completed through their callback.
+// invokeExecutor starts every native API request in its own goroutine, matching
+// net/http's request concurrency. It only tracks them to support bounded drain
+// during shutdown; one stuck request must never prevent another from starting.
 type invokeExecutor struct {
 	mu        sync.Mutex
-	ready     *sync.Cond
-	queue     []invokeTask
 	closed    bool
 	accepting bool
-	pending   int
-	workers   sync.WaitGroup
+	nextID    uint64
+	pending   map[uint64]*invokeTask
+	drained   chan struct{}
+	running   sync.WaitGroup
 	handler   func(invokeRequest) string
 }
 
-func invokeConcurrency(cpuCount int) int {
-	concurrency := cpuCount * 2
-	if concurrency < minInvokeConcurrency {
-		return minInvokeConcurrency
+func newInvokeExecutor(handler func(invokeRequest) string) *invokeExecutor {
+	drained := make(chan struct{})
+	close(drained)
+	return &invokeExecutor{
+		handler:   handler,
+		accepting: true,
+		pending:   make(map[uint64]*invokeTask),
+		drained:   drained,
 	}
-	if concurrency > maxInvokeConcurrency {
-		return maxInvokeConcurrency
-	}
-	return concurrency
-}
-
-func newInvokeExecutor(workerCount int, handler func(invokeRequest) string) *invokeExecutor {
-	if workerCount < 1 {
-		workerCount = 1
-	}
-	executor := &invokeExecutor{handler: handler, accepting: true}
-	executor.ready = sync.NewCond(&executor.mu)
-	executor.workers.Add(workerCount)
-	for range workerCount {
-		go executor.run()
-	}
-	return executor
-}
-
-func newDefaultInvokeExecutor(handler func(invokeRequest) string) *invokeExecutor {
-	return newInvokeExecutor(invokeConcurrency(runtime.GOMAXPROCS(0)), handler)
 }
 
 func (e *invokeExecutor) submit(task invokeTask) bool {
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	if e.closed || !e.accepting {
+		e.mu.Unlock()
 		return false
 	}
-	e.queue = append(e.queue, task)
-	e.pending++
-	e.ready.Signal()
+	if len(e.pending) == 0 {
+		e.drained = make(chan struct{})
+	}
+	taskID := e.nextID
+	e.nextID++
+	task.id = taskID
+	taskPtr := &task
+	e.pending[taskID] = taskPtr
+	e.running.Add(1)
+	e.mu.Unlock()
+
+	go e.run(taskPtr)
 	return true
 }
 
@@ -132,57 +164,63 @@ func (e *invokeExecutor) resume() {
 	e.mu.Unlock()
 }
 
-func (e *invokeExecutor) pauseAndWait() {
+func (e *invokeExecutor) pauseAndWait(timeout time.Duration) bool {
 	e.mu.Lock()
 	e.accepting = false
-	for e.pending > 0 {
-		e.ready.Wait()
+	if len(e.pending) == 0 {
+		e.mu.Unlock()
+		return true
 	}
+	drained := e.drained
 	e.mu.Unlock()
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-drained:
+		return true
+	case <-timer.C:
+	}
+
+	e.mu.Lock()
+	if len(e.pending) == 0 {
+		e.mu.Unlock()
+		return true
+	}
+	pending := make([]*invokeTask, 0, len(e.pending))
+	for _, task := range e.pending {
+		pending = append(pending, task)
+	}
+	e.pending = make(map[uint64]*invokeTask)
+	close(e.drained)
+	e.mu.Unlock()
+
+	for _, task := range pending {
+		task.finish("", errNativeBridgeStopping)
+	}
+	return false
 }
 
 func (e *invokeExecutor) close() {
 	e.mu.Lock()
 	e.closed = true
-	e.ready.Broadcast()
+	e.accepting = false
 	e.mu.Unlock()
-	e.workers.Wait()
+	e.running.Wait()
 }
 
-func (e *invokeExecutor) run() {
-	defer e.workers.Done()
-	for {
-		task, ok := e.take()
-		if !ok {
-			return
-		}
-		result, err := e.execute(task.request)
-		completeCallback(task.complete, result, err)
-		e.mu.Lock()
-		e.pending--
-		if e.pending == 0 {
-			e.ready.Broadcast()
-		}
-		e.mu.Unlock()
-	}
-}
-
-func (e *invokeExecutor) take() (invokeTask, bool) {
+func (e *invokeExecutor) run(task *invokeTask) {
+	defer e.running.Done()
+	result, err := e.execute(task.request)
+	task.finish(result, err)
 	e.mu.Lock()
-	defer e.mu.Unlock()
-	for len(e.queue) == 0 && !e.closed {
-		e.ready.Wait()
+	if _, exists := e.pending[task.id]; exists {
+		delete(e.pending, task.id)
+		if len(e.pending) == 0 {
+			close(e.drained)
+		}
 	}
-	if len(e.queue) == 0 {
-		return invokeTask{}, false
-	}
-	task := e.queue[0]
-	e.queue[0] = invokeTask{}
-	e.queue = e.queue[1:]
-	if len(e.queue) == 0 {
-		e.queue = nil
-	}
-	return task, true
+	e.mu.Unlock()
 }
 
 func (e *invokeExecutor) execute(request invokeRequest) (result string, err error) {

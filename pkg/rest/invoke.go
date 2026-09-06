@@ -18,8 +18,8 @@ const (
 // API Service without opening an HTTP listener.
 func Dispatch(method, path, rawQuery, body string) string {
 	runtimeMu.RLock()
-	defer runtimeMu.RUnlock()
 	service := APIService
+	runtimeMu.RUnlock()
 	if service == nil {
 		return marshalInvokeResult(model.NewErrorResult("service not started"))
 	}

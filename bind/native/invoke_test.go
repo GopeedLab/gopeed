@@ -4,52 +4,17 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func TestInvokeConcurrency(t *testing.T) {
-	tests := []struct {
-		cpus int
-		want int
-	}{
-		{cpus: 1, want: 4},
-		{cpus: 2, want: 4},
-		{cpus: 4, want: 8},
-		{cpus: 8, want: 16},
-		{cpus: 16, want: 32},
-		{cpus: 64, want: 32},
-	}
-	for _, test := range tests {
-		t.Run(strconv.Itoa(test.cpus), func(t *testing.T) {
-			if got := invokeConcurrency(test.cpus); got != test.want {
-				t.Fatalf("invokeConcurrency(%d) = %d, want %d", test.cpus, got, test.want)
-			}
-		})
-	}
-}
-
-func TestInvokeExecutorWaitsWithoutRejecting(t *testing.T) {
-	const (
-		workerCount = 2
-		taskCount   = 6
-	)
+func TestInvokeExecutorStartsEveryRequestIndependently(t *testing.T) {
+	const taskCount = 64
 	release := make(chan struct{})
 	started := make(chan struct{}, taskCount)
-	var active atomic.Int32
-	var maxActive atomic.Int32
-	executor := newInvokeExecutor(workerCount, func(request invokeRequest) string {
-		current := active.Add(1)
-		for {
-			maximum := maxActive.Load()
-			if current <= maximum || maxActive.CompareAndSwap(maximum, current) {
-				break
-			}
-		}
+	executor := newInvokeExecutor(func(request invokeRequest) string {
 		started <- struct{}{}
 		<-release
-		active.Add(-1)
 		return request.path
 	})
 
@@ -63,19 +28,18 @@ func TestInvokeExecutorWaitsWithoutRejecting(t *testing.T) {
 			},
 		})
 		if !accepted {
-			t.Fatalf("task %d was rejected while all workers were busy", i)
+			t.Fatalf("request %d was rejected", i)
 		}
 	}
 
-	for range workerCount {
+	// Every handler must start before any of them is released. A worker pool
+	// would stall here once all of its workers were occupied.
+	for range taskCount {
 		select {
 		case <-started:
 		case <-time.After(time.Second):
-			t.Fatal("workers did not start queued tasks")
+			t.Fatal("a request waited behind other blocked requests")
 		}
-	}
-	if got := maxActive.Load(); got != workerCount {
-		t.Fatalf("maximum active tasks = %d, want %d", got, workerCount)
 	}
 
 	close(release)
@@ -84,7 +48,7 @@ func TestInvokeExecutorWaitsWithoutRejecting(t *testing.T) {
 }
 
 func TestInvokeExecutorConvertsPanicsToErrors(t *testing.T) {
-	executor := newInvokeExecutor(1, func(invokeRequest) string {
+	executor := newInvokeExecutor(func(invokeRequest) string {
 		panic("boom")
 	})
 	completed := make(chan error, 1)
@@ -103,7 +67,7 @@ func TestInvokeExecutorConvertsPanicsToErrors(t *testing.T) {
 }
 
 func TestInvokeExecutorSurvivesCallbackPanic(t *testing.T) {
-	executor := newInvokeExecutor(1, func(request invokeRequest) string {
+	executor := newInvokeExecutor(func(request invokeRequest) string {
 		return request.path
 	})
 	executor.submit(invokeTask{complete: func(string, error) {
@@ -131,7 +95,7 @@ func TestInvokeExecutorSurvivesCallbackPanic(t *testing.T) {
 func TestInvokeExecutorPausesAndDrains(t *testing.T) {
 	release := make(chan struct{})
 	started := make(chan struct{})
-	executor := newInvokeExecutor(1, func(request invokeRequest) string {
+	executor := newInvokeExecutor(func(request invokeRequest) string {
 		if request.path == "running" {
 			close(started)
 			<-release
@@ -151,7 +115,7 @@ func TestInvokeExecutorPausesAndDrains(t *testing.T) {
 
 	drained := make(chan struct{})
 	go func() {
-		executor.pauseAndWait()
+		executor.pauseAndWait(time.Second)
 		close(drained)
 	}()
 	deadline := time.Now().Add(time.Second)
@@ -192,5 +156,103 @@ func TestInvokeExecutorPausesAndDrains(t *testing.T) {
 		t.Fatal("resumed executor rejected a request")
 	}
 	<-resumed
+	executor.close()
+}
+
+func TestInvokeExecutorPauseTimesOutAndFailsPendingRequests(t *testing.T) {
+	release := make(chan struct{})
+	started := make(chan struct{})
+	executor := newInvokeExecutor(func(request invokeRequest) string {
+		started <- struct{}{}
+		<-release
+		return request.path
+	})
+
+	errors := make(chan error, 2)
+	for _, path := range []string{"first", "second"} {
+		if !executor.submit(invokeTask{
+			request: invokeRequest{path: path},
+			complete: func(_ string, err error) {
+				errors <- err
+			},
+		}) {
+			t.Fatalf("request %q was rejected", path)
+		}
+	}
+	for range 2 {
+		<-started
+	}
+
+	const timeout = 30 * time.Millisecond
+	startedAt := time.Now()
+	if executor.pauseAndWait(timeout) {
+		t.Fatal("pause unexpectedly reported a complete drain")
+	}
+	if elapsed := time.Since(startedAt); elapsed < timeout || elapsed > 10*timeout {
+		t.Fatalf("pause returned after %s, want close to %s", elapsed, timeout)
+	}
+	for range 2 {
+		select {
+		case err := <-errors:
+			if err == nil || err.Error() != errNativeBridgeStopping.Error() {
+				t.Fatalf("unexpected timeout error: %v", err)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("pending request was not failed after the timeout")
+		}
+	}
+
+	close(release)
+	executor.close()
+	select {
+	case err := <-errors:
+		t.Fatalf("request callback ran more than once: %v", err)
+	default:
+	}
+}
+
+func TestStopWithinUsesOneDeadlineForRequestsAndCleanup(t *testing.T) {
+	releaseRequest := make(chan struct{})
+	requestStarted := make(chan struct{})
+	executor := newInvokeExecutor(func(invokeRequest) string {
+		close(requestStarted)
+		<-releaseRequest
+		return "done"
+	})
+	requestResult := make(chan error, 1)
+	executor.submit(invokeTask{complete: func(_ string, err error) {
+		requestResult <- err
+	}})
+	<-requestStarted
+
+	releaseCleanup := make(chan struct{})
+	cleanupStarted := make(chan struct{})
+	cleanup := func() {
+		close(cleanupStarted)
+		<-releaseCleanup
+	}
+
+	const timeout = 40 * time.Millisecond
+	startedAt := time.Now()
+	stopWithin(executor, cleanup, timeout)
+	if elapsed := time.Since(startedAt); elapsed < timeout || elapsed > 10*timeout {
+		t.Fatalf("stop returned after %s, want close to %s", elapsed, timeout)
+	}
+	select {
+	case <-cleanupStarted:
+	case <-time.After(time.Second):
+		t.Fatal("cleanup was not started after the request deadline")
+	}
+	select {
+	case err := <-requestResult:
+		if err == nil || err.Error() != errNativeBridgeStopping.Error() {
+			t.Fatalf("unexpected request result: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed-out request was not failed")
+	}
+
+	close(releaseRequest)
+	close(releaseCleanup)
 	executor.close()
 }
