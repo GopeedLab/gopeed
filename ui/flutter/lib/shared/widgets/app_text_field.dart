@@ -1,13 +1,13 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' as material show AdaptiveTextSelectionToolbar;
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 /// The app-wide text field.
 ///
-/// shadcn_flutter's custom mobile context menu is rendered in a full-screen
-/// overlay. On Android and iOS that overlay can cover the app with an opaque
-/// surface when text is long-pressed. Use Flutter's adaptive native toolbar on
-/// mobile, while preserving shadcn_flutter's menu on desktop and web.
+/// shadcn_flutter's custom context menu is rendered in a full-screen overlay
+/// that can cover the app with an opaque surface. Use Flutter's adaptive
+/// platform toolbar everywhere so long-press and right-click text actions have
+/// consistent native behavior on mobile, desktop, and web.
 class AppTextField extends shad.TextField {
   const AppTextField({
     super.key,
@@ -88,15 +88,12 @@ class AppTextField extends shad.TextField {
   });
 }
 
-@visibleForTesting
-bool appTextFieldUsesNativeContextMenu({TargetPlatform? platform, bool isWeb = kIsWeb}) {
-  final effectivePlatform = platform ?? defaultTargetPlatform;
-  return !isWeb && (effectivePlatform == TargetPlatform.android || effectivePlatform == TargetPlatform.iOS);
-}
-
 Widget appTextFieldContextMenuBuilder(BuildContext context, EditableTextState editableTextState) {
-  if (appTextFieldUsesNativeContextMenu()) {
-    return shad.TextField.nativeContextMenuBuilder()(context, editableTextState);
+  // Match Flutter's platform text-menu policy without falling back to
+  // shadcn_flutter's full-screen overlay. EditableText bypasses this builder
+  // on Web while the browser context menu is enabled.
+  if (SystemContextMenu.isSupportedByField(editableTextState)) {
+    return SystemContextMenu.editableText(editableTextState: editableTextState);
   }
-  return shad.TextField.defaultContextMenuBuilder(context, editableTextState);
+  return material.AdaptiveTextSelectionToolbar.editableText(editableTextState: editableTextState);
 }

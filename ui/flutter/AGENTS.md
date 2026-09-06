@@ -114,13 +114,12 @@ Guidelines:
 - All product-facing editable text controls must use the shared `AppTextField` from `lib/shared/widgets/app_text_field.dart`.
 - This rule applies to every input variant, including search fields, login and password fields, URL fields, numeric fields, multiline editors, settings controls, dialog inputs, and feature-specific form fields.
 - Do not instantiate Flutter Material `TextField` or `shadcn_flutter`'s `TextField` directly in feature or page code. Direct construction is allowed only while implementing or extending a shared input primitive, with the reason documented in that primitive.
-- `AppTextField` owns the cross-platform text-selection menu policy:
-  - Android and iOS use Flutter's adaptive native context menu so long-press selection, copy, paste, and autofill follow platform behavior.
-  - Desktop and Web retain the `shadcn_flutter` context menu and desktop interaction behavior.
+- `AppTextField` owns the cross-platform text-selection menu policy. Android, iOS, desktop, and Web must all use Flutter's adaptive native context menu so long-press and right-click selection actions follow platform behavior without `shadcn_flutter`'s full-screen context-menu overlay.
+- Do not use `shadcn_flutter`'s editable-text context menu on any platform.
 - Feature and page code must not override `contextMenuBuilder`. Any exception must be implemented centrally in `AppTextField`, justified by a platform requirement, and covered by Android/iOS and desktop tests.
 - Preserve existing field behavior when migrating to `AppTextField`, including controllers, focus nodes, input formatters, autofill hints, password visibility, read-only state, input features, keyboard actions, and multiline sizing.
 - Prefer stable keys or `AppTextField` when locating app inputs in widget tests. Do not couple product tests to the exact runtime type of the underlying `shadcn_flutter` implementation.
-- Changes to the shared input policy must include regression coverage for Android long-press behavior and must verify that desktop context-menu behavior remains unchanged.
+- Changes to the shared input policy must include regression coverage for Android long-press behavior and desktop right-click behavior. Web builds must keep the same shared native-menu policy.
 
 ## 3.4) Desktop Design Metrics
 
