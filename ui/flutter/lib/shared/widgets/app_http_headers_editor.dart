@@ -5,6 +5,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../theme/app_design_tokens.dart';
 import '../theme/app_palette.dart';
 import '../../l10n/l10n.dart';
+import 'app_text_field.dart';
 
 class AppHttpHeadersController extends ChangeNotifier {
   AppHttpHeadersController({Map<String, String>? headers, Iterable<String> defaultNames = const []}) {
@@ -171,7 +172,7 @@ class _HeaderTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return shad.TextField(
+    return AppTextField(
       controller: controller,
       hintText: hintText,
       filled: true,

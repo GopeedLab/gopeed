@@ -81,6 +81,7 @@ import 'package:gopeed/shared/widgets/app_copy_icon_button.dart';
 import 'package:gopeed/shared/widgets/app_http_headers_editor.dart';
 import 'package:gopeed/shared/widgets/app_path_picker_field.dart';
 import 'package:gopeed/shared/widgets/app_primary_button.dart';
+import 'package:gopeed/shared/widgets/app_text_field.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:gopeed/shared/widgets/app_toast.dart';
 import 'package:gopeed/shared/widgets/gopeed_app_mark.dart';
@@ -371,7 +372,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    await tester.enterText(find.byType(shad.TextField), 'not-a-task');
+    await tester.enterText(find.byType(AppTextField), 'not-a-task');
     await tester.pump();
 
     expect(find.text('No matching tasks found'), findsOneWidget);
@@ -1451,8 +1452,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('close-mcp-agent-setup')));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.byKey(const ValueKey('mcp-endpoint-switch')));
-    await tester.tap(find.byKey(const ValueKey('mcp-endpoint-switch')));
+    final mcpSwitch = find.byKey(const ValueKey('mcp-endpoint-switch'));
+    await Scrollable.ensureVisible(tester.element(mcpSwitch), alignment: 0.5);
+    await tester.pumpAndSettle();
+    await tester.tap(mcpSwitch);
     await tester.pump();
     expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNotNull);
 
@@ -2302,7 +2305,7 @@ void main() {
     expect(tester.getSize(createDirectoryInput).height, tester.getSize(createRenameInput).height);
     final createDirectoryField = tester.widget<shad.TextField>(createDirectoryInput);
     final createRenameField = tester.widget<shad.TextField>(
-      find.descendant(of: createRenameInput, matching: find.byType(shad.TextField)),
+      find.descendant(of: createRenameInput, matching: find.byType(AppTextField)),
     );
     expect(createDirectoryField.filled, createRenameField.filled);
     expect(createDirectoryField.border, createRenameField.border);
@@ -4339,8 +4342,8 @@ void main() {
     expect(find.byType(AppHttpHeadersEditor), findsOneWidget);
     final firstName = find.byKey(const ValueKey('update-task-http-header-name-0'));
     final firstValue = find.byKey(const ValueKey('update-task-http-header-value-0'));
-    final firstNameField = find.descendant(of: firstName, matching: find.byType(shad.TextField));
-    final firstValueField = find.descendant(of: firstValue, matching: find.byType(shad.TextField));
+    final firstNameField = find.descendant(of: firstName, matching: find.byType(AppTextField));
+    final firstValueField = find.descendant(of: firstValue, matching: find.byType(AppTextField));
     expect(tester.widget<shad.TextField>(firstNameField).controller!.text, 'Authorization');
     expect(tester.widget<shad.TextField>(firstValueField).controller!.text, 'Bearer old');
     expect(tester.getSize(firstValue).width / tester.getSize(firstName).width, closeTo(1.618, 0.01));

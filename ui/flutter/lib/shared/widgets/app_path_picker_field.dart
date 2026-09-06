@@ -4,6 +4,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../core/utils/breakpoints.dart';
 import '../services/download_directory_picker.dart';
+import 'app_text_field.dart';
 import 'app_tooltip.dart';
 
 enum AppPathPickerButtonStyle { ghost, outline }
@@ -119,7 +120,7 @@ class _AppPathPickerFieldState extends State<AppPathPickerField> {
               onEnter: (_) => _syncTooltipPath(),
               child: AppTooltip(
                 message: _tooltipPath,
-                child: shad.TextField(
+                child: AppTextField(
                   key: widget.fieldKey,
                   controller: widget.controller,
                   hintText: widget.hintText,
