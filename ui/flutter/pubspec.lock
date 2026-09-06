@@ -253,10 +253,10 @@ packages:
     dependency: "direct main"
     description:
       name: dart_ipc
-      sha256: d950f8e7f30f7fec8fd4d1b9def22195dd3075285716e4f486b84053fa43a7c9
+      sha256: "3b372078dcc542b97189da4df2b08c1fc5ab0123ecdce37d400ce85ab651b273"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.1"
+    version: "2.0.2"
   dart_style:
     dependency: transitive
     description:
