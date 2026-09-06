@@ -78,6 +78,7 @@ void main() {
 
     await tester.pumpWidget(
       shad.ShadcnApp(
+        disableBrowserContextMenu: false,
         theme: AppTheme.light(),
         materialTheme: AppTheme.materialLight(),
         home: AppComponentThemes(
@@ -88,6 +89,7 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
     expect(BrowserContextMenu.enabled, isTrue);
     final gesture = await tester.startGesture(
       tester.getCenter(find.byType(AppTextField)),
