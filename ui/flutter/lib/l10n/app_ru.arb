@@ -18,6 +18,7 @@
   "exit": "Выход",
   "pressBackAgainToExit": "Нажмите «Назад» ещё раз, чтобы выйти",
   "create": "Создать задачу",
+  "createAction": "Создать",
   "directDownload": "Прямая загрузка",
   "advancedOptions": "Расширенные опции",
   "followSettings": "По умолчанию",

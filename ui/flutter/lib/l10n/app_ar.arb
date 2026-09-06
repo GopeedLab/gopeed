@@ -18,6 +18,7 @@
   "exit": "خروج",
   "pressBackAgainToExit": "اضغط زر الرجوع مرة أخرى للخروج",
   "create": "إنشاء مهمة",
+  "createAction": "إنشاء",
   "directDownload": "تنزيل مباشر",
   "advancedOptions": "خيارات متقدمة",
   "followSettings": "اتباع الإعدادات",

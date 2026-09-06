@@ -9,6 +9,8 @@ import 'package:gopeed/api/model/create_task.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/options.dart';
 import 'package:gopeed/api/model/request.dart';
+import 'package:gopeed/api/model/resolve_result.dart';
+import 'package:gopeed/api/model/resource.dart';
 import 'package:gopeed/core/capabilities/app_capabilities.dart';
 import 'package:gopeed/core/capabilities/capability_rpc.dart';
 import 'package:gopeed/core/capabilities/gopeed_capability.dart';
@@ -18,6 +20,7 @@ import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
 import 'package:gopeed/shared/theme/app_design_tokens.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
+import 'package:gopeed/shared/widgets/app_loading_button.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
@@ -312,6 +315,56 @@ void main() {
     expect(options.archivePassword, 'archive-password');
     expect(options.deleteAfterExtract, isTrue);
     expect(submitted?.opts?.asDefaultPath, isTrue);
+    expect(submitted?.opts?.name, isEmpty);
+  });
+
+  testWidgets('resolved task keeps rename empty and uses a single-line intrinsic create action', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(700, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          id: 'resolved-id',
+          res: Resource(
+            name: 'server-generated-name',
+            files: [FileInfo(name: 'video.mp4', size: 1024)],
+          ),
+        ),
+      )
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/video.mp4');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(_fieldText(tester, 'create-task-rename-input'), isEmpty);
+    final createButton = tester.widget<AppLoadingButton>(find.byKey(const ValueKey('resolve-create-button')));
+    expect(createButton.child, isA<Text>());
+    final createText = createButton.child as Text;
+    expect(createText.data, 'Create');
+    expect(createText.maxLines, 1);
+    expect(createText.softWrap, isFalse);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('create history supports filtering, deleting one entry, and clearing all entries', (
