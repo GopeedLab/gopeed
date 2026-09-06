@@ -15,6 +15,7 @@ import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
@@ -629,7 +630,7 @@ class _Toolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final manualInstallBusy = state.busyExtensionIds.contains(ExtensionsController.manualInstallBusyKey);
-    final search = shad.TextField(
+    final search = AppTextField(
       key: const ValueKey('extension-search-input'),
       controller: searchController,
       placeholder: Text(context.l10n.searchExtensions, style: TextStyle(color: palette.searchHint)),
@@ -826,7 +827,7 @@ class _InstallPopoverState extends State<_InstallPopover> {
             style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
-          shad.TextField(
+          AppTextField(
             key: const ValueKey('extension-install-url-input'),
             controller: widget.controller,
             autofocus: true,
@@ -1222,9 +1223,9 @@ class _ExtensionSettingField extends StatelessWidget {
         ],
         const SizedBox(height: 8),
         if (setting.type == api_extension.SettingType.boolean)
-          shad.TextField(controller: controller, placeholder: Text(context.l10n.booleanValueHint))
+          AppTextField(controller: controller, placeholder: Text(context.l10n.booleanValueHint))
         else
-          shad.TextField(
+          AppTextField(
             controller: controller,
             keyboardType: setting.type == api_extension.SettingType.number ? TextInputType.number : TextInputType.text,
           ),

@@ -29,8 +29,10 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_choice_segmented_control.dart';
 import '../../../../shared/widgets/app_http_headers_editor.dart';
+import '../../../../shared/widgets/app_number_input.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
@@ -177,9 +179,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         _initialLabels = req.labels == null ? null : Map<String, String>.of(req.labels!);
         _applyInitialProxy(req.proxy);
         _skipVerifyCert = req.skipVerifyCert;
-        if (req.proxy != null || req.skipVerifyCert) {
-          _showAdvanced = true;
-        }
         switch (_parseProtocol(req.url)) {
           case _TaskProtocol.http:
             if (req.extra is Map) {
@@ -189,7 +188,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
               if (extra.header.isNotEmpty) {
                 _replaceHttpHeaders(extra.header);
               }
-              _showAdvanced = true;
             }
             break;
           case _TaskProtocol.bt:
@@ -197,7 +195,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
             if (req.extra is Map) {
               final extra = ReqExtraBt.fromJson(Map<String, dynamic>.from(req.extra! as Map));
               _trackersController.text = extra.trackers.join('\n');
-              _showAdvanced = true;
             }
             break;
           case _TaskProtocol.ed2k:
@@ -222,13 +219,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           _autoExtract = extra.autoExtract;
           _archivePasswordController.text = extra.archivePassword;
           _deleteAfterExtract = extra.deleteAfterExtract;
-          if (extra.autoTorrent != null ||
-              extra.deleteTorrentAfterDownload != null ||
-              extra.autoExtract != null ||
-              extra.archivePassword.isNotEmpty ||
-              extra.deleteAfterExtract) {
-            _showAdvanced = true;
-          }
         }
       }
     });
@@ -268,7 +258,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     final page = Scaffold(
       backgroundColor: palette.sideBg,
       child: Padding(
-        padding: EdgeInsets.only(top: AppWindowChrome.reservesHeaderInset ? AppDesignTokens.windowHeaderHeight : 0),
+        key: const ValueKey('create-task-safe-content'),
+        padding: EdgeInsets.only(
+          top: AppWindowChrome.reservesHeaderInset
+              ? AppDesignTokens.windowHeaderHeight
+              : MediaQuery.paddingOf(context).top,
+        ),
         child: Column(
           children: [
             Container(
@@ -311,7 +306,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                             children: [
                               SizedBox(
                                 height: 120,
-                                child: TextField(
+                                child: AppTextField(
                                   controller: _urlController,
                                   hintText: context.l10n.pasteDownloadLinks,
                                   keyboardType: TextInputType.multiline,
@@ -357,7 +352,19 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     const SizedBox(height: 16),
                     _FormRow(
                       label: context.l10n.connections,
-                      child: _WindowTextField(controller: _connectionsController, hintText: context.l10n.enterCount),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: AppDesignTokens.settingsNumberControlWidth,
+                          child: AppNumberInput(
+                            fieldKey: const ValueKey('create-task-connections-input'),
+                            controller: _connectionsController,
+                            min: 1,
+                            max: 256,
+                            hintText: context.l10n.enterCount,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     _FormRow(
@@ -434,6 +441,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       ),
                     ),
                     AnimatedCrossFade(
+                      key: const ValueKey('create-task-advanced-section'),
                       duration: _advancedExpandDuration,
                       firstCurve: Curves.easeOutCubic,
                       secondCurve: Curves.easeInCubic,
@@ -643,7 +651,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 label: context.l10n.trackers,
                                 child: SizedBox(
                                   height: 96,
-                                  child: TextField(
+                                  child: AppTextField(
                                     controller: _trackersController,
                                     hintText: context.l10n.oneTrackerPerLine,
                                     keyboardType: TextInputType.multiline,
@@ -1231,7 +1239,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                   children: [
                     SizedBox(
                       height: 38,
-                      child: TextField(
+                      child: AppTextField(
                         key: const ValueKey('create-history-filter'),
                         controller: filterController,
                         placeholder: Text(
@@ -1658,7 +1666,7 @@ class _WindowTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return TextField(
+    return AppTextField(
       controller: controller,
       hintText: hintText,
       keyboardType: keyboardType,

@@ -9,6 +9,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_copy_icon_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../core/utils/text_wrap.dart';
@@ -512,7 +513,7 @@ class _EditableUrlBlock extends StatelessWidget {
               children: [
                 SizedBox(
                   height: 76,
-                  child: shad.TextField(
+                  child: AppTextField(
                     controller: controller,
                     minLines: null,
                     maxLines: null,
