@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dart_ipc/dart_ipc.dart';
-
 import '../../util/util.dart';
+import 'ipc_bind_stub.dart' if (dart.library.io) 'ipc_bind_native.dart';
 
 class RpcContext {
   final HttpRequest request;
@@ -109,7 +108,7 @@ Future<RpcServerHandle> startRpcServer({RpcBinding? binding, Map<String, RouteHa
 
   switch (rpcBinding.network) {
     case 'pipe':
-      final serverSocket = await bind(rpcBinding.address);
+      final serverSocket = await bindIpc(rpcBinding.address);
       httpServer = HttpServer.listenOn(serverSocket);
       break;
     case 'unix':
@@ -119,7 +118,7 @@ Future<RpcServerHandle> startRpcServer({RpcBinding? binding, Map<String, RouteHa
           await socketFile.delete();
         } catch (_) {}
       }
-      final serverSocket = await bind(rpcBinding.address);
+      final serverSocket = await bindIpc(rpcBinding.address);
       httpServer = HttpServer.listenOn(serverSocket);
       cleanup = () async {
         if (await socketFile.exists()) {
