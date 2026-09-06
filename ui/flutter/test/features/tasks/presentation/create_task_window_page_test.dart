@@ -119,6 +119,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final connectionsInput = find.byKey(const ValueKey('create-task-connections-input'));
+    expect(connectionsInput, findsOneWidget);
+    expect(tester.getSize(connectionsInput).width, AppDesignTokens.settingsNumberControlWidth);
+    final connectionsField = tester.widget<shad.TextField>(connectionsInput);
+    expect(connectionsField.controller!.text, '12');
+    expect(connectionsField.features.single, isA<shad.InputSpinnerFeature>());
+
+    final advancedSection = find.byKey(const ValueKey('create-task-advanced-section'));
+    expect(tester.widget<AnimatedCrossFade>(advancedSection).crossFadeState, CrossFadeState.showSecond);
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<AnimatedCrossFade>(advancedSection).crossFadeState, CrossFadeState.showFirst);
+
     expect(_fieldText(tester, 'create-task-http-header-name-0'), 'User-Agent');
     expect(_fieldText(tester, 'create-task-http-header-value-0'), 'Browser UA');
     expect(_fieldText(tester, 'create-task-http-header-name-3'), 'Authorization');
