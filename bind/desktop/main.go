@@ -20,28 +20,14 @@ import "C"
 import (
 	"encoding/json"
 	"fmt"
-	"sync"
 	"unsafe"
 
+	nativebridge "github.com/GopeedLab/gopeed/bind/native"
 	"github.com/GopeedLab/gopeed/pkg/rest"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
 
 func main() {}
-
-var (
-	invokeExecutorOnce sync.Once
-	desktopInvoker     *invokeExecutor
-)
-
-func getInvokeExecutor() *invokeExecutor {
-	invokeExecutorOnce.Do(func() {
-		desktopInvoker = newDefaultInvokeExecutor(func(request invokeRequest) string {
-			return rest.Invoke(request.method, request.path, request.query, request.body)
-		})
-	})
-	return desktopInvoker
-}
 
 //export Start
 func Start(cfg *C.char) (int, *C.char) {
@@ -56,11 +42,13 @@ func Start(cfg *C.char) (int, *C.char) {
 	if err != nil {
 		return 0, C.CString(err.Error())
 	}
+	nativebridge.ResumeInvokes()
 	return realPort, nil
 }
 
 //export Stop
 func Stop() {
+	nativebridge.PauseInvokesAndWait()
 	rest.Stop()
 }
 
@@ -96,16 +84,6 @@ func apiServerResult(state *model.APIServerState, err error) string {
 	return string(data)
 }
 
-//export Invoke
-func Invoke(method *C.char, path *C.char, query *C.char, body *C.char) *C.char {
-	return C.CString(rest.Invoke(
-		C.GoString(method),
-		C.GoString(path),
-		C.GoString(query),
-		C.GoString(body),
-	))
-}
-
 //export InvokeAsync
 func InvokeAsync(
 	method *C.char,
@@ -117,12 +95,6 @@ func InvokeAsync(
 ) {
 	if callback == 0 {
 		return
-	}
-	request := invokeRequest{
-		method: C.GoString(method),
-		path:   C.GoString(path),
-		query:  C.GoString(query),
-		body:   C.GoString(body),
 	}
 	complete := func(result string, err error) {
 		success := C.int(1)
@@ -138,9 +110,13 @@ func InvokeAsync(
 			C.CString(payload),
 		)
 	}
-	if !getInvokeExecutor().submit(invokeTask{request: request, complete: complete}) {
-		complete("", fmt.Errorf("invoke executor is closed"))
-	}
+	nativebridge.InvokeAsync(
+		C.GoString(method),
+		C.GoString(path),
+		C.GoString(query),
+		C.GoString(body),
+		complete,
+	)
 }
 
 //export SubscribeTaskEvents

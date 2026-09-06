@@ -208,7 +208,6 @@ ffigen:
       - "StartAPIServer"
       - "StopAPIServer"
       - "RestartAPIServer"
-      - "Invoke"
       - "InvokeAsync"
       - "SubscribeTaskEvents"
       - "FreeCString"

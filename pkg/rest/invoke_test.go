@@ -27,7 +27,7 @@ func TestNativeInvokeWithoutRESTListener(t *testing.T) {
 	}
 
 	var result model.Result[json.RawMessage]
-	if err := json.Unmarshal([]byte(Invoke(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
+	if err := json.Unmarshal([]byte(Dispatch(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
 		t.Fatal(err)
 	}
 	if result.Code != model.CodeOk {
@@ -106,7 +106,7 @@ func TestAPIServerLifecycleUsesPersistedConfigWithoutRestartingCore(t *testing.T
 	}
 
 	var result model.Result[json.RawMessage]
-	if err := json.Unmarshal([]byte(Invoke(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
+	if err := json.Unmarshal([]byte(Dispatch(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
 		t.Fatal(err)
 	}
 	if result.Code != model.CodeOk {
@@ -153,7 +153,7 @@ func TestRestartAPIServerFailsFastAndLeavesListenerStopped(t *testing.T) {
 	}
 
 	var result model.Result[json.RawMessage]
-	if err := json.Unmarshal([]byte(Invoke(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
+	if err := json.Unmarshal([]byte(Dispatch(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
 		t.Fatal(err)
 	}
 	if result.Code != model.CodeOk {
@@ -229,7 +229,7 @@ func TestNativeAPIServerAutoStartFailureKeepsCoreAvailable(t *testing.T) {
 	}
 
 	var result model.Result[json.RawMessage]
-	if err := json.Unmarshal([]byte(Invoke(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
+	if err := json.Unmarshal([]byte(Dispatch(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
 		t.Fatal(err)
 	}
 	if result.Code != model.CodeOk {

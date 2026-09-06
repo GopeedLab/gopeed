@@ -13,9 +13,10 @@ const (
 	TaskEventError = uint64(goapi.TaskEventError)
 )
 
-// Invoke dispatches a Core API request without using an HTTP listener. It is
-// the shared entry point for Desktop FFI and gomobile bindings.
-func Invoke(method, path, rawQuery, body string) string {
+// Dispatch executes one in-process API request. Native scheduling and callback
+// behavior belong to bind/native; this function only bridges into the shared
+// API Service without opening an HTTP listener.
+func Dispatch(method, path, rawQuery, body string) string {
 	runtimeMu.RLock()
 	defer runtimeMu.RUnlock()
 	service := APIService

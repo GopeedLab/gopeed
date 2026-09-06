@@ -58,36 +58,6 @@ class LibgopeedBind {
   late final _RestartAPIServerPtr = _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('RestartAPIServer');
   late final _RestartAPIServer = _RestartAPIServerPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
-  ffi.Pointer<ffi.Char> Invoke(
-    ffi.Pointer<ffi.Char> method,
-    ffi.Pointer<ffi.Char> path,
-    ffi.Pointer<ffi.Char> query,
-    ffi.Pointer<ffi.Char> body,
-  ) {
-    return _Invoke(method, path, query, body);
-  }
-
-  late final _InvokePtr =
-      _lookup<
-        ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-            ffi.Pointer<ffi.Char>,
-          )
-        >
-      >('Invoke');
-  late final _Invoke =
-      _InvokePtr.asFunction<
-        ffi.Pointer<ffi.Char> Function(
-          ffi.Pointer<ffi.Char>,
-          ffi.Pointer<ffi.Char>,
-          ffi.Pointer<ffi.Char>,
-          ffi.Pointer<ffi.Char>,
-        )
-      >();
-
   void InvokeAsync(
     ffi.Pointer<ffi.Char> method,
     ffi.Pointer<ffi.Char> path,

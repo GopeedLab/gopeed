@@ -112,7 +112,6 @@ extern char* GetAPIServerState(void);
 extern char* StartAPIServer(void);
 extern char* StopAPIServer(void);
 extern char* RestartAPIServer(void);
-extern char* Invoke(char* method, char* path, char* query, char* body);
 extern void InvokeAsync(char* method, char* path, char* query, char* body, long long unsigned int requestID, uintptr_t callback);
 extern void SubscribeTaskEvents(long long unsigned int mask, uintptr_t callback);
 extern void FreeCString(char* value);

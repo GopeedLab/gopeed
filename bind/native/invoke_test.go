@@ -1,6 +1,7 @@
-package main
+package nativebridge
 
 import (
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -98,5 +99,98 @@ func TestInvokeExecutorConvertsPanicsToErrors(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("panic result was not completed")
 	}
+	executor.close()
+}
+
+func TestInvokeExecutorSurvivesCallbackPanic(t *testing.T) {
+	executor := newInvokeExecutor(1, func(request invokeRequest) string {
+		return request.path
+	})
+	executor.submit(invokeTask{complete: func(string, error) {
+		panic("callback failed")
+	}})
+
+	completed := make(chan string, 1)
+	executor.submit(invokeTask{
+		request: invokeRequest{path: "next"},
+		complete: func(result string, _ error) {
+			completed <- result
+		},
+	})
+	select {
+	case result := <-completed:
+		if result != "next" {
+			t.Fatalf("unexpected result: %q", result)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("worker stopped after callback panic")
+	}
+	executor.close()
+}
+
+func TestInvokeExecutorPausesAndDrains(t *testing.T) {
+	release := make(chan struct{})
+	started := make(chan struct{})
+	executor := newInvokeExecutor(1, func(request invokeRequest) string {
+		if request.path == "running" {
+			close(started)
+			<-release
+		}
+		return request.path
+	})
+	completed := make(chan struct{})
+	if !executor.submit(invokeTask{
+		request: invokeRequest{path: "running"},
+		complete: func(string, error) {
+			close(completed)
+		},
+	}) {
+		t.Fatal("initial task was rejected")
+	}
+	<-started
+
+	drained := make(chan struct{})
+	go func() {
+		executor.pauseAndWait()
+		close(drained)
+	}()
+	deadline := time.Now().Add(time.Second)
+	for {
+		executor.mu.Lock()
+		paused := !executor.accepting
+		executor.mu.Unlock()
+		if paused {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("executor did not pause")
+		}
+		runtime.Gosched()
+	}
+	select {
+	case <-drained:
+		t.Fatal("pause returned before the running request completed")
+	default:
+	}
+	if executor.submit(invokeTask{}) {
+		t.Fatal("paused executor accepted a new request")
+	}
+
+	close(release)
+	<-completed
+	select {
+	case <-drained:
+	case <-time.After(time.Second):
+		t.Fatal("pause did not return after pending requests drained")
+	}
+
+	executor.resume()
+	resumed := make(chan struct{})
+	if !executor.submit(invokeTask{complete: func(string, error) {
+		close(resumed)
+	}}) {
+		t.Fatal("resumed executor rejected a request")
+	}
+	<-resumed
 	executor.close()
 }
