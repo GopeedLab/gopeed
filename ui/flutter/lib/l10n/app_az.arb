@@ -1,0 +1,629 @@
+{
+  "@@locale": "az",
+  "label": "Azərbaycan dili",
+  "error": "Xəta",
+  "tip": "Məsləhət",
+  "confirm": "Təsdiqlə",
+  "confirmDelete": "Silmək istədiyinizə əminsiniz?",
+  "cancel": "Ləğv et",
+  "on": "Açıq",
+  "off": "Qapalı",
+  "selectAll": "Hamısını seç",
+  "select": "Seç",
+  "task": "Tapşırıqlar",
+  "downloading": "Endirilir",
+  "downloaded": "Endirilib",
+  "setting": "Parametrlər",
+  "donate": "Bağış et",
+  "exit": "Çıxış",
+  "pressBackAgainToExit": "Çıxmaq üçün yenidən geri düyməsinə basın",
+  "create": "Tapşırıq yarat",
+  "directDownload": "Birbaşa Endirmə",
+  "advancedOptions": "Əlavə Seçimlər",
+  "followSettings": "Parametrlərə uyğun",
+  "downloadLink": "Endirmə Keçidi",
+  "downloadLinkValid": "Zəhmət olmasa endirmə keçidini daxil edin",
+  "downloadLinkHit": "Zəhmət olmasa endirmə keçidini daxil edin, hər sətirdə bir dənə@append",
+  "downloadLinkHitDesktop": ", və ya torrent faylını birbaşa buraya sürükləyin",
+  "download": "Endir",
+  "noFileSelected": "Davam etmək üçün ən azı bir fayl seçin",
+  "noStoragePermission": "Yaddaş icazəsi tələb olunur",
+  "selectFile": "Fayl Seç",
+  "rename": "Adını dəyiş",
+  "basic": "Əsas",
+  "advanced": "Əlavə",
+  "general": "Ümumi",
+  "downloadDir": "Endirmə Qovluğu",
+  "rememberLastDownloadDir": "Standart endirmə qovluğu kimi yadda saxla",
+  "downloadDirValid": "Zəhmət olmasa endirmə qovluğunu seçin",
+  "connections": "Əlaqələr",
+  "useServerCtime": "Fayl yaratma tarixi üçün server vaxtından istifadə et",
+  "maxRunning": "Paralel Endirmələr",
+  "defaultDirectDownload": "Standart olaraq Birbaşa Endirmə",
+  "autoStartTasks": "Başlanğıcda tamamlanmamış tapşırıqları avtomatik başlat",
+  "autoTorrentEnable": ".torrent fayllarından avtomatik BT tapşırığı yarat",
+  "autoTorrentDeleteAfterDownload": "BT tapşırığı yaradıldıqdan sonra .torrent faylını sil",
+  "autoDeleteMissingFileTasks": "Faylı tapılmayan tapşırıqları avtomatik sil",
+  "items": "{count} element",
+  "@items": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "subscribeTracker": "Trackerə Abunə Ol",
+  "subscribeFail": "Abunəlik alınmadı, şəbəkəni yoxlayın və ya sonra yenidən cəhd edin",
+  "update": "Yenilə",
+  "updateDaily": "Gündəlik yenilə",
+  "lastUpdate": "Son yenilənmə: @time",
+  "addTracker": "Tracker Əlavə Et",
+  "addTrackerHit": "Zəhmət olmasa tracker server ünvanını daxil edin, hər sətirdə bir dənə",
+  "ui": "İnterfeys",
+  "theme": "Tema",
+  "themeSystem": "Sistem",
+  "themeLight": "Açıq",
+  "themeDark": "Tünd",
+  "locale": "Dil",
+  "notifyWhenNewVersion": "Yeniləmələr barədə bildiriş göndər",
+  "analyticsEnabled": "İstifadə Analitikası",
+  "analyticsEnabledDesc": "Təkmilləşdirməyə kömək etmək üçün anonim istifadə məlumatlarını paylaşın",
+  "about": "Haqqında",
+  "homepage": "Əsas Səhifə",
+  "version": "Versiya",
+  "protocol": "Protokol",
+  "port": "Port",
+  "apiToken": "API Açarı",
+  "notSet": "TƏYİN EDİLMƏYİB",
+  "set": "TƏYİN ET",
+  "portInUse": "Port [@port] artıq istifadədədir, zəhmət olmasa portu dəyişin",
+  "effectAfterRestart": "Yenidən başladıldıqdan sonra qüvvəyə minir",
+  "developer": "Tərtibatçı",
+  "logDirectory": "Loq Qovluğu",
+  "webhook": "Webhook",
+  "webhookEnable": "Webhook-ları Aktivləşdir",
+  "webhookDesc": "Tapşırıqlar tamamlandıqda və ya uğursuz olduqda HTTP POST bildirişləri göndər",
+  "webhookUrlHint": "Webhook URL-ini daxil edin",
+  "webhookTest": "Test",
+  "webhookTestSuccess": "Webhook testi uğurlu oldu",
+  "webhookTestFail": "Webhook testi uğursuz oldu",
+  "script": "Skript",
+  "scriptEnable": "Skriptləri Aktivləşdir",
+  "scriptDesc": "Endirmələr uğurla tamamlandıqda fərdi skriptləri icra et",
+  "scriptPathHint": "Skript faylının yolunu daxil edin (məs., /path/to/script.sh)",
+  "urlInvalid": "Zəhmət olmasa düzgün HTTP və ya HTTPS URL-i daxil edin",
+  "required": "Bu sahə mütləqdir",
+  "show": "Göstər",
+  "continueAction": "Davam Et",
+  "pause": "Fasilə ver",
+  "startAll": "Hamısını Başlat",
+  "pauseAll": "Hamısına Fasilə Ver",
+  "deleteTask": "@count tapşırığı sil",
+  "deleteTaskTip": "Endirilmiş faylları saxla",
+  "delete": "Sil",
+  "add": "Əlavə et",
+  "edit": "Redaktə et",
+  "newVersionTitle": "Yeni versiya @version tapıldı",
+  "newVersionUpdate": "İndi Yenilə",
+  "newVersionLater": "Sonra",
+  "extensions": "Uzantılar",
+  "extensionInstallUrl": "Quraşdırma URL-i",
+  "extensionInstallSuccess": "Uğurla quraşdırıldı",
+  "extensionUpdateSuccess": "Uğurla yeniləndi",
+  "extensionDelete": "Uzantını Sil",
+  "extensionAlreadyLatest": "Artıq son versiyadır",
+  "extensionFind": "Uzantı Tap",
+  "extensionDevelop": "Uzantı Hazırla",
+  "extensionStoreTitle": "Uzantı Mağazası",
+  "extensionStoreSection": "Mağaza Uzantıları",
+  "extensionInstalledSection": "Quraşdırılmış Uzantılar",
+  "extensionInstalledEmpty": "Hələ heç bir uzantı quraşdırılmayıb",
+  "extensionStoreEmpty": "Uyğun uzantı tapılmadı",
+  "extensionSearchHint": "Ada, başlığa, təsvirə və ya müəllifə görə axtar",
+  "extensionSortStars": "Ən Çox Ulduzlu",
+  "extensionSortInstalls": "Ən Çox Quraşdırılan",
+  "extensionSortUpdated": "Son Yenilənən",
+  "extensionSortToggle": "Sıralama istiqamətini dəyiş",
+  "extensionLoadMore": "Daha çox yüklə",
+  "extensionNoMore": "Başqa uzantı yoxdur",
+  "extensionInstalled": "Quraşdırılıb",
+  "extensionCanUpdate": "Yeniləmə Mövcuddur",
+  "extensionInstall": "Quraşdır",
+  "extensionLoadLocal": "Lokal Qovluqdan Quraşdır",
+  "extensionFilterAll": "Hamısı",
+  "extensionFilterMarket": "Mağaza",
+  "extensionFilterInstalled": "Quraşdırılıb",
+  "extensionManualInstall": "Əl ilə Quraşdırma",
+  "extensionInstallTools": "Quraşdırma Seçimləri",
+  "history": "Tarixçə",
+  "clearHistory": "Tarixçəni Təmizlə",
+  "noHistoryFound": "Tarixçə Tapılmadı",
+  "serviceTitle": "Endirmə Xidməti",
+  "serviceText": "İşləyir",
+  "network": "Şəbəkə",
+  "proxy": "Proksi",
+  "noProxy": "Proksi Yoxdur",
+  "systemProxy": "Sistem Proksisi",
+  "customProxy": "Fərdi Proksi",
+  "server": "Server",
+  "username": "İstifadəçi adı",
+  "password": "Parol",
+  "thanks": "Təşəkkürlər",
+  "thanksDesc": "Gopeed icmasının qurulmasına və inkişafına kömək edən bütün töhfəçilərə təşəkkürlər!",
+  "browserExtension": "Brauzer Uzantısı",
+  "launchAtStartup": "Başlanğıcda İşə Sal",
+  "runAsMenubarApp": "Menyu Çubuğu Tətbiqi kimi İşlə",
+  "runAsMenubarAppDesc": "Dock ikonasını gizlət və yalnız menyu çubuğunda işlə",
+  "seedConfig": "Seed Parametrləri",
+  "seedKeep": "Əl ilə dayandırılana qədər seed etməyə davam et",
+  "seedRatio": "Seed nisbəti",
+  "seedTime": "Seed müddəti (dəqiqə)",
+  "setAsDefaultBtClient": "Standart BT müştərisi kimi təyin et",
+  "taskDetail": "Tapşırıq Detalları",
+  "taskName": "Tapşırığın Adı",
+  "taskUrl": "Tapşırığın URL-i",
+  "downloadPath": "Endirmə Yolu",
+  "skipVerifyCert": "Sertifikat Yoxlamasını Ötür",
+  "archives": "Arxivlər",
+  "autoExtract": "Arxivləri Avtomatik Çıxar",
+  "archivePassword": "Arxiv Parolu",
+  "archivePasswordHint": "Parolla qorunmayıbsa boş buraxın",
+  "deleteAfterExtract": "Çıxarıldıqdan sonra arxivi sil",
+  "extracting": "Çıxarılır",
+  "extractDone": "Çıxarma tamamlandı",
+  "extractError": "Çıxarma uğursuz oldu",
+  "waitingParts": "Parçalar gözlənilir",
+  "name": "Ad",
+  "size": "Ölçü",
+  "unknown": "Naməlum",
+  "fileSelectedCount": "Fayllar: ",
+  "fileSelectedSize": "Ölçü: ",
+  "httpHeader": "Başlıq",
+  "httpHeaderName": "Başlığın Adı",
+  "httpHeaderValue": "Başlığın Dəyəri",
+  "login": "Giriş",
+  "username_required": "Zəhmət olmasa istifadəçi adınızı daxil edin",
+  "password_required": "Zəhmət olmasa parolunuzu daxil edin",
+  "login_success": "Giriş uğurlu oldu",
+  "login_failed": "Giriş uğursuz oldu, istifadəçi adınızı və parolunuzu yoxlayın",
+  "login_failed_network": "Giriş uğursuz oldu, şəbəkə əlaqənizi yoxlayın",
+  "insertPlaceholder": "Yer Tutucu Əlavə Et",
+  "placeholderYear": "Cari il",
+  "placeholderMonth": "Cari ay (01-12)",
+  "placeholderDay": "Cari gün (01-31)",
+  "placeholderDate": "Tam tarix (YYYY-MM-DD)",
+  "example": "məs. @value",
+  "downloadCategories": "Endirmə Kateqoriyaları",
+  "categoryMusic": "Musiqi",
+  "categoryVideo": "Video",
+  "categoryDocument": "Sənəd",
+  "categoryProgram": "Proqram",
+  "categoryName": "Kateqoriyanın Adı",
+  "categoryPath": "Kateqoriyanın Yolu",
+  "builtInCategory": "Daxili kateqoriya silinə bilməz",
+  "selectCategory": "Kateqoriya Seç",
+  "quickDirectories": "Sürətli qovluqlar",
+  "githubMirror": "GitHub Güzgüsü",
+  "githubMirrorEnable": "GitHub Güzgüsünü Aktivləşdir",
+  "githubMirrorDesc": "GitHub məzmununun endirilməsini sürətləndirmək üçün güzgülərdən istifadə et",
+  "githubMirrorType": "Güzgü Növü",
+  "githubMirrorUrl": "Güzgü URL-i",
+  "githubMirrorUrlHint": "Güzgü URL-ini daxil edin",
+  "updateUrl": "Yeniləmə URL-i",
+  "updateUrlManual": "Əl ilə Yeniləmə",
+  "updateUrlListen": "Yeniləməni Dinlə",
+  "updateUrlListeningTip": "URL yeniləməsi gözlənilir",
+  "updateUrlCancelListen": "Dinləməni Ləğv Et",
+  "updateUrlDialogHint": "Yeni endirmə URL-ini daxil edin",
+  "pendingUpdateFound": "Gözləyən Yeniləmə Tapşırığı Tapıldı",
+  "pendingUpdateConfirm": "\"{name}\" tapşırığı URL yeniləməsini gözləyir. Onu yeni URL ilə yeniləmək istəyirsiniz?",
+  "@pendingUpdateConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pendingUpdateYes": "Tapşırığı Yenilə",
+  "pendingUpdateNo": "Yeni Tapşırıq Yarat",
+  "ed2k": "ED2K",
+  "ed2kTcpPort": "TCP Dinləmə Portu",
+  "ed2kUdpPort": "UDP Dinləmə Portu",
+  "ed2kServerList": "Server Ünvanları",
+  "ed2kServerMet": "Server.met Mənbələri",
+  "ed2kNodesDat": "nodes.dat Mənbələri",
+  "ed2kAutoPort": "Avtomatik təyin et",
+  "ed2kOnePerLine": "Hər sətirdə bir dənə",
+  "ed2kServersHint": "host:port, hər sətirdə bir dənə",
+  "ed2kServerMetHint": "Server.met URL-i və ya ed2k server siyahısı keçidi, hər sətirdə bir dənə",
+  "ed2kNodesDatHint": "nodes.dat yolu və ya URL-i, hər sətirdə bir dənə",
+  "desktopNotification": "Masaüstü Bildirişləri",
+  "backgroundLocationKeepAlive": "Fon Endirmələri",
+  "notificationTaskDone": "Tapşırıq tamamlandı",
+  "notificationTaskError": "Tapşırıq xətası",
+  "appTitle": "Gopeed Endirmə Meneceri",
+  "unsupportedWindowPayload": "Dəstəklənməyən pəncərə sorğusu",
+  "runtimeInitializationFailed": "Gopeed runtime-ını işə salmaq mümkün olmadı.\n{error}",
+  "save": "Yadda saxla",
+  "retry": "Yenidən cəhd et",
+  "close": "Bağla",
+  "back": "Geri",
+  "open": "Aç",
+  "openFile": "Faylı Aç",
+  "share": "Paylaş",
+  "copy": "Kopyala",
+  "copied": "Kopyalandı",
+  "refresh": "Yenilə",
+  "status": "Vəziyyət",
+  "createdAt": "Yaradılıb",
+  "speed": "Sürət",
+  "uploadSpeed": "Yükləmə sürəti",
+  "remaining": "Qalıb",
+  "downloadDuration": "Endirmə müddəti",
+  "progress": "İrəliləyiş",
+  "failed": "Uğursuz",
+  "completed": "Tamamlandı",
+  "waiting": "Gözləyir",
+  "taskFailed": "Tapşırıq uğursuz oldu",
+  "unknownSize": "Naməlum ölçü",
+  "secondsRemaining": "{count} saniyə qalır",
+  "minutesRemaining": "{count} dəqiqə qalır",
+  "hoursRemaining": "{count} saat qalır",
+  "secondsDuration": "{count} saniyə",
+  "minutesDuration": "{count} dəqiqə",
+  "hoursDuration": "{count} saat",
+  "followSystem": "Sistem Standartı",
+  "basicSettings": "Əsas",
+  "downloadSettings": "Endirmələr",
+  "advancedSettings": "Əlavə",
+  "themeColor": "Vurğu Rəngi",
+  "themeColorDescription": "Tətbiqin vurğu rəngini fərdiləşdirin",
+  "browserExtensionDescription": "Quraşdırdıqdan sonra brauzer endirmələrini birbaşa Gopeed-ə göndər",
+  "desktopNotificationDescription": "Tapşırıq tamamlandıqda və ya uğursuz olduqda sistem bildirişi göstər",
+  "backgroundLocationKeepAliveDescription": "Fonda endirmələri aktiv saxlamaq üçün məkan girişindən istifadə et",
+  "currentVersion": "Cari versiya {version}",
+  "contributors": "Töhfəçilər",
+  "viewContributors": "Töhfəçilərə bax",
+  "maxRunningDescription": "Eyni anda endirilə biləcək maksimum tapşırıq sayı",
+  "defaultUserAgentDescription": "HTTP və HTTPS endirmələri üçün standart User-Agent",
+  "listenPort": "Dinləmə Portu",
+  "onePerLine": "Hər sətirdə bir dənə",
+  "proxyProtocol": "Protokol",
+  "restartRequired": "Bu parametr tətbiq yenidən başladıldıqdan sonra qüvvəyə minir",
+  "socketPath": "Soket Yolu",
+  "listenAddress": "Dinləmə Ünvanı",
+  "currentConnection": "Cari Endpoint",
+  "webhookPush": "Endpoint-lər",
+  "webhookPushDescription": "Tapşırıqlar tamamlandıqda və ya uğursuz olduqda bu endpoint-lərə HTTP POST bildirişləri göndər",
+  "scriptExecution": "Skriptlər",
+  "scriptExecutionDescription": "Endirmə uğurla tamamlandıqdan sonra bu skriptləri işə sal",
+  "addWebhook": "Webhook Əlavə Et",
+  "editWebhook": "Webhook Redaktə Et",
+  "addScript": "Skript Əlavə Et",
+  "editScript": "Skript Redaktə Et",
+  "openDirectory": "Qovluğu Aç",
+  "browseFiles": "Faylları Gözdən Keçir",
+  "updateEveryDay": "Gündəlik yenilə",
+  "updateVersion": "Yenilə",
+  "checkForUpdates": "Yeniləmələri Yoxla",
+  "updating": "Yenilənir…",
+  "colorGreen": "Yaşıl",
+  "colorRed": "Qırmızı",
+  "colorRose": "Çəhrayı",
+  "colorOrange": "Narıncı",
+  "colorCyan": "Firuzəyi",
+  "colorBlue": "Mavi",
+  "colorAmber": "Kəhrəba",
+  "colorPurple": "Bənövşəyi",
+  "noExtensions": "Uzantı yoxdur",
+  "searchExtensions": "Uzantıları axtar…",
+  "extensionDeveloperGuide": "Uzantı tərtibatçı bələdçisi",
+  "extensionInstallFromUrl": "URL-dən uzantı quraşdır",
+  "unableOpenExtensionDocs": "Uzantı tərtibatçı bələdçisini açmaq mümkün olmadı",
+  "removeExtensionTitle": "Uzantı sistemdən silinsin?",
+  "removeExtensionConfirm": "“{name}” uzantısını sistemdən silmək istədiyinizə əminsiniz?",
+  "uninstall": "Sistemdən sil",
+  "unableLoadExtensions": "Uzantıları yükləmək mümkün olmadı",
+  "filters": "Süzgəclər",
+  "allTasks": "Bütün Tapşırıqlar",
+  "searchDownloads": "Endirmələri axtar…",
+  "searchHistory": "Tarixçədə axtar…",
+  "addTask": "Tapşırıq Əlavə Et",
+  "emptyTaskList": "Bu siyahıda tapşırıq yoxdur",
+  "noMatchingTasks": "Uyğun tapşırıq tapılmadı",
+  "taskList": "Tapşırıqlar",
+  "selectedCount": "{selected} / {total} seçilib",
+  "unableOpenPath": "{path} açmaq mümkün olmadı",
+  "unableLocatePath": "{path} tapmaq mümkün olmadı",
+  "clearSelection": "Seçimi təmizlə",
+  "deselectTask": "Seçimi ləğv et",
+  "selectTask": "Seç",
+  "updateManually": "Əl ilə yenilə",
+  "stopListening": "Dinləməni dayandır",
+  "listenForUrl": "URL üçün dinlə",
+  "waitingForReplacementUrl": "Əvəzedici URL gözlənilir",
+  "taskNotFound": "Tapşırıq tapılmadı",
+  "storagePath": "Yaddaş Yolu",
+  "directory": "Qovluq",
+  "mode": "Rejim",
+  "keepOriginalName": "Orijinal adı saxla",
+  "enterCount": "Sayı daxil edin",
+  "chooseDownloadDirectory": "Endirmə qovluğunu seçin",
+  "applicationStorage": "Tətbiq yaddaşı",
+  "applicationStorageDescription": "Etibarlı tətbiq yaddaşı; tətbiq silindikdə fayllar silinir",
+  "publicDownloadsDescription": "Silindikdən sonra faylları saxlayır; əlçatanlıq Android cihazından asılıdır",
+  "downloadsDirectoryUnavailable": "Gopeed bu cihazda Download/Gopeed qovluğuna yaza bilmir",
+  "enterValue": "Dəyəri daxil edin",
+  "trackers": "Tracker-lər",
+  "oneTrackerPerLine": "Hər sətirdə bir tracker URL-i",
+  "pasteDownloadLinks": "HTTP, HTTPS və ya MAGNET keçidlərini yapışdırın, ya da bura torrent faylı buraxın",
+  "unableReadTorrent": "Torrent faylı oxuna bilmədi: {error}",
+  "torrentOnly": "Yalnız .torrent faylları dəstəklənir",
+  "torrentDataEmpty": "Torrent fayl məlumatı boşdur",
+  "torrentPathUnavailable": "Torrent fayl yoluna giriş mümkün olmadı",
+  "selectAtLeastOneFile": "Ən azı bir fayl seçin",
+  "resolvedFiles": "Tapılmış Fayllar",
+  "resolvedFileCount": "{count} fayl tapıldı",
+  "resourceHasNoFiles": "Bu resursda seçilə bilən fayl siyahısı yoxdur",
+  "noFiles": "Fayl yoxdur",
+  "createHistory": "Tarixçə Yarat",
+  "noHistory": "Tarixçə yoxdur",
+  "directDownloadDescription": "Təhlili keç və tapşırıqları dərhal yarat",
+  "taskProgress": "Tapşırığın irəliləyişi",
+  "updateAndResume": "Yenilə və davam et",
+  "httpHeaders": "HTTP başlıqları",
+  "piece": "Parça {number}",
+  "pieceRange": "Parçalar {start}-{end}",
+  "connectionStatus": "Əlaqə Vəziyyəti",
+  "connectionCount": "{count} əlaqə",
+  "retrying": "Yenidən cəhd edilir",
+  "connectionFailed": "Əlaqə uğursuz oldu",
+  "connectionFailedRetries": "{count} cəhddən sonra əlaqə uğursuz oldu",
+  "retryingCount": "Yenidən cəhd edilir · {count}-ci cəhd",
+  "pieceStatus": "Parça Vəziyyəti",
+  "peers": "Peer-lər",
+  "seeders": "Seed edənlər",
+  "leechers": "Endirənlər",
+  "downloadedAmount": "Endirilib",
+  "uploadedAmount": "Yüklənib",
+  "shareRatio": "Paylaşım Nisbəti",
+  "shareDuration": "Paylaşım Müddəti",
+  "connectedPeers": "{count} Peer qoşulub",
+  "active": "Aktiv",
+  "completedPieces": "Tamamlanmış Parçalar",
+  "activePeers": "{count} Peer aktivdir",
+  "incomplete": "Tamamlanmamış",
+  "address": "Ünvan",
+  "client": "Müştəri",
+  "pieces": "Parçalar",
+  "source": "Mənbə",
+  "fileRelevance": "Faylın uyğunluğu",
+  "taskDetails": "Tapşırığın Detalları",
+  "taskDetailsInfoTab": "Detallar",
+  "taskDetailsFilesTab": "Fayllar",
+  "taskDetailsStatsTab": "Statistika",
+  "noStatistics": "Statistika mövcud deyil",
+  "noPeers": "Heç bir Peer yoxdur",
+  "deleteTasksTitle": "{count} tapşırıq silinsin?",
+  "keepFilesDescription": "Yalnız tapşırıq qeydini Gopeed-dən sil",
+  "readingRuntimeStatus": "İşləmə vəziyyəti oxunur…",
+  "apiConfigSaved": "API parametrləri yadda saxlanıldı",
+  "apiConfigPendingApply": "Yadda saxlanılan parametrlər işləyən xidmətə hələ tətbiq edilməyib",
+  "apiServerRunning": "İşləyir",
+  "apiServerStopped": "Dayandırılıb",
+  "apiServerFailed": "Xəta",
+  "apiServerRuntimeStatus": "İşləmə vəziyyəti",
+  "startApiServer": "Başlat",
+  "stopApiServer": "Dayandır",
+  "saveAndRestartApiServer": "Yadda saxla və yenidən başlat",
+  "restartApiServerConfirm": "REST API xidməti işləyir. Bu parametrləri tətbiq etmək onu yenidən başladacaq və mövcud API əlaqələrini kəsəcək.",
+  "disableApiServerConfirm": "REST API serveri deaktiv edilsin? Mövcud API əlaqələri kəsiləcək.",
+  "socketPathRequired": "Soket yolu tələb olunur",
+  "serverRequired": "Server tələb olunur",
+  "portRangeError": "0 ilə 65535 arasında port daxil edin",
+  "portInUseValue": "Port {port} artıq istifadədədir",
+  "backgroundLocationPermissionRequired": "Fon endirmələri üçün 'Həmişə icazə ver' məkan girişi tələb olunur",
+  "scriptPath": "Skript Yolu",
+  "logDirectoryUnavailable": "Loq qovluğu işə salınmayıb",
+  "unableOpenExternalLink": "Xarici keçidi açmaq mümkün olmadı",
+  "neverUpdated": "Heç vaxt yenilənməyib",
+  "lastUpdated": "Son yenilənmə: {time}",
+  "unableLoadSettings": "Parametrləri yükləmək mümkün olmadı",
+  "fieldRequired": "{field} tələb olunur",
+  "addGithubMirror": "GitHub Güzgüsü Əlavə Et",
+  "editGithubMirror": "GitHub Güzgüsünü Redaktə Et",
+  "confirmDeleteTitle": "Silinmə təsdiqlənsin?",
+  "confirmDeleteNamed": "“{name}” silmək istədiyinizə əminsiniz?",
+  "categoryFieldsRequired": "Kateqoriya adı və yolu tələb olunur",
+  "addCategory": "Kateqoriya Əlavə Et",
+  "editCategory": "Kateqoriyanı Redaktə Et",
+  "deleteCategoryTitle": "Kateqoriya silinsin?",
+  "updateFailed": "Yeniləmə uğursuz oldu. Zəhmət olmasa sonra yenidən cəhd edin",
+  "newVersionAvailable": "Yeni versiya mövcuddur",
+  "releaseNotes": "Yeniliklər",
+  "noReleaseNotes": "Buraxılış qeydləri mövcud deyil",
+  "preparingDownload": "Endirmə hazırlanır…",
+  "booleanValueHint": "true / false",
+  "@runtimeInitializationFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "@secondsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@secondsDuration": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesDuration": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursDuration": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@currentVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "@removeExtensionConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "@selectedCount": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@unableOpenPath": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "@unableLocatePath": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "@unableReadTorrent": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "@resolvedFileCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@piece": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "@pieceRange": {
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      }
+    }
+  },
+  "@connectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@connectionFailedRetries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@retryingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@connectedPeers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@activePeers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@deleteTasksTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@portInUseValue": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "@lastUpdated": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "@fieldRequired": {
+    "placeholders": {
+      "field": {}
+    }
+  },
+  "@confirmDeleteNamed": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "androidForegroundServiceChannel": "Gopeed Fon Xidməti",
+  "androidForegroundNotificationTitle": "Gopeed işləyir",
+  "androidForegroundNotificationText": "Endirmələr fonda davam edə bilər",
+  "mcpDescription": "AI agentləri ilə əməkdaşlıq edin, sonsuz imkanları kəşf edin",
+  "connectAgent": "Quraşdırma bələdçisi",
+  "connectMcpAgent": "MCP agenti qoş",
+  "mcpAgentDialogDescription": "İstifadə etdiyiniz agenti seçin, sonra onun əlaqə konfiqurasiyasını kopyalayın.",
+  "mcpNotRunningHint": "MCP xidməti aktiv deyil. Zəhmət olmasa aktivləşdirin",
+  "webMcpApiTokenHint": "Əgər API açarı konfiqurasiya etmisinizsə, agenti qoşarkən doğrulama məlumatı tələb olunur",
+  "useMcpApiTokenTemplate": "Doğrulamalı konfiqurasiyaya keç",
+  "webApiConfigReadOnlyHelp": "Veb versiyası API parametrlərinin onlayn dəyişdirilməsini dəstəkləmir. Server başlanğıc seçimlərini və ya konfiqurasiya faylını yeniləyin, sonra dəyişikliklərin qüvvəyə minməsi üçün xidməti yenidən başladın.",
+  "mcpRequiresTcp": "Agent əlaqə təlimatları API protokolu TCP olduqda mövcuddur."
+}
