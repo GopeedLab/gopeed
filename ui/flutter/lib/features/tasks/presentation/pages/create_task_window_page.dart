@@ -763,15 +763,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   Future<void> _pickTorrentFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['torrent'],
-      withData: kIsWeb,
-    );
-    final file = result?.files.single;
+    final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['torrent']);
     if (file == null) return;
 
-    await _applyTorrentFile(name: file.name, filePath: file.path, bytes: file.bytes);
+    await _applyTorrentFile(name: file.name, filePath: file.path, readBytes: file.readAsBytes);
   }
 
   Future<void> _handleDroppedTorrent(DropDoneDetails details) async {

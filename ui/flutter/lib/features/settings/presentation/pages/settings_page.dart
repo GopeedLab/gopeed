@@ -1378,8 +1378,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       initialValue: index == null ? '' : paths[index],
       pickPath: Util.isDesktop()
           ? () async {
-              final result = await FilePicker.platform.pickFiles();
-              return result?.files.firstOrNull?.path;
+              final file = await FilePicker.pickFile();
+              return file?.path;
             }
           : null,
     );
