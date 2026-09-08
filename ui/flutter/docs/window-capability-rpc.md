@@ -85,12 +85,6 @@ Appearance synchronization uses `appearance.changed` and currently contains:
 - Theme color
 - Locale
 
-After successful task creation, a child calls the typed
-`NavigationMethods.showDownloadingTasks` capability before closing. The host
-routes to the task list and resets its filter to downloading, including any
-search or selection on an already-mounted list. This does not show or focus a
-hidden main window. Cancellation and failed creation do not request navigation.
-
 State broadcasting must observe the owning Riverpod state centrally. Do not broadcast directly from a settings button callback, because updates can originate from configuration loading, system changes, or future entry points.
 
 ## 6. Storage
