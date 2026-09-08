@@ -449,7 +449,7 @@ void main() {
         child: shad.ShadcnApp(
           theme: AppTheme.light(),
           materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+          home: const AppComponentThemes(child: ExtensionsPage()),
         ),
       ),
     );
@@ -469,6 +469,7 @@ void main() {
     final cardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-0')));
     final rightmostCardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-2')));
     final appMarkRect = tester.getRect(find.byKey(const ValueKey('primary-rail-app-mark')));
+    expect(searchRect.height, closeTo(sortRect.height, 0.01));
     expect(searchRect.width, 240);
     expect(searchRect.width, lessThan(cardRect.width));
     expect(sortRect.left - searchRect.right, closeTo(10, 0.01));
@@ -501,6 +502,7 @@ void main() {
     expect(find.byType(PrimaryRail), findsOneWidget);
     final compactSearchRect = tester.getRect(find.byKey(const ValueKey('extension-search-field-container')));
     expect(compactSearchRect.width, lessThan(240));
+    expect(compactSearchRect.height, closeTo(sortRect.height, 0.01));
     expect(
       tester.getRect(find.byKey(const ValueKey('extension-sort-control'))).center.dy,
       closeTo(compactSearchRect.center.dy, 0.01),
@@ -745,7 +747,7 @@ void main() {
         child: shad.ShadcnApp(
           theme: AppTheme.light(),
           materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+          home: const AppComponentThemes(child: ExtensionsPage()),
         ),
       ),
     );
