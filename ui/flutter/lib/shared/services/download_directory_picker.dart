@@ -58,7 +58,7 @@ class DownloadDirectoryPicker {
       return _pickAndroid(context, currentPath: currentPath);
     }
     if (_platform == TargetPlatform.iOS) return null;
-    return FilePicker.platform.getDirectoryPath();
+    return FilePicker.getDirectoryPath();
   }
 
   static Future<String?> _pickAndroid(BuildContext context, {required String currentPath}) async {

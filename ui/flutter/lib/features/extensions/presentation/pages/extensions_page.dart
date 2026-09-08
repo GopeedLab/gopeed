@@ -210,7 +210,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   }
 
   Future<void> _installFromFolder() async {
-    final folder = await FilePicker.platform.getDirectoryPath();
+    final folder = await FilePicker.getDirectoryPath();
     if (folder == null || folder.isEmpty) return;
     await _runAction(() => ref.read(extensionsControllerProvider.notifier).installFromUrl(folder, devInstall: true));
   }
