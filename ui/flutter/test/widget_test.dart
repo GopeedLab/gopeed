@@ -13,6 +13,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:window_manager/window_manager.dart';
 import 'package:gopeed/app/app.dart';
+import 'package:gopeed/app/router/app_router.dart';
+import 'package:gopeed/core/capabilities/app_capabilities.dart';
+import 'package:gopeed/core/capabilities/app_navigation_capability.dart';
 import 'package:gopeed/app/application/app_appearance_controller.dart';
 import 'package:gopeed/app/application/app_deep_link_controller.dart';
 import 'package:gopeed/app/application/app_notification_controller.dart';
@@ -92,6 +95,38 @@ import 'package:gopeed/util/updater.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.localeTestValue = const Locale('en');
+
+  testWidgets('child success returns to downloading from completed and another page', (tester) async {
+    await _setTestSize(tester, const Size(1024, 768));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          tasksControllerProvider.overrideWith(CompletedTasksController.new),
+          settingsControllerProvider.overrideWith(FakeSettingsController.new),
+        ],
+        child: const GopeedApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Completed'));
+    await tester.pumpAndSettle();
+    expect(find.text('done.zip'), findsOneWidget);
+
+    // Exercise the same serialized operation dispatched by a child window.
+    await LocalAppCapabilities.instance.registry.invoke(NavigationMethods.showDownloadingTasks.name, {});
+    await tester.pumpAndSettle();
+    expect(find.text('done.zip'), findsNothing);
+    expect(find.text('Create Task'), findsOneWidget);
+
+    GoRouter.of(AppRouter.rootNavigatorKey.currentContext!).go('/settings');
+    await tester.pumpAndSettle();
+    await LocalAppCapabilities.instance.capabilities.navigation.showDownloadingTasks();
+    await tester.pumpAndSettle();
+    expect(GoRouter.of(AppRouter.rootNavigatorKey.currentContext!).routeInformationProvider.value.uri.path, '/');
+    expect(find.text('done.zip'), findsNothing);
+    expect(find.text('Create Task'), findsOneWidget);
+  });
 
   test('Web MCP endpoint excludes page path, query, and hash route', () {
     expect(
