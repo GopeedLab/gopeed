@@ -22,6 +22,7 @@ class AppDesignTokens {
   static const double settingsNumberControlWidth = 168;
   static const double settingsItemMinLabelWidth = 160;
   static const EdgeInsets textFieldPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 11);
+  static const EdgeInsets compactTextFieldPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 6);
   static const EdgeInsets numberTextFieldPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 10);
 
   static const EdgeInsets pagePadding = EdgeInsets.symmetric(horizontal: 32);
