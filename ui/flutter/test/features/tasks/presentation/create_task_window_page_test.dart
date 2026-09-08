@@ -18,6 +18,7 @@ import 'package:gopeed/core/capabilities/app_navigation_capability.dart';
 import 'package:gopeed/core/capabilities/capability_rpc.dart';
 import 'package:gopeed/core/capabilities/gopeed_capability.dart';
 import 'package:gopeed/core/capabilities/storage_capability.dart';
+import 'package:gopeed/features/tasks/application/pending_create_task.dart';
 import 'package:gopeed/features/tasks/presentation/pages/create_task_window_page.dart';
 import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
@@ -28,6 +29,90 @@ import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
+  testWidgets('repeated external tasks update the open create route and replace request metadata', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      tester.view.physicalSize = const Size(700, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      CreateTask? submitted;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+        ..bind(GopeedMethods.createTask, (task) {
+          submitted = task;
+          return 'created-id';
+        })
+        ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+      final container = ProviderContainer(
+        overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+      );
+      addTearDown(container.dispose);
+      final pending = container.read(pendingCreateTaskProvider.notifier);
+      pending.set(
+        CreateTask(
+          req: Request(
+            url: 'https://example.com/first.zip',
+            rawUrl: 'https://example.com/first',
+            labels: {'source': 'first'},
+            extra: ReqExtraHttp(method: 'POST', body: 'old-body', header: {'Cookie': 'old-cookie'}).toJson(),
+            proxy: RequestProxy(mode: RequestProxyMode.custom, host: 'localhost:8080'),
+            skipVerifyCert: true,
+          ),
+        ),
+      );
+      final router = GoRouter(
+        initialLocation: '/create',
+        routes: [
+          GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+          GoRoute(path: '/create', builder: (_, _) => const CreateTaskWindowPage()),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: shad.ShadcnApp.router(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            routerConfig: router,
+            builder: (_, child) => AppComponentThemes(child: child!),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester, 'create-task-url-input'), 'https://example.com/first.zip');
+      expect(container.read(pendingCreateTaskProvider), isNull);
+      final pageState = tester.state(find.byType(CreateTaskWindowPage));
+
+      for (final url in [
+        'https://example.com/second.zip',
+        'https://example.com/third.zip',
+        'https://example.com/third.zip',
+      ]) {
+        pending.set(CreateTask(req: Request(url: url)));
+        router.go('/create');
+        await tester.pumpAndSettle();
+        expect(tester.state(find.byType(CreateTaskWindowPage)), same(pageState));
+        expect(_fieldText(tester, 'create-task-url-input'), url);
+        expect(container.read(pendingCreateTaskProvider), isNull);
+      }
+      await tester.tap(find.byKey(const ValueKey('create-task-direct-download-toggle')));
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
+      expect(submitted?.req?.url, 'https://example.com/third.zip');
+      expect(submitted?.req?.rawUrl, isNull);
+      expect(submitted?.req?.labels, isNull);
+      expect(submitted?.req?.extra, isNull);
+      expect(submitted?.req?.proxy?.mode, RequestProxyMode.follow);
+      expect(submitted?.req?.skipVerifyCert, isFalse);
+      expect(tester.takeException(), isNull);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   for (final navigationFails in [false, true]) {
     testWidgets('child creation selects downloads before closing (navigation fails: $navigationFails)', (tester) async {
       tester.view.physicalSize = const Size(1024, 720);
