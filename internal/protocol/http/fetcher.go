@@ -459,6 +459,7 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	if file.Name == "" || file.Name == "/" || file.Name == "." {
 		file.Name = httpReq.URL.Hostname()
 	}
+	file.Name = appendFilenameExtension(file.Name, resp.Header.Get("Content-Type"))
 
 	res.Files = append(res.Files, file)
 	f.meta.Res = res
