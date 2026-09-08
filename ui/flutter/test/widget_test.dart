@@ -1895,6 +1895,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('loading button preserves its content dimensions', (WidgetTester tester) async {
+    var loading = false;
+    late StateSetter setButtonState;
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Center(
+          child: StatefulBuilder(
+            builder: (context, update) {
+              setButtonState = update;
+              return AppLoadingButton(
+                key: const ValueKey('dimension-stable-loading-button'),
+                onPressed: () {},
+                loading: loading,
+                variant: AppLoadingButtonVariant.primary,
+                child: const Text('Confirm'),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final button = find.byKey(const ValueKey('dimension-stable-loading-button'));
+    final idleSize = tester.getSize(button);
+
+    setButtonState(() => loading = true);
+    await tester.pump();
+
+    expect(tester.getSize(button), idleSize);
+    expect(find.descendant(of: button, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+  });
+
   testWidgets('failed tracker update does not reload or reset the settings page', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     final runtimeController = FailingTrackerRuntimeController();
@@ -2337,7 +2371,9 @@ void main() {
     await tester.pumpAndSettle();
     final createDirectoryInput = find.byKey(const ValueKey('create-task-directory-input'));
     final createRenameInput = find.byKey(const ValueKey('create-task-rename-input'));
+    final createConnectionsInput = find.byKey(const ValueKey('create-task-connections-input'));
     expect(tester.getSize(createDirectoryInput).height, tester.getSize(createRenameInput).height);
+    expect(tester.getSize(createConnectionsInput), tester.getSize(createRenameInput));
     final createDirectoryField = tester.widget<shad.TextField>(createDirectoryInput);
     final createRenameField = tester.widget<shad.TextField>(
       find.descendant(of: createRenameInput, matching: find.byType(AppTextField)),
@@ -2437,6 +2473,27 @@ void main() {
     expect(tester.widget<shad.GhostButton>(onlyRemoveHeader).onPressed, isNull);
     expect(find.byKey(const ValueKey('create-task-http-header-name-0')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('create task rename stays user-controlled and resets when the URL changes', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(700, 500));
+    await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
+    await tester.pump();
+
+    final urlInput = find.byKey(const ValueKey('create-task-url-input'));
+    final renameInput = find.byKey(const ValueKey('create-task-rename-input'));
+    await tester.enterText(urlInput, 'https://example.com/first.zip');
+    await tester.enterText(renameInput, 'custom-name.zip');
+    expect(find.text('custom-name.zip'), findsOneWidget);
+
+    await tester.enterText(urlInput, 'https://example.com/second.zip');
+    await tester.pump();
+
+    final renameField = tester.widget<AppTextField>(
+      find.descendant(of: renameInput, matching: find.byType(AppTextField)),
+    );
+    expect(renameField.controller!.text, isEmpty);
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('create task labels direct download without a mode field', (WidgetTester tester) async {
@@ -2626,6 +2683,7 @@ void main() {
     expect(treeFinder, findsOneWidget);
     final tree = tester.widget<VirtualTreeView<dynamic>>(treeFinder);
     expect(tree.branchLine, same(shad.BranchLine.path));
+    expect(tree.rowHeight, 36);
     expect(
       tester.widgetList<shad.Checkbox>(find.byType(shad.Checkbox)).every((checkbox) => checkbox.size == null),
       isTrue,
@@ -4854,7 +4912,7 @@ class _CreateTaskPageHarness extends StatelessWidget {
     return shad.ShadcnApp(
       theme: AppTheme.light(),
       materialTheme: AppTheme.materialLight(),
-      home: const CreateTaskWindowPage(),
+      home: const AppComponentThemes(child: CreateTaskWindowPage()),
     );
   }
 }

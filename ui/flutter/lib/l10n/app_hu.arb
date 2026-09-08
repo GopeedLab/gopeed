@@ -18,6 +18,7 @@
   "exit": "Kilépés",
   "pressBackAgainToExit": "Nyomja meg újra a Vissza gombot a kilépéshez",
   "create": "Feladat létrehozása",
+  "createAction": "Létrehozás",
   "directDownload": "Közvetlen letöltés",
   "advancedOptions": "Haladó beállítások",
   "followSettings": "Beállítások követése",

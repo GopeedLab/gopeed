@@ -18,6 +18,7 @@
   "exit": "Quitter",
   "pressBackAgainToExit": "Appuyez à nouveau sur Retour pour quitter",
   "create": "Créer une tâche",
+  "createAction": "Créer",
   "directDownload": "Téléchargement direct",
   "advancedOptions": "Options avancées",
   "followSettings": "Suivre les paramètres",
