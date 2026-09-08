@@ -719,6 +719,19 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     await windowManager.close();
   }
 
+  Future<void> _finishCreation() async {
+    if (widget.windowController != null) {
+      // Navigation is best-effort after a successful submission. A navigation
+      // failure must not leave a completed form available for resubmission.
+      try {
+        await ref.read(appCapabilitiesProvider).navigation.showDownloadingTasks();
+      } catch (error) {
+        debugPrint('Unable to select downloading tasks: $error');
+      }
+    }
+    await _closeWindow();
+  }
+
   Future<void> _loadDefaults() async {
     try {
       final config = await ref.read(gopeedServiceProvider).getConfig();
@@ -845,7 +858,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 );
           }),
         );
-        await _closeWindow();
+        await _finishCreation();
         return;
       }
 
@@ -861,7 +874,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         }
         return;
       }
-      await _closeWindow();
+      await _finishCreation();
     } catch (error) {
       if (mounted) {
         _showToast(error.toString());

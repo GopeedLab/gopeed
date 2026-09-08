@@ -1,4 +1,6 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/widgets.dart' as flutter show Row;
 import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart' show Icons;
@@ -10,6 +12,7 @@ import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/options.dart';
 import 'package:gopeed/api/model/request.dart';
 import 'package:gopeed/core/capabilities/app_capabilities.dart';
+import 'package:gopeed/core/capabilities/app_navigation_capability.dart';
 import 'package:gopeed/core/capabilities/capability_rpc.dart';
 import 'package:gopeed/core/capabilities/gopeed_capability.dart';
 import 'package:gopeed/core/capabilities/storage_capability.dart';
@@ -22,6 +25,58 @@ import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
+  for (final navigationFails in [false, true]) {
+    testWidgets('child creation selects downloads before closing (navigation fails: $navigationFails)', (tester) async {
+      tester.view.physicalSize = const Size(1024, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final events = <String>[];
+      const channel = MethodChannel('window_manager');
+      final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        events.add(call.method);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      final config = DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.getConfig, (_) => config)
+        ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit())
+        ..bind(GopeedMethods.createTask, (_) {
+          events.add('created');
+          return 'task-id';
+        })
+        ..bind(NavigationMethods.showDownloadingTasks, (_) {
+          events.add('downloads');
+          if (navigationFails) throw StateError('Navigation unavailable');
+          return const RpcUnit();
+        });
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: AppComponentThemes(
+              child: CreateTaskWindowPage(
+                windowController: WindowController.fromWindowId('child'),
+                initialTask: CreateTask(req: Request(url: 'https://example.com/file.apk')),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirm'));
+      // The mocked native close deliberately leaves the widget mounted.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(events, ['created', 'downloads', 'close']);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
   testWidgets('mobile create task page starts below the system status bar', (WidgetTester tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     tester.view.physicalSize = const Size(700, 760);
