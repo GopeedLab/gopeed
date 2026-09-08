@@ -321,9 +321,7 @@ void main() {
     expect(submitted?.opts?.name, isEmpty);
   });
 
-  testWidgets('resolved task keeps rename empty and uses a single-line intrinsic create action', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('resolved task keeps rename empty and uses equal-width single-line actions', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(700, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -367,6 +365,10 @@ void main() {
     expect(createText.data, 'Create');
     expect(createText.maxLines, 1);
     expect(createText.softWrap, isFalse);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('resolve-cancel-button'))),
+      tester.getSize(find.byKey(const ValueKey('resolve-create-button'))),
+    );
     expect(tester.takeException(), isNull);
   });
 

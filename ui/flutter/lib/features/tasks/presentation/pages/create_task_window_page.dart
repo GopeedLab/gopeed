@@ -39,6 +39,7 @@ import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
 import '../widgets/resolve_file_tree.dart';
+import '../widgets/resolve_task_actions.dart';
 
 class CreateTaskWindowPage extends ConsumerStatefulWidget {
   const CreateTaskWindowPage({super.key, this.windowController, this.initialTask});
@@ -1132,16 +1133,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 ),
               ),
               actions: [
-                SecondaryButton(
-                  onPressed: submitting ? null : () => closeOverlay(dialogContext, false),
-                  child: SizedBox(width: 68, child: Center(child: Text(dialogContext.l10n.cancel))),
-                ),
-                AppLoadingButton(
-                  key: const ValueKey('resolve-create-button'),
-                  onPressed: submit,
-                  loading: submitting,
-                  variant: AppLoadingButtonVariant.primary,
-                  child: Text(dialogContext.l10n.createAction, maxLines: 1, softWrap: false),
+                flutter.Flexible(
+                  child: ResolveTaskActions(
+                    submitting: submitting,
+                    onCancel: () => closeOverlay(dialogContext, false),
+                    onCreate: submit,
+                  ),
                 ),
               ],
             );
