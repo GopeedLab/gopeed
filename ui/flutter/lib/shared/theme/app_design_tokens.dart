@@ -10,6 +10,7 @@ class AppDesignTokens {
   static const double contentHeaderHeight = 48;
   static const double taskRowHeight = 72;
   static const double controlRadius = 4;
+  static const double dialogActionMinWidth = 100;
   static const double checkboxSize = 18;
   static const double checkboxLabelGap = 10;
   static const double taskDetailsDrawerMinWidth = 440;
