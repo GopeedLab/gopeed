@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
-import '../../../libgopeed_boot.dart';
-import '../../../ffi/libgopeed_worker.dart';
 import '../../../../util/util.dart';
+import '../../../ffi/libgopeed_worker.dart';
+import '../../../libgopeed_boot.dart';
 import '../gopeed_transport.dart';
 
 GopeedTransport createTransport(GopeedTransportConfig config) => NativeGopeedTransport();
@@ -32,14 +32,16 @@ class NativeGopeedTransport implements GopeedTransport {
   }) async {
     final request = _RequestParts.from(path, queryParameters);
     final requestBody = data == null ? '' : jsonEncode(data);
-    final payload = _ffiWorker != null
-        ? await _ffiWorker.invoke(method.toUpperCase(), request.path, request.query, requestBody)
-        : await LibgopeedBoot.instance.invoke(
-            method.toUpperCase(),
-            request.path,
-            query: request.query,
-            body: requestBody,
-          );
+    final worker = _ffiWorker;
+    if (worker != null) {
+      return worker.invoke(method.toUpperCase(), request.path, request.query, requestBody);
+    }
+    final payload = await LibgopeedBoot.instance.invoke(
+      method.toUpperCase(),
+      request.path,
+      query: request.query,
+      body: requestBody,
+    );
     return jsonDecode(payload);
   }
 
