@@ -108,6 +108,7 @@ dependency_overrides:
       path: permission_handler_windows
 
 dev_dependencies:
+  app_links_platform_interface: ^2.0.2
   flutter_test:
     sdk: flutter
 
@@ -211,7 +212,7 @@ ffigen:
       - "StartAPIServer"
       - "StopAPIServer"
       - "RestartAPIServer"
-      - "Invoke"
+      - "InvokeAsync"
       - "SubscribeTaskEvents"
       - "FreeCString"
   structs:

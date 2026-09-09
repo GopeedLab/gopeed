@@ -2,7 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/widgets.dart' as flutter show Row;
-import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +18,7 @@ import 'package:gopeed/core/capabilities/capability_rpc.dart';
 import 'package:gopeed/core/capabilities/gopeed_capability.dart';
 import 'package:gopeed/core/capabilities/storage_capability.dart';
 import 'package:gopeed/features/tasks/presentation/pages/create_task_window_page.dart';
+import 'package:gopeed/features/tasks/application/pending_create_task.dart';
 import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
 import 'package:gopeed/shared/theme/app_design_tokens.dart';
@@ -26,58 +28,183 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
   for (final navigationFails in [false, true]) {
-    testWidgets('child creation selects downloads before closing (navigation fails: $navigationFails)', (tester) async {
-      tester.view.physicalSize = const Size(1024, 720);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final events = <String>[];
-      const channel = MethodChannel('window_manager');
-      final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-      messenger.setMockMethodCallHandler(channel, (call) async {
-        events.add(call.method);
-        return null;
-      });
-      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
-      final config = DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true;
-      final registry = CapabilityRegistry(createAppCapabilityCodecs())
-        ..bind(GopeedMethods.getConfig, (_) => config)
-        ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit())
-        ..bind(GopeedMethods.createTask, (_) {
-          events.add('created');
-          return 'task-id';
-        })
-        ..bind(NavigationMethods.showDownloadingTasks, (_) {
-          events.add('downloads');
-          if (navigationFails) throw StateError('Navigation unavailable');
-          return const RpcUnit();
+    testWidgets(
+      'child creation selects downloads before closing (navigation fails: $navigationFails)',
+      (tester) async {
+        tester.view.physicalSize = const Size(1024, 720);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final events = <String>[];
+        const channel = MethodChannel('window_manager');
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        messenger.setMockMethodCallHandler(channel, (call) async {
+          events.add(call.method);
+          return null;
         });
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
-          child: shad.ShadcnApp(
-            theme: AppTheme.light(),
-            materialTheme: AppTheme.materialLight(),
-            home: AppComponentThemes(
-              child: CreateTaskWindowPage(
-                windowController: WindowController.fromWindowId('child'),
-                initialTask: CreateTask(req: Request(url: 'https://example.com/file.apk')),
+        addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+        final config = DownloaderConfig(downloadDir: '/downloads')
+          ..extra.defaultDirectDownload = true;
+        final registry = CapabilityRegistry(createAppCapabilityCodecs())
+          ..bind(GopeedMethods.getConfig, (_) => config)
+          ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit())
+          ..bind(GopeedMethods.createTask, (_) {
+            events.add('created');
+            return 'task-id';
+          })
+          ..bind(NavigationMethods.showDownloadingTasks, (_) {
+            events.add('downloads');
+            if (navigationFails) throw StateError('Navigation unavailable');
+            return const RpcUnit();
+          });
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCapabilitiesProvider.overrideWithValue(
+                AppCapabilities(LocalCapabilityInvoker(registry)),
+              ),
+            ],
+            child: shad.ShadcnApp(
+              theme: AppTheme.light(),
+              materialTheme: AppTheme.materialLight(),
+              home: AppComponentThemes(
+                child: CreateTaskWindowPage(
+                  windowController: WindowController.fromWindowId('child'),
+                  initialTask: CreateTask(
+                    req: Request(url: 'https://example.com/file.apk'),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Confirm'));
-      // The mocked native close deliberately leaves the widget mounted.
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(events, ['created', 'downloads', 'close']);
-      await tester.pumpWidget(const SizedBox());
-    });
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Confirm'));
+        // The mocked native close deliberately leaves the widget mounted.
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(events, ['created', 'downloads', 'close']);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
   }
 
-  testWidgets('mobile create task page starts below the system status bar', (WidgetTester tester) async {
+  testWidgets(
+    'repeated external tasks update the open create route and replace request metadata',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        tester.view.physicalSize = const Size(700, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        CreateTask? submitted;
+        final registry = CapabilityRegistry(createAppCapabilityCodecs())
+          ..bind(
+            GopeedMethods.getConfig,
+            (_) => DownloaderConfig(downloadDir: '/downloads'),
+          )
+          ..bind(GopeedMethods.createTask, (task) {
+            submitted = task;
+            return 'created-id';
+          })
+          ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+        final container = ProviderContainer(
+          overrides: [
+            appCapabilitiesProvider.overrideWithValue(
+              AppCapabilities(LocalCapabilityInvoker(registry)),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        final pending = container.read(pendingCreateTaskProvider.notifier);
+        pending.set(
+          CreateTask(
+            req: Request(
+              url: 'https://example.com/first.zip',
+              rawUrl: 'https://example.com/first',
+              labels: {'source': 'first'},
+              extra: ReqExtraHttp(
+                method: 'POST',
+                body: 'old-body',
+                header: {'Cookie': 'old-cookie'},
+              ).toJson(),
+              proxy: RequestProxy(
+                mode: RequestProxyMode.custom,
+                host: 'localhost:8080',
+              ),
+              skipVerifyCert: true,
+            ),
+          ),
+        );
+        final router = GoRouter(
+          initialLocation: '/create',
+          routes: [
+            GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+            GoRoute(
+              path: '/create',
+              builder: (_, _) => const CreateTaskWindowPage(),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: shad.ShadcnApp.router(
+              theme: AppTheme.light(),
+              materialTheme: AppTheme.materialLight(),
+              routerConfig: router,
+              builder: (_, child) => AppComponentThemes(child: child!),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          _fieldText(tester, 'create-task-url-input'),
+          'https://example.com/first.zip',
+        );
+        expect(container.read(pendingCreateTaskProvider), isNull);
+        final pageState = tester.state(find.byType(CreateTaskWindowPage));
+
+        for (final url in [
+          'https://example.com/second.zip',
+          'https://example.com/third.zip',
+          'https://example.com/third.zip',
+        ]) {
+          pending.set(CreateTask(req: Request(url: url)));
+          router.go('/create');
+          await tester.pumpAndSettle();
+          expect(
+            tester.state(find.byType(CreateTaskWindowPage)),
+            same(pageState),
+          );
+          expect(_fieldText(tester, 'create-task-url-input'), url);
+          expect(container.read(pendingCreateTaskProvider), isNull);
+        }
+        await tester.tap(
+          find.byKey(const ValueKey('create-task-direct-download-toggle')),
+        );
+        await tester.tap(find.text('Confirm'));
+        await tester.pumpAndSettle();
+        expect(submitted?.req?.url, 'https://example.com/third.zip');
+        expect(submitted?.req?.rawUrl, isNull);
+        expect(submitted?.req?.labels, isNull);
+        expect(submitted?.req?.extra, isNull);
+        expect(submitted?.req?.proxy?.mode, RequestProxyMode.follow);
+        expect(submitted?.req?.skipVerifyCert, isFalse);
+        expect(tester.takeException(), isNull);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+  );
+
+  testWidgets('mobile create task page starts below the system status bar', (
+    WidgetTester tester,
+  ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     tester.view.physicalSize = const Size(700, 760);
     tester.view.devicePixelRatio = 1;
@@ -87,7 +214,10 @@ void main() {
     addTearDown(tester.view.resetPadding);
 
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
-      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'));
+      ..bind(
+        GopeedMethods.getConfig,
+        (_) => DownloaderConfig(downloadDir: '/downloads'),
+      );
     final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
 
     try {
@@ -103,367 +233,573 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final contentPadding = tester.widget<Padding>(find.byKey(const ValueKey('create-task-safe-content')));
+      final contentPadding = tester.widget<Padding>(
+        find.byKey(const ValueKey('create-task-safe-content')),
+      );
       expect((contentPadding.padding as EdgeInsets).top, 32);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
   });
 
-  testWidgets('browser extension request parameters populate the form and survive submission', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(1024, 720);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    DownloadDirectoryPicker.debugPlatformOverride = TargetPlatform.android;
-    final androidLocations = <String, String>{'application': 'D:/Downloads', 'downloads': 'G:/Manually selected'};
-    DownloadDirectoryPicker.debugAndroidLocationsLoader = () async => androidLocations;
-    DownloadDirectoryPicker.debugDownloadsPreparer = (path) async => path;
-    addTearDown(() {
-      DownloadDirectoryPicker.debugPlatformOverride = null;
-      DownloadDirectoryPicker.debugAndroidLocationsLoader = null;
-      DownloadDirectoryPicker.debugDownloadsPreparer = null;
-    });
-
-    CreateTask? submitted;
-    final config = DownloaderConfig(downloadDir: 'C:/Downloads')
-      ..extra.defaultDirectDownload = true
-      ..extra.downloadCategories = [
-        DownloadCategory(name: 'Archives', path: 'E:/Archives/%year%'),
-        DownloadCategory(name: 'Archives', path: 'F:/Archives'),
-        DownloadCategory(name: 'Long video category', path: 'G:/Videos'),
-        DownloadCategory(name: 'Long document category', path: 'H:/Documents'),
-      ]
-      ..protocolConfig.http.connections = 8;
-    final registry = CapabilityRegistry(createAppCapabilityCodecs())
-      ..bind(GopeedMethods.getConfig, (_) => config)
-      ..bind(GopeedMethods.createTask, (task) {
-        submitted = task;
-        return 'created-task';
-      })
-      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
-    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
-
-    final initialTask = CreateTask(
-      req: Request(
-        rawUrl: 'https://page.example/download',
-        url: 'https://cdn.example/archive.zip',
-        extra: ReqExtraHttp(
-          method: 'POST',
-          header: const {
-            'User-Agent': 'Browser UA',
-            'Cookie': 'session=abc',
-            'Referer': 'https://page.example/',
-            'Authorization': 'Bearer token',
-          },
-          body: 'request-body',
-        ).toJson(),
-        labels: const {'source': 'browser-extension'},
-        proxy: RequestProxy(
-          mode: RequestProxyMode.custom,
-          scheme: 'socks5',
-          host: '127.0.0.1:7890',
-          usr: 'proxy-user',
-          pwd: 'proxy-password',
-        ),
-        skipVerifyCert: true,
-      ),
-      opts: Options(
-        name: 'archive.zip',
-        path: 'D:/Downloads',
-        extra: OptsExtraHttp(
-          connections: 12,
-          autoTorrent: true,
-          deleteTorrentAfterDownload: true,
-          autoExtract: true,
-          archivePassword: 'archive-password',
-          deleteAfterExtract: true,
-        ).toJson(),
-      ),
-    );
-    final router = GoRouter(
-      initialLocation: '/create',
-      routes: [
-        GoRoute(path: '/', builder: (_, _) => const SizedBox()),
-        GoRoute(
-          path: '/create',
-          builder: (_, _) => CreateTaskWindowPage(initialTask: initialTask),
-        ),
-      ],
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
-        child: shad.ShadcnApp.router(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          builder: (context, child) => AppComponentThemes(child: child ?? const SizedBox.shrink()),
-          routerConfig: router,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final connectionsInput = find.byKey(const ValueKey('create-task-connections-input'));
-    expect(connectionsInput, findsOneWidget);
-    expect(tester.getSize(connectionsInput).width, AppDesignTokens.settingsNumberControlWidth);
-    final connectionsField = tester.widget<shad.TextField>(connectionsInput);
-    expect(connectionsField.controller!.text, '12');
-    expect(connectionsField.features.single, isA<shad.InputSpinnerFeature>());
-
-    final advancedSection = find.byKey(const ValueKey('create-task-advanced-section'));
-    expect(tester.widget<AnimatedCrossFade>(advancedSection).crossFadeState, CrossFadeState.showSecond);
-    await tester.tap(find.text('Advanced'));
-    await tester.pumpAndSettle();
-    expect(tester.widget<AnimatedCrossFade>(advancedSection).crossFadeState, CrossFadeState.showFirst);
-
-    expect(_fieldText(tester, 'create-task-http-header-name-0'), 'User-Agent');
-    expect(_fieldText(tester, 'create-task-http-header-value-0'), 'Browser UA');
-    expect(_fieldText(tester, 'create-task-http-header-name-3'), 'Authorization');
-    expect(_fieldText(tester, 'create-task-http-header-value-3'), 'Bearer token');
-    expect(_fieldText(tester, 'create-task-proxy-server'), '127.0.0.1');
-    expect(_fieldText(tester, 'create-task-proxy-port'), '7890');
-    expect(_fieldText(tester, 'create-task-proxy-username'), 'proxy-user');
-    expect(_fieldText(tester, 'create-task-proxy-password'), 'proxy-password');
-    expect(_fieldText(tester, 'create-task-archive-password'), 'archive-password');
-    expect(find.byKey(const ValueKey('create-task-skip-verify-cert')), findsOneWidget);
-    expect(find.byKey(const ValueKey('create-task-auto-torrent')), findsOneWidget);
-    expect(find.byKey(const ValueKey('create-task-delete-torrent')), findsOneWidget);
-    expect(find.byKey(const ValueKey('create-task-auto-extract')), findsOneWidget);
-    expect(find.byKey(const ValueKey('create-task-delete-after-extract')), findsOneWidget);
-
-    expect(find.text('Archives'), findsNWidgets(2));
-    expect(find.text('Quick folders'), findsNothing);
-    expect(find.byKey(const ValueKey('create-task-category-0')), findsOneWidget);
-    expect(find.byKey(const ValueKey('create-task-category-1')), findsOneWidget);
-    expect(find.byKey(const ValueKey('create-task-category-2')), findsOneWidget);
-    expect(find.byKey(const ValueKey('create-task-category-3')), findsOneWidget);
-    final shortcutRow = find.byKey(const ValueKey('create-task-directory-shortcuts'));
-    expect(tester.getSize(shortcutRow).height, 28);
-    final rememberDirectory = find.byKey(const ValueKey('create-task-remember-download-directory-checkbox'));
-    final directDownloadCheckbox = find.byKey(const ValueKey('create-task-direct-download-checkbox'));
-    final rememberDirectoryRow = find.byKey(const ValueKey('create-task-remember-download-directory'));
-    final rememberDirectoryLabel = find.byKey(const ValueKey('create-task-remember-download-directory-label'));
-    final directDownloadLabel = find.descendant(
-      of: find.byKey(const ValueKey('create-task-direct-download-toggle')),
-      matching: find.text('Skip resolving and create tasks immediately'),
-    );
-    final directoryComponent = find.byKey(const ValueKey('create-task-directory-component'));
-    final directoryOptionsRow = find.byKey(const ValueKey('create-task-directory-options-row'));
-    final directoryOptionsLayout = find.byKey(const ValueKey('create-task-directory-options-layout'));
-    final directoryPicker = find.byKey(const ValueKey('create-task-directory-picker'));
-    expect(tester.widget<shad.Checkbox>(rememberDirectory).state, shad.CheckboxState.unchecked);
-    expect(find.text('Save as default download directory'), findsOneWidget);
-    final rememberStyle = tester.widget<Text>(rememberDirectoryLabel).style!;
-    final directStyle = tester.widget<Text>(directDownloadLabel).style!;
-    expect(rememberStyle.color, directStyle.color);
-    expect(rememberStyle.fontSize, directStyle.fontSize);
-    expect(rememberStyle.fontWeight, directStyle.fontWeight);
-    expect(tester.widget<shad.Checkbox>(rememberDirectory).size, isNull);
-    expect(tester.getSize(rememberDirectory), const Size.square(AppDesignTokens.checkboxSize));
-    expect(tester.getCenter(rememberDirectory).dx, closeTo(tester.getCenter(directDownloadCheckbox).dx, 0.5));
-    final rememberDirectoryText = tester.widget<Text>(rememberDirectoryLabel);
-    final directDownloadText = tester.widget<Text>(directDownloadLabel);
-    expect(rememberDirectoryText.style, directDownloadText.style);
-    expect(rememberDirectoryText.maxLines, directDownloadText.maxLines);
-    expect(rememberDirectoryText.overflow, directDownloadText.overflow);
-    expect(tester.widget<shad.IconButton>(directoryPicker).variance, same(shad.ButtonVariance.outline));
-    expect(tester.widget<flutter.Row>(directoryOptionsLayout).mainAxisAlignment, MainAxisAlignment.spaceBetween);
-    expect(tester.getCenter(rememberDirectoryRow).dy, closeTo(tester.getCenter(shortcutRow).dy, 0.5));
-    expect(tester.getTopRight(directoryOptionsRow).dx, closeTo(tester.getTopRight(directoryComponent).dx, 0.5));
-    expect(
-      tester.getTopRight(find.byKey(const ValueKey('create-task-category-3'))).dx,
-      closeTo(tester.getTopRight(directoryComponent).dx, 0.5),
-    );
-
-    tester.view.physicalSize = const Size(520, 720);
-    await tester.pumpAndSettle();
-    final shortcutContent = find.byKey(const ValueKey('create-task-directory-shortcuts-content'));
-    expect(tester.getTopLeft(shortcutRow).dy, greaterThan(tester.getBottomLeft(rememberDirectoryRow).dy));
-    expect(tester.getSize(shortcutRow).width, closeTo(tester.getSize(directoryComponent).width, 0.5));
-    expect(tester.getSize(shortcutContent).width, greaterThan(tester.getSize(shortcutRow).width));
-    final shortcutScrollable = find.descendant(of: shortcutRow, matching: find.byType(Scrollable));
-    expect(tester.state<ScrollableState>(shortcutScrollable).position.maxScrollExtent, greaterThan(0));
-
-    tester.view.physicalSize = const Size(719, 720);
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<shad.Column>(find.byKey(const ValueKey('create-task-directory-options-layout'))),
-      isA<shad.Column>(),
-    );
-
-    tester.view.physicalSize = const Size(720, 720);
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<flutter.Row>(find.byKey(const ValueKey('create-task-directory-options-layout'))).mainAxisAlignment,
-      MainAxisAlignment.spaceBetween,
-    );
-
-    tester.view.physicalSize = const Size(1024, 720);
-    await tester.pumpAndSettle();
-
-    await tester.tap(directoryPicker);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('android-app-directory-option')));
-    await tester.pumpAndSettle();
-    expect(tester.widget<shad.Checkbox>(rememberDirectory).state, shad.CheckboxState.unchecked);
-
-    await tester.tap(directoryPicker);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('android-downloads-directory-option')));
-    await tester.pumpAndSettle();
-    expect(tester.widget<shad.Checkbox>(rememberDirectory).state, shad.CheckboxState.checked);
-
-    expect(tester.takeException(), isNull);
-    await tester.tap(find.byKey(const ValueKey('create-task-category-3')));
-    await tester.pump();
-    expect(tester.widget<shad.Checkbox>(rememberDirectory).state, shad.CheckboxState.unchecked);
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('create-task-category-3')),
-        matching: find.byIcon(Icons.folder_outlined),
-      ),
-      findsOneWidget,
-    );
-
-    androidLocations['downloads'] = 'C:/Downloads';
-    await tester.tap(directoryPicker);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('android-downloads-directory-option')));
-    await tester.pumpAndSettle();
-    expect(tester.widget<shad.Checkbox>(rememberDirectory).state, shad.CheckboxState.unchecked);
-
-    androidLocations['downloads'] = 'G:/Manually selected';
-    await tester.tap(directoryPicker);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('android-downloads-directory-option')));
-    await tester.pumpAndSettle();
-    expect(tester.widget<shad.Checkbox>(rememberDirectory).state, shad.CheckboxState.checked);
-
-    await tester.tap(find.text('Confirm'));
-    await tester.pumpAndSettle();
-
-    final request = submitted?.req;
-    expect(request, isNotNull);
-    expect(request?.rawUrl, initialTask.req?.rawUrl);
-    expect(request?.labels, initialTask.req?.labels);
-    expect(request?.proxy?.mode, RequestProxyMode.custom);
-    expect(request?.proxy?.scheme, 'socks5');
-    expect(request?.proxy?.host, '127.0.0.1:7890');
-    expect(request?.proxy?.usr, 'proxy-user');
-    expect(request?.proxy?.pwd, 'proxy-password');
-    expect(request?.skipVerifyCert, isTrue);
-    expect(ReqExtraHttp.fromJson(request?.extra! as Map<String, dynamic>).toJson(), initialTask.req?.extra);
-    expect(submitted?.opts?.path, 'G:/Manually selected');
-    final options = OptsExtraHttp.fromJson(submitted?.opts?.extra! as Map<String, dynamic>);
-    expect(options.connections, 12);
-    expect(options.autoTorrent, isTrue);
-    expect(options.deleteTorrentAfterDownload, isTrue);
-    expect(options.autoExtract, isTrue);
-    expect(options.archivePassword, 'archive-password');
-    expect(options.deleteAfterExtract, isTrue);
-    expect(submitted?.opts?.asDefaultPath, isTrue);
-  });
-
-  testWidgets('create history supports filtering, deleting one entry, and clearing all entries', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(1024, 720);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final histories = <String>[
-      'https://example.com/alpha.zip',
-      'https://example.com/beta.iso',
-      'magnet:?xt=urn:btih:gamma',
-    ];
-    String? removedHistory;
-    var cleared = false;
-    final registry = CapabilityRegistry(createAppCapabilityCodecs())
-      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
-      ..bind(StorageMethods.getCreateHistory, (_) => List<String>.unmodifiable(histories))
-      ..bind(StorageMethods.removeCreateHistory, (value) {
-        removedHistory = value;
-        histories.remove(value);
-        return const RpcUnit();
-      })
-      ..bind(StorageMethods.clearCreateHistory, (_) {
-        cleared = true;
-        histories.clear();
-        return const RpcUnit();
+  testWidgets(
+    'browser extension request parameters populate the form and survive submission',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1024, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      DownloadDirectoryPicker.debugPlatformOverride = TargetPlatform.android;
+      final androidLocations = <String, String>{
+        'application': 'D:/Downloads',
+        'downloads': 'G:/Manually selected',
+      };
+      DownloadDirectoryPicker.debugAndroidLocationsLoader = () async =>
+          androidLocations;
+      DownloadDirectoryPicker.debugDownloadsPreparer = (path) async => path;
+      addTearDown(() {
+        DownloadDirectoryPicker.debugPlatformOverride = null;
+        DownloadDirectoryPicker.debugAndroidLocationsLoader = null;
+        DownloadDirectoryPicker.debugDownloadsPreparer = null;
       });
-    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+      CreateTask? submitted;
+      final config = DownloaderConfig(downloadDir: 'C:/Downloads')
+        ..extra.defaultDirectDownload = true
+        ..extra.downloadCategories = [
+          DownloadCategory(name: 'Archives', path: 'E:/Archives/%year%'),
+          DownloadCategory(name: 'Archives', path: 'F:/Archives'),
+          DownloadCategory(name: 'Long video category', path: 'G:/Videos'),
+          DownloadCategory(
+            name: 'Long document category',
+            path: 'H:/Documents',
+          ),
+        ]
+        ..protocolConfig.http.connections = 8;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.getConfig, (_) => config)
+        ..bind(GopeedMethods.createTask, (task) {
+          submitted = task;
+          return 'created-task';
+        })
+        ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+      final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+      final initialTask = CreateTask(
+        req: Request(
+          rawUrl: 'https://page.example/download',
+          url: 'https://cdn.example/archive.zip',
+          extra: ReqExtraHttp(
+            method: 'POST',
+            header: const {
+              'User-Agent': 'Browser UA',
+              'Cookie': 'session=abc',
+              'Referer': 'https://page.example/',
+              'Authorization': 'Bearer token',
+            },
+            body: 'request-body',
+          ).toJson(),
+          labels: const {'source': 'browser-extension'},
+          proxy: RequestProxy(
+            mode: RequestProxyMode.custom,
+            scheme: 'socks5',
+            host: '127.0.0.1:7890',
+            usr: 'proxy-user',
+            pwd: 'proxy-password',
+          ),
+          skipVerifyCert: true,
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+        opts: Options(
+          name: 'archive.zip',
+          path: 'D:/Downloads',
+          extra: OptsExtraHttp(
+            connections: 12,
+            autoTorrent: true,
+            deleteTorrentAfterDownload: true,
+            autoExtract: true,
+            archivePassword: 'archive-password',
+            deleteAfterExtract: true,
+          ).toJson(),
+        ),
+      );
+      final router = GoRouter(
+        initialLocation: '/create',
+        routes: [
+          GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+          GoRoute(
+            path: '/create',
+            builder: (_, _) => CreateTaskWindowPage(initialTask: initialTask),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
 
-    await tester.tap(find.byIcon(Icons.history));
-    await tester.pumpAndSettle();
-    expect(
-      tester.getSize(find.byKey(const ValueKey('create-history-title-bar'))).width,
-      tester.getSize(find.byKey(const ValueKey('create-history-content'))).width,
-    );
-    final alphaItem = find.byKey(const ValueKey('create-history-item-https://example.com/alpha.zip'));
-    final betaItem = find.byKey(const ValueKey('create-history-item-https://example.com/beta.iso'));
-    final gammaItem = find.byKey(const ValueKey('create-history-item-magnet:?xt=urn:btih:gamma'));
-    expect(alphaItem, findsOneWidget);
-    expect(betaItem, findsOneWidget);
-    expect(gammaItem, findsOneWidget);
-    final clearAction = find.byKey(const ValueKey('create-history-clear'));
-    final closeAction = find.byKey(const ValueKey('create-history-close'));
-    expect(
-      tester.widget<AppTooltip>(find.ancestor(of: clearAction, matching: find.byType(AppTooltip))).message,
-      'Clear History',
-    );
-    expect(
-      tester.widget<AppTooltip>(find.ancestor(of: closeAction, matching: find.byType(AppTooltip))).message,
-      'Close',
-    );
-    final historyText = tester.widget<Text>(find.descendant(of: alphaItem, matching: find.byType(Text)));
-    expect(historyText.data, contains('\u200B'));
-    expect(historyText.semanticsLabel, 'https://example.com/alpha.zip');
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+          child: shad.ShadcnApp.router(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            builder: (context, child) =>
+                AppComponentThemes(child: child ?? const SizedBox.shrink()),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    final filter = find.byKey(const ValueKey('create-history-filter'));
-    await tester.enterText(filter, 'beta');
-    await tester.pump();
-    expect(alphaItem, findsNothing);
-    expect(betaItem, findsOneWidget);
-    expect(gammaItem, findsNothing);
+      final connectionsInput = find.byKey(
+        const ValueKey('create-task-connections-input'),
+      );
+      expect(connectionsInput, findsOneWidget);
+      expect(
+        tester.getSize(connectionsInput).width,
+        AppDesignTokens.settingsNumberControlWidth,
+      );
+      final connectionsField = tester.widget<shad.TextField>(connectionsInput);
+      expect(connectionsField.controller!.text, '12');
+      expect(connectionsField.features.single, isA<shad.InputSpinnerFeature>());
 
-    await tester.tap(find.byKey(const ValueKey('create-history-delete-https://example.com/beta.iso')));
-    await tester.pumpAndSettle();
-    expect(removedHistory, 'https://example.com/beta.iso');
-    expect(find.text('No History Found'), findsOneWidget);
+      final advancedSection = find.byKey(
+        const ValueKey('create-task-advanced-section'),
+      );
+      expect(
+        tester.widget<AnimatedCrossFade>(advancedSection).crossFadeState,
+        CrossFadeState.showSecond,
+      );
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<AnimatedCrossFade>(advancedSection).crossFadeState,
+        CrossFadeState.showFirst,
+      );
 
-    await tester.enterText(filter, '');
-    await tester.pump();
-    expect(alphaItem, findsOneWidget);
-    expect(gammaItem, findsOneWidget);
+      expect(
+        _fieldText(tester, 'create-task-http-header-name-0'),
+        'User-Agent',
+      );
+      expect(
+        _fieldText(tester, 'create-task-http-header-value-0'),
+        'Browser UA',
+      );
+      expect(
+        _fieldText(tester, 'create-task-http-header-name-3'),
+        'Authorization',
+      );
+      expect(
+        _fieldText(tester, 'create-task-http-header-value-3'),
+        'Bearer token',
+      );
+      expect(_fieldText(tester, 'create-task-proxy-server'), '127.0.0.1');
+      expect(_fieldText(tester, 'create-task-proxy-port'), '7890');
+      expect(_fieldText(tester, 'create-task-proxy-username'), 'proxy-user');
+      expect(
+        _fieldText(tester, 'create-task-proxy-password'),
+        'proxy-password',
+      );
+      expect(
+        _fieldText(tester, 'create-task-archive-password'),
+        'archive-password',
+      );
+      expect(
+        find.byKey(const ValueKey('create-task-skip-verify-cert')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('create-task-auto-torrent')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('create-task-delete-torrent')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('create-task-auto-extract')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('create-task-delete-after-extract')),
+        findsOneWidget,
+      );
 
-    await tester.tap(find.byKey(const ValueKey('create-history-clear')));
-    await tester.pumpAndSettle();
-    expect(cleared, isTrue);
-    expect(find.text('No history'), findsOneWidget);
-    expect(find.byKey(const ValueKey('create-history-clear')), findsOneWidget);
-    expect(find.byKey(const ValueKey('create-history-close')), findsOneWidget);
-  });
+      expect(find.text('Archives'), findsNWidgets(2));
+      expect(find.text('Quick folders'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('create-task-category-0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('create-task-category-1')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('create-task-category-2')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('create-task-category-3')),
+        findsOneWidget,
+      );
+      final shortcutRow = find.byKey(
+        const ValueKey('create-task-directory-shortcuts'),
+      );
+      expect(tester.getSize(shortcutRow).height, 28);
+      final rememberDirectory = find.byKey(
+        const ValueKey('create-task-remember-download-directory-checkbox'),
+      );
+      final directDownloadCheckbox = find.byKey(
+        const ValueKey('create-task-direct-download-checkbox'),
+      );
+      final rememberDirectoryRow = find.byKey(
+        const ValueKey('create-task-remember-download-directory'),
+      );
+      final rememberDirectoryLabel = find.byKey(
+        const ValueKey('create-task-remember-download-directory-label'),
+      );
+      final directDownloadLabel = find.descendant(
+        of: find.byKey(const ValueKey('create-task-direct-download-toggle')),
+        matching: find.text('Skip resolving and create tasks immediately'),
+      );
+      final directoryComponent = find.byKey(
+        const ValueKey('create-task-directory-component'),
+      );
+      final directoryOptionsRow = find.byKey(
+        const ValueKey('create-task-directory-options-row'),
+      );
+      final directoryOptionsLayout = find.byKey(
+        const ValueKey('create-task-directory-options-layout'),
+      );
+      final directoryPicker = find.byKey(
+        const ValueKey('create-task-directory-picker'),
+      );
+      expect(
+        tester.widget<shad.Checkbox>(rememberDirectory).state,
+        shad.CheckboxState.unchecked,
+      );
+      expect(find.text('Save as default download directory'), findsOneWidget);
+      final rememberStyle = tester.widget<Text>(rememberDirectoryLabel).style!;
+      final directStyle = tester.widget<Text>(directDownloadLabel).style!;
+      expect(rememberStyle.color, directStyle.color);
+      expect(rememberStyle.fontSize, directStyle.fontSize);
+      expect(rememberStyle.fontWeight, directStyle.fontWeight);
+      expect(tester.widget<shad.Checkbox>(rememberDirectory).size, isNull);
+      expect(
+        tester.getSize(rememberDirectory),
+        const Size.square(AppDesignTokens.checkboxSize),
+      );
+      expect(
+        tester.getCenter(rememberDirectory).dx,
+        closeTo(tester.getCenter(directDownloadCheckbox).dx, 0.5),
+      );
+      final rememberDirectoryText = tester.widget<Text>(rememberDirectoryLabel);
+      final directDownloadText = tester.widget<Text>(directDownloadLabel);
+      expect(rememberDirectoryText.style, directDownloadText.style);
+      expect(rememberDirectoryText.maxLines, directDownloadText.maxLines);
+      expect(rememberDirectoryText.overflow, directDownloadText.overflow);
+      expect(
+        tester.widget<shad.IconButton>(directoryPicker).variance,
+        same(shad.ButtonVariance.outline),
+      );
+      expect(
+        tester.widget<flutter.Row>(directoryOptionsLayout).mainAxisAlignment,
+        MainAxisAlignment.spaceBetween,
+      );
+      expect(
+        tester.getCenter(rememberDirectoryRow).dy,
+        closeTo(tester.getCenter(shortcutRow).dy, 0.5),
+      );
+      expect(
+        tester.getTopRight(directoryOptionsRow).dx,
+        closeTo(tester.getTopRight(directoryComponent).dx, 0.5),
+      );
+      expect(
+        tester
+            .getTopRight(find.byKey(const ValueKey('create-task-category-3')))
+            .dx,
+        closeTo(tester.getTopRight(directoryComponent).dx, 0.5),
+      );
+
+      tester.view.physicalSize = const Size(520, 720);
+      await tester.pumpAndSettle();
+      final shortcutContent = find.byKey(
+        const ValueKey('create-task-directory-shortcuts-content'),
+      );
+      expect(
+        tester.getTopLeft(shortcutRow).dy,
+        greaterThan(tester.getBottomLeft(rememberDirectoryRow).dy),
+      );
+      expect(
+        tester.getSize(shortcutRow).width,
+        closeTo(tester.getSize(directoryComponent).width, 0.5),
+      );
+      expect(
+        tester.getSize(shortcutContent).width,
+        greaterThan(tester.getSize(shortcutRow).width),
+      );
+      final shortcutScrollable = find.descendant(
+        of: shortcutRow,
+        matching: find.byType(Scrollable),
+      );
+      expect(
+        tester
+            .state<ScrollableState>(shortcutScrollable)
+            .position
+            .maxScrollExtent,
+        greaterThan(0),
+      );
+
+      tester.view.physicalSize = const Size(719, 720);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<shad.Column>(
+          find.byKey(const ValueKey('create-task-directory-options-layout')),
+        ),
+        isA<shad.Column>(),
+      );
+
+      tester.view.physicalSize = const Size(720, 720);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<flutter.Row>(
+              find.byKey(
+                const ValueKey('create-task-directory-options-layout'),
+              ),
+            )
+            .mainAxisAlignment,
+        MainAxisAlignment.spaceBetween,
+      );
+
+      tester.view.physicalSize = const Size(1024, 720);
+      await tester.pumpAndSettle();
+
+      await tester.tap(directoryPicker);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('android-app-directory-option')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<shad.Checkbox>(rememberDirectory).state,
+        shad.CheckboxState.unchecked,
+      );
+
+      await tester.tap(directoryPicker);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('android-downloads-directory-option')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<shad.Checkbox>(rememberDirectory).state,
+        shad.CheckboxState.checked,
+      );
+
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.byKey(const ValueKey('create-task-category-3')));
+      await tester.pump();
+      expect(
+        tester.widget<shad.Checkbox>(rememberDirectory).state,
+        shad.CheckboxState.unchecked,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('create-task-category-3')),
+          matching: find.byIcon(Icons.folder_outlined),
+        ),
+        findsOneWidget,
+      );
+
+      androidLocations['downloads'] = 'C:/Downloads';
+      await tester.tap(directoryPicker);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('android-downloads-directory-option')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<shad.Checkbox>(rememberDirectory).state,
+        shad.CheckboxState.unchecked,
+      );
+
+      androidLocations['downloads'] = 'G:/Manually selected';
+      await tester.tap(directoryPicker);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('android-downloads-directory-option')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<shad.Checkbox>(rememberDirectory).state,
+        shad.CheckboxState.checked,
+      );
+
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
+
+      final request = submitted?.req;
+      expect(request, isNotNull);
+      expect(request?.rawUrl, initialTask.req?.rawUrl);
+      expect(request?.labels, initialTask.req?.labels);
+      expect(request?.proxy?.mode, RequestProxyMode.custom);
+      expect(request?.proxy?.scheme, 'socks5');
+      expect(request?.proxy?.host, '127.0.0.1:7890');
+      expect(request?.proxy?.usr, 'proxy-user');
+      expect(request?.proxy?.pwd, 'proxy-password');
+      expect(request?.skipVerifyCert, isTrue);
+      expect(
+        ReqExtraHttp.fromJson(request?.extra! as Map<String, dynamic>).toJson(),
+        initialTask.req?.extra,
+      );
+      expect(submitted?.opts?.path, 'G:/Manually selected');
+      final options = OptsExtraHttp.fromJson(
+        submitted?.opts?.extra! as Map<String, dynamic>,
+      );
+      expect(options.connections, 12);
+      expect(options.autoTorrent, isTrue);
+      expect(options.deleteTorrentAfterDownload, isTrue);
+      expect(options.autoExtract, isTrue);
+      expect(options.archivePassword, 'archive-password');
+      expect(options.deleteAfterExtract, isTrue);
+      expect(submitted?.opts?.asDefaultPath, isTrue);
+    },
+  );
+
+  testWidgets(
+    'create history supports filtering, deleting one entry, and clearing all entries',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1024, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final histories = <String>[
+        'https://example.com/alpha.zip',
+        'https://example.com/beta.iso',
+        'magnet:?xt=urn:btih:gamma',
+      ];
+      String? removedHistory;
+      var cleared = false;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(
+          GopeedMethods.getConfig,
+          (_) => DownloaderConfig(downloadDir: '/downloads'),
+        )
+        ..bind(
+          StorageMethods.getCreateHistory,
+          (_) => List<String>.unmodifiable(histories),
+        )
+        ..bind(StorageMethods.removeCreateHistory, (value) {
+          removedHistory = value;
+          histories.remove(value);
+          return const RpcUnit();
+        })
+        ..bind(StorageMethods.clearCreateHistory, (_) {
+          cleared = true;
+          histories.clear();
+          return const RpcUnit();
+        });
+      final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: AppComponentThemes(child: const CreateTaskWindowPage()),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.history));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('create-history-title-bar')))
+            .width,
+        tester
+            .getSize(find.byKey(const ValueKey('create-history-content')))
+            .width,
+      );
+      final alphaItem = find.byKey(
+        const ValueKey('create-history-item-https://example.com/alpha.zip'),
+      );
+      final betaItem = find.byKey(
+        const ValueKey('create-history-item-https://example.com/beta.iso'),
+      );
+      final gammaItem = find.byKey(
+        const ValueKey('create-history-item-magnet:?xt=urn:btih:gamma'),
+      );
+      expect(alphaItem, findsOneWidget);
+      expect(betaItem, findsOneWidget);
+      expect(gammaItem, findsOneWidget);
+      final clearAction = find.byKey(const ValueKey('create-history-clear'));
+      final closeAction = find.byKey(const ValueKey('create-history-close'));
+      expect(
+        tester
+            .widget<AppTooltip>(
+              find.ancestor(of: clearAction, matching: find.byType(AppTooltip)),
+            )
+            .message,
+        'Clear History',
+      );
+      expect(
+        tester
+            .widget<AppTooltip>(
+              find.ancestor(of: closeAction, matching: find.byType(AppTooltip)),
+            )
+            .message,
+        'Close',
+      );
+      final historyText = tester.widget<Text>(
+        find.descendant(of: alphaItem, matching: find.byType(Text)),
+      );
+      expect(historyText.data, contains('\u200B'));
+      expect(historyText.semanticsLabel, 'https://example.com/alpha.zip');
+
+      final filter = find.byKey(const ValueKey('create-history-filter'));
+      await tester.enterText(filter, 'beta');
+      await tester.pump();
+      expect(alphaItem, findsNothing);
+      expect(betaItem, findsOneWidget);
+      expect(gammaItem, findsNothing);
+
+      await tester.tap(
+        find.byKey(
+          const ValueKey('create-history-delete-https://example.com/beta.iso'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(removedHistory, 'https://example.com/beta.iso');
+      expect(find.text('No History Found'), findsOneWidget);
+
+      await tester.enterText(filter, '');
+      await tester.pump();
+      expect(alphaItem, findsOneWidget);
+      expect(gammaItem, findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('create-history-clear')));
+      await tester.pumpAndSettle();
+      expect(cleared, isTrue);
+      expect(find.text('No history'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('create-history-clear')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('create-history-close')),
+        findsOneWidget,
+      );
+    },
+  );
 }
 
 String _fieldText(WidgetTester tester, String key) {
-  final editable = find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(EditableText));
+  final editable = find.descendant(
+    of: find.byKey(ValueKey(key)),
+    matching: find.byType(EditableText),
+  );
   return tester.widget<EditableText>(editable).controller.text;
 }

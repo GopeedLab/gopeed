@@ -93,10 +93,20 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     super.initState();
     _urlController.addListener(_handleUrlChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final task = widget.initialTask ?? ref.read(pendingCreateTaskProvider);
       _applyInitialTask(task);
       if (widget.initialTask == null) {
         ref.read(pendingCreateTaskProvider.notifier).clear();
+      }
+      if (widget.windowController == null && widget.initialTask == null) {
+        // Navigating to /create again reuses this page, so consume subsequent
+        // browser/share requests as well as the initial pending task.
+        ref.listenManual(pendingCreateTaskProvider, (_, next) {
+          if (next == null) return;
+          ref.read(pendingCreateTaskProvider.notifier).clear();
+          _applyInitialTask(next);
+        });
       }
       if (task == null || _urlController.text.trim().isEmpty) {
         unawaited(_loadClipboardUrl());
@@ -174,6 +184,13 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     final opts = task.opts;
     setState(() {
       if (req?.url.isNotEmpty == true) {
+        _fileDataUri = '';
+        _renameController.clear();
+        _httpMethod = 'GET';
+        _httpBody = '';
+        _replaceHttpHeaders(const {'User-Agent': '', 'Cookie': '', 'Referer': ''});
+        _trackersController.clear();
+        _protocolTab = 0;
         _urlController.text = req!.url;
         _initialRawUrl = req.rawUrl;
         _initialLabels = req.labels == null ? null : Map<String, String>.of(req.labels!);
@@ -307,6 +324,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               SizedBox(
                                 height: 120,
                                 child: AppTextField(
+                                  key: const ValueKey('create-task-url-input'),
                                   controller: _urlController,
                                   hintText: context.l10n.pasteDownloadLinks,
                                   keyboardType: TextInputType.multiline,
