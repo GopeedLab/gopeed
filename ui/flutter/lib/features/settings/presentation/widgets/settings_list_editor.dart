@@ -122,7 +122,7 @@ Future<String?> showTextSettingDialog(
   required String fieldLabel,
   String initialValue = '',
   bool requireHttpUrl = false,
-  Future<String?> Function()? pickPath,
+  bool pickFile = false,
   Future<void> Function(String value)? onTest,
 }) async {
   final controller = TextEditingController(text: initialValue);
@@ -189,16 +189,12 @@ Future<String?> showTextSettingDialog(
               children: [
                 Text(fieldLabel, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
-                if (pickPath == null)
+                if (!pickFile)
                   AppTextField(controller: controller)
                 else
-                  AppPathPickerField(
+                  AppPathPickerField.file(
                     controller: controller,
                     desktopWidth: AppDesignTokens.settingsFormControlWidth,
-                    onPick: () async {
-                      final path = await pickPath();
-                      if (path != null && path.isNotEmpty) controller.text = path;
-                    },
                   ),
                 if (validationMessage != null || testMessage != null) ...[
                   const SizedBox(height: 8),

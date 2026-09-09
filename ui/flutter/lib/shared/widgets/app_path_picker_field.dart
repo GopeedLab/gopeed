@@ -1,8 +1,10 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../core/utils/breakpoints.dart';
+import '../../util/util.dart';
 import '../services/download_directory_picker.dart';
 import 'app_text_field.dart';
 import 'app_tooltip.dart';
@@ -24,7 +26,28 @@ class AppPathPickerField extends StatefulWidget {
     this.padding,
     this.onChanged,
     this.pickerButtonStyle = AppPathPickerButtonStyle.ghost,
-  }) : platformDownloadDirectory = false,
+  }) : platformFile = false,
+       platformDownloadDirectory = false,
+       onDirectoryPicked = null,
+       allowAndroidEditing = false;
+
+  /// Selects a native desktop file path; Web and mobile accept manual paths only.
+  const AppPathPickerField.file({
+    super.key,
+    required this.controller,
+    this.fieldKey,
+    this.pickerKey,
+    this.hintText,
+    this.desktopWidth,
+    this.filled,
+    this.border,
+    this.borderRadius,
+    this.padding,
+    this.onChanged,
+    this.pickerButtonStyle = AppPathPickerButtonStyle.outline,
+  }) : onPick = null,
+       platformFile = true,
+       platformDownloadDirectory = false,
        onDirectoryPicked = null,
        allowAndroidEditing = false;
 
@@ -44,6 +67,7 @@ class AppPathPickerField extends StatefulWidget {
     this.onChanged,
     this.pickerButtonStyle = AppPathPickerButtonStyle.outline,
   }) : onPick = null,
+       platformFile = false,
        platformDownloadDirectory = true;
 
   final TextEditingController controller;
@@ -58,6 +82,7 @@ class AppPathPickerField extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
   final ValueChanged<String>? onChanged;
   final AppPathPickerButtonStyle pickerButtonStyle;
+  final bool platformFile;
   final bool platformDownloadDirectory;
   final ValueChanged<String>? onDirectoryPicked;
   final bool allowAndroidEditing;
@@ -97,6 +122,16 @@ class _AppPathPickerFieldState extends State<AppPathPickerField> {
     setState(() => _tooltipPath = path);
   }
 
+  Future<void> _pickFile() async {
+    if (!Util.isDesktop()) return;
+    final file = await FilePicker.pickFile();
+    if (!mounted) return;
+    final path = file?.path;
+    if (path == null || path.isEmpty || path == widget.controller.text) return;
+    widget.controller.text = path;
+    widget.onChanged?.call(path);
+  }
+
   Future<void> _pickPlatformDirectory() async {
     final path = await DownloadDirectoryPicker.pick(context, currentPath: widget.controller.text.trim());
     if (!mounted || path == null || path.isEmpty || path == widget.controller.text) return;
@@ -110,6 +145,8 @@ class _AppPathPickerFieldState extends State<AppPathPickerField> {
     final desktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
     final onPick = widget.platformDownloadDirectory
         ? (DownloadDirectoryPicker.canPick ? _pickPlatformDirectory : null)
+        : widget.platformFile
+        ? (Util.isDesktop() ? _pickFile : null)
         : widget.onPick;
     return SizedBox(
       width: desktop ? widget.desktopWidth : double.infinity,
