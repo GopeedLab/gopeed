@@ -12,6 +12,8 @@
 
 #ifndef GO_CGO_GOSTRING_TYPEDEF
 typedef struct { const char *p; ptrdiff_t n; } _GoString_;
+extern size_t _GoStringLen(_GoString_ s);
+extern const char *_GoStringPtr(_GoString_ s);
 #endif
 
 #endif
@@ -19,6 +21,24 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 /* Start of preamble from import "C" comments.  */
 
 
+#line 3 "main.go"
+
+#include <stdlib.h>
+#include <stdint.h>
+
+typedef void (*TaskEventCallback)(char* payload);
+
+typedef void (*InvokeResultCallback)(uint64_t request_id, int success, char* payload);
+
+static void callTaskEventCallback(uintptr_t callback, char* payload) {
+	((TaskEventCallback)callback)(payload);
+}
+
+static void callInvokeResultCallback(uintptr_t callback, uint64_t request_id, int success, char* payload) {
+	((InvokeResultCallback)callback)(request_id, success, payload);
+}
+
+#line 1 "cgo-generated-wrapper"
 
 
 /* End of preamble from import "C" comments.  */
@@ -44,9 +64,15 @@ typedef size_t GoUintptr;
 typedef float GoFloat32;
 typedef double GoFloat64;
 #ifdef _MSC_VER
+#if !defined(__cplusplus) || _MSVC_LANG <= 201402L
 #include <complex.h>
 typedef _Fcomplex GoComplex64;
 typedef _Dcomplex GoComplex128;
+#else
+#include <complex>
+typedef std::complex<float> GoComplex64;
+typedef std::complex<double> GoComplex128;
+#endif
 #else
 typedef float _Complex GoComplex64;
 typedef double _Complex GoComplex128;
@@ -81,13 +107,13 @@ struct Start_return {
 	char* r1;
 };
 extern struct Start_return Start(char* cfg);
-extern void Stop();
-extern char* GetAPIServerState();
-extern char* StartAPIServer();
-extern char* StopAPIServer();
-extern char* RestartAPIServer();
-extern char* Invoke(char* method, char* path, char* query, char* body);
-extern void SubscribeTaskEvents(GoUint64 mask, GoUintptr callback);
+extern void Stop(void);
+extern char* GetAPIServerState(void);
+extern char* StartAPIServer(void);
+extern char* StopAPIServer(void);
+extern char* RestartAPIServer(void);
+extern void InvokeAsync(char* method, char* path, char* query, char* body, long long unsigned int requestID, uintptr_t callback);
+extern void SubscribeTaskEvents(long long unsigned int mask, uintptr_t callback);
 extern void FreeCString(char* value);
 
 #ifdef __cplusplus

@@ -50,7 +50,7 @@ packages:
     source: hosted
     version: "1.0.3"
   app_links_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: app_links_platform_interface
       sha256: "05f5379577c513b534a29ddea68176a4d4802c46180ee8e2e966257158772a3f"

@@ -14,10 +14,13 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     let messenger = engineBridge.applicationRegistrar.messenger()
+    let libgopeedTaskQueue = messenger.makeBackgroundTaskQueue?()
 
     let libgopeedChannel = FlutterMethodChannel(
       name: "gopeed.com/libgopeed",
-      binaryMessenger: messenger
+      binaryMessenger: messenger,
+      codec: FlutterStandardMethodCodec.sharedInstance(),
+      taskQueue: libgopeedTaskQueue
     )
     let taskEventForwarder = GopeedTaskEventForwarder(channel: libgopeedChannel)
     libgopeedChannel.setMethodCallHandler { call, result in
@@ -56,7 +59,8 @@ import UIKit
         let path = arguments?["path"] as? String ?? ""
         let query = arguments?["query"] as? String ?? ""
         let body = arguments?["body"] as? String ?? ""
-        result(LibgopeedInvoke(method, path, query, body))
+        let requestID = (arguments?["requestID"] as? NSNumber)?.int64Value ?? 0
+        GopeedInvokeAsyncWithResult(method, path, query, body, requestID, result)
       case "subscribeTaskEvents":
         let arguments = call.arguments as? [String: Any]
         let mask = (arguments?["mask"] as? NSNumber)?.int64Value ?? 0
