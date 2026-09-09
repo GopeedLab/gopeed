@@ -1,6 +1,6 @@
 {
-    "name": "gopeed",
-    "short_name": "gopeed",
+    "name": "Gopeed",
+    "short_name": "Gopeed",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
