@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
+import '../theme/app_design_tokens.dart';
 import 'app_text_field.dart';
 
 /// A bounded numeric text field with the app's standard spinner controls.
@@ -91,6 +92,7 @@ class _AppNumberInputState extends State<AppNumberInput> {
           : TextInputType.number,
       inputFormatters: formatters,
       enabled: widget.enabled,
+      padding: AppDesignTokens.numberTextFieldPadding,
       features: [
         shad.InputFeature.spinner(
           step: widget.step,

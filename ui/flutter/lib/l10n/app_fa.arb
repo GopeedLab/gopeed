@@ -18,6 +18,7 @@
   "exit": "خروج",
   "pressBackAgainToExit": "برای خروج دوباره دکمه بازگشت را فشار دهید",
   "create": "ایجاد کار",
+  "createAction": "ایجاد",
   "directDownload": "دانلود مستقیم",
   "advancedOptions": "گزینه های پیشرفته",
   "followSettings": "تنظیمات را دنبال کنید",
