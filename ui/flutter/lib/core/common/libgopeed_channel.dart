@@ -11,6 +11,7 @@ import 'task_event.dart';
 class LibgopeedChannel implements LibgopeedInterface {
   static const _channel = MethodChannel('gopeed.com/libgopeed');
   final _taskEvents = StreamController<TaskEvent>.broadcast();
+  int _requestID = 0;
 
   LibgopeedChannel() {
     _channel.setMethodCallHandler((call) async {
@@ -50,7 +51,9 @@ class LibgopeedChannel implements LibgopeedInterface {
 
   @override
   Future<String> invoke(String method, String path, {String query = '', String body = ''}) async {
+    final requestID = _requestID++;
     final result = await _channel.invokeMethod<String>('invoke', {
+      'requestID': requestID,
       'method': method,
       'path': path,
       'query': query,

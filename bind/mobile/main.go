@@ -5,6 +5,7 @@ import "C"
 import (
 	"encoding/json"
 
+	nativebridge "github.com/GopeedLab/gopeed/bind/native"
 	"github.com/GopeedLab/gopeed/internal/webview/rpcprovider"
 	"github.com/GopeedLab/gopeed/pkg/rest"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
@@ -18,11 +19,15 @@ func Start(cfg string) (int, error) {
 	config.ProductionMode = true
 	config.NativeMode = true
 	applyWebViewProvider(&config)
-	return rest.Start(&config)
+	port, err := rest.Start(&config)
+	if err == nil {
+		nativebridge.ResumeInvokes()
+	}
+	return port, err
 }
 
 func Stop() {
-	rest.Stop()
+	nativebridge.Stop()
 }
 
 func GetAPIServerState() string {
@@ -50,8 +55,21 @@ func apiServerResult(state *model.APIServerState, err error) string {
 	return string(data)
 }
 
-func Invoke(method, path, query, body string) string {
-	return rest.Invoke(method, path, query, body)
+type InvokeResultListener interface {
+	OnResult(requestID int64, success bool, payload string)
+}
+
+func InvokeAsync(method, path, query, body string, requestID int64, listener InvokeResultListener) {
+	if listener == nil {
+		return
+	}
+	nativebridge.InvokeAsync(method, path, query, body, func(result string, err error) {
+		if err != nil {
+			listener.OnResult(requestID, false, err.Error())
+			return
+		}
+		listener.OnResult(requestID, true, result)
+	})
 }
 
 type TaskEventListener interface {

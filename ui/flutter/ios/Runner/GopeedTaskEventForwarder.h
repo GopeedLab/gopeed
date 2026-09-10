@@ -13,4 +13,12 @@ FOUNDATION_EXPORT void GopeedSubscribeTaskEventsWithForwarder(
     int64_t mask,
     GopeedTaskEventForwarder * _Nullable listener);
 
+FOUNDATION_EXPORT void GopeedInvokeAsyncWithResult(
+    NSString *method,
+    NSString *path,
+    NSString *query,
+    NSString *body,
+    int64_t requestID,
+    FlutterResult result);
+
 NS_ASSUME_NONNULL_END

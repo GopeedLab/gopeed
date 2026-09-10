@@ -19,6 +19,7 @@ import '../../../../shared/widgets/responsive_navigation_layout.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../../tasks/application/tasks_controller.dart';
+import '../../../tasks/application/task_list_navigation.dart';
 import '../../../tasks/application/pending_update_task.dart';
 import '../../../tasks/application/task_batch_selection_controller.dart';
 import '../../../tasks/domain/task_record.dart';
@@ -86,6 +87,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final tasksAsync = ref.watch(tasksControllerProvider);
+    ref.listen(taskListNavigationProvider, (_, _) {
+      _searchController.clear();
+      _setActiveFilter(_TaskFilter.downloading);
+      setState(() => _batchMode = false);
+    });
     final tasksState = tasksAsync.value;
     final tasks = tasksState?.tasks ?? const <TaskRecord>[];
     final filteredTasks = _filteredTasks(tasks);
