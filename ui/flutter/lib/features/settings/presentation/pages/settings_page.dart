@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Divider, Icons, Scrollbar, ScrollbarOrientation;
 import 'package:flutter/widgets.dart';
@@ -1376,12 +1375,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       title: index == null ? context.l10n.addScript : context.l10n.editScript,
       fieldLabel: context.l10n.scriptPath,
       initialValue: index == null ? '' : paths[index],
-      pickPath: Util.isDesktop()
-          ? () async {
-              final file = await FilePicker.pickFile();
-              return file?.path;
-            }
-          : null,
+      pickFile: true,
     );
     if (value == null || !mounted) return;
     _mutateConfig((config) {
