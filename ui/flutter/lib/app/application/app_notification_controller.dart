@@ -2,14 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 import '../../core/common/task_event.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../l10n/l10n.dart';
+import '../../util/log_util.dart';
 import '../../util/util.dart';
 import 'app_runtime_controller.dart';
 
@@ -56,13 +56,27 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
     String? windowsIconPath;
     try {
       if (Util.isWindows()) {
-        final byteData = await rootBundle.load('assets/icon/icon.ico');
-        final tempDir = await getTemporaryDirectory();
-        final file = File('${tempDir.path}/notification_icon.ico');
-        await file.writeAsBytes(byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
-        windowsIconPath = file.path;
+        // Windows requires a file path for IconUri, so use the bundled PNG
+        // beside the executable rather than copying it to another directory.
+        final file = File(
+          path.join(
+            path.dirname(Platform.resolvedExecutable),
+            'data',
+            'flutter_assets',
+            'assets',
+            'icon',
+            'icon_512.png',
+          ),
+        );
+        if (await file.exists()) {
+          windowsIconPath = file.absolute.path;
+        } else {
+          logger.w('Windows notification icon not found: ${file.path}');
+        }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      logger.w('prepare Windows notification icon failed', error, stackTrace);
+    }
 
     final windows = WindowsInitializationSettings(
       appName: 'Gopeed',
