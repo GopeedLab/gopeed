@@ -37,10 +37,15 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
 
   @override
   Future<AppDeepLinkState> build() async {
-    final runtime = ref.watch(appRuntimeControllerProvider).value;
-    if (runtime == null || _started || kIsWeb) {
+    if (_started || kIsWeb) {
       return AppDeepLinkState(started: _started);
     }
+    // Deep-link handling depends on the runtime being ready, but it must not
+    // rebuild whenever runtime settings change. A rebuild disposes the active
+    // platform subscriptions while `_started` remains true, leaving Android
+    // unable to receive later browser takeover intents (for example after the
+    // API server is started or stopped from Settings).
+    await ref.read(appRuntimeControllerProvider.future);
     _started = true;
     final appLinks = AppLinks();
     _subscription = appLinks.uriLinkStream.listen((uri) {

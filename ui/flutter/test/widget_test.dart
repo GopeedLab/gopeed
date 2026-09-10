@@ -13,6 +13,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:window_manager/window_manager.dart';
 import 'package:gopeed/app/app.dart';
+import 'package:gopeed/app/router/app_router.dart';
+import 'package:gopeed/core/capabilities/app_capabilities.dart';
+import 'package:gopeed/core/capabilities/app_navigation_capability.dart';
 import 'package:gopeed/app/application/app_appearance_controller.dart';
 import 'package:gopeed/app/application/app_deep_link_controller.dart';
 import 'package:gopeed/app/application/app_notification_controller.dart';
@@ -92,6 +95,38 @@ import 'package:gopeed/util/updater.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.localeTestValue = const Locale('en');
+
+  testWidgets('child success returns to downloading from completed and another page', (tester) async {
+    await _setTestSize(tester, const Size(1024, 768));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          tasksControllerProvider.overrideWith(CompletedTasksController.new),
+          settingsControllerProvider.overrideWith(FakeSettingsController.new),
+        ],
+        child: const GopeedApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Completed'));
+    await tester.pumpAndSettle();
+    expect(find.text('done.zip'), findsOneWidget);
+
+    // Exercise the same serialized operation dispatched by a child window.
+    await LocalAppCapabilities.instance.registry.invoke(NavigationMethods.showDownloadingTasks.name, {});
+    await tester.pumpAndSettle();
+    expect(find.text('done.zip'), findsNothing);
+    expect(find.text('Create Task'), findsOneWidget);
+
+    GoRouter.of(AppRouter.rootNavigatorKey.currentContext!).go('/settings');
+    await tester.pumpAndSettle();
+    await LocalAppCapabilities.instance.capabilities.navigation.showDownloadingTasks();
+    await tester.pumpAndSettle();
+    expect(GoRouter.of(AppRouter.rootNavigatorKey.currentContext!).routeInformationProvider.value.uri.path, '/');
+    expect(find.text('done.zip'), findsNothing);
+    expect(find.text('Create Task'), findsOneWidget);
+  });
 
   test('Web MCP endpoint excludes page path, query, and hash route', () {
     expect(
@@ -414,7 +449,7 @@ void main() {
         child: shad.ShadcnApp(
           theme: AppTheme.light(),
           materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+          home: const AppComponentThemes(child: ExtensionsPage()),
         ),
       ),
     );
@@ -434,6 +469,7 @@ void main() {
     final cardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-0')));
     final rightmostCardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-2')));
     final appMarkRect = tester.getRect(find.byKey(const ValueKey('primary-rail-app-mark')));
+    expect(searchRect.height, closeTo(sortRect.height, 0.01));
     expect(searchRect.width, 240);
     expect(searchRect.width, lessThan(cardRect.width));
     expect(sortRect.left - searchRect.right, closeTo(10, 0.01));
@@ -466,6 +502,7 @@ void main() {
     expect(find.byType(PrimaryRail), findsOneWidget);
     final compactSearchRect = tester.getRect(find.byKey(const ValueKey('extension-search-field-container')));
     expect(compactSearchRect.width, lessThan(240));
+    expect(compactSearchRect.height, closeTo(sortRect.height, 0.01));
     expect(
       tester.getRect(find.byKey(const ValueKey('extension-sort-control'))).center.dy,
       closeTo(compactSearchRect.center.dy, 0.01),
@@ -710,7 +747,7 @@ void main() {
         child: shad.ShadcnApp(
           theme: AppTheme.light(),
           materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+          home: const AppComponentThemes(child: ExtensionsPage()),
         ),
       ),
     );
@@ -1860,6 +1897,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('loading button preserves its content dimensions', (WidgetTester tester) async {
+    var loading = false;
+    late StateSetter setButtonState;
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Center(
+          child: StatefulBuilder(
+            builder: (context, update) {
+              setButtonState = update;
+              return AppLoadingButton(
+                key: const ValueKey('dimension-stable-loading-button'),
+                onPressed: () {},
+                loading: loading,
+                variant: AppLoadingButtonVariant.primary,
+                child: const Text('Confirm'),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final button = find.byKey(const ValueKey('dimension-stable-loading-button'));
+    final idleSize = tester.getSize(button);
+
+    setButtonState(() => loading = true);
+    await tester.pump();
+
+    expect(tester.getSize(button), idleSize);
+    expect(find.descendant(of: button, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+  });
+
   testWidgets('failed tracker update does not reload or reset the settings page', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     final runtimeController = FailingTrackerRuntimeController();
@@ -2302,7 +2373,9 @@ void main() {
     await tester.pumpAndSettle();
     final createDirectoryInput = find.byKey(const ValueKey('create-task-directory-input'));
     final createRenameInput = find.byKey(const ValueKey('create-task-rename-input'));
+    final createConnectionsInput = find.byKey(const ValueKey('create-task-connections-input'));
     expect(tester.getSize(createDirectoryInput).height, tester.getSize(createRenameInput).height);
+    expect(tester.getSize(createConnectionsInput), tester.getSize(createRenameInput));
     final createDirectoryField = tester.widget<shad.TextField>(createDirectoryInput);
     final createRenameField = tester.widget<shad.TextField>(
       find.descendant(of: createRenameInput, matching: find.byType(AppTextField)),
@@ -2402,6 +2475,27 @@ void main() {
     expect(tester.widget<shad.GhostButton>(onlyRemoveHeader).onPressed, isNull);
     expect(find.byKey(const ValueKey('create-task-http-header-name-0')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('create task rename stays user-controlled and resets when the URL changes', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(700, 500));
+    await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
+    await tester.pump();
+
+    final urlInput = find.byKey(const ValueKey('create-task-url-input'));
+    final renameInput = find.byKey(const ValueKey('create-task-rename-input'));
+    await tester.enterText(urlInput, 'https://example.com/first.zip');
+    await tester.enterText(renameInput, 'custom-name.zip');
+    expect(find.text('custom-name.zip'), findsOneWidget);
+
+    await tester.enterText(urlInput, 'https://example.com/second.zip');
+    await tester.pump();
+
+    final renameField = tester.widget<AppTextField>(
+      find.descendant(of: renameInput, matching: find.byType(AppTextField)),
+    );
+    expect(renameField.controller!.text, isEmpty);
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('create task labels direct download without a mode field', (WidgetTester tester) async {
@@ -2591,6 +2685,7 @@ void main() {
     expect(treeFinder, findsOneWidget);
     final tree = tester.widget<VirtualTreeView<dynamic>>(treeFinder);
     expect(tree.branchLine, same(shad.BranchLine.path));
+    expect(tree.rowHeight, 36);
     expect(
       tester.widgetList<shad.Checkbox>(find.byType(shad.Checkbox)).every((checkbox) => checkbox.size == null),
       isTrue,
@@ -4819,7 +4914,7 @@ class _CreateTaskPageHarness extends StatelessWidget {
     return shad.ShadcnApp(
       theme: AppTheme.light(),
       materialTheme: AppTheme.materialLight(),
-      home: const CreateTaskWindowPage(),
+      home: const AppComponentThemes(child: CreateTaskWindowPage()),
     );
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/widgets.dart' as flutter show Row;
 import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart' show Icons;
@@ -9,7 +11,10 @@ import 'package:gopeed/api/model/create_task.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/options.dart';
 import 'package:gopeed/api/model/request.dart';
+import 'package:gopeed/api/model/resolve_result.dart';
+import 'package:gopeed/api/model/resource.dart';
 import 'package:gopeed/core/capabilities/app_capabilities.dart';
+import 'package:gopeed/core/capabilities/app_navigation_capability.dart';
 import 'package:gopeed/core/capabilities/capability_rpc.dart';
 import 'package:gopeed/core/capabilities/gopeed_capability.dart';
 import 'package:gopeed/core/capabilities/storage_capability.dart';
@@ -19,10 +24,63 @@ import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
 import 'package:gopeed/shared/theme/app_design_tokens.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
+import 'package:gopeed/shared/widgets/app_loading_button.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
+  for (final navigationFails in [false, true]) {
+    testWidgets('child creation selects downloads before closing (navigation fails: $navigationFails)', (tester) async {
+      tester.view.physicalSize = const Size(1024, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final events = <String>[];
+      const channel = MethodChannel('window_manager');
+      final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        events.add(call.method);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      final config = DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.getConfig, (_) => config)
+        ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit())
+        ..bind(GopeedMethods.createTask, (_) {
+          events.add('created');
+          return 'task-id';
+        })
+        ..bind(NavigationMethods.showDownloadingTasks, (_) {
+          events.add('downloads');
+          if (navigationFails) throw StateError('Navigation unavailable');
+          return const RpcUnit();
+        });
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: AppComponentThemes(
+              child: CreateTaskWindowPage(
+                windowController: WindowController.fromWindowId('child'),
+                initialTask: CreateTask(req: Request(url: 'https://example.com/file.apk')),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirm'));
+      // The mocked native close deliberately leaves the widget mounted.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(events, ['created', 'downloads', 'close']);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
   testWidgets('repeated external tasks update the open create route and replace request metadata', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
@@ -240,7 +298,10 @@ void main() {
 
     final connectionsInput = find.byKey(const ValueKey('create-task-connections-input'));
     expect(connectionsInput, findsOneWidget);
-    expect(tester.getSize(connectionsInput).width, AppDesignTokens.settingsNumberControlWidth);
+    expect(
+      tester.getSize(connectionsInput).width,
+      tester.getSize(find.byKey(const ValueKey('create-task-rename-input'))).width,
+    );
     final connectionsField = tester.widget<shad.TextField>(connectionsInput);
     expect(connectionsField.controller!.text, '12');
     expect(connectionsField.features.single, isA<shad.InputSpinnerFeature>());
@@ -397,6 +458,57 @@ void main() {
     expect(options.archivePassword, 'archive-password');
     expect(options.deleteAfterExtract, isTrue);
     expect(submitted?.opts?.asDefaultPath, isTrue);
+  });
+
+  testWidgets('resolved task keeps rename empty and uses equal-width single-line actions', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(700, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          id: 'resolved-id',
+          res: Resource(
+            name: 'server-generated-name',
+            files: [FileInfo(name: 'video.mp4', size: 1024)],
+          ),
+        ),
+      )
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/video.mp4');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(_fieldText(tester, 'create-task-rename-input'), isEmpty);
+    final createButton = tester.widget<AppLoadingButton>(find.byKey(const ValueKey('resolve-create-button')));
+    expect(createButton.child, isA<Text>());
+    final createText = createButton.child as Text;
+    expect(createText.data, 'Create');
+    expect(createText.maxLines, 1);
+    expect(createText.softWrap, isFalse);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('resolve-cancel-button'))),
+      tester.getSize(find.byKey(const ValueKey('resolve-create-button'))),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('create history supports filtering, deleting one entry, and clearing all entries', (

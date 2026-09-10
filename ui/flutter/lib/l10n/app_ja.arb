@@ -18,6 +18,7 @@
   "exit": "終了",
   "pressBackAgainToExit": "もう一度戻るボタンを押すと終了します",
   "create": "タスクを作成",
+  "createAction": "作成",
   "directDownload": "直接ダウンロード",
   "advancedOptions": "詳細オプション",
   "followSettings": "設定に従う",

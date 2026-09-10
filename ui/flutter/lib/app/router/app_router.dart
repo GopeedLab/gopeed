@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/tasks/application/task_list_navigation.dart';
 
 import '../../features/extensions/presentation/pages/extensions_page.dart';
 import '../../features/extensions/presentation/pages/extension_details_page.dart';
@@ -16,6 +18,13 @@ import 'shells/main_shell.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
+  static void showDownloadingTasks() {
+    final context = rootNavigatorKey.currentContext;
+    if (context == null || !context.mounted) return;
+    ProviderScope.containerOf(context, listen: false).read(taskListNavigationProvider.notifier).showDownloading();
+    GoRouter.of(context).go('/');
+  }
 
   static GoRouter build(WebAuthController webAuthController) {
     return GoRouter(

@@ -18,6 +18,7 @@
   "exit": "Вихід",
   "pressBackAgainToExit": "Натисніть «Назад» ще раз, щоб вийти",
   "create": "Створити завдання",
+  "createAction": "Створити",
   "directDownload": "Пряме завантаження",
   "advancedOptions": "Додаткові параметри",
   "followSettings": "За замовчуванням",
