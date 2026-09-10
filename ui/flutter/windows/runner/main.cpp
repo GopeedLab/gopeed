@@ -56,7 +56,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   flutter::DartProject project(L"data");
   std::vector<std::string> command_line_arguments = GetCommandLineArguments();
   if (!IsMultiWindowLaunch(command_line_arguments) &&
-      SendAppLinkToInstance(L"gopeed")) {
+      SendAppLinkToInstance(L"Gopeed")) {
     return EXIT_SUCCESS;
   }
 
@@ -71,7 +71,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"gopeed", origin, size)) {
+  if (!window.Create(L"Gopeed", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

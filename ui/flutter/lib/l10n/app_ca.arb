@@ -18,6 +18,7 @@
   "exit": "Surt",
   "pressBackAgainToExit": "Torna a prémer enrere per sortir",
   "create": "Crea una tasca",
+  "createAction": "Crea",
   "directDownload": "Baixada directa",
   "advancedOptions": "Opcions avançades",
   "followSettings": "Segueix la configuració",

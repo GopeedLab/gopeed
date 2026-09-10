@@ -18,6 +18,7 @@
   "exit": "Exit",
   "pressBackAgainToExit": "Press back again to exit",
   "create": "Create Task",
+  "createAction": "Create",
   "directDownload": "Direct Download",
   "advancedOptions": "Advanced Options",
   "followSettings": "Follow Settings",

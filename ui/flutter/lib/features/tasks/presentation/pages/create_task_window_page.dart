@@ -29,9 +29,9 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_choice_segmented_control.dart';
 import '../../../../shared/widgets/app_http_headers_editor.dart';
+import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_number_input.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
-import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
@@ -39,6 +39,7 @@ import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
 import '../widgets/resolve_file_tree.dart';
+import '../widgets/resolve_task_actions.dart';
 
 class CreateTaskWindowPage extends ConsumerStatefulWidget {
   const CreateTaskWindowPage({super.key, this.windowController, this.initialTask});
@@ -87,6 +88,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   String _configuredDownloadDirectory = '';
   String _fileDataUri = '';
   bool _programmaticUrlChange = false;
+  String _lastUrlText = '';
 
   @override
   void initState() {
@@ -172,10 +174,15 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   void _handleUrlChanged() {
-    if (!_programmaticUrlChange && _fileDataUri.isNotEmpty) {
-      _fileDataUri = '';
+    final urlText = _urlController.text;
+    if (urlText != _lastUrlText) {
+      _lastUrlText = urlText;
+      _renameController.clear();
+      if (!_programmaticUrlChange && _fileDataUri.isNotEmpty) {
+        _fileDataUri = '';
+      }
     }
-    _recognizeMagnetUri(_urlController.text.trim());
+    _recognizeMagnetUri(urlText.trim());
   }
 
   void _applyInitialTask(CreateTask? task) {
@@ -220,9 +227,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         }
       }
       if (opts != null) {
-        if (opts.name.isNotEmpty) {
-          _renameController.text = opts.name;
-        }
         if (opts.path.isNotEmpty) {
           _directoryController.text = opts.path;
         }
@@ -370,18 +374,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     const SizedBox(height: 16),
                     _FormRow(
                       label: context.l10n.connections,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: AppDesignTokens.settingsNumberControlWidth,
-                          child: AppNumberInput(
-                            fieldKey: const ValueKey('create-task-connections-input'),
-                            controller: _connectionsController,
-                            min: 1,
-                            max: 256,
-                            hintText: context.l10n.enterCount,
-                          ),
-                        ),
+                      child: AppNumberInput(
+                        fieldKey: const ValueKey('create-task-connections-input'),
+                        controller: _connectionsController,
+                        min: 1,
+                        max: 256,
+                        hintText: context.l10n.enterCount,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -396,10 +394,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                             pickerKey: const ValueKey('create-task-directory-picker'),
                             controller: _directoryController,
                             hintText: context.l10n.chooseDownloadDirectory,
-                            filled: true,
-                            border: Border.all(color: palette.border),
-                            borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             onChanged: (_) {
                               if (_asDefaultPath) {
                                 setState(() => _asDefaultPath = false);
@@ -707,16 +701,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     child: SizedBox(width: 68, child: Center(child: Text(context.l10n.cancel))),
                   ),
                   const SizedBox(width: 12),
-                  AppPrimaryButton(
-                    onPressed: _creating ? null : _confirm,
-                    child: SizedBox(
-                      width: 68,
-                      child: Center(
-                        child: _creating
-                            ? const SizedBox.square(dimension: 14, child: CircularProgressIndicator())
-                            : Text(context.l10n.confirm),
-                      ),
-                    ),
+                  AppLoadingButton(
+                    key: const ValueKey('create-task-confirm-button'),
+                    onPressed: _confirm,
+                    loading: _creating,
+                    variant: AppLoadingButtonVariant.primary,
+                    child: SizedBox(width: 68, child: Center(child: Text(context.l10n.confirm))),
                   ),
                 ],
               ),
@@ -735,6 +725,19 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       return;
     }
     await windowManager.close();
+  }
+
+  Future<void> _finishCreation() async {
+    if (widget.windowController != null) {
+      // Navigation is best-effort after a successful submission. A navigation
+      // failure must not leave a completed form available for resubmission.
+      try {
+        await ref.read(appCapabilitiesProvider).navigation.showDownloadingTasks();
+      } catch (error) {
+        debugPrint('Unable to select downloading tasks: $error');
+      }
+    }
+    await _closeWindow();
   }
 
   Future<void> _loadDefaults() async {
@@ -863,7 +866,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 );
           }),
         );
-        await _closeWindow();
+        await _finishCreation();
         return;
       }
 
@@ -871,7 +874,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       final options = _buildOptions();
       final result = await ref.read(gopeedServiceProvider).resolve(ResolveTask(req: request, opts: options));
       if (!mounted) return;
-      _syncResolvedName(result);
       final created = await _showResolveDialog(request, result);
       if (!created) {
         if (mounted) {
@@ -879,7 +881,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         }
         return;
       }
-      await _closeWindow();
+      await _finishCreation();
     } catch (error) {
       if (mounted) {
         _showToast(error.toString());
@@ -1156,19 +1158,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 ),
               ),
               actions: [
-                SecondaryButton(
-                  onPressed: submitting ? null : () => closeOverlay(dialogContext, false),
-                  child: SizedBox(width: 68, child: Center(child: Text(dialogContext.l10n.cancel))),
-                ),
-                AppPrimaryButton(
-                  onPressed: submitting ? null : submit,
-                  child: SizedBox(
-                    width: 68,
-                    child: Center(
-                      child: submitting
-                          ? const SizedBox.square(dimension: 14, child: CircularProgressIndicator())
-                          : Text(dialogContext.l10n.create),
-                    ),
+                flutter.Flexible(
+                  child: ResolveTaskActions(
+                    submitting: submitting,
+                    onCancel: () => closeOverlay(dialogContext, false),
+                    onCreate: submit,
                   ),
                 ),
               ],
@@ -1329,12 +1323,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     );
     await dialog.future;
     filterController.dispose();
-  }
-
-  void _syncResolvedName(ResolveResult result) {
-    if (_renameController.text.trim().isEmpty && result.res.name.trim().isNotEmpty) {
-      _renameController.text = result.res.name;
-    }
   }
 
   void _setUrlText(String value, {String fileDataUri = ''}) {
@@ -1678,17 +1666,12 @@ class _WindowTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
     return AppTextField(
       controller: controller,
       hintText: hintText,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       obscureText: obscureText,
-      filled: true,
-      border: Border.all(color: palette.border),
-      borderRadius: BorderRadius.circular(4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     );
   }
 }
