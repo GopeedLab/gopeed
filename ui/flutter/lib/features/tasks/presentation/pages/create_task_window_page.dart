@@ -29,7 +29,6 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_choice_segmented_control.dart';
 import '../../../../shared/widgets/app_http_headers_editor.dart';
-import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_number_input.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -38,8 +37,8 @@ import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
+import '../widgets/create_task_action_buttons.dart';
 import '../widgets/resolve_file_tree.dart';
-import '../widgets/resolve_task_actions.dart';
 
 class CreateTaskWindowPage extends ConsumerStatefulWidget {
   const CreateTaskWindowPage({super.key, this.windowController, this.initialTask});
@@ -696,17 +695,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SecondaryButton(
-                    onPressed: _creating ? null : _closeWindow,
-                    child: SizedBox(width: 68, child: Center(child: Text(context.l10n.cancel))),
-                  ),
-                  const SizedBox(width: 12),
-                  AppLoadingButton(
-                    key: const ValueKey('create-task-confirm-button'),
-                    onPressed: _confirm,
-                    loading: _creating,
-                    variant: AppLoadingButtonVariant.primary,
-                    child: SizedBox(width: 68, child: Center(child: Text(context.l10n.confirm))),
+                  CreateTaskActionButtons(
+                    submitting: _creating,
+                    onCancel: _closeWindow,
+                    onSubmit: _confirm,
+                    cancelLabel: context.l10n.cancel,
+                    submitLabel: context.l10n.confirm,
+                    cancelButtonKey: const ValueKey('create-task-cancel-button'),
+                    submitButtonKey: const ValueKey('create-task-confirm-button'),
                   ),
                 ],
               ),
@@ -1159,10 +1155,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
               ),
               actions: [
                 flutter.Flexible(
-                  child: ResolveTaskActions(
+                  child: CreateTaskActionButtons(
                     submitting: submitting,
                     onCancel: () => closeOverlay(dialogContext, false),
-                    onCreate: submit,
+                    onSubmit: submit,
+                    cancelLabel: dialogContext.l10n.cancel,
+                    submitLabel: dialogContext.l10n.createAction,
+                    cancelButtonKey: const ValueKey('resolve-cancel-button'),
+                    submitButtonKey: const ValueKey('resolve-create-button'),
                   ),
                 ),
               ],

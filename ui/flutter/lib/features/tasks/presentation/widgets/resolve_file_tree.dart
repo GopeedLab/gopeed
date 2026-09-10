@@ -197,33 +197,74 @@ class _TreeFooter extends StatelessWidget {
       onSelectAudio: onSelectAudio,
       onSelectImage: onSelectImage,
     );
-    final stats = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          context.l10n.selectedCount(selectedCount, totalCount),
-          style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          unknownSize ? context.l10n.unknownSize : Util.fmtByte(selectedSize),
-          style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
+    final statsStyle = TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w600);
+    final selectedLabel = context.l10n.selectedCount(selectedCount, totalCount);
+    final sizeLabel = unknownSize ? context.l10n.unknownSize : Util.fmtByte(selectedSize);
+    final textDirection = Directionality.of(context);
+    final textScaler = MediaQuery.textScalerOf(context);
+    double measureText(String value) {
+      final painter = TextPainter(
+        text: TextSpan(text: value, style: statsStyle),
+        textDirection: textDirection,
+        textScaler: textScaler,
+        maxLines: 1,
+      )..layout();
+      return painter.width.ceilToDouble();
+    }
+
+    final statsWidth = measureText(selectedLabel) + AppDesignTokens.space8 + measureText(sizeLabel);
+    Widget buildStats({required bool stacked}) {
+      final labels = [
+        Text(key: const ValueKey('resolve-tree-selected-count'), selectedLabel, style: statsStyle),
+        Text(key: const ValueKey('resolve-tree-selected-size'), sizeLabel, style: statsStyle),
+      ];
+      if (stacked) {
+        return Column(
+          key: const ValueKey('resolve-tree-selection-stats'),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            labels.first,
+            const SizedBox(height: AppDesignTokens.space4),
+            labels.last,
+          ],
+        );
+      }
+      return Row(
+        key: const ValueKey('resolve-tree-selection-stats'),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          labels.first,
+          const SizedBox(width: AppDesignTokens.space8),
+          labels.last,
+        ],
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 360) {
+        final footerFitsInline =
+            _fileTypeFilterGroupWidth + AppDesignTokens.space8 + statsWidth <= constraints.maxWidth;
+        if (!footerFitsInline) {
           return Column(
+            key: const ValueKey('resolve-tree-footer-stacked'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Align(alignment: Alignment.centerLeft, child: filters),
-              const SizedBox(height: 4),
-              Align(alignment: Alignment.centerRight, child: stats),
+              const SizedBox(height: AppDesignTokens.space4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: buildStats(stacked: statsWidth > constraints.maxWidth),
+              ),
             ],
           );
         }
-        return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [filters, const Spacer(), stats]);
+        return Row(
+          key: const ValueKey('resolve-tree-footer-inline'),
+          children: [filters, const Spacer(), buildStats(stacked: false)],
+        );
       },
     );
   }
@@ -290,7 +331,11 @@ class _FilterDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(width: 1, height: 18, child: ColoredBox(color: color));
+    return SizedBox(
+      width: _fileTypeFilterDividerWidth,
+      height: 18,
+      child: ColoredBox(color: color),
+    );
   }
 }
 
@@ -305,7 +350,7 @@ class _FilterButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return SizedBox(
-      width: 40,
+      width: _fileTypeFilterButtonWidth,
       height: 28,
       child: DecoratedBox(
         decoration: BoxDecoration(color: active ? palette.filterActiveBg : null),
@@ -340,3 +385,6 @@ const _audioExts = <String>{'mp3', 'flac', 'wav', 'aac', 'm4a', 'ogg', 'ape'};
 const _imageExts = <String>{'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'};
 const _resolveTreeRowHeight = 36.0;
 const _resolveFileNameStyle = TextStyle(fontSize: 14, height: 1.25);
+const _fileTypeFilterButtonWidth = 40.0;
+const _fileTypeFilterDividerWidth = 1.0;
+const _fileTypeFilterGroupWidth = _fileTypeFilterButtonWidth * 3 + _fileTypeFilterDividerWidth * 2;

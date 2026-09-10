@@ -1,21 +1,33 @@
-import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:flutter/widgets.dart' as flutter;
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
 
-class ResolveTaskActions extends StatelessWidget {
-  const ResolveTaskActions({super.key, required this.submitting, required this.onCancel, required this.onCreate});
+class CreateTaskActionButtons extends StatelessWidget {
+  const CreateTaskActionButtons({
+    super.key,
+    required this.submitting,
+    required this.onCancel,
+    required this.onSubmit,
+    required this.cancelLabel,
+    required this.submitLabel,
+    this.cancelButtonKey,
+    this.submitButtonKey,
+  });
 
   final bool submitting;
   final VoidCallback onCancel;
-  final VoidCallback onCreate;
+  final VoidCallback onSubmit;
+  final String cancelLabel;
+  final String submitLabel;
+  final Key? cancelButtonKey;
+  final Key? submitButtonKey;
 
   @override
   Widget build(BuildContext context) {
-    // Size both actions from the wider translated label, including while the
-    // create button replaces its label with a loader.
+    // Both actions follow the widest translation and retain their dimensions
+    // while the submit label is replaced by the loading indicator.
     return IntrinsicWidth(
       child: flutter.Row(
         mainAxisSize: MainAxisSize.min,
@@ -24,22 +36,22 @@ class ResolveTaskActions extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: AppDesignTokens.dialogActionMinWidth),
               child: SecondaryButton(
-                key: const ValueKey('resolve-cancel-button'),
+                key: cancelButtonKey,
                 onPressed: submitting ? null : onCancel,
-                child: Text(context.l10n.cancel, maxLines: 1, softWrap: false),
+                child: Text(cancelLabel, maxLines: 1, softWrap: false),
               ),
             ),
           ),
-          const SizedBox(width: AppDesignTokens.space8),
+          const SizedBox(width: AppDesignTokens.space12),
           flutter.Expanded(
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: AppDesignTokens.dialogActionMinWidth),
               child: AppLoadingButton(
-                key: const ValueKey('resolve-create-button'),
-                onPressed: onCreate,
+                key: submitButtonKey,
+                onPressed: onSubmit,
                 loading: submitting,
                 variant: AppLoadingButtonVariant.primary,
-                child: Text(context.l10n.createAction, maxLines: 1, softWrap: false),
+                child: Text(submitLabel, maxLines: 1, softWrap: false),
               ),
             ),
           ),

@@ -2669,9 +2669,9 @@ void main() {
           padding: const EdgeInsets.all(24),
           child: ResolveFileTree(
             files: [
-              FileInfo(path: 'videos', name: 'clip.mp4', size: 1024),
-              FileInfo(path: 'docs', name: 'notes.txt', size: 128),
-              FileInfo(path: 'docs', name: 'manual.pdf', size: 256),
+              FileInfo(path: 'videos', name: 'clip.mp4', size: 0),
+              FileInfo(path: 'docs', name: 'notes.txt', size: 0),
+              FileInfo(path: 'docs', name: 'manual.pdf', size: 0),
             ],
             initialSelection: const [0, 1, 2],
             onSelectionChanged: (values) => selected = values,
@@ -2708,7 +2708,12 @@ void main() {
     expect(find.byKey(const ValueKey('resolve-tree-expand-toggle')), findsOneWidget);
     expect(find.byType(shad.OutlinedContainer), findsOneWidget);
     expect(find.text('clip.mp4'), findsOneWidget);
+    expect(find.text('Unknown size'), findsOneWidget);
     expect(tester.widget<Text>(find.text('clip.mp4')).style?.color, AppPalette.light.textPrimary);
+    final selectionStats = tester.widget<Row>(find.byKey(const ValueKey('resolve-tree-selection-stats')));
+    expect(selectionStats.crossAxisAlignment, CrossAxisAlignment.baseline);
+    expect(selectionStats.textBaseline, TextBaseline.alphabetic);
+    expect(find.byKey(const ValueKey('resolve-tree-footer-inline')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('resolve-tree-expand-toggle')));
     await tester.pumpAndSettle();
@@ -2772,6 +2777,7 @@ void main() {
 
     tester.view.physicalSize = const Size(360, 620);
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('resolve-tree-footer-stacked')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
