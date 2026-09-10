@@ -18,6 +18,7 @@
   "exit": "Salir",
   "pressBackAgainToExit": "Pulsa Atrás de nuevo para salir",
   "create": "Crear Tarea",
+  "createAction": "Crear",
   "directDownload": "Descarga Directa",
   "advancedOptions": "Opciones Avanzadas",
   "followSettings": "Siga las opciones",

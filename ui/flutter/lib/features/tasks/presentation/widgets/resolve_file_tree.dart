@@ -61,6 +61,8 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
           child: FileTreeView<int>(
             items: _treeItems,
             keyPrefix: 'resolve-tree',
+            rowHeight: _resolveTreeRowHeight,
+            contentTextStyle: _resolveFileNameStyle,
             headerLeading: ExcludeFocus(
               child: Checkbox(
                 state: allSelected
@@ -336,3 +338,5 @@ extension on _FileTypeFilter {
 const _videoExts = <String>{'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v'};
 const _audioExts = <String>{'mp3', 'flac', 'wav', 'aac', 'm4a', 'ogg', 'ape'};
 const _imageExts = <String>{'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'};
+const _resolveTreeRowHeight = 36.0;
+const _resolveFileNameStyle = TextStyle(fontSize: 14, height: 1.25);

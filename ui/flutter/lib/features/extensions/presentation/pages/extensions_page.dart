@@ -633,6 +633,7 @@ class _Toolbar extends StatelessWidget {
     final search = AppTextField(
       key: const ValueKey('extension-search-input'),
       controller: searchController,
+      padding: MediaQuery.sizeOf(context).width >= Breakpoints.mobile ? AppDesignTokens.compactTextFieldPadding : null,
       placeholder: Text(context.l10n.searchExtensions, style: TextStyle(color: palette.searchHint)),
       features: [shad.InputFeature.leading(Icon(Icons.search_rounded, size: 16, color: palette.textMuted))],
       onSubmitted: onSearch,
