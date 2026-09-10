@@ -16,12 +16,18 @@ import '../window/app_window_appearance.dart';
 import 'capability_rpc.dart';
 import 'gopeed_capability.dart';
 import 'storage_capability.dart';
+import 'app_navigation_capability.dart';
+import '../../app/router/app_router.dart';
 
 class AppCapabilities {
-  AppCapabilities(CapabilityInvoker invoker) : gopeed = GopeedService(invoker), storage = AppStorageService(invoker);
+  AppCapabilities(CapabilityInvoker invoker)
+    : gopeed = GopeedService(invoker),
+      storage = AppStorageService(invoker),
+      navigation = AppNavigationService(invoker);
 
   final GopeedService gopeed;
   final AppStorageService storage;
+  final AppNavigationService navigation;
 }
 
 class LocalAppCapabilities {
@@ -29,6 +35,10 @@ class LocalAppCapabilities {
     registry = CapabilityRegistry(codecs);
     _bindGopeed(registry);
     _bindStorage(registry);
+    registry.bind(NavigationMethods.showDownloadingTasks, (_) {
+      AppRouter.showDownloadingTasks();
+      return const RpcUnit();
+    });
     capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
   }
 
