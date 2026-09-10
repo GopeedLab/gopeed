@@ -189,83 +189,50 @@ class _TreeFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final filters = _FileTypeFilterGroup(
-      videoActive: activeTypeFilters.contains(_FileTypeFilter.video),
-      audioActive: activeTypeFilters.contains(_FileTypeFilter.audio),
-      imageActive: activeTypeFilters.contains(_FileTypeFilter.image),
-      onSelectVideo: onSelectVideo,
-      onSelectAudio: onSelectAudio,
-      onSelectImage: onSelectImage,
+    final filters = KeyedSubtree(
+      key: const ValueKey('resolve-tree-filters'),
+      child: _FileTypeFilterGroup(
+        videoActive: activeTypeFilters.contains(_FileTypeFilter.video),
+        audioActive: activeTypeFilters.contains(_FileTypeFilter.audio),
+        imageActive: activeTypeFilters.contains(_FileTypeFilter.image),
+        onSelectVideo: onSelectVideo,
+        onSelectAudio: onSelectAudio,
+        onSelectImage: onSelectImage,
+      ),
     );
     final statsStyle = TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w600);
     final selectedLabel = context.l10n.selectedCount(selectedCount, totalCount);
     final sizeLabel = unknownSize ? context.l10n.unknownSize : Util.fmtByte(selectedSize);
-    final textDirection = Directionality.of(context);
-    final textScaler = MediaQuery.textScalerOf(context);
-    double measureText(String value) {
-      final painter = TextPainter(
-        text: TextSpan(text: value, style: statsStyle),
-        textDirection: textDirection,
-        textScaler: textScaler,
-        maxLines: 1,
-      )..layout();
-      return painter.width.ceilToDouble();
-    }
-
-    final statsWidth = measureText(selectedLabel) + AppDesignTokens.space8 + measureText(sizeLabel);
-    Widget buildStats({required bool stacked}) {
-      final labels = [
-        Text(key: const ValueKey('resolve-tree-selected-count'), selectedLabel, style: statsStyle),
-        Text(key: const ValueKey('resolve-tree-selected-size'), sizeLabel, style: statsStyle),
-      ];
-      if (stacked) {
-        return Column(
-          key: const ValueKey('resolve-tree-selection-stats'),
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            labels.first,
-            const SizedBox(height: AppDesignTokens.space4),
-            labels.last,
-          ],
-        );
-      }
-      return Row(
-        key: const ValueKey('resolve-tree-selection-stats'),
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
+    final baseline = MediaQuery.textScalerOf(context).scale(statsStyle.fontSize!);
+    final stats = IntrinsicWidth(
+      key: const ValueKey('resolve-tree-selection-stats'),
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: AppDesignTokens.space8,
+        runSpacing: AppDesignTokens.space4,
+        crossAxisAlignment: WrapCrossAlignment.start,
         children: [
-          labels.first,
-          const SizedBox(width: AppDesignTokens.space8),
-          labels.last,
+          Baseline(
+            baseline: baseline,
+            baselineType: TextBaseline.alphabetic,
+            child: Text(key: const ValueKey('resolve-tree-selected-count'), selectedLabel, style: statsStyle),
+          ),
+          Baseline(
+            baseline: baseline,
+            baselineType: TextBaseline.alphabetic,
+            child: Text(key: const ValueKey('resolve-tree-selected-size'), sizeLabel, style: statsStyle),
+          ),
         ],
-      );
-    }
+      ),
+    );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final footerFitsInline =
-            _fileTypeFilterGroupWidth + AppDesignTokens.space8 + statsWidth <= constraints.maxWidth;
-        if (!footerFitsInline) {
-          return Column(
-            key: const ValueKey('resolve-tree-footer-stacked'),
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(alignment: Alignment.centerLeft, child: filters),
-              const SizedBox(height: AppDesignTokens.space4),
-              Align(
-                alignment: Alignment.centerRight,
-                child: buildStats(stacked: statsWidth > constraints.maxWidth),
-              ),
-            ],
-          );
-        }
-        return Row(
-          key: const ValueKey('resolve-tree-footer-inline'),
-          children: [filters, const Spacer(), buildStats(stacked: false)],
-        );
-      },
+    return OverflowBar(
+      key: const ValueKey('resolve-tree-footer'),
+      spacing: AppDesignTokens.space8,
+      alignment: MainAxisAlignment.spaceBetween,
+      overflowAlignment: OverflowBarAlignment.end,
+      overflowSpacing: AppDesignTokens.space4,
+      children: [filters, stats],
     );
   }
 }
@@ -387,4 +354,3 @@ const _resolveTreeRowHeight = 36.0;
 const _resolveFileNameStyle = TextStyle(fontSize: 14, height: 1.25);
 const _fileTypeFilterButtonWidth = 40.0;
 const _fileTypeFilterDividerWidth = 1.0;
-const _fileTypeFilterGroupWidth = _fileTypeFilterButtonWidth * 3 + _fileTypeFilterDividerWidth * 2;
