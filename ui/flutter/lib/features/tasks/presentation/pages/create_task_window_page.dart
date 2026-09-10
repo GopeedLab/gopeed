@@ -1205,7 +1205,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 width: contentWidth,
                 child: Row(
                   children: [
-                    Expanded(child: Text(dialogContext.l10n.createHistory)),
+                    Expanded(child: Text(dialogContext.l10n.historyLinks)),
                     AppTooltip(
                       message: dialogContext.l10n.clearHistory,
                       child: GhostButton(

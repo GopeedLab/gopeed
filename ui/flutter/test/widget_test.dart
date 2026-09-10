@@ -2723,7 +2723,11 @@ void main() {
     expect(baselines.every((widget) => widget.baselineType == TextBaseline.alphabetic), isTrue);
     final filtersRect = tester.getRect(find.byKey(const ValueKey('resolve-tree-filters')));
     final statsRect = tester.getRect(find.byKey(const ValueKey('resolve-tree-selection-stats')));
+    final selectedCountRect = tester.getRect(find.byKey(const ValueKey('resolve-tree-selected-count')));
+    final selectedSizeRect = tester.getRect(find.byKey(const ValueKey('resolve-tree-selected-size')));
     expect(statsRect.center.dy, closeTo(filtersRect.center.dy, 0.01));
+    expect(selectedCountRect.center.dy, closeTo(selectedSizeRect.center.dy, 0.01));
+    expect(selectedSizeRect.left, greaterThan(selectedCountRect.right));
 
     await tester.tap(find.byKey(const ValueKey('resolve-tree-expand-toggle')));
     await tester.pumpAndSettle();
@@ -2785,11 +2789,15 @@ void main() {
     expect(find.text('clip.mp4'), findsOneWidget);
     expect(selected, [0, 1, 2]);
 
-    tester.view.physicalSize = const Size(360, 620);
+    tester.view.physicalSize = const Size(280, 620);
     await tester.pumpAndSettle();
     expect(
       tester.getRect(find.byKey(const ValueKey('resolve-tree-selection-stats'))).top,
       greaterThanOrEqualTo(tester.getRect(find.byKey(const ValueKey('resolve-tree-filters'))).bottom),
+    );
+    expect(
+      tester.getRect(find.byKey(const ValueKey('resolve-tree-selected-size'))).top,
+      greaterThanOrEqualTo(tester.getRect(find.byKey(const ValueKey('resolve-tree-selected-count'))).bottom),
     );
     expect(tester.takeException(), isNull);
   });

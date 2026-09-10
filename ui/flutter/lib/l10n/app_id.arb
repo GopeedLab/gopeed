@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} terselesaikan",
   "resourceHasNoFiles": "Sumber daya tidak memiliki daftar berkas yang dapat dipilih",
   "noFiles": "Tidak ada berkas",
-  "createHistory": "Buat Riwayat",
+  "historyLinks": "Tautan Riwayat",
   "noHistory": "Tidak ada sejarah",
   "directDownloadDescription": "Lewatkan pemecahan dan buat tugas segera",
   "taskProgress": "Kemajuan tugas",

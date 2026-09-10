@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} dosyaları çözüldü",
   "resourceHasNoFiles": "Kaynak, uygun olmayan dosya listesine sahiptir",
   "noFiles": "Hiçbir dosya yok",
-  "createHistory": "Create History Create History",
+  "historyLinks": "Geçmiş Bağlantıları",
   "noHistory": "Geçmiş yok",
   "directDownloadDescription": "Hemen çözümle ve görevleri oluşturun",
   "taskProgress": "Görev ilerlemesi",

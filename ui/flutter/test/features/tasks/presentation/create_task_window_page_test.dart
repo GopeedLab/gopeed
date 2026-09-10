@@ -556,6 +556,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.history));
     await tester.pumpAndSettle();
+    expect(find.text('History Links'), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('create-history-title-bar'))).width,
       tester.getSize(find.byKey(const ValueKey('create-history-content'))).width,

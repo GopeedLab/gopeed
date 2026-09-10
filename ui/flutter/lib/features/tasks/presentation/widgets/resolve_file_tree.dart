@@ -204,26 +204,24 @@ class _TreeFooter extends StatelessWidget {
     final selectedLabel = context.l10n.selectedCount(selectedCount, totalCount);
     final sizeLabel = unknownSize ? context.l10n.unknownSize : Util.fmtByte(selectedSize);
     final baseline = MediaQuery.textScalerOf(context).scale(statsStyle.fontSize!);
-    final stats = IntrinsicWidth(
+    final stats = Wrap(
       key: const ValueKey('resolve-tree-selection-stats'),
-      child: Wrap(
-        alignment: WrapAlignment.end,
-        spacing: AppDesignTokens.space8,
-        runSpacing: AppDesignTokens.space4,
-        crossAxisAlignment: WrapCrossAlignment.start,
-        children: [
-          Baseline(
-            baseline: baseline,
-            baselineType: TextBaseline.alphabetic,
-            child: Text(key: const ValueKey('resolve-tree-selected-count'), selectedLabel, style: statsStyle),
-          ),
-          Baseline(
-            baseline: baseline,
-            baselineType: TextBaseline.alphabetic,
-            child: Text(key: const ValueKey('resolve-tree-selected-size'), sizeLabel, style: statsStyle),
-          ),
-        ],
-      ),
+      alignment: WrapAlignment.end,
+      spacing: AppDesignTokens.space8,
+      runSpacing: AppDesignTokens.space4,
+      crossAxisAlignment: WrapCrossAlignment.start,
+      children: [
+        Baseline(
+          baseline: baseline,
+          baselineType: TextBaseline.alphabetic,
+          child: Text(key: const ValueKey('resolve-tree-selected-count'), selectedLabel, style: statsStyle),
+        ),
+        Baseline(
+          baseline: baseline,
+          baselineType: TextBaseline.alphabetic,
+          child: Text(key: const ValueKey('resolve-tree-selected-size'), sizeLabel, style: statsStyle),
+        ),
+      ],
     );
 
     return OverflowBar(
