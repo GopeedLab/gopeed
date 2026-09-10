@@ -75,7 +75,7 @@ class AppWindowBootstrap {
 
   static String subWindowTitle(AppWindowType type, AppLocalizations l10n) {
     return switch (type) {
-      AppWindowType.createTask => 'Gopeed-${l10n.create}',
+      AppWindowType.createTask => 'Gopeed - ${l10n.create}',
       _ => 'Gopeed',
     };
   }
