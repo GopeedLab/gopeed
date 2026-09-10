@@ -18,6 +18,7 @@
   "exit": "종료",
   "pressBackAgainToExit": "종료하려면 뒤로 버튼을 한 번 더 누르세요",
   "create": "작업 생성",
+  "createAction": "생성",
   "directDownload": "바로 다운로드",
   "advancedOptions": "고급 옵션",
   "followSettings": "설정값 사용",

@@ -134,7 +134,10 @@ void main() {
       of: find.byKey(const ValueKey('text-only-loading-button')),
       matching: find.byType(shad.CircularProgressIndicator),
     );
-    expect(find.text('Login'), findsNothing);
+    final hiddenLabel = find.text('Login');
+    expect(hiddenLabel, findsOneWidget);
+    expect(tester.widget<Opacity>(find.ancestor(of: hiddenLabel, matching: find.byType(Opacity))).opacity, 0);
+    expect(find.ancestor(of: hiddenLabel, matching: find.byType(ExcludeSemantics)), findsOneWidget);
     expect(loader, findsOneWidget);
     expect(tester.getRect(loader).center, bounds.center);
   });

@@ -18,6 +18,7 @@
   "exit": "Çıkış",
   "pressBackAgainToExit": "Çıkmak için tekrar geri tuşuna basın",
   "create": "İşlem Oluştur",
+  "createAction": "Oluştur",
   "directDownload": "Direkt İndir",
   "advancedOptions": "Gelişmiş Seçenekler",
   "followSettings": "Ayarları Takip Et",

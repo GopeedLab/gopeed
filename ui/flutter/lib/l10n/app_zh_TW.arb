@@ -18,6 +18,7 @@
   "exit": "退出",
   "pressBackAgainToExit": "再按一次返回鍵退出應用程式",
   "create": "建立任務",
+  "createAction": "建立",
   "directDownload": "直接下載",
   "advancedOptions": "進階選項",
   "followSettings": "跟隨設定",
