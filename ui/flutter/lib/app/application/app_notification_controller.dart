@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/common/task_event.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../l10n/l10n.dart';
+import '../../util/log_util.dart';
 import '../../util/util.dart';
 import 'app_runtime_controller.dart';
 
@@ -56,13 +57,22 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
     String? windowsIconPath;
     try {
       if (Util.isWindows()) {
-        final byteData = await rootBundle.load('assets/icon/icon.ico');
-        final tempDir = await getTemporaryDirectory();
-        final file = File('${tempDir.path}/notification_icon.ico');
-        await file.writeAsBytes(byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
-        windowsIconPath = file.path;
+        // Windows reads the toast header icon through the registered IconUri.
+        // Use a PNG in persistent storage so notification history can still
+        // resolve it after the app exits or temporary files are cleaned up.
+        final byteData = await rootBundle.load('assets/icon/icon_512.png');
+        final supportDir = await getApplicationSupportDirectory();
+        final file = File('${supportDir.path}/notification_icon.png');
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(
+          byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes),
+          flush: true,
+        );
+        windowsIconPath = file.absolute.path;
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      logger.w('prepare Windows notification icon failed', error, stackTrace);
+    }
 
     final windows = WindowsInitializationSettings(
       appName: 'Gopeed',
