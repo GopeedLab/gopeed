@@ -28,13 +28,19 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
   StreamSubscription<TaskEvent>? _taskEventSubscription;
   var _notificationId = 0;
 
+  @visibleForTesting
+  Stream<TaskEvent> get taskEvents => LibgopeedBoot.instance.taskEvents;
+
   @override
   Future<AppNotificationState> build() async {
     final runtime = ref.watch(appRuntimeControllerProvider).value;
     if (runtime == null || kIsWeb || !Util.isDesktop()) {
       return const AppNotificationState();
     }
-    await _initNotifications(appLocalizationsFor(runtime.downloaderConfig.extra.locale));
+    await _initNotifications(
+      appLocalizationsFor(runtime.downloaderConfig.extra.locale),
+      requestPermissions: runtime.downloaderConfig.extra.desktopNotification,
+    );
     _listenTaskEvents();
     ref.onDispose(() {
       unawaited(_taskEventSubscription?.cancel());
@@ -42,11 +48,13 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
     return const AppNotificationState(started: true);
   }
 
-  Future<void> _initNotifications(AppLocalizations locale) async {
-    const darwin = DarwinInitializationSettings(
-      requestAlertPermission: false,
+  Future<void> _initNotifications(AppLocalizations locale, {required bool requestPermissions}) async {
+    // The runtime is watched, so enabling notifications in settings also
+    // requests authorization. macOS remembers previously granted/denied access.
+    final darwin = DarwinInitializationSettings(
+      requestAlertPermission: requestPermissions,
       requestBadgePermission: false,
-      requestSoundPermission: false,
+      requestSoundPermission: requestPermissions,
     );
     final linux = LinuxInitializationSettings(
       defaultActionName: locale.open,
@@ -92,7 +100,7 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
 
   void _listenTaskEvents() {
     _taskEventSubscription?.cancel();
-    _taskEventSubscription = LibgopeedBoot.instance.taskEvents.listen((event) async {
+    _taskEventSubscription = taskEvents.listen((event) async {
       final runtime = ref.read(appRuntimeControllerProvider).value;
       if (runtime?.downloaderConfig.extra.desktopNotification == false) return;
       final locale = appLocalizationsFor(runtime?.downloaderConfig.extra.locale ?? '');
