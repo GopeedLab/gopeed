@@ -499,11 +499,12 @@ void main() {
 
     expect(_fieldText(tester, 'create-task-rename-input'), isEmpty);
     final createButton = tester.widget<AppLoadingButton>(find.byKey(const ValueKey('resolve-create-button')));
-    expect(createButton.child, isA<Text>());
-    final createText = createButton.child as Text;
-    expect(createText.data, 'Create');
-    expect(createText.maxLines, 1);
-    expect(createText.softWrap, isFalse);
+    expect(createButton.child, isA<SizedBox>());
+    expect((createButton.child as SizedBox).width, 68);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('resolve-create-button')), matching: find.text('Create')),
+      findsOneWidget,
+    );
     expect(
       tester.getSize(find.byKey(const ValueKey('resolve-cancel-button'))),
       tester.getSize(find.byKey(const ValueKey('resolve-create-button'))),

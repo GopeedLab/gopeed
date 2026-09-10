@@ -62,6 +62,9 @@ void main() {
         final createRect = tester.getRect(create);
         expect(cancelRect.size, createRect.size);
         expect(cancelRect.center.dy, createRect.center.dy);
+        expect(createRect.left - cancelRect.right, 12);
+        expect((tester.widget<shad.SecondaryButton>(cancel).child as SizedBox).width, 68);
+        expect((tester.widget<AppLoadingButton>(create).child as SizedBox).width, 68);
         expect(cancelRect.left, greaterThanOrEqualTo(0));
         expect(createRect.right, lessThanOrEqualTo(width));
         expect(find.text(appLocalizationsFor(language).createAction), findsOneWidget);
