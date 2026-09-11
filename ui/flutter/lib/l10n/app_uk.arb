@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} файли вирішені",
   "resourceHasNoFiles": "Ресурс не має вибраного списку файлів",
   "noFiles": "Немає файлів",
-  "createHistory": "Історія",
+  "historyLinks": "Посилання історії",
   "noHistory": "Історія",
   "directDownloadDescription": "Вирішити і створювати завдання відразу",
   "taskProgress": "Завдання",

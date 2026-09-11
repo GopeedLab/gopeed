@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} கோப்புகள் தீர்க்கப்பட்டன",
   "resourceHasNoFiles": "வளத்தில் தேர்ந்தெடுக்கக்கூடிய கோப்பு பட்டியல் இல்லை",
   "noFiles": "(% 1 மொத்தம்) Items (Folders, Files), Size",
-  "createHistory": "வரலாற்றை உருவாக்கு",
+  "historyLinks": "வரலாற்று இணைப்புகள்",
   "noHistory": "& à®µà®°à®²à®¾à®±à¯à®±à®¿à®²à¯ à®à®£à¯à®à¯à®ªà®¿à®à®¿... Unlimited (number of lines)",
   "directDownloadDescription": "தீர்க்கப்படுவதைத் தவிர்த்து, உடனடியாகப் பணிகளை உருவாக்கவும்",
   "taskProgress": "பணி முன்னேற்றம்",

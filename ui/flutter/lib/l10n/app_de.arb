@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count}-Dateien behoben",
   "resourceHasNoFiles": "Die Ressource verfügt über keine auswählbare Dateiliste",
   "noFiles": "Keine Dateien",
-  "createHistory": "Verlauf erstellen",
+  "historyLinks": "Verlaufslinks",
   "noHistory": "Keine Historie",
   "directDownloadDescription": "Überspringen Sie die Lösung und erstellen Sie sofort Aufgaben",
   "taskProgress": "Aufgabenfortschritt",

@@ -1,7 +1,7 @@
 {
   "fontFamily": "GopeedIcons",
-  "fontOutput": "../../ui/flutter/assets/fonts/GopeedIcons.ttf",
-  "dartOutput": "../../ui/flutter/lib/core/icons/gopeed_icons.dart",
+  "fontOutput": "../../assets/fonts/GopeedIcons.ttf",
+  "dartOutput": "../../lib/core/icons/gopeed_icons.dart",
   "previewOutput": "preview/gopeed_icons_preview.png",
   "dartClass": "GopeedIcons",
   "codepointStart": "0xE900",

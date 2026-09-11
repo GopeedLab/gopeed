@@ -367,7 +367,7 @@
   "resolvedFileCount": "{count, plural, =1{1 file resolved} other{{count} files resolved}}",
   "resourceHasNoFiles": "The resource has no selectable file list",
   "noFiles": "No files",
-  "createHistory": "Create History",
+  "historyLinks": "History Links",
   "noHistory": "No history",
   "directDownloadDescription": "Skip resolving and create tasks immediately",
   "taskProgress": "Task progress",
