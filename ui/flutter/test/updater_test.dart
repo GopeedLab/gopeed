@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
@@ -193,6 +194,7 @@ void main() {
     expect(find.text('下载更快'), findsNothing);
     expect(find.text('Later'), findsOneWidget);
     expect(find.text('Update Now'), findsOneWidget);
+    expect(find.byIcon(Icons.system_update_alt_outlined), findsNothing);
     final dialog = tester.getRect(find.byKey(const ValueKey('app-update-dialog')));
     expect(dialog.width, lessThan(320));
     expect(tester.getCenter(find.byKey(const ValueKey('app-update-heading'))).dx, closeTo(dialog.center.dx, 0.01));

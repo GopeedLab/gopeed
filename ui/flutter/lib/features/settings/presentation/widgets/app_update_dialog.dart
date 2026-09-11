@@ -157,7 +157,6 @@ Future<void> showAppUpdateDialog(
                         onPressed: () => unawaited(update()),
                         loading: updating,
                         variant: AppLoadingButtonVariant.primary,
-                        icon: const Icon(Icons.system_update_alt_outlined, size: 17),
                         child: Text(dialogContext.l10n.newVersionUpdate),
                       ),
                     ],
