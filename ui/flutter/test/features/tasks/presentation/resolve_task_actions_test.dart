@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gopeed/features/tasks/presentation/widgets/resolve_task_actions.dart';
+import 'package:gopeed/features/tasks/presentation/widgets/create_task_action_buttons.dart';
 import 'package:gopeed/l10n/l10n.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
@@ -36,10 +36,14 @@ void main() {
                         content: SizedBox(width: width < 760 ? width - 32 : 720, height: 100),
                         actions: [
                           Flexible(
-                            child: ResolveTaskActions(
+                            child: CreateTaskActionButtons(
                               submitting: submitting,
                               onCancel: () => cancelled = true,
-                              onCreate: () => setState(() => submitting = true),
+                              onSubmit: () => setState(() => submitting = true),
+                              cancelLabel: context.l10n.cancel,
+                              submitLabel: context.l10n.createAction,
+                              cancelButtonKey: const ValueKey('resolve-cancel-button'),
+                              submitButtonKey: const ValueKey('resolve-create-button'),
                             ),
                           ),
                         ],
@@ -58,6 +62,9 @@ void main() {
         final createRect = tester.getRect(create);
         expect(cancelRect.size, createRect.size);
         expect(cancelRect.center.dy, createRect.center.dy);
+        expect(createRect.left - cancelRect.right, 12);
+        expect((tester.widget<shad.SecondaryButton>(cancel).child as SizedBox).width, 68);
+        expect((tester.widget<AppLoadingButton>(create).child as SizedBox).width, 68);
         expect(cancelRect.left, greaterThanOrEqualTo(0));
         expect(createRect.right, lessThanOrEqualTo(width));
         expect(find.text(appLocalizationsFor(language).createAction), findsOneWidget);

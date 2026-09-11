@@ -63,7 +63,7 @@ Gopeed（全称 **Go Speed**，也叫“够快下载器”）是一款使用 Go 
 
 Gopeed 2.0.0 目前处于公开 Beta 测试阶段，引入了全新界面、通过 FFI 直连 Go 核心的原生通信架构、更一致的跨平台体验、更完善的任务管理、更灵活的 API，以及用于 AI Agent 接入的 MCP 能力。部分功能仍可能不够完善或稳定，欢迎提前体验并向我们反馈问题。
 
-- [下载 Gopeed 2.0.0 Beta 1](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.1)
+- [下载 Gopeed 2.0.0 Beta 2](https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0-beta.2)
 
 当功能完整度和稳定性达到正式发布标准后，我们会发布 Gopeed 2.0.0 正式版。已安装 Beta 版本的用户可以直接升级到最终正式版，现有稳定版用户则不会被自动切换到 Beta 渠道。
 

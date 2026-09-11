@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} tập tin được giải quyết",
   "resourceHasNoFiles": "Không thể chọn danh sách tập tin",
   "noFiles": "Không có tập tin",
-  "createHistory": "Tạo ra lịch sử",
+  "historyLinks": "Liên kết lịch sử",
   "noHistory": "Không có lịch sử",
   "directDownloadDescription": "Bỏ qua việc giải quyết và tạo tác vụ ngay lập tức",
   "taskProgress": "Tiến trình tác vụ",

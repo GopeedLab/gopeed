@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} resueltos",
   "resourceHasNoFiles": "El recurso no tiene lista de archivos seleccionable",
   "noFiles": "No hay archivos",
-  "createHistory": "Crear historia",
+  "historyLinks": "Enlaces del historial",
   "noHistory": "No hay historia",
   "directDownloadDescription": "Saltar a resolver y crear tareas inmediatamente",
   "taskProgress": "Progresos en la tarea",
