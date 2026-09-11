@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count}",
   "resourceHasNoFiles": "ولا توجد في هذا المورد قائمة ملف قابلة للاختيار",
   "noFiles": "لا توجد ملفات",
-  "createHistory": "تاريخ الخلق",
+  "historyLinks": "روابط السجل",
   "noHistory": "لا تاريخ",
   "directDownloadDescription": "حل المشاكل وخلق المهام على الفور",
   "taskProgress": "التقدم المحرز",

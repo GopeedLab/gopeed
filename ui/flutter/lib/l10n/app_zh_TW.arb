@@ -353,7 +353,7 @@
   "resolvedFileCount": "已解析 {count} 個檔案",
   "resourceHasNoFiles": "該資源沒有可選擇的檔案列表",
   "noFiles": "沒有檔案",
-  "createHistory": "建立歷史記錄",
+  "historyLinks": "歷史連結",
   "noHistory": "暫無歷史記錄",
   "directDownloadDescription": "跳過解析並立即建立任務",
   "taskProgress": "任務進度",

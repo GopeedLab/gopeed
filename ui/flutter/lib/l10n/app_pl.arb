@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} plików rozwiązanych",
   "resourceHasNoFiles": "Zasób nie ma listy plików do wyboru",
   "noFiles": "Brak plików",
-  "createHistory": "Utwórz historię",
+  "historyLinks": "Linki historii",
   "noHistory": "Brak historii",
   "directDownloadDescription": "Pomiń rozwiązywanie i tworzyć zadania natychmiast",
   "taskProgress": "Postępy w realizacji zadań",

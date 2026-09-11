@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} 파일 해결",
   "resourceHasNoFiles": "리소스에는 선택 가능한 파일 목록이 없습니다",
   "noFiles": "파일 없음",
-  "createHistory": "회사연혁",
+  "historyLinks": "기록 링크",
   "noHistory": "의 역사",
   "directDownloadDescription": "재해를 드리며 즉시 업무를 만듭니다",
   "taskProgress": "작업 진행",

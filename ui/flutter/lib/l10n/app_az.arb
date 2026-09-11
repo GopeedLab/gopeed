@@ -367,7 +367,7 @@
   "resolvedFileCount": "{count} fayl tapıldı",
   "resourceHasNoFiles": "Bu resursda seçilə bilən fayl siyahısı yoxdur",
   "noFiles": "Fayl yoxdur",
-  "createHistory": "Tarixçə Yarat",
+  "historyLinks": "Tarixçə keçidləri",
   "noHistory": "Tarixçə yoxdur",
   "directDownloadDescription": "Təhlili keç və tapşırıqları dərhal yarat",
   "taskProgress": "Tapşırığın irəliləyişi",

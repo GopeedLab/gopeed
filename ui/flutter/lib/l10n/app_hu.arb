@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} fájlok megoldva",
   "resourceHasNoFiles": "Az erőforrásnak nincs kiválasztható fájllistája",
   "noFiles": "Nincsenek fájlok",
-  "createHistory": "Készítsen előzményeket",
+  "historyLinks": "Előzményhivatkozások",
   "noHistory": "Nincs előzmény",
   "directDownloadDescription": "Hagyja ki a megoldást, és azonnal hozzon létre feladatokat",
   "taskProgress": "A feladat előrehaladása",
