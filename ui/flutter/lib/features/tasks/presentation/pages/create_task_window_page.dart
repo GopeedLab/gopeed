@@ -37,6 +37,7 @@ import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
+import '../widgets/history_search_field.dart';
 import '../widgets/create_task_action_buttons.dart';
 import '../widgets/resolve_file_tree.dart';
 
@@ -1247,20 +1248,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 height: screenSize.height < 560 ? screenSize.height * 0.55 : 360,
                 child: Column(
                   children: [
-                    SizedBox(
-                      height: 38,
-                      child: AppTextField(
-                        key: const ValueKey('create-history-filter'),
-                        controller: filterController,
-                        placeholder: Text(
-                          dialogContext.l10n.searchHistory,
-                          style: TextStyle(color: palette.searchHint, fontSize: 13),
-                        ),
-                        features: [
-                          InputFeature.leading(Icon(Icons.search_rounded, size: 15, color: palette.textMuted)),
-                        ],
-                        onChanged: (value) => setDialogState(() => filterQuery = value),
-                      ),
+                    HistorySearchField(
+                      controller: filterController,
+                      onChanged: (value) => setDialogState(() => filterQuery = value),
                     ),
                     const SizedBox(height: 10),
                     Expanded(
