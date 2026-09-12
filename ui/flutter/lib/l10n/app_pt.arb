@@ -442,5 +442,6 @@
   "webApiConfigReadOnlyHelp": "A versão web não permite alterar as definições da API online. Atualize as opções de arranque do servidor ou o ficheiro de configuração e reinicie o serviço para aplicar as alterações.",
   "webMcpApiTokenHint": "Se configurou um token de API, é necessário fornecer as informações de autenticação ao ligar o agente",
   "useMcpApiTokenTemplate": "Mudar para a configuração autenticada",
-  "mcpRequiresTcp": "As instruções de conexão de agentes estão disponíveis quando o protocolo da API é TCP."
+  "mcpRequiresTcp": "As instruções de conexão de agentes estão disponíveis quando o protocolo da API é TCP.",
+  "emptyTaskCreateHint": "Clique em {action} para começar a baixar"
 }

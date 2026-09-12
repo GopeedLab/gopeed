@@ -442,5 +442,6 @@
   "webApiConfigReadOnlyHelp": "La versión web no permite modificar la configuración de la API en línea. Actualiza las opciones de inicio del servidor o el archivo de configuración y reinicia el servicio para aplicar los cambios.",
   "webMcpApiTokenHint": "Si has configurado un token de API, debes proporcionar la información de autenticación al conectar el agente",
   "useMcpApiTokenTemplate": "Cambiar a la configuración autenticada",
-  "mcpRequiresTcp": "Las instrucciones de conexión de agentes están disponibles cuando el protocolo de la API es TCP."
+  "mcpRequiresTcp": "Las instrucciones de conexión de agentes están disponibles cuando el protocolo de la API es TCP.",
+  "emptyTaskCreateHint": "Haz clic en {action} para empezar a descargar"
 }

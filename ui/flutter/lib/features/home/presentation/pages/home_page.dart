@@ -833,6 +833,7 @@ class _MobileTasksHeader extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _MobileHeaderIconButton(
+                key: const ValueKey('tasks-mobile-batch-button'),
                 icon: Icons.checklist_rtl_outlined,
                 active: batchMode,
                 badge: batchMode && selectedCount > 0 ? selectedCount.toString() : null,
@@ -919,7 +920,13 @@ class _MobileBatchToolbar extends StatelessWidget {
 }
 
 class _MobileHeaderIconButton extends StatelessWidget {
-  const _MobileHeaderIconButton({required this.icon, required this.onPressed, this.active = false, this.badge});
+  const _MobileHeaderIconButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    this.active = false,
+    this.badge,
+  });
 
   final IconData icon;
   final VoidCallback onPressed;
