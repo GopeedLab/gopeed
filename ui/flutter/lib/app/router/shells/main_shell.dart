@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../api/model/create_task.dart';
 import '../../application/app_deep_link_controller.dart';
@@ -16,7 +15,6 @@ import '../../../features/tasks/application/pending_create_task.dart';
 import '../../../features/tasks/application/pending_update_task.dart';
 import '../../../features/tasks/application/tasks_controller.dart';
 import '../../../features/tasks/presentation/widgets/pending_update_dialog.dart';
-import '../../../l10n/l10n.dart';
 import '../../../core/window/app_window_launcher.dart';
 import '../../../shared/widgets/app_toast.dart';
 
@@ -62,24 +60,13 @@ class _MainShellState extends ConsumerState<MainShell> {
       }
     });
     final runtime = ref.watch(appRuntimeControllerProvider);
-    final content = runtime.when(
-      loading: () => const shad.Scaffold(child: Center(child: shad.CircularProgressIndicator())),
-      error: (error, _) => shad.Scaffold(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Text(context.l10n.runtimeInitializationFailed(error.toString()), textAlign: TextAlign.center),
-          ),
-        ),
-      ),
-      data: (_) {
-        ref.watch(appPlatformControllerProvider);
-        ref.watch(appDeepLinkControllerProvider);
-        ref.watch(appNotificationControllerProvider);
-        return widget.child;
-      },
-    );
-    return content;
+    if (runtime.hasValue) {
+      ref.watch(appPlatformControllerProvider);
+      ref.watch(appDeepLinkControllerProvider);
+      ref.watch(appNotificationControllerProvider);
+    }
+    // Keep the nested Navigator mounted even while the runtime is starting.
+    return widget.child;
   }
 
   void _schedulePendingUpdateRequest(PendingUpdateRequest request) {
