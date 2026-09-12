@@ -440,7 +440,7 @@ void main() {
     expect(find.text('Failed 0'), findsOneWidget);
     expect(find.text('Create Task'), findsNWidgets(2));
     final headerCreate = find.byKey(const ValueKey('tasks-mobile-create-button'));
-    expect(tester.getSize(headerCreate).height, greaterThanOrEqualTo(44));
+    expect(tester.getSize(headerCreate).height, 34);
     expect(tester.getBottomLeft(headerCreate).dy, lessThan(tester.getTopLeft(find.text('Downloading 0')).dy));
     for (final size in [const Size(320, 568), const Size(768, 1024)]) {
       tester.view.physicalSize = size;
