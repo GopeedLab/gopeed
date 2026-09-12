@@ -1,7 +1,9 @@
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/features/settings/presentation/widgets/app_update_dialog.dart';
+import 'package:gopeed/features/settings/presentation/widgets/app_update_notes_viewport.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/util/arch/arch.dart';
 import 'package:gopeed/util/github_mirror.dart';
@@ -193,10 +195,47 @@ void main() {
     expect(find.text('下载更快'), findsNothing);
     expect(find.text('Later'), findsOneWidget);
     expect(find.text('Update Now'), findsOneWidget);
+    expect(find.text("What's New"), findsNothing);
+    final versionText = tester.widget<Text>(find.text('2.0.0-beta.1  →  2.0.0-beta.2'));
+    expect(versionText.style?.decoration, TextDecoration.none);
+    expect(versionText.style?.inherit, isFalse);
+    expect(find.byIcon(Icons.system_update_alt_outlined), findsNothing);
     final dialog = tester.getRect(find.byKey(const ValueKey('app-update-dialog')));
     expect(dialog.width, lessThan(320));
     expect(tester.getCenter(find.byKey(const ValueKey('app-update-heading'))).dx, closeTo(dialog.center.dx, 0.01));
     expect(tester.getCenter(find.byKey(const ValueKey('app-update-actions'))).dx, closeTo(dialog.center.dx, 0.01));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('release notes keep the last line above the fade when scrolled to the end', (tester) async {
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.dark(),
+        materialTheme: AppTheme.materialDark(),
+        home: Center(
+          child: SizedBox(
+            width: 280,
+            child: AppUpdateNotesViewport(
+              child: Column(children: [for (var i = 0; i < 30; i++) Text('Release note $i')]),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scrollbar = tester.widget<shad.Scrollbar>(find.byType(shad.Scrollbar));
+    expect(scrollbar.thumbVisibility, isTrue);
+    final controller = scrollbar.controller!;
+    expect(controller.position.maxScrollExtent, greaterThan(0));
+    controller.jumpTo(controller.position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    final viewport = tester.getRect(find.byType(AppUpdateNotesViewport));
+    final lastLine = tester.getRect(find.text('Release note 29'));
+    expect(lastLine.bottom, lessThanOrEqualTo(viewport.bottom - 24));
+    expect(lastLine.top, greaterThan(viewport.top));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 }

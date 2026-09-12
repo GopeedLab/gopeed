@@ -367,7 +367,7 @@
   "resolvedFileCount": "{count} fayl tapıldı",
   "resourceHasNoFiles": "Bu resursda seçilə bilən fayl siyahısı yoxdur",
   "noFiles": "Fayl yoxdur",
-  "createHistory": "Tarixçə Yarat",
+  "historyLinks": "Tarixçə keçidləri",
   "noHistory": "Tarixçə yoxdur",
   "directDownloadDescription": "Təhlili keç və tapşırıqları dərhal yarat",
   "taskProgress": "Tapşırığın irəliləyişi",
@@ -626,5 +626,6 @@
   "webMcpApiTokenHint": "Əgər API açarı konfiqurasiya etmisinizsə, agenti qoşarkən doğrulama məlumatı tələb olunur",
   "useMcpApiTokenTemplate": "Doğrulamalı konfiqurasiyaya keç",
   "webApiConfigReadOnlyHelp": "Veb versiyası API parametrlərinin onlayn dəyişdirilməsini dəstəkləmir. Server başlanğıc seçimlərini və ya konfiqurasiya faylını yeniləyin, sonra dəyişikliklərin qüvvəyə minməsi üçün xidməti yenidən başladın.",
-  "mcpRequiresTcp": "Agent əlaqə təlimatları API protokolu TCP olduqda mövcuddur."
+  "mcpRequiresTcp": "Agent əlaqə təlimatları API protokolu TCP olduqda mövcuddur.",
+  "emptyTaskCreateHint": "Endirməyə başlamaq üçün {action} düyməsinə klikləyin"
 }

@@ -1,35 +1,45 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/theme/app_design_tokens.dart';
+import 'task_empty_create_hint.dart';
 import '../../../../l10n/l10n.dart';
 
 class TaskEmptyState extends StatelessWidget {
-  const TaskEmptyState({super.key, this.message});
+  const TaskEmptyState({super.key, this.message, this.onCreateTask});
 
   final String? message;
+  final VoidCallback? onCreateTask;
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CustomPaint(
-                key: const ValueKey('task-empty-illustration'),
-                size: const Size(148, 108),
-                painter: _TaskEmptyIllustrationPainter(palette: palette),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                message ?? context.l10n.emptyTaskList,
-                style: TextStyle(color: palette.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
-              ),
-            ],
+      child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CustomPaint(
+                  key: const ValueKey('task-empty-illustration'),
+                  size: const Size(148, 108),
+                  painter: _TaskEmptyIllustrationPainter(palette: palette),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  message ?? context.l10n.emptyTaskList,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: palette.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
+                ),
+                if (onCreateTask != null) ...[
+                  const SizedBox(height: AppDesignTokens.space24),
+                  TaskEmptyCreateHint(onCreateTask: onCreateTask!),
+                ],
+              ],
+            ),
           ),
         ),
       ),

@@ -165,7 +165,7 @@ void main() {
     }
   });
 
-  testWidgets('mobile create task page starts below the system status bar', (WidgetTester tester) async {
+  testWidgets('mobile create task page stays within the system safe areas', (WidgetTester tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     tester.view.physicalSize = const Size(700, 760);
     tester.view.devicePixelRatio = 1;
@@ -193,6 +193,10 @@ void main() {
 
       final contentPadding = tester.widget<Padding>(find.byKey(const ValueKey('create-task-safe-content')));
       expect((contentPadding.padding as EdgeInsets).top, 32);
+      expect(
+        tester.getBottomRight(find.byKey(const ValueKey('create-task-confirm-button'))).dy,
+        lessThanOrEqualTo(tester.view.physicalSize.height / tester.view.devicePixelRatio - 24),
+      );
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
@@ -499,11 +503,12 @@ void main() {
 
     expect(_fieldText(tester, 'create-task-rename-input'), isEmpty);
     final createButton = tester.widget<AppLoadingButton>(find.byKey(const ValueKey('resolve-create-button')));
-    expect(createButton.child, isA<Text>());
-    final createText = createButton.child as Text;
-    expect(createText.data, 'Create');
-    expect(createText.maxLines, 1);
-    expect(createText.softWrap, isFalse);
+    expect(createButton.child, isA<SizedBox>());
+    expect((createButton.child as SizedBox).width, 68);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('resolve-create-button')), matching: find.text('Create')),
+      findsOneWidget,
+    );
     expect(
       tester.getSize(find.byKey(const ValueKey('resolve-cancel-button'))),
       tester.getSize(find.byKey(const ValueKey('resolve-create-button'))),
@@ -555,6 +560,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.history));
     await tester.pumpAndSettle();
+    expect(find.text('History Links'), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('create-history-title-bar'))).width,
       tester.getSize(find.byKey(const ValueKey('create-history-content'))).width,

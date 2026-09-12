@@ -136,3 +136,52 @@ func TestUnescapeHTMLEntities(t *testing.T) {
 		})
 	}
 }
+
+func TestAppendFilenameExtension(t *testing.T) {
+	tests := []struct {
+		name        string
+		filename    string
+		contentType string
+		want        string
+	}{
+		{
+			name:        "adds extension from content type",
+			filename:    "download",
+			contentType: "image/png",
+			want:        "download.png",
+		},
+		{
+			name:        "parses MIME parameters",
+			filename:    "download",
+			contentType: "image/png; charset=binary",
+			want:        "download.png",
+		},
+		{
+			name:        "preserves existing extension",
+			filename:    "download.zip",
+			contentType: "application/zip",
+			want:        "download.zip",
+		},
+		{
+			name:        "ignores invalid content type",
+			filename:    "download",
+			contentType: "not a content type",
+			want:        "download",
+		},
+		{
+			name:        "ignores unknown content type",
+			filename:    "download",
+			contentType: "application/x-gopeed-unknown",
+			want:        "download",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := appendFilenameExtension(tt.filename, tt.contentType)
+			if got != tt.want {
+				t.Errorf("appendFilenameExtension() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

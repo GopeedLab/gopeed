@@ -29,7 +29,6 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_choice_segmented_control.dart';
 import '../../../../shared/widgets/app_http_headers_editor.dart';
-import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_number_input.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -38,8 +37,9 @@ import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
+import '../widgets/history_search_field.dart';
+import '../widgets/create_task_action_buttons.dart';
 import '../widgets/resolve_file_tree.dart';
-import '../widgets/resolve_task_actions.dart';
 
 class CreateTaskWindowPage extends ConsumerStatefulWidget {
   const CreateTaskWindowPage({super.key, this.windowController, this.initialTask});
@@ -688,27 +688,27 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: palette.border)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SecondaryButton(
-                    onPressed: _creating ? null : _closeWindow,
-                    child: SizedBox(width: 68, child: Center(child: Text(context.l10n.cancel))),
-                  ),
-                  const SizedBox(width: 12),
-                  AppLoadingButton(
-                    key: const ValueKey('create-task-confirm-button'),
-                    onPressed: _confirm,
-                    loading: _creating,
-                    variant: AppLoadingButtonVariant.primary,
-                    child: SizedBox(width: 68, child: Center(child: Text(context.l10n.confirm))),
-                  ),
-                ],
+            SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: palette.border)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CreateTaskActionButtons(
+                      submitting: _creating,
+                      onCancel: _closeWindow,
+                      onSubmit: _confirm,
+                      cancelLabel: context.l10n.cancel,
+                      submitLabel: context.l10n.confirm,
+                      cancelButtonKey: const ValueKey('create-task-cancel-button'),
+                      submitButtonKey: const ValueKey('create-task-confirm-button'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1159,10 +1159,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
               ),
               actions: [
                 flutter.Flexible(
-                  child: ResolveTaskActions(
+                  child: CreateTaskActionButtons(
                     submitting: submitting,
                     onCancel: () => closeOverlay(dialogContext, false),
-                    onCreate: submit,
+                    onSubmit: submit,
+                    cancelLabel: dialogContext.l10n.cancel,
+                    submitLabel: dialogContext.l10n.createAction,
+                    cancelButtonKey: const ValueKey('resolve-cancel-button'),
+                    submitButtonKey: const ValueKey('resolve-create-button'),
                   ),
                 ),
               ],
@@ -1205,7 +1209,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 width: contentWidth,
                 child: Row(
                   children: [
-                    Expanded(child: Text(dialogContext.l10n.createHistory)),
+                    Expanded(child: Text(dialogContext.l10n.historyLinks)),
                     AppTooltip(
                       message: dialogContext.l10n.clearHistory,
                       child: GhostButton(
@@ -1244,20 +1248,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 height: screenSize.height < 560 ? screenSize.height * 0.55 : 360,
                 child: Column(
                   children: [
-                    SizedBox(
-                      height: 38,
-                      child: AppTextField(
-                        key: const ValueKey('create-history-filter'),
-                        controller: filterController,
-                        placeholder: Text(
-                          dialogContext.l10n.searchHistory,
-                          style: TextStyle(color: palette.searchHint, fontSize: 13),
-                        ),
-                        features: [
-                          InputFeature.leading(Icon(Icons.search_rounded, size: 15, color: palette.textMuted)),
-                        ],
-                        onChanged: (value) => setDialogState(() => filterQuery = value),
-                      ),
+                    HistorySearchField(
+                      controller: filterController,
+                      onChanged: (value) => setDialogState(() => filterQuery = value),
                     ),
                     const SizedBox(height: 10),
                     Expanded(

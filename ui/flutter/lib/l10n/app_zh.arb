@@ -353,7 +353,7 @@
   "resolvedFileCount": "已解析 {count} 个文件",
   "resourceHasNoFiles": "该资源没有可选择的文件列表",
   "noFiles": "没有文件",
-  "createHistory": "创建历史",
+  "historyLinks": "历史链接",
   "noHistory": "暂无历史记录",
   "directDownloadDescription": "跳过解析并立即创建任务",
   "taskProgress": "任务进度",
@@ -442,5 +442,6 @@
   "webMcpApiTokenHint": "若已配置 API Token，接入 Agent 时需要传递认证信息",
   "useMcpApiTokenTemplate": "切换为认证配置",
   "webApiConfigReadOnlyHelp": "Web 版本不支持在线修改 API 配置。请修改服务端启动参数或配置文件，并重启服务后使配置生效。",
-  "mcpRequiresTcp": "API 通讯协议为 TCP 时才能使用 Agent 接入指引。"
+  "mcpRequiresTcp": "API 通讯协议为 TCP 时才能使用 Agent 接入指引。",
+  "emptyTaskCreateHint": "点击{action}开始下载"
 }
