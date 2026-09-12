@@ -827,7 +827,8 @@ class _MobileTasksHeader extends StatelessWidget {
                 child: TaskCreateButton(
                   key: const ValueKey('tasks-mobile-create-button'),
                   onPressed: onAddTask,
-                  minHeight: 44,
+                  minHeight: 34,
+                  compact: true,
                 ),
               ),
               const SizedBox(width: 8),
