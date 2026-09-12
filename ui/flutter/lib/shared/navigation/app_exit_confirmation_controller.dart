@@ -23,10 +23,13 @@ class AppExitConfirmationController {
     final themes = InheritedTheme.capture(from: context, to: Overlay.of(context, rootOverlay: true).context);
     _toast = OverlayEntry(
       builder: (_) => IgnorePointer(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: themes.wrap(AppToastContent(message: message)),
+        child: SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: themes.wrap(AppToastContent(message: message)),
+            ),
           ),
         ),
       ),

@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:window_manager/window_manager.dart';
+import 'package:gopeed/features/home/presentation/pages/home_page.dart';
 import 'package:gopeed/app/app.dart';
 import 'package:gopeed/app/router/app_router.dart';
 import 'package:gopeed/core/capabilities/app_capabilities.dart';
@@ -2269,15 +2270,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('settings mobile back returns one level before requiring a second back to exit', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('settings mobile back returns through home before confirming exit', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(390, 760));
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     var systemPopCalls = 0;
+    bool? frameworkHandlesBack;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
       if (call.method == 'SystemNavigator.pop') systemPopCalls++;
+      if (call.method == 'SystemNavigator.setFrameworkHandlesBack') frameworkHandlesBack = call.arguments as bool;
       return null;
     });
     addTearDown(() {
@@ -2296,6 +2298,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(frameworkHandlesBack, isTrue);
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Basic'));
@@ -2308,6 +2311,13 @@ void main() {
     expect(find.text('SETTINGS'), findsOneWidget);
     expect(find.byKey(const ValueKey('theme-mode-system')), findsNothing);
     expect(systemPopCalls, 0);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(HomePage), findsOneWidget);
+    expect(find.text('Press back again to exit'), findsNothing);
+    expect(systemPopCalls, 0);
+    expect(frameworkHandlesBack, isTrue);
 
     await tester.binding.handlePopRoute();
     await tester.pump();

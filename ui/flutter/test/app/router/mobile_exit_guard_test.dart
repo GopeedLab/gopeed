@@ -24,11 +24,11 @@ void main() {
     router = GoRouter(
       routes: [
         ShellRoute(
-          builder: (_, _, child) => child,
+          builder: (_, _, child) => MobileExitGuard(child: child),
           routes: [
             GoRoute(
               path: '/',
-              builder: (_, _) => const MobileExitGuard(child: SizedBox.expand()),
+              builder: (_, _) => const SizedBox.expand(),
               routes: [
                 GoRoute(path: 'details', builder: (_, _) => const SizedBox.expand()),
                 for (final path in ['extensions', 'settings'])
@@ -56,13 +56,14 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('root back shows centered prompt, second back exits', (tester) async {
+  testWidgets('root back shows bottom prompt, second back exits', (tester) async {
     await mount(tester);
     await tester.binding.handlePopRoute();
     await tester.pump();
     expect(exits, isEmpty);
     expect(find.byType(AppToastContent), findsOneWidget);
-    expect(tester.getCenter(find.byType(AppToastContent)), const Offset(400, 300));
+    expect(tester.getCenter(find.byType(AppToastContent)).dx, 400);
+    expect(tester.getBottomLeft(find.byType(AppToastContent)).dy, 576);
     await tester.pump(const Duration(milliseconds: 1900));
     await tester.binding.handlePopRoute();
     await tester.pump();
@@ -127,4 +128,34 @@ void main() {
       expect(exits, hasLength(1));
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   }
+  testWidgets(
+    'dialog back dismisses the dialog before exit confirmation',
+    (tester) async {
+      await mount(tester);
+      final context = router.routerDelegate.navigatorKey.currentContext!;
+      showGeneralDialog<void>(
+        context: context,
+        pageBuilder: (_, _, _) => const Center(child: Text('Dialog content')),
+      );
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Dialog content'), findsNothing);
+      expect(find.byType(AppToastContent), findsNothing);
+      expect(exits, isEmpty);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.android),
+  );
+
+  testWidgets('bottom prompt stays above the Android safe area', (tester) async {
+    tester.view.padding = const FakeViewPadding(bottom: 48);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await mount(tester);
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+    expect(tester.getBottomLeft(find.byType(AppToastContent)).dy, tester.view.physicalSize.height - 48 - 24);
+    await tester.pumpWidget(const SizedBox());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 }

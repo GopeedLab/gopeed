@@ -5,7 +5,8 @@ import 'package:flutter/widgets.dart';
 
 import '../../shared/navigation/app_exit_confirmation_controller.dart';
 
-/// Confirms app exit only on the home route; child routes pop normally.
+/// Handles exit at the shell route after the nested Navigator declines a pop.
+/// Child routes and dialogs still pop through GoRouter before reaching this guard.
 class MobileExitGuard extends StatefulWidget {
   const MobileExitGuard({super.key, required this.child});
 
@@ -45,7 +46,16 @@ class _MobileExitGuardState extends State<MobileExitGuard> with WidgetsBindingOb
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) unawaited(_controller.handleBack(context));
       },
-      child: widget.child,
+      child: NotificationListener<NavigationNotification>(
+        onNotification: (notification) {
+          if (notification.canHandlePop) return false;
+          // An empty nested back stack still has this shell's exit guard.
+          // Otherwise its startup notification disables Android's back callback.
+          const NavigationNotification(canHandlePop: true).dispatch(context);
+          return true;
+        },
+        child: widget.child,
+      ),
     );
   }
 }
