@@ -4,7 +4,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
-import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../tasks/presentation/widgets/task_create_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../l10n/l10n.dart';
 
@@ -62,7 +62,7 @@ class TasksTopBar extends StatelessWidget {
               ConstrainedBox(
                 key: const ValueKey('tasks-create-button-container'),
                 constraints: const BoxConstraints(minWidth: 120, maxWidth: 190),
-                child: _AddTaskButton(onPressed: onAddTask),
+                child: TaskCreateButton(onPressed: onAddTask),
               ),
               const SizedBox(width: 16),
               Row(
@@ -126,27 +126,6 @@ class _SearchField extends StatelessWidget {
             border: Border.all(color: borderColor),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AddTaskButton extends StatelessWidget {
-  const _AddTaskButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPrimaryButton(
-      onPressed: onPressed,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.add),
-          const SizedBox(width: AppDesignTokens.space8),
-          Flexible(child: Text(context.l10n.create, maxLines: 1, overflow: TextOverflow.ellipsis)),
-        ],
       ),
     );
   }

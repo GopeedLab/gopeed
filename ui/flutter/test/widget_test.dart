@@ -117,7 +117,7 @@ void main() {
     await LocalAppCapabilities.instance.registry.invoke(NavigationMethods.showDownloadingTasks.name, {});
     await tester.pumpAndSettle();
     expect(find.text('done.zip'), findsNothing);
-    expect(find.text('Create Task'), findsOneWidget);
+    expect(find.text('Create Task'), findsNWidgets(2));
 
     GoRouter.of(AppRouter.rootNavigatorKey.currentContext!).go('/settings');
     await tester.pumpAndSettle();
@@ -125,7 +125,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(GoRouter.of(AppRouter.rootNavigatorKey.currentContext!).routeInformationProvider.value.uri.path, '/');
     expect(find.text('done.zip'), findsNothing);
-    expect(find.text('Create Task'), findsOneWidget);
+    expect(find.text('Create Task'), findsNWidgets(2));
   });
 
   test('Web MCP endpoint excludes page path, query, and hash route', () {
@@ -227,14 +227,14 @@ void main() {
     expect(find.text('Downloading'), findsOneWidget);
     expect(find.text('Completed'), findsOneWidget);
     expect(find.text('Failed'), findsOneWidget);
-    expect(find.text('Create Task'), findsOneWidget);
+    expect(find.text('Create Task'), findsNWidgets(2));
     expect(find.text('No tasks in this list'), findsOneWidget);
     expect(find.text('Add Task'), findsNothing);
     expect(find.byKey(const ValueKey('task-empty-illustration')), findsOneWidget);
     expect(find.text('Create a task or refresh the list.'), findsNothing);
     expect(find.text('Refresh'), findsNothing);
     expect(find.textContaining('ACTIVE CONNECTIONS'), findsNothing);
-    expect(find.ancestor(of: find.text('Create Task'), matching: find.byType(AppPrimaryButton)), findsOneWidget);
+    expect(find.ancestor(of: find.text('Create Task'), matching: find.byType(AppPrimaryButton)), findsNWidgets(2));
     final taskActions = find.byKey(const ValueKey('tasks-top-action-buttons'));
     final taskSearch = find.byKey(const ValueKey('tasks-search-field-container'));
     final createButton = find.byKey(const ValueKey('tasks-create-button-container'));
@@ -411,6 +411,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('No matching tasks found'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tasks-empty-create-button')), findsNothing);
     expect(find.text('No tasks in this list'), findsNothing);
   });
 
@@ -437,6 +438,16 @@ void main() {
     expect(find.text('Downloading 0'), findsOneWidget);
     expect(find.text('Completed 0'), findsOneWidget);
     expect(find.text('Failed 0'), findsOneWidget);
+    expect(find.text('Create Task'), findsNWidgets(2));
+    final headerCreate = find.byKey(const ValueKey('tasks-mobile-create-button'));
+    expect(tester.getSize(headerCreate).height, greaterThanOrEqualTo(44));
+    expect(tester.getBottomLeft(headerCreate).dy, lessThan(tester.getTopLeft(find.text('Downloading 0')).dy));
+    for (final size in [const Size(320, 568), const Size(768, 1024)]) {
+      tester.view.physicalSize = size;
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('tasks-empty-create-button')), findsOneWidget);
+    }
   });
 
   testWidgets('extensions grid adds columns from a minimum card width and keeps desktop toolbar aligned', (
