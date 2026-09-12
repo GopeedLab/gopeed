@@ -687,24 +687,27 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: palette.border)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CreateTaskActionButtons(
-                    submitting: _creating,
-                    onCancel: _closeWindow,
-                    onSubmit: _confirm,
-                    cancelLabel: context.l10n.cancel,
-                    submitLabel: context.l10n.confirm,
-                    cancelButtonKey: const ValueKey('create-task-cancel-button'),
-                    submitButtonKey: const ValueKey('create-task-confirm-button'),
-                  ),
-                ],
+            SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: palette.border)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CreateTaskActionButtons(
+                      submitting: _creating,
+                      onCancel: _closeWindow,
+                      onSubmit: _confirm,
+                      cancelLabel: context.l10n.cancel,
+                      submitLabel: context.l10n.confirm,
+                      cancelButtonKey: const ValueKey('create-task-cancel-button'),
+                      submitButtonKey: const ValueKey('create-task-confirm-button'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
