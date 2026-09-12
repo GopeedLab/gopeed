@@ -411,6 +411,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('No matching tasks found'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tasks-empty-create-button')), findsNothing);
     expect(find.text('No tasks in this list'), findsNothing);
   });
 
@@ -437,6 +438,20 @@ void main() {
     expect(find.text('Downloading 0'), findsOneWidget);
     expect(find.text('Completed 0'), findsOneWidget);
     expect(find.text('Failed 0'), findsOneWidget);
+    expect(find.text('Create Task'), findsOneWidget);
+    final headerCreate = find.byKey(const ValueKey('tasks-mobile-create-button'));
+    expect(tester.getSize(headerCreate).height, 34);
+    final batchButton = find.byKey(const ValueKey('tasks-mobile-batch-button'));
+    expect(tester.getRect(headerCreate).height, tester.getRect(batchButton).height);
+    expect(tester.getRect(headerCreate).top, tester.getRect(batchButton).top);
+    expect(tester.getRect(headerCreate).bottom, tester.getRect(batchButton).bottom);
+    expect(tester.getBottomLeft(headerCreate).dy, lessThan(tester.getTopLeft(find.text('Downloading 0')).dy));
+    for (final size in [const Size(320, 568), const Size(768, 1024)]) {
+      tester.view.physicalSize = size;
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('tasks-empty-create-button')), findsOneWidget);
+    }
   });
 
   testWidgets('extensions grid adds columns from a minimum card width and keeps desktop toolbar aligned', (
