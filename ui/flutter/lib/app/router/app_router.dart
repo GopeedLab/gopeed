@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,7 @@ import '../../features/tasks/domain/task_record.dart';
 import '../../features/tasks/presentation/pages/task_details_page.dart';
 import '../../features/tasks/presentation/pages/task_files_page.dart';
 import 'shells/main_shell.dart';
+import 'mobile_exit_guard.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -27,6 +29,34 @@ class AppRouter {
   }
 
   static GoRouter build(WebAuthController webAuthController) {
+    // Keep desktop and web sections as peers; native mobile retains home below them.
+    final isMobile =
+        !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+    final sectionRoutes = [
+      GoRoute(
+        path: isMobile ? 'extensions' : '/extensions',
+        builder: (context, state) => const ExtensionsPage(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => ExtensionDetailsPage(
+              extensionId: state.pathParameters['id'] ?? '',
+              initialItem: state.extra is ExtensionListItem ? state.extra as ExtensionListItem : null,
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: isMobile ? 'settings' : '/settings',
+        builder: (context, state) => const SettingsPage(),
+        routes: [
+          GoRoute(
+            path: ':section',
+            builder: (context, state) => SettingsPage(sectionKey: state.pathParameters['section']),
+          ),
+        ],
+      ),
+    ];
     return GoRouter(
       navigatorKey: rootNavigatorKey,
       refreshListenable: webAuthController,
@@ -48,7 +78,7 @@ class AppRouter {
           routes: [
             GoRoute(
               path: '/',
-              builder: (context, state) => const HomePage(),
+              builder: (context, state) => const MobileExitGuard(child: HomePage()),
               routes: [
                 GoRoute(path: 'create', builder: (context, state) => const CreateTaskWindowPage()),
                 GoRoute(
@@ -67,31 +97,10 @@ class AppRouter {
                     ),
                   ],
                 ),
+                if (isMobile) ...sectionRoutes,
               ],
             ),
-            GoRoute(
-              path: '/extensions',
-              builder: (context, state) => const ExtensionsPage(),
-              routes: [
-                GoRoute(
-                  path: ':id',
-                  builder: (context, state) => ExtensionDetailsPage(
-                    extensionId: state.pathParameters['id'] ?? '',
-                    initialItem: state.extra is ExtensionListItem ? state.extra as ExtensionListItem : null,
-                  ),
-                ),
-              ],
-            ),
-            GoRoute(
-              path: '/settings',
-              builder: (context, state) => const SettingsPage(),
-              routes: [
-                GoRoute(
-                  path: ':section',
-                  builder: (context, state) => SettingsPage(sectionKey: state.pathParameters['section']),
-                ),
-              ],
-            ),
+            if (!isMobile) ...sectionRoutes,
           ],
         ),
       ],

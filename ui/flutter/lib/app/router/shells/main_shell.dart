@@ -18,8 +18,6 @@ import '../../../features/tasks/application/tasks_controller.dart';
 import '../../../features/tasks/presentation/widgets/pending_update_dialog.dart';
 import '../../../l10n/l10n.dart';
 import '../../../core/window/app_window_launcher.dart';
-import '../../../core/utils/breakpoints.dart';
-import '../../../shared/navigation/app_exit_confirmation_controller.dart';
 import '../../../shared/widgets/app_toast.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -34,7 +32,6 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   String? _shownUpdateVersion;
   bool _handlingPendingUpdateRequest = false;
-  final _exitConfirmationController = AppExitConfirmationController();
 
   @override
   Widget build(BuildContext context) {
@@ -82,23 +79,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         return widget.child;
       },
     );
-    return _buildMobileBackGuard(context, content);
-  }
-
-  Widget _buildMobileBackGuard(BuildContext context, Widget child) {
-    final isAndroidMobile =
-        !kIsWeb &&
-        defaultTargetPlatform == TargetPlatform.android &&
-        MediaQuery.sizeOf(context).width < Breakpoints.mobile;
-    if (!isAndroidMobile || context.canPop()) return child;
-
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(_exitConfirmationController.handleBack(context));
-      },
-      child: child,
-    );
+    return content;
   }
 
   void _schedulePendingUpdateRequest(PendingUpdateRequest request) {
