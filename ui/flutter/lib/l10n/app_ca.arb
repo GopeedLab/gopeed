@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count}",
   "resourceHasNoFiles": "El recurs no té cap llista de fitxers per seleccionar",
   "noFiles": "Sense fitxers",
-  "createHistory": "Crea un historial",
+  "historyLinks": "Enllaços de l'historial",
   "noHistory": "Sense historial",
   "directDownloadDescription": "Omet la resolució i crea les tasques immediatament",
   "taskProgress": "Progrés de la tasca",

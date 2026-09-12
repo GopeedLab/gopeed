@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} файлов, разрешенных",
   "resourceHasNoFiles": "Ресурс не имеет выбираемого списка файлов",
   "noFiles": "Нет файлов",
-  "createHistory": "Создаем историю",
+  "historyLinks": "Ссылки в истории",
   "noHistory": "Нет истории",
   "directDownloadDescription": "Немедленно пропустите решение и создайте задачи",
   "taskProgress": "Прогресс в решении задач",

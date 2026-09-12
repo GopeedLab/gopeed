@@ -353,7 +353,7 @@
   "resolvedFileCount": "{count} فایل شناسایی شد",
   "resourceHasNoFiles": "منبع هیچ لیست فایل قابل انتخاب ندارد",
   "noFiles": "فایل ها",
-  "createHistory": "ایجاد تاریخ",
+  "historyLinks": "پیوندهای تاریخچه",
   "noHistory": "تاریخ",
   "directDownloadDescription": "پیاده سازی و ایجاد وظایف بلافاصله",
   "taskProgress": "پیشرفت شغلی",
