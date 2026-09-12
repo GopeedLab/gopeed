@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
-import 'task_create_button.dart';
+import 'task_empty_create_hint.dart';
 import '../../../../l10n/l10n.dart';
 
 class TaskEmptyState extends StatelessWidget {
@@ -36,11 +36,7 @@ class TaskEmptyState extends StatelessWidget {
                 ),
                 if (onCreateTask != null) ...[
                   const SizedBox(height: AppDesignTokens.space24),
-                  TaskCreateButton(
-                    key: const ValueKey('tasks-empty-create-button'),
-                    onPressed: onCreateTask!,
-                    minHeight: 48,
-                  ),
+                  TaskEmptyCreateHint(onCreateTask: onCreateTask!),
                 ],
               ],
             ),
