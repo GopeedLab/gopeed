@@ -857,30 +857,37 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('extension install actions show progress instead of a disabled icon while busy', (
-    WidgetTester tester,
-  ) async {
-    await _setTestSize(tester, const Size(1100, 900));
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [extensionsControllerProvider.overrideWith(BusyInstallExtensionsController.new)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+  testWidgets(
+    'URL installation leaves toolbar icons unchanged while store installation shows progress',
+    (WidgetTester tester) async {
+      await _setTestSize(tester, const Size(1100, 900));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(BusyInstallExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
         ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
-    final manualInstall = find.byKey(const ValueKey('install-extension-button'));
-    final storeInstall = find.byKey(const ValueKey('install-store-extension-extension-1'));
-    expect(find.descendant(of: manualInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
-    expect(find.descendant(of: storeInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
-    expect(find.descendant(of: storeInstall, matching: find.byIcon(Icons.download)), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      final manualInstall = find.byKey(const ValueKey('install-extension-button'));
+      final storeInstall = find.byKey(const ValueKey('install-store-extension-extension-1'));
+      expect(find.descendant(of: manualInstall, matching: find.byType(shad.CircularProgressIndicator)), findsNothing);
+      expect(find.descendant(of: manualInstall, matching: find.byIcon(Icons.add_link)), findsOneWidget);
+      final localInstall = find.byKey(const ValueKey('load-local-extension-button'));
+      expect(localInstall, findsOneWidget);
+      expect(find.descendant(of: localInstall, matching: find.byType(shad.CircularProgressIndicator)), findsNothing);
+      expect(find.descendant(of: localInstall, matching: find.byIcon(Icons.folder_open_outlined)), findsOneWidget);
+      expect(find.descendant(of: storeInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+      expect(find.descendant(of: storeInstall, matching: find.byIcon(Icons.download)), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
 
   for (final (width, platform) in [
     (320.0, TargetPlatform.android),
@@ -5301,7 +5308,10 @@ class BusyInstallExtensionsController extends FakeExtensionsController {
   @override
   Future<ExtensionsState> build() async {
     final initial = await super.build();
-    return initial.copyWith(busyExtensionIds: {ExtensionsController.manualInstallBusyKey, 'extension-1'});
+    return initial.copyWith(
+      devMode: true,
+      busyExtensionIds: {ExtensionsController.manualInstallBusyKey, 'extension-1'},
+    );
   }
 }
 

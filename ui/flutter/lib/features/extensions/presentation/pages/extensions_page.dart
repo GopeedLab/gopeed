@@ -670,7 +670,6 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final manualInstallBusy = state.busyExtensionIds.contains(ExtensionsController.manualInstallBusyKey);
     final search = AppTextField(
       key: const ValueKey('extension-search-input'),
       controller: searchController,
@@ -717,7 +716,6 @@ class _Toolbar extends StatelessWidget {
             key: const ValueKey('load-local-extension-button'),
             tooltip: context.l10n.extensionLoadLocal,
             icon: Icons.folder_open_outlined,
-            loading: manualInstallBusy,
             onPressed: onInstallFolder,
           ),
           const SizedBox(width: 8),
@@ -728,7 +726,6 @@ class _Toolbar extends StatelessWidget {
             key: const ValueKey('install-extension-button'),
             tooltip: context.l10n.extensionInstallFromUrl,
             icon: Icons.add_link,
-            loading: manualInstallBusy,
             onPressed: () => onOpenInstall(buttonContext),
           ),
         ),
@@ -804,18 +801,11 @@ class _FilterBar extends StatelessWidget {
 }
 
 class _OutlineToolbarIconButton extends StatelessWidget {
-  const _OutlineToolbarIconButton({
-    super.key,
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    this.loading = false,
-  });
+  const _OutlineToolbarIconButton({super.key, required this.tooltip, required this.icon, required this.onPressed});
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
-  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -823,13 +813,7 @@ class _OutlineToolbarIconButton extends StatelessWidget {
       message: tooltip,
       child: SizedBox.square(
         dimension: 32,
-        child: shad.IconButton.outline(
-          size: shad.ButtonSize.xSmall,
-          onPressed: loading ? null : onPressed,
-          icon: loading
-              ? const SizedBox.square(dimension: 13, child: shad.CircularProgressIndicator())
-              : Icon(icon, size: 17),
-        ),
+        child: shad.IconButton.outline(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: Icon(icon, size: 17)),
       ),
     );
   }
