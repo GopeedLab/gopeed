@@ -133,7 +133,7 @@ class TaskRecord {
       status: status,
       downloaded: _formatBytes(downloadedBytes),
       total: totalBytes > 0 ? _formatBytes(totalBytes) : null,
-      speed: task.progress.speed > 0 ? TransferRateFormatter.format(task.progress.speed).text : null,
+      speed: totalBytes > 0 || task.progress.speed > 0 ? TransferRateFormatter.format(task.progress.speed).text : null,
       uploadSpeed: task.uploading ? TransferRateFormatter.format(task.progress.uploadSpeed).text : null,
       remainingSeconds: _remainingSeconds(task, totalBytes, downloadedBytes),
       downloadDuration: task.progress.used > 0 ? Duration(microseconds: (task.progress.used + 999) ~/ 1000) : null,

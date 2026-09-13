@@ -106,7 +106,7 @@ class TaskCardFooter extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          if (task.speed != null && !isError) ...[
+          if (task.speed != null) ...[
             _TaskTransferSpeed(icon: Icons.south, value: task.speed!, color: metaColor),
             const SizedBox(width: 8),
             TickDivider(color: palette.progressTrack),

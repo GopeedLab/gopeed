@@ -3385,6 +3385,78 @@ void main() {
     expect(record.isIndeterminate, isTrue);
   });
 
+  test('known total size preserves zero download speed independently of task status', () {
+    for (final status in api_task.Status.values) {
+      for (final total in [0, 1024]) {
+        for (final speed in [0, 512]) {
+          final task = _apiTransferTask(id: 'speed', status: status, uploading: false, speed: speed, uploadSpeed: 0);
+          task.meta.res = Resource(size: total, files: []);
+          expect(TaskRecord.fromApi(task).speed, total > 0 || speed > 0 ? '$speed B/s' : isNull);
+        }
+      }
+    }
+  });
+
+  for (final width in [390.0, 1024.0]) {
+    testWidgets('known-size task cards retain zero download speed at width $width', (tester) async {
+      await _setTestSize(tester, Size(width, 220));
+      for (final status in api_task.Status.values) {
+        final task = _apiTransferTask(id: 'zero-speed', status: status, uploading: false, speed: 0, uploadSpeed: 0);
+        task.meta.res = Resource(size: 1024, files: []);
+        await tester.pumpWidget(
+          shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: Padding(
+              padding: const EdgeInsets.all(24),
+              child: TaskCard(
+                task: TaskRecord.fromApi(task),
+                selected: false,
+                batchMode: false,
+                selectedInBatch: false,
+                onPressed: () {},
+                onToggleBatch: () {},
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.text('0 B/s'), findsOneWidget);
+        expect(find.byIcon(Icons.south), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    });
+  }
+
+  testWidgets('known-size task details retain zero download speed', (tester) async {
+    await _setTestSize(tester, const Size(700, 900));
+    final task = _apiTransferTask(
+      id: 'zero-details',
+      status: api_task.Status.running,
+      uploading: false,
+      speed: 0,
+      uploadSpeed: 0,
+    );
+    task.meta.res = Resource(size: 1024, files: []);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: TaskDetailsView(
+            task: TaskRecord.fromApi(task),
+            mobile: true,
+            onOpenStorage: () {},
+            onUpdateUrl: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('0 B/s'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('task records preserve zero upload speed while uploading', () {
     final record = TaskRecord.fromApi(
       _apiTransferTask(id: 'seeding', status: api_task.Status.done, uploading: true, speed: 0, uploadSpeed: 0),
