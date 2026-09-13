@@ -110,6 +110,14 @@
   "extensions": "Extensions",
   "extensionInstallUrl": "Install URL",
   "extensionInstallSuccess": "Installed successfully",
+  "extensionUpdateConfirm": "Update “{name}” to the latest version?",
+  "@extensionUpdateConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "extensionUpdateSuccess": "Updated successfully",
   "extensionDelete": "Delete Extension",
   "extensionAlreadyLatest": "It's already the latest version",

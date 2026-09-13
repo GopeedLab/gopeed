@@ -103,6 +103,7 @@
   "extensions": "Bővítmények",
   "extensionInstallUrl": "Telepítési URL",
   "extensionInstallSuccess": "Sikeresen telepítve",
+  "extensionUpdateConfirm": "Frissíti a(z) „{name}” bővítményt a legújabb verzióra?",
   "extensionUpdateSuccess": "Sikeresen frissítve",
   "extensionDelete": "Bővítmény törlése",
   "extensionAlreadyLatest": "Ez már a legfrissebb verzió",

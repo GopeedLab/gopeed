@@ -103,6 +103,7 @@
   "extensions": "Ekstensi",
   "extensionInstallUrl": "URL Instal",
   "extensionInstallSuccess": "Diinstal dengan sukses",
+  "extensionUpdateConfirm": "Perbarui “{name}” ke versi terbaru?",
   "extensionUpdateSuccess": "Diperbaruhi dengan sukses",
   "extensionDelete": "Hapus Ekstensi",
   "extensionAlreadyLatest": "Ini sudah versi terbaru",

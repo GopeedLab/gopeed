@@ -10,6 +10,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../api/model/store_extension.dart';
+import '../../../../core/utils/compact_count_formatter.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
@@ -19,6 +20,7 @@ import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../util/util.dart';
 import '../../application/extensions_controller.dart';
 import 'extension_icon.dart';
+import 'extension_update_dialog.dart';
 
 class ExtensionDetailDrawer extends StatelessWidget {
   const ExtensionDetailDrawer({super.key, required this.item, required this.onClose});
@@ -131,14 +133,10 @@ class ExtensionDetailView extends ConsumerWidget {
             if (installed != null && canUpdate)
               AppLoadingButton(
                 key: const ValueKey('extension-details-update'),
-                loading: busy,
+                loading: false,
                 variant: AppLoadingButtonVariant.primary,
                 icon: const Icon(Icons.refresh, size: 16),
-                onPressed: () => _runAction(
-                  context,
-                  () => ref.read(extensionsControllerProvider.notifier).upgradeExtension(installed),
-                  successMessage: context.l10n.extensionUpdateSuccess,
-                ),
+                onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
                 child: Text(context.l10n.newVersionUpdate),
               ),
             if (installed != null && !canUpdate)
@@ -338,9 +336,9 @@ class _ExtensionStats extends StatelessWidget {
       key: const ValueKey('extension-details-stats'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        _MetadataItem(icon: Icons.star_rounded, value: store.stars.toString()),
+        _MetadataItem(icon: Icons.star_rounded, value: CompactCountFormatter.format(store.stars)),
         const SizedBox(width: 12),
-        _MetadataItem(icon: Icons.download_outlined, value: store.installCount.toString()),
+        _MetadataItem(icon: Icons.download_outlined, value: CompactCountFormatter.format(store.installCount)),
       ],
     );
   }
