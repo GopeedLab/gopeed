@@ -47,6 +47,8 @@ class ExtensionsPage extends ConsumerStatefulWidget {
 class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   final _searchController = TextEditingController();
   final _installController = TextEditingController();
+  final _installAnchorKey = GlobalKey();
+  bool _installDevMode = false;
   final _listScrollController = ScrollController();
   final Map<String, TextEditingController> _settingControllers = {};
   ExtensionListItem? _detailItem;
@@ -78,15 +80,20 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final isDesktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
-    ref.listen(pendingExtensionInstallProvider, (previous, next) {
-      if (next == null) return;
-      ref.read(pendingExtensionInstallProvider.notifier).clear();
-      unawaited(
-        _runAction(
-          () => ref.read(extensionsControllerProvider.notifier).installFromUrl(next.url, devInstall: next.devMode),
-        ),
-      );
-    });
+    final pendingInstall = ref.watch(pendingExtensionInstallProvider);
+    if (pendingInstall != null) {
+      // The request can arrive before this page is mounted. Consume it only
+      // after the toolbar is laid out, so cold and warm links share the same UI.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !identical(ref.read(pendingExtensionInstallProvider), pendingInstall)) return;
+        final anchorContext = _installAnchorKey.currentContext;
+        if (anchorContext == null) return;
+        _installController.text = pendingInstall.url;
+        _installDevMode = pendingInstall.devMode;
+        _showInstallPopover(anchorContext);
+        ref.read(pendingExtensionInstallProvider.notifier).clear();
+      });
+    }
     final stateAsync = ref.watch(extensionsControllerProvider);
     final body = Stack(
       children: [
@@ -154,6 +161,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       onSearch: (query) => _runAction(() => ref.read(extensionsControllerProvider.notifier).searchStore(query)),
       onSort: (sort) => _runAction(() => ref.read(extensionsControllerProvider.notifier).changeSort(sort)),
       onFilter: ref.read(extensionsControllerProvider.notifier).changeFilter,
+      installAnchorKey: _installAnchorKey,
       onOpenInstall: _openInstallPopover,
       onDevelopExtension: _openExtensionDevelopmentDocs,
       onInstallFolder: _installFromFolder,
@@ -169,7 +177,9 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   Future<void> _installFromUrl() async {
     final url = _installController.text.trim();
     if (url.isEmpty) return;
-    await _runAction(() => ref.read(extensionsControllerProvider.notifier).installFromUrl(url));
+    await _runAction(
+      () => ref.read(extensionsControllerProvider.notifier).installFromUrl(url, devInstall: _installDevMode),
+    );
   }
 
   Future<void> _loadNextPageIfNeeded() async {
@@ -193,6 +203,11 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
 
   void _openInstallPopover(BuildContext anchorContext) {
     ref.read(extensionsControllerProvider.notifier).tryOpenDevMode();
+    _installDevMode = false;
+    _showInstallPopover(anchorContext);
+  }
+
+  void _showInstallPopover(BuildContext anchorContext) {
     if (_installPopover != null) return;
     final overlay = const shad.PopoverOverlayHandler().show<void>(
       context: anchorContext,
@@ -284,6 +299,7 @@ class _Content extends StatelessWidget {
     required this.onSearch,
     required this.onSort,
     required this.onFilter,
+    required this.installAnchorKey,
     required this.onOpenInstall,
     required this.onDevelopExtension,
     required this.onInstallFolder,
@@ -301,6 +317,7 @@ class _Content extends StatelessWidget {
   final ValueChanged<String> onSearch;
   final ValueChanged<StoreExtensionSort> onSort;
   final ValueChanged<ExtensionListFilter> onFilter;
+  final GlobalKey installAnchorKey;
   final ValueChanged<BuildContext> onOpenInstall;
   final VoidCallback onDevelopExtension;
   final VoidCallback onInstallFolder;
@@ -322,6 +339,7 @@ class _Content extends StatelessWidget {
       onSearch: onSearch,
       onSort: onSort,
       onRefresh: onRefresh,
+      installAnchorKey: installAnchorKey,
       onOpenInstall: onOpenInstall,
       onDevelopExtension: onDevelopExtension,
       onInstallFolder: onInstallFolder,
@@ -614,6 +632,7 @@ class _Toolbar extends StatelessWidget {
     required this.onSearch,
     required this.onSort,
     required this.onRefresh,
+    required this.installAnchorKey,
     required this.onOpenInstall,
     required this.onDevelopExtension,
     required this.onInstallFolder,
@@ -624,6 +643,7 @@ class _Toolbar extends StatelessWidget {
   final ValueChanged<String> onSearch;
   final ValueChanged<StoreExtensionSort> onSort;
   final VoidCallback onRefresh;
+  final GlobalKey installAnchorKey;
   final ValueChanged<BuildContext> onOpenInstall;
   final VoidCallback onDevelopExtension;
   final VoidCallback onInstallFolder;
@@ -684,6 +704,7 @@ class _Toolbar extends StatelessWidget {
           const SizedBox(width: 8),
         ],
         Builder(
+          key: installAnchorKey,
           builder: (buttonContext) => _OutlineToolbarIconButton(
             key: const ValueKey('install-extension-button'),
             tooltip: context.l10n.extensionInstallFromUrl,
