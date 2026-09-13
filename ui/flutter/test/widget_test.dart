@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart' show Icons, Scrollbar;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kDoubleTapMinTime, kSecondaryMouseButton;
 import 'package:flutter/rendering.dart' show RenderParagraph;
@@ -23,6 +23,8 @@ import 'package:gopeed/app/application/app_notification_controller.dart';
 import 'package:gopeed/app/application/app_platform_controller.dart';
 import 'package:gopeed/app/application/app_runtime_controller.dart';
 import 'package:gopeed/api/model/create_task.dart';
+import 'package:gopeed/api/model/install_extension.dart';
+import 'package:gopeed/features/extensions/application/pending_extension_install.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/extension.dart' as api_extension;
 import 'package:gopeed/api/model/meta.dart';
@@ -855,66 +857,249 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('extension install actions show progress instead of a disabled icon while busy', (
-    WidgetTester tester,
-  ) async {
-    await _setTestSize(tester, const Size(1100, 900));
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [extensionsControllerProvider.overrideWith(BusyInstallExtensionsController.new)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+  testWidgets(
+    'URL installation leaves toolbar icons unchanged while store installation shows progress',
+    (WidgetTester tester) async {
+      await _setTestSize(tester, const Size(1100, 900));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(BusyInstallExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
         ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    final manualInstall = find.byKey(const ValueKey('install-extension-button'));
-    final storeInstall = find.byKey(const ValueKey('install-store-extension-extension-1'));
-    expect(find.descendant(of: manualInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
-    expect(find.descendant(of: storeInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
-    expect(find.descendant(of: storeInstall, matching: find.byIcon(Icons.download)), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('extension install popover unlocks local loading and installed cards use switches', (
-    WidgetTester tester,
-  ) async {
-    await _setTestSize(tester, const Size(1100, 900));
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byType(shad.Switch), findsOneWidget);
-    expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
-    final installButton = find.byKey(const ValueKey('install-extension-button'));
-    expect(find.descendant(of: installButton, matching: find.byType(shad.IconButton)), findsOneWidget);
-
-    for (var index = 0; index < 5; index++) {
-      await tester.tap(installButton);
+      );
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-    }
 
-    expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
-    expect(find.byKey(const ValueKey('extension-install-url-input')), findsOneWidget);
-    final localButton = find.byKey(const ValueKey('load-local-extension-button'));
-    expect(localButton, findsOneWidget);
-    expect(find.descendant(of: localButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+      final manualInstall = find.byKey(const ValueKey('install-extension-button'));
+      final storeInstall = find.byKey(const ValueKey('install-store-extension-extension-1'));
+      expect(find.descendant(of: manualInstall, matching: find.byType(shad.CircularProgressIndicator)), findsNothing);
+      expect(find.descendant(of: manualInstall, matching: find.byIcon(Icons.add_link)), findsOneWidget);
+      final localInstall = find.byKey(const ValueKey('load-local-extension-button'));
+      expect(localInstall, findsOneWidget);
+      expect(find.descendant(of: localInstall, matching: find.byType(shad.CircularProgressIndicator)), findsNothing);
+      expect(find.descendant(of: localInstall, matching: find.byIcon(Icons.folder_open_outlined)), findsOneWidget);
+      expect(find.descendant(of: storeInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+      expect(find.descendant(of: storeInstall, matching: find.byIcon(Icons.download)), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
 
-    await tester.pump(const Duration(seconds: 3));
-    expect(tester.takeException(), isNull);
-  });
+  for (final (width, platform) in [
+    (320.0, TargetPlatform.android),
+    (390.0, TargetPlatform.iOS),
+    (768.0, TargetPlatform.android),
+    (1100.0, TargetPlatform.macOS),
+  ]) {
+    testWidgets(
+      'scheme install automatically runs before and after mounting at width $width',
+      (tester) async {
+        await _setTestSize(tester, Size(width, 900));
+        final controller = FakeExtensionsController()..installGate = Completer<void>();
+        final container = ProviderContainer(overrides: [extensionsControllerProvider.overrideWith(() => controller)]);
+        addTearDown(container.dispose);
+        const firstUrl = 'https://github.com/author/扩展';
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: firstUrl));
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: shad.ShadcnApp(
+              theme: AppTheme.light(),
+              materialTheme: AppTheme.materialLight(),
+              home: const ExtensionsPage(),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        final input = find.byKey(const ValueKey('extension-install-url-input'));
+        expect(tester.widget<AppTextField>(input).controller!.text, firstUrl);
+        expect(container.read(pendingExtensionInstallProvider), isNull);
+        expect(controller.installCalls, 1);
+        expect(controller.lastInstallUrl, firstUrl);
+        final popoverRect = tester.getRect(find.byKey(const ValueKey('extension-install-popover')));
+        expect(popoverRect.left, greaterThanOrEqualTo(0));
+        expect(popoverRect.right, lessThanOrEqualTo(width));
+        expect(find.descendant(of: input, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+
+        // Rebuilds and manual submission must not duplicate an active install.
+        await tester.tap(find.descendant(of: input, matching: find.byType(shad.IconButton)));
+        await tester.pump();
+        expect(controller.installCalls, 1);
+        controller.installGate!.complete();
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('extension-install-popover')), findsNothing);
+
+        // A warm link automatically installs from an already-open form too.
+        await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        const secondUrl = 'https://github.com/author/second';
+        controller.installGate = Completer<void>();
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: secondUrl));
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(tester.widget<AppTextField>(input).controller!.text, secondUrl);
+        expect(controller.installCalls, 2);
+        expect(controller.lastInstallUrl, secondUrl);
+
+        // A request arriving during installation waits until the active form closes.
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: firstUrl));
+        await tester.pump();
+        expect(controller.installCalls, 2);
+        controller.installGate!.complete();
+        controller.installGate = Completer<void>();
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 200));
+        }
+        expect(controller.installCalls, 3);
+        expect(controller.lastInstallUrl, firstUrl);
+        controller.installGate!.complete();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      },
+      variant: TargetPlatformVariant.only(platform),
+    );
+  }
+
+  testWidgets(
+    'install URL keeps focus after native menu paste',
+    (tester) async {
+      await _setTestSize(tester, const Size(390, 900));
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.hasStrings') return {'value': true};
+        if (call.method == 'Clipboard.getData') return {'text': 'https://github.com/author/repo'};
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final search = find.byKey(const ValueKey('extension-search-input'));
+      await tester.tap(search);
+      await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      final input = find.byKey(const ValueKey('extension-install-url-input'));
+      final editableFinder = find.descendant(of: input, matching: find.byType(EditableText));
+      final editable = tester.widget<EditableText>(editableFinder);
+      expect(editable.focusNode.hasFocus, isTrue);
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        final gesture = await tester.startGesture(
+          tester.getCenter(input),
+          kind: PointerDeviceKind.mouse,
+          buttons: kSecondaryMouseButton,
+        );
+        await gesture.up();
+      } else {
+        await tester.longPress(input);
+      }
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.text('Paste'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(input, findsOneWidget);
+      expect(editable.controller.text, 'https://github.com/author/repo');
+      expect(editable.focusNode.hasFocus, isTrue);
+      expect(
+        tester
+            .widget<EditableText>(find.descendant(of: search, matching: find.byType(EditableText)))
+            .focusNode
+            .hasFocus,
+        isFalse,
+      );
+      await tester.tapAt(const Offset(10, 500));
+      await tester.pumpAndSettle();
+      expect(input, findsNothing);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS}),
+  );
+
+  testWidgets(
+    'mobile does not unlock local extension installation after five taps',
+    (tester) async {
+      // A tablet-sized mobile screen must still use mobile platform policy.
+      await _setTestSize(tester, const Size(1100, 900));
+      final controller = FakeExtensionsController();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(() => controller)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) {
+        await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(controller.devModeEnabled, isFalse);
+      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+      // Even a pre-existing dev-mode state must not expose the native folder action.
+      controller.enableDevModeForTest();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}),
+  );
+
+  testWidgets(
+    'extension install popover unlocks local loading and installed cards use switches',
+    (WidgetTester tester) async {
+      await _setTestSize(tester, const Size(1100, 900));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(shad.Switch), findsOneWidget);
+      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+      final installButton = find.byKey(const ValueKey('install-extension-button'));
+      expect(find.descendant(of: installButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+
+      for (var index = 0; index < 5; index++) {
+        await tester.tap(installButton);
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
+      expect(find.byKey(const ValueKey('extension-install-url-input')), findsOneWidget);
+      final localButton = find.byKey(const ValueKey('load-local-extension-button'));
+      expect(localButton, findsOneWidget);
+      expect(find.descendant(of: localButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 3));
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}),
+  );
 
   testWidgets('responsive menu uses sidebar on desktop and two-level navigation on mobile', (
     WidgetTester tester,
@@ -4982,7 +5167,23 @@ class FailingTasksController extends TasksController {
 }
 
 class FakeExtensionsController extends ExtensionsController {
+  bool get devModeEnabled => state.requireValue.devMode;
+
+  void enableDevModeForTest() {
+    state = AsyncValue.data(state.requireValue.copyWith(devMode: true));
+  }
+
   int installCalls = 0;
+  String? lastInstallUrl;
+  Completer<void>? installGate;
+
+  @override
+  Future<void> installFromUrl(String url, {bool devInstall = false}) async {
+    installCalls++;
+    lastInstallUrl = url;
+    await installGate?.future;
+  }
+
   int removeCalls = 0;
 
   @override
@@ -5107,7 +5308,10 @@ class BusyInstallExtensionsController extends FakeExtensionsController {
   @override
   Future<ExtensionsState> build() async {
     final initial = await super.build();
-    return initial.copyWith(busyExtensionIds: {ExtensionsController.manualInstallBusyKey, 'extension-1'});
+    return initial.copyWith(
+      devMode: true,
+      busyExtensionIds: {ExtensionsController.manualInstallBusyKey, 'extension-1'},
+    );
   }
 }
 
