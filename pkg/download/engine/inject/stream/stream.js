@@ -105,6 +105,10 @@
           return Promise.resolve({ done: true, value: undefined });
         }
         this._maybePull();
+        // pull() may synchronously error before a waiter has been registered.
+        if (this._errored) {
+          return Promise.reject(this._errored);
+        }
         if (this._queue.length > 0) {
           return Promise.resolve({ done: false, value: this._queue.shift() });
         }
