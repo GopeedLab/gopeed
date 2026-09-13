@@ -16,6 +16,12 @@ import 'package:window_manager/window_manager.dart';
 import 'package:gopeed/features/home/presentation/pages/home_page.dart';
 import 'package:gopeed/app/app.dart';
 import 'package:gopeed/app/router/app_router.dart';
+import 'package:gopeed/core/capabilities/capability_rpc.dart';
+import 'package:gopeed/core/capabilities/gopeed_capability.dart';
+import 'package:gopeed/core/capabilities/storage_capability.dart';
+import 'package:gopeed/api/model/resolve_result.dart';
+import 'package:gopeed/features/tasks/application/pending_create_task.dart';
+import 'package:gopeed/features/tasks/application/task_list_navigation.dart';
 import 'package:gopeed/core/capabilities/app_capabilities.dart';
 import 'package:gopeed/core/capabilities/app_navigation_capability.dart';
 import 'package:gopeed/app/application/app_appearance_controller.dart';
@@ -99,6 +105,85 @@ import 'package:gopeed/util/updater.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.localeTestValue = const Locale('en');
+
+  for (final direct in [true, false]) {
+    testWidgets(
+      'mobile creation selects downloading after success (direct: $direct)',
+      (tester) async {
+        await _setTestSize(tester, const Size(700, 900));
+        var created = 0;
+        final config = DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = direct;
+        final registry = CapabilityRegistry(createAppCapabilityCodecs())
+          ..bind(GopeedMethods.getConfig, (_) => config)
+          ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit())
+          ..bind(
+            GopeedMethods.resolve,
+            (_) => ResolveResult(
+              id: 'resolved',
+              res: Resource(
+                name: 'new.zip',
+                files: [FileInfo(name: 'new.zip', size: 10)],
+              ),
+            ),
+          )
+          ..bind(GopeedMethods.createTask, (_) {
+            created++;
+            return 'new-task';
+          });
+        final container = ProviderContainer(
+          overrides: [
+            appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry))),
+            appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+            appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+            appDeepLinkControllerProvider.overrideWith(FakeDeepLinkController.new),
+            appNotificationControllerProvider.overrideWith(FakeNotificationController.new),
+            tasksControllerProvider.overrideWith(CompletedTasksController.new),
+            settingsControllerProvider.overrideWith(FakeSettingsController.new),
+          ],
+        );
+        addTearDown(container.dispose);
+        await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const GopeedApp()));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Completed 1'));
+        await tester.pumpAndSettle();
+        expect(find.text('done.zip'), findsOneWidget);
+        final router = GoRouter.of(AppRouter.rootNavigatorKey.currentContext!);
+        void openCreate() {
+          container
+              .read(pendingCreateTaskProvider.notifier)
+              .set(CreateTask(req: Request(url: 'https://example.com/new.zip')));
+          router.go('/create');
+        }
+
+        openCreate();
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('create-task-cancel-button')));
+        await tester.pumpAndSettle();
+        expect(find.text('done.zip'), findsOneWidget);
+        expect(container.read(taskListNavigationProvider), 0);
+        expect(created, 0);
+        openCreate();
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        if (!direct) {
+          expect(created, 0);
+          await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+          await tester.pumpAndSettle();
+        }
+        await tester.pumpAndSettle();
+        expect(created, 1);
+        expect(router.routeInformationProvider.value.uri.path, '/');
+        expect(container.read(taskListNavigationProvider), 1);
+        expect(find.text('done.zip'), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      },
+      variant: TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}),
+    );
+  }
 
   testWidgets('child success returns to downloading from completed and another page', (tester) async {
     await _setTestSize(tester, const Size(1024, 768));
