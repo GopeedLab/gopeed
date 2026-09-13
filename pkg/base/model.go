@@ -94,9 +94,6 @@ type Resource struct {
 }
 
 func (r *Resource) Validate() error {
-	if r.Name == "" {
-		return fmt.Errorf("invalid resource name")
-	}
 	if len(r.Files) == 0 {
 		return fmt.Errorf("invalid resource files")
 	}

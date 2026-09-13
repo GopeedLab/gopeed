@@ -299,8 +299,9 @@ TaskAssetType _assetType(String name, {required bool isFolder, required api_task
 }
 
 String _fileExtension(String name) {
-  final pathWithoutQuery = name.split(RegExp(r'[?#]')).first;
-  final extension = path.extension(pathWithoutQuery).replaceFirst('.', '').toLowerCase();
+  final uri = Uri.tryParse(name);
+  final filePath = uri != null && uri.hasScheme && uri.hasAuthority ? uri.path : name;
+  final extension = path.extension(filePath).replaceFirst('.', '').toLowerCase();
   return extension.length <= 10 ? extension : '';
 }
 

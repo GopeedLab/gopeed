@@ -3,6 +3,7 @@ module github.com/GopeedLab/gopeed
 go 1.25.4
 
 require (
+	codeberg.org/gruf/go-ffmpreg v0.6.23-0.20260827095416-df1836cb5be0
 	github.com/GopeedLab/webview_go v0.0.0-20260423085439-7a2f88b6e9b5
 	github.com/anacrolix/torrent v1.60.1-0.20251217073903-486bcbe758e0
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
@@ -21,6 +22,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529
 	github.com/rs/zerolog v1.31.0
+	github.com/tetratelabs/wazero v1.12.0
 	github.com/xiaoqidun/setft v0.0.0-20220310121541-be86327699ad
 	go.etcd.io/bbolt v1.4.3
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93
@@ -156,7 +158,7 @@ require (
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.50.0
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/text v0.34.0
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
