@@ -209,7 +209,9 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   }
 
   void _openInstallPopover(BuildContext anchorContext) {
-    ref.read(extensionsControllerProvider.notifier).tryOpenDevMode();
+    if (AppWindowChrome.isDesktopWindow) {
+      ref.read(extensionsControllerProvider.notifier).tryOpenDevMode();
+    }
     _installDevMode = false;
     _showInstallPopover(anchorContext);
   }
@@ -223,6 +225,9 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       offset: const Offset(0, 8),
       modal: false,
       consumeOutsideTaps: false,
+      // Flutter's native selection toolbar uses the EditableText tap group.
+      // Pasting from it must not dismiss the form and restore search focus.
+      regionGroupId: EditableText,
       builder: (context) => _InstallPopover(
         key: _installPopoverKey,
         controller: _installController,
@@ -707,7 +712,7 @@ class _Toolbar extends StatelessWidget {
           onPressed: onDevelopExtension,
         ),
         const SizedBox(width: 8),
-        if (state.devMode) ...[
+        if (AppWindowChrome.isDesktopWindow && state.devMode) ...[
           _OutlineToolbarIconButton(
             key: const ValueKey('load-local-extension-button'),
             tooltip: context.l10n.extensionLoadLocal,

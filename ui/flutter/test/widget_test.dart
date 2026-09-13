@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart' show Icons, Scrollbar;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kDoubleTapMinTime, kSecondaryMouseButton;
 import 'package:flutter/rendering.dart' show RenderParagraph;
@@ -963,41 +963,136 @@ void main() {
     );
   }
 
-  testWidgets('extension install popover unlocks local loading and installed cards use switches', (
-    WidgetTester tester,
-  ) async {
-    await _setTestSize(tester, const Size(1100, 900));
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+  testWidgets(
+    'install URL keeps focus after native menu paste',
+    (tester) async {
+      await _setTestSize(tester, const Size(390, 900));
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.hasStrings') return {'value': true};
+        if (call.method == 'Clipboard.getData') return {'text': 'https://github.com/author/repo'};
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
+      final search = find.byKey(const ValueKey('extension-search-input'));
+      await tester.tap(search);
+      await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      final input = find.byKey(const ValueKey('extension-install-url-input'));
+      final editableFinder = find.descendant(of: input, matching: find.byType(EditableText));
+      final editable = tester.widget<EditableText>(editableFinder);
+      expect(editable.focusNode.hasFocus, isTrue);
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        final gesture = await tester.startGesture(
+          tester.getCenter(input),
+          kind: PointerDeviceKind.mouse,
+          buttons: kSecondaryMouseButton,
+        );
+        await gesture.up();
+      } else {
+        await tester.longPress(input);
+      }
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.text('Paste'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(input, findsOneWidget);
+      expect(editable.controller.text, 'https://github.com/author/repo');
+      expect(editable.focusNode.hasFocus, isTrue);
+      expect(
+        tester
+            .widget<EditableText>(find.descendant(of: search, matching: find.byType(EditableText)))
+            .focusNode
+            .hasFocus,
+        isFalse,
+      );
+      await tester.tapAt(const Offset(10, 500));
+      await tester.pumpAndSettle();
+      expect(input, findsNothing);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS}),
+  );
 
-    expect(find.byType(shad.Switch), findsOneWidget);
-    expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
-    final installButton = find.byKey(const ValueKey('install-extension-button'));
-    expect(find.descendant(of: installButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+  testWidgets(
+    'mobile does not unlock local extension installation after five taps',
+    (tester) async {
+      // A tablet-sized mobile screen must still use mobile platform policy.
+      await _setTestSize(tester, const Size(1100, 900));
+      final controller = FakeExtensionsController();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(() => controller)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) {
+        await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(controller.devModeEnabled, isFalse);
+      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+      // Even a pre-existing dev-mode state must not expose the native folder action.
+      controller.enableDevModeForTest();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}),
+  );
 
-    for (var index = 0; index < 5; index++) {
-      await tester.tap(installButton);
-      await tester.pump(const Duration(milliseconds: 100));
-    }
+  testWidgets(
+    'extension install popover unlocks local loading and installed cards use switches',
+    (WidgetTester tester) async {
+      await _setTestSize(tester, const Size(1100, 900));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
-    expect(find.byKey(const ValueKey('extension-install-url-input')), findsOneWidget);
-    final localButton = find.byKey(const ValueKey('load-local-extension-button'));
-    expect(localButton, findsOneWidget);
-    expect(find.descendant(of: localButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+      expect(find.byType(shad.Switch), findsOneWidget);
+      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+      final installButton = find.byKey(const ValueKey('install-extension-button'));
+      expect(find.descendant(of: installButton, matching: find.byType(shad.IconButton)), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 3));
-    expect(tester.takeException(), isNull);
-  });
+      for (var index = 0; index < 5; index++) {
+        await tester.tap(installButton);
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
+      expect(find.byKey(const ValueKey('extension-install-url-input')), findsOneWidget);
+      final localButton = find.byKey(const ValueKey('load-local-extension-button'));
+      expect(localButton, findsOneWidget);
+      expect(find.descendant(of: localButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 3));
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}),
+  );
 
   testWidgets('responsive menu uses sidebar on desktop and two-level navigation on mobile', (
     WidgetTester tester,
@@ -5065,6 +5160,12 @@ class FailingTasksController extends TasksController {
 }
 
 class FakeExtensionsController extends ExtensionsController {
+  bool get devModeEnabled => state.requireValue.devMode;
+
+  void enableDevModeForTest() {
+    state = AsyncValue.data(state.requireValue.copyWith(devMode: true));
+  }
+
   int installCalls = 0;
   String? lastInstallUrl;
   Completer<void>? installGate;
