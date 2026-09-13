@@ -103,6 +103,7 @@
   "extensions": "Розширення",
   "extensionInstallUrl": "URL для встановлення",
   "extensionInstallSuccess": "Встановлено успішно",
+  "extensionUpdateConfirm": "Оновити «{name}» до останньої версії?",
   "extensionUpdateSuccess": "Оновлено успішно",
   "extensionDelete": "Видалити розширення",
   "extensionAlreadyLatest": "Вже остання версія",

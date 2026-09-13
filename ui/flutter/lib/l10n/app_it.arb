@@ -103,6 +103,7 @@
   "extensions": "Estensioni",
   "extensionInstallUrl": "Installa URL",
   "extensionInstallSuccess": "Installato con successo",
+  "extensionUpdateConfirm": "Aggiornare «{name}» alla versione più recente?",
   "extensionUpdateSuccess": "Aggiornato con successo",
   "extensionDelete": "Elimina estensione",
   "extensionAlreadyLatest": "È già l'ultima versione",

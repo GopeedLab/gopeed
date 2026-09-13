@@ -103,6 +103,7 @@
   "extensions": "拡張機能",
   "extensionInstallUrl": "インストールURL",
   "extensionInstallSuccess": "正常にインストールされました",
+  "extensionUpdateConfirm": "「{name}」を最新バージョンに更新しますか？",
   "extensionUpdateSuccess": "正常に更新されました",
   "extensionDelete": "拡張機能を削除",
   "extensionAlreadyLatest": "既に最新バージョンです",

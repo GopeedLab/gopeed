@@ -19,6 +19,7 @@ import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../util/util.dart';
 import '../../application/extensions_controller.dart';
 import 'extension_icon.dart';
+import 'extension_update_dialog.dart';
 
 class ExtensionDetailDrawer extends StatelessWidget {
   const ExtensionDetailDrawer({super.key, required this.item, required this.onClose});
@@ -131,14 +132,10 @@ class ExtensionDetailView extends ConsumerWidget {
             if (installed != null && canUpdate)
               AppLoadingButton(
                 key: const ValueKey('extension-details-update'),
-                loading: busy,
+                loading: false,
                 variant: AppLoadingButtonVariant.primary,
                 icon: const Icon(Icons.refresh, size: 16),
-                onPressed: () => _runAction(
-                  context,
-                  () => ref.read(extensionsControllerProvider.notifier).upgradeExtension(installed),
-                  successMessage: context.l10n.extensionUpdateSuccess,
-                ),
+                onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
                 child: Text(context.l10n.newVersionUpdate),
               ),
             if (installed != null && !canUpdate)

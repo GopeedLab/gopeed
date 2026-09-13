@@ -103,6 +103,7 @@
   "extensions": "افزونه‌ها",
   "extensionInstallUrl": "نشانی نصب",
   "extensionInstallSuccess": "نصب شده با موفقیت",
+  "extensionUpdateConfirm": "«{name}» به آخرین نسخه به‌روزرسانی شود؟",
   "extensionUpdateSuccess": "به روز رسانی موفقیت آمیز",
   "extensionDelete": "حذف افزونه",
   "extensionAlreadyLatest": "این نسخه در حال حاضر آخرین نسخه است",

@@ -24,6 +24,7 @@ import '../../application/extensions_controller.dart';
 import '../../application/pending_extension_install.dart';
 import '../widgets/extension_detail_view.dart';
 import '../widgets/extension_icon.dart';
+import '../widgets/extension_update_dialog.dart';
 
 const _extensionCardMinWidth = 280.0;
 const _extensionGridSpacing = 10.0;
@@ -1034,10 +1035,8 @@ class _ExtensionCard extends ConsumerWidget {
               if (canUpdate && installed != null)
                 shad.GhostButton(
                   density: shad.ButtonDensity.icon,
-                  onPressed: busy
-                      ? null
-                      : () =>
-                            onAction(() => ref.read(extensionsControllerProvider.notifier).upgradeExtension(installed)),
+                  key: ValueKey('update-extension-${installed.identity}'),
+                  onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
                   child: const Icon(Icons.refresh),
                 ),
               if (installed == null && item.store != null)

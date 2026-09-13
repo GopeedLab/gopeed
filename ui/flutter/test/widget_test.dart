@@ -648,6 +648,73 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final (width, details) in [(390.0, false), (1100.0, false), (1100.0, true)]) {
+    testWidgets('extension update confirms, shows progress and retries at $width details=$details', (tester) async {
+      await _setTestSize(tester, Size(width, 900));
+      final controller = UpdateableExtensionsController();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(() => controller)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      if (details) {
+        await tester.tap(find.byKey(const ValueKey('extension-card-extension-0')));
+        await tester.pumpAndSettle();
+      }
+      final entry = find.byKey(ValueKey(details ? 'extension-details-update' : 'update-extension-extension-0'));
+      final dialog = find.byKey(const ValueKey('extension-update-dialog'));
+      final confirm = find.byKey(const ValueKey('confirm-update-extension-button'));
+      final cancel = find.byKey(const ValueKey('cancel-update-extension-button'));
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+      expect(dialog, findsOneWidget);
+      expect(find.text('Update “Extension 0” to the latest version?'), findsOneWidget);
+      expect(controller.updateCalls, 0);
+      await tester.tap(cancel);
+      await tester.pumpAndSettle();
+      expect(dialog, findsNothing);
+      expect(controller.updateCalls, 0);
+
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+      controller.failUpdate = true;
+      await tester.tap(confirm);
+      await tester.pump();
+      expect(controller.updateCalls, 1);
+      expect(tester.widget<AppLoadingButton>(confirm).loading, isTrue);
+      expect(tester.widget<shad.SecondaryButton>(cancel).onPressed, isNull);
+      await tester.tap(confirm);
+      await tester.tapAt(const Offset(5, 5));
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(controller.updateCalls, 1);
+      expect(dialog, findsOneWidget);
+      controller.updateGate.complete();
+      await tester.pumpAndSettle();
+      expect(dialog, findsOneWidget);
+      expect(find.byKey(const ValueKey('extension-update-error')), findsOneWidget);
+      expect(tester.widget<AppLoadingButton>(confirm).loading, isFalse);
+
+      controller.failUpdate = false;
+      controller.updateGate = Completer<void>();
+      await tester.tap(confirm);
+      await tester.pump();
+      expect(controller.updateCalls, 2);
+      controller.updateGate.complete();
+      await tester.pumpAndSettle();
+      expect(dialog, findsNothing);
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('installed extension details use a disabled installed button without a hero status', (
     WidgetTester tester,
   ) async {
@@ -5301,6 +5368,23 @@ class PaginatedExtensionsController extends FakeExtensionsController {
         storePagination: StorePagination(page: 2, limit: 8, total: 16, totalPages: 2, hasNext: false, hasPrev: true),
       ),
     );
+  }
+}
+
+class UpdateableExtensionsController extends FakeExtensionsController {
+  int updateCalls = 0;
+  bool failUpdate = false;
+  Completer<void> updateGate = Completer<void>();
+
+  @override
+  Future<ExtensionsState> build() async =>
+      (await super.build()).copyWith(listFilter: ExtensionListFilter.installed, updateFlags: {'extension-0': '2.0.0'});
+
+  @override
+  Future<void> upgradeExtension(api_extension.Extension extension) async {
+    updateCalls++;
+    await updateGate.future;
+    if (failUpdate) throw StateError('update failed');
   }
 }
 

@@ -103,6 +103,7 @@
   "extensions": "நீட்டிப்புகள்",
   "extensionInstallUrl": "நிறுவப்படும் URL",
   "extensionInstallSuccess": "வெற்றிகரமாக நிறுவப்பட்டது",
+  "extensionUpdateConfirm": "“{name}” ஐ சமீபத்திய பதிப்பிற்குப் புதுப்பிக்கவா?",
   "extensionUpdateSuccess": "வெற்றிகரமாக புதுப்பிக்கப்பட்டது",
   "extensionDelete": "நீட்டிப்பை நீக்கு",
   "extensionAlreadyLatest": "இது ஏற்கனவே சமீபத்திய பதிப்பாகும்",

@@ -103,6 +103,7 @@
   "extensions": "Extensions",
   "extensionInstallUrl": "URL d'instal·lació",
   "extensionInstallSuccess": "S'ha instal·lat amb èxit",
+  "extensionUpdateConfirm": "Vols actualitzar «{name}» a la versió més recent?",
   "extensionUpdateSuccess": "S'ha actualitzat amb èxit",
   "extensionDelete": "Suprimeix l'extensió",
   "extensionAlreadyLatest": "Ja està actualitzada",

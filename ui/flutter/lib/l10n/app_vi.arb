@@ -103,6 +103,7 @@
   "extensions": "Tiện ích mở rộng",
   "extensionInstallUrl": "Liên kết cài đặt",
   "extensionInstallSuccess": "Cài đặt thành công",
+  "extensionUpdateConfirm": "Cập nhật “{name}” lên phiên bản mới nhất?",
   "extensionUpdateSuccess": "Cập nhật thành công",
   "extensionDelete": "Xóa tiện ích mở rộng",
   "extensionAlreadyLatest": "Đây đã là phiên bản mới nhất",
