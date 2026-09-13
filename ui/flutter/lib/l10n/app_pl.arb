@@ -103,6 +103,7 @@
   "extensions": "Wtyczki",
   "extensionInstallUrl": "Instaluj z url",
   "extensionInstallSuccess": "Instalacja zakończona",
+  "extensionUpdateConfirm": "Zaktualizować „{name}” do najnowszej wersji?",
   "extensionUpdateSuccess": "Aktualizacja zakończona",
   "extensionDelete": "Usuń wtyczkę",
   "extensionAlreadyLatest": "Wtyczka w aktualnej wersji",

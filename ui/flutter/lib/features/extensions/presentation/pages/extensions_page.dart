@@ -26,6 +26,7 @@ import '../../application/pending_extension_install.dart';
 import '../widgets/extension_detail_view.dart';
 import '../widgets/extension_icon.dart';
 import '../widgets/extension_setting_field.dart';
+import '../widgets/extension_update_dialog.dart';
 
 const _extensionCardMinWidth = 296.0;
 const _extensionGridSpacing = 10.0;
@@ -211,7 +212,9 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   }
 
   void _openInstallPopover(BuildContext anchorContext) {
-    ref.read(extensionsControllerProvider.notifier).tryOpenDevMode();
+    if (AppWindowChrome.isDesktopWindow) {
+      ref.read(extensionsControllerProvider.notifier).tryOpenDevMode();
+    }
     _installDevMode = false;
     _showInstallPopover(anchorContext);
   }
@@ -225,6 +228,9 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       offset: const Offset(0, 8),
       modal: false,
       consumeOutsideTaps: false,
+      // Flutter's native selection toolbar uses the EditableText tap group.
+      // Pasting from it must not dismiss the form and restore search focus.
+      regionGroupId: EditableText,
       builder: (context) => _InstallPopover(
         key: _installPopoverKey,
         controller: _installController,
@@ -667,7 +673,6 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final manualInstallBusy = state.busyExtensionIds.contains(ExtensionsController.manualInstallBusyKey);
     final search = AppTextField(
       key: const ValueKey('extension-search-input'),
       controller: searchController,
@@ -709,12 +714,11 @@ class _Toolbar extends StatelessWidget {
           onPressed: onDevelopExtension,
         ),
         const SizedBox(width: 8),
-        if (state.devMode) ...[
+        if (AppWindowChrome.isDesktopWindow && state.devMode) ...[
           _OutlineToolbarIconButton(
             key: const ValueKey('load-local-extension-button'),
             tooltip: context.l10n.extensionLoadLocal,
             icon: Icons.folder_open_outlined,
-            loading: manualInstallBusy,
             onPressed: onInstallFolder,
           ),
           const SizedBox(width: 8),
@@ -725,7 +729,6 @@ class _Toolbar extends StatelessWidget {
             key: const ValueKey('install-extension-button'),
             tooltip: context.l10n.extensionInstallFromUrl,
             icon: Icons.add_link,
-            loading: manualInstallBusy,
             onPressed: () => onOpenInstall(buttonContext),
           ),
         ),
@@ -801,18 +804,11 @@ class _FilterBar extends StatelessWidget {
 }
 
 class _OutlineToolbarIconButton extends StatelessWidget {
-  const _OutlineToolbarIconButton({
-    super.key,
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    this.loading = false,
-  });
+  const _OutlineToolbarIconButton({super.key, required this.tooltip, required this.icon, required this.onPressed});
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
-  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -820,13 +816,7 @@ class _OutlineToolbarIconButton extends StatelessWidget {
       message: tooltip,
       child: SizedBox.square(
         dimension: 32,
-        child: shad.IconButton.outline(
-          size: shad.ButtonSize.xSmall,
-          onPressed: loading ? null : onPressed,
-          icon: loading
-              ? const SizedBox.square(dimension: 13, child: shad.CircularProgressIndicator())
-              : Icon(icon, size: 17),
-        ),
+        child: shad.IconButton.outline(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: Icon(icon, size: 17)),
       ),
     );
   }
@@ -1073,11 +1063,8 @@ class _ExtensionCard extends ConsumerWidget {
                   if (canUpdate && installed != null)
                     shad.GhostButton(
                       density: shad.ButtonDensity.icon,
-                      onPressed: busy
-                          ? null
-                          : () => onAction(
-                              () => ref.read(extensionsControllerProvider.notifier).upgradeExtension(installed),
-                            ),
+                      key: ValueKey('update-extension-${installed.identity}'),
+                      onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
                       child: const Icon(Icons.refresh),
                     ),
                   if (installed == null && item.store != null)

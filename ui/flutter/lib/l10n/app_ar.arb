@@ -103,6 +103,7 @@
   "extensions": "الإضافات",
   "extensionInstallUrl": "عنوان التثبيت",
   "extensionInstallSuccess": "تم التثبيت بنجاح",
+  "extensionUpdateConfirm": "هل تريد تحديث «{name}» إلى أحدث إصدار؟",
   "extensionUpdateSuccess": "تم التحديث بنجاح",
   "extensionDelete": "حذف الإضافة",
   "extensionAlreadyLatest": "هذا هو أحدث إصدار بالفعل",

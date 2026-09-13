@@ -103,6 +103,7 @@
   "extensions": "확장 프로그램",
   "extensionInstallUrl": "설치 URL",
   "extensionInstallSuccess": "설치되었습니다",
+  "extensionUpdateConfirm": "“{name}”을(를) 최신 버전으로 업데이트할까요?",
   "extensionUpdateSuccess": "업데이트되었습니다",
   "extensionDelete": "확장 프로그램 삭제",
   "extensionAlreadyLatest": "이미 최신 버전입니다",
