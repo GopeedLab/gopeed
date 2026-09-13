@@ -19,8 +19,14 @@ jobs:
           flutter-version: '3.41.6'
       - run: flutter pub get
         working-directory: ui/flutter
-      - run: ./gradlew :flutter_inappwebview_android:compileDebugJavaWithJavac
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+      - name: Compile Android native plugin
         working-directory: ui/flutter/android
+        run: |
+          printf 'flutter.sdk=%s\nsdk.dir=%s\n' "$FLUTTER_ROOT" "$ANDROID_HOME" > local.properties
+          gradle :flutter_inappwebview_android:compileDebugJavaWithJavac
   apple-plugin:
     runs-on: macos-14
     steps:

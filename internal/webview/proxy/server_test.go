@@ -209,3 +209,52 @@ func TestSOCKSIngressPreservesRemoteDNS(t *testing.T) {
 		t.Fatalf("unexpected body %q", body)
 	}
 }
+
+func TestHTTPUpgradeIsForwarded(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Upgrade") != "fixture" {
+			http.Error(w, "upgrade lost", 400)
+			return
+		}
+		c, b, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		b.WriteString("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: fixture\r\n\r\n")
+		b.Flush()
+		line, err := b.ReadString('\n')
+		if err != nil {
+			return
+		}
+		b.WriteString(line)
+		b.Flush()
+	}))
+	defer upstream.Close()
+	local, err := New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer local.Close()
+	endpoint, _ := url.Parse(local.URL())
+	c, err := net.Dial("tcp", endpoint.Host)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	c.SetDeadline(time.Now().Add(3 * time.Second))
+	io.WriteString(c, "GET "+upstream.URL+"/ HTTP/1.1\r\nHost: fixture\r\nConnection: Upgrade\r\nUpgrade: fixture\r\n\r\n")
+	reader := bufio.NewReader(c)
+	response, err := http.ReadResponse(reader, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != 101 {
+		t.Fatalf("upgrade failed: %s", response.Status)
+	}
+	io.WriteString(c, "hello\n")
+	line, err := reader.ReadString('\n')
+	if err != nil || line != "hello\n" {
+		t.Fatalf("upgraded echo %q %v", line, err)
+	}
+}
