@@ -7,8 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -118,10 +116,11 @@ func TestHTTPSequentialAndValidation(t *testing.T) {
 }
 
 func TestStreamRing(t *testing.T) {
-	s := NewStreamInput(context.Background(), "")
+	s := NewStreamInput(context.Background())
 	defer s.Close()
 	// Start near the boundary to exercise wrap-around without a huge fixture.
-	s.read = StreamBufferLimit - 3
+	s.buffer = make([]byte, 256*1024)
+	s.read = int64(len(s.buffer)) - 3
 	s.written = s.read
 	if _, err := s.Write([]byte("abcdefgh")); err != nil {
 		t.Fatal(err)
@@ -131,12 +130,11 @@ func TestStreamRing(t *testing.T) {
 	if err != nil || string(b) != "abcdefgh" {
 		t.Fatalf("%q %v", b, err)
 	}
-	name := s.file.Name()
 	if err = s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = os.Stat(name); err == nil {
-		t.Fatal("temporary file leaked")
+	if s.buffer != nil {
+		t.Fatal("buffer retained after close")
 	}
 }
 
@@ -158,16 +156,9 @@ func TestOutputArguments(t *testing.T) {
 func TestStreamBackpressureAndCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s := NewStreamInput(ctx, "")
+	s := NewStreamInput(ctx)
 	defer s.Close()
-	f, err := os.CreateTemp(t.TempDir(), "ring")
-	if err != nil {
-		t.Fatal(err)
-	}
-	s.file = f
-	if err = f.Truncate(StreamBufferLimit); err != nil {
-		t.Fatal(err)
-	}
+	s.buffer = make([]byte, StreamBufferLimit)
 	s.written = StreamBufferLimit
 	finished := make(chan error, 1)
 	go func() { _, err := s.Write([]byte{42}); finished <- err }()
@@ -176,7 +167,7 @@ func TestStreamBackpressureAndCancel(t *testing.T) {
 		t.Fatalf("did not apply backpressure: %v", err)
 	case <-time.After(10 * time.Millisecond):
 	}
-	if _, err = s.Read(make([]byte, 1)); err != nil {
+	if _, err := s.Read(make([]byte, 1)); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -199,37 +190,33 @@ func TestStreamBackpressureAndCancel(t *testing.T) {
 	}
 }
 
-// A mobile app can write to its storage directory even when the OS default
-// temporary directory is unavailable. The buffer must also be removed on close.
-func TestStreamInputAppTempDir(t *testing.T) {
-	root := t.TempDir()
-	unavailable := filepath.Join(root, "not-a-directory")
-	if err := os.WriteFile(unavailable, []byte("blocked"), 0600); err != nil {
+func TestStreamMemoryGrowthAndWrap(t *testing.T) {
+	s := NewStreamInput(context.Background())
+	defer s.Close()
+	if len(s.buffer) != 0 {
+		t.Fatal("buffer allocated before first write")
+	}
+	a := bytes.Repeat([]byte{1}, 200*1024)
+	b := bytes.Repeat([]byte{2}, 180*1024)
+	s.Write(a)
+	consumed := make([]byte, 180*1024)
+	if _, err := io.ReadFull(s, consumed); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TMPDIR", unavailable)
-	t.Setenv("TMP", unavailable)
-	t.Setenv("TEMP", unavailable)
-	dir := filepath.Join(root, "app", "temp", "ffmpeg")
-	s := NewStreamInput(context.Background(), dir)
-	t.Cleanup(func() { s.Close() })
-	data := []byte("media stream")
-	if _, err := s.Write(data); err != nil {
-		t.Fatal(err)
-	}
-	if filepath.Dir(s.file.Name()) != dir {
-		t.Fatalf("unexpected buffer: %s", s.file.Name())
-	}
+	s.Write(b) // Wrap in the initial 256 KiB allocation.
+	c := bytes.Repeat([]byte{3}, 300*1024)
+	s.Write(c) // Grow while unread data wraps around the old ring.
 	s.End(nil)
 	got, err := io.ReadAll(s)
-	if err != nil || !bytes.Equal(got, data) {
-		t.Fatalf("read %q, error %v", got, err)
+	want := append(append(append([]byte{}, a[len(consumed):]...), b...), c...)
+	if err != nil || !bytes.Equal(got, want) {
+		t.Fatalf("growth corrupted data: %v", err)
 	}
-	if err := s.Close(); err != nil {
-		t.Fatal(err)
+	if len(s.buffer) > StreamBufferLimit {
+		t.Fatal("buffer exceeded limit")
 	}
-	entries, err := os.ReadDir(dir)
-	if err != nil || len(entries) != 0 {
-		t.Fatalf("buffer cleanup: %v, %v", entries, err)
+	s.Close()
+	if s.buffer != nil {
+		t.Fatal("buffer retained on close")
 	}
 }

@@ -92,14 +92,15 @@ server validator, same-size remote changes cannot be reliably detected.
 Content encoding is forced to identity. Authentication/status failures and
 malformed range responses are errors. There is no full-file seek fallback.
 
-Sequential JS inputs are drained independently into temporary disk ring
-buffers (up to **64 MiB per input**, independent of total media size). This
-allows shared upstream demultiplexers to make progress when FFmpeg reads one
-track ahead of another. It does not enable seeking. Full buffers apply async
-backpressure; a full buffer stalled for 30 seconds fails explicitly. Extensions
-must also bound their own upstream queues. Disk buffers are removed on normal
-completion, failure, cancellation and engine shutdown; abrupt process death
-can leave temporary files in the OS temporary directory.
+Sequential JS inputs are drained independently into memory ring buffers that
+grow on demand up to **32 MiB per input**, independent of total media size.
+No temporary files are used. This does not enable seeking. Full buffers apply
+async backpressure until space is available or the operation is cancelled.
+Extensions must propagate backpressure through their upstream queues and
+network reads. Independent upstream track requests avoid blocking one track
+behind another in a shared response. Buffers are released on close.
+Blob output writes also wait asynchronously for bounded downstream capacity,
+so a slow consumer does not block the extension event loop.
 
 At most two WASM merges execute concurrently per process, with a 512 MiB
 linear-memory limit per instance. Compilation is shared and lazy; the upstream

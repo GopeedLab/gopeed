@@ -4,22 +4,19 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"sync"
-	"time"
 )
 
-// A bounded disk ring lets both JS inputs drain independently, including when
+// A bounded memory ring lets both JS inputs drain independently, including when
 // they share a SABR producer. It does not make a sequential input seekable.
-// A full ring applies backpressure. A prolonged stall fails instead of
-// deadlocking a shared upstream or growing forever.
-const StreamBufferLimit = 64 * 1024 * 1024
+// A full ring waits for consumption or cancellation. Producers must propagate
+// backpressure and allow each track to make progress independently.
+const StreamBufferLimit = 32 * 1024 * 1024
 
 type StreamInput struct {
 	ctx           context.Context
-	tempDir       string
 	mu            sync.Mutex
-	file          *os.File
+	buffer        []byte
 	read, written int64
 	ended, closed bool
 	err           error
@@ -27,8 +24,8 @@ type StreamInput struct {
 	space         chan struct{}
 }
 
-func NewStreamInput(ctx context.Context, tempDir string) *StreamInput {
-	return &StreamInput{ctx: ctx, tempDir: tempDir, wake: make(chan struct{}, 1), space: make(chan struct{}, 1)}
+func NewStreamInput(ctx context.Context) *StreamInput {
+	return &StreamInput{ctx: ctx, wake: make(chan struct{}, 1), space: make(chan struct{}, 1)}
 }
 
 func (s *StreamInput) Write(p []byte) (int, error) {
@@ -37,24 +34,13 @@ func (s *StreamInput) Write(p []byte) (int, error) {
 	if len(p) > StreamBufferLimit {
 		return 0, errors.New("ffmpeg: input chunk exceeds buffer capacity")
 	}
-	var timer *time.Timer
-	defer func() {
-		if timer != nil {
-			timer.Stop()
-		}
-	}()
 	for int64(len(p)) > StreamBufferLimit-(s.written-s.read) && !s.closed && !s.ended {
-		if timer == nil {
-			timer = time.NewTimer(30 * time.Second)
-		}
 		s.mu.Unlock()
 		var err error
 		select {
 		case <-s.space:
 		case <-s.ctx.Done():
 			err = s.ctx.Err()
-		case <-timer.C:
-			err = errors.New("ffmpeg: input buffer stalled for 30 seconds; upstream tracks may be too far apart")
 		}
 		s.mu.Lock()
 		if err != nil {
@@ -70,29 +56,25 @@ func (s *StreamInput) Write(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
-	if s.file == nil {
-		// Android apps cannot write to Go's default /data/local/tmp.
-		if s.tempDir != "" {
-			if err := os.MkdirAll(s.tempDir, 0700); err != nil {
-				return 0, err
-			}
+	// Grow only as needed. Rebase unread bytes when the ring grows.
+	need := int(s.written-s.read) + len(p)
+	if need > len(s.buffer) {
+		capacity := min(StreamBufferLimit, max(256*1024, max(need, len(s.buffer)*2)))
+		buffer := make([]byte, capacity)
+		unread := int(s.written - s.read)
+		if unread > 0 {
+			off := int(s.read % int64(len(s.buffer)))
+			first := min(unread, len(s.buffer)-off)
+			copy(buffer, s.buffer[off:off+first])
+			copy(buffer[first:], s.buffer[:unread-first])
 		}
-		f, err := os.CreateTemp(s.tempDir, "gopeed-ffmpeg-*")
-		if err != nil {
-			return 0, err
-		}
-		s.file = f
+		s.buffer = buffer
+		s.read, s.written = 0, int64(unread)
 	}
-	off := s.written % StreamBufferLimit
-	first := min(len(p), StreamBufferLimit-int(off))
-	if _, err := s.file.WriteAt(p[:first], off); err != nil {
-		return 0, err
-	}
-	if first < len(p) {
-		if _, err := s.file.WriteAt(p[first:], 0); err != nil {
-			return 0, err
-		}
-	}
+	off := int(s.written % int64(len(s.buffer)))
+	first := min(len(p), len(s.buffer)-off)
+	copy(s.buffer[off:], p[:first])
+	copy(s.buffer, p[first:])
 	s.written += int64(len(p))
 	select {
 	case s.wake <- struct{}{}:
@@ -137,16 +119,16 @@ func (s *StreamInput) Read(p []byte) (int, error) {
 			return 0, err
 		}
 		if s.read < s.written {
-			off := s.read % StreamBufferLimit
-			n := min(int64(len(p)), s.written-s.read, StreamBufferLimit-off)
-			count, err := s.file.ReadAt(p[:n], off)
+			off := s.read % int64(len(s.buffer))
+			n := min(int64(len(p)), s.written-s.read, int64(len(s.buffer))-off)
+			count := copy(p, s.buffer[off:off+n])
 			s.read += int64(count)
 			s.mu.Unlock()
 			select {
 			case s.space <- struct{}{}:
 			default:
 			}
-			return count, err
+			return count, nil
 		}
 		ended := s.ended
 		s.mu.Unlock()
@@ -173,12 +155,7 @@ func (s *StreamInput) Close() error {
 	case s.wake <- struct{}{}:
 	default:
 	}
-	if s.file != nil {
-		name := s.file.Name()
-		s.file.Close()
-		s.file = nil
-		return os.Remove(name)
-	}
+	s.buffer = nil
 	return nil
 }
 func (*StreamInput) Seek(int64, int) (int64, error) { return 0, ErrSeek }

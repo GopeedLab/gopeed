@@ -22,7 +22,6 @@ import (
 var script string
 
 type Config struct {
-	TempDir          string
 	DefaultUserAgent *string
 	ProxyHandler     func(*http.Request) (*url.URL, error)
 	RegisterCleanup  func(func())
@@ -123,7 +122,7 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 		j := &job{ctx: ctx, cancel: cancel, output: r}
 		for i, source := range []*media.HTTPSource{opts.Video, opts.Audio} {
 			if source == nil {
-				j.streams[i] = media.NewStreamInput(ctx, cfg.TempDir)
+				j.streams[i] = media.NewStreamInput(ctx)
 			}
 		}
 		id := fmt.Sprintf("ffmpeg-%d", next.Add(1))
