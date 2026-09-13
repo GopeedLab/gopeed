@@ -103,6 +103,7 @@
   "extensions": "擴充功能",
   "extensionInstallUrl": "安裝 URL",
   "extensionInstallSuccess": "安裝成功",
+  "extensionUpdateConfirm": "確定將「{name}」更新到最新版本嗎？",
   "extensionUpdateSuccess": "更新成功",
   "extensionDelete": "刪除擴充功能",
   "extensionAlreadyLatest": "已是最新版本",
