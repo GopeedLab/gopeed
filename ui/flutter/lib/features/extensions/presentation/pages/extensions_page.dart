@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../api/model/extension.dart' as api_extension;
 import '../../../../api/model/store_extension.dart';
 import '../../../../core/utils/breakpoints.dart';
+import '../../../../core/utils/compact_count_formatter.dart';
 import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
@@ -25,7 +26,7 @@ import '../../application/pending_extension_install.dart';
 import '../widgets/extension_detail_view.dart';
 import '../widgets/extension_icon.dart';
 
-const _extensionCardMinWidth = 280.0;
+const _extensionCardMinWidth = 296.0;
 const _extensionGridSpacing = 10.0;
 
 int _extensionGridColumnCount(double width) {
@@ -994,71 +995,100 @@ class _ExtensionCard extends ConsumerWidget {
           const Spacer(),
           Row(
             children: [
-              if (item.store != null) ...[
-                Icon(Icons.star_rounded, size: 15, color: palette.textMuted),
-                const SizedBox(width: 3),
-                Text('${item.stars}', style: TextStyle(color: palette.textSecondary, fontSize: 12)),
-                const SizedBox(width: 10),
-                Icon(Icons.download_outlined, size: 15, color: palette.textMuted),
-                const SizedBox(width: 3),
-                Text('${item.installCount}', style: TextStyle(color: palette.textSecondary, fontSize: 12)),
-              ],
-              const Spacer(),
-              if (canUpdate && installed != null)
-                shad.GhostButton(
-                  density: shad.ButtonDensity.icon,
-                  onPressed: busy
-                      ? null
-                      : () =>
-                            onAction(() => ref.read(extensionsControllerProvider.notifier).upgradeExtension(installed)),
-                  child: const Icon(Icons.refresh),
-                ),
-              if (installed == null && item.store != null)
-                shad.GhostButton(
-                  key: ValueKey('install-store-extension-${item.store!.id}'),
-                  density: shad.ButtonDensity.icon,
-                  onPressed: busy
-                      ? null
-                      : () => onAction(
-                          () => ref.read(extensionsControllerProvider.notifier).installFromStore(item.store!),
-                        ),
-                  child: busy
-                      ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
-                      : const Icon(Icons.download),
-                ),
-              if ((item.homepage ?? '').isNotEmpty)
-                shad.GhostButton(
-                  density: shad.ButtonDensity.icon,
-                  onPressed: () => unawaited(launchUrl(Uri.parse(item.homepage!))),
-                  child: const Icon(Icons.home_outlined),
-                ),
-              if ((item.repoUrl ?? '').isNotEmpty)
-                shad.GhostButton(
-                  density: shad.ButtonDensity.icon,
-                  onPressed: () => unawaited(launchUrl(Uri.parse(item.repoUrl!))),
-                  child: const Icon(Icons.code),
-                ),
-              if (installed?.settings?.isNotEmpty == true)
-                shad.GhostButton(
-                  density: shad.ButtonDensity.icon,
-                  onPressed: busy ? null : () => onOpenSettings(installed!),
-                  child: const Icon(Icons.settings_outlined),
-                ),
-              if (installed != null)
-                shad.GhostButton(
-                  key: ValueKey('remove-extension-${installed.identity}'),
-                  density: shad.ButtonDensity.icon,
-                  onPressed: busy
-                      ? null
-                      : () async {
-                          final confirmed = await _showRemoveExtensionDialog(context, installed.title);
-                          if (!confirmed || !context.mounted) return;
-                          await onAction(
-                            () => ref.read(extensionsControllerProvider.notifier).removeExtension(installed),
-                          );
-                        },
-                  child: const Icon(Icons.delete_outline),
-                ),
+              if (item.store != null)
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        key: ValueKey('extension-card-stats-${item.id}'),
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.star_rounded, size: 15, color: palette.textMuted),
+                          const SizedBox(width: 3),
+                          Text(
+                            CompactCountFormatter.format(item.stars),
+                            style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(Icons.download_outlined, size: 15, color: palette.textMuted),
+                          const SizedBox(width: 3),
+                          Text(
+                            CompactCountFormatter.format(item.installCount),
+                            style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                const Spacer(),
+              const SizedBox(width: 8),
+              Row(
+                key: ValueKey('extension-card-actions-${item.id}'),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (canUpdate && installed != null)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      onPressed: busy
+                          ? null
+                          : () => onAction(
+                              () => ref.read(extensionsControllerProvider.notifier).upgradeExtension(installed),
+                            ),
+                      child: const Icon(Icons.refresh),
+                    ),
+                  if (installed == null && item.store != null)
+                    shad.GhostButton(
+                      key: ValueKey('install-store-extension-${item.store!.id}'),
+                      density: shad.ButtonDensity.icon,
+                      onPressed: busy
+                          ? null
+                          : () => onAction(
+                              () => ref.read(extensionsControllerProvider.notifier).installFromStore(item.store!),
+                            ),
+                      child: busy
+                          ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
+                          : const Icon(Icons.download),
+                    ),
+                  if ((item.homepage ?? '').isNotEmpty)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      onPressed: () => unawaited(launchUrl(Uri.parse(item.homepage!))),
+                      child: const Icon(Icons.home_outlined),
+                    ),
+                  if ((item.repoUrl ?? '').isNotEmpty)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      onPressed: () => unawaited(launchUrl(Uri.parse(item.repoUrl!))),
+                      child: const Icon(Icons.code),
+                    ),
+                  if (installed?.settings?.isNotEmpty == true)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      onPressed: busy ? null : () => onOpenSettings(installed!),
+                      child: const Icon(Icons.settings_outlined),
+                    ),
+                  if (installed != null)
+                    shad.GhostButton(
+                      key: ValueKey('remove-extension-${installed.identity}'),
+                      density: shad.ButtonDensity.icon,
+                      onPressed: busy
+                          ? null
+                          : () async {
+                              final confirmed = await _showRemoveExtensionDialog(context, installed.title);
+                              if (!confirmed || !context.mounted) return;
+                              await onAction(
+                                () => ref.read(extensionsControllerProvider.notifier).removeExtension(installed),
+                              );
+                            },
+                      child: const Icon(Icons.delete_outline),
+                    ),
+                ],
+              ),
             ],
           ),
         ],
