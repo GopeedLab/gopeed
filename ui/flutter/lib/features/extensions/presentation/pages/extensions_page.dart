@@ -24,6 +24,7 @@ import '../../application/extensions_controller.dart';
 import '../../application/pending_extension_install.dart';
 import '../widgets/extension_detail_view.dart';
 import '../widgets/extension_icon.dart';
+import '../widgets/extension_setting_field.dart';
 
 const _extensionCardMinWidth = 280.0;
 const _extensionGridSpacing = 10.0;
@@ -1174,7 +1175,7 @@ class _ExtensionSettingsPanel extends StatelessWidget {
                       separatorBuilder: (_, _) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
                         final setting = settings[index];
-                        return _ExtensionSettingField(setting: setting, controller: controllers[setting.name]!);
+                        return ExtensionSettingField(setting: setting, controller: controllers[setting.name]!);
                       },
                     ),
                   ),
@@ -1198,39 +1199,6 @@ class _ExtensionSettingsPanel extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ExtensionSettingField extends StatelessWidget {
-  const _ExtensionSettingField({required this.setting, required this.controller});
-
-  final api_extension.Setting setting;
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          setting.title,
-          style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
-        ),
-        if (setting.description.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(setting.description, style: TextStyle(color: palette.textSecondary, fontSize: 12, height: 1.35)),
-        ],
-        const SizedBox(height: 8),
-        if (setting.type == api_extension.SettingType.boolean)
-          AppTextField(controller: controller, placeholder: Text(context.l10n.booleanValueHint))
-        else
-          AppTextField(
-            controller: controller,
-            keyboardType: setting.type == api_extension.SettingType.number ? TextInputType.number : TextInputType.text,
-          ),
-      ],
     );
   }
 }
