@@ -46,6 +46,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   final _searchController = TextEditingController();
   final _installController = TextEditingController();
   final _installAnchorKey = GlobalKey();
+  final _installPopoverKey = GlobalKey<_InstallPopoverState>();
   bool _installDevMode = false;
   final _listScrollController = ScrollController();
   final Map<String, TextEditingController> _settingControllers = {};
@@ -84,12 +85,20 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       // after the toolbar is laid out, so cold and warm links share the same UI.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !identical(ref.read(pendingExtensionInstallProvider), pendingInstall)) return;
+        if (_installPopoverKey.currentState?._installing == true) return;
         final anchorContext = _installAnchorKey.currentContext;
         if (anchorContext == null) return;
         _installController.text = pendingInstall.url;
         _installDevMode = pendingInstall.devMode;
         _showInstallPopover(anchorContext);
-        ref.read(pendingExtensionInstallProvider.notifier).clear();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !identical(ref.read(pendingExtensionInstallProvider), pendingInstall)) return;
+          final popover = _installPopoverKey.currentState;
+          if (popover == null || popover._installing) return;
+          ref.read(pendingExtensionInstallProvider.notifier).clear();
+          unawaited(popover._install());
+        });
+        WidgetsBinding.instance.ensureVisualUpdate();
       });
     }
     final stateAsync = ref.watch(extensionsControllerProvider);
@@ -214,7 +223,14 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       offset: const Offset(0, 8),
       modal: false,
       consumeOutsideTaps: false,
-      builder: (context) => _InstallPopover(controller: _installController, onInstallUrl: _installFromUrl),
+      builder: (context) => _InstallPopover(
+        key: _installPopoverKey,
+        controller: _installController,
+        onInstallUrl: _installFromUrl,
+        onFinished: () {
+          if (mounted && ref.read(pendingExtensionInstallProvider) != null) setState(() {});
+        },
+      ),
     );
     _installPopover = overlay;
     unawaited(
@@ -815,10 +831,11 @@ class _OutlineToolbarIconButton extends StatelessWidget {
 }
 
 class _InstallPopover extends StatefulWidget {
-  const _InstallPopover({required this.controller, required this.onInstallUrl});
+  const _InstallPopover({super.key, required this.controller, required this.onInstallUrl, required this.onFinished});
 
   final TextEditingController controller;
   final Future<void> Function() onInstallUrl;
+  final VoidCallback onFinished;
 
   @override
   State<_InstallPopover> createState() => _InstallPopoverState();
@@ -880,8 +897,8 @@ class _InstallPopoverState extends State<_InstallPopover> {
     setState(() => _installing = true);
     await widget.onInstallUrl();
     if (!mounted) return;
-    setState(() => _installing = false);
     await shad.closeOverlay(context);
+    widget.onFinished();
   }
 }
 

@@ -889,10 +889,10 @@ void main() {
     (1100.0, TargetPlatform.macOS),
   ]) {
     testWidgets(
-      'scheme install prefills URL before and after mounting at width $width',
+      'scheme install automatically runs before and after mounting at width $width',
       (tester) async {
         await _setTestSize(tester, Size(width, 900));
-        final controller = FakeExtensionsController();
+        final controller = FakeExtensionsController()..installGate = Completer<void>();
         final container = ProviderContainer(overrides: [extensionsControllerProvider.overrideWith(() => controller)]);
         addTearDown(container.dispose);
         const firstUrl = 'https://github.com/author/扩展';
@@ -912,31 +912,48 @@ void main() {
         final input = find.byKey(const ValueKey('extension-install-url-input'));
         expect(tester.widget<AppTextField>(input).controller!.text, firstUrl);
         expect(container.read(pendingExtensionInstallProvider), isNull);
-        expect(controller.installCalls, 0);
+        expect(controller.installCalls, 1);
+        expect(controller.lastInstallUrl, firstUrl);
         final popoverRect = tester.getRect(find.byKey(const ValueKey('extension-install-popover')));
         expect(popoverRect.left, greaterThanOrEqualTo(0));
         expect(popoverRect.right, lessThanOrEqualTo(width));
+        expect(find.descendant(of: input, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
 
-        // A second link updates the already-open input without installing twice.
+        // Rebuilds and manual submission must not duplicate an active install.
+        await tester.tap(find.descendant(of: input, matching: find.byType(shad.IconButton)));
+        await tester.pump();
+        expect(controller.installCalls, 1);
+        controller.installGate!.complete();
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('extension-install-popover')), findsNothing);
+
+        // A warm link automatically installs from an already-open form too.
+        await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
         const secondUrl = 'https://github.com/author/second';
+        controller.installGate = Completer<void>();
         container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: secondUrl));
+        await tester.pump();
         await tester.pump();
         await tester.pump(const Duration(seconds: 1));
         expect(tester.widget<AppTextField>(input).controller!.text, secondUrl);
-        expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
-        expect(controller.installCalls, 0);
-        await tester.tap(find.descendant(of: input, matching: find.byType(shad.IconButton)));
-        await tester.pump();
-        await tester.pump(const Duration(seconds: 1));
-        expect(controller.installCalls, 1);
+        expect(controller.installCalls, 2);
         expect(controller.lastInstallUrl, secondUrl);
 
-        // A warm link also reopens a dismissed form.
+        // A request arriving during installation waits until the active form closes.
         container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: firstUrl));
         await tester.pump();
-        await tester.pump(const Duration(seconds: 1));
-        expect(tester.widget<AppTextField>(input).controller!.text, firstUrl);
-        expect(controller.installCalls, 1);
+        expect(controller.installCalls, 2);
+        controller.installGate!.complete();
+        controller.installGate = Completer<void>();
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 200));
+        }
+        expect(controller.installCalls, 3);
+        expect(controller.lastInstallUrl, firstUrl);
+        controller.installGate!.complete();
+        await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
@@ -5050,11 +5067,13 @@ class FailingTasksController extends TasksController {
 class FakeExtensionsController extends ExtensionsController {
   int installCalls = 0;
   String? lastInstallUrl;
+  Completer<void>? installGate;
 
   @override
   Future<void> installFromUrl(String url, {bool devInstall = false}) async {
     installCalls++;
     lastInstallUrl = url;
+    await installGate?.future;
   }
 
   int removeCalls = 0;
