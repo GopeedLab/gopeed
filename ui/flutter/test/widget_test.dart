@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
-import 'package:flutter/material.dart' show Icons, Scrollbar;
+import 'package:flutter/material.dart' show Icons, Scrollbar, SelectionArea;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kDoubleTapMinTime, kSecondaryMouseButton;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart' show MethodChannel, SystemChannels;
@@ -504,6 +504,11 @@ void main() {
       closeTo(tester.getRect(find.byKey(const ValueKey('extension-card-extension-2'))).right, 0.01),
     );
 
+    tester.view.physicalSize = const Size(1024, 768);
+    await tester.pumpAndSettle();
+    expect(gridColumns(), 3);
+    expect(tester.getSize(find.byKey(const ValueKey('extension-card-extension-0'))).width, greaterThanOrEqualTo(290));
+
     tester.view.physicalSize = const Size(1028, 608);
     await tester.pumpAndSettle();
     expect(gridColumns(), 3);
@@ -533,6 +538,31 @@ void main() {
           tester.getRect(find.byKey(const ValueKey('extension-search-input'))).right,
       closeTo(10, 0.01),
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('extension cards compact large counts without crowding their actions', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(722, 608));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [extensionsControllerProvider.overrideWith(CrowdedExtensionCardController.new)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const AppComponentThemes(child: ExtensionsPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1.2w'), findsOneWidget);
+    expect(find.text('1.2b'), findsOneWidget);
+    final cardRect = tester.getRect(find.byKey(const ValueKey('extension-card-crowded-extension')));
+    final statsRect = tester.getRect(find.byKey(const ValueKey('extension-card-stats-crowded-extension')));
+    final actionsRect = tester.getRect(find.byKey(const ValueKey('extension-card-actions-crowded-extension')));
+    expect(cardRect.width, closeTo(290, 0.01));
+    expect(statsRect.right, lessThanOrEqualTo(actionsRect.left - 8));
+    expect(actionsRect.right, lessThanOrEqualTo(cardRect.right - 14));
     expect(tester.takeException(), isNull);
   });
 
@@ -3546,6 +3576,14 @@ void main() {
     expect(urlValue.data, contains('\u200B'));
     expect(urlValue.data!.replaceAll('\u200B', ''), task.url);
     expect(urlValue.semanticsLabel, task.url);
+    final selectionArea = find.byKey(const ValueKey('task-details-selection-area'));
+    expect(selectionArea, findsOneWidget);
+    expect(tester.widget(selectionArea), isA<SelectionArea>());
+    expect(find.ancestor(of: find.text('details.zip'), matching: selectionArea), findsOneWidget);
+    expect(
+      find.ancestor(of: find.byKey(const ValueKey('task-details-url-value')), matching: selectionArea),
+      findsOneWidget,
+    );
     expect(find.text('Task Details'), findsOneWidget);
     expect(find.text('Task Name'), findsNothing);
     final detailHeader = tester.widget<SizedBox>(find.byKey(const ValueKey('app-detail-drawer-header')));
@@ -5040,6 +5078,52 @@ class FakeExtensionsController extends ExtensionsController {
   @override
   Future<void> removeExtension(api_extension.Extension extension) async {
     removeCalls++;
+  }
+}
+
+class CrowdedExtensionCardController extends ExtensionsController {
+  @override
+  Future<ExtensionsState> build() async {
+    final installed =
+        api_extension.Extension(
+            identity: 'crowded-extension',
+            name: 'crowded-extension',
+            author: 'Gopeed',
+            title: 'Crowded extension',
+            description: 'An extension with every available card action.',
+            icon: '',
+            version: '1.0.0',
+            homepage: 'https://gopeed.com',
+            repository: api_extension.Repository(url: 'https://github.com/GopeedLab/gopeed', directory: ''),
+            disabled: false,
+            devMode: false,
+            devPath: '',
+          )
+          ..settings = [
+            api_extension.Setting(
+              name: 'enabled',
+              title: 'Enabled',
+              description: 'Enable the extension.',
+              required: false,
+              type: api_extension.SettingType.boolean,
+            ),
+          ];
+    final store = StoreExtension(
+      id: 'crowded-extension',
+      repoFullName: 'GopeedLab/gopeed',
+      repoUrl: 'https://github.com/GopeedLab/gopeed',
+      name: 'crowded-extension',
+      author: 'Gopeed',
+      title: 'Crowded extension',
+      description: 'An extension with every available card action.',
+      readme: '# Crowded extension',
+      homepage: 'https://gopeed.com',
+      version: '1.1.0',
+      installCount: 1234567890,
+      stars: 12345,
+      topics: ['download'],
+    );
+    return ExtensionsState(installedExtensions: [installed], storeExtensions: [store]);
   }
 }
 
