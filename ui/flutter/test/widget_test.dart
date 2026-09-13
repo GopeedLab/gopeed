@@ -23,6 +23,8 @@ import 'package:gopeed/app/application/app_notification_controller.dart';
 import 'package:gopeed/app/application/app_platform_controller.dart';
 import 'package:gopeed/app/application/app_runtime_controller.dart';
 import 'package:gopeed/api/model/create_task.dart';
+import 'package:gopeed/api/model/install_extension.dart';
+import 'package:gopeed/features/extensions/application/pending_extension_install.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/extension.dart' as api_extension;
 import 'package:gopeed/api/model/meta.dart';
@@ -879,6 +881,87 @@ void main() {
     expect(find.descendant(of: storeInstall, matching: find.byIcon(Icons.download)), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  for (final (width, platform) in [
+    (320.0, TargetPlatform.android),
+    (390.0, TargetPlatform.iOS),
+    (768.0, TargetPlatform.android),
+    (1100.0, TargetPlatform.macOS),
+  ]) {
+    testWidgets(
+      'scheme install automatically runs before and after mounting at width $width',
+      (tester) async {
+        await _setTestSize(tester, Size(width, 900));
+        final controller = FakeExtensionsController()..installGate = Completer<void>();
+        final container = ProviderContainer(overrides: [extensionsControllerProvider.overrideWith(() => controller)]);
+        addTearDown(container.dispose);
+        const firstUrl = 'https://github.com/author/扩展';
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: firstUrl));
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: shad.ShadcnApp(
+              theme: AppTheme.light(),
+              materialTheme: AppTheme.materialLight(),
+              home: const ExtensionsPage(),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        final input = find.byKey(const ValueKey('extension-install-url-input'));
+        expect(tester.widget<AppTextField>(input).controller!.text, firstUrl);
+        expect(container.read(pendingExtensionInstallProvider), isNull);
+        expect(controller.installCalls, 1);
+        expect(controller.lastInstallUrl, firstUrl);
+        final popoverRect = tester.getRect(find.byKey(const ValueKey('extension-install-popover')));
+        expect(popoverRect.left, greaterThanOrEqualTo(0));
+        expect(popoverRect.right, lessThanOrEqualTo(width));
+        expect(find.descendant(of: input, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+
+        // Rebuilds and manual submission must not duplicate an active install.
+        await tester.tap(find.descendant(of: input, matching: find.byType(shad.IconButton)));
+        await tester.pump();
+        expect(controller.installCalls, 1);
+        controller.installGate!.complete();
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('extension-install-popover')), findsNothing);
+
+        // A warm link automatically installs from an already-open form too.
+        await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        const secondUrl = 'https://github.com/author/second';
+        controller.installGate = Completer<void>();
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: secondUrl));
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(tester.widget<AppTextField>(input).controller!.text, secondUrl);
+        expect(controller.installCalls, 2);
+        expect(controller.lastInstallUrl, secondUrl);
+
+        // A request arriving during installation waits until the active form closes.
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: firstUrl));
+        await tester.pump();
+        expect(controller.installCalls, 2);
+        controller.installGate!.complete();
+        controller.installGate = Completer<void>();
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 200));
+        }
+        expect(controller.installCalls, 3);
+        expect(controller.lastInstallUrl, firstUrl);
+        controller.installGate!.complete();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      },
+      variant: TargetPlatformVariant.only(platform),
+    );
+  }
 
   testWidgets('extension install popover unlocks local loading and installed cards use switches', (
     WidgetTester tester,
@@ -4983,6 +5066,16 @@ class FailingTasksController extends TasksController {
 
 class FakeExtensionsController extends ExtensionsController {
   int installCalls = 0;
+  String? lastInstallUrl;
+  Completer<void>? installGate;
+
+  @override
+  Future<void> installFromUrl(String url, {bool devInstall = false}) async {
+    installCalls++;
+    lastInstallUrl = url;
+    await installGate?.future;
+  }
+
   int removeCalls = 0;
 
   @override

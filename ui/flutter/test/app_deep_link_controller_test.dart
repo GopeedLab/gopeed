@@ -1,4 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
+import 'package:gopeed/features/extensions/application/pending_extension_install.dart';
 
 import 'package:app_links_platform_interface/app_links_platform_interface.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +15,44 @@ import 'package:gopeed/core/common/start_config.dart';
 import 'package:share_handler/share_handler.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('receives initial and subsequent scheme extension URLs with UTF-8 params', () async {
+    final originalPlatform = AppLinksPlatform.instance;
+    final initialUrl = 'https://github.com/author/扩展';
+    Uri link(String url) => Uri.parse('gopeed:///extension').replace(
+      queryParameters: {
+        'params': base64Encode(utf8.encode(jsonEncode({'url': url}))),
+      },
+    );
+    final platform = _FakeAppLinksPlatform(initialLink: link(initialUrl));
+    AppLinksPlatform.instance = platform;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('window_manager'),
+      (_) async => false,
+    );
+    final container = ProviderContainer(
+      overrides: [appRuntimeControllerProvider.overrideWith(_FakeRuntimeController.new)],
+    );
+    try {
+      await container.read(appDeepLinkControllerProvider.future);
+      expect(container.read(pendingExtensionInstallProvider)?.url, initialUrl);
+      container.read(pendingExtensionInstallProvider.notifier).clear();
+      platform.emit(link('https://github.com/author/second'));
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(pendingExtensionInstallProvider)?.url, 'https://github.com/author/second');
+    } finally {
+      container.dispose();
+      await Future<void>.delayed(Duration.zero);
+      AppLinksPlatform.instance = originalPlatform;
+      await platform.close();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('window_manager'),
+        null,
+      );
+    }
+  });
+
   test('keeps the established path-style Gopeed deep-link routes', () {
     expect(gopeedDeepLinkRoute(Uri.parse('gopeed:///create')), '/create');
     expect(gopeedDeepLinkRoute(Uri.parse('gopeed:///extension')), '/extension');
@@ -63,12 +105,16 @@ void main() {
 }
 
 class _FakeAppLinksPlatform extends AppLinksPlatform {
+  _FakeAppLinksPlatform({this.initialLink});
+
+  final Uri? initialLink;
+  void emit(Uri uri) => _links.add(uri);
   final _links = StreamController<Uri>.broadcast();
 
   bool get hasListener => _links.hasListener;
 
   @override
-  Future<Uri?> getInitialLink() async => null;
+  Future<Uri?> getInitialLink() async => initialLink;
 
   @override
   Stream<Uri> get uriLinkStream => _links.stream;
