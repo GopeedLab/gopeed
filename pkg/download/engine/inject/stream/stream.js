@@ -764,11 +764,14 @@
             return;
           }
           const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
-          const buffer = chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength);
-          if (!globalThis.__gopeed_blob_pipe_chunk(pipeId, buffer)) {
-            state.cancelRequested = true;
-            state.cancelReason = "blob pipe closed";
-            return;
+          for (let offset = 0; offset < chunk.byteLength; offset += 256 * 1024) {
+            const part = chunk.subarray(offset, offset + 256 * 1024);
+            const buffer = part.buffer.slice(part.byteOffset, part.byteOffset + part.byteLength);
+            if (!await globalThis.__gopeed_blob_pipe_chunk(pipeId, buffer)) {
+              state.cancelRequested = true;
+              state.cancelReason = "blob pipe closed";
+              return;
+            }
           }
           await yieldBlobPipeTask();
         }
