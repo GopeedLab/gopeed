@@ -95,7 +95,11 @@ class TaskCardFooter extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              task.total != null ? '${task.downloaded} / ${task.total}' : context.l10n.unknownSize,
+              task.total != null
+                  ? '${task.downloaded} / ${task.total}'
+                  : task.downloadedBytes == 0
+                  ? context.l10n.unknownSize
+                  : task.downloaded,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: leftColor, fontSize: 10, height: 1),
