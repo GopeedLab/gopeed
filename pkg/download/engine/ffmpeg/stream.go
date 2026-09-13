@@ -17,6 +17,7 @@ const StreamBufferLimit = 64 * 1024 * 1024
 
 type StreamInput struct {
 	ctx           context.Context
+	tempDir       string
 	mu            sync.Mutex
 	file          *os.File
 	read, written int64
@@ -26,8 +27,8 @@ type StreamInput struct {
 	space         chan struct{}
 }
 
-func NewStreamInput(ctx context.Context) *StreamInput {
-	return &StreamInput{ctx: ctx, wake: make(chan struct{}, 1), space: make(chan struct{}, 1)}
+func NewStreamInput(ctx context.Context, tempDir string) *StreamInput {
+	return &StreamInput{ctx: ctx, tempDir: tempDir, wake: make(chan struct{}, 1), space: make(chan struct{}, 1)}
 }
 
 func (s *StreamInput) Write(p []byte) (int, error) {
@@ -70,7 +71,13 @@ func (s *StreamInput) Write(p []byte) (int, error) {
 		return 0, nil
 	}
 	if s.file == nil {
-		f, err := os.CreateTemp("", "gopeed-ffmpeg-*")
+		// Android apps cannot write to Go's default /data/local/tmp.
+		if s.tempDir != "" {
+			if err := os.MkdirAll(s.tempDir, 0700); err != nil {
+				return 0, err
+			}
+		}
+		f, err := os.CreateTemp(s.tempDir, "gopeed-ffmpeg-*")
 		if err != nil {
 			return 0, err
 		}

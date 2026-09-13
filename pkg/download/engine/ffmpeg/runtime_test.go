@@ -128,7 +128,7 @@ func TestWebMToMP4(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		inputs[i] = NewStreamInput(ctx)
+		inputs[i] = NewStreamInput(ctx, "")
 		defer inputs[i].Close()
 		if _, err = inputs[i].Write(data); err != nil {
 			t.Fatal(err)
@@ -205,7 +205,7 @@ func TestWASMMerge(t *testing.T) {
 		})
 	}
 	// A malformed input must produce an error, not successful empty output.
-	s := NewStreamInput(context.Background())
+	s := NewStreamInput(context.Background(), "")
 	defer s.Close()
 	s.Write([]byte("invalid"))
 	s.End(nil)

@@ -3,6 +3,7 @@ package download
 import (
 	"context"
 	"io"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -126,7 +127,12 @@ func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession) {
 	}{UserAgent: httpProtocol.DefaultUserAgent}
 	d.getProtocolConfig("http", &httpConfig)
 	userAgent := strings.TrimSpace(httpConfig.UserAgent)
+	tempDir := ""
+	if d.cfg.StorageDir != "" {
+		tempDir = filepath.Join(d.cfg.StorageDir, "temp", "ffmpeg")
+	}
 	e := engine.NewEngine(&engine.Config{
+		TempDir:       tempDir,
 		HTTPUserAgent: &userAgent,
 		ProxyConfig:   d.cfg.Proxy,
 		StreamConfig:  engineCfg,

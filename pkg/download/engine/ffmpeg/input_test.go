@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -117,7 +118,7 @@ func TestHTTPSequentialAndValidation(t *testing.T) {
 }
 
 func TestStreamRing(t *testing.T) {
-	s := NewStreamInput(context.Background())
+	s := NewStreamInput(context.Background(), "")
 	defer s.Close()
 	// Start near the boundary to exercise wrap-around without a huge fixture.
 	s.read = StreamBufferLimit - 3
@@ -157,7 +158,7 @@ func TestOutputArguments(t *testing.T) {
 func TestStreamBackpressureAndCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s := NewStreamInput(ctx)
+	s := NewStreamInput(ctx, "")
 	defer s.Close()
 	f, err := os.CreateTemp(t.TempDir(), "ring")
 	if err != nil {
@@ -195,5 +196,40 @@ func TestStreamBackpressureAndCancel(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("writer did not cancel")
+	}
+}
+
+// A mobile app can write to its storage directory even when the OS default
+// temporary directory is unavailable. The buffer must also be removed on close.
+func TestStreamInputAppTempDir(t *testing.T) {
+	root := t.TempDir()
+	unavailable := filepath.Join(root, "not-a-directory")
+	if err := os.WriteFile(unavailable, []byte("blocked"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", unavailable)
+	t.Setenv("TMP", unavailable)
+	t.Setenv("TEMP", unavailable)
+	dir := filepath.Join(root, "app", "temp", "ffmpeg")
+	s := NewStreamInput(context.Background(), dir)
+	t.Cleanup(func() { s.Close() })
+	data := []byte("media stream")
+	if _, err := s.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(s.file.Name()) != dir {
+		t.Fatalf("unexpected buffer: %s", s.file.Name())
+	}
+	s.End(nil)
+	got, err := io.ReadAll(s)
+	if err != nil || !bytes.Equal(got, data) {
+		t.Fatalf("read %q, error %v", got, err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("buffer cleanup: %v, %v", entries, err)
 	}
 }

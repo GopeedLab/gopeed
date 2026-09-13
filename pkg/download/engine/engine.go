@@ -160,6 +160,8 @@ func (e *Engine) addCleanup(cleanup func()) {
 }
 
 type Config struct {
+	// TempDir supplies an app-writable directory for FFmpeg stream buffers.
+	TempDir string
 	// HTTPUserAgent is a snapshot of the downloader HTTP default. Nil leaves standalone engines unchanged.
 	HTTPUserAgent *string
 	ProxyConfig   *base.DownloaderProxyConfig
@@ -207,6 +209,7 @@ func NewEngine(cfg *Config) *Engine {
 			return
 		}
 		if err := ffmpegapi.Enable(runtime, loop, &ffmpegapi.Config{
+			TempDir:          cfg.TempDir,
 			ProxyHandler:     cfg.ProxyConfig.ToHandler(),
 			DefaultUserAgent: cfg.HTTPUserAgent,
 			RegisterCleanup:  engine.addCleanup,
