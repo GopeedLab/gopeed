@@ -10,8 +10,15 @@ import (
 type TaskEventMask uint64
 
 const (
+	// Keep these first two unchanged because Flutter already uses
+	// bit 0 for done and bit 1 for error.
 	TaskEventDone TaskEventMask = 1 << iota
 	TaskEventError
+
+	TaskEventStart
+	TaskEventProgress
+	TaskEventPause
+	TaskEventDelete
 )
 
 type TaskEvent struct {
@@ -42,11 +49,26 @@ func (s *Service) emitTaskEvent(event *download.Event) {
 	}
 
 	var mask TaskEventMask
+
 	switch event.Key {
 	case download.EventKeyDone:
 		mask = TaskEventDone
+
 	case download.EventKeyError:
 		mask = TaskEventError
+
+	case download.EventKeyStart:
+		mask = TaskEventStart
+
+	case download.EventKeyProgress:
+		mask = TaskEventProgress
+
+	case download.EventKeyPause:
+		mask = TaskEventPause
+
+	case download.EventKeyDelete:
+		mask = TaskEventDelete
+
 	default:
 		return
 	}

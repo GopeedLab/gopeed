@@ -63,8 +63,19 @@ import UIKit
         GopeedInvokeAsyncWithResult(method, path, query, body, requestID, result)
       case "subscribeTaskEvents":
         let arguments = call.arguments as? [String: Any]
-        let mask = (arguments?["mask"] as? NSNumber)?.int64Value ?? 0
-        GopeedSubscribeTaskEventsWithForwarder(mask, mask == 0 ? nil : taskEventForwarder)
+        let flutterMask =
+            (arguments?["mask"] as? NSNumber)?.int64Value ?? 0
+
+        let liveActivityMask =
+            LibgopeedLiveActivityTaskEventMask()
+
+        let combinedMask =
+            flutterMask | liveActivityMask
+
+        GopeedSubscribeTaskEventsWithForwarder(
+            combinedMask,
+            taskEventForwarder
+        )
         result(nil)
       default:
         result(FlutterMethodNotImplemented)
@@ -91,5 +102,54 @@ import UIKit
         result(FlutterMethodNotImplemented)
       }
     }
+    let continuedProcessingChannel =
+    FlutterMethodChannel(
+        name: "gopeed/continued_processing",
+        binaryMessenger: messenger
+    )
+
+    continuedProcessingChannel
+        .setMethodCallHandler { call, result in
+
+            switch call.method {
+
+            case "isSupported":
+
+                if #available(iOS 26.0, *) {
+                    result(true)
+                } else {
+                    result(false)
+                }
+
+            case "setEnabled":
+
+                let arguments =
+                    call.arguments
+                        as? [String: Any]
+
+                let enabled =
+                    arguments?["enabled"]
+                        as? Bool
+                    ?? false
+
+                if #available(iOS 26.0, *) {
+
+                    result(
+                        GopeedContinuedProcessingManager
+                            .shared
+                            .setEnabled(enabled)
+                    )
+
+                } else {
+
+                    result(!enabled)
+                }
+
+            default:
+                result(
+                    FlutterMethodNotImplemented
+                )
+            }
+       }
   }
 }
