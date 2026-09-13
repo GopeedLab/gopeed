@@ -23,6 +23,8 @@ import 'package:gopeed/app/application/app_notification_controller.dart';
 import 'package:gopeed/app/application/app_platform_controller.dart';
 import 'package:gopeed/app/application/app_runtime_controller.dart';
 import 'package:gopeed/api/model/create_task.dart';
+import 'package:gopeed/api/model/install_extension.dart';
+import 'package:gopeed/features/extensions/application/pending_extension_install.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/extension.dart' as api_extension;
 import 'package:gopeed/api/model/meta.dart';
@@ -879,6 +881,70 @@ void main() {
     expect(find.descendant(of: storeInstall, matching: find.byIcon(Icons.download)), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  for (final (width, platform) in [
+    (320.0, TargetPlatform.android),
+    (390.0, TargetPlatform.iOS),
+    (768.0, TargetPlatform.android),
+    (1100.0, TargetPlatform.macOS),
+  ]) {
+    testWidgets(
+      'scheme install prefills URL before and after mounting at width $width',
+      (tester) async {
+        await _setTestSize(tester, Size(width, 900));
+        final controller = FakeExtensionsController();
+        final container = ProviderContainer(overrides: [extensionsControllerProvider.overrideWith(() => controller)]);
+        addTearDown(container.dispose);
+        const firstUrl = 'https://github.com/author/扩展';
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: firstUrl));
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: shad.ShadcnApp(
+              theme: AppTheme.light(),
+              materialTheme: AppTheme.materialLight(),
+              home: const ExtensionsPage(),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        final input = find.byKey(const ValueKey('extension-install-url-input'));
+        expect(tester.widget<AppTextField>(input).controller!.text, firstUrl);
+        expect(container.read(pendingExtensionInstallProvider), isNull);
+        expect(controller.installCalls, 0);
+        final popoverRect = tester.getRect(find.byKey(const ValueKey('extension-install-popover')));
+        expect(popoverRect.left, greaterThanOrEqualTo(0));
+        expect(popoverRect.right, lessThanOrEqualTo(width));
+
+        // A second link updates the already-open input without installing twice.
+        const secondUrl = 'https://github.com/author/second';
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: secondUrl));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(tester.widget<AppTextField>(input).controller!.text, secondUrl);
+        expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
+        expect(controller.installCalls, 0);
+        await tester.tap(find.descendant(of: input, matching: find.byType(shad.IconButton)));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(controller.installCalls, 1);
+        expect(controller.lastInstallUrl, secondUrl);
+
+        // A warm link also reopens a dismissed form.
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: firstUrl));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(tester.widget<AppTextField>(input).controller!.text, firstUrl);
+        expect(controller.installCalls, 1);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      },
+      variant: TargetPlatformVariant.only(platform),
+    );
+  }
 
   testWidgets('extension install popover unlocks local loading and installed cards use switches', (
     WidgetTester tester,
@@ -4983,6 +5049,14 @@ class FailingTasksController extends TasksController {
 
 class FakeExtensionsController extends ExtensionsController {
   int installCalls = 0;
+  String? lastInstallUrl;
+
+  @override
+  Future<void> installFromUrl(String url, {bool devInstall = false}) async {
+    installCalls++;
+    lastInstallUrl = url;
+  }
+
   int removeCalls = 0;
 
   @override
