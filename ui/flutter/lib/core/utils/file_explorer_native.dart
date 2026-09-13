@@ -19,7 +19,7 @@ Future<bool> open(String filePath) async {
 Future<bool> reveal(String filePath) async {
   try {
     if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
-      return open(filePath);
+      return false;
     }
 
     if (await FileSystemEntity.isFile(filePath)) {
