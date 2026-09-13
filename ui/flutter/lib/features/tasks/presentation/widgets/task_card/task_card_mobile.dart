@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
+import '../../../../../core/window/app_window_chrome.dart';
 import '../../../../../shared/theme/app_design_tokens.dart';
 import '../../../../../shared/theme/app_palette.dart';
 import '../../../domain/task_record.dart';
@@ -171,7 +172,10 @@ class _TaskCardMobileState extends State<TaskCardMobile> {
       TaskStatus.downloading => [(Icons.pause, widget.onPause), (Icons.close, widget.onDelete)],
       TaskStatus.paused => [(Icons.play_arrow, widget.onResume), (Icons.close, widget.onDelete)],
       TaskStatus.failed => [(Icons.refresh, widget.onResume), (Icons.delete_outline, widget.onDelete)],
-      TaskStatus.completed => [(Icons.folder_open_outlined, widget.onReveal), (Icons.delete_outline, widget.onDelete)],
+      TaskStatus.completed => [
+        if (AppWindowChrome.isDesktopWindow) (Icons.folder_open_outlined, widget.onReveal),
+        (Icons.delete_outline, widget.onDelete),
+      ],
     };
 
     return actions

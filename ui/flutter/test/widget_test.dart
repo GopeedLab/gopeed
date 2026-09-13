@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, debugDefaultTargetPlatformOverride;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, debugDefaultTargetPlatformOverride, kIsWeb;
 import 'package:flutter/material.dart' show Icons, Scrollbar;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kDoubleTapMinTime, kSecondaryMouseButton;
 import 'package:flutter/rendering.dart' show RenderParagraph;
@@ -5065,45 +5066,100 @@ void main() {
     expect(openedCount, 0);
   });
 
-  testWidgets('completed task double click opens while folder action reveals', (WidgetTester tester) async {
-    await _setTestSize(tester, const Size(1024, 220));
-    var openedCount = 0;
-    var revealedCount = 0;
+  for (final width in [390.0, 1024.0]) {
+    testWidgets(
+      'completed card actions respect platform at width $width',
+      (tester) async {
+        await _setTestSize(tester, Size(width, 220));
+        var deleted = 0;
+        var revealed = 0;
+        await tester.pumpWidget(
+          shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: Padding(
+              padding: const EdgeInsets.all(24),
+              child: TaskCard(
+                task: _taskRecord(id: 'platform-actions', name: 'done.zip', status: TaskStatus.completed),
+                selected: false,
+                batchMode: false,
+                selectedInBatch: false,
+                onPressed: () {},
+                onToggleBatch: () {},
+                onDelete: () => deleted++,
+                onReveal: () => revealed++,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final desktop =
+            !kIsWeb &&
+            {TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}.contains(defaultTargetPlatform);
+        expect(find.byIcon(Icons.folder_open_outlined), desktop ? findsOneWidget : findsNothing);
+        expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+        if (desktop) {
+          await tester.tap(find.byIcon(Icons.folder_open_outlined));
+          expect(revealed, 1);
+        }
+        await tester.tap(find.byIcon(Icons.delete_outline));
+        expect(deleted, 1);
+        expect(tester.takeException(), isNull);
+      },
+      variant: TargetPlatformVariant({
+        TargetPlatform.android,
+        TargetPlatform.iOS,
+        TargetPlatform.windows,
+        TargetPlatform.macOS,
+        TargetPlatform.linux,
+      }),
+    );
+  }
 
-    await tester.pumpWidget(
-      shad.ShadcnApp(
-        theme: AppTheme.light(),
-        materialTheme: AppTheme.materialLight(),
-        home: Padding(
-          padding: const EdgeInsets.all(24),
-          child: TaskCard(
-            task: _taskRecord(id: 'completed-actions', name: 'completed.zip', status: TaskStatus.completed),
-            selected: false,
-            batchMode: false,
-            selectedInBatch: false,
-            onPressed: () {},
-            onToggleBatch: () {},
-            onOpen: () => openedCount++,
-            onReveal: () => revealedCount++,
+  testWidgets(
+    'completed task double click opens while folder action reveals',
+    (WidgetTester tester) async {
+      await _setTestSize(tester, const Size(1024, 220));
+      var openedCount = 0;
+      var revealedCount = 0;
+
+      await tester.pumpWidget(
+        shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: Padding(
+            padding: const EdgeInsets.all(24),
+            child: TaskCard(
+              task: _taskRecord(id: 'completed-actions', name: 'completed.zip', status: TaskStatus.completed),
+              selected: false,
+              batchMode: false,
+              selectedInBatch: false,
+              onPressed: () {},
+              onToggleBatch: () {},
+              onOpen: () => openedCount++,
+              onReveal: () => revealedCount++,
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.text('completed.zip'));
-    await tester.pump(kDoubleTapMinTime);
-    await tester.tap(find.text('completed.zip'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('completed.zip'));
+      await tester.pump(kDoubleTapMinTime);
+      await tester.tap(find.text('completed.zip'));
+      await tester.pumpAndSettle();
 
-    expect(openedCount, 1);
-    expect(revealedCount, 0);
+      expect(openedCount, 1);
+      expect(revealedCount, 0);
 
-    await tester.tap(find.byIcon(Icons.folder_open_outlined));
-    await tester.pump();
+      await tester.tap(find.byIcon(Icons.folder_open_outlined));
+      await tester.pump();
 
-    expect(openedCount, 1);
-    expect(revealedCount, 1);
-  });
+      expect(openedCount, 1);
+      expect(revealedCount, 1);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    skip: kIsWeb,
+  );
 }
 
 Future<void> _setTestSize(WidgetTester tester, Size size) async {
