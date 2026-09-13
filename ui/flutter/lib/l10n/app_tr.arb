@@ -103,6 +103,7 @@
   "extensions": "Eklentiler",
   "extensionInstallUrl": "Kurulum URL'si",
   "extensionInstallSuccess": "Başarıyla kuruldu",
+  "extensionUpdateConfirm": "“{name}” en son sürüme güncellensin mi?",
   "extensionUpdateSuccess": "Başarıyla güncellendi",
   "extensionDelete": "Eklentiyi Sil",
   "extensionAlreadyLatest": "Zaten en son sürüm",

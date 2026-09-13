@@ -110,6 +110,7 @@
   "extensions": "Uzantılar",
   "extensionInstallUrl": "Quraşdırma URL-i",
   "extensionInstallSuccess": "Uğurla quraşdırıldı",
+  "extensionUpdateConfirm": "“{name}” ən son versiyaya yenilənsin?",
   "extensionUpdateSuccess": "Uğurla yeniləndi",
   "extensionDelete": "Uzantını Sil",
   "extensionAlreadyLatest": "Artıq son versiyadır",
