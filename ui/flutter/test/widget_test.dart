@@ -504,6 +504,11 @@ void main() {
       closeTo(tester.getRect(find.byKey(const ValueKey('extension-card-extension-2'))).right, 0.01),
     );
 
+    tester.view.physicalSize = const Size(1024, 768);
+    await tester.pumpAndSettle();
+    expect(gridColumns(), 3);
+    expect(tester.getSize(find.byKey(const ValueKey('extension-card-extension-0'))).width, greaterThanOrEqualTo(290));
+
     tester.view.physicalSize = const Size(1028, 608);
     await tester.pumpAndSettle();
     expect(gridColumns(), 3);

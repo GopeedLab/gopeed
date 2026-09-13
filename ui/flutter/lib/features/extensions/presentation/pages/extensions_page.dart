@@ -27,7 +27,7 @@ import '../widgets/extension_detail_view.dart';
 import '../widgets/extension_icon.dart';
 import '../widgets/extension_setting_field.dart';
 
-const _extensionCardMinWidth = 296.0;
+const _extensionCardMinWidth = 290.0;
 const _extensionGridSpacing = 10.0;
 
 int _extensionGridColumnCount(double width) {
