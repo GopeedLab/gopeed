@@ -3711,7 +3711,7 @@ void main() {
 
     expect(find.text('Failed'), findsOneWidget);
     expect(find.text('Connection refused'), findsNothing);
-    expect(find.text('10 B/s'), findsNothing);
+    expect(find.text('10 B/s'), findsOneWidget);
     expect(tester.getRect(find.text('50 B / 100 B')).left, lessThan(tester.getRect(find.text('Failed')).left));
   });
 
