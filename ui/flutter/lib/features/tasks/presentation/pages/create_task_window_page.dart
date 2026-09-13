@@ -37,6 +37,7 @@ import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
+import '../../application/task_list_navigation.dart';
 import '../widgets/history_search_field.dart';
 import '../widgets/create_task_action_buttons.dart';
 import '../widgets/resolve_file_tree.dart';
@@ -736,6 +737,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       } catch (error) {
         debugPrint('Unable to select downloading tasks: $error');
       }
+    } else {
+      ref.read(taskListNavigationProvider.notifier).showDownloading();
     }
     await _closeWindow();
   }
