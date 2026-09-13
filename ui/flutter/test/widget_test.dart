@@ -592,6 +592,11 @@ void main() {
       closeTo(tester.getRect(find.byKey(const ValueKey('extension-card-extension-2'))).right, 0.01),
     );
 
+    tester.view.physicalSize = const Size(1024, 768);
+    await tester.pumpAndSettle();
+    expect(gridColumns(), 3);
+    expect(tester.getSize(find.byKey(const ValueKey('extension-card-extension-0'))).width, greaterThanOrEqualTo(290));
+
     tester.view.physicalSize = const Size(1028, 608);
     await tester.pumpAndSettle();
     expect(gridColumns(), 3);
@@ -625,7 +630,7 @@ void main() {
   });
 
   testWidgets('extension cards compact large counts without crowding their actions', (WidgetTester tester) async {
-    await _setTestSize(tester, const Size(750, 608));
+    await _setTestSize(tester, const Size(722, 608));
     await tester.pumpWidget(
       ProviderScope(
         overrides: [extensionsControllerProvider.overrideWith(CrowdedExtensionCardController.new)],
@@ -643,6 +648,7 @@ void main() {
     final cardRect = tester.getRect(find.byKey(const ValueKey('extension-card-crowded-extension')));
     final statsRect = tester.getRect(find.byKey(const ValueKey('extension-card-stats-crowded-extension')));
     final actionsRect = tester.getRect(find.byKey(const ValueKey('extension-card-actions-crowded-extension')));
+    expect(cardRect.width, closeTo(290, 0.01));
     expect(statsRect.right, lessThanOrEqualTo(actionsRect.left - 8));
     expect(actionsRect.right, lessThanOrEqualTo(cardRect.right - 14));
     expect(tester.takeException(), isNull);
