@@ -10,6 +10,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../api/model/store_extension.dart';
+import '../../../../core/utils/compact_count_formatter.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
@@ -338,9 +339,9 @@ class _ExtensionStats extends StatelessWidget {
       key: const ValueKey('extension-details-stats'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        _MetadataItem(icon: Icons.star_rounded, value: store.stars.toString()),
+        _MetadataItem(icon: Icons.star_rounded, value: CompactCountFormatter.format(store.stars)),
         const SizedBox(width: 12),
-        _MetadataItem(icon: Icons.download_outlined, value: store.installCount.toString()),
+        _MetadataItem(icon: Icons.download_outlined, value: CompactCountFormatter.format(store.installCount)),
       ],
     );
   }
