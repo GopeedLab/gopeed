@@ -105,7 +105,15 @@ func (p *pageWrapper) start() error {
 		defer runtimepkg.UnlockOSThread()
 
 		var w webview.WebView
-		if p.opts.Headless {
+		if p.opts.DataPath != "" {
+			var err error
+			w, err = webview.NewWithOptions(webview.Options{Debug: p.opts.Debug, Headless: p.opts.Headless, DataPath: p.opts.DataPath, ProxyURL: p.opts.ProxyURL})
+			if err != nil {
+				p.ready <- err
+				close(p.done)
+				return
+			}
+		} else if p.opts.Headless {
 			w = webview.NewHeadless(p.opts.Debug)
 		} else {
 			w = webview.New(p.opts.Debug)

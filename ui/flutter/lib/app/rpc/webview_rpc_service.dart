@@ -9,6 +9,7 @@ import '../../core/common/start_config.dart';
 import '../../util/log_util.dart';
 import '../../util/util.dart';
 import 'server.dart';
+import 'webview_profile.dart';
 
 String buildWebViewExecuteScript({
   required String channelName,
@@ -73,7 +74,6 @@ class WebViewRpcService {
 
   final Map<String, WebViewRpcPageSession> _pagesById = {};
   final Completer<void> _overlayReady = Completer<void>();
-  late final CookieManager _cookieManager = CookieManager.instance();
 
   RpcServerHandle? _server;
   int _pageSeq = 0;
@@ -162,10 +162,12 @@ class WebViewRpcService {
   }
 
   Future<Map<String, dynamic>> _openPage(Map<String, dynamic> params) async {
+    final profile = WebViewProfile(_string(params, 'profileId'));
+    await profile.prepare(_string(params, 'proxyUrl'));
     final pageId = 'page-${++_pageSeq}';
     final session = WebViewRpcPageSession(
       pageId: pageId,
-      cookieManager: _cookieManager,
+      cookieManager: profile,
       headless: params['headless'] as bool? ?? false,
       debug: params['debug'] as bool? ?? false,
       title: params['title'] as String? ?? '',
@@ -293,7 +295,7 @@ class WebViewRpcPageSession {
   });
 
   final String pageId;
-  final CookieManager cookieManager;
+  final WebViewProfile cookieManager;
   final bool headless;
   final bool debug;
   final String title;
@@ -523,10 +525,9 @@ class WebViewRpcPageSession {
     );
   }
 
-  InAppWebViewSettings get _settings => InAppWebViewSettings(
-    javaScriptEnabled: true,
-    transparentBackground: true,
-    isInspectable: debug,
+  InAppWebViewSettings get _settings => WebViewProfileSettings(
+    profileId: cookieManager.id,
+    debug: debug,
     userAgent: userAgent.isNotEmpty ? userAgent : null,
   );
 

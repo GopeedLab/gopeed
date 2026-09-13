@@ -29,6 +29,10 @@ type Page interface {
 }
 
 type OpenOptions struct {
+	// Host-owned fields are never parsed from extension JavaScript options.
+	ProfileID string
+	DataPath  string
+	ProxyURL  string
 	Headless  bool
 	Debug     bool
 	Title     string

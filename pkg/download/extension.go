@@ -365,7 +365,7 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					engine, session := d.newExtensionEngine()
 					defer session.CloseIfIdle()
 					gopeed.Runtime = &InstanceRuntime{
-						WebView: d.newExtensionWebViewRuntime(session),
+						WebView: d.newExtensionWebViewRuntime(session, ext.buildIdentity()),
 					}
 					err = injectGopeed(engine.Runtime, gopeed)
 					if err != nil {
