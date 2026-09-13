@@ -1,9 +1,9 @@
 name: WebView host profiles
 on:
   push:
-    paths: ['internal/webview/**', 'pkg/download/extension_webview*', 'ui/flutter/third_party/**', 'ui/flutter/lib/app/rpc/webview*', 'ui/flutter/tool/webview_profile_check.dart', '.github/workflows/webview-profiles.yml']
+    paths: ['go.mod', 'go.sum', 'internal/webview/**', 'pkg/download/extension_webview*', 'ui/flutter/third_party/**', 'ui/flutter/lib/app/rpc/webview*', 'ui/flutter/tool/webview_profile_check.dart', '.github/workflows/webview-profiles.yml']
   pull_request:
-    paths: ['internal/webview/**', 'pkg/download/extension_webview*', 'ui/flutter/third_party/**', 'ui/flutter/lib/app/rpc/webview*', 'ui/flutter/tool/webview_profile_check.dart', '.github/workflows/webview-profiles.yml']
+    paths: ['go.mod', 'go.sum', 'internal/webview/**', 'pkg/download/extension_webview*', 'ui/flutter/third_party/**', 'ui/flutter/lib/app/rpc/webview*', 'ui/flutter/tool/webview_profile_check.dart', '.github/workflows/webview-profiles.yml']
   workflow_dispatch:
 jobs:
   android-plugin:

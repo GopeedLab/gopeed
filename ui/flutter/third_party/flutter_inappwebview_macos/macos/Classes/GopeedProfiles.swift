@@ -5,6 +5,7 @@ import Network
 import FlutterMacOS
 
 final class GopeedProfiles {
+    private static var proxyURLs: [String: String] = [:]
     private static var stores: [String: WKWebsiteDataStore] = [:]
     static func store(_ identifier: String) -> WKWebsiteDataStore? { stores[identifier] }
 
@@ -19,11 +20,16 @@ final class GopeedProfiles {
             result(FlutterError(code: "UNAVAILABLE", message: "Isolated WebView profiles and proxy require macOS 14 / iOS 17 or newer and valid host configuration", details: nil))
             return
         }
+        if stores[identifier] != nil && proxyURLs[identifier] == proxyURL {
+            result(true)
+            return
+        }
         let store = stores[identifier] ?? WKWebsiteDataStore(forIdentifier: uuid)
         let endpoint = nw_endpoint_create_host(host, String(port))
         let proxy = nw_proxy_config_create_socksv5(endpoint)
         store.__proxyConfigurations = [proxy]
         stores[identifier] = store
+        proxyURLs[identifier] = proxyURL
         result(true)
     }
 }

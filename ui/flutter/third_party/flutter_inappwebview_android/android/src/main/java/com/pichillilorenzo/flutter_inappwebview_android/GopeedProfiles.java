@@ -10,6 +10,9 @@ import io.flutter.plugin.common.MethodChannel;
 
 // Internal host bridge: profile creation and proxy completion precede navigation.
 final class GopeedProfiles {
+  private static String appliedProxy;
+  private static String pendingProxy;
+  private static final java.util.List<MethodChannel.Result> pending = new java.util.ArrayList<>();
   static void prepare(MethodCall call, MethodChannel.Result result) {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE) ||
         !WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
@@ -24,10 +27,29 @@ final class GopeedProfiles {
       if (!"http".equals(uri.getScheme()) || !"127.0.0.1".equals(uri.getHost()) || uri.getPort() <= 0)
         throw new IllegalArgumentException("Invalid host proxy configuration");
       ProfileStore.getInstance().getOrCreateProfile(id);
+      if (proxy.equals(appliedProxy)) { result.success(true); return; }
+      if (pendingProxy != null) {
+        if (proxy.equals(pendingProxy)) pending.add(result);
+        else result.error("UNAVAILABLE", "A different WebView proxy is being configured", null);
+        return;
+      }
+      pendingProxy = proxy;
+      pending.add(result);
       ProxyConfig config = new ProxyConfig.Builder().addProxyRule(proxy).removeImplicitRules().build();
-      ProxyController.getInstance().setProxyOverride(config, Runnable::run, () -> result.success(true));
+      ProxyController.getInstance().setProxyOverride(config, task -> new android.os.Handler(android.os.Looper.getMainLooper()).post(task), () -> {
+        appliedProxy = proxy;
+        pendingProxy = null;
+        java.util.List<MethodChannel.Result> completed = new java.util.ArrayList<>(pending);
+        pending.clear();
+        for (MethodChannel.Result callback : completed) callback.success(true);
+      });
     } catch (RuntimeException e) {
-      result.error("UNAVAILABLE", "Unable to configure WebView profile and proxy", null);
+      if (pendingProxy != null && pending.contains(result)) {
+        pendingProxy = null;
+        java.util.List<MethodChannel.Result> failed = new java.util.ArrayList<>(pending);
+        pending.clear();
+        for (MethodChannel.Result callback : failed) callback.error("UNAVAILABLE", "Unable to configure WebView profile and proxy", null);
+      } else result.error("UNAVAILABLE", "Unable to configure WebView profile and proxy", null);
     }
   }
 }

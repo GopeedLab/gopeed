@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../core/common/start_config.dart';
@@ -272,6 +273,9 @@ class WebViewRpcService {
   Map<String, dynamic> _toRpcError(String method, Object error) {
     if (error is WebViewRpcException) {
       return {'code': error.code, 'message': error.message};
+    }
+    if (error is PlatformException && error.code == 'UNAVAILABLE') {
+      return {'code': error.code, 'message': error.message ?? 'WebView is unavailable'};
     }
     final code = switch (method) {
       'page.goto' => 'NAVIGATION_FAILED',

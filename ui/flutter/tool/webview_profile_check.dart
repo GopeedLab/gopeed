@@ -97,6 +97,7 @@ Future<void> checkProfiles() async {
   final target = WebUri('https://profiles.invalid/');
   final pages = <HeadlessInAppWebView>[];
   Future<InAppWebViewController> open(WebViewProfile profile) async {
+    await profile.prepare(proxyUrl);
     final ready = Completer<InAppWebViewController>();
     final page = HeadlessInAppWebView(
       onReceivedServerTrustAuthRequest: (_, _) async =>
