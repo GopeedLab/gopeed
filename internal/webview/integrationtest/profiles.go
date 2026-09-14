@@ -40,7 +40,7 @@ func RunProfileContract(t *testing.T, provider webview.Provider) {
 	second := b.open(t)
 	assertProfileValue(t, second, `() => localStorage.getItem('owner')`, nil)
 	assertProfileValue(t, second, profileDatabaseScript(false), nil)
-	assertProfileCookies(t, second, "")
+	assertProfileCookies(t, second, "", "new profile B")
 	assertProfileValue(t, second, `() => { localStorage.setItem('owner','b'); return 'b'; }`, "b")
 	if err := second.SetCookie(webview.Cookie{Name: "session", Value: "b", Domain: "profiles.invalid", Path: "/", HTTPOnly: true}); err != nil {
 		t.Fatal(err)
@@ -48,12 +48,12 @@ func RunProfileContract(t *testing.T, provider webview.Provider) {
 	shared := a.open(t)
 	assertProfileValue(t, shared, `() => localStorage.getItem('owner')`, "a")
 	assertProfileValue(t, shared, profileDatabaseScript(false), "saved")
-	assertProfileCookies(t, shared, "a")
+	assertProfileCookies(t, shared, "a", "shared profile A")
 	assertProfileValue(t, shared, `() => document.cookie`, "") // HttpOnly stays hidden.
 	if err := second.ClearCookies(); err != nil {
 		t.Fatal(err)
 	}
-	assertProfileCookies(t, first, "a")
+	assertProfileCookies(t, first, "a", "clearing B leaves A intact")
 	if err := second.SetCookie(webview.Cookie{Name: "session", Value: "b", Domain: "profiles.invalid", Path: "/", HTTPOnly: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func RunProfileContract(t *testing.T, provider webview.Provider) {
 	reopened := a.open(t)
 	assertProfileValue(t, reopened, `() => localStorage.getItem('owner')`, "a")
 	assertProfileValue(t, reopened, profileDatabaseScript(false), "saved")
-	assertProfileCookies(t, reopened, "a")
+	assertProfileCookies(t, reopened, "a", "reopened profile A")
 	// Include a session cookie immediately before deletion to catch stale
 	// in-process CookieStore caches when the same profile is recreated.
 	if err := reopened.SetCookie(webview.Cookie{Name: "session", Value: "remove-me", Domain: "profiles.invalid", Path: "/", HTTPOnly: true}); err != nil {
@@ -73,9 +73,9 @@ func RunProfileContract(t *testing.T, provider webview.Provider) {
 	reinstalled := a.open(t)
 	assertProfileValue(t, reinstalled, `() => localStorage.getItem('owner')`, nil)
 	assertProfileValue(t, reinstalled, profileDatabaseScript(false), nil)
-	assertProfileCookies(t, reinstalled, "")
+	assertProfileCookies(t, reinstalled, "", "reinstalled profile A")
 	assertProfileValue(t, second, `() => localStorage.getItem('owner')`, "b")
-	assertProfileCookies(t, second, "b")
+	assertProfileCookies(t, second, "b", "B after removing A")
 	// Refuse the HTTPS tunnel deliberately. Seeing it at our proxy proves HTTPS
 	// routing without adding a certificate-validation bypass to the test host.
 	// WebView2 may commit its built-in error page and report navigation as
@@ -143,20 +143,25 @@ func assertProfileValue(t *testing.T, page webview.Page, script string, want any
 		t.Fatalf("script %s: got %#v, want %#v", script, got, want)
 	}
 }
-func assertProfileCookies(t *testing.T, page webview.Page, want string) {
+func assertProfileCookies(t *testing.T, page webview.Page, want, stage string) {
 	t.Helper()
-	cookies, err := page.GetCookies()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want == "" {
-		if len(cookies) != 0 {
-			t.Fatalf("profile cookies survived removal: %#v", cookies)
+	// Native cookie managers propagate updates across browser processes
+	// asynchronously. Wait for the expected state rather than assuming the
+	// first IPC read already includes the preceding write.
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		cookies, err := page.GetCookies()
+		if err != nil {
+			t.Fatalf("%s: %v", stage, err)
 		}
-		return
-	}
-	if len(cookies) != 1 || cookies[0].Name != "session" || cookies[0].Value != want || !cookies[0].HTTPOnly {
-		t.Fatalf("unexpected profile cookie store: %#v", cookies)
+		matches := len(cookies) == 0 && want == "" || len(cookies) == 1 && want != "" && cookies[0].Name == "session" && cookies[0].Value == want && cookies[0].HTTPOnly
+		if matches {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s: cookies %#v, want %q", stage, cookies, want)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 func profileDatabaseScript(write bool) string {
