@@ -78,8 +78,12 @@ func RunProfileContract(t *testing.T, provider webview.Provider) {
 	assertProfileCookies(t, second, "b")
 	// Refuse the HTTPS tunnel deliberately. Seeing it at our proxy proves HTTPS
 	// routing without adding a certificate-validation bypass to the test host.
-	if err := reinstalled.Goto("https://profiles.invalid/", webview.GotoOptions{TimeoutMS: 5000}); err == nil {
-		t.Fatal("HTTPS unexpectedly succeeded through a rejecting proxy")
+	// WebView2 may commit its built-in error page and report navigation as
+	// complete. The invariant here is that the HTTPS tunnel reaches the proxy.
+	_ = reinstalled.Goto("https://profiles.invalid/", webview.GotoOptions{TimeoutMS: 5000})
+	deadline := time.Now().Add(5 * time.Second)
+	for secureHits.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
 	}
 	if secureHits.Load() == 0 {
 		t.Fatal("HTTPS bypassed the host proxy")
