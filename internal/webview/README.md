@@ -46,10 +46,14 @@ ignoring the proxy.
 
 - `go test -race ./internal/webview/proxy ./pkg/download/engine/webview`
 - `go test ./pkg/download -run 'TestWebViewProfileBound|TestDownloader_ExtensionRuntimeWebView'`
-- In webview_go: `go run ./examples/profilecheck` (Linux: `xvfb-run -a ...`).
-- In ui/flutter: `flutter run -d macos -t tool/webview_profile_check.dart`.
+- Windows/Linux: `go test -tags webview -v ./internal/webview/goprovider` (Linux: run under `xvfb-run -a`).
+- macOS: start the normal Flutter app, then run `go test -tags webview -v ./internal/webview/rpcprovider` with its socket address. See `rpcprovider/README.md`.
+- In webview_go: `go test -tags webview_integration -v -count=1 .` (Linux: run under `xvfb-run -a`).
 
-The native smoke tests cover routing and persistent profile isolation. The Flutter
-smoke test also checks concurrent pages, HttpOnly cookies, LocalStorage, IndexedDB,
-profile-scoped clearing, and reopening. The self-signed TLS fixture is trusted only
-by that test's callback; production certificate validation is unchanged.
+The shared provider contract covers HTTP/HTTPS proxy routing, concurrent pages,
+HttpOnly cookies, LocalStorage, IndexedDB, profile-scoped clearing, reopening,
+and removal without affecting another profile. HTTPS routing is checked with a
+rejecting upstream tunnel; no test-only certificate bypass is added to the app.
+Go proxy unit tests separately cover successful TLS forwarding and authentication.
+These cases run in the existing `test.yml` WebView jobs; existing mobile build jobs
+compile the Android/iOS bridge. No separate Flutter test application is required.

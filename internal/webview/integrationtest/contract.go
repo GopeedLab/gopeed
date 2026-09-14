@@ -248,7 +248,14 @@ func openTestPage(t *testing.T, provider enginewebview.Provider, opts enginewebv
 		t.Fatalf("failed to open webview: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = runtime.Close()
+		if err := runtime.Close(); err != nil {
+			t.Errorf("close contract page: %v", err)
+		}
+		if remover, ok := provider.(enginewebview.ProfileRemover); ok {
+			if err := remover.RemoveProfile(profileID, path); err != nil {
+				t.Errorf("remove contract profile: %v", err)
+			}
+		}
 	})
 
 	return page, server, server.URL

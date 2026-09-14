@@ -27,7 +27,8 @@ Android requires `MULTI_PROFILE` and `PROXY_OVERRIDE`; unsupported runtimes retu
 an explicit unavailable error rather than opening a shared, unproxied browser.
 
 When updating upstream, refresh these three packages, reapply the above changes,
-and run `tool/webview_profile_check.dart` on a native Apple host. Do not patch the
+and run the shared Go provider integration tests against the normal Flutter app
+on a native Apple host (see `internal/webview/rpcprovider/README.md`). Do not patch the
 user's pub cache: dependency_overrides selects these tracked sources reproducibly.
 
 Android uses AndroidX WebKit 1.13.0 for profile-scoped full browsing-data deletion.
