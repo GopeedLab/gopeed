@@ -195,6 +195,7 @@ final public class InAppWebView extends InputAwareWebView implements InAppWebVie
     super(context, containerView, customSettings.useHybridComposition);
     if (!customSettings.gopeedProfileId.isEmpty()) {
       WebViewCompat.setProfile(this, customSettings.gopeedProfileId);
+      com.pichillilorenzo.flutter_inappwebview_android.GopeedProfiles.viewCreated(this, customSettings.gopeedProfileId);
     }
     this.plugin = plugin;
     this.id = id;
@@ -2107,5 +2108,6 @@ final public class InAppWebView extends InputAwareWebView implements InAppWebVie
   @Override
   public void destroy() {
     super.destroy();
+    com.pichillilorenzo.flutter_inappwebview_android.GopeedProfiles.viewDestroyed(this);
   }
 }

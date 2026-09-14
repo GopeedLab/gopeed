@@ -15,7 +15,11 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 
 // Internal host bridge: profile creation and proxy completion precede navigation.
-final class GopeedProfiles {
+public final class GopeedProfiles {
+  private static final java.util.Map<android.webkit.WebView, String> views = new java.util.IdentityHashMap<>();
+
+  public static void viewCreated(android.webkit.WebView view, String id) { views.put(view, id); }
+  public static void viewDestroyed(android.webkit.WebView view) { views.remove(view); }
   private static SharedPreferences preferences;
   private static final Set<String> cleared = new HashSet<>();
   private static final String DELETIONS = "pendingDeletions";
@@ -47,6 +51,26 @@ final class GopeedProfiles {
   }
 
   static void remove(MethodCall call, MethodChannel.Result result) {
+    waitForViews(call, result, 100);
+  }
+
+  private static void waitForViews(MethodCall call, MethodChannel.Result result, int attempts) {
+    String id = call.argument("gopeedProfileId");
+    if (views.containsValue(id)) {
+      if (attempts <= 0) {
+        result.error("PROFILE_REMOVE_FAILED", "WebView pages have not finished closing", null);
+        return;
+      }
+      // The plugin destroys WebViews asynchronously after about:blank loads.
+      // Wait for actual native destruction, not just Dart widget disposal.
+      new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+          () -> waitForViews(call, result, attempts - 1), 100);
+      return;
+    }
+    removeData(call, result);
+  }
+
+  private static void removeData(MethodCall call, MethodChannel.Result result) {
     if (!WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)) {
       result.error("UNAVAILABLE", "Android WebView profile removal is unavailable", null);
       return;
