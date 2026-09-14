@@ -49,6 +49,10 @@ func RunProfileContract(t *testing.T, provider webview.Provider) {
 	assertProfileValue(t, shared, `() => localStorage.getItem('owner')`, "a")
 	assertProfileValue(t, shared, profileDatabaseScript(false), "saved")
 	assertProfileCookies(t, shared, "a", "shared profile A")
+	storedCookies, err := shared.GetCookies()
+	if err != nil || len(storedCookies) != 1 || storedCookies[0].Expires.Before(time.Now()) {
+		t.Fatalf("persistent cookie lost its expiration: %#v, error %v", storedCookies, err)
+	}
 	assertProfileValue(t, shared, `() => document.cookie`, "") // HttpOnly stays hidden.
 	if err := second.ClearCookies(); err != nil {
 		t.Fatal(err)
