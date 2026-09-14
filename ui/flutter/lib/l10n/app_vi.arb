@@ -104,6 +104,7 @@
   "extensions": "Tiện ích mở rộng",
   "extensionInstallUrl": "Liên kết cài đặt",
   "extensionInstallSuccess": "Cài đặt thành công",
+  "extensionUpdateConfirm": "Cập nhật “{name}” lên phiên bản mới nhất?",
   "extensionUpdateSuccess": "Cập nhật thành công",
   "extensionDelete": "Xóa tiện ích mở rộng",
   "extensionAlreadyLatest": "Đây đã là phiên bản mới nhất",
@@ -443,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "Phiên bản web không hỗ trợ sửa cấu hình API trực tuyến. Hãy cập nhật tùy chọn khởi động máy chủ hoặc tệp cấu hình rồi khởi động lại dịch vụ để áp dụng thay đổi.",
   "webMcpApiTokenHint": "Nếu đã cấu hình API Token, bạn cần truyền thông tin xác thực khi kết nối tác nhân",
   "useMcpApiTokenTemplate": "Chuyển sang cấu hình có xác thực",
-  "mcpRequiresTcp": "Hướng dẫn kết nối tác nhân khả dụng khi giao thức API là TCP."
+  "mcpRequiresTcp": "Hướng dẫn kết nối tác nhân khả dụng khi giao thức API là TCP.",
+  "emptyTaskCreateHint": "Nhấn {action} để bắt đầu tải xuống"
 }

@@ -37,6 +37,8 @@ import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
+import '../../application/task_list_navigation.dart';
+import '../widgets/history_search_field.dart';
 import '../widgets/create_task_action_buttons.dart';
 import '../widgets/resolve_file_tree.dart';
 
@@ -687,24 +689,27 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: palette.border)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CreateTaskActionButtons(
-                    submitting: _creating,
-                    onCancel: _closeWindow,
-                    onSubmit: _confirm,
-                    cancelLabel: context.l10n.cancel,
-                    submitLabel: context.l10n.confirm,
-                    cancelButtonKey: const ValueKey('create-task-cancel-button'),
-                    submitButtonKey: const ValueKey('create-task-confirm-button'),
-                  ),
-                ],
+            SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: palette.border)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CreateTaskActionButtons(
+                      submitting: _creating,
+                      onCancel: _closeWindow,
+                      onSubmit: _confirm,
+                      cancelLabel: context.l10n.cancel,
+                      submitLabel: context.l10n.confirm,
+                      cancelButtonKey: const ValueKey('create-task-cancel-button'),
+                      submitButtonKey: const ValueKey('create-task-confirm-button'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -732,6 +737,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       } catch (error) {
         debugPrint('Unable to select downloading tasks: $error');
       }
+    } else {
+      ref.read(taskListNavigationProvider.notifier).showDownloading();
     }
     await _closeWindow();
   }
@@ -1244,20 +1251,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 height: screenSize.height < 560 ? screenSize.height * 0.55 : 360,
                 child: Column(
                   children: [
-                    SizedBox(
-                      height: 38,
-                      child: AppTextField(
-                        key: const ValueKey('create-history-filter'),
-                        controller: filterController,
-                        placeholder: Text(
-                          dialogContext.l10n.searchHistory,
-                          style: TextStyle(color: palette.searchHint, fontSize: 13),
-                        ),
-                        features: [
-                          InputFeature.leading(Icon(Icons.search_rounded, size: 15, color: palette.textMuted)),
-                        ],
-                        onChanged: (value) => setDialogState(() => filterQuery = value),
-                      ),
+                    HistorySearchField(
+                      controller: filterController,
+                      onChanged: (value) => setDialogState(() => filterQuery = value),
                     ),
                     const SizedBox(height: 10),
                     Expanded(

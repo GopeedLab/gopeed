@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
+import '../../../../../core/window/app_window_chrome.dart';
 import '../../../../../shared/theme/app_design_tokens.dart';
 import '../../../../../shared/theme/app_palette.dart';
 import '../../../domain/task_record.dart';
@@ -237,7 +238,10 @@ class _ProgressContent extends StatelessWidget {
       TaskStatus.downloading => [(Icons.pause, onPause), (Icons.close, onDelete)],
       TaskStatus.paused => [(Icons.play_arrow, onResume), (Icons.close, onDelete)],
       TaskStatus.failed => [(Icons.refresh, onResume), (Icons.delete_outline, onDelete)],
-      TaskStatus.completed => [(Icons.folder_open_outlined, null), (Icons.delete_outline, onDelete)],
+      TaskStatus.completed => [
+        if (AppWindowChrome.isDesktopWindow) (Icons.folder_open_outlined, null),
+        (Icons.delete_outline, onDelete),
+      ],
     };
 
     return actions
@@ -306,7 +310,10 @@ class _CompletedContent extends StatelessWidget {
       TaskStatus.downloading => [(Icons.pause, null), (Icons.close, onDelete)],
       TaskStatus.paused => [(Icons.play_arrow, null), (Icons.close, onDelete)],
       TaskStatus.failed => [(Icons.refresh, null), (Icons.delete_outline, onDelete)],
-      TaskStatus.completed => [(Icons.folder_open_outlined, onReveal), (Icons.delete_outline, onDelete)],
+      TaskStatus.completed => [
+        if (AppWindowChrome.isDesktopWindow) (Icons.folder_open_outlined, onReveal),
+        (Icons.delete_outline, onDelete),
+      ],
     };
 
     return actions

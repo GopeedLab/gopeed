@@ -111,6 +111,14 @@
   "extensions": "Extensions",
   "extensionInstallUrl": "Install URL",
   "extensionInstallSuccess": "Installed successfully",
+  "extensionUpdateConfirm": "Update “{name}” to the latest version?",
+  "@extensionUpdateConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "extensionUpdateSuccess": "Updated successfully",
   "extensionDelete": "Delete Extension",
   "extensionAlreadyLatest": "It's already the latest version",
@@ -627,5 +635,14 @@
   "webMcpApiTokenHint": "If you configured an API token, authentication information is required when connecting the agent",
   "useMcpApiTokenTemplate": "Switch to authenticated configuration",
   "webApiConfigReadOnlyHelp": "The web version cannot modify API settings online. Update the server startup options or configuration file, then restart the service for changes to take effect.",
-  "mcpRequiresTcp": "Agent connection instructions are available when the API protocol is TCP."
+  "mcpRequiresTcp": "Agent connection instructions are available when the API protocol is TCP.",
+  "emptyTaskCreateHint": "Click {action} to start downloading",
+  "@emptyTaskCreateHint": {
+    "description": "Empty-list guidance; action is replaced with an inline create button.",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  }
 }

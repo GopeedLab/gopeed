@@ -104,6 +104,7 @@
   "extensions": "Estensioni",
   "extensionInstallUrl": "Installa URL",
   "extensionInstallSuccess": "Installato con successo",
+  "extensionUpdateConfirm": "Aggiornare «{name}» alla versione più recente?",
   "extensionUpdateSuccess": "Aggiornato con successo",
   "extensionDelete": "Elimina estensione",
   "extensionAlreadyLatest": "È già l'ultima versione",
@@ -443,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "La versione web non consente di modificare online le impostazioni API. Aggiorna le opzioni di avvio del server o il file di configurazione, quindi riavvia il servizio per applicare le modifiche.",
   "webMcpApiTokenHint": "Se hai configurato un token API, devi fornire le informazioni di autenticazione quando colleghi l’agente",
   "useMcpApiTokenTemplate": "Passa alla configurazione autenticata",
-  "mcpRequiresTcp": "Le istruzioni per connettere gli agenti sono disponibili quando il protocollo API è TCP."
+  "mcpRequiresTcp": "Le istruzioni per connettere gli agenti sono disponibili quando il protocollo API è TCP.",
+  "emptyTaskCreateHint": "Fai clic su {action} per iniziare il download"
 }

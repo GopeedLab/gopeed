@@ -104,6 +104,7 @@
   "extensions": "Ekstensi",
   "extensionInstallUrl": "URL Instal",
   "extensionInstallSuccess": "Diinstal dengan sukses",
+  "extensionUpdateConfirm": "Perbarui “{name}” ke versi terbaru?",
   "extensionUpdateSuccess": "Diperbaruhi dengan sukses",
   "extensionDelete": "Hapus Ekstensi",
   "extensionAlreadyLatest": "Ini sudah versi terbaru",
@@ -443,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "Versi web tidak dapat mengubah pengaturan API secara online. Perbarui opsi startup server atau file konfigurasi, lalu mulai ulang layanan agar perubahan diterapkan.",
   "webMcpApiTokenHint": "Jika Anda telah mengatur token API, informasi autentikasi harus disertakan saat menghubungkan agen",
   "useMcpApiTokenTemplate": "Beralih ke konfigurasi terautentikasi",
-  "mcpRequiresTcp": "Petunjuk koneksi agen tersedia saat protokol API menggunakan TCP."
+  "mcpRequiresTcp": "Petunjuk koneksi agen tersedia saat protokol API menggunakan TCP.",
+  "emptyTaskCreateHint": "Klik {action} untuk mulai mengunduh"
 }

@@ -111,6 +111,7 @@
   "extensions": "Uzantılar",
   "extensionInstallUrl": "Quraşdırma URL-i",
   "extensionInstallSuccess": "Uğurla quraşdırıldı",
+  "extensionUpdateConfirm": "“{name}” ən son versiyaya yenilənsin?",
   "extensionUpdateSuccess": "Uğurla yeniləndi",
   "extensionDelete": "Uzantını Sil",
   "extensionAlreadyLatest": "Artıq son versiyadır",
@@ -627,5 +628,6 @@
   "webMcpApiTokenHint": "Əgər API açarı konfiqurasiya etmisinizsə, agenti qoşarkən doğrulama məlumatı tələb olunur",
   "useMcpApiTokenTemplate": "Doğrulamalı konfiqurasiyaya keç",
   "webApiConfigReadOnlyHelp": "Veb versiyası API parametrlərinin onlayn dəyişdirilməsini dəstəkləmir. Server başlanğıc seçimlərini və ya konfiqurasiya faylını yeniləyin, sonra dəyişikliklərin qüvvəyə minməsi üçün xidməti yenidən başladın.",
-  "mcpRequiresTcp": "Agent əlaqə təlimatları API protokolu TCP olduqda mövcuddur."
+  "mcpRequiresTcp": "Agent əlaqə təlimatları API protokolu TCP olduqda mövcuddur.",
+  "emptyTaskCreateHint": "Endirməyə başlamaq üçün {action} düyməsinə klikləyin"
 }

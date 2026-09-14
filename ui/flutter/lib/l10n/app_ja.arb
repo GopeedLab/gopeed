@@ -104,6 +104,7 @@
   "extensions": "拡張機能",
   "extensionInstallUrl": "インストールURL",
   "extensionInstallSuccess": "正常にインストールされました",
+  "extensionUpdateConfirm": "「{name}」を最新バージョンに更新しますか？",
   "extensionUpdateSuccess": "正常に更新されました",
   "extensionDelete": "拡張機能を削除",
   "extensionAlreadyLatest": "既に最新バージョンです",
@@ -443,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "Web 版では API 設定をオンラインで変更できません。サーバーの起動オプションまたは設定ファイルを変更し、サービスを再起動して反映してください。",
   "webMcpApiTokenHint": "API トークンを設定している場合、エージェント接続時に認証情報を渡す必要があります",
   "useMcpApiTokenTemplate": "認証付き設定に切り替える",
-  "mcpRequiresTcp": "API プロトコルが TCP の場合にエージェント接続手順を利用できます。"
+  "mcpRequiresTcp": "API プロトコルが TCP の場合にエージェント接続手順を利用できます。",
+  "emptyTaskCreateHint": "{action}をクリックしてダウンロードを開始"
 }

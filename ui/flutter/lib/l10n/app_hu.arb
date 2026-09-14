@@ -104,6 +104,7 @@
   "extensions": "Bővítmények",
   "extensionInstallUrl": "Telepítési URL",
   "extensionInstallSuccess": "Sikeresen telepítve",
+  "extensionUpdateConfirm": "Frissíti a(z) „{name}” bővítményt a legújabb verzióra?",
   "extensionUpdateSuccess": "Sikeresen frissítve",
   "extensionDelete": "Bővítmény törlése",
   "extensionAlreadyLatest": "Ez már a legfrissebb verzió",
@@ -443,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "A webes verzióban az API-beállítások nem módosíthatók online. Módosítsd a kiszolgáló indítási beállításait vagy a konfigurációs fájlt, majd indítsd újra a szolgáltatást.",
   "webMcpApiTokenHint": "Ha API-tokent állítottál be, az ügynök csatlakoztatásakor meg kell adni a hitelesítési adatokat",
   "useMcpApiTokenTemplate": "Váltás hitelesített konfigurációra",
-  "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP."
+  "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP.",
+  "emptyTaskCreateHint": "Kattints a {action} gombra a letöltés indításához"
 }

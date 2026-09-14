@@ -104,6 +104,7 @@
   "extensions": "Extensions",
   "extensionInstallUrl": "URL d'instal·lació",
   "extensionInstallSuccess": "S'ha instal·lat amb èxit",
+  "extensionUpdateConfirm": "Vols actualitzar «{name}» a la versió més recent?",
   "extensionUpdateSuccess": "S'ha actualitzat amb èxit",
   "extensionDelete": "Suprimeix l'extensió",
   "extensionAlreadyLatest": "Ja està actualitzada",
@@ -443,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "La versió web no permet modificar la configuració de l’API en línia. Actualitza les opcions d’inici del servidor o el fitxer de configuració i reinicia el servei perquè els canvis tinguin efecte.",
   "webMcpApiTokenHint": "Si heu configurat un token d’API, cal proporcionar la informació d’autenticació en connectar l’agent",
   "useMcpApiTokenTemplate": "Canvia a la configuració autenticada",
-  "mcpRequiresTcp": "Les instruccions de connexió d’agents estan disponibles quan el protocol de l’API és TCP."
+  "mcpRequiresTcp": "Les instruccions de connexió d’agents estan disponibles quan el protocol de l’API és TCP.",
+  "emptyTaskCreateHint": "Fes clic a {action} per començar a baixar"
 }

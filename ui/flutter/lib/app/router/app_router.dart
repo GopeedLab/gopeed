@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,8 @@ import '../../features/tasks/domain/task_record.dart';
 import '../../features/tasks/presentation/pages/task_details_page.dart';
 import '../../features/tasks/presentation/pages/task_files_page.dart';
 import 'shells/main_shell.dart';
+import 'mobile_exit_guard.dart';
+import 'runtime_page.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -27,6 +30,36 @@ class AppRouter {
   }
 
   static GoRouter build(WebAuthController webAuthController) {
+    // Keep desktop and web sections as peers; native mobile retains home below them.
+    final isMobile =
+        !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+    final sectionRoutes = [
+      GoRoute(
+        path: isMobile ? 'extensions' : '/extensions',
+        builder: _runtimePage((context, state) => const ExtensionsPage()),
+        routes: [
+          GoRoute(
+            path: ':id',
+            builder: _runtimePage(
+              (context, state) => ExtensionDetailsPage(
+                extensionId: state.pathParameters['id'] ?? '',
+                initialItem: state.extra is ExtensionListItem ? state.extra as ExtensionListItem : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: isMobile ? 'settings' : '/settings',
+        builder: _runtimePage((context, state) => const SettingsPage()),
+        routes: [
+          GoRoute(
+            path: ':section',
+            builder: _runtimePage((context, state) => SettingsPage(sectionKey: state.pathParameters['section'])),
+          ),
+        ],
+      ),
+    ];
     return GoRouter(
       navigatorKey: rootNavigatorKey,
       refreshListenable: webAuthController,
@@ -44,58 +77,45 @@ class AppRouter {
       routes: [
         GoRoute(path: '/login', parentNavigatorKey: rootNavigatorKey, builder: (context, state) => const LoginPage()),
         ShellRoute(
-          builder: (context, state, child) => MainShell(child: child),
+          builder: (context, state, child) => MobileExitGuard(child: MainShell(child: child)),
           routes: [
             GoRoute(
               path: '/',
-              builder: (context, state) => const HomePage(),
+              builder: _runtimePage((context, state) => const HomePage()),
               routes: [
-                GoRoute(path: 'create', builder: (context, state) => const CreateTaskWindowPage()),
+                GoRoute(path: 'create', builder: _runtimePage((context, state) => const CreateTaskWindowPage())),
                 GoRoute(
                   path: 'tasks/:id',
-                  builder: (context, state) => TaskDetailsPage(
-                    taskId: state.pathParameters['id'] ?? '',
-                    initialTask: state.extra is TaskRecord ? state.extra as TaskRecord : null,
+                  builder: _runtimePage(
+                    (context, state) => TaskDetailsPage(
+                      taskId: state.pathParameters['id'] ?? '',
+                      initialTask: state.extra is TaskRecord ? state.extra as TaskRecord : null,
+                    ),
                   ),
                   routes: [
                     GoRoute(
                       path: 'files',
-                      builder: (context, state) => TaskFilesPage(
-                        taskId: state.pathParameters['id'] ?? '',
-                        initialTask: state.extra is TaskRecord ? state.extra as TaskRecord : null,
+                      builder: _runtimePage(
+                        (context, state) => TaskFilesPage(
+                          taskId: state.pathParameters['id'] ?? '',
+                          initialTask: state.extra is TaskRecord ? state.extra as TaskRecord : null,
+                        ),
                       ),
                     ),
                   ],
                 ),
+                if (isMobile) ...sectionRoutes,
               ],
             ),
-            GoRoute(
-              path: '/extensions',
-              builder: (context, state) => const ExtensionsPage(),
-              routes: [
-                GoRoute(
-                  path: ':id',
-                  builder: (context, state) => ExtensionDetailsPage(
-                    extensionId: state.pathParameters['id'] ?? '',
-                    initialItem: state.extra is ExtensionListItem ? state.extra as ExtensionListItem : null,
-                  ),
-                ),
-              ],
-            ),
-            GoRoute(
-              path: '/settings',
-              builder: (context, state) => const SettingsPage(),
-              routes: [
-                GoRoute(
-                  path: ':section',
-                  builder: (context, state) => SettingsPage(sectionKey: state.pathParameters['section']),
-                ),
-              ],
-            ),
+            if (!isMobile) ...sectionRoutes,
           ],
         ),
       ],
     );
+  }
+
+  static GoRouterWidgetBuilder _runtimePage(GoRouterWidgetBuilder builder) {
+    return (context, state) => RuntimePage(builder: (context) => builder(context, state));
   }
 
   static String _safeReturnLocation(String? location) {
