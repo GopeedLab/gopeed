@@ -135,12 +135,18 @@ func (p *pageWrapper) start() error {
 		if err := w.Bind(p.callbackName, func(payload string) error {
 			return p.handleCallback(payload)
 		}); err != nil {
+			w.Destroy()
 			p.ready <- err
+			close(p.done)
 			return
 		}
 
 		applyWindowOptions(w, p.opts)
 		w.SetHtml(buildBootstrapHTML(p.callbackName, p.readyID))
+		if runtimepkg.GOOS == "linux" {
+			// All GTK pages share the process-wide event loop below.
+			return
+		}
 		w.Run()
 		w.Destroy()
 		close(p.done)
@@ -326,7 +332,12 @@ func (p *pageWrapper) Close() error {
 		// the quit message lands on the correct queue.
 		terminateDone := make(chan struct{})
 		w.Dispatch(func() {
-			w.Terminate()
+			if runtimepkg.GOOS == "linux" {
+				w.Destroy()
+				close(p.done)
+			} else {
+				w.Terminate()
+			}
 			close(terminateDone)
 		})
 		<-terminateDone
