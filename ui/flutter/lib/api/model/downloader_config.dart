@@ -56,6 +56,7 @@ class ProtocolConfig {
   HttpConfig http = HttpConfig();
   BtConfig bt = BtConfig();
   Ed2kConfig ed2k = Ed2kConfig();
+  HlsConfig hls = HlsConfig();
 
   ProtocolConfig();
 
@@ -63,6 +64,25 @@ class ProtocolConfig {
       json == null ? ProtocolConfig() : _$ProtocolConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$ProtocolConfigToJson(this);
+}
+
+@JsonSerializable()
+class HlsConfig {
+  int segmentConnections;
+  int maxRetries;
+  int timeoutSeconds;
+  bool prefetchContentLength;
+
+  HlsConfig({
+    this.segmentConnections = 0,
+    this.maxRetries = 0,
+    this.timeoutSeconds = 0,
+    this.prefetchContentLength = false,
+  });
+
+  factory HlsConfig.fromJson(Map<String, dynamic> json) => _$HlsConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$HlsConfigToJson(this);
 }
 
 @JsonSerializable()

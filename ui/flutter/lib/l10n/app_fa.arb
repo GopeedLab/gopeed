@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "ذخیره به‌عنوان پوشه پیش‌فرض دانلود",
   "downloadDirValid": "لطفا دایرکتوری دانلود را انتخاب کنید",
   "connections": "اتصالات",
+  "maxRetries": "حداکثر تلاش مجدد",
   "useServerCtime": "استفاده از زمان سرور برای ایجاد فایل",
   "maxRunning": "حداکثر وظایف در حال اجرا",
   "defaultDirectDownload": "دانلود مستقیم را به صورت پیش فرض بررسی کنید",

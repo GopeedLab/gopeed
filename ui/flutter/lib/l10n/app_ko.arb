@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "기본 다운로드 폴더로 저장",
   "downloadDirValid": "다운로드 폴더를 선택해 주세요",
   "connections": "연결 수",
+  "maxRetries": "최대 재시도 횟수",
   "useServerCtime": "파일 생성 시간에 서버 시간 사용",
   "maxRunning": "최대 동시 작업 수",
   "defaultDirectDownload": "기본으로 바로 다운로드 사용",

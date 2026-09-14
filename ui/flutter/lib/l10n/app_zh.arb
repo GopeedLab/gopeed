@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "保存为默认下载目录",
   "downloadDirValid": "请选择下载目录",
   "connections": "连接数",
+  "maxRetries": "最大重试次数",
   "useServerCtime": "创建文件使用服务器时间",
   "maxRunning": "最大下载数",
   "defaultDirectDownload": "默认启用直接下载",

@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Enregistrer comme dossier de téléchargement par défaut",
   "downloadDirValid": "Veuillez sélectionner le répertoire de téléchargement",
   "connections": "Connexions",
+  "maxRetries": "Nombre maximal de tentatives",
   "useServerCtime": "Utiliser l'heure du serveur pour la création de fichier",
   "maxRunning": "Tâches en cours maximum",
   "defaultDirectDownload": "Vérifiez le téléchargement direct par défaut",

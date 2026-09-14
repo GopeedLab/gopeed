@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Desa com a carpeta de baixades predeterminada",
   "downloadDirValid": "Seleccioneu la carpeta de baixades",
   "connections": "Connexions",
+  "maxRetries": "Reintents màxims",
   "useServerCtime": "Utilitza l'hora del servidor per a la creació de fitxers",
   "maxRunning": "Màxim de tasques en execució",
   "defaultDirectDownload": "Activa la baixada directa per defecte",

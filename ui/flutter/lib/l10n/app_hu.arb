@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Mentés alapértelmezett letöltési mappaként",
   "downloadDirValid": "Kérjük, válassza ki a letöltési könyvtárat",
   "connections": "Kapcsolatok",
+  "maxRetries": "Maximális újrapróbálkozások",
   "useServerCtime": "Használja a szerveridőt a fájl létrehozásához",
   "maxRunning": "Maximális futó feladatok",
   "defaultDirectDownload": "Alapértelmezettként ellenőrizze a közvetlen letöltést",

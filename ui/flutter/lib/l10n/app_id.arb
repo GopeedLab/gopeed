@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Simpan sebagai folder unduhan default",
   "downloadDirValid": "Silahkan pilih direktori unduhan",
   "connections": "Koneksi",
+  "maxRetries": "Percobaan ulang maks.",
   "useServerCtime": "Gunakan waktu server untuk pembuatan file",
   "maxRunning": "Tugas Maksimum yang Berjalan",
   "defaultDirectDownload": "Pilih unduhan langsung sebagai opsi standar",
