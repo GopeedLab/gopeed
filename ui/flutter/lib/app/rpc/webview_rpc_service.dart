@@ -467,6 +467,8 @@ class WebViewRpcPageSession {
             'path': cookie.path ?? '/',
             'secure': cookie.isSecure,
             'httpOnly': cookie.isHttpOnly,
+            if (cookie.expiresDate != null)
+              'expires': DateTime.fromMillisecondsSinceEpoch(cookie.expiresDate!, isUtc: true).toIso8601String(),
           };
         })
         .toList(growable: false);
