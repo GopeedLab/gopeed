@@ -10,6 +10,19 @@ Different identities use different native stores. Go providers use a SHA-256-bas
 path under `<StorageDir>/webview`; Apple RPC hosts use a stable UUID data store;
 Android uses a named WebView profile. Cookie operations select that same store,
 including `clearCookies`. Closing an execution closes its pages, not its profile.
+Uninstall closes the extension's pages, prevents its old runtimes from opening
+new pages, and removes its native profile before deleting the extension record.
+Cleanup failures abort uninstall and can be retried. Reinstallation starts with
+empty browser data; an ordinary extension update keeps the existing profile.
+Windows/Linux delete the profile directory; Apple removes the named WebKit store.
+Android cannot delete a profile already loaded by the current process: when
+DELETE_BROWSING_DATA is supported it clears all site data immediately, and records
+an empty-profile deletion in SharedPreferences for the next process start. A
+reinstallation may reuse that cleared profile and cancels the pending deletion.
+If the full-data clearing API is unavailable, uninstall fails with a restart
+instruction; the pending profile is deleted at startup before it can be loaded.
+No removal operation is exposed through extension JavaScript.
+
 Existing shared browser data is not copied into every extension's new profile.
 
 The downloader lazily owns one loopback forward proxy with HTTP and SOCKS5

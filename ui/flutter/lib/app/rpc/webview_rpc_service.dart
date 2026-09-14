@@ -130,6 +130,9 @@ class WebViewRpcService {
     switch (method) {
       case 'webview.isAvailable':
         return {'available': true};
+      case 'profile.remove':
+        await _removeProfile(_string(params, 'profileId'));
+        return {};
       case 'page.open':
         return _openPage(params);
       case 'page.addInitScript':
@@ -186,6 +189,15 @@ class WebViewRpcService {
       rethrow;
     }
     return {'pageId': pageId};
+  }
+
+  Future<void> _removeProfile(String id) async {
+    for (final page in _pagesById.values.where((page) => page.cookieManager.id == id).toList()) {
+      await _closePage(page.pageId);
+    }
+    // Let visible platform views unmount before releasing their native store.
+    await WidgetsBinding.instance.endOfFrame;
+    await WebViewProfile(id).remove();
   }
 
   WebViewRpcPageSession _page(Map<String, dynamic> params) {

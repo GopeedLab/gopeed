@@ -11,7 +11,9 @@ Future<void> main() async {
   runApp(const MaterialApp(home: SizedBox()));
   try {
     await checkProfiles();
-    stdout.writeln('PASS: native proxy, concurrent profiles, cookies, LocalStorage, IndexedDB and reopening');
+    stdout.writeln(
+      'PASS: native proxy, concurrent profiles, cookies, LocalStorage, IndexedDB, reopening and profile deletion',
+    );
     exit(0);
   } catch (error, stack) {
     stderr.writeln('FAIL: $error\n$stack');
@@ -190,11 +192,27 @@ Future<void> checkProfiles() async {
     expectValue((await a.getCookies(url: target)).single.isHttpOnly, true);
     await a.deleteCookie(url: target, name: 'session', domain: 'profiles.invalid');
     expectValue((await a.getCookies(url: target)).length, 0);
+    for (final page in pages) {
+      await page.dispose();
+    }
+    pages.clear();
+    final untouched = await open(b);
+    await js(untouched, "localStorage.setItem('owner','other')");
+    await a.setCookie(url: target, name: 'delete-me', value: 'secret', isHttpOnly: true);
+    await a.remove();
+    await a.remove(); // Uninstall retries must be safe.
+    final reinstalled = await open(a);
+    expectValue(await js(reinstalled, "localStorage.getItem('owner')"), null);
+    expectValue(await database(reinstalled, false), null);
+    expectValue((await a.getCookies(url: target)).length, 0);
+    expectValue(await js(untouched, "localStorage.getItem('owner')"), 'other');
     if (proxyHits == 0) throw StateError('Browser bypassed proxy');
   } finally {
     for (final page in pages) {
       await page.dispose();
     }
+    await a.remove();
+    await b.remove();
     await proxy.close();
     await plainOrigin.close(force: true);
     await origin.close(force: true);

@@ -5,6 +5,7 @@ import "encoding/json"
 const RPCEndpointPath = "/webview"
 
 const (
+	MethodProfileRemove     = "profile.remove"
 	MethodIsAvailable       = "webview.isAvailable"
 	MethodPageOpen          = "page.open"
 	MethodPageAddInitScript = "page.addInitScript"
@@ -147,3 +148,8 @@ type PageCloseParams struct {
 }
 
 type EmptyResult struct{}
+
+// ProfileRemoveParams belongs to the private host RPC.
+type ProfileRemoveParams struct {
+	ProfileID string `json:"profileId"`
+}

@@ -87,6 +87,7 @@ public class InAppWebViewFlutterPlugin implements FlutterPlugin, ActivityAware {
 
   private void onAttachedToEngine(Context applicationContext, BinaryMessenger messenger, Activity activity, PlatformViewRegistry platformViewRegistry, FlutterView flutterView) {
     this.applicationContext = applicationContext;
+    GopeedProfiles.initialize(applicationContext);
     this.activity = activity;
     this.messenger = messenger;
     this.flutterView = flutterView;

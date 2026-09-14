@@ -11,7 +11,7 @@ are available in the parent commit's pubspec.lock.
 
 Local native changes are limited to:
 
-- `GopeedProfiles`: prepare a persistent profile and apply the internal loopback
+- `GopeedProfiles`: remove profiles on uninstall and prepare a persistent profile and apply the internal loopback
   proxy before creating a WebView. Apple uses SOCKS5 to cover HTTP as well as HTTPS;
   Android uses the application-wide HTTP proxy override completion callback.
 - `InAppWebViewSettings` and `InAppWebView`: read the host-only `gopeedProfileId`
@@ -29,3 +29,7 @@ an explicit unavailable error rather than opening a shared, unproxied browser.
 When updating upstream, refresh these three packages, reapply the above changes,
 and run `tool/webview_profile_check.dart` on a native Apple host. Do not patch the
 user's pub cache: dependency_overrides selects these tracked sources reproducibly.
+
+Android uses AndroidX WebKit 1.13.0 for profile-scoped full browsing-data deletion.
+Loaded profile shells are queued durably for deletion before WebViews initialize
+at the next process start. No global cookie/cache clearing is used for uninstall.

@@ -17,6 +17,11 @@ type Opener interface {
 	Open(opts OpenOptions) (Page, error)
 }
 
+// ProfileRemover is a host-only lifecycle operation, never exposed to extension JS.
+type ProfileRemover interface {
+	RemoveProfile(profileID, dataPath string) error
+}
+
 type Page interface {
 	AddInitScript(script string) error
 	Goto(url string, opts GotoOptions) error

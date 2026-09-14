@@ -18,6 +18,10 @@ class WebViewProfile {
   final String id;
   static const _channel = MethodChannel('com.pichillilorenzo/flutter_inappwebview_cookiemanager');
 
+  Future<void> remove() async {
+    await _call('gopeed.removeProfile', {});
+  }
+
   Future<void> prepare(String proxyUrl) async {
     await _call('gopeed.prepareProfile', {'proxyUrl': proxyUrl});
   }

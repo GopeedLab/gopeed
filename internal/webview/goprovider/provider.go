@@ -618,3 +618,12 @@ func firstNonEmpty(values ...string) string {
 	}
 	return ""
 }
+
+func (p *Provider) RemoveProfile(profileID, dataPath string) error {
+	done := make(chan error, 1)
+	run := func() { done <- webview.RemoveProfile(dataPath) }
+	if !postMainThreadTask(run) {
+		run()
+	}
+	return <-done
+}

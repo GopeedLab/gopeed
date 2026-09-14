@@ -98,10 +98,12 @@ type Progress struct {
 }
 
 type Downloader struct {
-	webviewProxyLock sync.Mutex
-	webviewProxy     *webviewproxy.Server
-	Logger           *logger.Logger
-	ExtensionLogger  *logger.Logger
+	webviewProfilesLock sync.Mutex
+	webviewProfiles     map[string]*extensionWebViewProfile
+	webviewProxyLock    sync.Mutex
+	webviewProxy        *webviewproxy.Server
+	Logger              *logger.Logger
+	ExtensionLogger     *logger.Logger
 
 	cfg          *DownloaderConfig
 	fetcherCache map[string]fetcher.Fetcher

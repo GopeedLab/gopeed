@@ -49,6 +49,10 @@ public class MyCookieManager extends ChannelDelegateImpl {
 
   @Override
   public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
+    if (call.method.equals("gopeed.removeProfile")) {
+      GopeedProfiles.remove(call, result);
+      return;
+    }
     if (call.method.equals("gopeed.prepareProfile")) {
       GopeedProfiles.prepare(call, result);
       return;

@@ -22,6 +22,10 @@ public class MyCookieManager: ChannelDelegate {
     
     public override func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         let arguments = call.arguments as? NSDictionary
+        if call.method == "gopeed.removeProfile" {
+            GopeedProfiles.remove(arguments: arguments, result: result)
+            return
+        }
         if call.method == "gopeed.prepareProfile" {
             GopeedProfiles.prepare(arguments: arguments, result: result)
             return

@@ -29,7 +29,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        minSdkVersion 19
+        minSdkVersion 21
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         vectorDrawables.useSupportLibrary = true
@@ -49,7 +49,7 @@ android {
         }
     }
     dependencies {
-        implementation 'androidx.webkit:webkit:1.12.0'
+        implementation 'androidx.webkit:webkit:1.13.0'
         implementation 'androidx.browser:browser:1.8.0'
         implementation 'androidx.appcompat:appcompat:1.6.1'
         implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
