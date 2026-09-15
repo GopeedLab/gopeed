@@ -144,7 +144,7 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
 
   Map<String, dynamic> _decodeParams(String params) {
     final safeParams = params.replaceAll('"', '').replaceAll(' ', '+');
-    final paramsJson = String.fromCharCodes(base64Decode(base64.normalize(safeParams)));
+    final paramsJson = utf8.decode(base64Decode(base64.normalize(safeParams)));
     return jsonDecode(paramsJson) as Map<String, dynamic>;
   }
 

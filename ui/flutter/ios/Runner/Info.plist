@@ -24,6 +24,9 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- app_links owns scheme navigation for both task creation and extension installation. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -112,6 +115,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
+        <string>processing</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
@@ -153,5 +157,14 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>$(PRODUCT_BUNDLE_IDENTIFIER).continuedDownload.*</string>
+    </array>
 </dict>
 </plist>
