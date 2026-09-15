@@ -134,11 +134,12 @@ import UIKit
 
                 if #available(iOS 26.0, *) {
 
-                    result(
-                        GopeedContinuedProcessingManager
-                            .shared
-                            .setEnabled(enabled)
-                    )
+                    GopeedContinuedProcessingManager
+                        .shared
+                        .setEnabled(enabled) {
+                            success in
+                            result(success)
+                        }
 
                 } else {
 

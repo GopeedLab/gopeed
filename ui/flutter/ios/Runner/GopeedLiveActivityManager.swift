@@ -16,7 +16,9 @@ final class GopeedLiveActivityManager: NSObject {
 
     private var lastUpdateTime: [String: Date] = [:]
     private var suppressedTaskIDs = Set<String>()
-    private var activityCreationInProgress = Set<String>()
+    private var taskGenerations: [String: UUID] = [:]
+    private var activityCreationInProgress:
+        [String: UUID] = [:]
 
     private override init() {
         super.init()
@@ -33,6 +35,12 @@ final class GopeedLiveActivityManager: NSObject {
 
         if suppressed {
             suppressedTaskIDs.insert(taskID)
+            taskGenerations.removeValue(
+                forKey: taskID
+            )
+            lastUpdateTime.removeValue(
+                forKey: taskID
+            )
         } else {
             suppressedTaskIDs.remove(taskID)
         }
@@ -74,39 +82,117 @@ final class GopeedLiveActivityManager: NSObject {
         return suppressed
     }
 
-    private func beginActivityCreation(
+    private func startGeneration(
         taskID: String
+    ) -> UUID {
+        let generation = UUID()
+
+        stateLock.lock()
+        taskGenerations[taskID] = generation
+        lastUpdateTime.removeValue(
+            forKey: taskID
+        )
+        stateLock.unlock()
+
+        return generation
+    }
+
+    private func currentGeneration(
+        taskID: String
+    ) -> UUID? {
+        stateLock.lock()
+        let generation =
+            taskGenerations[taskID]
+        stateLock.unlock()
+
+        return generation
+    }
+
+    @discardableResult
+    private func invalidateGeneration(
+        taskID: String
+    ) -> UUID? {
+        stateLock.lock()
+        let generation =
+            taskGenerations.removeValue(
+                forKey: taskID
+            )
+        lastUpdateTime.removeValue(
+            forKey: taskID
+        )
+        stateLock.unlock()
+
+        return generation
+    }
+
+    private func isCurrentGeneration(
+        taskID: String,
+        generation: UUID
+    ) -> Bool {
+        stateLock.lock()
+        let isCurrent =
+            taskGenerations[taskID]
+            == generation
+        stateLock.unlock()
+
+        return isCurrent
+    }
+
+    private func beginActivityCreation(
+        taskID: String,
+        generation: UUID
     ) -> Bool {
         stateLock.lock()
         defer { stateLock.unlock() }
 
         guard
             !suppressedTaskIDs.contains(taskID),
-            !activityCreationInProgress.contains(taskID)
+            taskGenerations[taskID] == generation
         else {
             return false
         }
 
-        activityCreationInProgress.insert(taskID)
+        if activityCreationInProgress[taskID]
+            == generation {
+            return false
+        }
+
+        activityCreationInProgress[taskID] =
+            generation
+
         return true
     }
 
     private func endActivityCreation(
-        taskID: String
+        taskID: String,
+        generation: UUID
     ) {
         stateLock.lock()
-        activityCreationInProgress.remove(taskID)
+
+        if activityCreationInProgress[taskID]
+            == generation {
+            activityCreationInProgress
+                .removeValue(
+                    forKey: taskID
+                )
+        }
+
         stateLock.unlock()
     }
 
     private func shouldHandleProgress(
         taskID: String,
+        generation: UUID,
         now: Date
     ) -> Bool {
         stateLock.lock()
         defer { stateLock.unlock() }
 
-        guard !suppressedTaskIDs.contains(taskID) else {
+        guard
+            !suppressedTaskIDs.contains(taskID),
+            taskGenerations[taskID]
+                == generation
+        else {
             return false
         }
 
@@ -118,16 +204,6 @@ final class GopeedLiveActivityManager: NSObject {
 
         lastUpdateTime[taskID] = now
         return true
-    }
-
-    private func clearUpdateTime(
-        taskID: String
-    ) {
-        stateLock.lock()
-        lastUpdateTime.removeValue(
-            forKey: taskID
-        )
-        stateLock.unlock()
     }
 
     // MARK: - Gopeed event entry point
@@ -159,34 +235,61 @@ final class GopeedLiveActivityManager: NSObject {
         switch type {
 
         case "task.start":
+            let generation =
+                startGeneration(
+                    taskID: taskID
+                )
+
             Task {
                 await refreshActivity(
                     taskID: taskID,
                     name: name,
+                    generation: generation,
                     allowStart: true
                 )
             }
 
         case "task.progress":
+            guard
+                let generation =
+                    currentGeneration(
+                        taskID: taskID
+                    )
+            else {
+                return
+            }
+
             handleProgress(
                 taskID: taskID,
-                name: name
+                name: name,
+                generation: generation
             )
 
         case "task.pause":
-            Task {
-                await refreshActivity(
-                    taskID: taskID,
-                    name: name,
-                    allowStart: false
-                )
+            if let generation =
+                invalidateGeneration(
+                    taskID: taskID
+                ) {
+                Task {
+                    await removeActivity(
+                        taskID: taskID,
+                        generation: generation,
+                        reason: "paused"
+                    )
+                }
             }
 
         case "task.done":
-            Task {
-                await finishActivity(
+            if let generation =
+                invalidateGeneration(
                     taskID: taskID
-                )
+                ) {
+                Task {
+                    await finishActivity(
+                        taskID: taskID,
+                        generation: generation
+                    )
+                }
             }
 
         case "task.error":
@@ -194,18 +297,31 @@ final class GopeedLiveActivityManager: NSObject {
                 json["error"] as? String
                 ?? "Download failed"
 
-            Task {
-                await failActivity(
-                    taskID: taskID,
-                    error: error
-                )
+            if let generation =
+                invalidateGeneration(
+                    taskID: taskID
+                ) {
+                Task {
+                    await failActivity(
+                        taskID: taskID,
+                        generation: generation,
+                        error: error
+                    )
+                }
             }
 
         case "task.delete":
-            Task {
-                await removeActivity(
+            if let generation =
+                invalidateGeneration(
                     taskID: taskID
-                )
+                ) {
+                Task {
+                    await removeActivity(
+                        taskID: taskID,
+                        generation: generation,
+                        reason: "removed"
+                    )
+                }
             }
 
         default:
@@ -219,12 +335,14 @@ final class GopeedLiveActivityManager: NSObject {
     @available(iOS 16.2, *)
     private func handleProgress(
         taskID: String,
-        name: String
+        name: String,
+        generation: UUID
     ) {
         let now = Date()
 
         guard shouldHandleProgress(
             taskID: taskID,
+            generation: generation,
             now: now
         ) else {
             return
@@ -234,6 +352,7 @@ final class GopeedLiveActivityManager: NSObject {
             await refreshActivity(
                 taskID: taskID,
                 name: name,
+                generation: generation,
                 allowStart: true
             )
         }
@@ -470,7 +589,6 @@ final class GopeedLiveActivityManager: NSObject {
     private func findActivities(
         taskID: String
     ) -> [Activity<GopeedDownloadAttributes>] {
-
         return Activity<
             GopeedDownloadAttributes
         >
@@ -481,11 +599,27 @@ final class GopeedLiveActivityManager: NSObject {
     }
 
     @available(iOS 16.2, *)
+    private func findActivities(
+        taskID: String,
+        generation: UUID
+    ) -> [Activity<GopeedDownloadAttributes>] {
+        let generationID =
+            generation.uuidString
+
+        return findActivities(
+            taskID: taskID
+        )
+        .filter {
+            $0.attributes.generation
+                == generationID
+        }
+    }
+
+    @available(iOS 16.2, *)
     private func collapseDuplicateActivities(
         _ activities: [Activity<GopeedDownloadAttributes>],
         content: ActivityContent<GopeedDownloadAttributes.ContentState>
     ) async {
-
         guard let primary = activities.first else {
             return
         }
@@ -509,6 +643,29 @@ final class GopeedLiveActivityManager: NSObject {
         }
     }
 
+    @available(iOS 16.2, *)
+    private func removeStaleActivities(
+        taskID: String,
+        keeping generation: UUID
+    ) async {
+        let generationID =
+            generation.uuidString
+
+        let stale =
+            findActivities(taskID: taskID)
+                .filter {
+                    $0.attributes.generation
+                        != generationID
+                }
+
+        for activity in stale {
+            await activity.end(
+                nil,
+                dismissalPolicy: .immediate
+            )
+        }
+    }
+
 
     // MARK: - Start / update Activity
 
@@ -516,10 +673,16 @@ final class GopeedLiveActivityManager: NSObject {
     private func refreshActivity(
         taskID: String,
         name: String,
+        generation: UUID,
         allowStart: Bool
     ) async {
-
-        guard !isTaskSuppressed(taskID) else {
+        guard
+            !isTaskSuppressed(taskID),
+            isCurrentGeneration(
+                taskID: taskID,
+                generation: generation
+            )
+        else {
             return
         }
 
@@ -532,7 +695,13 @@ final class GopeedLiveActivityManager: NSObject {
             return
         }
 
-        guard !isTaskSuppressed(taskID) else {
+        guard
+            !isTaskSuppressed(taskID),
+            isCurrentGeneration(
+                taskID: taskID,
+                generation: generation
+            )
+        else {
             return
         }
 
@@ -547,7 +716,8 @@ final class GopeedLiveActivityManager: NSObject {
 
         let existing =
             findActivities(
-                taskID: taskID
+                taskID: taskID,
+                generation: generation
             )
 
         if !existing.isEmpty {
@@ -558,7 +728,10 @@ final class GopeedLiveActivityManager: NSObject {
             return
         }
 
-        guard allowStart else {
+        guard
+            allowStart,
+            runtime.status == "running"
+        else {
             return
         }
 
@@ -578,35 +751,60 @@ final class GopeedLiveActivityManager: NSObject {
                     .applicationState == .active
             }
 
-        guard appIsActive else {
+        guard
+            appIsActive,
+            !isTaskSuppressed(taskID),
+            isCurrentGeneration(
+                taskID: taskID,
+                generation: generation
+            )
+        else {
             return
         }
 
-        // Only one async caller may pass the creation gate for
-        // a given Gopeed task. This prevents task.start and early
-        // task.progress callbacks from creating multiple activities
-        // while their async status requests overlap.
         guard beginActivityCreation(
-            taskID: taskID
+            taskID: taskID,
+            generation: generation
         ) else {
             return
         }
 
         defer {
             endActivityCreation(
-                taskID: taskID
+                taskID: taskID,
+                generation: generation
             )
         }
 
-        guard !isTaskSuppressed(taskID) else {
+        guard
+            !isTaskSuppressed(taskID),
+            isCurrentGeneration(
+                taskID: taskID,
+                generation: generation
+            )
+        else {
             return
         }
 
-        // Re-check after acquiring the creation gate because an
-        // earlier request may have created the activity already.
+        await removeStaleActivities(
+            taskID: taskID,
+            keeping: generation
+        )
+
+        guard
+            !isTaskSuppressed(taskID),
+            isCurrentGeneration(
+                taskID: taskID,
+                generation: generation
+            )
+        else {
+            return
+        }
+
         let recheck =
             findActivities(
-                taskID: taskID
+                taskID: taskID,
+                generation: generation
             )
 
         if !recheck.isEmpty {
@@ -620,7 +818,9 @@ final class GopeedLiveActivityManager: NSObject {
         let attributes =
             GopeedDownloadAttributes(
                 taskId: taskID,
-                fileName: name
+                fileName: name,
+                generation:
+                    generation.uuidString
             )
 
         do {
@@ -631,10 +831,13 @@ final class GopeedLiveActivityManager: NSObject {
                     pushType: nil
                 )
 
-            // Continued Processing may have claimed the task while
-            // Activity.request was in progress. If so, remove this
-            // custom activity immediately.
-            if isTaskSuppressed(taskID) {
+            if
+                isTaskSuppressed(taskID)
+                || !isCurrentGeneration(
+                    taskID: taskID,
+                    generation: generation
+                )
+            {
                 await activity.end(
                     nil,
                     dismissalPolicy: .immediate
@@ -647,7 +850,6 @@ final class GopeedLiveActivityManager: NSObject {
                 activity.id,
                 taskID
             )
-
         } catch {
             print(
                 "LiveActivity: start failed:",
@@ -661,18 +863,16 @@ final class GopeedLiveActivityManager: NSObject {
 
     @available(iOS 16.2, *)
     private func finishActivity(
-        taskID: String
+        taskID: String,
+        generation: UUID
     ) async {
-
         let activities =
             findActivities(
-                taskID: taskID
+                taskID: taskID,
+                generation: generation
             )
 
         guard !activities.isEmpty else {
-            clearUpdateTime(
-                taskID: taskID
-            )
             return
         }
 
@@ -718,10 +918,6 @@ final class GopeedLiveActivityManager: NSObject {
             )
         }
 
-        clearUpdateTime(
-            taskID: taskID
-        )
-
         print(
             "LiveActivity: completed",
             taskID
@@ -734,18 +930,16 @@ final class GopeedLiveActivityManager: NSObject {
     @available(iOS 16.2, *)
     private func failActivity(
         taskID: String,
+        generation: UUID,
         error: String
     ) async {
-
         let activities =
             findActivities(
-                taskID: taskID
+                taskID: taskID,
+                generation: generation
             )
 
         guard !activities.isEmpty else {
-            clearUpdateTime(
-                taskID: taskID
-            )
             return
         }
 
@@ -785,10 +979,6 @@ final class GopeedLiveActivityManager: NSObject {
             )
         }
 
-        clearUpdateTime(
-            taskID: taskID
-        )
-
         print(
             "LiveActivity: task failed:",
             taskID,
@@ -801,13 +991,32 @@ final class GopeedLiveActivityManager: NSObject {
 
     @available(iOS 16.2, *)
     private func removeActivity(
-        taskID: String
+        taskID: String,
+        generation: UUID,
+        reason: String
     ) async {
+        let activities =
+            findActivities(
+                taskID: taskID,
+                generation: generation
+            )
 
-        await removeAllActivities(
-            taskID: taskID,
-            reason: "removed"
-        )
+        for activity in activities {
+            await activity.end(
+                nil,
+                dismissalPolicy: .immediate
+            )
+        }
+
+        if !activities.isEmpty {
+            print(
+                "LiveActivity:",
+                reason,
+                taskID,
+                "count:",
+                activities.count
+            )
+        }
     }
 
     @available(iOS 16.2, *)
@@ -815,7 +1024,6 @@ final class GopeedLiveActivityManager: NSObject {
         taskID: String,
         reason: String
     ) async {
-
         let activities =
             findActivities(
                 taskID: taskID
@@ -827,10 +1035,6 @@ final class GopeedLiveActivityManager: NSObject {
                 dismissalPolicy: .immediate
             )
         }
-
-        clearUpdateTime(
-            taskID: taskID
-        )
 
         if !activities.isEmpty {
             print(

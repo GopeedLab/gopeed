@@ -24,4 +24,5 @@ struct GopeedDownloadAttributes: ActivityAttributes {
     // Static properties.
     var taskId: String
     var fileName: String
+    var generation: String
 }

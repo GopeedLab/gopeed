@@ -16,8 +16,6 @@ final class GopeedContinuedProcessingManager: NSObject {
         qos: .userInitiated
     )
 
-    private let workerQueueKey = DispatchSpecificKey<Void>()
-
     private let stateLock = NSLock()
     private var enabledSnapshot = false
     private var handledTaskIDs = Set<String>()
@@ -26,7 +24,14 @@ final class GopeedContinuedProcessingManager: NSObject {
 
     private var registeredIdentifiers = Set<String>()
     private var pendingTaskIDs = Set<String>()
-    private var expiringTaskIDs = Set<String>()
+    private struct ExpiringTaskState {
+        let identifier: String
+        let generation: UUID
+    }
+
+    private var expiringTasks:
+        [String: ExpiringTaskState] = [:]
+    private var taskGenerations: [String: UUID] = [:]
 
     private var activeTasks:
         [String: BGContinuedProcessingTask] = [:]
@@ -51,30 +56,10 @@ final class GopeedContinuedProcessingManager: NSObject {
 
     private override init() {
         super.init()
-
-        workerQueue.setSpecific(
-            key: workerQueueKey,
-            value: ()
-        )
     }
 
 
     // MARK: - Synchronization helpers
-
-    private func syncOnWorker<T>(
-        _ work: () -> T
-    ) -> T {
-
-        if DispatchQueue.getSpecific(
-            key: workerQueueKey
-        ) != nil {
-            return work()
-        }
-
-        return workerQueue.sync(
-            execute: work
-        )
-    }
 
     private func currentEnabledSnapshot() -> Bool {
         stateLock.lock()
@@ -139,10 +124,16 @@ final class GopeedContinuedProcessingManager: NSObject {
     // MARK: - Setting
 
     func setEnabled(
-        _ enabled: Bool
-    ) -> Bool {
-
-        return syncOnWorker {
+        _ enabled: Bool,
+        completion: @escaping (Bool) -> Void
+    ) {
+        workerQueue.async { [weak self] in
+            guard let self else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
 
             self.setEnabledSnapshot(enabled)
 
@@ -155,7 +146,9 @@ final class GopeedContinuedProcessingManager: NSObject {
                 enabled
             )
 
-            return true
+            DispatchQueue.main.async {
+                completion(true)
+            }
         }
     }
 
@@ -237,17 +230,30 @@ final class GopeedContinuedProcessingManager: NSObject {
             )
 
         case "task.progress":
-            updateProgress(
-                taskID: taskID,
-                force: false
-            )
+            if let generation =
+                taskGenerations[taskID] {
+                updateProgress(
+                    taskID: taskID,
+                    generation: generation,
+                    force: false
+                )
+            }
 
         case "task.pause":
-            finishTask(
-                taskID: taskID,
-                success: true,
-                finalSubtitle: "Paused"
-            )
+            if let expiring =
+                expiringTasks[taskID] {
+                finishExpirationCleanup(
+                    taskID: taskID,
+                    identifier: expiring.identifier,
+                    generation: expiring.generation
+                )
+            } else {
+                finishTask(
+                    taskID: taskID,
+                    success: true,
+                    finalSubtitle: "Paused"
+                )
+            }
 
         case "task.done":
             finishTask(
@@ -311,41 +317,6 @@ final class GopeedContinuedProcessingManager: NSObject {
             return
         }
 
-        // BGCPT should originate from a foreground user action.
-        // This main-thread check happens only once per task start.
-        let appIsActive: Bool
-
-        if Thread.isMainThread {
-
-            appIsActive =
-                UIApplication.shared
-                    .applicationState == .active
-
-        } else {
-
-            appIsActive =
-                DispatchQueue.main.sync {
-                    UIApplication.shared
-                        .applicationState == .active
-                }
-        }
-
-        guard appIsActive else {
-
-            print(
-                "ContinuedProcessing:",
-                "ignored non-foreground start",
-                taskID
-            )
-
-            setTaskOwnership(
-                taskID: taskID,
-                handled: false
-            )
-
-            return
-        }
-
         guard
             !pendingTaskIDs.contains(taskID),
             activeTasks[taskID] == nil
@@ -357,84 +328,107 @@ final class GopeedContinuedProcessingManager: NSObject {
             return
         }
 
-        let identifier =
-            makeIdentifier(
-                taskID: taskID
+        // BGCPT should originate from a foreground user action.
+        // This main-thread check happens only once per task start.
+        let appIsActive: Bool
+
+        if Thread.isMainThread {
+            appIsActive =
+                UIApplication.shared
+                    .applicationState == .active
+        } else {
+            appIsActive =
+                DispatchQueue.main.sync {
+                    UIApplication.shared
+                        .applicationState == .active
+                }
+        }
+
+        guard appIsActive else {
+            print(
+                "ContinuedProcessing:",
+                "ignored non-foreground start",
+                taskID
             )
 
-        taskIdentifiers[taskID] =
-            identifier
+            setTaskOwnership(
+                taskID: taskID,
+                handled: false
+            )
+            return
+        }
 
-        taskNames[taskID] =
-            name
+        let generation = UUID()
+        taskGenerations[taskID] = generation
 
-        if !registeredIdentifiers
-            .contains(identifier) {
+        let identifier =
+            makeIdentifier(
+                taskID: taskID,
+                generation: generation
+            )
 
-            let registered =
-                BGTaskScheduler.shared.register(
-                    forTaskWithIdentifier:
-                        identifier,
-                    using: nil
-                ) { [weak self] task in
+        taskIdentifiers[taskID] = identifier
+        taskNames[taskID] = name
 
-                    guard
-                        let self,
-                        let continuedTask =
-                            task as?
-                            BGContinuedProcessingTask
-                    else {
-                        task.setTaskCompleted(
-                            success: false
-                        )
-                        return
-                    }
-
-                    self.workerQueue.async {
-
-                        self.activateTask(
-                            continuedTask,
-                            taskID: taskID,
-                            name: name
-                        )
-                    }
+        let registered =
+            BGTaskScheduler.shared.register(
+                forTaskWithIdentifier: identifier,
+                using: nil
+            ) { [weak self] task in
+                guard
+                    let self,
+                    let continuedTask =
+                        task as? BGContinuedProcessingTask
+                else {
+                    task.setTaskCompleted(
+                        success: false
+                    )
+                    return
                 }
 
-            guard registered else {
+                self.workerQueue.async {
+                    self.activateTask(
+                        continuedTask,
+                        taskID: taskID,
+                        name: name,
+                        identifier: identifier,
+                        generation: generation
+                    )
+                }
+            }
 
-                print(
-                    "ContinuedProcessing:",
-                    "registration failed:",
-                    identifier
+        guard registered else {
+            print(
+                "ContinuedProcessing:",
+                "registration failed:",
+                identifier
+            )
+
+            if taskGenerations[taskID] == generation {
+                taskGenerations.removeValue(
+                    forKey: taskID
                 )
-
                 taskIdentifiers.removeValue(
                     forKey: taskID
                 )
-
                 taskNames.removeValue(
                     forKey: taskID
                 )
-
                 setTaskOwnership(
                     taskID: taskID,
                     handled: false
                 )
-
-                return
             }
-
-            registeredIdentifiers.insert(
-                identifier
-            )
+            return
         }
+
+        registeredIdentifiers.insert(identifier)
 
         let request =
             BGContinuedProcessingTaskRequest(
                 identifier: identifier,
                 title: name,
-                subtitle:
-                    "Preparing download…"
+                subtitle: "Preparing download…"
             )
 
         request.strategy = .fail
@@ -447,7 +441,6 @@ final class GopeedContinuedProcessingManager: NSObject {
         )
 
         do {
-
             try BGTaskScheduler.shared.submit(
                 request
             )
@@ -457,25 +450,29 @@ final class GopeedContinuedProcessingManager: NSObject {
                 "submitted:",
                 identifier
             )
-
         } catch {
+            if taskGenerations[taskID] == generation {
+                pendingTaskIDs.remove(taskID)
+                taskGenerations.removeValue(
+                    forKey: taskID
+                )
 
-            pendingTaskIDs.remove(
-                taskID
-            )
+                if taskIdentifiers[taskID]
+                    == identifier {
+                    taskIdentifiers.removeValue(
+                        forKey: taskID
+                    )
+                }
 
-            taskIdentifiers.removeValue(
-                forKey: taskID
-            )
+                taskNames.removeValue(
+                    forKey: taskID
+                )
 
-            taskNames.removeValue(
-                forKey: taskID
-            )
-
-            setTaskOwnership(
-                taskID: taskID,
-                handled: false
-            )
+                setTaskOwnership(
+                    taskID: taskID,
+                    handled: false
+                )
+            }
 
             print(
                 "ContinuedProcessing:",
@@ -491,20 +488,19 @@ final class GopeedContinuedProcessingManager: NSObject {
     private func activateTask(
         _ task: BGContinuedProcessingTask,
         taskID: String,
-        name: String
+        name: String,
+        identifier: String,
+        generation: UUID
     ) {
-
-        guard currentEnabledSnapshot() else {
-
-            setTaskOwnership(
-                taskID: taskID,
-                handled: false
-            )
-
+        guard
+            currentEnabledSnapshot(),
+            taskGenerations[taskID] == generation,
+            pendingTaskIDs.contains(taskID),
+            taskIdentifiers[taskID] == identifier
+        else {
             task.setTaskCompleted(
                 success: false
             )
-
             return
         }
 
@@ -523,7 +519,6 @@ final class GopeedContinuedProcessingManager: NSObject {
 
         task.expirationHandler = {
             [weak self, weak task] in
-
             guard
                 let self,
                 let task
@@ -532,10 +527,11 @@ final class GopeedContinuedProcessingManager: NSObject {
             }
 
             self.workerQueue.async {
-
                 self.handleExpiration(
                     task,
-                    taskID: taskID
+                    taskID: taskID,
+                    identifier: identifier,
+                    generation: generation
                 )
             }
         }
@@ -548,6 +544,7 @@ final class GopeedContinuedProcessingManager: NSObject {
 
         updateProgress(
             taskID: taskID,
+            generation: generation,
             force: true
         )
     }
@@ -654,10 +651,14 @@ final class GopeedContinuedProcessingManager: NSObject {
 
     private func updateProgress(
         taskID: String,
+        generation: UUID,
         force: Bool
     ) {
 
-        guard activeTasks[taskID] != nil else {
+        guard
+            taskGenerations[taskID] == generation,
+            activeTasks[taskID] != nil
+        else {
             return
         }
 
@@ -685,6 +686,8 @@ final class GopeedContinuedProcessingManager: NSObject {
             guard
                 let self,
                 let runtime,
+                self.taskGenerations[taskID]
+                    == generation,
                 let task =
                     self.activeTasks[taskID]
             else {
@@ -822,6 +825,13 @@ final class GopeedContinuedProcessingManager: NSObject {
         success: Bool,
         finalSubtitle: String
     ) {
+        taskGenerations.removeValue(
+            forKey: taskID
+        )
+
+        expiringTasks.removeValue(
+            forKey: taskID
+        )
 
         if let identifier =
             taskIdentifiers[taskID] {
@@ -897,15 +907,34 @@ final class GopeedContinuedProcessingManager: NSObject {
 
     private func handleExpiration(
         _ task: BGContinuedProcessingTask,
-        taskID: String
+        taskID: String,
+        identifier: String,
+        generation: UUID
     ) {
+        guard
+            taskGenerations[taskID] == generation,
+            taskIdentifiers[taskID] == identifier
+        else {
+            task.setTaskCompleted(
+                success: false
+            )
+            return
+        }
+
+        taskGenerations.removeValue(
+            forKey: taskID
+        )
 
         activeTasks.removeValue(
             forKey: taskID
         )
 
         pendingTaskIDs.remove(taskID)
-        expiringTaskIDs.insert(taskID)
+        expiringTasks[taskID] =
+            ExpiringTaskState(
+                identifier: identifier,
+                generation: generation
+            )
 
         lastProgressUpdate.removeValue(
             forKey: taskID
@@ -939,7 +968,9 @@ final class GopeedContinuedProcessingManager: NSObject {
                 "/api/v1/tasks/\(taskID)/pause"
         ) { [weak self] _ in
             self?.finishExpirationCleanup(
-                taskID: taskID
+                taskID: taskID,
+                identifier: identifier,
+                generation: generation
             )
         }
 
@@ -949,31 +980,50 @@ final class GopeedContinuedProcessingManager: NSObject {
             deadline: .now() + 2.0
         ) { [weak self] in
             self?.finishExpirationCleanup(
-                taskID: taskID
+                taskID: taskID,
+                identifier: identifier,
+                generation: generation
             )
         }
     }
 
     private func finishExpirationCleanup(
-        taskID: String
+        taskID: String,
+        identifier: String,
+        generation: UUID
     ) {
-
-        guard expiringTaskIDs.remove(taskID) != nil else {
+        guard
+            let expiring = expiringTasks[taskID],
+            expiring.generation == generation,
+            expiring.identifier == identifier
+        else {
             return
         }
 
-        taskIdentifiers.removeValue(
+        expiringTasks.removeValue(
             forKey: taskID
         )
 
-        taskNames.removeValue(
-            forKey: taskID
-        )
+        if taskIdentifiers[taskID]
+            == identifier {
+            taskIdentifiers.removeValue(
+                forKey: taskID
+            )
 
-        setTaskOwnership(
-            taskID: taskID,
-            handled: false
-        )
+            if taskGenerations[taskID] == nil {
+                taskNames.removeValue(
+                    forKey: taskID
+                )
+            }
+        }
+
+        // Never clear ownership for a newer start of the same task ID.
+        if taskGenerations[taskID] == nil {
+            setTaskOwnership(
+                taskID: taskID,
+                handled: false
+            )
+        }
     }
 
 
@@ -987,7 +1037,7 @@ final class GopeedContinuedProcessingManager: NSObject {
                 + Array(taskIdentifiers.keys)
                 + Array(pendingTaskIDs)
                 + Array(activeTasks.keys)
-                + Array(expiringTaskIDs)
+                + Array(expiringTasks.keys)
             )
 
         for (
@@ -1011,7 +1061,8 @@ final class GopeedContinuedProcessingManager: NSObject {
 
         activeTasks.removeAll()
         pendingTaskIDs.removeAll()
-        expiringTaskIDs.removeAll()
+        expiringTasks.removeAll()
+        taskGenerations.removeAll()
         taskIdentifiers.removeAll()
         taskNames.removeAll()
         lastProgressUpdate.removeAll()
@@ -1029,7 +1080,8 @@ final class GopeedContinuedProcessingManager: NSObject {
     // MARK: - Helpers
 
     private func makeIdentifier(
-        taskID: String
+        taskID: String,
+        generation: UUID
     ) -> String {
 
         let bundleID =
@@ -1047,7 +1099,9 @@ final class GopeedContinuedProcessingManager: NSObject {
         return
             "\(bundleID)" +
             ".continuedDownload." +
-            safeID
+            safeID +
+            "." +
+            generation.uuidString.lowercased()
     }
 
     private func formatBytes(
