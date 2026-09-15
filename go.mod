@@ -3,7 +3,7 @@ module github.com/GopeedLab/gopeed
 go 1.25.4
 
 require (
-	github.com/GopeedLab/webview_go v0.0.0-20260914165316-129f7544ce98
+	github.com/GopeedLab/webview_go v0.0.0-20260915010614-2567e492369a
 	github.com/anacrolix/torrent v1.60.1-0.20251217073903-486bcbe758e0
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/bodgit/sevenzip v1.6.1
