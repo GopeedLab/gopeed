@@ -110,7 +110,7 @@ class TaskRecord {
   bool get canUpdateUrl =>
       protocol == api_task.Protocol.http && (status == TaskStatus.paused || status == TaskStatus.failed);
 
-  bool get isIndeterminate => status == TaskStatus.downloading && total == null;
+  bool get isIndeterminate => status == TaskStatus.downloading && !waiting && total == null;
 
   TaskAssetType get assetType => _assetType(name, isFolder: isFolder, protocol: protocol);
 
