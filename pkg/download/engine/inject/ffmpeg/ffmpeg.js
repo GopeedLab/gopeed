@@ -1,6 +1,8 @@
 (function () {
   const create = __gopeed_ffmpeg_create;
   const read = __gopeed_ffmpeg_read;
+  const acquire = __gopeed_ffmpeg_acquire;
+  const start = __gopeed_ffmpeg_start;
   const push = __gopeed_ffmpeg_push;
   const end = __gopeed_ffmpeg_end;
   const cancel = __gopeed_ffmpeg_cancel;
@@ -9,8 +11,9 @@
     for (const stop of Array.from(active)) stop(new Error("extension engine closed"));
   };
 
-  function input(value, name) {
+  function input(value, name, allowStream) {
     if (value && typeof value.getReader === "function") {
+      if (!allowStream) throw new TypeError("stream inputs must be created by the inputs callback");
       if (value.locked) throw new TypeError(name + " stream is locked");
       return { stream: value, request: null };
     }
@@ -24,9 +27,11 @@
 
   function merge(options) {
     if (!options || typeof options !== "object") throw new TypeError("merge options are required");
-    const video = input(options.video, "video");
-    const audio = input(options.audio, "audio");
-    if (video.stream && video.stream === audio.stream) throw new TypeError("video and audio must be distinct streams");
+    const factory = options.inputs;
+    if (factory !== undefined && typeof factory !== "function") throw new TypeError("inputs must be a callback");
+    if (factory && (options.video !== undefined || options.audio !== undefined)) throw new TypeError("inputs cannot be combined with video/audio");
+    let video = factory ? null : input(options.video, "video", false);
+    let audio = factory ? null : input(options.audio, "audio", false);
     const args = options.args === undefined ? [] : options.args;
     if (!Array.isArray(args) || args.some(v => typeof v !== "string")) throw new TypeError("args must be a string array");
     const format = options.format === undefined ? "mp4" : options.format;
@@ -34,11 +39,20 @@
     const signal = options.signal;
     let id, controller, stopped = false;
     const readers = [];
+    const lifetime = new AbortController();
+    let ownedInputs;
+    function discardInputs(inputs, reason) {
+      for (const source of new Set([inputs && inputs.video, inputs && inputs.audio])) {
+        if (source && typeof source.cancel === "function" && !source.locked) Promise.resolve(source.cancel(reason)).catch(() => {});
+      }
+    }
 
     function stop(reason) {
       if (stopped) return;
       stopped = true;
       active.delete(shutdown);
+      lifetime.abort();
+      discardInputs(ownedInputs, reason);
       if (id) cancel(id);
       if (signal) signal.removeEventListener("abort", abort);
       for (const reader of readers) {
@@ -90,11 +104,21 @@
         if (stopped) return;
         try {
           if (!id) {
-            // Acquire both readers before starting native work.
+            id = create({ format, args });
+            await acquire(id);
+            if (stopped) return;
+            if (factory) {
+              const inputs = await factory({ signal: lifetime.signal });
+              if (stopped) { discardInputs(inputs, new Error("FFmpeg operation cancelled")); return; }
+              ownedInputs = inputs;
+              video = input(inputs && inputs.video, "video", true);
+              audio = input(inputs && inputs.audio, "audio", true);
+            }
+            if (video.stream && video.stream === audio.stream) throw new TypeError("video and audio must be distinct streams");
             for (const source of [video, audio]) {
               if (source.stream) readers.push(source.stream.getReader());
             }
-            id = create({ video: video.request, audio: audio.request, format, args });
+            start(id, { video: video.request, audio: audio.request, format, args });
             let readerIndex = 0;
             for (const [index, source] of [video, audio].entries()) {
               if (source.stream) void pump(readers[readerIndex++], index);
@@ -111,5 +135,5 @@
       cancel(reason) { stop(reason); }
     });
   }
-  globalThis.__gopeed_ffmpeg = Object.freeze({ merge });
+  globalThis.__gopeed_ffmpeg = Object.freeze({ merge, supportsInputFactory: true });
 })();

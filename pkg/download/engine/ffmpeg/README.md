@@ -32,29 +32,46 @@ propagate through the stream instead of completing a partial download.
 
 ## JS inputs, including SABR
 
-Both `video` and `audio` accept either an HTTP descriptor or a
-`ReadableStream<Uint8Array>`, including mixed inputs. SABR/UMP decoding belongs
+Stream inputs **must** be created by an `inputs({ signal })` callback. It returns
+`{ video, audio }`, each an HTTP descriptor or `ReadableStream<Uint8Array>`,
+including mixed inputs. Do not start producers before this callback. SABR/UMP decoding belongs
 to the extension: pass the resulting media streams, with initialization data,
 not the SABR protocol bytes. Keep each selected track's codec/configuration
 stable for the duration of a merge.
 
 ```js
 const output = gopeed.runtime.ffmpeg.merge({
-  video: videoStream,
-  audio: audioStream,
+  inputs: async ({ signal }) => {
+    const session = await prepareSession({ signal });
+    const { videoStream, audioStream, abort } = await session.openStreams();
+    if (signal.aborted) { abort(); throw new Error("Cancelled"); }
+    signal.addEventListener("abort", abort, { once: true });
+    return { video: videoStream, audio: audioStream };
+  },
   signal: abortController.signal,
   args: ["-shortest", "-metadata", "title=Example"]
 });
 ```
 
 Creating the output does not start requests or acquire input readers until the
-output is pulled. A stream input is single-use. To retry a Blob-backed task,
+output is pulled and a global execution slot is acquired. Queued jobs do not
+open HTTP inputs, invoke input factories, or allocate media ring buffers.
+The callback runs once per output; its signal aborts on cancellation, engine
+shutdown, failure, and completion. A callback must cooperate with cancellation;
+returned streams are cancelled even if the callback finishes after cancellation.
+A stream input is single-use. To retry a Blob-backed task,
 its opener must create a new SABR session and fresh input streams. Arbitrary
 output byte ranges / resumable merged output are not supported.
 
+`gopeed.runtime.ffmpeg.supportsInputFactory === true` identifies this API.
+Older builds accept eager streams and must be upgraded before using callbacks.
+
 ## Options
 
-- `video`, `audio`: required inputs; HTTP descriptors have `url` and optional
+- `inputs`: callback returning `{ video, audio }`, synchronously or asynchronously.
+  Required for stream inputs. Cannot be combined with top-level `video`/`audio`.
+- `video`, `audio`: HTTP descriptors only when supplied at the top level; both
+  are required unless `inputs` is supplied. HTTP descriptors have `url` and optional
   `headers` (standard `HeadersInit`). HTTP requests use Gopeed's configured
   proxy. Supply required cookies/authorization explicitly; browser or `fetch`
   cookie jars are not implicitly shared. When `User-Agent` is absent, requests

@@ -37,11 +37,17 @@ type job struct {
 	cancel  context.CancelFunc
 	output  *io.PipeReader
 	streams [2]*media.StreamInput
+	mu      sync.Mutex
+	ready   chan struct{}
+	start   chan options
+	started bool
 }
 
 func (j *job) stop() {
 	j.cancel()
 	j.output.CloseWithError(context.Canceled)
+	j.mu.Lock()
+	defer j.mu.Unlock()
 	for _, s := range j.streams {
 		if s != nil {
 			s.Close()
@@ -99,6 +105,100 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 		if _, err := media.Arguments(opts.Format, opts.Args); err != nil {
 			panic(vm.NewGoError(err))
 		}
+		ctx, cancel := context.WithCancel(context.Background())
+		r, w := io.Pipe()
+		j := &job{ctx: ctx, cancel: cancel, output: r, ready: make(chan struct{}), start: make(chan options, 1)}
+		id := fmt.Sprintf("ffmpeg-%d", next.Add(1))
+		mu.Lock()
+		jobs[id] = j
+		mu.Unlock()
+		go func() {
+			var inputs [2]media.Input
+			var runErr error
+			defer func() {
+				if v := recover(); v != nil {
+					runErr = fmt.Errorf("ffmpeg panic: %v", v)
+				}
+				cancel()
+				for _, in := range inputs {
+					if in != nil {
+						in.Close()
+					}
+				}
+				w.CloseWithError(runErr)
+			}()
+			release, err := media.Acquire(ctx)
+			if err != nil {
+				runErr = err
+				return
+			}
+			defer release()
+			close(j.ready)
+			var opts options
+			select {
+			case opts = <-j.start:
+			case <-ctx.Done():
+				runErr = ctx.Err()
+				return
+			}
+			for i, source := range []*media.HTTPSource{opts.Video, opts.Audio} {
+				if source == nil {
+					inputs[i] = j.streams[i]
+				} else {
+					inputs[i], runErr = media.OpenHTTP(ctx, client, *source)
+					if runErr != nil {
+						return
+					}
+				}
+			}
+			runErr = media.RunAcquired(ctx, inputs[0], inputs[1], w, opts.Format, opts.Args)
+		}()
+		return vm.ToValue(id)
+	}); err != nil {
+		return err
+	}
+	if err := vm.Set("__gopeed_ffmpeg_acquire", func(id string) goja.Value {
+		promise, resolve, reject := vm.NewPromise()
+		j := get(id)
+		go func() {
+			var err error
+			if j == nil {
+				err = io.ErrClosedPipe
+			} else {
+				select {
+				case <-j.ready:
+				case <-j.ctx.Done():
+					err = j.ctx.Err()
+				}
+				if j.ctx.Err() != nil {
+					err = j.ctx.Err()
+				}
+			}
+			loop.RunOnLoop(func(vm *goja.Runtime) {
+				if err != nil {
+					reject(vm.NewGoError(err))
+				} else {
+					resolve(true)
+				}
+			})
+		}()
+		return vm.ToValue(promise)
+	}); err != nil {
+		return err
+	}
+	if err := vm.Set("__gopeed_ffmpeg_start", func(call goja.FunctionCall) goja.Value {
+		id := call.Argument(0).String()
+		j := get(id)
+		if j == nil {
+			panic(vm.NewGoError(io.ErrClosedPipe))
+		}
+		var opts options
+		if err := vm.ExportTo(call.Argument(1), &opts); err != nil {
+			panic(vm.NewGoError(err))
+		}
+		if _, err := media.Arguments(opts.Format, opts.Args); err != nil {
+			panic(vm.NewGoError(err))
+		}
 		for _, source := range []*media.HTTPSource{opts.Video, opts.Audio} {
 			if source == nil || cfg.DefaultUserAgent == nil {
 				continue
@@ -117,48 +217,20 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 				source.Headers["User-Agent"] = *cfg.DefaultUserAgent
 			}
 		}
-		ctx, cancel := context.WithCancel(context.Background())
-		r, w := io.Pipe()
-		j := &job{ctx: ctx, cancel: cancel, output: r}
+
+		j.mu.Lock()
+		defer j.mu.Unlock()
+		if j.started || j.ctx.Err() != nil {
+			panic(vm.NewGoError(io.ErrClosedPipe))
+		}
+		j.started = true
 		for i, source := range []*media.HTTPSource{opts.Video, opts.Audio} {
 			if source == nil {
-				j.streams[i] = media.NewStreamInput(ctx)
+				j.streams[i] = media.NewStreamInput(j.ctx)
 			}
 		}
-		id := fmt.Sprintf("ffmpeg-%d", next.Add(1))
-		mu.Lock()
-		jobs[id] = j
-		mu.Unlock()
-		go func() {
-			var inputs [2]media.Input
-			var runErr error
-			defer func() {
-				if v := recover(); v != nil {
-					runErr = fmt.Errorf("ffmpeg panic: %v", v)
-				}
-				cancel()
-				for _, in := range inputs {
-					if in != nil {
-						in.Close()
-					}
-				}
-				// Closing only after Run returns prevents partial output from
-				// being mistaken for a successful download on FFmpeg failure.
-				w.CloseWithError(runErr)
-			}()
-			for i, source := range []*media.HTTPSource{opts.Video, opts.Audio} {
-				if source == nil {
-					inputs[i] = j.streams[i]
-				} else {
-					inputs[i], runErr = media.OpenHTTP(ctx, client, *source)
-					if runErr != nil {
-						return
-					}
-				}
-			}
-			runErr = media.Run(ctx, inputs[0], inputs[1], w, opts.Format, opts.Args)
-		}()
-		return vm.ToValue(id)
+		j.start <- opts
+		return goja.Undefined()
 	}); err != nil {
 		return err
 	}
