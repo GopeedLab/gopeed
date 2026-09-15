@@ -6,6 +6,7 @@ import '../theme/app_design_tokens.dart';
 import '../theme/app_palette.dart';
 import '../../l10n/l10n.dart';
 import 'app_text_field.dart';
+import 'app_http_header_group.dart';
 
 class AppHttpHeadersController extends ChangeNotifier {
   AppHttpHeadersController({Map<String, String>? headers, Iterable<String> defaultNames = const []}) {
@@ -69,15 +70,77 @@ class AppHttpHeadersController extends ChangeNotifier {
 }
 
 class AppHttpHeadersEditor extends StatelessWidget {
-  const AppHttpHeadersEditor({super.key, required this.controller, required this.label, required this.keyPrefix});
+  const AppHttpHeadersEditor({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.keyPrefix,
+    this.stacked = false,
+  });
 
   final AppHttpHeadersController controller;
   final String label;
   final String keyPrefix;
+  final bool stacked;
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
+    if (stacked) {
+      return AnimatedBuilder(
+        key: ValueKey('$keyPrefix-editor'),
+        animation: controller,
+        builder: (context, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                shad.OutlineButton(
+                  key: ValueKey('$keyPrefix-add'),
+                  onPressed: controller.add,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add, size: 18),
+                      const SizedBox(width: AppDesignTokens.space4),
+                      Text(context.l10n.add),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppDesignTokens.space8),
+            for (var index = 0; index < controller._rows.length; index++) ...[
+              AppHttpHeaderGroup(
+                key: ObjectKey(controller._rows[index]),
+                name: _HeaderTextField(
+                  key: ValueKey('$keyPrefix-name-$index'),
+                  controller: controller._rows[index].name,
+                  hintText: context.l10n.httpHeaderName,
+                ),
+                value: _HeaderTextField(
+                  key: ValueKey('$keyPrefix-value-$index'),
+                  controller: controller._rows[index].value,
+                  hintText: context.l10n.httpHeaderValue,
+                ),
+                remove: _HeaderAction(
+                  key: ValueKey('$keyPrefix-remove-$index'),
+                  icon: Icons.delete_outline,
+                  onPressed: controller._rows.length == 1 ? null : () => controller.removeAt(index),
+                ),
+              ),
+              if (index != controller._rows.length - 1) const SizedBox(height: AppDesignTokens.space12),
+            ],
+          ],
+        ),
+      );
+    }
     return Row(
       key: ValueKey('$keyPrefix-editor'),
       crossAxisAlignment: CrossAxisAlignment.start,
