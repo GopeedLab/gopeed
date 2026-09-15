@@ -32,6 +32,7 @@ final class GopeedContinuedProcessingManager: NSObject {
     private var expiringTasks:
         [String: ExpiringTaskState] = [:]
     private var taskGenerations: [String: UUID] = [:]
+    private var progressRecoveryTokens: [String: UUID] = [:]
 
     private var activeTasks:
         [String: BGContinuedProcessingTask] = [:]
@@ -224,6 +225,10 @@ final class GopeedContinuedProcessingManager: NSObject {
         switch type {
 
         case "task.start":
+            progressRecoveryTokens.removeValue(
+                forKey: taskID
+            )
+
             beginTask(
                 taskID: taskID,
                 name: name
@@ -236,6 +241,11 @@ final class GopeedContinuedProcessingManager: NSObject {
                     taskID: taskID,
                     generation: generation,
                     force: false
+                )
+            } else {
+                recoverTaskFromProgress(
+                    taskID: taskID,
+                    name: name
                 )
             }
 
@@ -281,6 +291,72 @@ final class GopeedContinuedProcessingManager: NSObject {
 
         default:
             break
+        }
+    }
+
+
+    // MARK: - Recover active task after setting changes
+
+    private func recoverTaskFromProgress(
+        taskID: String,
+        name: String
+    ) {
+        guard
+            currentEnabledSnapshot(),
+            taskGenerations[taskID] == nil,
+            !pendingTaskIDs.contains(taskID),
+            activeTasks[taskID] == nil,
+            expiringTasks[taskID] == nil,
+            progressRecoveryTokens[taskID] == nil
+        else {
+            return
+        }
+
+        let recoveryToken = UUID()
+
+        progressRecoveryTokens[taskID] =
+            recoveryToken
+
+        getRuntimeStatus(
+            taskID: taskID
+        ) { [weak self] runtime in
+            guard
+                let self,
+                self.progressRecoveryTokens[taskID]
+                    == recoveryToken
+            else {
+                return
+            }
+
+            // The status request has completed. Remove the token so
+            // another progress event may retry if recovery is still
+            // necessary.
+            self.progressRecoveryTokens.removeValue(
+                forKey: taskID
+            )
+
+            guard
+                self.currentEnabledSnapshot(),
+                let runtime,
+                runtime.status == "running",
+                self.taskGenerations[taskID] == nil,
+                !self.pendingTaskIDs.contains(taskID),
+                self.activeTasks[taskID] == nil,
+                self.expiringTasks[taskID] == nil
+            else {
+                return
+            }
+
+            print(
+                "ContinuedProcessing:",
+                "recovering active task:",
+                taskID
+            )
+
+            self.beginTask(
+                taskID: taskID,
+                name: name
+            )
         }
     }
 
@@ -825,6 +901,10 @@ final class GopeedContinuedProcessingManager: NSObject {
         success: Bool,
         finalSubtitle: String
     ) {
+        progressRecoveryTokens.removeValue(
+            forKey: taskID
+        )
+
         taskGenerations.removeValue(
             forKey: taskID
         )
@@ -1063,6 +1143,7 @@ final class GopeedContinuedProcessingManager: NSObject {
         pendingTaskIDs.removeAll()
         expiringTasks.removeAll()
         taskGenerations.removeAll()
+        progressRecoveryTokens.removeAll()
         taskIdentifiers.removeAll()
         taskNames.removeAll()
         lastProgressUpdate.removeAll()
