@@ -139,6 +139,25 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.config = &config{}
 	f.Ctl.GetConfig(f.config)
 	f.config.normalize()
+	// Restored fetchers receive their request through Setup (the engine calls
+	// it after the Restore builder): parse the extra headers so resumed
+	// segment/key requests keep Referer/Cookie and other anti-hotlink headers.
+	f.mu.Lock()
+	f.reloadExtraLocked()
+	f.mu.Unlock()
+}
+
+// reloadExtraLocked refreshes f.extra from the typed extra of meta.Req.
+func (f *Fetcher) reloadExtraLocked() {
+	if f.meta == nil || f.meta.Req == nil {
+		return
+	}
+	if err := base.ParseReqExtra[ReqExtra](f.meta.Req); err != nil {
+		return
+	}
+	if e, ok := f.meta.Req.Extra.(*ReqExtra); ok {
+		f.extra = e
+	}
 }
 
 func (f *Fetcher) Meta() *fetcher.FetcherMeta {
@@ -236,29 +255,119 @@ func (f *Fetcher) resolvePlanLocked(ctx context.Context, keepName string) (*fetc
 	return state, outputName, nil
 }
 
-func (f *Fetcher) Patch(req *base.Request, opts *base.Options) (err error) {
+func (f *Fetcher) Patch(req *base.Request, opts *base.Options) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.activeRun != nil {
 		return errors.New("task is running; pause it before changing its settings")
 	}
-	urlChanged := f.meta.Req == nil || f.meta.Req.URL != req.URL
-	f.meta.Req = req
-	f.meta.Opts = opts
-	f.extra = &ReqExtra{}
-	if err = base.ParseReqExtra[ReqExtra](req); err != nil {
-		return
+	if req != nil {
+		cur := f.meta.Req
+		if cur == nil {
+			f.meta.Req = req
+			cur = req
+		}
+		if req.URL != "" && req.URL != cur.URL {
+			cur.URL = req.URL
+			// The playlist URL changed (e.g. refreshed signed link): drop the
+			// plan so the engine re-resolves on next start (it does when Res
+			// is nil). Only explicitly supplied fields are applied, so a
+			// header-only or rename-only Patch keeps the resolved plan and
+			// the output path.
+			f.dropPlanLocked()
+		}
+		if err := mergeReqExtra(cur, req); err != nil {
+			return err
+		}
+		if req.Proxy != nil && cur.Proxy != req.Proxy {
+			cur.Proxy = req.Proxy
+			// Transport settings changed: rebuild the client before the
+			// next run.
+			f.client = nil
+		}
+		if len(req.Labels) > 0 {
+			if cur.Labels == nil {
+				cur.Labels = make(map[string]string, len(req.Labels))
+			}
+			for key, value := range req.Labels {
+				cur.Labels[key] = value
+			}
+		}
+		// SkipVerifyCert is a plain bool, so a partial update cannot tell an
+		// absent field from an explicit false: it is intentionally not merged
+		// (the HTTP protocol Patch ignores it as well).
 	}
-	if e, ok := req.Extra.(*ReqExtra); ok {
-		f.extra = e
+	if opts != nil {
+		if f.meta.Opts == nil {
+			f.meta.Opts = opts
+		} else {
+			if opts.Name != "" {
+				f.meta.Opts.Name = opts.Name
+			}
+			if opts.Path != "" {
+				f.meta.Opts.Path = opts.Path
+			}
+		}
 	}
-	if urlChanged {
-		// The playlist URL changed (e.g. refreshed signed link): drop the plan
-		// so the engine re-resolves on next start (it does when Res is nil).
-		f.state = nil
-		f.meta.Res = nil
+	f.reloadExtraLocked()
+	return nil
+}
+
+// mergeReqExtra merges the typed extra of incoming into cur following the
+// HTTP protocol semantics: Method/Body are overridden when non-empty and
+// headers are merged per key.
+func mergeReqExtra(cur *base.Request, incoming *base.Request) error {
+	if incoming.Extra == nil {
+		return nil
 	}
-	return
+	if err := base.ParseReqExtra[ReqExtra](incoming); err != nil {
+		return err
+	}
+	inc, ok := incoming.Extra.(*ReqExtra)
+	if !ok {
+		return nil
+	}
+	if err := base.ParseReqExtra[ReqExtra](cur); err != nil {
+		return err
+	}
+	target, ok := cur.Extra.(*ReqExtra)
+	if !ok {
+		target = &ReqExtra{}
+		cur.Extra = target
+	}
+	if inc.Method != "" {
+		target.Method = inc.Method
+	}
+	if inc.Body != "" {
+		target.Body = inc.Body
+	}
+	if len(inc.Header) > 0 {
+		if target.Header == nil {
+			target.Header = make(map[string]string, len(inc.Header))
+		}
+		for key, value := range inc.Header {
+			target.Header[key] = value
+		}
+	}
+	return nil
+}
+
+// dropPlanLocked discards the resolved plan after a URL change.
+func (f *Fetcher) dropPlanLocked() {
+	f.state = nil
+	f.meta.Res = nil
+}
+
+// existingOutputNameLocked returns the output file name the task already
+// uses, so a re-resolve does not rename an in-progress download.
+func (f *Fetcher) existingOutputNameLocked() string {
+	if f.meta.Opts != nil && f.meta.Opts.Name != "" {
+		return f.meta.Opts.Name
+	}
+	if res := f.meta.Res; res != nil && len(res.Files) > 0 && res.Files[0] != nil {
+		return res.Files[0].Name
+	}
+	return ""
 }
 
 func (f *Fetcher) Start() error {
@@ -272,8 +381,30 @@ func (f *Fetcher) Start() error {
 		return errors.New("hls fetcher already running")
 	}
 	if f.state == nil {
-		f.mu.Unlock()
-		return errors.New("hls fetcher is not resolved")
+		if f.meta.Req == nil || f.meta.Res == nil {
+			f.mu.Unlock()
+			return errors.New("hls fetcher is not resolved")
+		}
+		// Crash window: the engine persists the task (with its resource)
+		// before the first HLS state checkpoint lands, so a restored task
+		// can have a resource but no plan. Rebuild the plan instead of
+		// failing, keeping the existing output name.
+		if f.client == nil {
+			f.client = f.buildClient()
+		}
+		state, _, err := f.resolvePlanLocked(context.Background(), f.existingOutputNameLocked())
+		if err != nil {
+			f.mu.Unlock()
+			return fmt.Errorf("re-resolve failed: %w", err)
+		}
+		f.state = state
+		size := planTotalSize(state.Segments)
+		if res := f.meta.Res; res != nil {
+			res.Size = size
+			if len(res.Files) > 0 && res.Files[0] != nil {
+				res.Files[0].Size = size
+			}
+		}
 	}
 	// The client is built here, before any worker exists, so segment
 	// goroutines never race on lazy initialization.
