@@ -3,7 +3,6 @@ package hls
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -46,11 +45,17 @@ func copyReqExtra(extra *ReqExtra) *ReqExtra {
 	return copied
 }
 
-// fetcherState is the resolved download plan persisted for resume.
+// fetcherState is the resolved download plan persisted for resume. StagingID
+// gives the task its own staging folder (two tasks downloading the same URL
+// into the same directory never share segment files) and survives restarts
+// through the persisted state. StagingDir pins the absolute folder so user
+// renames or moves of the task output do not orphan the staged segments.
 type fetcherState struct {
 	MediaURL   string     `json:"mediaURL"`
 	OutputName string     `json:"outputName"`
 	Segments   []*Segment `json:"segments"`
+	StagingID  string     `json:"stagingID,omitempty"`
+	StagingDir string     `json:"stagingDir,omitempty"`
 }
 
 // Stats is the protocol task statistics snapshot.
@@ -86,6 +91,8 @@ type hlsRun struct {
 	keyCache   map[string][]byte
 	keyCacheMu sync.Mutex
 
+	stagingID   string // identity of the staging folder, bound into the journal
+	planHash    string // fingerprint of the download plan, validated on resume
 	journal     map[int64]int64
 	journalPath string
 	journalMu   sync.Mutex
@@ -184,7 +191,12 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) (err error) {
 	if err != nil {
 		return err
 	}
+	state.StagingID = randomStagingID()
 	f.state = state
+	// Pin the staging folder now so the very first persisted state already
+	// carries it: a crash right after create still resumes into the same
+	// folder.
+	f.resolveStagingDirLocked()
 	size := planTotalSize(state.Segments)
 	f.meta.Res = &base.Resource{
 		Range: false,
@@ -352,8 +364,13 @@ func mergeReqExtra(cur *base.Request, incoming *base.Request) error {
 	return nil
 }
 
-// dropPlanLocked discards the resolved plan after a URL change.
+// dropPlanLocked discards the resolved plan after a URL change. The staging
+// folder of the dropped plan is removed too: this only runs while the
+// fetcher is quiescent, so no run can still be writing into it.
 func (f *Fetcher) dropPlanLocked() {
+	if f.state != nil && f.state.StagingDir != "" {
+		os.RemoveAll(f.state.StagingDir)
+	}
 	f.state = nil
 	f.meta.Res = nil
 }
@@ -421,7 +438,9 @@ func (f *Fetcher) Start() error {
 		extra:      copyReqExtra(f.extra),
 		client:     f.client,
 		outputPath: f.meta.SingleFilepath(),
-		tempDir:    f.stagingDirLocked(),
+		stagingID:  f.state.StagingID,
+		planHash:   planFingerprint(f.state),
+		tempDir:    f.resolveStagingDirLocked(),
 		keyCache:   make(map[string][]byte),
 		journal:    make(map[int64]int64),
 	}
@@ -464,7 +483,7 @@ func (f *Fetcher) Close() error {
 	run := f.activeRun
 	tempDir := ""
 	if f.state != nil {
-		tempDir = f.stagingDirLocked()
+		tempDir = f.resolveStagingDirLocked()
 	}
 	f.mu.Unlock()
 
@@ -757,15 +776,20 @@ func (f *Fetcher) fetchKey(run *hlsRun, key *Key) ([]byte, error) {
 }
 
 // merge concatenates the downloaded segments in plan order into the final
-// output file. Segments are stored decrypted, so this is pure I/O. The final
-// size is published through Progress: the engine backfills Res.Size from
-// Progress().TotalDownloaded() on completion.
+// output file. Segments are stored decrypted, so this is pure I/O. The merge
+// writes to a unique temporary file next to the target, checks write and
+// close errors, and only then replaces the target: a failed merge leaves the
+// staged segments intact so it can be retried, and the unique part name keeps
+// concurrent tasks that share an output path from clobbering each other. The
+// final size is published through Progress: the engine backfills Res.Size
+// from Progress().TotalDownloaded() on completion.
 func (f *Fetcher) merge(run *hlsRun) error {
 	target := run.outputPath
 	if err := os.MkdirAll(filepath.Dir(target), 0777); err != nil {
 		return err
 	}
-	out, err := os.Create(target)
+	partPath := target + "." + tempDirPrefix + run.stagingID + ".part"
+	out, err := os.Create(partPath)
 	if err != nil {
 		return err
 	}
@@ -774,15 +798,29 @@ func (f *Fetcher) merge(run *hlsRun) error {
 		data, err := os.ReadFile(segmentPath(run.tempDir, int64(i)))
 		if err != nil {
 			out.Close()
+			os.Remove(partPath)
 			return fmt.Errorf("read segment %d failed: %w", i, err)
 		}
 		if _, err := out.Write(data); err != nil {
 			out.Close()
+			os.Remove(partPath)
 			return err
 		}
 		total += int64(len(data))
 	}
 	if err := out.Close(); err != nil {
+		os.Remove(partPath)
+		return err
+	}
+	// Remove-then-rename keeps this idempotent: if a previous merge already
+	// renamed its output before a crash lost the bookkeeping, re-merging
+	// must still succeed.
+	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
+		os.Remove(partPath)
+		return err
+	}
+	if err := os.Rename(partPath, target); err != nil {
+		os.Remove(partPath)
 		return err
 	}
 	run.downloaded.Store(total)
@@ -807,45 +845,27 @@ func segmentPath(tempDir string, idx int64) string {
 	return filepath.Join(tempDir, "seg-"+strconv.FormatInt(idx, 10))
 }
 
-// stagingDirLocked derives the staging folder for the current state. It must
-// be called with f.mu held.
-func (f *Fetcher) stagingDirLocked() string {
-	return filepath.Join(filepath.Dir(f.meta.SingleFilepath()), tempDirPrefix+sha1Hex(f.state.MediaURL)[:12])
-}
-
-func loadJournal(run *hlsRun) error {
-	data, err := os.ReadFile(run.journalPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
+// resolveStagingDirLocked returns the staging folder of the current plan,
+// deriving and pinning it on first use so later output renames or moves do
+// not orphan the staged segments. It lives next to the task output, which is
+// exactly opts.Path for a single-file task. Must be called with f.mu held.
+func (f *Fetcher) resolveStagingDirLocked() string {
+	if f.state.StagingDir == "" {
+		if f.state.StagingID == "" {
+			// Legacy state (or a hand-crafted plan): migrate to a fresh task
+			// owned identity. The old URL-hash folder is deliberately not
+			// reused: its contents cannot be proven to belong to this plan,
+			// and sharing it with another same-URL task is exactly the bug
+			// being fixed. It is left behind as orphaned temp data.
+			f.state.StagingID = randomStagingID()
 		}
-		return err
-	}
-	stored := make(map[string]int64)
-	if err := json.Unmarshal(data, &stored); err != nil {
-		// A broken journal must not kill a restartable download.
-		return nil
-	}
-	for key, size := range stored {
-		idx, err := strconv.ParseInt(key, 10, 64)
-		if err != nil {
-			continue
+		dir := ""
+		if f.meta.Opts != nil {
+			dir = f.meta.Opts.Path
 		}
-		run.journal[idx] = size
+		f.state.StagingDir = filepath.Join(dir, tempDirPrefix+f.state.StagingID)
 	}
-	return nil
-}
-
-func saveJournal(run *hlsRun) error {
-	stored := make(map[string]int64, len(run.journal))
-	for idx, size := range run.journal {
-		stored[strconv.FormatInt(idx, 10)] = size
-	}
-	data, err := json.Marshal(stored)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(run.journalPath, data, 0666)
+	return f.state.StagingDir
 }
 
 // prefetchSize probes segment Content-Length via HEAD. Any failure resets all
