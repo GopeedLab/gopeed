@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Guardar como carpeta de descargas predeterminada",
   "downloadDirValid": "Por favor, selecciona el directorio de descarga",
   "connections": "Conexiones",
+  "maxRetries": "Reintentos máximos",
   "useServerCtime": "Usar tiempo del servidor para la creación de archivos",
   "maxRunning": "Máximo de Tareas en Ejecución",
   "defaultDirectDownload": "Ver descarga directa por defecto",

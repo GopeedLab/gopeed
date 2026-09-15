@@ -106,7 +106,13 @@ func (s *SchemeFilter) Match(uri string) bool {
 	case FilterTypeUrl:
 		return strings.HasPrefix(uriUpper, patternUpper+":")
 	case FilterTypeFile:
-		return strings.HasSuffix(uriUpper, "."+patternUpper)
+		// Strip query and fragment before matching so URLs like
+		// https://example.com/video.m3u8?sign=abc still route by extension.
+		clean := uri
+		if idx := strings.IndexAny(clean, "?#"); idx >= 0 {
+			clean = clean[:idx]
+		}
+		return strings.HasSuffix(strings.ToUpper(clean), "."+patternUpper)
 	case FilterTypeBase64:
 		return strings.HasPrefix(uriUpper, "DATA:"+patternUpper+";BASE64,")
 	}

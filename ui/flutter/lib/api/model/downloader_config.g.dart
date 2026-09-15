@@ -56,12 +56,28 @@ Map<String, dynamic> _$ApiServerConfigToJson(ApiServerConfig instance) => <Strin
 ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) => ProtocolConfig()
   ..http = HttpConfig.fromJson(json['http'] as Map<String, dynamic>)
   ..bt = BtConfig.fromJson(json['bt'] as Map<String, dynamic>)
-  ..ed2k = Ed2kConfig.fromJson(json['ed2k'] as Map<String, dynamic>);
+  ..ed2k = Ed2kConfig.fromJson(json['ed2k'] as Map<String, dynamic>)
+  ..hls = HlsConfig.fromJson(json['hls'] as Map<String, dynamic>);
 
 Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) => <String, dynamic>{
   'http': instance.http.toJson(),
   'bt': instance.bt.toJson(),
   'ed2k': instance.ed2k.toJson(),
+  'hls': instance.hls.toJson(),
+};
+
+HlsConfig _$HlsConfigFromJson(Map<String, dynamic> json) => HlsConfig(
+  segmentConnections: (json['segmentConnections'] as num?)?.toInt() ?? 0,
+  maxRetries: (json['maxRetries'] as num?)?.toInt() ?? 0,
+  timeoutSeconds: (json['timeoutSeconds'] as num?)?.toInt() ?? 0,
+  prefetchContentLength: json['prefetchContentLength'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$HlsConfigToJson(HlsConfig instance) => <String, dynamic>{
+  'segmentConnections': instance.segmentConnections,
+  'maxRetries': instance.maxRetries,
+  'timeoutSeconds': instance.timeoutSeconds,
+  'prefetchContentLength': instance.prefetchContentLength,
 };
 
 HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
@@ -119,6 +135,10 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) =>
         notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
         desktopNotification: json['desktopNotification'] as bool? ?? true,
         backgroundLocationKeepAlive: json['backgroundLocationKeepAlive'] as bool? ?? false,
+        backgroundContinuedProcessing:
+            json['backgroundContinuedProcessing']
+                as bool? ??
+            false,
         windowState: json['windowState'] == null
             ? null
             : WindowStateConfig.fromJson(json['windowState'] as Map<String, dynamic>?),
@@ -146,6 +166,8 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynam
   'notifyWhenNewVersion': instance.notifyWhenNewVersion,
   'desktopNotification': instance.desktopNotification,
   'backgroundLocationKeepAlive': instance.backgroundLocationKeepAlive,
+  'backgroundContinuedProcessing':
+      instance.backgroundContinuedProcessing,
   'windowState': instance.windowState.toJson(),
   'bookmarks': instance.bookmarks,
   'createHistory': instance.createHistory,

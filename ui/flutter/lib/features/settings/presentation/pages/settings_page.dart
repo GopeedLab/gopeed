@@ -13,6 +13,7 @@ import '../../../../app/application/app_appearance_controller.dart';
 import '../../../../app/application/app_platform_controller.dart';
 import '../../../../app/application/app_runtime_controller.dart';
 import '../../../../app/application/location_keep_alive.dart';
+import '../../../../app/application/continued_processing.dart';
 import '../../../../core/common/start_config.dart';
 import '../../../../core/network/gopeed/gopeed_transport.dart';
 import '../../../../core/utils/breakpoints.dart';
@@ -64,6 +65,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _maxRunningController = TextEditingController();
   final _httpUserAgentController = TextEditingController();
   final _httpConnectionsController = TextEditingController();
+  final _hlsConnectionsController = TextEditingController();
+  final _hlsMaxRetriesController = TextEditingController();
   final _btListenPortController = TextEditingController();
   final _btSeedRatioController = TextEditingController();
   final _btSeedTimeController = TextEditingController();
@@ -95,6 +98,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _maxRunningController,
     _httpUserAgentController,
     _httpConnectionsController,
+    _hlsConnectionsController,
+    _hlsMaxRetriesController,
     _btListenPortController,
     _btSeedRatioController,
     _btSeedTimeController,
@@ -377,6 +382,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         onChanged: (value) => unawaited(_setBackgroundLocationKeepAlive(value)),
                       ),
                     ),
+                  if (Util.isIOS())
+                    SettingsItem(
+                      title: context.l10n.backgroundContinuedProcessing,
+                      subtitle:
+                          context.l10n.backgroundContinuedProcessingDescription,
+                      child: shad.Switch(
+                        value:
+                            config.extra.backgroundContinuedProcessing,
+                        onChanged: (value) => unawaited(
+                          _setBackgroundContinuedProcessing(value),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -555,6 +573,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         onChanged: (value) => _mutateConfig((next) => next.archive.deleteAfterExtract = value),
                       ),
                     ),
+                ],
+              ),
+            ),
+            _SettingsBlock(
+              key: const ValueKey('settings-hls-block'),
+              title: 'HLS',
+              child: _SettingsGroup(
+                children: [
+                  SettingsItem(
+                    title: context.l10n.connections,
+                    child: _NumberSettingControl(
+                      fieldKey: const ValueKey('hls-connections-input'),
+                      controller: _hlsConnectionsController,
+                      min: 1,
+                      max: 256,
+                    ),
+                  ),
+                  SettingsItem(
+                    title: context.l10n.maxRetries,
+                    child: _NumberSettingControl(
+                      fieldKey: const ValueKey('hls-max-retries-input'),
+                      controller: _hlsMaxRetriesController,
+                      min: 0,
+                      max: 30,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -939,6 +983,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _maxRunningController.text = _config!.maxRunning.clamp(1, 256).toString();
     _httpUserAgentController.text = _config!.protocolConfig.http.userAgent;
     _httpConnectionsController.text = _config!.protocolConfig.http.connections.clamp(1, 256).toString();
+    _hlsConnectionsController.text = _config!.protocolConfig.hls.segmentConnections.clamp(1, 256).toString();
+    _hlsMaxRetriesController.text = _config!.protocolConfig.hls.maxRetries.clamp(0, 30).toString();
     _btListenPortController.text = _config!.protocolConfig.bt.listenPort.clamp(0, 65535).toString();
     _btSeedRatioController.text = _config!.protocolConfig.bt.seedRatio.toString();
     _btSeedTimeController.text = (_config!.protocolConfig.bt.seedTime ~/ 60).clamp(0, 100000000).toString();
@@ -1033,6 +1079,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       fallback: config.protocolConfig.http.connections,
       min: 1,
       max: 256,
+    );
+    config.protocolConfig.hls.segmentConnections = _boundedInt(
+      _hlsConnectionsController,
+      fallback: config.protocolConfig.hls.segmentConnections,
+      min: 1,
+      max: 256,
+    );
+    config.protocolConfig.hls.maxRetries = _boundedInt(
+      _hlsMaxRetriesController,
+      fallback: config.protocolConfig.hls.maxRetries,
+      min: 0,
+      max: 30,
     );
     config.protocolConfig.bt.listenPort = _boundedInt(
       _btListenPortController,
@@ -1236,6 +1294,43 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
     _mutateConfig((config) => config.extra.backgroundLocationKeepAlive = enabled);
     await LocationKeepAliveCoordinator.instance.reconcile(enabled: enabled);
+  }
+  Future<void>
+  _setBackgroundContinuedProcessing(
+    bool enabled,
+  ) async {
+    if (enabled &&
+        !await ContinuedProcessing.isSupported()) {
+      if (mounted) {
+        _toast(
+          context.l10n
+              .backgroundContinuedProcessingUnsupported,
+        );
+      }
+      return;
+    }
+
+    final applied =
+        await ContinuedProcessing.setEnabled(
+      enabled,
+    );
+
+    if (enabled && !applied) {
+      if (mounted) {
+        _toast(
+          context.l10n
+              .backgroundContinuedProcessingUnsupported,
+        );
+      }
+      return;
+    }
+
+    _mutateConfig(
+      (config) =>
+          config.extra
+                  .backgroundContinuedProcessing =
+              enabled,
+    );
   }
 
   List<String> _lines(String text) {

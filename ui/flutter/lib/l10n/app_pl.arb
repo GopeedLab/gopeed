@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Zapisz jako domyślny folder pobierania",
   "downloadDirValid": "Wskaż folder pobierania",
   "connections": "Połączenia",
+  "maxRetries": "Maks. liczba ponownych prób",
   "useServerCtime": "Użyj czasu serwera do utworzenia pliku",
   "maxRunning": "Maksymalna liczba zadań",
   "defaultDirectDownload": "Domyślnie sprawdź bezpośredni pobór",

@@ -1484,6 +1484,7 @@ func TestDownloader_ExtensionRuntimeWebViewInjected(t *testing.T) {
 	value, err := runtime.Eval(`(async () => ({
 			hasRuntime: !!gopeed.runtime,
 			hasBlob: !!(gopeed.runtime && gopeed.runtime.blob),
+			hasFFmpegMerge: typeof gopeed.runtime.ffmpeg.merge,
 			hasCreateObjectURL: typeof gopeed.runtime.blob.createObjectURL,
 			hasRevokeObjectURL: typeof gopeed.runtime.blob.revokeObjectURL,
 			hasWebView: !!(gopeed.runtime && gopeed.runtime.webview),
@@ -1501,6 +1502,9 @@ func TestDownloader_ExtensionRuntimeWebViewInjected(t *testing.T) {
 	}
 	if result["hasRuntime"] != true {
 		t.Fatalf("expected runtime injection, got %#v", result)
+	}
+	if result["hasFFmpegMerge"] != "function" {
+		t.Fatalf("expected ffmpeg injection, got %#v", result)
 	}
 	if result["hasBlob"] != true {
 		t.Fatalf("expected blob injection, got %#v", result)

@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Lưu làm thư mục tải xuống mặc định",
   "downloadDirValid": "Vui lòng chọn thư mục tải về",
   "connections": "Kết nối",
+  "maxRetries": "Số lần thử lại tối đa",
   "useServerCtime": "Sử dụng thời gian máy chủ cho việc tạo tệp",
   "maxRunning": "Số nhiệm vụ tối đa",
   "defaultDirectDownload": "Kiểm tra trực tiếp tải về theo mặc định",

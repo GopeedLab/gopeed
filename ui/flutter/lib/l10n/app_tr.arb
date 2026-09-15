@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Varsayılan indirme klasörü olarak kaydet",
   "downloadDirValid": "Lütfen indirme dizinini seçin",
   "connections": "Bağlantılar",
+  "maxRetries": "Maksimum yeniden deneme",
   "useServerCtime": "Dosya oluşturma tarihi için sunucu zamanını kullan",
   "maxRunning": "Maksimum Çalışan İşlem",
   "defaultDirectDownload": "Varsayılan olarak direkt indirmeyi işaretle",
