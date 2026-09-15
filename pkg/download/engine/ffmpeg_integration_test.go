@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	media "github.com/GopeedLab/gopeed/pkg/download/engine/ffmpeg"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/stream"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -53,8 +55,8 @@ func TestFFmpegJSStreams(t *testing.T) {
 		    if(offset>=Math.max(v.length,a.length)){clearInterval(timer);vc.close();ac.close();}
 		  },1);
 		  const stream=__gopeed_ffmpeg.merge({
-		    video:inputMode==='http'?{url:sourceURL+'/video'}:video,
-		    audio:inputMode==='streams'?audio:{url:sourceURL+'/audio'},
+		    inputs: () => ({ video:inputMode==='http'?{url:sourceURL+'/video'}:video,
+		    audio:inputMode==='streams'?audio:{url:sourceURL+'/audio'} }),
 		    args:['-metadata','title=gopeed-test']
 		  });
 		  const bytes=await new Response(stream).arrayBuffer();
@@ -87,7 +89,7 @@ func TestFFmpegJSErrorAndCancel(t *testing.T) {
 		   cancel(){cancelled++;}
 		 });
 		 const controller=new AbortController();
-		 const output=__gopeed_ffmpeg.merge({video:source(),audio:source(),signal:controller.signal,
+		 const output=__gopeed_ffmpeg.merge({inputs:()=>({video:source(),audio:source()}),signal:controller.signal,
 		   args:scenario==='invalid-args'?['-i','/outside']:[]});
 		 const reader=output.getReader();
 		 const pending=reader.read().then(()=>'',e=>e.message);
@@ -118,7 +120,7 @@ func TestFFmpegMalformedMediaFails(t *testing.T) {
 	defer e.Close()
 	_, err := e.RunString(`(async()=>{
 	  const source=()=>new ReadableStream({start(c){c.enqueue(new Uint8Array([1,2,3]));c.close();}});
-	  return await new Response(__gopeed_ffmpeg.merge({video:source(),audio:source()})).arrayBuffer();
+	  return await new Response(__gopeed_ffmpeg.merge({inputs:()=>({video:source(),audio:source()})})).arrayBuffer();
 	})()`)
 	if err == nil || !strings.Contains(err.Error(), "ffmpeg") {
 		t.Fatalf("expected FFmpeg error: %v", err)
@@ -141,7 +143,7 @@ func TestFFmpegBlobOpener(t *testing.T) {
 	e.Runtime.Set("audioBytes", e.Runtime.NewArrayBuffer(audio))
 	_, err := e.RunString(`__gopeed_blob_create_object_url(()=>{
 	  const source=b=>new ReadableStream({start(c){c.enqueue(new Uint8Array(b));c.close();}});
-	  return __gopeed_ffmpeg.merge({video:source(videoBytes),audio:source(audioBytes)});
+	  return __gopeed_ffmpeg.merge({inputs:()=>({video:source(videoBytes),audio:source(audioBytes)})});
 	},{contentType:'video/mp4'})`)
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +177,7 @@ func TestFFmpegEngineCloseCancelsRequest(t *testing.T) {
 	_, err := e.RunString(fmt.Sprintf(`
 	globalThis.cancelCount=0;
 	const audio=new ReadableStream({cancel(){cancelCount++;}});
-	__gopeed_ffmpeg.merge({video:{url:%q},audio}).getReader().read().catch(()=>{});
+	__gopeed_ffmpeg.merge({inputs:()=>({video:{url:%q},audio})}).getReader().read().catch(()=>{});
 	"started";`, srv.URL))
 	if err != nil {
 		t.Fatal(err)
@@ -194,4 +196,126 @@ func TestFFmpegEngineCloseCancelsRequest(t *testing.T) {
 	if e.Runtime.Get("cancelCount").ToInteger() != 1 {
 		t.Fatal("JS input not cancelled on shutdown")
 	}
+}
+
+func TestFFmpegInputFactoriesWaitForCapacity(t *testing.T) {
+	for _, mode := range []string{"factory", "http", "cancel"} {
+		t.Run(mode, func(t *testing.T) {
+			release1, _ := media.Acquire(context.Background())
+			defer release1()
+			release2, _ := media.Acquire(context.Background())
+			defer release2()
+			var requests atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { requests.Add(1); http.Error(w, "test", 500) }))
+			defer srv.Close()
+			e := NewEngine(nil)
+			defer e.Close()
+			e.Runtime.Set("mode", mode)
+			e.Runtime.Set("sourceURL", srv.URL)
+			result, err := e.RunString(`(async()=>{
+     globalThis.factoryCalls=0;
+     globalThis.abortQueue=new AbortController();
+     const options=mode==='http'?{video:{url:sourceURL},audio:{url:sourceURL}}:
+       {inputs:()=>{factoryCalls++;throw new Error('factory failed');}};
+     options.signal=abortQueue.signal;
+     globalThis.work=__gopeed_ffmpeg.merge(options).getReader().read().then(()=>'',e=>e.message);
+     await new Promise(r=>setTimeout(r,50));
+     if(mode==='cancel')abortQueue.abort();
+     return factoryCalls;
+   })()`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if fmt.Sprint(result) != "0" || requests.Load() != 0 {
+				t.Fatalf("queued inputs started: %v, requests=%d", result, requests.Load())
+			}
+			if mode == "cancel" {
+				if _, err = e.RunString(`work`); err != nil {
+					t.Fatal(err)
+				}
+			}
+			release1()
+			if _, err = e.RunString(`work`); err != nil {
+				t.Fatal(err)
+			}
+			calls, err := e.RunString(`factoryCalls`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if mode == "factory" && fmt.Sprint(calls) != "1" {
+				t.Fatal(calls)
+			}
+			if mode == "cancel" && fmt.Sprint(calls) != "0" {
+				t.Fatal("cancelled factory ran")
+			}
+			if mode == "http" && requests.Load() != 1 {
+				t.Fatal("HTTP did not start after admission")
+			}
+			// Failure/cancellation must return the acquired slot even with the other held.
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			release, err := media.Acquire(ctx)
+			if err != nil {
+				t.Fatalf("slot leaked: %v", err)
+			}
+			release()
+		})
+	}
+}
+
+func TestFFmpegRequiresFactoryForStreams(t *testing.T) {
+	e := NewEngine(nil)
+	defer e.Close()
+	result, err := e.RunString(`(()=>{
+  const source=()=>new ReadableStream({});
+  let rejected=0;
+  for(const opts of [
+   {video:source(),audio:source()},
+   {video:{url:'https://example.test'},audio:source()},
+   {inputs:()=>({}),video:{url:'https://example.test'}},
+   {inputs:{video:source(),audio:source()}}
+  ]) {try{__gopeed_ffmpeg.merge(opts);}catch(e){if(e instanceof TypeError)rejected++;}}
+  return rejected;
+ })()`)
+	if err != nil || fmt.Sprint(result) != "4" {
+		t.Fatalf("validation: %v %v", result, err)
+	}
+}
+
+func TestFFmpegCancelPendingFactoryCleansLateInputs(t *testing.T) {
+	e := NewEngine(nil)
+	defer e.Close()
+	result, err := e.RunString(`(async()=>{
+   let ready,finish,cancelled=0,signal;
+   const entered=new Promise(r=>ready=r);
+   const abort=new AbortController();
+   const output=__gopeed_ffmpeg.merge({signal:abort.signal,inputs:async opts=>{
+     signal=opts.signal;ready();await new Promise(r=>finish=r);
+     const source=()=>new ReadableStream({cancel(){cancelled++;}});
+     return {video:source(),audio:source()};
+   }});
+   const work=output.getReader().read().catch(e=>e.name);
+   await entered;abort.abort();await work;finish();
+   await new Promise(r=>setTimeout(r,30));
+   return {cancelled,aborted:signal.aborted};
+ })()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := result.(map[string]any)
+	if fmt.Sprint(state["cancelled"]) != "2" || state["aborted"] != true {
+		t.Fatal(state)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	first, err := media.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first()
+	second, err := media.Acquire(ctx)
+	if err != nil {
+		t.Fatal("factory cancellation leaked capacity")
+	}
+	second()
 }

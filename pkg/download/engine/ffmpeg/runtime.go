@@ -108,16 +108,35 @@ func Arguments(format string, extra []string) ([]string, error) {
 // Run shares compilation, but gives every merge its own memory and filesystem.
 // A clean stdout EOF is only delivered by the caller after this succeeds.
 func Run(ctx context.Context, video, audio Input, out io.Writer, format string, extra []string) error {
+	_, err := Arguments(format, extra)
+	if err != nil {
+		return err
+	}
+	release, err := Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer release()
+	return RunAcquired(ctx, video, audio, out, format, extra)
+}
+
+// Acquire reserves execution capacity before input factories or HTTP requests start.
+func Acquire(ctx context.Context) (func(), error) {
+	select {
+	case slots <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	var once sync.Once
+	return func() { once.Do(func() { <-slots }) }, nil
+}
+
+// RunAcquired requires a reservation held until this call returns.
+func RunAcquired(ctx context.Context, video, audio Input, out io.Writer, format string, extra []string) error {
 	args, err := Arguments(format, extra)
 	if err != nil {
 		return err
 	}
-	select {
-	case slots <- struct{}{}:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	defer func() { <-slots }()
 	ready := make(chan struct{})
 	go func() { initialize(); close(ready) }()
 	select {
