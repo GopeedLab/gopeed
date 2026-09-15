@@ -225,7 +225,7 @@ class _ProgressContent extends StatelessWidget {
           fillColor: fillColor,
           highlightStartColor: fillColor,
           highlightEndColor: fillColor,
-          shimmer: task.status == TaskStatus.downloading,
+          shimmer: task.status == TaskStatus.downloading && !task.waiting,
         ),
         const SizedBox(height: 6),
         TaskCardFooter(task: task, isError: isError),

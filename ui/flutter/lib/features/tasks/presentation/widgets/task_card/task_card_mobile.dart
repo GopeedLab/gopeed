@@ -149,7 +149,7 @@ class _TaskCardMobileState extends State<TaskCardMobile> {
                           fillColor: fillColor,
                           highlightStartColor: fillColor,
                           highlightEndColor: fillColor,
-                          shimmer: task.status == TaskStatus.downloading,
+                          shimmer: task.status == TaskStatus.downloading && !task.waiting,
                         ),
                         const SizedBox(height: 6),
                         TaskCardFooter(task: task, isError: task.status == TaskStatus.failed),
