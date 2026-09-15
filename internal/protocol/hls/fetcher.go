@@ -103,8 +103,9 @@ type hlsRun struct {
 	downloaded atomic.Int64
 	doneCount  atomic.Int64
 	failCount  atomic.Int64
-	baseBytes  int64 // stored bytes restored from the journal at startup
-	baseDone   int   // completed segments restored from the journal at startup
+	baseBytes  int64   // stored bytes restored from the journal at startup
+	baseDone   int     // completed segments restored from the journal at startup
+	pending    []int64 // segment indexes to download, set by prepareRun
 }
 
 func (r *hlsRun) statsSnapshot() Stats {
@@ -431,6 +432,12 @@ func (f *Fetcher) Start() error {
 	if f.client == nil {
 		f.client = f.buildClient()
 	}
+	if f.meta.Res == nil {
+		// A restored plan without a resource cannot determine its output
+		// path; the engine re-resolves when Res is nil.
+		f.mu.Unlock()
+		return errors.New("hls fetcher is not resolved")
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	run := &hlsRun{
@@ -447,17 +454,19 @@ func (f *Fetcher) Start() error {
 		keyCache:   make(map[string][]byte),
 		journal:    make(map[int64]int64),
 	}
+	// Prepare staging and the completed-segment counters BEFORE publishing
+	// the run: Stats/Progress may observe it immediately afterwards and must
+	// never read half-initialized plain fields.
+	if err := f.prepareRun(run); err != nil {
+		f.mu.Unlock()
+		run.cancel()
+		close(run.done)
+		return err
+	}
 	f.activeRun = run
 	f.mu.Unlock()
 
-	if err := f.startRun(run); err != nil {
-		// No supervisor was started for this run, so close its done channel
-		// here to release anyone waiting on it.
-		run.cancel()
-		close(run.done)
-		f.clearActiveRun(run)
-		return err
-	}
+	f.launchWorkers(run)
 	go f.supervise(run)
 	return nil
 }
@@ -563,11 +572,13 @@ func (f *Fetcher) supervise(run *hlsRun) {
 	} else {
 		err = f.merge(run)
 		if err == nil {
+			if run.ctx.Err() != nil {
+				// Paused while the merge was in flight: keep the staged
+				// segments and exit silently; the next run re-merges.
+				f.clearActiveRun(run)
+				return
+			}
 			os.RemoveAll(run.tempDir)
-		}
-		if errors.Is(err, context.Canceled) {
-			f.clearActiveRun(run)
-			return
 		}
 	}
 	f.clearActiveRun(run)
@@ -577,9 +588,11 @@ func (f *Fetcher) supervise(run *hlsRun) {
 	}
 }
 
-// startRun prepares the staging folder and launches the segment download
-// workers. It returns immediately when every segment is already complete.
-func (f *Fetcher) startRun(run *hlsRun) error {
+// prepareRun prepares the staging folder and loads the completed-segment
+// journal into run.baseBytes/baseDone/pending. It performs no goroutine
+// launches and no context-bound work, so it runs safely under f.mu before
+// the run is published.
+func (f *Fetcher) prepareRun(run *hlsRun) error {
 	if err := os.MkdirAll(run.tempDir, 0777); err != nil {
 		return err
 	}
@@ -587,8 +600,6 @@ func (f *Fetcher) startRun(run *hlsRun) error {
 	if err := loadJournal(run); err != nil {
 		return err
 	}
-
-	var pending []int64
 	for i := range run.segs {
 		if size, ok := run.journal[int64(i)]; ok {
 			if info, err := os.Stat(segmentPath(run.tempDir, int64(i))); err == nil && info.Size() == size {
@@ -597,19 +608,25 @@ func (f *Fetcher) startRun(run *hlsRun) error {
 				continue
 			}
 		}
-		pending = append(pending, int64(i))
+		run.pending = append(run.pending, int64(i))
 	}
 	run.downloaded.Store(run.baseBytes)
-	if len(pending) == 0 {
-		return nil
-	}
+	return nil
+}
 
+// launchWorkers starts the queue producer and the segment download workers
+// for a published run. Every goroutine registers itself in run.wg so Pause
+// waits for all of them.
+func (f *Fetcher) launchWorkers(run *hlsRun) {
+	if len(run.pending) == 0 {
+		return
+	}
 	queue := make(chan int64)
 	run.wg.Add(1)
 	go func() {
 		defer run.wg.Done()
 		defer close(queue)
-		for _, idx := range pending {
+		for _, idx := range run.pending {
 			select {
 			case <-run.ctx.Done():
 				return
@@ -618,7 +635,7 @@ func (f *Fetcher) startRun(run *hlsRun) error {
 		}
 	}()
 
-	workers := min(f.config.SegmentConnections, len(pending))
+	workers := min(f.config.SegmentConnections, len(run.pending))
 	for i := 0; i < workers; i++ {
 		run.wg.Add(1)
 		go func() {
@@ -641,7 +658,6 @@ func (f *Fetcher) startRun(run *hlsRun) error {
 			}
 		}()
 	}
-	return nil
 }
 
 func (f *Fetcher) downloadSegment(run *hlsRun, idx int64) error {
@@ -791,7 +807,7 @@ func (f *Fetcher) merge(run *hlsRun) error {
 	if err := os.MkdirAll(filepath.Dir(target), 0777); err != nil {
 		return err
 	}
-	partPath := target + "." + tempDirPrefix + run.stagingID + ".part"
+	partPath := target + tempDirPrefix + run.stagingID + ".part"
 	out, err := os.Create(partPath)
 	if err != nil {
 		return err

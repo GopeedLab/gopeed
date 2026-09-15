@@ -47,7 +47,9 @@ func planFingerprint(state *fetcherState) string {
 			fmt.Fprintf(h, "%d@%d|", seg.Byterange.Offset, seg.Byterange.Length)
 		}
 		if seg.Key != nil {
-			fmt.Fprintf(h, "key=%s|", seg.Key.URI)
+			// The IV is part of the plan: same URI with a rotated IV would
+			// silently decrypt to garbage if the journal were reused.
+			fmt.Fprintf(h, "key=%s iv=%x|", seg.Key.URI, seg.Key.IV)
 		}
 		if seg.IsInit {
 			io.WriteString(h, "init|")

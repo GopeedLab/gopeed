@@ -32,7 +32,7 @@ type MediaRendition struct {
 // MasterPlaylist is a parsed master playlist with its rendition groups.
 type MasterPlaylist struct {
 	Variants  []*Variant
-	Rendition map[string]*MediaRendition // group id -> representative entry
+	Rendition map[string][]*MediaRendition // group id -> all EXT-X-MEDIA members
 }
 
 // Key is the decryption key applied to the segments that follow its tag, until
@@ -111,7 +111,7 @@ func ParseMasterPlaylist(content string, baseURL *url.URL) (*MasterPlaylist, err
 	if err := validateM3U8Header(content); err != nil {
 		return nil, err
 	}
-	master := &MasterPlaylist{Rendition: make(map[string]*MediaRendition)}
+	master := &MasterPlaylist{Rendition: make(map[string][]*MediaRendition)}
 	var pending *Variant
 	for _, line := range strings.Split(content, "\n") {
 		line = strings.TrimSpace(line)
@@ -142,11 +142,9 @@ func ParseMasterPlaylist(content string, baseURL *url.URL) (*MasterPlaylist, err
 				rendition.URI = resolveURL(baseURL, uri)
 			}
 			if rendition.GroupID != "" {
-				// Keep the first entry per group: a group is unsupported as a
-				// whole when any of its members carries its own URI.
-				if _, ok := master.Rendition[rendition.GroupID]; !ok {
-					master.Rendition[rendition.GroupID] = rendition
-				}
+				// Keep every member: a group is unsupported as a whole when
+				// ANY of its members carries its own URI.
+				master.Rendition[rendition.GroupID] = append(master.Rendition[rendition.GroupID], rendition)
 			}
 			continue
 		}
@@ -172,13 +170,15 @@ func checkAudioRendition(master *MasterPlaylist, best *Variant) error {
 	if best == nil || best.AudioGroup == "" {
 		return nil
 	}
-	rendition, ok := master.Rendition[best.AudioGroup]
-	if !ok || rendition == nil || rendition.Type != "AUDIO" || rendition.URI == "" {
-		return nil
+	for _, rendition := range master.Rendition[best.AudioGroup] {
+		if rendition == nil || rendition.Type != "AUDIO" || rendition.URI == "" {
+			continue
+		}
+		return fmt.Errorf(
+			"selected variant uses a separate audio rendition (group %q), which is not supported: the merged output would have no audio",
+			best.AudioGroup)
 	}
-	return fmt.Errorf(
-		"selected variant uses a separate audio rendition (group %q), which is not supported: the merged output would have no audio",
-		best.AudioGroup)
+	return nil
 }
 
 // PickBestVariant selects the highest-bandwidth variant.
@@ -256,8 +256,9 @@ func ParseMedia(content string, baseURL *url.URL) (*Media, error) {
 			resolved := resolveURL(baseURL, uriAttr)
 			// The init section identity covers every attribute, not just the
 			// URI: a repeated tag with a different BYTERANGE addresses
-			// different bytes and changes the init section.
-			identity := resolved + "|" + attrs["BYTERANGE"]
+			// different bytes and changes the init section. NUL keeps the
+			// two parts unambiguously separated.
+			identity := resolved + "\x00" + attrs["BYTERANGE"]
 			if mapIdentity != "" {
 				if mapIdentity != identity {
 					return nil, errors.New("changing init sections are not supported")

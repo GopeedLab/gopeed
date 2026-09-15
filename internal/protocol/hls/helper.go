@@ -2,9 +2,7 @@ package hls
 
 import (
 	"context"
-	"crypto/sha1"
 	"crypto/tls"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
@@ -99,10 +97,4 @@ func (r *stallReader) Read(p []byte) (int, error) {
 
 func (r *stallReader) Close() error {
 	return r.rc.Close()
-}
-
-// sha1Hex returns the hex SHA-1 digest of s.
-func sha1Hex(s string) string {
-	sum := sha1.Sum([]byte(s))
-	return hex.EncodeToString(sum[:])
 }

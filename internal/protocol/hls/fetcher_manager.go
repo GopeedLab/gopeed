@@ -59,12 +59,26 @@ func (fm *FetcherManager) DefaultConfig() any {
 
 func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
+	_f.mu.Lock()
+	defer _f.mu.Unlock()
 	if _f.state == nil {
 		return nil, nil
 	}
-	// The segment plan is immutable after resolve; the completed-segment
-	// journal lives on disk next to the segments.
-	return _f.state, nil
+	// The engine's periodic checkpoint calls Store without holding the task
+	// lock and serializes the returned value afterwards, while Resolve/Patch/
+	// Start mutate the live state under the fetcher mutex: return a snapshot
+	// copy taken under that mutex, mirroring the HTTP protocol's Store.
+	return cloneState(_f.state), nil
+}
+
+func cloneState(state *fetcherState) *fetcherState {
+	cloned := *state
+	cloned.Segments = make([]*Segment, len(state.Segments))
+	for i, seg := range state.Segments {
+		s := *seg
+		cloned.Segments[i] = &s
+	}
+	return &cloned
 }
 
 func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {
