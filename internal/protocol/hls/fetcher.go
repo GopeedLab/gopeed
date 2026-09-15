@@ -227,11 +227,14 @@ func (f *Fetcher) resolvePlanLocked(ctx context.Context, keepName string) (*fetc
 
 	mediaURL := finalURL
 	if IsMasterPlaylist(content) {
-		variants, err := ParseMaster(content, baseURL)
+		master, err := ParseMasterPlaylist(content, baseURL)
 		if err != nil {
 			return nil, "", err
 		}
-		best := PickBestVariant(variants)
+		best := PickBestVariant(master.Variants)
+		if err := checkAudioRendition(master, best); err != nil {
+			return nil, "", err
+		}
 		variantContent, variantURL, err := f.fetchText(ctx, http.MethodGet, best.URI)
 		if err != nil {
 			return nil, "", fmt.Errorf("fetch variant playlist failed: %w", err)
@@ -248,8 +251,8 @@ func (f *Fetcher) resolvePlanLocked(ctx context.Context, keepName string) (*fetc
 	if err != nil {
 		return nil, "", err
 	}
-	if media.Live {
-		return nil, "", errors.New("live streams are not supported yet")
+	if err := validateSupported(media); err != nil {
+		return nil, "", err
 	}
 
 	outputName := keepName

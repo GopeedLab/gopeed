@@ -18,6 +18,21 @@ type Variant struct {
 	Resolution   string
 	Codecs       string
 	Name         string
+	AudioGroup   string // AUDIO attribute: group id of the audio renditions
+}
+
+// MediaRendition is one EXT-X-MEDIA entry of a master playlist. Only the
+// fields needed to detect unsupported track layouts are kept.
+type MediaRendition struct {
+	Type    string
+	GroupID string
+	URI     string
+}
+
+// MasterPlaylist is a parsed master playlist with its rendition groups.
+type MasterPlaylist struct {
+	Variants  []*Variant
+	Rendition map[string]*MediaRendition // group id -> representative entry
 }
 
 // Key is the decryption key applied to the segments that follow its tag, until
@@ -49,10 +64,11 @@ type Segment struct {
 
 // Media is a parsed media playlist.
 type Media struct {
-	Segments []*Segment
-	Version  int
-	Live     bool // no EXT-X-ENDLIST tag
-	IsFMP4   bool // playlist declares an init section via EXT-X-MAP
+	Segments      []*Segment
+	Version       int
+	Live          bool // no EXT-X-ENDLIST tag
+	IsFMP4        bool // playlist declares an init section via EXT-X-MAP
+	Discontinuity bool // playlist contains EXT-X-DISCONTINUITY
 }
 
 const (
@@ -82,10 +98,20 @@ func validateM3U8Header(content string) error {
 
 // ParseMaster parses a master playlist and returns all variants.
 func ParseMaster(content string, baseURL *url.URL) ([]*Variant, error) {
+	master, err := ParseMasterPlaylist(content, baseURL)
+	if err != nil {
+		return nil, err
+	}
+	return master.Variants, nil
+}
+
+// ParseMasterPlaylist parses a master playlist including its EXT-X-MEDIA
+// rendition groups.
+func ParseMasterPlaylist(content string, baseURL *url.URL) (*MasterPlaylist, error) {
 	if err := validateM3U8Header(content); err != nil {
 		return nil, err
 	}
-	var variants []*Variant
+	master := &MasterPlaylist{Rendition: make(map[string]*MediaRendition)}
 	var pending *Variant
 	for _, line := range strings.Split(content, "\n") {
 		line = strings.TrimSpace(line)
@@ -100,21 +126,59 @@ func ParseMaster(content string, baseURL *url.URL) ([]*Variant, error) {
 				Resolution:   attrs["RESOLUTION"],
 				Codecs:       unquote(attrs["CODECS"]),
 				Name:         unquote(attrs["NAME"]),
+				AudioGroup:   unquote(attrs["AUDIO"]),
+			}
+			continue
+		}
+		if strings.HasPrefix(line, "#EXT-X-MEDIA:") {
+			attrs := parseAttributes(line[len("#EXT-X-MEDIA:"):])
+			rendition := &MediaRendition{
+				Type:    strings.ToUpper(attrs["TYPE"]),
+				GroupID: unquote(attrs["GROUP-ID"]),
+			}
+			// Only an explicit URI means a separate track; resolving an empty
+			// reference would fabricate one out of the playlist URL.
+			if uri := unquote(attrs["URI"]); uri != "" {
+				rendition.URI = resolveURL(baseURL, uri)
+			}
+			if rendition.GroupID != "" {
+				// Keep the first entry per group: a group is unsupported as a
+				// whole when any of its members carries its own URI.
+				if _, ok := master.Rendition[rendition.GroupID]; !ok {
+					master.Rendition[rendition.GroupID] = rendition
+				}
 			}
 			continue
 		}
 		if pending != nil {
 			if line[0] != '#' {
 				pending.URI = resolveURL(baseURL, line)
-				variants = append(variants, pending)
+				master.Variants = append(master.Variants, pending)
 			}
 			pending = nil
 		}
 	}
-	if len(variants) == 0 {
+	if len(master.Variants) == 0 {
 		return nil, errors.New("master playlist has no variants")
 	}
-	return variants, nil
+	return master, nil
+}
+
+// checkAudioRendition rejects the selected variant when its AUDIO group
+// carries a separate audio track: downloading only the video variant would
+// silently produce a silent file. Groups the variant does not reference are
+// ignored (variants without an AUDIO attribute are assumed self-contained).
+func checkAudioRendition(master *MasterPlaylist, best *Variant) error {
+	if best == nil || best.AudioGroup == "" {
+		return nil
+	}
+	rendition, ok := master.Rendition[best.AudioGroup]
+	if !ok || rendition == nil || rendition.Type != "AUDIO" || rendition.URI == "" {
+		return nil
+	}
+	return fmt.Errorf(
+		"selected variant uses a separate audio rendition (group %q), which is not supported: the merged output would have no audio",
+		best.AudioGroup)
 }
 
 // PickBestVariant selects the highest-bandwidth variant.
@@ -141,7 +205,7 @@ func ParseMedia(content string, baseURL *url.URL) (*Media, error) {
 	var pendingDuration float64
 	var lastRangeEnd int64
 	var sequence int64
-	var initURI string
+	var mapIdentity string // normalized identity of the current EXT-X-MAP
 
 	for _, line := range strings.Split(content, "\n") {
 		line = strings.TrimSpace(line)
@@ -190,27 +254,39 @@ func ParseMedia(content string, baseURL *url.URL) (*Media, error) {
 				return nil, errors.New("EXT-X-MAP without URI is not supported")
 			}
 			resolved := resolveURL(baseURL, uriAttr)
-			if initURI != "" && initURI != resolved {
-				return nil, errors.New("multi-period fMP4 streams are not supported")
-			}
-			initURI = resolved
-			if !media.IsFMP4 {
-				// The init section is prepended to the segment plan, it takes
-				// the media sequence number of the playlist for IV derivation.
-				init := &Segment{
-					URI:      resolved,
-					Sequence: sequence,
-					IsInit:   true,
-					Key:      currentKey,
+			// The init section identity covers every attribute, not just the
+			// URI: a repeated tag with a different BYTERANGE addresses
+			// different bytes and changes the init section.
+			identity := resolved + "|" + attrs["BYTERANGE"]
+			if mapIdentity != "" {
+				if mapIdentity != identity {
+					return nil, errors.New("changing init sections are not supported")
 				}
-				if attrs["BYTERANGE"] != "" {
-					init.Byterange = parseByteRange(attrs["BYTERANGE"], 0)
-					if init.Byterange == nil {
-						return nil, fmt.Errorf("invalid EXT-X-MAP BYTERANGE: %s", attrs["BYTERANGE"])
-					}
-				}
-				media.Segments = append(media.Segments, init)
+				media.IsFMP4 = true
+				continue
 			}
+			mapIdentity = identity
+			init := &Segment{
+				URI:      resolved,
+				Sequence: sequence,
+				IsInit:   true,
+				Key:      currentKey,
+			}
+			if attrs["BYTERANGE"] != "" {
+				init.Byterange = parseByteRange(attrs["BYTERANGE"], 0)
+				if init.Byterange == nil {
+					return nil, fmt.Errorf("invalid EXT-X-MAP BYTERANGE: %s", attrs["BYTERANGE"])
+				}
+			}
+			if init.Key != nil && init.Key.IV == nil {
+				// RFC 8216 only defines sequence-derived IVs for media
+				// segments; guessing one for the init section produces
+				// corrupt output, so require the playlist to be explicit.
+				return nil, errors.New("encrypted EXT-X-MAP without an explicit IV is not supported")
+			}
+			// The init section is prepended to the segment plan, it takes
+			// the media sequence number of the playlist for IV derivation.
+			media.Segments = append(media.Segments, init)
 			media.IsFMP4 = true
 		case strings.HasPrefix(line, "#EXT-X-BYTERANGE:"):
 			pendingByterange = parseByteRange(line[len("#EXT-X-BYTERANGE:"):], lastRangeEnd)
@@ -219,6 +295,8 @@ func ParseMedia(content string, baseURL *url.URL) (*Media, error) {
 			}
 		case line == "#EXT-X-GAP":
 			pendingGap = true
+		case line == "#EXT-X-DISCONTINUITY":
+			media.Discontinuity = true
 		case line == "#EXT-X-ENDLIST":
 			media.Live = false
 		case strings.HasPrefix(line, "#EXT-X-MEDIA-SEQUENCE:"):
@@ -240,6 +318,24 @@ func ParseMedia(content string, baseURL *url.URL) (*Media, error) {
 	return media, nil
 }
 
+// validateSupported rejects playlist features the byte-concatenation merge
+// cannot reproduce faithfully. Skipping such features silently would report
+// success while producing a broken file.
+func validateSupported(media *Media) error {
+	if media.Live {
+		return errors.New("live streams are not supported yet")
+	}
+	if media.Discontinuity {
+		return errors.New("EXT-X-DISCONTINUITY is not supported: the merged output would have a broken timeline")
+	}
+	for _, seg := range media.Segments {
+		if seg.Gap {
+			return errors.New("EXT-X-GAP is not supported: the missing segment would leave a hole in the merged output")
+		}
+	}
+	return nil
+}
+
 func parseKey(attrs string, baseURL *url.URL) (*Key, error) {
 	parsed := parseAttributes(attrs)
 	switch method := parsed["METHOD"]; method {
@@ -249,6 +345,9 @@ func parseKey(attrs string, baseURL *url.URL) (*Key, error) {
 		uri := unquote(parsed["URI"])
 		if uri == "" {
 			return nil, errors.New("AES-128 EXT-X-KEY without URI")
+		}
+		if format := unquote(parsed["KEYFORMAT"]); format != "" && format != "identity" {
+			return nil, fmt.Errorf("unsupported EXT-X-KEY KEYFORMAT: %s", format)
 		}
 		key := &Key{Method: keyMethodAES128, URI: resolveURL(baseURL, uri)}
 		if iv, ok := parsed["IV"]; ok {
