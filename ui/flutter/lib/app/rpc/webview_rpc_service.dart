@@ -3,12 +3,14 @@ import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../core/common/start_config.dart';
 import '../../util/log_util.dart';
 import '../../util/util.dart';
 import 'server.dart';
+import 'webview_profile.dart';
 
 String buildWebViewExecuteScript({
   required String channelName,
@@ -73,7 +75,6 @@ class WebViewRpcService {
 
   final Map<String, WebViewRpcPageSession> _pagesById = {};
   final Completer<void> _overlayReady = Completer<void>();
-  late final CookieManager _cookieManager = CookieManager.instance();
 
   RpcServerHandle? _server;
   int _pageSeq = 0;
@@ -129,6 +130,9 @@ class WebViewRpcService {
     switch (method) {
       case 'webview.isAvailable':
         return {'available': true};
+      case 'profile.remove':
+        await _removeProfile(_string(params, 'profileId'));
+        return {};
       case 'page.open':
         return _openPage(params);
       case 'page.addInitScript':
@@ -162,10 +166,12 @@ class WebViewRpcService {
   }
 
   Future<Map<String, dynamic>> _openPage(Map<String, dynamic> params) async {
+    final profile = WebViewProfile(_string(params, 'profileId'));
+    await profile.prepare(_string(params, 'proxyUrl'));
     final pageId = 'page-${++_pageSeq}';
     final session = WebViewRpcPageSession(
       pageId: pageId,
-      cookieManager: _cookieManager,
+      cookieManager: profile,
       headless: params['headless'] as bool? ?? false,
       debug: params['debug'] as bool? ?? false,
       title: params['title'] as String? ?? '',
@@ -183,6 +189,15 @@ class WebViewRpcService {
       rethrow;
     }
     return {'pageId': pageId};
+  }
+
+  Future<void> _removeProfile(String id) async {
+    for (final page in _pagesById.values.where((page) => page.cookieManager.id == id).toList()) {
+      await _closePage(page.pageId);
+    }
+    // Let visible platform views unmount before releasing their native store.
+    await WidgetsBinding.instance.endOfFrame;
+    await WebViewProfile(id).remove();
   }
 
   WebViewRpcPageSession _page(Map<String, dynamic> params) {
@@ -271,6 +286,9 @@ class WebViewRpcService {
     if (error is WebViewRpcException) {
       return {'code': error.code, 'message': error.message};
     }
+    if (error is PlatformException && error.code == 'UNAVAILABLE') {
+      return {'code': error.code, 'message': error.message ?? 'WebView is unavailable'};
+    }
     final code = switch (method) {
       'page.goto' => 'NAVIGATION_FAILED',
       'page.execute' => 'EVALUATION_FAILED',
@@ -293,7 +311,7 @@ class WebViewRpcPageSession {
   });
 
   final String pageId;
-  final CookieManager cookieManager;
+  final WebViewProfile cookieManager;
   final bool headless;
   final bool debug;
   final String title;
@@ -449,6 +467,8 @@ class WebViewRpcPageSession {
             'path': cookie.path ?? '/',
             'secure': cookie.isSecure,
             'httpOnly': cookie.isHttpOnly,
+            if (cookie.expiresDate != null)
+              'expires': DateTime.fromMillisecondsSinceEpoch(cookie.expiresDate!, isUtc: true).toIso8601String(),
           };
         })
         .toList(growable: false);
@@ -523,10 +543,9 @@ class WebViewRpcPageSession {
     );
   }
 
-  InAppWebViewSettings get _settings => InAppWebViewSettings(
-    javaScriptEnabled: true,
-    transparentBackground: true,
-    isInspectable: debug,
+  InAppWebViewSettings get _settings => WebViewProfileSettings(
+    profileId: cookieManager.id,
+    debug: debug,
     userAgent: userAgent.isNotEmpty ? userAgent : null,
   );
 

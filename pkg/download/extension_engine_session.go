@@ -135,13 +135,13 @@ func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession) {
 	return e, session
 }
 
-func (d *Downloader) newExtensionWebViewRuntime(session *engineSession) *enginewebview.Runtime {
+func (d *Downloader) newExtensionWebViewRuntime(session *engineSession, identity string) *enginewebview.Runtime {
 	var (
 		opener    enginewebview.Opener
 		available bool
 	)
 	if provider := d.cfg.WebViewProvider; provider != nil && provider.IsAvailable() {
-		opener = provider
+		opener = &extensionWebViewOpener{downloader: d, provider: provider, identity: identity, profile: d.extensionWebViewProfile(identity)}
 		available = true
 	}
 	runtime := enginewebview.NewRuntime(opener, available)
