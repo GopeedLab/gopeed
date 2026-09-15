@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "デフォルトのダウンロード先として保存",
   "downloadDirValid": "ダウンロードディレクトリを選択してください",
   "connections": "接続",
+  "maxRetries": "最大リトライ回数",
   "useServerCtime": "ファイル作成時にサーバー時間を使用する",
   "maxRunning": "最大実行タスク",
   "defaultDirectDownload": "デフォルトで直接ダウンロードにチェックを入れる",

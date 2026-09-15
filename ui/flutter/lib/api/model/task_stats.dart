@@ -55,7 +55,7 @@ sealed class TaskStats {
       Protocol.http => HttpTaskStats.fromJson(snapshot),
       Protocol.bt => BtTaskStats.fromJson(snapshot: snapshot, runtime: runtime),
       Protocol.ed2k => Ed2kTaskStats.fromJson(snapshot: snapshot, runtime: runtime),
-      null => null,
+      Protocol.hls || null => null,
     };
   }
 }
