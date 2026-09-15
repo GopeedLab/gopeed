@@ -377,12 +377,14 @@ void main() {
 
     tester.view.physicalSize = const Size(520, 720);
     await tester.pumpAndSettle();
-    final shortcutContent = find.byKey(const ValueKey('create-task-directory-shortcuts-content'));
     expect(tester.getTopLeft(shortcutRow).dy, greaterThan(tester.getBottomLeft(rememberDirectoryRow).dy));
     expect(tester.getSize(shortcutRow).width, closeTo(tester.getSize(directoryComponent).width, 0.5));
-    expect(tester.getSize(shortcutContent).width, greaterThan(tester.getSize(shortcutRow).width));
-    final shortcutScrollable = find.descendant(of: shortcutRow, matching: find.byType(Scrollable));
-    expect(tester.state<ScrollableState>(shortcutScrollable).position.maxScrollExtent, greaterThan(0));
+    expect(find.descendant(of: shortcutRow, matching: find.byType(Scrollable)), findsNothing);
+    for (var index = 0; index < 4; index++) {
+      final shortcut = tester.getRect(find.byKey(ValueKey('create-task-category-$index')));
+      expect(shortcut.left, greaterThanOrEqualTo(tester.getRect(shortcutRow).left));
+      expect(shortcut.right, lessThanOrEqualTo(tester.getRect(shortcutRow).right));
+    }
 
     tester.view.physicalSize = const Size(719, 720);
     await tester.pumpAndSettle();

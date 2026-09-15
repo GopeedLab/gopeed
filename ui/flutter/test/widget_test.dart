@@ -97,6 +97,7 @@ import 'package:gopeed/shared/widgets/app_primary_button.dart';
 import 'package:gopeed/shared/widgets/app_text_field.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:gopeed/shared/widgets/app_toast.dart';
+import 'package:gopeed/shared/widgets/app_swipe_tabs.dart';
 import 'package:gopeed/shared/widgets/gopeed_app_mark.dart';
 import 'package:gopeed/shared/widgets/responsive_menu_layout.dart';
 import 'package:gopeed/shared/widgets/virtual_tree_view.dart';
@@ -541,6 +542,39 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byKey(const ValueKey('tasks-empty-create-button')), findsOneWidget);
     }
+    tester.view.physicalSize = const Size(390, 760);
+    await tester.pumpAndSettle();
+
+    final content = find.byWidgetPredicate((widget) => widget is AppSwipeTabs);
+    void expectActive(String label) {
+      expect(tester.widget<Text>(find.text(label)).style!.fontWeight, FontWeight.w700);
+    }
+
+    expectActive('Downloading 0');
+    await tester.drag(content, const Offset(160, 0));
+    await tester.pumpAndSettle();
+    expectActive('Downloading 0');
+    await tester.drag(content, const Offset(-160, 0));
+    await tester.pumpAndSettle();
+    expectActive('Completed 0');
+    await tester.drag(content, const Offset(-160, 0));
+    await tester.pumpAndSettle();
+    expectActive('Failed 0');
+    await tester.drag(content, const Offset(-160, 0));
+    await tester.pumpAndSettle();
+    expectActive('Failed 0');
+    await tester.drag(content, const Offset(160, 0));
+    await tester.pumpAndSettle();
+    expectActive('Completed 0');
+    await tester.tap(find.text('Downloading 0'));
+    await tester.pumpAndSettle();
+    await tester.drag(content, const Offset(0, -160));
+    await tester.pumpAndSettle();
+    expectActive('Downloading 0');
+    await tester.drag(content, const Offset(-160, 0));
+    await tester.pumpAndSettle();
+    expectActive('Completed 0');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('extensions grid adds columns from a minimum card width and keeps desktop toolbar aligned', (
@@ -975,6 +1009,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getRect(find.byKey(const ValueKey('extension-search-input'))).top, closeTo(searchRect.top, 0.01));
     expect(tester.state<ScrollableState>(scrollable).position.pixels, greaterThan(0));
+    expect(tester.takeException(), isNull);
+
+    final container = ProviderScope.containerOf(tester.element(find.byType(ExtensionsPage)));
+    ExtensionListFilter filter() => container.read(extensionsControllerProvider).requireValue.listFilter;
+    expect(filter(), ExtensionListFilter.market);
+    await tester.drag(list, const Offset(-160, 0));
+    await tester.pumpAndSettle();
+    expect(filter(), ExtensionListFilter.installed);
+    await tester.drag(list, const Offset(-160, 0));
+    await tester.pumpAndSettle();
+    expect(filter(), ExtensionListFilter.installed);
+    await tester.drag(list, const Offset(160, 0));
+    await tester.pumpAndSettle();
+    expect(filter(), ExtensionListFilter.market);
+    await tester.drag(list, const Offset(-20, 0));
+    await tester.pumpAndSettle();
+    expect(filter(), ExtensionListFilter.market);
+    tester.view.physicalSize = const Size(1024, 760);
+    await tester.pumpAndSettle();
+    await tester.drag(list, const Offset(-160, 0));
+    await tester.pumpAndSettle();
+    expect(filter(), ExtensionListFilter.market);
     expect(tester.takeException(), isNull);
   });
 
@@ -2761,7 +2817,7 @@ void main() {
   });
 
   testWidgets('create task advanced options scroll smoothly into view', (WidgetTester tester) async {
-    await _setTestSize(tester, const Size(700, 500));
+    await _setTestSize(tester, const Size(800, 500));
     await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
     await tester.pumpAndSettle();
     final createDirectoryInput = find.byKey(const ValueKey('create-task-directory-input'));
@@ -2891,6 +2947,73 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
+  testWidgets('create task stacks narrow forms and preserves header edits across resizing', (tester) async {
+    await _setTestSize(tester, const Size(390, 844));
+    await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
+    await tester.pumpAndSettle();
+
+    final rename = find.byKey(const ValueKey('create-task-rename-input'));
+    final directory = find.byKey(const ValueKey('create-task-directory-input'));
+    expect(tester.getRect(rename).top, greaterThan(tester.getRect(find.text('Rename')).bottom));
+    expect(tester.getSize(directory).width, closeTo(342, 0.01));
+    await tester.ensureVisible(find.text('Advanced'));
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    final proxy = find.byKey(const ValueKey('create-task-proxy-mode'));
+    expect(tester.getRect(proxy).top, greaterThan(tester.getRect(find.text('Proxy')).bottom));
+    final name = find.byKey(const ValueKey('create-task-http-header-name-0'));
+    final value = find.byKey(const ValueKey('create-task-http-header-value-0'));
+    expect(tester.getRect(value).top, greaterThan(tester.getRect(name).bottom));
+    expect(tester.getSize(value).width, tester.getSize(name).width);
+    await tester.ensureVisible(value);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.descendant(of: value, matching: find.byType(EditableText)), 'mobile-agent');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+
+    final editor = tester.widget<AppHttpHeadersEditor>(find.byType(AppHttpHeadersEditor));
+    expect(editor.controller.toMap()['User-Agent'], 'mobile-agent');
+    final add = find.byKey(const ValueKey('create-task-http-header-add'));
+    await tester.ensureVisible(add);
+    await tester.pumpAndSettle();
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('create-task-http-header-name-3')), findsOneWidget);
+    final remove = find.byKey(const ValueKey('create-task-http-header-remove-1'));
+    await tester.ensureVisible(remove);
+    await tester.pumpAndSettle();
+    await tester.tap(remove);
+    await tester.pumpAndSettle();
+    expect(editor.controller.toMap()['User-Agent'], 'mobile-agent');
+    expect(editor.controller.toMap().containsKey('Cookie'), isFalse);
+
+    for (final width in [720.0, 1024.0, 390.0]) {
+      tester.view.physicalSize = Size(width, 844);
+      await tester.pumpAndSettle();
+      if (width >= 720) {
+        expect(tester.getRect(name).top, closeTo(tester.getRect(value).top, 0.01));
+        expect(tester.getRect(value).left, greaterThan(tester.getRect(name).right));
+      } else {
+        expect(tester.getRect(value).top, greaterThan(tester.getRect(name).bottom));
+      }
+      expect(editor.controller.toMap()['User-Agent'], 'mobile-agent');
+      expect(tester.takeException(), isNull);
+    }
+
+    final custom = find.byKey(const ValueKey('create-task-proxy-mode-custom'));
+    await tester.ensureVisible(custom);
+    await tester.pumpAndSettle();
+    await tester.tap(custom);
+    await tester.pumpAndSettle();
+    final server = find.byKey(const ValueKey('create-task-proxy-server'));
+    final port = find.byKey(const ValueKey('create-task-proxy-port'));
+    final user = find.byKey(const ValueKey('create-task-proxy-username'));
+    final password = find.byKey(const ValueKey('create-task-proxy-password'));
+    expect(tester.getRect(port).top, greaterThan(tester.getRect(server).bottom));
+    expect(tester.getRect(password).top, greaterThan(tester.getRect(user).bottom));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('create task labels direct download without a mode field', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(700, 500));
     await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
@@ -2904,8 +3027,8 @@ void main() {
       matching: find.byType(shad.Checkbox),
     );
     expect(
-      tester.getRect(directDownloadCheckbox).left,
-      greaterThan(tester.getRect(find.text('Direct Download')).right),
+      tester.getRect(directDownloadCheckbox).top,
+      greaterThan(tester.getRect(find.text('Direct Download')).bottom),
     );
     await tester.pump(const Duration(seconds: 1));
   });
@@ -3049,6 +3172,51 @@ void main() {
     final hungarianWidth = tester.getSize(find.byKey(const ValueKey('tasks-create-button-container'))).width;
     expect(hungarianWidth, greaterThan(chineseWidth));
     expect(hungarianWidth, lessThanOrEqualTo(190));
+  });
+
+  testWidgets('resolved file selector initially expands only first-level directories', (tester) async {
+    await _setTestSize(tester, const Size(760, 620));
+    var selected = <int>[];
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: ResolveFileTree(
+          files: [
+            FileInfo(path: '', name: 'root.txt', size: 1),
+            FileInfo(path: 'folder', name: 'first.txt', size: 2),
+            FileInfo(path: 'folder/nested', name: 'second.txt', size: 3),
+            FileInfo(path: 'folder/nested/deeper', name: 'third.txt', size: 4),
+          ],
+          initialSelection: const [0, 1, 2, 3],
+          onSelectionChanged: (values) => selected = values,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('root.txt'), findsOneWidget);
+    expect(find.text('first.txt'), findsOneWidget);
+    expect(find.text('nested'), findsOneWidget);
+    expect(find.text('second.txt'), findsNothing);
+    expect(find.text('third.txt'), findsNothing);
+    expect(selected, [0, 1, 2, 3]);
+
+    await tester.tap(find.byKey(const ValueKey('resolve-tree-node-expand-folder:folder/nested')));
+    await tester.pumpAndSettle();
+    expect(find.text('second.txt'), findsOneWidget);
+    expect(find.text('deeper'), findsOneWidget);
+    expect(find.text('third.txt'), findsNothing);
+    expect(selected, [0, 1, 2, 3]);
+
+    await tester.tap(find.byKey(const ValueKey('resolve-tree-expand-toggle')));
+    await tester.pumpAndSettle();
+    expect(find.text('third.txt'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('resolve-tree-expand-toggle')));
+    await tester.pumpAndSettle();
+    expect(find.text('first.txt'), findsNothing);
+    expect(find.text('root.txt'), findsOneWidget);
+    expect(selected, [0, 1, 2, 3]);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('resolved file selector uses aligned tree header and sortable columns', (WidgetTester tester) async {

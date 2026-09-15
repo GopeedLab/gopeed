@@ -60,6 +60,7 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
         Expanded(
           child: FileTreeView<int>(
             items: _treeItems,
+            initialExpandedDepth: 1,
             keyPrefix: 'resolve-tree',
             rowHeight: _resolveTreeRowHeight,
             contentTextStyle: _resolveFileNameStyle,

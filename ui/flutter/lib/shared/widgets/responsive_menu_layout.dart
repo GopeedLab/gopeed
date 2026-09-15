@@ -89,7 +89,7 @@ class _ResponsiveMenuLayoutState<T> extends State<ResponsiveMenuLayout<T>> {
                 ),
               )
               .toList(),
-          selectedValue: widget.selectedValue,
+          selectedValue: null,
           onSelected: widget.onSelected,
           footer: widget.sidebarFooter,
           mobile: true,

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../core/utils/breakpoints.dart';
 import '../theme/app_palette.dart';
 import 'secondary_navigation_pane.dart';
+import 'app_swipe_tabs.dart';
 
 class ResponsiveNavigationItem<T> {
   const ResponsiveNavigationItem({required this.value, required this.label, this.icon, this.count});
@@ -72,7 +73,14 @@ class ResponsiveNavigationLayout<T> extends StatelessWidget {
           onSelected: onSelected,
           reserveTopSafeArea: mobileHeader == null,
         ),
-        Expanded(child: child),
+        Expanded(
+          child: AppSwipeTabs<T>(
+            values: items.map((item) => item.value).toList(growable: false),
+            selectedValue: selectedValue,
+            onSelected: onSelected,
+            child: child,
+          ),
+        ),
       ],
     );
   }

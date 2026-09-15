@@ -435,7 +435,7 @@
   "androidForegroundServiceChannel": "Gopeed 后台服务",
   "androidForegroundNotificationTitle": "Gopeed 正在运行",
   "androidForegroundNotificationText": "下载可在后台继续",
-  "mcpDescription": "与 AI Agent 的协同，探索无限可能",
+  "mcpDescription": "与 AI Agent 协同，探索无限可能",
   "connectAgent": "接入指南",
   "connectMcpAgent": "接入 MCP Agent",
   "mcpAgentDialogDescription": "选择你使用的 Agent，然后复制对应的接入配置。",
