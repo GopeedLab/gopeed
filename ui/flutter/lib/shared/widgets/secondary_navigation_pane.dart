@@ -29,7 +29,7 @@ class SecondaryNavigationPane<T> extends StatelessWidget {
 
   final String title;
   final List<SecondaryNavigationPaneItem<T>> items;
-  final T selectedValue;
+  final T? selectedValue;
   final ValueChanged<T> onSelected;
   final Widget? footer;
   final bool mobile;

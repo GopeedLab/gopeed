@@ -29,6 +29,8 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_choice_segmented_control.dart';
 import '../../../../shared/widgets/app_http_headers_editor.dart';
+import '../../../../shared/widgets/app_form_row.dart';
+import '../../../../shared/widgets/app_form_pair.dart';
 import '../../../../shared/widgets/app_number_input.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -274,7 +276,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => _buildPanel(context, stacked: constraints.maxWidth < Breakpoints.mobile),
+  );
+
+  Widget _buildPanel(BuildContext context, {required bool stacked}) {
     final palette = AppPalette.of(context);
 
     final page = Scaffold(
@@ -307,7 +313,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
                 child: Column(
                   children: [
-                    _FormRow(
+                    AppFormRow(
+                      direction: stacked ? Axis.vertical : Axis.horizontal,
                       label: context.l10n.downloadLink,
                       child: DropTarget(
                         enable: !_creating,
@@ -364,7 +371,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _FormRow(
+                    AppFormRow(
+                      direction: stacked ? Axis.vertical : Axis.horizontal,
                       label: context.l10n.rename,
                       child: _WindowTextField(
                         key: const ValueKey('create-task-rename-input'),
@@ -373,7 +381,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _FormRow(
+                    AppFormRow(
+                      direction: stacked ? Axis.vertical : Axis.horizontal,
                       label: context.l10n.connections,
                       child: AppNumberInput(
                         fieldKey: const ValueKey('create-task-connections-input'),
@@ -384,7 +393,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _FormRow(
+                    AppFormRow(
+                      direction: stacked ? Axis.vertical : Axis.horizontal,
                       label: context.l10n.directory,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,6 +417,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                           const SizedBox(height: 8),
                           _DirectoryOptions(
                             key: const ValueKey('create-task-directory-options-row'),
+                            stacked: stacked,
                             asDefaultPath: _asDefaultPath,
                             onAsDefaultPathChanged: (value) => setState(() => _asDefaultPath = value),
                             shortcuts: [
@@ -428,7 +439,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    _FormRow(
+                    AppFormRow(
+                      direction: stacked ? Axis.vertical : Axis.horizontal,
                       label: context.l10n.directDownload,
                       child: _DirectDownloadToggle(
                         value: _directDownload,
@@ -465,10 +477,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                         padding: const EdgeInsets.only(top: 18, bottom: 4),
                         child: Column(
                           children: [
-                            _FormRow(
+                            AppFormRow(
+                              direction: stacked ? Axis.vertical : Axis.horizontal,
                               label: context.l10n.proxy,
                               child: AppChoiceSegmentedControl<RequestProxyMode>(
                                 key: const ValueKey('create-task-proxy-mode'),
+                                showIcons: !stacked,
                                 value: _proxyMode,
                                 buttonKeyPrefix: 'create-task-proxy-mode',
                                 alignment: WrapAlignment.start,
@@ -497,10 +511,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                             ),
                             if (_proxyMode == RequestProxyMode.custom) ...[
                               const SizedBox(height: 12),
-                              _FormRow(
+                              AppFormRow(
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.proxyProtocol,
                                 child: AppChoiceSegmentedControl<String>(
                                   key: const ValueKey('create-task-proxy-scheme'),
+                                  showIcons: !stacked,
                                   value: _proxyScheme,
                                   buttonKeyPrefix: 'create-task-proxy-scheme',
                                   alignment: WrapAlignment.start,
@@ -513,59 +529,45 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              _FormRow(
-                                label: context.l10n.server,
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 618,
-                                      child: _WindowTextField(
-                                        key: const ValueKey('create-task-proxy-server'),
-                                        controller: _proxyServerController,
-                                        hintText: context.l10n.server,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 382,
-                                      child: _WindowTextField(
-                                        key: const ValueKey('create-task-proxy-port'),
-                                        controller: _proxyPortController,
-                                        hintText: context.l10n.port,
-                                        keyboardType: TextInputType.number,
-                                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                      ),
-                                    ),
-                                  ],
+                              AppFormPair(
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
+                                firstLabel: context.l10n.server,
+                                secondLabel: context.l10n.port,
+                                firstFlex: 618,
+                                secondFlex: 382,
+                                first: _WindowTextField(
+                                  key: const ValueKey('create-task-proxy-server'),
+                                  controller: _proxyServerController,
+                                  hintText: context.l10n.server,
+                                ),
+                                second: _WindowTextField(
+                                  key: const ValueKey('create-task-proxy-port'),
+                                  controller: _proxyPortController,
+                                  hintText: context.l10n.port,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              _FormRow(
-                                label: context.l10n.username,
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _WindowTextField(
-                                        key: const ValueKey('create-task-proxy-username'),
-                                        controller: _proxyUsernameController,
-                                        hintText: context.l10n.username,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: _WindowTextField(
-                                        key: const ValueKey('create-task-proxy-password'),
-                                        controller: _proxyPasswordController,
-                                        hintText: context.l10n.password,
-                                        obscureText: true,
-                                      ),
-                                    ),
-                                  ],
+                              AppFormPair(
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
+                                firstLabel: context.l10n.username,
+                                secondLabel: context.l10n.password,
+                                first: _WindowTextField(
+                                  key: const ValueKey('create-task-proxy-username'),
+                                  controller: _proxyUsernameController,
+                                  hintText: context.l10n.username,
+                                ),
+                                second: _WindowTextField(
+                                  key: const ValueKey('create-task-proxy-password'),
+                                  controller: _proxyPasswordController,
+                                  hintText: context.l10n.password,
+                                  obscureText: true,
                                 ),
                               ),
                             ],
                             const SizedBox(height: 18),
-                            Container(height: 1, color: palette.border),
+                            if (!stacked) Container(height: 1, color: palette.border),
                             const SizedBox(height: 16),
                             Align(
                               alignment: Alignment.centerLeft,
@@ -597,11 +599,13 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                             if (_protocolTab == 0) ...[
                               AppHttpHeadersEditor(
                                 controller: _httpHeadersController,
+                                stacked: stacked,
                                 label: context.l10n.httpHeader,
                                 keyPrefix: 'create-task-http-header',
                               ),
                               const SizedBox(height: 14),
-                              _FormRow(
+                              AppFormRow(
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.skipVerifyCert,
                                 child: _OptionSwitch(
                                   key: const ValueKey('create-task-skip-verify-cert'),
@@ -610,7 +614,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              _FormRow(
+                              AppFormRow(
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.autoTorrentEnable,
                                 child: _OptionSwitch(
                                   key: const ValueKey('create-task-auto-torrent'),
@@ -620,7 +625,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               ),
                               if (_autoTorrent == true) ...[
                                 const SizedBox(height: 12),
-                                _FormRow(
+                                AppFormRow(
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
                                   label: context.l10n.autoTorrentDeleteAfterDownload,
                                   child: _OptionSwitch(
                                     key: const ValueKey('create-task-delete-torrent'),
@@ -630,7 +636,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 ),
                               ],
                               const SizedBox(height: 14),
-                              _FormRow(
+                              AppFormRow(
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.autoExtract,
                                 child: _OptionSwitch(
                                   key: const ValueKey('create-task-auto-extract'),
@@ -640,7 +647,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               ),
                               if (_autoExtract == true) ...[
                                 const SizedBox(height: 12),
-                                _FormRow(
+                                AppFormRow(
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
                                   label: context.l10n.archivePassword,
                                   child: _WindowTextField(
                                     key: const ValueKey('create-task-archive-password'),
@@ -650,7 +658,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                _FormRow(
+                                AppFormRow(
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
                                   label: context.l10n.deleteAfterExtract,
                                   child: _OptionSwitch(
                                     key: const ValueKey('create-task-delete-after-extract'),
@@ -660,7 +669,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 ),
                               ],
                             ] else ...[
-                              _FormRow(
+                              AppFormRow(
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.trackers,
                                 child: SizedBox(
                                   height: 96,
@@ -694,7 +704,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
                 decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: palette.border)),
+                  border: stacked ? null : Border(top: BorderSide(color: palette.border)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1380,35 +1390,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
 
 enum _TaskProtocol { http, bt, ed2k }
 
-class _FormRow extends StatelessWidget {
-  const _FormRow({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 104,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(
-              label,
-              style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: child),
-      ],
-    );
-  }
-}
-
 class _DirectDownloadToggle extends StatelessWidget {
   const _DirectDownloadToggle({required this.value, required this.onChanged});
 
@@ -1499,12 +1480,14 @@ class _DirectoryShortcut {
 class _DirectoryOptions extends StatelessWidget {
   const _DirectoryOptions({
     super.key,
+    required this.stacked,
     required this.asDefaultPath,
     required this.onAsDefaultPathChanged,
     required this.shortcuts,
     required this.onShortcutSelected,
   });
 
+  final bool stacked;
   final bool asDefaultPath;
   final ValueChanged<bool> onAsDefaultPathChanged;
   final List<_DirectoryShortcut> shortcuts;
@@ -1512,7 +1495,6 @@ class _DirectoryOptions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stacked = shortcuts.isNotEmpty && MediaQuery.sizeOf(context).width < Breakpoints.mobile;
     final toggle = _AsDefaultPathToggle(value: asDefaultPath, onChanged: onAsDefaultPathChanged);
     final shortcutList = _DirectoryShortcuts(shortcuts: shortcuts, alignEnd: !stacked, onSelected: onShortcutSelected);
 
@@ -1557,6 +1539,21 @@ class _DirectoryShortcuts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!alignEnd) {
+      return Wrap(
+        key: const ValueKey('create-task-directory-shortcuts'),
+        spacing: AppDesignTokens.space8,
+        runSpacing: AppDesignTokens.space8,
+        children: [
+          for (final shortcut in shortcuts)
+            _DirectoryShortcutButton(
+              key: ValueKey('create-task-category-${shortcut.index}'),
+              shortcut: shortcut,
+              onPressed: () => onSelected(shortcut),
+            ),
+        ],
+      );
+    }
     return SizedBox(
       key: const ValueKey('create-task-directory-shortcuts'),
       height: 28,

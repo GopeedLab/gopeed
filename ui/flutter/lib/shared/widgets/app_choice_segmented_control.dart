@@ -21,6 +21,7 @@ class AppChoiceSegmentedControl<T extends Object> extends StatelessWidget {
     required this.onChanged,
     this.buttonKeyPrefix = 'choice',
     this.alignment,
+    this.showIcons = true,
   });
 
   final T value;
@@ -28,6 +29,7 @@ class AppChoiceSegmentedControl<T extends Object> extends StatelessWidget {
   final ValueChanged<T> onChanged;
   final String buttonKeyPrefix;
   final WrapAlignment? alignment;
+  final bool showIcons;
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +46,7 @@ class AppChoiceSegmentedControl<T extends Object> extends StatelessWidget {
             option: option,
             selected: option.value == value,
             palette: palette,
+            showIcon: showIcons,
             onPressed: () => onChanged(option.value),
           ),
       ],
@@ -58,12 +61,14 @@ class _ChoiceButton<T extends Object> extends StatelessWidget {
     required this.selected,
     required this.palette,
     required this.onPressed,
+    required this.showIcon,
   });
 
   final AppChoiceOption<T> option;
   final bool selected;
   final AppPalette palette;
   final VoidCallback onPressed;
+  final bool showIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -82,8 +87,10 @@ class _ChoiceButton<T extends Object> extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(option.icon, size: 15, color: selected ? palette.textPrimary : palette.textSecondary),
-            const SizedBox(width: 7),
+            if (showIcon) ...[
+              Icon(option.icon, size: 15, color: selected ? palette.textPrimary : palette.textSecondary),
+              const SizedBox(width: 7),
+            ],
             Text(
               option.label,
               style: TextStyle(
