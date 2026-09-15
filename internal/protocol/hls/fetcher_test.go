@@ -94,6 +94,15 @@ func mustRun(t *testing.T, f *Fetcher) {
 	}
 }
 
+func statsOf(t *testing.T, f *Fetcher) Stats {
+	t.Helper()
+	s, ok := f.Stats().Snapshot.(*Stats)
+	if !ok {
+		t.Fatalf("unexpected stats snapshot type %T", f.Stats().Snapshot)
+	}
+	return *s
+}
+
 func readOutput(t *testing.T, f *Fetcher) []byte {
 	t.Helper()
 	data, err := os.ReadFile(f.meta.SingleFilepath())
@@ -254,10 +263,10 @@ func TestFetcherE2E_AES128KeyRotation(t *testing.T) {
 
 	f := newTestFetcher(t, testConfig())
 	mustResolve(t, f, server.URL+"/video.m3u8", "")
+	// Ciphertext sizes overstate the final output after decryption, so an
+	// encrypted plan must report an indeterminate size.
 	if f.meta.Res.Size != 0 {
-		// Encrypted segment sizes are probed as ciphertext length, decryption
-		// shrinks them, so an all-or-nothing probe may still report a size.
-		t.Logf("prefetched size: %d", f.meta.Res.Size)
+		t.Errorf("encrypted plan should report size 0, got %d", f.meta.Res.Size)
 	}
 	mustRun(t, f)
 
@@ -345,10 +354,11 @@ func TestFetcherE2E_PauseResume(t *testing.T) {
 	if err := f.Pause(); err != nil {
 		t.Fatal(err)
 	}
-	if f.doneCount.Load() == 0 {
+	doneBefore := statsOf(t, f).SegmentsDone
+	if doneBefore == 0 {
 		t.Fatal("expected some segments to complete before pause")
 	}
-	if f.doneCount.Load() == total {
+	if doneBefore == total {
 		t.Fatal("all segments finished before pause, test is not exercising resume")
 	}
 
@@ -409,7 +419,7 @@ func TestFetcherE2E_StoreRestoreResume(t *testing.T) {
 	if err := f.Pause(); err != nil {
 		t.Fatal(err)
 	}
-	doneBefore := f.doneCount.Load()
+	doneBefore := statsOf(t, f).SegmentsDone
 	if doneBefore == 0 {
 		t.Fatal("expected some segments to finish before simulated restart")
 	}
@@ -450,8 +460,8 @@ func TestFetcherE2E_StoreRestoreResume(t *testing.T) {
 	if err := rf.Wait(); err != nil {
 		t.Fatal(err)
 	}
-	if rf.doneCount.Load() != total {
-		t.Errorf("want %d done, got %d", total, rf.doneCount.Load())
+	if done := statsOf(t, rf).SegmentsDone; done != total {
+		t.Errorf("want %d done, got %d", total, done)
 	}
 	var want []byte
 	for i := 0; i < total; i++ {

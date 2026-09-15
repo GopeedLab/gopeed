@@ -30,6 +30,22 @@ type ReqExtra struct {
 	Body   string            `json:"body,omitempty"`
 }
 
+func copyReqExtra(extra *ReqExtra) *ReqExtra {
+	copied := &ReqExtra{}
+	if extra == nil {
+		return copied
+	}
+	copied.Method = extra.Method
+	copied.Body = extra.Body
+	if extra.Header != nil {
+		copied.Header = make(map[string]string, len(extra.Header))
+		for key, value := range extra.Header {
+			copied.Header[key] = value
+		}
+	}
+	return copied
+}
+
 // fetcherState is the resolved download plan persisted for resume.
 type fetcherState struct {
 	MediaURL   string     `json:"mediaURL"`
@@ -47,32 +63,70 @@ type Stats struct {
 // tempDirPrefix separates HLS staging folders from regular task files.
 const tempDirPrefix = ".gopeed-hls-"
 
+// hlsRun holds every piece of state that belongs to one Start..Pause/complete
+// cycle. Runs never share mutable state: a Pause that is immediately followed
+// by a Start replaces the whole run, so workers of the previous run cannot
+// race with the next one. The run also snapshots the plan, request headers,
+// client and merge target so concurrent Patch calls cannot change them under
+// a running download.
+type hlsRun struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	// wg covers the queue producer AND the segment workers: Pause must not
+	// return while the producer can still hand out segment indexes.
+	wg   sync.WaitGroup
+	done chan struct{} // closed when the supervisor has fully exited
+
+	segs       []*Segment // plan snapshot, read-only for the duration of the run
+	extra      *ReqExtra  // header snapshot (deep copy)
+	client     *http.Client
+	outputPath string // merge target snapshot
+	tempDir    string
+
+	keyCache   map[string][]byte
+	keyCacheMu sync.Mutex
+
+	journal     map[int64]int64
+	journalPath string
+	journalMu   sync.Mutex
+
+	// downloaded counts bytes of the final output that are safely on disk
+	// (completed segment files), not raw network traffic: discarded retry
+	// bytes must never show up as progress.
+	downloaded atomic.Int64
+	doneCount  atomic.Int64
+	failCount  atomic.Int64
+	baseBytes  int64 // stored bytes restored from the journal at startup
+	baseDone   int   // completed segments restored from the journal at startup
+}
+
+func (r *hlsRun) statsSnapshot() Stats {
+	return Stats{
+		SegmentsTotal:  len(r.segs),
+		SegmentsDone:   r.baseDone + int(r.doneCount.Load()),
+		SegmentsFailed: int(r.failCount.Load()),
+	}
+}
+
 type Fetcher struct {
 	fetcher.DefaultFetcher
 	meta   *fetcher.FetcherMeta
 	config *config
 
-	extra      *ReqExtra
-	client     *http.Client
+	// mu guards the fields below and every lifecycle transition. Progress and
+	// Stats are read from the engine's checkpoint goroutine while a run is
+	// active; they only take mu to snapshot the active run pointer, then read
+	// run-owned atomics lock-free.
+	mu             sync.Mutex
+	extra          *ReqExtra
+	client         *http.Client
+	state          *fetcherState
+	activeRun      *hlsRun
+	closed         bool
+	lastStats      Stats
+	lastDownloaded int64
+
 	impSession *httpclient.ImpersonationSession
-
-	state *fetcherState
-
-	ctx     context.Context
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-	mergeMu sync.Mutex
-
-	downloaded atomic.Int64 // network bytes received, seeded from the journal
-	doneCount  atomic.Int64
-	failCount  atomic.Int64
-
-	keyCache   map[string][]byte
-	keyCacheMu sync.Mutex
-
-	journal     map[int64]int64 // plan index -> stored byte size
-	journalPath string
-	journalMu   sync.Mutex
 }
 
 func (f *Fetcher) Setup(ctl *controller.Controller) {
@@ -82,7 +136,6 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 		f.meta = &fetcher.FetcherMeta{}
 	}
 	f.impSession = httpclient.NewImpersonationSession()
-	f.keyCache = make(map[string][]byte)
 	f.config = &config{}
 	f.Ctl.GetConfig(f.config)
 	f.config.normalize()
@@ -93,6 +146,8 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 }
 
 func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) (err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.meta.Req = req
 	f.meta.Opts = opts
 	f.extra = &ReqExtra{}
@@ -106,46 +161,71 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) (err error) {
 		f.client = f.buildClient()
 	}
 
-	ctx := context.Background()
-	content, finalURL, err := f.fetchText(ctx, f.playlistMethod(), req.URL)
-	if err != nil {
-		return fmt.Errorf("fetch playlist failed: %w", err)
-	}
-	baseURL, err := url.Parse(finalURL)
+	state, name, err := f.resolvePlanLocked(context.Background(), "")
 	if err != nil {
 		return err
 	}
+	f.state = state
+	size := planTotalSize(state.Segments)
+	f.meta.Res = &base.Resource{
+		Range: false,
+		Files: []*base.FileInfo{
+			{
+				Name: name,
+				Size: size,
+			},
+		},
+		Size: size,
+	}
+	return nil
+}
 
-	var media *Media
+// resolvePlanLocked fetches and parses the playlist into a fresh state. It
+// must be called with f.mu held while the fetcher is quiescent. When keepName
+// is non-empty the output keeps that file name (used when re-resolving an
+// existing task so a refreshed URL does not rename the file).
+func (f *Fetcher) resolvePlanLocked(ctx context.Context, keepName string) (*fetcherState, string, error) {
+	content, finalURL, err := f.fetchText(ctx, f.playlistMethod(), f.meta.Req.URL)
+	if err != nil {
+		return nil, "", fmt.Errorf("fetch playlist failed: %w", err)
+	}
+	baseURL, err := url.Parse(finalURL)
+	if err != nil {
+		return nil, "", err
+	}
+
 	mediaURL := finalURL
 	if IsMasterPlaylist(content) {
 		variants, err := ParseMaster(content, baseURL)
 		if err != nil {
-			return err
+			return nil, "", err
 		}
 		best := PickBestVariant(variants)
 		variantContent, variantURL, err := f.fetchText(ctx, http.MethodGet, best.URI)
 		if err != nil {
-			return fmt.Errorf("fetch variant playlist failed: %w", err)
+			return nil, "", fmt.Errorf("fetch variant playlist failed: %w", err)
 		}
 		variantBase, err := url.Parse(variantURL)
 		if err != nil {
-			return err
+			return nil, "", err
 		}
 		content = variantContent
 		baseURL = variantBase
 		mediaURL = variantURL
 	}
-	media, err = ParseMedia(content, baseURL)
+	media, err := ParseMedia(content, baseURL)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 	if media.Live {
-		return errors.New("live streams are not supported yet")
+		return nil, "", errors.New("live streams are not supported yet")
 	}
 
-	outputName := DeriveOutputName(mediaURL, media)
-	f.state = &fetcherState{
+	outputName := keepName
+	if outputName == "" {
+		outputName = DeriveOutputName(mediaURL, media)
+	}
+	state := &fetcherState{
 		MediaURL:   mediaURL,
 		OutputName: outputName,
 		Segments:   media.Segments,
@@ -153,22 +233,15 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) (err error) {
 	if f.config.PrefetchContentLength {
 		f.prefetchSize(media.Segments)
 	}
-	size := totalPlanSize(media.Segments)
-
-	f.meta.Res = &base.Resource{
-		Range: false,
-		Files: []*base.FileInfo{
-			{
-				Name: outputName,
-				Size: size,
-			},
-		},
-	}
-	f.meta.Res.Size = size
-	return nil
+	return state, outputName, nil
 }
 
 func (f *Fetcher) Patch(req *base.Request, opts *base.Options) (err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.activeRun != nil {
+		return errors.New("task is running; pause it before changing its settings")
+	}
 	urlChanged := f.meta.Req == nil || f.meta.Req.URL != req.URL
 	f.meta.Req = req
 	f.meta.Opts = opts
@@ -189,148 +262,227 @@ func (f *Fetcher) Patch(req *base.Request, opts *base.Options) (err error) {
 }
 
 func (f *Fetcher) Start() error {
+	f.mu.Lock()
+	if f.closed {
+		f.mu.Unlock()
+		return errors.New("hls fetcher is closed")
+	}
+	if f.activeRun != nil {
+		f.mu.Unlock()
+		return errors.New("hls fetcher already running")
+	}
 	if f.state == nil {
+		f.mu.Unlock()
 		return errors.New("hls fetcher is not resolved")
 	}
+	// The client is built here, before any worker exists, so segment
+	// goroutines never race on lazy initialization.
+	if f.client == nil {
+		f.client = f.buildClient()
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
-	f.ctx, f.cancel = ctx, cancel
-	// Workers must be registered synchronously so a Pause() right after
-	// Start() is guaranteed to wait on all of them.
-	if err := f.startWorkers(); err != nil {
+	run := &hlsRun{
+		ctx:        ctx,
+		cancel:     cancel,
+		done:       make(chan struct{}),
+		segs:       f.state.Segments,
+		extra:      copyReqExtra(f.extra),
+		client:     f.client,
+		outputPath: f.meta.SingleFilepath(),
+		tempDir:    f.stagingDirLocked(),
+		keyCache:   make(map[string][]byte),
+		journal:    make(map[int64]int64),
+	}
+	f.activeRun = run
+	f.mu.Unlock()
+
+	if err := f.startRun(run); err != nil {
+		// No supervisor was started for this run, so close its done channel
+		// here to release anyone waiting on it.
+		run.cancel()
+		close(run.done)
+		f.clearActiveRun(run)
 		return err
 	}
-	// The supervisor owns this run's context: a Pause/Start cycle creates a
-	// fresh context and the previous supervisor must never act on it.
-	go f.supervise(ctx)
+	go f.supervise(run)
 	return nil
 }
 
-// Pause stops all segment downloads synchronously. A merge already in flight
-// is local I/O and is awaited rather than aborted.
+// Pause stops all segment downloads synchronously. It waits for the queue
+// producer, every worker AND the supervisor (including a merge in flight)
+// before returning, so a Store right after Pause sees a consistent state.
 func (f *Fetcher) Pause() error {
-	if f.cancel != nil {
-		f.cancel()
+	f.mu.Lock()
+	run := f.activeRun
+	f.mu.Unlock()
+	if run == nil {
+		return nil
 	}
-	f.wg.Wait()
-	f.mergeMu.Lock()
-	f.mergeMu.Unlock()
+	run.cancel()
+	<-run.done
+	f.clearActiveRun(run)
 	return nil
 }
 
+// Close pauses any active run and only removes the staging folder once every
+// run goroutine has stopped writing to it.
 func (f *Fetcher) Close() error {
-	if f.cancel != nil {
-		f.cancel()
+	f.mu.Lock()
+	f.closed = true
+	run := f.activeRun
+	tempDir := ""
+	if f.state != nil {
+		tempDir = f.stagingDirLocked()
+	}
+	f.mu.Unlock()
+
+	if run != nil {
+		run.cancel()
+		<-run.done
+		f.clearActiveRun(run)
 	}
 	if f.impSession != nil {
 		f.impSession.Clear()
 	}
-	if f.state != nil && f.meta != nil {
-		os.RemoveAll(f.tempDir())
+	if tempDir != "" {
+		os.RemoveAll(tempDir)
 	}
 	return nil
 }
 
-// Progress reports network bytes received for the single output file.
+// clearActiveRun detaches a finished run and keeps its counters as the last
+// known values for idle Stats/Progress reporting.
+func (f *Fetcher) clearActiveRun(run *hlsRun) {
+	f.mu.Lock()
+	if f.activeRun == run {
+		f.activeRun = nil
+		f.lastStats = run.statsSnapshot()
+		f.lastDownloaded = run.downloaded.Load()
+	}
+	f.mu.Unlock()
+}
+
+// Progress reports final-output bytes stored on disk for the single file.
 func (f *Fetcher) Progress() fetcher.Progress {
-	return fetcher.Progress{f.downloaded.Load()}
+	f.mu.Lock()
+	run := f.activeRun
+	if run != nil {
+		f.mu.Unlock()
+		return fetcher.Progress{run.downloaded.Load()}
+	}
+	last := f.lastDownloaded
+	f.mu.Unlock()
+	return fetcher.Progress{last}
 }
 
 func (f *Fetcher) Stats() *fetcher.Stats {
-	stats := &Stats{}
-	if f.state != nil {
-		stats.SegmentsTotal = len(f.state.Segments)
+	f.mu.Lock()
+	run := f.activeRun
+	state := f.state
+	if run != nil {
+		f.mu.Unlock()
+		snap := run.statsSnapshot()
+		return &fetcher.Stats{Snapshot: &snap}
 	}
-	stats.SegmentsDone = int(f.doneCount.Load())
-	stats.SegmentsFailed = int(f.failCount.Load())
-	return &fetcher.Stats{Snapshot: stats}
+	snap := f.lastStats
+	f.mu.Unlock()
+	if snap.SegmentsTotal == 0 && state != nil {
+		snap.SegmentsTotal = len(state.Segments)
+	}
+	return &fetcher.Stats{Snapshot: &snap}
 }
 
 // supervise waits for the segment workers, then merges. A canceled context
 // exits silently (the engine is pausing), everything else is reported through
-// DoneCh.
-func (f *Fetcher) supervise(ctx context.Context) {
-	f.wg.Wait()
-	if ctx.Err() != nil {
+// DoneCh exactly once per run.
+func (f *Fetcher) supervise(run *hlsRun) {
+	run.wg.Wait()
+	defer close(run.done)
+
+	if run.ctx.Err() != nil {
+		f.clearActiveRun(run)
 		return
 	}
-	if failed := f.failCount.Load(); failed > 0 {
-		f.DoneCh <- fmt.Errorf("%d segment(s) failed to download", failed)
-		return
+	var err error
+	if failed := run.failCount.Load(); failed > 0 {
+		err = fmt.Errorf("%d segment(s) failed to download", failed)
+	} else {
+		err = f.merge(run)
+		if err == nil {
+			os.RemoveAll(run.tempDir)
+		}
+		if errors.Is(err, context.Canceled) {
+			f.clearActiveRun(run)
+			return
+		}
 	}
-	f.mergeMu.Lock()
-	err := f.merge()
-	f.mergeMu.Unlock()
-	if err == nil {
-		os.RemoveAll(f.tempDir())
+	f.clearActiveRun(run)
+	select {
+	case f.DoneCh <- err:
+	default:
 	}
-	if errors.Is(err, context.Canceled) {
-		return
-	}
-	f.DoneCh <- err
 }
 
-// startWorkers prepares the staging folder and launches the segment download
+// startRun prepares the staging folder and launches the segment download
 // workers. It returns immediately when every segment is already complete.
-func (f *Fetcher) startWorkers() error {
-	tempDir := f.tempDir()
-	if err := os.MkdirAll(tempDir, 0777); err != nil {
+func (f *Fetcher) startRun(run *hlsRun) error {
+	if err := os.MkdirAll(run.tempDir, 0777); err != nil {
 		return err
 	}
-	f.journalPath = filepath.Join(tempDir, "journal.json")
-	if err := f.loadJournal(); err != nil {
+	run.journalPath = filepath.Join(run.tempDir, "journal.json")
+	if err := loadJournal(run); err != nil {
 		return err
 	}
 
 	var pending []int64
-	var baseBytes int64
-	for i := range f.state.Segments {
-		if size, ok := f.journal[int64(i)]; ok {
-			if info, err := os.Stat(f.segmentPath(tempDir, int64(i))); err == nil && info.Size() == size {
-				baseBytes += size
-				f.doneCount.Add(1)
+	for i := range run.segs {
+		if size, ok := run.journal[int64(i)]; ok {
+			if info, err := os.Stat(segmentPath(run.tempDir, int64(i))); err == nil && info.Size() == size {
+				run.baseBytes += size
+				run.baseDone++
 				continue
 			}
 		}
 		pending = append(pending, int64(i))
 	}
-	f.downloaded.Store(baseBytes)
+	run.downloaded.Store(run.baseBytes)
 	if len(pending) == 0 {
 		return nil
 	}
 
 	queue := make(chan int64)
+	run.wg.Add(1)
 	go func() {
+		defer run.wg.Done()
 		defer close(queue)
 		for _, idx := range pending {
 			select {
-			case <-f.ctx.Done():
+			case <-run.ctx.Done():
 				return
 			case queue <- idx:
 			}
 		}
 	}()
 
-	workers := f.config.SegmentConnections
-	if workers > len(pending) {
-		workers = len(pending)
-	}
+	workers := min(f.config.SegmentConnections, len(pending))
 	for i := 0; i < workers; i++ {
-		f.wg.Add(1)
+		run.wg.Add(1)
 		go func() {
-			defer f.wg.Done()
+			defer run.wg.Done()
 			for {
 				select {
-				case <-f.ctx.Done():
+				case <-run.ctx.Done():
 					return
 				case idx, ok := <-queue:
 					if !ok {
 						return
 					}
-					if err := f.downloadSegment(idx); err != nil {
+					if err := f.downloadSegment(run, idx); err != nil {
 						if errors.Is(err, context.Canceled) {
 							return
 						}
-						f.failCount.Add(1)
+						run.failCount.Add(1)
 					}
 				}
 			}
@@ -339,14 +491,14 @@ func (f *Fetcher) startWorkers() error {
 	return nil
 }
 
-func (f *Fetcher) downloadSegment(idx int64) error {
-	seg := f.state.Segments[idx]
-	data, err := f.fetchSegmentData(seg)
+func (f *Fetcher) downloadSegment(run *hlsRun, idx int64) error {
+	seg := run.segs[idx]
+	data, err := f.fetchSegmentData(run, seg)
 	if err != nil {
 		return err
 	}
 	if seg.Key != nil {
-		key, err := f.fetchKey(seg.Key)
+		key, err := f.fetchKey(run, seg.Key)
 		if err != nil {
 			return err
 		}
@@ -359,29 +511,30 @@ func (f *Fetcher) downloadSegment(idx int64) error {
 			return err
 		}
 	}
-	if err := f.storeSegment(idx, data); err != nil {
+	if err := storeSegment(run, idx, data); err != nil {
 		return err
 	}
-	f.doneCount.Add(1)
+	run.doneCount.Add(1)
+	run.downloaded.Add(int64(len(data)))
 	return nil
 }
 
 // fetchSegmentData downloads one segment with retries, returning its (still
-// encrypted) content. Network bytes are counted for progress as they arrive.
-func (f *Fetcher) fetchSegmentData(seg *Segment) ([]byte, error) {
+// encrypted) content.
+func (f *Fetcher) fetchSegmentData(run *hlsRun, seg *Segment) ([]byte, error) {
 	var lastErr error
 	for attempt := 0; attempt <= f.config.MaxRetries; attempt++ {
-		if err := f.ctx.Err(); err != nil {
+		if err := run.ctx.Err(); err != nil {
 			return nil, err
 		}
 		if attempt > 0 {
 			select {
-			case <-f.ctx.Done():
-				return nil, f.ctx.Err()
+			case <-run.ctx.Done():
+				return nil, run.ctx.Err()
 			case <-time.After(time.Duration(attempt) * time.Second):
 			}
 		}
-		data, err := f.tryGetSegment(seg)
+		data, err := f.tryGetSegment(run, seg)
 		if err == nil {
 			return data, nil
 		}
@@ -393,8 +546,8 @@ func (f *Fetcher) fetchSegmentData(seg *Segment) ([]byte, error) {
 	return nil, lastErr
 }
 
-func (f *Fetcher) tryGetSegment(seg *Segment) ([]byte, error) {
-	resp, err := f.do(f.ctx, http.MethodGet, seg.URI, seg.Byterange)
+func (f *Fetcher) tryGetSegment(run *hlsRun, seg *Segment) ([]byte, error) {
+	resp, err := f.do(run.ctx, run.client, run.extra, http.MethodGet, seg.URI, seg.Byterange)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +562,6 @@ func (f *Fetcher) tryGetSegment(seg *Segment) ([]byte, error) {
 		n, err := reader.Read(chunk)
 		if n > 0 {
 			buf.Write(chunk[:n])
-			f.downloaded.Add(int64(n))
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -424,28 +576,28 @@ func (f *Fetcher) tryGetSegment(seg *Segment) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (f *Fetcher) fetchKey(key *Key) ([]byte, error) {
-	f.keyCacheMu.Lock()
-	if cached, ok := f.keyCache[key.URI]; ok {
-		f.keyCacheMu.Unlock()
+func (f *Fetcher) fetchKey(run *hlsRun, key *Key) ([]byte, error) {
+	run.keyCacheMu.Lock()
+	if cached, ok := run.keyCache[key.URI]; ok {
+		run.keyCacheMu.Unlock()
 		return cached, nil
 	}
-	f.keyCacheMu.Unlock()
+	run.keyCacheMu.Unlock()
 
 	var data []byte
 	var err error
 	for attempt := 0; attempt <= f.config.MaxRetries; attempt++ {
-		if err = f.ctx.Err(); err != nil {
+		if err = run.ctx.Err(); err != nil {
 			return nil, err
 		}
 		if attempt > 0 {
 			select {
-			case <-f.ctx.Done():
-				return nil, f.ctx.Err()
+			case <-run.ctx.Done():
+				return nil, run.ctx.Err()
 			case <-time.After(time.Duration(attempt) * time.Second):
 			}
 		}
-		resp, reqErr := f.do(f.ctx, http.MethodGet, key.URI, nil)
+		resp, reqErr := f.do(run.ctx, run.client, run.extra, http.MethodGet, key.URI, nil)
 		if reqErr != nil {
 			err = reqErr
 			continue
@@ -467,16 +619,18 @@ func (f *Fetcher) fetchKey(key *Key) ([]byte, error) {
 	if len(data) != 16 {
 		return nil, fmt.Errorf("key %s: invalid key size %d", key.URI, len(data))
 	}
-	f.keyCacheMu.Lock()
-	f.keyCache[key.URI] = data
-	f.keyCacheMu.Unlock()
+	run.keyCacheMu.Lock()
+	run.keyCache[key.URI] = data
+	run.keyCacheMu.Unlock()
 	return data, nil
 }
 
 // merge concatenates the downloaded segments in plan order into the final
-// output file. Segments are stored decrypted, so this is pure I/O.
-func (f *Fetcher) merge() error {
-	target := f.meta.SingleFilepath()
+// output file. Segments are stored decrypted, so this is pure I/O. The final
+// size is published through Progress: the engine backfills Res.Size from
+// Progress().TotalDownloaded() on completion.
+func (f *Fetcher) merge(run *hlsRun) error {
+	target := run.outputPath
 	if err := os.MkdirAll(filepath.Dir(target), 0777); err != nil {
 		return err
 	}
@@ -484,53 +638,52 @@ func (f *Fetcher) merge() error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
 	var total int64
-	for i := range f.state.Segments {
-		data, err := os.ReadFile(f.segmentPath(f.tempDir(), int64(i)))
+	for i := range run.segs {
+		data, err := os.ReadFile(segmentPath(run.tempDir, int64(i)))
 		if err != nil {
+			out.Close()
 			return fmt.Errorf("read segment %d failed: %w", i, err)
 		}
 		if _, err := out.Write(data); err != nil {
+			out.Close()
 			return err
 		}
 		total += int64(len(data))
 	}
-	f.meta.Res.Size = total
-	if len(f.meta.Res.Files) > 0 && f.meta.Res.Files[0] != nil {
-		f.meta.Res.Files[0].Size = total
+	if err := out.Close(); err != nil {
+		return err
 	}
+	run.downloaded.Store(total)
 	return nil
 }
 
-func (f *Fetcher) storeSegment(idx int64, data []byte) error {
-	tempDir := f.tempDir()
-	partPath := f.segmentPath(tempDir, idx) + ".part"
+func storeSegment(run *hlsRun, idx int64, data []byte) error {
+	partPath := segmentPath(run.tempDir, idx) + ".part"
 	if err := os.WriteFile(partPath, data, 0666); err != nil {
 		return err
 	}
-	if err := os.Rename(partPath, f.segmentPath(tempDir, idx)); err != nil {
+	if err := os.Rename(partPath, segmentPath(run.tempDir, idx)); err != nil {
 		return err
 	}
-	f.journalMu.Lock()
-	defer f.journalMu.Unlock()
-	f.journal[idx] = int64(len(data))
-	return f.saveJournal()
+	run.journalMu.Lock()
+	defer run.journalMu.Unlock()
+	run.journal[idx] = int64(len(data))
+	return saveJournal(run)
 }
 
-func (f *Fetcher) segmentPath(tempDir string, idx int64) string {
+func segmentPath(tempDir string, idx int64) string {
 	return filepath.Join(tempDir, "seg-"+strconv.FormatInt(idx, 10))
 }
 
-// tempDir derives a stable staging folder from the playlist URL so resumes
-// find their segments across app restarts.
-func (f *Fetcher) tempDir() string {
+// stagingDirLocked derives the staging folder for the current state. It must
+// be called with f.mu held.
+func (f *Fetcher) stagingDirLocked() string {
 	return filepath.Join(filepath.Dir(f.meta.SingleFilepath()), tempDirPrefix+sha1Hex(f.state.MediaURL)[:12])
 }
 
-func (f *Fetcher) loadJournal() error {
-	f.journal = make(map[int64]int64)
-	data, err := os.ReadFile(f.journalPath)
+func loadJournal(run *hlsRun) error {
+	data, err := os.ReadFile(run.journalPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -547,29 +700,29 @@ func (f *Fetcher) loadJournal() error {
 		if err != nil {
 			continue
 		}
-		f.journal[idx] = size
+		run.journal[idx] = size
 	}
 	return nil
 }
 
-func (f *Fetcher) saveJournal() error {
-	stored := make(map[string]int64, len(f.journal))
-	for idx, size := range f.journal {
+func saveJournal(run *hlsRun) error {
+	stored := make(map[string]int64, len(run.journal))
+	for idx, size := range run.journal {
 		stored[strconv.FormatInt(idx, 10)] = size
 	}
 	data, err := json.Marshal(stored)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(f.journalPath, data, 0666)
+	return os.WriteFile(run.journalPath, data, 0666)
 }
 
-// prefetchSize probes segment Content-Length via HEAD so the task can show a
-// percentage. Any failure resets all sizes to zero (indeterminate progress).
+// prefetchSize probes segment Content-Length via HEAD. Any failure resets all
+// sizes to zero: a partial size estimate would corrupt progress reporting.
 func (f *Fetcher) prefetchSize(segments []*Segment) {
 	var need []*Segment
 	for _, seg := range segments {
-		if seg.Byterange == nil {
+		if seg.Size <= 0 {
 			need = append(need, seg)
 		}
 	}
@@ -577,10 +730,7 @@ func (f *Fetcher) prefetchSize(segments []*Segment) {
 		return
 	}
 
-	workerCount := f.config.SegmentConnections
-	if workerCount > 8 {
-		workerCount = 8
-	}
+	workerCount := min(f.config.SegmentConnections, 8)
 	var failed atomic.Bool
 	queue := make(chan *Segment)
 	var wg sync.WaitGroup
@@ -611,7 +761,7 @@ func (f *Fetcher) prefetchSize(segments []*Segment) {
 }
 
 func (f *Fetcher) headContentLength(ctx context.Context, u string) int64 {
-	req, err := f.buildRequest(ctx, http.MethodHead, u, nil, nil)
+	req, err := buildRequest(ctx, f.extra, http.MethodHead, u, nil, nil)
 	if err != nil {
 		return 0
 	}
@@ -627,7 +777,7 @@ func (f *Fetcher) headContentLength(ctx context.Context, u string) int64 {
 }
 
 func (f *Fetcher) fetchText(ctx context.Context, method, u string) (string, string, error) {
-	resp, err := f.do(ctx, method, u, nil)
+	resp, err := f.do(ctx, f.client, f.extra, method, u, nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -642,18 +792,15 @@ func (f *Fetcher) fetchText(ctx context.Context, method, u string) (string, stri
 	return string(data), resp.Request.URL.String(), nil
 }
 
-func (f *Fetcher) do(ctx context.Context, method, u string, byterange *ByteRange) (*http.Response, error) {
+func (f *Fetcher) do(ctx context.Context, client *http.Client, extra *ReqExtra, method, u string, byterange *ByteRange) (*http.Response, error) {
 	if method == "" {
 		method = http.MethodGet
 	}
-	if f.client == nil {
-		f.client = f.buildClient()
-	}
-	req, err := f.buildRequest(ctx, method, u, nil, byterange)
+	req, err := buildRequest(ctx, extra, method, u, nil, byterange)
 	if err != nil {
 		return nil, err
 	}
-	return f.client.Do(req)
+	return client.Do(req)
 }
 
 func (f *Fetcher) playlistMethod() string {
@@ -663,12 +810,22 @@ func (f *Fetcher) playlistMethod() string {
 	return http.MethodGet
 }
 
-func totalPlanSize(segments []*Segment) int64 {
+// planTotalSize sums the known segment sizes. It returns 0 unless every
+// segment is unencrypted with a known size: ciphertext lengths overstate the
+// final output (CBC padding is removed on decrypt), and partial estimates
+// would make progress stall below 100%. For indeterminate plans the engine
+// backfills Res.Size from Progress().TotalDownloaded() when the task
+// completes (downloader.go watch).
+func planTotalSize(segments []*Segment) int64 {
 	var total int64
 	for _, seg := range segments {
-		if seg.Size > 0 {
-			total += seg.Size
+		if seg.Key != nil {
+			return 0
 		}
+		if seg.Size <= 0 {
+			return 0
+		}
+		total += seg.Size
 	}
 	return total
 }
