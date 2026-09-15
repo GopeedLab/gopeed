@@ -18,8 +18,8 @@ Local native changes are limited to:
   setting and attach the profile before navigation.
 - `MyCookieManager`: route cookie operations to the requested profile, capturing
   the store per operation so asynchronous calls cannot cross profiles.
-- macOS `FlutterWebViewController`: weakly register profile views so uninstall
-  can release their WKWebViews even when Flutter retains a platform-view wrapper.
+- macOS `InAppWebView`: resign input focus before disposing a view so AppKit
+  cannot retain its profile through the responder chain after closing the page.
 
 `lib/app/rpc/webview_profile.dart` uses the existing plugin method channel and
 serializes these internal settings. No extension JavaScript API is added.

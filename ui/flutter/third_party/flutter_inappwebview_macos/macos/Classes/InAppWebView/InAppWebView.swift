@@ -2603,6 +2603,12 @@ if(window.\(JAVASCRIPT_BRIDGE_NAME)[\(_callHandlerID)] != null) {
     }
     
     public func dispose() {
+        // An edited web page can remain in AppKit's responder chain even after
+        // its headless wrapper is removed. Resign it while still in the window.
+        if let responder = window?.firstResponder as? NSView,
+           responder === self || responder.isDescendant(of: self) {
+            window?.makeFirstResponder(nil)
+        }
         channelDelegate?.dispose()
         channelDelegate = nil
         runWindowBeforeCreatedCallbacks()
