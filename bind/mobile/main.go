@@ -7,6 +7,7 @@ import (
 
 	nativebridge "github.com/GopeedLab/gopeed/bind/native"
 	"github.com/GopeedLab/gopeed/internal/webview/rpcprovider"
+	goapi "github.com/GopeedLab/gopeed/pkg/api"
 	"github.com/GopeedLab/gopeed/pkg/rest"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
@@ -89,4 +90,15 @@ func applyWebViewProvider(config *model.StartConfig) {
 		return
 	}
 	config.WebViewProvider = rpcprovider.New(*config.WebViewRPCConfig)
+}
+
+func LiveActivityTaskEventMask() int64 {
+	return int64(
+		goapi.TaskEventDone |
+			goapi.TaskEventError |
+			goapi.TaskEventStart |
+			goapi.TaskEventProgress |
+			goapi.TaskEventPause |
+			goapi.TaskEventDelete,
+	)
 }

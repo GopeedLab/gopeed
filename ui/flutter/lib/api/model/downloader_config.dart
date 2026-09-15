@@ -125,6 +125,7 @@ class ExtraConfig {
   bool notifyWhenNewVersion;
   bool desktopNotification;
   bool backgroundLocationKeepAlive;
+  bool backgroundContinuedProcessing;
   WindowStateConfig windowState;
   Map<String, String> bookmarks;
   List<String> createHistory;
@@ -146,6 +147,7 @@ class ExtraConfig {
     this.notifyWhenNewVersion = true,
     this.desktopNotification = true,
     this.backgroundLocationKeepAlive = false,
+    this.backgroundContinuedProcessing = false,
     WindowStateConfig? windowState,
     this.bookmarks = const {},
     this.createHistory = const [],

@@ -13,6 +13,18 @@ FOUNDATION_EXPORT void GopeedSubscribeTaskEventsWithForwarder(
     int64_t mask,
     GopeedTaskEventForwarder * _Nullable listener);
 
+
+typedef void (^GopeedNativeInvokeCompletion)(
+    BOOL success,
+    NSString *payload);
+
+FOUNDATION_EXPORT void GopeedInvokeAsyncNative(
+    NSString *method,
+    NSString *path,
+    NSString *query,
+    NSString *body,
+    GopeedNativeInvokeCompletion completion);
+
 FOUNDATION_EXPORT void GopeedInvokeAsyncWithResult(
     NSString *method,
     NSString *path,
