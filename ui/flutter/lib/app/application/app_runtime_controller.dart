@@ -23,6 +23,7 @@ import '../../util/util.dart';
 import '../rpc/webview_rpc_service.dart';
 import 'android_foreground_service.dart';
 import 'location_keep_alive.dart';
+import 'continued_processing.dart';
 
 const unixSocketPath = 'gopeed.sock';
 
@@ -105,7 +106,13 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       ),
     );
     unawaited(LocationKeepAliveCoordinator.instance.reconcile(enabled: config.extra.backgroundLocationKeepAlive));
+    unawaited(
+      ContinuedProcessing.setEnabled(
+        config.extra.backgroundContinuedProcessing,
+      ),
+    );
   }
+
 
   Future<AppRuntimeState> _init() async {
     await AppInitializer.ensureStorageInitialized();
@@ -180,6 +187,13 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       startupError: startupError,
     );
     if (Util.isIOS()) {
+      // Make sure the native Continued Processing manager has the
+      // persisted setting before app initialization completes. This
+      // avoids the first download racing ahead of setEnabled(true).
+      await ContinuedProcessing.setEnabled(
+        config.extra.backgroundContinuedProcessing,
+      );
+
       LocationKeepAliveCoordinator.instance.start(
         () =>
             state.value?.downloaderConfig.extra.backgroundLocationKeepAlive ?? config.extra.backgroundLocationKeepAlive,

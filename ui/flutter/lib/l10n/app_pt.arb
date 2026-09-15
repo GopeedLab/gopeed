@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Salvar como pasta de download padrão",
   "downloadDirValid": "Por favor, selecione a pasta",
   "connections": "Conexões",
+  "maxRetries": "Tentativas máximas",
   "useServerCtime": "Usar o tempo de servidor para a criação de ficheiros",
   "maxRunning": "Máximo de Tarefas Simultâneas",
   "defaultDirectDownload": "Marcar download direto por padrão",

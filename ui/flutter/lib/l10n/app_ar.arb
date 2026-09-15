@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "حفظ كمجلد التنزيل الافتراضي",
   "downloadDirValid": "الرجاء تحديد مجلد التنزيل",
   "connections": "الاتصالات",
+  "maxRetries": "الحد الأقصى لإعادة المحاولات",
   "useServerCtime": "استخدام وقت الخادم لإنشاء الملف",
   "maxRunning": "الحد الأقصى للمهام المتزامنة",
   "defaultDirectDownload": "تفعيل التنزيل المباشر افتراضياً",

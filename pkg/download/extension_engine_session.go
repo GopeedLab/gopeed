@@ -3,9 +3,11 @@ package download
 import (
 	"context"
 	"io"
+	"strings"
 	"sync"
 
 	internalblob "github.com/GopeedLab/gopeed/internal/blob"
+	httpProtocol "github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/stream"
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
@@ -119,9 +121,15 @@ func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession) {
 			return d.blob.Revoke(url)
 		},
 	}
+	httpConfig := struct {
+		UserAgent string `json:"userAgent"`
+	}{UserAgent: httpProtocol.DefaultUserAgent}
+	d.getProtocolConfig("http", &httpConfig)
+	userAgent := strings.TrimSpace(httpConfig.UserAgent)
 	e := engine.NewEngine(&engine.Config{
-		ProxyConfig:  d.cfg.Proxy,
-		StreamConfig: engineCfg,
+		HTTPUserAgent: &userAgent,
+		ProxyConfig:   d.cfg.Proxy,
+		StreamConfig:  engineCfg,
 	})
 	session.SetEngine(e)
 	return e, session

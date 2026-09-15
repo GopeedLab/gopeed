@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "儲存為預設下載目錄",
   "downloadDirValid": "請選擇下載目錄",
   "connections": "連接數",
+  "maxRetries": "最大重試次數",
   "useServerCtime": "使用伺服器時間作為檔案建立時間",
   "maxRunning": "最大執行任務數",
   "defaultDirectDownload": "預設勾選直接下載",

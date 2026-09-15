@@ -294,13 +294,14 @@ TaskAssetType _assetType(String name, {required bool isFolder, required api_task
   return switch (protocol) {
     api_task.Protocol.bt => TaskAssetType.torrent,
     api_task.Protocol.ed2k => TaskAssetType.ed2k,
-    api_task.Protocol.http || null => TaskAssetType.file,
+    api_task.Protocol.hls || api_task.Protocol.http || null => TaskAssetType.file,
   };
 }
 
 String _fileExtension(String name) {
-  final pathWithoutQuery = name.split(RegExp(r'[?#]')).first;
-  final extension = path.extension(pathWithoutQuery).replaceFirst('.', '').toLowerCase();
+  final uri = Uri.tryParse(name);
+  final filePath = uri != null && uri.hasScheme && uri.hasAuthority ? uri.path : name;
+  final extension = path.extension(filePath).replaceFirst('.', '').toLowerCase();
   return extension.length <= 10 ? extension : '';
 }
 
