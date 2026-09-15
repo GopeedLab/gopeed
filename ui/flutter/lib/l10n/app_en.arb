@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Save as default download directory",
   "downloadDirValid": "Please select the download directory",
   "connections": "Connections",
+  "maxRetries": "Max retries",
   "useServerCtime": "Use server time for file creation",
   "maxRunning": "Concurrent Downloads",
   "defaultDirectDownload": "Direct Download by Default",

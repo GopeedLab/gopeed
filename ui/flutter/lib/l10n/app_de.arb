@@ -38,6 +38,7 @@
   "rememberLastDownloadDir": "Als Standard-Downloadordner speichern",
   "downloadDirValid": "Bitte wählen Sie das Download-Verzeichnis",
   "connections": "Anschlüsse",
+  "maxRetries": "Maximale Wiederholungsversuche",
   "useServerCtime": "Serverzeit für die Dateierstellung verwenden",
   "maxRunning": "Maximale Anzahl ausgeführter Aufgaben",
   "defaultDirectDownload": "Direkten Download standardmäßig aktivieren",
