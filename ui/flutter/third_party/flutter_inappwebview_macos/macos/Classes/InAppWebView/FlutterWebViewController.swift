@@ -68,6 +68,9 @@ public class FlutterWebViewController: NSView, Disposable {
         webView!.settings = settings
         webView!.prepare()
         webView!.windowCreated = true
+        if let identifier = initialSettings["gopeedProfileId"] as? String {
+            GopeedProfiles.register(self, identifier: identifier)
+        }
     }
     
     required init?(coder nsCoder: NSCoder) {

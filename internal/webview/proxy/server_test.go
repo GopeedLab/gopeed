@@ -4,17 +4,72 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/armon/go-socks5"
 )
+
+func TestRejectedProxyRequests(t *testing.T) {
+	secret := "upstream-password"
+	for _, tc := range []struct {
+		name, method, target string
+		status               int
+	}{
+		{"relative URL", "GET", "/relative", 400},
+		{"unsupported URL", "GET", "ftp://example.com/file", 400},
+		{"invalid CONNECT", "CONNECT", "example.com", 400},
+		{"HTTP selection failure", "GET", "http://example.com/", 502},
+		{"CONNECT selection failure", "CONNECT", "example.com:443", 502},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &Server{selectProxy: func(*http.Request) (*url.URL, error) { return nil, errors.New(secret) }}
+			s.transport = &http.Transport{Proxy: s.selectProxy}
+			defer s.transport.CloseIdleConnections()
+			response := httptest.NewRecorder()
+			s.ServeHTTP(response, httptest.NewRequest(tc.method, tc.target, nil))
+			if response.Code != tc.status || strings.Contains(response.Body.String(), secret) {
+				t.Fatalf("unexpected proxy rejection: %d %q", response.Code, response.Body.String())
+			}
+		})
+	}
+}
+
+func TestTunnelRejectsUnsafeUpstreams(t *testing.T) {
+	rejected := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "authentication required", http.StatusProxyAuthRequired)
+	}))
+	defer rejected.Close()
+	secure := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("untrusted TLS proxy received a request")
+	}))
+	defer secure.Close()
+	for _, upstream := range []string{"ftp://127.0.0.1", rejected.URL, secure.URL} {
+		t.Run(upstream, func(t *testing.T) {
+			selected, err := url.Parse(upstream)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			conn, err := dialTunnel(ctx, "example.com:443", selected)
+			if conn != nil {
+				conn.Close()
+			}
+			if err == nil {
+				t.Fatal("unsafe upstream unexpectedly accepted")
+			}
+		})
+	}
+}
 
 func TestRoutesAndAuthentication(t *testing.T) {
 	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

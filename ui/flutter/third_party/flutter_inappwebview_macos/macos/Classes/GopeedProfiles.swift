@@ -7,7 +7,24 @@ import FlutterMacOS
 final class GopeedProfiles {
     private static var proxyURLs: [String: String] = [:]
     private static var stores: [String: WKWebsiteDataStore] = [:]
+    private static var views: [String: NSHashTable<FlutterWebViewController>] = [:]
     static func store(_ identifier: String) -> WKWebsiteDataStore? { stores[identifier] }
+
+    static func register(_ view: FlutterWebViewController, identifier: String) {
+        let profileViews = views[identifier] ?? NSHashTable<FlutterWebViewController>.weakObjects()
+        profileViews.add(view)
+        views[identifier] = profileViews
+    }
+
+    private static func disposeViews(_ identifier: String) {
+        // Flutter may retain a removed platform-view wrapper beyond the frame
+        // boundary. Release its WKWebView now, before deleting the named store.
+        // The host has already closed all pages belonging to this profile.
+        let profileViews = views.removeValue(forKey: identifier)
+        for view in profileViews?.allObjects ?? [] {
+            view.dispose(removeFromSuperview: true)
+        }
+    }
 
     static func prepare(arguments: NSDictionary?, result: @escaping FlutterResult) {
         guard #available(macOS 14.0, iOS 17.0, *),
@@ -45,6 +62,7 @@ final class GopeedProfiles {
         }
         // Deleting a named store alone can leave in-process cookie caches.
         // Clear every website data type before releasing/removing the store.
+        disposeViews(identifier)
         let store = stores[identifier] ?? WKWebsiteDataStore(forIdentifier: uuid)
         store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: Date.distantPast) {
             stores.removeValue(forKey: identifier)
