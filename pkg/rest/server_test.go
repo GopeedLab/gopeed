@@ -120,6 +120,34 @@ func TestCreateTask(t *testing.T) {
 	})
 }
 
+func TestCreateResolvedTaskUsesSubmittedOptions(t *testing.T) {
+	doTest(func() {
+		done := make(chan *download.Event, 1)
+		Downloader.Listener(func(event *download.Event) {
+			if event.Key == download.EventKeyFinally {
+				done <- event
+			}
+		})
+		resolved := httpRequestCheckOk[*download.ResolveResult](http.MethodPost, "/api/v1/resolve", resolveReq)
+		opts := createOpts.Clone()
+		opts.Name = "selected-options.bin"
+		opts.SelectFiles = []int{0}
+		id := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", &model.CreateTask{Rid: resolved.ID, Opts: opts})
+		select {
+		case <-done:
+		case <-time.After(10 * time.Second):
+			t.Fatal("resolved task did not finish")
+		}
+		task := Downloader.GetTask(id)
+		if task.Meta.Opts.Name != opts.Name || !reflect.DeepEqual(task.Meta.Opts.SelectFiles, opts.SelectFiles) {
+			t.Fatalf("submitted options were lost: %+v", task.Meta.Opts)
+		}
+		if got := test.FileMd5(filepath.Join(opts.Path, opts.Name)); got != test.FileMd5(test.BuildFile) {
+			t.Fatalf("download using submitted options has wrong checksum: %s", got)
+		}
+	})
+}
+
 func TestCreateDirectTask(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup

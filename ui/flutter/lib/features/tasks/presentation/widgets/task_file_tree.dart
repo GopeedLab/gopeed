@@ -77,7 +77,7 @@ class _TaskFileTreeState extends State<TaskFileTree> {
         .entries
         .map(
           (entry) => FileTreeItem<TaskFileNode>(
-            key: entry.key.toString(),
+            key: (entry.value.resourceIndex ?? entry.key).toString(),
             path: entry.value.path,
             name: entry.value.name,
             size: entry.value.sizeBytes,

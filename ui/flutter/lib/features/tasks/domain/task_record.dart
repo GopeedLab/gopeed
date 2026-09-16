@@ -36,8 +36,15 @@ enum TaskAssetType {
 }
 
 class TaskFileNode {
-  const TaskFileNode({required this.path, required this.name, required this.sizeBytes, this.downloadedBytes});
+  const TaskFileNode({
+    required this.path,
+    required this.name,
+    required this.sizeBytes,
+    this.downloadedBytes,
+    this.resourceIndex,
+  });
 
+  final int? resourceIndex;
   final String path;
   final String name;
   final int sizeBytes;
@@ -146,7 +153,7 @@ class TaskRecord {
       totalBytes: totalBytes > 0 ? totalBytes : null,
       speedBytes: task.progress.speed,
       uploadedBytes: task.progress.uploaded,
-      files: _fileNodes(task.meta.res?.files),
+      files: _fileNodes(task.meta.res?.files, task.meta.opts.selectFiles),
       uploading: task.uploading,
       isFolder: task.meta.res?.name.isNotEmpty ?? false,
       protocol: task.protocol,
@@ -313,12 +320,23 @@ int? _remainingSeconds(api_task.Task task, int totalBytes, int downloadedBytes) 
   return ((totalBytes - downloadedBytes) / speed).ceil();
 }
 
-List<TaskFileNode> _fileNodes(List<api_resource.FileInfo>? files) {
+List<TaskFileNode> _fileNodes(List<api_resource.FileInfo>? files, List<int> selectedIndexes) {
   if (files == null || files.isEmpty) {
     return const [];
   }
+  final selected = selectedIndexes.toSet();
   return files
-      .map((file) => TaskFileNode(path: file.path, name: file.name, sizeBytes: file.size))
+      .asMap()
+      .entries
+      .where((entry) => selected.isEmpty || selected.contains(entry.key))
+      .map(
+        (entry) => TaskFileNode(
+          resourceIndex: entry.key,
+          path: entry.value.path,
+          name: entry.value.name,
+          sizeBytes: entry.value.size,
+        ),
+      )
       .toList(growable: false);
 }
 
