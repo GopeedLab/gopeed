@@ -3,7 +3,10 @@
 The downloader wraps each provider with the extension's stable identity before
 constructing the runtime. `OpenOptions.ProfileID`, `DataPath`, and `ProxyURL` are
 host-only fields. `parseOpenOptions` never reads them from extension JavaScript.
-The extension API is unchanged.
+The extension API is unchanged. The Flutter host uses the fork's public
+`WebViewProfile`, `InAppWebViewSettings.profileId`, and profile-scoped
+`CookieManager` APIs; the library has no Gopeed-specific method-channel bridge.
+Only the Gopeed extension JavaScript boundary keeps these options host-only.
 
 Profiles are persistent and shared across invocations/pages of the same extension.
 Different identities use different native stores. Go providers use a SHA-256-based

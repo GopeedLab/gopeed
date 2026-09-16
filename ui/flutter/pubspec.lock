@@ -457,17 +457,18 @@ packages:
   flutter_inappwebview:
     dependency: "direct main"
     description:
-      name: flutter_inappwebview
-      sha256: "80092d13d3e29b6227e25b67973c67c7210bd5e35c4b747ca908e31eb71a46d5"
-      url: "https://pub.dev"
-    source: hosted
+      path: flutter_inappwebview
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      url: "https://github.com/GopeedLab/flutter_inappwebview.git"
+    source: git
     version: "6.1.5"
   flutter_inappwebview_android:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_android
-      ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
-      resolved-ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.1.3"
@@ -483,8 +484,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_ios
-      ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
-      resolved-ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.1.2"
@@ -492,18 +493,19 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_macos
-      ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
-      resolved-ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.1.2"
   flutter_inappwebview_platform_interface:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: flutter_inappwebview_platform_interface
-      sha256: cf5323e194096b6ede7a1ca808c3e0a078e4b33cc3f6338977d75b4024ba2500
-      url: "https://pub.dev"
-    source: hosted
+      path: flutter_inappwebview_platform_interface
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      url: "https://github.com/GopeedLab/flutter_inappwebview.git"
+    source: git
     version: "1.3.0+1"
   flutter_inappwebview_web:
     dependency: transitive
