@@ -86,6 +86,32 @@ dependencies:
   go_router: ^16.2.1
 
 dependency_overrides:
+  # Public persistent-profile and proxy APIs; keep all packages on one commit.
+  flutter_inappwebview:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview
+  flutter_inappwebview_platform_interface:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview_platform_interface
+  flutter_inappwebview_macos:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview_macos
+  flutter_inappwebview_ios:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview_ios
+  flutter_inappwebview_android:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview_android
   # Prevent a native Windows crash when the push notification service is unavailable.
   # Keep this fork until https://github.com/MaikuB/flutter_local_notifications/pull/2813 is merged and released.
   flutter_local_notifications:
