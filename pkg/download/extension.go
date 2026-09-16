@@ -65,6 +65,7 @@ func (d *Downloader) InstallExtensionByFolder(path string, devMode bool) (*Exten
 
 	// if extension is not installed, add it to the list, otherwise update it
 	installedExt := d.getExtension(ext.Identity)
+	newInstallation := installedExt == nil
 	if installedExt == nil {
 		ext.CreatedAt = time.Now()
 		ext.UpdatedAt = ext.CreatedAt
@@ -75,6 +76,11 @@ func (d *Downloader) InstallExtensionByFolder(path string, devMode bool) (*Exten
 	}
 	if err = d.storage.Put(bucketExtension, installedExt.Identity, installedExt); err != nil {
 		return nil, err
+	}
+	if newInstallation {
+		d.webviewProfilesLock.Lock()
+		delete(d.webviewProfiles, ext.Identity)
+		d.webviewProfilesLock.Unlock()
 	}
 	return installedExt, nil
 }
@@ -143,6 +149,9 @@ func (d *Downloader) DeleteExtension(identity string) error {
 	ext, err := d.GetExtension(identity)
 	if err != nil {
 		return err
+	}
+	if err := d.removeExtensionWebViewProfile(identity); err != nil {
+		return fmt.Errorf("remove extension WebView data: %w", err)
 	}
 	// remove from disk
 	if !ext.DevMode {
@@ -365,7 +374,7 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					engine, session := d.newExtensionEngine()
 					defer session.CloseIfIdle()
 					gopeed.Runtime = &InstanceRuntime{
-						WebView: d.newExtensionWebViewRuntime(session),
+						WebView: d.newExtensionWebViewRuntime(session, ext.buildIdentity()),
 					}
 					err = injectGopeed(engine.Runtime, gopeed)
 					if err != nil {

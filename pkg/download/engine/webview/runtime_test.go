@@ -336,3 +336,15 @@ func (p *fakePage) Close() error {
 	p.closed = true
 	return nil
 }
+
+func TestExtensionCannotSupplyHostProfileOrProxy(t *testing.T) {
+	opener := &fakeOpener{page: &fakePage{}}
+	runtime := NewRuntime(opener, true)
+	_, err := runtime.Open(map[string]any{"profileId": "other-extension", "dataPath": "/tmp/other-profile", "proxyUrl": "http://example.com:1234", "ProfileID": "other"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opener.opts.ProfileID != "" || opener.opts.DataPath != "" || opener.opts.ProxyURL != "" {
+		t.Fatalf("extension controlled host settings: %+v", opener.opts)
+	}
+}
