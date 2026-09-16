@@ -465,9 +465,11 @@ packages:
   flutter_inappwebview_android:
     dependency: "direct overridden"
     description:
-      path: "third_party/flutter_inappwebview_android"
-      relative: true
-    source: path
+      path: flutter_inappwebview_android
+      ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      resolved-ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      url: "https://github.com/GopeedLab/flutter_inappwebview.git"
+    source: git
     version: "1.1.3"
   flutter_inappwebview_internal_annotations:
     dependency: transitive
@@ -480,16 +482,20 @@ packages:
   flutter_inappwebview_ios:
     dependency: "direct overridden"
     description:
-      path: "third_party/flutter_inappwebview_ios"
-      relative: true
-    source: path
+      path: flutter_inappwebview_ios
+      ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      resolved-ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      url: "https://github.com/GopeedLab/flutter_inappwebview.git"
+    source: git
     version: "1.1.2"
   flutter_inappwebview_macos:
     dependency: "direct overridden"
     description:
-      path: "third_party/flutter_inappwebview_macos"
-      relative: true
-    source: path
+      path: flutter_inappwebview_macos
+      ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      resolved-ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      url: "https://github.com/GopeedLab/flutter_inappwebview.git"
+    source: git
     version: "1.1.2"
   flutter_inappwebview_platform_interface:
     dependency: transitive

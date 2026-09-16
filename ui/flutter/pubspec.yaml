@@ -88,11 +88,20 @@ dependencies:
 dependency_overrides:
   # Host-only native WebView profile/proxy bridge.
   flutter_inappwebview_macos:
-    path: third_party/flutter_inappwebview_macos
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      path: flutter_inappwebview_macos
   flutter_inappwebview_ios:
-    path: third_party/flutter_inappwebview_ios
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      path: flutter_inappwebview_ios
   flutter_inappwebview_android:
-    path: third_party/flutter_inappwebview_android
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d8b2cb3ba758f6f5746bcc0abbe3497d68807079
+      path: flutter_inappwebview_android
   # Prevent a native Windows crash when the push notification service is unavailable.
   # Keep this fork until https://github.com/MaikuB/flutter_local_notifications/pull/2813 is merged and released.
   flutter_local_notifications:
