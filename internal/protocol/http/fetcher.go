@@ -512,6 +512,17 @@ func (f *Fetcher) asyncPrefetch() {
 		return
 	}
 
+	defer func() {
+		// Close the response even if temporary-file setup fails or shutdown
+		// rejects a late prefetch. Otherwise the server can remain blocked writing.
+		f.resolveRespLock.Lock()
+		if f.resolveResp != nil {
+			f.resolveResp.Body.Close()
+			f.resolveResp = nil
+		}
+		f.resolveRespLock.Unlock()
+	}()
+
 	// Create temporary file for prefetch data
 	tempDir := ""
 	if f.ctl != nil && f.ctl.TempDir != "" {
@@ -536,16 +547,6 @@ func (f *Fetcher) asyncPrefetch() {
 	}
 	f.prefetchFile = tmpFile
 	f.prefetchFilePath = tmpFile.Name()
-
-	defer func() {
-		// Close response body when prefetch stops
-		f.resolveRespLock.Lock()
-		if f.resolveResp != nil {
-			f.resolveResp.Body.Close()
-			f.resolveResp = nil
-		}
-		f.resolveRespLock.Unlock()
-	}()
 
 	buf := make([]byte, 32*1024) // 32KB buffer
 	reader := f.responseReader(resp)
