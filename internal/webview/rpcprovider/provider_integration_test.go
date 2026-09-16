@@ -37,3 +37,8 @@ func defaultWebViewRPCAddress() string {
 	}
 	return filepath.Join(homeDir, "Library", "Application Support", "com.gopeed.gopeed", "gopeed_webview.sock")
 }
+
+func TestProviderProfiles(t *testing.T) {
+	provider := New(enginewebview.RPCConfig{Network: *webViewRPCNetwork, Address: *webViewRPCAddress, Token: *webViewRPCToken})
+	integrationtest.RunProfileContract(t, provider)
+}

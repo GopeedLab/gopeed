@@ -91,7 +91,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
       - name: Test webview
         if: runner.os == 'Windows'
-        run: go test -tags webview -v -count=1 -timeout 300s ./internal/webview/goprovider/
+        # Repeat close/reopen coverage to catch browser shutdown races.
+        run: go test -tags webview -v -count=3 -timeout 300s ./internal/webview/goprovider/
         env:
           CGO_ENABLED: 1
       - name: Test webview

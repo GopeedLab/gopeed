@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -109,9 +110,14 @@ func (p *page) ClearCookies() error {
 }
 
 func (p *page) Close() error {
-	return p.client.Call(enginewebview.MethodPageClose, enginewebview.PageCloseParams{
+	err := p.client.Call(enginewebview.MethodPageClose, enginewebview.PageCloseParams{
 		PageID: p.id,
 	}, nil)
+	var rpcErr *enginewebview.RPCError
+	if errors.As(err, &rpcErr) && rpcErr.Code == enginewebview.ErrorCodePageNotFound {
+		return nil
+	}
+	return err
 }
 
 type Client struct {
@@ -192,4 +198,8 @@ func (c *Client) Call(method string, params any, result any) error {
 		return nil
 	}
 	return json.Unmarshal(body.Result, result)
+}
+
+func (p *Provider) RemoveProfile(profileID, dataPath string) error {
+	return p.client.Call(enginewebview.MethodProfileRemove, enginewebview.ProfileRemoveParams{ProfileID: profileID}, nil)
 }

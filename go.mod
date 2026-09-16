@@ -4,13 +4,14 @@ go 1.25.4
 
 require (
 	codeberg.org/gruf/go-ffmpreg v0.6.23-0.20260827095416-df1836cb5be0
-	github.com/GopeedLab/webview_go v0.0.0-20260423085439-7a2f88b6e9b5
+	github.com/GopeedLab/webview_go v0.0.0-20260915010614-2567e492369a
 	github.com/anacrolix/torrent v1.60.1-0.20251217073903-486bcbe758e0
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/bodgit/sevenzip v1.6.1
 	github.com/dop251/goja v0.0.0-20260106131823-651366fbe6e3
 	github.com/dop251/goja_nodejs v0.0.0-20240728170619-29b559befffc
 	github.com/go-git/go-git/v5 v5.8.1
+	github.com/google/jsonschema-go v0.4.3
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/imroc/req/v3 v3.52.2
@@ -40,7 +41,6 @@ require (
 	github.com/felixge/fgprof v0.9.5 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect

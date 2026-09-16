@@ -22,6 +22,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/internal/tempfiles"
+	webviewproxy "github.com/GopeedLab/gopeed/internal/webview/proxy"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
@@ -98,9 +99,13 @@ type Progress struct {
 }
 
 type Downloader struct {
-	tempFiles       *tempfiles.Scope
-	Logger          *logger.Logger
-	ExtensionLogger *logger.Logger
+	tempFiles           *tempfiles.Scope
+	webviewProfilesLock sync.Mutex
+	webviewProfiles     map[string]*extensionWebViewProfile
+	webviewProxyLock    sync.Mutex
+	webviewProxy        *webviewproxy.Server
+	Logger              *logger.Logger
+	ExtensionLogger     *logger.Logger
 
 	cfg          *DownloaderConfig
 	fetcherCache map[string]fetcher.Fetcher
@@ -1144,6 +1149,11 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 
 func (d *Downloader) Close() error {
 	d.closed.Store(true)
+	d.webviewProxyLock.Lock()
+	if d.webviewProxy != nil {
+		_ = d.webviewProxy.Close()
+	}
+	d.webviewProxyLock.Unlock()
 
 	closeArr := []func() error{
 		d.pauseAll,
