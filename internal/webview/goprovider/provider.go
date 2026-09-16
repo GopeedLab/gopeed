@@ -105,7 +105,15 @@ func (p *pageWrapper) start() error {
 		defer runtimepkg.UnlockOSThread()
 
 		var w webview.WebView
-		if p.opts.Headless {
+		if p.opts.DataPath != "" {
+			var err error
+			w, err = webview.NewWithOptions(webview.Options{Debug: p.opts.Debug, Headless: p.opts.Headless, DataPath: p.opts.DataPath, ProxyURL: p.opts.ProxyURL})
+			if err != nil {
+				p.ready <- err
+				close(p.done)
+				return
+			}
+		} else if p.opts.Headless {
 			w = webview.NewHeadless(p.opts.Debug)
 		} else {
 			w = webview.New(p.opts.Debug)
@@ -127,12 +135,18 @@ func (p *pageWrapper) start() error {
 		if err := w.Bind(p.callbackName, func(payload string) error {
 			return p.handleCallback(payload)
 		}); err != nil {
+			w.Destroy()
 			p.ready <- err
+			close(p.done)
 			return
 		}
 
 		applyWindowOptions(w, p.opts)
 		w.SetHtml(buildBootstrapHTML(p.callbackName, p.readyID))
+		if runtimepkg.GOOS == "linux" {
+			// All GTK pages share the process-wide event loop below.
+			return
+		}
 		w.Run()
 		w.Destroy()
 		close(p.done)
@@ -318,7 +332,12 @@ func (p *pageWrapper) Close() error {
 		// the quit message lands on the correct queue.
 		terminateDone := make(chan struct{})
 		w.Dispatch(func() {
-			w.Terminate()
+			if runtimepkg.GOOS == "linux" {
+				w.Destroy()
+				close(p.done)
+			} else {
+				w.Terminate()
+			}
 			close(terminateDone)
 		})
 		<-terminateDone
@@ -609,4 +628,13 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func (p *Provider) RemoveProfile(profileID, dataPath string) error {
+	done := make(chan error, 1)
+	run := func() { done <- webview.RemoveProfile(dataPath) }
+	if !postMainThreadTask(run) {
+		run()
+	}
+	return <-done
 }

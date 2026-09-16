@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
-import 'package:flutter/material.dart' show Icons, Scrollbar;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, debugDefaultTargetPlatformOverride, kIsWeb;
+import 'package:flutter/material.dart' show Icons, Scrollbar, SelectionArea;
 import 'package:flutter/gestures.dart' show PointerDeviceKind, kDoubleTapMinTime, kSecondaryMouseButton;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart' show MethodChannel, SystemChannels;
@@ -12,13 +13,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:window_manager/window_manager.dart';
+import 'package:gopeed/features/home/presentation/pages/home_page.dart';
 import 'package:gopeed/app/app.dart';
+import 'package:gopeed/app/router/app_router.dart';
+import 'package:gopeed/core/capabilities/capability_rpc.dart';
+import 'package:gopeed/core/capabilities/gopeed_capability.dart';
+import 'package:gopeed/core/capabilities/storage_capability.dart';
+import 'package:gopeed/api/model/resolve_result.dart';
+import 'package:gopeed/features/tasks/application/pending_create_task.dart';
+import 'package:gopeed/features/tasks/application/task_list_navigation.dart';
+import 'package:gopeed/core/capabilities/app_capabilities.dart';
+import 'package:gopeed/core/capabilities/app_navigation_capability.dart';
 import 'package:gopeed/app/application/app_appearance_controller.dart';
 import 'package:gopeed/app/application/app_deep_link_controller.dart';
 import 'package:gopeed/app/application/app_notification_controller.dart';
 import 'package:gopeed/app/application/app_platform_controller.dart';
 import 'package:gopeed/app/application/app_runtime_controller.dart';
 import 'package:gopeed/api/model/create_task.dart';
+import 'package:gopeed/api/model/install_extension.dart';
+import 'package:gopeed/features/extensions/application/pending_extension_install.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/extension.dart' as api_extension;
 import 'package:gopeed/api/model/meta.dart';
@@ -81,6 +94,7 @@ import 'package:gopeed/shared/widgets/app_copy_icon_button.dart';
 import 'package:gopeed/shared/widgets/app_http_headers_editor.dart';
 import 'package:gopeed/shared/widgets/app_path_picker_field.dart';
 import 'package:gopeed/shared/widgets/app_primary_button.dart';
+import 'package:gopeed/shared/widgets/app_text_field.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
 import 'package:gopeed/shared/widgets/app_toast.dart';
 import 'package:gopeed/shared/widgets/gopeed_app_mark.dart';
@@ -91,6 +105,117 @@ import 'package:gopeed/util/updater.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.localeTestValue = const Locale('en');
+
+  for (final direct in [true, false]) {
+    testWidgets(
+      'mobile creation selects downloading after success (direct: $direct)',
+      (tester) async {
+        await _setTestSize(tester, const Size(700, 900));
+        var created = 0;
+        final config = DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = direct;
+        final registry = CapabilityRegistry(createAppCapabilityCodecs())
+          ..bind(GopeedMethods.getConfig, (_) => config)
+          ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit())
+          ..bind(
+            GopeedMethods.resolve,
+            (_) => ResolveResult(
+              id: 'resolved',
+              res: Resource(
+                name: 'new.zip',
+                files: [FileInfo(name: 'new.zip', size: 10)],
+              ),
+            ),
+          )
+          ..bind(GopeedMethods.createTask, (_) {
+            created++;
+            return 'new-task';
+          });
+        final container = ProviderContainer(
+          overrides: [
+            appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry))),
+            appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+            appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+            appDeepLinkControllerProvider.overrideWith(FakeDeepLinkController.new),
+            appNotificationControllerProvider.overrideWith(FakeNotificationController.new),
+            tasksControllerProvider.overrideWith(CompletedTasksController.new),
+            settingsControllerProvider.overrideWith(FakeSettingsController.new),
+          ],
+        );
+        addTearDown(container.dispose);
+        await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const GopeedApp()));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Completed 1'));
+        await tester.pumpAndSettle();
+        expect(find.text('done.zip'), findsOneWidget);
+        final router = GoRouter.of(AppRouter.rootNavigatorKey.currentContext!);
+        void openCreate() {
+          container
+              .read(pendingCreateTaskProvider.notifier)
+              .set(CreateTask(req: Request(url: 'https://example.com/new.zip')));
+          router.go('/create');
+        }
+
+        openCreate();
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('create-task-cancel-button')));
+        await tester.pumpAndSettle();
+        expect(find.text('done.zip'), findsOneWidget);
+        expect(container.read(taskListNavigationProvider), 0);
+        expect(created, 0);
+        openCreate();
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        if (!direct) {
+          expect(created, 0);
+          await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+          await tester.pumpAndSettle();
+        }
+        await tester.pumpAndSettle();
+        expect(created, 1);
+        expect(router.routeInformationProvider.value.uri.path, '/');
+        expect(container.read(taskListNavigationProvider), 1);
+        expect(find.text('done.zip'), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      },
+      variant: TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}),
+    );
+  }
+
+  testWidgets('child success returns to downloading from completed and another page', (tester) async {
+    await _setTestSize(tester, const Size(1024, 768));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          tasksControllerProvider.overrideWith(CompletedTasksController.new),
+          settingsControllerProvider.overrideWith(FakeSettingsController.new),
+        ],
+        child: const GopeedApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Completed'));
+    await tester.pumpAndSettle();
+    expect(find.text('done.zip'), findsOneWidget);
+
+    // Exercise the same serialized operation dispatched by a child window.
+    await LocalAppCapabilities.instance.registry.invoke(NavigationMethods.showDownloadingTasks.name, {});
+    await tester.pumpAndSettle();
+    expect(find.text('done.zip'), findsNothing);
+    expect(find.text('Create Task'), findsOneWidget);
+
+    GoRouter.of(AppRouter.rootNavigatorKey.currentContext!).go('/settings');
+    await tester.pumpAndSettle();
+    await LocalAppCapabilities.instance.capabilities.navigation.showDownloadingTasks();
+    await tester.pumpAndSettle();
+    expect(GoRouter.of(AppRouter.rootNavigatorKey.currentContext!).routeInformationProvider.value.uri.path, '/');
+    expect(find.text('done.zip'), findsNothing);
+    expect(find.text('Create Task'), findsOneWidget);
+  });
 
   test('Web MCP endpoint excludes page path, query, and hash route', () {
     expect(
@@ -371,10 +496,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    await tester.enterText(find.byType(shad.TextField), 'not-a-task');
+    await tester.enterText(find.byType(AppTextField), 'not-a-task');
     await tester.pump();
 
     expect(find.text('No matching tasks found'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tasks-empty-create-button')), findsNothing);
     expect(find.text('No tasks in this list'), findsNothing);
   });
 
@@ -401,6 +527,20 @@ void main() {
     expect(find.text('Downloading 0'), findsOneWidget);
     expect(find.text('Completed 0'), findsOneWidget);
     expect(find.text('Failed 0'), findsOneWidget);
+    expect(find.text('Create Task'), findsOneWidget);
+    final headerCreate = find.byKey(const ValueKey('tasks-mobile-create-button'));
+    expect(tester.getSize(headerCreate).height, 34);
+    final batchButton = find.byKey(const ValueKey('tasks-mobile-batch-button'));
+    expect(tester.getRect(headerCreate).height, tester.getRect(batchButton).height);
+    expect(tester.getRect(headerCreate).top, tester.getRect(batchButton).top);
+    expect(tester.getRect(headerCreate).bottom, tester.getRect(batchButton).bottom);
+    expect(tester.getBottomLeft(headerCreate).dy, lessThan(tester.getTopLeft(find.text('Downloading 0')).dy));
+    for (final size in [const Size(320, 568), const Size(768, 1024)]) {
+      tester.view.physicalSize = size;
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('tasks-empty-create-button')), findsOneWidget);
+    }
   });
 
   testWidgets('extensions grid adds columns from a minimum card width and keeps desktop toolbar aligned', (
@@ -413,7 +553,7 @@ void main() {
         child: shad.ShadcnApp(
           theme: AppTheme.light(),
           materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+          home: const AppComponentThemes(child: ExtensionsPage()),
         ),
       ),
     );
@@ -433,6 +573,7 @@ void main() {
     final cardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-0')));
     final rightmostCardRect = tester.getRect(find.byKey(const ValueKey('extension-card-extension-2')));
     final appMarkRect = tester.getRect(find.byKey(const ValueKey('primary-rail-app-mark')));
+    expect(searchRect.height, closeTo(sortRect.height, 0.01));
     expect(searchRect.width, 240);
     expect(searchRect.width, lessThan(cardRect.width));
     expect(sortRect.left - searchRect.right, closeTo(10, 0.01));
@@ -451,6 +592,11 @@ void main() {
       closeTo(tester.getRect(find.byKey(const ValueKey('extension-card-extension-2'))).right, 0.01),
     );
 
+    tester.view.physicalSize = const Size(1024, 768);
+    await tester.pumpAndSettle();
+    expect(gridColumns(), 3);
+    expect(tester.getSize(find.byKey(const ValueKey('extension-card-extension-0'))).width, greaterThanOrEqualTo(290));
+
     tester.view.physicalSize = const Size(1028, 608);
     await tester.pumpAndSettle();
     expect(gridColumns(), 3);
@@ -465,6 +611,7 @@ void main() {
     expect(find.byType(PrimaryRail), findsOneWidget);
     final compactSearchRect = tester.getRect(find.byKey(const ValueKey('extension-search-field-container')));
     expect(compactSearchRect.width, lessThan(240));
+    expect(compactSearchRect.height, closeTo(sortRect.height, 0.01));
     expect(
       tester.getRect(find.byKey(const ValueKey('extension-sort-control'))).center.dy,
       closeTo(compactSearchRect.center.dy, 0.01),
@@ -479,6 +626,31 @@ void main() {
           tester.getRect(find.byKey(const ValueKey('extension-search-input'))).right,
       closeTo(10, 0.01),
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('extension cards compact large counts without crowding their actions', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(722, 608));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [extensionsControllerProvider.overrideWith(CrowdedExtensionCardController.new)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: const AppComponentThemes(child: ExtensionsPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1.2w'), findsOneWidget);
+    expect(find.text('1.2b'), findsOneWidget);
+    final cardRect = tester.getRect(find.byKey(const ValueKey('extension-card-crowded-extension')));
+    final statsRect = tester.getRect(find.byKey(const ValueKey('extension-card-stats-crowded-extension')));
+    final actionsRect = tester.getRect(find.byKey(const ValueKey('extension-card-actions-crowded-extension')));
+    expect(cardRect.width, closeTo(290, 0.01));
+    expect(statsRect.right, lessThanOrEqualTo(actionsRect.left - 8));
+    expect(actionsRect.right, lessThanOrEqualTo(cardRect.right - 14));
     expect(tester.takeException(), isNull);
   });
 
@@ -591,6 +763,73 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  for (final (width, details) in [(390.0, false), (1100.0, false), (1100.0, true)]) {
+    testWidgets('extension update confirms, shows progress and retries at $width details=$details', (tester) async {
+      await _setTestSize(tester, Size(width, 900));
+      final controller = UpdateableExtensionsController();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(() => controller)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      if (details) {
+        await tester.tap(find.byKey(const ValueKey('extension-card-extension-0')));
+        await tester.pumpAndSettle();
+      }
+      final entry = find.byKey(ValueKey(details ? 'extension-details-update' : 'update-extension-extension-0'));
+      final dialog = find.byKey(const ValueKey('extension-update-dialog'));
+      final confirm = find.byKey(const ValueKey('confirm-update-extension-button'));
+      final cancel = find.byKey(const ValueKey('cancel-update-extension-button'));
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+      expect(dialog, findsOneWidget);
+      expect(find.text('Update “Extension 0” to the latest version?'), findsOneWidget);
+      expect(controller.updateCalls, 0);
+      await tester.tap(cancel);
+      await tester.pumpAndSettle();
+      expect(dialog, findsNothing);
+      expect(controller.updateCalls, 0);
+
+      await tester.tap(entry);
+      await tester.pumpAndSettle();
+      controller.failUpdate = true;
+      await tester.tap(confirm);
+      await tester.pump();
+      expect(controller.updateCalls, 1);
+      expect(tester.widget<AppLoadingButton>(confirm).loading, isTrue);
+      expect(tester.widget<shad.SecondaryButton>(cancel).onPressed, isNull);
+      await tester.tap(confirm);
+      await tester.tapAt(const Offset(5, 5));
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(controller.updateCalls, 1);
+      expect(dialog, findsOneWidget);
+      controller.updateGate.complete();
+      await tester.pumpAndSettle();
+      expect(dialog, findsOneWidget);
+      expect(find.byKey(const ValueKey('extension-update-error')), findsOneWidget);
+      expect(tester.widget<AppLoadingButton>(confirm).loading, isFalse);
+
+      controller.failUpdate = false;
+      controller.updateGate = Completer<void>();
+      await tester.tap(confirm);
+      await tester.pump();
+      expect(controller.updateCalls, 2);
+      controller.updateGate.complete();
+      await tester.pumpAndSettle();
+      expect(dialog, findsNothing);
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('installed extension details use a disabled installed button without a hero status', (
     WidgetTester tester,
@@ -709,7 +948,7 @@ void main() {
         child: shad.ShadcnApp(
           theme: AppTheme.light(),
           materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+          home: const AppComponentThemes(child: ExtensionsPage()),
         ),
       ),
     );
@@ -801,66 +1040,249 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('extension install actions show progress instead of a disabled icon while busy', (
-    WidgetTester tester,
-  ) async {
-    await _setTestSize(tester, const Size(1100, 900));
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [extensionsControllerProvider.overrideWith(BusyInstallExtensionsController.new)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
+  testWidgets(
+    'URL installation leaves toolbar icons unchanged while store installation shows progress',
+    (WidgetTester tester) async {
+      await _setTestSize(tester, const Size(1100, 900));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(BusyInstallExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
         ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    final manualInstall = find.byKey(const ValueKey('install-extension-button'));
-    final storeInstall = find.byKey(const ValueKey('install-store-extension-extension-1'));
-    expect(find.descendant(of: manualInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
-    expect(find.descendant(of: storeInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
-    expect(find.descendant(of: storeInstall, matching: find.byIcon(Icons.download)), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('extension install popover unlocks local loading and installed cards use switches', (
-    WidgetTester tester,
-  ) async {
-    await _setTestSize(tester, const Size(1100, 900));
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: const ExtensionsPage(),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byType(shad.Switch), findsOneWidget);
-    expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
-    final installButton = find.byKey(const ValueKey('install-extension-button'));
-    expect(find.descendant(of: installButton, matching: find.byType(shad.IconButton)), findsOneWidget);
-
-    for (var index = 0; index < 5; index++) {
-      await tester.tap(installButton);
+      );
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-    }
 
-    expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
-    expect(find.byKey(const ValueKey('extension-install-url-input')), findsOneWidget);
-    final localButton = find.byKey(const ValueKey('load-local-extension-button'));
-    expect(localButton, findsOneWidget);
-    expect(find.descendant(of: localButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+      final manualInstall = find.byKey(const ValueKey('install-extension-button'));
+      final storeInstall = find.byKey(const ValueKey('install-store-extension-extension-1'));
+      expect(find.descendant(of: manualInstall, matching: find.byType(shad.CircularProgressIndicator)), findsNothing);
+      expect(find.descendant(of: manualInstall, matching: find.byIcon(Icons.add_link)), findsOneWidget);
+      final localInstall = find.byKey(const ValueKey('load-local-extension-button'));
+      expect(localInstall, findsOneWidget);
+      expect(find.descendant(of: localInstall, matching: find.byType(shad.CircularProgressIndicator)), findsNothing);
+      expect(find.descendant(of: localInstall, matching: find.byIcon(Icons.folder_open_outlined)), findsOneWidget);
+      expect(find.descendant(of: storeInstall, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+      expect(find.descendant(of: storeInstall, matching: find.byIcon(Icons.download)), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
 
-    await tester.pump(const Duration(seconds: 3));
-    expect(tester.takeException(), isNull);
-  });
+  for (final (width, platform) in [
+    (320.0, TargetPlatform.android),
+    (390.0, TargetPlatform.iOS),
+    (768.0, TargetPlatform.android),
+    (1100.0, TargetPlatform.macOS),
+  ]) {
+    testWidgets(
+      'scheme install automatically runs before and after mounting at width $width',
+      (tester) async {
+        await _setTestSize(tester, Size(width, 900));
+        final controller = FakeExtensionsController()..installGate = Completer<void>();
+        final container = ProviderContainer(overrides: [extensionsControllerProvider.overrideWith(() => controller)]);
+        addTearDown(container.dispose);
+        const firstUrl = 'https://github.com/author/扩展';
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: firstUrl));
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: shad.ShadcnApp(
+              theme: AppTheme.light(),
+              materialTheme: AppTheme.materialLight(),
+              home: const ExtensionsPage(),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        final input = find.byKey(const ValueKey('extension-install-url-input'));
+        expect(tester.widget<AppTextField>(input).controller!.text, firstUrl);
+        expect(container.read(pendingExtensionInstallProvider), isNull);
+        expect(controller.installCalls, 1);
+        expect(controller.lastInstallUrl, firstUrl);
+        final popoverRect = tester.getRect(find.byKey(const ValueKey('extension-install-popover')));
+        expect(popoverRect.left, greaterThanOrEqualTo(0));
+        expect(popoverRect.right, lessThanOrEqualTo(width));
+        expect(find.descendant(of: input, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+
+        // Rebuilds and manual submission must not duplicate an active install.
+        await tester.tap(find.descendant(of: input, matching: find.byType(shad.IconButton)));
+        await tester.pump();
+        expect(controller.installCalls, 1);
+        controller.installGate!.complete();
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('extension-install-popover')), findsNothing);
+
+        // A warm link automatically installs from an already-open form too.
+        await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        const secondUrl = 'https://github.com/author/second';
+        controller.installGate = Completer<void>();
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: secondUrl));
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(tester.widget<AppTextField>(input).controller!.text, secondUrl);
+        expect(controller.installCalls, 2);
+        expect(controller.lastInstallUrl, secondUrl);
+
+        // A request arriving during installation waits until the active form closes.
+        container.read(pendingExtensionInstallProvider.notifier).set(InstallExtension(url: firstUrl));
+        await tester.pump();
+        expect(controller.installCalls, 2);
+        controller.installGate!.complete();
+        controller.installGate = Completer<void>();
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 200));
+        }
+        expect(controller.installCalls, 3);
+        expect(controller.lastInstallUrl, firstUrl);
+        controller.installGate!.complete();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      },
+      variant: TargetPlatformVariant.only(platform),
+    );
+  }
+
+  testWidgets(
+    'install URL keeps focus after native menu paste',
+    (tester) async {
+      await _setTestSize(tester, const Size(390, 900));
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.hasStrings') return {'value': true};
+        if (call.method == 'Clipboard.getData') return {'text': 'https://github.com/author/repo'};
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final search = find.byKey(const ValueKey('extension-search-input'));
+      await tester.tap(search);
+      await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      final input = find.byKey(const ValueKey('extension-install-url-input'));
+      final editableFinder = find.descendant(of: input, matching: find.byType(EditableText));
+      final editable = tester.widget<EditableText>(editableFinder);
+      expect(editable.focusNode.hasFocus, isTrue);
+      if (defaultTargetPlatform == TargetPlatform.macOS) {
+        final gesture = await tester.startGesture(
+          tester.getCenter(input),
+          kind: PointerDeviceKind.mouse,
+          buttons: kSecondaryMouseButton,
+        );
+        await gesture.up();
+      } else {
+        await tester.longPress(input);
+      }
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.text('Paste'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(input, findsOneWidget);
+      expect(editable.controller.text, 'https://github.com/author/repo');
+      expect(editable.focusNode.hasFocus, isTrue);
+      expect(
+        tester
+            .widget<EditableText>(find.descendant(of: search, matching: find.byType(EditableText)))
+            .focusNode
+            .hasFocus,
+        isFalse,
+      );
+      await tester.tapAt(const Offset(10, 500));
+      await tester.pumpAndSettle();
+      expect(input, findsNothing);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS}),
+  );
+
+  testWidgets(
+    'mobile does not unlock local extension installation after five taps',
+    (tester) async {
+      // A tablet-sized mobile screen must still use mobile platform policy.
+      await _setTestSize(tester, const Size(1100, 900));
+      final controller = FakeExtensionsController();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(() => controller)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (var i = 0; i < 5; i++) {
+        await tester.tap(find.byKey(const ValueKey('install-extension-button')));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(controller.devModeEnabled, isFalse);
+      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+      // Even a pre-existing dev-mode state must not expose the native folder action.
+      controller.enableDevModeForTest();
+      await tester.pump();
+      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS}),
+  );
+
+  testWidgets(
+    'extension install popover unlocks local loading and installed cards use switches',
+    (WidgetTester tester) async {
+      await _setTestSize(tester, const Size(1100, 900));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(FakeExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(shad.Switch), findsOneWidget);
+      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+      final installButton = find.byKey(const ValueKey('install-extension-button'));
+      expect(find.descendant(of: installButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+
+      for (var index = 0; index < 5; index++) {
+        await tester.tap(installButton);
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
+      expect(find.byKey(const ValueKey('extension-install-url-input')), findsOneWidget);
+      final localButton = find.byKey(const ValueKey('load-local-extension-button'));
+      expect(localButton, findsOneWidget);
+      expect(find.descendant(of: localButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 3));
+      expect(tester.takeException(), isNull);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}),
+  );
 
   testWidgets('responsive menu uses sidebar on desktop and two-level navigation on mobile', (
     WidgetTester tester,
@@ -1451,8 +1873,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('close-mcp-agent-setup')));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.byKey(const ValueKey('mcp-endpoint-switch')));
-    await tester.tap(find.byKey(const ValueKey('mcp-endpoint-switch')));
+    final mcpSwitch = find.byKey(const ValueKey('mcp-endpoint-switch'));
+    await Scrollable.ensureVisible(tester.element(mcpSwitch), alignment: 0.5);
+    await tester.pumpAndSettle();
+    await tester.tap(mcpSwitch);
     await tester.pump();
     expect(tester.widget<AppLoadingButton>(saveButton).onPressed, isNotNull);
 
@@ -1857,6 +2281,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('loading button preserves its content dimensions', (WidgetTester tester) async {
+    var loading = false;
+    late StateSetter setButtonState;
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: Center(
+          child: StatefulBuilder(
+            builder: (context, update) {
+              setButtonState = update;
+              return AppLoadingButton(
+                key: const ValueKey('dimension-stable-loading-button'),
+                onPressed: () {},
+                loading: loading,
+                variant: AppLoadingButtonVariant.primary,
+                child: const Text('Confirm'),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final button = find.byKey(const ValueKey('dimension-stable-loading-button'));
+    final idleSize = tester.getSize(button);
+
+    setButtonState(() => loading = true);
+    await tester.pump();
+
+    expect(tester.getSize(button), idleSize);
+    expect(find.descendant(of: button, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
+  });
+
   testWidgets('failed tracker update does not reload or reset the settings page', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     final runtimeController = FailingTrackerRuntimeController();
@@ -2180,15 +2638,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('settings mobile back returns one level before requiring a second back to exit', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('settings mobile back returns through home before confirming exit', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(390, 760));
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     var systemPopCalls = 0;
+    bool? frameworkHandlesBack;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
       if (call.method == 'SystemNavigator.pop') systemPopCalls++;
+      if (call.method == 'SystemNavigator.setFrameworkHandlesBack') frameworkHandlesBack = call.arguments as bool;
       return null;
     });
     addTearDown(() {
@@ -2207,6 +2666,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(frameworkHandlesBack, isTrue);
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Basic'));
@@ -2219,6 +2679,13 @@ void main() {
     expect(find.text('SETTINGS'), findsOneWidget);
     expect(find.byKey(const ValueKey('theme-mode-system')), findsNothing);
     expect(systemPopCalls, 0);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(HomePage), findsOneWidget);
+    expect(find.text('Press back again to exit'), findsNothing);
+    expect(systemPopCalls, 0);
+    expect(frameworkHandlesBack, isTrue);
 
     await tester.binding.handlePopRoute();
     await tester.pump();
@@ -2299,10 +2766,12 @@ void main() {
     await tester.pumpAndSettle();
     final createDirectoryInput = find.byKey(const ValueKey('create-task-directory-input'));
     final createRenameInput = find.byKey(const ValueKey('create-task-rename-input'));
+    final createConnectionsInput = find.byKey(const ValueKey('create-task-connections-input'));
     expect(tester.getSize(createDirectoryInput).height, tester.getSize(createRenameInput).height);
+    expect(tester.getSize(createConnectionsInput), tester.getSize(createRenameInput));
     final createDirectoryField = tester.widget<shad.TextField>(createDirectoryInput);
     final createRenameField = tester.widget<shad.TextField>(
-      find.descendant(of: createRenameInput, matching: find.byType(shad.TextField)),
+      find.descendant(of: createRenameInput, matching: find.byType(AppTextField)),
     );
     expect(createDirectoryField.filled, createRenameField.filled);
     expect(createDirectoryField.border, createRenameField.border);
@@ -2399,6 +2868,27 @@ void main() {
     expect(tester.widget<shad.GhostButton>(onlyRemoveHeader).onPressed, isNull);
     expect(find.byKey(const ValueKey('create-task-http-header-name-0')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('create task rename stays user-controlled and resets when the URL changes', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(700, 500));
+    await tester.pumpWidget(const ProviderScope(child: _CreateTaskPageHarness()));
+    await tester.pump();
+
+    final urlInput = find.byKey(const ValueKey('create-task-url-input'));
+    final renameInput = find.byKey(const ValueKey('create-task-rename-input'));
+    await tester.enterText(urlInput, 'https://example.com/first.zip');
+    await tester.enterText(renameInput, 'custom-name.zip');
+    expect(find.text('custom-name.zip'), findsOneWidget);
+
+    await tester.enterText(urlInput, 'https://example.com/second.zip');
+    await tester.pump();
+
+    final renameField = tester.widget<AppTextField>(
+      find.descendant(of: renameInput, matching: find.byType(AppTextField)),
+    );
+    expect(renameField.controller!.text, isEmpty);
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('create task labels direct download without a mode field', (WidgetTester tester) async {
@@ -2572,9 +3062,9 @@ void main() {
           padding: const EdgeInsets.all(24),
           child: ResolveFileTree(
             files: [
-              FileInfo(path: 'videos', name: 'clip.mp4', size: 1024),
-              FileInfo(path: 'docs', name: 'notes.txt', size: 128),
-              FileInfo(path: 'docs', name: 'manual.pdf', size: 256),
+              FileInfo(path: 'videos', name: 'clip.mp4', size: 0),
+              FileInfo(path: 'docs', name: 'notes.txt', size: 0),
+              FileInfo(path: 'docs', name: 'manual.pdf', size: 0),
             ],
             initialSelection: const [0, 1, 2],
             onSelectionChanged: (values) => selected = values,
@@ -2588,6 +3078,7 @@ void main() {
     expect(treeFinder, findsOneWidget);
     final tree = tester.widget<VirtualTreeView<dynamic>>(treeFinder);
     expect(tree.branchLine, same(shad.BranchLine.path));
+    expect(tree.rowHeight, 36);
     expect(
       tester.widgetList<shad.Checkbox>(find.byType(shad.Checkbox)).every((checkbox) => checkbox.size == null),
       isTrue,
@@ -2610,7 +3101,26 @@ void main() {
     expect(find.byKey(const ValueKey('resolve-tree-expand-toggle')), findsOneWidget);
     expect(find.byType(shad.OutlinedContainer), findsOneWidget);
     expect(find.text('clip.mp4'), findsOneWidget);
+    expect(find.text('Unknown size'), findsOneWidget);
     expect(tester.widget<Text>(find.text('clip.mp4')).style?.color, AppPalette.light.textPrimary);
+    final baselines = tester
+        .widgetList<Baseline>(
+          find.descendant(
+            of: find.byKey(const ValueKey('resolve-tree-selection-stats')),
+            matching: find.byType(Baseline),
+          ),
+        )
+        .toList();
+    expect(baselines, hasLength(2));
+    expect(baselines.first.baseline, baselines.last.baseline);
+    expect(baselines.every((widget) => widget.baselineType == TextBaseline.alphabetic), isTrue);
+    final filtersRect = tester.getRect(find.byKey(const ValueKey('resolve-tree-filters')));
+    final statsRect = tester.getRect(find.byKey(const ValueKey('resolve-tree-selection-stats')));
+    final selectedCountRect = tester.getRect(find.byKey(const ValueKey('resolve-tree-selected-count')));
+    final selectedSizeRect = tester.getRect(find.byKey(const ValueKey('resolve-tree-selected-size')));
+    expect(statsRect.center.dy, closeTo(filtersRect.center.dy, 0.01));
+    expect(selectedCountRect.center.dy, closeTo(selectedSizeRect.center.dy, 0.01));
+    expect(selectedSizeRect.left, greaterThan(selectedCountRect.right));
 
     await tester.tap(find.byKey(const ValueKey('resolve-tree-expand-toggle')));
     await tester.pumpAndSettle();
@@ -2672,8 +3182,16 @@ void main() {
     expect(find.text('clip.mp4'), findsOneWidget);
     expect(selected, [0, 1, 2]);
 
-    tester.view.physicalSize = const Size(360, 620);
+    tester.view.physicalSize = const Size(280, 620);
     await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byKey(const ValueKey('resolve-tree-selection-stats'))).top,
+      greaterThanOrEqualTo(tester.getRect(find.byKey(const ValueKey('resolve-tree-filters'))).bottom),
+    );
+    expect(
+      tester.getRect(find.byKey(const ValueKey('resolve-tree-selected-size'))).top,
+      greaterThanOrEqualTo(tester.getRect(find.byKey(const ValueKey('resolve-tree-selected-count'))).bottom),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -2895,6 +3413,78 @@ void main() {
     expect(record.total, isNull);
     expect(record.progress, isNull);
     expect(record.isIndeterminate, isTrue);
+  });
+
+  test('known total size preserves zero download speed independently of task status', () {
+    for (final status in api_task.Status.values) {
+      for (final total in [0, 1024]) {
+        for (final speed in [0, 512]) {
+          final task = _apiTransferTask(id: 'speed', status: status, uploading: false, speed: speed, uploadSpeed: 0);
+          task.meta.res = Resource(size: total, files: []);
+          expect(TaskRecord.fromApi(task).speed, total > 0 || speed > 0 ? '$speed B/s' : isNull);
+        }
+      }
+    }
+  });
+
+  for (final width in [390.0, 1024.0]) {
+    testWidgets('known-size task cards retain zero download speed at width $width', (tester) async {
+      await _setTestSize(tester, Size(width, 220));
+      for (final status in api_task.Status.values) {
+        final task = _apiTransferTask(id: 'zero-speed', status: status, uploading: false, speed: 0, uploadSpeed: 0);
+        task.meta.res = Resource(size: 1024, files: []);
+        await tester.pumpWidget(
+          shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: Padding(
+              padding: const EdgeInsets.all(24),
+              child: TaskCard(
+                task: TaskRecord.fromApi(task),
+                selected: false,
+                batchMode: false,
+                selectedInBatch: false,
+                onPressed: () {},
+                onToggleBatch: () {},
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.text('0 B/s'), findsOneWidget);
+        expect(find.byIcon(Icons.south), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    });
+  }
+
+  testWidgets('known-size task details retain zero download speed', (tester) async {
+    await _setTestSize(tester, const Size(700, 900));
+    final task = _apiTransferTask(
+      id: 'zero-details',
+      status: api_task.Status.running,
+      uploading: false,
+      speed: 0,
+      uploadSpeed: 0,
+    );
+    task.meta.res = Resource(size: 1024, files: []);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: TaskDetailsView(
+            task: TaskRecord.fromApi(task),
+            mobile: true,
+            onOpenStorage: () {},
+            onUpdateUrl: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('0 B/s'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   test('task records preserve zero upload speed while uploading', () {
@@ -3121,7 +3711,7 @@ void main() {
 
     expect(find.text('Failed'), findsOneWidget);
     expect(find.text('Connection refused'), findsNothing);
-    expect(find.text('10 B/s'), findsNothing);
+    expect(find.text('10 B/s'), findsOneWidget);
     expect(tester.getRect(find.text('50 B / 100 B')).left, lessThan(tester.getRect(find.text('Failed')).left));
   });
 
@@ -3396,6 +3986,14 @@ void main() {
     expect(urlValue.data, contains('\u200B'));
     expect(urlValue.data!.replaceAll('\u200B', ''), task.url);
     expect(urlValue.semanticsLabel, task.url);
+    final selectionArea = find.byKey(const ValueKey('task-details-selection-area'));
+    expect(selectionArea, findsOneWidget);
+    expect(tester.widget(selectionArea), isA<SelectionArea>());
+    expect(find.ancestor(of: find.text('details.zip'), matching: selectionArea), findsOneWidget);
+    expect(
+      find.ancestor(of: find.byKey(const ValueKey('task-details-url-value')), matching: selectionArea),
+      findsOneWidget,
+    );
     expect(find.text('Task Details'), findsOneWidget);
     expect(find.text('Task Name'), findsNothing);
     final detailHeader = tester.widget<SizedBox>(find.byKey(const ValueKey('app-detail-drawer-header')));
@@ -4339,8 +4937,8 @@ void main() {
     expect(find.byType(AppHttpHeadersEditor), findsOneWidget);
     final firstName = find.byKey(const ValueKey('update-task-http-header-name-0'));
     final firstValue = find.byKey(const ValueKey('update-task-http-header-value-0'));
-    final firstNameField = find.descendant(of: firstName, matching: find.byType(shad.TextField));
-    final firstValueField = find.descendant(of: firstValue, matching: find.byType(shad.TextField));
+    final firstNameField = find.descendant(of: firstName, matching: find.byType(AppTextField));
+    final firstValueField = find.descendant(of: firstValue, matching: find.byType(AppTextField));
     expect(tester.widget<shad.TextField>(firstNameField).controller!.text, 'Authorization');
     expect(tester.widget<shad.TextField>(firstValueField).controller!.text, 'Bearer old');
     expect(tester.getSize(firstValue).width / tester.getSize(firstName).width, closeTo(1.618, 0.01));
@@ -4663,45 +5261,100 @@ void main() {
     expect(openedCount, 0);
   });
 
-  testWidgets('completed task double click opens while folder action reveals', (WidgetTester tester) async {
-    await _setTestSize(tester, const Size(1024, 220));
-    var openedCount = 0;
-    var revealedCount = 0;
+  for (final width in [390.0, 1024.0]) {
+    testWidgets(
+      'completed card actions respect platform at width $width',
+      (tester) async {
+        await _setTestSize(tester, Size(width, 220));
+        var deleted = 0;
+        var revealed = 0;
+        await tester.pumpWidget(
+          shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: Padding(
+              padding: const EdgeInsets.all(24),
+              child: TaskCard(
+                task: _taskRecord(id: 'platform-actions', name: 'done.zip', status: TaskStatus.completed),
+                selected: false,
+                batchMode: false,
+                selectedInBatch: false,
+                onPressed: () {},
+                onToggleBatch: () {},
+                onDelete: () => deleted++,
+                onReveal: () => revealed++,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final desktop =
+            !kIsWeb &&
+            {TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}.contains(defaultTargetPlatform);
+        expect(find.byIcon(Icons.folder_open_outlined), desktop ? findsOneWidget : findsNothing);
+        expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+        if (desktop) {
+          await tester.tap(find.byIcon(Icons.folder_open_outlined));
+          expect(revealed, 1);
+        }
+        await tester.tap(find.byIcon(Icons.delete_outline));
+        expect(deleted, 1);
+        expect(tester.takeException(), isNull);
+      },
+      variant: TargetPlatformVariant({
+        TargetPlatform.android,
+        TargetPlatform.iOS,
+        TargetPlatform.windows,
+        TargetPlatform.macOS,
+        TargetPlatform.linux,
+      }),
+    );
+  }
 
-    await tester.pumpWidget(
-      shad.ShadcnApp(
-        theme: AppTheme.light(),
-        materialTheme: AppTheme.materialLight(),
-        home: Padding(
-          padding: const EdgeInsets.all(24),
-          child: TaskCard(
-            task: _taskRecord(id: 'completed-actions', name: 'completed.zip', status: TaskStatus.completed),
-            selected: false,
-            batchMode: false,
-            selectedInBatch: false,
-            onPressed: () {},
-            onToggleBatch: () {},
-            onOpen: () => openedCount++,
-            onReveal: () => revealedCount++,
+  testWidgets(
+    'completed task double click opens while folder action reveals',
+    (WidgetTester tester) async {
+      await _setTestSize(tester, const Size(1024, 220));
+      var openedCount = 0;
+      var revealedCount = 0;
+
+      await tester.pumpWidget(
+        shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: Padding(
+            padding: const EdgeInsets.all(24),
+            child: TaskCard(
+              task: _taskRecord(id: 'completed-actions', name: 'completed.zip', status: TaskStatus.completed),
+              selected: false,
+              batchMode: false,
+              selectedInBatch: false,
+              onPressed: () {},
+              onToggleBatch: () {},
+              onOpen: () => openedCount++,
+              onReveal: () => revealedCount++,
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    await tester.tap(find.text('completed.zip'));
-    await tester.pump(kDoubleTapMinTime);
-    await tester.tap(find.text('completed.zip'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('completed.zip'));
+      await tester.pump(kDoubleTapMinTime);
+      await tester.tap(find.text('completed.zip'));
+      await tester.pumpAndSettle();
 
-    expect(openedCount, 1);
-    expect(revealedCount, 0);
+      expect(openedCount, 1);
+      expect(revealedCount, 0);
 
-    await tester.tap(find.byIcon(Icons.folder_open_outlined));
-    await tester.pump();
+      await tester.tap(find.byIcon(Icons.folder_open_outlined));
+      await tester.pump();
 
-    expect(openedCount, 1);
-    expect(revealedCount, 1);
-  });
+      expect(openedCount, 1);
+      expect(revealedCount, 1);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    skip: kIsWeb,
+  );
 }
 
 Future<void> _setTestSize(WidgetTester tester, Size size) async {
@@ -4816,7 +5469,7 @@ class _CreateTaskPageHarness extends StatelessWidget {
     return shad.ShadcnApp(
       theme: AppTheme.light(),
       materialTheme: AppTheme.materialLight(),
-      home: const CreateTaskWindowPage(),
+      home: const AppComponentThemes(child: CreateTaskWindowPage()),
     );
   }
 }
@@ -4832,7 +5485,23 @@ class FailingTasksController extends TasksController {
 }
 
 class FakeExtensionsController extends ExtensionsController {
+  bool get devModeEnabled => state.requireValue.devMode;
+
+  void enableDevModeForTest() {
+    state = AsyncValue.data(state.requireValue.copyWith(devMode: true));
+  }
+
   int installCalls = 0;
+  String? lastInstallUrl;
+  Completer<void>? installGate;
+
+  @override
+  Future<void> installFromUrl(String url, {bool devInstall = false}) async {
+    installCalls++;
+    lastInstallUrl = url;
+    await installGate?.future;
+  }
+
   int removeCalls = 0;
 
   @override
@@ -4890,6 +5559,52 @@ class FakeExtensionsController extends ExtensionsController {
   @override
   Future<void> removeExtension(api_extension.Extension extension) async {
     removeCalls++;
+  }
+}
+
+class CrowdedExtensionCardController extends ExtensionsController {
+  @override
+  Future<ExtensionsState> build() async {
+    final installed =
+        api_extension.Extension(
+            identity: 'crowded-extension',
+            name: 'crowded-extension',
+            author: 'Gopeed',
+            title: 'Crowded extension',
+            description: 'An extension with every available card action.',
+            icon: '',
+            version: '1.0.0',
+            homepage: 'https://gopeed.com',
+            repository: api_extension.Repository(url: 'https://github.com/GopeedLab/gopeed', directory: ''),
+            disabled: false,
+            devMode: false,
+            devPath: '',
+          )
+          ..settings = [
+            api_extension.Setting(
+              name: 'enabled',
+              title: 'Enabled',
+              description: 'Enable the extension.',
+              required: false,
+              type: api_extension.SettingType.boolean,
+            ),
+          ];
+    final store = StoreExtension(
+      id: 'crowded-extension',
+      repoFullName: 'GopeedLab/gopeed',
+      repoUrl: 'https://github.com/GopeedLab/gopeed',
+      name: 'crowded-extension',
+      author: 'Gopeed',
+      title: 'Crowded extension',
+      description: 'An extension with every available card action.',
+      readme: '# Crowded extension',
+      homepage: 'https://gopeed.com',
+      version: '1.1.0',
+      installCount: 1234567890,
+      stars: 12345,
+      topics: ['download'],
+    );
+    return ExtensionsState(installedExtensions: [installed], storeExtensions: [store]);
   }
 }
 
@@ -4953,11 +5668,31 @@ class PaginatedExtensionsController extends FakeExtensionsController {
   }
 }
 
+class UpdateableExtensionsController extends FakeExtensionsController {
+  int updateCalls = 0;
+  bool failUpdate = false;
+  Completer<void> updateGate = Completer<void>();
+
+  @override
+  Future<ExtensionsState> build() async =>
+      (await super.build()).copyWith(listFilter: ExtensionListFilter.installed, updateFlags: {'extension-0': '2.0.0'});
+
+  @override
+  Future<void> upgradeExtension(api_extension.Extension extension) async {
+    updateCalls++;
+    await updateGate.future;
+    if (failUpdate) throw StateError('update failed');
+  }
+}
+
 class BusyInstallExtensionsController extends FakeExtensionsController {
   @override
   Future<ExtensionsState> build() async {
     final initial = await super.build();
-    return initial.copyWith(busyExtensionIds: {ExtensionsController.manualInstallBusyKey, 'extension-1'});
+    return initial.copyWith(
+      devMode: true,
+      busyExtensionIds: {ExtensionsController.manualInstallBusyKey, 'extension-1'},
+    );
   }
 }
 

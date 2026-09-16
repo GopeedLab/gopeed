@@ -7,7 +7,7 @@ description: Design or revise Gopeed file-classification icons as one cohesive S
 
 Maintain Gopeed's file-classification visual language and its deterministic SVG → TTF → Flutter `IconData` pipeline.
 
-The canonical editable materials live in `design/file-category-icons/`, outside the Flutter project. Read its `README.md` before changing any source. Do not add that directory to Flutter assets.
+The canonical editable materials live in `design/file-category-icons/` as tooling-only sources inside the Flutter project. Read its `README.md` before changing any source. Do not add that directory to Flutter assets.
 
 ## Classification grammar
 
@@ -49,7 +49,7 @@ Use [assets/manifest.example.json](assets/manifest.example.json) and [assets/fol
 ## Invariants
 
 - Existing codepoints are API: never renumber or reuse one unless the user explicitly approves a breaking migration.
-- `design/file-category-icons/` is the sole editable source of truth. Flutter keeps only the generated runtime TTF and Dart constants.
+- `design/file-category-icons/` is the sole editable source of truth. The packaged Flutter runtime uses only the generated TTF and Dart constants.
 - Never add the design-material directory to `pubspec.yaml`; it must remain outside the packaged Flutter asset graph.
 - The manifest is the source of truth. Do not hand-edit generated Dart constants or patch the binary font.
 - Keep icon names lowercase `snake_case`; the generator emits lowerCamelCase Dart fields.

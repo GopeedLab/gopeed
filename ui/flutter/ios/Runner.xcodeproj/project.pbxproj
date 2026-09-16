@@ -7,13 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		032447D610CFAF8A75642212 /* GopeedLiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8C142A455C80367DDD68AE /* GopeedLiveActivityManager.swift */; };
 		0C585CBA2D41E28900FF2EC0 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C585CB92D41E28900FF2EC0 /* ShareViewController.swift */; };
 		0C585CBD2D41E28900FF2EC0 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = 0C585CBC2D41E28900FF2EC0 /* Base */; };
 		0C585CC12D41E28900FF2EC0 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C585CB72D41E28900FF2EC0 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1045ACE898D35C0D8D8A993E /* GopeedDownloadAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09AC32C4BF90EAC54D048584 /* GopeedDownloadAttributes.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1E29080079AAFD1CF2C71262 /* GopeedDownloadAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09AC32C4BF90EAC54D048584 /* GopeedDownloadAttributes.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		3EF29839EA13551EB8144269 /* GopeedLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 76ED41E0163DFA97F018D1AC /* GopeedLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5BF69191A426106A38B62F9F /* GopeedContinuedProcessingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3879B6DB5398A19281BA5F8F /* GopeedContinuedProcessingManager.swift */; };
 		6085D504396791024CEC496B /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8823E31DA135C410E362683E /* Pods_RunnerTests.framework */; };
+		6243BE8F995F5284DBDD7DE3 /* GopeedLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C9F8DE4B991051758F2BE1 /* GopeedLiveActivityWidget.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
@@ -30,6 +36,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		03B416C78831516F6591BD24 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FFA6D07C1B1CB56543DE4B67;
+			remoteInfo = GopeedLiveActivityExtension;
+		};
 		0C585CBF2D41E28900FF2EC0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
@@ -54,6 +67,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				0C585CC12D41E28900FF2EC0 /* ShareExtension.appex in Embed Foundation Extensions */,
+				3EF29839EA13551EB8144269 /* GopeedLiveActivityExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -72,6 +86,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		09AC32C4BF90EAC54D048584 /* GopeedDownloadAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GopeedDownloadAttributes.swift; sourceTree = "<group>"; };
 		0C585CB72D41E28900FF2EC0 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C585CB92D41E28900FF2EC0 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		0C585CBC2D41E28900FF2EC0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/MainInterface.storyboard; sourceTree = "<group>"; };
@@ -85,11 +100,15 @@
 		3217CFC346202B3E2A8C52DD /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		35C9F8DE4B991051758F2BE1 /* GopeedLiveActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GopeedLiveActivityWidget.swift; sourceTree = "<group>"; };
+		3879B6DB5398A19281BA5F8F /* GopeedContinuedProcessingManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GopeedContinuedProcessingManager.swift; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		52A13633B52EDC9D3F479DFD /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		55356FCC7E573C3FEEC2DF4D /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		5B918B8D5281BAE2DEA6BE3C /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		76ED41E0163DFA97F018D1AC /* GopeedLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GopeedLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		78EE8538B1DF04DAF73E75D3 /* Pods-ShareExtension.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ShareExtension.profile.xcconfig"; path = "Target Support Files/Pods-ShareExtension/Pods-ShareExtension.profile.xcconfig"; sourceTree = "<group>"; };
 		78F0D48FED63C04B9A3FFDE4 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
@@ -112,6 +131,7 @@
 		D554135997A5C7A2C62E1B64 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		D081C25B294826C0006EB10B /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
 		D0E623A729482D030001185E /* Libgopeed.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Libgopeed.xcframework; path = Frameworks/Libgopeed.xcframework; sourceTree = "<group>"; };
+		EB8C142A455C80367DDD68AE /* GopeedLiveActivityManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GopeedLiveActivityManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +140,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				E7D83A5770AC69B4DCA161EE /* Pods_ShareExtension.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2134C1710299C602C39EE9D6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -194,6 +221,16 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		5FB22DCA9F2EA11B7C1F1A22 /* GopeedLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				35C9F8DE4B991051758F2BE1 /* GopeedLiveActivityWidget.swift */,
+				52A13633B52EDC9D3F479DFD /* Info.plist */,
+			);
+			name = GopeedLiveActivity;
+			path = GopeedLiveActivity;
+			sourceTree = "<group>";
+		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
 			isa = PBXGroup;
 			children = (
@@ -215,6 +252,7 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				2B6C6F082D376286EF3D5FA3 /* Pods */,
 				44BA5D7C75A3E4957F6560C7 /* Frameworks */,
+				5FB22DCA9F2EA11B7C1F1A22 /* GopeedLiveActivity */,
 			);
 			sourceTree = "<group>";
 		};
@@ -224,6 +262,7 @@
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				0C585CB72D41E28900FF2EC0 /* ShareExtension.appex */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				76ED41E0163DFA97F018D1AC /* GopeedLiveActivityExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -244,6 +283,9 @@
 				A20000000000000000000003 /* GopeedTaskEventForwarder.h */,
 				A20000000000000000000002 /* GopeedTaskEventForwarder.m */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				09AC32C4BF90EAC54D048584 /* GopeedDownloadAttributes.swift */,
+				EB8C142A455C80367DDD68AE /* GopeedLiveActivityManager.swift */,
+				3879B6DB5398A19281BA5F8F /* GopeedContinuedProcessingManager.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -306,11 +348,29 @@
 			);
 			dependencies = (
 				0C585CC02D41E28900FF2EC0 /* PBXTargetDependency */,
+				FBEBBD3469D2B152FDD0B424 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
+		};
+		FFA6D07C1B1CB56543DE4B67 /* GopeedLiveActivityExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DAF208923F589C87CBB49D56 /* Build configuration list for PBXNativeTarget "GopeedLiveActivityExtension" */;
+			buildPhases = (
+				1A1326FD8C4C86ED5A529666 /* Sources */,
+				2134C1710299C602C39EE9D6 /* Frameworks */,
+				9AB02E797D34C8878FDBED22 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GopeedLiveActivityExtension;
+			productName = GopeedLiveActivityExtension;
+			productReference = 76ED41E0163DFA97F018D1AC /* GopeedLiveActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -351,6 +411,7 @@
 				97C146ED1CF9000F007C117D /* Runner */,
 				0C585CB62D41E28900FF2EC0 /* ShareExtension */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				FFA6D07C1B1CB56543DE4B67 /* GopeedLiveActivityExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -379,6 +440,13 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9AB02E797D34C8878FDBED22 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -510,6 +578,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1A1326FD8C4C86ED5A529666 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6243BE8F995F5284DBDD7DE3 /* GopeedLiveActivityWidget.swift in Sources */,
+				1045ACE898D35C0D8D8A993E /* GopeedDownloadAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807D294A63A400263BE5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -527,6 +604,9 @@
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				A10000000000000000000001 /* LocationKeepAliveManager.swift in Sources */,
 				A20000000000000000000001 /* GopeedTaskEventForwarder.m in Sources */,
+				1E29080079AAFD1CF2C71262 /* GopeedDownloadAttributes.swift in Sources */,
+				032447D610CFAF8A75642212 /* GopeedLiveActivityManager.swift in Sources */,
+				5BF69191A426106A38B62F9F /* GopeedContinuedProcessingManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -542,6 +622,12 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		FBEBBD3469D2B152FDD0B424 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = GopeedLiveActivityExtension;
+			target = FFA6D07C1B1CB56543DE4B67 /* GopeedLiveActivityExtension */;
+			targetProxy = 03B416C78831516F6591BD24 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -693,7 +779,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -774,6 +860,61 @@
 			};
 			name = Profile;
 		};
+		6CADF5E48DB3AF5F00998F2A /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB31CF90195004384FC /* Generated.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GopeedLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Gopeed;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.gopeed.gopeed.GopeedLiveActivityExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		91F84B2C36416D1F9C500144 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB31CF90195004384FC /* Generated.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GopeedLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Gopeed;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.gopeed.gopeed.GopeedLiveActivityExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -823,7 +964,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -874,7 +1015,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -930,6 +1071,34 @@
 			};
 			name = Release;
 		};
+		ABCC87B2280A98A3C9E482CF /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB31CF90195004384FC /* Generated.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GopeedLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Gopeed;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.gopeed.gopeed.GopeedLiveActivityExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Profile;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -969,6 +1138,16 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DAF208923F589C87CBB49D56 /* Build configuration list for PBXNativeTarget "GopeedLiveActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6CADF5E48DB3AF5F00998F2A /* Release */,
+				91F84B2C36416D1F9C500144 /* Debug */,
+				ABCC87B2280A98A3C9E482CF /* Profile */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

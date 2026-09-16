@@ -117,7 +117,7 @@ class TaskRecord {
   bool get canUpdateUrl =>
       protocol == api_task.Protocol.http && (status == TaskStatus.paused || status == TaskStatus.failed);
 
-  bool get isIndeterminate => status == TaskStatus.downloading && total == null;
+  bool get isIndeterminate => status == TaskStatus.downloading && !waiting && total == null;
 
   TaskAssetType get assetType => _assetType(name, isFolder: isFolder, protocol: protocol);
 
@@ -140,7 +140,7 @@ class TaskRecord {
       status: status,
       downloaded: _formatBytes(downloadedBytes),
       total: totalBytes > 0 ? _formatBytes(totalBytes) : null,
-      speed: task.progress.speed > 0 ? TransferRateFormatter.format(task.progress.speed).text : null,
+      speed: totalBytes > 0 || task.progress.speed > 0 ? TransferRateFormatter.format(task.progress.speed).text : null,
       uploadSpeed: task.uploading ? TransferRateFormatter.format(task.progress.uploadSpeed).text : null,
       remainingSeconds: _remainingSeconds(task, totalBytes, downloadedBytes),
       downloadDuration: task.progress.used > 0 ? Duration(microseconds: (task.progress.used + 999) ~/ 1000) : null,
@@ -301,13 +301,14 @@ TaskAssetType _assetType(String name, {required bool isFolder, required api_task
   return switch (protocol) {
     api_task.Protocol.bt => TaskAssetType.torrent,
     api_task.Protocol.ed2k => TaskAssetType.ed2k,
-    api_task.Protocol.http || null => TaskAssetType.file,
+    api_task.Protocol.hls || api_task.Protocol.http || null => TaskAssetType.file,
   };
 }
 
 String _fileExtension(String name) {
-  final pathWithoutQuery = name.split(RegExp(r'[?#]')).first;
-  final extension = path.extension(pathWithoutQuery).replaceFirst('.', '').toLowerCase();
+  final uri = Uri.tryParse(name);
+  final filePath = uri != null && uri.hasScheme && uri.hasAuthority ? uri.path : name;
+  final extension = path.extension(filePath).replaceFirst('.', '').toLowerCase();
   return extension.length <= 10 ? extension : '';
 }
 

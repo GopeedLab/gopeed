@@ -184,3 +184,29 @@ func TestPageSetCookieParamsOmitsZeroExpires(t *testing.T) {
 		t.Fatalf("expected expires in payload: %s", got)
 	}
 }
+
+func TestRemoveProfileUsesPrivateHostRPC(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Method string            `json:"method"`
+			Params map[string]string `json:"params"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Error(err)
+		}
+		if request.Method != enginewebview.MethodProfileRemove || request.Params["profileId"] != "extension-profile" || len(request.Params) != 1 {
+			t.Errorf("unexpected profile removal request: %+v", request)
+		}
+		if r.Header.Get("Authorization") != "Bearer secret" {
+			t.Error("missing host authentication")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"error":{"code":"PROFILE_REMOVE_FAILED","message":"store busy"}}`))
+	}))
+	defer server.Close()
+	provider := New(enginewebview.RPCConfig{Network: "tcp", Address: strings.TrimPrefix(server.URL, "http://"), Token: "secret"})
+	err := provider.(enginewebview.ProfileRemover).RemoveProfile("extension-profile", "/host-only/path")
+	if err == nil || err.Error() != "store busy" {
+		t.Fatalf("cleanup failure was lost: %v", err)
+	}
+}

@@ -4,6 +4,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' hide Column, Expanded, Row;
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_http_headers_editor.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../l10n/l10n.dart';
 import '../../domain/task_record.dart';
 
@@ -47,7 +48,7 @@ Future<TaskUrlUpdate?> showTaskUpdateUrlDialog(BuildContext context, TaskRecord 
                   children: [
                     Text(dialogContext.l10n.downloadLink, style: TextStyle(color: palette.textPrimary, fontSize: 12)),
                     const SizedBox(height: 6),
-                    TextField(controller: urlController),
+                    AppTextField(controller: urlController),
                     const SizedBox(height: 18),
                     AppHttpHeadersEditor(
                       controller: headersController,

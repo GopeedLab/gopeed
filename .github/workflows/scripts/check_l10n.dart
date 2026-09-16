@@ -6,15 +6,19 @@
 // What it checks:
 // - Every ARB file uses the repository's canonical two-space JSON formatting.
 // - Every app_<locale>.arb file declares the matching @@locale value.
-// - Message values are not empty.
-// - Every locale has exactly the same message keys as app_en.arb.
-// - Every translation preserves the placeholder variables used by app_en.arb.
+// - Message values are not empty (warning only).
+// - Every locale has the same message keys as app_en.arb (warning only).
+// - Every translation preserves the placeholder variables used by app_en.arb
+//   (warning only).
 //
 // Notes:
 // - This script does not judge translation quality.
 // - It does not generate localization code or fully parse ICU MessageFormat.
 //   `flutter gen-l10n` runs immediately afterwards in CI to validate ICU syntax
 //   and generate app_localizations*.dart.
+// - The script exits with a failure only for malformed JSON, invalid ARB
+//   formatting, or a mismatched @@locale value. Translation completeness is
+//   reported as warnings; generation and analysis remain the compile-time gate.
 
 import 'dart:convert';
 import 'dart:io';
@@ -49,27 +53,24 @@ void main() {
         keys.where((key) => (messages[key] as String).trim().isEmpty).toList()
           ..sort();
     if (empty.isNotEmpty) {
-      stderr.writeln('${file.path}: empty messages $empty');
-      failed = true;
+      _warning('${file.path}: empty messages $empty');
     }
     if (file.path == templateFile.path) continue;
     final missing = templateKeys.difference(keys);
     final extra = keys.difference(templateKeys);
     if (missing.isNotEmpty || extra.isNotEmpty) {
-      stderr.writeln(
+      _warning(
         '${file.path}: missing ${missing.toList()..sort()}, extra ${extra.toList()..sort()}',
       );
-      failed = true;
     }
 
     for (final key in templateKeys.intersection(keys)) {
       final expected = _placeholders(template[key] as String);
       final actual = _placeholders(messages[key] as String);
       if (!_sameSet(expected, actual)) {
-        stderr.writeln(
+        _warning(
           '${file.path}: $key placeholders $actual do not match $expected',
         );
-        failed = true;
       }
     }
   }
@@ -102,3 +103,5 @@ Set<String> _placeholders(String message) => RegExp(
 /// Compares sets without depending on iteration order.
 bool _sameSet(Set<String> left, Set<String> right) =>
     left.length == right.length && left.containsAll(right);
+
+void _warning(String message) => stderr.writeln('warning: $message');

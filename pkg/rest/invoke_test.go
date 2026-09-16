@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
@@ -27,11 +30,80 @@ func TestNativeInvokeWithoutRESTListener(t *testing.T) {
 	}
 
 	var result model.Result[json.RawMessage]
-	if err := json.Unmarshal([]byte(Invoke(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
+	if err := json.Unmarshal([]byte(Dispatch(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
 		t.Fatal(err)
 	}
 	if result.Code != model.CodeOk {
 		t.Fatalf("invoke failed: %#v", result)
+	}
+}
+
+func TestStartAPIServerIsNotBlockedByPendingDispatch(t *testing.T) {
+	requestStarted := make(chan struct{})
+	releaseRequest := make(chan struct{})
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(releaseRequest) }) }
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		close(requestStarted)
+		<-releaseRequest
+		w.Header().Set("Content-Length", "0")
+	}))
+	t.Cleanup(func() {
+		release()
+		upstream.Close()
+		Stop()
+	})
+
+	if _, err := Start(&model.StartConfig{NativeMode: true, Storage: model.StorageMem}); err != nil {
+		t.Fatal(err)
+	}
+	requestBody, err := json.Marshal(&model.ResolveTask{Req: &base.Request{URL: upstream.URL}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dispatchDone := make(chan struct{})
+	go func() {
+		defer close(dispatchDone)
+		Dispatch(http.MethodPost, "/api/v1/resolve", "", string(requestBody))
+	}()
+	select {
+	case <-requestStarted:
+	case <-time.After(time.Second):
+		t.Fatal("resolve request did not start")
+	}
+
+	config, err := Downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.API = &base.APIServerConfig{Enable: true, Network: "tcp", Address: "127.0.0.1:0"}
+	if err := Downloader.PutConfig(config); err != nil {
+		t.Fatal(err)
+	}
+	started := make(chan *model.APIServerState, 1)
+	startErrors := make(chan error, 1)
+	go func() {
+		state, err := StartAPIServer()
+		started <- state
+		startErrors <- err
+	}()
+	select {
+	case state := <-started:
+		if err := <-startErrors; err != nil {
+			t.Fatalf("start API server failed: %v", err)
+		}
+		if !state.Running || state.RunningPort == 0 {
+			t.Fatalf("API server did not start: %#v", state)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("pending Resolve blocked API server startup")
+	}
+
+	release()
+	select {
+	case <-dispatchDone:
+	case <-time.After(time.Second):
+		t.Fatal("resolve request did not finish after release")
 	}
 }
 
@@ -106,7 +178,7 @@ func TestAPIServerLifecycleUsesPersistedConfigWithoutRestartingCore(t *testing.T
 	}
 
 	var result model.Result[json.RawMessage]
-	if err := json.Unmarshal([]byte(Invoke(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
+	if err := json.Unmarshal([]byte(Dispatch(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
 		t.Fatal(err)
 	}
 	if result.Code != model.CodeOk {
@@ -153,7 +225,7 @@ func TestRestartAPIServerFailsFastAndLeavesListenerStopped(t *testing.T) {
 	}
 
 	var result model.Result[json.RawMessage]
-	if err := json.Unmarshal([]byte(Invoke(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
+	if err := json.Unmarshal([]byte(Dispatch(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
 		t.Fatal(err)
 	}
 	if result.Code != model.CodeOk {
@@ -229,7 +301,7 @@ func TestNativeAPIServerAutoStartFailureKeepsCoreAvailable(t *testing.T) {
 	}
 
 	var result model.Result[json.RawMessage]
-	if err := json.Unmarshal([]byte(Invoke(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
+	if err := json.Unmarshal([]byte(Dispatch(http.MethodGet, "/api/v1/info", "", "")), &result); err != nil {
 		t.Fatal(err)
 	}
 	if result.Code != model.CodeOk {

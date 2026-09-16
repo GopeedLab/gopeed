@@ -18,6 +18,7 @@
   "exit": "Kilépés",
   "pressBackAgainToExit": "Nyomja meg újra a Vissza gombot a kilépéshez",
   "create": "Feladat létrehozása",
+  "createAction": "Létrehozás",
   "directDownload": "Közvetlen letöltés",
   "advancedOptions": "Haladó beállítások",
   "followSettings": "Beállítások követése",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Mentés alapértelmezett letöltési mappaként",
   "downloadDirValid": "Kérjük, válassza ki a letöltési könyvtárat",
   "connections": "Kapcsolatok",
+  "maxRetries": "Maximális újrapróbálkozások",
   "useServerCtime": "Használja a szerveridőt a fájl létrehozásához",
   "maxRunning": "Maximális futó feladatok",
   "defaultDirectDownload": "Alapértelmezettként ellenőrizze a közvetlen letöltést",
@@ -102,6 +104,7 @@
   "extensions": "Bővítmények",
   "extensionInstallUrl": "Telepítési URL",
   "extensionInstallSuccess": "Sikeresen telepítve",
+  "extensionUpdateConfirm": "Frissíti a(z) „{name}” bővítményt a legújabb verzióra?",
   "extensionUpdateSuccess": "Sikeresen frissítve",
   "extensionDelete": "Bővítmény törlése",
   "extensionAlreadyLatest": "Ez már a legfrissebb verzió",
@@ -352,7 +355,7 @@
   "resolvedFileCount": "{count} fájlok megoldva",
   "resourceHasNoFiles": "Az erőforrásnak nincs kiválasztható fájllistája",
   "noFiles": "Nincsenek fájlok",
-  "createHistory": "Készítsen előzményeket",
+  "historyLinks": "Előzményhivatkozások",
   "noHistory": "Nincs előzmény",
   "directDownloadDescription": "Hagyja ki a megoldást, és azonnal hozzon létre feladatokat",
   "taskProgress": "A feladat előrehaladása",
@@ -441,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "A webes verzióban az API-beállítások nem módosíthatók online. Módosítsd a kiszolgáló indítási beállításait vagy a konfigurációs fájlt, majd indítsd újra a szolgáltatást.",
   "webMcpApiTokenHint": "Ha API-tokent állítottál be, az ügynök csatlakoztatásakor meg kell adni a hitelesítési adatokat",
   "useMcpApiTokenTemplate": "Váltás hitelesített konfigurációra",
-  "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP."
+  "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP.",
+  "emptyTaskCreateHint": "Kattints a {action} gombra a letöltés indításához"
 }

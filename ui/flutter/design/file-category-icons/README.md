@@ -1,6 +1,6 @@
 # 文件分类图标源物料
 
-此目录是 Gopeed 文件分类图标的唯一源物料目录，位于 Flutter 工程之外，不得加入 `ui/flutter/pubspec.yaml` 的 `assets` 配置。
+此目录是 Gopeed 文件分类图标的唯一源物料目录。它位于 Flutter 工程内，但只用于设计和生成流程，不得加入 `pubspec.yaml` 的 `assets` 配置。
 
 ## 维护限制
 
@@ -17,8 +17,8 @@
 
 ## 生成产物
 
-- Flutter 字体：`ui/flutter/assets/fonts/GopeedIcons.ttf`
-- Flutter 常量：`ui/flutter/lib/core/icons/gopeed_icons.dart`
+- Flutter 字体：`assets/fonts/GopeedIcons.ttf`
+- Flutter 常量：`lib/core/icons/gopeed_icons.dart`
 
 所有修改都应遵循：
 

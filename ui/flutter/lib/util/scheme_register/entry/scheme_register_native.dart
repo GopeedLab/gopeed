@@ -26,7 +26,7 @@ void doRegisterUrlScheme(String scheme) {
 
 void doUnregisterUrlScheme(String scheme) {
   if (Util.isWindows()) {
-    Registry.currentUser.deleteKey('Software\\Classes\\$scheme', recursive: true);
+    CURRENT_USER.removeSubkey('Software\\Classes\\$scheme');
     return;
   }
 
@@ -66,8 +66,8 @@ void doUnregisterDefaultTorrentClient() {
   if (Util.isWindows()) {
     doUnregisterUrlScheme("magnet");
 
-    Registry.currentUser.deleteKey(_torrentRegKey, recursive: true);
-    Registry.currentUser.deleteKey(_torrentAppRegKey, recursive: true);
+    CURRENT_USER.removeSubkey(_torrentRegKey);
+    CURRENT_USER.removeSubkey(_torrentAppRegKey);
     return;
   }
 

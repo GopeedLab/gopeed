@@ -3,12 +3,14 @@ import 'package:win32_registry/win32_registry.dart';
 /// Check registry key
 /// If the key does not exist or the value is different, return false
 bool checkRegistry(String keyPath, String valueName, String value) {
-  RegistryKey regKey;
+  RegistryKey? regKey;
   try {
-    regKey = Registry.openPath(RegistryHive.currentUser, path: keyPath);
-    return regKey.getValueAsString(valueName) == value;
+    regKey = CURRENT_USER.open(keyPath);
+    return regKey.getString(valueName) == value;
   } catch (e) {
     return false;
+  } finally {
+    regKey?.close();
   }
 }
 
@@ -16,15 +18,15 @@ bool checkRegistry(String keyPath, String valueName, String value) {
 /// If the key does not exist, create it
 /// If the value does not exist or is different, update it
 void upsertRegistry(String keyPath, String valueName, String value) {
-  RegistryKey regKey;
+  final regKey = CURRENT_USER.create(
+    keyPath,
+    config: const RegistryOpenConfig(access: RegistryAccess.all, create: true),
+  );
   try {
-    regKey = Registry.openPath(RegistryHive.currentUser, path: keyPath, desiredAccessRights: AccessRights.allAccess);
-  } catch (e) {
-    regKey = Registry.currentUser.createKey(keyPath);
+    if (regKey.getString(valueName) != value) {
+      regKey.setValue(valueName, RegistryValue.string(value));
+    }
+  } finally {
+    regKey.close();
   }
-
-  if (regKey.getValueAsString(valueName) != value) {
-    regKey.createValue(RegistryValue(valueName, RegistryValueType.string, value));
-  }
-  regKey.close();
 }

@@ -86,18 +86,23 @@ func Enable(runtime *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error
 	}
 	if err := runtime.Set("__gopeed_blob_pipe_chunk", func(call goja.FunctionCall) goja.Value {
 		id := call.Argument(0).String()
-		ok := blobPipes.Push(id, exportBytes(call.Argument(1)))
-		return runtime.ToValue(ok)
+		chunk := append([]byte(nil), exportBytes(call.Argument(1))...)
+		promise, resolve, _ := runtime.NewPromise()
+		go func() {
+			ok := blobPipes.Push(id, chunk)
+			loop.RunOnLoop(func(vm *goja.Runtime) { resolve(ok) })
+		}()
+		return runtime.ToValue(promise)
 	}); err != nil {
 		return err
 	}
 	if err := runtime.Set("__gopeed_blob_pipe_close", func(id string) {
-		blobPipes.Close(id, nil)
+		go blobPipes.Close(id, nil)
 	}); err != nil {
 		return err
 	}
 	if err := runtime.Set("__gopeed_blob_pipe_error", func(id string, message string) {
-		blobPipes.Close(id, errors.New(message))
+		go blobPipes.Close(id, errors.New(message))
 	}); err != nil {
 		return err
 	}

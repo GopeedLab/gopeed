@@ -9,6 +9,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	fetchapi "github.com/GopeedLab/gopeed/pkg/download/engine/inject/fetch"
+	ffmpegapi "github.com/GopeedLab/gopeed/pkg/download/engine/inject/ffmpeg"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/file"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/stream"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/vm"
@@ -159,8 +160,10 @@ func (e *Engine) addCleanup(cleanup func()) {
 }
 
 type Config struct {
-	ProxyConfig  *base.DownloaderProxyConfig
-	StreamConfig *stream.Config
+	// HTTPUserAgent is a snapshot of the downloader HTTP default. Nil leaves standalone engines unchanged.
+	HTTPUserAgent *string
+	ProxyConfig   *base.DownloaderProxyConfig
+	StreamConfig  *stream.Config
 }
 
 func NewEngine(cfg *Config) *Engine {
@@ -203,9 +206,17 @@ func NewEngine(cfg *Config) *Engine {
 		if err := stream.Enable(runtime, loop, cfg.StreamConfig); err != nil {
 			return
 		}
+		if err := ffmpegapi.Enable(runtime, loop, &ffmpegapi.Config{
+			ProxyHandler:     cfg.ProxyConfig.ToHandler(),
+			DefaultUserAgent: cfg.HTTPUserAgent,
+			RegisterCleanup:  engine.addCleanup,
+		}); err != nil {
+			return
+		}
 		if err := fetchapi.Enable(runtime, loop, &fetchapi.Config{
-			ProxyHandler:    cfg.ProxyConfig.ToHandler(),
-			RegisterCleanup: engine.addCleanup,
+			ProxyHandler:     cfg.ProxyConfig.ToHandler(),
+			DefaultUserAgent: cfg.HTTPUserAgent,
+			RegisterCleanup:  engine.addCleanup,
 		}); err != nil {
 			return
 		}

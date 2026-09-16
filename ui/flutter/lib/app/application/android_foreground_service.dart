@@ -28,6 +28,13 @@ class AndroidForegroundService {
       ),
     );
 
+    // Android 13+ requires runtime permission to show the service notification.
+    // A denial only hides it from the notification drawer; the service can run.
+    final permission = await FlutterForegroundTask.checkNotificationPermission();
+    if (permission == NotificationPermission.denied) {
+      await FlutterForegroundTask.requestNotificationPermission();
+    }
+
     if (await FlutterForegroundTask.isRunningService) {
       _throwOnFailure(await FlutterForegroundTask.restartService());
       return;

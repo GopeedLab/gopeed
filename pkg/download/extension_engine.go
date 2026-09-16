@@ -30,7 +30,7 @@ func (d *Downloader) NewExtensionEngine(ext *Extension, settings map[string]any)
 			identity: ext.buildIdentity(),
 		},
 		Runtime: &InstanceRuntime{
-			WebView: d.newExtensionWebViewRuntime(session),
+			WebView: d.newExtensionWebViewRuntime(session, ext.buildIdentity()),
 		},
 	}
 	if err := injectGopeed(engine.Runtime, gopeed); err != nil {

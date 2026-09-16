@@ -221,6 +221,30 @@ func TestFetcher_Resolve(t *testing.T) {
 	})
 }
 
+func TestFetcher_ResolveFilenameFromContentType(t *testing.T) {
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		w.Header().Set("Content-Type", "image/webp")
+		w.WriteHeader(gohttp.StatusOK)
+	}))
+	defer server.Close()
+
+	fetcher := buildFetcher()
+	defer fetcher.Pause()
+
+	const opaqueName = "OIP-C.u5nEXTXND3PJF0gNTgw5YgHaFP"
+	err := fetcher.Resolve(&base.Request{URL: server.URL + "/" + opaqueName}, &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := fetcher.meta.Res.Files[0].Name; got != opaqueName+".webp" {
+		t.Fatalf("resolved filename = %q, want %q", got, opaqueName+".webp")
+	}
+}
+
 func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 	listener := test.StartTestHostHeaderServer()
 	defer listener.Close()

@@ -259,7 +259,7 @@ GetAPIServerState
 StartAPIServer
 StopAPIServer
 RestartAPIServer
-Invoke
+InvokeAsync
 FreeCString
 SubscribeTaskEvents
 ```
@@ -268,9 +268,12 @@ Requirements:
 
 - Use the cgo C-string ABI in the first phase. Reconsider pointer-and-length parameters only during a future ABI-breaking revision.
 - Memory allocated by Go must be released with `FreeCString`.
-- Dart-owned input memory must be released after the synchronous native call returns.
-- `Invoke` returns the same Result JSON as REST; business errors do not use a separate ABI error model.
-- Run blocking Desktop FFI work outside the Flutter UI isolate. Mobile MethodChannel handlers likewise run blocking Go work on a background task queue.
+- `InvokeAsync` is the only native invocation entry point. Desktop and gomobile adapters both submit to the shared bounded-concurrency executor in `bind/native`.
+- The shared executor uses `clamp(GOMAXPROCS * 2, 4, 32)` workers. Requests wait in FIFO order when every worker is busy; pool saturation is backpressure, not an API error.
+- The Desktop adapter copies every Dart-owned input string before returning and completes through a `NativeCallable.listener` callback.
+- Dart-owned input memory must be released after the non-blocking `InvokeAsync` native entry returns. Go-owned callback payloads remain valid until Dart copies them and calls `FreeCString`.
+- `InvokeAsync` returns the same Result JSON as REST through its callback; business errors do not use a separate ABI error model.
+- The Desktop bridge isolate owns the dynamic library and native callbacks, decodes callback JSON, and forwards sendable Dart values to the UI isolate. Mobile MethodChannel handlers run on background task queues, while invoke completion is delivered through the shared Go callback flow.
 - Dart bindings are generated from `include/libgopeed.h` with `ffigen`. Every exported Desktop symbol must be added to the `ffigen.functions.include` allowlist.
 - Never hand-edit `lib/core/ffi/libgopeed_bind.dart`; regenerate it with `flutter pub run ffigen` after changing the C header.
 
@@ -285,14 +288,14 @@ GetAPIServerState()
 StartAPIServer()
 StopAPIServer()
 RestartAPIServer()
-Invoke(method, path, query, body)
+InvokeAsync(method, path, query, body, requestID, listener)
 SubscribeTaskEvents(mask, listener)
 ```
 
 Flutter bridge rules:
 
-- Normal calls use MethodChannel.
-- Android performs normal calls on a background task queue.
+- Normal calls use MethodChannel, while `InvokeAsync` completes the pending MethodChannel result through a gomobile listener.
+- Android and iOS run the Libgopeed MethodChannel handler on a serial background task queue; callback adapters marshal completion back to the platform UI thread.
 - Events reuse the same MethodChannel through the reverse `taskEvent` message.
 - Kotlin and Swift contain no business logic. They only forward arguments, dispatch callbacks to the UI thread, and translate errors.
 
@@ -589,8 +592,8 @@ Flutter converts all of them into `GopeedException`. Components do not handle Di
 
 ### 11.3 Platform smoke tests
 
-- Windows, macOS, Linux: startup, Invoke, events, shutdown, and repeated startup.
-- Android, iOS: gomobile Invoke, reverse MethodChannel events, and background/foreground transitions.
+- Windows, macOS, Linux: startup, InvokeAsync, events, shutdown, and repeated startup.
+- Android, iOS: gomobile InvokeAsync callbacks, reverse MethodChannel events, and background/foreground transitions.
 - Web: REST, login, proxy, and task-file downloads.
 - Native: enabling and disabling REST does not interrupt download tasks.
 
@@ -605,7 +608,7 @@ Flutter converts all of them into `GopeedException`. Components do not handle Di
 ### Phase 2: Native in-process calls — implemented on this branch
 
 - Integrate the FFI Transport on Desktop.
-- Extend gomobile Invoke and MethodChannel on Mobile.
+- Extend gomobile InvokeAsync callbacks and MethodChannel on Mobile.
 - Move Flutter API calls to the unified Transport so each typed method is maintained once.
 - Do not create a socket listener by default on native clients.
 

@@ -18,6 +18,7 @@
   "exit": "Вихід",
   "pressBackAgainToExit": "Натисніть «Назад» ще раз, щоб вийти",
   "create": "Створити завдання",
+  "createAction": "Створити",
   "directDownload": "Пряме завантаження",
   "advancedOptions": "Додаткові параметри",
   "followSettings": "За замовчуванням",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Зберегти як типову папку завантажень",
   "downloadDirValid": "Будь ласка, виберіть каталог завантажень",
   "connections": "З’єднання",
+  "maxRetries": "Макс. кількість повторів",
   "useServerCtime": "Використовувати час сервера для створення файлу",
   "maxRunning": "Макс. завдань у черзі",
   "defaultDirectDownload": "Пряме завантаження за замовчуванням",
@@ -102,6 +104,7 @@
   "extensions": "Розширення",
   "extensionInstallUrl": "URL для встановлення",
   "extensionInstallSuccess": "Встановлено успішно",
+  "extensionUpdateConfirm": "Оновити «{name}» до останньої версії?",
   "extensionUpdateSuccess": "Оновлено успішно",
   "extensionDelete": "Видалити розширення",
   "extensionAlreadyLatest": "Вже остання версія",
@@ -352,7 +355,7 @@
   "resolvedFileCount": "{count} файли вирішені",
   "resourceHasNoFiles": "Ресурс не має вибраного списку файлів",
   "noFiles": "Немає файлів",
-  "createHistory": "Історія",
+  "historyLinks": "Посилання історії",
   "noHistory": "Історія",
   "directDownloadDescription": "Вирішити і створювати завдання відразу",
   "taskProgress": "Завдання",
@@ -441,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "У вебверсії не можна змінювати налаштування API онлайн. Змініть параметри запуску сервера або файл конфігурації, а потім перезапустіть службу.",
   "webMcpApiTokenHint": "Якщо налаштовано API-токен, під час підключення агента потрібно передати дані автентифікації",
   "useMcpApiTokenTemplate": "Перейти до конфігурації з автентифікацією",
-  "mcpRequiresTcp": "Інструкції з підключення агентів доступні, коли протокол API — TCP."
+  "mcpRequiresTcp": "Інструкції з підключення агентів доступні, коли протокол API — TCP.",
+  "emptyTaskCreateHint": "Натисніть {action}, щоб почати завантаження"
 }

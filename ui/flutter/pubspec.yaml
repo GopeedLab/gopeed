@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.0.0-beta.1+1
+version: 2.0.0-beta.2+2
 
 environment:
   sdk: ^3.11.4
@@ -44,21 +44,24 @@ dependencies:
   ffi: ^2.1.3
   crypto: ^3.0.6
   logger: ^1.4.0
-  package_info_plus: ^8.1.0
+  package_info_plus: ^10.2.1
   pub_semver: ^2.2.0
-  device_info_plus: ^11.1.0
-  win32_registry: ^1.1.5
-  launch_at_startup: ^0.3.1
+  device_info_plus: ^13.2.0
+  win32_registry: ^3.0.3
+  launch_at_startup:
+    git:
+      url: https://github.com/GopeedLab/launch_at_startup.git
+      ref: 7ac6f842be974aa08dcd21cab6efa66a3749f2b2
   app_links: ^6.3.3
   share_handler: ^0.0.22
-  share_plus: ^10.1.0
+  share_plus: ^13.3.0
   uri_content: ^3.1.3
-  dart_ipc: ^1.0.1
+  dart_ipc: ^2.0.2
   flutter_inappwebview: ^6.1.5
   flutter_local_notifications: 20.1.0
   desktop_drop: ^0.4.4
   external_path: ^2.2.0
-  file_picker: 9.0.2
+  file_picker: 12.2.0
   open_dir: ^0.0.2+1
   open_filex: ^4.7.0
   permission_handler: ^11.3.1
@@ -83,6 +86,32 @@ dependencies:
   go_router: ^16.2.1
 
 dependency_overrides:
+  # Public persistent-profile and proxy APIs; keep all packages on one commit.
+  flutter_inappwebview:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview
+  flutter_inappwebview_platform_interface:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview_platform_interface
+  flutter_inappwebview_macos:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview_macos
+  flutter_inappwebview_ios:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview_ios
+  flutter_inappwebview_android:
+    git:
+      url: https://github.com/GopeedLab/flutter_inappwebview.git
+      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      path: flutter_inappwebview_android
   # Prevent a native Windows crash when the push notification service is unavailable.
   # Keep this fork until https://github.com/MaikuB/flutter_local_notifications/pull/2813 is merged and released.
   flutter_local_notifications:
@@ -105,6 +134,7 @@ dependency_overrides:
       path: permission_handler_windows
 
 dev_dependencies:
+  app_links_platform_interface: ^2.0.2
   flutter_test:
     sdk: flutter
 
@@ -114,7 +144,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-  ffigen: ^8.0.2
+  ffigen: ^21.0.0
   build_runner: ^2.15.1
   json_serializable: ^6.14.1
   flutter_launcher_icons: ^0.14.4
@@ -208,7 +238,7 @@ ffigen:
       - "StartAPIServer"
       - "StopAPIServer"
       - "RestartAPIServer"
-      - "Invoke"
+      - "InvokeAsync"
       - "SubscribeTaskEvents"
       - "FreeCString"
   structs:

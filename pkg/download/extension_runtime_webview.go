@@ -30,6 +30,9 @@ func injectGopeed(vm *goja.Runtime, gopeed *Instance) error {
 	}
 	runtimeObject := vm.NewObject()
 	if gopeed.Runtime != nil {
+		if err := runtimeObject.Set("ffmpeg", vm.Get("__gopeed_ffmpeg")); err != nil {
+			return err
+		}
 		if err := runtimeObject.Set("blob", newJSBlobRuntime(vm)); err != nil {
 			return err
 		}

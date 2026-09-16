@@ -145,7 +145,7 @@ class _TaskDownloadProgress extends StatelessWidget {
                 key: const ValueKey('task-files-total-progress'),
                 value: progress,
                 indeterminate: runtime == null && task.isIndeterminate,
-                shimmer: task.status == TaskStatus.downloading,
+                shimmer: task.status == TaskStatus.downloading && !task.waiting,
                 height: 4,
                 trackColor: palette.progressTrack,
                 fillColor: palette.brandProgress,

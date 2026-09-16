@@ -251,7 +251,7 @@ Future<String?> _getManifestPath(Browser browser) async {
 
 Future<bool> _checkWindowsRegistry(String keyPath) async {
   try {
-    final key = Registry.openPath(RegistryHive.localMachine, path: keyPath);
+    final key = LOCAL_MACHINE.open(keyPath);
     key.close();
     return true;
   } catch (e) {

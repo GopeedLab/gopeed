@@ -54,6 +54,9 @@ class AppPlatformState {
 enum AppUpdateStatus { idle, checking, upToDate, available, failed }
 
 class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowListener, TrayListener {
+  @protected
+  bool get isDesktop => Util.isDesktop();
+
   bool _started = false;
   String? _trayLocaleConfig;
   bool _updateInitialized = false;
@@ -74,28 +77,52 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
 
   @override
   Future<AppPlatformState> build() async {
-    final runtime = ref.watch(appRuntimeControllerProvider).value;
-    if (runtime == null || kIsWeb) {
-      return _snapshot();
-    }
-    if (!Util.isDesktop()) {
-      _scheduleInitialUpdateCheck();
-      return _snapshot();
-    }
-    if (_started) {
-      final localeConfig = runtime.downloaderConfig.extra.locale;
-      if (_trayLocaleConfig != localeConfig) await _initTray();
-      return _snapshot();
-    }
-    await _start();
-    _scheduleInitialUpdateCheck();
+    ref.listen(appRuntimeControllerProvider, (_, next) {
+      unawaited(
+        _handleRuntimeChange(next.value).catchError((Object error, StackTrace stackTrace) {
+          if (ref.mounted) state = AsyncValue.error(error, stackTrace);
+        }),
+      );
+    });
     ref.onDispose(() {
+      if (!_started) return;
+      _started = false;
       windowManager.removeListener(this);
       trayManager.removeListener(this);
       unawaited(HostRpcService.instance.stop());
       unawaited(AppWindowCapabilityHost.instance.stop());
     });
+    final runtime = ref.read(appRuntimeControllerProvider).value;
+    if (runtime == null || kIsWeb) {
+      return _snapshot();
+    }
+    if (!isDesktop) {
+      _scheduleInitialUpdateCheck();
+      return _snapshot();
+    }
+    if (_started) {
+      return _snapshot();
+    }
+    await _start();
+    _scheduleInitialUpdateCheck();
     return _snapshot();
+  }
+
+  Future<void> _handleRuntimeChange(AppRuntimeState? runtime) async {
+    if (runtime == null || kIsWeb) return;
+    if (!isDesktop) {
+      _scheduleInitialUpdateCheck();
+      return;
+    }
+    if (!_started) {
+      await _start();
+      _scheduleInitialUpdateCheck();
+      _emit();
+      return;
+    }
+    if (_trayLocaleConfig != runtime.downloaderConfig.extra.locale) {
+      await _initTray();
+    }
   }
 
   void _scheduleInitialUpdateCheck() {

@@ -18,6 +18,7 @@
   "exit": "Thoát",
   "pressBackAgainToExit": "Nhấn quay lại lần nữa để thoát",
   "create": "Tạo nhiệm vụ",
+  "createAction": "Tạo",
   "directDownload": "Tải trực tiếp",
   "advancedOptions": "Tùy chọn nâng cao",
   "followSettings": "Theo thiết lập",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Lưu làm thư mục tải xuống mặc định",
   "downloadDirValid": "Vui lòng chọn thư mục tải về",
   "connections": "Kết nối",
+  "maxRetries": "Số lần thử lại tối đa",
   "useServerCtime": "Sử dụng thời gian máy chủ cho việc tạo tệp",
   "maxRunning": "Số nhiệm vụ tối đa",
   "defaultDirectDownload": "Kiểm tra trực tiếp tải về theo mặc định",
@@ -102,6 +104,7 @@
   "extensions": "Tiện ích mở rộng",
   "extensionInstallUrl": "Liên kết cài đặt",
   "extensionInstallSuccess": "Cài đặt thành công",
+  "extensionUpdateConfirm": "Cập nhật “{name}” lên phiên bản mới nhất?",
   "extensionUpdateSuccess": "Cập nhật thành công",
   "extensionDelete": "Xóa tiện ích mở rộng",
   "extensionAlreadyLatest": "Đây đã là phiên bản mới nhất",
@@ -352,7 +355,7 @@
   "resolvedFileCount": "{count} tập tin được giải quyết",
   "resourceHasNoFiles": "Không thể chọn danh sách tập tin",
   "noFiles": "Không có tập tin",
-  "createHistory": "Tạo ra lịch sử",
+  "historyLinks": "Liên kết lịch sử",
   "noHistory": "Không có lịch sử",
   "directDownloadDescription": "Bỏ qua việc giải quyết và tạo tác vụ ngay lập tức",
   "taskProgress": "Tiến trình tác vụ",
@@ -441,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "Phiên bản web không hỗ trợ sửa cấu hình API trực tuyến. Hãy cập nhật tùy chọn khởi động máy chủ hoặc tệp cấu hình rồi khởi động lại dịch vụ để áp dụng thay đổi.",
   "webMcpApiTokenHint": "Nếu đã cấu hình API Token, bạn cần truyền thông tin xác thực khi kết nối tác nhân",
   "useMcpApiTokenTemplate": "Chuyển sang cấu hình có xác thực",
-  "mcpRequiresTcp": "Hướng dẫn kết nối tác nhân khả dụng khi giao thức API là TCP."
+  "mcpRequiresTcp": "Hướng dẫn kết nối tác nhân khả dụng khi giao thức API là TCP.",
+  "emptyTaskCreateHint": "Nhấn {action} để bắt đầu tải xuống"
 }

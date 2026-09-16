@@ -6,6 +6,7 @@ import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 
 class LoginForm extends StatelessWidget {
   const LoginForm({
@@ -159,7 +160,7 @@ class _LoginField extends StatelessWidget {
           style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: AppDesignTokens.space8),
-        shad.TextField(
+        AppTextField(
           key: fieldKey,
           controller: controller,
           focusNode: focusNode,

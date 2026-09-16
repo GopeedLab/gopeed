@@ -7,6 +7,30 @@ import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
+  testWidgets('provides the standard text field appearance', (tester) async {
+    late shad.TextFieldTheme textFieldTheme;
+
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: AppComponentThemes(
+          child: Builder(
+            builder: (context) {
+              textFieldTheme = shad.ComponentTheme.of<shad.TextFieldTheme>(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(textFieldTheme.filled, isTrue);
+    expect(textFieldTheme.border, Border.all(color: AppPalette.light.border));
+    expect(textFieldTheme.borderRadius, BorderRadius.circular(AppDesignTokens.controlRadius));
+    expect(textFieldTheme.padding, AppDesignTokens.textFieldPadding);
+  });
+
   testWidgets('provides the standard checkbox metrics', (tester) async {
     late shad.CheckboxTheme checkboxTheme;
 

@@ -30,53 +30,67 @@ class LibgopeedBind {
   late final _StopPtr = _lookup<ffi.NativeFunction<ffi.Void Function()>>('Stop');
   late final _Stop = _StopPtr.asFunction<void Function()>();
 
-  ffi.Pointer<ffi.Char> GetAPIServerState() => _GetAPIServerState();
+  ffi.Pointer<ffi.Char> GetAPIServerState() {
+    return _GetAPIServerState();
+  }
 
   late final _GetAPIServerStatePtr = _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('GetAPIServerState');
   late final _GetAPIServerState = _GetAPIServerStatePtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
-  ffi.Pointer<ffi.Char> StartAPIServer() => _StartAPIServer();
+  ffi.Pointer<ffi.Char> StartAPIServer() {
+    return _StartAPIServer();
+  }
 
   late final _StartAPIServerPtr = _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('StartAPIServer');
   late final _StartAPIServer = _StartAPIServerPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
-  ffi.Pointer<ffi.Char> StopAPIServer() => _StopAPIServer();
+  ffi.Pointer<ffi.Char> StopAPIServer() {
+    return _StopAPIServer();
+  }
 
   late final _StopAPIServerPtr = _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('StopAPIServer');
   late final _StopAPIServer = _StopAPIServerPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
-  ffi.Pointer<ffi.Char> RestartAPIServer() => _RestartAPIServer();
+  ffi.Pointer<ffi.Char> RestartAPIServer() {
+    return _RestartAPIServer();
+  }
 
   late final _RestartAPIServerPtr = _lookup<ffi.NativeFunction<ffi.Pointer<ffi.Char> Function()>>('RestartAPIServer');
   late final _RestartAPIServer = _RestartAPIServerPtr.asFunction<ffi.Pointer<ffi.Char> Function()>();
 
-  ffi.Pointer<ffi.Char> Invoke(
+  void InvokeAsync(
     ffi.Pointer<ffi.Char> method,
     ffi.Pointer<ffi.Char> path,
     ffi.Pointer<ffi.Char> query,
     ffi.Pointer<ffi.Char> body,
+    int requestID,
+    int callback,
   ) {
-    return _Invoke(method, path, query, body);
+    return _InvokeAsync(method, path, query, body, requestID, callback);
   }
 
-  late final _InvokePtr =
+  late final _InvokeAsyncPtr =
       _lookup<
         ffi.NativeFunction<
-          ffi.Pointer<ffi.Char> Function(
+          ffi.Void Function(
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
             ffi.Pointer<ffi.Char>,
+            ffi.UnsignedLongLong,
+            ffi.UintPtr,
           )
         >
-      >('Invoke');
-  late final _Invoke =
-      _InvokePtr.asFunction<
-        ffi.Pointer<ffi.Char> Function(
+      >('InvokeAsync');
+  late final _InvokeAsync =
+      _InvokeAsyncPtr.asFunction<
+        void Function(
           ffi.Pointer<ffi.Char>,
           ffi.Pointer<ffi.Char>,
           ffi.Pointer<ffi.Char>,
           ffi.Pointer<ffi.Char>,
+          int,
+          int,
         )
       >();
 
@@ -84,9 +98,8 @@ class LibgopeedBind {
     return _SubscribeTaskEvents(mask, callback);
   }
 
-  late final _SubscribeTaskEventsPtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Uint64, ffi.UintPtr)>>(
-    'SubscribeTaskEvents',
-  );
+  late final _SubscribeTaskEventsPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.UnsignedLongLong, ffi.UintPtr)>>('SubscribeTaskEvents');
   late final _SubscribeTaskEvents = _SubscribeTaskEventsPtr.asFunction<void Function(int, int)>();
 
   void FreeCString(ffi.Pointer<ffi.Char> value) {

@@ -18,6 +18,7 @@
   "exit": "Uscita",
   "pressBackAgainToExit": "Premi di nuovo Indietro per uscire",
   "create": "Crea attività",
+  "createAction": "Crea",
   "directDownload": "Scaricamento diretto",
   "advancedOptions": "Opzioni avanzate",
   "followSettings": "Seguire le impostazioni",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Salva come cartella di download predefinita",
   "downloadDirValid": "Seleziona la directory di scaricamento",
   "connections": "Connessioni",
+  "maxRetries": "Tentativi massimi",
   "useServerCtime": "Utilizza l'ora del server per la creazione dei file",
   "maxRunning": "Numero massimo di attività in esecuzione",
   "defaultDirectDownload": "Controlla il download diretto per impostazione predefinita",
@@ -102,6 +104,7 @@
   "extensions": "Estensioni",
   "extensionInstallUrl": "Installa URL",
   "extensionInstallSuccess": "Installato con successo",
+  "extensionUpdateConfirm": "Aggiornare «{name}» alla versione più recente?",
   "extensionUpdateSuccess": "Aggiornato con successo",
   "extensionDelete": "Elimina estensione",
   "extensionAlreadyLatest": "È già l'ultima versione",
@@ -352,7 +355,7 @@
   "resolvedFileCount": "{count} risolti",
   "resourceHasNoFiles": "La risorsa non ha un elenco di file selezionabile",
   "noFiles": "Nessun file",
-  "createHistory": "Creare la storia",
+  "historyLinks": "Link della cronologia",
   "noHistory": "Nessuna storia",
   "directDownloadDescription": "Salta la risoluzione e crea immediatamente i compiti",
   "taskProgress": "Prospettive di attività",
@@ -441,5 +444,6 @@
   "webApiConfigReadOnlyHelp": "La versione web non consente di modificare online le impostazioni API. Aggiorna le opzioni di avvio del server o il file di configurazione, quindi riavvia il servizio per applicare le modifiche.",
   "webMcpApiTokenHint": "Se hai configurato un token API, devi fornire le informazioni di autenticazione quando colleghi l’agente",
   "useMcpApiTokenTemplate": "Passa alla configurazione autenticata",
-  "mcpRequiresTcp": "Le istruzioni per connettere gli agenti sono disponibili quando il protocollo API è TCP."
+  "mcpRequiresTcp": "Le istruzioni per connettere gli agenti sono disponibili quando il protocollo API è TCP.",
+  "emptyTaskCreateHint": "Fai clic su {action} per iniziare il download"
 }

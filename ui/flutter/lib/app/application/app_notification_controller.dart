@@ -2,14 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 import '../../core/common/task_event.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../l10n/l10n.dart';
+import '../../util/log_util.dart';
 import '../../util/util.dart';
 import 'app_runtime_controller.dart';
 
@@ -28,13 +28,19 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
   StreamSubscription<TaskEvent>? _taskEventSubscription;
   var _notificationId = 0;
 
+  @visibleForTesting
+  Stream<TaskEvent> get taskEvents => LibgopeedBoot.instance.taskEvents;
+
   @override
   Future<AppNotificationState> build() async {
     final runtime = ref.watch(appRuntimeControllerProvider).value;
     if (runtime == null || kIsWeb || !Util.isDesktop()) {
       return const AppNotificationState();
     }
-    await _initNotifications(appLocalizationsFor(runtime.downloaderConfig.extra.locale));
+    await _initNotifications(
+      appLocalizationsFor(runtime.downloaderConfig.extra.locale),
+      requestPermissions: runtime.downloaderConfig.extra.desktopNotification,
+    );
     _listenTaskEvents();
     ref.onDispose(() {
       unawaited(_taskEventSubscription?.cancel());
@@ -42,11 +48,13 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
     return const AppNotificationState(started: true);
   }
 
-  Future<void> _initNotifications(AppLocalizations locale) async {
-    const darwin = DarwinInitializationSettings(
-      requestAlertPermission: false,
+  Future<void> _initNotifications(AppLocalizations locale, {required bool requestPermissions}) async {
+    // The runtime is watched, so enabling notifications in settings also
+    // requests authorization. macOS remembers previously granted/denied access.
+    final darwin = DarwinInitializationSettings(
+      requestAlertPermission: requestPermissions,
       requestBadgePermission: false,
-      requestSoundPermission: false,
+      requestSoundPermission: requestPermissions,
     );
     final linux = LinuxInitializationSettings(
       defaultActionName: locale.open,
@@ -56,13 +64,27 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
     String? windowsIconPath;
     try {
       if (Util.isWindows()) {
-        final byteData = await rootBundle.load('assets/icon/icon.ico');
-        final tempDir = await getTemporaryDirectory();
-        final file = File('${tempDir.path}/notification_icon.ico');
-        await file.writeAsBytes(byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
-        windowsIconPath = file.path;
+        // Windows requires a file path for IconUri, so use the bundled PNG
+        // beside the executable rather than copying it to another directory.
+        final file = File(
+          path.join(
+            path.dirname(Platform.resolvedExecutable),
+            'data',
+            'flutter_assets',
+            'assets',
+            'icon',
+            'icon_512.png',
+          ),
+        );
+        if (await file.exists()) {
+          windowsIconPath = file.absolute.path;
+        } else {
+          logger.w('Windows notification icon not found: ${file.path}');
+        }
       }
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      logger.w('prepare Windows notification icon failed', error, stackTrace);
+    }
 
     final windows = WindowsInitializationSettings(
       appName: 'Gopeed',
@@ -78,7 +100,7 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
 
   void _listenTaskEvents() {
     _taskEventSubscription?.cancel();
-    _taskEventSubscription = LibgopeedBoot.instance.taskEvents.listen((event) async {
+    _taskEventSubscription = taskEvents.listen((event) async {
       final runtime = ref.read(appRuntimeControllerProvider).value;
       if (runtime?.downloaderConfig.extra.desktopNotification == false) return;
       final locale = appLocalizationsFor(runtime?.downloaderConfig.extra.locale ?? '');

@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	runtimeMu sync.Mutex
+	runtimeMu sync.RWMutex
 
 	Downloader *download.Downloader
 	APIService *goapi.Service

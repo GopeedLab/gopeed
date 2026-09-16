@@ -29,8 +29,9 @@ const FingerprintMagicKey = "__gopeed_fetch_fingerprint"
 var script string
 
 type Config struct {
-	ProxyHandler    func(*http.Request) (*url.URL, error)
-	RegisterCleanup func(func())
+	DefaultUserAgent *string
+	ProxyHandler     func(*http.Request) (*url.URL, error)
+	RegisterCleanup  func(func())
 }
 
 func Enable(runtime *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
@@ -50,6 +51,9 @@ func Enable(runtime *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error
 		request, err := exportRequest(runtime, call.Argument(0))
 		if err != nil {
 			panic(runtime.NewGoError(err))
+		}
+		if cfg.DefaultUserAgent != nil && !hasHeader(request.Headers, "User-Agent") {
+			request.Headers = append(request.Headers, [2]string{"User-Agent", *cfg.DefaultUserAgent})
 		}
 		fingerprint := util.SafeGet[string](runtime, FingerprintMagicKey)
 		promise, resolve, reject := runtime.NewPromise()

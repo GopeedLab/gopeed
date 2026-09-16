@@ -61,6 +61,8 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
           child: FileTreeView<int>(
             items: _treeItems,
             keyPrefix: 'resolve-tree',
+            rowHeight: _resolveTreeRowHeight,
+            contentTextStyle: _resolveFileNameStyle,
             headerLeading: ExcludeFocus(
               child: Checkbox(
                 state: allSelected
@@ -187,42 +189,48 @@ class _TreeFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final filters = _FileTypeFilterGroup(
-      videoActive: activeTypeFilters.contains(_FileTypeFilter.video),
-      audioActive: activeTypeFilters.contains(_FileTypeFilter.audio),
-      imageActive: activeTypeFilters.contains(_FileTypeFilter.image),
-      onSelectVideo: onSelectVideo,
-      onSelectAudio: onSelectAudio,
-      onSelectImage: onSelectImage,
+    final filters = KeyedSubtree(
+      key: const ValueKey('resolve-tree-filters'),
+      child: _FileTypeFilterGroup(
+        videoActive: activeTypeFilters.contains(_FileTypeFilter.video),
+        audioActive: activeTypeFilters.contains(_FileTypeFilter.audio),
+        imageActive: activeTypeFilters.contains(_FileTypeFilter.image),
+        onSelectVideo: onSelectVideo,
+        onSelectAudio: onSelectAudio,
+        onSelectImage: onSelectImage,
+      ),
     );
-    final stats = Row(
-      mainAxisSize: MainAxisSize.min,
+    final statsStyle = TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w600);
+    final selectedLabel = context.l10n.selectedCount(selectedCount, totalCount);
+    final sizeLabel = unknownSize ? context.l10n.unknownSize : Util.fmtByte(selectedSize);
+    final baseline = MediaQuery.textScalerOf(context).scale(statsStyle.fontSize!);
+    final stats = Wrap(
+      key: const ValueKey('resolve-tree-selection-stats'),
+      alignment: WrapAlignment.end,
+      spacing: AppDesignTokens.space8,
+      runSpacing: AppDesignTokens.space4,
+      crossAxisAlignment: WrapCrossAlignment.start,
       children: [
-        Text(
-          context.l10n.selectedCount(selectedCount, totalCount),
-          style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+        Baseline(
+          baseline: baseline,
+          baselineType: TextBaseline.alphabetic,
+          child: Text(key: const ValueKey('resolve-tree-selected-count'), selectedLabel, style: statsStyle),
         ),
-        const SizedBox(width: 8),
-        Text(
-          unknownSize ? context.l10n.unknownSize : Util.fmtByte(selectedSize),
-          style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+        Baseline(
+          baseline: baseline,
+          baselineType: TextBaseline.alphabetic,
+          child: Text(key: const ValueKey('resolve-tree-selected-size'), sizeLabel, style: statsStyle),
         ),
       ],
     );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 360) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Align(alignment: Alignment.centerLeft, child: filters),
-              const SizedBox(height: 4),
-              Align(alignment: Alignment.centerRight, child: stats),
-            ],
-          );
-        }
-        return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [filters, const Spacer(), stats]);
-      },
+
+    return OverflowBar(
+      key: const ValueKey('resolve-tree-footer'),
+      spacing: AppDesignTokens.space8,
+      alignment: MainAxisAlignment.spaceBetween,
+      overflowAlignment: OverflowBarAlignment.end,
+      overflowSpacing: AppDesignTokens.space4,
+      children: [filters, stats],
     );
   }
 }
@@ -288,7 +296,11 @@ class _FilterDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(width: 1, height: 18, child: ColoredBox(color: color));
+    return SizedBox(
+      width: _fileTypeFilterDividerWidth,
+      height: 18,
+      child: ColoredBox(color: color),
+    );
   }
 }
 
@@ -303,7 +315,7 @@ class _FilterButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return SizedBox(
-      width: 40,
+      width: _fileTypeFilterButtonWidth,
       height: 28,
       child: DecoratedBox(
         decoration: BoxDecoration(color: active ? palette.filterActiveBg : null),
@@ -336,3 +348,7 @@ extension on _FileTypeFilter {
 const _videoExts = <String>{'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v'};
 const _audioExts = <String>{'mp3', 'flac', 'wav', 'aac', 'm4a', 'ogg', 'ape'};
 const _imageExts = <String>{'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'};
+const _resolveTreeRowHeight = 36.0;
+const _resolveFileNameStyle = TextStyle(fontSize: 14, height: 1.25);
+const _fileTypeFilterButtonWidth = 40.0;
+const _fileTypeFilterDividerWidth = 1.0;
