@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 
 	"github.com/GopeedLab/gopeed/internal/httpclient"
+	"github.com/GopeedLab/gopeed/internal/production"
+	"github.com/GopeedLab/gopeed/internal/tempfiles"
 	media "github.com/GopeedLab/gopeed/pkg/download/engine/ffmpeg"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
@@ -22,6 +24,9 @@ import (
 var script string
 
 type Config struct {
+	TempFiles        *tempfiles.Scope
+	Producers        *production.Registry
+	TempDir          string
 	DefaultUserAgent *string
 	ProxyHandler     func(*http.Request) (*url.URL, error)
 	RegisterCleanup  func(func())
@@ -33,14 +38,27 @@ type options struct {
 	Args   []string          `json:"args"`
 }
 type job struct {
+	inputs  [2]media.Input
 	ctx     context.Context
 	cancel  context.CancelFunc
 	output  *io.PipeReader
-	streams [2]*media.StreamInput
+	streams [2]*media.DiskInput
 	mu      sync.Mutex
-	ready   chan struct{}
 	start   chan options
 	started bool
+}
+
+func (j *job) Progress() (downloaded, received int64) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	for _, input := range j.inputs {
+		if p, ok := input.(production.Source); ok {
+			d, r := p.Progress()
+			downloaded += d
+			received += r
+		}
+	}
+	return
 }
 
 func (j *job) stop() {
@@ -59,6 +77,10 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 	if cfg == nil {
 		cfg = &Config{}
 	}
+	spoolDir := cfg.TempDir
+	if cfg.Producers == nil {
+		cfg.Producers = &production.Registry{}
+	}
 	client, err := httpclient.NewClient(httpclient.Options{Transport: httpclient.TransportOptions{Proxy: cfg.ProxyHandler}})
 	if err != nil {
 		return err
@@ -71,6 +93,7 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 		mu.Lock()
 		j := jobs[id]
 		delete(jobs, id)
+		cfg.Producers.Remove(id)
 		mu.Unlock()
 		if j != nil {
 			j.stop()
@@ -102,15 +125,14 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 		if err := vm.ExportTo(call.Argument(0), &opts); err != nil {
 			panic(vm.NewGoError(err))
 		}
-		if _, err := media.Arguments(opts.Format, opts.Args); err != nil {
-			panic(vm.NewGoError(err))
-		}
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancelCause := context.WithCancelCause(context.Background())
+		cancel := func() { cancelCause(context.Canceled) }
 		r, w := io.Pipe()
-		j := &job{ctx: ctx, cancel: cancel, output: r, ready: make(chan struct{}), start: make(chan options, 1)}
+		j := &job{ctx: ctx, cancel: cancel, output: r, start: make(chan options, 1)}
 		id := fmt.Sprintf("ffmpeg-%d", next.Add(1))
 		mu.Lock()
 		jobs[id] = j
+		cfg.Producers.Set(id, j)
 		mu.Unlock()
 		go func() {
 			var inputs [2]media.Input
@@ -118,6 +140,9 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 			defer func() {
 				if v := recover(); v != nil {
 					runErr = fmt.Errorf("ffmpeg panic: %v", v)
+				}
+				if errors.Is(runErr, context.Canceled) {
+					runErr = context.Cause(ctx)
 				}
 				cancel()
 				for _, in := range inputs {
@@ -127,13 +152,6 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 				}
 				w.CloseWithError(runErr)
 			}()
-			release, err := media.Acquire(ctx)
-			if err != nil {
-				runErr = err
-				return
-			}
-			defer release()
-			close(j.ready)
 			var opts options
 			select {
 			case opts = <-j.start:
@@ -145,44 +163,33 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 				if source == nil {
 					inputs[i] = j.streams[i]
 				} else {
-					inputs[i], runErr = media.OpenHTTP(ctx, client, *source)
+					inputs[i], runErr = media.OpenSpoolingHTTP(ctx, client, *source, spoolDir, cfg.TempFiles)
 					if runErr != nil {
 						return
 					}
 				}
+				j.mu.Lock()
+				j.inputs[i] = inputs[i]
+				j.mu.Unlock()
+				if input, ok := inputs[i].(interface{ Failures() <-chan error }); ok {
+					go func() {
+						select {
+						case err := <-input.Failures():
+							cancelCause(err)
+						case <-ctx.Done():
+						}
+					}()
+				}
 			}
+			release, err := media.Acquire(ctx)
+			if err != nil {
+				runErr = err
+				return
+			}
+			defer release()
 			runErr = media.RunAcquired(ctx, inputs[0], inputs[1], w, opts.Format, opts.Args)
 		}()
 		return vm.ToValue(id)
-	}); err != nil {
-		return err
-	}
-	if err := vm.Set("__gopeed_ffmpeg_acquire", func(id string) goja.Value {
-		promise, resolve, reject := vm.NewPromise()
-		j := get(id)
-		go func() {
-			var err error
-			if j == nil {
-				err = io.ErrClosedPipe
-			} else {
-				select {
-				case <-j.ready:
-				case <-j.ctx.Done():
-					err = j.ctx.Err()
-				}
-				if j.ctx.Err() != nil {
-					err = j.ctx.Err()
-				}
-			}
-			loop.RunOnLoop(func(vm *goja.Runtime) {
-				if err != nil {
-					reject(vm.NewGoError(err))
-				} else {
-					resolve(true)
-				}
-			})
-		}()
-		return vm.ToValue(promise)
 	}); err != nil {
 		return err
 	}
@@ -226,7 +233,13 @@ func Enable(vm *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error {
 		j.started = true
 		for i, source := range []*media.HTTPSource{opts.Video, opts.Audio} {
 			if source == nil {
-				j.streams[i] = media.NewStreamInput(j.ctx)
+				var err error
+				j.streams[i], err = media.NewDiskInput(j.ctx, spoolDir, cfg.TempFiles)
+				if err != nil {
+					j.cancel()
+					panic(vm.NewGoError(err))
+				}
+				j.inputs[i] = j.streams[i]
 			}
 		}
 		j.start <- opts

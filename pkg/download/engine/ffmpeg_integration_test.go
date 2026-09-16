@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/GopeedLab/gopeed/internal/production"
 	media "github.com/GopeedLab/gopeed/pkg/download/engine/ffmpeg"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/stream"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -198,7 +200,7 @@ func TestFFmpegEngineCloseCancelsRequest(t *testing.T) {
 	}
 }
 
-func TestFFmpegInputFactoriesWaitForCapacity(t *testing.T) {
+func TestFFmpegInputsStartBeforeCapacity(t *testing.T) {
 	for _, mode := range []string{"factory", "http", "cancel"} {
 		t.Run(mode, func(t *testing.T) {
 			release1, _ := media.Acquire(context.Background())
@@ -226,8 +228,12 @@ func TestFFmpegInputFactoriesWaitForCapacity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if fmt.Sprint(result) != "0" || requests.Load() != 0 {
-				t.Fatalf("queued inputs started: %v, requests=%d", result, requests.Load())
+			if mode == "http" {
+				if requests.Load() != 1 {
+					t.Fatalf("queued HTTP did not start: %d", requests.Load())
+				}
+			} else if fmt.Sprint(result) != "1" {
+				t.Fatalf("queued factory did not start: %v", result)
 			}
 			if mode == "cancel" {
 				if _, err = e.RunString(`work`); err != nil {
@@ -245,11 +251,11 @@ func TestFFmpegInputFactoriesWaitForCapacity(t *testing.T) {
 			if mode == "factory" && fmt.Sprint(calls) != "1" {
 				t.Fatal(calls)
 			}
-			if mode == "cancel" && fmt.Sprint(calls) != "0" {
+			if mode == "cancel" && fmt.Sprint(calls) != "1" {
 				t.Fatal("cancelled factory ran")
 			}
 			if mode == "http" && requests.Load() != 1 {
-				t.Fatal("HTTP did not start after admission")
+				t.Fatal("HTTP was restarted unnecessarily")
 			}
 			// Failure/cancellation must return the acquired slot even with the other held.
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -318,4 +324,110 @@ func TestFFmpegCancelPendingFactoryCleansLateInputs(t *testing.T) {
 		t.Fatal("factory cancellation leaked capacity")
 	}
 	second()
+}
+
+func TestQueuedMergePrefetchFailureAndCancel(t *testing.T) {
+	for _, mode := range []string{"failure", "cancel"} {
+		t.Run(mode, func(t *testing.T) {
+			release1, _ := media.Acquire(context.Background())
+			defer release1()
+			release2, _ := media.Acquire(context.Background())
+			defer release2()
+			second := make(chan struct{})
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Range") == "bytes=0-1048575" {
+					w.Header().Set("Content-Range", "bytes 0-1048575/33554432")
+					w.Header().Set("Content-Length", "1048576")
+					w.WriteHeader(206)
+					w.Write(make([]byte, 1048576))
+					return
+				}
+				close(second)
+				if mode == "cancel" {
+					<-r.Context().Done()
+					return
+				}
+				http.Error(w, "upstream failed", 503)
+			}))
+			defer srv.Close()
+			root := t.TempDir()
+			e := NewEngine(&Config{TempDir: root})
+			defer e.Close()
+			e.Runtime.Set("sourceURL", srv.URL)
+			_, err := e.RunString(`
+   globalThis.abortJob=new AbortController();
+   globalThis.result=__gopeed_ffmpeg.merge({signal:abortJob.signal,inputs:()=>({video:{url:sourceURL},audio:new ReadableStream({start(c){c.close();}})})})
+    .getReader().read().then(()=>'',e=>String(e.message||e));
+   'started';`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-second:
+			case <-time.After(3 * time.Second):
+				t.Fatal("queued input did not download")
+			}
+			if mode == "cancel" {
+				if _, err := e.RunString(`abortJob.abort()`); err != nil {
+					t.Fatal(err)
+				}
+			}
+			result, err := e.RunString(`Promise.race([result,new Promise(r=>setTimeout(()=>r('test timeout'),3000))])`)
+			if err != nil || fmt.Sprint(result) == "test timeout" || fmt.Sprint(result) == "" {
+				t.Fatal(result, err)
+			}
+			if mode == "failure" && !strings.Contains(fmt.Sprint(result), "503") {
+				t.Fatal("lost upstream failure", result)
+			}
+			deadline := time.Now().Add(3 * time.Second)
+			for {
+				entries, err := os.ReadDir(root)
+				if err == nil && len(entries) == 0 {
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("queued input files leaked", entries, err)
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+		})
+	}
+}
+
+func TestFFmpegUnavailableTempDirReportsBlobError(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "blocked")
+	if err := os.WriteFile(root, []byte("not a directory"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var open stream.ObjectURLOpener
+	e := NewEngine(&Config{TempDir: root, StreamConfig: &stream.Config{CreateObjectURL: func(_ *stream.ObjectURLOptions, opener stream.ObjectURLOpener) (string, error) {
+		open = opener
+		return "blob:test", nil
+	}}})
+	defer e.Close()
+	_, err := e.RunString(`__gopeed_blob_create_object_url(()=>__gopeed_ffmpeg.merge({inputs:()=>({video:new ReadableStream(),audio:new ReadableStream()})}),{})`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	reader, err := open(ctx, stream.ObjectURLOpenRequest{End: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	produced := reader.(production.Reader)
+	if err := produced.WaitProduction(ctx); err != nil {
+		t.Fatal(err)
+	}
+	source := produced.Production()
+	if source == nil {
+		t.Fatal("missing producer")
+	}
+	if _, err := io.ReadAll(reader); err == nil || !strings.Contains(err.Error(), "blocked") {
+		t.Fatal("missing useful disk error", err)
+	}
+	if downloaded, received := source.Progress(); downloaded != 0 || received != 0 {
+		t.Fatal(downloaded, received)
+	}
 }

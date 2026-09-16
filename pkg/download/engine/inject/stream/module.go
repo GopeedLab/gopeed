@@ -9,6 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/GopeedLab/gopeed/internal/production"
 	"github.com/dop251/goja"
 	"github.com/dop251/goja_nodejs/eventloop"
 )
@@ -17,6 +18,7 @@ import (
 var script string
 
 type Config struct {
+	Producers       *production.Registry
 	CreateObjectURL func(opts *ObjectURLOptions, open ObjectURLOpener) (string, error)
 	RevokeObjectURL func(url string) error
 }
@@ -39,6 +41,23 @@ func Enable(runtime *goja.Runtime, loop *eventloop.EventLoop, cfg *Config) error
 		cfg = &Config{}
 	}
 	blobPipes := newBlobPipeRegistry()
+	if err := runtime.Set("__gopeed_blob_pipe_bind", func(pipeID, producerID string) {
+		var source production.Source
+		if cfg.Producers != nil {
+			source = cfg.Producers.Get(producerID)
+		}
+		blobPipes.mu.Lock()
+		pipe := blobPipes.pipes[pipeID]
+		blobPipes.mu.Unlock()
+		if pipe != nil {
+			pipe.mu.Lock()
+			pipe.producer = source
+			pipe.mu.Unlock()
+			pipe.readyOnce.Do(func() { close(pipe.ready) })
+		}
+	}); err != nil {
+		return err
+	}
 	if err := runtime.Set("__gopeed_create_blob_object_url", func(call goja.FunctionCall) goja.Value {
 		if cfg.CreateObjectURL == nil {
 			panic(runtime.NewGoError(fmt.Errorf("blob object url handler not configured")))
@@ -189,12 +208,15 @@ type blobPipeItem struct {
 }
 
 type blobPipe struct {
-	id       string
-	loop     *eventloop.EventLoop
-	registry *blobPipeRegistry
-	ctx      context.Context
-	cancel   context.CancelFunc
-	ch       chan blobPipeItem
+	ready     chan struct{}
+	readyOnce sync.Once
+	producer  production.Source
+	id        string
+	loop      *eventloop.EventLoop
+	registry  *blobPipeRegistry
+	ctx       context.Context
+	cancel    context.CancelFunc
+	ch        chan blobPipeItem
 
 	mu     sync.Mutex
 	buf    []byte
@@ -205,6 +227,7 @@ type blobPipe struct {
 func newBlobPipe(ctx context.Context, loop *eventloop.EventLoop, registry *blobPipeRegistry) *blobPipe {
 	pipeCtx, cancel := context.WithCancel(ctx)
 	return &blobPipe{
+		ready:    make(chan struct{}),
 		id:       registry.NewID(),
 		loop:     loop,
 		registry: registry,
@@ -228,6 +251,7 @@ func (p *blobPipe) Push(chunk []byte) bool {
 }
 
 func (p *blobPipe) CloseWithError(err error) {
+	p.readyOnce.Do(func() { close(p.ready) })
 	p.once.Do(func() {
 		p.registry.Remove(p.id)
 		select {
@@ -479,4 +503,21 @@ func exportJSError(value goja.Value) error {
 		}
 	}
 	return errors.New(stack)
+}
+
+func (p *blobPipe) Production() production.Source {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.producer
+}
+
+func (p *blobPipe) WaitProduction(ctx context.Context) error {
+	select {
+	case <-p.ready:
+		return nil
+	case <-p.ctx.Done():
+		return p.ctx.Err()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

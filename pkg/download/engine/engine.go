@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/GopeedLab/gopeed/internal/production"
+	"github.com/GopeedLab/gopeed/internal/tempfiles"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	fetchapi "github.com/GopeedLab/gopeed/pkg/download/engine/inject/fetch"
@@ -160,7 +162,9 @@ func (e *Engine) addCleanup(cleanup func()) {
 }
 
 type Config struct {
+	TempFiles *tempfiles.Scope
 	// HTTPUserAgent is a snapshot of the downloader HTTP default. Nil leaves standalone engines unchanged.
+	TempDir       string
 	HTTPUserAgent *string
 	ProxyConfig   *base.DownloaderProxyConfig
 	StreamConfig  *stream.Config
@@ -203,10 +207,19 @@ func NewEngine(cfg *Config) *Engine {
 		if _, err := runtime.RunString("global.location = new URL('http://localhost');"); err != nil {
 			return
 		}
-		if err := stream.Enable(runtime, loop, cfg.StreamConfig); err != nil {
+		producers := &production.Registry{}
+		streamCfg := stream.Config{}
+		if cfg.StreamConfig != nil {
+			streamCfg = *cfg.StreamConfig
+		}
+		streamCfg.Producers = producers
+		if err := stream.Enable(runtime, loop, &streamCfg); err != nil {
 			return
 		}
 		if err := ffmpegapi.Enable(runtime, loop, &ffmpegapi.Config{
+			Producers:        producers,
+			TempDir:          cfg.TempDir,
+			TempFiles:        cfg.TempFiles,
 			ProxyHandler:     cfg.ProxyConfig.ToHandler(),
 			DefaultUserAgent: cfg.HTTPUserAgent,
 			RegisterCleanup:  engine.addCleanup,

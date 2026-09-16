@@ -23,9 +23,10 @@ StartConfig _$StartConfigFromJson(Map<String, dynamic> json) => StartConfig()
   ..network = json['network'] as String
   ..address = json['address'] as String
   ..apiEnable = json['apiEnable'] as bool
-  ..mcpEnable = json['mcpEnable'] as bool? ?? false
+  ..mcpEnable = json['mcpEnable'] as bool
   ..storage = json['storage'] as String
   ..storageDir = json['storageDir'] as String
+  ..tempDir = json['tempDir'] as String?
   ..refreshInterval = (json['refreshInterval'] as num).toInt()
   ..apiToken = json['apiToken'] as String
   ..webViewRpcConfig = json['webViewRpcConfig'] == null
@@ -42,6 +43,7 @@ Map<String, dynamic> _$StartConfigToJson(StartConfig instance) =>
       'mcpEnable': instance.mcpEnable,
       'storage': instance.storage,
       'storageDir': instance.storageDir,
+      'tempDir': ?instance.tempDir,
       'refreshInterval': instance.refreshInterval,
       'apiToken': instance.apiToken,
       'webViewRpcConfig': ?instance.webViewRpcConfig,
