@@ -96,6 +96,12 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
+      - name: Resolve native crash address
+        if: runner.os == 'Linux'
+        run: |
+          PACKAGES=$(go list ./... | awk '!/\/bind\// && (!/\/cmd\// || /\/cmd\/web$/)')
+          go test -c -tags webview -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -o "$RUNNER_TEMP/goprovider.test" ./internal/webview/goprovider
+          addr2line -a -f -C -e "$RUNNER_TEMP/goprovider.test" 0xaaddaf
       - name: Test webview
         if: runner.os == 'Linux'
         # Repeat on the same GTK event loop to catch callbacks after destruction.
