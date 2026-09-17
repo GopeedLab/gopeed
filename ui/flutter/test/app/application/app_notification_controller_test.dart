@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -214,6 +215,50 @@ void main() {
       ),
     );
     expect(notifier.revealedFolders, [existingPath]);
+    expect(notifier.frontedWindow, isFalse);
+  });
+
+  test('folder actions accept an existing BT directory on all desktop payload formats', () async {
+    final container = await start(enabled: true);
+    final notifier = container.read(appNotificationControllerProvider.notifier) as _TestNotificationController;
+    final directory = await Directory.systemTemp.createTemp('gopeed-notification-bt-');
+    addTearDown(() => directory.delete(recursive: true));
+
+    for (final windows in [true, false]) {
+      await notifier.handleNotificationResponse(
+        NotificationResponse(
+          notificationResponseType: NotificationResponseType.selectedNotificationAction,
+          actionId: windows
+              ? NotificationActionSpec(id: 'open_folder', path: directory.path).encode()
+              : 'open_folder',
+          payload: windows ? null : jsonEncode({'path': directory.path}),
+        ),
+      );
+    }
+
+    expect(notifier.revealedFolders, [directory.path, directory.path]);
+    expect(notifier.openedFiles, isEmpty);
+    expect(notifier.frontedWindow, isFalse);
+  });
+
+  test('missing targets reach shared file operations so reveal can fall back to the parent', () async {
+    final container = await start(enabled: true);
+    final notifier = container.read(appNotificationControllerProvider.notifier) as _TestNotificationController;
+    final directory = await Directory.systemTemp.createTemp('gopeed-notification-parent-');
+    addTearDown(() => directory.delete(recursive: true));
+    final missingPath = '${directory.path}/removed.zip';
+
+    for (final action in ['open_file', 'open_folder']) {
+      await notifier.handleNotificationResponse(
+        NotificationResponse(
+          notificationResponseType: NotificationResponseType.selectedNotificationAction,
+          actionId: NotificationActionSpec(id: action, path: missingPath).encode(),
+        ),
+      );
+    }
+
+    expect(notifier.openedFiles, [missingPath]);
+    expect(notifier.revealedFolders, [missingPath]);
     expect(notifier.frontedWindow, isFalse);
   });
 
