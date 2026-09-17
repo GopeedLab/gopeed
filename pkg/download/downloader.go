@@ -21,6 +21,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
+	"github.com/GopeedLab/gopeed/internal/tempfiles"
 	webviewproxy "github.com/GopeedLab/gopeed/internal/webview/proxy"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
@@ -98,6 +99,7 @@ type Progress struct {
 }
 
 type Downloader struct {
+	tempFiles           *tempfiles.Scope
 	webviewProfilesLock sync.Mutex
 	webviewProfiles     map[string]*extensionWebViewProfile
 	webviewProxyLock    sync.Mutex
@@ -157,6 +159,9 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 }
 
 func (d *Downloader) Setup() error {
+	if err := d.setupTempDir(); err != nil {
+		return err
+	}
 	d.blob = internalblob.NewRegistry("")
 
 	// setup storage
@@ -268,24 +273,45 @@ func (d *Downloader) Setup() error {
 						if d.GetTask(task.ID) == nil {
 							return
 						}
+						// Startup can replace resource metadata while resolving a Blob.
+						// Skip that short transition instead of reading half-initialized state.
+						if !task.lock.TryLock() {
+							return
+						}
 						task.statusLock.Lock()
 						if task.Status != base.DownloadStatusRunning && !task.Uploading {
 							task.statusLock.Unlock()
+							task.lock.Unlock()
 							return
 						}
 						if task.fetcher == nil {
 							task.statusLock.Unlock()
+							task.lock.Unlock()
 							return
 						}
 
 						current := task.fetcher.Progress().TotalDownloaded()
+						delta := current - task.Progress.Downloaded
+						if task.Meta != nil && task.Meta.Req != nil {
+							if producer := d.blob.Production(task.Meta.Req.URL); producer != nil {
+								downloaded, received := producer.Progress()
+								if task.producer != producer {
+									task.producer = producer
+									task.producerReceived = 0
+									task.speedArr = nil
+								}
+								current = downloaded
+								delta = max(0, received-task.producerReceived)
+								task.producerReceived = received
+							}
+						}
 						tick := float64(d.cfg.RefreshInterval) / 1000
 						downloadDataChanged := false
 						uploading := task.Uploading
 						if task.Status == base.DownloadStatusRunning {
 							downloadDataChanged = current != task.Progress.Downloaded
 							task.Progress.Used = task.timer.Used()
-							task.Progress.Speed = task.updateSpeed(current-task.Progress.Downloaded, tick)
+							task.Progress.Speed = task.updateSpeed(max(0, delta), tick)
 							task.Progress.Downloaded = current
 						}
 
@@ -304,6 +330,7 @@ func (d *Downloader) Setup() error {
 						if err := d.captureTaskStats(task, true, false); err != nil {
 							d.Logger.Warn().Err(err).Msgf("persist task stats failed, task id: %s", task.ID)
 						}
+						task.lock.Unlock()
 						// Listener callbacks may Pause/Continue and acquire statusLock.
 						d.emit(EventKeyProgress, task)
 
@@ -394,6 +421,9 @@ func (d *Downloader) parseFm(url string) (fetcher.FetcherManager, error) {
 
 func (d *Downloader) setupFetcher(fm fetcher.FetcherManager, fetcher fetcher.Fetcher) {
 	ctl := controller.NewController()
+	ctl.TempDir = d.cfg.TempDir
+	ctl.TempFiles = d.tempFiles
+	ctl.ManagedProduction = func(raw string) bool { return d.blob.Production(raw) != nil }
 	ctl.GetConfig = func(v any) {
 		d.getProtocolConfig(fm.Name(), v)
 	}
@@ -1134,7 +1164,7 @@ func (d *Downloader) Close() error {
 	if d.blob != nil {
 		closeArr = append(closeArr, d.blob.Close)
 	}
-	closeArr = append(closeArr, d.storage.Close)
+	closeArr = append(closeArr, d.storage.Close, d.tempFiles.Close)
 	// Make sure all resources are released, if had error, return the last error
 	var lastErr error
 	for i, close := range closeArr {
@@ -1409,17 +1439,6 @@ func (d *Downloader) watch(task *Task) {
 			}
 		}
 
-		task.Progress.Used = task.timer.Used()
-		if task.Meta.Res.Size == 0 {
-			task.Meta.Res.Size = task.fetcher.Progress().TotalDownloaded()
-		}
-		used := task.Progress.Used / int64(time.Second)
-		if used == 0 {
-			used = 1
-		}
-		totalSize := task.Meta.Res.Size
-		task.Progress.Speed = totalSize / used
-		task.Progress.Downloaded = totalSize
 		if !d.markTaskDone(task) {
 			return
 		}
@@ -1818,7 +1837,9 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			task.Meta.Res.CalcSize(task.Meta.Opts.SelectFiles)
 		}
 
+		task.statusLock.Lock()
 		task.Progress.Speed = 0
+		task.statusLock.Unlock()
 		if !d.taskIsRunningGeneration(task, generation) {
 			return nil
 		}
@@ -1972,11 +1993,27 @@ func (d *Downloader) markTaskDone(task *Task) bool {
 	if task == nil || task.statusLock == nil {
 		return false
 	}
+	task.lock.Lock()
+	defer task.lock.Unlock()
 	task.statusLock.Lock()
 	defer task.statusLock.Unlock()
 	if task.Status != base.DownloadStatusRunning {
 		return false
 	}
+	task.Progress.Used = task.timer.Used()
+	if task.Meta.Res.Size == 0 {
+		task.Meta.Res.Size = task.fetcher.Progress().TotalDownloaded()
+	}
+	used := task.Progress.Used / int64(time.Second)
+	if used == 0 {
+		used = 1
+	}
+	totalSize := task.Meta.Res.Size
+	task.Progress.Speed = totalSize / used
+	task.Progress.Downloaded = totalSize
+
+	task.producer = nil
+	task.producerReceived = 0
 	task.updateStatus(base.DownloadStatusDone)
 	task.runGeneration++
 	return true

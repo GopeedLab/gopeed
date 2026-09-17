@@ -43,11 +43,16 @@ func main() {
 		storageDir = filepath.Join(filepath.Dir(exe), "storage")
 	}
 
+	tempDir := ""
+	if args.TempDir != nil {
+		tempDir = *args.TempDir
+	}
 	cfg := &model.StartConfig{
 		Network:           "tcp",
 		Address:           fmt.Sprintf("%s:%d", *args.Address, *args.Port),
 		Storage:           model.StorageBolt,
 		StorageDir:        storageDir,
+		TempDir:           tempDir,
 		WhiteDownloadDirs: args.WhiteDownloadDirs,
 		ApiToken:          *args.ApiToken,
 		MCPEnable:         args.MCPEnable,

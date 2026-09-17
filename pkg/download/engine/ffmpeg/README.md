@@ -54,8 +54,8 @@ const output = gopeed.runtime.ffmpeg.merge({
 ```
 
 Creating the output does not start requests or acquire input readers until the
-output is pulled and a global execution slot is acquired. Queued jobs do not
-open HTTP inputs, invoke input factories, or allocate media ring buffers.
+output is pulled. Inputs then download to temporary disk chunks even while the
+job waits for a global FFmpeg execution slot. Only merging occupies a slot.
 The callback runs once per output; its signal aborts on cancellation, engine
 shutdown, failure, and completion. A callback must cooperate with cancellation;
 returned streams are cancelled even if the callback finishes after cancellation.
@@ -63,8 +63,10 @@ A stream input is single-use. To retry a Blob-backed task,
 its opener must create a new SABR session and fresh input streams. Arbitrary
 output byte ranges / resumable merged output are not supported.
 
-`gopeed.runtime.ffmpeg.supportsInputFactory === true` identifies this API.
-Older builds accept eager streams and must be upgraded before using callbacks.
+`gopeed.runtime.ffmpeg.supportsInputFactory === true` identifies the callback API.
+`gopeed.runtime.ffmpeg.supportsProducerProgress === true` identifies disk-backed
+inputs and automatic Blob production progress. Require the latter before using
+one shared SABR session for both tracks; older bounded buffers can deadlock.
 
 ## Options
 
@@ -109,15 +111,45 @@ server validator, same-size remote changes cannot be reliably detected.
 Content encoding is forced to identity. Authentication/status failures and
 malformed range responses are errors. There is no full-file seek fallback.
 
-Sequential JS inputs are drained independently into memory ring buffers that
-grow on demand up to **32 MiB per input**, independent of total media size.
-No temporary files are used. This does not enable seeking. Full buffers apply
-async backpressure until space is available or the operation is cancelled.
-Extensions must propagate backpressure through their upstream queues and
-network reads. Independent upstream track requests avoid blocking one track
-behind another in a shared response. Buffers are released on close.
-Blob output writes also wait asynchronously for bounded downstream capacity,
-so a slow consumer does not block the extension event loop.
+HTTP and sequential JS inputs are drained into **8 MiB disk chunks** beneath
+`TempDir/gopeed-media-<random>`. Range downloads stream each response into as many chunks as
+needed, tracking valid byte intervals independently of sparse file length.
+Verified HTTP Range inputs can seek, skip missing blocks, and re-fetch deleted
+blocks. Sequential inputs cannot seek even though their bytes are on disk.
+Consumed chunks are deleted; cancellation, errors and completion remove the
+remaining input directories. Disk space is not capped; write failures stop the
+merge. Media size does not determine the size of in-memory input queues.
+
+JS writes await disk writes, and Blob output writes await bounded downstream
+capacity. Extensions must still propagate backpressure through upstream queues
+and network reads. Both tracks can share a SABR response because disk spooling
+continues independently of which track FFmpeg currently reads.
+
+When a Blob opener returns the merge stream directly, the runtime automatically
+associates its input progress with that Blob. No public progress callback or
+extra `createObjectURL` argument is required. Return the merge stream itself;
+wrapping it in another stream loses this association. Downloaded bytes count
+unique input offsets; speed counts received input bytes, including re-fetches.
+The task stays downloading with unknown total size while queued or merging;
+once input traffic stops the displayed speed settles to zero. Completion uses
+the actual merged output size. Generated output waits are governed by producer
+cancellation/errors rather than the HTTP body idle timeout; HTTP media inputs
+still enforce a 15-second network idle deadline.
+
+`tempDir` defaults to Go's `os.TempDir()` when omitted. Flutter only supplies
+an explicit directory on Android/iOS, using `getTemporaryDirectory()` directly;
+no extra `gopeed` parent directory is added. Desktop/server callers can override
+it via startup JSON or `--temp-dir`.
+
+Initialization never clears this directory. Media inputs, HTTP prefetch and
+extension installation staging create unique `gopeed-media-*`,
+`gopeed-prefetch-*`, and `gopeed-extension-*` paths directly beneath it. The
+downloader tracks only its own paths and removes remaining ones on normal
+shutdown, without scanning or deleting other files in a shared temporary
+directory. Resources still clean up on completion/cancellation, and consumed
+media chunks are deleted promptly. Forced process termination can leave files
+behind; the next startup does not delete them. Persistent HLS resume data and
+WebView profiles are unchanged.
 
 At most two WASM merges execute concurrently per process, with a 512 MiB
 linear-memory limit per instance. Compilation is shared and lazy; the upstream

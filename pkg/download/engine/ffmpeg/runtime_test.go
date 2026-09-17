@@ -122,13 +122,16 @@ func TestWebMToMP4(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	inputs := make([]*StreamInput, 2)
+	inputs := make([]*DiskInput, 2)
 	for i, name := range []string{"video.webm", "audio.webm"} {
 		data, err := os.ReadFile(filepath.Join("..", "testdata", "ffmpeg", name))
 		if err != nil {
 			t.Fatal(err)
 		}
-		inputs[i] = NewStreamInput(ctx)
+		inputs[i], err = NewDiskInput(ctx, t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
 		defer inputs[i].Close()
 		if _, err = inputs[i].Write(data); err != nil {
 			t.Fatal(err)
@@ -205,7 +208,10 @@ func TestWASMMerge(t *testing.T) {
 		})
 	}
 	// A malformed input must produce an error, not successful empty output.
-	s := NewStreamInput(context.Background())
+	s, err := NewDiskInput(context.Background(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer s.Close()
 	s.Write([]byte("invalid"))
 	s.End(nil)

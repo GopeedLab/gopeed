@@ -23,6 +23,7 @@ type StartConfig struct {
 	RefreshInterval   int                         `json:"refreshInterval"`
 	Storage           Storage                     `json:"storage"`
 	StorageDir        string                      `json:"storageDir"`
+	TempDir           string                      `json:"tempDir"`
 	WhiteDownloadDirs []string                    `json:"whiteDownloadDirs"`
 	ApiToken          string                      `json:"apiToken"`
 	DownloadConfig    *base.DownloaderStoreConfig `json:"downloadConfig"`
