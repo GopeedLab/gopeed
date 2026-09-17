@@ -398,7 +398,9 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
 
   @override
   void onTrayIconRightMouseDown() {
-    trayManager.popUpContextMenu();
+    // Windows requires a foreground menu owner to dismiss on outside clicks.
+    // ignore: deprecated_member_use
+    trayManager.popUpContextMenu(bringAppToFront: true);
   }
 
   @override
