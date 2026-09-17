@@ -27,10 +27,10 @@ const _openFileAction = 'open_file';
 const _openFolderAction = 'open_folder';
 
 // macOS resolves buttons through pre-registered notification categories, one
-// per action combination a terminal task event can offer.
+// per action combination a done task event can offer. Error notifications
+// carry no buttons at all.
 const _categoryDoneSingleFile = 'taskDoneSingleFile';
 const _categoryDoneFolder = 'taskDoneFolder';
-const _categoryTaskError = 'taskTaskError';
 
 /// A notification button resolved for one task event.
 ///
@@ -105,7 +105,6 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
       notificationCategories: [
         DarwinNotificationCategory(_categoryDoneSingleFile, actions: [openFileAction, openFolderAction]),
         DarwinNotificationCategory(_categoryDoneFolder, actions: [openFolderAction]),
-        DarwinNotificationCategory(_categoryTaskError, actions: [openFolderAction]),
       ],
     );
     final linux = LinuxInitializationSettings(
@@ -164,16 +163,16 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
             title: locale.notificationTaskDone,
             body: event.name,
             taskId: event.taskId,
-            allowOpenFile: true,
+            withActions: true,
           );
         case TaskEventType.error:
+          // A failed download has no usable output to open, so no buttons.
           await _showNotification(
             locale: locale,
             title: locale.notificationTaskError,
             body: event.name,
             taskId: event.taskId,
-            // A failed download rarely has a usable output file to open.
-            allowOpenFile: false,
+            withActions: false,
           );
       }
     });
@@ -184,17 +183,16 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
     required String title,
     required String body,
     required String taskId,
-    required bool allowOpenFile,
+    required bool withActions,
   }) async {
-    final target = await resolveTaskTarget(taskId, allowOpenFile: allowOpenFile);
+    final target = withActions ? await resolveTaskTarget(taskId) : null;
     final payload = target == null ? '' : jsonEncode({'path': target.path});
     final details = NotificationDetails(
       macOS: DarwinNotificationDetails(
         categoryIdentifier: switch (target) {
           null => null,
           _ when target.canOpenFile => _categoryDoneSingleFile,
-          _ when allowOpenFile => _categoryDoneFolder,
-          _ => _categoryTaskError,
+          _ => _categoryDoneFolder,
         },
       ),
       linux: LinuxNotificationDetails(
@@ -216,19 +214,16 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
     await _plugin.show(id: _notificationId++, title: title, body: body, notificationDetails: details, payload: payload);
   }
 
-  /// Resolves the download target a terminal task event points at, following
-  /// the same rule as the task details page: only single-file tasks offer
-  /// "open file", folder tasks (e.g. multi-file torrents) can only reveal the
+  /// Resolves the download target a done task event points at, following the
+  /// same rule as the task details page: only single-file tasks offer "open
+  /// file", folder tasks (e.g. multi-file torrents) can only reveal the
   /// folder. Returns null when the task is already gone.
   @visibleForTesting
-  Future<({String path, bool canOpenFile})?> resolveTaskTarget(
-    String taskId, {
-    required bool allowOpenFile,
-  }) async {
+  Future<({String path, bool canOpenFile})?> resolveTaskTarget(String taskId) async {
     final apiTask = await findTask(taskId);
     if (apiTask == null) return null;
     final record = TaskRecord.fromApi(apiTask);
-    return (path: record.storagePath, canOpenFile: allowOpenFile && !record.isFolder);
+    return (path: record.storagePath, canOpenFile: !record.isFolder);
   }
 
   @visibleForTesting

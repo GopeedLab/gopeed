@@ -122,12 +122,12 @@ void main() {
     expect(calls.where((call) => call.method == 'show'), hasLength(2));
   });
 
-  test('macOS registers action categories for every terminal event combination', () async {
+  test('macOS registers action categories for done task combinations', () async {
     await start(enabled: true);
 
     final categories = initialization()['notificationCategories'] as List<dynamic>;
     final identifiers = categories.map((category) => (category as Map)['identifier']).toList();
-    expect(identifiers, containsAll(['taskDoneSingleFile', 'taskDoneFolder', 'taskTaskError']));
+    expect(identifiers, ['taskDoneSingleFile', 'taskDoneFolder']);
     final singleFile = categories.firstWhere((c) => c['identifier'] == 'taskDoneSingleFile') as Map;
     final singleActions = (singleFile['actions'] as List).cast<Map>();
     expect(singleActions.map((action) => action['identifier']), ['open_file', 'open_folder']);
@@ -138,7 +138,7 @@ void main() {
     final container = await start(enabled: true);
     final notifier = container.read(appNotificationControllerProvider.notifier) as _TestNotificationController;
 
-    final target = await notifier.resolveTaskTarget('single', allowOpenFile: true);
+    final target = await notifier.resolveTaskTarget('single');
 
     expect(target?.path, '/downloads/archive.zip');
     expect(target?.canOpenFile, isTrue);
@@ -148,18 +148,9 @@ void main() {
     final container = await start(enabled: true);
     final notifier = container.read(appNotificationControllerProvider.notifier) as _TestNotificationController;
 
-    final target = await notifier.resolveTaskTarget('folder', allowOpenFile: true);
+    final target = await notifier.resolveTaskTarget('folder');
 
     expect(target?.path, '/downloads/torrent-bundle');
-    expect(target?.canOpenFile, isFalse);
-  });
-
-  test('an errored task never resolves an open-file target', () async {
-    final container = await start(enabled: true);
-    final notifier = container.read(appNotificationControllerProvider.notifier) as _TestNotificationController;
-
-    final target = await notifier.resolveTaskTarget('single', allowOpenFile: false);
-
     expect(target?.canOpenFile, isFalse);
   });
 
@@ -184,13 +175,16 @@ void main() {
     expect(platformSpecifics['categoryIdentifier'], 'taskDoneFolder');
   });
 
-  test('an errored task notification selects the error category', () async {
+  test('an errored task notification carries no actions at all', () async {
     await start(enabled: true);
     events.add(const TaskEvent(type: TaskEventType.error, taskId: 'single', name: 'archive.zip'));
     await Future<void>.delayed(Duration.zero);
 
-    final platformSpecifics = shownNotifications()[0]['platformSpecifics'] as Map<dynamic, dynamic>;
-    expect(platformSpecifics['categoryIdentifier'], 'taskTaskError');
+    final notifications = shownNotifications();
+    expect(notifications, hasLength(1));
+    final platformSpecifics = notifications[0]['platformSpecifics'] as Map<dynamic, dynamic>;
+    expect(platformSpecifics['categoryIdentifier'], isNull);
+    expect(notifications[0]['payload'], '');
   });
 
   test('action responses route to file and folder handlers by encoded spec', () async {
