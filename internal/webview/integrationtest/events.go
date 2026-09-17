@@ -2,7 +2,6 @@ package integrationtest
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"testing"
 	"time"
@@ -87,12 +86,11 @@ func RunEventContract(t *testing.T, provider wv.Provider) {
 		t.Fatal(err)
 	}
 	quiet()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	failedURL := "http://" + listener.Addr().String() + "/failure"
-	listener.Close()
+	// The fixture serves plain HTTP. Attempting TLS against it produces a
+	// real navigation failure through both HTTP CONNECT and SOCKS proxies.
+	// An unreachable HTTP origin would instead become a valid 502 document
+	// when the host's HTTP proxy handles the connection error.
+	failedURL := strings.Replace(url, "http://", "https://", 1) + "/failure"
 	if err := page.Goto(failedURL, map[string]any{"timeoutMs": 3000}); err == nil {
 		t.Fatal("failed navigation succeeded")
 	}
