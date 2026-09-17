@@ -5,6 +5,8 @@ String buildWebViewEventScript(String channel) =>
     '''
 (() => {
   if (window !== window.top) return;
+  // Browser error documents are reported by native load-error callbacks.
+  if (location.protocol === 'chrome-error:') return;
   const pending = [];
   const flush = () => {
     const bridge = window.flutter_inappwebview;
