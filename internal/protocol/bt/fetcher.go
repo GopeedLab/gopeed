@@ -399,10 +399,8 @@ func (f *Fetcher) Wait() (err error) {
 							}
 						}
 						if !selected {
-							// Path already includes the torrent's root directory.
-							name := filepath.Join(f.meta.Opts.Path, file.Path())
-							if err := util.SafeRemove(name); err != nil {
-								return fmt.Errorf("remove unselected torrent file %q: %w", name, err)
+							if err := removeUnselectedFile(f.meta.Opts.Path, file.Path()); err != nil {
+								return err
 							}
 						}
 					}
@@ -411,6 +409,34 @@ func (f *Fetcher) Wait() (err error) {
 			}
 		}
 	}
+}
+
+// Path already includes the torrent's root directory. Never prune the download
+// directory itself, and only remove parent directories that are empty.
+func removeUnselectedFile(downloadDir, torrentPath string) error {
+	root := filepath.Clean(downloadDir)
+	name := filepath.Join(root, torrentPath)
+	for _, candidate := range []string{name, name + ".part"} {
+		if err := util.SafeRemove(candidate); err != nil {
+			return fmt.Errorf("remove unselected torrent file %q: %w", candidate, err)
+		}
+	}
+	for dir := filepath.Dir(name); dir != root && dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
+		entries, err := os.ReadDir(dir)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("read torrent directory %q: %w", dir, err)
+		}
+		if len(entries) != 0 {
+			break
+		}
+		if err := util.SafeRemove(dir); err != nil {
+			return fmt.Errorf("remove empty torrent directory %q: %w", dir, err)
+		}
+	}
+	return nil
 }
 
 func (f *Fetcher) isDone() bool {

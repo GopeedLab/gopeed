@@ -3,6 +3,7 @@ package bt
 import (
 	"context"
 	"crypto/sha1"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,7 +63,7 @@ func TestStartUsesSelectionSubmittedAfterResolve(t *testing.T) {
 }
 
 func TestWaitCleansUnselectedFilesFromSharedPiece(t *testing.T) {
-	for _, mode := range []string{"partial", "all", "already removed", "remove error"} {
+	for _, mode := range []string{"partial", "part only", "both paths", "all", "already removed", "remove error"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := t.TempDir()
 			keepPath := filepath.Join(dir, "bundle", "keep.txt")
@@ -118,7 +119,12 @@ func TestWaitCleansUnselectedFilesFromSharedPiece(t *testing.T) {
 			if !f.isDone() {
 				t.Fatal("selected file is not complete")
 			}
-			if mode == "already removed" || mode == "remove error" {
+			if mode == "part only" || mode == "both paths" || mode == "all" {
+				if err := os.WriteFile(skipPath+".part", []byte("skip"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "part only" || mode == "already removed" || mode == "remove error" {
 				if err := os.Remove(skipPath); err != nil {
 					t.Fatal(err)
 				}
@@ -147,14 +153,62 @@ func TestWaitCleansUnselectedFilesFromSharedPiece(t *testing.T) {
 				t.Fatalf("selected file changed: %q, %v", data, err)
 			}
 			if mode == "all" {
+				if _, err := os.Stat(skipPath + ".part"); err != nil {
+					t.Fatalf("selected part file was removed: %v", err)
+				}
 				data, err := os.ReadFile(skipPath)
 				if err != nil || string(data) != "skip" {
 					t.Fatalf("selected file changed: %q, %v", data, err)
 				}
 			} else if mode != "remove error" {
-				if _, err := os.Stat(skipPath); !os.IsNotExist(err) {
-					t.Fatalf("unselected file remains: %v", err)
+				for _, removed := range []string{skipPath, skipPath + ".part", filepath.Dir(skipPath)} {
+					if _, err := os.Stat(removed); !os.IsNotExist(err) {
+						t.Fatalf("unselected file or empty directory remains: %s: %v", removed, err)
+					}
 				}
+			}
+		})
+	}
+}
+
+func TestRemoveUnselectedFilePrunesOnlyEmptyParents(t *testing.T) {
+	for _, preserveSibling := range []bool{false, true} {
+		t.Run(fmt.Sprint(preserveSibling), func(t *testing.T) {
+			root := t.TempDir()
+			relative := filepath.Join("bundle", "nested", "deep", "skip.txt")
+			name := filepath.Join(root, relative)
+			if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(name+".part", []byte("partial"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			sibling := filepath.Join(root, "bundle", "keep.txt")
+			if preserveSibling {
+				if err := os.WriteFile(sibling, []byte("keep"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := removeUnselectedFile(root, relative); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "bundle", "nested")); !os.IsNotExist(err) {
+				t.Fatalf("empty ancestors remain: %v", err)
+			}
+			if preserveSibling {
+				data, err := os.ReadFile(sibling)
+				if err != nil || string(data) != "keep" {
+					t.Fatalf("sibling changed: %q, %v", data, err)
+				}
+			} else if _, err := os.Stat(filepath.Join(root, "bundle")); !os.IsNotExist(err) {
+				t.Fatalf("empty torrent directory remains: %v", err)
+			}
+			if _, err := os.Stat(root); err != nil {
+				t.Fatalf("download directory was removed: %v", err)
+			}
+			// Repeating cleanup after all files and directories are gone is harmless.
+			if err := removeUnselectedFile(root, relative); err != nil {
+				t.Fatal(err)
 			}
 		})
 	}
