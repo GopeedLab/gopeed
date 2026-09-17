@@ -239,6 +239,7 @@
   "back": "Retour",
   "open": "Ouvrir",
   "openFile": "Ouvrir le fichier",
+  "openFolder": "Ouvrir le dossier",
   "share": "Partager",
   "copy": "Copier",
   "copied": "Copied",
