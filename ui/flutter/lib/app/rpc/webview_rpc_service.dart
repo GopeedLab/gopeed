@@ -10,7 +10,6 @@ import '../../core/common/start_config.dart';
 import '../../util/log_util.dart';
 import '../../util/util.dart';
 import 'server.dart';
-import 'webview_profile.dart';
 
 String buildWebViewExecuteScript({
   required String channelName,
