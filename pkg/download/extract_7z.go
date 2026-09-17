@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bodgit/sevenzip"
 )
@@ -43,7 +44,11 @@ func extractSevenZipMultiPart(firstPartPath string, destDir string, password str
 	// Extract files with progress tracking
 	extractedFiles := 0
 	for _, f := range reader.File {
-		destPath := filepath.Join(destDir, f.Name)
+		cleanName := filepath.Clean(f.Name)
+		if strings.HasPrefix(cleanName, "..") || filepath.IsAbs(cleanName) {
+			continue
+		}
+		destPath := filepath.Join(destDir, cleanName)
 
 		if f.FileInfo().IsDir() {
 			if err := os.MkdirAll(destPath, f.Mode()); err != nil {
@@ -52,7 +57,6 @@ func extractSevenZipMultiPart(firstPartPath string, destDir string, password str
 			continue
 		}
 
-		// Ensure parent directory exists
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
 			return err
 		}
