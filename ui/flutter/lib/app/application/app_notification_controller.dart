@@ -252,10 +252,7 @@ class AppNotificationController extends AsyncNotifier<AppNotificationState> {
       await bringWindowToFront();
       return;
     }
-    if (!await File(spec.path).exists()) {
-      logger.w('notification target no longer exists: ${spec.path}');
-      return;
-    }
+    // Use the task card's file operations, including reveal's parent fallback.
     switch (spec.id) {
       case _openFileAction:
         if (!await openTaskFile(spec.path)) {
