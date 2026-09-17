@@ -6,7 +6,7 @@ import '../theme/app_design_tokens.dart';
 import '../theme/app_palette.dart';
 import '../../l10n/l10n.dart';
 import 'app_text_field.dart';
-import 'app_http_header_group.dart';
+import 'app_form_row.dart';
 
 class AppHttpHeadersController extends ChangeNotifier {
   AppHttpHeadersController({Map<String, String>? headers, Iterable<String> defaultNames = const []}) {
@@ -84,132 +84,60 @@ class AppHttpHeadersEditor extends StatelessWidget {
   final bool stacked;
 
   @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    if (stacked) {
-      return AnimatedBuilder(
-        key: ValueKey('$keyPrefix-editor'),
-        animation: controller,
-        builder: (context, _) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+  Widget build(BuildContext context) => AppFormRow(
+    key: ValueKey('$keyPrefix-editor'),
+    label: label,
+    direction: stacked ? Axis.vertical : Axis.horizontal,
+    child: AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => Column(
+        children: [
+          for (var index = 0; index < controller._rows.length; index++) ...[
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                  flex: 382,
+                  child: _HeaderTextField(
+                    key: ValueKey('$keyPrefix-name-$index'),
+                    controller: controller._rows[index].name,
+                    hintText: context.l10n.httpHeaderName,
                   ),
                 ),
-                shad.OutlineButton(
-                  key: ValueKey('$keyPrefix-add'),
-                  onPressed: controller.add,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.add, size: 18),
-                      const SizedBox(width: AppDesignTokens.space4),
-                      Text(context.l10n.add),
-                    ],
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 618,
+                  child: _HeaderTextField(
+                    key: ValueKey('$keyPrefix-value-$index'),
+                    controller: controller._rows[index].value,
+                    hintText: context.l10n.httpHeaderValue,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: AppDesignTokens.space8),
-            for (var index = 0; index < controller._rows.length; index++) ...[
-              AppHttpHeaderGroup(
-                key: ObjectKey(controller._rows[index]),
-                name: _HeaderTextField(
-                  key: ValueKey('$keyPrefix-name-$index'),
-                  controller: controller._rows[index].name,
-                  hintText: context.l10n.httpHeaderName,
-                ),
-                value: _HeaderTextField(
-                  key: ValueKey('$keyPrefix-value-$index'),
-                  controller: controller._rows[index].value,
-                  hintText: context.l10n.httpHeaderValue,
-                ),
-                remove: _HeaderAction(
+                const SizedBox(width: 4),
+                _HeaderAction(
                   key: ValueKey('$keyPrefix-remove-$index'),
-                  icon: Icons.delete_outline,
+                  icon: Icons.remove,
                   onPressed: controller._rows.length == 1 ? null : () => controller.removeAt(index),
                 ),
-              ),
-              if (index != controller._rows.length - 1) const SizedBox(height: AppDesignTokens.space12),
-            ],
-          ],
-        ),
-      );
-    }
-    return Row(
-      key: ValueKey('$keyPrefix-editor'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 104,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(
-              label,
-              style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: AnimatedBuilder(
-            animation: controller,
-            builder: (context, _) => Column(
-              children: [
-                for (var index = 0; index < controller._rows.length; index++) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 382,
-                        child: _HeaderTextField(
-                          key: ValueKey('$keyPrefix-name-$index'),
-                          controller: controller._rows[index].name,
-                          hintText: context.l10n.httpHeaderName,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 618,
-                        child: _HeaderTextField(
-                          key: ValueKey('$keyPrefix-value-$index'),
-                          controller: controller._rows[index].value,
-                          hintText: context.l10n.httpHeaderValue,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      _HeaderAction(
-                        key: ValueKey('$keyPrefix-remove-$index'),
-                        icon: Icons.remove,
-                        onPressed: controller._rows.length == 1 ? null : () => controller.removeAt(index),
-                      ),
-                      const SizedBox(width: 4),
-                      Visibility(
-                        visible: index == controller._rows.length - 1,
-                        maintainAnimation: true,
-                        maintainSize: true,
-                        maintainState: true,
-                        child: _HeaderAction(
-                          key: index == controller._rows.length - 1 ? ValueKey('$keyPrefix-add') : null,
-                          icon: Icons.add,
-                          onPressed: controller.add,
-                        ),
-                      ),
-                    ],
+                const SizedBox(width: 4),
+                Visibility(
+                  visible: index == controller._rows.length - 1,
+                  maintainAnimation: true,
+                  maintainSize: true,
+                  maintainState: true,
+                  child: _HeaderAction(
+                    key: index == controller._rows.length - 1 ? ValueKey('$keyPrefix-add') : null,
+                    icon: Icons.add,
+                    onPressed: controller.add,
                   ),
-                  if (index != controller._rows.length - 1) const SizedBox(height: 8),
-                ],
+                ),
               ],
             ),
-          ),
-        ),
-      ],
-    );
-  }
+            if (index != controller._rows.length - 1) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    ),
+  );
 }
 
 class _HttpHeaderRowControllers {

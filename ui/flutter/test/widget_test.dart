@@ -2474,11 +2474,17 @@ void main() {
     expect(find.byType(DownloadCategoriesControl), findsOneWidget);
     await tester.enterText(find.byKey(const ValueKey('download-category-name')), '归档');
     await tester.enterText(find.byKey(const ValueKey('download-category-path')), '/tmp/archive');
+    await tester.tap(find.text('Insert Placeholder'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('%date% — Full date (YYYY-MM-DD)'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('path-placeholder-%date%')));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
 
     expect(find.text('归档'), findsOneWidget);
-    expect(find.text('/tmp/archive'), findsOneWidget);
+    expect(find.text('/tmp/archive%date%'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('edit-download-category-资料')));
     await tester.pumpAndSettle();
@@ -2963,8 +2969,9 @@ void main() {
     expect(tester.getRect(proxy).top, greaterThan(tester.getRect(find.text('Proxy')).bottom));
     final name = find.byKey(const ValueKey('create-task-http-header-name-0'));
     final value = find.byKey(const ValueKey('create-task-http-header-value-0'));
-    expect(tester.getRect(value).top, greaterThan(tester.getRect(name).bottom));
-    expect(tester.getSize(value).width, tester.getSize(name).width);
+    expect(tester.getRect(value).top, closeTo(tester.getRect(name).top, 0.01));
+    expect(tester.getRect(value).left, greaterThan(tester.getRect(name).right));
+    expect(tester.getSize(value).width / tester.getSize(name).width, closeTo(1.618, 0.01));
     await tester.ensureVisible(value);
     await tester.pumpAndSettle();
     await tester.enterText(find.descendant(of: value, matching: find.byType(EditableText)), 'mobile-agent');
@@ -2974,6 +2981,9 @@ void main() {
     final editor = tester.widget<AppHttpHeadersEditor>(find.byType(AppHttpHeadersEditor));
     expect(editor.controller.toMap()['User-Agent'], 'mobile-agent');
     final add = find.byKey(const ValueKey('create-task-http-header-add'));
+    final lastRemove = find.byKey(const ValueKey('create-task-http-header-remove-2'));
+    expect(tester.getCenter(add).dy, closeTo(tester.getCenter(lastRemove).dy, 0.01));
+    expect(tester.getRect(add).left, greaterThan(tester.getRect(lastRemove).right));
     await tester.ensureVisible(add);
     await tester.pumpAndSettle();
     await tester.tap(add);
@@ -2990,12 +3000,8 @@ void main() {
     for (final width in [720.0, 1024.0, 390.0]) {
       tester.view.physicalSize = Size(width, 844);
       await tester.pumpAndSettle();
-      if (width >= 720) {
-        expect(tester.getRect(name).top, closeTo(tester.getRect(value).top, 0.01));
-        expect(tester.getRect(value).left, greaterThan(tester.getRect(name).right));
-      } else {
-        expect(tester.getRect(value).top, greaterThan(tester.getRect(name).bottom));
-      }
+      expect(tester.getRect(name).top, closeTo(tester.getRect(value).top, 0.01));
+      expect(tester.getRect(value).left, greaterThan(tester.getRect(name).right));
       expect(editor.controller.toMap()['User-Agent'], 'mobile-agent');
       expect(tester.takeException(), isNull);
     }
@@ -3449,6 +3455,20 @@ void main() {
     expect(position.pixels, greaterThan(0));
     expect(tester.getRect(find.text(longName)).left, lessThan(nameLeftBefore));
     expect(tester.getRect(trailing).left, closeTo(trailingLeftBefore, 0.01));
+
+    position.jumpTo(0);
+    await tester.pumpAndSettle();
+    final nameArea = find.byKey(const ValueKey('resolve-tree-name-scroll-file:0'));
+    await tester.drag(nameArea, const Offset(-100, 0));
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(0));
+    expect(tester.getRect(find.text(longName)).left, lessThan(nameLeftBefore));
+    expect(tester.getRect(trailing).left, closeTo(trailingLeftBefore, 0.01));
+    final previousOffset = position.pixels;
+    await tester.drag(nameArea, const Offset(80, 0));
+    await tester.pumpAndSettle();
+    expect(position.pixels, lessThan(previousOffset));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('file name scrollbar stays hidden when measured labels fit', (WidgetTester tester) async {
