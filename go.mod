@@ -4,7 +4,7 @@ go 1.25.4
 
 require (
 	codeberg.org/gruf/go-ffmpreg v0.6.23-0.20260827095416-df1836cb5be0
-	github.com/GopeedLab/webview_go v0.0.0-20260917153919-dcf00737f32a
+	github.com/GopeedLab/webview_go v0.0.0-20260917155039-1ee7ffb4169a
 	github.com/anacrolix/torrent v1.60.1-0.20251217073903-486bcbe758e0
 	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5
 	github.com/bodgit/sevenzip v1.6.1
