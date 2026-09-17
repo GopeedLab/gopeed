@@ -399,7 +399,11 @@ func (f *Fetcher) Wait() (err error) {
 							}
 						}
 						if !selected {
-							util.SafeRemove(filepath.Join(f.meta.Opts.Path, f.meta.Res.Name, file.Path()))
+							// Path already includes the torrent's root directory.
+							name := filepath.Join(f.meta.Opts.Path, file.Path())
+							if err := util.SafeRemove(name); err != nil {
+								return fmt.Errorf("remove unselected torrent file %q: %w", name, err)
+							}
 						}
 					}
 					return
