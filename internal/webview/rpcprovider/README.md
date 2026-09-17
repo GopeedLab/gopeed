@@ -1,5 +1,11 @@
 # rpcprovider
 
+The private Flutter native profile bridge is maintained in the
+[GopeedLab flutter_inappwebview fork](https://github.com/GopeedLab/flutter_inappwebview/tree/codex/gopeed-profiles).
+All three platform overrides pin one commit in `ui/flutter/pubspec.yaml`;
+see the fork’s [GOPEED.md](https://github.com/GopeedLab/flutter_inappwebview/blob/codex/gopeed-profiles/GOPEED.md)
+for patch scope and upstream synchronization.
+
 `rpcprovider` is the RPC-backed implementation of Gopeed's `webview.Provider` interface.
 
 It is intended for environments where WebView capability is owned by another process, most notably mobile hosts. This package does not implement a WebView itself. Instead, it translates the `pkg/download/engine/webview` page API into single-request `POST + JSON` calls sent to a local host-side RPC service.

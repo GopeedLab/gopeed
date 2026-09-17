@@ -167,11 +167,11 @@ class WebViewRpcService {
 
   Future<Map<String, dynamic>> _openPage(Map<String, dynamic> params) async {
     final profile = WebViewProfile(_string(params, 'profileId'));
-    await profile.prepare(_string(params, 'proxyUrl'));
+    await profile.prepare(proxyUrl: Uri.parse(_string(params, 'proxyUrl')));
     final pageId = 'page-${++_pageSeq}';
     final session = WebViewRpcPageSession(
       pageId: pageId,
-      cookieManager: profile,
+      profile: profile,
       headless: params['headless'] as bool? ?? false,
       debug: params['debug'] as bool? ?? false,
       title: params['title'] as String? ?? '',
@@ -192,7 +192,7 @@ class WebViewRpcService {
   }
 
   Future<void> _removeProfile(String id) async {
-    for (final page in _pagesById.values.where((page) => page.cookieManager.id == id).toList()) {
+    for (final page in _pagesById.values.where((page) => page.profile.id == id).toList()) {
       await _closePage(page.pageId);
     }
     // Let visible platform views unmount before releasing their native store.
@@ -301,7 +301,7 @@ class WebViewRpcService {
 class WebViewRpcPageSession {
   WebViewRpcPageSession({
     required this.pageId,
-    required this.cookieManager,
+    required this.profile,
     required this.headless,
     required this.debug,
     required this.title,
@@ -311,7 +311,8 @@ class WebViewRpcPageSession {
   });
 
   final String pageId;
-  final WebViewProfile cookieManager;
+  final WebViewProfile profile;
+  late final CookieManager cookieManager = profile.cookieManager;
   final bool headless;
   final bool debug;
   final String title;
@@ -543,9 +544,11 @@ class WebViewRpcPageSession {
     );
   }
 
-  InAppWebViewSettings get _settings => WebViewProfileSettings(
-    profileId: cookieManager.id,
-    debug: debug,
+  InAppWebViewSettings get _settings => InAppWebViewSettings(
+    profileId: profile.id,
+    javaScriptEnabled: true,
+    transparentBackground: true,
+    isInspectable: debug,
     userAgent: userAgent.isNotEmpty ? userAgent : null,
   );
 
