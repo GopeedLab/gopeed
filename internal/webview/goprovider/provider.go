@@ -369,7 +369,7 @@ func (p *pageWrapper) Close() error {
 }
 
 func (p *pageWrapper) tracef(format string, args ...any) {
-	if !strings.Contains(p.opts.Title, "youtube-sabr") {
+	if !strings.Contains(p.opts.Title, "youtube-sabr") && p.opts.Title != "WebView event contract" {
 		return
 	}
 	fmt.Printf("goprovider "+format+"\n", args...)
@@ -387,12 +387,14 @@ func (p *pageWrapper) waitForNavigation(timeout time.Duration, waitUntil string)
 		case <-timer.C:
 			return fmt.Errorf("webview navigation timeout")
 		case <-p.sameDocument:
+			p.tracef("goto completed via same-document notification")
 			return nil
 		case <-p.domReady:
 			if waitUntil == "domcontentloaded" {
 				return nil
 			}
 		case <-p.loads:
+			p.tracef("goto completed via load notification")
 			return nil
 		}
 	}
@@ -477,6 +479,7 @@ func (p *pageWrapper) handleCallback(payload string) error {
 		}
 		return nil
 	}
+	p.tracef("page event: event=%s load=%v url=%s sameDocument=%v", msg.Event, msg.Load, msg.URL, msg.SameDocument)
 	if msg.Event == "domcontentloaded" {
 		select {
 		case p.domReady <- struct{}{}:
@@ -647,6 +650,7 @@ func (p *pageWrapper) failPendingLocked() {
 }
 
 func (p *pageWrapper) handleNativeEvent(event webview.Event) {
+	p.tracef("native event: %+v", event)
 	switch event.Name {
 	case "load-error":
 		p.events.Emit(enginewebview.Event{Name: "load-error", Data: map[string]any{"url": event.URL, "message": event.Message}})
