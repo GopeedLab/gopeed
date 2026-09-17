@@ -42,3 +42,7 @@ func TestProviderProfiles(t *testing.T) {
 	provider := New(enginewebview.RPCConfig{Network: *webViewRPCNetwork, Address: *webViewRPCAddress, Token: *webViewRPCToken})
 	integrationtest.RunProfileContract(t, provider)
 }
+
+func TestProviderEvents(t *testing.T) {
+	integrationtest.RunEventContract(t, New(enginewebview.RPCConfig{Network: *webViewRPCNetwork, Address: *webViewRPCAddress, Token: *webViewRPCToken}))
+}

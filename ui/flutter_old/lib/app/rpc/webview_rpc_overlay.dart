@@ -79,12 +79,19 @@ class _WebViewRpcPageViewState extends State<_WebViewRpcPageView> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   alignment: Alignment.centerLeft,
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Text(
-                    page.title.isNotEmpty ? page.title : 'WebView',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
+                  child: Row(children: [
+                    Expanded(
+                        child: Text(
+                      page.title.isNotEmpty ? page.title : 'WebView',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    )),
+                    IconButton(
+                        onPressed: () => WebViewRpcService.instance
+                            .closePageByUser(page.pageId),
+                        icon: const Icon(Icons.close))
+                  ]),
                 ),
                 Expanded(child: content),
               ],

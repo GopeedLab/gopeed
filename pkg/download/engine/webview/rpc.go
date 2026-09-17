@@ -8,6 +8,7 @@ const (
 	MethodProfileRemove     = "profile.remove"
 	MethodIsAvailable       = "webview.isAvailable"
 	MethodPageOpen          = "page.open"
+	MethodPageEvents        = "page.events"
 	MethodPageAddInitScript = "page.addInitScript"
 	MethodPageGoto          = "page.goto"
 	MethodPageExecute       = "page.execute"

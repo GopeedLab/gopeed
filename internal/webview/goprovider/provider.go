@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -37,7 +36,9 @@ func (p *Provider) Open(opts enginewebview.OpenOptions) (enginewebview.Page, err
 }
 
 type pageWrapper struct {
-	opts enginewebview.OpenOptions
+	opts             enginewebview.OpenOptions
+	events           enginewebview.EventHub
+	navigationErrors chan error
 
 	callbackName string
 	readyID      string
@@ -49,19 +50,23 @@ type pageWrapper struct {
 	url     string
 	closed  bool
 
-	ready chan error
-	done  chan struct{}
-	loads chan string
+	ready        chan error
+	done         chan struct{}
+	loads        chan string
+	domReady     chan struct{}
+	sameDocument chan struct{}
 }
 
 type evalMessage struct {
-	ID    string `json:"id"`
-	Ready bool   `json:"ready,omitempty"`
-	Load  bool   `json:"load,omitempty"`
-	URL   string `json:"url,omitempty"`
-	OK    bool   `json:"ok,omitempty"`
-	Value any    `json:"value,omitempty"`
-	Error string `json:"error,omitempty"`
+	Event        string `json:"event,omitempty"`
+	SameDocument bool   `json:"sameDocument,omitempty"`
+	ID           string `json:"id"`
+	Ready        bool   `json:"ready,omitempty"`
+	Load         bool   `json:"load,omitempty"`
+	URL          string `json:"url,omitempty"`
+	OK           bool   `json:"ok,omitempty"`
+	Value        any    `json:"value,omitempty"`
+	Error        string `json:"error,omitempty"`
 }
 
 type evalResult struct {
@@ -88,13 +93,16 @@ const startupTimeout = time.Minute
 func newPageWrapper(opts enginewebview.OpenOptions) *pageWrapper {
 	seq := providerSeq.Add(1)
 	return &pageWrapper{
-		opts:         opts,
-		callbackName: fmt.Sprintf("__gopeedWebViewCallback_%d", seq),
-		readyID:      fmt.Sprintf("__ready__%d", seq),
-		pending:      make(map[string]chan evalResult),
-		ready:        make(chan error, 1),
-		done:         make(chan struct{}),
-		loads:        make(chan string, 8),
+		opts:             opts,
+		navigationErrors: make(chan error, 8),
+		callbackName:     fmt.Sprintf("__gopeedWebViewCallback_%d", seq),
+		readyID:          fmt.Sprintf("__ready__%d", seq),
+		pending:          make(map[string]chan evalResult),
+		ready:            make(chan error, 1),
+		done:             make(chan struct{}),
+		loads:            make(chan string, 8),
+		domReady:         make(chan struct{}, 8),
+		sameDocument:     make(chan struct{}, 8),
 	}
 }
 
@@ -119,6 +127,7 @@ func (p *pageWrapper) start() error {
 			w = webview.New(p.opts.Debug)
 		}
 		p.view = w
+		w.SetEventHandler(p.handleNativeEvent)
 		w.SetTitle(firstNonEmpty(p.opts.Title, "Gopeed WebView"))
 		w.SetSize(defaultWindowDimension(p.opts.Width, 1280), defaultWindowDimension(p.opts.Height, 800), webview.HintNone)
 
@@ -130,7 +139,6 @@ func (p *pageWrapper) start() error {
 				setter.SetUserAgent(p.opts.UserAgent)
 			}
 		}
-		w.Init(buildLoadNotifyScript(p.callbackName))
 
 		if err := w.Bind(p.callbackName, func(payload string) error {
 			return p.handleCallback(payload)
@@ -141,6 +149,7 @@ func (p *pageWrapper) start() error {
 			return
 		}
 
+		w.Init(buildLoadNotifyScript(p.callbackName))
 		applyWindowOptions(w, p.opts)
 		w.SetHtml(buildBootstrapHTML(p.callbackName, p.readyID))
 		if runtimepkg.GOOS == "linux" {
@@ -148,6 +157,7 @@ func (p *pageWrapper) start() error {
 			return
 		}
 		w.Run()
+		p.handleNativeEvent(webview.Event{Name: "closed"})
 		w.Destroy()
 		close(p.done)
 	}
@@ -176,10 +186,15 @@ func (p *pageWrapper) AddInitScript(script string) error {
 func (p *pageWrapper) Goto(url string, opts enginewebview.GotoOptions) error {
 	startedAt := time.Now()
 	p.drainLoads()
+	for {
+		select {
+		case <-p.navigationErrors:
+			continue
+		default:
+		}
+		break
+	}
 	if err := p.dispatch(func(w webview.WebView) error {
-		p.mu.Lock()
-		p.url = url
-		p.mu.Unlock()
 		w.Navigate(url)
 		return nil
 	}); err != nil {
@@ -193,7 +208,7 @@ func (p *pageWrapper) Goto(url string, opts enginewebview.GotoOptions) error {
 	if waitUntil == "" {
 		waitUntil = "load"
 	}
-	err := p.waitForNavigation(url, timeout, waitUntil)
+	err := p.waitForNavigation(timeout, waitUntil)
 	if err != nil {
 		p.tracef("goto failed %dms url=%s err=%v", time.Since(startedAt).Milliseconds(), url, err)
 		return err
@@ -233,7 +248,12 @@ func (p *pageWrapper) Execute(expression string, args ...any) (any, error) {
 		return nil, err
 	}
 
-	result := <-ch
+	var result evalResult
+	select {
+	case result = <-ch:
+	case <-p.done:
+		return nil, fmt.Errorf("webview page is closed")
+	}
 	if result.err != nil {
 		p.tracef("execute failed %dms err=%v", time.Since(startedAt).Milliseconds(), result.err)
 		return result.value, result.err
@@ -321,6 +341,7 @@ func (p *pageWrapper) Close() error {
 		return nil
 	}
 	p.closed = true
+	p.failPendingLocked()
 	w := p.view
 	wait := p.done
 	p.mu.Unlock()
@@ -343,6 +364,7 @@ func (p *pageWrapper) Close() error {
 		<-terminateDone
 	}
 	<-wait
+	p.events.Emit(enginewebview.Event{Name: "closed", Data: map[string]any{"reason": "api"}})
 	return nil
 }
 
@@ -353,92 +375,27 @@ func (p *pageWrapper) tracef(format string, args ...any) {
 	fmt.Printf("goprovider "+format+"\n", args...)
 }
 
-func (p *pageWrapper) waitForNavigation(targetURL string, timeout time.Duration, waitUntil string) error {
-	deadline := time.Now().Add(timeout)
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
+func (p *pageWrapper) waitForNavigation(timeout time.Duration, waitUntil string) error {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	for {
 		select {
+		case <-p.done:
+			return fmt.Errorf("webview page is closed")
+		case err := <-p.navigationErrors:
+			return err
+		case <-timer.C:
+			return fmt.Errorf("webview navigation timeout")
+		case <-p.sameDocument:
+			return nil
+		case <-p.domReady:
+			if waitUntil == "domcontentloaded" {
+				return nil
+			}
 		case <-p.loads:
-			if waitUntil == "load" {
-				return nil
-			}
-		case <-ticker.C:
-			state, err := p.navigationState()
-			if err == nil && state.ready(targetURL, waitUntil) {
-				return nil
-			}
-			if time.Now().After(deadline) {
-				return fmt.Errorf("webview navigation timeout")
-			}
+			return nil
 		}
 	}
-}
-
-type navigationState struct {
-	URL        string `json:"url"`
-	ReadyState string `json:"readyState"`
-}
-
-func (s navigationState) ready(targetURL string, waitUntil string) bool {
-	if s.URL == "" || s.URL == "about:blank" {
-		return false
-	}
-	switch waitUntil {
-	case "domcontentloaded":
-		if s.ReadyState == "loading" || s.ReadyState == "" {
-			return false
-		}
-	default:
-		if s.ReadyState != "complete" {
-			return false
-		}
-	}
-	if targetURL == "" {
-		return true
-	}
-	if s.URL == targetURL {
-		return true
-	}
-	target, err := parseURL(targetURL)
-	if err != nil {
-		return true
-	}
-	current, err := parseURL(s.URL)
-	if err != nil {
-		return true
-	}
-	if current.Scheme == target.Scheme && current.Host == target.Host && current.Path == target.Path {
-		return true
-	}
-	return false
-}
-
-func parseURL(raw string) (*url.URL, error) {
-	return url.Parse(raw)
-}
-
-func (p *pageWrapper) navigationState() (navigationState, error) {
-	value, err := p.Execute(`() => ({
-		url: String(location.href || ""),
-		readyState: document.readyState || "",
-	})`)
-	if err != nil {
-		return navigationState{}, err
-	}
-	stateMap, ok := value.(map[string]any)
-	if !ok {
-		return navigationState{}, fmt.Errorf("invalid navigation state")
-	}
-	state := navigationState{}
-	if urlValue, ok := stateMap["url"].(string); ok {
-		state.URL = urlValue
-	}
-	if readyValue, ok := stateMap["readyState"].(string); ok {
-		state.ReadyState = readyValue
-	}
-	return state, nil
 }
 
 func (p *pageWrapper) dispatch(fn func(w webview.WebView) error) error {
@@ -457,7 +414,12 @@ func (p *pageWrapper) dispatch(fn func(w webview.WebView) error) error {
 	w.Dispatch(func() {
 		done <- fn(w)
 	})
-	return <-done
+	select {
+	case err := <-done:
+		return err
+	case <-p.done:
+		return fmt.Errorf("webview page is closed")
+	}
 }
 
 func (p *pageWrapper) nativeCookies() ([]nativeCookieJSON, error) {
@@ -515,7 +477,31 @@ func (p *pageWrapper) handleCallback(payload string) error {
 		}
 		return nil
 	}
+	if msg.Event == "domcontentloaded" {
+		select {
+		case p.domReady <- struct{}{}:
+		default:
+		}
+		return nil
+	}
+	if msg.Event == "url-changed" {
+		if msg.SameDocument {
+			select {
+			case p.sameDocument <- struct{}{}:
+			default:
+			}
+		}
+		p.mu.Lock()
+		changed := p.url != msg.URL
+		p.url = msg.URL
+		p.mu.Unlock()
+		if changed {
+			p.events.Emit(enginewebview.Event{Name: "url-changed", Data: map[string]any{"url": msg.URL, "sameDocument": msg.SameDocument}})
+		}
+		return nil
+	}
 	if msg.Load {
+		p.events.Emit(enginewebview.Event{Name: "load", Data: map[string]any{"url": msg.URL}})
 		select {
 		case p.loads <- msg.URL:
 		default:
@@ -540,6 +526,22 @@ func (p *pageWrapper) handleCallback(payload string) error {
 }
 
 func (p *pageWrapper) drainLoads() {
+	for {
+		select {
+		case <-p.domReady:
+			continue
+		default:
+		}
+		break
+	}
+	for {
+		select {
+		case <-p.sameDocument:
+			continue
+		default:
+		}
+		break
+	}
 	for {
 		select {
 		case <-p.loads:
@@ -601,17 +603,72 @@ func buildExecuteScript(callbackName string, reqID string, expression string, ar
 func buildLoadNotifyScript(callbackName string) string {
 	callbackJSON, _ := json.Marshal(callbackName)
 	return fmt.Sprintf(`(() => {
-  window.addEventListener("load", () => {
-    const __cb = globalThis[%s];
-    if (typeof __cb !== "function") {
-      return;
-    }
-    __cb(JSON.stringify({
-      load: true,
-      url: String(location.href || ""),
-    }));
-  }, { once: true });
+  if (window !== window.top) return;
+  const send = (message) => {
+    const cb = globalThis[%s];
+    if (typeof cb === "function") cb(JSON.stringify(message));
+  };
+  let lastURL = String(location.href);
+  const changed = () => {
+    const url = String(location.href);
+    if (url === lastURL) return;
+    lastURL = url;
+    send({event: "url-changed", url, sameDocument: true});
+  };
+  send({event: "url-changed", url: lastURL, sameDocument: false});
+  for (const name of ["pushState", "replaceState"]) {
+    const original = history[name];
+    history[name] = function(...args) {
+      const result = Reflect.apply(original, this, args);
+      changed();
+      return result;
+    };
+  }
+  window.addEventListener("hashchange", changed);
+  window.addEventListener("popstate", changed);
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) send({event: "url-changed", url: String(location.href), sameDocument: false});
+    else changed();
+  });
+  window.addEventListener("DOMContentLoaded", () => send({event: "domcontentloaded"}), {once:true});
+  window.addEventListener("load", () => send({load: true, url: String(location.href)}), {once: true});
 })();`, string(callbackJSON))
+}
+
+func (p *pageWrapper) On(name string, handler func(enginewebview.Event)) (func(), error) {
+	return p.events.On(name, handler)
+}
+
+func (p *pageWrapper) failPendingLocked() {
+	for id, ch := range p.pending {
+		ch <- evalResult{err: fmt.Errorf("webview page is closed")}
+		delete(p.pending, id)
+	}
+}
+
+func (p *pageWrapper) handleNativeEvent(event webview.Event) {
+	switch event.Name {
+	case "load-error":
+		p.events.Emit(enginewebview.Event{Name: "load-error", Data: map[string]any{"url": event.URL, "message": event.Message}})
+		select {
+		case p.navigationErrors <- errors.New(event.Message):
+		default:
+		}
+	case "closed":
+		p.mu.Lock()
+		api := p.closed
+		p.closed = true
+		p.failPendingLocked()
+		p.mu.Unlock()
+		reason := "user"
+		if api {
+			reason = "api"
+		}
+		p.events.Emit(enginewebview.Event{Name: "closed", Data: map[string]any{"reason": reason}})
+		if runtimepkg.GOOS == "linux" && !api {
+			p.view.Dispatch(func() { p.view.Destroy(); close(p.done) })
+		}
+	}
 }
 
 func defaultWindowDimension(value int, fallback int) int {
