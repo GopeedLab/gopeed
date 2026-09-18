@@ -617,11 +617,35 @@ func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []stri
 }
 
 func (d *Downloader) Create(rrId string) (taskId string, err error) {
+	return d.CreateWithOptions(rrId, nil)
+}
+
+// CreateWithOptions creates a resolved task using the submitted options, or the
+// resolve-time options when opts is nil.
+func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId string, err error) {
 	d.fetcherMapLock.RLock()
 	fetcher, ok := d.fetcherCache[rrId]
 	d.fetcherMapLock.RUnlock()
 	if !ok {
 		return "", errors.New("invalid resource id")
+	}
+	if opts != nil {
+		opts, err = d.initOptions(opts.Clone())
+		if err != nil {
+			return "", err
+		}
+		if res := fetcher.Meta().Res; res != nil {
+			for _, index := range opts.SelectFiles {
+				if index < 0 || index >= len(res.Files) {
+					return "", fmt.Errorf("invalid selected file index: %d", index)
+				}
+			}
+			opts.InitSelectFiles(len(res.Files))
+		}
+		fetcher.Meta().Opts = opts
+	}
+	if res := fetcher.Meta().Res; res != nil {
+		res.CalcSize(fetcher.Meta().Opts.SelectFiles)
 	}
 	defer func() {
 		d.fetcherMapLock.Lock()

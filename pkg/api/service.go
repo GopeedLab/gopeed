@@ -156,7 +156,7 @@ func (s *Service) createTask(ctx *Context) *Response {
 		err    error
 	)
 	if request.Rid != "" {
-		taskID, err = s.Downloader.Create(request.Rid)
+		taskID, err = s.Downloader.CreateWithOptions(request.Rid, request.Opts)
 	} else if request.Req != nil {
 		taskID, err = s.Downloader.CreateDirect(request.Req, request.Opts)
 	} else {

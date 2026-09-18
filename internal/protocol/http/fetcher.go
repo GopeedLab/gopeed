@@ -363,19 +363,8 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 		f.meta.Opts = &base.Options{}
 	}
 
-	// Parse options
-	if err := base.ParseOptExtra[fhttp.OptsExtra](opts); err != nil {
+	if err := f.initOptions(); err != nil {
 		return err
-	}
-	if opts.Extra == nil {
-		opts.Extra = &fhttp.OptsExtra{}
-	}
-	extra := opts.Extra.(*fhttp.OptsExtra)
-	if extra.Connections <= 0 {
-		extra.Connections = f.config.Connections
-		if extra.Connections <= 0 {
-			extra.Connections = 1
-		}
 	}
 
 	f.setState(stateResolving)
@@ -648,7 +637,31 @@ func (f *Fetcher) cleanupPrefetchFile() {
 	f.resolveFallback.Store(false)
 }
 
+// Options may be replaced between Resolve and Start when creating a resolved task.
+func (f *Fetcher) initOptions() error {
+	opts := f.meta.Opts
+	// Parse options
+	if err := base.ParseOptExtra[fhttp.OptsExtra](opts); err != nil {
+		return err
+	}
+	if opts.Extra == nil {
+		opts.Extra = &fhttp.OptsExtra{}
+	}
+	extra := opts.Extra.(*fhttp.OptsExtra)
+	if extra.Connections <= 0 {
+		extra.Connections = f.config.Connections
+		if extra.Connections <= 0 {
+			extra.Connections = 1
+		}
+	}
+
+	return nil
+}
+
 func (f *Fetcher) Start() error {
+	if err := f.initOptions(); err != nil {
+		return err
+	}
 	state := f.getState()
 
 	switch state {
