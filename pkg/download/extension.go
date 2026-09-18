@@ -378,7 +378,7 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					gopeed.Runtime = &InstanceRuntime{
 						WebView: d.newExtensionWebViewRuntime(session, ext.buildIdentity()),
 					}
-					err = injectGopeed(engine.Runtime, gopeed)
+					err = injectGopeed(engine.Runtime, gopeed, engine.Post)
 					if err != nil {
 						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] engine inject failed", ext.buildIdentity())
 						return
@@ -653,20 +653,22 @@ func (h InstanceEvents) OnDone(fn engine.JSFunction) {
 }
 
 type ExtensionInfo struct {
-	Identity string `json:"identity"`
-	Name     string `json:"name"`
-	Author   string `json:"author"`
-	Title    string `json:"title"`
-	Version  string `json:"version"`
+	HostVersion string `json:"hostVersion"`
+	Identity    string `json:"identity"`
+	Name        string `json:"name"`
+	Author      string `json:"author"`
+	Title       string `json:"title"`
+	Version     string `json:"version"`
 }
 
 func NewExtensionInfo(ext *Extension) *ExtensionInfo {
 	return &ExtensionInfo{
-		Identity: ext.buildIdentity(),
-		Name:     ext.Name,
-		Author:   ext.Author,
-		Title:    ext.Title,
-		Version:  ext.Version,
+		HostVersion: base.Version,
+		Identity:    ext.buildIdentity(),
+		Name:        ext.Name,
+		Author:      ext.Author,
+		Title:       ext.Title,
+		Version:     ext.Version,
 	}
 }
 

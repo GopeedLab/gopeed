@@ -289,3 +289,8 @@ func callExportedFunction(fn func(goja.FunctionCall) goja.Value, args ...goja.Va
 		Arguments: args,
 	}), nil
 }
+
+// Post queues a notification without waiting for its callback or returned promise.
+func (e *Engine) Post(fn func(*goja.Runtime)) bool {
+	return e.loop.RunOnLoop(fn)
+}

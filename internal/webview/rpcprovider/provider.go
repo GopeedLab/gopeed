@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
 )
@@ -49,8 +51,13 @@ func (p *Provider) Open(opts enginewebview.OpenOptions) (enginewebview.Page, err
 }
 
 type page struct {
-	client *Client
-	id     string
+	eventMu     sync.Mutex
+	events      enginewebview.EventHub
+	eventCancel context.CancelFunc
+	eventDone   chan struct{}
+	eventErr    error
+	client      *Client
+	id          string
 }
 
 func (p *page) AddInitScript(script string) error {
@@ -110,14 +117,28 @@ func (p *page) ClearCookies() error {
 }
 
 func (p *page) Close() error {
-	err := p.client.Call(enginewebview.MethodPageClose, enginewebview.PageCloseParams{
-		PageID: p.id,
-	}, nil)
+	err := p.client.Call(enginewebview.MethodPageClose, enginewebview.PageCloseParams{PageID: p.id}, nil)
 	var rpcErr *enginewebview.RPCError
 	if errors.As(err, &rpcErr) && rpcErr.Code == enginewebview.ErrorCodePageNotFound {
-		return nil
+		err = nil
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	p.eventMu.Lock()
+	cancel, done := p.eventCancel, p.eventDone
+	p.eventMu.Unlock()
+	if cancel != nil {
+		// Drain the terminal notification before cancelling the transport, so
+		// already-sent navigation events keep their order before closed.
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+		}
+		cancel()
+	}
+	p.events.Emit(enginewebview.Event{Name: "closed", Data: map[string]any{"reason": "api"}})
+	return nil
 }
 
 type Client struct {
@@ -202,4 +223,80 @@ func (c *Client) Call(method string, params any, result any) error {
 
 func (p *Provider) RemoveProfile(profileID, dataPath string) error {
 	return p.client.Call(enginewebview.MethodProfileRemove, enginewebview.ProfileRemoveParams{ProfileID: profileID}, nil)
+}
+
+// On starts one ordered notification stream per page. The ready record is sent
+// only after the host has installed its subscription.
+func (p *page) On(name string, handler func(enginewebview.Event)) (func(), error) {
+	p.eventMu.Lock()
+	defer p.eventMu.Unlock()
+	if p.eventErr != nil {
+		return nil, p.eventErr
+	}
+	unsubscribe, err := p.events.On(name, handler)
+	if err != nil {
+		return nil, err
+	}
+	if p.eventCancel != nil {
+		return unsubscribe, nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	payload, err := json.Marshal(enginewebview.RPCRequest{Method: enginewebview.MethodPageEvents, Params: enginewebview.PageCloseParams{PageID: p.id}})
+	if err != nil {
+		cancel()
+		unsubscribe()
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.client.endpoint, bytes.NewReader(payload))
+	if err != nil {
+		cancel()
+		unsubscribe()
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if p.client.token != "" {
+		req.Header.Set("Authorization", "Bearer "+p.client.token)
+	}
+	// A broken host must not leave registration pending indefinitely.
+	timer := time.AfterFunc(30*time.Second, cancel)
+	resp, err := p.client.http.Do(req)
+	if err != nil {
+		timer.Stop()
+		cancel()
+		unsubscribe()
+		return nil, err
+	}
+	decoder := json.NewDecoder(resp.Body)
+	var ready struct {
+		Ready bool `json:"ready"`
+	}
+	err = decoder.Decode(&ready)
+	timer.Stop()
+	if err != nil || !ready.Ready || resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		cancel()
+		unsubscribe()
+		return nil, fmt.Errorf("webview event stream did not become ready: %v", err)
+	}
+	p.eventCancel = cancel
+	p.eventDone = make(chan struct{})
+	go func() {
+		defer resp.Body.Close()
+		defer cancel()
+		defer close(p.eventDone)
+		for {
+			var event enginewebview.Event
+			if err := decoder.Decode(&event); err != nil {
+				p.eventMu.Lock()
+				p.eventErr = fmt.Errorf("webview event stream disconnected: %w", err)
+				p.eventMu.Unlock()
+				return
+			}
+			p.events.Emit(event)
+			if event.Name == "closed" {
+				return
+			}
+		}
+	}()
+	return unsubscribe, nil
 }

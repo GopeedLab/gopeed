@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +11,7 @@ import '../../core/common/start_config.dart';
 import '../../util/log_util.dart';
 import '../../util/util.dart';
 import 'server.dart';
+import 'webview_event_script.dart';
 
 String buildWebViewExecuteScript({
   required String channelName,
@@ -117,6 +119,38 @@ class WebViewRpcService {
     final method = body['method'] as String? ?? '';
     final params = (body['params'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
     try {
+      if (method == 'page.events') {
+        final page = _page(params);
+        ctx.response.headers.contentType = ContentType('application', 'x-ndjson');
+        ctx.response.bufferOutput = false;
+        final output = StreamController<List<int>>();
+        void send(Map<String, dynamic> record) {
+          if (!output.isClosed) output.add(utf8.encode('${jsonEncode(record)}\n'));
+        }
+
+        final subscription = page.events.listen(
+          send,
+          onDone: () {
+            unawaited(output.close());
+          },
+        );
+        send({'ready': true});
+        final sending = ctx.response.addStream(output.stream);
+        try {
+          await Future.any([sending, ctx.response.done]);
+        } catch (_) {
+          // A disconnected listener cannot receive a JSON error response.
+        } finally {
+          await subscription.cancel();
+          unawaited(output.close());
+          try {
+            await sending;
+          } catch (_) {
+            // The response may have ended before the page did.
+          }
+        }
+        return;
+      }
       final result = await _dispatch(method, params);
       await ctx.writeJSON({'result': result, 'error': null});
     } catch (e, stackTrace) {
@@ -261,13 +295,15 @@ class WebViewRpcService {
     throw WebViewRpcException(code: 'INVALID_REQUEST', message: 'missing or invalid "cookie"');
   }
 
-  Future<void> _closePage(String pageId) async {
+  Future<void> closePageByUser(String pageId) => _closePage(pageId, reason: 'user');
+
+  Future<void> _closePage(String pageId, {String reason = 'api'}) async {
     final page = _pagesById.remove(pageId);
     if (page == null) {
       throw WebViewRpcException(code: 'PAGE_NOT_FOUND', message: 'page not found');
     }
     _syncPages();
-    await page.dispose();
+    await page.dispose(reason: reason);
   }
 
   void _syncPages() {
@@ -309,6 +345,12 @@ class WebViewRpcPageSession {
     required this.userAgent,
   });
 
+  final StreamController<Map<String, dynamic>> _events = StreamController.broadcast(sync: true);
+  Stream<Map<String, dynamic>> get events => _events.stream;
+  void _emit(String event, Map<String, dynamic> data) {
+    if (!_disposed) _events.add({'event': event, 'data': data});
+  }
+
   final String pageId;
   final WebViewProfile profile;
   late final CookieManager cookieManager = profile.cookieManager;
@@ -328,11 +370,19 @@ class WebViewRpcPageSession {
   InAppWebViewController? _controller;
   Completer<void>? _navigation;
   String _currentUrl = '';
+  String _eventUrl = '';
   int _executeSeq = 0;
   bool _disposed = false;
 
   Future<void> init() async {
     callbackChannelName = '__gopeedWebViewCallback_${pageId.replaceAll('-', '_')}';
+    _initScripts.add(
+      UserScript(
+        source: buildWebViewEventScript(callbackChannelName),
+        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+        forMainFrameOnly: true,
+      ),
+    );
     if (headless) {
       _headlessWebView = HeadlessInAppWebView(
         initialSize: Size(width > 0 ? width.toDouble() : 1, height > 0 ? height.toDouble() : 1),
@@ -354,14 +404,6 @@ class WebViewRpcPageSession {
     _initScripts.add(userScript);
     final controller = await _controllerOrThrow();
     await controller.addUserScript(userScript: userScript);
-    if (_currentUrl.isNotEmpty && !_disposed) {
-      try {
-        await controller.evaluateJavascript(source: script);
-      } catch (_) {
-        // Best-effort only for the current page. The user script persists
-        // for future navigations through the native user script registry.
-      }
-    }
   }
 
   Future<void> goto(String url, {int? timeoutMs, String? waitUntil}) async {
@@ -507,8 +549,11 @@ class WebViewRpcPageSession {
     await cookieManager.deleteAllCookies();
   }
 
-  Future<void> dispose() async {
+  Future<void> dispose({String reason = 'api'}) async {
+    if (_disposed) return;
+    _emit('closed', {'reason': reason});
     _disposed = true;
+    unawaited(_events.close());
     if (!_ready.isCompleted) {
       _ready.completeError(WebViewRpcException(code: 'PAGE_NOT_FOUND', message: 'webview page closed'));
     }
@@ -587,6 +632,8 @@ class WebViewRpcPageSession {
   }
 
   void _handleReceivedError(InAppWebViewController controller, WebResourceRequest request, WebResourceError error) {
+    if (request.isForMainFrame != true) return;
+    _emit('load-error', {'url': request.url.toString(), 'message': error.description});
     _completeNavigationError(WebViewRpcException(code: 'NAVIGATION_FAILED', message: error.description));
   }
 
@@ -595,6 +642,11 @@ class WebViewRpcPageSession {
     WebResourceRequest request,
     WebResourceResponse errorResponse,
   ) {
+    if (request.isForMainFrame != true) return;
+    _emit('load-error', {
+      'url': request.url.toString(),
+      'message': 'HTTP ${errorResponse.statusCode}: ${errorResponse.reasonPhrase ?? 'navigation failed'}',
+    });
     _completeNavigationError(
       WebViewRpcException(
         code: 'NAVIGATION_FAILED',
@@ -651,6 +703,18 @@ class WebViewRpcPageSession {
       return;
     }
     final message = decoded.cast<String, dynamic>();
+    final event = message['event'];
+    if (event == 'url-changed' || event == 'load') {
+      final data = (message['data'] as Map).cast<String, dynamic>();
+      final url = data['url'] as String;
+      if (event == 'load' || url != _eventUrl) {
+        _eventUrl = url;
+        _currentUrl = url;
+        _emit(event as String, data);
+        if (event == 'url-changed' && data['sameDocument'] == true) _completeNavigation();
+      }
+      return;
+    }
     final id = message['id']?.toString();
     if (id == null || id.isEmpty) {
       return;

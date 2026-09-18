@@ -1,4 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' show IconButton;
+import 'package:flutter/material.dart' hide IconButton;
+import '../../l10n/l10n.dart';
+import '../../shared/widgets/app_tooltip.dart';
 
 import 'webview_rpc_service.dart';
 
@@ -70,11 +73,24 @@ class _WebViewRpcPageViewState extends State<_WebViewRpcPageView> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   alignment: Alignment.centerLeft,
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Text(
-                    page.title.isNotEmpty ? page.title : 'WebView',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          page.title.isNotEmpty ? page.title : 'WebView',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      AppTooltip(
+                        message: context.l10n.close,
+                        child: IconButton.ghost(
+                          onPressed: () => WebViewRpcService.instance.closePageByUser(page.pageId),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(child: content),
