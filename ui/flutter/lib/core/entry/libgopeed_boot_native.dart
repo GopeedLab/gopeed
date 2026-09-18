@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:path_provider/path_provider.dart';
+
 import '../../util/util.dart';
 import '../common/libgopeed_channel.dart';
 import '../common/libgopeed_ffi.dart';
@@ -26,6 +28,9 @@ class LibgopeedBootNative implements LibgopeedBoot {
   Future<int> start(StartConfig cfg) async {
     cfg.storage = 'bolt';
     cfg.storageDir = Util.getStorageDir();
+    if (Util.isMobile()) {
+      cfg.tempDir = (await getTemporaryDirectory()).path;
+    }
     cfg.refreshInterval = 0;
     return _libgopeed.start(cfg);
   }

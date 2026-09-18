@@ -1,7 +1,6 @@
 (function () {
   const create = __gopeed_ffmpeg_create;
   const read = __gopeed_ffmpeg_read;
-  const acquire = __gopeed_ffmpeg_acquire;
   const start = __gopeed_ffmpeg_start;
   const push = __gopeed_ffmpeg_push;
   const end = __gopeed_ffmpeg_end;
@@ -37,7 +36,8 @@
     const format = options.format === undefined ? "mp4" : options.format;
     if (typeof format !== "string") throw new TypeError("format must be a string");
     const signal = options.signal;
-    let id, controller, stopped = false;
+    const id = create({ format, args });
+    let controller, initialized = false, stopped = false;
     const readers = [];
     const lifetime = new AbortController();
     let ownedInputs;
@@ -91,7 +91,7 @@
         }
       }
     }
-    return new ReadableStream({
+    const output = new ReadableStream({
       start(c) {
         controller = c;
         active.add(shutdown);
@@ -103,9 +103,8 @@
       async pull(c) {
         if (stopped) return;
         try {
-          if (!id) {
-            id = create({ format, args });
-            await acquire(id);
+          if (!initialized) {
+            initialized = true;
             if (stopped) return;
             if (factory) {
               const inputs = await factory({ signal: lifetime.signal });
@@ -129,11 +128,17 @@
           if (chunk === null) { stop(); c.close(); }
           else c.enqueue(new Uint8Array(chunk));
         } catch (error) {
-          if (!stopped) { c.error(error); stop(error); }
+          if (!stopped) {
+            const failure = typeof MessageError === "function" && !(error instanceof MessageError)
+              ? new MessageError(String(error && error.message || error)) : error;
+            c.error(failure); stop(failure);
+          }
         }
       },
       cancel(reason) { stop(reason); }
-    });
+    }, { highWaterMark: 0 });
+    if (globalThis.__gopeed_bind_producer) globalThis.__gopeed_bind_producer(output, id);
+    return output;
   }
-  globalThis.__gopeed_ffmpeg = Object.freeze({ merge, supportsInputFactory: true });
+  globalThis.__gopeed_ffmpeg = Object.freeze({ merge, supportsInputFactory: true, supportsProducerProgress: true });
 })();

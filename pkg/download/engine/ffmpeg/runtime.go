@@ -120,7 +120,8 @@ func Run(ctx context.Context, video, audio Input, out io.Writer, format string, 
 	return RunAcquired(ctx, video, audio, out, format, extra)
 }
 
-// Acquire reserves execution capacity before input factories or HTTP requests start.
+// Acquire reserves WASM execution capacity. Disk-backed input downloads may
+// already be running while this call waits.
 func Acquire(ctx context.Context) (func(), error) {
 	select {
 	case slots <- struct{}{}:

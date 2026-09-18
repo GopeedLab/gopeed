@@ -363,19 +363,8 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 		f.meta.Opts = &base.Options{}
 	}
 
-	// Parse options
-	if err := base.ParseOptExtra[fhttp.OptsExtra](opts); err != nil {
+	if err := f.initOptions(); err != nil {
 		return err
-	}
-	if opts.Extra == nil {
-		opts.Extra = &fhttp.OptsExtra{}
-	}
-	extra := opts.Extra.(*fhttp.OptsExtra)
-	if extra.Connections <= 0 {
-		extra.Connections = f.config.Connections
-		if extra.Connections <= 0 {
-			extra.Connections = 1
-		}
 	}
 
 	f.setState(stateResolving)
@@ -512,17 +501,9 @@ func (f *Fetcher) asyncPrefetch() {
 		return
 	}
 
-	// Create temporary file for prefetch data
-	tmpFile, err := os.CreateTemp("", "gopeed-prefetch-*")
-	if err != nil {
-		f.prefetchErr = err
-		return
-	}
-	f.prefetchFile = tmpFile
-	f.prefetchFilePath = tmpFile.Name()
-
 	defer func() {
-		// Close response body when prefetch stops
+		// Close the response even if temporary-file setup fails or shutdown
+		// rejects a late prefetch. Otherwise the server can remain blocked writing.
 		f.resolveRespLock.Lock()
 		if f.resolveResp != nil {
 			f.resolveResp.Body.Close()
@@ -531,8 +512,33 @@ func (f *Fetcher) asyncPrefetch() {
 		f.resolveRespLock.Unlock()
 	}()
 
+	// Create temporary file for prefetch data
+	tempDir := ""
+	if f.ctl != nil && f.ctl.TempDir != "" {
+		tempDir = f.ctl.TempDir
+		if err := os.MkdirAll(tempDir, 0700); err != nil {
+			f.prefetchErr = err
+			return
+		}
+	}
+	tmpFile, err := os.CreateTemp(tempDir, "gopeed-prefetch-*")
+	if err != nil {
+		f.prefetchErr = err
+		return
+	}
+	if f.ctl != nil {
+		if err := f.ctl.TempFiles.Track(tmpFile.Name()); err != nil {
+			tmpFile.Close()
+			os.Remove(tmpFile.Name())
+			f.prefetchErr = err
+			return
+		}
+	}
+	f.prefetchFile = tmpFile
+	f.prefetchFilePath = tmpFile.Name()
+
 	buf := make([]byte, 32*1024) // 32KB buffer
-	reader := NewTimeoutReader(resp.Body, readTimeout)
+	reader := f.responseReader(resp)
 
 	for {
 		select {
@@ -617,7 +623,11 @@ func (f *Fetcher) cleanupPrefetchFile() {
 		f.prefetchFile = nil
 	}
 	if f.prefetchFilePath != "" {
-		os.Remove(f.prefetchFilePath)
+		if f.ctl != nil {
+			f.ctl.TempFiles.Remove(f.prefetchFilePath)
+		} else {
+			os.Remove(f.prefetchFilePath)
+		}
 		f.prefetchFilePath = ""
 	}
 	// The byte count is only reusable while the backing prefetch file exists.
@@ -627,7 +637,31 @@ func (f *Fetcher) cleanupPrefetchFile() {
 	f.resolveFallback.Store(false)
 }
 
+// Options may be replaced between Resolve and Start when creating a resolved task.
+func (f *Fetcher) initOptions() error {
+	opts := f.meta.Opts
+	// Parse options
+	if err := base.ParseOptExtra[fhttp.OptsExtra](opts); err != nil {
+		return err
+	}
+	if opts.Extra == nil {
+		opts.Extra = &fhttp.OptsExtra{}
+	}
+	extra := opts.Extra.(*fhttp.OptsExtra)
+	if extra.Connections <= 0 {
+		extra.Connections = f.config.Connections
+		if extra.Connections <= 0 {
+			extra.Connections = 1
+		}
+	}
+
+	return nil
+}
+
 func (f *Fetcher) Start() error {
+	if err := f.initOptions(); err != nil {
+		return err
+	}
 	state := f.getState()
 
 	switch state {
@@ -1329,7 +1363,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		f.slowStart.onConnectSuccess()
 	}
 
-	reader := NewTimeoutReader(resp.Body, readTimeout)
+	reader := f.responseReader(resp)
 	var responseBytesRead int64
 	for {
 		if conn.ctx.Err() != nil {
@@ -1711,7 +1745,7 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 	}
 
 	// Download data from resolve response
-	reader := NewTimeoutReader(resp.Body, readTimeout)
+	reader := f.responseReader(resp)
 	for {
 		if conn.ctx.Err() != nil {
 			return
@@ -1828,7 +1862,7 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 				f.slowStart.onConnectSuccess()
 			}
 
-			reader := NewTimeoutReader(resp.Body, readTimeout)
+			reader := f.responseReader(resp)
 			for {
 				if conn.ctx.Err() != nil {
 					return conn.ctx.Err()
@@ -2450,4 +2484,13 @@ func (f *Fetcher) Progress() fetcher.Progress {
 
 func (f *Fetcher) Wait() error {
 	return <-f.doneCh
+}
+
+// Generated output can pause while its producer waits for processing capacity.
+// Its producer owns upstream deadlines; cancellation still closes the response.
+func (f *Fetcher) responseReader(resp *http.Response) io.Reader {
+	if f.ctl != nil && f.ctl.ManagedProduction != nil && resp.Request != nil && f.ctl.ManagedProduction(resp.Request.URL.String()) {
+		return resp.Body
+	}
+	return NewTimeoutReader(resp.Body, readTimeout)
 }
