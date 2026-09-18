@@ -6,6 +6,9 @@ export interface ExtensionInfo {
   title: string;
   version: string;
   hostVersion: string;
+  /** Host OS and architecture, matching the REST info endpoint (Go GOOS/GOARCH). */
+  os: string;
+  arch: string;
 }
 
 /** Functions are serialized; they cannot capture extension-side variables. */

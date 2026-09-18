@@ -5,6 +5,7 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
 	wv "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -23,15 +24,15 @@ type eventTestOpener struct{ page wv.Page }
 
 func (o eventTestOpener) Open(wv.OpenOptions) (wv.Page, error) { return o.page, nil }
 
-func TestExtensionInfoHostVersion(t *testing.T) {
+func TestExtensionInfoHostMetadata(t *testing.T) {
 	e := engine.NewEngine(nil)
 	defer e.Close()
 	info := NewExtensionInfo(&Extension{Name: "sample", Author: "test", Version: "1.2.3"})
 	if err := injectGopeed(e.Runtime, &Instance{Info: info}, e.Post); err != nil {
 		t.Fatal(err)
 	}
-	result, err := e.RunString(`gopeed.info.hostVersion + "/" + gopeed.info.version`)
-	if err != nil || result != base.Version+"/1.2.3" {
+	result, err := e.RunString(`gopeed.info.hostVersion + "/" + gopeed.info.version + "/" + gopeed.info.os + "/" + gopeed.info.arch`)
+	if err != nil || result != base.Version+"/1.2.3/"+runtime.GOOS+"/"+runtime.GOARCH {
 		t.Fatalf("%v %v", result, err)
 	}
 }

@@ -65,6 +65,9 @@ compile the Android/iOS bridge. No separate Flutter test application is required
 
 `gopeed.info.hostVersion` is the host's build version (`dev` for development
 builds). `gopeed.info.version` continues to identify the extension's own version.
+`gopeed.info.os` and `gopeed.info.arch` match the REST info endpoint's `os` and
+`arch`: the host's Go `runtime.GOOS` and `runtime.GOARCH` values (for example,
+`windows` / `amd64` or `darwin` / `arm64`).
 See [extension-api.d.ts](extension-api.d.ts) for the event payloads.
 
 ```js

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -651,6 +652,8 @@ func (h InstanceEvents) OnDone(fn engine.JSFunction) {
 }
 
 type ExtensionInfo struct {
+	OS          string `json:"os"`
+	Arch        string `json:"arch"`
 	HostVersion string `json:"hostVersion"`
 	Identity    string `json:"identity"`
 	Name        string `json:"name"`
@@ -661,6 +664,8 @@ type ExtensionInfo struct {
 
 func NewExtensionInfo(ext *Extension) *ExtensionInfo {
 	return &ExtensionInfo{
+		OS:          runtime.GOOS,
+		Arch:        runtime.GOARCH,
 		HostVersion: base.Version,
 		Identity:    ext.buildIdentity(),
 		Name:        ext.Name,
