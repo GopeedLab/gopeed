@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart' show Drag;
 import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Column, Expanded, Row;
 
@@ -69,6 +70,7 @@ class FileTreeView<T> extends StatefulWidget {
     this.rowHeight = _treeRowHeight,
     this.contentTextStyle,
     this.iconSize = 18,
+    this.initialExpandedDepth,
   });
 
   final List<FileTreeItem<T>> items;
@@ -85,6 +87,9 @@ class FileTreeView<T> extends StatefulWidget {
   final TextStyle? contentTextStyle;
   final double iconSize;
 
+  /// Number of directory levels initially expanded; null expands all levels.
+  final int? initialExpandedDepth;
+
   @override
   State<FileTreeView<T>> createState() => _FileTreeViewState<T>();
 }
@@ -95,6 +100,7 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
   late final Animation<double> _reveal;
   final _scrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
+  Drag? _horizontalDrag;
   final Map<String, double> _labelWidthCache = {};
   TextStyle? _labelMeasurementStyle;
   TextDirection? _labelMeasurementDirection;
@@ -109,7 +115,7 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _nodes = _buildTree(widget.items);
+    _nodes = _buildTree(widget.items, expandedDepth: widget.initialExpandedDepth);
     _allFoldersExpanded = _foldersAreExpanded(_nodes);
     _transitionController = AnimationController(vsync: this, duration: _treeTransitionDuration, value: 1)
       ..addStatusListener(_onTransitionStatus);
@@ -134,6 +140,7 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
 
   @override
   void dispose() {
+    _horizontalDrag?.cancel();
     _transitionController.removeStatusListener(_onTransitionStatus);
     _transitionController.dispose();
     _scrollController.dispose();
@@ -286,26 +293,36 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
                 ),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: ClipRect(
-                    child: AnimatedBuilder(
-                      animation: _horizontalScrollController,
-                      builder: (context, child) {
-                        final offset = horizontalScrollEnabled && _horizontalScrollController.hasClients
-                            ? _horizontalScrollController.offset
-                            : 0.0;
-                        return Transform.translate(offset: Offset(-offset, 0), child: child);
-                      },
-                      child: OverflowBox(
-                        alignment: Alignment.centerLeft,
-                        minWidth: 0,
-                        maxWidth: double.infinity,
-                        child: SizedBox(
-                          width: nameContentWidth,
-                          child: Text(
-                            data.label,
-                            maxLines: 1,
-                            softWrap: false,
-                            style: contentTextStyle.copyWith(color: palette.textPrimary),
+                  child: GestureDetector(
+                    key: ValueKey('${widget.keyPrefix}-name-scroll-${data.key}'),
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: horizontalScrollEnabled ? _startNameDrag : null,
+                    onHorizontalDragUpdate: horizontalScrollEnabled
+                        ? (details) => _horizontalDrag?.update(details)
+                        : null,
+                    onHorizontalDragEnd: horizontalScrollEnabled ? (details) => _horizontalDrag?.end(details) : null,
+                    onHorizontalDragCancel: horizontalScrollEnabled ? () => _horizontalDrag?.cancel() : null,
+                    child: ClipRect(
+                      child: AnimatedBuilder(
+                        animation: _horizontalScrollController,
+                        builder: (context, child) {
+                          final offset = horizontalScrollEnabled && _horizontalScrollController.hasClients
+                              ? _horizontalScrollController.offset
+                              : 0.0;
+                          return Transform.translate(offset: Offset(-offset, 0), child: child);
+                        },
+                        child: OverflowBox(
+                          alignment: Alignment.centerLeft,
+                          minWidth: 0,
+                          maxWidth: double.infinity,
+                          child: SizedBox(
+                            width: nameContentWidth,
+                            child: Text(
+                              data.label,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: contentTextStyle.copyWith(color: palette.textPrimary),
+                            ),
                           ),
                         ),
                       ),
@@ -325,6 +342,12 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
         ),
       ],
     );
+  }
+
+  void _startNameDrag(DragStartDetails details) {
+    _horizontalDrag?.cancel();
+    if (!_horizontalScrollController.hasClients) return;
+    _horizontalDrag = _horizontalScrollController.position.drag(details, () => _horizontalDrag = null);
   }
 
   Widget _buildTreeTransition(BuildContext context, VirtualTreeEntry<FileTreeNode<T>> entry, Widget row) {
@@ -830,8 +853,10 @@ class _BuildNode<T> {
 
   int get size => item?.size ?? children.fold<int>(0, (sum, child) => sum + child.size);
 
-  TreeItemNode<FileTreeNode<T>> toTreeItem() {
-    final childItems = children.map((child) => child.toTreeItem()).toList(growable: false);
+  TreeItemNode<FileTreeNode<T>> toTreeItem({int? expandedDepth, int depth = 0}) {
+    final childItems = children
+        .map((child) => child.toTreeItem(expandedDepth: expandedDepth, depth: depth + 1))
+        .toList(growable: false);
     final leaves = item == null ? [for (final child in childItems) ...child.data.leafItems] : <FileTreeItem<T>>[item!];
     return TreeItemNode(
       data: FileTreeNode(
@@ -842,13 +867,13 @@ class _BuildNode<T> {
         originalIndex: originalIndex,
         item: item,
       ),
-      expanded: true,
+      expanded: expandedDepth == null || depth < expandedDepth,
       children: childItems,
     );
   }
 }
 
-List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items) {
+List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items, {int? expandedDepth}) {
   final root = <_BuildNode<T>>[];
   final folders = <String, _BuildNode<T>>{};
   var originalIndex = 0;
@@ -885,7 +910,7 @@ List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items) {
     }
   }
 
-  return root.map((node) => node.toTreeItem()).toList(growable: false);
+  return root.map((node) => node.toTreeItem(expandedDepth: expandedDepth)).toList(growable: false);
 }
 
 List<String> _visibleNodeKeysInOrder<T>(List<TreeNode<FileTreeNode<T>>> nodes) {

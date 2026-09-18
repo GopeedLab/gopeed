@@ -6,6 +6,7 @@ import '../theme/app_design_tokens.dart';
 import '../theme/app_palette.dart';
 import '../../l10n/l10n.dart';
 import 'app_text_field.dart';
+import 'app_form_row.dart';
 
 class AppHttpHeadersController extends ChangeNotifier {
   AppHttpHeadersController({Map<String, String>? headers, Iterable<String> defaultNames = const []}) {
@@ -69,84 +70,74 @@ class AppHttpHeadersController extends ChangeNotifier {
 }
 
 class AppHttpHeadersEditor extends StatelessWidget {
-  const AppHttpHeadersEditor({super.key, required this.controller, required this.label, required this.keyPrefix});
+  const AppHttpHeadersEditor({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.keyPrefix,
+    this.stacked = false,
+  });
 
   final AppHttpHeadersController controller;
   final String label;
   final String keyPrefix;
+  final bool stacked;
 
   @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    return Row(
-      key: ValueKey('$keyPrefix-editor'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 104,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(
-              label,
-              style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: AnimatedBuilder(
-            animation: controller,
-            builder: (context, _) => Column(
+  Widget build(BuildContext context) => AppFormRow(
+    key: ValueKey('$keyPrefix-editor'),
+    label: label,
+    direction: stacked ? Axis.vertical : Axis.horizontal,
+    child: AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => Column(
+        children: [
+          for (var index = 0; index < controller._rows.length; index++) ...[
+            Row(
               children: [
-                for (var index = 0; index < controller._rows.length; index++) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 382,
-                        child: _HeaderTextField(
-                          key: ValueKey('$keyPrefix-name-$index'),
-                          controller: controller._rows[index].name,
-                          hintText: context.l10n.httpHeaderName,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 618,
-                        child: _HeaderTextField(
-                          key: ValueKey('$keyPrefix-value-$index'),
-                          controller: controller._rows[index].value,
-                          hintText: context.l10n.httpHeaderValue,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      _HeaderAction(
-                        key: ValueKey('$keyPrefix-remove-$index'),
-                        icon: Icons.remove,
-                        onPressed: controller._rows.length == 1 ? null : () => controller.removeAt(index),
-                      ),
-                      const SizedBox(width: 4),
-                      Visibility(
-                        visible: index == controller._rows.length - 1,
-                        maintainAnimation: true,
-                        maintainSize: true,
-                        maintainState: true,
-                        child: _HeaderAction(
-                          key: index == controller._rows.length - 1 ? ValueKey('$keyPrefix-add') : null,
-                          icon: Icons.add,
-                          onPressed: controller.add,
-                        ),
-                      ),
-                    ],
+                Expanded(
+                  flex: 382,
+                  child: _HeaderTextField(
+                    key: ValueKey('$keyPrefix-name-$index'),
+                    controller: controller._rows[index].name,
+                    hintText: context.l10n.httpHeaderName,
                   ),
-                  if (index != controller._rows.length - 1) const SizedBox(height: 8),
-                ],
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 618,
+                  child: _HeaderTextField(
+                    key: ValueKey('$keyPrefix-value-$index'),
+                    controller: controller._rows[index].value,
+                    hintText: context.l10n.httpHeaderValue,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                _HeaderAction(
+                  key: ValueKey('$keyPrefix-remove-$index'),
+                  icon: Icons.remove,
+                  onPressed: controller._rows.length == 1 ? null : () => controller.removeAt(index),
+                ),
+                const SizedBox(width: 4),
+                Visibility(
+                  visible: index == controller._rows.length - 1,
+                  maintainAnimation: true,
+                  maintainSize: true,
+                  maintainState: true,
+                  child: _HeaderAction(
+                    key: index == controller._rows.length - 1 ? ValueKey('$keyPrefix-add') : null,
+                    icon: Icons.add,
+                    onPressed: controller.add,
+                  ),
+                ),
               ],
             ),
-          ),
-        ),
-      ],
-    );
-  }
+            if (index != controller._rows.length - 1) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    ),
+  );
 }
 
 class _HttpHeaderRowControllers {
