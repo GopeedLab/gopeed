@@ -200,13 +200,25 @@ func TestRemoveUnselectedFilePrunesOnlyEmptyParents(t *testing.T) {
 				if err != nil || string(data) != "keep" {
 					t.Fatalf("sibling changed: %q, %v", data, err)
 				}
-			} else if _, err := os.Stat(filepath.Join(root, "bundle")); !os.IsNotExist(err) {
-				t.Fatalf("empty torrent directory remains: %v", err)
+			}
+			if info, err := os.Stat(filepath.Join(root, "bundle")); err != nil || !info.IsDir() {
+				t.Fatalf("torrent root directory was removed: %v", err)
 			}
 			if _, err := os.Stat(root); err != nil {
 				t.Fatalf("download directory was removed: %v", err)
 			}
-			// Repeating cleanup after all files and directories are gone is harmless.
+			// A file directly inside the torrent root must not cause that root to be pruned.
+			rootFile := filepath.Join("bundle", "root.txt")
+			if err := os.WriteFile(filepath.Join(root, rootFile)+".part", []byte("partial"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := removeUnselectedFile(root, rootFile); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "bundle")); err != nil {
+				t.Fatalf("torrent root directory was removed after root-level cleanup: %v", err)
+			}
+			// Repeating cleanup after the file and its subdirectories are gone is harmless.
 			if err := removeUnselectedFile(root, relative); err != nil {
 				t.Fatal(err)
 			}

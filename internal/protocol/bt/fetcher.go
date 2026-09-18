@@ -411,11 +411,18 @@ func (f *Fetcher) Wait() (err error) {
 	}
 }
 
-// Path already includes the torrent's root directory. Never prune the download
-// directory itself, and only remove parent directories that are empty.
+// Path already includes the torrent's root directory. Preserve that directory
+// even when empty, and only prune empty directories below it.
 func removeUnselectedFile(downloadDir, torrentPath string) error {
+	if !filepath.IsLocal(torrentPath) {
+		return fmt.Errorf("invalid torrent file path %q", torrentPath)
+	}
 	root := filepath.Clean(downloadDir)
+	torrentPath = filepath.Clean(torrentPath)
 	name := filepath.Join(root, torrentPath)
+	if torrentDir, _, hasDir := strings.Cut(torrentPath, string(filepath.Separator)); hasDir {
+		root = filepath.Join(root, torrentDir)
+	}
 	for _, candidate := range []string{name, name + ".part"} {
 		if err := util.SafeRemove(candidate); err != nil {
 			return fmt.Errorf("remove unselected torrent file %q: %w", candidate, err)
