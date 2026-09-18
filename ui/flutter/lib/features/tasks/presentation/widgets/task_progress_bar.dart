@@ -1,3 +1,4 @@
+import 'package:shadcn_flutter/shadcn_flutter.dart' show kDefaultDuration;
 import 'package:flutter/widgets.dart';
 
 class TaskProgressBar extends StatefulWidget {
@@ -74,68 +75,76 @@ class _TaskProgressBarState extends State<TaskProgressBar> with SingleTickerProv
           color: widget.trackColor,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return AnimatedBuilder(
-                animation: _controller,
-                builder: (context, child) {
-                  if (widget.indeterminate) {
-                    final segmentWidth = constraints.maxWidth * 0.4;
-                    final left = lerpDouble(-segmentWidth, constraints.maxWidth, _controller.value);
+              final progress = (widget.value ?? 0).clamp(0.0, 1.0);
+              return TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: progress, end: progress),
+                duration: MediaQuery.disableAnimationsOf(context) || widget.indeterminate
+                    ? Duration.zero
+                    : kDefaultDuration,
+                curve: Curves.easeInOut,
+                builder: (context, animatedProgress, child) => AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    if (widget.indeterminate) {
+                      final segmentWidth = constraints.maxWidth * 0.4;
+                      final left = lerpDouble(-segmentWidth, constraints.maxWidth, _controller.value);
+
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Positioned(
+                            left: left,
+                            width: segmentWidth,
+                            top: 0,
+                            bottom: 0,
+                            child: _ProgressFill(
+                              color: widget.fillColor,
+                              shimmer: widget.shimmer,
+                              highlightStartColor: widget.highlightStartColor,
+                              highlightEndColor: widget.highlightEndColor,
+                              bandLeft: lerpDouble(-segmentWidth, segmentWidth * 2, _controller.value),
+                              bandWidth: segmentWidth * 0.5,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+
+                    final fillWidth = constraints.maxWidth * animatedProgress;
+                    final bandWidth = fillWidth == 0 ? 0.0 : (fillWidth * 0.35).clamp(16.0, 40.0);
+                    final travelDistance = fillWidth + bandWidth * 2;
+                    final durationMs = (travelDistance / _shimmerPixelsPerSecond * 1000)
+                        .clamp(_shimmerMinDurationMs, _shimmerMaxDurationMs)
+                        .round();
+
+                    if (widget.shimmer && widget.value != null && fillWidth > 0) {
+                      final duration = Duration(milliseconds: durationMs);
+                      if (_controller.duration != duration) {
+                        _controller.duration = duration;
+                      }
+                    }
 
                     return Stack(
                       fit: StackFit.expand,
                       children: [
-                        Positioned(
-                          left: left,
-                          width: segmentWidth,
-                          top: 0,
-                          bottom: 0,
-                          child: _ProgressFill(
-                            color: widget.fillColor,
-                            shimmer: widget.shimmer,
-                            highlightStartColor: widget.highlightStartColor,
-                            highlightEndColor: widget.highlightEndColor,
-                            bandLeft: lerpDouble(-segmentWidth, segmentWidth * 2, _controller.value),
-                            bandWidth: segmentWidth * 0.5,
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: SizedBox(
+                            width: fillWidth,
+                            child: _ProgressFill(
+                              color: widget.fillColor,
+                              shimmer: widget.shimmer,
+                              highlightStartColor: widget.highlightStartColor,
+                              highlightEndColor: widget.highlightEndColor,
+                              bandLeft: lerpDouble(-bandWidth, fillWidth + bandWidth, _controller.value),
+                              bandWidth: bandWidth,
+                            ),
                           ),
                         ),
                       ],
                     );
-                  }
-
-                  final fillWidth = constraints.maxWidth * ((widget.value ?? 0).clamp(0, 1));
-                  final bandWidth = fillWidth == 0 ? 0.0 : (fillWidth * 0.35).clamp(16.0, 40.0);
-                  final travelDistance = fillWidth + bandWidth * 2;
-                  final durationMs = (travelDistance / _shimmerPixelsPerSecond * 1000)
-                      .clamp(_shimmerMinDurationMs, _shimmerMaxDurationMs)
-                      .round();
-
-                  if (widget.shimmer && widget.value != null && fillWidth > 0) {
-                    final duration = Duration(milliseconds: durationMs);
-                    if (_controller.duration != duration) {
-                      _controller.duration = duration;
-                    }
-                  }
-
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: SizedBox(
-                          width: fillWidth,
-                          child: _ProgressFill(
-                            color: widget.fillColor,
-                            shimmer: widget.shimmer,
-                            highlightStartColor: widget.highlightStartColor,
-                            highlightEndColor: widget.highlightEndColor,
-                            bandLeft: lerpDouble(-bandWidth, fillWidth + bandWidth, _controller.value),
-                            bandWidth: bandWidth,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                  },
+                ),
               );
             },
           ),
