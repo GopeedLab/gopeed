@@ -98,6 +98,7 @@ func RunEventContract(t *testing.T, provider wv.Provider) {
 	if e.Data["message"] == "" || !strings.Contains(fmt.Sprint(e.Data["url"]), "/failure") {
 		t.Fatal(e)
 	}
+	quiet() // A handled failure must not load a browser-generated fallback page.
 	if err := page.Close(); err != nil {
 		t.Fatal(err)
 	}
