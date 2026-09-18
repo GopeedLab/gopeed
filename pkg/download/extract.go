@@ -282,17 +282,13 @@ func countArchiveFiles(archivePath string, password string) (int, error) {
 
 // extractFile handles extracting a single file from an archive
 func extractFile(ctx context.Context, fileInfo archives.FileInfo, destDir string) error {
-	// Skip directories, they will be created when extracting files
-	if fileInfo.IsDir() {
-		destPath := filepath.Join(destDir, fileInfo.NameInArchive)
-		return os.MkdirAll(destPath, fileInfo.Mode())
-	}
-
-	// Sanitize the path to prevent path traversal attacks
 	cleanPath := filepath.Clean(fileInfo.NameInArchive)
 	if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) {
-		// Skip files with suspicious paths
 		return nil
+	}
+
+	if fileInfo.IsDir() {
+		return os.MkdirAll(filepath.Join(destDir, cleanPath), fileInfo.Mode())
 	}
 
 	destPath := filepath.Join(destDir, cleanPath)
