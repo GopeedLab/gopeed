@@ -108,8 +108,10 @@ func RunProviderContract(t *testing.T, provider enginewebview.Provider, opts Con
 		t.Fatalf("expected click count to be 1, got %v", clickCount)
 	}
 
+	// Hidden WebViews can throttle timers on shared CI runners. Keep the
+	// positive asynchronous waits within the same budget as navigation.
 	found, err := page.WaitForSelector("#delayed", map[string]any{
-		"timeoutMs":      5000,
+		"timeoutMs":      10000,
 		"pollIntervalMs": 25,
 		"visible":        true,
 	})
@@ -117,11 +119,18 @@ func RunProviderContract(t *testing.T, provider enginewebview.Provider, opts Con
 		t.Fatalf("waitForSelector failed: %v", err)
 	}
 	if !found {
-		t.Fatal("expected delayed selector to appear")
+		diagnostic, diagnosticErr := page.Execute(`() => {
+			const element = document.querySelector('#delayed');
+			const rect = element && element.getBoundingClientRect();
+			return {url: location.href, readyState: document.readyState,
+				visibility: document.visibilityState, exists: !!element,
+				width: rect && rect.width, height: rect && rect.height};
+		}`)
+		t.Fatalf("expected delayed selector to appear: state=%v, diagnostic error=%v", diagnostic, diagnosticErr)
 	}
 
 	value, err := page.WaitForFunction(`() => window.__readyValue`, map[string]any{
-		"timeoutMs":      5000,
+		"timeoutMs":      10000,
 		"pollIntervalMs": 25,
 	})
 	if err != nil {
