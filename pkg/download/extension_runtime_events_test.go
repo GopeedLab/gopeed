@@ -24,16 +24,20 @@ type eventTestOpener struct{ page wv.Page }
 
 func (o eventTestOpener) Open(wv.OpenOptions) (wv.Page, error) { return o.page, nil }
 
-func TestExtensionInfoHostMetadata(t *testing.T) {
+func TestExtensionHostEnv(t *testing.T) {
 	e := engine.NewEngine(nil)
 	defer e.Close()
 	info := NewExtensionInfo(&Extension{Name: "sample", Author: "test", Version: "1.2.3"})
 	if err := injectGopeed(e.Runtime, &Instance{Info: info}, e.Post); err != nil {
 		t.Fatal(err)
 	}
-	result, err := e.RunString(`gopeed.info.hostVersion + "/" + gopeed.info.version + "/" + gopeed.info.os + "/" + gopeed.info.arch`)
+	result, err := e.RunString(`gopeed.host.env.version + "/" + gopeed.info.version + "/" + gopeed.host.env.os + "/" + gopeed.host.env.arch`)
 	if err != nil || result != base.Version+"/1.2.3/"+runtime.GOOS+"/"+runtime.GOARCH {
 		t.Fatalf("%v %v", result, err)
+	}
+	result, err = e.RunString(`["hostVersion", "os", "arch"].some(key => key in gopeed.info)`)
+	if err != nil || result != false {
+		t.Fatalf("host metadata retained in extension info: %v %v", result, err)
 	}
 }
 
