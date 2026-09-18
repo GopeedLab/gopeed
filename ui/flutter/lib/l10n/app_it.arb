@@ -239,6 +239,7 @@
   "back": "Indietro",
   "open": "Apri",
   "openFile": "Apri file",
+  "openFolder": "Apri cartella",
   "share": "Condividi",
   "copy": "Copia",
   "copied": "- Si'",
