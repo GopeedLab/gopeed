@@ -18,6 +18,7 @@
   "exit": "Beenden",
   "pressBackAgainToExit": "Drücken Sie erneut Zurück, um die App zu beenden",
   "create": "Aufgabe Erstellen",
+  "createAction": "Erstellen",
   "directDownload": "Direkter Download",
   "advancedOptions": "Erweiterte Einstellungen",
   "followSettings": "Einstellungen Folgen",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Als Standard-Downloadordner speichern",
   "downloadDirValid": "Bitte wählen Sie das Download-Verzeichnis",
   "connections": "Anschlüsse",
+  "maxRetries": "Maximale Wiederholungsversuche",
   "useServerCtime": "Serverzeit für die Dateierstellung verwenden",
   "maxRunning": "Maximale Anzahl ausgeführter Aufgaben",
   "defaultDirectDownload": "Direkten Download standardmäßig aktivieren",
@@ -102,6 +104,7 @@
   "extensions": "Erweiterungen",
   "extensionInstallUrl": "Installations-URL",
   "extensionInstallSuccess": "Erfolgreich installiert",
+  "extensionUpdateConfirm": "„{name}“ auf die neueste Version aktualisieren?",
   "extensionUpdateSuccess": "Erfolgreich aktualisiert",
   "extensionDelete": "Erweiterung löschen",
   "extensionAlreadyLatest": "Es ist bereits die neueste Version",
@@ -236,6 +239,7 @@
   "back": "Zurück",
   "open": "Offen",
   "openFile": "Datei öffnen",
+  "openFolder": "Ordner öffnen",
   "share": "Teilen",
   "copy": "Kopie",
   "copied": "Kopiert",
@@ -352,7 +356,7 @@
   "resolvedFileCount": "{count}-Dateien behoben",
   "resourceHasNoFiles": "Die Ressource verfügt über keine auswählbare Dateiliste",
   "noFiles": "Keine Dateien",
-  "createHistory": "Verlauf erstellen",
+  "historyLinks": "Verlaufslinks",
   "noHistory": "Keine Historie",
   "directDownloadDescription": "Überspringen Sie die Lösung und erstellen Sie sofort Aufgaben",
   "taskProgress": "Aufgabenfortschritt",
@@ -441,5 +445,6 @@
   "webApiConfigReadOnlyHelp": "In der Web-Version können API-Einstellungen nicht online geändert werden. Ändere die Server-Startoptionen oder die Konfigurationsdatei und starte den Dienst neu, damit die Änderungen wirksam werden.",
   "webMcpApiTokenHint": "Wenn du ein API-Token konfiguriert hast, müssen beim Verbinden des Agents Authentifizierungsinformationen übermittelt werden",
   "useMcpApiTokenTemplate": "Zur authentifizierten Konfiguration wechseln",
-  "mcpRequiresTcp": "Anweisungen zur Agent-Verbindung sind verfügbar, wenn das API-Protokoll TCP ist."
+  "mcpRequiresTcp": "Anweisungen zur Agent-Verbindung sind verfügbar, wenn das API-Protokoll TCP ist.",
+  "emptyTaskCreateHint": "Klicke auf {action}, um den Download zu starten"
 }

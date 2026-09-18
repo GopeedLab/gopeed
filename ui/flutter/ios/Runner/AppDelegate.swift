@@ -14,10 +14,13 @@ import UIKit
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     let messenger = engineBridge.applicationRegistrar.messenger()
+    let libgopeedTaskQueue = messenger.makeBackgroundTaskQueue?()
 
     let libgopeedChannel = FlutterMethodChannel(
       name: "gopeed.com/libgopeed",
-      binaryMessenger: messenger
+      binaryMessenger: messenger,
+      codec: FlutterStandardMethodCodec.sharedInstance(),
+      taskQueue: libgopeedTaskQueue
     )
     let taskEventForwarder = GopeedTaskEventForwarder(channel: libgopeedChannel)
     libgopeedChannel.setMethodCallHandler { call, result in
@@ -56,11 +59,23 @@ import UIKit
         let path = arguments?["path"] as? String ?? ""
         let query = arguments?["query"] as? String ?? ""
         let body = arguments?["body"] as? String ?? ""
-        result(LibgopeedInvoke(method, path, query, body))
+        let requestID = (arguments?["requestID"] as? NSNumber)?.int64Value ?? 0
+        GopeedInvokeAsyncWithResult(method, path, query, body, requestID, result)
       case "subscribeTaskEvents":
         let arguments = call.arguments as? [String: Any]
-        let mask = (arguments?["mask"] as? NSNumber)?.int64Value ?? 0
-        GopeedSubscribeTaskEventsWithForwarder(mask, mask == 0 ? nil : taskEventForwarder)
+        let flutterMask =
+            (arguments?["mask"] as? NSNumber)?.int64Value ?? 0
+
+        let liveActivityMask =
+            LibgopeedLiveActivityTaskEventMask()
+
+        let combinedMask =
+            flutterMask | liveActivityMask
+
+        GopeedSubscribeTaskEventsWithForwarder(
+            combinedMask,
+            taskEventForwarder
+        )
         result(nil)
       default:
         result(FlutterMethodNotImplemented)
@@ -87,5 +102,55 @@ import UIKit
         result(FlutterMethodNotImplemented)
       }
     }
+    let continuedProcessingChannel =
+    FlutterMethodChannel(
+        name: "gopeed/continued_processing",
+        binaryMessenger: messenger
+    )
+
+    continuedProcessingChannel
+        .setMethodCallHandler { call, result in
+
+            switch call.method {
+
+            case "isSupported":
+
+                if #available(iOS 26.0, *) {
+                    result(true)
+                } else {
+                    result(false)
+                }
+
+            case "setEnabled":
+
+                let arguments =
+                    call.arguments
+                        as? [String: Any]
+
+                let enabled =
+                    arguments?["enabled"]
+                        as? Bool
+                    ?? false
+
+                if #available(iOS 26.0, *) {
+
+                    GopeedContinuedProcessingManager
+                        .shared
+                        .setEnabled(enabled) {
+                            success in
+                            result(success)
+                        }
+
+                } else {
+
+                    result(!enabled)
+                }
+
+            default:
+                result(
+                    FlutterMethodNotImplemented
+                )
+            }
+       }
   }
 }

@@ -5,8 +5,10 @@ import "encoding/json"
 const RPCEndpointPath = "/webview"
 
 const (
+	MethodProfileRemove     = "profile.remove"
 	MethodIsAvailable       = "webview.isAvailable"
 	MethodPageOpen          = "page.open"
+	MethodPageEvents        = "page.events"
 	MethodPageAddInitScript = "page.addInitScript"
 	MethodPageGoto          = "page.goto"
 	MethodPageExecute       = "page.execute"
@@ -68,6 +70,9 @@ type IsAvailableResult struct {
 }
 
 type PageOpenParams struct {
+	ProfileID string `json:"profileId,omitempty"`
+	DataPath  string `json:"dataPath,omitempty"`
+	ProxyURL  string `json:"proxyUrl,omitempty"`
 	Headless  bool   `json:"headless,omitempty"`
 	Debug     bool   `json:"debug,omitempty"`
 	Title     string `json:"title,omitempty"`
@@ -78,6 +83,9 @@ type PageOpenParams struct {
 
 func NewPageOpenParams(opts OpenOptions) PageOpenParams {
 	return PageOpenParams{
+		ProfileID: opts.ProfileID,
+		DataPath:  opts.DataPath,
+		ProxyURL:  opts.ProxyURL,
 		Headless:  opts.Headless,
 		Debug:     opts.Debug,
 		Title:     opts.Title,
@@ -141,3 +149,8 @@ type PageCloseParams struct {
 }
 
 type EmptyResult struct{}
+
+// ProfileRemoveParams belongs to the private host RPC.
+type ProfileRemoveParams struct {
+	ProfileID string `json:"profileId"`
+}

@@ -10,6 +10,7 @@ class AppDesignTokens {
   static const double contentHeaderHeight = 48;
   static const double taskRowHeight = 72;
   static const double controlRadius = 4;
+  static const double dialogActionMinWidth = 100;
   static const double checkboxSize = 18;
   static const double checkboxLabelGap = 10;
   static const double taskDetailsDrawerMinWidth = 440;
@@ -21,6 +22,9 @@ class AppDesignTokens {
   static const double settingsFormControlWidth = 420;
   static const double settingsNumberControlWidth = 168;
   static const double settingsItemMinLabelWidth = 160;
+  static const EdgeInsets textFieldPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 11);
+  static const EdgeInsets compactTextFieldPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 6);
+  static const EdgeInsets numberTextFieldPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 10);
 
   static const EdgeInsets pagePadding = EdgeInsets.symmetric(horizontal: 32);
   static const EdgeInsets sidebarPadding = EdgeInsets.symmetric(horizontal: 16);

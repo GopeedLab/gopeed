@@ -105,6 +105,10 @@
           return Promise.resolve({ done: true, value: undefined });
         }
         this._maybePull();
+        // pull() may synchronously error before a waiter has been registered.
+        if (this._errored) {
+          return Promise.reject(this._errored);
+        }
         if (this._queue.length > 0) {
           return Promise.resolve({ done: false, value: this._queue.shift() });
         }
@@ -730,6 +734,8 @@
     finishBlobPipeReader(state, true, reason).catch(function () {});
   };
 
+  const producers = new WeakMap();
+  globalThis.__gopeed_bind_producer = (stream, id) => producers.set(stream, id);
   globalThis.__gopeed_blob_pipe_source = function (openReadable, request, pipeId) {
     if (typeof openReadable !== "function") {
       throw new TypeError("blob opener must be callable");
@@ -748,6 +754,8 @@
       try {
         const source = await openReadable(normalizeOpenRequest(request));
         state.openSettled = true;
+        const producer = producers.get(source);
+        globalThis.__gopeed_blob_pipe_bind(pipeId, producer || "");
         state.reader = toReadableStreamReader(source, "gopeed.runtime.blob.createObjectURL opener function");
         if (state.cancelRequested) {
           await finishBlobPipeReader(state, true, state.cancelReason);
@@ -760,17 +768,20 @@
             return;
           }
           const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
-          const buffer = chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength);
-          if (!globalThis.__gopeed_blob_pipe_chunk(pipeId, buffer)) {
-            state.cancelRequested = true;
-            state.cancelReason = "blob pipe closed";
-            return;
+          for (let offset = 0; offset < chunk.byteLength; offset += 256 * 1024) {
+            const part = chunk.subarray(offset, offset + 256 * 1024);
+            const buffer = part.buffer.slice(part.byteOffset, part.byteOffset + part.byteLength);
+            if (!await globalThis.__gopeed_blob_pipe_chunk(pipeId, buffer)) {
+              state.cancelRequested = true;
+              state.cancelReason = "blob pipe closed";
+              return;
+            }
           }
           await yieldBlobPipeTask();
         }
       } catch (error) {
         if (!state.cancelRequested) {
-          globalThis.__gopeed_blob_pipe_error(pipeId, error && error.stack ? error.stack : String(error));
+          globalThis.__gopeed_blob_pipe_error(pipeId, error && (error.stack || error.message) ? (error.stack || error.message) : String(error));
         }
       } finally {
         state.openSettled = true;

@@ -77,6 +77,8 @@ jobs:
         include:
           - name: Windows
             os: windows-latest
+          - name: Linux
+            os: ubuntu-latest
           - name: macOS
             os: macos-latest
     runs-on: ${{ matrix.os }}
@@ -89,9 +91,25 @@ jobs:
         if: runner.os == 'macOS'
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Install Linux WebView dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev xvfb
+      - name: Test webview
+        if: runner.os == 'Linux'
+        # Match the full suite's coverage instrumentation and repeat on the same
+        # GTK event loop to catch queued callbacks after engine destruction.
+        run: |
+          PACKAGES=$(go list ./... | awk '!/\/bind\// && (!/\/cmd\// || /\/cmd\/web$/)')
+          go test -c -tags webview -coverpkg=$(echo "$PACKAGES" | paste -sd "," -) -covermode=count -o "$RUNNER_TEMP/goprovider.test" ./internal/webview/goprovider
+          xvfb-run -a "$RUNNER_TEMP/goprovider.test" -test.v -test.count=5 -test.timeout=300s -test.coverprofile="$RUNNER_TEMP/webview-coverage.out"
+        env:
+          CGO_ENABLED: 1
       - name: Test webview
         if: runner.os == 'Windows'
-        run: go test -tags webview -v -count=1 -timeout 300s ./internal/webview/goprovider/
+        # Repeat close/reopen coverage to catch browser shutdown races.
+        run: go test -tags webview -v -count=3 -timeout 300s ./internal/webview/goprovider/
         env:
           CGO_ENABLED: 1
       - name: Test webview
@@ -213,7 +231,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ macos-14, ubuntu-latest ]
+        os: [ macos-26, ubuntu-latest ]
     needs: [ test ]
     steps:
       - uses: actions/checkout@v3

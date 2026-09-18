@@ -23,6 +23,7 @@ class StartConfig {
   bool mcpEnable = false;
   late String storage;
   late String storageDir;
+  String? tempDir;
   late int refreshInterval;
   late String apiToken;
   WebViewRpcConfig? webViewRpcConfig;

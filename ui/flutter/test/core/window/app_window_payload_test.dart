@@ -9,9 +9,9 @@ void main() {
   test('create-task child window has a localized native title', () {
     expect(
       AppWindowBootstrap.subWindowTitle(AppWindowType.createTask, appLocalizationsFor('en')),
-      'Create Task - Gopeed',
+      'Gopeed-Create Task',
     );
-    expect(AppWindowBootstrap.subWindowTitle(AppWindowType.createTask, appLocalizationsFor('zh')), '创建任务 - Gopeed');
+    expect(AppWindowBootstrap.subWindowTitle(AppWindowType.createTask, appLocalizationsFor('zh')), 'Gopeed-创建任务');
   });
 
   test('create-task payload only carries initial task data', () {

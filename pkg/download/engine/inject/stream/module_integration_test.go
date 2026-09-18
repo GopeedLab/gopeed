@@ -269,3 +269,57 @@ func newStreamTestEngine(t *testing.T, created chan<- createdObjectURL) (*engine
 	})
 	return e, e.Close
 }
+
+// A stalled disk/network consumer must pause the producer without blocking
+// the JS event loop, so cancellation and other tracks can still run.
+func TestBlobBackpressureLeavesEventLoopResponsive(t *testing.T) {
+	created := make(chan createdObjectURL, 1)
+	e, cleanup := newStreamTestEngine(t, created)
+	defer cleanup()
+	_, err := e.RunString(`
+ globalThis.produced = 0;
+ globalThis.sourceCancelled = false;
+ __gopeed_blob_create_object_url(() => new ReadableStream({
+   pull(c) { produced++; c.enqueue(new Uint8Array(64*1024)); },
+   cancel() { sourceCancelled = true; }
+ }));
+ `)
+	if err != nil {
+		t.Fatal(err)
+	}
+	object := <-created
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	reader, err := object.open(ctx, stream.ObjectURLOpenRequest{End: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	time.Sleep(100 * time.Millisecond)
+	value, err := e.RunString("produced")
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := value.(int64)
+	if before > 10 {
+		t.Fatalf("unbounded production: %d", before)
+	}
+	time.Sleep(50 * time.Millisecond)
+	after, err := e.RunString("produced")
+	if err != nil || after != value {
+		t.Fatalf("producer did not pause: %v -> %v (%v)", value, after, err)
+	}
+	if ctx.Err() != nil {
+		t.Fatal("event loop only resumed after cancellation")
+	}
+	if _, err = reader.Read(make([]byte, 64*1024)); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(30 * time.Millisecond)
+	after, err = e.RunString("produced")
+	if err != nil || after.(int64) <= before {
+		t.Fatalf("producer did not resume: %v (%v)", after, err)
+	}
+	reader.Close()
+	waitForJSValue(t, e, "String(sourceCancelled)", "true")
+}

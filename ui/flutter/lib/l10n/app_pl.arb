@@ -18,6 +18,7 @@
   "exit": "Wyjście",
   "pressBackAgainToExit": "Naciśnij ponownie Wstecz, aby wyjść",
   "create": "Utwórz zadanie",
+  "createAction": "Utwórz",
   "directDownload": "Pobieranie bezpośrednie",
   "advancedOptions": "Zaawansowane",
   "followSettings": "Podążaj za ustawieniami",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Zapisz jako domyślny folder pobierania",
   "downloadDirValid": "Wskaż folder pobierania",
   "connections": "Połączenia",
+  "maxRetries": "Maks. liczba ponownych prób",
   "useServerCtime": "Użyj czasu serwera do utworzenia pliku",
   "maxRunning": "Maksymalna liczba zadań",
   "defaultDirectDownload": "Domyślnie sprawdź bezpośredni pobór",
@@ -102,6 +104,7 @@
   "extensions": "Wtyczki",
   "extensionInstallUrl": "Instaluj z url",
   "extensionInstallSuccess": "Instalacja zakończona",
+  "extensionUpdateConfirm": "Zaktualizować „{name}” do najnowszej wersji?",
   "extensionUpdateSuccess": "Aktualizacja zakończona",
   "extensionDelete": "Usuń wtyczkę",
   "extensionAlreadyLatest": "Wtyczka w aktualnej wersji",
@@ -236,6 +239,7 @@
   "back": "Wstecz",
   "open": "Otwórz",
   "openFile": "Otwórz plik",
+  "openFolder": "Otwórz folder",
   "share": "Udostępnij",
   "copy": "Kopiuj",
   "copied": "Kopiowane",
@@ -352,7 +356,7 @@
   "resolvedFileCount": "{count} plików rozwiązanych",
   "resourceHasNoFiles": "Zasób nie ma listy plików do wyboru",
   "noFiles": "Brak plików",
-  "createHistory": "Utwórz historię",
+  "historyLinks": "Linki historii",
   "noHistory": "Brak historii",
   "directDownloadDescription": "Pomiń rozwiązywanie i tworzyć zadania natychmiast",
   "taskProgress": "Postępy w realizacji zadań",
@@ -441,5 +445,6 @@
   "webApiConfigReadOnlyHelp": "Wersja webowa nie obsługuje edycji ustawień API online. Zmień opcje uruchamiania serwera lub plik konfiguracyjny, a następnie uruchom usługę ponownie.",
   "webMcpApiTokenHint": "Jeśli skonfigurowano token API, podczas łączenia agenta należy przekazać dane uwierzytelniające",
   "useMcpApiTokenTemplate": "Przełącz na konfigurację z uwierzytelnianiem",
-  "mcpRequiresTcp": "Instrukcje łączenia agentów są dostępne, gdy protokół API to TCP."
+  "mcpRequiresTcp": "Instrukcje łączenia agentów są dostępne, gdy protokół API to TCP.",
+  "emptyTaskCreateHint": "Kliknij {action}, aby rozpocząć pobieranie"
 }

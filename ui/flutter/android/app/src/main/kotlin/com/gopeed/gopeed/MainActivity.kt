@@ -1,6 +1,7 @@
 package com.gopeed.gopeed
 
 import com.gopeed.libgopeed.Libgopeed
+import com.gopeed.libgopeed.InvokeResultListener
 import com.gopeed.libgopeed.TaskEventListener
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -38,13 +39,23 @@ class MainActivity : FlutterActivity() {
                 "restartApiServer" -> result.success(Libgopeed.restartAPIServer())
                 "invoke" -> {
                     try {
-                        result.success(
-                            Libgopeed.invoke(
-                                call.argument<String>("method") ?: "",
-                                call.argument<String>("path") ?: "",
-                                call.argument<String>("query") ?: "",
-                                call.argument<String>("body") ?: "",
-                            ),
+                        Libgopeed.invokeAsync(
+                            call.argument<String>("method") ?: "",
+                            call.argument<String>("path") ?: "",
+                            call.argument<String>("query") ?: "",
+                            call.argument<String>("body") ?: "",
+                            call.argument<Number>("requestID")?.toLong() ?: 0L,
+                            object : InvokeResultListener {
+                                override fun onResult(requestID: Long, success: Boolean, payload: String?) {
+                                    runOnUiThread {
+                                        if (success) {
+                                            result.success(payload ?: "")
+                                        } else {
+                                            result.error("ERROR", payload ?: "InvokeAsync failed", null)
+                                        }
+                                    }
+                                }
+                            },
                         )
                     } catch (error: Exception) {
                         result.error("ERROR", error.message, null)

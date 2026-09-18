@@ -26,16 +26,18 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   override func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-    if !flag {
-      for window in NSApp.windows {
-        if !window.isVisible {
-          window.setIsVisible(true)
-        }
-        window.makeKeyAndOrderFront(self)
+    // Closed child windows can remain in NSApp.windows. Restoring every
+    // window resurrects completed create-task forms with their last frame.
+    // Use the main window even when an unfinished child is still visible.
+    if let window = sender.windows.first(where: { $0 is MainFlutterWindow }) {
+      if window.isMiniaturized {
+        window.deminiaturize(self)
       }
-      NSApp.activate(ignoringOtherApps: true)
+      window.makeKeyAndOrderFront(self)
+      sender.activate(ignoringOtherApps: true)
     }
-    return true
+    // We handled reopening; AppKit must not restore other retained windows.
+    return false
   }
 
   override func application(_ sender: NSApplication, openFile filename: String) -> Bool {

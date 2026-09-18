@@ -3,9 +3,11 @@ package download
 import (
 	"context"
 	"io"
+	"strings"
 	"sync"
 
 	internalblob "github.com/GopeedLab/gopeed/internal/blob"
+	httpProtocol "github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
 	"github.com/GopeedLab/gopeed/pkg/download/engine/inject/stream"
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
@@ -119,21 +121,29 @@ func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession) {
 			return d.blob.Revoke(url)
 		},
 	}
+	httpConfig := struct {
+		UserAgent string `json:"userAgent"`
+	}{UserAgent: httpProtocol.DefaultUserAgent}
+	d.getProtocolConfig("http", &httpConfig)
+	userAgent := strings.TrimSpace(httpConfig.UserAgent)
 	e := engine.NewEngine(&engine.Config{
-		ProxyConfig:  d.cfg.Proxy,
-		StreamConfig: engineCfg,
+		TempDir:       d.cfg.TempDir,
+		TempFiles:     d.tempFiles,
+		HTTPUserAgent: &userAgent,
+		ProxyConfig:   d.cfg.Proxy,
+		StreamConfig:  engineCfg,
 	})
 	session.SetEngine(e)
 	return e, session
 }
 
-func (d *Downloader) newExtensionWebViewRuntime(session *engineSession) *enginewebview.Runtime {
+func (d *Downloader) newExtensionWebViewRuntime(session *engineSession, identity string) *enginewebview.Runtime {
 	var (
 		opener    enginewebview.Opener
 		available bool
 	)
 	if provider := d.cfg.WebViewProvider; provider != nil && provider.IsAvailable() {
-		opener = provider
+		opener = &extensionWebViewOpener{downloader: d, provider: provider, identity: identity, profile: d.extensionWebViewProfile(identity)}
 		available = true
 	}
 	runtime := enginewebview.NewRuntime(opener, available)

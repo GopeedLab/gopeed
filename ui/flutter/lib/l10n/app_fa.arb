@@ -18,6 +18,7 @@
   "exit": "خروج",
   "pressBackAgainToExit": "برای خروج دوباره دکمه بازگشت را فشار دهید",
   "create": "ایجاد کار",
+  "createAction": "ایجاد",
   "directDownload": "دانلود مستقیم",
   "advancedOptions": "گزینه های پیشرفته",
   "followSettings": "تنظیمات را دنبال کنید",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "ذخیره به‌عنوان پوشه پیش‌فرض دانلود",
   "downloadDirValid": "لطفا دایرکتوری دانلود را انتخاب کنید",
   "connections": "اتصالات",
+  "maxRetries": "حداکثر تلاش مجدد",
   "useServerCtime": "استفاده از زمان سرور برای ایجاد فایل",
   "maxRunning": "حداکثر وظایف در حال اجرا",
   "defaultDirectDownload": "دانلود مستقیم را به صورت پیش فرض بررسی کنید",
@@ -102,6 +104,7 @@
   "extensions": "افزونه‌ها",
   "extensionInstallUrl": "نشانی نصب",
   "extensionInstallSuccess": "نصب شده با موفقیت",
+  "extensionUpdateConfirm": "«{name}» به آخرین نسخه به‌روزرسانی شود؟",
   "extensionUpdateSuccess": "به روز رسانی موفقیت آمیز",
   "extensionDelete": "حذف افزونه",
   "extensionAlreadyLatest": "این نسخه در حال حاضر آخرین نسخه است",
@@ -236,6 +239,7 @@
   "back": "بازگشت",
   "open": "باز کردن",
   "openFile": "باز کردن فایل",
+  "openFolder": "باز کردن پوشه",
   "share": "اشتراک‌گذاری",
   "copy": "کپی",
   "copied": "اخراج",
@@ -352,7 +356,7 @@
   "resolvedFileCount": "{count} فایل شناسایی شد",
   "resourceHasNoFiles": "منبع هیچ لیست فایل قابل انتخاب ندارد",
   "noFiles": "فایل ها",
-  "createHistory": "ایجاد تاریخ",
+  "historyLinks": "پیوندهای تاریخچه",
   "noHistory": "تاریخ",
   "directDownloadDescription": "پیاده سازی و ایجاد وظایف بلافاصله",
   "taskProgress": "پیشرفت شغلی",
@@ -441,5 +445,6 @@
   "webApiConfigReadOnlyHelp": "نسخه وب از ویرایش آنلاین تنظیمات API پشتیبانی نمی‌کند. گزینه‌های راه‌اندازی سرور یا فایل پیکربندی را تغییر دهید و برای اعمال تغییرات سرویس را دوباره راه‌اندازی کنید.",
   "webMcpApiTokenHint": "اگر توکن API را پیکربندی کرده‌اید، هنگام اتصال عامل باید اطلاعات احراز هویت را ارسال کنید",
   "useMcpApiTokenTemplate": "تغییر به پیکربندی احراز هویت",
-  "mcpRequiresTcp": "راهنمای اتصال عامل زمانی در دسترس است که پروتکل API روی TCP باشد."
+  "mcpRequiresTcp": "راهنمای اتصال عامل زمانی در دسترس است که پروتکل API روی TCP باشد.",
+  "emptyTaskCreateHint": "برای شروع دانلود روی {action} کلیک کنید"
 }

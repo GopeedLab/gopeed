@@ -9,6 +9,7 @@ import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../l10n/l10n.dart';
 
 class SettingsListEntry {
@@ -121,7 +122,7 @@ Future<String?> showTextSettingDialog(
   required String fieldLabel,
   String initialValue = '',
   bool requireHttpUrl = false,
-  Future<String?> Function()? pickPath,
+  bool pickFile = false,
   Future<void> Function(String value)? onTest,
 }) async {
   final controller = TextEditingController(text: initialValue);
@@ -188,16 +189,12 @@ Future<String?> showTextSettingDialog(
               children: [
                 Text(fieldLabel, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
-                if (pickPath == null)
-                  shad.TextField(controller: controller)
+                if (!pickFile)
+                  AppTextField(controller: controller)
                 else
-                  AppPathPickerField(
+                  AppPathPickerField.file(
                     controller: controller,
                     desktopWidth: AppDesignTokens.settingsFormControlWidth,
-                    onPick: () async {
-                      final path = await pickPath();
-                      if (path != null && path.isNotEmpty) controller.text = path;
-                    },
                   ),
                 if (validationMessage != null || testMessage != null) ...[
                   const SizedBox(height: 8),
@@ -302,7 +299,7 @@ Future<GithubMirrorDraft?> showGithubMirrorDialog(BuildContext context, {GithubM
                 const SizedBox(height: 14),
                 Text(dialogContext.l10n.githubMirrorUrl, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
-                shad.TextField(controller: controller),
+                AppTextField(controller: controller),
                 if (validationMessage != null) ...[
                   const SizedBox(height: 8),
                   Text(validationMessage!, style: TextStyle(color: palette.error, fontSize: 12)),

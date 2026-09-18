@@ -18,6 +18,7 @@
   "exit": "Выход",
   "pressBackAgainToExit": "Нажмите «Назад» ещё раз, чтобы выйти",
   "create": "Создать задачу",
+  "createAction": "Создать",
   "directDownload": "Прямая загрузка",
   "advancedOptions": "Расширенные опции",
   "followSettings": "По умолчанию",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Сохранить как папку загрузок по умолчанию",
   "downloadDirValid": "Пожалуйста, выберите папку для загрузки",
   "connections": "Соединений",
+  "maxRetries": "Макс. число повторов",
   "useServerCtime": "Использовать время сервера для создания файла",
   "maxRunning": "Максимальное количество активных задач",
   "defaultDirectDownload": "Прямая загрузка по умолчанию",
@@ -102,6 +104,7 @@
   "extensions": "Расширения",
   "extensionInstallUrl": "URL для установки",
   "extensionInstallSuccess": "Установка завершена",
+  "extensionUpdateConfirm": "Обновить «{name}» до последней версии?",
   "extensionUpdateSuccess": "Обновление завершено",
   "extensionDelete": "Удалить расширение",
   "extensionAlreadyLatest": "Это последняя версия",
@@ -236,6 +239,7 @@
   "back": "Назад",
   "open": "Открыть",
   "openFile": "Открыть файл",
+  "openFolder": "Открыть папку",
   "share": "Поделиться",
   "copy": "Копия",
   "copied": "Копирован",
@@ -352,7 +356,7 @@
   "resolvedFileCount": "{count} файлов, разрешенных",
   "resourceHasNoFiles": "Ресурс не имеет выбираемого списка файлов",
   "noFiles": "Нет файлов",
-  "createHistory": "Создаем историю",
+  "historyLinks": "Ссылки в истории",
   "noHistory": "Нет истории",
   "directDownloadDescription": "Немедленно пропустите решение и создайте задачи",
   "taskProgress": "Прогресс в решении задач",
@@ -441,5 +445,6 @@
   "webApiConfigReadOnlyHelp": "В веб-версии нельзя изменить настройки API онлайн. Измените параметры запуска сервера или файл конфигурации, затем перезапустите службу.",
   "webMcpApiTokenHint": "Если настроен API-токен, при подключении агента необходимо передать данные аутентификации",
   "useMcpApiTokenTemplate": "Переключиться на конфигурацию с аутентификацией",
-  "mcpRequiresTcp": "Инструкции по подключению агентов доступны, когда протокол API — TCP."
+  "mcpRequiresTcp": "Инструкции по подключению агентов доступны, когда протокол API — TCP.",
+  "emptyTaskCreateHint": "Нажмите {action}, чтобы начать загрузку"
 }

@@ -18,6 +18,7 @@
   "exit": "Sair",
   "pressBackAgainToExit": "Prima novamente Voltar para sair",
   "create": "Criar Tarefa",
+  "createAction": "Criar",
   "directDownload": "Download Direto",
   "advancedOptions": "Opções Avançadas",
   "followSettings": "Seguir as Configurações",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Salvar como pasta de download padrão",
   "downloadDirValid": "Por favor, selecione a pasta",
   "connections": "Conexões",
+  "maxRetries": "Tentativas máximas",
   "useServerCtime": "Usar o tempo de servidor para a criação de ficheiros",
   "maxRunning": "Máximo de Tarefas Simultâneas",
   "defaultDirectDownload": "Marcar download direto por padrão",
@@ -102,6 +104,7 @@
   "extensions": "Extensões",
   "extensionInstallUrl": "Link de Instalação",
   "extensionInstallSuccess": "Instalado com Sucesso",
+  "extensionUpdateConfirm": "Atualizar “{name}” para a versão mais recente?",
   "extensionUpdateSuccess": "Atualizado com Sucesso",
   "extensionDelete": "Excluir Extensão",
   "extensionAlreadyLatest": "Já é a última versão",
@@ -236,6 +239,7 @@
   "back": "Voltar",
   "open": "Abrir",
   "openFile": "Abrir ficheiro",
+  "openFolder": "Abrir pasta",
   "share": "Partilhar",
   "copy": "Copiar",
   "copied": "Copiado",
@@ -352,7 +356,7 @@
   "resolvedFileCount": "{count} ficheiros resolvidos",
   "resourceHasNoFiles": "O recurso não tem lista de arquivos selecionáveis",
   "noFiles": "Sem arquivos",
-  "createHistory": "Criar Histórico",
+  "historyLinks": "Links do histórico",
   "noHistory": "Sem histórico",
   "directDownloadDescription": "Ignorar resolver e criar tarefas imediatamente",
   "taskProgress": "Progresso da tarefa",
@@ -441,5 +445,6 @@
   "webApiConfigReadOnlyHelp": "A versão web não permite alterar as definições da API online. Atualize as opções de arranque do servidor ou o ficheiro de configuração e reinicie o serviço para aplicar as alterações.",
   "webMcpApiTokenHint": "Se configurou um token de API, é necessário fornecer as informações de autenticação ao ligar o agente",
   "useMcpApiTokenTemplate": "Mudar para a configuração autenticada",
-  "mcpRequiresTcp": "As instruções de conexão de agentes estão disponíveis quando o protocolo da API é TCP."
+  "mcpRequiresTcp": "As instruções de conexão de agentes estão disponíveis quando o protocolo da API é TCP.",
+  "emptyTaskCreateHint": "Clique em {action} para começar a baixar"
 }

@@ -13,6 +13,7 @@ import (
 )
 
 type args struct {
+	TempDir           *string  `json:"tempDir"`
 	Address           *string  `json:"address"`
 	Port              *int     `json:"port"`
 	Username          *string  `json:"username"`
@@ -54,6 +55,7 @@ func loadCliArgs() *args {
 	cfg.ApiToken = flag.String("T", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
 	flag.StringVar(cfg.ApiToken, "api-token", "", "API token, it must be configured when using HTTP API in the case of enabling web authentication")
 	flag.BoolVar(&cfg.MCPEnable, "mcp-enable", false, "Enable MCP endpoint")
+	cfg.TempDir = flag.String("temp-dir", "", "Temporary directory (defaults to the OS temporary directory)")
 	cfg.StorageDir = flag.String("d", "", "Storage directory")
 	flag.StringVar(cfg.StorageDir, "storage-dir", "", "Storage directory")
 	whiteDownloadDirs := flag.String("white-download-dirs", "", "White download directories, comma-separated")
@@ -89,6 +91,8 @@ func overrideWithCliArgs(cfg *args, cliConfig *args) {
 			cfg.ApiToken = cliConfig.ApiToken
 		case "mcp-enable":
 			cfg.MCPEnable = cliConfig.MCPEnable
+		case "temp-dir":
+			cfg.TempDir = cliConfig.TempDir
 		case "d", "storage-dir":
 			cfg.StorageDir = cliConfig.StorageDir
 		case "white-download-dirs":
@@ -101,6 +105,9 @@ func overrideWithCliArgs(cfg *args, cliConfig *args) {
 
 // setDefaults sets default values for any unset configuration fields
 func setDefaults(cfg *args, cliConfig *args) {
+	if cfg.TempDir == nil {
+		cfg.TempDir = cliConfig.TempDir
+	}
 	if cfg.Address == nil {
 		cfg.Address = cliConfig.Address
 	}

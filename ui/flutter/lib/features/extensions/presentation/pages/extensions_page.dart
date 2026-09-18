@@ -11,10 +11,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../api/model/extension.dart' as api_extension;
 import '../../../../api/model/store_extension.dart';
 import '../../../../core/utils/breakpoints.dart';
+import '../../../../core/utils/compact_count_formatter.dart';
 import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
+import '../../../../shared/widgets/app_swipe_tabs.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
@@ -23,8 +26,10 @@ import '../../application/extensions_controller.dart';
 import '../../application/pending_extension_install.dart';
 import '../widgets/extension_detail_view.dart';
 import '../widgets/extension_icon.dart';
+import '../widgets/extension_setting_field.dart';
+import '../widgets/extension_update_dialog.dart';
 
-const _extensionCardMinWidth = 280.0;
+const _extensionCardMinWidth = 290.0;
 const _extensionGridSpacing = 10.0;
 
 int _extensionGridColumnCount(double width) {
@@ -44,6 +49,9 @@ class ExtensionsPage extends ConsumerStatefulWidget {
 class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   final _searchController = TextEditingController();
   final _installController = TextEditingController();
+  final _installAnchorKey = GlobalKey();
+  final _installPopoverKey = GlobalKey<_InstallPopoverState>();
+  bool _installDevMode = false;
   final _listScrollController = ScrollController();
   final Map<String, TextEditingController> _settingControllers = {};
   ExtensionListItem? _detailItem;
@@ -75,15 +83,28 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final isDesktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
-    ref.listen(pendingExtensionInstallProvider, (previous, next) {
-      if (next == null) return;
-      ref.read(pendingExtensionInstallProvider.notifier).clear();
-      unawaited(
-        _runAction(
-          () => ref.read(extensionsControllerProvider.notifier).installFromUrl(next.url, devInstall: next.devMode),
-        ),
-      );
-    });
+    final pendingInstall = ref.watch(pendingExtensionInstallProvider);
+    if (pendingInstall != null) {
+      // The request can arrive before this page is mounted. Consume it only
+      // after the toolbar is laid out, so cold and warm links share the same UI.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !identical(ref.read(pendingExtensionInstallProvider), pendingInstall)) return;
+        if (_installPopoverKey.currentState?._installing == true) return;
+        final anchorContext = _installAnchorKey.currentContext;
+        if (anchorContext == null) return;
+        _installController.text = pendingInstall.url;
+        _installDevMode = pendingInstall.devMode;
+        _showInstallPopover(anchorContext);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !identical(ref.read(pendingExtensionInstallProvider), pendingInstall)) return;
+          final popover = _installPopoverKey.currentState;
+          if (popover == null || popover._installing) return;
+          ref.read(pendingExtensionInstallProvider.notifier).clear();
+          unawaited(popover._install());
+        });
+        WidgetsBinding.instance.ensureVisualUpdate();
+      });
+    }
     final stateAsync = ref.watch(extensionsControllerProvider);
     final body = Stack(
       children: [
@@ -151,6 +172,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       onSearch: (query) => _runAction(() => ref.read(extensionsControllerProvider.notifier).searchStore(query)),
       onSort: (sort) => _runAction(() => ref.read(extensionsControllerProvider.notifier).changeSort(sort)),
       onFilter: ref.read(extensionsControllerProvider.notifier).changeFilter,
+      installAnchorKey: _installAnchorKey,
       onOpenInstall: _openInstallPopover,
       onDevelopExtension: _openExtensionDevelopmentDocs,
       onInstallFolder: _installFromFolder,
@@ -166,7 +188,9 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   Future<void> _installFromUrl() async {
     final url = _installController.text.trim();
     if (url.isEmpty) return;
-    await _runAction(() => ref.read(extensionsControllerProvider.notifier).installFromUrl(url));
+    await _runAction(
+      () => ref.read(extensionsControllerProvider.notifier).installFromUrl(url, devInstall: _installDevMode),
+    );
   }
 
   Future<void> _loadNextPageIfNeeded() async {
@@ -189,7 +213,14 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   }
 
   void _openInstallPopover(BuildContext anchorContext) {
-    ref.read(extensionsControllerProvider.notifier).tryOpenDevMode();
+    if (AppWindowChrome.isDesktopWindow) {
+      ref.read(extensionsControllerProvider.notifier).tryOpenDevMode();
+    }
+    _installDevMode = false;
+    _showInstallPopover(anchorContext);
+  }
+
+  void _showInstallPopover(BuildContext anchorContext) {
     if (_installPopover != null) return;
     final overlay = const shad.PopoverOverlayHandler().show<void>(
       context: anchorContext,
@@ -198,7 +229,17 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       offset: const Offset(0, 8),
       modal: false,
       consumeOutsideTaps: false,
-      builder: (context) => _InstallPopover(controller: _installController, onInstallUrl: _installFromUrl),
+      // Flutter's native selection toolbar uses the EditableText tap group.
+      // Pasting from it must not dismiss the form and restore search focus.
+      regionGroupId: EditableText,
+      builder: (context) => _InstallPopover(
+        key: _installPopoverKey,
+        controller: _installController,
+        onInstallUrl: _installFromUrl,
+        onFinished: () {
+          if (mounted && ref.read(pendingExtensionInstallProvider) != null) setState(() {});
+        },
+      ),
     );
     _installPopover = overlay;
     unawaited(
@@ -209,7 +250,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
   }
 
   Future<void> _installFromFolder() async {
-    final folder = await FilePicker.platform.getDirectoryPath();
+    final folder = await FilePicker.getDirectoryPath();
     if (folder == null || folder.isEmpty) return;
     await _runAction(() => ref.read(extensionsControllerProvider.notifier).installFromUrl(folder, devInstall: true));
   }
@@ -281,6 +322,7 @@ class _Content extends StatelessWidget {
     required this.onSearch,
     required this.onSort,
     required this.onFilter,
+    required this.installAnchorKey,
     required this.onOpenInstall,
     required this.onDevelopExtension,
     required this.onInstallFolder,
@@ -298,6 +340,7 @@ class _Content extends StatelessWidget {
   final ValueChanged<String> onSearch;
   final ValueChanged<StoreExtensionSort> onSort;
   final ValueChanged<ExtensionListFilter> onFilter;
+  final GlobalKey installAnchorKey;
   final ValueChanged<BuildContext> onOpenInstall;
   final VoidCallback onDevelopExtension;
   final VoidCallback onInstallFolder;
@@ -319,6 +362,7 @@ class _Content extends StatelessWidget {
       onSearch: onSearch,
       onSort: onSort,
       onRefresh: onRefresh,
+      installAnchorKey: installAnchorKey,
       onOpenInstall: onOpenInstall,
       onDevelopExtension: onDevelopExtension,
       onInstallFolder: onInstallFolder,
@@ -348,80 +392,86 @@ class _Content extends StatelessWidget {
                     child: _FilterBar(state: state, onFilter: onFilter),
                   ),
                   Expanded(
-                    child: CustomScrollView(
-                      key: const ValueKey('extensions-list-scroll-view'),
-                      controller: scrollController,
-                      slivers: [
-                        if ((state.loadingInstalled || state.loadingStore) && state.displayItems.isEmpty)
-                          SliverPadding(
-                            padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
-                            sliver: const _ExtensionSkeletonGrid(key: ValueKey('extensions-initial-skeleton')),
-                          )
-                        else if (state.displayItems.isEmpty)
-                          SliverFillRemaining(
-                            child: Center(
-                              child: Text(
-                                context.l10n.noExtensions,
-                                style: TextStyle(color: palette.textSecondary, fontSize: 14),
-                              ),
-                            ),
-                          )
-                        else
-                          SliverPadding(
-                            padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
-                            sliver: SliverLayoutBuilder(
-                              builder: (context, constraints) {
-                                final width = constraints.crossAxisExtent;
-                                final crossAxisCount = _extensionGridColumnCount(width);
-                                return SliverGrid(
-                                  delegate: SliverChildBuilderDelegate(
-                                    (context, index) => _ExtensionCard(
-                                      item: state.displayItems[index],
-                                      busy: state.busyExtensionIds.contains(state.displayItems[index].id),
-                                      canUpdate: _canUpdate(state, state.displayItems[index]),
-                                      onAction: onItemAction,
-                                      onOpenDetails: onOpenDetails,
-                                      onOpenSettings: onOpenSettings,
-                                    ),
-                                    childCount: state.displayItems.length,
-                                  ),
-                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: crossAxisCount,
-                                    mainAxisSpacing: _extensionGridSpacing,
-                                    crossAxisSpacing: _extensionGridSpacing,
-                                    mainAxisExtent: 178,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        if (state.listFilter == ExtensionListFilter.market && state.loadingMoreStore)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 24, top: 4),
-                              child: Center(
-                                child: const SizedBox.square(dimension: 18, child: shad.CircularProgressIndicator()),
-                              ),
-                            ),
-                          ),
-                        if (state.listFilter == ExtensionListFilter.market &&
-                            state.displayItems.isNotEmpty &&
-                            state.storePagination != null &&
-                            !state.storePagination!.hasNext &&
-                            !state.loadingMoreStore)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 24, top: 4),
+                    child: AppSwipeTabs<ExtensionListFilter>(
+                      enabled: !isDesktop,
+                      values: const [ExtensionListFilter.market, ExtensionListFilter.installed],
+                      selectedValue: state.listFilter,
+                      onSelected: onFilter,
+                      child: CustomScrollView(
+                        key: const ValueKey('extensions-list-scroll-view'),
+                        controller: scrollController,
+                        slivers: [
+                          if ((state.loadingInstalled || state.loadingStore) && state.displayItems.isEmpty)
+                            SliverPadding(
+                              padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
+                              sliver: const _ExtensionSkeletonGrid(key: ValueKey('extensions-initial-skeleton')),
+                            )
+                          else if (state.displayItems.isEmpty)
+                            SliverFillRemaining(
                               child: Center(
                                 child: Text(
-                                  context.l10n.extensionNoMore,
-                                  key: const ValueKey('extensions-no-more-indicator'),
-                                  style: TextStyle(color: palette.textMuted, fontSize: 12),
+                                  context.l10n.noExtensions,
+                                  style: TextStyle(color: palette.textSecondary, fontSize: 14),
+                                ),
+                              ),
+                            )
+                          else
+                            SliverPadding(
+                              padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 20),
+                              sliver: SliverLayoutBuilder(
+                                builder: (context, constraints) {
+                                  final width = constraints.crossAxisExtent;
+                                  final crossAxisCount = _extensionGridColumnCount(width);
+                                  return SliverGrid(
+                                    delegate: SliverChildBuilderDelegate(
+                                      (context, index) => _ExtensionCard(
+                                        item: state.displayItems[index],
+                                        busy: state.busyExtensionIds.contains(state.displayItems[index].id),
+                                        canUpdate: _canUpdate(state, state.displayItems[index]),
+                                        onAction: onItemAction,
+                                        onOpenDetails: onOpenDetails,
+                                        onOpenSettings: onOpenSettings,
+                                      ),
+                                      childCount: state.displayItems.length,
+                                    ),
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: crossAxisCount,
+                                      mainAxisSpacing: _extensionGridSpacing,
+                                      crossAxisSpacing: _extensionGridSpacing,
+                                      mainAxisExtent: 178,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          if (state.listFilter == ExtensionListFilter.market && state.loadingMoreStore)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 24, top: 4),
+                                child: Center(
+                                  child: const SizedBox.square(dimension: 18, child: shad.CircularProgressIndicator()),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
+                          if (state.listFilter == ExtensionListFilter.market &&
+                              state.displayItems.isNotEmpty &&
+                              state.storePagination != null &&
+                              !state.storePagination!.hasNext &&
+                              !state.loadingMoreStore)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 24, top: 4),
+                                child: Center(
+                                  child: Text(
+                                    context.l10n.extensionNoMore,
+                                    key: const ValueKey('extensions-no-more-indicator'),
+                                    style: TextStyle(color: palette.textMuted, fontSize: 12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -611,6 +661,7 @@ class _Toolbar extends StatelessWidget {
     required this.onSearch,
     required this.onSort,
     required this.onRefresh,
+    required this.installAnchorKey,
     required this.onOpenInstall,
     required this.onDevelopExtension,
     required this.onInstallFolder,
@@ -621,6 +672,7 @@ class _Toolbar extends StatelessWidget {
   final ValueChanged<String> onSearch;
   final ValueChanged<StoreExtensionSort> onSort;
   final VoidCallback onRefresh;
+  final GlobalKey installAnchorKey;
   final ValueChanged<BuildContext> onOpenInstall;
   final VoidCallback onDevelopExtension;
   final VoidCallback onInstallFolder;
@@ -628,10 +680,10 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final manualInstallBusy = state.busyExtensionIds.contains(ExtensionsController.manualInstallBusyKey);
-    final search = shad.TextField(
+    final search = AppTextField(
       key: const ValueKey('extension-search-input'),
       controller: searchController,
+      padding: MediaQuery.sizeOf(context).width >= Breakpoints.mobile ? AppDesignTokens.compactTextFieldPadding : null,
       placeholder: Text(context.l10n.searchExtensions, style: TextStyle(color: palette.searchHint)),
       features: [shad.InputFeature.leading(Icon(Icons.search_rounded, size: 16, color: palette.textMuted))],
       onSubmitted: onSearch,
@@ -669,22 +721,21 @@ class _Toolbar extends StatelessWidget {
           onPressed: onDevelopExtension,
         ),
         const SizedBox(width: 8),
-        if (state.devMode) ...[
+        if (AppWindowChrome.isDesktopWindow && state.devMode) ...[
           _OutlineToolbarIconButton(
             key: const ValueKey('load-local-extension-button'),
             tooltip: context.l10n.extensionLoadLocal,
             icon: Icons.folder_open_outlined,
-            loading: manualInstallBusy,
             onPressed: onInstallFolder,
           ),
           const SizedBox(width: 8),
         ],
         Builder(
+          key: installAnchorKey,
           builder: (buttonContext) => _OutlineToolbarIconButton(
             key: const ValueKey('install-extension-button'),
             tooltip: context.l10n.extensionInstallFromUrl,
             icon: Icons.add_link,
-            loading: manualInstallBusy,
             onPressed: () => onOpenInstall(buttonContext),
           ),
         ),
@@ -760,18 +811,11 @@ class _FilterBar extends StatelessWidget {
 }
 
 class _OutlineToolbarIconButton extends StatelessWidget {
-  const _OutlineToolbarIconButton({
-    super.key,
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    this.loading = false,
-  });
+  const _OutlineToolbarIconButton({super.key, required this.tooltip, required this.icon, required this.onPressed});
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
-  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -779,23 +823,18 @@ class _OutlineToolbarIconButton extends StatelessWidget {
       message: tooltip,
       child: SizedBox.square(
         dimension: 32,
-        child: shad.IconButton.outline(
-          size: shad.ButtonSize.xSmall,
-          onPressed: loading ? null : onPressed,
-          icon: loading
-              ? const SizedBox.square(dimension: 13, child: shad.CircularProgressIndicator())
-              : Icon(icon, size: 17),
-        ),
+        child: shad.IconButton.outline(size: shad.ButtonSize.xSmall, onPressed: onPressed, icon: Icon(icon, size: 17)),
       ),
     );
   }
 }
 
 class _InstallPopover extends StatefulWidget {
-  const _InstallPopover({required this.controller, required this.onInstallUrl});
+  const _InstallPopover({super.key, required this.controller, required this.onInstallUrl, required this.onFinished});
 
   final TextEditingController controller;
   final Future<void> Function() onInstallUrl;
+  final VoidCallback onFinished;
 
   @override
   State<_InstallPopover> createState() => _InstallPopoverState();
@@ -826,7 +865,7 @@ class _InstallPopoverState extends State<_InstallPopover> {
             style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
-          shad.TextField(
+          AppTextField(
             key: const ValueKey('extension-install-url-input'),
             controller: widget.controller,
             autofocus: true,
@@ -857,8 +896,8 @@ class _InstallPopoverState extends State<_InstallPopover> {
     setState(() => _installing = true);
     await widget.onInstallUrl();
     if (!mounted) return;
-    setState(() => _installing = false);
     await shad.closeOverlay(context);
+    widget.onFinished();
   }
 }
 
@@ -992,71 +1031,97 @@ class _ExtensionCard extends ConsumerWidget {
           const Spacer(),
           Row(
             children: [
-              if (item.store != null) ...[
-                Icon(Icons.star_rounded, size: 15, color: palette.textMuted),
-                const SizedBox(width: 3),
-                Text('${item.stars}', style: TextStyle(color: palette.textSecondary, fontSize: 12)),
-                const SizedBox(width: 10),
-                Icon(Icons.download_outlined, size: 15, color: palette.textMuted),
-                const SizedBox(width: 3),
-                Text('${item.installCount}', style: TextStyle(color: palette.textSecondary, fontSize: 12)),
-              ],
-              const Spacer(),
-              if (canUpdate && installed != null)
-                shad.GhostButton(
-                  density: shad.ButtonDensity.icon,
-                  onPressed: busy
-                      ? null
-                      : () =>
-                            onAction(() => ref.read(extensionsControllerProvider.notifier).upgradeExtension(installed)),
-                  child: const Icon(Icons.refresh),
-                ),
-              if (installed == null && item.store != null)
-                shad.GhostButton(
-                  key: ValueKey('install-store-extension-${item.store!.id}'),
-                  density: shad.ButtonDensity.icon,
-                  onPressed: busy
-                      ? null
-                      : () => onAction(
-                          () => ref.read(extensionsControllerProvider.notifier).installFromStore(item.store!),
-                        ),
-                  child: busy
-                      ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
-                      : const Icon(Icons.download),
-                ),
-              if ((item.homepage ?? '').isNotEmpty)
-                shad.GhostButton(
-                  density: shad.ButtonDensity.icon,
-                  onPressed: () => unawaited(launchUrl(Uri.parse(item.homepage!))),
-                  child: const Icon(Icons.home_outlined),
-                ),
-              if ((item.repoUrl ?? '').isNotEmpty)
-                shad.GhostButton(
-                  density: shad.ButtonDensity.icon,
-                  onPressed: () => unawaited(launchUrl(Uri.parse(item.repoUrl!))),
-                  child: const Icon(Icons.code),
-                ),
-              if (installed?.settings?.isNotEmpty == true)
-                shad.GhostButton(
-                  density: shad.ButtonDensity.icon,
-                  onPressed: busy ? null : () => onOpenSettings(installed!),
-                  child: const Icon(Icons.settings_outlined),
-                ),
-              if (installed != null)
-                shad.GhostButton(
-                  key: ValueKey('remove-extension-${installed.identity}'),
-                  density: shad.ButtonDensity.icon,
-                  onPressed: busy
-                      ? null
-                      : () async {
-                          final confirmed = await _showRemoveExtensionDialog(context, installed.title);
-                          if (!confirmed || !context.mounted) return;
-                          await onAction(
-                            () => ref.read(extensionsControllerProvider.notifier).removeExtension(installed),
-                          );
-                        },
-                  child: const Icon(Icons.delete_outline),
-                ),
+              if (item.store != null)
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        key: ValueKey('extension-card-stats-${item.id}'),
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.star_rounded, size: 15, color: palette.textMuted),
+                          const SizedBox(width: 3),
+                          Text(
+                            CompactCountFormatter.format(item.stars),
+                            style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(Icons.download_outlined, size: 15, color: palette.textMuted),
+                          const SizedBox(width: 3),
+                          Text(
+                            CompactCountFormatter.format(item.installCount),
+                            style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                const Spacer(),
+              const SizedBox(width: 8),
+              Row(
+                key: ValueKey('extension-card-actions-${item.id}'),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (canUpdate && installed != null)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      key: ValueKey('update-extension-${installed.identity}'),
+                      onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
+                      child: const Icon(Icons.refresh),
+                    ),
+                  if (installed == null && item.store != null)
+                    shad.GhostButton(
+                      key: ValueKey('install-store-extension-${item.store!.id}'),
+                      density: shad.ButtonDensity.icon,
+                      onPressed: busy
+                          ? null
+                          : () => onAction(
+                              () => ref.read(extensionsControllerProvider.notifier).installFromStore(item.store!),
+                            ),
+                      child: busy
+                          ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
+                          : const Icon(Icons.download),
+                    ),
+                  if ((item.homepage ?? '').isNotEmpty)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      onPressed: () => unawaited(launchUrl(Uri.parse(item.homepage!))),
+                      child: const Icon(Icons.home_outlined),
+                    ),
+                  if ((item.repoUrl ?? '').isNotEmpty)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      onPressed: () => unawaited(launchUrl(Uri.parse(item.repoUrl!))),
+                      child: const Icon(Icons.code),
+                    ),
+                  if (installed?.settings?.isNotEmpty == true)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      onPressed: busy ? null : () => onOpenSettings(installed!),
+                      child: const Icon(Icons.settings_outlined),
+                    ),
+                  if (installed != null)
+                    shad.GhostButton(
+                      key: ValueKey('remove-extension-${installed.identity}'),
+                      density: shad.ButtonDensity.icon,
+                      onPressed: busy
+                          ? null
+                          : () async {
+                              final confirmed = await _showRemoveExtensionDialog(context, installed.title);
+                              if (!confirmed || !context.mounted) return;
+                              await onAction(
+                                () => ref.read(extensionsControllerProvider.notifier).removeExtension(installed),
+                              );
+                            },
+                      child: const Icon(Icons.delete_outline),
+                    ),
+                ],
+              ),
             ],
           ),
         ],
@@ -1172,7 +1237,7 @@ class _ExtensionSettingsPanel extends StatelessWidget {
                       separatorBuilder: (_, _) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
                         final setting = settings[index];
-                        return _ExtensionSettingField(setting: setting, controller: controllers[setting.name]!);
+                        return ExtensionSettingField(setting: setting, controller: controllers[setting.name]!);
                       },
                     ),
                   ),
@@ -1196,39 +1261,6 @@ class _ExtensionSettingsPanel extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ExtensionSettingField extends StatelessWidget {
-  const _ExtensionSettingField({required this.setting, required this.controller});
-
-  final api_extension.Setting setting;
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          setting.title,
-          style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w700),
-        ),
-        if (setting.description.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(setting.description, style: TextStyle(color: palette.textSecondary, fontSize: 12, height: 1.35)),
-        ],
-        const SizedBox(height: 8),
-        if (setting.type == api_extension.SettingType.boolean)
-          shad.TextField(controller: controller, placeholder: Text(context.l10n.booleanValueHint))
-        else
-          shad.TextField(
-            controller: controller,
-            keyboardType: setting.type == api_extension.SettingType.number ? TextInputType.number : TextInputType.text,
-          ),
-      ],
     );
   }
 }

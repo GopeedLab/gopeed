@@ -1,10 +1,14 @@
 package integrationtest
 
 import (
+	"crypto/sha256"
 	"fmt"
+	webviewproxy "github.com/GopeedLab/gopeed/internal/webview/proxy"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -104,8 +108,10 @@ func RunProviderContract(t *testing.T, provider enginewebview.Provider, opts Con
 		t.Fatalf("expected click count to be 1, got %v", clickCount)
 	}
 
+	// Hidden WebViews can throttle timers on shared CI runners. Keep the
+	// positive asynchronous waits within the same budget as navigation.
 	found, err := page.WaitForSelector("#delayed", map[string]any{
-		"timeoutMs":      5000,
+		"timeoutMs":      10000,
 		"pollIntervalMs": 25,
 		"visible":        true,
 	})
@@ -113,11 +119,18 @@ func RunProviderContract(t *testing.T, provider enginewebview.Provider, opts Con
 		t.Fatalf("waitForSelector failed: %v", err)
 	}
 	if !found {
-		t.Fatal("expected delayed selector to appear")
+		diagnostic, diagnosticErr := page.Execute(`() => {
+			const element = document.querySelector('#delayed');
+			const rect = element && element.getBoundingClientRect();
+			return {url: location.href, readyState: document.readyState,
+				visibility: document.visibilityState, exists: !!element,
+				width: rect && rect.width, height: rect && rect.height};
+		}`)
+		t.Fatalf("expected delayed selector to appear: state=%v, diagnostic error=%v", diagnostic, diagnosticErr)
 	}
 
 	value, err := page.WaitForFunction(`() => window.__readyValue`, map[string]any{
-		"timeoutMs":      5000,
+		"timeoutMs":      10000,
 		"pollIntervalMs": 25,
 	})
 	if err != nil {
@@ -219,7 +232,19 @@ func openTestPage(t *testing.T, provider enginewebview.Provider, opts enginewebv
 	}))
 	t.Cleanup(server.Close)
 
-	runtime := enginewebview.NewRuntime(provider, true)
+	proxy, err := webviewproxy.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { proxy.Close() })
+	path := filepath.Join(t.TempDir(), "profile")
+	sum := sha256.Sum256([]byte(path))
+	profileID := fmt.Sprintf("%x-%x-%x-%x-%x", sum[:4], sum[4:6], sum[6:8], sum[8:10], sum[10:16])
+	proxyURL := proxy.URL()
+	if runtime.GOOS == "darwin" {
+		proxyURL = proxy.SOCKSURL()
+	}
+	runtime := enginewebview.NewRuntime(&configuredOpener{provider: provider, profileID: profileID, dataPath: path, proxyURL: proxyURL}, true)
 	page, err := runtime.Open(map[string]any{
 		"headless":  opts.Headless,
 		"debug":     opts.Debug,
@@ -232,7 +257,14 @@ func openTestPage(t *testing.T, provider enginewebview.Provider, opts enginewebv
 		t.Fatalf("failed to open webview: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = runtime.Close()
+		if err := runtime.Close(); err != nil {
+			t.Errorf("close contract page: %v", err)
+		}
+		if remover, ok := provider.(enginewebview.ProfileRemover); ok {
+			if err := remover.RemoveProfile(profileID, path); err != nil {
+				t.Errorf("remove contract profile: %v", err)
+			}
+		}
 	})
 
 	return page, server, server.URL
@@ -379,4 +411,16 @@ func hasCookie(cookies []enginewebview.Cookie, name string, value string) bool {
 		}
 	}
 	return false
+}
+
+type configuredOpener struct {
+	provider                      enginewebview.Provider
+	profileID, dataPath, proxyURL string
+}
+
+func (o *configuredOpener) Open(opts enginewebview.OpenOptions) (enginewebview.Page, error) {
+	opts.ProfileID = o.profileID
+	opts.DataPath = o.dataPath
+	opts.ProxyURL = o.proxyURL
+	return o.provider.Open(opts)
 }

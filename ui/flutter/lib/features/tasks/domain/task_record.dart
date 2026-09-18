@@ -36,8 +36,15 @@ enum TaskAssetType {
 }
 
 class TaskFileNode {
-  const TaskFileNode({required this.path, required this.name, required this.sizeBytes, this.downloadedBytes});
+  const TaskFileNode({
+    required this.path,
+    required this.name,
+    required this.sizeBytes,
+    this.downloadedBytes,
+    this.resourceIndex,
+  });
 
+  final int? resourceIndex;
   final String path;
   final String name;
   final int sizeBytes;
@@ -110,7 +117,7 @@ class TaskRecord {
   bool get canUpdateUrl =>
       protocol == api_task.Protocol.http && (status == TaskStatus.paused || status == TaskStatus.failed);
 
-  bool get isIndeterminate => status == TaskStatus.downloading && total == null;
+  bool get isIndeterminate => status == TaskStatus.downloading && !waiting && total == null;
 
   TaskAssetType get assetType => _assetType(name, isFolder: isFolder, protocol: protocol);
 
@@ -133,7 +140,7 @@ class TaskRecord {
       status: status,
       downloaded: _formatBytes(downloadedBytes),
       total: totalBytes > 0 ? _formatBytes(totalBytes) : null,
-      speed: task.progress.speed > 0 ? TransferRateFormatter.format(task.progress.speed).text : null,
+      speed: totalBytes > 0 || task.progress.speed > 0 ? TransferRateFormatter.format(task.progress.speed).text : null,
       uploadSpeed: task.uploading ? TransferRateFormatter.format(task.progress.uploadSpeed).text : null,
       remainingSeconds: _remainingSeconds(task, totalBytes, downloadedBytes),
       downloadDuration: task.progress.used > 0 ? Duration(microseconds: (task.progress.used + 999) ~/ 1000) : null,
@@ -146,7 +153,7 @@ class TaskRecord {
       totalBytes: totalBytes > 0 ? totalBytes : null,
       speedBytes: task.progress.speed,
       uploadedBytes: task.progress.uploaded,
-      files: _fileNodes(task.meta.res?.files),
+      files: _fileNodes(task.meta.res?.files, task.meta.opts.selectFiles),
       uploading: task.uploading,
       isFolder: task.meta.res?.name.isNotEmpty ?? false,
       protocol: task.protocol,
@@ -294,13 +301,14 @@ TaskAssetType _assetType(String name, {required bool isFolder, required api_task
   return switch (protocol) {
     api_task.Protocol.bt => TaskAssetType.torrent,
     api_task.Protocol.ed2k => TaskAssetType.ed2k,
-    api_task.Protocol.http || null => TaskAssetType.file,
+    api_task.Protocol.hls || api_task.Protocol.http || null => TaskAssetType.file,
   };
 }
 
 String _fileExtension(String name) {
-  final pathWithoutQuery = name.split(RegExp(r'[?#]')).first;
-  final extension = path.extension(pathWithoutQuery).replaceFirst('.', '').toLowerCase();
+  final uri = Uri.tryParse(name);
+  final filePath = uri != null && uri.hasScheme && uri.hasAuthority ? uri.path : name;
+  final extension = path.extension(filePath).replaceFirst('.', '').toLowerCase();
   return extension.length <= 10 ? extension : '';
 }
 
@@ -313,12 +321,23 @@ int? _remainingSeconds(api_task.Task task, int totalBytes, int downloadedBytes) 
   return ((totalBytes - downloadedBytes) / speed).ceil();
 }
 
-List<TaskFileNode> _fileNodes(List<api_resource.FileInfo>? files) {
+List<TaskFileNode> _fileNodes(List<api_resource.FileInfo>? files, List<int> selectedIndexes) {
   if (files == null || files.isEmpty) {
     return const [];
   }
+  final selected = selectedIndexes.toSet();
   return files
-      .map((file) => TaskFileNode(path: file.path, name: file.name, sizeBytes: file.size))
+      .asMap()
+      .entries
+      .where((entry) => selected.isEmpty || selected.contains(entry.key))
+      .map(
+        (entry) => TaskFileNode(
+          resourceIndex: entry.key,
+          path: entry.value.path,
+          name: entry.value.name,
+          sizeBytes: entry.value.size,
+        ),
+      )
       .toList(growable: false);
 }
 

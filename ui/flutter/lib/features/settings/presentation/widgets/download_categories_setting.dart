@@ -7,7 +7,9 @@ import '../../../../core/utils/breakpoints.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_path_picker_field.dart';
+import '../../../../shared/widgets/app_path_placeholder_button.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../l10n/l10n.dart';
 
 class DownloadCategoryDraft {
@@ -169,7 +171,7 @@ Future<DownloadCategoryDraft?> showDownloadCategoryDialog(
               children: [
                 Text(dialogContext.l10n.categoryName, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
-                shad.TextField(key: const ValueKey('download-category-name'), controller: nameController),
+                AppTextField(key: const ValueKey('download-category-name'), controller: nameController),
                 const SizedBox(height: 14),
                 Text(dialogContext.l10n.categoryPath, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
@@ -178,6 +180,14 @@ Future<DownloadCategoryDraft?> showDownloadCategoryDialog(
                   controller: pathController,
                   desktopWidth: AppDesignTokens.settingsFormControlWidth,
                   allowAndroidEditing: true,
+                ),
+                const SizedBox(height: AppDesignTokens.space4),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: AppPathPlaceholderButton(
+                    key: const ValueKey('download-category-placeholders'),
+                    controller: pathController,
+                  ),
                 ),
                 if (validationMessage != null) ...[
                   const SizedBox(height: 8),

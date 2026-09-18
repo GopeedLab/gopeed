@@ -7,8 +7,10 @@ import (
 
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/internal/production"
 	"github.com/GopeedLab/gopeed/internal/protocol/bt"
 	"github.com/GopeedLab/gopeed/internal/protocol/ed2k"
+	"github.com/GopeedLab/gopeed/internal/protocol/hls"
 	"github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
@@ -30,6 +32,9 @@ type Task struct {
 	Progress  *Progress            `json:"progress"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`
+
+	producer         production.Source
+	producerReceived int64
 
 	fetcherManager fetcher.FetcherManager
 	fetcher        fetcher.Fetcher
@@ -183,6 +188,7 @@ type DownloaderConfig struct {
 	RefreshInterval   int // RefreshInterval time duration to refresh task progress(ms)
 	Storage           Storage
 	StorageDir        string
+	TempDir           string
 	WhiteDownloadDirs []string
 	WebViewProvider   enginewebview.Provider
 
@@ -197,6 +203,7 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 	}
 	if len(cfg.FetchManagers) == 0 {
 		cfg.FetchManagers = []fetcher.FetcherManager{
+			new(hls.FetcherManager),
 			new(http.FetcherManager),
 			new(bt.FetcherManager),
 			new(ed2k.FetcherManager),

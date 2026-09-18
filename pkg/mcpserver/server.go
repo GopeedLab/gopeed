@@ -315,7 +315,7 @@ func registerTools(server *mcp.Server, downloader *download.Downloader) {
 		)
 		switch {
 		case input.RID != "":
-			id, err = downloader.Create(input.RID)
+			id, err = downloader.CreateWithOptions(input.RID, input.Opts.baseOptions())
 		case input.Req != nil:
 			var req *base.Request
 			req, err = input.Req.baseRequest()

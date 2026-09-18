@@ -10,6 +10,7 @@ import '../../../../util/package_info.dart';
 import '../../../../util/updater.dart';
 import '../../../../util/util.dart';
 import '../../../../l10n/l10n.dart';
+import 'app_update_notes_viewport.dart';
 
 typedef StartAppUpdate = Future<void> Function(VersionInfo versionInfo, UpdateProgressCallback onProgress);
 
@@ -74,11 +75,18 @@ Future<void> showAppUpdateDialog(
                     key: const ValueKey('app-update-heading'),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 8),
                   Text(
                     '$appVersion  →  ${versionInfo.version}',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.w400),
+                    style: DefaultTextStyle.of(dialogContext).style.copyWith(
+                      inherit: false,
+                      color: palette.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      height: 1.4,
+                      decoration: TextDecoration.none,
+                    ),
                   ),
                 ],
               ),
@@ -90,18 +98,9 @@ Future<void> showAppUpdateDialog(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    dialogContext.l10n.releaseNotes,
-                    style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 10),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 210),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: _ReleaseNotes(
-                        notes: releaseNotes.isEmpty ? dialogContext.l10n.noReleaseNotes : releaseNotes,
-                      ),
+                  AppUpdateNotesViewport(
+                    child: _ReleaseNotes(
+                      notes: releaseNotes.isEmpty ? dialogContext.l10n.noReleaseNotes : releaseNotes,
                     ),
                   ),
                   if (updating) ...[
@@ -157,7 +156,6 @@ Future<void> showAppUpdateDialog(
                         onPressed: () => unawaited(update()),
                         loading: updating,
                         variant: AppLoadingButtonVariant.primary,
-                        icon: const Icon(Icons.system_update_alt_outlined, size: 17),
                         child: Text(dialogContext.l10n.newVersionUpdate),
                       ),
                     ],

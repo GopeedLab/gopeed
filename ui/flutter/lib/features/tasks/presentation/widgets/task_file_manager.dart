@@ -109,7 +109,7 @@ class _TaskFileManagerViewState extends State<TaskFileManagerView> {
     try {
       final renderBox = actionContext.findRenderObject();
       final origin = renderBox is RenderBox ? renderBox.localToGlobal(Offset.zero) & renderBox.size : null;
-      await Share.shareXFiles([XFile(_localPath(entry))], sharePositionOrigin: origin);
+      await SharePlus.instance.share(ShareParams(files: [XFile(_localPath(entry))], sharePositionOrigin: origin));
     } catch (error) {
       if (mounted) showAppToast(context, error.toString(), type: AppToastType.error);
     }

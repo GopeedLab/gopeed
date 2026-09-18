@@ -18,6 +18,7 @@
   "exit": "Çıkış",
   "pressBackAgainToExit": "Çıkmak için tekrar geri tuşuna basın",
   "create": "İşlem Oluştur",
+  "createAction": "Oluştur",
   "directDownload": "Direkt İndir",
   "advancedOptions": "Gelişmiş Seçenekler",
   "followSettings": "Ayarları Takip Et",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Varsayılan indirme klasörü olarak kaydet",
   "downloadDirValid": "Lütfen indirme dizinini seçin",
   "connections": "Bağlantılar",
+  "maxRetries": "Maksimum yeniden deneme",
   "useServerCtime": "Dosya oluşturma tarihi için sunucu zamanını kullan",
   "maxRunning": "Maksimum Çalışan İşlem",
   "defaultDirectDownload": "Varsayılan olarak direkt indirmeyi işaretle",
@@ -102,6 +104,7 @@
   "extensions": "Eklentiler",
   "extensionInstallUrl": "Kurulum URL'si",
   "extensionInstallSuccess": "Başarıyla kuruldu",
+  "extensionUpdateConfirm": "“{name}” en son sürüme güncellensin mi?",
   "extensionUpdateSuccess": "Başarıyla güncellendi",
   "extensionDelete": "Eklentiyi Sil",
   "extensionAlreadyLatest": "Zaten en son sürüm",
@@ -236,6 +239,7 @@
   "back": "Geri",
   "open": "Aç",
   "openFile": "Dosyayı Aç",
+  "openFolder": "Klasörü Aç",
   "share": "Paylaş",
   "copy": "Kopyala",
   "copied": "Kopyalandı",
@@ -352,7 +356,7 @@
   "resolvedFileCount": "{count} dosyaları çözüldü",
   "resourceHasNoFiles": "Kaynak, uygun olmayan dosya listesine sahiptir",
   "noFiles": "Hiçbir dosya yok",
-  "createHistory": "Create History Create History",
+  "historyLinks": "Geçmiş Bağlantıları",
   "noHistory": "Geçmiş yok",
   "directDownloadDescription": "Hemen çözümle ve görevleri oluşturun",
   "taskProgress": "Görev ilerlemesi",
@@ -441,5 +445,6 @@
   "webApiConfigReadOnlyHelp": "Web sürümü API ayarlarının çevrimiçi değiştirilmesini desteklemez. Sunucu başlatma seçeneklerini veya yapılandırma dosyasını güncelleyin ve değişikliklerin etkili olması için hizmeti yeniden başlatın.",
   "webMcpApiTokenHint": "Bir API anahtarı yapılandırdıysanız, ajan bağlanırken kimlik doğrulama bilgileri iletilmelidir",
   "useMcpApiTokenTemplate": "Kimlik doğrulamalı yapılandırmaya geç",
-  "mcpRequiresTcp": "Ajan bağlantı yönergeleri API protokolü TCP olduğunda kullanılabilir."
+  "mcpRequiresTcp": "Ajan bağlantı yönergeleri API protokolü TCP olduğunda kullanılabilir.",
+  "emptyTaskCreateHint": "İndirmeye başlamak için {action} düğmesine tıklayın"
 }

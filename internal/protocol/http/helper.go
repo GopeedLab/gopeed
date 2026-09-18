@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -312,6 +313,28 @@ func parseFilename(contentDisposition string) string {
 
 	// Fallback to manual parsing
 	return parseFilenameFallback(contentDisposition)
+}
+
+// appendFilenameExtension adds a MIME-derived extension when the resolved
+// filename has no usable extension. Some image hosts use opaque path segments
+// that look like extensions, even though the response Content-Type is the
+// only reliable source for the file type.
+func appendFilenameExtension(filename, contentType string) string {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return filename
+	}
+
+	extensions, err := mime.ExtensionsByType(mediaType)
+	if err != nil || len(extensions) == 0 {
+		return filename
+	}
+
+	ext := path.Ext(filename)
+	if len(ext) > 1 && len(ext) <= 20 {
+		return filename
+	}
+	return filename + extensions[0]
 }
 
 // parseFilenameExtended handles RFC 5987 extended notation (filename*=)

@@ -8,12 +8,15 @@ import (
 	"github.com/dop251/goja"
 )
 
-func injectGopeed(vm *goja.Runtime, gopeed *Instance) error {
+func injectGopeed(vm *goja.Runtime, gopeed *Instance, post func(func(*goja.Runtime)) bool) error {
 	gopeedObject := vm.NewObject()
 	if gopeed == nil {
 		return vm.Set("gopeed", gopeedObject)
 	}
 	if err := gopeedObject.Set("events", newJSEventsRuntime(vm, gopeed.Events)); err != nil {
+		return err
+	}
+	if err := gopeedObject.Set("host", newInstanceHost()); err != nil {
 		return err
 	}
 	if err := gopeedObject.Set("info", gopeed.Info); err != nil {
@@ -30,11 +33,14 @@ func injectGopeed(vm *goja.Runtime, gopeed *Instance) error {
 	}
 	runtimeObject := vm.NewObject()
 	if gopeed.Runtime != nil {
+		if err := runtimeObject.Set("ffmpeg", vm.Get("__gopeed_ffmpeg")); err != nil {
+			return err
+		}
 		if err := runtimeObject.Set("blob", newJSBlobRuntime(vm)); err != nil {
 			return err
 		}
 		if gopeed.Runtime.WebView != nil {
-			if err := runtimeObject.Set("webview", newJSWebViewRuntime(vm, gopeed.Runtime.WebView)); err != nil {
+			if err := runtimeObject.Set("webview", newJSWebViewRuntime(vm, gopeed.Runtime.WebView, post)); err != nil {
 				return err
 			}
 		}
@@ -100,7 +106,7 @@ func newJSEventsRuntime(vm *goja.Runtime, events InstanceEvents) *goja.Object {
 	return obj
 }
 
-func newJSWebViewRuntime(vm *goja.Runtime, runtime *enginewebview.Runtime) *goja.Object {
+func newJSWebViewRuntime(vm *goja.Runtime, runtime *enginewebview.Runtime, post func(func(*goja.Runtime)) bool) *goja.Object {
 	obj := vm.NewObject()
 	_ = obj.Set("isAvailable", func(goja.FunctionCall) goja.Value {
 		return vm.ToValue(runtime.IsAvailable())
@@ -110,35 +116,48 @@ func newJSWebViewRuntime(vm *goja.Runtime, runtime *enginewebview.Runtime) *goja
 		if err != nil {
 			panic(vm.ToValue(err))
 		}
-		return newJSWebViewPage(vm, page)
+		return newJSWebViewPage(vm, page, post)
 	})
 	return obj
 }
 
-func newJSWebViewPage(vm *goja.Runtime, page *enginewebview.PageHandle) *goja.Object {
+func newJSWebViewPage(vm *goja.Runtime, page *enginewebview.PageHandle, post func(func(*goja.Runtime)) bool) *goja.Object {
 	obj := vm.NewObject()
+	_ = obj.Set("on", func(call goja.FunctionCall) goja.Value {
+		promise, resolve, reject := vm.NewPromise()
+		handler, ok := goja.AssertFunction(call.Argument(1))
+		if !ok {
+			_ = reject(vm.NewTypeError("handler must be a function"))
+			return vm.ToValue(promise)
+		}
+		unsubscribe, err := page.On(call.Argument(0).String(), func(event enginewebview.Event) {
+			post(func(vm *goja.Runtime) {
+				// A callback is a notification: never await its returned promise.
+				_, _ = handler(goja.Undefined(), vm.ToValue(event.Data))
+			})
+		})
+		if err != nil {
+			_ = reject(vm.NewGoError(err))
+		} else {
+			_ = resolve(func(goja.FunctionCall) goja.Value { unsubscribe(); return goja.Undefined() })
+		}
+		return vm.ToValue(promise)
+	})
+
 	_ = obj.Set("addInitScript", func(call goja.FunctionCall) goja.Value {
 		script, err := requireStringArg(call, 0, "script")
 		if err != nil {
 			panic(vm.ToValue(err))
 		}
-		if err := page.AddInitScript(script); err != nil {
-			panic(vm.ToValue(err))
-		}
-		return goja.Undefined()
+		return webviewPromise(vm, post, func() (any, error) { return nil, page.AddInitScript(script) })
 	})
 	_ = obj.Set("goto", func(call goja.FunctionCall) goja.Value {
 		url, err := requireStringArg(call, 0, "url")
 		if err != nil {
 			panic(vm.ToValue(err))
 		}
-		if err := page.Goto(
-			url,
-			optionalMap(call.Argument(1)),
-		); err != nil {
-			panic(vm.ToValue(err))
-		}
-		return goja.Undefined()
+		opts := optionalMap(call.Argument(1))
+		return webviewPromise(vm, post, func() (any, error) { return nil, page.Goto(url, opts) })
 	})
 	_ = obj.Set("execute", func(call goja.FunctionCall) goja.Value {
 		expression, err := enginewebview.NormalizeExecutableValue(call.Argument(0))
@@ -251,10 +270,7 @@ func newJSWebViewPage(vm *goja.Runtime, page *enginewebview.PageHandle) *goja.Ob
 		return vm.ToValue(result)
 	})
 	_ = obj.Set("close", func(goja.FunctionCall) goja.Value {
-		if err := page.Close(); err != nil {
-			panic(vm.ToValue(err))
-		}
-		return goja.Undefined()
+		return webviewPromise(vm, post, func() (any, error) { return nil, page.Close() })
 	})
 	return obj
 }
@@ -286,4 +302,23 @@ func requireStringArg(call goja.FunctionCall, index int, name string) (string, e
 		return "", fmt.Errorf(`missing or invalid "%s"`, name)
 	}
 	return value.String(), nil
+}
+
+// Browser operations run outside Goja, allowing notifications to be delivered
+// while navigation is pending. Only the event loop touches JavaScript values.
+func webviewPromise(vm *goja.Runtime, post func(func(*goja.Runtime)) bool, work func() (any, error)) goja.Value {
+	promise, resolve, reject := vm.NewPromise()
+	go func() {
+		value, err := work()
+		post(func(vm *goja.Runtime) {
+			if err != nil {
+				_ = reject(vm.NewGoError(err))
+			} else if value == nil {
+				_ = resolve(goja.Undefined())
+			} else {
+				_ = resolve(value)
+			}
+		})
+	}()
+	return vm.ToValue(promise)
 }

@@ -18,6 +18,7 @@
   "exit": "종료",
   "pressBackAgainToExit": "종료하려면 뒤로 버튼을 한 번 더 누르세요",
   "create": "작업 생성",
+  "createAction": "생성",
   "directDownload": "바로 다운로드",
   "advancedOptions": "고급 옵션",
   "followSettings": "설정값 사용",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "기본 다운로드 폴더로 저장",
   "downloadDirValid": "다운로드 폴더를 선택해 주세요",
   "connections": "연결 수",
+  "maxRetries": "최대 재시도 횟수",
   "useServerCtime": "파일 생성 시간에 서버 시간 사용",
   "maxRunning": "최대 동시 작업 수",
   "defaultDirectDownload": "기본으로 바로 다운로드 사용",
@@ -102,6 +104,7 @@
   "extensions": "확장 프로그램",
   "extensionInstallUrl": "설치 URL",
   "extensionInstallSuccess": "설치되었습니다",
+  "extensionUpdateConfirm": "“{name}”을(를) 최신 버전으로 업데이트할까요?",
   "extensionUpdateSuccess": "업데이트되었습니다",
   "extensionDelete": "확장 프로그램 삭제",
   "extensionAlreadyLatest": "이미 최신 버전입니다",
@@ -236,6 +239,7 @@
   "back": "뒤로",
   "open": "열기",
   "openFile": "파일 열기",
+  "openFolder": "폴더 열기",
   "share": "공유",
   "copy": "복사",
   "copied": "뚱 베어",
@@ -352,7 +356,7 @@
   "resolvedFileCount": "{count} 파일 해결",
   "resourceHasNoFiles": "리소스에는 선택 가능한 파일 목록이 없습니다",
   "noFiles": "파일 없음",
-  "createHistory": "회사연혁",
+  "historyLinks": "기록 링크",
   "noHistory": "의 역사",
   "directDownloadDescription": "재해를 드리며 즉시 업무를 만듭니다",
   "taskProgress": "작업 진행",
@@ -441,5 +445,6 @@
   "webApiConfigReadOnlyHelp": "웹 버전에서는 API 설정을 온라인으로 수정할 수 없습니다. 서버 시작 옵션이나 구성 파일을 변경한 후 서비스를 다시 시작해야 적용됩니다.",
   "webMcpApiTokenHint": "API 토큰을 설정한 경우 에이전트 연결 시 인증 정보를 전달해야 합니다",
   "useMcpApiTokenTemplate": "인증 구성으로 전환",
-  "mcpRequiresTcp": "API 프로토콜이 TCP일 때 에이전트 연결 안내를 사용할 수 있습니다."
+  "mcpRequiresTcp": "API 프로토콜이 TCP일 때 에이전트 연결 안내를 사용할 수 있습니다.",
+  "emptyTaskCreateHint": "{action}을 눌러 다운로드 시작"
 }

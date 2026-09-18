@@ -18,6 +18,7 @@
   "exit": "Keluar",
   "pressBackAgainToExit": "Tekan kembali sekali lagi untuk keluar",
   "create": "Membuat Tugas",
+  "createAction": "Buat",
   "directDownload": "Unduhan Langsung",
   "advancedOptions": "Pengaturan Lanjutan",
   "followSettings": "Mengikuti Pengaturan",
@@ -37,6 +38,7 @@
   "rememberLastDownloadDir": "Simpan sebagai folder unduhan default",
   "downloadDirValid": "Silahkan pilih direktori unduhan",
   "connections": "Koneksi",
+  "maxRetries": "Percobaan ulang maks.",
   "useServerCtime": "Gunakan waktu server untuk pembuatan file",
   "maxRunning": "Tugas Maksimum yang Berjalan",
   "defaultDirectDownload": "Pilih unduhan langsung sebagai opsi standar",
@@ -102,6 +104,7 @@
   "extensions": "Ekstensi",
   "extensionInstallUrl": "URL Instal",
   "extensionInstallSuccess": "Diinstal dengan sukses",
+  "extensionUpdateConfirm": "Perbarui “{name}” ke versi terbaru?",
   "extensionUpdateSuccess": "Diperbaruhi dengan sukses",
   "extensionDelete": "Hapus Ekstensi",
   "extensionAlreadyLatest": "Ini sudah versi terbaru",
@@ -236,6 +239,7 @@
   "back": "Kembali",
   "open": "Buka",
   "openFile": "Buka Berkas",
+  "openFolder": "Buka Folder",
   "share": "Bagikan",
   "copy": "Salin",
   "copied": "Disalin",
@@ -352,7 +356,7 @@
   "resolvedFileCount": "{count} terselesaikan",
   "resourceHasNoFiles": "Sumber daya tidak memiliki daftar berkas yang dapat dipilih",
   "noFiles": "Tidak ada berkas",
-  "createHistory": "Buat Riwayat",
+  "historyLinks": "Tautan Riwayat",
   "noHistory": "Tidak ada sejarah",
   "directDownloadDescription": "Lewatkan pemecahan dan buat tugas segera",
   "taskProgress": "Kemajuan tugas",
@@ -441,5 +445,6 @@
   "webApiConfigReadOnlyHelp": "Versi web tidak dapat mengubah pengaturan API secara online. Perbarui opsi startup server atau file konfigurasi, lalu mulai ulang layanan agar perubahan diterapkan.",
   "webMcpApiTokenHint": "Jika Anda telah mengatur token API, informasi autentikasi harus disertakan saat menghubungkan agen",
   "useMcpApiTokenTemplate": "Beralih ke konfigurasi terautentikasi",
-  "mcpRequiresTcp": "Petunjuk koneksi agen tersedia saat protokol API menggunakan TCP."
+  "mcpRequiresTcp": "Petunjuk koneksi agen tersedia saat protokol API menggunakan TCP.",
+  "emptyTaskCreateHint": "Klik {action} untuk mulai mengunduh"
 }

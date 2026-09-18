@@ -26,7 +26,6 @@ import (
 var (
 	gitSuffix = ".git"
 
-	tempExtensionsDir   = ".extensions"
 	extensionsDir       = "extensions"
 	extensionIgnoreDirs = []string{gitSuffix, "node_modules"}
 
@@ -65,6 +64,7 @@ func (d *Downloader) InstallExtensionByFolder(path string, devMode bool) (*Exten
 
 	// if extension is not installed, add it to the list, otherwise update it
 	installedExt := d.getExtension(ext.Identity)
+	newInstallation := installedExt == nil
 	if installedExt == nil {
 		ext.CreatedAt = time.Now()
 		ext.UpdatedAt = ext.CreatedAt
@@ -75,6 +75,11 @@ func (d *Downloader) InstallExtensionByFolder(path string, devMode bool) (*Exten
 	}
 	if err = d.storage.Put(bucketExtension, installedExt.Identity, installedExt); err != nil {
 		return nil, err
+	}
+	if newInstallation {
+		d.webviewProfilesLock.Lock()
+		delete(d.webviewProfiles, ext.Identity)
+		d.webviewProfilesLock.Unlock()
 	}
 	return installedExt, nil
 }
@@ -144,6 +149,9 @@ func (d *Downloader) DeleteExtension(identity string) error {
 	if err != nil {
 		return err
 	}
+	if err := d.removeExtensionWebViewProfile(identity); err != nil {
+		return fmt.Errorf("remove extension WebView data: %w", err)
+	}
 	// remove from disk
 	if !ext.DevMode {
 		if err := os.RemoveAll(d.ExtensionPath(ext)); err != nil {
@@ -204,11 +212,14 @@ func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath st
 
 	// Use unique suffix to avoid concurrent conflicts when multiple git operations
 	// target the same extension (e.g., install and update check happening simultaneously)
-	tempExtDir := filepath.Join(d.cfg.StorageDir, tempExtensionsDir, fmt.Sprintf("%s_%d", projectPath, time.Now().UnixNano()))
-	if err := os.MkdirAll(tempExtDir, 0755); err != nil {
+	tempExtDir, err := os.MkdirTemp(d.cfg.TempDir, "gopeed-extension-")
+	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(tempExtDir)
+	if err := d.tempFiles.Track(tempExtDir); err != nil {
+		return nil, err
+	}
+	defer d.tempFiles.Remove(tempExtDir)
 
 	proxyOptions := transport.ProxyOptions{}
 	proxyUrl := d.cfg.DownloaderStoreConfig.Proxy.ToUrl()
@@ -365,9 +376,9 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					engine, session := d.newExtensionEngine()
 					defer session.CloseIfIdle()
 					gopeed.Runtime = &InstanceRuntime{
-						WebView: d.newExtensionWebViewRuntime(session),
+						WebView: d.newExtensionWebViewRuntime(session, ext.buildIdentity()),
 					}
-					err = injectGopeed(engine.Runtime, gopeed)
+					err = injectGopeed(engine.Runtime, gopeed, engine.Post)
 					if err != nil {
 						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] engine inject failed", ext.buildIdentity())
 						return

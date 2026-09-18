@@ -30,7 +30,15 @@ class AppLoadingButton extends StatelessWidget {
     final palette = AppPalette.of(context);
     final replaceChild = loading && icon == null;
     final leading = loading && icon != null ? _LoadingIcon(variant: variant) : icon;
-    final effectiveChild = replaceChild ? _LoadingIcon(variant: variant) : child;
+    final effectiveChild = replaceChild
+        ? Stack(
+            alignment: Alignment.center,
+            children: [
+              ExcludeSemantics(child: Opacity(opacity: 0, child: child)),
+              Positioned.fill(child: _LoadingIcon(variant: variant)),
+            ],
+          )
+        : child;
     final content = leading == null
         ? effectiveChild
         : Row(
@@ -38,7 +46,7 @@ class AppLoadingButton extends StatelessWidget {
             children: [
               leading,
               const SizedBox(width: AppDesignTokens.space8),
-              effectiveChild,
+              Flexible(child: effectiveChild),
             ],
           );
     final effectiveOnPressed = loading ? null : onPressed;

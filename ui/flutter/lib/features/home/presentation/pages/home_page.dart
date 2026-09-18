@@ -19,6 +19,7 @@ import '../../../../shared/widgets/responsive_navigation_layout.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../../tasks/application/tasks_controller.dart';
+import '../../../tasks/application/task_list_navigation.dart';
 import '../../../tasks/application/pending_update_task.dart';
 import '../../../tasks/application/task_batch_selection_controller.dart';
 import '../../../tasks/domain/task_record.dart';
@@ -29,6 +30,7 @@ import '../../../tasks/presentation/widgets/task_drawer.dart';
 import '../../../tasks/presentation/widgets/task_context_menu.dart';
 import '../../../tasks/presentation/widgets/task_delete_dialog.dart';
 import '../../../tasks/presentation/widgets/task_empty_state.dart';
+import '../../../tasks/presentation/widgets/task_create_button.dart';
 import '../../../tasks/presentation/widgets/task_file_browser_dialog.dart';
 import '../../../tasks/presentation/widgets/task_update_url_dialog.dart';
 import '../widgets/primary_rail.dart';
@@ -86,6 +88,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final tasksAsync = ref.watch(tasksControllerProvider);
+    ref.listen(taskListNavigationProvider, (_, _) {
+      _searchController.clear();
+      _setActiveFilter(_TaskFilter.downloading);
+      setState(() => _batchMode = false);
+    });
     final tasksState = tasksAsync.value;
     final tasks = tasksState?.tasks ?? const <TaskRecord>[];
     final filteredTasks = _filteredTasks(tasks);
@@ -166,7 +173,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     loading: () => const Center(child: shad.CircularProgressIndicator()),
                                     error: (error, _) => const TaskEmptyState(),
                                     data: (_) => filteredTasks.isEmpty
-                                        ? TaskEmptyState(message: emptyStateMessage)
+                                        ? TaskEmptyState(
+                                            message: emptyStateMessage,
+                                            onCreateTask: _searchController.text.trim().isEmpty ? _handleAddTask : null,
+                                          )
                                         : ListView.separated(
                                             padding: const EdgeInsets.only(bottom: 16),
                                             itemCount: filteredTasks.length,
@@ -254,6 +264,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         data: (_) => _MobileTasksView(
           tasks: filteredTasks,
           emptyStateMessage: emptyStateMessage,
+          onCreateTask: _searchController.text.trim().isEmpty ? _handleAddTask : null,
           batchMode: _batchMode,
           batchSelection: _batchSelection,
           onToggleSelectAll: _toggleSelectAll,
@@ -679,6 +690,7 @@ class _MobileTasksView extends StatelessWidget {
     required this.contextActionsForTask,
     required this.pendingUpdateTaskId,
     this.emptyStateMessage,
+    this.onCreateTask,
     this.loading = false,
   });
 
@@ -699,6 +711,7 @@ class _MobileTasksView extends StatelessWidget {
   final TaskContextActions Function(TaskRecord task, bool selected, bool allSelected) contextActionsForTask;
   final String? pendingUpdateTaskId;
   final String? emptyStateMessage;
+  final VoidCallback? onCreateTask;
   final bool loading;
 
   @override
@@ -739,7 +752,7 @@ class _MobileTasksView extends StatelessWidget {
             child: loading
                 ? const Center(child: shad.CircularProgressIndicator())
                 : tasks.isEmpty
-                ? TaskEmptyState(message: emptyStateMessage)
+                ? TaskEmptyState(message: emptyStateMessage, onCreateTask: onCreateTask)
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                     itemCount: tasks.length,
@@ -808,9 +821,19 @@ class _MobileTasksHeader extends StatelessWidget {
                   style: TextStyle(color: palette.textPrimary, fontSize: 22, fontWeight: FontWeight.w800),
                 ),
               ),
-              _MobileHeaderIconButton(icon: Icons.add_rounded, onPressed: onAddTask),
+              const SizedBox(width: AppDesignTokens.space8),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.5),
+                child: TaskCreateButton(
+                  key: const ValueKey('tasks-mobile-create-button'),
+                  onPressed: onAddTask,
+                  minHeight: 34,
+                  compact: true,
+                ),
+              ),
               const SizedBox(width: 8),
               _MobileHeaderIconButton(
+                key: const ValueKey('tasks-mobile-batch-button'),
                 icon: Icons.checklist_rtl_outlined,
                 active: batchMode,
                 badge: batchMode && selectedCount > 0 ? selectedCount.toString() : null,
@@ -897,7 +920,13 @@ class _MobileBatchToolbar extends StatelessWidget {
 }
 
 class _MobileHeaderIconButton extends StatelessWidget {
-  const _MobileHeaderIconButton({required this.icon, required this.onPressed, this.active = false, this.badge});
+  const _MobileHeaderIconButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    this.active = false,
+    this.badge,
+  });
 
   final IconData icon;
   final VoidCallback onPressed;

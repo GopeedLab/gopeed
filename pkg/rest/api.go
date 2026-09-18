@@ -43,7 +43,7 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 			err    error
 		)
 		if req.Rid != "" {
-			taskId, err = Downloader.Create(req.Rid)
+			taskId, err = Downloader.CreateWithOptions(req.Rid, req.Opts)
 		} else if req.Req != nil {
 			taskId, err = Downloader.CreateDirect(req.Req, req.Opts)
 		} else {

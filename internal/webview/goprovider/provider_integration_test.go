@@ -13,3 +13,7 @@ func TestProviderContract(t *testing.T) {
 		CookieDomainMode: integrationtest.CookieDomainModeRequired,
 	})
 }
+
+func TestProviderProfiles(t *testing.T) { integrationtest.RunProfileContract(t, New()) }
+
+func TestProviderEvents(t *testing.T) { integrationtest.RunEventContract(t, New()) }
