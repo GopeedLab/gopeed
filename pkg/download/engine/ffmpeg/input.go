@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const httpBlockSize = 1024 * 1024
@@ -79,8 +80,10 @@ func OpenHTTP(ctx context.Context, client *http.Client, source HTTPSource) (Inpu
 }
 
 func (h *httpInput) request(start, end int64) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(h.ctx, http.MethodGet, h.source.URL, nil)
+	ctx, cancel := context.WithCancel(h.ctx)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.source.URL, nil)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	for k, v := range h.source.Headers {
@@ -94,7 +97,15 @@ func (h *httpInput) request(start, end int64) (*http.Response, error) {
 	} else if h.modified != "" {
 		req.Header.Set("If-Range", h.modified)
 	}
-	return h.client.Do(req)
+	timer := time.AfterFunc(15*time.Second, cancel)
+	resp, err := h.client.Do(req)
+	timer.Stop()
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	resp.Body = &idleMediaBody{ReadCloser: resp.Body, cancel: cancel}
+	return resp, nil
 }
 
 func identityEncoding(resp *http.Response) error {
@@ -225,3 +236,17 @@ func (h *httpInput) Close() error {
 	}
 	return nil
 }
+
+// Only time spent waiting on the network counts toward this idle deadline.
+// Pauses between reads (disk writes or FFmpeg scheduling) do not count.
+type idleMediaBody struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+}
+
+func (b *idleMediaBody) Read(p []byte) (int, error) {
+	timer := time.AfterFunc(15*time.Second, b.cancel)
+	defer timer.Stop()
+	return b.ReadCloser.Read(p)
+}
+func (b *idleMediaBody) Close() error { b.cancel(); return b.ReadCloser.Close() }

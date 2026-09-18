@@ -37,15 +37,17 @@ func installByInstaller(killSignalChan chan<- any, packagePath, destDir string) 
 	}
 	defer reader.Close()
 
-	// Find the installer file
 	var installerPath string
 	for _, file := range reader.File {
+		cleanName := filepath.Clean(file.Name)
+		if strings.HasPrefix(cleanName, "..") || filepath.IsAbs(cleanName) {
+			continue
+		}
 		if file.FileInfo().IsDir() {
 			continue
 		}
 
-		// Extract file
-		path := filepath.Join(tempDir, file.Name)
+		path := filepath.Join(tempDir, cleanName)
 
 		if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 			return err
@@ -101,7 +103,11 @@ func installByPortable(killSignalChan chan<- any, packagePath, destDir string) e
 	defer reader.Close()
 
 	for _, file := range reader.File {
-		path := filepath.Join(destDir, file.Name)
+		cleanName := filepath.Clean(file.Name)
+		if strings.HasPrefix(cleanName, "..") || filepath.IsAbs(cleanName) {
+			continue
+		}
+		path := filepath.Join(destDir, cleanName)
 
 		if file.FileInfo().IsDir() {
 			os.MkdirAll(path, file.Mode())

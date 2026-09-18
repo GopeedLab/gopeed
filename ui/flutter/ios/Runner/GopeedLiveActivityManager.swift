@@ -108,6 +108,39 @@ final class GopeedLiveActivityManager: NSObject {
         return generation
     }
 
+    private func generationForProgress(
+        taskID: String
+    ) -> UUID? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+
+        guard
+            !suppressedTaskIDs.contains(taskID)
+        else {
+            return nil
+        }
+
+        if let generation =
+            taskGenerations[taskID] {
+            return generation
+        }
+
+        // Progress may be the first event after Continued Processing
+        // releases ownership. Establish a fresh lifecycle generation.
+        // refreshActivity still verifies that Gopeed reports the task
+        // as running before it can create a Live Activity.
+        let generation = UUID()
+
+        taskGenerations[taskID] =
+            generation
+
+        lastUpdateTime.removeValue(
+            forKey: taskID
+        )
+
+        return generation
+    }
+
     @discardableResult
     private func invalidateGeneration(
         taskID: String
@@ -252,7 +285,7 @@ final class GopeedLiveActivityManager: NSObject {
         case "task.progress":
             guard
                 let generation =
-                    currentGeneration(
+                    generationForProgress(
                         taskID: taskID
                     )
             else {
