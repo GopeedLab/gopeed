@@ -3,6 +3,7 @@ package bt
 import (
 	"context"
 	"crypto/sha1"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,7 +63,7 @@ func TestStartUsesSelectionSubmittedAfterResolve(t *testing.T) {
 }
 
 func TestWaitCleansUnselectedFilesFromSharedPiece(t *testing.T) {
-	for _, mode := range []string{"partial", "all", "already removed", "remove error"} {
+	for _, mode := range []string{"partial", "part only", "both paths", "all", "already removed", "remove error"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := t.TempDir()
 			keepPath := filepath.Join(dir, "bundle", "keep.txt")
@@ -95,7 +96,7 @@ func TestWaitCleansUnselectedFilesFromSharedPiece(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer c.Close()
-			spec, err := torrent.TorrentSpecFromMetaInfoErr(&metainfo.MetaInfo{InfoBytes: bencode.MustMarshal(info)})
+			spec, err := torrent.TorrentSpecFromMetaInfoErr(&metainfo.MetaInfo{InfoBytes: bencode.MustMarshal(&info)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -118,7 +119,12 @@ func TestWaitCleansUnselectedFilesFromSharedPiece(t *testing.T) {
 			if !f.isDone() {
 				t.Fatal("selected file is not complete")
 			}
-			if mode == "already removed" || mode == "remove error" {
+			if mode == "part only" || mode == "both paths" || mode == "all" {
+				if err := os.WriteFile(skipPath+".part", []byte("skip"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if mode == "part only" || mode == "already removed" || mode == "remove error" {
 				if err := os.Remove(skipPath); err != nil {
 					t.Fatal(err)
 				}
@@ -147,15 +153,150 @@ func TestWaitCleansUnselectedFilesFromSharedPiece(t *testing.T) {
 				t.Fatalf("selected file changed: %q, %v", data, err)
 			}
 			if mode == "all" {
+				if _, err := os.Stat(skipPath + ".part"); err != nil {
+					t.Fatalf("selected part file was removed: %v", err)
+				}
 				data, err := os.ReadFile(skipPath)
 				if err != nil || string(data) != "skip" {
 					t.Fatalf("selected file changed: %q, %v", data, err)
 				}
 			} else if mode != "remove error" {
-				if _, err := os.Stat(skipPath); !os.IsNotExist(err) {
-					t.Fatalf("unselected file remains: %v", err)
+				for _, removed := range []string{skipPath, skipPath + ".part", filepath.Dir(skipPath)} {
+					if _, err := os.Stat(removed); !os.IsNotExist(err) {
+						t.Fatalf("unselected file or empty directory remains: %s: %v", removed, err)
+					}
 				}
 			}
 		})
+	}
+}
+
+func TestRemoveUnselectedFilePrunesOnlyEmptyParents(t *testing.T) {
+	for _, preserveSibling := range []bool{false, true} {
+		t.Run(fmt.Sprint(preserveSibling), func(t *testing.T) {
+			root := t.TempDir()
+			relative := filepath.Join("bundle", "nested", "deep", "skip.txt")
+			name := filepath.Join(root, relative)
+			if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(name+".part", []byte("partial"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			sibling := filepath.Join(root, "bundle", "keep.txt")
+			if preserveSibling {
+				if err := os.WriteFile(sibling, []byte("keep"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := removeUnselectedFile(root, "bundle", relative); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "bundle", "nested")); !os.IsNotExist(err) {
+				t.Fatalf("empty ancestors remain: %v", err)
+			}
+			if preserveSibling {
+				data, err := os.ReadFile(sibling)
+				if err != nil || string(data) != "keep" {
+					t.Fatalf("sibling changed: %q, %v", data, err)
+				}
+			}
+			if info, err := os.Stat(filepath.Join(root, "bundle")); err != nil || !info.IsDir() {
+				t.Fatalf("torrent root directory was removed: %v", err)
+			}
+			if _, err := os.Stat(root); err != nil {
+				t.Fatalf("download directory was removed: %v", err)
+			}
+			// A file directly inside the torrent root must not cause that root to be pruned.
+			rootFile := filepath.Join("bundle", "root.txt")
+			if err := os.WriteFile(filepath.Join(root, rootFile)+".part", []byte("partial"), 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := removeUnselectedFile(root, "bundle", rootFile); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "bundle")); err != nil {
+				t.Fatalf("torrent root directory was removed after root-level cleanup: %v", err)
+			}
+			// Repeating cleanup after the file and its subdirectories are gone is harmless.
+			if err := removeUnselectedFile(root, "bundle", relative); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestCleanupMatchesNamedAndRootlessStorage(t *testing.T) {
+	for _, version := range []int64{1, 2} {
+		for _, layout := range []string{"rootless", "wrapped", "file-tree-root"} {
+			if version == 1 && layout == "file-tree-root" {
+				continue
+			}
+			t.Run(fmt.Sprintf("v%d/%s", version, layout), func(t *testing.T) {
+				dir := t.TempDir()
+				info := metainfo.Info{Name: metainfo.NoName, PieceLength: 16384}
+				root := dir
+				if layout == "wrapped" {
+					info.Name = "bundle"
+					root = filepath.Join(dir, "bundle")
+				}
+				if version == 1 {
+					info.Files = []metainfo.FileInfo{{Path: []string{"keep.txt"}}, {Path: []string{"nested", "deep", "skip.txt"}}}
+				} else {
+					info.MetaVersion = 2
+					info.FileTree = metainfo.FileTree{Dir: map[string]metainfo.FileTree{
+						"keep.txt": {},
+						"nested":   {Dir: map[string]metainfo.FileTree{"deep": {Dir: map[string]metainfo.FileTree{"skip.txt": {}}}}},
+					}}
+				}
+				if layout == "file-tree-root" {
+					info.FileTree = metainfo.FileTree{Dir: map[string]metainfo.FileTree{"tree-root": info.FileTree}}
+					root = filepath.Join(dir, "tree-root")
+				}
+				// Keep the library's default FilePathMaker here to independently verify
+				// that cleanup agrees with its real disk layout, including NoName.
+				store := storage.NewFileOpts(storage.NewFileClientOpts{
+					ClientBaseDir:   dir,
+					TorrentDirMaker: func(baseDir string, _ *metainfo.Info, _ metainfo.Hash) string { return baseDir },
+				})
+				defer store.Close()
+				torrentStorage, err := store.OpenTorrent(context.Background(), &info, metainfo.Hash{1})
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer torrentStorage.Close()
+				skip := filepath.Join(root, "nested", "deep", "skip.txt")
+				if _, err := os.Stat(skip); err != nil {
+					t.Fatalf("unexpected storage layout: %v", err)
+				}
+				if err := os.WriteFile(skip+".part", []byte("partial"), 0644); err != nil {
+					t.Fatal(err)
+				}
+				files := info.UpvertedFiles()
+				boundary, name := torrentFileLayout(&info, files[1])
+				if err := removeUnselectedFile(dir, boundary, name); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := os.Stat(filepath.Join(root, "nested")); !os.IsNotExist(err) {
+					t.Fatalf("empty subtree remains: %v", err)
+				}
+				if _, err := os.Stat(filepath.Join(root, "keep.txt")); err != nil {
+					t.Fatalf("selected file removed: %v", err)
+				}
+				// Also verify the boundary when the protected directory becomes empty.
+				if err := os.Remove(filepath.Join(root, "keep.txt")); err != nil {
+					t.Fatal(err)
+				}
+				for _, file := range files {
+					boundary, name := torrentFileLayout(&info, file)
+					if err := removeUnselectedFile(dir, boundary, name); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if stat, err := os.Stat(root); err != nil || !stat.IsDir() {
+					t.Fatalf("cleanup boundary was removed: %v", err)
+				}
+			})
+		}
 	}
 }
