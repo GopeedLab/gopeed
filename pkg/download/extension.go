@@ -378,7 +378,7 @@ func doTrigger[T any](d *Downloader, event ActivationEvent, req *base.Request, c
 					gopeed.Runtime = &InstanceRuntime{
 						WebView: d.newExtensionWebViewRuntime(session, ext.buildIdentity()),
 					}
-					err = injectGopeed(engine.Runtime, gopeed)
+					err = injectGopeed(engine.Runtime, gopeed, engine.Post)
 					if err != nil {
 						gopeed.Logger.logger.Error().Err(err).Msgf("[%s] engine inject failed", ext.buildIdentity())
 						return

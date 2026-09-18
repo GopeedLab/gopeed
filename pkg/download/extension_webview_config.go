@@ -181,3 +181,11 @@ func (d *Downloader) removeExtensionWebViewProfile(identity string) error {
 	}
 	return os.RemoveAll(path)
 }
+
+func (p *extensionWebViewPage) On(event string, handler func(enginewebview.Event)) (func(), error) {
+	source, ok := p.Page.(enginewebview.EventSource)
+	if !ok {
+		return nil, fmt.Errorf("WebView provider does not support events")
+	}
+	return source.On(event, handler)
+}

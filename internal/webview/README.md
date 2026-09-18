@@ -60,3 +60,50 @@ rejecting upstream tunnel; no test-only certificate bypass is added to the app.
 Go proxy unit tests separately cover successful TLS forwarding and authentication.
 These cases run in the existing `test.yml` WebView jobs; existing mobile build jobs
 compile the Android/iOS bridge. No separate Flutter test application is required.
+
+## Extension events and host environment
+
+`gopeed.host.env.version` is the host's build version (`dev` for development
+builds). `gopeed.info.version` continues to identify the extension's own version.
+`gopeed.host.env.os` and `gopeed.host.env.arch` match the REST info endpoint's `os` and
+`arch`: the host's Go `runtime.GOOS` and `runtime.GOARCH` values (for example,
+`windows` / `amd64` or `darwin` / `arm64`).
+See [extension-api.d.ts](extension-api.d.ts) for the event payloads.
+
+```js
+const page = await gopeed.runtime.webview.open();
+const unsubscribe = await page.on("url-changed", ({ url, sameDocument }) => {
+  gopeed.logger.info(url, sameDocument);
+});
+await page.on("closed", ({ reason }) => gopeed.logger.info(reason));
+await page.addInitScript("globalThis.extensionReady = true");
+await page.goto("https://example.com");
+unsubscribe();
+await page.close();
+```
+
+Registration resolves only after the listener is installed; it does not replay
+current state. `url-changed` reports actual address changes, including hash,
+pushState, replaceState and history navigation. `load` follows the main document's
+`window.load`, including reloads, and does not wait for business-level async work.
+Iframe loads and subresource failures do not become main-page notifications.
+`closed` distinguishes the user's close action from API closure and is terminal.
+Unsubscribe is idempotent. Notifications cannot block navigation; the engine does
+not await promises returned by handlers. Catch async errors inside the handler.
+
+`addInitScript` applies to future document contexts only. Use `execute` to run
+code on the current page. Executable functions are serialized and cannot capture
+extension-side lexical variables; pass values explicitly as arguments.
+
+The RPC host uses an NDJSON `page.events` response whose first record is
+`{"ready":true}`. Subsequent records are `{event,data}`. Closing a page sends the
+terminal record before ending the stream. The native backend uses document-start
+notifications for main-document URL/load events and native callbacks for
+navigation failures and user closure.
+
+Additional validation:
+
+- `go test -race ./pkg/download/engine/webview ./internal/webview/rpcprovider`
+- `go test ./pkg/download -run 'TestExtension(WebViewEvents|InfoHostVersion)'`
+- macOS native: `go test -tags webview_native ./internal/webview/goprovider -run TestProviderEvents`
+- Running Flutter host: `go test -tags webview ./internal/webview/rpcprovider -run TestProviderEvents`
