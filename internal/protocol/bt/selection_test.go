@@ -96,7 +96,7 @@ func TestWaitCleansUnselectedFilesFromSharedPiece(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer c.Close()
-			spec, err := torrent.TorrentSpecFromMetaInfoErr(&metainfo.MetaInfo{InfoBytes: bencode.MustMarshal(info)})
+			spec, err := torrent.TorrentSpecFromMetaInfoErr(&metainfo.MetaInfo{InfoBytes: bencode.MustMarshal(&info)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -189,7 +189,7 @@ func TestRemoveUnselectedFilePrunesOnlyEmptyParents(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if err := removeUnselectedFile(root, relative); err != nil {
+			if err := removeUnselectedFile(root, "bundle", relative); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := os.Stat(filepath.Join(root, "bundle", "nested")); !os.IsNotExist(err) {
@@ -212,16 +212,91 @@ func TestRemoveUnselectedFilePrunesOnlyEmptyParents(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, rootFile)+".part", []byte("partial"), 0644); err != nil {
 				t.Fatal(err)
 			}
-			if err := removeUnselectedFile(root, rootFile); err != nil {
+			if err := removeUnselectedFile(root, "bundle", rootFile); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := os.Stat(filepath.Join(root, "bundle")); err != nil {
 				t.Fatalf("torrent root directory was removed after root-level cleanup: %v", err)
 			}
 			// Repeating cleanup after the file and its subdirectories are gone is harmless.
-			if err := removeUnselectedFile(root, relative); err != nil {
+			if err := removeUnselectedFile(root, "bundle", relative); err != nil {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestCleanupMatchesNamedAndRootlessStorage(t *testing.T) {
+	for _, version := range []int64{1, 2} {
+		for _, layout := range []string{"rootless", "wrapped", "file-tree-root"} {
+			if version == 1 && layout == "file-tree-root" {
+				continue
+			}
+			t.Run(fmt.Sprintf("v%d/%s", version, layout), func(t *testing.T) {
+				dir := t.TempDir()
+				info := metainfo.Info{Name: metainfo.NoName, PieceLength: 16384}
+				root := dir
+				if layout == "wrapped" {
+					info.Name = "bundle"
+					root = filepath.Join(dir, "bundle")
+				}
+				if version == 1 {
+					info.Files = []metainfo.FileInfo{{Path: []string{"keep.txt"}}, {Path: []string{"nested", "deep", "skip.txt"}}}
+				} else {
+					info.MetaVersion = 2
+					info.FileTree = metainfo.FileTree{Dir: map[string]metainfo.FileTree{
+						"keep.txt": {},
+						"nested":   {Dir: map[string]metainfo.FileTree{"deep": {Dir: map[string]metainfo.FileTree{"skip.txt": {}}}}},
+					}}
+				}
+				if layout == "file-tree-root" {
+					info.FileTree = metainfo.FileTree{Dir: map[string]metainfo.FileTree{"tree-root": info.FileTree}}
+					root = filepath.Join(dir, "tree-root")
+				}
+				// Keep the library's default FilePathMaker here to independently verify
+				// that cleanup agrees with its real disk layout, including NoName.
+				store := storage.NewFileOpts(storage.NewFileClientOpts{
+					ClientBaseDir:   dir,
+					TorrentDirMaker: func(baseDir string, _ *metainfo.Info, _ metainfo.Hash) string { return baseDir },
+				})
+				defer store.Close()
+				torrentStorage, err := store.OpenTorrent(context.Background(), &info, metainfo.Hash{1})
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer torrentStorage.Close()
+				skip := filepath.Join(root, "nested", "deep", "skip.txt")
+				if _, err := os.Stat(skip); err != nil {
+					t.Fatalf("unexpected storage layout: %v", err)
+				}
+				if err := os.WriteFile(skip+".part", []byte("partial"), 0644); err != nil {
+					t.Fatal(err)
+				}
+				files := info.UpvertedFiles()
+				boundary, name := torrentFileLayout(&info, files[1])
+				if err := removeUnselectedFile(dir, boundary, name); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := os.Stat(filepath.Join(root, "nested")); !os.IsNotExist(err) {
+					t.Fatalf("empty subtree remains: %v", err)
+				}
+				if _, err := os.Stat(filepath.Join(root, "keep.txt")); err != nil {
+					t.Fatalf("selected file removed: %v", err)
+				}
+				// Also verify the boundary when the protected directory becomes empty.
+				if err := os.Remove(filepath.Join(root, "keep.txt")); err != nil {
+					t.Fatal(err)
+				}
+				for _, file := range files {
+					boundary, name := torrentFileLayout(&info, file)
+					if err := removeUnselectedFile(dir, boundary, name); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if stat, err := os.Stat(root); err != nil || !stat.IsDir() {
+					t.Fatalf("cleanup boundary was removed: %v", err)
+				}
+			})
+		}
 	}
 }

@@ -399,7 +399,8 @@ func (f *Fetcher) Wait() (err error) {
 							}
 						}
 						if !selected {
-							if err := removeUnselectedFile(f.meta.Opts.Path, file.Path()); err != nil {
+							root, name := torrentFileLayout(f.torrent.Info(), file.FileInfo())
+							if err := removeUnselectedFile(f.meta.Opts.Path, root, name); err != nil {
 								return err
 							}
 						}
@@ -411,17 +412,38 @@ func (f *Fetcher) Wait() (err error) {
 	}
 }
 
-// Path already includes the torrent's root directory. Preserve that directory
-// even when empty, and only prune empty directories below it.
-func removeUnselectedFile(downloadDir, torrentPath string) error {
-	if !filepath.IsLocal(torrentPath) {
+// Match the file storage layout, including its NoName convention for rootless
+// torrents. File.Path() always prepends BestName, even when storage omits it.
+func torrentFileLayout(info *metainfo.Info, file metainfo.FileInfo) (root, name string) {
+	parts := file.BestPath()
+	if info.BestName() != metainfo.NoName {
+		if len(parts) > 0 {
+			root = info.BestName()
+		}
+		parts = append([]string{info.BestName()}, parts...)
+	}
+	// A v2 file tree can itself have a named root without an extra name wrapper.
+	if root == "" && info.HasV2() && len(info.FileTree.Dir) == 1 {
+		for dir, tree := range info.FileTree.Dir {
+			if tree.IsDir() {
+				root = dir
+			}
+		}
+	}
+	return root, filepath.Join(parts...)
+}
+
+// Preserve the actual torrent root, or the download directory for rootless
+// torrents. Only prune empty directories strictly below that boundary.
+func removeUnselectedFile(downloadDir, torrentRoot, torrentPath string) error {
+	if !filepath.IsLocal(torrentPath) || (torrentRoot != "" && !filepath.IsLocal(torrentRoot)) {
 		return fmt.Errorf("invalid torrent file path %q", torrentPath)
 	}
-	root := filepath.Clean(downloadDir)
-	torrentPath = filepath.Clean(torrentPath)
-	name := filepath.Join(root, torrentPath)
-	if torrentDir, _, hasDir := strings.Cut(torrentPath, string(filepath.Separator)); hasDir {
-		root = filepath.Join(root, torrentDir)
+	root := filepath.Join(downloadDir, torrentRoot)
+	name := filepath.Join(downloadDir, torrentPath)
+	rel, err := filepath.Rel(root, name)
+	if err != nil || rel == "." || !filepath.IsLocal(rel) {
+		return fmt.Errorf("torrent file %q is outside cleanup root %q", name, root)
 	}
 	for _, candidate := range []string{name, name + ".part"} {
 		if err := util.SafeRemove(candidate); err != nil {
@@ -675,6 +697,10 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 	}
 	spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
 		ClientBaseDir: cfg.DataDir,
+		FilePathMaker: func(opts storage.FilePathMakerOpts) string {
+			_, name := torrentFileLayout(opts.Info, *opts.File)
+			return name
+		},
 		TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
 			return f.meta.Opts.Path
 		},
