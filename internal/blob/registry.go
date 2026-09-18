@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/GopeedLab/gopeed/internal/production"
 	"io"
 	"net"
 	"net/http"
@@ -61,6 +62,7 @@ type Metadata struct {
 }
 
 type Source struct {
+	producer    production.Reader
 	ID          string
 	URL         string
 	ContentType string
@@ -359,10 +361,34 @@ func (r *Registry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	defer reader.Close()
+	if producer, ok := reader.(production.Reader); ok {
+		src.mu.Lock()
+		src.producer = producer
+		src.mu.Unlock()
+		if err := producer.WaitProduction(req.Context()); err != nil {
+			return
+		}
+		if producer.Production() != nil {
+			meta.Size = 0
+			meta.Range = false
+			start = 0
+			end = -1
+			ranged = false
+			src.mu.Lock()
+			src.size = 0
+			src.rangeEnabled = false
+			src.mu.Unlock()
+		}
+	}
 
 	writeHeaders(w, meta, start, end, ranged)
 	if ranged {
 		w.WriteHeader(http.StatusPartialContent)
+	}
+	if producer, ok := reader.(production.Reader); ok && producer.Production() != nil {
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
 	}
 	limit := int64(-1)
 	if end >= start {
@@ -674,4 +700,22 @@ func randomID(size int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(buf), nil
+}
+
+// Production returns the active opener's input counter, if it generates output.
+func (r *Registry) Production(raw string) production.Source {
+	if r == nil {
+		return nil
+	}
+	src, err := r.get(raw)
+	if err != nil {
+		return nil
+	}
+	src.mu.Lock()
+	reader := src.producer
+	src.mu.Unlock()
+	if reader == nil {
+		return nil
+	}
+	return reader.Production()
 }

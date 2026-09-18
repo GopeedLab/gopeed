@@ -403,6 +403,7 @@ func initializeCore(startCfg *model.StartConfig) error {
 		downloadCfg.Storage = download.NewMemStorage()
 	}
 	downloadCfg.StorageDir = startCfg.StorageDir
+	downloadCfg.TempDir = startCfg.TempDir
 	downloadCfg.Init()
 	Downloader = download.NewDownloader(downloadCfg)
 	if err := Downloader.Setup(); err != nil {

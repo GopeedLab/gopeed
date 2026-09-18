@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/GopeedLab/gopeed/internal/tempfiles"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"net/http"
 	"net/url"
@@ -9,8 +10,11 @@ import (
 )
 
 type Controller struct {
-	GetConfig func(v any)
-	GetProxy  func(requestProxy *base.RequestProxy) func(*http.Request) (*url.URL, error)
+	TempFiles         *tempfiles.Scope
+	ManagedProduction func(string) bool
+	TempDir           string
+	GetConfig         func(v any)
+	GetProxy          func(requestProxy *base.RequestProxy) func(*http.Request) (*url.URL, error)
 	FileController
 	//ContextDialer() (proxy.Dialer, error)
 }

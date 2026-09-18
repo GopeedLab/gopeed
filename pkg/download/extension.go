@@ -26,7 +26,6 @@ import (
 var (
 	gitSuffix = ".git"
 
-	tempExtensionsDir   = ".extensions"
 	extensionsDir       = "extensions"
 	extensionIgnoreDirs = []string{gitSuffix, "node_modules"}
 
@@ -213,11 +212,14 @@ func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath st
 
 	// Use unique suffix to avoid concurrent conflicts when multiple git operations
 	// target the same extension (e.g., install and update check happening simultaneously)
-	tempExtDir := filepath.Join(d.cfg.StorageDir, tempExtensionsDir, fmt.Sprintf("%s_%d", projectPath, time.Now().UnixNano()))
-	if err := os.MkdirAll(tempExtDir, 0755); err != nil {
+	tempExtDir, err := os.MkdirTemp(d.cfg.TempDir, "gopeed-extension-")
+	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(tempExtDir)
+	if err := d.tempFiles.Track(tempExtDir); err != nil {
+		return nil, err
+	}
+	defer d.tempFiles.Remove(tempExtDir)
 
 	proxyOptions := transport.ProxyOptions{}
 	proxyUrl := d.cfg.DownloaderStoreConfig.Proxy.ToUrl()

@@ -734,6 +734,8 @@
     finishBlobPipeReader(state, true, reason).catch(function () {});
   };
 
+  const producers = new WeakMap();
+  globalThis.__gopeed_bind_producer = (stream, id) => producers.set(stream, id);
   globalThis.__gopeed_blob_pipe_source = function (openReadable, request, pipeId) {
     if (typeof openReadable !== "function") {
       throw new TypeError("blob opener must be callable");
@@ -752,6 +754,8 @@
       try {
         const source = await openReadable(normalizeOpenRequest(request));
         state.openSettled = true;
+        const producer = producers.get(source);
+        globalThis.__gopeed_blob_pipe_bind(pipeId, producer || "");
         state.reader = toReadableStreamReader(source, "gopeed.runtime.blob.createObjectURL opener function");
         if (state.cancelRequested) {
           await finishBlobPipeReader(state, true, state.cancelReason);
@@ -777,7 +781,7 @@
         }
       } catch (error) {
         if (!state.cancelRequested) {
-          globalThis.__gopeed_blob_pipe_error(pipeId, error && error.stack ? error.stack : String(error));
+          globalThis.__gopeed_blob_pipe_error(pipeId, error && (error.stack || error.message) ? (error.stack || error.message) : String(error));
         }
       } finally {
         state.openSettled = true;

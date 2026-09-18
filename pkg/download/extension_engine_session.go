@@ -127,6 +127,8 @@ func (d *Downloader) newExtensionEngine() (*engine.Engine, *engineSession) {
 	d.getProtocolConfig("http", &httpConfig)
 	userAgent := strings.TrimSpace(httpConfig.UserAgent)
 	e := engine.NewEngine(&engine.Config{
+		TempDir:       d.cfg.TempDir,
+		TempFiles:     d.tempFiles,
 		HTTPUserAgent: &userAgent,
 		ProxyConfig:   d.cfg.Proxy,
 		StreamConfig:  engineCfg,
