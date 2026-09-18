@@ -83,10 +83,15 @@ func TestWaitCleansUnselectedFilesFromSharedPiece(t *testing.T) {
 				{Length: 4, Path: []string{"keep.txt"}},
 				{Length: 4, Path: []string{"nested", "skip.txt"}},
 			}}
-			store := storage.NewFileOpts(storage.NewFileClientOpts{
+			storageOpts := storage.NewFileClientOpts{
 				ClientBaseDir:   dir,
 				TorrentDirMaker: func(baseDir string, _ *metainfo.Info, _ metainfo.Hash) string { return baseDir },
-			})
+			}
+			// VerifyDataContext can return before storage finishes marking the piece
+			// complete. Disable automatic part-file promotion so it cannot rename
+			// the .part fixtures that this test creates to exercise cleanup.
+			storageOpts.UsePartFiles.Set(false)
+			store := storage.NewFileOpts(storageOpts)
 			defer store.Close()
 			config := torrent.TestingConfig(t)
 			config.DisableTCP = true
