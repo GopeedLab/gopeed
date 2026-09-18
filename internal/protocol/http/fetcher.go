@@ -150,7 +150,7 @@ type slowStartController struct {
 	totalLaunched  int
 	batchPending   int           // Connections in current batch waiting for HTTP response
 	batchReady     int           // Connections in current batch that succeeded
-	nextBatchSize  int           // Next batch size: 1, 2, 4, 8...
+	nextBatchSize  int           // Next batch size: 1, 2, 4, 16, 256... (capped)
 	expansionCh    chan struct{} // Signal to trigger next expansion
 	paused         bool          // Pause expansion (e.g., on 429)
 }
@@ -229,7 +229,15 @@ func (s *slowStartController) commitBatch(count int) {
 	defer s.mu.Unlock()
 
 	s.totalLaunched += count
-	s.nextBatchSize = s.nextBatchSize * 2 // Exponential growth: 1, 2, 4, 8...
+	if s.nextBatchSize == 1 {
+		// Bootstrap growth: squaring one would never increase the batch size.
+		s.nextBatchSize = min(2, s.maxConnections)
+	} else if s.nextBatchSize > s.maxConnections/s.nextBatchSize {
+		// Cap before multiplying to avoid integer overflow.
+		s.nextBatchSize = s.maxConnections
+	} else {
+		s.nextBatchSize *= s.nextBatchSize
+	}
 	s.batchPending = count
 	s.batchReady = 0
 }
