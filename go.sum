@@ -35,6 +35,8 @@ github.com/GopeedLab/webview_go v0.0.0-20260917155218-bd16da0d6f53 h1:nMSHKhbrEa
 github.com/GopeedLab/webview_go v0.0.0-20260917155218-bd16da0d6f53/go.mod h1:oNO07SCX8xgoHLds2OBwML8TU4xils88vMQ4gadKUHQ=
 github.com/GopeedLab/webview_go v0.0.0-20260917161756-2a4f989dcb1d h1:4fjlhJpBWa6IcdKVPkEMMIDd6Xo9JM09dJHdKU+1V7k=
 github.com/GopeedLab/webview_go v0.0.0-20260917161756-2a4f989dcb1d/go.mod h1:oNO07SCX8xgoHLds2OBwML8TU4xils88vMQ4gadKUHQ=
+github.com/GopeedLab/webview_go v0.0.0-20260917163929-ca26c3e6bcfa h1:VkdBMcNHYTqCMwOOCimA7b3xZKV/qFIGrhh3+vm9n3s=
+github.com/GopeedLab/webview_go v0.0.0-20260917163929-ca26c3e6bcfa/go.mod h1:oNO07SCX8xgoHLds2OBwML8TU4xils88vMQ4gadKUHQ=
 github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0rYXWg0=
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
