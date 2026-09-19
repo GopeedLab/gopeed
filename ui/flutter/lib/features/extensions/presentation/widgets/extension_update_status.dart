@@ -23,9 +23,13 @@ class ExtensionUpdateStatus extends StatelessWidget {
         ),
         if (label != null) ...[
           const SizedBox(width: 5),
-          Text(
-            label!,
-            style: TextStyle(color: palette.textPrimary, fontSize: 11.5, fontWeight: FontWeight.w600),
+          Flexible(
+            child: Text(
+              label!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: palette.textPrimary, fontSize: 11.5, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ],

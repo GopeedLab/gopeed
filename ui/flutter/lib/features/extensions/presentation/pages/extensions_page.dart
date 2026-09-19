@@ -994,10 +994,12 @@ class _ExtensionCard extends ConsumerWidget {
                           ),
                         ),
                         if (canUpdate && installed != null)
-                          ExtensionUpdateStatus(
-                            key: ValueKey('extension-card-update-status-${item.id}'),
-                            label: context.l10n.extensionCanUpdate,
-                            onTap: busy ? null : () => showExtensionUpdateDialog(context, installed),
+                          Flexible(
+                            child: ExtensionUpdateStatus(
+                              key: ValueKey('extension-card-update-status-${item.id}'),
+                              label: context.l10n.extensionCanUpdate,
+                              onTap: busy ? null : () => showExtensionUpdateDialog(context, installed),
+                            ),
                           ),
                       ],
                     ),

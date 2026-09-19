@@ -98,7 +98,10 @@ class AppDetailDrawer extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    if (titleTrailing != null) ...[const SizedBox(width: 8), titleTrailing!],
+                                    if (titleTrailing != null) ...[
+                                      const SizedBox(width: 8),
+                                      Flexible(child: titleTrailing!),
+                                    ],
                                   ],
                                 ),
                               ),

@@ -66,7 +66,10 @@ class AppDetailPage extends StatelessWidget {
                               style: TextStyle(color: palette.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
                             ),
                           ),
-                          if (titleTrailing != null) ...[const SizedBox(width: 8), titleTrailing!],
+                          if (titleTrailing != null) ...[
+                            const SizedBox(width: 8),
+                            Flexible(child: titleTrailing!),
+                          ],
                         ],
                       ),
                     ),
