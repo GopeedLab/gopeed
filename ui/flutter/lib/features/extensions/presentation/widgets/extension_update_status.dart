@@ -13,26 +13,34 @@ class ExtensionUpdateStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final content = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(color: palette.brand, shape: BoxShape.circle),
-        ),
-        if (label != null) ...[
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              label!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: palette.textPrimary, fontSize: 11.5, fontWeight: FontWeight.w600),
-            ),
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: palette.brandSoft,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: palette.brand.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: palette.brand, shape: BoxShape.circle),
           ),
+          if (label != null) ...[
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: palette.textPrimary, fontSize: 11.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
     if (onTap == null) return content;
     return MouseRegion(
@@ -41,7 +49,7 @@ class ExtensionUpdateStatus extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
           child: content,
         ),
       ),
