@@ -1123,20 +1123,17 @@ class _ExtensionCard extends ConsumerWidget {
         ],
       ),
     );
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        key: ValueKey('open-extension-details-${item.id}'),
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          if (MediaQuery.sizeOf(context).width < Breakpoints.mobile) {
-            context.push('/extensions/${Uri.encodeComponent(item.id)}', extra: item);
-            return;
-          }
-          onOpenDetails(item);
-        },
-        child: card,
-      ),
+    return GestureDetector(
+      key: ValueKey('open-extension-details-${item.id}'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        if (MediaQuery.sizeOf(context).width < Breakpoints.mobile) {
+          context.push('/extensions/${Uri.encodeComponent(item.id)}', extra: item);
+          return;
+        }
+        onOpenDetails(item);
+      },
+      child: card,
     );
   }
 }
