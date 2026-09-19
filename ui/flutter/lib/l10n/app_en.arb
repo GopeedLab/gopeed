@@ -106,7 +106,7 @@
   "add": "Add",
   "edit": "Edit",
   "newVersionTitle": "Discover new version @version",
-  "newVersionUpdate": "Update Now",
+  "newVersionUpdate": "Update",
   "newVersionLater": "Later",
   "extensions": "Extensions",
   "extensionInstallUrl": "Install URL",

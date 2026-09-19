@@ -2329,7 +2329,7 @@ void main() {
     final progress = find.descendant(of: updateButton, matching: find.byType(shad.CircularProgressIndicator));
     expect(progress, findsOneWidget);
     expect(tester.getSize(progress), const Size.square(14));
-    expect(find.descendant(of: updateButton, matching: find.text('Update Now')), findsOneWidget);
+    expect(find.descendant(of: updateButton, matching: find.text('Update')), findsOneWidget);
 
     runtimeController.completeTrackerUpdate();
     await tester.pumpAndSettle();
