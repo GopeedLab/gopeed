@@ -8,6 +8,7 @@ import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../application/extensions_controller.dart';
 import '../widgets/extension_detail_view.dart';
+import '../widgets/extension_update_dialog.dart';
 import '../widgets/extension_update_status.dart';
 
 class ExtensionDetailsPage extends ConsumerWidget {
@@ -26,7 +27,13 @@ class ExtensionDetailsPage extends ConsumerWidget {
       title: item?.title ?? context.l10n.extensions,
       onBack: () => context.canPop() ? context.pop() : context.go('/extensions'),
       titleTrailing: _canUpdate(stateAsync.value, item)
-          ? ExtensionUpdateStatus(label: context.l10n.extensionCanUpdate)
+          ? ExtensionUpdateStatus(
+              key: const ValueKey('extension-details-update-mobile'),
+              label: context.l10n.extensionCanUpdate,
+              onTap: item?.installed == null
+                  ? null
+                  : () => showExtensionUpdateDialog(context, item!.installed!),
+            )
           : null,
       child: item == null
           ? Center(

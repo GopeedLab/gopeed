@@ -35,12 +35,19 @@ class ExtensionDetailDrawer extends ConsumerWidget {
     final installed = item?.installed;
     final canUpdate =
         item != null && installed != null && (state?.updateFlags.containsKey(installed.identity) ?? false);
+    final updateChip = canUpdate
+        ? ExtensionUpdateStatus(
+            key: const ValueKey('extension-details-update'),
+            label: context.l10n.extensionCanUpdate,
+            onTap: () => showExtensionUpdateDialog(context, installed),
+          )
+        : null;
     return AppDetailDrawer(
       open: item != null,
       title: item?.title ?? '',
       onClose: onClose,
       drawerKey: const ValueKey('extension-details-drawer'),
-      titleTrailing: canUpdate ? ExtensionUpdateStatus(label: context.l10n.extensionCanUpdate) : null,
+      titleTrailing: updateChip,
       child: item == null ? const SizedBox.shrink() : ExtensionDetailView(item: item!),
     );
   }
@@ -133,15 +140,6 @@ class ExtensionDetailView extends ConsumerWidget {
                 onPressed: () =>
                     _runAction(context, () => ref.read(extensionsControllerProvider.notifier).installFromStore(store)),
                 child: Text(context.l10n.extensionInstall),
-              ),
-            if (installed != null && canUpdate)
-              AppLoadingButton(
-                key: const ValueKey('extension-details-update'),
-                loading: false,
-                variant: AppLoadingButtonVariant.primary,
-                icon: const Icon(Icons.upgrade, size: 16),
-                onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
-                child: Text(context.l10n.extensionUpdateAction),
               ),
             if (installed != null && !canUpdate)
               AppLoadingButton(
