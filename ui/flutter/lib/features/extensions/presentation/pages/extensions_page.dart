@@ -106,6 +106,12 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       });
     }
     final stateAsync = ref.watch(extensionsControllerProvider);
+    ref.listen(extensionsControllerProvider, (previous, next) {
+      final failed = next.value?.updateCheckFailed ?? false;
+      if (failed && previous?.value?.updateCheckFailed != true) {
+        showAppToast(context, context.l10n.extensionUpdateCheckFailed);
+      }
+    });
     final body = Stack(
       children: [
         ColoredBox(
@@ -485,25 +491,7 @@ class _Content extends StatelessWidget {
   }
 
   bool _canUpdate(ExtensionsState state, ExtensionListItem item) {
-    if (item.installed == null) return false;
-    if (state.listFilter == ExtensionListFilter.market && item.store != null) {
-      return _compareVersion(item.store!.version, item.installed!.version) > 0;
-    }
-    return state.updateFlags.containsKey(item.installed!.identity);
-  }
-
-  int _compareVersion(String a, String b) {
-    final aNums = a.split(RegExp(r'[^0-9]+')).where((part) => part.isNotEmpty).map((part) => int.tryParse(part) ?? 0);
-    final bNums = b.split(RegExp(r'[^0-9]+')).where((part) => part.isNotEmpty).map((part) => int.tryParse(part) ?? 0);
-    final left = aNums.toList();
-    final right = bNums.toList();
-    final maxLen = left.length > right.length ? left.length : right.length;
-    for (var i = 0; i < maxLen; i++) {
-      final l = i < left.length ? left[i] : 0;
-      final r = i < right.length ? right[i] : 0;
-      if (l != r) return l.compareTo(r);
-    }
-    return 0;
+    return item.installed != null && state.updateFlags.containsKey(item.installed!.identity);
   }
 }
 
@@ -988,7 +976,27 @@ class _ExtensionCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              ExtensionIcon(item: item, size: 40, borderRadius: BorderRadius.circular(6), fallbackFit: BoxFit.cover),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  ExtensionIcon(item: item, size: 40, borderRadius: BorderRadius.circular(6), fallbackFit: BoxFit.cover),
+                  if (canUpdate)
+                    Positioned(
+                      top: -3,
+                      right: -3,
+                      child: Container(
+                        key: ValueKey('extension-card-update-dot-${item.id}'),
+                        width: 11,
+                        height: 11,
+                        decoration: BoxDecoration(
+                          color: palette.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: palette.cardBg, width: 2),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -1068,11 +1076,11 @@ class _ExtensionCard extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (canUpdate && installed != null)
-                    shad.GhostButton(
-                      density: shad.ButtonDensity.icon,
+                    shad.PrimaryButton(
                       key: ValueKey('update-extension-${installed.identity}'),
+                      density: shad.ButtonDensity.dense,
                       onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
-                      child: const Icon(Icons.refresh),
+                      child: Text(context.l10n.extensionUpdateAction),
                     ),
                   if (installed == null && item.store != null)
                     shad.GhostButton(

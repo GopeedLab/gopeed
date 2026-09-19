@@ -49,6 +49,7 @@ class ExtensionsState {
     this.loadingMoreStore = false,
     this.busyExtensionIds = const {},
     this.devMode = false,
+    this.updateCheckFailed = false,
   });
 
   final List<Extension> installedExtensions;
@@ -63,6 +64,7 @@ class ExtensionsState {
   final bool loadingMoreStore;
   final Set<String> busyExtensionIds;
   final bool devMode;
+  final bool updateCheckFailed;
 
   UnmodifiableMapView<String, Extension> get installedMap =>
       UnmodifiableMapView({for (final ext in installedExtensions) ext.identity: ext});
@@ -100,6 +102,7 @@ class ExtensionsState {
     bool? loadingMoreStore,
     Set<String>? busyExtensionIds,
     bool? devMode,
+    bool? updateCheckFailed,
   }) {
     return ExtensionsState(
       installedExtensions: installedExtensions ?? this.installedExtensions,
@@ -114,6 +117,7 @@ class ExtensionsState {
       loadingMoreStore: loadingMoreStore ?? this.loadingMoreStore,
       busyExtensionIds: busyExtensionIds ?? this.busyExtensionIds,
       devMode: devMode ?? this.devMode,
+      updateCheckFailed: updateCheckFailed ?? this.updateCheckFailed,
     );
   }
 }
@@ -185,12 +189,11 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
   }
 
   bool canUpdateItem(ExtensionListItem item) {
-    final current = _current;
-    if (item.installed == null) return false;
-    if (current.listFilter == ExtensionListFilter.market && item.store != null) {
-      return _compareVersion(item.store!.version, item.installed!.version) > 0;
-    }
-    return current.updateFlags.containsKey(item.installed!.identity);
+    final installed = item.installed;
+    if (installed == null) return false;
+    // The backend checks GitHub live for every installed extension; the store
+    // index may lag behind and must not decide update visibility.
+    return _current.updateFlags.containsKey(installed.identity);
   }
 
   Future<void> installFromStore(StoreExtension extension) async {
@@ -257,15 +260,23 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
 
   Future<void> checkUpdate() async {
     final flags = <String, String>{};
+    var failed = false;
     for (final ext in _current.installedExtensions) {
       try {
         final resp = await ref.read(gopeedServiceProvider).upgradeCheckExtension(ext.identity);
         if (resp.newVersion.isNotEmpty) {
           flags[ext.identity] = resp.newVersion;
         }
-      } catch (_) {}
+      } catch (_) {
+        failed = true;
+      }
     }
-    state = AsyncValue.data(_current.copyWith(updateFlags: flags));
+    state = AsyncValue.data(
+      _current.copyWith(
+        updateFlags: flags,
+        updateCheckFailed: failed && _current.installedExtensions.isNotEmpty,
+      ),
+    );
   }
 
   void tryOpenDevMode() {
@@ -354,24 +365,4 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
     }());
   }
 
-  static int _compareVersion(String a, String b) {
-    final aNums = _toVersionNumbers(a);
-    final bNums = _toVersionNumbers(b);
-    final maxLen = aNums.length > bNums.length ? aNums.length : bNums.length;
-    for (var i = 0; i < maxLen; i++) {
-      final left = i < aNums.length ? aNums[i] : 0;
-      final right = i < bNums.length ? bNums[i] : 0;
-      if (left > right) return 1;
-      if (left < right) return -1;
-    }
-    return 0;
-  }
-
-  static List<int> _toVersionNumbers(String version) {
-    return version
-        .split(RegExp(r'[^0-9]+'))
-        .where((part) => part.isNotEmpty)
-        .map((part) => int.tryParse(part) ?? 0)
-        .toList();
-  }
 }
