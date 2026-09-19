@@ -1095,20 +1095,6 @@ class _ExtensionCard extends ConsumerWidget {
                           ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
                           : const Icon(Icons.download),
                     ),
-                  // Unlisted extensions have no detail page to open, so keep
-                  // their links reachable directly on the card.
-                  if (item.store == null && (item.homepage ?? '').isNotEmpty)
-                    shad.GhostButton(
-                      density: shad.ButtonDensity.icon,
-                      onPressed: () => unawaited(launchUrl(Uri.parse(item.homepage!))),
-                      child: const Icon(Icons.home_outlined),
-                    ),
-                  if (item.store == null && (item.repoUrl ?? '').isNotEmpty)
-                    shad.GhostButton(
-                      density: shad.ButtonDensity.icon,
-                      onPressed: () => unawaited(launchUrl(Uri.parse(item.repoUrl!))),
-                      child: const Icon(Icons.code),
-                    ),
                   if (installed?.settings?.isNotEmpty == true)
                     shad.GhostButton(
                       density: shad.ButtonDensity.icon,
@@ -1137,7 +1123,6 @@ class _ExtensionCard extends ConsumerWidget {
         ],
       ),
     );
-    if (item.store == null) return card;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
