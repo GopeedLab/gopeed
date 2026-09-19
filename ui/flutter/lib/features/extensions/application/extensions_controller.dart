@@ -243,6 +243,9 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
     await _runBusy(extension.identity, () async {
       await ref.read(gopeedServiceProvider).updateExtension(extension.identity);
       await loadInstalled(refreshUpdates: false);
+      // Drop the stale flag immediately; the background re-check confirms it.
+      final flags = Map<String, String>.of(_current.updateFlags)..remove(extension.identity);
+      state = AsyncValue.data(_current.copyWith(updateFlags: flags));
       unawaited(checkUpdate());
       _bumpStoreInstallCount(extension.identity);
       _reportInstallSafe(extension.identity);

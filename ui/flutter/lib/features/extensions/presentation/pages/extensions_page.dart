@@ -993,7 +993,8 @@ class _ExtensionCard extends ConsumerWidget {
                             style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
                           ),
                         ),
-                        if (canUpdate && installed != null)
+                        if (canUpdate && installed != null) ...[
+                          const SizedBox(width: 8),
                           Flexible(
                             child: ExtensionUpdateStatus(
                               key: ValueKey('extension-card-update-status-${item.id}'),
@@ -1001,6 +1002,7 @@ class _ExtensionCard extends ConsumerWidget {
                               onTap: busy ? null : () => showExtensionUpdateDialog(context, installed),
                             ),
                           ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),

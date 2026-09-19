@@ -99,7 +99,7 @@
   "add": "추가",
   "edit": "편집",
   "newVersionTitle": "새 버전 @version 발견",
-  "newVersionUpdate": "지금 업데이트",
+  "newVersionUpdate": "업데이트",
   "newVersionLater": "나중에",
   "extensions": "확장 프로그램",
   "extensionInstallUrl": "설치 URL",
