@@ -16,6 +16,7 @@ class AppDetailDrawer extends StatelessWidget {
     required this.child,
     this.drawerKey,
     this.width,
+    this.titleTrailing,
   });
 
   final bool open;
@@ -24,6 +25,7 @@ class AppDetailDrawer extends StatelessWidget {
   final Widget child;
   final Key? drawerKey;
   final double? width;
+  final Widget? titleTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -82,15 +84,22 @@ class AppDetailDrawer extends StatelessWidget {
                           child: Row(
                             children: [
                               Expanded(
-                                child: Text(
-                                  title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: palette.textPrimary,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                child: Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: palette.textPrimary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    if (titleTrailing != null) ...[const SizedBox(width: 8), titleTrailing!],
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 12),

@@ -28,6 +28,7 @@ import '../widgets/extension_detail_view.dart';
 import '../widgets/extension_icon.dart';
 import '../widgets/extension_setting_field.dart';
 import '../widgets/extension_update_dialog.dart';
+import '../widgets/extension_update_status.dart';
 
 const _extensionCardMinWidth = 290.0;
 const _extensionGridSpacing = 10.0;
@@ -992,15 +993,12 @@ class _ExtensionCard extends ConsumerWidget {
                             style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
                           ),
                         ),
-                        if (canUpdate) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            key: ValueKey('extension-card-update-dot-${item.id}'),
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(color: palette.error, shape: BoxShape.circle),
+                        if (canUpdate && installed != null)
+                          ExtensionUpdateStatus(
+                            key: ValueKey('extension-card-update-status-${item.id}'),
+                            label: context.l10n.extensionCanUpdate,
+                            onTap: busy ? null : () => showExtensionUpdateDialog(context, installed),
                           ),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -1070,16 +1068,6 @@ class _ExtensionCard extends ConsumerWidget {
                 key: ValueKey('extension-card-actions-${item.id}'),
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (canUpdate && installed != null)
-                    shad.GhostButton(
-                      key: ValueKey('update-extension-${installed.identity}'),
-                      density: shad.ButtonDensity.dense,
-                      onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
-                      child: Text(
-                        context.l10n.extensionUpdateAction,
-                        style: TextStyle(color: palette.error, fontWeight: FontWeight.w600),
-                      ),
-                    ),
                   if (installed == null && item.store != null)
                     shad.GhostButton(
                       key: ValueKey('install-store-extension-${item.store!.id}'),

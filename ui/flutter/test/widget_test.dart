@@ -817,7 +817,9 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('extension-card-extension-0')));
         await tester.pumpAndSettle();
       }
-      final entry = find.byKey(ValueKey(details ? 'extension-details-update' : 'update-extension-extension-0'));
+      final entry = find.byKey(
+        ValueKey(details ? 'extension-details-update' : 'extension-card-update-status-extension-0'),
+      );
       final dialog = find.byKey(const ValueKey('extension-update-dialog'));
       final confirm = find.byKey(const ValueKey('confirm-update-extension-button'));
       final cancel = find.byKey(const ValueKey('cancel-update-extension-button'));
