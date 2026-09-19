@@ -1083,6 +1083,18 @@ class _ExtensionCard extends ConsumerWidget {
                           ? const SizedBox.square(dimension: 14, child: shad.CircularProgressIndicator())
                           : const Icon(Icons.download),
                     ),
+                  if ((item.homepage ?? '').isNotEmpty)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      onPressed: () => unawaited(launchUrl(Uri.parse(item.homepage!))),
+                      child: const Icon(Icons.home_outlined),
+                    ),
+                  if ((item.repoUrl ?? '').isNotEmpty)
+                    shad.GhostButton(
+                      density: shad.ButtonDensity.icon,
+                      onPressed: () => unawaited(launchUrl(Uri.parse(item.repoUrl!))),
+                      child: const Icon(Icons.code),
+                    ),
                   if (installed?.settings?.isNotEmpty == true)
                     shad.GhostButton(
                       density: shad.ButtonDensity.icon,
