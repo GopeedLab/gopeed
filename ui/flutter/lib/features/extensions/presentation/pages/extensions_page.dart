@@ -976,37 +976,32 @@ class _ExtensionCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ExtensionIcon(item: item, size: 40, borderRadius: BorderRadius.circular(6), fallbackFit: BoxFit.cover),
-                  if (canUpdate)
-                    Positioned(
-                      top: -3,
-                      right: -3,
-                      child: Container(
-                        key: ValueKey('extension-card-update-dot-${item.id}'),
-                        width: 11,
-                        height: 11,
-                        decoration: BoxDecoration(
-                          color: palette.error,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: palette.cardBg, width: 2),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+              ExtensionIcon(item: item, size: 40, borderRadius: BorderRadius.circular(6), fallbackFit: BoxFit.cover),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (canUpdate) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            key: ValueKey('extension-card-update-dot-${item.id}'),
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(color: palette.error, shape: BoxShape.circle),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -1076,11 +1071,14 @@ class _ExtensionCard extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (canUpdate && installed != null)
-                    shad.PrimaryButton(
+                    shad.GhostButton(
                       key: ValueKey('update-extension-${installed.identity}'),
                       density: shad.ButtonDensity.dense,
                       onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
-                      child: Text(context.l10n.extensionUpdateAction),
+                      child: Text(
+                        context.l10n.extensionUpdateAction,
+                        style: TextStyle(color: palette.error, fontWeight: FontWeight.w600),
+                      ),
                     ),
                   if (installed == null && item.store != null)
                     shad.GhostButton(

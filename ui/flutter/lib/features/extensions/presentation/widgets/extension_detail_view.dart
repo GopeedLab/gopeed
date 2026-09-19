@@ -65,32 +65,12 @@ class ExtensionDetailView extends ConsumerWidget {
           key: const ValueKey('extension-details-hero'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                ExtensionIcon(
-                  item: current,
-                  size: mobile ? 60 : 68,
-                  borderRadius: BorderRadius.circular(14),
-                  fallbackPadding: EdgeInsets.all((mobile ? 60 : 68) * 0.16),
-                  fallbackBackgroundColor: palette.surfaceSoft,
-                ),
-                if (canUpdate)
-                  Positioned(
-                    top: -2,
-                    right: -2,
-                    child: Container(
-                      key: const ValueKey('extension-details-update-dot'),
-                      width: 13,
-                      height: 13,
-                      decoration: BoxDecoration(
-                        color: palette.error,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: palette.bg, width: 2.5),
-                      ),
-                    ),
-                  ),
-              ],
+            ExtensionIcon(
+              item: current,
+              size: mobile ? 60 : 68,
+              borderRadius: BorderRadius.circular(14),
+              fallbackPadding: EdgeInsets.all((mobile ? 60 : 68) * 0.16),
+              fallbackBackgroundColor: palette.surfaceSoft,
             ),
             SizedBox(width: mobile ? 16 : 20),
             Expanded(
@@ -157,7 +137,7 @@ class ExtensionDetailView extends ConsumerWidget {
                 variant: AppLoadingButtonVariant.primary,
                 icon: const Icon(Icons.upgrade, size: 16),
                 onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
-                child: Text(context.l10n.newVersionUpdate),
+                child: Text(context.l10n.extensionUpdateAction),
               ),
             if (installed != null && !canUpdate)
               AppLoadingButton(
