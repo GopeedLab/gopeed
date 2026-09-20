@@ -988,7 +988,7 @@ class _ExtensionCard extends ConsumerWidget {
                           ),
                         ),
                         if (canUpdate && installed != null) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 4),
                           Flexible(
                             child: ExtensionUpdateStatus(
                               key: ValueKey('extension-card-update-status-${item.id}'),
