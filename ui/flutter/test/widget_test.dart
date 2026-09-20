@@ -4267,6 +4267,30 @@ void main() {
     expect(find.text('—'), findsOneWidget);
   });
 
+  testWidgets('completed task details show a dash when no done time is recorded', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(900, 700));
+    final task = _taskRecord(
+      id: 'done-details',
+      name: 'done.zip',
+      status: TaskStatus.completed,
+      downloadDuration: const Duration(hours: 1, minutes: 2, seconds: 3),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: TaskDetailsView(task: task, mobile: false, onOpenStorage: () {}, onUpdateUrl: (_) async {}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Completed at'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+  });
+
   testWidgets('failed task details omit the unavailable error reason', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(900, 700));
     final task = TaskRecord(
