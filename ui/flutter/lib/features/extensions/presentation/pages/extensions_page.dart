@@ -107,12 +107,6 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
       });
     }
     final stateAsync = ref.watch(extensionsControllerProvider);
-    ref.listen(extensionsControllerProvider, (previous, next) {
-      final failed = next.value?.updateCheckFailed ?? false;
-      if (failed && previous?.value?.updateCheckFailed != true) {
-        showAppToast(context, context.l10n.extensionUpdateCheckFailed);
-      }
-    });
     final body = Stack(
       children: [
         ColoredBox(

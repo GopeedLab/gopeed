@@ -49,7 +49,6 @@ class ExtensionsState {
     this.loadingMoreStore = false,
     this.busyExtensionIds = const {},
     this.devMode = false,
-    this.updateCheckFailed = false,
   });
 
   final List<Extension> installedExtensions;
@@ -64,7 +63,6 @@ class ExtensionsState {
   final bool loadingMoreStore;
   final Set<String> busyExtensionIds;
   final bool devMode;
-  final bool updateCheckFailed;
 
   UnmodifiableMapView<String, Extension> get installedMap =>
       UnmodifiableMapView({for (final ext in installedExtensions) ext.identity: ext});
@@ -102,7 +100,6 @@ class ExtensionsState {
     bool? loadingMoreStore,
     Set<String>? busyExtensionIds,
     bool? devMode,
-    bool? updateCheckFailed,
   }) {
     return ExtensionsState(
       installedExtensions: installedExtensions ?? this.installedExtensions,
@@ -117,7 +114,6 @@ class ExtensionsState {
       loadingMoreStore: loadingMoreStore ?? this.loadingMoreStore,
       busyExtensionIds: busyExtensionIds ?? this.busyExtensionIds,
       devMode: devMode ?? this.devMode,
-      updateCheckFailed: updateCheckFailed ?? this.updateCheckFailed,
     );
   }
 }
@@ -263,23 +259,15 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
 
   Future<void> checkUpdate() async {
     final flags = <String, String>{};
-    var failed = false;
     for (final ext in _current.installedExtensions) {
       try {
         final resp = await ref.read(gopeedServiceProvider).upgradeCheckExtension(ext.identity);
         if (resp.newVersion.isNotEmpty) {
           flags[ext.identity] = resp.newVersion;
         }
-      } catch (_) {
-        failed = true;
-      }
+      } catch (_) {}
     }
-    state = AsyncValue.data(
-      _current.copyWith(
-        updateFlags: flags,
-        updateCheckFailed: failed && _current.installedExtensions.isNotEmpty,
-      ),
-    );
+    state = AsyncValue.data(_current.copyWith(updateFlags: flags));
   }
 
   void tryOpenDevMode() {

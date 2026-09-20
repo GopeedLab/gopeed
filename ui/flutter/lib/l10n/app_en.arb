@@ -120,7 +120,6 @@
     }
   },
   "extensionUpdateSuccess": "Updated successfully",
-  "extensionUpdateCheckFailed": "Failed to check for updates. Please check your network",
   "extensionDelete": "Delete Extension",
   "extensionAlreadyLatest": "It's already the latest version",
   "extensionFind": "Find Extensions",
