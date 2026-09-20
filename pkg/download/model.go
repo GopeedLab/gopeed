@@ -32,6 +32,9 @@ type Task struct {
 	Progress  *Progress            `json:"progress"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`
+	// DoneAt is the time when the task last completed; nil while the task has
+	// never finished or is being downloaded again.
+	DoneAt *time.Time `json:"doneAt"`
 
 	producer         production.Source
 	producerReceived int64
@@ -134,6 +137,12 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 func (t *Task) updateStatus(status base.Status) {
 	t.UpdatedAt = time.Now()
 	t.Status = status
+	if status == base.DownloadStatusDone {
+		doneAt := time.Now()
+		t.DoneAt = &doneAt
+	} else {
+		t.DoneAt = nil
+	}
 }
 
 func (t *Task) clone() *Task {

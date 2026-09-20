@@ -246,6 +246,7 @@
   "refresh": "Rafraîchir",
   "status": "État",
   "createdAt": "Date de création",
+  "doneAt": "Terminé le",
   "speed": "Vitesse",
   "uploadSpeed": "Vitesse de chargement",
   "remaining": "Reste",

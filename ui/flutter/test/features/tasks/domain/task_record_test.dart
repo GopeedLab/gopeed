@@ -4,7 +4,7 @@ import 'package:gopeed/core/icons/gopeed_icons.dart';
 import 'package:gopeed/features/tasks/domain/task_record.dart';
 
 void main() {
-  api.Task buildTask(List<int> selection, int size) => api.Task.fromJson({
+  api.Task buildTask(List<int> selection, int size, {String? doneAt}) => api.Task.fromJson({
     'id': 'bt-selection',
     'name': 'bundle',
     'protocol': 'bt',
@@ -12,6 +12,7 @@ void main() {
     'uploading': false,
     'createdAt': '2026-01-01T00:00:00Z',
     'updatedAt': '2026-01-01T00:00:00Z',
+    'doneAt': doneAt,
     'meta': {
       'req': {'url': 'magnet:?xt=urn:btih:test'},
       'opts': {'path': '/downloads', 'selectFiles': selection},
@@ -41,6 +42,13 @@ void main() {
     final record = TaskRecord.fromApi(buildTask([], 60));
     expect(record.files.length, 3);
     expect(record.totalBytes, 60);
+  });
+
+  test('completion time maps from api and stays null for legacy tasks', () {
+    final completed = TaskRecord.fromApi(buildTask([], 60, doneAt: '2026-01-02T03:04:05Z'));
+    expect(completed.doneAt, DateTime.parse('2026-01-02T03:04:05Z'));
+    final legacy = TaskRecord.fromApi(buildTask([], 60));
+    expect(legacy.doneAt, isNull);
   });
 
   test('file names preserve hash and question mark characters for type detection', () {
