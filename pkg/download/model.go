@@ -32,8 +32,9 @@ type Task struct {
 	Progress  *Progress            `json:"progress"`
 	CreatedAt time.Time            `json:"createdAt"`
 	UpdatedAt time.Time            `json:"updatedAt"`
-	// DoneAt is the time when the task last completed; nil while the task has
-	// never finished or is being downloaded again.
+	// DoneAt is the time when the task completed; nil if it has never
+	// finished. A done task never leaves the done state, so the value is
+	// written once and kept.
 	DoneAt *time.Time `json:"doneAt"`
 
 	producer         production.Source
@@ -137,11 +138,11 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 func (t *Task) updateStatus(status base.Status) {
 	t.UpdatedAt = time.Now()
 	t.Status = status
+	// A done task never leaves the done state, so there is no branch to clear
+	// DoneAt on other transitions.
 	if status == base.DownloadStatusDone {
 		doneAt := time.Now()
 		t.DoneAt = &doneAt
-	} else {
-		t.DoneAt = nil
 	}
 }
 
