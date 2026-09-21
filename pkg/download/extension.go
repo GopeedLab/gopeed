@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
@@ -733,6 +734,14 @@ type OnDoneContext struct {
 // only some fields can be modified, such as request info.
 type ExtensionTask struct {
 	*Task
+	Meta *ExtensionTaskMeta `json:"meta"`
+}
+
+// ExtensionTaskMeta preserves metadata fields while exposing request operations
+// at the existing meta.req path.
+type ExtensionTaskMeta struct {
+	*fetcher.FetcherMeta
+	Req *ExtensionTaskRequest `json:"req"`
 }
 
 // OnErrorExtensionTask adds error-recovery controls to ExtensionTask.
@@ -750,7 +759,14 @@ func cloneExtensionTask(task *Task) *Task {
 }
 
 func newExtensionTask(task *Task) *ExtensionTask {
-	return &ExtensionTask{Task: cloneExtensionTask(task)}
+	view := cloneExtensionTask(task)
+	return &ExtensionTask{
+		Task: view,
+		Meta: &ExtensionTaskMeta{
+			FetcherMeta: view.Meta,
+			Req:         &ExtensionTaskRequest{Request: view.Meta.Req, task: view},
+		},
+	}
 }
 
 func newOnStartExtensionTask(task *Task) *ExtensionTask {
@@ -766,11 +782,6 @@ func newOnErrorExtensionTask(download *Downloader, task *Task) *OnErrorExtension
 
 func newOnDoneExtensionTask(task *Task) *Task {
 	return cloneExtensionTask(task)
-}
-
-// SetUrl replaces the task request URL.
-func (t *ExtensionTask) SetUrl(url string) {
-	t.Meta.Req.URL = url
 }
 
 func (t *OnErrorExtensionTask) Continue() error {
