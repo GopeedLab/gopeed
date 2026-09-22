@@ -23,6 +23,9 @@ type ResolveResult struct {
 	Res *base.Resource `json:"res"`
 }
 
+// Task represents a download unit.
+// Options flow path:
+// REST Request (model.CreateTask/ResolveTask) -> pkg/download Downloader -> Task.Meta.Opts (base.Options) -> Fetcher.Resolve/Start (e.g. internal/protocol/http/fetcher.go)
 type Task struct {
 	ID        string               `json:"id"`
 	Protocol  string               `json:"protocol"`

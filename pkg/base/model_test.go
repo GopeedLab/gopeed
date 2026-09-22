@@ -435,3 +435,35 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 		})
 	}
 }
+
+func TestOptions_Checksum(t *testing.T) {
+	opts := &Options{
+		Name: "test.zip",
+		Path: "/downloads",
+		Checksum: &ChecksumOption{
+			Algorithm: "sha256",
+			Expected:  "abcdef1234567890",
+		},
+	}
+
+	cloned := opts.Clone()
+	if cloned.Checksum == nil {
+		t.Fatal("expected cloned options to have non-nil Checksum")
+	}
+	if cloned.Checksum.Algorithm != "sha256" || cloned.Checksum.Expected != "abcdef1234567890" {
+		t.Fatalf("cloned checksum mismatch: got %+v", cloned.Checksum)
+	}
+
+	// Verify deep clone isolation
+	cloned.Checksum.Expected = "modified"
+	if opts.Checksum.Expected != "abcdef1234567890" {
+		t.Fatal("modifying cloned checksum affected original options")
+	}
+
+	// Verify nil checksum options clone
+	optsNil := &Options{Name: "nil_check.zip"}
+	clonedNil := optsNil.Clone()
+	if clonedNil.Checksum != nil {
+		t.Fatal("expected nil checksum in cloned options")
+	}
+}
