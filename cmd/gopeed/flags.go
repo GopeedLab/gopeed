@@ -7,9 +7,11 @@ import (
 )
 
 type args struct {
-	url         string
-	connections *int
-	dir         *string
+	url          string
+	connections  *int
+	dir          *string
+	checksum     *string
+	checksumAlgo *string
 }
 
 func parse() *args {
@@ -20,6 +22,8 @@ func parse() *args {
 	var args args
 	args.connections = flag.Int("C", 16, "Concurrent connections.")
 	args.dir = flag.String("D", dir, "Store directory.")
+	args.checksum = flag.String("checksum", "", "Expected checksum hash (hex encoded).")
+	args.checksumAlgo = flag.String("checksum-algo", "md5", "Checksum algorithm: md5, sha1, or sha256.")
 	flag.Parse()
 	t := flag.Args()
 	if len(t) > 0 {

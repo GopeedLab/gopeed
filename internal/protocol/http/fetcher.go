@@ -2,8 +2,13 @@ package http
 
 import (
 	"context"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"net/http"
 	"net/url"
@@ -951,8 +956,14 @@ func (f *Fetcher) expandConnections() {
 			}
 			f.fileMu.Unlock()
 
-			f.setState(stateDone)
-			f.doneCh <- nil
+			var err error
+			if chkErr := f.verifyChecksum(); chkErr != nil {
+				err = chkErr
+				f.setState(stateError)
+			} else {
+				f.setState(stateDone)
+			}
+			f.doneCh <- err
 			return
 		}
 
@@ -2209,16 +2220,61 @@ func (f *Fetcher) onDownloadComplete() {
 	}
 	f.fileMu.Unlock()
 
-	if finalErr != nil {
-		f.setState(stateError)
+	if finalErr == nil {
+		if chkErr := f.verifyChecksum(); chkErr != nil {
+			finalErr = chkErr
+			f.setState(stateError)
+		} else {
+			f.setState(stateDone)
+		}
 	} else {
-		f.setState(stateDone)
+		f.setState(stateError)
 	}
 
 	select {
 	case f.doneCh <- finalErr:
 	default:
 	}
+}
+
+func (f *Fetcher) verifyChecksum() error {
+	if f.meta == nil || f.meta.Opts == nil || f.meta.Opts.Checksum == nil {
+		return nil
+	}
+	chk := f.meta.Opts.Checksum
+	if chk.Algorithm == "" && chk.Expected == "" {
+		return nil
+	}
+	var h hash.Hash
+	switch strings.ToLower(strings.TrimSpace(chk.Algorithm)) {
+	case "md5":
+		h = md5.New()
+	case "sha1", "sha-1":
+		h = sha1.New()
+	case "sha256", "sha-256":
+		h = sha256.New()
+	default:
+		return fmt.Errorf("unsupported checksum algorithm: %s", chk.Algorithm)
+	}
+
+	filePath := f.meta.SingleFilepath()
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("open file for checksum verification failed: %w", err)
+	}
+	defer file.Close()
+
+	buf := make([]byte, 64*1024)
+	if _, err := io.CopyBuffer(h, file, buf); err != nil {
+		return fmt.Errorf("calculate checksum failed: %w", err)
+	}
+
+	actual := hex.EncodeToString(h.Sum(nil))
+	expected := strings.ToLower(strings.TrimSpace(chk.Expected))
+	if !strings.EqualFold(actual, expected) {
+		return fmt.Errorf("checksum mismatch: expected %s, got %s", expected, actual)
+	}
+	return nil
 }
 
 func (f *Fetcher) checkCompletion() bool {
