@@ -46,7 +46,7 @@ gopeed.events.onError(async function (ctx) {
   }
 
   try {
-    await ctx.task.setUrl(await createRangeBlobUrl(req.rawUrl));
+    await ctx.task.meta.req.setUrl(await createRangeBlobUrl(req.rawUrl));
     await req.putLabel('started', 'true');
     await req.putLabel('rebuilt', 'true');
     await ctx.task.continue();

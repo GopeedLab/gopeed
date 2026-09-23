@@ -41,6 +41,6 @@ gopeed.events.onError(async function (ctx) {
     }
 
     await req.putLabel("recovered", "true");
-    await ctx.task.setUrl(await gopeed.runtime.blob.createObjectURL(new Blob(["ok\n"], { type: "text/plain" })));
+    await ctx.task.meta.req.setUrl(await gopeed.runtime.blob.createObjectURL(new Blob(["ok\n"], { type: "text/plain" })));
     await ctx.task.continue();
 });
