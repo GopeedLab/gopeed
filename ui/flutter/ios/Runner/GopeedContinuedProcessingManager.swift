@@ -167,16 +167,11 @@ final class GopeedContinuedProcessingManager: NSObject {
         // Pre-mark task.start so the Objective-C forwarder can
         // immediately suppress the custom ActivityKit Live Activity.
         if
-            let data = payload.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(
-                with: data
-            ) as? [String: Any],
-            let type = json["type"] as? String,
-            type == "task.start",
-            let taskID = json["taskId"] as? String
+            let event = GopeedTaskEvent.decode(payload),
+            event.type == .start
         {
             setTaskOwnership(
-                taskID: taskID,
+                taskID: event.taskID,
                 handled: true
             )
         }
@@ -198,33 +193,19 @@ final class GopeedContinuedProcessingManager: NSObject {
             return
         }
 
-        guard
-            let data = payload.data(
-                using: .utf8
-            ),
-            let json =
-                try? JSONSerialization
-                    .jsonObject(
-                        with: data
-                    ) as? [String: Any],
-            let type =
-                json["type"] as? String,
-            let taskID =
-                json["taskId"] as? String
-        else {
+        guard let event = GopeedTaskEvent.decode(payload) else {
             print(
                 "ContinuedProcessing: invalid event"
             )
             return
         }
 
-        let name =
-            json["name"] as? String
-            ?? "Download"
+        let taskID = event.taskID
+        let name = event.name
 
-        switch type {
+        switch event.type {
 
-        case "task.start":
+        case .start:
             progressRecoveryTokens.removeValue(
                 forKey: taskID
             )
@@ -234,7 +215,7 @@ final class GopeedContinuedProcessingManager: NSObject {
                 name: name
             )
 
-        case "task.progress":
+        case .progress:
             if let generation =
                 taskGenerations[taskID] {
                 updateProgress(
@@ -249,7 +230,7 @@ final class GopeedContinuedProcessingManager: NSObject {
                 )
             }
 
-        case "task.pause":
+        case .pause:
             if let expiring =
                 expiringTasks[taskID] {
                 finishExpirationCleanup(
@@ -265,7 +246,7 @@ final class GopeedContinuedProcessingManager: NSObject {
                 )
             }
 
-        case "task.done":
+        case .done:
             finishTask(
                 taskID: taskID,
                 success: true,
@@ -273,7 +254,7 @@ final class GopeedContinuedProcessingManager: NSObject {
                     "Download complete"
             )
 
-        case "task.error":
+        case .error:
             finishTask(
                 taskID: taskID,
                 success: false,
@@ -281,7 +262,7 @@ final class GopeedContinuedProcessingManager: NSObject {
                     "Download failed"
             )
 
-        case "task.delete":
+        case .delete:
             finishTask(
                 taskID: taskID,
                 success: true,
@@ -289,11 +270,10 @@ final class GopeedContinuedProcessingManager: NSObject {
                     "Download removed"
             )
 
-        default:
+        case .other:
             break
         }
     }
-
 
     // MARK: - Recover active task after setting changes
 
