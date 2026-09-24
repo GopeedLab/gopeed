@@ -22,8 +22,8 @@ final class GopeedContinuedProcessingManager: NSObject {
 
     // MARK: - BGCPT state
 
-    private var registeredIdentifiers = Set<String>()
     private var pendingTaskIDs = Set<String>()
+    private var foregroundStartTokens: [String: UUID] = [:]
     private struct ExpiringTaskState {
         let identifier: String
         let generation: UUID
@@ -307,6 +307,7 @@ final class GopeedContinuedProcessingManager: NSObject {
             !pendingTaskIDs.contains(taskID),
             activeTasks[taskID] == nil,
             expiringTasks[taskID] == nil,
+            foregroundStartTokens[taskID] == nil,
             progressRecoveryTokens[taskID] == nil
         else {
             return
@@ -395,7 +396,8 @@ final class GopeedContinuedProcessingManager: NSObject {
 
         guard
             !pendingTaskIDs.contains(taskID),
-            activeTasks[taskID] == nil
+            activeTasks[taskID] == nil,
+            foregroundStartTokens[taskID] == nil
         else {
             setTaskOwnership(
                 taskID: taskID,
@@ -404,20 +406,57 @@ final class GopeedContinuedProcessingManager: NSObject {
             return
         }
 
-        // BGCPT should originate from a foreground user action.
-        // This main-thread check happens only once per task start.
-        let appIsActive: Bool
+        // BGCPT must originate from a foreground user action.
+        // Never synchronously hop from workerQueue to the main queue:
+        // doing so can deadlock if the main thread is waiting on work
+        // that eventually needs workerQueue.
+        let foregroundToken = UUID()
+        foregroundStartTokens[taskID] =
+            foregroundToken
 
-        if Thread.isMainThread {
-            appIsActive =
+        DispatchQueue.main.async { [weak self] in
+            let appIsActive =
                 UIApplication.shared
                     .applicationState == .active
-        } else {
-            appIsActive =
-                DispatchQueue.main.sync {
-                    UIApplication.shared
-                        .applicationState == .active
-                }
+
+            guard let self else {
+                return
+            }
+
+            self.workerQueue.async {
+                self.continueBeginTaskAfterForegroundCheck(
+                    taskID: taskID,
+                    name: name,
+                    foregroundToken: foregroundToken,
+                    appIsActive: appIsActive
+                )
+            }
+        }
+    }
+
+    private func continueBeginTaskAfterForegroundCheck(
+        taskID: String,
+        name: String,
+        foregroundToken: UUID,
+        appIsActive: Bool
+    ) {
+        guard
+            foregroundStartTokens[taskID]
+                == foregroundToken
+        else {
+            return
+        }
+
+        foregroundStartTokens.removeValue(
+            forKey: taskID
+        )
+
+        guard currentEnabledSnapshot() else {
+            setTaskOwnership(
+                taskID: taskID,
+                handled: false
+            )
+            return
         }
 
         guard appIsActive else {
@@ -430,6 +469,20 @@ final class GopeedContinuedProcessingManager: NSObject {
             setTaskOwnership(
                 taskID: taskID,
                 handled: false
+            )
+            return
+        }
+
+        // Re-check after the asynchronous main-thread hop. A terminal
+        // event, disable, or another valid start may have changed the
+        // lifecycle while the foreground state was being read.
+        guard
+            !pendingTaskIDs.contains(taskID),
+            activeTasks[taskID] == nil
+        else {
+            setTaskOwnership(
+                taskID: taskID,
+                handled: true
             )
             return
         }
@@ -498,8 +551,6 @@ final class GopeedContinuedProcessingManager: NSObject {
             return
         }
 
-        registeredIdentifiers.insert(identifier)
-
         let request =
             BGContinuedProcessingTaskRequest(
                 identifier: identifier,
@@ -557,7 +608,6 @@ final class GopeedContinuedProcessingManager: NSObject {
             )
         }
     }
-
 
     // MARK: - System launched task
 
@@ -901,6 +951,10 @@ final class GopeedContinuedProcessingManager: NSObject {
         success: Bool,
         finalSubtitle: String
     ) {
+        foregroundStartTokens.removeValue(
+            forKey: taskID
+        )
+
         progressRecoveryTokens.removeValue(
             forKey: taskID
         )
@@ -1115,6 +1169,7 @@ final class GopeedContinuedProcessingManager: NSObject {
             Set(
                 handledTaskIDsSnapshot()
                 + Array(taskIdentifiers.keys)
+                + Array(foregroundStartTokens.keys)
                 + Array(pendingTaskIDs)
                 + Array(activeTasks.keys)
                 + Array(expiringTasks.keys)
@@ -1140,6 +1195,7 @@ final class GopeedContinuedProcessingManager: NSObject {
         }
 
         activeTasks.removeAll()
+        foregroundStartTokens.removeAll()
         pendingTaskIDs.removeAll()
         expiringTasks.removeAll()
         taskGenerations.removeAll()
