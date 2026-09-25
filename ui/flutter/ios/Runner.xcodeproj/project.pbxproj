@@ -18,6 +18,7 @@
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		3EF29839EA13551EB8144269 /* GopeedLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 76ED41E0163DFA97F018D1AC /* GopeedLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		5BF69191A426106A38B62F9F /* GopeedContinuedProcessingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3879B6DB5398A19281BA5F8F /* GopeedContinuedProcessingManager.swift */; };
+		B30000000000000000000001 /* GopeedTaskEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30000000000000000000002 /* GopeedTaskEvent.swift */; };
 		6085D504396791024CEC496B /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8823E31DA135C410E362683E /* Pods_RunnerTests.framework */; };
 		6243BE8F995F5284DBDD7DE3 /* GopeedLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C9F8DE4B991051758F2BE1 /* GopeedLiveActivityWidget.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
@@ -102,6 +103,7 @@
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		35C9F8DE4B991051758F2BE1 /* GopeedLiveActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GopeedLiveActivityWidget.swift; sourceTree = "<group>"; };
 		3879B6DB5398A19281BA5F8F /* GopeedContinuedProcessingManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GopeedContinuedProcessingManager.swift; sourceTree = "<group>"; };
+		B30000000000000000000002 /* GopeedTaskEvent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GopeedTaskEvent.swift; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		52A13633B52EDC9D3F479DFD /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		55356FCC7E573C3FEEC2DF4D /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
@@ -286,6 +288,7 @@
 				09AC32C4BF90EAC54D048584 /* GopeedDownloadAttributes.swift */,
 				EB8C142A455C80367DDD68AE /* GopeedLiveActivityManager.swift */,
 				3879B6DB5398A19281BA5F8F /* GopeedContinuedProcessingManager.swift */,
+				B30000000000000000000002 /* GopeedTaskEvent.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -607,6 +610,7 @@
 				1E29080079AAFD1CF2C71262 /* GopeedDownloadAttributes.swift in Sources */,
 				032447D610CFAF8A75642212 /* GopeedLiveActivityManager.swift in Sources */,
 				5BF69191A426106A38B62F9F /* GopeedContinuedProcessingManager.swift in Sources */,
+				B30000000000000000000001 /* GopeedTaskEvent.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
