@@ -248,26 +248,22 @@ final class GopeedLiveActivityManager: NSObject {
             return
         }
 
-        guard
-            let data = payload.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(with: data)
-                as? [String: Any],
-            let type = json["type"] as? String,
-            let taskID = json["taskId"] as? String
-        else {
+        guard let event = GopeedTaskEvent.decode(payload) else {
             print("LiveActivity: invalid task event payload")
             return
         }
+
+        let taskID = event.taskID
 
         guard !isTaskSuppressed(taskID) else {
             return
         }
 
-        let name = json["name"] as? String ?? "Download"
+        let name = event.name
 
-        switch type {
+        switch event.type {
 
-        case "task.start":
+        case .start:
             let generation =
                 startGeneration(
                     taskID: taskID
@@ -282,7 +278,7 @@ final class GopeedLiveActivityManager: NSObject {
                 )
             }
 
-        case "task.progress":
+        case .progress:
             guard
                 let generation =
                     generationForProgress(
@@ -298,7 +294,7 @@ final class GopeedLiveActivityManager: NSObject {
                 generation: generation
             )
 
-        case "task.pause":
+        case .pause:
             if let generation =
                 invalidateGeneration(
                     taskID: taskID
@@ -312,7 +308,7 @@ final class GopeedLiveActivityManager: NSObject {
                 }
             }
 
-        case "task.done":
+        case .done:
             if let generation =
                 invalidateGeneration(
                     taskID: taskID
@@ -325,9 +321,9 @@ final class GopeedLiveActivityManager: NSObject {
                 }
             }
 
-        case "task.error":
+        case .error:
             let error =
-                json["error"] as? String
+                event.error
                 ?? "Download failed"
 
             if let generation =
@@ -343,7 +339,7 @@ final class GopeedLiveActivityManager: NSObject {
                 }
             }
 
-        case "task.delete":
+        case .delete:
             if let generation =
                 invalidateGeneration(
                     taskID: taskID
@@ -357,7 +353,7 @@ final class GopeedLiveActivityManager: NSObject {
                 }
             }
 
-        default:
+        case .other:
             break
         }
     }

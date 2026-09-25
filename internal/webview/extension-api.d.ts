@@ -5,7 +5,19 @@ export interface ExtensionInfo {
   author: string;
   title: string;
   version: string;
-  hostVersion: string;
+}
+
+/** Available as gopeed.host. */
+export interface Host {
+  env: HostEnv;
+}
+
+export interface HostEnv {
+  /** Host build version; "dev" for development builds. */
+  version: string;
+  /** Host OS and architecture, matching the REST info endpoint (Go GOOS/GOARCH). */
+  os: string;
+  arch: string;
 }
 
 /** Functions are serialized; they cannot capture extension-side variables. */

@@ -16,6 +16,9 @@ func injectGopeed(vm *goja.Runtime, gopeed *Instance, post func(func(*goja.Runti
 	if err := gopeedObject.Set("events", newJSEventsRuntime(vm, gopeed.Events)); err != nil {
 		return err
 	}
+	if err := gopeedObject.Set("host", newInstanceHost()); err != nil {
+		return err
+	}
 	if err := gopeedObject.Set("info", gopeed.Info); err != nil {
 		return err
 	}

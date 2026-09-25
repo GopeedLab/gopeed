@@ -61,10 +61,13 @@ Go proxy unit tests separately cover successful TLS forwarding and authenticatio
 These cases run in the existing `test.yml` WebView jobs; existing mobile build jobs
 compile the Android/iOS bridge. No separate Flutter test application is required.
 
-## Extension events and host version
+## Extension events and host environment
 
-`gopeed.info.hostVersion` is the host's build version (`dev` for development
+`gopeed.host.env.version` is the host's build version (`dev` for development
 builds). `gopeed.info.version` continues to identify the extension's own version.
+`gopeed.host.env.os` and `gopeed.host.env.arch` match the REST info endpoint's `os` and
+`arch`: the host's Go `runtime.GOOS` and `runtime.GOARCH` values (for example,
+`windows` / `amd64` or `darwin` / `arm64`).
 See [extension-api.d.ts](extension-api.d.ts) for the event payloads.
 
 ```js

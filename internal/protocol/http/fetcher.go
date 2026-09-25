@@ -150,7 +150,7 @@ type slowStartController struct {
 	totalLaunched  int
 	batchPending   int           // Connections in current batch waiting for HTTP response
 	batchReady     int           // Connections in current batch that succeeded
-	nextBatchSize  int           // Next batch size: 1, 2, 4, 8...
+	nextBatchSize  int           // Next batch size: 1, 2, 4, 16, 256... (capped)
 	expansionCh    chan struct{} // Signal to trigger next expansion
 	paused         bool          // Pause expansion (e.g., on 429)
 }
@@ -229,7 +229,15 @@ func (s *slowStartController) commitBatch(count int) {
 	defer s.mu.Unlock()
 
 	s.totalLaunched += count
-	s.nextBatchSize = s.nextBatchSize * 2 // Exponential growth: 1, 2, 4, 8...
+	if s.nextBatchSize == 1 {
+		// Bootstrap growth: squaring one would never increase the batch size.
+		s.nextBatchSize = min(2, s.maxConnections)
+	} else if s.nextBatchSize > s.maxConnections/s.nextBatchSize {
+		// Cap before multiplying to avoid integer overflow.
+		s.nextBatchSize = s.maxConnections
+	} else {
+		s.nextBatchSize *= s.nextBatchSize
+	}
 	s.batchPending = count
 	s.batchReady = 0
 }
@@ -409,12 +417,26 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 		res.Range = true
 	}
 
-	// Get content length from Content-Length header
-	contentLength := resp.Header.Get(base.HttpHeaderContentLength)
-	if contentLength != "" {
-		parse, err := strconv.ParseInt(contentLength, 10, 64)
-		if err == nil {
-			res.Size = parse
+	// A partial response describes one segment, not the whole resource.
+	reuseResolveBody := true
+	if resp.StatusCode == base.HttpCodePartialContent {
+		start, _, total, err := parseRangeResponse(resp)
+		if err != nil {
+			resp.Body.Close()
+			f.setState(stateError)
+			return err
+		}
+		res.Size = total
+		res.Range = true
+		// Prefetch is a contiguous prefix copied at offset zero. A segment
+		// starting elsewhere must be fetched again through the Range path.
+		reuseResolveBody = start == 0
+	} else {
+		contentLength := resp.Header.Get(base.HttpHeaderContentLength)
+		if contentLength != "" {
+			if size, err := strconv.ParseInt(contentLength, 10, 64); err == nil {
+				res.Size = size
+			}
 		}
 	}
 
@@ -459,7 +481,12 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 	// IMPORTANT: Keep the response body open for downloading in Start phase
 	// This is crucial for one-time URLs that can only be accessed once
 	f.resolveRespLock.Lock()
-	f.resolveResp = resp
+	if reuseResolveBody {
+		f.resolveResp = resp
+	} else {
+		resp.Body.Close()
+		f.prefetchDone.Store(true)
+	}
 	f.resolveRespLock.Unlock()
 
 	f.setState(stateResolved)
@@ -471,7 +498,7 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 
 	// Start async prefetch in background (only for range-supported resources)
 	// For non-range resources, the response will be used directly in Start
-	if res.Range {
+	if res.Range && reuseResolveBody {
 		f.prefetchStopCh = make(chan struct{})
 		f.resolveFallback.Store(true)
 		go f.asyncPrefetch()
@@ -1536,27 +1563,41 @@ func (f *Fetcher) completeFromResolveFallback(conn *connection) bool {
 	return true
 }
 
-func validateRangeResponse(resp *http.Response, requestedStart int64, requestedEnd *int64, totalSize int64) (int64, int64, error) {
+// parseRangeResponse validates a single byte range with a known complete length.
+// Unknown totals are rejected: a segment length cannot stand in for resource size.
+func parseRangeResponse(resp *http.Response) (int64, int64, int64, error) {
 	contentRange := resp.Header.Get(base.HttpHeaderContentRange)
 	fields := strings.Fields(contentRange)
 	if len(fields) != 2 || !strings.EqualFold(fields[0], base.HttpHeaderBytes) {
-		return 0, 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+		return 0, 0, 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
 	}
 
 	rangeAndTotal := strings.Split(fields[1], "/")
 	if len(rangeAndTotal) != 2 {
-		return 0, 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+		return 0, 0, 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
 	}
 	bounds := strings.Split(rangeAndTotal[0], "-")
 	if len(bounds) != 2 {
-		return 0, 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+		return 0, 0, 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
 	}
 
 	start, startErr := strconv.ParseInt(bounds[0], 10, 64)
 	end, endErr := strconv.ParseInt(bounds[1], 10, 64)
 	total, totalErr := strconv.ParseInt(rangeAndTotal[1], 10, 64)
 	if startErr != nil || endErr != nil || totalErr != nil || start < 0 || end < start || total <= end {
-		return 0, 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+		return 0, 0, 0, fmt.Errorf("%w: malformed Content-Range %q", errInvalidRangeResponse, contentRange)
+	}
+	expectedLength := end - start + 1
+	if resp.ContentLength >= 0 && resp.ContentLength != expectedLength {
+		return 0, 0, 0, fmt.Errorf("%w: Content-Length %d does not match range length %d", errInvalidRangeResponse, resp.ContentLength, expectedLength)
+	}
+	return start, end, total, nil
+}
+
+func validateRangeResponse(resp *http.Response, requestedStart int64, requestedEnd *int64, totalSize int64) (int64, int64, error) {
+	start, end, total, err := parseRangeResponse(resp)
+	if err != nil {
+		return 0, 0, err
 	}
 	if start != requestedStart || (requestedEnd != nil && end != *requestedEnd) || (requestedEnd == nil && end != total-1) {
 		return 0, 0, fmt.Errorf("%w: Content-Range %d-%d does not match requested range", errInvalidRangeResponse, start, end)
@@ -1565,11 +1606,7 @@ func validateRangeResponse(resp *http.Response, requestedStart int64, requestedE
 		return 0, 0, fmt.Errorf("%w: Content-Range total %d does not match resource size %d", errInvalidRangeResponse, total, totalSize)
 	}
 
-	expectedLength := end - start + 1
-	if resp.ContentLength >= 0 && resp.ContentLength != expectedLength {
-		return 0, 0, fmt.Errorf("%w: Content-Length %d does not match range length %d", errInvalidRangeResponse, resp.ContentLength, expectedLength)
-	}
-	return expectedLength, total, nil
+	return end - start + 1, total, nil
 }
 
 func (f *Fetcher) resolveOpenEndedRange(conn *connection, totalSize int64) error {
