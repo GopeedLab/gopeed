@@ -285,6 +285,12 @@ type Fetcher struct {
 	primaryReadyOnce sync.Once
 	primaryReadyCh   chan struct{}
 
+	// checksumFailed marks that the last completed download failed
+	// checksum verification, so the next retry must force a full
+	// re-download instead of skipping connections that already
+	// reported Completed.
+	checksumFailed atomic.Bool
+
 	// Start pending mechanism
 	startPending   atomic.Bool
 	resolvedCh     chan struct{} // Signal when resolve completes
@@ -721,12 +727,26 @@ func (f *Fetcher) doStart() error {
 
 	// If retrying after error, reset connection states for retry
 	if state == stateError {
+		forceFullReset := f.checksumFailed.Swap(false)
+		if forceFullReset {
+			// Checksum mismatch: the file content itself is wrong even
+			// though every connection reported Completed. Truncate the
+			// corrupt file so stale bytes cannot linger if the retry is
+			// interrupted before every connection re-writes its chunk.
+			if err := os.Truncate(f.meta.SingleFilepath(), 0); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("failed to reset file after checksum mismatch: %w", err)
+			}
+		}
 		f.connMu.Lock()
 		for _, conn := range f.connections {
-			// Reset connections that can be retried
-			if !conn.Completed && conn.State != connCompleted {
+			// On a normal error, only reset connections that didn't
+			// finish. On a checksum mismatch, reset EVERY connection —
+			// "Completed" only means the download loop finished, not
+			// that the bytes were verified correct.
+			shouldReset := forceFullReset || (!conn.Completed && conn.State != connCompleted)
+			if shouldReset {
 				if !f.hasSequentialPrefixLocked(conn) {
-					f.resetConnectionForRestart(conn)
+					f.resetConnectionForRestart(conn, forceFullReset)
 				}
 				conn.State = connNotStarted
 				conn.failed = false
@@ -1099,7 +1119,7 @@ func (f *Fetcher) runConnection(conn *connection) {
 			// it only when no safe validator exists or If-Range returns a full 200.
 			f.connMu.Lock()
 			if !f.hasSequentialPrefixLocked(conn) {
-				f.resetConnectionForRestart(conn)
+				f.resetConnectionForRestart(conn, false)
 			}
 			f.connMu.Unlock()
 		}
@@ -1206,7 +1226,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	resumeProbe := f.canProbeSequentialResumeLocked(conn)
 	intentionalRestart := sequentialSizeUnknown
 	if sequentialSizeUnknown || (hasSequentialPrefix && !resumeProbe) {
-		f.resetConnectionForRestart(conn)
+		f.resetConnectionForRestart(conn, false)
 		f.resolveDataPos.Store(0)
 		f.rangeValidatorPinned = false
 		intentionalRestart = true
@@ -1641,7 +1661,7 @@ func (f *Fetcher) fallbackToSequentialDownload(conn *connection, ifRange string)
 	f.rangeReprobeEligible = true
 	f.rangeValidatorPinned = false
 	f.ifRange = ifRange
-	f.resetConnectionForRestart(conn)
+	f.resetConnectionForRestart(conn, false)
 	f.resolveDataPos.Store(0)
 	return nil
 }
@@ -1657,7 +1677,7 @@ func (f *Fetcher) restartSequentialDownload(conn *connection, ifRange string) {
 	f.rangeReprobeEligible = true
 	f.rangeValidatorPinned = false
 	f.ifRange = ifRange
-	f.resetConnectionForRestart(conn)
+	f.resetConnectionForRestart(conn, false)
 	f.resolveDataPos.Store(0)
 }
 
@@ -2040,16 +2060,25 @@ func (f *Fetcher) helpOtherConnection(helper *connection) bool {
 	return true
 }
 
-func (f *Fetcher) resetConnectionForRestart(conn *connection) {
-	if f.meta.Res.Range {
+func (f *Fetcher) resetConnectionForRestart(conn *connection, force bool) {
+	if f.meta.Res.Range && !force {
 		return
+	}
+	if f.meta.Res.Range && force {
+		// Checksum mismatch: the on-disk content for this chunk is
+		// confirmed wrong, so its bytes must be re-fetched from the
+		// origin server even though range support would normally let
+		// us just resume from the existing Downloaded position.
+		if conn.Chunk != nil {
+			conn.Chunk.Downloaded = 0
+		}
 	}
 
 	// Without range support a new request always starts from byte 0,
 	// so pause/retry must restart instead of continuing from the old offset.
 	if conn.Chunk == nil {
 		conn.Chunk = newChunk(0, 0)
-	} else {
+	} else if !f.meta.Res.Range {
 		conn.Chunk.Begin = 0
 		conn.Chunk.setEnd(0)
 		conn.Chunk.Downloaded = 0
@@ -2113,7 +2142,7 @@ func (f *Fetcher) resumeConnections() {
 			}
 		}
 		if !f.hasSequentialPrefixLocked(conn) {
-			f.resetConnectionForRestart(conn)
+			f.resetConnectionForRestart(conn, false)
 		}
 		// Reset the connection state for resume
 		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
@@ -2238,10 +2267,14 @@ func (f *Fetcher) onDownloadComplete() {
 }
 
 func (f *Fetcher) verifyChecksum() error {
-	if f.meta == nil || f.meta.Opts == nil || f.meta.Opts.Checksum == nil {
+	if f.meta == nil || f.meta.Opts == nil || f.meta.Opts.Extra == nil {
 		return nil
 	}
-	chk := f.meta.Opts.Checksum
+	extra, ok := f.meta.Opts.Extra.(*fhttp.OptsExtra)
+	if !ok || extra.Checksum == nil {
+		return nil
+	}
+	chk := extra.Checksum
 	if chk.Algorithm == "" && chk.Expected == "" {
 		return nil
 	}
@@ -2272,6 +2305,7 @@ func (f *Fetcher) verifyChecksum() error {
 	actual := hex.EncodeToString(h.Sum(nil))
 	expected := strings.ToLower(strings.TrimSpace(chk.Expected))
 	if !strings.EqualFold(actual, expected) {
+		f.checksumFailed.Store(true)
 		return fmt.Errorf("checksum mismatch: expected %s, got %s", expected, actual)
 	}
 	return nil

@@ -19,13 +19,13 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	var checksumOpt *base.ChecksumOption
+	var checksumOpt *http.ChecksumOption
 	if args.checksum != nil && *args.checksum != "" {
 		algo := "md5"
 		if args.checksumAlgo != nil && *args.checksumAlgo != "" {
 			algo = *args.checksumAlgo
 		}
-		checksumOpt = &base.ChecksumOption{
+		checksumOpt = &http.ChecksumOption{
 			Algorithm: algo,
 			Expected:  *args.checksum,
 		}
@@ -55,9 +55,11 @@ func main() {
 			}
 		}).
 		Create(&base.Options{
-			Path:     *args.dir,
-			Extra:    http.OptsExtra{Connections: *args.connections},
-			Checksum: checksumOpt,
+			Path: *args.dir,
+			Extra: http.OptsExtra{
+				Connections: *args.connections,
+				Checksum:    checksumOpt,
+			},
 		})
 	if err != nil {
 		panic(err)

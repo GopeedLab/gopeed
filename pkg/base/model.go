@@ -124,11 +124,6 @@ type FileInfo struct {
 	Req *Request `json:"req"`
 }
 
-type ChecksumOption struct {
-	Algorithm string `json:"algorithm"` // "md5" | "sha1" | "sha256"
-	Expected  string `json:"expected"`  // hex-encoded expected hash
-}
-
 // Options for download
 type Options struct {
 	// Download file name
@@ -141,8 +136,6 @@ type Options struct {
 	SelectFiles []int `json:"selectFiles"`
 	// Extra info for specific fetcher
 	Extra any `json:"extra"`
-	// Checksum verification option
-	Checksum *ChecksumOption `json:"checksum,omitempty"`
 }
 
 func (o *Options) InitSelectFiles(fileSize int) {

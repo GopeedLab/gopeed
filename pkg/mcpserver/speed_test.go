@@ -2,14 +2,29 @@ package mcpserver
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestGetDownloadSpeedTool(t *testing.T) {
+	// Serve a test payload that takes a little bit of time or streams bytes
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "1048576")
+		w.WriteHeader(http.StatusOK)
+		chunk := make([]byte, 8192)
+		for i := 0; i < 128; i++ {
+			_, _ = w.Write(chunk)
+			time.Sleep(10 * time.Millisecond)
+		}
+	}))
+	defer testServer.Close()
+
 	downloader := download.NewDownloader(&download.DownloaderConfig{
 		Storage:    download.NewMemStorage(),
 		StorageDir: t.TempDir(),
@@ -29,7 +44,7 @@ func TestGetDownloadSpeedTool(t *testing.T) {
 	}
 	defer session.Close()
 
-	// 1. Query all tasks speed (empty list)
+	// 1. Zero tasks test (returns 0 totalSpeed and 0 activeTaskCount)
 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "get_download_speed",
 		Arguments: map[string]any{},
@@ -47,18 +62,42 @@ func TestGetDownloadSpeedTool(t *testing.T) {
 	if activeCount, ok := structured["activeTaskCount"].(float64); !ok || activeCount != 0 {
 		t.Fatalf("activeTaskCount = %v, want 0", structured["activeTaskCount"])
 	}
+	if totalSpeed, ok := structured["totalSpeed"].(float64); !ok || totalSpeed != 0 {
+		t.Fatalf("totalSpeed = %v, want 0", structured["totalSpeed"])
+	}
 
-	// 2. Query non-existent task ID -> should return error
-	notFoundResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "get_download_speed",
-		Arguments: map[string]any{
-			"id": "non-existent-task-id",
-		},
+	// 2. Start a real download task
+	taskID, err := downloader.CreateDirect(&base.Request{
+		URL: testServer.URL,
+	}, &base.Options{
+		Path: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !notFoundResult.IsError {
-		t.Fatal("get_download_speed should return error for non-existent task ID")
+	defer func() {
+		_ = downloader.Delete(&download.TaskFilter{IDs: []string{taskID}}, true)
+	}()
+
+	// Query get_download_speed while downloading
+	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "get_download_speed",
+		Arguments: map[string]any{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("get_download_speed returned error: %+v", result.Content)
+	}
+	structured, ok = result.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("structured content type = %T", result.StructuredContent)
+	}
+	if _, ok := structured["activeTaskCount"].(float64); !ok {
+		t.Fatalf("activeTaskCount missing or wrong type: %v", structured["activeTaskCount"])
+	}
+	if _, ok := structured["totalSpeed"].(float64); !ok {
+		t.Fatalf("totalSpeed missing or wrong type: %v", structured["totalSpeed"])
 	}
 }
