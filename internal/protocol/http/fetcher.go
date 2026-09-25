@@ -1116,6 +1116,12 @@ func (f *Fetcher) runConnection(conn *connection) {
 		if err == nil {
 			if !f.meta.Res.Range || !f.helpOtherConnection(conn) {
 				f.connMu.Lock()
+				// Finalize progress: ensure chunk and connection downloaded counts are exact
+				if conn.Chunk != nil && !conn.Chunk.openEnded() {
+					expectedChunkSize := *conn.Chunk.End - conn.Chunk.Begin + 1
+					conn.Chunk.Downloaded = expectedChunkSize
+					conn.Downloaded = conn.Chunk.Begin + expectedChunkSize
+				}
 				conn.Completed = true
 				conn.State = connCompleted
 				f.connMu.Unlock()
@@ -2054,6 +2060,7 @@ func (f *Fetcher) helpOtherConnection(helper *connection) bool {
 	helper.Chunk.Begin = chunkEnd - slowestConn.Chunk.remain()/2
 	helper.Chunk.setEnd(chunkEnd)
 	helper.Chunk.Downloaded = 0
+	helper.Downloaded = 0
 	slowestConn.Chunk.setEnd(helper.Chunk.Begin - 1)
 	return true
 }
