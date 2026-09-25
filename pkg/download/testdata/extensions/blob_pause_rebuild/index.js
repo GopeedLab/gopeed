@@ -132,7 +132,7 @@ gopeed.events.onError(async function (ctx) {
     return;
   }
 
-  await ctx.task.setUrl(await createPayloadURL(source, false));
+  await ctx.task.meta.req.setUrl(await createPayloadURL(source, false));
   await req.putLabel('started', 'true');
   await req.putLabel('rebuilt', 'true');
   await ctx.task.continue();

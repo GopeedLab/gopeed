@@ -1,0 +1,652 @@
+{
+  "@@locale": "sk",
+  "label": "Slovenčina",
+  "error": "Chyba",
+  "tip": "Tip",
+  "confirm": "Potvrdiť",
+  "confirmDelete": "Naozaj chcete odstrániť?",
+  "cancel": "Zrušiť",
+  "on": "Zapnuté",
+  "off": "Vypnuté",
+  "selectAll": "Vybrať všetko",
+  "select": "Vybrať",
+  "task": "Úlohy",
+  "downloading": "Sťahovanie",
+  "downloaded": "Stiahnuté",
+  "setting": "Nastavenia",
+  "donate": "Podpora",
+  "exit": "Ukončiť",
+  "pressBackAgainToExit": "Pre ukončenie stlačte späť ešte raz",
+  "create": "Vytvoriť úlohu",
+  "createAction": "Vytvoriť",
+  "directDownload": "Priame sťahovanie",
+  "advancedOptions": "Rozšírené možnosti",
+  "followSettings": "Podľa nastavení",
+  "downloadLink": "Odkaz na stiahnutie",
+  "downloadLinkValid": "Zadajte odkaz na stiahnutie",
+  "downloadLinkHit": "Zadajte odkaz na stiahnutie, jeden na riadok@append",
+  "downloadLinkHitDesktop": ", alebo sem presuňte torrent súbor",
+  "download": "Stiahnuť",
+  "noFileSelected": "Pokračujte výberom aspoň jedného súboru",
+  "noStoragePermission": "Vyžaduje sa povolenie na ukladanie",
+  "selectFile": "Vybrať súbor",
+  "rename": "Premenovať",
+  "basic": "Základné",
+  "advanced": "Rozšírené",
+  "general": "Všeobecné",
+  "downloadDir": "Priečinok na stiahnutie",
+  "rememberLastDownloadDir": "Uložiť ako predvolený priečinok na stiahnutie",
+  "downloadDirValid": "Vyberte priečinok na stiahnutie",
+  "connections": "Pripojenia",
+  "maxRetries": "Maximálny počet pokusov",
+  "useServerCtime": "Použiť čas servera na vytvorenie súboru",
+  "maxRunning": "Súbežné sťahovania",
+  "defaultDirectDownload": "Predvolene priame sťahovanie",
+  "autoStartTasks": "Automaticky spustiť nedokončené úlohy pri štarte",
+  "autoTorrentEnable": "Automaticky vytvárať BT úlohy z .torrent súborov",
+  "autoTorrentDeleteAfterDownload": "Po vytvorení BT úlohy odstrániť .torrent súbor",
+  "autoDeleteMissingFileTasks": "Automaticky odstrániť úlohy s chýbajúcimi súbormi",
+  "items": "{count} položiek",
+  "@items": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "subscribeTracker": "Odoberať tracker",
+  "subscribeFail": "Odber zlyhal, skontrolujte sieť alebo to skúste neskôr",
+  "update": "Aktualizovať",
+  "updateDaily": "Aktualizovať denne",
+  "lastUpdate": "Posledná aktualizácia: @time",
+  "addTracker": "Pridať tracker",
+  "addTrackerHit": "Zadajte URL tracker servera, jedna na riadok",
+  "ui": "Rozhranie",
+  "theme": "Téma",
+  "themeSystem": "Systémová",
+  "themeLight": "Svetlá",
+  "themeDark": "Tmavá",
+  "locale": "Jazyk",
+  "notifyWhenNewVersion": "Upozorniť na aktualizácie",
+  "analyticsEnabled": "Analytika používania",
+  "analyticsEnabledDesc": "Zdieľajte anonymné údaje o používaní a pomôžte nám zlepšovať sa",
+  "about": "O aplikácii",
+  "homepage": "Domovská stránka",
+  "version": "Verzia",
+  "protocol": "Protokol",
+  "port": "Port",
+  "apiToken": "API token",
+  "notSet": "NS",
+  "set": "SET",
+  "portInUse": "Port [@port] sa používa, zmeňte port",
+  "effectAfterRestart": "Účinné po reštarte",
+  "developer": "Vývojár",
+  "logDirectory": "Priečinok protokolov",
+  "webhook": "Webhook",
+  "webhookEnable": "Povoliť webhooky",
+  "webhookDesc": "Odosielať HTTP POST upozornenia po dokončení alebo zlyhaní úloh",
+  "webhookUrlHint": "Zadajte URL webhooku",
+  "webhookTest": "Test",
+  "webhookTestSuccess": "Test webhooku úspešný",
+  "webhookTestFail": "Test webhooku zlyhal",
+  "script": "Skript",
+  "scriptEnable": "Povoliť skripty",
+  "scriptDesc": "Spustiť vlastné skripty po úspešnom dokončení sťahovania",
+  "scriptPathHint": "Zadajte cestu k súboru skriptu (napr. /path/to/script.sh)",
+  "urlInvalid": "Zadajte platnú HTTP alebo HTTPS URL",
+  "required": "Toto pole je povinné",
+  "show": "Zobraziť",
+  "continueAction": "Pokračovať",
+  "pause": "Pozastaviť",
+  "startAll": "Spustiť všetko",
+  "pauseAll": "Pozastaviť všetko",
+  "deleteTask": "Odstrániť @count úloh",
+  "deleteTaskTip": "Zachovať stiahnuté súbory",
+  "delete": "Odstrániť",
+  "add": "Pridať",
+  "edit": "Upraviť",
+  "newVersionTitle": "Objavená nová verzia @version",
+  "newVersionUpdate": "Aktualizovať teraz",
+  "newVersionLater": "Neskôr",
+  "extensions": "Rozšírenia",
+  "extensionInstallUrl": "Nainštalovať z URL",
+  "extensionInstallSuccess": "Úspešne nainštalované",
+  "extensionUpdateConfirm": "Aktualizovať „{name}“ na najnovšiu verziu?",
+  "@extensionUpdateConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "extensionUpdateSuccess": "Úspešne aktualizované",
+  "extensionDelete": "Odstrániť rozšírenie",
+  "extensionAlreadyLatest": "Už je najnovšia verzia",
+  "extensionFind": "Nájsť rozšírenia",
+  "extensionDevelop": "Vyvíjať rozšírenia",
+  "extensionStoreTitle": "Obchod s rozšíreniami",
+  "extensionStoreSection": "Rozšírenia z obchodu",
+  "extensionInstalledSection": "Nainštalované rozšírenia",
+  "extensionInstalledEmpty": "Zatiaľ nie sú nainštalované žiadne rozšírenia",
+  "extensionStoreEmpty": "Nenašli sa žiadne zodpovedajúce rozšírenia",
+  "extensionSearchHint": "Hľadať podľa názvu, titulku, popisu alebo autora",
+  "extensionSortStars": "Najviac hviezd",
+  "extensionSortInstalls": "Najviac inštalácií",
+  "extensionSortUpdated": "Naposledy aktualizované",
+  "extensionSortToggle": "Prepnúť smer zoradenia",
+  "extensionLoadMore": "Načítať viac",
+  "extensionNoMore": "Žiadne ďalšie rozšírenia",
+  "extensionInstalled": "Nainštalované",
+  "extensionCanUpdate": "Dostupná aktualizácia",
+  "extensionInstall": "Nainštalovať",
+  "extensionLoadLocal": "Nainštalovať z lokálneho priečinka",
+  "extensionFilterAll": "Všetky",
+  "extensionFilterMarket": "Obchod",
+  "extensionFilterInstalled": "Nainštalované",
+  "extensionManualInstall": "Manuálna inštalácia",
+  "extensionInstallTools": "Možnosti inštalácie",
+  "history": "História",
+  "clearHistory": "Vymazať históriu",
+  "noHistoryFound": "História sa nenašla",
+  "serviceTitle": "Služba sťahovania",
+  "serviceText": "Spustená",
+  "network": "Sieť",
+  "proxy": "Proxy",
+  "noProxy": "Bez proxy",
+  "systemProxy": "Systémová proxy",
+  "customProxy": "Vlastná proxy",
+  "server": "Server",
+  "username": "Používateľské meno",
+  "password": "Heslo",
+  "thanks": "Poďakovanie",
+  "thanksDesc": "Ďakujeme všetkým prispievateľom, ktorí pomohli budovať a rozvíjať komunitu Gopeed!",
+  "browserExtension": "Rozšírenie prehliadača",
+  "launchAtStartup": "Spustiť pri štarte",
+  "runAsMenubarApp": "Spustiť ako aplikáciu v paneli ponuky",
+  "runAsMenubarAppDesc": "Skryť ikonu v docku a spustiť iba v paneli ponuky",
+  "seedConfig": "Konfigurácia seedovania",
+  "seedKeep": "Pokračovať v seedovaní až do manuálneho zastavenia",
+  "seedRatio": "Pomer seedovania",
+  "seedTime": "Čas seedovania (minúty)",
+  "setAsDefaultBtClient": "Nastaviť ako predvoleného BT klienta",
+  "taskDetail": "Detail úlohy",
+  "taskName": "Názov úlohy",
+  "taskUrl": "URL úlohy",
+  "downloadPath": "Cesta stiahnutia",
+  "skipVerifyCert": "Preskočiť overenie certifikátu",
+  "archives": "Archívy",
+  "autoExtract": "Automaticky rozbaliť archívy",
+  "archivePassword": "Heslo archívu",
+  "archivePasswordHint": "Nechajte prázdne, ak nie je chránený heslom",
+  "deleteAfterExtract": "Po rozbalení odstrániť archívy",
+  "extracting": "Rozbaľovanie",
+  "extractDone": "Rozbalenie dokončené",
+  "extractError": "Rozbalenie zlyhalo",
+  "waitingParts": "Čakanie na časti",
+  "name": "Názov",
+  "size": "Veľkosť",
+  "unknown": "Neznáme",
+  "fileSelectedCount": "Súbory: ",
+  "fileSelectedSize": "Veľkosť: ",
+  "httpHeader": "Hlavička",
+  "httpHeaderName": "Názov hlavičky",
+  "httpHeaderValue": "Hodnota hlavičky",
+  "login": "Prihlásenie",
+  "username_required": "Zadajte používateľské meno",
+  "password_required": "Zadajte heslo",
+  "login_success": "Prihlásenie úspešné",
+  "login_failed": "Prihlásenie zlyhalo, skontrolujte používateľské meno a heslo",
+  "login_failed_network": "Prihlásenie zlyhalo, skontrolujte sieťové pripojenie",
+  "insertPlaceholder": "Vložiť zástupný znak",
+  "placeholderYear": "Aktuálny rok",
+  "placeholderMonth": "Aktuálny mesiac (01-12)",
+  "placeholderDay": "Aktuálny deň (01-31)",
+  "placeholderDate": "Celý dátum (RRRR-MM-DD)",
+  "example": "napr. @value",
+  "downloadCategories": "Kategórie sťahovania",
+  "categoryMusic": "Hudba",
+  "categoryVideo": "Video",
+  "categoryDocument": "Dokument",
+  "categoryProgram": "Program",
+  "categoryName": "Názov kategórie",
+  "categoryPath": "Cesta kategórie",
+  "builtInCategory": "Vstavanú kategóriu nie je možné odstrániť",
+  "selectCategory": "Vybrať kategóriu",
+  "quickDirectories": "Rýchle priečinky",
+  "githubMirror": "GitHub zrkadlo",
+  "githubMirrorEnable": "Povoliť GitHub zrkadlo",
+  "githubMirrorDesc": "Použiť zrkadlá na zrýchlenie sťahovania obsahu z GitHubu",
+  "githubMirrorType": "Typ zrkadla",
+  "githubMirrorUrl": "URL zrkadla",
+  "githubMirrorUrlHint": "Zadajte URL zrkadla",
+  "updateUrl": "Aktualizovať URL",
+  "updateUrlManual": "Manuálna aktualizácia",
+  "updateUrlListen": "Počúvať aktualizáciu",
+  "updateUrlListeningTip": "Čakanie na aktualizáciu URL",
+  "updateUrlCancelListen": "Zrušiť počúvanie",
+  "updateUrlDialogHint": "Zadajte novú URL na stiahnutie",
+  "pendingUpdateFound": "Nájdená čakajúca úloha aktualizácie",
+  "pendingUpdateConfirm": "Úloha „{name}“ čaká na aktualizáciu URL. Chcete ju aktualizovať novou URL?",
+  "@pendingUpdateConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pendingUpdateYes": "Aktualizovať úlohu",
+  "pendingUpdateNo": "Vytvoriť novú úlohu",
+  "ed2k": "ED2K",
+  "ed2kTcpPort": "TCP port na počúvanie",
+  "ed2kUdpPort": "UDP port na počúvanie",
+  "ed2kServerList": "Adresy serverov",
+  "ed2kServerMet": "Zdroje server.met",
+  "ed2kNodesDat": "Zdroje nodes.dat",
+  "ed2kAutoPort": "Automaticky priradiť",
+  "ed2kOnePerLine": "Jeden záznam na riadok",
+  "ed2kServersHint": "host:port, jeden na riadok",
+  "ed2kServerMetHint": "URL server.met alebo odkaz na ed2k serverlist, jeden na riadok",
+  "ed2kNodesDatHint": "Cesta alebo URL nodes.dat, jedna na riadok",
+  "desktopNotification": "Upozornenia na ploche",
+  "backgroundLocationKeepAlive": "Sťahovanie na pozadí",
+  "backgroundContinuedProcessing": "Pokračujúce spracovanie (iOS 26+)",
+  "notificationTaskDone": "Úloha dokončená",
+  "notificationTaskError": "Chyba úlohy",
+  "appTitle": "Gopeed správca sťahovania",
+  "unsupportedWindowPayload": "Nepodporovaná požiadavka okna",
+  "runtimeInitializationFailed": "Nepodarilo sa inicializovať runtime Gopeed.\n{error}",
+  "save": "Uložiť",
+  "retry": "Skúsiť znova",
+  "close": "Zavrieť",
+  "back": "Späť",
+  "open": "Otvoriť",
+  "openFile": "Otvoriť súbor",
+  "openFolder": "Otvoriť priečinok",
+  "share": "Zdieľať",
+  "copy": "Kopírovať",
+  "copied": "Skopírované",
+  "refresh": "Obnoviť",
+  "status": "Stav",
+  "createdAt": "Vytvorené",
+  "speed": "Rýchlosť",
+  "uploadSpeed": "Rýchlosť odosielania",
+  "remaining": "Zostávajúce",
+  "downloadDuration": "Trvanie sťahovania",
+  "progress": "Priebeh",
+  "failed": "Zlyhalo",
+  "completed": "Dokončené",
+  "waiting": "Čakanie",
+  "taskFailed": "Úloha zlyhala",
+  "unknownSize": "Neznáma veľkosť",
+  "secondsRemaining": "{count, plural, =1{zostáva 1 sekunda} other{zostáva {count} sekúnd}}",
+  "minutesRemaining": "{count, plural, =1{zostáva 1 minúta} other{zostáva {count} minút}}",
+  "hoursRemaining": "{count, plural, =1{zostáva 1 hodina} other{zostáva {count} hodín}}",
+  "secondsDuration": "{count, plural, =1{1 sekunda} other{{count} sekúnd}}",
+  "minutesDuration": "{count, plural, =1{1 minúta} other{{count} minút}}",
+  "hoursDuration": "{count, plural, =1{1 hodina} other{{count} hodín}}",
+  "followSystem": "Podľa systému",
+  "basicSettings": "Základné",
+  "downloadSettings": "Sťahovania",
+  "advancedSettings": "Rozšírené",
+  "themeColor": "Farba zvýraznenia",
+  "themeColorDescription": "Prispôsobiť farbu zvýraznenia aplikácie",
+  "browserExtensionDescription": "Po inštalácii posielať sťahovania z prehliadača priamo do Gopeed",
+  "desktopNotificationDescription": "Zobraziť systémové upozornenie po dokončení alebo zlyhaní úlohy",
+  "backgroundLocationKeepAliveDescription": "Použiť prístup k polohe na udržanie aktívnych sťahovaní na pozadí",
+  "backgroundContinuedProcessingDescription": "Použiť pokračujúce spracovanie iOS a jeho systémovú Live Activity na udržanie sťahovaní bez prístupu k polohe",
+  "backgroundContinuedProcessingUnsupported": "Pokračujúce spracovanie vyžaduje iOS 26 alebo novší",
+  "currentVersion": "Aktuálna verzia {version}",
+  "contributors": "Prispievatelia",
+  "viewContributors": "Zobraziť prispievateľov",
+  "maxRunningDescription": "Maximálny počet úloh, ktoré sa môžu súčasne sťahovať",
+  "defaultUserAgentDescription": "Predvolený User-Agent pre HTTP a HTTPS sťahovania",
+  "listenPort": "Port na počúvanie",
+  "onePerLine": "Jeden záznam na riadok",
+  "proxyProtocol": "Protokol",
+  "restartRequired": "Toto nastavenie sa prejaví po reštarte aplikácie",
+  "socketPath": "Cesta soketu",
+  "listenAddress": "Adresa na počúvanie",
+  "currentConnection": "Aktuálny koncový bod",
+  "webhookPush": "Koncové body",
+  "webhookPushDescription": "Odosielať HTTP POST upozornenia na tieto koncové body po dokončení alebo zlyhaní úloh",
+  "scriptExecution": "Skripty",
+  "scriptExecutionDescription": "Spustiť tieto skripty po úspešnom dokončení sťahovania",
+  "addWebhook": "Pridať webhook",
+  "editWebhook": "Upraviť webhook",
+  "addScript": "Pridať skript",
+  "editScript": "Upraviť skript",
+  "openDirectory": "Otvoriť priečinok",
+  "browseFiles": "Prehľadávať súbory",
+  "updateEveryDay": "Aktualizovať denne",
+  "updateVersion": "Aktualizovať",
+  "checkForUpdates": "Skontrolovať aktualizácie",
+  "updating": "Aktualizuje sa…",
+  "colorGreen": "Zelená",
+  "colorRed": "Červená",
+  "colorRose": "Ružová",
+  "colorOrange": "Oranžová",
+  "colorCyan": "Tyrkysová",
+  "colorBlue": "Modrá",
+  "colorAmber": "Jantárová",
+  "colorPurple": "Fialová",
+  "noExtensions": "Žiadne rozšírenia",
+  "searchExtensions": "Hľadať rozšírenia…",
+  "extensionDeveloperGuide": "Príručka vývojára rozšírení",
+  "extensionInstallFromUrl": "Nainštalovať rozšírenie z URL",
+  "unableOpenExtensionDocs": "Nepodarilo sa otvoriť príručku vývojára rozšírení",
+  "removeExtensionTitle": "Odinštalovať rozšírenie?",
+  "removeExtensionConfirm": "Naozaj chcete odinštalovať „{name}“?",
+  "uninstall": "Odinštalovať",
+  "unableLoadExtensions": "Nepodarilo sa načítať rozšírenia",
+  "filters": "Filtre",
+  "allTasks": "Všetky úlohy",
+  "searchDownloads": "Hľadať sťahovania…",
+  "searchHistory": "Hľadať v histórii…",
+  "addTask": "Pridať úlohu",
+  "emptyTaskList": "V tomto zozname nie sú žiadne úlohy",
+  "noMatchingTasks": "Nenašli sa žiadne zodpovedajúce úlohy",
+  "taskList": "Úlohy",
+  "selectedCount": "vybrané {selected} / {total}",
+  "unableOpenPath": "Nepodarilo sa otvoriť {path}",
+  "unableLocatePath": "Nepodarilo sa lokalizovať {path}",
+  "clearSelection": "Zrušiť výber",
+  "deselectTask": "Zrušiť výber",
+  "selectTask": "Vybrať",
+  "updateManually": "Aktualizovať manuálne",
+  "stopListening": "Zastaviť počúvanie",
+  "listenForUrl": "Počúvať URL",
+  "waitingForReplacementUrl": "Čakanie na náhradnú URL",
+  "taskNotFound": "Úloha sa nenašla",
+  "storagePath": "Cesta úložiska",
+  "directory": "Priečinok",
+  "mode": "Režim",
+  "keepOriginalName": "Zachovať pôvodný názov",
+  "enterCount": "Zadajte počet",
+  "chooseDownloadDirectory": "Vyberte priečinok na stiahnutie",
+  "applicationStorage": "Úložisko aplikácie",
+  "applicationStorageDescription": "Spoľahlivé úložisko aplikácie; súbory sa odstránia po odinštalovaní aplikácie",
+  "publicDownloadsDescription": "Súbory zostanú po odinštalovaní; dostupnosť závisí od zariadenia Android",
+  "downloadsDirectoryUnavailable": "Gopeed nemôže zapisovať do Download/Gopeed na tomto zariadení",
+  "enterValue": "Zadajte hodnotu",
+  "trackers": "Trackery",
+  "oneTrackerPerLine": "Jedna URL trackeru na riadok",
+  "pasteDownloadLinks": "Vložte HTTP, HTTPS alebo MAGNET odkazy, alebo sem presuňte torrent súbor",
+  "unableReadTorrent": "Nepodarilo sa prečítať torrent súbor: {error}",
+  "torrentOnly": "Podporované sú iba .torrent súbory",
+  "torrentDataEmpty": "Údaje torrent súboru sú prázdne",
+  "torrentPathUnavailable": "Nie je možné pristúpiť k ceste torrent súboru",
+  "selectAtLeastOneFile": "Vyberte aspoň jeden súbor",
+  "resolvedFiles": "Vyriešené súbory",
+  "resolvedFileCount": "{count, plural, =1{vyriešený 1 súbor} other{vyriešených {count} súborov}}",
+  "resourceHasNoFiles": "Zdroj nemá žiadny vyberateľný zoznam súborov",
+  "noFiles": "Žiadne súbory",
+  "historyLinks": "Odkazy v histórii",
+  "noHistory": "Žiadna história",
+  "directDownloadDescription": "Preskočiť riešenie a okamžite vytvoriť úlohy",
+  "taskProgress": "Priebeh úlohy",
+  "updateAndResume": "Aktualizovať a pokračovať",
+  "httpHeaders": "HTTP hlavičky",
+  "piece": "Časť {number}",
+  "pieceRange": "Časti {start}–{end}",
+  "connectionStatus": "Stav pripojenia",
+  "connectionCount": "{count, plural, =1{1 pripojenie} other{{count} pripojení}}",
+  "retrying": "Opätovný pokus",
+  "connectionFailed": "Pripojenie zlyhalo",
+  "connectionFailedRetries": "Pripojenie zlyhalo po {count} pokusoch",
+  "retryingCount": "Opätovný pokus · {count} pokusov",
+  "pieceStatus": "Stav častí",
+  "peers": "Peerovia",
+  "seeders": "Seedery",
+  "leechers": "Leecherovia",
+  "downloadedAmount": "Stiahnuté",
+  "uploadedAmount": "Odoslané",
+  "shareRatio": "Pomer zdieľania",
+  "shareDuration": "Trvanie zdieľania",
+  "connectedPeers": "{count} pripojených",
+  "active": "Aktívne",
+  "completedPieces": "Dokončené časti",
+  "activePeers": "{count} aktívnych",
+  "incomplete": "Nedokončené",
+  "address": "Adresa",
+  "client": "Klient",
+  "pieces": "Časti",
+  "source": "Zdroj",
+  "fileRelevance": "Relevancia súboru",
+  "taskDetails": "Podrobnosti úlohy",
+  "taskDetailsInfoTab": "Podrobnosti",
+  "taskDetailsFilesTab": "Súbory",
+  "taskDetailsStatsTab": "Štatistiky",
+  "noStatistics": "Nie sú dostupné žiadne štatistiky",
+  "noPeers": "Žiadne pripojenia",
+  "deleteTasksTitle": "{count, plural, =1{Odstrániť úlohu?} other{Odstrániť {count} úloh?}}",
+  "keepFilesDescription": "Odstrániť iba záznam úlohy z Gopeed",
+  "readingRuntimeStatus": "Čítanie stavu runtime…",
+  "apiConfigSaved": "Nastavenia API uložené",
+  "apiConfigPendingApply": "Uložené nastavenia neboli použité na bežiacu službu",
+  "apiServerRunning": "Spustené",
+  "apiServerStopped": "Zastavené",
+  "apiServerFailed": "Chyba",
+  "apiServerRuntimeStatus": "Stav runtime",
+  "startApiServer": "Spustiť",
+  "stopApiServer": "Zastaviť",
+  "saveAndRestartApiServer": "Uložiť a reštartovať",
+  "restartApiServerConfirm": "Služba REST API je spustená. Použitie týchto nastavení ju reštartuje a preruší existujúce API pripojenia.",
+  "disableApiServerConfirm": "Zakázať server REST API? Existujúce API pripojenia budú prerušené.",
+  "socketPathRequired": "Cesta soketu je povinná",
+  "serverRequired": "Server je povinný",
+  "portRangeError": "Zadajte port medzi 0 a 65535",
+  "portInUseValue": "Port {port} sa už používa",
+  "backgroundLocationPermissionRequired": "Pre sťahovanie na pozadí je potrebné povolenie polohy Vždy povoliť",
+  "scriptPath": "Cesta skriptu",
+  "logDirectoryUnavailable": "Priečinok protokolov nie je inicializovaný",
+  "unableOpenExternalLink": "Nepodarilo sa otvoriť externý odkaz",
+  "neverUpdated": "Nikdy neaktualizované",
+  "lastUpdated": "Posledná aktualizácia: {time}",
+  "unableLoadSettings": "Nepodarilo sa načítať nastavenia",
+  "fieldRequired": "{field} je povinné",
+  "addGithubMirror": "Pridať GitHub zrkadlo",
+  "editGithubMirror": "Upraviť GitHub zrkadlo",
+  "confirmDeleteTitle": "Potvrdiť odstránenie?",
+  "confirmDeleteNamed": "Naozaj chcete odstrániť „{name}“?",
+  "categoryFieldsRequired": "Názov kategórie a cesta sú povinné",
+  "addCategory": "Pridať kategóriu",
+  "editCategory": "Upraviť kategóriu",
+  "deleteCategoryTitle": "Odstrániť kategóriu?",
+  "updateFailed": "Aktualizácia zlyhala. Skúste to znova neskôr",
+  "newVersionAvailable": "Je dostupná nová verzia",
+  "releaseNotes": "Čo je nové",
+  "noReleaseNotes": "Nie sú dostupné žiadne poznámky k vydaniu",
+  "preparingDownload": "Príprava sťahovania…",
+  "booleanValueHint": "true / false",
+  "@runtimeInitializationFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "@secondsRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@secondsDuration": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@minutesDuration": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@hoursDuration": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@currentVersion": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "@removeExtensionConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "@selectedCount": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@unableOpenPath": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "@unableLocatePath": {
+    "placeholders": {
+      "path": {}
+    }
+  },
+  "@unableReadTorrent": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "@resolvedFileCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@piece": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "@pieceRange": {
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      }
+    }
+  },
+  "@connectionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@connectionFailedRetries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@retryingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@connectedPeers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@activePeers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@deleteTasksTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@portInUseValue": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "@lastUpdated": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "@fieldRequired": {
+    "placeholders": {
+      "field": {}
+    }
+  },
+  "@confirmDeleteNamed": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "androidForegroundServiceChannel": "Gopeed služba na pozadí",
+  "androidForegroundNotificationTitle": "Gopeed je spustený",
+  "androidForegroundNotificationText": "Sťahovania môžu pokračovať na pozadí",
+  "mcpDescription": "Spolupracujte s AI agentmi a objavujte neobmedzené možnosti",
+  "connectAgent": "Príručka nastavenia",
+  "connectMcpAgent": "Pripojiť MCP agenta",
+  "mcpAgentDialogDescription": "Vyberte agenta, ktorého používate, a skopírujte jeho konfiguráciu pripojenia.",
+  "mcpNotRunningHint": "Služba MCP nie je povolená. Povoľte ju",
+  "webMcpApiTokenHint": "Ak ste nakonfigurovali API token, pri pripájaní agenta sú potrebné overovacie údaje",
+  "useMcpApiTokenTemplate": "Prepnúť na overenú konfiguráciu",
+  "webApiConfigReadOnlyHelp": "Webová verzia nemôže upravovať nastavenia API online. Aktualizujte možnosti spustenia servera alebo konfiguračný súbor a potom reštartujte službu, aby sa zmeny prejavili.",
+  "mcpRequiresTcp": "Pokyny na pripojenie agenta sú dostupné, keď je protokol API TCP.",
+  "emptyTaskCreateHint": "Kliknutím na {action} spustíte sťahovanie",
+  "@emptyTaskCreateHint": {
+    "description": "Usmernenie pre prázdny zoznam; akcia sa nahradí vloženým tlačidlom vytvorenia.",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  }
+}

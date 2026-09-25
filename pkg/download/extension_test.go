@@ -14,10 +14,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	gojaerror "github.com/GopeedLab/gopeed/pkg/download/engine/inject/error"
 	enginewebview "github.com/GopeedLab/gopeed/pkg/download/engine/webview"
+	httpProtocol "github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/dop251/goja"
 )
 
@@ -38,13 +40,13 @@ func TestDownloader_InstallExtensionByFolder(t *testing.T) {
 			t.Fatal("resolve error")
 		}
 		if req.Labels["replaced"] != "true" || req.Labels["modified"] != "true" {
-			t.Fatalf("request label methods did not update labels: %#v", req.Labels)
+			t.Fatalf("declarative labels did not update: %#v", req.Labels)
 		}
 		if _, ok := req.Labels["original"]; ok {
-			t.Fatalf("setLabels did not replace existing labels: %#v", req.Labels)
+			t.Fatalf("label assignment did not replace existing labels: %#v", req.Labels)
 		}
 		if _, ok := req.Labels["removed"]; ok {
-			t.Fatalf("delLabel did not remove label: %#v", req.Labels)
+			t.Fatalf("declarative label deletion failed: %#v", req.Labels)
 		}
 	})
 }
@@ -1186,6 +1188,37 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 			t.Fatal("script update fail")
 		}
 	})
+}
+
+func TestDownloader_Extension_OnStartExtraMutation(t *testing.T) {
+	d := NewDownloader(&DownloaderConfig{Storage: NewMemStorage(), StorageDir: t.TempDir()})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer d.Clear()
+	if _, err := d.InstallExtensionByFolder("./testdata/extensions/on_start", false); err != nil {
+		t.Fatal(err)
+	}
+	for _, extra := range []any{nil, &httpProtocol.ReqExtra{
+		Method: "POST", Body: "old body", Header: map[string]string{"Old": "value"},
+	}} {
+		req := &base.Request{URL: "https://github.com/test", Extra: extra}
+		task := &Task{Protocol: "http", Meta: &fetcher.FetcherMeta{Req: req, Opts: &base.Options{}}}
+		d.triggerOnStart(task)
+		if err := base.ParseReqExtra[httpProtocol.ReqExtra](req); err != nil {
+			t.Fatal(err)
+		}
+		got, ok := req.Extra.(*httpProtocol.ReqExtra)
+		if !ok || got.Header["X-Gopeed-Test"] != "on-start" {
+			t.Fatalf("setHeaders did not update the original request: %#v", req.Extra)
+		}
+		if len(got.Header) != 1 {
+			t.Fatalf("headers not replaced: %#v", got)
+		}
+		if original, ok := extra.(*httpProtocol.ReqExtra); ok && (got.Method != original.Method || got.Body != original.Body) {
+			t.Fatalf("setHeaders changed unrelated fields: %#v", got)
+		}
+	}
 }
 
 func TestDownloader_Extension_OnStart(t *testing.T) {

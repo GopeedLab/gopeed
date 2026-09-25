@@ -45,6 +45,32 @@ type generationTestManager struct {
 
 func TestExtensionTaskMethodsMatchEventCapabilities(t *testing.T) {
 	taskType := reflect.TypeOf((*Task)(nil))
+	for _, typ := range []reflect.Type{taskType, reflect.TypeOf((*ExtensionTask)(nil)), reflect.TypeOf((*OnErrorExtensionTask)(nil))} {
+		for _, name := range []string{"SetUrl", "SetExtra", "PatchExtra", "PatchHeaders", "SetMethod", "SetBody", "SetHeaders", "PutHeader", "DelHeader", "SetTrackers"} {
+			if _, ok := typ.MethodByName(name); ok {
+				t.Fatalf("%v unexpectedly exposes %s", typ, name)
+			}
+		}
+	}
+	requestType := reflect.TypeOf((*ExtensionTaskRequest)(nil))
+	for _, name := range []string{"SetUrl", "SetLabels", "PutLabel", "DelLabel", "SetMethod", "SetBody", "SetHeaders", "PutHeader", "DelHeader", "SetTrackers"} {
+		if _, ok := requestType.MethodByName(name); !ok {
+			t.Fatalf("request wrapper does not expose %s", name)
+		}
+	}
+	for _, typ := range []reflect.Type{reflect.TypeOf(ExtensionTask{}), reflect.TypeOf(OnErrorExtensionTask{})} {
+		if _, ok := typ.FieldByName("Req"); ok {
+			t.Fatalf("%v exposes the removed task.req entry", typ)
+		}
+		field, ok := typ.FieldByName("Meta")
+		if !ok || field.Type != reflect.TypeOf((*ExtensionTaskMeta)(nil)) {
+			t.Fatalf("%v has no metadata wrapper", typ)
+		}
+	}
+	field, ok := reflect.TypeOf(ExtensionTaskMeta{}).FieldByName("Req")
+	if !ok || field.Type != requestType {
+		t.Fatal("meta.req has no request wrapper")
+	}
 	if _, ok := taskType.MethodByName("Continue"); ok {
 		t.Fatal("regular task unexpectedly exposes Continue")
 	}
@@ -53,17 +79,11 @@ func TestExtensionTaskMethodsMatchEventCapabilities(t *testing.T) {
 	}
 
 	extensionTaskType := reflect.TypeOf((*ExtensionTask)(nil))
-	if _, ok := extensionTaskType.MethodByName("SetUrl"); !ok {
-		t.Fatal("extension task does not expose SetUrl")
-	}
 	if _, ok := extensionTaskType.MethodByName("Continue"); ok {
 		t.Fatal("non-error extension task unexpectedly exposes Continue")
 	}
 
 	errorTaskType := reflect.TypeOf((*OnErrorExtensionTask)(nil))
-	if _, ok := errorTaskType.MethodByName("SetUrl"); !ok {
-		t.Fatal("onError task does not expose SetUrl")
-	}
 	if _, ok := errorTaskType.MethodByName("Continue"); !ok {
 		t.Fatal("onError task does not expose Continue")
 	}
