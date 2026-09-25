@@ -246,6 +246,7 @@
   "refresh": "Frissítés",
   "status": "állapot",
   "createdAt": "Létrehozás ideje",
+  "doneAt": "Befejezés ideje",
   "speed": "sebesség",
   "uploadSpeed": "Feltöltési sebesség",
   "remaining": "Maradt",

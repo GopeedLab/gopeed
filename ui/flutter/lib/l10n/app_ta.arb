@@ -246,6 +246,7 @@
   "refresh": "புதுப்பி",
   "status": "நிலை",
   "createdAt": "உருவாக்கிய நேரம்",
+  "doneAt": "முடிந்த நேரம்",
   "speed": "வேகம்",
   "uploadSpeed": "வேகம்",
   "remaining": "மீதம்",

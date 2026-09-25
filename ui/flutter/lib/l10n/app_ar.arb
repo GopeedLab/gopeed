@@ -246,6 +246,7 @@
   "refresh": "تحديث",
   "status": "الحالة",
   "createdAt": "وقت الإنشاء",
+  "doneAt": "وقت الإكتمال",
   "speed": "السرعة",
   "uploadSpeed": "سرعة التشغيل",
   "remaining": "البقايا",

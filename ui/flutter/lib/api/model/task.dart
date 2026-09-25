@@ -35,6 +35,7 @@ class Task {
   Progress progress;
   DateTime createdAt;
   DateTime updatedAt;
+  DateTime? doneAt;
 
   Task({
     required this.id,
@@ -45,6 +46,7 @@ class Task {
     required this.progress,
     required this.createdAt,
     required this.updatedAt,
+    this.doneAt,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);

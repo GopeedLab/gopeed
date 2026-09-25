@@ -246,6 +246,7 @@
   "refresh": "Refresca",
   "status": "Estat",
   "createdAt": "Data de creació",
+  "doneAt": "Data de finalització",
   "speed": "Velocitat",
   "uploadSpeed": "Velocitat de pujada",
   "remaining": "Restant",

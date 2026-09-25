@@ -246,6 +246,7 @@
   "refresh": "Actualizar",
   "status": "Estado",
   "createdAt": "Data de criação",
+  "doneAt": "Data de conclusão",
   "speed": "Velocidade",
   "uploadSpeed": "Velocidade de envio",
   "remaining": "Restante",

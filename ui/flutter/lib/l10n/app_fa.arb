@@ -246,6 +246,7 @@
   "refresh": "تازه‌سازی",
   "status": "وضعیت",
   "createdAt": "زمان ایجاد",
+  "doneAt": "زمان تکمیل",
   "speed": "سرعت",
   "uploadSpeed": "سرعت آپلود",
   "remaining": "باقی مانده",

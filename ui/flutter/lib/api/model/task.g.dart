@@ -15,6 +15,7 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
   progress: Progress.fromJson(json['progress'] as Map<String, dynamic>),
   createdAt: DateTime.parse(json['createdAt'] as String),
   updatedAt: DateTime.parse(json['updatedAt'] as String),
+  doneAt: json['doneAt'] == null ? null : DateTime.parse(json['doneAt'] as String),
 )..protocol = $enumDecodeNullable(_$ProtocolEnumMap, json['protocol']);
 
 Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
@@ -27,6 +28,7 @@ Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
   'progress': instance.progress.toJson(),
   'createdAt': instance.createdAt.toIso8601String(),
   'updatedAt': instance.updatedAt.toIso8601String(),
+  'doneAt': ?instance.doneAt?.toIso8601String(),
 };
 
 const _$StatusEnumMap = {
