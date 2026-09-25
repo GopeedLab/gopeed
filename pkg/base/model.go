@@ -220,6 +220,14 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 			DeleteAfterExtract: false,
 		}
 	}
+	// Backward compatibility: migrate autoStartTasks from extra map to top-level field
+	if !cfg.AutoStartTasks && cfg.Extra != nil {
+		if v, ok := cfg.Extra["autoStartTasks"]; ok {
+			if b, ok := v.(bool); ok && b {
+				cfg.AutoStartTasks = true
+			}
+		}
+	}
 	return cfg
 }
 
@@ -256,6 +264,12 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	}
 	if cfg.API == nil {
 		cfg.API = beforeCfg.API
+	}
+	if !cfg.AutoStartTasks {
+		cfg.AutoStartTasks = beforeCfg.AutoStartTasks
+	}
+	if !cfg.AutoDeleteMissingFileTasks {
+		cfg.AutoDeleteMissingFileTasks = beforeCfg.AutoDeleteMissingFileTasks
 	}
 	return cfg
 }
