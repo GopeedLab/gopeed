@@ -185,12 +185,11 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
   }
 
   bool canUpdateItem(ExtensionListItem item) {
-    final current = _current;
-    if (item.installed == null) return false;
-    if (current.listFilter == ExtensionListFilter.market && item.store != null) {
-      return _compareVersion(item.store!.version, item.installed!.version) > 0;
-    }
-    return current.updateFlags.containsKey(item.installed!.identity);
+    final installed = item.installed;
+    if (installed == null) return false;
+    // The backend checks GitHub live for every installed extension; the store
+    // index may lag behind and must not decide update visibility.
+    return _current.updateFlags.containsKey(installed.identity);
   }
 
   Future<void> installFromStore(StoreExtension extension) async {
@@ -240,6 +239,9 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
     await _runBusy(extension.identity, () async {
       await ref.read(gopeedServiceProvider).updateExtension(extension.identity);
       await loadInstalled(refreshUpdates: false);
+      // Drop the stale flag immediately; the background re-check confirms it.
+      final flags = Map<String, String>.of(_current.updateFlags)..remove(extension.identity);
+      state = AsyncValue.data(_current.copyWith(updateFlags: flags));
       unawaited(checkUpdate());
       _bumpStoreInstallCount(extension.identity);
       _reportInstallSafe(extension.identity);
@@ -354,24 +356,4 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
     }());
   }
 
-  static int _compareVersion(String a, String b) {
-    final aNums = _toVersionNumbers(a);
-    final bNums = _toVersionNumbers(b);
-    final maxLen = aNums.length > bNums.length ? aNums.length : bNums.length;
-    for (var i = 0; i < maxLen; i++) {
-      final left = i < aNums.length ? aNums[i] : 0;
-      final right = i < bNums.length ? bNums[i] : 0;
-      if (left > right) return 1;
-      if (left < right) return -1;
-    }
-    return 0;
-  }
-
-  static List<int> _toVersionNumbers(String version) {
-    return version
-        .split(RegExp(r'[^0-9]+'))
-        .where((part) => part.isNotEmpty)
-        .map((part) => int.tryParse(part) ?? 0)
-        .toList();
-  }
 }

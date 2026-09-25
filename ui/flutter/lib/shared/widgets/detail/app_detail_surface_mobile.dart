@@ -13,12 +13,14 @@ class AppDetailPage extends StatelessWidget {
     required this.onBack,
     required this.child,
     this.backgroundColor,
+    this.titleTrailing,
   });
 
   final String title;
   final VoidCallback onBack;
   final Widget child;
   final Color? backgroundColor;
+  final Widget? titleTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -53,12 +55,22 @@ class AppDetailPage extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: palette.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: palette.textPrimary, fontSize: 17, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          if (titleTrailing != null) ...[
+                            const SizedBox(width: 8),
+                            Flexible(child: titleTrailing!),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(width: 44),

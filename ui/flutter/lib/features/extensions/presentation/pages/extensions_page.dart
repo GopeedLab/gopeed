@@ -28,6 +28,7 @@ import '../widgets/extension_detail_view.dart';
 import '../widgets/extension_icon.dart';
 import '../widgets/extension_setting_field.dart';
 import '../widgets/extension_update_dialog.dart';
+import '../widgets/extension_update_status.dart';
 
 const _extensionCardMinWidth = 290.0;
 const _extensionGridSpacing = 10.0;
@@ -485,25 +486,7 @@ class _Content extends StatelessWidget {
   }
 
   bool _canUpdate(ExtensionsState state, ExtensionListItem item) {
-    if (item.installed == null) return false;
-    if (state.listFilter == ExtensionListFilter.market && item.store != null) {
-      return _compareVersion(item.store!.version, item.installed!.version) > 0;
-    }
-    return state.updateFlags.containsKey(item.installed!.identity);
-  }
-
-  int _compareVersion(String a, String b) {
-    final aNums = a.split(RegExp(r'[^0-9]+')).where((part) => part.isNotEmpty).map((part) => int.tryParse(part) ?? 0);
-    final bNums = b.split(RegExp(r'[^0-9]+')).where((part) => part.isNotEmpty).map((part) => int.tryParse(part) ?? 0);
-    final left = aNums.toList();
-    final right = bNums.toList();
-    final maxLen = left.length > right.length ? left.length : right.length;
-    for (var i = 0; i < maxLen; i++) {
-      final l = i < left.length ? left[i] : 0;
-      final r = i < right.length ? right[i] : 0;
-      if (l != r) return l.compareTo(r);
-    }
-    return 0;
+    return item.installed != null && state.updateFlags.containsKey(item.installed!.identity);
   }
 }
 
@@ -994,11 +977,27 @@ class _ExtensionCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (canUpdate && installed != null) ...[
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: ExtensionUpdateStatus(
+                              key: ValueKey('extension-card-update-status-${item.id}'),
+                              label: context.l10n.extensionCanUpdate,
+                              onTap: busy ? null : () => showExtensionUpdateDialog(context, installed),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -1067,13 +1066,6 @@ class _ExtensionCard extends ConsumerWidget {
                 key: ValueKey('extension-card-actions-${item.id}'),
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (canUpdate && installed != null)
-                    shad.GhostButton(
-                      density: shad.ButtonDensity.icon,
-                      key: ValueKey('update-extension-${installed.identity}'),
-                      onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
-                      child: const Icon(Icons.refresh),
-                    ),
                   if (installed == null && item.store != null)
                     shad.GhostButton(
                       key: ValueKey('install-store-extension-${item.store!.id}'),
@@ -1127,21 +1119,17 @@ class _ExtensionCard extends ConsumerWidget {
         ],
       ),
     );
-    if (item.store == null) return card;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        key: ValueKey('open-extension-details-${item.id}'),
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          if (MediaQuery.sizeOf(context).width < Breakpoints.mobile) {
-            context.push('/extensions/${Uri.encodeComponent(item.id)}', extra: item);
-            return;
-          }
-          onOpenDetails(item);
-        },
-        child: card,
-      ),
+    return GestureDetector(
+      key: ValueKey('open-extension-details-${item.id}'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        if (MediaQuery.sizeOf(context).width < Breakpoints.mobile) {
+          context.push('/extensions/${Uri.encodeComponent(item.id)}', extra: item);
+          return;
+        }
+        onOpenDetails(item);
+      },
+      child: card,
     );
   }
 }
