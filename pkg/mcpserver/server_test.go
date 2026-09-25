@@ -64,6 +64,7 @@ func TestStreamableHTTPTools(t *testing.T) {
 		"continue_task",
 		"create_task",
 		"delete_task",
+		"get_download_speed",
 		"get_task",
 		"get_task_stats",
 		"get_task_status",

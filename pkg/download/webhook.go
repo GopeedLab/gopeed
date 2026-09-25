@@ -21,6 +21,7 @@ type WebhookEvent string
 const (
 	WebhookEventDownloadDone  WebhookEvent = "DOWNLOAD_DONE"
 	WebhookEventDownloadError WebhookEvent = "DOWNLOAD_ERROR"
+	WebhookEventDownloadPause WebhookEvent = "DOWNLOAD_PAUSE"
 )
 
 // WebhookData is the data sent to webhook URLs

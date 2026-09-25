@@ -6,6 +6,13 @@ type ReqExtra struct {
 	Body   string            `json:"body"`
 }
 
+// ChecksumOption specifies an expected checksum to verify against
+// the completed download. Only supported for HTTP downloads.
+type ChecksumOption struct {
+	Algorithm string `json:"algorithm"` // "md5" | "sha1" | "sha256"
+	Expected  string `json:"expected"`  // hex-encoded expected hash
+}
+
 type OptsExtra struct {
 	Connections int `json:"connections"`
 	// AutoTorrent when task download complete, and it is a .torrent file, it will be auto create a new task for the torrent file
@@ -21,6 +28,8 @@ type OptsExtra struct {
 	ArchivePassword string `json:"archivePassword"`
 	// DeleteAfterExtract when true, deletes the archive file after successful extraction
 	DeleteAfterExtract bool `json:"deleteAfterExtract"`
+	// Checksum verifies the completed file against an expected hash after download
+	Checksum *ChecksumOption `json:"checksum,omitempty"`
 }
 
 // Stats for download

@@ -22,6 +22,16 @@ Map<String, dynamic> _$OptionsToJson(Options instance) => <String, dynamic>{
   'extra': ?instance.extra,
 };
 
+ChecksumOption _$ChecksumOptionFromJson(Map<String, dynamic> json) => ChecksumOption(
+  algorithm: json['algorithm'] as String? ?? '',
+  expected: json['expected'] as String? ?? '',
+);
+
+Map<String, dynamic> _$ChecksumOptionToJson(ChecksumOption instance) => <String, dynamic>{
+  'algorithm': instance.algorithm,
+  'expected': instance.expected,
+};
+
 OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) => OptsExtraHttp(
   connections: (json['connections'] as num?)?.toInt() ?? 0,
   autoTorrent: json['autoTorrent'] as bool?,
@@ -29,6 +39,9 @@ OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) => OptsExtraHtt
   autoExtract: json['autoExtract'] as bool?,
   archivePassword: json['archivePassword'] as String? ?? '',
   deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? false,
+  checksum: json['checksum'] == null
+      ? null
+      : ChecksumOption.fromJson(json['checksum'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) => <String, dynamic>{
@@ -38,4 +51,5 @@ Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) => <String, d
   'autoExtract': ?instance.autoExtract,
   'archivePassword': instance.archivePassword,
   'deleteAfterExtract': instance.deleteAfterExtract,
+  'checksum': ?instance.checksum?.toJson(),
 };

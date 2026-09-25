@@ -814,6 +814,49 @@ func TestWebhook_TestWebhookUrl_VerifyTestPayload(t *testing.T) {
 	})
 }
 
+func TestWebhook_TriggerOnPause(t *testing.T) {
+	receivedData := make(chan *WebhookData, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var data WebhookData
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			t.Errorf("Failed to decode data: %v", err)
+			return
+		}
+		receivedData <- &data
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	setupWebhookTest(t, func(downloader *Downloader) {
+		cfg, _ := downloader.GetConfig()
+		cfg.Webhook = &base.WebhookConfig{
+			Enable: true,
+			URLs:   []string{server.URL},
+		}
+		downloader.PutConfig(cfg)
+
+		task := NewTask()
+		task.Protocol = "http"
+		task.Meta = &mockFetcherMeta
+
+		downloader.triggerWebhooks(WebhookEventDownloadPause, task, nil)
+
+		select {
+		case data := <-receivedData:
+			if data.Event != WebhookEventDownloadPause {
+				t.Errorf("Expected event 'DOWNLOAD_PAUSE', got '%s'", data.Event)
+			}
+			if data.Payload == nil || data.Payload.Task == nil {
+				t.Error("Expected payload.task to be present")
+			} else if data.Payload.Task.ID != task.ID {
+				t.Errorf("Expected task ID '%s', got '%s'", task.ID, data.Payload.Task.ID)
+			}
+		case <-time.After(2 * time.Second):
+			t.Error("Timeout waiting for webhook")
+		}
+	})
+}
+
 func setupWebhookTest(t *testing.T, fn func(downloader *Downloader)) {
 	defaultDownloader.Setup()
 	defaultDownloader.cfg.StorageDir = ".test_storage"
