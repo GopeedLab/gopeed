@@ -2649,7 +2649,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('settings-language-select')));
     await tester.pumpAndSettle();
     expect(find.text('English'), findsOneWidget);
-    expect(SettingsLanguageSelect.supportedValues, hasLength(21));
+    expect(SettingsLanguageSelect.supportedValues, hasLength(22));
     expect(SettingsLanguageSelect.supportedValues, containsAll(<String>['zh', 'zh_TW', 'pt']));
     expect(SettingsLanguageSelect.supportedValues, isNot(contains('zh_CN')));
     expect(SettingsLanguageSelect.supportedValues, isNot(contains('pt_BR')));
@@ -4127,6 +4127,7 @@ void main() {
       remaining: '1 minute remaining',
       downloadDuration: const Duration(hours: 1, minutes: 2, seconds: 3),
       createdAt: DateTime(2026, 8, 27, 12, 34, 56),
+      doneAt: DateTime(2026, 8, 28, 1, 2, 3),
     );
 
     await tester.pumpWidget(
@@ -4197,7 +4198,14 @@ void main() {
     expect(find.text('50 B / 100 B'), findsNothing);
     expect(find.text('Created'), findsOneWidget);
     expect(find.text('2026-08-27 12:34:56'), findsOneWidget);
+    expect(find.text('Completed at'), findsOneWidget);
+    expect(find.text('2026-08-28 01:02:03'), findsOneWidget);
+    expect(
+      tester.getBottomLeft(find.text('2026-08-27 12:34:56')).dy,
+      lessThan(tester.getTopLeft(find.text('Completed at')).dy),
+    );
     final infoDivider = find.byKey(const ValueKey('task-details-info-divider'));
+    expect(tester.getBottomLeft(find.text('Completed at')).dy, lessThan(tester.getTopLeft(infoDivider).dy));
     expect(tester.getBottomLeft(find.text('Created')).dy, lessThan(tester.getTopLeft(infoDivider).dy));
     expect(tester.getBottomLeft(infoDivider).dy, lessThan(tester.getTopLeft(find.text('Download Link')).dy));
     expect(find.text('1 minute remaining'), findsNothing);
@@ -4256,6 +4264,30 @@ void main() {
 
     expect(find.text('Pause'), findsOneWidget);
     expect(find.text('Remaining'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+  });
+
+  testWidgets('completed task details show a dash when no done time is recorded', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(900, 700));
+    final task = _taskRecord(
+      id: 'done-details',
+      name: 'done.zip',
+      status: TaskStatus.completed,
+      downloadDuration: const Duration(hours: 1, minutes: 2, seconds: 3),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: TaskDetailsView(task: task, mobile: false, onOpenStorage: () {}, onUpdateUrl: (_) async {}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Completed at'), findsOneWidget);
     expect(find.text('—'), findsOneWidget);
   });
 
@@ -6164,6 +6196,7 @@ TaskRecord _taskRecord({
   String? remaining,
   Duration? downloadDuration,
   DateTime? createdAt,
+  DateTime? doneAt,
   bool isFolder = false,
   Map<String, String> requestHeaders = const {},
 }) {
@@ -6184,6 +6217,7 @@ TaskRecord _taskRecord({
     remaining: remaining,
     downloadDuration: downloadDuration,
     createdAt: createdAt,
+    doneAt: doneAt,
     requestHeaders: requestHeaders,
   );
 }

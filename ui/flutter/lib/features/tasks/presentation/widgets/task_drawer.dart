@@ -319,6 +319,14 @@ class _TaskInfoTab extends StatelessWidget {
           _InfoBlock(label: context.l10n.remaining, value: remaining),
         if (task.createdAt case final createdAt?)
           _InfoBlock(label: context.l10n.createdAt, value: _formatTaskDateTime(createdAt)),
+        if (task.status == TaskStatus.completed)
+          _InfoBlock(
+            label: context.l10n.doneAt,
+            value: switch (task.doneAt) {
+              final doneAt? => _formatTaskDateTime(doneAt),
+              _ => '—',
+            },
+          ),
         Container(
           key: const ValueKey('task-details-info-divider'),
           height: 1,

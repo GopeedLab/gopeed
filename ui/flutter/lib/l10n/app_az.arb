@@ -260,6 +260,7 @@
   "refresh": "Yenilə",
   "status": "Vəziyyət",
   "createdAt": "Yaradılıb",
+  "doneAt": "Tamamlanıb",
   "speed": "Sürət",
   "uploadSpeed": "Yükləmə sürəti",
   "remaining": "Qalıb",

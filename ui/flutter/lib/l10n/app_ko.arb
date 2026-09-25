@@ -246,6 +246,7 @@
   "refresh": "의붓기",
   "status": "상태",
   "createdAt": "생성 시간",
+  "doneAt": "완료 시간",
   "speed": "속도",
   "uploadSpeed": "연결 속도",
   "remaining": "의논하기",

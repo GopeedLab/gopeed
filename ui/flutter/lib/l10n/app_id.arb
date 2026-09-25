@@ -246,6 +246,7 @@
   "refresh": "Segarkan",
   "status": "Status",
   "createdAt": "Waktu dibuat",
+  "doneAt": "Waktu selesai",
   "speed": "Kecepatan",
   "uploadSpeed": "Kecepatan pemutakhiran",
   "remaining": "Sisa",

@@ -246,6 +246,7 @@
   "refresh": "Cập nhật",
   "status": "Trạng thái",
   "createdAt": "Thời gian tạo",
+  "doneAt": "Thời gian hoàn thành",
   "speed": "Tốc độ",
   "uploadSpeed": "Tốc độ",
   "remaining": "Ở lại",

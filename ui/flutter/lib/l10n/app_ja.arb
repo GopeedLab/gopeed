@@ -246,6 +246,7 @@
   "refresh": "リフレッシュ",
   "status": "ステータス",
   "createdAt": "作成日時",
+  "doneAt": "完了日時",
   "speed": "スピード",
   "uploadSpeed": "アップロード速度",
   "remaining": "メンテナンス",
