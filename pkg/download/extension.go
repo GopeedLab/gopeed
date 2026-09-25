@@ -654,22 +654,20 @@ func (h InstanceEvents) OnDone(fn engine.JSFunction) {
 }
 
 type ExtensionInfo struct {
-	HostVersion string `json:"hostVersion"`
-	Identity    string `json:"identity"`
-	Name        string `json:"name"`
-	Author      string `json:"author"`
-	Title       string `json:"title"`
-	Version     string `json:"version"`
+	Identity string `json:"identity"`
+	Name     string `json:"name"`
+	Author   string `json:"author"`
+	Title    string `json:"title"`
+	Version  string `json:"version"`
 }
 
 func NewExtensionInfo(ext *Extension) *ExtensionInfo {
 	return &ExtensionInfo{
-		HostVersion: base.Version,
-		Identity:    ext.buildIdentity(),
-		Name:        ext.Name,
-		Author:      ext.Author,
-		Title:       ext.Title,
-		Version:     ext.Version,
+		Identity: ext.buildIdentity(),
+		Name:     ext.Name,
+		Author:   ext.Author,
+		Title:    ext.Title,
+		Version:  ext.Version,
 	}
 }
 

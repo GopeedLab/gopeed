@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
@@ -62,6 +63,19 @@ func TestFetcher_ChecksumMismatch_Retry(t *testing.T) {
 	// 1. Initial attempt -> will download corruptContent, failing checksum verification
 	if err := f.Resolve(&base.Request{URL: server.URL + "/retry_test.txt"}, opts); err != nil {
 		t.Fatalf("Resolve error: %v", err)
+	}
+	// Ensure the reusable resolve response has been fully prefetched so the
+	// first attempt deterministically verifies the corrupt initial payload.
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for !f.prefetchDone.Load() {
+		select {
+		case <-deadline.C:
+			t.Fatal("timed out waiting for checksum test prefetch")
+		case <-ticker.C:
+		}
 	}
 	if err := f.Start(); err != nil {
 		t.Fatalf("Start error: %v", err)

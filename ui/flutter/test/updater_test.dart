@@ -194,7 +194,7 @@ void main() {
     expect(find.text('Faster downloads'), findsOneWidget);
     expect(find.text('下载更快'), findsNothing);
     expect(find.text('Later'), findsOneWidget);
-    expect(find.text('Update Now'), findsOneWidget);
+    expect(find.text('Update'), findsOneWidget);
     expect(find.text("What's New"), findsNothing);
     final versionText = tester.widget<Text>(find.text('2.0.0-beta.1  →  2.0.0-beta.2'));
     expect(versionText.style?.decoration, TextDecoration.none);
