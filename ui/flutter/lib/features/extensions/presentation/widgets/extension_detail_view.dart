@@ -21,20 +21,33 @@ import '../../../../util/util.dart';
 import '../../application/extensions_controller.dart';
 import 'extension_icon.dart';
 import 'extension_update_dialog.dart';
+import 'extension_update_status.dart';
 
-class ExtensionDetailDrawer extends StatelessWidget {
+class ExtensionDetailDrawer extends ConsumerWidget {
   const ExtensionDetailDrawer({super.key, required this.item, required this.onClose});
 
   final ExtensionListItem? item;
   final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(extensionsControllerProvider).value;
+    final installed = item?.installed;
+    final canUpdate =
+        item != null && installed != null && (state?.updateFlags.containsKey(installed.identity) ?? false);
+    final updateChip = canUpdate
+        ? ExtensionUpdateStatus(
+            key: const ValueKey('extension-details-update'),
+            label: context.l10n.extensionCanUpdate,
+            onTap: () => showExtensionUpdateDialog(context, installed),
+          )
+        : null;
     return AppDetailDrawer(
       open: item != null,
       title: item?.title ?? '',
       onClose: onClose,
       drawerKey: const ValueKey('extension-details-drawer'),
+      titleTrailing: updateChip,
       child: item == null ? const SizedBox.shrink() : ExtensionDetailView(item: item!),
     );
   }
@@ -104,8 +117,6 @@ class ExtensionDetailView extends ConsumerWidget {
                         style: TextStyle(color: palette.textMuted, fontSize: 11.5, fontWeight: FontWeight.w600),
                       ),
                       if (store != null) _ExtensionStats(store: store),
-                      if (installed != null && canUpdate)
-                        _ExtensionStatus(label: context.l10n.extensionCanUpdate, emphasized: true),
                     ],
                   ),
                 ],
@@ -129,15 +140,6 @@ class ExtensionDetailView extends ConsumerWidget {
                 onPressed: () =>
                     _runAction(context, () => ref.read(extensionsControllerProvider.notifier).installFromStore(store)),
                 child: Text(context.l10n.extensionInstall),
-              ),
-            if (installed != null && canUpdate)
-              AppLoadingButton(
-                key: const ValueKey('extension-details-update'),
-                loading: false,
-                variant: AppLoadingButtonVariant.primary,
-                icon: const Icon(Icons.refresh, size: 16),
-                onPressed: busy ? null : () => showExtensionUpdateDialog(context, installed),
-                child: Text(context.l10n.newVersionUpdate),
               ),
             if (installed != null && !canUpdate)
               AppLoadingButton(
@@ -272,35 +274,6 @@ class _ExtensionReadmeState extends State<_ExtensionReadme> {
           ),
         );
       },
-    );
-  }
-}
-
-class _ExtensionStatus extends StatelessWidget {
-  const _ExtensionStatus({required this.label, required this.emphasized});
-
-  final String label;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    final dotColor = emphasized ? palette.brand : palette.success;
-    final textColor = emphasized ? palette.textPrimary : palette.success;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 5,
-          height: 5,
-          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(color: textColor, fontSize: 11.5, fontWeight: FontWeight.w600),
-        ),
-      ],
     );
   }
 }

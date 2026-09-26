@@ -1,0 +1,59 @@
+import 'package:flutter/widgets.dart';
+
+import '../../../../shared/theme/app_palette.dart';
+
+/// Green status dot with an optional label, marking an available update.
+/// Pass [onTap] to make it open the update prompt.
+class ExtensionUpdateStatus extends StatelessWidget {
+  const ExtensionUpdateStatus({super.key, this.label, this.onTap, this.compact = false});
+
+  final String? label;
+  final VoidCallback? onTap;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final content = Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: compact ? 2 : 3),
+      decoration: BoxDecoration(
+        color: palette.brandSoft,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: palette.brand.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: palette.brand, shape: BoxShape.circle),
+          ),
+          if (label != null) ...[
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: palette.textPrimary, fontSize: 11.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+    if (onTap == null) return content;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 2, vertical: compact ? 2 : 4),
+          child: content,
+        ),
+      ),
+    );
+  }
+}
