@@ -18,6 +18,21 @@ class Options {
 }
 
 @JsonSerializable()
+class ChecksumOption {
+  String algorithm;
+  String expected;
+
+  ChecksumOption({
+    this.algorithm = '',
+    this.expected = '',
+  });
+
+  factory ChecksumOption.fromJson(Map<String, dynamic> json) => _$ChecksumOptionFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ChecksumOptionToJson(this);
+}
+
+@JsonSerializable()
 class OptsExtraHttp {
   int connections;
   bool? autoTorrent;
@@ -25,6 +40,7 @@ class OptsExtraHttp {
   bool? autoExtract;
   String archivePassword;
   bool deleteAfterExtract;
+  ChecksumOption? checksum;
 
   OptsExtraHttp({
     this.connections = 0,
@@ -33,6 +49,7 @@ class OptsExtraHttp {
     this.autoExtract,
     this.archivePassword = '',
     this.deleteAfterExtract = false,
+    this.checksum,
   });
 
   factory OptsExtraHttp.fromJson(Map<String, dynamic> json) => _$OptsExtraHttpFromJson(json);

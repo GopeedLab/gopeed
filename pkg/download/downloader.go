@@ -1912,6 +1912,7 @@ func (d *Downloader) doPause(task *Task) (err error) {
 	}
 	if handled {
 		d.emit(EventKeyPause, task)
+		d.triggerWebhooks(WebhookEventDownloadPause, task, nil)
 	}
 	return nil
 }

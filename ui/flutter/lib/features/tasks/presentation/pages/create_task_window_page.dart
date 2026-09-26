@@ -66,6 +66,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   final _httpHeadersController = AppHttpHeadersController(defaultNames: const ['User-Agent', 'Cookie', 'Referer']);
   final _trackersController = TextEditingController();
   final _archivePasswordController = TextEditingController();
+  final _checksumHashController = TextEditingController();
   final _formScrollController = ScrollController();
 
   String _httpMethod = 'GET';
@@ -74,6 +75,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   Map<String, String>? _initialLabels;
   RequestProxyMode _proxyMode = RequestProxyMode.follow;
   String _proxyScheme = 'http';
+  String _checksumAlgorithm = 'sha256';
   bool _skipVerifyCert = false;
   bool? _autoTorrent;
   bool? _deleteTorrentAfterDownload;
@@ -134,6 +136,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     _httpHeadersController.dispose();
     _trackersController.dispose();
     _archivePasswordController.dispose();
+    _checksumHashController.dispose();
     _formScrollController.dispose();
     super.dispose();
   }
@@ -243,6 +246,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           _autoExtract = extra.autoExtract;
           _archivePasswordController.text = extra.archivePassword;
           _deleteAfterExtract = extra.deleteAfterExtract;
+          if (extra.checksum != null) {
+            if (extra.checksum!.algorithm.isNotEmpty) {
+              _checksumAlgorithm = extra.checksum!.algorithm;
+            }
+            _checksumHashController.text = extra.checksum!.expected;
+          }
         }
       }
     });
@@ -668,6 +677,32 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                   ),
                                 ),
                               ],
+                              const SizedBox(height: 14),
+                              AppFormPair(
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
+                                firstLabel: 'Checksum Algorithm',
+                                secondLabel: 'Checksum Hash',
+                                firstFlex: 382,
+                                secondFlex: 618,
+                                first: AppChoiceSegmentedControl<String>(
+                                  key: const ValueKey('create-task-checksum-algorithm'),
+                                  showIcons: false,
+                                  value: _checksumAlgorithm,
+                                  buttonKeyPrefix: 'create-task-checksum-algorithm',
+                                  alignment: WrapAlignment.start,
+                                  options: const [
+                                    AppChoiceOption(value: 'md5', label: 'MD5', icon: Icons.tag),
+                                    AppChoiceOption(value: 'sha1', label: 'SHA-1', icon: Icons.tag),
+                                    AppChoiceOption(value: 'sha256', label: 'SHA-256', icon: Icons.tag),
+                                  ],
+                                  onChanged: (value) => setState(() => _checksumAlgorithm = value),
+                                ),
+                                second: _WindowTextField(
+                                  key: const ValueKey('create-task-checksum-expected'),
+                                  controller: _checksumHashController,
+                                  hintText: 'Expected hash (optional)',
+                                ),
+                              ),
                             ] else ...[
                               AppFormRow(
                                 direction: stacked ? Axis.vertical : Axis.horizontal,
@@ -1024,6 +1059,13 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
 
   api_options.Options _buildOptions({String? name, List<int> selectFiles = const []}) {
     final connections = int.tryParse(_connectionsController.text.trim()) ?? 0;
+    final checksumExpected = _checksumHashController.text.trim();
+    final checksum = checksumExpected.isNotEmpty
+        ? api_options.ChecksumOption(
+            algorithm: _checksumAlgorithm,
+            expected: checksumExpected,
+          )
+        : null;
     return api_options.Options(
       name: name ?? _renameController.text.trim(),
       path: _directoryController.text.trim(),
@@ -1036,6 +1078,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         autoExtract: _autoExtract,
         archivePassword: _archivePasswordController.text,
         deleteAfterExtract: _deleteAfterExtract,
+        checksum: checksum,
       ).toJson(),
     );
   }
