@@ -76,6 +76,7 @@ class TaskRecord {
     this.remaining,
     this.downloadDuration,
     this.createdAt,
+    this.doneAt,
     this.progress,
     this.error,
     this.completedLabel,
@@ -97,6 +98,7 @@ class TaskRecord {
   final String? remaining;
   final Duration? downloadDuration;
   final DateTime? createdAt;
+  final DateTime? doneAt;
   final double? progress;
   final String url;
   final String storagePath;
@@ -145,6 +147,7 @@ class TaskRecord {
       remainingSeconds: _remainingSeconds(task, totalBytes, downloadedBytes),
       downloadDuration: task.progress.used > 0 ? Duration(microseconds: (task.progress.used + 999) ~/ 1000) : null,
       createdAt: task.createdAt,
+      doneAt: task.doneAt,
       waiting: task.status == api_task.Status.wait,
       progress: progress,
       url: displayUrl,

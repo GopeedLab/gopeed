@@ -246,6 +246,7 @@
   "refresh": "Yenile",
   "status": "Durum durumu",
   "createdAt": "Oluşturulma zamanı",
+  "doneAt": "Tamamlanma zamanı",
   "speed": "Hız",
   "uploadSpeed": "Yük hızı",
   "remaining": "Kalanlar",
