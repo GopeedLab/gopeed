@@ -50,6 +50,7 @@ import 'package:gopeed/features/home/presentation/widgets/tasks_top_bar.dart';
 import 'package:gopeed/features/extensions/application/extensions_controller.dart';
 import 'package:gopeed/features/extensions/presentation/pages/extension_details_page.dart';
 import 'package:gopeed/features/extensions/presentation/pages/extensions_page.dart';
+import 'package:gopeed/features/extensions/presentation/widgets/extension_icon.dart';
 import 'package:gopeed/features/home/presentation/widgets/primary_rail.dart';
 import 'package:gopeed/features/tasks/application/pending_update_task.dart';
 import 'package:gopeed/features/tasks/application/task_batch_selection_controller.dart';
@@ -687,6 +688,30 @@ void main() {
     expect(actionsRect.right, lessThanOrEqualTo(cardRect.right - 14));
     expect(tester.takeException(), isNull);
   });
+
+  for (final width in [320.0, 1100.0]) {
+    testWidgets('extension update status keeps the card header at icon height at $width', (tester) async {
+      await _setTestSize(tester, Size(width, 900));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [extensionsControllerProvider.overrideWith(UpdateableExtensionsController.new)],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: const ExtensionsPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = find.byKey(const ValueKey('extension-card-extension-0'));
+      final icon = find.descendant(of: card, matching: find.byType(ExtensionIcon));
+      final description = find.descendant(of: card, matching: find.text('Installed extension'));
+      expect(find.byKey(const ValueKey('extension-card-update-status-extension-0')), findsOneWidget);
+      expect(tester.getRect(description).top - tester.getRect(icon).bottom, closeTo(10, 0.01));
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('extension details reuse the desktop detail drawer', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1100, 900));
