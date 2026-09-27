@@ -105,6 +105,9 @@ class BtConfig {
   bool seedKeep;
   double seedRatio;
   int seedTime;
+  int uploadLimit;
+  bool disableDht;
+  bool disablePex;
 
   BtConfig({
     this.listenPort = 0,
@@ -112,6 +115,9 @@ class BtConfig {
     this.seedKeep = false,
     this.seedRatio = 0,
     this.seedTime = 0,
+    this.uploadLimit = 0,
+    this.disableDht = false,
+    this.disablePex = false,
   });
 
   factory BtConfig.fromJson(Map<String, dynamic> json) => _$BtConfigFromJson(json);

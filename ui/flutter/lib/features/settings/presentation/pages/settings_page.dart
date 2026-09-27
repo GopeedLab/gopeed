@@ -70,6 +70,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _btListenPortController = TextEditingController();
   final _btSeedRatioController = TextEditingController();
   final _btSeedTimeController = TextEditingController();
+  final _btUploadLimitController = TextEditingController();
   final _ed2kListenPortController = TextEditingController();
   final _ed2kUdpPortController = TextEditingController();
   final _ed2kServerAddrController = TextEditingController();
@@ -103,6 +104,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _btListenPortController,
     _btSeedRatioController,
     _btSeedTimeController,
+    _btUploadLimitController,
     _ed2kListenPortController,
     _ed2kUdpPortController,
     _ed2kServerAddrController,
@@ -624,6 +626,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   SettingsItem(
+                    title: context.l10n.enableDht,
+                    subtitle: context.l10n.btIdleApplyDescription,
+                    child: shad.Switch(
+                      value: !config.protocolConfig.bt.disableDht,
+                      onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disableDht = !value),
+                    ),
+                  ),
+                  SettingsItem(
+                    title: context.l10n.enablePex,
+                    subtitle: context.l10n.btIdleApplyDescription,
+                    child: shad.Switch(
+                      value: !config.protocolConfig.bt.disablePex,
+                      onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disablePex = !value),
+                    ),
+                  ),
+                  SettingsItem(
+                    title: context.l10n.uploadLimit,
+                    subtitle: context.l10n.uploadLimitDescription,
+                    child: _NumberSettingControl(
+                      fieldKey: const ValueKey('bt-upload-limit-input'),
+                      controller: _btUploadLimitController,
+                      min: 0,
+                      max: 100000000,
+                    ),
+                  ),
+                  SettingsItem(
                     title: context.l10n.seedKeep,
                     child: shad.Switch(
                       value: config.protocolConfig.bt.seedKeep,
@@ -988,6 +1016,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _btListenPortController.text = _config!.protocolConfig.bt.listenPort.clamp(0, 65535).toString();
     _btSeedRatioController.text = _config!.protocolConfig.bt.seedRatio.toString();
     _btSeedTimeController.text = (_config!.protocolConfig.bt.seedTime ~/ 60).clamp(0, 100000000).toString();
+    _btUploadLimitController.text = (_config!.protocolConfig.bt.uploadLimit ~/ 1024).clamp(0, 100000000).toString();
     _ed2kListenPortController.text = _config!.protocolConfig.ed2k.listenPort.clamp(0, 65535).toString();
     _ed2kUdpPortController.text = _config!.protocolConfig.ed2k.udpPort.clamp(0, 65535).toString();
     _ed2kServerAddrController.text = _formatEd2kMultiline(_config!.protocolConfig.ed2k.serverAddr);
@@ -1109,6 +1138,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       max: 100000000,
     );
     config.protocolConfig.bt.seedTime = seedMinutes * 60;
+    final uploadLimitKb = _boundedInt(
+      _btUploadLimitController,
+      fallback: config.protocolConfig.bt.uploadLimit ~/ 1024,
+      min: 0,
+      max: 100000000,
+    );
+    config.protocolConfig.bt.uploadLimit = uploadLimitKb * 1024;
     config.protocolConfig.ed2k.listenPort = _boundedInt(
       _ed2kListenPortController,
       fallback: config.protocolConfig.ed2k.listenPort,
