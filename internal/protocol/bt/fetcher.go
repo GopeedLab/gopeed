@@ -883,6 +883,10 @@ func (fm *FetcherManager) Close() error {
 // ApplyConfig sets the upload limit on running torrents. Port, DHT and PEX are fixed
 // when the client is built, so an idle client is closed and rebuilt by the next task.
 func (fm *FetcherManager) ApplyConfig(getConfig func(v any)) {
+	// Hold lock while reading the config, so concurrent calls apply in order and the last one wins.
+	lock.Lock()
+	defer lock.Unlock()
+
 	var c config
 	getConfig(&c)
 
@@ -892,8 +896,6 @@ func (fm *FetcherManager) ApplyConfig(getConfig func(v any)) {
 		uploadLimiter.SetLimit(rate.Inf)
 	}
 
-	lock.Lock()
-	defer lock.Unlock()
 	if client == nil || len(client.Torrents()) > 0 {
 		return
 	}
