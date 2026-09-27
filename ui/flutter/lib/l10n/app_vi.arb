@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 nghĩa là không giới hạn",
   "enableDht": "Bật DHT",
   "enablePex": "Bật PEX",
-  "btIdleApplyDescription": "Có hiệu lực khi không có tác vụ BitTorrent nào đang chạy",
+  "btIdleApplyDescription": "Có hiệu lực sau khi khởi động lại, hoặc khi mọi tác vụ BitTorrent đã bị xóa hoặc đã seed xong",
   "setAsDefaultBtClient": "Đặt là trình khách BT mặc định",
   "taskDetail": "Chi tiết tác vụ",
   "taskName": "Tên tác vụ",

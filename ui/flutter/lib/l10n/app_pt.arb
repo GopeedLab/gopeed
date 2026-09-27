@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 significa ilimitado",
   "enableDht": "Ativar DHT",
   "enablePex": "Ativar PEX",
-  "btIdleApplyDescription": "Aplica-se quando nenhuma tarefa BitTorrent está em execução",
+  "btIdleApplyDescription": "Aplica-se após reiniciar, ou quando todas as tarefas BitTorrent forem excluídas ou terminarem de semear",
   "setAsDefaultBtClient": "Definir como o cliente BT padrão",
   "taskDetail": "Detalhes da Tarefa",
   "taskName": "Nome da Tarefa",

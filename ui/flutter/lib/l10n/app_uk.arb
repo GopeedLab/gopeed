@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 означає без обмежень",
   "enableDht": "Увімкнути DHT",
   "enablePex": "Увімкнути PEX",
-  "btIdleApplyDescription": "Набуває чинності, коли не виконується жодне завдання BitTorrent",
+  "btIdleApplyDescription": "Набуває чинності після перезапуску або коли всі завдання BitTorrent видалено чи вони завершили роздачу",
   "setAsDefaultBtClient": "Встановити як клієнт BT за замовчуванням",
   "taskDetail": "Деталі завдання",
   "taskName": "Назва завдання",

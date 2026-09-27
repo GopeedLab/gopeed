@@ -172,7 +172,7 @@
   "uploadLimitDescription": "0 znamená bez obmedzenia",
   "enableDht": "Povoliť DHT",
   "enablePex": "Povoliť PEX",
-  "btIdleApplyDescription": "Prejaví sa, keď nebeží žiadna úloha BitTorrent",
+  "btIdleApplyDescription": "Prejaví sa po reštarte alebo keď sú všetky úlohy BitTorrent odstránené alebo dokončili seedovanie",
   "setAsDefaultBtClient": "Nastaviť ako predvoleného BT klienta",
   "taskDetail": "Detail úlohy",
   "taskName": "Názov úlohy",

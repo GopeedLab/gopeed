@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 berarti tanpa batas",
   "enableDht": "Aktifkan DHT",
   "enablePex": "Aktifkan PEX",
-  "btIdleApplyDescription": "Berlaku saat tidak ada tugas BitTorrent yang berjalan",
+  "btIdleApplyDescription": "Berlaku setelah mulai ulang, atau setelah semua tugas BitTorrent dihapus atau selesai seeding",
   "setAsDefaultBtClient": "Atur sebagai klien baku BT",
   "taskDetail": "Detail Tugas",
   "taskName": "Nama Tugas",

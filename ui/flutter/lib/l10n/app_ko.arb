@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0은 무제한",
   "enableDht": "DHT 사용",
   "enablePex": "PEX 사용",
-  "btIdleApplyDescription": "실행 중인 BitTorrent 작업이 없을 때 적용됩니다",
+  "btIdleApplyDescription": "재시작 후, 또는 모든 BitTorrent 작업이 삭제되거나 시드가 끝나면 적용됩니다",
   "setAsDefaultBtClient": "기본 BT 클라이언트로 설정",
   "taskDetail": "작업 상세 정보",
   "taskName": "작업 이름",

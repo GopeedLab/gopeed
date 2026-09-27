@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 表示不限速",
   "enableDht": "启用 DHT",
   "enablePex": "启用 PEX",
-  "btIdleApplyDescription": "没有 BitTorrent 任务运行时生效",
+  "btIdleApplyDescription": "重启后生效，或在所有 BitTorrent 任务删除或做种结束后生效",
   "setAsDefaultBtClient": "设为系统默认 BT 客户端",
   "taskDetail": "任务详情",
   "taskName": "任务名称",

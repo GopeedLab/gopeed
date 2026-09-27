@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 sınırsız demektir",
   "enableDht": "DHT'yi etkinleştir",
   "enablePex": "PEX'i etkinleştir",
-  "btIdleApplyDescription": "Çalışan BitTorrent görevi olmadığında geçerli olur",
+  "btIdleApplyDescription": "Yeniden başlatmadan sonra ya da tüm BitTorrent görevleri silindiğinde veya seed işlemi bittiğinde geçerli olur",
   "setAsDefaultBtClient": "Varsayılan BitTorrent istemcisi olarak ayarla",
   "taskDetail": "İşlem Detayı",
   "taskName": "İşlem Adı",

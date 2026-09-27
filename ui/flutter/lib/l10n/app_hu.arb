@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 = korlátlan",
   "enableDht": "DHT engedélyezése",
   "enablePex": "PEX engedélyezése",
-  "btIdleApplyDescription": "Akkor lép életbe, amikor nem fut BitTorrent-feladat",
+  "btIdleApplyDescription": "Újraindítás után lép életbe, vagy amikor minden BitTorrent-feladat törölve van vagy befejezte a seedelést",
   "setAsDefaultBtClient": "Alapértelmezett BT klienseként beállít",
   "taskDetail": "Feladat részlete",
   "taskName": "Feladat neve",

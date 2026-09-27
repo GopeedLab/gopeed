@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 என்றால் வரம்பு இல்லை",
   "enableDht": "DHT ஐ இயக்கு",
   "enablePex": "PEX ஐ இயக்கு",
-  "btIdleApplyDescription": "எந்த BitTorrent பணியும் இயங்காதபோது நடைமுறைக்கு வரும்",
+  "btIdleApplyDescription": "மறுதொடக்கத்திற்குப் பிறகு, அல்லது அனைத்து BitTorrent பணிகளும் நீக்கப்பட்ட பின் அல்லது பகிர்வு முடிந்த பின் நடைமுறைக்கு வரும்",
   "setAsDefaultBtClient": "இயல்புநிலை BT கிளையண்டாக அமைக்கவும்",
   "taskDetail": "பணி விவரம்",
   "taskName": "செயல் பெயர்",

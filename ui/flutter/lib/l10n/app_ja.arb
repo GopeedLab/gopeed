@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 は無制限",
   "enableDht": "DHT を有効にする",
   "enablePex": "PEX を有効にする",
-  "btIdleApplyDescription": "BitTorrent タスクが実行されていないときに反映されます",
+  "btIdleApplyDescription": "再起動後、またはすべての BitTorrent タスクが削除されるかシードが終了したときに反映されます",
   "setAsDefaultBtClient": "デフォルトのBTクライアントとして設定",
   "taskDetail": "タスク詳細",
   "taskName": "タスク名",

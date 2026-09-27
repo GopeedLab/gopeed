@@ -158,7 +158,7 @@
   "uploadLimitDescription": "0 يعني بلا حد",
   "enableDht": "تفعيل DHT",
   "enablePex": "تفعيل PEX",
-  "btIdleApplyDescription": "يسري عندما لا تعمل أي مهمة BitTorrent",
+  "btIdleApplyDescription": "يسري بعد إعادة التشغيل، أو بعد حذف كل مهام BitTorrent أو انتهاء مشاركتها",
   "setAsDefaultBtClient": "تعيين كعميل تورنت افتراضي",
   "taskDetail": "تفاصيل المهمة",
   "taskName": "اسم المهمة",
