@@ -196,6 +196,7 @@ func (d *Downloader) Setup() error {
 			})
 		}
 	}
+	d.applyProtocolConfig()
 
 	// load tasks from storage
 	var tasks []*Task
@@ -1336,11 +1337,14 @@ func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
 	}
 	next := util.DeepClone(v)
 	d.configLock.Lock()
-	defer d.configLock.Unlock()
 	if err := d.storage.Put(bucketConfig, "config", next); err != nil {
+		d.configLock.Unlock()
 		return err
 	}
 	d.cfg.DownloaderStoreConfig = next
+	d.configLock.Unlock()
+	// Protocols read the new config through GetConfig, so configLock must be released first.
+	d.applyProtocolConfig()
 	return nil
 }
 
@@ -1379,6 +1383,17 @@ func (d *Downloader) persistDefaultPath(defaultPath string) error {
 	}
 	d.cfg.DownloaderStoreConfig = next
 	return nil
+}
+
+func (d *Downloader) applyProtocolConfig() {
+	for _, fm := range d.cfg.FetchManagers {
+		if cfm, ok := fm.(fetcher.ConfigurableFetcherManager); ok {
+			name := fm.Name()
+			cfm.ApplyConfig(func(v any) {
+				d.getProtocolConfig(name, v)
+			})
+		}
+	}
 }
 
 func (d *Downloader) getProtocolConfig(name string, v any) bool {

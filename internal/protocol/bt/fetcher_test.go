@@ -15,6 +15,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/bt"
+	"golang.org/x/time/rate"
 )
 
 func TestFetcher_Resolve_Torrent(t *testing.T) {
@@ -365,4 +366,124 @@ func TestFetcher_Patch(t *testing.T) {
 			t.Errorf("Expected Progress length 2, got %d", len(btFetcher.data.Progress))
 		}
 	})
+}
+
+func TestFetcher_CloseAfterInit(t *testing.T) {
+	if err := closeClient(); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 20; i++ {
+		f := buildFetcher().(*Fetcher)
+		f.meta.Req = &base.Request{}
+		lock.Lock()
+		err := f.initClient()
+		lock.Unlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := closeClient(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestFetcher_CloseWithoutClient(t *testing.T) {
+	if err := closeClient(); err != nil {
+		t.Fatal(err)
+	}
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: "./testdata/not-exist.torrent"}, nil); err == nil {
+		t.Fatal("Resolve() got = nil, want error")
+	}
+	if err := f.Close(); err != nil {
+		t.Errorf("Close() got = %v, want nil", err)
+	}
+}
+
+func TestFetcherManager_ApplyConfig_UploadLimit(t *testing.T) {
+	defer uploadLimiter.SetLimit(rate.Inf)
+
+	fm := new(FetcherManager)
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	running := client
+	fm.ApplyConfig(mockConfig(config{UploadLimit: 512 * 1024}))
+	if client != running {
+		t.Fatal("ApplyConfig() closed a client with active torrents")
+	}
+	if got := cfg.UploadRateLimiter.Limit(); got != 512*1024 {
+		t.Errorf("UploadRateLimiter.Limit() got = %v, want %v", got, 512*1024)
+	}
+	if got := cfg.UploadRateLimiter.Burst(); got != uploadBurst {
+		t.Errorf("UploadRateLimiter.Burst() got = %v, want %v", got, uploadBurst)
+	}
+
+	fm.ApplyConfig(mockConfig(config{}))
+	if got := cfg.UploadRateLimiter.Limit(); got != rate.Inf {
+		t.Errorf("UploadRateLimiter.Limit() got = %v, want %v", got, rate.Inf)
+	}
+}
+
+func TestFetcherManager_ApplyConfig_Rebuild(t *testing.T) {
+	if err := closeClient(); err != nil {
+		t.Fatal(err)
+	}
+	fm := new(FetcherManager)
+	f := buildFetcher()
+	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	fm.ApplyConfig(mockConfig(config{DisableDHT: true, DisablePEX: true}))
+	if client == nil {
+		t.Fatal("ApplyConfig() closed a client with active torrents")
+	}
+	if cfg.NoDHT || cfg.DisablePEX {
+		t.Errorf("ApplyConfig() changed a running client, NoDHT = %v, DisablePEX = %v", cfg.NoDHT, cfg.DisablePEX)
+	}
+
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if client != nil {
+		t.Fatal("Close() kept an idle client")
+	}
+
+	f = buildFetcherWithConfig(config{DisableDHT: true, DisablePEX: true})
+	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.NoDHT || !cfg.DisablePEX {
+		t.Errorf("new client got NoDHT = %v, DisablePEX = %v, want true", cfg.NoDHT, cfg.DisablePEX)
+	}
+	f.(*Fetcher).safeDrop()
+	f.(*Fetcher).torrentDropFunc()
+
+	idle := client
+	fm.ApplyConfig(mockConfig(config{DisableDHT: true, DisablePEX: true}))
+	if client != idle {
+		t.Error("ApplyConfig() closed an idle client without a change")
+	}
+	fm.ApplyConfig(mockConfig(config{}))
+	if client != nil {
+		t.Error("ApplyConfig() kept an idle client after DHT and PEX changed")
+	}
+}
+
+func mockConfig(c config) func(v any) {
+	return func(v any) {
+		json.Unmarshal([]byte(test.ToJson(c)), v)
+	}
+}
+
+func buildFetcherWithConfig(c config) fetcher.Fetcher {
+	fetcher := new(FetcherManager).Build()
+	newController := controller.NewController()
+	newController.GetConfig = mockConfig(c)
+	fetcher.Setup(newController)
+	return fetcher
 }
