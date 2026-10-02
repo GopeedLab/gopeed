@@ -34,6 +34,9 @@ type adaptiveTestServer struct {
 	totalCap atomic.Int64 // bytes/s for all requests together, 0 means no cap
 	maxConns atomic.Int32 // concurrent requests above this get 429, 0 means no limit
 	noRange  bool
+	// ignoreRange advertises byte ranges but answers every request with the
+	// whole file and 200.
+	ignoreRange bool
 
 	active   atomic.Int32
 	rejected atomic.Int32
@@ -96,7 +99,7 @@ func (s *adaptiveTestServer) serve(w gohttp.ResponseWriter, r *gohttp.Request) {
 	status := gohttp.StatusOK
 	if !s.noRange {
 		w.Header().Set("Accept-Ranges", "bytes")
-		if spec := r.Header.Get("Range"); spec != "" {
+		if spec := r.Header.Get("Range"); spec != "" && !s.ignoreRange {
 			bounds := strings.SplitN(strings.TrimPrefix(spec, "bytes="), "-", 2)
 			start, _ = strconv.ParseInt(bounds[0], 10, 64)
 			if len(bounds) == 2 && bounds[1] != "" {
@@ -325,6 +328,19 @@ func TestAdaptiveIntegrationConnectionLimit429(t *testing.T) {
 	t.Logf("settled at %d connections", got)
 	if got != 4 {
 		t.Fatalf("settled at %d connections, want 4", got)
+	}
+	// A 429 on a follow-up request after a range split is retried before
+	// anything is parked, so the count stays at the limit most of the time.
+	steady := samples[30 : len(samples)-15]
+	at4 := 0
+	for _, n := range steady {
+		if n == 4 {
+			at4++
+		}
+	}
+	t.Logf("at 4 connections for %d%% of the steady part", 100*at4/len(steady))
+	if at4*10 < len(steady)*7 {
+		t.Fatalf("at 4 connections for only %d of %d samples, want at least 70%%", at4, len(steady))
 	}
 	if s.rejected.Load() == 0 {
 		t.Fatal("the server never refused a connection, so the limit was not found")
@@ -619,4 +635,52 @@ func TestAdaptivePatchWithoutOptionsKeepsConnections(t *testing.T) {
 	if got := f.meta.Opts.Extra.(*http.OptsExtra).Connections; got != 8 {
 		t.Fatalf("connections = %d after an empty Patch, want 8", got)
 	}
+}
+
+// An origin that advertises Range but ignores it: the first request falls back
+// to a sequential download, and the adaptive loop hands over to slow start.
+func TestAdaptiveIntegrationIgnoredRangeHandsOverToSequential(t *testing.T) {
+	useFastAdaptiveClock(t)
+	s := newAdaptiveTestServer(t, 4<<20, 8<<20, 0, 0, false)
+	s.ignoreRange = true
+	f, path := newAdaptiveFetcher(t, config{Connections: 16, Adaptive: true}, s, nil)
+	if !f.Meta().Res.Range {
+		t.Fatal("setup: the server must advertise Range")
+	}
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := waitDone(t, f, 30*time.Second); err != nil {
+		t.Fatalf("an ignored Range must fall back without error: %v", err)
+	}
+	if f.adaptive == nil {
+		t.Fatal("setup: adaptive must have started before the fallback")
+	}
+	if f.Meta().Res.Range {
+		t.Fatal("the fetcher did not fall back to a sequential download")
+	}
+	if n := len(f.Stats().Snapshot.(*http.Stats).Connections); n != 1 {
+		t.Fatalf("got %d connections, want 1", n)
+	}
+	assertAdaptiveFile(t, path, s.data)
+}
+
+// The task switch turns adaptive on although the global default is off.
+func TestAdaptiveTaskOnOverridesGlobalOff(t *testing.T) {
+	useFastAdaptiveClock(t)
+	s := newAdaptiveTestServer(t, 8<<20, 4<<20, 0, 0, false)
+	f, path := newAdaptiveFetcher(t, config{Connections: 16}, s, &http.OptsExtra{Adaptive: boolPtr(true)})
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := waitDone(t, f, 30*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if f.adaptive == nil {
+		t.Fatal("the task switch did not turn adaptive on")
+	}
+	if got := f.slowStart.batchHistory; fmt.Sprint(got) != "[1]" {
+		t.Fatalf("slow-start batches = %v, want only the first connection's book entry", got)
+	}
+	assertAdaptiveFile(t, path, s.data)
 }
