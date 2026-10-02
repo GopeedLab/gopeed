@@ -139,6 +139,10 @@ type connection struct {
 	parked  bool // asked to stop; its range is stealable once it has exited
 	running bool // a goroutine started by adaptiveLaunchLocked is live
 	gotData bool // got a 2xx response since it was last launched
+	// limitHits counts 429/503 responses in a row after data. The first is
+	// retried: after a range split, the server may still be serving this
+	// connection's previous request for a moment.
+	limitHits int
 
 	// Speed tracking for work stealing decisions
 	speed             int64 // bytes per second
@@ -1477,6 +1481,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	conn.State = connDownloading
 	conn.failed = false
 	conn.gotData = true
+	conn.limitHits = 0
 	f.connMu.Unlock()
 
 	if conn.Role == rolePrimary || conn.ID == 0 {
@@ -2819,6 +2824,7 @@ func (f *Fetcher) adaptiveResume() {
 func (f *Fetcher) adaptiveLaunchLocked(conn *connection) {
 	conn.running = true
 	conn.gotData = false
+	conn.limitHits = 0
 	f.wg.Add(2) // one for runConnection, one for this wrapper
 	go func() {
 		defer f.wg.Done()
@@ -2899,15 +2905,22 @@ func (f *Fetcher) adaptiveAddLocked() bool {
 // running connection. The caller must hold connMu.
 func (f *Fetcher) adaptiveParkSlowestLocked() bool {
 	var victim *connection
+	var victimSpeed int64
 	active := 0
 	for _, conn := range f.connections {
 		if !conn.running || conn.parked {
 			continue
 		}
 		active++
+		// A connection that is not downloading (connecting, or waiting to
+		// retry) delivers nothing now, whatever its last measured speed.
+		speed := conn.speed
+		if conn.State != connDownloading {
+			speed = 0
+		}
 		// The slowest; on a tie the newest, which is the one just added.
-		if victim == nil || conn.speed < victim.speed || (conn.speed == victim.speed && conn.ID > victim.ID) {
-			victim = conn
+		if victim == nil || speed < victimSpeed || (speed == victimSpeed && conn.ID > victim.ID) {
+			victim, victimSpeed = conn, speed
 		}
 	}
 	if active <= 1 || victim == nil {
@@ -2959,13 +2972,15 @@ func (f *Fetcher) adaptiveIdle() bool {
 }
 
 // adaptiveSnapshot returns the running, unparked connection count, whether
-// one of them has a validated response, and the bytes downloaded so far.
+// one of them has a validated response, and the bytes downloaded so far. A
+// connection waiting to retry (State connFailed while running) is not counted:
+// to the controller it is a change from outside, not a slowdown.
 func (f *Fetcher) adaptiveSnapshot() (active int, ready bool, total int64) {
 	f.connMu.Lock()
 	defer f.connMu.Unlock()
 	for _, conn := range f.connections {
 		total += conn.Downloaded
-		if conn.running && !conn.parked {
+		if conn.running && !conn.parked && conn.State != connFailed {
 			active++
 			if conn.gotData {
 				ready = true
@@ -2977,9 +2992,9 @@ func (f *Fetcher) adaptiveSnapshot() (active int, ready bool, total int64) {
 
 // adaptiveLimited handles a limiting status on conn with adaptive on. A 403
 // or 429 before any data means the server allows no more connections; a 429
-// or 503 after data means it wants fewer. Either way, while another
-// connection still runs, conn is parked (not failed) and the controller is
-// told. It returns true when conn was parked and must stop.
+// or 503 after data, twice in a row, means it wants fewer. Either way, while
+// another connection still runs, conn is parked (not failed) and the
+// controller is told. It returns true when conn was parked and must stop.
 func (f *Fetcher) adaptiveLimited(conn *connection, code int) bool {
 	f.connMu.Lock()
 	newConn := !conn.gotData
@@ -2993,6 +3008,14 @@ func (f *Fetcher) adaptiveLimited(conn *connection, code int) bool {
 	if !limiting || others == 0 {
 		f.connMu.Unlock()
 		return false
+	}
+	if !newConn {
+		conn.limitHits++
+		if conn.limitHits < 2 {
+			// Let the normal retry wait and ask once more.
+			f.connMu.Unlock()
+			return false
+		}
 	}
 	conn.parked = true
 	f.connMu.Unlock()
