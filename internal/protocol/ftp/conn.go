@@ -280,22 +280,27 @@ func (s *session) dialData(ctx context.Context, netDial dialContextFunc, tlsConf
 	return raw, nil
 }
 
-// tlsConfig returns the TLS settings for one server. Certificates are
-// verified unless the request sets skipVerifyCert, as for HTTP. Data
-// connections resume the control connection's TLS session through the shared
-// cache, which servers such as vsftpd require by default.
+// tlsConfig returns the TLS settings for one control connection and its data
+// connections. Certificates are verified unless the request sets
+// skipVerifyCert, as for HTTP.
+//
+// Each call gets its own one-entry session cache, so a data connection
+// resumes the TLS session of its own control connection. vsftpd
+// (require_ssl_reuse) only checks that some session was resumed, but ProFTPD's
+// mod_tls also checks that it is the control connection's; a cache shared by
+// several workers would hand a data connection another worker's session.
+// A cache in the manager's base config is kept as given.
 func (f *Fetcher) tlsConfig(host string) *tls.Config {
 	cfg := &tls.Config{}
-	if f.manager != nil && f.manager.TLSConfig != nil {
-		cfg = f.manager.TLSConfig.Clone()
+	if f.manager != nil && f.manager.baseTLS != nil {
+		cfg = f.manager.baseTLS.Clone()
 	}
 	cfg.ServerName = host
 	if f.meta.Req != nil && f.meta.Req.SkipVerifyCert {
 		cfg.InsecureSkipVerify = true
 	}
 	if cfg.ClientSessionCache == nil {
-		f.sessionCacheOnce.Do(func() { f.sessionCache = tls.NewLRUClientSessionCache(0) })
-		cfg.ClientSessionCache = f.sessionCache
+		cfg.ClientSessionCache = tls.NewLRUClientSessionCache(1)
 	}
 	return cfg
 }

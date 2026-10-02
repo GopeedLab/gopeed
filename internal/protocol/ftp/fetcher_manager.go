@@ -26,10 +26,10 @@ type fetcherData struct {
 // FetcherManager handles ftp://, ftps:// (implicit TLS) and ftpes:// (explicit
 // TLS) URLs.
 type FetcherManager struct {
-	// TLSConfig is the base for every TLS connection, for example to trust a
-	// private root. Nil means the system roots. The task's skipVerifyCert
-	// still turns verification off.
-	TLSConfig *tls.Config
+	// baseTLS is the base for every TLS connection. Nil means the system
+	// roots; the package's tests set it to trust their own certificate. The
+	// task's skipVerifyCert still turns verification off.
+	baseTLS *tls.Config
 }
 
 func (fm *FetcherManager) Name() string {
