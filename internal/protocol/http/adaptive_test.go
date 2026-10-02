@@ -1,6 +1,9 @@
 package http
 
 import (
+	"math"
+	"math/rand"
+	"sort"
 	"testing"
 	"time"
 )
@@ -16,12 +19,23 @@ type simServer struct {
 	// strayAt rejects the first new connection that would reach this count,
 	// once, and accepts every later one (0 means never).
 	strayAt int
+	// sqrt makes the speed grow with the square root of the count.
+	sqrt bool
+	// noise, when set, multiplies every window by 1 + U(-jitter, +jitter).
+	noise  *rand.Rand
+	jitter float64
 }
 
 func (s simServer) speed(active int) int64 {
 	speed := int64(active) * s.perConn
+	if s.sqrt {
+		speed = int64(math.Sqrt(float64(active)) * float64(s.perConn))
+	}
 	if s.totalCap > 0 && speed > s.totalCap {
 		speed = s.totalCap
+	}
+	if s.noise != nil {
+		speed = int64(float64(speed) * (1 + s.jitter*(2*s.noise.Float64()-1)))
 	}
 	return speed
 }
@@ -34,8 +48,10 @@ type simRun struct {
 	now      time.Time
 	active   int
 	timeline []int
-	adds     []time.Time
-	parks    []time.Time
+	adds     []time.Time // every addConn
+	probes   []time.Time // addConn that starts a judged addition (growth or probe)
+	parks    []time.Time // every park decision
+	prunes   []time.Time // parkNewest
 	strayed  bool
 }
 
@@ -50,6 +66,9 @@ func (r *simRun) step(s simServer) adaptiveDecision {
 	switch d {
 	case addConn:
 		r.adds = append(r.adds, r.now)
+		if r.c.phase == phaseAdded {
+			r.probes = append(r.probes, r.now)
+		}
 		if s.maxConns > 0 && r.active+1 > s.maxConns {
 			// The new connection gets 403/429 and is parked by the engine.
 			r.c.limited(r.now, r.active, true)
@@ -61,6 +80,10 @@ func (r *simRun) step(s simServer) adaptiveDecision {
 		}
 	case parkSlowest:
 		r.parks = append(r.parks, r.now)
+		r.active--
+	case parkNewest:
+		r.parks = append(r.parks, r.now)
+		r.prunes = append(r.prunes, r.now)
 		r.active--
 	}
 	r.timeline = append(r.timeline, r.active)
@@ -165,11 +188,11 @@ func TestAdaptiveCeilingFromLimited(t *testing.T) {
 	}
 	// Two refusals within 10 s set the ceiling; after that the controller
 	// never asks above 4 again.
-	if len(r.adds) != 5 {
-		t.Fatalf("got %d additions, want 5 (three that worked and the fifth refused twice)", len(r.adds))
+	if len(r.probes) != 5 {
+		t.Fatalf("got %d judged additions, want 5 (three that worked and the fifth refused twice)", len(r.probes))
 	}
-	if gap := r.adds[4].Sub(r.adds[3]); gap > 10*time.Second {
-		t.Fatalf("the second try came %v after the first refusal, want within 10 s", gap)
+	if gap := r.probes[4].Sub(r.probes[3]); gap > 5*adaptiveTickInterval {
+		t.Fatalf("the second try came %v after the first refusal, want within 5 windows", gap)
 	}
 }
 
@@ -180,15 +203,22 @@ func TestAdaptiveProbesEvery30s(t *testing.T) {
 	if r.active != 3 {
 		t.Fatalf("setup: active = %d, want 3 (timeline %v)", r.active, r.timeline)
 	}
-	r.adds, r.timeline = nil, nil
+	r.probes, r.prunes, r.timeline = nil, nil, nil
 	r.run(capped, 5*time.Minute)
 	t.Logf("timeline: %v", r.timeline)
-	// One probe per 30 s, each given back because it does not help.
-	if n := len(r.adds); n < 9 || n > 11 {
-		t.Fatalf("got %d probes in 5 minutes, want 10 +- 1", n)
+	// One test per 30 s: a probe that is given back because it does not
+	// help, or (every 4th interval) a prune that is undone because the
+	// connection is needed.
+	events := append(append([]time.Time(nil), r.probes...), r.prunes...)
+	sort.Slice(events, func(i, j int) bool { return events[i].Before(events[j]) })
+	if n := len(events); n < 9 || n > 11 {
+		t.Fatalf("got %d probes and prunes in 5 minutes, want 10 +- 1", n)
 	}
-	for i := 1; i < len(r.adds); i++ {
-		if gap := r.adds[i].Sub(r.adds[i-1]); gap < 30*time.Second {
+	if n := len(r.prunes); n < 2 || n > 3 {
+		t.Fatalf("got %d prunes in 10 intervals, want every 4th (2 or 3)", n)
+	}
+	for i := 1; i < len(events); i++ {
+		if gap := events[i].Sub(events[i-1]); gap < 30*time.Second {
 			t.Fatalf("probes %v apart, want at least 30 s", gap)
 		}
 	}
@@ -257,10 +287,10 @@ func TestAdaptiveMidStreamLimitParksAndHoldsOff(t *testing.T) {
 	// One connection gets 429 on a later request; the engine parks it.
 	r.active = 3
 	r.c.limited(r.now, 3, false)
-	r.adds = nil
+	r.probes = nil
 	r.run(simServer{perConn: mb, totalCap: 4 * mb}, 25*time.Second)
-	if len(r.adds) != 0 {
-		t.Fatalf("got %d additions within 25 s of a 429, want none before the probe", len(r.adds))
+	if len(r.probes) != 0 {
+		t.Fatalf("got %d additions within 25 s of a 429, want none before the probe", len(r.probes))
 	}
 }
 
@@ -318,10 +348,62 @@ func TestAdaptiveKeepBar(t *testing.T) {
 	cases := []struct {
 		n    int
 		want float64
-	}{{1, 0.5}, {5, 0.1}, {10, 0.05}, {16, 0.03125}, {20, 0.03}, {30, 0.03}}
+	}{{1, 0.1}, {5, 0.1}, {8, 0.0625}, {10, 0.05}, {16, 0.03125}, {20, 0.03}, {30, 0.03}}
 	for _, tc := range cases {
 		if got := adaptiveKeepBar(tc.n); got != tc.want {
 			t.Errorf("adaptiveKeepBar(%d) = %v, want %v", tc.n, got, tc.want)
 		}
+	}
+}
+
+// A server whose speed grows with the square root of the count still gets
+// several connections quickly: the keep bar starts at 10%, not 50%.
+func TestAdaptiveSublinearServerGrowsFast(t *testing.T) {
+	r := newSimRun(16)
+	r.run(simServer{perConn: mb, sqrt: true}, 30*time.Second)
+	t.Logf("timeline: %v", r.timeline)
+	if r.active < 5 {
+		t.Fatalf("active = %d after 30 s on a sqrt(n) server, want at least 5", r.active)
+	}
+}
+
+// With +-5% noise on every window, a capped server does not ratchet the count
+// upwards: useless connections that noise lets in are pruned again.
+func TestAdaptiveJitterStaysNearCap(t *testing.T) {
+	for _, capConns := range []int{6, 12, 20} {
+		for seed := int64(1); seed <= 10; seed++ {
+			r := newSimRun(32)
+			s := simServer{perConn: mb, totalCap: int64(capConns) * mb, noise: rand.New(rand.NewSource(seed)), jitter: 0.05}
+			r.run(s, 15*time.Minute)
+			if r.active > capConns+2 || r.active < capConns-1 {
+				t.Errorf("cap %d, seed %d: final count %d, want %d..%d (max %d, %d probes, %d prunes)",
+					capConns, seed, r.active, capConns-1, capConns+2, maxOf(r.timeline), len(r.probes), len(r.prunes))
+			} else {
+				t.Logf("cap %d, seed %d: final %d, max %d, %d prunes", capConns, seed, r.active, maxOf(r.timeline), len(r.prunes))
+			}
+		}
+	}
+}
+
+// A connection that does not help is found by the periodic prune, given
+// back, and the count stays one lower for a probe interval.
+func TestAdaptivePruneGivesBackUselessConnection(t *testing.T) {
+	r := newSimRun(16)
+	r.run(simServer{perConn: mb, totalCap: 4 * mb}, 30*time.Second)
+	if r.active != 4 {
+		t.Fatalf("setup: active = %d, want 4", r.active)
+	}
+	// One extra connection slips in (as noise might let it): the server is
+	// capped, so the fifth adds nothing.
+	r.active = 5
+	r.c.expect = 5
+	r.prunes = nil
+	r.run(simServer{perConn: mb, totalCap: 4 * mb}, 3*time.Minute)
+	t.Logf("timeline: %v", r.timeline)
+	if len(r.prunes) == 0 {
+		t.Fatal("no prune in 3 minutes, want one every 4th probe interval")
+	}
+	if r.active != 4 {
+		t.Fatalf("active = %d, want the useless fifth connection given back (4)", r.active)
 	}
 }
