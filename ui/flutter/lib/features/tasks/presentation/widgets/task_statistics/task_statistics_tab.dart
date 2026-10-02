@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,9 +56,7 @@ class _HttpStatistics extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final completed = stats.connections.where((connection) => connection.completed).length;
-    final failed = stats.connections.where((connection) => connection.failed).length;
-    final downloading = stats.connections.length - completed - failed;
+    final summary = HttpConnectionSummary.of(stats.connections);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -68,9 +64,10 @@ class _HttpStatistics extends StatelessWidget {
         const SizedBox(height: 12),
         _SummaryGrid(
           items: [
-            _SummaryItem(context.l10n.downloading, math.max(0, downloading).toString()),
-            _SummaryItem(context.l10n.completed, completed.toString()),
-            _SummaryItem(context.l10n.failed, failed.toString()),
+            _SummaryItem(context.l10n.downloading, summary.downloading.toString()),
+            if (summary.idle > 0) _SummaryItem(context.l10n.connectionIdle, summary.idle.toString()),
+            _SummaryItem(context.l10n.completed, summary.completed.toString()),
+            _SummaryItem(context.l10n.failed, summary.failed.toString()),
           ],
         ),
         const SizedBox(height: 18),
@@ -78,6 +75,41 @@ class _HttpStatistics extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Connection counts for the HTTP statistics summary. A parked connection is
+/// idle: it neither downloads nor failed.
+class HttpConnectionSummary {
+  const HttpConnectionSummary({
+    required this.downloading,
+    required this.idle,
+    required this.completed,
+    required this.failed,
+  });
+
+  factory HttpConnectionSummary.of(List<HttpConnectionStats> connections) {
+    var downloading = 0;
+    var idle = 0;
+    var completed = 0;
+    var failed = 0;
+    for (final connection in connections) {
+      if (connection.completed) {
+        completed++;
+      } else if (connection.failed) {
+        failed++;
+      } else if (connection.parked) {
+        idle++;
+      } else {
+        downloading++;
+      }
+    }
+    return HttpConnectionSummary(downloading: downloading, idle: idle, completed: completed, failed: failed);
+  }
+
+  final int downloading;
+  final int idle;
+  final int completed;
+  final int failed;
 }
 
 class HttpConnectionLanes extends StatelessWidget {
@@ -116,14 +148,17 @@ class _ConnectionLane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final retrying = !connection.completed && !connection.failed && connection.retryTimes > 0;
-    final downloading = taskDownloading && !retrying && !connection.completed && !connection.failed;
+    final idle = connection.parked && !connection.completed && !connection.failed;
+    final retrying = !idle && !connection.completed && !connection.failed && connection.retryTimes > 0;
+    final downloading = taskDownloading && !idle && !retrying && !connection.completed && !connection.failed;
     final hasTotal = connection.total > 0;
     final progress = hasTotal ? (connection.downloaded / connection.total).clamp(0.0, 1.0) : null;
     final status = connection.failed
         ? context.l10n.failed
         : connection.completed
         ? context.l10n.completed
+        : idle
+        ? context.l10n.connectionIdle
         : retrying
         ? context.l10n.retrying
         : context.l10n.downloading;
@@ -131,6 +166,8 @@ class _ConnectionLane extends StatelessWidget {
         ? palette.error
         : connection.completed
         ? palette.success
+        : idle
+        ? palette.textMuted
         : palette.brand;
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -162,6 +199,7 @@ class _ConnectionLane extends StatelessWidget {
                     failed: connection.failed,
                     retrying: retrying,
                     completed: connection.completed,
+                    idle: idle,
                   ),
                 ),
               ),
@@ -173,8 +211,8 @@ class _ConnectionLane extends StatelessWidget {
                   indeterminate: downloading && !hasTotal,
                   shimmer: downloading,
                   height: 7,
-                  trackColor: palette.brandTrack,
-                  fillColor: palette.brandProgress,
+                  trackColor: idle ? palette.progressTrack : palette.brandTrack,
+                  fillColor: idle ? palette.textMuted : palette.brandProgress,
                   highlightStartColor: palette.brandProgress,
                   highlightEndColor: palette.brandProgress,
                 ),
@@ -206,6 +244,7 @@ class _ConnectionStatusIcon extends StatelessWidget {
     required this.failed,
     required this.retrying,
     required this.completed,
+    this.idle = false,
   });
 
   final String status;
@@ -214,6 +253,7 @@ class _ConnectionStatusIcon extends StatelessWidget {
   final bool failed;
   final bool retrying;
   final bool completed;
+  final bool idle;
 
   @override
   Widget build(BuildContext context) {
@@ -226,6 +266,8 @@ class _ConnectionStatusIcon extends StatelessWidget {
             ? Icons.sync_problem_rounded
             : completed
             ? Icons.check_circle_rounded
+            : idle
+            ? Icons.pause_circle_outline_rounded
             : Icons.downloading_rounded,
         size: 15,
         color: color,
