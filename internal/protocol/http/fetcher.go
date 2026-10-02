@@ -302,6 +302,8 @@ type Fetcher struct {
 	// launchSeq numbers adaptive launches, so a prune test can find the
 	// newest connection. connMu guards it.
 	launchSeq int
+	// adaptivePrunes counts connections parked by prune tests. connMu guards it.
+	adaptivePrunes int
 
 	// Max connection time for adaptive timeout (stored as int64 nanoseconds for atomic ops)
 	maxConnTime atomic.Int64
@@ -1238,6 +1240,9 @@ func (f *Fetcher) runConnection(conn *connection) {
 		requestErr := extractRequestError(err)
 		shouldUseResolveFallback := requestErr == nil || !isFailureExemptHTTPCode(requestErr.Code)
 		if shouldUseResolveFallback && f.completeFromResolveFallback(conn) {
+			return
+		}
+		if f.adaptive != nil && f.adaptiveRefusedResume(conn, err) {
 			return
 		}
 		if requestErr != nil && f.adaptive != nil && f.adaptiveLimited(conn, requestErr.Code) {
@@ -2968,6 +2973,7 @@ func (f *Fetcher) adaptiveParkNewestLocked() bool {
 	if victim.cancel != nil {
 		victim.cancel()
 	}
+	f.adaptivePrunes++
 	return true
 }
 
@@ -3026,6 +3032,44 @@ func (f *Fetcher) adaptiveSnapshot() (active int, ready bool, total int64) {
 		}
 	}
 	return active, ready, total
+}
+
+// adaptiveRefusedResume handles a refusal of the request that resumes a
+// pruned connection: a 403, 429 or 503, or a connection that could not be
+// made, before any data. The server may still count the request the prune
+// just cancelled, so this is never a strike (the controller keeps its
+// ceiling): conn is parked until the next probe. It returns true when conn
+// was parked and must stop.
+func (f *Fetcher) adaptiveRefusedResume(conn *connection, err error) bool {
+	f.adaptiveMu.Lock()
+	resuming := f.adaptive.resuming
+	f.adaptiveMu.Unlock()
+	if !resuming || isTerminalRangeError(err) {
+		return false
+	}
+	refused := true
+	if re := extractRequestError(err); re != nil {
+		refused = re.Code == 403 || re.Code == 429 || re.Code == 503
+	}
+
+	f.connMu.Lock()
+	others := 0
+	for _, c := range f.connections {
+		if c != conn && c.running && !c.parked {
+			others++
+		}
+	}
+	if conn.gotData || !refused || others == 0 {
+		f.connMu.Unlock()
+		return false
+	}
+	conn.parked = true
+	f.connMu.Unlock()
+
+	f.adaptiveMu.Lock()
+	f.adaptive.limited(time.Now(), others, true)
+	f.adaptiveMu.Unlock()
+	return true
 }
 
 // adaptiveLimited handles a limiting status on conn with adaptive on. A 403

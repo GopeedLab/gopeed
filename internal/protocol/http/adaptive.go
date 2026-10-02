@@ -27,9 +27,14 @@ import "time"
 //   - every adaptivePruneEvery-th interval the newest connection is parked
 //     for adaptiveEvalWindows windows instead. If the speed falls by less than
 //     the keep bar, the connection did not help: it stays parked, and the
-//     count may not grow past n-1 until a probe interval has passed.
-//     Otherwise it is resumed. This gives back connections that window noise
-//     let in;
+//     count may not grow past n-1 for about two probe intervals (the hold
+//     ends just after the next probe, so the one after that is the first
+//     that may add). Otherwise it is resumed. This gives back connections
+//     that window noise let in;
+//   - a refusal of the request that resumes a pruned connection is never a
+//     strike: the server may still count the request just cancelled. The
+//     connection stays parked until the next probe, and the ceiling is
+//     untouched;
 //   - a 403 or 429 on a new connection, twice within adaptiveStrikeWindows
 //     windows, sets the ceiling to the count that worked; a 429 or 503 on a
 //     connection that already had data parks that connection (the fetcher
@@ -133,9 +138,15 @@ type adaptiveController struct {
 	// prune test instead of a probe.
 	intervals int
 	// holdCap is the count growth may not pass until holdUntil, after a
-	// prune test found a connection that did not help.
+	// prune test found a connection that did not help. holdUntil is one probe
+	// interval after the judgement, which is just after the next probe, so
+	// the hold lasts about two probe intervals.
 	holdCap   int
 	holdUntil time.Time
+
+	// resuming is set while the controller brings back a connection that a
+	// prune test found needed. A refusal of that request is not a strike.
+	resuming bool
 
 	// The clock, read once so a running controller never sees it change.
 	probeEvery   time.Duration
@@ -204,6 +215,8 @@ func (c *adaptiveController) tick(now time.Time, speed int64, active int) adapti
 		if !c.keepBest || mean > c.best {
 			c.best = mean
 		}
+		// A resumed connection that ran its measuring windows was not refused.
+		c.resuming = false
 		if c.grow && active < c.growLimit(now) {
 			return c.add(mean, active)
 		}
@@ -277,6 +290,7 @@ func (c *adaptiveController) tick(now time.Time, speed int64, active int) adapti
 		c.best = c.before
 		if active < c.ceiling {
 			c.measure(active+1, false, true)
+			c.resuming = true
 			return addConn
 		}
 		c.settle(now)
@@ -303,6 +317,16 @@ func (c *adaptiveController) limited(now time.Time, active int, newConn bool) {
 	}
 	if !newConn {
 		c.probeAt = now.Add(c.probeEvery)
+		c.measure(active, false, false)
+		return
+	}
+	if c.resuming {
+		// The request that resumes a pruned connection was refused. The server
+		// may still count the request just cancelled, so this is not a
+		// strike and the ceiling stays. The connection stays parked; the next
+		// probe brings it back. The lower count is measured afresh so it is
+		// not read as a slowdown.
+		c.resuming = false
 		c.measure(active, false, false)
 		return
 	}
