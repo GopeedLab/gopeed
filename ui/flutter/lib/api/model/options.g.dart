@@ -24,6 +24,7 @@ Map<String, dynamic> _$OptionsToJson(Options instance) => <String, dynamic>{
 
 OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) => OptsExtraHttp(
   connections: (json['connections'] as num?)?.toInt() ?? 0,
+  adaptive: json['adaptive'] as bool?,
   autoTorrent: json['autoTorrent'] as bool?,
   deleteTorrentAfterDownload: json['deleteTorrentAfterDownload'] as bool?,
   autoExtract: json['autoExtract'] as bool?,
@@ -33,6 +34,7 @@ OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) => OptsExtraHtt
 
 Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) => <String, dynamic>{
   'connections': instance.connections,
+  'adaptive': ?instance.adaptive,
   'autoTorrent': ?instance.autoTorrent,
   'deleteTorrentAfterDownload': ?instance.deleteTorrentAfterDownload,
   'autoExtract': ?instance.autoExtract,

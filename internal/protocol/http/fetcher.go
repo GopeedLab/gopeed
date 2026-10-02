@@ -77,6 +77,10 @@ const (
 	connDownloading                        // HTTP response OK, downloading
 	connCompleted                          // Completed
 	connFailed                             // Failed
+	// connParked: stopped by adaptive connections at its current offset. Its
+	// remaining range is free for other connections to take; it is not a
+	// failure. Appended last because State is persisted as a number.
+	connParked
 )
 
 type connectionRole int
@@ -131,6 +135,11 @@ type connection struct {
 	retryTimes int
 	lastErr    error
 
+	// Adaptive connections (runtime only, never persisted)
+	parked  bool // asked to stop; its range is stealable once it has exited
+	running bool // a goroutine started by adaptiveLaunchLocked is live
+	gotData bool // got a 2xx response since it was last launched
+
 	// Speed tracking for work stealing decisions
 	speed             int64 // bytes per second
 	lastSpeedCheck    int64 // timestamp in nanoseconds
@@ -153,6 +162,7 @@ type slowStartController struct {
 	nextBatchSize  int           // Next batch size: 1, 2, 4, 16, 256... (capped)
 	expansionCh    chan struct{} // Signal to trigger next expansion
 	paused         bool          // Pause expansion (e.g., on 429)
+	batchHistory   []int         // Committed batch sizes, in order
 }
 
 func newSlowStartController(maxConnections int) *slowStartController {
@@ -229,6 +239,7 @@ func (s *slowStartController) commitBatch(count int) {
 	defer s.mu.Unlock()
 
 	s.totalLaunched += count
+	s.batchHistory = append(s.batchHistory, count)
 	if s.nextBatchSize == 1 {
 		// Bootstrap growth: squaring one would never increase the batch size.
 		s.nextBatchSize = min(2, s.maxConnections)
@@ -272,6 +283,17 @@ type Fetcher struct {
 
 	// Slow start controller
 	slowStart *slowStartController
+
+	// Adaptive controller; nil unless adaptive connections are on for this run.
+	// It is set by doStart before any connection starts and is not changed
+	// until the next doStart, after Pause has stopped every connection.
+	adaptive     *adaptiveController
+	adaptiveMu   sync.Mutex    // serialises calls into adaptive
+	adaptiveWake chan struct{} // a connection goroutine exited
+
+	// nextConnID is the next connection ID. IDs only grow, so an ID is never
+	// reused even if connections are removed. connMu guards it.
+	nextConnID int
 
 	// Max connection time for adaptive timeout (stored as int64 nanoseconds for atomic ops)
 	maxConnTime atomic.Int64
@@ -808,6 +830,25 @@ func (f *Fetcher) doStart() error {
 	maxConns := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
 	f.slowStart = newSlowStartController(maxConns)
 
+	// Adaptive connections need byte ranges and a known size; anything else
+	// keeps the slow-start path below unchanged.
+	var adaptive *adaptiveController
+	if f.adaptiveEnabled() && f.meta.Res.Range && f.meta.Res.Size > 0 {
+		adaptive = newAdaptiveController(maxConns, time.Now())
+		f.adaptiveWake = make(chan struct{}, 1)
+	} else {
+		// Adaptive was switched off since the last run: parked connections
+		// resume like any other unfinished connection.
+		f.connMu.Lock()
+		for _, conn := range f.connections {
+			conn.parked = false
+		}
+		f.connMu.Unlock()
+	}
+	f.adaptiveMu.Lock()
+	f.adaptive = adaptive
+	f.adaptiveMu.Unlock()
+
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
@@ -840,6 +881,15 @@ func (f *Fetcher) downloadLoop(done chan struct{}) {
 	// Check if this is a resume or fresh start
 	isResume := len(f.connections) > 0
 
+	if f.adaptive != nil {
+		if !f.adaptiveLoop(ctx, isResume) {
+			return
+		}
+		// The origin dropped byte ranges after all; continue as today.
+		f.slowStartLoop(ctx)
+		return
+	}
+
 	if !isResume {
 		// Capture the mode before launching the first connection. The server may
 		// ignore that connection's Range request and switch the fetcher to a
@@ -868,7 +918,10 @@ func (f *Fetcher) downloadLoop(done chan struct{}) {
 		}
 	}
 
-	// Slow start loop
+	f.slowStartLoop(ctx)
+}
+
+func (f *Fetcher) slowStartLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -954,43 +1007,12 @@ func (f *Fetcher) expandConnections() {
 
 	// For first batch (no existing connections), allocate the remaining file to first connection
 	if len(f.connections) == 0 {
-		// Check if we have prefetched data
-		prefetched := f.resolveDataPos.Load()
-
-		// If prefetched all data, mark as done. A zero size means the extent is
-		// still unknown, so the first worker must discover it with bytes=start-.
-		if totalSize > 0 && prefetched >= totalSize {
+		conn := f.newFirstConnectionLocked(totalSize)
+		if conn == nil {
 			f.connMu.Unlock()
-
-			// Close the file before signaling completion
-			f.fileMu.Lock()
-			if f.file != nil {
-				f.file.Close()
-				f.file = nil
-			}
-			f.fileMu.Unlock()
-
-			f.setState(stateDone)
-			f.doneCh <- nil
+			f.finishFromPrefetch()
 			return
 		}
-
-		// First connection starts from prefetched position
-		connChunk := newOpenEndedChunk(prefetched)
-		if totalSize > 0 {
-			connChunk = newChunk(prefetched, totalSize-1)
-		}
-		conn := &connection{
-			ID:    0,
-			Role:  rolePrimary,
-			State: connNotStarted,
-			Chunk: connChunk,
-		}
-		// Mark prefetched bytes as already downloaded
-		conn.Chunk.Downloaded = 0    // Start fresh from prefetched position
-		conn.Downloaded = prefetched // Track total downloaded including prefetch
-
-		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
 		f.connections = append(f.connections, conn)
 		f.connMu.Unlock()
 
@@ -1001,53 +1023,14 @@ func (f *Fetcher) expandConnections() {
 	}
 
 	// For subsequent batches, use "help other connection" strategy
-	// Find connections with enough remaining work to split
-	// During slow start, use fixed minimum size since speed is not yet stable
-	minSplitSize := int64(stealMinChunkSize)
-
 	newConns := make([]*connection, 0, batchSize)
 	for i := 0; i < batchSize; i++ {
-		// Find the connection with most remaining work
-		var maxRemainConn *connection
-		var maxRemain int64
-
-		for _, conn := range f.connections {
-			if conn.Completed || conn.State == connFailed {
-				continue
-			}
-			if conn.Chunk.openEnded() {
-				continue
-			}
-			remain := conn.Chunk.remain()
-			// Only split if remaining work is at least 2x the minimum split size
-			if remain > maxRemain && remain > minSplitSize*2 {
-				maxRemainConn = conn
-				maxRemain = remain
-			}
-		}
-
-		if maxRemainConn == nil {
+		conn := f.splitLargestLocked()
+		if conn == nil {
 			// No connection has enough work to split
 			break
 		}
-
-		// Split the work: new connection takes the latter half
-		chunkEnd := *maxRemainConn.Chunk.End
-		splitPoint := chunkEnd - maxRemainConn.Chunk.remain()/2
-		newChunk := newChunk(splitPoint+1, chunkEnd)
-		maxRemainConn.Chunk.setEnd(splitPoint)
-
-		connID := len(f.connections)
-		conn := &connection{
-			ID:    connID,
-			Role:  roleWorker,
-			State: connNotStarted,
-			Chunk: newChunk,
-		}
-		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
-
 		newConns = append(newConns, conn)
-		f.connections = append(f.connections, conn)
 	}
 
 	f.connMu.Unlock()
@@ -1066,6 +1049,117 @@ func (f *Fetcher) expandConnections() {
 		f.wg.Add(1)
 		go f.runConnection(conn)
 	}
+}
+
+// newFirstConnectionLocked allocates the rest of the file after the resolve
+// prefetch to connection 0. It returns nil when the prefetch already holds the
+// whole file; the caller then calls finishFromPrefetch after unlocking.
+// The caller must hold connMu.
+func (f *Fetcher) newFirstConnectionLocked(totalSize int64) *connection {
+	// Check if we have prefetched data
+	prefetched := f.resolveDataPos.Load()
+
+	// If prefetched all data, mark as done. A zero size means the extent is
+	// still unknown, so the first worker must discover it with bytes=start-.
+	if totalSize > 0 && prefetched >= totalSize {
+		return nil
+	}
+
+	// First connection starts from prefetched position
+	connChunk := newOpenEndedChunk(prefetched)
+	if totalSize > 0 {
+		connChunk = newChunk(prefetched, totalSize-1)
+	}
+	conn := &connection{
+		ID:    f.allocConnIDLocked(),
+		Role:  rolePrimary,
+		State: connNotStarted,
+		Chunk: connChunk,
+	}
+	// Mark prefetched bytes as already downloaded
+	conn.Chunk.Downloaded = 0    // Start fresh from prefetched position
+	conn.Downloaded = prefetched // Track total downloaded including prefetch
+
+	conn.ctx, conn.cancel = context.WithCancel(f.ctx)
+	return conn
+}
+
+// finishFromPrefetch completes a task whose resolve prefetch already holds
+// the whole file. The caller must not hold connMu.
+func (f *Fetcher) finishFromPrefetch() {
+	// Close the file before signaling completion
+	f.fileMu.Lock()
+	if f.file != nil {
+		f.file.Close()
+		f.file = nil
+	}
+	f.fileMu.Unlock()
+
+	f.setState(stateDone)
+	f.doneCh <- nil
+}
+
+// splitLargestLocked gives the latter half of the largest splittable range to
+// a new connection, appends it, and returns it without starting it. It returns
+// nil when no range is big enough. The caller must hold connMu.
+func (f *Fetcher) splitLargestLocked() *connection {
+	// Find connections with enough remaining work to split
+	// During slow start, use fixed minimum size since speed is not yet stable
+	minSplitSize := int64(stealMinChunkSize)
+
+	// Find the connection with most remaining work
+	var maxRemainConn *connection
+	var maxRemain int64
+
+	for _, conn := range f.connections {
+		if conn.Completed || conn.State == connFailed || conn.parked {
+			continue
+		}
+		if conn.Chunk.openEnded() {
+			continue
+		}
+		remain := conn.Chunk.remain()
+		// Only split if remaining work is at least 2x the minimum split size
+		if remain > maxRemain && remain > minSplitSize*2 {
+			maxRemainConn = conn
+			maxRemain = remain
+		}
+	}
+
+	if maxRemainConn == nil {
+		return nil
+	}
+
+	// Split the work: new connection takes the latter half
+	chunkEnd := *maxRemainConn.Chunk.End
+	splitPoint := chunkEnd - maxRemainConn.Chunk.remain()/2
+	newChunk := newChunk(splitPoint+1, chunkEnd)
+	maxRemainConn.Chunk.setEnd(splitPoint)
+
+	conn := &connection{
+		ID:    f.allocConnIDLocked(),
+		Role:  roleWorker,
+		State: connNotStarted,
+		Chunk: newChunk,
+	}
+	conn.ctx, conn.cancel = context.WithCancel(f.ctx)
+	f.connections = append(f.connections, conn)
+	return conn
+}
+
+// allocConnIDLocked returns a connection ID that no connection has had. IDs
+// grow from 0; restored records continue after their highest ID. While no
+// connection is ever removed this equals len(f.connections), today's rule.
+// The caller must hold connMu.
+func (f *Fetcher) allocConnIDLocked() int {
+	next := f.nextConnID
+	for _, conn := range f.connections {
+		if conn != nil && conn.ID >= next {
+			next = conn.ID + 1
+		}
+	}
+	f.nextConnID = next + 1
+	return next
 }
 
 func (f *Fetcher) runConnection(conn *connection) {
@@ -1136,6 +1230,9 @@ func (f *Fetcher) runConnection(conn *connection) {
 		requestErr := extractRequestError(err)
 		shouldUseResolveFallback := requestErr == nil || !isFailureExemptHTTPCode(requestErr.Code)
 		if shouldUseResolveFallback && f.completeFromResolveFallback(conn) {
+			return
+		}
+		if requestErr != nil && f.adaptive != nil && f.adaptiveLimited(conn, requestErr.Code) {
 			return
 		}
 		if isTerminalRangeError(err) {
@@ -1379,6 +1476,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	f.connMu.Lock()
 	conn.State = connDownloading
 	conn.failed = false
+	conn.gotData = true
 	f.connMu.Unlock()
 
 	if conn.Role == rolePrimary || conn.ID == 0 {
@@ -2013,6 +2111,11 @@ func (f *Fetcher) helpOtherConnection(helper *connection) bool {
 	f.connMu.Lock()
 	defer f.connMu.Unlock()
 
+	// A parked range has nobody downloading it, so it goes first and whole.
+	if f.adaptive != nil && f.takeParkedRangeLocked(helper) {
+		return true
+	}
+
 	// Find the connection with longest remaining time
 	var slowestConn *connection
 	var maxRemainSeconds int64
@@ -2339,6 +2442,37 @@ func (f *Fetcher) Patch(req *base.Request, opts *base.Options) error {
 		}
 	}
 
+	// Patch options: a positive connections value and an explicit adaptive
+	// switch. Zero values mean "unchanged".
+	if opts != nil && opts.Extra != nil {
+		if err := base.ParseOptExtra[fhttp.OptsExtra](opts); err != nil {
+			return err
+		}
+		patchExtra := opts.Extra.(*fhttp.OptsExtra)
+		if f.meta.Opts == nil {
+			f.meta.Opts = &base.Options{}
+		}
+		if f.meta.Opts.Extra == nil {
+			f.meta.Opts.Extra = &fhttp.OptsExtra{}
+		}
+		existingExtra := f.meta.Opts.Extra.(*fhttp.OptsExtra)
+		if patchExtra.Connections > 0 {
+			existingExtra.Connections = patchExtra.Connections
+			// A running adaptive task takes the new ceiling at its next window;
+			// otherwise the value applies from the next start.
+			f.adaptiveMu.Lock()
+			if f.adaptive != nil {
+				f.adaptive.setCeiling(patchExtra.Connections)
+			}
+			f.adaptiveMu.Unlock()
+		}
+		if patchExtra.Adaptive != nil {
+			// Applies from the next start.
+			value := *patchExtra.Adaptive
+			existingExtra.Adaptive = &value
+		}
+	}
+
 	return nil
 }
 
@@ -2469,6 +2603,7 @@ func (f *Fetcher) Stats() *fetcher.Stats {
 			Completed:  completed,
 			Failed:     connection.failed,
 			RetryTimes: connection.retryTimes,
+			Parked:     connection.parked && !completed,
 		})
 	}
 	if len(statsConnections) == 0 && prefetched > 0 {
@@ -2530,4 +2665,340 @@ func (f *Fetcher) responseReader(resp *http.Response) io.Reader {
 		return resp.Body
 	}
 	return NewTimeoutReader(resp.Body, readTimeout)
+}
+
+// ============================================================================
+// Adaptive connections
+// ============================================================================
+//
+// With adaptive connections on, downloadLoop runs adaptiveLoop instead of
+// slow start. It starts one connection, samples the task speed every
+// adaptiveTickInterval, and carries out the adaptiveController's decisions:
+// add a connection (revive a parked range, else split the largest range) or
+// park the slowest one. A parked connection stops at its current offset; once
+// its goroutine has exited, its remaining range is taken whole by the next
+// connection that runs out of work (helpOtherConnection), revived by the next
+// addition, or revived when nothing else runs.
+
+// adaptiveEnabled reports whether this task uses adaptive connections: the
+// task's own switch when set, else the global default.
+func (f *Fetcher) adaptiveEnabled() bool {
+	if f.meta != nil && f.meta.Opts != nil {
+		if extra, ok := f.meta.Opts.Extra.(*fhttp.OptsExtra); ok && extra.Adaptive != nil {
+			return *extra.Adaptive
+		}
+	}
+	return f.config != nil && f.config.Adaptive
+}
+
+// adaptiveLoop drives one Start cycle. It returns true only when the origin
+// stopped honouring byte ranges and the slow-start loop must take over.
+func (f *Fetcher) adaptiveLoop(ctx context.Context, isResume bool) bool {
+	if isResume {
+		f.adaptiveResume()
+	} else if !f.adaptiveStartFirst() {
+		return false
+	}
+
+	ticker := time.NewTicker(adaptiveTickInterval)
+	defer ticker.Stop()
+
+	measuring := false
+	var lastBytes int64
+	var lastAt time.Time
+
+	for {
+		var now time.Time
+		select {
+		case <-ctx.Done():
+			// Paused or cancelled
+			return false
+		case <-f.adaptiveWake:
+		case now = <-ticker.C:
+		}
+
+		f.connMu.Lock()
+		rangeMode := f.meta.Res.Range
+		f.connMu.Unlock()
+		if !rangeMode {
+			return true
+		}
+		if f.adaptiveIdle() {
+			f.waitForCompletion(ctx)
+			return false
+		}
+		if now.IsZero() {
+			continue // a wake-up only checks for completion
+		}
+
+		active, ready, total := f.adaptiveSnapshot()
+		if !measuring {
+			// Measure only once a range response has been validated and the
+			// resolve prefetch has been handed over; the takeover adds its
+			// prefetched bytes at once and would read as a burst of speed.
+			if ready && !f.resolveFallback.Load() {
+				measuring = true
+				lastBytes, lastAt = total, now
+			}
+			continue
+		}
+		elapsed := now.Sub(lastAt).Seconds()
+		if elapsed <= 0 {
+			continue
+		}
+		speed := int64(float64(total-lastBytes) / elapsed)
+		lastBytes, lastAt = total, now
+
+		f.adaptiveMu.Lock()
+		decision := f.adaptive.tick(now, speed, active)
+		f.adaptiveMu.Unlock()
+
+		switch decision {
+		case addConn:
+			f.connMu.Lock()
+			f.adaptiveAddLocked()
+			f.connMu.Unlock()
+		case parkSlowest:
+			f.connMu.Lock()
+			f.adaptiveParkSlowestLocked()
+			f.connMu.Unlock()
+		}
+	}
+}
+
+// adaptiveStartFirst starts connection 0 on a fresh start. It returns false
+// when the resolve prefetch already completed the task.
+func (f *Fetcher) adaptiveStartFirst() bool {
+	f.connMu.Lock()
+	conn := f.newFirstConnectionLocked(f.meta.Res.Size)
+	if conn == nil {
+		f.connMu.Unlock()
+		f.finishFromPrefetch()
+		return false
+	}
+	f.connections = append(f.connections, conn)
+	// Keep slow start's books as if it had launched this connection, so the
+	// slow-start loop can take over if the origin turns out to ignore ranges.
+	f.slowStart.commitBatch(1)
+	f.adaptiveLaunchLocked(conn)
+	f.connMu.Unlock()
+	return true
+}
+
+// adaptiveResume parks every unfinished connection and revives the one with
+// the most work left, so growth starts again from one connection.
+func (f *Fetcher) adaptiveResume() {
+	f.connMu.Lock()
+	defer f.connMu.Unlock()
+	for _, conn := range f.connections {
+		if conn.Completed || conn.State == connCompleted {
+			continue
+		}
+		// Same permanent failures that resumeConnections leaves alone.
+		if conn.State == connFailed && conn.failed {
+			if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
+				continue
+			}
+			if conn.retryTimes >= 3 {
+				continue
+			}
+		}
+		conn.parked = true
+		conn.running = false
+		conn.State = connParked
+		conn.failed = false
+	}
+	if conn := f.largestParkedLocked(1); conn != nil {
+		f.reviveLocked(conn)
+	}
+}
+
+// adaptiveLaunchLocked starts conn's goroutine and tracks it as running. The
+// wrapper's bookkeeping is part of the WaitGroup, so Pause returns only after
+// running is cleared. The caller must hold connMu.
+func (f *Fetcher) adaptiveLaunchLocked(conn *connection) {
+	conn.running = true
+	conn.gotData = false
+	f.wg.Add(2) // one for runConnection, one for this wrapper
+	go func() {
+		defer f.wg.Done()
+		f.runConnection(conn)
+
+		f.connMu.Lock()
+		conn.running = false
+		if conn.Completed || conn.State == connCompleted {
+			conn.parked = false
+		}
+		if conn.parked {
+			// Parking is not a failure: drop whatever the cancelled request
+			// recorded on its way out.
+			conn.State = connParked
+			conn.failed = false
+			conn.lastErr = nil
+		}
+		f.connMu.Unlock()
+
+		select {
+		case f.adaptiveWake <- struct{}{}:
+		default:
+		}
+	}()
+}
+
+// reviveLocked restarts a parked connection where it stopped. The caller must
+// hold connMu, and conn must not be running.
+func (f *Fetcher) reviveLocked(conn *connection) {
+	if conn.cancel != nil {
+		conn.cancel()
+	}
+	conn.ctx, conn.cancel = context.WithCancel(f.ctx)
+	conn.parked = false
+	conn.State = connNotStarted
+	conn.failed = false
+	conn.lastErr = nil
+	conn.retryTimes = 0
+	conn.speed = 0
+	conn.lastSpeedCheck = 0
+	conn.lastSpeedDownload = 0
+	f.adaptiveLaunchLocked(conn)
+}
+
+// largestParkedLocked returns the stopped parked connection with the most
+// work left, if that is at least minRemain bytes. The caller must hold connMu.
+func (f *Fetcher) largestParkedLocked(minRemain int64) *connection {
+	var best *connection
+	var bestRemain int64
+	for _, conn := range f.connections {
+		if !conn.parked || conn.running || conn.Completed || conn.Chunk == nil || conn.Chunk.openEnded() {
+			continue
+		}
+		if remain := conn.Chunk.remain(); remain >= minRemain && remain > bestRemain {
+			best, bestRemain = conn, remain
+		}
+	}
+	return best
+}
+
+// adaptiveAddLocked carries out addConn. It returns false when there is no
+// work to give a new connection; the controller notices that the count did
+// not rise. The caller must hold connMu.
+func (f *Fetcher) adaptiveAddLocked() bool {
+	if conn := f.largestParkedLocked(stealMinChunkSize); conn != nil {
+		f.reviveLocked(conn)
+		return true
+	}
+	conn := f.splitLargestLocked()
+	if conn == nil {
+		return false
+	}
+	f.adaptiveLaunchLocked(conn)
+	return true
+}
+
+// adaptiveParkSlowestLocked carries out parkSlowest. It never parks the last
+// running connection. The caller must hold connMu.
+func (f *Fetcher) adaptiveParkSlowestLocked() bool {
+	var victim *connection
+	active := 0
+	for _, conn := range f.connections {
+		if !conn.running || conn.parked {
+			continue
+		}
+		active++
+		// The slowest; on a tie the newest, which is the one just added.
+		if victim == nil || conn.speed < victim.speed || (conn.speed == victim.speed && conn.ID > victim.ID) {
+			victim = conn
+		}
+	}
+	if active <= 1 || victim == nil {
+		return false
+	}
+	victim.parked = true
+	if victim.cancel != nil {
+		victim.cancel()
+	}
+	return true
+}
+
+// takeParkedRangeLocked gives helper the whole remaining range of the stopped
+// parked connection with the most work left. Unlike stealing from a running
+// connection there is no minimum size: nobody else would fetch it. The caller
+// must hold connMu.
+func (f *Fetcher) takeParkedRangeLocked(helper *connection) bool {
+	victim := f.largestParkedLocked(1)
+	if victim == nil || victim == helper {
+		return false
+	}
+	pos := victim.Chunk.Begin + victim.Chunk.Downloaded
+	helper.Chunk.Begin = pos
+	helper.Chunk.setEnd(*victim.Chunk.End)
+	helper.Chunk.Downloaded = 0
+	victim.Chunk.setEnd(pos - 1)
+	victim.parked = false
+	victim.Completed = true
+	victim.State = connCompleted
+	return true
+}
+
+// adaptiveIdle reports whether the download is finished: nothing runs and
+// no parked range is left. If nothing runs but a parked range is, it revives
+// that connection and reports false.
+func (f *Fetcher) adaptiveIdle() bool {
+	f.connMu.Lock()
+	defer f.connMu.Unlock()
+	for _, conn := range f.connections {
+		if conn.running {
+			return false
+		}
+	}
+	if conn := f.largestParkedLocked(1); conn != nil {
+		f.reviveLocked(conn)
+		return false
+	}
+	return true
+}
+
+// adaptiveSnapshot returns the running, unparked connection count, whether
+// one of them has a validated response, and the bytes downloaded so far.
+func (f *Fetcher) adaptiveSnapshot() (active int, ready bool, total int64) {
+	f.connMu.Lock()
+	defer f.connMu.Unlock()
+	for _, conn := range f.connections {
+		total += conn.Downloaded
+		if conn.running && !conn.parked {
+			active++
+			if conn.gotData {
+				ready = true
+			}
+		}
+	}
+	return active, ready, total
+}
+
+// adaptiveLimited handles a limiting status on conn with adaptive on. A 403
+// or 429 before any data means the server allows no more connections; a 429
+// or 503 after data means it wants fewer. Either way, while another
+// connection still runs, conn is parked (not failed) and the controller is
+// told. It returns true when conn was parked and must stop.
+func (f *Fetcher) adaptiveLimited(conn *connection, code int) bool {
+	f.connMu.Lock()
+	newConn := !conn.gotData
+	limiting := (newConn && (code == 403 || code == 429)) || (!newConn && (code == 429 || code == 503))
+	others := 0
+	for _, c := range f.connections {
+		if c != conn && c.running && !c.parked {
+			others++
+		}
+	}
+	if !limiting || others == 0 {
+		f.connMu.Unlock()
+		return false
+	}
+	conn.parked = true
+	f.connMu.Unlock()
+
+	f.adaptiveMu.Lock()
+	f.adaptive.limited(time.Now(), others, newConn)
+	f.adaptiveMu.Unlock()
+	return true
 }

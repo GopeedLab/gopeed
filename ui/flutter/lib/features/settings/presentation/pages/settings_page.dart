@@ -552,6 +552,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   SettingsItem(
+                    title: context.l10n.adaptiveConnections,
+                    subtitle: context.l10n.adaptiveConnectionsDescription,
+                    child: shad.Switch(
+                      key: const ValueKey('http-adaptive-switch'),
+                      value: config.protocolConfig.http.adaptive,
+                      onChanged: (value) => _mutateConfig((next) => next.protocolConfig.http.adaptive = value),
+                    ),
+                  ),
+                  SettingsItem(
                     title: context.l10n.useServerCtime,
                     child: shad.Switch(
                       value: config.protocolConfig.http.useServerCtime,
