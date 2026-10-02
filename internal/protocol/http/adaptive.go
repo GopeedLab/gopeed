@@ -10,21 +10,28 @@ import "time"
 //
 //   - every window (adaptiveTickInterval) is one speed sample;
 //   - an addition is judged on the mean of the next adaptiveEvalWindows
-//     windows against the speed before it;
-//   - a gain of at least adaptiveKeepBar(n), where n is the count before the
-//     addition, keeps the connection and adds another: each new connection
-//     must bring at least half of its fair share (1/n), and never less than
-//     adaptiveMinKeepGain, so a server that scales linearly can be followed
-//     up to a ceiling of 32;
-//   - below that, a gain of at least adaptivePlateauGain keeps it but stops
-//     growth (this band exists only while n < 10);
+//     windows against the mean of the adaptiveEvalWindows windows before it;
+//   - the keep bar for a connection added to n running ones is
+//     adaptiveKeepBar(n) = max(3%, min(10%, 0.5/n)): 10% at the start, then
+//     half of the new connection's fair share (1/n), never under 3%, so a
+//     server that scales linearly can be followed up to a ceiling of 32;
+//   - a gain of at least the bar and at least adaptivePlateauGain (5%) keeps
+//     the connection and adds another;
+//   - a gain of at least the smaller of the two keeps the connection but
+//     stops growth until the next probe interval;
 //   - a smaller gain is a plateau: the connection is given back;
 //   - adaptiveEvalWindows windows below (1 - adaptiveShrinkDrop) of the best
 //     speed park the slowest connection;
 //   - every adaptiveProbeInterval, below the ceiling, one more connection is
 //     tried and kept only if it helps;
-//   - a 403 or 429 on a new connection, twice within adaptiveLimitWindow,
-//     sets the ceiling to the count that worked; a 429 or 503 on a
+//   - every adaptivePruneEvery-th interval the newest connection is parked
+//     for adaptiveEvalWindows windows instead. If the speed falls by less than
+//     the keep bar, the connection did not help: it stays parked, and the
+//     count may not grow past n-1 until a probe interval has passed.
+//     Otherwise it is resumed. This gives back connections that window noise
+//     let in;
+//   - a 403 or 429 on a new connection, twice within adaptiveStrikeWindows
+//     windows, sets the ceiling to the count that worked; a 429 or 503 on a
 //     connection that already had data parks that connection (the fetcher
 //     does this on the second such response in a row; while it waits to
 //     retry it delivers nothing, so it is the slowest).
@@ -34,21 +41,23 @@ var (
 )
 
 const (
-	adaptiveEvalWindows = 2
-	adaptiveFairShare   = 0.5  // a new connection must bring this part of 1/n
-	adaptiveMinKeepGain = 0.03 // and never less than this
-	adaptivePlateauGain = 0.05
-	adaptiveShrinkDrop  = 0.15
-	adaptiveLimitWindow = 10 * time.Second // two refusals within it set the ceiling
+	adaptiveEvalWindows   = 2
+	adaptiveFairShare     = 0.5  // a new connection must bring this part of 1/n
+	adaptiveMinKeepGain   = 0.03 // the keep bar is never lower
+	adaptiveMaxKeepGain   = 0.10 // nor higher
+	adaptivePlateauGain   = 0.05
+	adaptiveShrinkDrop    = 0.15
+	adaptiveStrikeWindows = 5 // two refusals within this many windows set the ceiling
+	adaptivePruneEvery    = 4 // every 4th probe interval is a prune test
 )
 
-// adaptiveKeepBar is the gain that keeps a connection added to n running
-// ones and continues growth: max(3%, 0.5/n).
+// adaptiveKeepBar is the gain a connection added to n running ones must
+// bring: max(3%, min(10%, 0.5/n)).
 func adaptiveKeepBar(n int) float64 {
 	if n < 1 {
 		n = 1
 	}
-	return max(adaptiveMinKeepGain, adaptiveFairShare/float64(n))
+	return max(adaptiveMinKeepGain, min(adaptiveMaxKeepGain, adaptiveFairShare/float64(n)))
 }
 
 type adaptiveDecision int
@@ -57,6 +66,7 @@ const (
 	holdConns adaptiveDecision = iota
 	addConn
 	parkSlowest
+	parkNewest
 )
 
 func (d adaptiveDecision) String() string {
@@ -65,6 +75,8 @@ func (d adaptiveDecision) String() string {
 		return "addConn"
 	case parkSlowest:
 		return "parkSlowest"
+	case parkNewest:
+		return "parkNewest"
 	default:
 		return "holdConns"
 	}
@@ -80,6 +92,8 @@ const (
 	phaseAdded
 	// phaseParked judges a connection parked because the speed dropped.
 	phaseParked
+	// phasePruned judges the newest connection, parked by a prune test.
+	phasePruned
 	// phaseSteady watches for a drop and probes on a timer.
 	phaseSteady
 )
@@ -111,8 +125,21 @@ type adaptiveController struct {
 	probeAt time.Time
 
 	// strikeAt is when a new connection was last refused. A second refusal
-	// within adaptiveLimitWindow sets the ceiling; one alone does not.
+	// within strikeWindow sets the ceiling; one alone does not. A connection
+	// added after it that runs clears it.
 	strikeAt time.Time
+
+	// intervals counts probe intervals; every adaptivePruneEvery-th is a
+	// prune test instead of a probe.
+	intervals int
+	// holdCap is the count growth may not pass until holdUntil, after a
+	// prune test found a connection that did not help.
+	holdCap   int
+	holdUntil time.Time
+
+	// The clock, read once so a running controller never sees it change.
+	probeEvery   time.Duration
+	strikeWindow time.Duration
 }
 
 func newAdaptiveController(ceiling int, now time.Time) *adaptiveController {
@@ -120,11 +147,22 @@ func newAdaptiveController(ceiling int, now time.Time) *adaptiveController {
 		ceiling = 1
 	}
 	return &adaptiveController{
-		ceiling: ceiling,
-		phase:   phaseMeasure,
-		grow:    true,
-		expect:  1,
+		ceiling:      ceiling,
+		phase:        phaseMeasure,
+		grow:         true,
+		expect:       1,
+		probeEvery:   adaptiveProbeInterval,
+		strikeWindow: adaptiveStrikeWindows * adaptiveTickInterval,
 	}
+}
+
+// growLimit is the count growth may reach now: the ceiling, or less while a
+// prune test's hold lasts.
+func (c *adaptiveController) growLimit(now time.Time) int {
+	if c.holdCap > 0 && now.Before(c.holdUntil) && c.holdCap < c.ceiling {
+		return c.holdCap
+	}
+	return c.ceiling
 }
 
 // setCeiling changes the maximum, for example when the task's connections
@@ -166,23 +204,28 @@ func (c *adaptiveController) tick(now time.Time, speed int64, active int) adapti
 		if !c.keepBest || mean > c.best {
 			c.best = mean
 		}
-		if c.grow && active < c.ceiling {
+		if c.grow && active < c.growLimit(now) {
 			return c.add(mean, active)
 		}
 		c.settle(now)
 		return holdConns
 
 	case phaseAdded:
+		// The added connection ran for two windows, so a refusal streak is
+		// over.
+		c.strikeAt = time.Time{}
 		gain := gainOf(mean, c.before)
+		bar := adaptiveKeepBar(active - 1)
 		switch {
-		case gain >= adaptiveKeepBar(active-1):
+		case gain >= max(bar, adaptivePlateauGain):
 			c.best = mean
-			if active < c.ceiling {
+			if active < c.growLimit(now) {
 				return c.add(mean, active)
 			}
 			c.settle(now)
 			return holdConns
-		case gain >= adaptivePlateauGain:
+		case gain >= min(bar, adaptivePlateauGain):
+			// Kept, but growth waits for the next probe interval.
 			c.best = mean
 			c.settle(now)
 			return holdConns
@@ -218,6 +261,26 @@ func (c *adaptiveController) tick(now time.Time, speed int64, active int) adapti
 		}
 		c.settle(now)
 		return holdConns
+
+	case phasePruned:
+		// active is n-1 now. The n-th connection's gain is measured as for an
+		// addition: the speed with it against the speed without it. Below the
+		// bar it would need to be added, it did not help.
+		if gainOf(c.before, mean) < adaptiveKeepBar(active) {
+			c.best = mean
+			c.holdCap = active
+			c.holdUntil = now.Add(c.probeEvery)
+			c.settle(now)
+			return holdConns
+		}
+		// It was needed: resume it.
+		c.best = c.before
+		if active < c.ceiling {
+			c.measure(active+1, false, true)
+			return addConn
+		}
+		c.settle(now)
+		return holdConns
 	}
 	return holdConns
 }
@@ -228,8 +291,8 @@ func (c *adaptiveController) tick(now time.Time, speed int64, active int) adapti
 // With newConn, a 403 or 429 on a connection that never got data: the first
 // refusal may be stray (for example a request the server has not yet seen
 // end), so the controller measures and tries once more. A second refusal
-// within adaptiveLimitWindow means the server's limit is the count that
-// worked, which becomes the ceiling.
+// within adaptiveStrikeWindows windows means the server's limit is the count
+// that worked, which becomes the ceiling.
 //
 // Otherwise a 429 or 503 hit a connection mid-stream: the next probe waits a
 // full interval, and the lower count is measured afresh rather than read as
@@ -239,17 +302,17 @@ func (c *adaptiveController) limited(now time.Time, active int, newConn bool) {
 		active = 1
 	}
 	if !newConn {
-		c.probeAt = now.Add(adaptiveProbeInterval)
+		c.probeAt = now.Add(c.probeEvery)
 		c.measure(active, false, false)
 		return
 	}
 	// A refused new connection changed nothing that runs, so the best stands.
-	if !c.strikeAt.IsZero() && now.Sub(c.strikeAt) <= adaptiveLimitWindow {
+	if !c.strikeAt.IsZero() && now.Sub(c.strikeAt) <= c.strikeWindow {
 		c.strikeAt = time.Time{}
 		if active < c.ceiling {
 			c.ceiling = active
 		}
-		c.probeAt = now.Add(adaptiveProbeInterval)
+		c.probeAt = now.Add(c.probeEvery)
 		c.measure(active, false, true)
 		return
 	}
@@ -283,15 +346,28 @@ func (c *adaptiveController) steady(now time.Time, speed int64, active int) adap
 		return holdConns
 	}
 
-	if active < c.ceiling && !now.Before(c.probeAt) {
-		c.probeAt = now.Add(adaptiveProbeInterval)
-		before := speed
-		if prev > 0 {
-			before = (prev + speed) / 2
+	// Probe intervals. The speed before a test is the mean of the last two
+	// windows, so wait for a second window after settling.
+	if prev > 0 && !now.Before(c.probeAt) {
+		c.probeAt = now.Add(c.probeEvery)
+		c.intervals++
+		before := (prev + speed) / 2
+		if c.intervals%adaptivePruneEvery == 0 && active > 1 {
+			return c.prune(before, active)
 		}
-		return c.add(before, active)
+		if active < c.growLimit(now) {
+			return c.add(before, active)
+		}
 	}
 	return holdConns
+}
+
+func (c *adaptiveController) prune(before int64, active int) adaptiveDecision {
+	c.phase = phasePruned
+	c.before = before
+	c.expect = active - 1
+	c.samples = c.samples[:0]
+	return parkNewest
 }
 
 func (c *adaptiveController) add(before int64, active int) adaptiveDecision {
@@ -323,7 +399,7 @@ func (c *adaptiveController) settle(now time.Time) {
 	c.lastWindow = 0
 	c.lowWindows, c.lowSum = 0, 0
 	if c.probeAt.IsZero() || c.probeAt.Before(now) {
-		c.probeAt = now.Add(adaptiveProbeInterval)
+		c.probeAt = now.Add(c.probeEvery)
 	}
 }
 
