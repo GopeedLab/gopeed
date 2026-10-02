@@ -157,7 +157,7 @@ func TestScript_TriggerOnError(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create task: %v", err)
 		}
-		waitForTaskError(t, downloader, id, 10*time.Second)
+		waitForTaskStatus(t, downloader, id, base.DownloadStatusError, 10*time.Second)
 
 		output := waitForFileContains(t, outputFile, "GOPEED_TASK_PATH=", 5*time.Second)
 		for _, want := range []string{
@@ -215,7 +215,7 @@ func TestScript_TriggerOnError_ResolvedTask(t *testing.T) {
 	task := downloader.GetTask(id)
 	taskPath := task.Meta.SingleFilepath()
 	task.fetcher.(*generationTestFetcher).done <- errors.New("download failed mid-way")
-	waitForTaskError(t, downloader, id, 2*time.Second)
+	waitForTaskStatus(t, downloader, id, base.DownloadStatusError, 2*time.Second)
 
 	output := waitForFileContains(t, outputFile, "GOPEED_TASK_PATH=", 5*time.Second)
 	for _, want := range []string{
@@ -290,20 +290,6 @@ func waitForFileContains(t *testing.T, path, want string, timeout time.Duration)
 	content, _ := os.ReadFile(path)
 	t.Fatalf("Timeout waiting for %q in file %s, got: %q", want, path, content)
 	return ""
-}
-
-// waitForTaskError waits until the task is in the error status. Unlike
-// waitForTaskStatus it reads the status under the task's status lock.
-func waitForTaskError(t *testing.T, downloader *Downloader, id string, timeout time.Duration) {
-	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if task := downloader.GetTask(id); task != nil && downloader.taskStatus(task) == base.DownloadStatusError {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	t.Fatalf("Timeout waiting for task %s to fail", id)
 }
 
 // envDumpScriptName returns the test script that dumps the GOPEED_* variables
