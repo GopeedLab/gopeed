@@ -19,6 +19,13 @@ type simServer struct {
 	// strayAt rejects the first new connection that would reach this count,
 	// once, and accepts every later one (0 means never).
 	strayAt int
+	// strays rejects the first new connection that would reach each listed
+	// count, once per count.
+	strays []int
+	// refuseResume models a server that still counts a pruned connection's
+	// cancelled request for 10 s: every request that would bring the count
+	// back to what it was before the prune is refused in that time.
+	refuseResume bool
 	// sqrt makes the speed grow with the square root of the count.
 	sqrt bool
 	// noise, when set, multiplies every window by 1 + U(-jitter, +jitter).
@@ -53,6 +60,10 @@ type simRun struct {
 	parks    []time.Time // every park decision
 	prunes   []time.Time // parkNewest
 	strayed  bool
+	strayHit map[int]bool
+	resumes  int // requests refused while a pruned connection's slot lingered
+	pruneAt  time.Time
+	pruneN   int
 }
 
 func newSimRun(ceiling int) *simRun {
@@ -75,6 +86,11 @@ func (r *simRun) step(s simServer) adaptiveDecision {
 		} else if s.strayAt > 0 && r.active+1 == s.strayAt && !r.strayed {
 			r.strayed = true
 			r.c.limited(r.now, r.active, true)
+		} else if r.strayOnce(s, r.active+1) {
+			r.c.limited(r.now, r.active, true)
+		} else if s.refuseResume && r.active+1 >= r.pruneN && r.now.Sub(r.pruneAt) <= 10*time.Second {
+			r.resumes++
+			r.c.limited(r.now, r.active, true)
 		} else {
 			r.active++
 		}
@@ -84,10 +100,24 @@ func (r *simRun) step(s simServer) adaptiveDecision {
 	case parkNewest:
 		r.parks = append(r.parks, r.now)
 		r.prunes = append(r.prunes, r.now)
+		r.pruneAt, r.pruneN = r.now, r.active
 		r.active--
 	}
 	r.timeline = append(r.timeline, r.active)
 	return d
+}
+
+func (r *simRun) strayOnce(s simServer, count int) bool {
+	for _, n := range s.strays {
+		if n == count && !r.strayHit[n] {
+			if r.strayHit == nil {
+				r.strayHit = map[int]bool{}
+			}
+			r.strayHit[n] = true
+			return true
+		}
+	}
+	return false
 }
 
 func (r *simRun) run(s simServer, d time.Duration) {
@@ -332,12 +362,21 @@ func TestAdaptiveOneStrayRefusalKeepsCeiling(t *testing.T) {
 
 // Each added connection must bring at least half of its fair share, so a
 // server that scales linearly reaches a high ceiling.
+// Up to about 21 connections each addition gains over 5% and growth chains,
+// so the ramp is fast. Above that a linear gain (1/n) is under 5%: the
+// connection is kept, but growth waits for the next probe interval (D4), and
+// every 4th interval is a prune test (D5) instead of a probe.
 func TestAdaptiveReachesHighCeilingOnLinearServer(t *testing.T) {
 	r := newSimRun(32)
-	r.run(simServer{perConn: mb, totalCap: 30 * mb}, 5*time.Minute)
+	server := simServer{perConn: mb, totalCap: 30 * mb}
+	r.run(server, 90*time.Second)
+	if r.active < 20 {
+		t.Fatalf("active = %d after 90 s with a server that scales to 30, want at least 20", r.active)
+	}
+	r.run(server, 7*time.Minute-90*time.Second)
 	t.Logf("timeline: %v", r.timeline)
 	if r.active < 28 {
-		t.Fatalf("active = %d with a server that scales to 30, want at least 28", r.active)
+		t.Fatalf("active = %d after 7 minutes with a server that scales to 30, want at least 28", r.active)
 	}
 	if m := maxOf(r.timeline); m > 32 {
 		t.Fatalf("reached %d connections, above the ceiling of 32", m)
@@ -405,5 +444,44 @@ func TestAdaptivePruneGivesBackUselessConnection(t *testing.T) {
 	}
 	if r.active != 4 {
 		t.Fatalf("active = %d, want the useless fifth connection given back (4)", r.active)
+	}
+}
+
+// A strike is cleared once a later connection has run. Then a single refusal
+// shortly after is a new stray, not the second strike.
+func TestAdaptiveSuccessfulRetryClearsStrike(t *testing.T) {
+	r := newSimRun(16)
+	// The first try at 5 and the first try at 6 are both refused once. The
+	// second refusal comes 8 s after the first, inside the 5-window strike
+	// window, but the successful retry at 5 in between cleared the strike.
+	r.run(simServer{perConn: mb, totalCap: 8 * mb, strays: []int{5, 6}}, 2*time.Minute)
+	t.Logf("timeline: %v", r.timeline)
+	if len(r.strayHit) != 2 {
+		t.Fatalf("setup: %d stray refusals happened, want 2", len(r.strayHit))
+	}
+	if r.c.ceiling != 16 {
+		t.Fatalf("ceiling = %d, want 16 (two refusals with a successful retry between them are not a limit)", r.c.ceiling)
+	}
+	if r.active < 8 {
+		t.Fatalf("active = %d, want 8", r.active)
+	}
+}
+
+// D6: the request that resumes a pruned connection may be refused because
+// the server still counts the request just cancelled. That is never a
+// strike: the ceiling stays, and the connection stays parked until the next
+// probe brings it back.
+func TestAdaptiveRefusedPruneResumeKeepsCeiling(t *testing.T) {
+	r := newSimRun(16)
+	r.run(simServer{perConn: mb, totalCap: 6 * mb, refuseResume: true}, 15*time.Minute)
+	t.Logf("timeline: %v", r.timeline)
+	if r.resumes < 3 {
+		t.Fatalf("setup: only %d resumes were refused, want several prune cycles", r.resumes)
+	}
+	if r.c.ceiling != 16 {
+		t.Fatalf("ceiling = %d after %d refused resumes, want 16 (unchanged)", r.c.ceiling, r.resumes)
+	}
+	if r.active < 5 {
+		t.Fatalf("active = %d, want the count to recover to 5 or 6 between prunes", r.active)
 	}
 }
