@@ -65,3 +65,23 @@ Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) =>
       'deleteAfterExtract': instance.deleteAfterExtract,
       'checksum': ?instance.checksum?.toJson(),
     };
+
+OptsExtraFtp _$OptsExtraFtpFromJson(Map<String, dynamic> json) => OptsExtraFtp(
+  connections: (json['connections'] as num?)?.toInt() ?? 0,
+  tls: json['tls'] as String?,
+  autoTorrent: json['autoTorrent'] as bool?,
+  deleteTorrentAfterDownload: json['deleteTorrentAfterDownload'] as bool?,
+  autoExtract: json['autoExtract'] as bool?,
+  archivePassword: json['archivePassword'] as String? ?? '',
+  deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$OptsExtraFtpToJson(OptsExtraFtp instance) => <String, dynamic>{
+  'connections': instance.connections,
+  'tls': ?instance.tls,
+  'autoTorrent': ?instance.autoTorrent,
+  'deleteTorrentAfterDownload': ?instance.deleteTorrentAfterDownload,
+  'autoExtract': ?instance.autoExtract,
+  'archivePassword': instance.archivePassword,
+  'deleteAfterExtract': instance.deleteAfterExtract,
+};

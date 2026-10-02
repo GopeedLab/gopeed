@@ -82,6 +82,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   bool? _deleteTorrentAfterDownload;
   bool? _autoExtract;
   bool _deleteAfterExtract = false;
+  String _ftpTls = _ftpTlsNone;
+  bool _allLinksFtp = false;
+  bool _hasPlainFtpLink = false;
   List<DownloadCategory> _downloadCategories = const [];
 
   bool _showAdvanced = false;
@@ -220,6 +223,25 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       }
     }
     _recognizeMagnetUri(urlText.trim());
+    _refreshFtpLinks();
+  }
+
+  /// Shows the FTP options (the 32-connection limit and the TLS select) only
+  /// while the input contains FTP links.
+  void _refreshFtpLinks() {
+    final links = Util.textToLines(_urlController.text).map((line) => line.trim()).where((line) => line.isNotEmpty);
+    final allFtp = links.isNotEmpty && links.every((link) => _parseProtocol(link) == _TaskProtocol.ftp);
+    final hasPlainFtp = links.any(_isPlainFtpUrl);
+    if (allFtp == _allLinksFtp && hasPlainFtp == _hasPlainFtpLink) return;
+    if (!mounted) {
+      _allLinksFtp = allFtp;
+      _hasPlainFtpLink = hasPlainFtp;
+      return;
+    }
+    setState(() {
+      _allLinksFtp = allFtp;
+      _hasPlainFtpLink = hasPlainFtp;
+    });
   }
 
   void _applyInitialTask(CreateTask? task) {
@@ -237,6 +259,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         _httpBody = '';
         _replaceHttpHeaders(const {'User-Agent': '', 'Cookie': '', 'Referer': ''});
         _trackersController.clear();
+        _ftpTls = _ftpTlsNone;
         _protocolTab = 0;
         _urlController.text = req!.url;
         _initialRawUrl = req.rawUrl;
@@ -261,6 +284,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
               _trackersController.text = extra.trackers.join('\n');
             }
             break;
+          case _TaskProtocol.ftp:
           case _TaskProtocol.ed2k:
           case null:
             break;
@@ -437,10 +461,22 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                         fieldKey: const ValueKey('create-task-connections-input'),
                         controller: _connectionsController,
                         min: 1,
-                        max: 256,
+                        max: _allLinksFtp ? _ftpMaxConnections : 256,
                         hintText: context.l10n.enterCount,
                       ),
                     ),
+                    if (_hasPlainFtpLink) ...[
+                      const SizedBox(height: 16),
+                      AppFormRow(
+                        direction: stacked ? Axis.vertical : Axis.horizontal,
+                        label: context.l10n.ftpTls,
+                        child: _FtpTlsSelect(
+                          key: const ValueKey('create-task-ftp-tls'),
+                          value: _ftpTls,
+                          onChanged: (value) => setState(() => _ftpTls = value),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     AppFormRow(
                       direction: stacked ? Axis.vertical : Axis.horizontal,
@@ -964,7 +1000,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 .createTask(
                   CreateTask(
                     req: _buildRequest(url, protocolUrl: _protocolUrlFor(url)),
-                    opts: _buildOptions(name: urls.length > 1 ? '' : _renameController.text.trim()),
+                    opts: _buildOptions(
+                      url: _protocolUrlFor(url),
+                      name: urls.length > 1 ? '' : _renameController.text.trim(),
+                    ),
                   ),
                 );
           }),
@@ -1024,6 +1063,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           extra = ReqExtraBt(trackers: trackers).toJson();
         }
         break;
+      case _TaskProtocol.ftp:
       case _TaskProtocol.ed2k:
       case null:
         break;
@@ -1099,6 +1139,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     if (uppercaseUrl.startsWith('HTTP:') || uppercaseUrl.startsWith('HTTPS:')) {
       return _TaskProtocol.http;
     }
+    // Checked before BitTorrent, so ftp://host/file.torrent downloads the file over FTP.
+    if (uppercaseUrl.startsWith('FTP:') || uppercaseUrl.startsWith('FTPS:') || uppercaseUrl.startsWith('FTPES:')) {
+      return _TaskProtocol.ftp;
+    }
     if (uppercaseUrl.startsWith('MAGNET:') || uppercaseUrl.endsWith('.TORRENT')) {
       return _TaskProtocol.bt;
     }
@@ -1107,6 +1151,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     }
     return null;
   }
+
+  /// Whether [url] is a plain `ftp://` link, the only FTP scheme whose TLS mode is chosen by the user.
+  bool _isPlainFtpUrl(String url) => url.trim().toUpperCase().startsWith('FTP:');
 
   String _normalizeTaskUrl(String url) {
     if (_isBtHash(url)) {
@@ -1130,7 +1177,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     return text.length == 40 && RegExp(r'^[0-9a-fA-F]+$').hasMatch(text);
   }
 
+  /// Builds the task options for [url]. FTP links get the FTP options, with at
+  /// most [_ftpMaxConnections] connections; the checksum is HTTP only.
   api_options.Options _buildOptions({
+    required String url,
     String? name,
     List<int> selectFiles = const [],
     bool omitChecksum = false,
@@ -1138,18 +1188,22 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }) {
     final urls = _inputUrls();
     final connections = int.tryParse(_connectionsController.text.trim()) ?? 0;
-    final checksumExpected = _checksumHashController.text.trim();
-    final checksum = (!omitChecksum && _inputUrls().length <= 1 && checksumExpected.isNotEmpty)
-        ? api_options.ChecksumOption(algorithm: _checksumAlgorithm, expected: checksumExpected)
-        : null;
-    return api_options.Options(
-      size: urls.length == 1 && _parseProtocol(_protocolUrlFor(urls.first)) == _TaskProtocol.http ? _initialSize : 0,
-      name: name ?? _renameController.text.trim(),
-      path: _directoryController.text.trim(),
-      asDefaultPath: _asDefaultPath,
-      skipAutoCategorize: skipAutoCategorize ?? _directoryManuallySet,
-      selectFiles: selectFiles,
-      extra: api_options.OptsExtraHttp(
+    final Map<String, dynamic> extra;
+    if (_parseProtocol(url) == _TaskProtocol.ftp) {
+      extra = api_options.OptsExtraFtp(
+        connections: connections.clamp(0, _ftpMaxConnections),
+        autoTorrent: _autoTorrent,
+        deleteTorrentAfterDownload: _deleteTorrentAfterDownload,
+        autoExtract: _autoExtract,
+        archivePassword: _archivePasswordController.text,
+        deleteAfterExtract: _deleteAfterExtract,
+      ).toJson();
+    } else {
+      final checksumExpected = _checksumHashController.text.trim();
+      final checksum = (!omitChecksum && urls.length <= 1 && checksumExpected.isNotEmpty)
+          ? api_options.ChecksumOption(algorithm: _checksumAlgorithm, expected: checksumExpected)
+          : null;
+      extra = api_options.OptsExtraHttp(
         connections: connections,
         autoTorrent: _autoTorrent,
         deleteTorrentAfterDownload: _deleteTorrentAfterDownload,
@@ -1157,7 +1211,16 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         archivePassword: _archivePasswordController.text,
         deleteAfterExtract: _deleteAfterExtract,
         checksum: checksum,
-      ).toJson(),
+      ).toJson();
+    }
+    return api_options.Options(
+      size: urls.length == 1 && _parseProtocol(_protocolUrlFor(urls.first)) == _TaskProtocol.http ? _initialSize : 0,
+      name: name ?? _renameController.text.trim(),
+      path: _directoryController.text.trim(),
+      asDefaultPath: _asDefaultPath,
+      skipAutoCategorize: skipAutoCategorize ?? _directoryManuallySet,
+      selectFiles: selectFiles,
+      extra: extra,
     );
   }
 
@@ -1232,7 +1295,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           .createTask(
             CreateTask(
               rid: result.id,
-              opts: _buildOptions(selectFiles: selected, omitChecksum: isMultiFile),
+              opts: _buildOptions(url: request.url, selectFiles: selected, omitChecksum: isMultiFile),
             ),
           );
       return;
@@ -1254,7 +1317,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
             name: file.name,
             path: path.join(_directoryController.text.trim(), result.res.name, file.path),
             skipAutoCategorize: keepStructure,
-            extra: _buildOptions(omitChecksum: isMultiFile).extra,
+            extra: _buildOptions(url: fileRequest.url, omitChecksum: isMultiFile).extra,
           ),
         );
       }).toList();
@@ -1263,13 +1326,20 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           .createTaskBatch(
             CreateTaskBatch(
               reqs: reqs,
-              opts: _buildOptions(omitChecksum: isMultiFile, skipAutoCategorize: keepStructure),
+              opts: _buildOptions(url: request.url, omitChecksum: isMultiFile, skipAutoCategorize: keepStructure),
             ),
           );
       return;
     }
 
-    await ref.read(gopeedServiceProvider).createTask(CreateTask(req: request, opts: _buildOptions()));
+    await ref
+        .read(gopeedServiceProvider)
+        .createTask(
+          CreateTask(
+            req: request,
+            opts: _buildOptions(url: request.url),
+          ),
+        );
   }
 
   Future<bool> _showResolveDialog(Request request, ResolveResult result) async {
@@ -1595,7 +1665,48 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 }
 
-enum _TaskProtocol { http, bt, ed2k }
+enum _TaskProtocol { http, bt, ed2k, ftp }
+
+/// Chooses how a plain `ftp://` link is encrypted. The values are the
+/// `tls` option of an FTP task.
+class _FtpTlsSelect extends StatelessWidget {
+  const _FtpTlsSelect({super.key, required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = {
+      _ftpTlsNone: context.l10n.ftpTlsNone,
+      _ftpTlsExplicit: context.l10n.ftpTlsExplicit,
+      _ftpTlsImplicit: context.l10n.ftpTlsImplicit,
+    };
+    return LayoutBuilder(
+      builder: (context, constraints) => Select<String>(
+        value: value,
+        constraints: BoxConstraints.tightFor(width: constraints.maxWidth),
+        itemBuilder: (context, selected) =>
+            Text(labels[selected] ?? selected, maxLines: 1, overflow: TextOverflow.ellipsis),
+        popup: (context) => SelectPopup<String>(
+          items: SelectItemList(
+            children: [
+              for (final entry in labels.entries)
+                SelectItemButton<String>(
+                  key: ValueKey('create-task-ftp-tls-${entry.key}'),
+                  value: entry.key,
+                  child: Text(entry.value),
+                ),
+            ],
+          ),
+        ),
+        onChanged: (selected) {
+          if (selected != null) onChanged(selected);
+        },
+      ),
+    );
+  }
+}
 
 class _DirectDownloadToggle extends StatelessWidget {
   const _DirectDownloadToggle({required this.value, required this.onChanged});
@@ -2007,3 +2118,11 @@ const _advancedScrollDuration = Duration(milliseconds: 260);
 const _advancedScrollExtentRetryDelay = Duration(milliseconds: 40);
 const _advancedScrollExtentChecks = 4;
 const _advancedScrollDistance = 112.0;
+
+/// The highest number of parallel logins offered for FTP links. FTP servers
+/// usually allow only a few logins per user.
+const _ftpMaxConnections = 32;
+const _ftpTlsNone = 'none';
+const _ftpTlsExplicit = 'explicit';
+const _ftpTlsImplicit = 'implicit';
+const _ftpTlsModes = {_ftpTlsNone, _ftpTlsExplicit, _ftpTlsImplicit};
