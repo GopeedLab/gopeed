@@ -1,8 +1,13 @@
 package download
 
 import (
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -126,6 +131,106 @@ func TestScript_ExecuteScriptAtPath_NonExistentFile(t *testing.T) {
 	})
 }
 
+func TestScript_TriggerOnError(t *testing.T) {
+	scriptPath := getTestScriptPath(t, envDumpScriptName())
+	ensureScriptExecutable(t, scriptPath)
+	outputFile := filepath.Join(t.TempDir(), "env_output.txt")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	setupScriptTest(t, func(downloader *Downloader) {
+		cfg, _ := downloader.GetConfig()
+		cfg.Script = &base.ScriptConfig{
+			Enable: true,
+			Paths:  []string{scriptPath},
+		}
+		downloader.PutConfig(cfg)
+
+		t.Setenv("GOPEED_TEST_OUTPUT_FILE", outputFile)
+		id, err := downloader.CreateDirect(&base.Request{URL: server.URL + "/error.bin"}, &base.Options{
+			Path: t.TempDir(),
+			Name: "error.bin",
+		})
+		if err != nil {
+			t.Fatalf("Failed to create task: %v", err)
+		}
+		waitForTaskError(t, downloader, id, 10*time.Second)
+
+		output := waitForFileContains(t, outputFile, "GOPEED_TASK_PATH=", 5*time.Second)
+		for _, want := range []string{
+			"GOPEED_EVENT=DOWNLOAD_ERROR",
+			"GOPEED_TASK_ID=" + id,
+			"GOPEED_TASK_NAME=error.bin",
+			"GOPEED_TASK_STATUS=" + string(base.DownloadStatusError),
+		} {
+			if !strings.Contains(output, want) {
+				t.Errorf("Expected %q in output, got: %s", want, output)
+			}
+		}
+	})
+}
+
+func TestScript_TriggerOnError_ResolvedTask(t *testing.T) {
+	scriptPath := getTestScriptPath(t, envDumpScriptName())
+	ensureScriptExecutable(t, scriptPath)
+	outputFile := filepath.Join(t.TempDir(), "env_output.txt")
+
+	manager := &generationTestManager{holdOpen: true}
+	downloader := NewDownloader(&DownloaderConfig{
+		FetchManagers: []fetcher.FetcherManager{manager},
+		Storage:       NewMemStorage(),
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	cfg, _ := downloader.GetConfig()
+	cfg.Script = &base.ScriptConfig{
+		Enable: true,
+		Paths:  []string{scriptPath},
+	}
+	downloader.PutConfig(cfg)
+
+	t.Setenv("GOPEED_TEST_OUTPUT_FILE", outputFile)
+	id, err := downloader.CreateDirect(&base.Request{URL: "generation://script-error"}, &base.Options{
+		Path: t.TempDir(),
+		Name: "failed.bin",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create task: %v", err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for manager.starts.Load() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("Timeout waiting for the task to start")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// The task is resolved and started, so the script gets the same path it gets on DOWNLOAD_DONE.
+	task := downloader.GetTask(id)
+	taskPath := task.Meta.SingleFilepath()
+	task.fetcher.(*generationTestFetcher).done <- errors.New("download failed mid-way")
+	waitForTaskError(t, downloader, id, 2*time.Second)
+
+	output := waitForFileContains(t, outputFile, "GOPEED_TASK_PATH=", 5*time.Second)
+	for _, want := range []string{
+		"GOPEED_EVENT=DOWNLOAD_ERROR",
+		"GOPEED_TASK_ID=" + id,
+		"GOPEED_TASK_NAME=failed.bin",
+		"GOPEED_TASK_STATUS=" + string(base.DownloadStatusError),
+		"GOPEED_TASK_PATH=" + taskPath,
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("Expected %q in output, got: %s", want, output)
+		}
+	}
+}
+
 func createDownloadDoneTask(t *testing.T, downloadDir, fileName string) (*Task, string) {
 	t.Helper()
 	content := []byte("downloaded file")
@@ -169,6 +274,45 @@ func waitForFile(t *testing.T, path string, timeout time.Duration) {
 		time.Sleep(50 * time.Millisecond)
 	}
 	t.Fatalf("Timeout waiting for file: %s", path)
+}
+
+// waitForFileContains waits until the file contains want and returns its content.
+// Test scripts write the file line by line, so waiting for the file to exist is not enough.
+func waitForFileContains(t *testing.T, path, want string, timeout time.Duration) string {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if content, err := os.ReadFile(path); err == nil && strings.Contains(string(content), want) {
+			return string(content)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	content, _ := os.ReadFile(path)
+	t.Fatalf("Timeout waiting for %q in file %s, got: %q", want, path, content)
+	return ""
+}
+
+// waitForTaskError waits until the task is in the error status. Unlike
+// waitForTaskStatus it reads the status under the task's status lock.
+func waitForTaskError(t *testing.T, downloader *Downloader, id string, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if task := downloader.GetTask(id); task != nil && downloader.taskStatus(task) == base.DownloadStatusError {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("Timeout waiting for task %s to fail", id)
+}
+
+// envDumpScriptName returns the test script that dumps the GOPEED_* variables
+// into the file named by GOPEED_TEST_OUTPUT_FILE.
+func envDumpScriptName() string {
+	if runtime.GOOS == "windows" {
+		return "env_dump.bat"
+	}
+	return "env_dump.sh"
 }
 
 func getTestScriptPath(t *testing.T, name string) string {
