@@ -4,10 +4,10 @@ import 'package:gopeed/core/icons/gopeed_icons.dart';
 import 'package:gopeed/features/tasks/domain/task_record.dart';
 
 void main() {
-  api.Task buildTask(List<int> selection, int size, {String? doneAt}) => api.Task.fromJson({
+  api.Task buildTask(List<int> selection, int size, {String? doneAt, String protocol = 'bt'}) => api.Task.fromJson({
     'id': 'bt-selection',
     'name': 'bundle',
-    'protocol': 'bt',
+    'protocol': protocol,
     'status': 'running',
     'uploading': false,
     'createdAt': '2026-01-01T00:00:00Z',
@@ -36,6 +36,13 @@ void main() {
     expect(record.files.last.path, 'nested');
     expect(record.totalBytes, 40);
     expect(record.progress, 0.25);
+  });
+
+  test('tasks with the ftp protocol decode', () {
+    final task = buildTask([], 60, protocol: 'ftp');
+    expect(task.protocol, api.Protocol.ftp);
+    final record = TaskRecord.fromApi(task);
+    expect(record.protocol, api.Protocol.ftp);
   });
 
   test('empty selection preserves default all files', () {

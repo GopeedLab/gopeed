@@ -52,7 +52,8 @@ sealed class TaskStats {
     final runtime = _map(json['runtime']);
     if (snapshot.isEmpty && runtime.isEmpty) return null;
     return switch (protocol) {
-      Protocol.http => HttpTaskStats.fromJson(snapshot),
+      // FTP stats have the same shape as HTTP stats: one entry per connection.
+      Protocol.http || Protocol.ftp => HttpTaskStats.fromJson(snapshot),
       Protocol.bt => BtTaskStats.fromJson(snapshot: snapshot, runtime: runtime),
       Protocol.ed2k => Ed2kTaskStats.fromJson(snapshot: snapshot, runtime: runtime),
       Protocol.hls || null => null,
