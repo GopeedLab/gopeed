@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	gohttp "net/http"
@@ -727,4 +728,35 @@ func TestAdaptiveTaskOnOverridesGlobalOff(t *testing.T) {
 		t.Fatalf("slow-start batches = %v, want only the first connection's book entry", got)
 	}
 	assertAdaptiveFile(t, path, s.data)
+}
+
+// The prune test parks the most recently launched running connection, and
+// never the last one.
+func TestAdaptiveParkNewestPicksLatestLaunch(t *testing.T) {
+	f := &Fetcher{}
+	mk := func(id, seq int, running bool) *connection {
+		ctx, cancel := context.WithCancel(context.Background())
+		return &connection{ID: id, launchSeq: seq, running: running, ctx: ctx, cancel: cancel}
+	}
+	// ID 5 was revived last, so it is newer than ID 7.
+	f.connections = []*connection{mk(0, 1, true), mk(5, 9, true), mk(7, 4, true), mk(8, 12, false)}
+	f.connMu.Lock()
+	ok := f.adaptiveParkNewestLocked()
+	f.connMu.Unlock()
+	if !ok || !f.connections[1].parked || f.connections[1].ctx.Err() == nil {
+		t.Fatalf("parked=%v, want connection 5 (the latest launch) parked and cancelled", ok)
+	}
+	for _, i := range []int{0, 2, 3} {
+		if f.connections[i].parked {
+			t.Fatalf("connection %d was parked too", f.connections[i].ID)
+		}
+	}
+
+	single := &Fetcher{connections: []*connection{mk(0, 1, true)}}
+	single.connMu.Lock()
+	ok = single.adaptiveParkNewestLocked()
+	single.connMu.Unlock()
+	if ok || single.connections[0].parked {
+		t.Fatal("parked the last running connection")
+	}
 }

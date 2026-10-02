@@ -143,6 +143,7 @@ type connection struct {
 	// retried: after a range split, the server may still be serving this
 	// connection's previous request for a moment.
 	limitHits int
+	launchSeq int // order of the last launch; the highest is the newest
 
 	// Speed tracking for work stealing decisions
 	speed             int64 // bytes per second
@@ -298,6 +299,9 @@ type Fetcher struct {
 	// nextConnID is the next connection ID. IDs only grow, so an ID is never
 	// reused even if connections are removed. connMu guards it.
 	nextConnID int
+	// launchSeq numbers adaptive launches, so a prune test can find the
+	// newest connection. connMu guards it.
+	launchSeq int
 
 	// Max connection time for adaptive timeout (stored as int64 nanoseconds for atomic ops)
 	maxConnTime atomic.Int64
@@ -2770,6 +2774,10 @@ func (f *Fetcher) adaptiveLoop(ctx context.Context, isResume bool) bool {
 			f.connMu.Lock()
 			f.adaptiveParkSlowestLocked()
 			f.connMu.Unlock()
+		case parkNewest:
+			f.connMu.Lock()
+			f.adaptiveParkNewestLocked()
+			f.connMu.Unlock()
 		}
 	}
 }
@@ -2828,6 +2836,8 @@ func (f *Fetcher) adaptiveLaunchLocked(conn *connection) {
 	conn.running = true
 	conn.gotData = false
 	conn.limitHits = 0
+	f.launchSeq++
+	conn.launchSeq = f.launchSeq
 	f.wg.Add(2) // one for runConnection, one for this wrapper
 	go func() {
 		defer f.wg.Done()
@@ -2924,6 +2934,31 @@ func (f *Fetcher) adaptiveParkSlowestLocked() bool {
 		// The slowest; on a tie the newest, which is the one just added.
 		if victim == nil || speed < victimSpeed || (speed == victimSpeed && conn.ID > victim.ID) {
 			victim, victimSpeed = conn, speed
+		}
+	}
+	if active <= 1 || victim == nil {
+		return false
+	}
+	victim.parked = true
+	if victim.cancel != nil {
+		victim.cancel()
+	}
+	return true
+}
+
+// adaptiveParkNewestLocked carries out parkNewest, the prune test: it parks
+// the most recently launched running connection. It never parks the last
+// one. The caller must hold connMu.
+func (f *Fetcher) adaptiveParkNewestLocked() bool {
+	var victim *connection
+	active := 0
+	for _, conn := range f.connections {
+		if !conn.running || conn.parked {
+			continue
+		}
+		active++
+		if victim == nil || conn.launchSeq > victim.launchSeq {
+			victim = conn
 		}
 	}
 	if active <= 1 || victim == nil {
