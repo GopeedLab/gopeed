@@ -43,6 +43,7 @@
   "ftpTlsExplicit": "Explicit TLS (FTPES)",
   "ftpTlsImplicit": "Implicit TLS (FTPS)",
   "adaptiveConnections": "Adaptive connections",
+  "connectionIdle": "Idle",
   "adaptiveConnectionsDescription": "Starts with one connection and adds more while the speed keeps rising, up to the Connections value. It closes connections that do not help.",
   "maxRetries": "Max retries",
   "useServerCtime": "Use server time for file creation",

@@ -13,6 +13,9 @@ type simServer struct {
 	perConn  int64
 	totalCap int64
 	maxConns int // a new connection above this count is rejected (0 means no limit)
+	// strayAt rejects the first new connection that would reach this count,
+	// once, and accepts every later one (0 means never).
+	strayAt int
 }
 
 func (s simServer) speed(active int) int64 {
@@ -33,6 +36,7 @@ type simRun struct {
 	timeline []int
 	adds     []time.Time
 	parks    []time.Time
+	strayed  bool
 }
 
 func newSimRun(ceiling int) *simRun {
@@ -48,6 +52,9 @@ func (r *simRun) step(s simServer) adaptiveDecision {
 		r.adds = append(r.adds, r.now)
 		if s.maxConns > 0 && r.active+1 > s.maxConns {
 			// The new connection gets 403/429 and is parked by the engine.
+			r.c.limited(r.now, r.active, true)
+		} else if s.strayAt > 0 && r.active+1 == s.strayAt && !r.strayed {
+			r.strayed = true
 			r.c.limited(r.now, r.active, true)
 		} else {
 			r.active++
@@ -156,9 +163,13 @@ func TestAdaptiveCeilingFromLimited(t *testing.T) {
 	if r.active != 4 {
 		t.Fatalf("active = %d, want 4", r.active)
 	}
-	// After the first rejection, the controller never asks above 4 again.
-	if len(r.adds) != 4 {
-		t.Fatalf("got %d additions, want 4 (three that worked and the rejected fifth)", len(r.adds))
+	// Two refusals within 10 s set the ceiling; after that the controller
+	// never asks above 4 again.
+	if len(r.adds) != 5 {
+		t.Fatalf("got %d additions, want 5 (three that worked and the fifth refused twice)", len(r.adds))
+	}
+	if gap := r.adds[4].Sub(r.adds[3]); gap > 10*time.Second {
+		t.Fatalf("the second try came %v after the first refusal, want within 10 s", gap)
 	}
 }
 
@@ -273,5 +284,44 @@ func TestAdaptiveSlowdownDuringProbeStillShrinks(t *testing.T) {
 	t.Logf("timeline after the slowdown: %v", r.timeline)
 	if r.active > 3 {
 		t.Fatalf("active = %d after the server slowed to 2 MB/s, want connections given back (<= 3)", r.active)
+	}
+}
+
+// One stray refusal of a new connection does not lower the ceiling.
+func TestAdaptiveOneStrayRefusalKeepsCeiling(t *testing.T) {
+	r := newSimRun(16)
+	r.run(simServer{perConn: mb, totalCap: 6 * mb, strayAt: 5}, 2*time.Minute)
+	t.Logf("timeline: %v", r.timeline)
+	if !r.strayed {
+		t.Fatal("setup: the stray refusal never happened")
+	}
+	if r.active < 6 {
+		t.Fatalf("active = %d after one stray refusal, want 6 (the ceiling must not drop to 4)", r.active)
+	}
+}
+
+// Each added connection must bring at least half of its fair share, so a
+// server that scales linearly reaches a high ceiling.
+func TestAdaptiveReachesHighCeilingOnLinearServer(t *testing.T) {
+	r := newSimRun(32)
+	r.run(simServer{perConn: mb, totalCap: 30 * mb}, 5*time.Minute)
+	t.Logf("timeline: %v", r.timeline)
+	if r.active < 28 {
+		t.Fatalf("active = %d with a server that scales to 30, want at least 28", r.active)
+	}
+	if m := maxOf(r.timeline); m > 32 {
+		t.Fatalf("reached %d connections, above the ceiling of 32", m)
+	}
+}
+
+func TestAdaptiveKeepBar(t *testing.T) {
+	cases := []struct {
+		n    int
+		want float64
+	}{{1, 0.5}, {5, 0.1}, {10, 0.05}, {16, 0.03125}, {20, 0.03}, {30, 0.03}}
+	for _, tc := range cases {
+		if got := adaptiveKeepBar(tc.n); got != tc.want {
+			t.Errorf("adaptiveKeepBar(%d) = %v, want %v", tc.n, got, tc.want)
+		}
 	}
 }

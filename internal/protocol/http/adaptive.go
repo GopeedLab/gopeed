@@ -11,13 +11,23 @@ import "time"
 //   - every window (adaptiveTickInterval) is one speed sample;
 //   - an addition is judged on the mean of the next adaptiveEvalWindows
 //     windows against the speed before it;
-//   - a gain above adaptiveGrowGain keeps the connection and adds another;
-//   - a gain of at least adaptivePlateauGain keeps it but stops growth;
+//   - a gain of at least adaptiveKeepBar(n), where n is the count before the
+//     addition, keeps the connection and adds another: each new connection
+//     must bring at least half of its fair share (1/n), and never less than
+//     adaptiveMinKeepGain, so a server that scales linearly can be followed
+//     up to a ceiling of 32;
+//   - below that, a gain of at least adaptivePlateauGain keeps it but stops
+//     growth (this band exists only while n < 10);
 //   - a smaller gain is a plateau: the connection is given back;
 //   - adaptiveEvalWindows windows below (1 - adaptiveShrinkDrop) of the best
 //     speed park the slowest connection;
 //   - every adaptiveProbeInterval, below the ceiling, one more connection is
-//     tried and kept only if it helps.
+//     tried and kept only if it helps;
+//   - a 403 or 429 on a new connection, twice within adaptiveLimitWindow,
+//     sets the ceiling to the count that worked; a 429 or 503 on a
+//     connection that already had data parks that connection (the fetcher
+//     does this on the second such response in a row; while it waits to
+//     retry it delivers nothing, so it is the slowest).
 var (
 	adaptiveTickInterval  = 2 * time.Second
 	adaptiveProbeInterval = 30 * time.Second
@@ -25,10 +35,21 @@ var (
 
 const (
 	adaptiveEvalWindows = 2
-	adaptiveGrowGain    = 0.10
+	adaptiveFairShare   = 0.5  // a new connection must bring this part of 1/n
+	adaptiveMinKeepGain = 0.03 // and never less than this
 	adaptivePlateauGain = 0.05
 	adaptiveShrinkDrop  = 0.15
+	adaptiveLimitWindow = 10 * time.Second // two refusals within it set the ceiling
 )
+
+// adaptiveKeepBar is the gain that keeps a connection added to n running
+// ones and continues growth: max(3%, 0.5/n).
+func adaptiveKeepBar(n int) float64 {
+	if n < 1 {
+		n = 1
+	}
+	return max(adaptiveMinKeepGain, adaptiveFairShare/float64(n))
+}
 
 type adaptiveDecision int
 
@@ -88,6 +109,10 @@ type adaptiveController struct {
 	// probeAt is when the next probe may start. It is zero until the first
 	// settle, and a probe moves it a full interval on from its own start.
 	probeAt time.Time
+
+	// strikeAt is when a new connection was last refused. A second refusal
+	// within adaptiveLimitWindow sets the ceiling; one alone does not.
+	strikeAt time.Time
 }
 
 func newAdaptiveController(ceiling int, now time.Time) *adaptiveController {
@@ -150,7 +175,7 @@ func (c *adaptiveController) tick(now time.Time, speed int64, active int) adapti
 	case phaseAdded:
 		gain := gainOf(mean, c.before)
 		switch {
-		case gain > adaptiveGrowGain:
+		case gain >= adaptiveKeepBar(active-1):
 			c.best = mean
 			if active < c.ceiling {
 				return c.add(mean, active)
@@ -197,23 +222,39 @@ func (c *adaptiveController) tick(now time.Time, speed int64, active int) adapti
 	return holdConns
 }
 
-// limited reports that a connection got a limiting HTTP status. With
-// newConn, a 403 or 429 on a connection that never got data, the server's
-// limit is the count that worked, which becomes the ceiling. Otherwise a 429
-// or 503 hit a connection mid-stream; the fetcher has parked it, and the next
-// probe waits a full interval. active is the running count after the park.
+// limited reports that a connection got a limiting HTTP status; the fetcher
+// has parked it, and active is the running count after the park.
+//
+// With newConn, a 403 or 429 on a connection that never got data: the first
+// refusal may be stray (for example a request the server has not yet seen
+// end), so the controller measures and tries once more. A second refusal
+// within adaptiveLimitWindow means the server's limit is the count that
+// worked, which becomes the ceiling.
+//
+// Otherwise a 429 or 503 hit a connection mid-stream: the next probe waits a
+// full interval, and the lower count is measured afresh rather than read as
+// a further slowdown.
 func (c *adaptiveController) limited(now time.Time, active int, newConn bool) {
 	if active < 1 {
 		active = 1
 	}
-	if newConn && active < c.ceiling {
-		c.ceiling = active
+	if !newConn {
+		c.probeAt = now.Add(adaptiveProbeInterval)
+		c.measure(active, false, false)
+		return
 	}
-	c.probeAt = now.Add(adaptiveProbeInterval)
 	// A refused new connection changed nothing that runs, so the best stands.
-	// A connection parked mid-stream is the server asking for less: measure
-	// afresh rather than read the lower speed as a further slowdown.
-	c.measure(active, false, newConn)
+	if !c.strikeAt.IsZero() && now.Sub(c.strikeAt) <= adaptiveLimitWindow {
+		c.strikeAt = time.Time{}
+		if active < c.ceiling {
+			c.ceiling = active
+		}
+		c.probeAt = now.Add(adaptiveProbeInterval)
+		c.measure(active, false, true)
+		return
+	}
+	c.strikeAt = now
+	c.measure(active, true, true)
 }
 
 func (c *adaptiveController) steady(now time.Time, speed int64, active int) adaptiveDecision {
