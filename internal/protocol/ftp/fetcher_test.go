@@ -32,7 +32,7 @@ const mib = 1 << 20
 func testManager(srv *FTPServer) *FetcherManager {
 	fm := &FetcherManager{}
 	if srv != nil {
-		fm.TLSConfig = &tls.Config{RootCAs: srv.CA}
+		fm.baseTLS = &tls.Config{RootCAs: srv.CA}
 	}
 	return fm
 }
@@ -423,28 +423,15 @@ func TestNoRestSequential(t *testing.T) {
 	}
 }
 
-// waitProgress waits until the fetcher has between lo and hi bytes.
-func waitProgress(t *testing.T, f *Fetcher, lo, hi int64) {
-	t.Helper()
-	deadline := time.Now().Add(30 * time.Second)
-	for time.Now().Before(deadline) {
-		got := f.Progress().TotalDownloaded()
-		if got >= lo {
-			if got > hi {
-				t.Fatalf("progress %d passed %d before the pause; slow the server down", got, hi)
-			}
-			return
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	t.Fatalf("progress stayed under %d", lo)
-}
-
+// TestResumeAfterKill stops the server's transfers at a fixed byte count,
+// waits until the client has written exactly those bytes, then pauses, saves,
+// restores and finishes. No timing decides where the pause lands.
 func TestResumeAfterKill(t *testing.T) {
 	srv := StartFTPServer(t, ServerOptions{})
-	srv.ReadDelay.Store(int64(3 * time.Millisecond))
 	size := int64(4*mib + 777)
 	want := srv.WriteFile(t, "resume.bin", RandomBytes(int(size), 10))
+	stallAt := size / 2
+	srv.StallAfter(stallAt)
 
 	fm := testManager(srv)
 	f := buildFetcher(fm)
@@ -452,10 +439,22 @@ func TestResumeAfterKill(t *testing.T) {
 	if err := f.Start(); err != nil {
 		t.Fatal(err)
 	}
-	waitProgress(t, f, size/5, size*4/5)
+	select {
+	case <-srv.Stalled():
+	case <-time.After(30 * time.Second):
+		t.Fatal("the server never reached the stall point")
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for f.Progress().TotalDownloaded() != stallAt {
+		if time.Now().After(deadline) {
+			t.Fatalf("progress %d, want the %d bytes the server sent", f.Progress().TotalDownloaded(), stallAt)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	if err := f.Pause(); err != nil {
 		t.Fatal(err)
 	}
+	srv.Release()
 	blob := storeData(t, fm, f)
 
 	var saved fetcherData
@@ -470,12 +469,11 @@ func TestResumeAfterKill(t *testing.T) {
 			resumeAt[seg.Begin+seg.Downloaded] = true
 		}
 	}
-	if savedTotal == 0 || savedTotal >= size {
-		t.Fatalf("saved progress %d of %d", savedTotal, size)
+	if savedTotal != stallAt {
+		t.Fatalf("saved progress %d, want %d", savedTotal, stallAt)
 	}
 
 	before := len(srv.RetrOffsets())
-	srv.ReadDelay.Store(0)
 	restored := restoreFetcher(t, fm, f.Meta(), blob)
 	if got := restored.Progress().TotalDownloaded(); got != savedTotal {
 		t.Fatalf("restored progress %d, want %d", got, savedTotal)
@@ -490,6 +488,100 @@ func TestResumeAfterKill(t *testing.T) {
 	for _, off := range resumed {
 		if !resumeAt[off] {
 			t.Fatalf("resumed RETR at %d, want one of the saved offsets %v", off, resumeAt)
+		}
+	}
+}
+
+// TestLateRefusalAfterQueueDrained: worker B holds the second file's segment
+// while the server takes its time to refuse B's login. Worker A finishes the
+// first file meanwhile and finds the queue empty. B must not leave too, or
+// nobody fetches the second file.
+func TestLateRefusalAfterQueueDrained(t *testing.T) {
+	srv := StartFTPServer(t, ServerOptions{MaxLogins: 1, RefuseDelay: 500 * time.Millisecond})
+	want := map[string]string{
+		"a.bin": srv.WriteFile(t, "dir/a.bin", RandomBytes(1000, 16)),
+		"b.bin": srv.WriteFile(t, "dir/b.bin", RandomBytes(1000, 17)),
+	}
+
+	f := buildFetcher(testManager(srv))
+	resolveTask(t, f, ftpURL(srv, "ftp", "", "dir"), &pftp.OptsExtra{Connections: 2})
+	startAndWait(t, f)
+	for name, sum := range want {
+		checkFile(t, filepath.Join(f.Meta().FolderPath(), name), sum)
+	}
+	if srv.Refused() == 0 {
+		t.Fatal("the server never refused a login, so the late refusal was not exercised")
+	}
+}
+
+// TestLoginCapLoweredMidway: both workers have logged in when the server's
+// cap drops to one, as when another client takes a slot. The refused worker
+// leaves, the ceiling drops to one, and the task finishes.
+func TestLoginCapLoweredMidway(t *testing.T) {
+	srv := StartFTPServer(t, ServerOptions{})
+	srv.ReadDelay.Store(int64(time.Millisecond))
+	want := map[string]string{}
+	for i := 0; i < 8; i++ {
+		name := fmt.Sprintf("f%d.bin", i)
+		want[name] = srv.WriteFile(t, "dir/"+name, RandomBytes(512<<10, byte(30+i)))
+	}
+
+	fm := testManager(srv)
+	f := buildFetcher(fm)
+	resolveTask(t, f, ftpURL(srv, "ftp", "", "dir"), &pftp.OptsExtra{Connections: 2})
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for len(ftpStats(t, f).Connections) < 2 || f.Progress().TotalDownloaded() < 512<<10 {
+		if time.Now().After(deadline) {
+			t.Fatal("the two workers never got going")
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	srv.SetMaxLogins(1)
+	if err := waitFetcher(t, f); err != nil {
+		t.Fatalf("download: %v", err)
+	}
+	for name, sum := range want {
+		checkFile(t, filepath.Join(f.Meta().FolderPath(), name), sum)
+	}
+	if srv.Refused() == 0 {
+		t.Fatal("the server never refused a login, so the lowered cap was not exercised")
+	}
+	for _, c := range ftpStats(t, f).Connections {
+		if c.Failed {
+			t.Fatalf("a refused worker failed: %+v", c)
+		}
+	}
+	var saved fetcherData
+	if err := json.Unmarshal(storeData(t, fm, f), &saved); err != nil {
+		t.Fatal(err)
+	}
+	if saved.MaxConns != 1 {
+		t.Fatalf("saved login ceiling %d, want 1", saved.MaxConns)
+	}
+}
+
+// TestDataConnectionsResumeOwnSession runs four FTPS workers against a server
+// that, like ProFTPD, accepts a data connection only when it resumes the TLS
+// session of its own control connection.
+func TestDataConnectionsResumeOwnSession(t *testing.T) {
+	srv := StartFTPServer(t, ServerOptions{TLS: pftp.TLSImplicit, RequireSessionReuse: true})
+	srv.ReadDelay.Store(int64(200 * time.Microsecond))
+	want := srv.WriteFile(t, "reuse.bin", RandomBytes(8*mib, 18))
+
+	f := buildFetcher(testManager(srv))
+	resolveTask(t, f, ftpURL(srv, "ftps", "", "reuse.bin"), &pftp.OptsExtra{Connections: 4})
+	startAndWait(t, f)
+	checkFile(t, f.Meta().SingleFilepath(), want)
+	ok, bad := srv.SessionReuse()
+	if ok < 4 || bad != 0 {
+		t.Fatalf("data connections: %d resumed their own session, %d did not", ok, bad)
+	}
+	for _, c := range ftpStats(t, f).Connections {
+		if c.RetryTimes != 0 {
+			t.Fatalf("a worker needed retries: %+v", c)
 		}
 	}
 }

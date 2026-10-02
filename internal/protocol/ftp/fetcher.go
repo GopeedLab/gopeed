@@ -10,7 +10,6 @@ package ftp
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -87,9 +86,7 @@ type Fetcher struct {
 	meta    *fetcher.FetcherMeta
 	doneCh  chan error
 
-	sessionCacheOnce sync.Once
-	sessionCache     tls.ClientSessionCache
-	warnOnce         sync.Once
+	warnOnce sync.Once
 	// loginOK is set once these credentials have logged in, after which a
 	// 530 on another login means the server is full.
 	loginOK atomic.Bool
@@ -420,18 +417,22 @@ func (f *Fetcher) download(ctx context.Context, t *target, files map[int]*os.Fil
 	}
 }
 
-// pool hands out the segments of one run to its workers.
+// pool hands out the segments of one run to its workers. Every decision to
+// leave the run is taken under mu together with the queue it depends on, so
+// a segment put back can never be left without a worker.
 type pool struct {
-	mu       sync.Mutex
-	queue    []*segment
-	running  int // workers still in the run
-	loggedIn int // workers that logged in during the run
+	mu      sync.Mutex
+	queue   []*segment
+	running int // workers still in the run
 }
 
+// take returns the next segment. A worker that finds the queue empty leaves
+// the run.
 func (p *pool) take() *segment {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if len(p.queue) == 0 {
+		p.running--
 		return nil
 	}
 	s := p.queue[0]
@@ -443,6 +444,28 @@ func (p *pool) putBack(s *segment) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.queue = append([]*segment{s}, p.queue...)
+}
+
+// refused puts back the segment of a worker whose login the server turned
+// away. The worker leaves when another worker is still in the run to take
+// the segment, and left is the number of workers that remain; the last
+// worker stays and retries.
+func (p *pool) refused(s *segment) (leave bool, left int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.queue = append([]*segment{s}, p.queue...)
+	if p.running > 1 {
+		p.running--
+		return true, p.running
+	}
+	return false, p.running
+}
+
+// leave takes a worker out of the run when it stops for any other reason.
+func (p *pool) leave() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.running--
 }
 
 func (f *Fetcher) runWorkers(ctx context.Context, t *target, files map[int]*os.File) error {
@@ -500,9 +523,11 @@ func (f *Fetcher) runWorkers(ctx context.Context, t *target, files map[int]*os.F
 	return nil
 }
 
-// worker fetches segments from the pool until it is empty. A worker that the
-// server turns away before it ever logged in lowers the ceiling and leaves,
-// handing its segment to the workers that did log in.
+// worker fetches segments from the pool until it is empty. A worker whose
+// login the server refuses (421, or 530 once these credentials have worked)
+// hands its segment back and leaves while other workers remain, lowering the
+// task's ceiling to the workers left. This holds whether or not the worker
+// had logged in before: a slot can also go to another client mid-download.
 func (f *Fetcher) worker(ctx context.Context, t *target, files map[int]*os.File, p *pool, id int) error {
 	var ln *lane
 	f.mu.Lock()
@@ -510,15 +535,7 @@ func (f *Fetcher) worker(ctx context.Context, t *target, files map[int]*os.File,
 		ln = f.lanes[id]
 	}
 	f.mu.Unlock()
-	loggedIn := false
 	onLogin := func() {
-		if loggedIn {
-			return
-		}
-		loggedIn = true
-		p.mu.Lock()
-		p.loggedIn++
-		p.mu.Unlock()
 		f.mu.Lock()
 		if ln == nil {
 			ln = &lane{}
@@ -539,31 +556,30 @@ func (f *Fetcher) worker(ctx context.Context, t *target, files map[int]*os.File,
 			failures = 0
 			continue
 		}
-		p.putBack(seg)
 		if ctx.Err() != nil {
+			p.putBack(seg)
+			p.leave()
 			return nil
-		}
-		if errors.Is(err, errRestUnsupported) {
-			return err
 		}
 
 		var le *loginError
-		refused := errors.As(err, &le) && isLoginRefusal(le.err, f.loginOK.Load())
-		if refused && !loggedIn {
-			p.mu.Lock()
-			ceiling := max(1, p.loggedIn)
-			leave := p.running > ceiling
-			if leave {
-				p.running--
-			}
-			p.mu.Unlock()
-			if leave {
-				f.lowerCeiling(ceiling)
+		if errors.As(err, &le) && isLoginRefusal(le.err, f.loginOK.Load()) {
+			if leave, left := p.refused(seg); leave {
+				f.lowerCeiling(left)
 				return nil
 			}
-		} else if !refused && (isPermanent(err) || errors.Is(err, errDiskWrite)) {
-			f.markFailed(ln)
-			return err
+			// The last worker: wait for a slot.
+		} else {
+			p.putBack(seg)
+			if errors.Is(err, errRestUnsupported) {
+				p.leave()
+				return err
+			}
+			if isPermanent(err) || errors.Is(err, errDiskWrite) {
+				f.markFailed(ln)
+				p.leave()
+				return err
+			}
 		}
 
 		failures++
@@ -577,10 +593,12 @@ func (f *Fetcher) worker(ctx context.Context, t *target, files map[int]*os.File,
 		f.mu.Unlock()
 		if failures > maxRetries {
 			f.markFailed(ln)
+			p.leave()
 			return fmt.Errorf("ftp: giving up after %d retries: %w", maxRetries, err)
 		}
 		select {
 		case <-ctx.Done():
+			p.leave()
 			return nil
 		case <-time.After(retryDelay * time.Duration(failures)):
 		}

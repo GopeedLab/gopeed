@@ -16,6 +16,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -45,6 +47,15 @@ type ServerOptions struct {
 	// any login, anonymous included.
 	User string
 	Pass string
+	// RefuseDelay holds every 421 refusal back this long, like a server
+	// that answers slowly when it is full.
+	RefuseDelay time.Duration
+	// RequireSessionReuse makes every data connection resume the TLS
+	// session of the control connection that opened it, as ProFTPD's
+	// mod_tls does by default. A data connection that does not is refused.
+	// It needs TLSImplicit, where this test's wrapper sees the plain
+	// control stream and so learns which passive port belongs to whom.
+	RequireSessionReuse bool
 }
 
 // FTPServer is an ftpserverlib server over a temp directory.
@@ -71,6 +82,20 @@ type FTPServer struct {
 	retrs   []int64 // offset of every RETR, 0 when no REST came first
 	refused int
 	logins  int
+
+	// Passive port to the control connection that announced it, and the
+	// outcome of every data connection's session check.
+	pasvOwner map[int]string
+	reuseOK   int
+	reuseBad  int
+
+	// Stall state, see StallAfter. stallMu is held across file reads.
+	stallMu     sync.Mutex
+	stallAt     int64
+	sent        int64
+	stallCh     chan struct{}
+	stalled     chan struct{}
+	stalledOnce *sync.Once
 }
 
 // StartFTPServer starts a server and stops it when the test ends.
@@ -84,6 +109,12 @@ func StartFTPServer(t *testing.T, opts ServerOptions) *FTPServer {
 		t.Fatal(err)
 	}
 	var ln net.Listener = base
+	if opts.RequireSessionReuse {
+		if opts.TLS != pftp.TLSImplicit {
+			t.Fatal("RequireSessionReuse needs TLSImplicit")
+		}
+		s.requireSessionReuse(t, base.Addr().(*net.TCPAddr).Port)
+	}
 	if opts.TLS == pftp.TLSImplicit {
 		ln = tls.NewListener(ln, s.tlsConf)
 	}
@@ -144,6 +175,163 @@ func (s *FTPServer) Logins() int {
 	return s.logins
 }
 
+// SetMaxLogins changes the login cap while the server runs, as when other
+// clients take slots.
+func (s *FTPServer) SetMaxLogins(n int) {
+	s.mu.Lock()
+	s.opts.MaxLogins = n
+	s.mu.Unlock()
+}
+
+// SessionReuse returns how many data connections resumed their own control
+// connection's TLS session, and how many did not.
+func (s *FTPServer) SessionReuse() (ok, bad int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.reuseOK, s.reuseBad
+}
+
+// StallAfter makes every transfer stop sending once the server has sent n
+// bytes in total, until Release. Stalled is closed when that happens.
+func (s *FTPServer) StallAfter(n int64) {
+	s.stallMu.Lock()
+	defer s.stallMu.Unlock()
+	s.stallAt, s.sent = n, 0
+	s.stallCh = make(chan struct{})
+	s.stalled = make(chan struct{})
+	s.stalledOnce = &sync.Once{}
+}
+
+// Stalled is closed once a transfer has stopped at the StallAfter limit.
+func (s *FTPServer) Stalled() <-chan struct{} {
+	s.stallMu.Lock()
+	defer s.stallMu.Unlock()
+	return s.stalled
+}
+
+// Sent returns the bytes sent since StallAfter.
+func (s *FTPServer) Sent() int64 {
+	s.stallMu.Lock()
+	defer s.stallMu.Unlock()
+	return s.sent
+}
+
+// Release ends the stall. The stalled transfers fail.
+func (s *FTPServer) Release() {
+	s.stallMu.Lock()
+	defer s.stallMu.Unlock()
+	if s.stallAt > 0 {
+		s.stallAt = 0
+		close(s.stallCh)
+	}
+}
+
+var errStalled = errors.New("test server released a stalled transfer")
+
+// stall limits a read to the StallAfter budget, and blocks once the budget
+// is spent.
+func (s *FTPServer) stall(read func([]byte) (int, error), p []byte) (int, error) {
+	s.stallMu.Lock()
+	if s.stallAt <= 0 {
+		s.stallMu.Unlock()
+		return read(p)
+	}
+	allowed := s.stallAt - s.sent
+	if allowed <= 0 {
+		ch := s.stallCh
+		s.stalledOnce.Do(func() { close(s.stalled) })
+		s.stallMu.Unlock()
+		<-ch
+		return 0, errStalled
+	}
+	if int64(len(p)) > allowed {
+		p = p[:allowed]
+	}
+	n, err := read(p)
+	s.sent += int64(n)
+	s.stallMu.Unlock()
+	return n, err
+}
+
+var pasvReply = regexp.MustCompile(`^(?:229 [^(]*\(\|\|\|(\d+)\|\)|227 [^(]*\(\d+,\d+,\d+,\d+,(\d+),(\d+)\))`)
+
+// notePassive records the passive port a control connection announced.
+func (s *FTPServer) notePassive(owner string, reply []byte) {
+	m := pasvReply.FindSubmatch(reply)
+	if m == nil {
+		return
+	}
+	var port int
+	if len(m[1]) > 0 {
+		port, _ = strconv.Atoi(string(m[1]))
+	} else {
+		hi, _ := strconv.Atoi(string(m[2]))
+		lo, _ := strconv.Atoi(string(m[3]))
+		port = hi<<8 | lo
+	}
+	s.mu.Lock()
+	s.pasvOwner[port] = owner
+	s.mu.Unlock()
+}
+
+// requireSessionReuse stamps each control connection's session tickets with
+// its address, and checks that each data connection resumed a ticket of the
+// control connection that announced its passive port.
+func (s *FTPServer) requireSessionReuse(t *testing.T, controlPort int) {
+	base := s.tlsConf
+	var key [32]byte
+	if _, err := rand.Read(key[:]); err != nil {
+		t.Fatal(err)
+	}
+	base.SetSessionTicketKeys([][32]byte{key})
+	s.pasvOwner = map[int]string{}
+	stamp := func(owner string) func(tls.ConnectionState, *tls.SessionState) ([]byte, error) {
+		return func(cs tls.ConnectionState, ss *tls.SessionState) ([]byte, error) {
+			ss.Extra = [][]byte{[]byte(owner)}
+			return base.EncryptTicket(cs, ss)
+		}
+	}
+	base.GetConfigForClient = func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+		cfg := base.Clone()
+		cfg.GetConfigForClient = nil
+		local, _ := hello.Conn.LocalAddr().(*net.TCPAddr)
+		if local == nil || local.Port == controlPort {
+			cfg.WrapSession = stamp(hello.Conn.RemoteAddr().String())
+			return cfg, nil
+		}
+		s.mu.Lock()
+		owner := s.pasvOwner[local.Port]
+		s.mu.Unlock()
+		var resumedFrom string
+		cfg.UnwrapSession = func(identity []byte, cs tls.ConnectionState) (*tls.SessionState, error) {
+			ss, err := base.DecryptTicket(identity, cs)
+			if err != nil || ss == nil {
+				return nil, nil
+			}
+			if len(ss.Extra) > 0 {
+				resumedFrom = string(ss.Extra[0])
+			}
+			return ss, nil
+		}
+		cfg.WrapSession = stamp(owner)
+		cfg.VerifyConnection = func(cs tls.ConnectionState) error {
+			ok := owner != "" && cs.DidResume && resumedFrom == owner
+			s.mu.Lock()
+			if ok {
+				s.reuseOK++
+			} else {
+				s.reuseBad++
+			}
+			s.mu.Unlock()
+			if !ok {
+				return errors.New("data connection did not resume its control connection's TLS session")
+			}
+			return nil
+		}
+		return cfg, nil
+	}
+}
+
 func (s *FTPServer) acquire() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -176,13 +364,19 @@ func (l *limitListener) Accept() (net.Conn, error) {
 		}
 		if !l.srv.acquire() {
 			go func() {
+				time.Sleep(l.srv.opts.RefuseDelay)
 				_ = c.SetDeadline(time.Now().Add(5 * time.Second))
 				_, _ = io.WriteString(c, "421 Too many connections\r\n")
 				_ = c.Close()
 			}()
 			continue
 		}
-		var conn net.Conn = &countedConn{Conn: c, release: l.srv.release}
+		cc := &countedConn{Conn: c, release: l.srv.release}
+		if l.srv.opts.RequireSessionReuse {
+			owner := c.RemoteAddr().String()
+			cc.sniff = func(b []byte) { l.srv.notePassive(owner, b) }
+		}
+		var conn net.Conn = cc
 		if l.srv.opts.NoRest {
 			conn = &noRestConn{countedConn: conn.(*countedConn), in: bufio.NewReader(c)}
 		}
@@ -194,6 +388,14 @@ type countedConn struct {
 	net.Conn
 	once    sync.Once
 	release func()
+	sniff   func([]byte) // sees every reply the server writes
+}
+
+func (c *countedConn) Write(b []byte) (int, error) {
+	if c.sniff != nil {
+		c.sniff(b)
+	}
+	return c.Conn.Write(b)
 }
 
 func (c *countedConn) Close() error {
@@ -316,7 +518,7 @@ func (f *slowFile) Read(p []byte) (int, error) {
 			p = p[:rest]
 		}
 	}
-	n, err := f.File.Read(p)
+	n, err := f.srv.stall(f.File.Read, p)
 	f.sent += int64(n)
 	return n, err
 }
