@@ -24,6 +24,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/tempfiles"
 	webviewproxy "github.com/GopeedLab/gopeed/internal/webview/proxy"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/GopeedLab/gopeed/pkg/protocol/ftp"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -426,6 +427,9 @@ func (d *Downloader) setupFetcher(fm fetcher.FetcherManager, fetcher fetcher.Fet
 	ctl.ManagedProduction = func(raw string) bool { return d.blob.Production(raw) != nil }
 	ctl.GetConfig = func(v any) {
 		d.getProtocolConfig(fm.Name(), v)
+	}
+	if d.Logger != nil {
+		ctl.Logger = &d.Logger.Logger
 	}
 	// Get proxy config, task request proxy config has higher priority, then use global proxy config
 	ctl.GetProxy = func(requestProxy *base.RequestProxy) func(*gohttp.Request) (*url.URL, error) {
@@ -1478,7 +1482,7 @@ func (d *Downloader) watch(task *Task) {
 		d.triggerWebhooks(WebhookEventDownloadDone, task, nil)
 		d.triggerScripts(ScriptEventDownloadDone, task, nil)
 
-		if e, ok := task.Meta.Opts.Extra.(*http.OptsExtra); ok {
+		if e := postDownloadExtra(task.Meta); e != nil {
 			downloadFilePath := task.Meta.SingleFilepath()
 
 			cfg, _ := d.GetConfig()
@@ -1536,6 +1540,33 @@ func (d *Downloader) watch(task *Task) {
 		}
 		return
 	}
+}
+
+// postDownloadExtra returns the auto-torrent and auto-extract options of a
+// finished single-file task, in the HTTP options shape the extraction code
+// takes. FTP options carry the same fields. An FTP folder has no single file
+// to act on, so it gets nil, as does any other protocol.
+func postDownloadExtra(meta *fetcher.FetcherMeta) *http.OptsExtra {
+	if meta == nil || meta.Opts == nil {
+		return nil
+	}
+	switch e := meta.Opts.Extra.(type) {
+	case *http.OptsExtra:
+		return e
+	case *ftp.OptsExtra:
+		if meta.Res == nil || meta.Res.Name != "" || len(meta.Res.Files) != 1 {
+			return nil
+		}
+		return &http.OptsExtra{
+			Connections:                e.Connections,
+			AutoTorrent:                e.AutoTorrent,
+			DeleteTorrentAfterDownload: e.DeleteTorrentAfterDownload,
+			AutoExtract:                e.AutoExtract,
+			ArchivePassword:            e.ArchivePassword,
+			DeleteAfterExtract:         e.DeleteAfterExtract,
+		}
+	}
+	return nil
 }
 
 func (d *Downloader) doOnError(task *Task, err error) {

@@ -3,6 +3,7 @@ package controller
 import (
 	"github.com/GopeedLab/gopeed/internal/tempfiles"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	"github.com/rs/zerolog"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,6 +16,9 @@ type Controller struct {
 	TempDir           string
 	GetConfig         func(v any)
 	GetProxy          func(requestProxy *base.RequestProxy) func(*http.Request) (*url.URL, error)
+	// Logger is the downloader's core logger. It may be nil, in which case
+	// fetchers log nothing.
+	Logger *zerolog.Logger
 	FileController
 	//ContextDialer() (proxy.Dialer, error)
 }
