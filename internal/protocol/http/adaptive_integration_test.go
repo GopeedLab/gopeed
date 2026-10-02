@@ -760,3 +760,62 @@ func TestAdaptiveParkNewestPicksLatestLaunch(t *testing.T) {
 		t.Fatal("parked the last running connection")
 	}
 }
+
+// D5 end to end: a prune decision parks a running connection in the
+// fetcher, and the download still completes with the right bytes.
+func TestAdaptiveIntegrationPruneParksAConnection(t *testing.T) {
+	skipLongAdaptive(t)
+	tick, probe := adaptiveTickInterval, adaptiveProbeInterval
+	// A short probe interval, so the 4th interval (the first prune) comes
+	// about 4 s after the count settles. At the ceiling of 3 no probe
+	// interrupts the steady state, so the intervals tick on time.
+	adaptiveTickInterval, adaptiveProbeInterval = 250*time.Millisecond, time.Second
+	t.Cleanup(func() { adaptiveTickInterval, adaptiveProbeInterval = tick, probe })
+	s := newAdaptiveTestServer(t, 12<<20, 512<<10, 0, 0, false)
+	f, path := newAdaptiveFetcher(t, config{Connections: 3, Adaptive: true}, s, nil)
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := waitDone(t, f, 60*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	f.connMu.Lock()
+	prunes := f.adaptivePrunes
+	f.connMu.Unlock()
+	t.Logf("connections parked by prune tests: %d", prunes)
+	if prunes == 0 {
+		t.Fatal("no prune test parked a connection")
+	}
+	assertAdaptiveFile(t, path, s.data)
+}
+
+// D6 in the engine: while a pruned connection is being resumed, a refusal
+// of its request (here a 503, which is otherwise retried) parks it and is
+// not a strike.
+func TestAdaptiveRefusedResumeParksWithoutStrike(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	running := &connection{ID: 0, running: true, gotData: true, ctx: ctx, cancel: cancel}
+	resumed := &connection{ID: 1, running: true, ctx: ctx, cancel: cancel}
+	f := &Fetcher{connections: []*connection{running, resumed}}
+	f.adaptive = newAdaptiveController(16, time.Now())
+	f.adaptive.resuming = true
+
+	if !f.adaptiveRefusedResume(resumed, NewRequestError(503)) {
+		t.Fatal("a 503 on the resume request was not handled as a refused resume")
+	}
+	if !resumed.parked {
+		t.Fatal("the refused connection was not parked")
+	}
+	if f.adaptive.ceiling != 16 || !f.adaptive.strikeAt.IsZero() || f.adaptive.resuming {
+		t.Fatalf("ceiling=%d strike=%v resuming=%v, want 16, no strike, resume over",
+			f.adaptive.ceiling, !f.adaptive.strikeAt.IsZero(), f.adaptive.resuming)
+	}
+
+	// Outside a resume, the same status is left to the normal handling.
+	other := &connection{ID: 2, running: true, ctx: ctx, cancel: cancel}
+	f.connections = append(f.connections, other)
+	if f.adaptiveRefusedResume(other, NewRequestError(503)) || other.parked {
+		t.Fatal("a 503 outside a resume was treated as a refused resume")
+	}
+}
