@@ -26,7 +26,8 @@ import (
 // Test server: per-request rate, total cap, and a connection limit with 429.
 // ============================================================================
 
-const adaptivePiece = 16 * 1024
+// Small pieces keep the pacing smooth enough for 250 ms windows at 512 KiB/s.
+const adaptivePiece = 4 * 1024
 
 type adaptiveTestServer struct {
 	data     []byte
@@ -142,21 +143,45 @@ func (s *adaptiveTestServer) serve(w gohttp.ResponseWriter, r *gohttp.Request) {
 // ============================================================================
 
 // useFastAdaptiveClock shortens the controller's windows so the integration
-// tests converge in seconds. The ratios between window, evaluation and probe
-// stay those of the real 2 s / 30 s clock closely enough for the behaviour.
+// tests converge in seconds. The ratio of probe to window is the real one
+// (30 s / 2 s).
 func useFastAdaptiveClock(t *testing.T) {
 	t.Helper()
 	tick, probe := adaptiveTickInterval, adaptiveProbeInterval
-	adaptiveTickInterval, adaptiveProbeInterval = 300*time.Millisecond, 3*time.Second
+	adaptiveTickInterval, adaptiveProbeInterval = 250*time.Millisecond, 3750*time.Millisecond
 	t.Cleanup(func() { adaptiveTickInterval, adaptiveProbeInterval = tick, probe })
 }
 
 func boolPtr(v bool) *bool { return &v }
 
+// skipLongAdaptive skips the wall-clock convergence tests under -short.
+func skipLongAdaptive(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("wall-clock convergence test; run without -short")
+	}
+}
+
+// engineActive is the fetcher's own count of running, unparked connections.
+// Unlike the server's count, it has no requests lingering after a split.
+func engineActive(f *Fetcher) int {
+	active, _, _ := f.adaptiveSnapshot()
+	return active
+}
+
+// skipRestoredPrefetchWait works around an upstream delay: a restored fetcher
+// waits up to 10 s in stopPrefetchAndCopyData for a prefetch that never ran
+// (prefetchDone is never set). It has its own fix outside this change.
+func skipRestoredPrefetchWait(f *Fetcher) {
+	f.prefetchDone.Store(true)
+}
+
 func newAdaptiveFetcher(t *testing.T, cfg config, s *adaptiveTestServer, extra *http.OptsExtra) (*Fetcher, string) {
 	t.Helper()
 	dir := t.TempDir()
 	f := buildConfigFetcher(cfg).(*Fetcher)
+	// Stop the download if the test fails midway, before the clock is reset.
+	t.Cleanup(func() { f.Pause() })
 	var optsExtra any // a typed nil would read as "set"
 	if extra != nil {
 		optsExtra = extra
@@ -282,8 +307,9 @@ func waitDone(t *testing.T, f fetcher.Fetcher, timeout time.Duration) error {
 // ============================================================================
 
 func TestAdaptiveIntegrationSettlesAtTotalCap(t *testing.T) {
+	skipLongAdaptive(t)
 	useFastAdaptiveClock(t)
-	s := newAdaptiveTestServer(t, 64<<20, 1<<20, 6<<20, 0, false)
+	s := newAdaptiveTestServer(t, 16<<20, 512<<10, 3<<20, 0, false)
 	f, path := newAdaptiveFetcher(t, config{Connections: 16, Adaptive: true}, s, nil)
 
 	tl := sampleConnections(s)
@@ -297,8 +323,8 @@ func TestAdaptiveIntegrationSettlesAtTotalCap(t *testing.T) {
 	samples := tl.finish()
 	t.Logf("took %v; connections every 100 ms: %v", time.Since(started).Round(time.Millisecond), samples)
 
-	// Skip the growth (first 4 s) and the tail where chunks run out (last 1.5 s).
-	got := settled(samples, 40, len(samples)-15)
+	// Skip the growth (first 3.5 s) and the tail where chunks run out (last 1.5 s).
+	got := settled(samples, 35, len(samples)-15)
 	t.Logf("settled at %d connections", got)
 	if got < 5 || got > 7 {
 		t.Fatalf("settled at %d connections, want 6 +- 1", got)
@@ -310,8 +336,9 @@ func TestAdaptiveIntegrationSettlesAtTotalCap(t *testing.T) {
 }
 
 func TestAdaptiveIntegrationConnectionLimit429(t *testing.T) {
+	skipLongAdaptive(t)
 	useFastAdaptiveClock(t)
-	s := newAdaptiveTestServer(t, 40<<20, 1<<20, 0, 4, false)
+	s := newAdaptiveTestServer(t, 14<<20, 512<<10, 0, 4, false)
 	f, path := newAdaptiveFetcher(t, config{Connections: 16, Adaptive: true}, s, nil)
 
 	tl := sampleConnections(s)
@@ -354,8 +381,9 @@ func TestAdaptiveIntegrationConnectionLimit429(t *testing.T) {
 }
 
 func TestAdaptiveIntegrationSlowdownGivesBack(t *testing.T) {
+	skipLongAdaptive(t)
 	useFastAdaptiveClock(t)
-	s := newAdaptiveTestServer(t, 64<<20, 1<<20, 6<<20, 0, false)
+	s := newAdaptiveTestServer(t, 13<<20, 512<<10, 3<<20, 0, false)
 	f, path := newAdaptiveFetcher(t, config{Connections: 16, Adaptive: true}, s, nil)
 
 	tl := sampleConnections(s)
@@ -365,8 +393,8 @@ func TestAdaptiveIntegrationSlowdownGivesBack(t *testing.T) {
 	waitFor(t, 15*time.Second, "growth to 6 connections", func() bool { return s.active.Load() >= 6 })
 	time.Sleep(time.Second)
 
-	// The server now gives only 2 MB/s in total.
-	s.totalCap.Store(2 << 20)
+	// The server now gives only 1 MiB/s in total: two connections' worth.
+	s.totalCap.Store(1 << 20)
 	mark := len(tl.snapshot())
 	defer func() {
 		if t.Failed() {
@@ -390,8 +418,9 @@ func TestAdaptiveIntegrationSlowdownGivesBack(t *testing.T) {
 }
 
 func TestAdaptiveIntegrationPauseAndResumeGrowsAgain(t *testing.T) {
+	skipLongAdaptive(t)
 	useFastAdaptiveClock(t)
-	s := newAdaptiveTestServer(t, 64<<20, 1<<20, 6<<20, 0, false)
+	s := newAdaptiveTestServer(t, 14<<20, 512<<10, 3<<20, 0, false)
 	f, path := newAdaptiveFetcher(t, config{Connections: 16, Adaptive: true}, s, nil)
 	if err := f.Start(); err != nil {
 		t.Fatal(err)
@@ -426,6 +455,8 @@ func TestAdaptiveIntegrationPauseAndResumeGrowsAgain(t *testing.T) {
 		json.Unmarshal(raw, v)
 	}
 	resumed.Setup(ctl)
+	skipRestoredPrefetchWait(resumed)
+	t.Cleanup(func() { resumed.Pause() })
 
 	tl := sampleConnections(s)
 	if err := resumed.Start(); err != nil {
@@ -435,15 +466,13 @@ func TestAdaptiveIntegrationPauseAndResumeGrowsAgain(t *testing.T) {
 	time.Sleep(200 * time.Millisecond) // let the sampler record it
 	early := tl.snapshot()
 	t.Logf("connections after resume: %v", early)
-	// The controller measures one connection for two 300 ms windows before it
-	// adds the second, so the first 500 ms of traffic show one request. (A
-	// restored fetcher first waits up to 10 s in stopPrefetchAndCopyData for a
-	// prefetch that never ran; that delay predates this change.)
+	// The controller measures one connection for two 250 ms windows before it
+	// adds the second, so the first 500 ms of traffic show one request.
 	first := 0
 	for first < len(early) && early[first] == 0 {
 		first++
 	}
-	for i := first; i < len(early) && i < first+5; i++ {
+	for i := first; i < len(early) && i < first+4; i++ {
 		if early[i] > 1 {
 			t.Fatalf("resume ran %d connections %d ms after its first request, want growth from one", early[i], (i-first)*100)
 		}
@@ -497,7 +526,7 @@ func TestAdaptiveOffKeepsSlowStartSequence(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s := newAdaptiveTestServer(t, 64<<20, 4<<20, 0, 0, false)
+			s := newAdaptiveTestServer(t, 32<<20, 8<<20, 0, 0, false)
 			f, path := newAdaptiveFetcher(t, tc.cfg, s, tc.extra)
 			if err := f.Start(); err != nil {
 				t.Fatal(err)
@@ -579,6 +608,8 @@ func TestAdaptiveResumesPreChangeStoreBlob(t *testing.T) {
 				json.Unmarshal(raw, v)
 			}
 			f.Setup(ctl)
+			skipRestoredPrefetchWait(f)
+			t.Cleanup(func() { f.Pause() })
 			if err := f.Start(); err != nil {
 				t.Fatal(err)
 			}
@@ -594,13 +625,14 @@ func TestAdaptiveResumesPreChangeStoreBlob(t *testing.T) {
 }
 
 func TestAdaptivePatchConnectionsLowersCeiling(t *testing.T) {
+	skipLongAdaptive(t)
 	useFastAdaptiveClock(t)
-	s := newAdaptiveTestServer(t, 64<<20, 1<<20, 6<<20, 0, false)
+	s := newAdaptiveTestServer(t, 12<<20, 1<<20, 6<<20, 0, false)
 	f, path := newAdaptiveFetcher(t, config{Connections: 16, Adaptive: true}, s, nil)
 	if err := f.Start(); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, 15*time.Second, "growth to 5 connections", func() bool { return s.active.Load() >= 5 })
+	waitFor(t, 15*time.Second, "growth to 5 connections", func() bool { return engineActive(f) >= 5 })
 
 	if err := f.Patch(nil, &base.Options{Extra: &http.OptsExtra{Connections: 2}}); err != nil {
 		t.Fatal(err)
@@ -608,20 +640,32 @@ func TestAdaptivePatchConnectionsLowersCeiling(t *testing.T) {
 	if got := f.meta.Opts.Extra.(*http.OptsExtra).Connections; got != 2 {
 		t.Fatalf("connections option = %d after Patch, want 2", got)
 	}
-	tl := sampleConnections(s)
-	waitFor(t, 5*time.Second, "the lower ceiling", func() bool {
-		recent := tl.snapshot()
-		return len(recent) >= 10 && settled(recent, len(recent)-10, len(recent)) <= 2
-	})
+	// The outcome is the fetcher's own count. The server may briefly still
+	// serve a parked connection's request after the client let it go.
+	waitFor(t, 5*time.Second, "the lower ceiling", func() bool { return engineActive(f) <= 2 })
 	s.totalCap.Store(0)
-	if err := waitDone(t, f, 60*time.Second); err != nil {
-		t.Fatal(err)
-	}
-	samples := tl.finish()
-	for i, n := range samples[len(samples)/2:] {
-		if n > 2 {
-			t.Fatalf("sample %d shows %d connections after the ceiling became 2", i, n)
+	done := make(chan error, 1)
+	go func() { done <- f.Wait() }()
+	maxAfter := 0
+	deadline := time.After(60 * time.Second)
+	for finished := false; !finished; {
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatal(err)
+			}
+			finished = true
+		case <-time.After(50 * time.Millisecond):
+			if n := engineActive(f); n > maxAfter {
+				maxAfter = n
+			}
+		case <-deadline:
+			t.Fatal("download did not finish within 60 s")
 		}
+	}
+	t.Logf("most connections after the ceiling became 2: %d", maxAfter)
+	if maxAfter > 2 {
+		t.Fatalf("the fetcher ran %d connections after the ceiling became 2", maxAfter)
 	}
 	assertAdaptiveFile(t, path, s.data)
 }

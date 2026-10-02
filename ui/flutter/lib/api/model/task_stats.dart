@@ -67,6 +67,7 @@ class HttpConnectionStats {
     required this.completed,
     required this.failed,
     required this.retryTimes,
+    this.parked = false,
   });
 
   final int downloaded;
@@ -75,6 +76,11 @@ class HttpConnectionStats {
   final bool failed;
   final int retryTimes;
 
+  /// Stopped by adaptive connections because more connections did not make
+  /// the task faster. It is idle, not failed; other connections finish its
+  /// range.
+  final bool parked;
+
   factory HttpConnectionStats.fromJson(Map<String, dynamic> json) {
     return HttpConnectionStats(
       downloaded: _integer(json, 'downloaded'),
@@ -82,6 +88,7 @@ class HttpConnectionStats {
       completed: json['completed'] == true,
       failed: json['failed'] == true,
       retryTimes: _integer(json, 'retryTimes'),
+      parked: json['parked'] == true,
     );
   }
 }

@@ -4964,6 +4964,64 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('HTTP connection lanes show parked connections as idle', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(390, 320));
+    await tester.pumpWidget(
+      shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: const Padding(
+          padding: EdgeInsets.all(16),
+          child: HttpConnectionLanes(
+            taskDownloading: true,
+            connections: [
+              HttpConnectionStats(downloaded: 1024, total: 2048, completed: false, failed: false, retryTimes: 0),
+              HttpConnectionStats(
+                downloaded: 512,
+                total: 2048,
+                completed: false,
+                failed: false,
+                retryTimes: 0,
+                parked: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final active = tester.widget<TaskProgressBar>(find.byKey(const ValueKey('http-connection-progress-0')));
+    final parked = tester.widget<TaskProgressBar>(find.byKey(const ValueKey('http-connection-progress-1')));
+    expect(active.shimmer, isTrue);
+    expect(parked.shimmer, isFalse);
+    expect(parked.indeterminate, isFalse);
+    expect(parked.value, 0.25);
+    expect(parked.fillColor, isNot(active.fillColor));
+    final parkedStatus = find.byKey(const ValueKey('http-connection-status-1'));
+    expect(
+      find.descendant(
+        of: parkedStatus,
+        matching: find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == 'Idle'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  test('HTTP connection summary counts parked connections as idle, not downloading', () {
+    final summary = HttpConnectionSummary.of(const [
+      HttpConnectionStats(downloaded: 1, total: 4, completed: false, failed: false, retryTimes: 0),
+      HttpConnectionStats(downloaded: 1, total: 4, completed: false, failed: false, retryTimes: 0, parked: true),
+      HttpConnectionStats(downloaded: 4, total: 4, completed: true, failed: false, retryTimes: 0),
+      HttpConnectionStats(downloaded: 1, total: 4, completed: false, failed: true, retryTimes: 3),
+    ]);
+    expect(summary.downloading, 1);
+    expect(summary.idle, 1);
+    expect(summary.completed, 1);
+    expect(summary.failed, 1);
+  });
+
   testWidgets('HTTP connections use indeterminate progress only when total is unknown', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(390, 320));
     await tester.pumpWidget(

@@ -2396,7 +2396,10 @@ func (f *Fetcher) checkCompletion() bool {
 	return false
 }
 
-// Patch modifies the HTTP request information.
+// Patch modifies the HTTP request information and options. A positive
+// opts connections value is the new ceiling: live for a running adaptive
+// task, otherwise from the next start. An explicit adaptive switch applies
+// from the next start.
 func (f *Fetcher) Patch(req *base.Request, opts *base.Options) error {
 	// Patch request info
 	if req != nil {
