@@ -201,7 +201,7 @@ Future<DownloadCategoryDraft?> showDownloadCategoryDialog(
               onPressed: () => shad.closeOverlay(dialogContext),
               child: Text(dialogContext.l10n.cancel),
             ),
-            AppPrimaryButton(onPressed: submit, child: Text(dialogContext.l10n.confirm)),
+            AppPrimaryButton(onPressed: submit, child: Text(dialogContext.l10n.save)),
           ],
         );
       },

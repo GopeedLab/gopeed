@@ -2480,7 +2480,7 @@ void main() {
     expect(find.text('%date% — Full date (YYYY-MM-DD)'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('path-placeholder-%date%')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Confirm'));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     expect(find.text('归档'), findsOneWidget);
