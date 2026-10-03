@@ -1297,21 +1297,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-      expect(find.byType(shad.Switch), findsOneWidget);
-      expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
-      final installButton = find.byKey(const ValueKey('install-extension-button'));
-      expect(find.descendant(of: installButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+    expect(find.byType(shad.Switch), findsOneWidget);
+    expect(find.byKey(const ValueKey('load-local-extension-button')), findsNothing);
+    final installButton = find.byKey(const ValueKey('install-extension-button'));
+    expect(find.descendant(of: installButton, matching: find.byType(shad.IconButton)), findsOneWidget);
 
-      for (var index = 0; index < 5; index++) {
-        await tester.tap(installButton);
-        await tester.pump(const Duration(milliseconds: 100));
-      }
+    for (var index = 0; index < 5; index++) {
+      await tester.tap(installButton);
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
-      expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
-      expect(find.byKey(const ValueKey('extension-install-url-input')), findsOneWidget);
-      final localButton = find.byKey(const ValueKey('load-local-extension-button'));
-      expect(localButton, findsOneWidget);
-      expect(find.descendant(of: localButton, matching: find.byType(shad.IconButton)), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-install-popover')), findsOneWidget);
+    expect(find.byKey(const ValueKey('extension-install-url-input')), findsOneWidget);
+    final localButton = find.byKey(const ValueKey('load-local-extension-button'));
+    expect(localButton, findsOneWidget);
+    expect(find.descendant(of: localButton, matching: find.byType(shad.IconButton)), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 3));
     expect(tester.takeException(), isNull);
