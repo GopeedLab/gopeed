@@ -358,7 +358,7 @@ func TestInitOptionsWhiteListFallsBackFromCategoryDir(t *testing.T) {
 
 	// The routed category directory falls outside the white list, so the
 	// task falls back to the default directory instead of failing.
-	opts, err := downloader.initOptions(&base.Request{URL: "https://example.com/setup.exe"}, &base.Options{Path: defaultDir})
+	opts, err := downloader.initOptions(&base.Request{URL: "https://example.com/setup.exe"}, &base.Options{Path: defaultDir}, true)
 	if err != nil {
 		t.Fatalf("expected white list fallback, got %v", err)
 	}
@@ -367,7 +367,7 @@ func TestInitOptionsWhiteListFallsBackFromCategoryDir(t *testing.T) {
 	}
 
 	// An explicitly chosen directory outside the white list still fails.
-	_, err = downloader.initOptions(&base.Request{URL: "https://example.com/setup.exe"}, &base.Options{Path: defaultDir + "/Other"})
+	_, err = downloader.initOptions(&base.Request{URL: "https://example.com/setup.exe"}, &base.Options{Path: defaultDir + "/Other"}, true)
 	if err == nil {
 		t.Fatal("expected white list error for an explicit directory")
 	}
@@ -458,6 +458,98 @@ func TestDownloader_CreateDirectAutoCategorize(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(customDir, "setup.exe")); err != nil {
 		t.Fatalf("custom dir file missing: %v", err)
 	}
+}
+
+func TestDownloader_CreateWithOptionsDefaultPathStaysUnrouted(t *testing.T) {
+	listener := test.StartTestFileServer()
+	defer listener.Close()
+
+	downloader := NewDownloader(nil)
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		downloader.Delete(nil, true)
+		downloader.Clear()
+	}()
+
+	defaultDir := t.TempDir()
+	categoryDir := filepath.Join(defaultDir, "Program")
+	cfg, err := downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.DownloadDir = defaultDir
+	cfg.AutoCategorize = util.BoolPtr(true)
+	cfg.Categories = []*base.DownloadCategory{
+		{Name: "Program", Path: categoryDir, Extensions: []string{"exe"}},
+	}
+	if err := downloader.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	resolve := func(opts *base.Options) string {
+		t.Helper()
+		rr, err := downloader.Resolve(&base.Request{URL: "http://" + listener.Addr().String() + "/" + test.BuildName}, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return rr.ID
+	}
+	assertCreated := func(rrID string, opts *base.Options, wantTaskPath, wantDownloadDir string) {
+		t.Helper()
+		taskID, err := downloader.CreateWithOptions(rrID, opts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		task := downloader.GetTask(taskID)
+		if task == nil {
+			t.Fatal("task not found")
+		}
+		if task.Meta.Opts.Path != wantTaskPath {
+			t.Fatalf("task path = %q, want %q", task.Meta.Opts.Path, wantTaskPath)
+		}
+		current, err := downloader.GetConfig()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if current.DownloadDir != wantDownloadDir {
+			t.Fatalf("DownloadDir = %q, want %q", current.DownloadDir, wantDownloadDir)
+		}
+	}
+
+	// The default directory keeps the download in place while the task itself is
+	// routed into the category directory: the routed path must never be
+	// persisted as the global default download directory.
+	assertCreated(
+		resolve(&base.Options{Name: "setup.exe", AsDefaultPath: true}),
+		&base.Options{Name: "setup.exe", AsDefaultPath: true},
+		categoryDir, defaultDir,
+	)
+
+	// Omitted create options reuse the resolve-time options and get the same
+	// treatment.
+	assertCreated(
+		resolve(&base.Options{Name: "installer.exe", AsDefaultPath: true}),
+		nil,
+		categoryDir, defaultDir,
+	)
+
+	// A submitted path equal to the configured default is still the default.
+	assertCreated(
+		resolve(&base.Options{Name: "tool.exe", Path: defaultDir, AsDefaultPath: true}),
+		&base.Options{Name: "tool.exe", Path: defaultDir, AsDefaultPath: true},
+		categoryDir, defaultDir,
+	)
+
+	// An explicitly chosen directory outside the default one is persisted, the
+	// same behaviour main has.
+	customDir := t.TempDir()
+	assertCreated(
+		resolve(&base.Options{Name: "custom.exe", Path: customDir, AsDefaultPath: true}),
+		&base.Options{Name: "custom.exe", Path: customDir, AsDefaultPath: true},
+		customDir, customDir,
+	)
 }
 
 func TestDownloader_SetupMigratesLegacyExtraCategories(t *testing.T) {

@@ -528,7 +528,10 @@ func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *Resolve
 	if err != nil {
 		return
 	}
-	initOpt, err := d.initOptions(req, opts)
+	// Resolve only fills the default directory; the category routing happens
+	// when the task is created so the create call still knows the directory the
+	// task would have used without routing.
+	initOpt, err := d.initOptions(req, opts, false)
 	if err != nil {
 		return
 	}
@@ -593,7 +596,7 @@ func (d *Downloader) createDirect(req *base.Request, opts *base.Options) (taskId
 		return
 	}
 	fetcher.Meta().Req = req
-	initOpt, err := d.initOptions(req, opts)
+	initOpt, err := d.initOptions(req, opts, true)
 	if err != nil {
 		return
 	}
@@ -637,11 +640,23 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 	if !ok {
 		return "", errors.New("invalid resource id")
 	}
-	if opts != nil {
-		opts, err = d.initOptions(fetcher.Meta().Req, opts.Clone())
-		if err != nil {
-			return "", err
-		}
+	provided := opts != nil
+	submitted := opts
+	if !provided {
+		submitted = fetcher.Meta().Opts
+	}
+	if submitted == nil {
+		return "", errors.New("resource options are unavailable")
+	}
+	// Snapshot the options before initOptions swaps in the category directory:
+	// the default-directory persist must never turn a routed category directory
+	// into the global default download directory.
+	preRouteOpts := submitted.Clone()
+	opts, err = d.initOptions(fetcher.Meta().Req, submitted.Clone(), true)
+	if err != nil {
+		return "", err
+	}
+	if provided {
 		if res := fetcher.Meta().Res; res != nil {
 			for _, index := range opts.SelectFiles {
 				if index < 0 || index >= len(res.Files) {
@@ -650,8 +665,8 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 			}
 			opts.InitSelectFiles(len(res.Files))
 		}
-		fetcher.Meta().Opts = opts
 	}
+	fetcher.Meta().Opts = opts
 	if res := fetcher.Meta().Res; res != nil {
 		res.CalcSize(fetcher.Meta().Opts.SelectFiles)
 	}
@@ -660,7 +675,7 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 		delete(d.fetcherCache, rrId)
 		d.fetcherMapLock.Unlock()
 	}()
-	defaultPath, err := d.prepareDefaultPath(fetcher.Meta().Opts)
+	defaultPath, err := d.prepareDefaultPath(preRouteOpts)
 	if err != nil {
 		return "", err
 	}
@@ -1730,7 +1745,14 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	return
 }
 
-func (d *Downloader) initOptions(req *base.Request, opts *base.Options) (*base.Options, error) {
+// initOptions fills an empty path with the configured download directory and
+// applies the white list check. When route is set it also swaps in the
+// matching category directory, e.g. *.exe to <downloadDir>/Program, falling
+// back to the pre-route directory when the white list rejects it. Resolving
+// keeps route false: the category directory belongs to the created task, and
+// the resolve-time options have to keep the directory the task would have used
+// without routing so the default-directory persist stays correct.
+func (d *Downloader) initOptions(req *base.Request, opts *base.Options, route bool) (*base.Options, error) {
 	if opts == nil {
 		opts = &base.Options{}
 	}
@@ -1741,13 +1763,15 @@ func (d *Downloader) initOptions(req *base.Request, opts *base.Options) (*base.O
 	if err != nil {
 		return nil, err
 	}
-	// Route the download to the matching category directory, e.g. *.exe to
-	// <downloadDir>/Program, when the task keeps the default download directory.
 	current := strings.TrimSpace(opts.Path)
 	if current == "" {
 		current = storeConfig.DownloadDir
 	}
-	opts.Path = d.routeDownloadPath(req, opts, storeConfig)
+	if route {
+		opts.Path = d.routeDownloadPath(req, opts, storeConfig)
+	} else {
+		opts.Path = current
+	}
 	path, err := d.initDownloadPath(opts.Path)
 	if err != nil && comparablePath(opts.Path) != comparablePath(current) {
 		// The routed category directory is not covered by the white list.
