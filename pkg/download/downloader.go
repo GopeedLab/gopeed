@@ -520,7 +520,7 @@ func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *Resolve
 	if err != nil {
 		return
 	}
-	initOpt, err := d.initOptions(opts)
+	initOpt, err := d.initOptions(req, opts)
 	if err != nil {
 		return
 	}
@@ -585,7 +585,7 @@ func (d *Downloader) createDirect(req *base.Request, opts *base.Options) (taskId
 		return
 	}
 	fetcher.Meta().Req = req
-	initOpt, err := d.initOptions(opts)
+	initOpt, err := d.initOptions(req, opts)
 	if err != nil {
 		return
 	}
@@ -630,7 +630,7 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 		return "", errors.New("invalid resource id")
 	}
 	if opts != nil {
-		opts, err = d.initOptions(opts.Clone())
+		opts, err = d.initOptions(fetcher.Meta().Req, opts.Clone())
 		if err != nil {
 			return "", err
 		}
@@ -1722,21 +1722,33 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	return
 }
 
-func (d *Downloader) initOptions(opts *base.Options) (*base.Options, error) {
+func (d *Downloader) initOptions(req *base.Request, opts *base.Options) (*base.Options, error) {
 	if opts == nil {
 		opts = &base.Options{}
 	}
 	if opts.SelectFiles == nil {
 		opts.SelectFiles = make([]int, 0)
 	}
-	if opts.Path == "" {
-		storeConfig, err := d.GetConfig()
-		if err != nil {
-			return nil, err
-		}
-		opts.Path = storeConfig.DownloadDir
+	storeConfig, err := d.GetConfig()
+	if err != nil {
+		return nil, err
 	}
+	// Route the download to the matching category directory, e.g. *.exe to
+	// <downloadDir>/Program, when the task keeps the default download directory.
+	current := strings.TrimSpace(opts.Path)
+	if current == "" {
+		current = storeConfig.DownloadDir
+	}
+	opts.Path = d.routeDownloadPath(req, opts, storeConfig)
 	path, err := d.initDownloadPath(opts.Path)
+	if err != nil && comparablePath(opts.Path) != comparablePath(current) {
+		// The routed category directory is not covered by the white list.
+		// Falling back keeps the task alive in the directory it would have
+		// used without auto categorize instead of failing its creation.
+		d.Logger.Warn().Err(err).Msgf("category directory %q rejected by white list, falling back to %q", opts.Path, current)
+		opts.Path = current
+		path, err = d.initDownloadPath(opts.Path)
+	}
 	if err != nil {
 		return nil, err
 	}

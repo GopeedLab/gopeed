@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -187,6 +188,8 @@ type DownloaderStoreConfig struct {
 	Script                     *ScriptConfig          `json:"script"`                     // Script is the script execution configuration
 	AutoTorrent                *AutoTorrentConfig     `json:"autoTorrent"`                // AutoTorrent is the auto torrent task creation configuration
 	Archive                    *ArchiveConfig         `json:"archive"`                    // Archive is the archive extraction configuration
+	Categories                 []*DownloadCategory    `json:"categories"`                 // Categories is the download directory category configuration
+	AutoCategorize             *bool                  `json:"autoCategorize,omitempty"`   // AutoCategorize routes downloads to category directories by file extension; unset defaults to enabled
 	API                        *APIServerConfig       `json:"api"`                        // API is the optional REST server configuration
 	AutoStartTasks             bool                   `json:"autoStartTasks"`             // AutoStartTasks continues all unfinished tasks when the backend starts
 	AutoDeleteMissingFileTasks bool                   `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
@@ -220,7 +223,43 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 			DeleteAfterExtract: false,
 		}
 	}
+	// Seed the built-in categories for deployments that never run the flutter
+	// startup flow, e.g. headless api servers.
+	if len(cfg.Categories) == 0 && cfg.DownloadDir != "" {
+		cfg.Categories = []*DownloadCategory{
+			builtinSeedCategory("categoryMusic", "Music", cfg.DownloadDir),
+			builtinSeedCategory("categoryVideo", "Video", cfg.DownloadDir),
+			builtinSeedCategory("categoryDocument", "Document", cfg.DownloadDir),
+			builtinSeedCategory("categoryProgram", "Program", cfg.DownloadDir),
+		}
+	}
 	return cfg
+}
+
+// builtinCategoryExtensions mirrors the flutter side
+// kDefaultCategoryExtensions, keep both maps in sync.
+var builtinCategoryExtensions = map[string][]string{
+	"categoryProgram":  {"exe", "msi", "msix", "apk", "dmg", "deb", "rpm", "pkg", "appimage"},
+	"categoryVideo":    {"mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "3gp"},
+	"categoryMusic":    {"mp3", "flac", "wav", "aac", "ogg", "m4a", "wma", "ape"},
+	"categoryDocument": {"pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md", "csv", "epub", "rtf"},
+}
+
+func builtinSeedCategory(nameKey, name, downloadDir string) *DownloadCategory {
+	return &DownloadCategory{
+		Name:       "",
+		Path:       filepath.Join(downloadDir, name),
+		NameKey:    nameKey,
+		IsBuiltIn:  true,
+		Extensions: append([]string(nil), builtinCategoryExtensions[nameKey]...),
+	}
+}
+
+// AutoCategorizeEnabled reports whether downloads are routed to category
+// directories by file extension. The switch is optional: an unset value
+// defaults to enabled so new installs route without extra configuration.
+func (cfg *DownloaderStoreConfig) AutoCategorizeEnabled() bool {
+	return cfg.AutoCategorize == nil || *cfg.AutoCategorize
 }
 
 func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *DownloaderStoreConfig {
@@ -300,6 +339,16 @@ type AutoTorrentConfig struct {
 type ArchiveConfig struct {
 	AutoExtract        bool `json:"autoExtract"`        // AutoExtract enables automatic extraction of archives after download
 	DeleteAfterExtract bool `json:"deleteAfterExtract"` // DeleteAfterExtract deletes the archive after successful extraction
+}
+
+// DownloadCategory is a download directory category that files can be routed to by extension
+type DownloadCategory struct {
+	Name       string   `json:"name"`                 // Name is the category display name, empty for built-in categories that use NameKey
+	Path       string   `json:"path"`                 // Path is the download directory of the category
+	NameKey    string   `json:"nameKey,omitempty"`    // NameKey is the i18n key of the built-in category name
+	IsBuiltIn  bool     `json:"isBuiltIn,omitempty"`  // IsBuiltIn marks the category as built-in
+	IsDeleted  bool     `json:"isDeleted,omitempty"`  // IsDeleted marks the built-in category as deleted
+	Extensions []string `json:"extensions,omitempty"` // Extensions is the file extension list routed to the category, without leading dots
 }
 
 type DownloaderProxyConfig struct {

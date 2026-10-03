@@ -1,8 +1,13 @@
 package base
 
 import (
+	"encoding/json"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/GopeedLab/gopeed/pkg/util"
 )
 
 func TestDownloaderStoreConfig_Init(t *testing.T) {
@@ -168,6 +173,88 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				t.Errorf("Init() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestDownloaderStoreConfig_InitSeedsBuiltInCategories(t *testing.T) {
+	t.Run("fresh config with a download dir gets the built-in categories", func(t *testing.T) {
+		dir := t.TempDir()
+		cfg := &DownloaderStoreConfig{DownloadDir: dir}
+		cfg.Init()
+
+		wantKeys := []string{"categoryMusic", "categoryVideo", "categoryDocument", "categoryProgram"}
+		wantNames := []string{"Music", "Video", "Document", "Program"}
+		if len(cfg.Categories) != len(wantKeys) {
+			t.Fatalf("categories = %d, want %d", len(cfg.Categories), len(wantKeys))
+		}
+		for i, category := range cfg.Categories {
+			if category.NameKey != wantKeys[i] {
+				t.Errorf("category[%d].NameKey = %q, want %q", i, category.NameKey, wantKeys[i])
+			}
+			if !category.IsBuiltIn {
+				t.Errorf("category[%d] %q is not built-in", i, category.NameKey)
+			}
+			if category.Path != filepath.Join(dir, wantNames[i]) {
+				t.Errorf("category[%d].Path = %q, want %q", i, category.Path, filepath.Join(dir, wantNames[i]))
+			}
+			if len(category.Extensions) == 0 {
+				t.Errorf("category[%d] %q has no default extensions", i, category.NameKey)
+			}
+		}
+	})
+
+	t.Run("legacy extra downloadCategories is ignored", func(t *testing.T) {
+		cfg := &DownloaderStoreConfig{
+			DownloadDir: t.TempDir(),
+			Extra: map[string]any{
+				"downloadCategories": []any{map[string]any{"name": "Music", "path": "/old/Music"}},
+			},
+		}
+		cfg.Init()
+		if len(cfg.Categories) != 4 {
+			t.Fatalf("categories = %d, want the 4 built-ins seeded anyway", len(cfg.Categories))
+		}
+	})
+
+	t.Run("existing categories and missing download dirs are untouched", func(t *testing.T) {
+		existing := []*DownloadCategory{{Name: "Mine", Path: "/downloads/Mine"}}
+		cfg := &DownloaderStoreConfig{DownloadDir: t.TempDir(), Categories: existing}
+		cfg.Init()
+		if len(cfg.Categories) != 1 || cfg.Categories[0].Name != "Mine" {
+			t.Fatalf("categories = %v, want the existing one", cfg.Categories)
+		}
+
+		empty := &DownloaderStoreConfig{}
+		empty.Init()
+		if len(empty.Categories) != 0 {
+			t.Fatalf("categories = %d, want 0 without a download dir", len(empty.Categories))
+		}
+	})
+}
+
+func TestDownloaderStoreConfig_AutoCategorizeEnabled(t *testing.T) {
+	if !(&DownloaderStoreConfig{}).AutoCategorizeEnabled() {
+		t.Fatal("unset auto categorize = disabled, want enabled by default")
+	}
+	if (&DownloaderStoreConfig{AutoCategorize: util.BoolPtr(false)}).AutoCategorizeEnabled() {
+		t.Fatal("explicit off = enabled, want the opt-out preserved")
+	}
+}
+
+func TestDownloaderStoreConfig_AutoCategorizeJSON(t *testing.T) {
+	unset, err := json.Marshal(&DownloaderStoreConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(unset), `"autoCategorize"`) {
+		t.Fatalf("unset autoCategorize must be omitted from the api json, got %s", unset)
+	}
+	off, err := json.Marshal(&DownloaderStoreConfig{AutoCategorize: util.BoolPtr(false)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(off), `"autoCategorize":false`) {
+		t.Fatalf("explicit autoCategorize=false must be emitted, got %s", off)
 	}
 }
 
