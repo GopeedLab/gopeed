@@ -459,3 +459,57 @@ func TestDownloader_CreateDirectAutoCategorize(t *testing.T) {
 		t.Fatalf("custom dir file missing: %v", err)
 	}
 }
+
+func TestDownloader_SetupMigratesLegacyExtraCategories(t *testing.T) {
+	storage := NewMemStorage()
+	if err := storage.Setup([]string{bucketConfig}); err != nil {
+		t.Fatal(err)
+	}
+	legacy := &base.DownloaderStoreConfig{
+		DownloadDir: t.TempDir(),
+		Extra: map[string]any{
+			"downloadCategories": []any{
+				map[string]any{"name": "", "path": filepath.Join(t.TempDir(), "Music"), "isBuiltIn": true, "nameKey": "categoryMusic"},
+			},
+		},
+	}
+	if err := storage.Put(bucketConfig, "config", legacy); err != nil {
+		t.Fatal(err)
+	}
+
+	downloader := NewDownloader(&DownloaderConfig{Storage: storage, StorageDir: t.TempDir()})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		downloader.Delete(nil, true)
+		downloader.Clear()
+	}()
+
+	cfg, err := downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Categories) != 1 || cfg.Categories[0].NameKey != "categoryMusic" || len(cfg.Categories[0].Extensions) == 0 {
+		t.Fatalf("categories = %+v, want the migrated built-in with its default extensions", cfg.Categories)
+	}
+	if _, ok := cfg.Extra["downloadCategories"]; ok {
+		t.Fatal("in memory config still carries the legacy key")
+	}
+
+	// The cleared key has to be persisted, not only held in memory.
+	var stored base.DownloaderStoreConfig
+	exist, err := storage.Get(bucketConfig, "config", &stored)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exist {
+		t.Fatal("stored config missing")
+	}
+	if _, ok := stored.Extra["downloadCategories"]; ok {
+		t.Fatal("stored config still carries the legacy key")
+	}
+	if len(stored.Categories) != 1 || stored.Categories[0].NameKey != "categoryMusic" {
+		t.Fatalf("stored categories = %+v, want the migrated list", stored.Categories)
+	}
+}

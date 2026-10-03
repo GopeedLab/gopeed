@@ -1,6 +1,7 @@
 package base
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -253,6 +254,46 @@ func builtinSeedCategory(nameKey, name, downloadDir string) *DownloadCategory {
 		IsBuiltIn:  true,
 		Extensions: append([]string(nil), builtinCategoryExtensions[nameKey]...),
 	}
+}
+
+// MigrateLegacyExtraCategories moves the extra.downloadCategories list written
+// by v2.0.0-beta builds into the top level categories field and clears the
+// legacy key. The legacy list predates extension based routing, so built-in
+// entries regain their default extension lists from their name key, while user
+// created folders keep their empty list until edited in settings. It reports
+// whether the config changed so the caller can persist the cleared key.
+func (cfg *DownloaderStoreConfig) MigrateLegacyExtraCategories() bool {
+	if len(cfg.Categories) > 0 || cfg.Extra == nil {
+		return false
+	}
+	raw, ok := cfg.Extra["downloadCategories"]
+	if !ok {
+		return false
+	}
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return false
+	}
+	var legacy []*DownloadCategory
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		return false
+	}
+	categories := make([]*DownloadCategory, 0, len(legacy))
+	for _, category := range legacy {
+		if category == nil {
+			continue
+		}
+		if extensions, exist := builtinCategoryExtensions[category.NameKey]; exist && len(category.Extensions) == 0 {
+			category.Extensions = append([]string(nil), extensions...)
+		}
+		categories = append(categories, category)
+	}
+	if len(categories) == 0 {
+		return false
+	}
+	cfg.Categories = categories
+	delete(cfg.Extra, "downloadCategories")
+	return true
 }
 
 // AutoCategorizeEnabled reports whether downloads are routed to category

@@ -181,6 +181,14 @@ func (d *Downloader) Setup() error {
 			FirstLoad: true,
 		}
 	}
+	// Move the legacy extra.downloadCategories list written by v2.0.0-beta
+	// builds into the top level categories field and persist the cleared key,
+	// before Init seeds the built-in categories.
+	if d.cfg.DownloaderStoreConfig.MigrateLegacyExtraCategories() {
+		if err := d.PutConfig(d.cfg.DownloaderStoreConfig); err != nil {
+			return err
+		}
+	}
 	// init default config
 	d.cfg.DownloaderStoreConfig.Init()
 	// init protocol config, if not exist, use default config
