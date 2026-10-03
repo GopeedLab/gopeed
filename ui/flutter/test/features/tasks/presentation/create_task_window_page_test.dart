@@ -222,7 +222,7 @@ void main() {
     CreateTask? submitted;
     final config = DownloaderConfig(downloadDir: 'C:/Downloads')
       ..extra.defaultDirectDownload = true
-      ..extra.downloadCategories = [
+      ..categories = [
         DownloadCategory(name: 'Archives', path: 'E:/Archives/%year%'),
         DownloadCategory(name: 'Archives', path: 'F:/Archives'),
         DownloadCategory(name: 'Long video category', path: 'G:/Videos'),
@@ -610,6 +610,109 @@ void main() {
     expect(find.text('No history'), findsOneWidget);
     expect(find.byKey(const ValueKey('create-history-clear')), findsOneWidget);
     expect(find.byKey(const ValueKey('create-history-close')), findsOneWidget);
+  });
+
+  testWidgets('auto categorize hint previews the matched category folder', (WidgetTester tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    tester.view.physicalSize = const Size(1024, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    try {
+      final config = DownloaderConfig(downloadDir: 'C:/Downloads', autoCategorize: true)
+        ..categories = [
+          DownloadCategory(
+            name: 'Program',
+            nameKey: 'categoryProgram',
+            isBuiltIn: true,
+            path: 'C:/Downloads/Program',
+            extensions: const ['exe'],
+          ),
+        ];
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.getConfig, (_) => config)
+        ..bind(GopeedMethods.createTask, (_) => 'task-id')
+        ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: AppComponentThemes(
+              child: CreateTaskWindowPage(
+                initialTask: CreateTask(req: Request(url: 'https://example.com/setup.exe')),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final hint = find.byKey(const ValueKey('create-task-category-hint'));
+      expect(hint, findsOneWidget);
+      expect(tester.widget<Text>(hint).data, contains('C:/Downloads/Program'));
+
+      final directoryInput = find.descendant(
+        of: find.byKey(const ValueKey('create-task-directory-input')),
+        matching: find.byType(EditableText),
+      );
+      await tester.enterText(directoryInput, 'D:/Other');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('create-task-category-hint')), findsNothing);
+
+      await tester.enterText(directoryInput, 'C:/Downloads');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('create-task-category-hint')), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+  testWidgets('auto categorize hint stays hidden when the switch is off', (WidgetTester tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    tester.view.physicalSize = const Size(1024, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    try {
+      final config = DownloaderConfig(downloadDir: 'C:/Downloads')
+        ..categories = [
+          DownloadCategory(
+            name: 'Program',
+            nameKey: 'categoryProgram',
+            isBuiltIn: true,
+            path: 'C:/Downloads/Program',
+            extensions: const ['exe'],
+          ),
+        ];
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.getConfig, (_) => config)
+        ..bind(GopeedMethods.createTask, (_) => 'task-id')
+        ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: AppComponentThemes(
+              child: CreateTaskWindowPage(
+                initialTask: CreateTask(req: Request(url: 'https://example.com/setup.exe')),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('create-task-category-hint')), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }
 

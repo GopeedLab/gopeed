@@ -80,6 +80,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   bool? _autoExtract;
   bool _deleteAfterExtract = false;
   List<DownloadCategory> _downloadCategories = const [];
+  bool _autoCategorize = false;
 
   bool _showAdvanced = false;
   int _advancedScrollRequest = 0;
@@ -97,6 +98,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   void initState() {
     super.initState();
     _urlController.addListener(_handleUrlChanged);
+    _renameController.addListener(_handleFormHintChanged);
+    _directoryController.addListener(_handleFormHintChanged);
+    _urlController.addListener(_handleFormHintChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final task = widget.initialTask ?? ref.read(pendingCreateTaskProvider);
@@ -123,10 +127,13 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   @override
   void dispose() {
     _urlController.removeListener(_handleUrlChanged);
+    _urlController.removeListener(_handleFormHintChanged);
     _urlController.dispose();
+    _renameController.removeListener(_handleFormHintChanged);
     _renameController.dispose();
-    _connectionsController.dispose();
+    _directoryController.removeListener(_handleFormHintChanged);
     _directoryController.dispose();
+    _connectionsController.dispose();
     _proxyServerController.dispose();
     _proxyPortController.dispose();
     _proxyUsernameController.dispose();
@@ -186,6 +193,27 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       }
     }
     _recognizeMagnetUri(urlText.trim());
+  }
+
+  void _handleFormHintChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  /// Mirrors the backend auto-categorization so the form can preview the
+  /// target category folder. Returns null when no category applies.
+  String? _autoCategoryHintPath() {
+    if (!_autoCategorize || _downloadCategories.isEmpty) return null;
+    if (_configuredDownloadDirectory.isEmpty) return null;
+    final url = _urlController.text.trim();
+    if (_fileDataUri.isNotEmpty || _parseProtocol(url) == _TaskProtocol.bt) return null;
+    final fieldPath = _directoryController.text.trim();
+    if (fieldPath.isNotEmpty && !_sameDirectory(fieldPath, _configuredDownloadDirectory)) return null;
+    final fileName = categoryCandidateFileName(rename: _renameController.text.trim(), url: url);
+    if (fileName.isEmpty) return null;
+    final category = matchDownloadCategory(_downloadCategories, fileName);
+    if (category == null) return null;
+    return _renderPathPlaceholders(category.path);
   }
 
   void _applyInitialTask(CreateTask? task) {
@@ -435,6 +463,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               }
                             },
                           ),
+                          if (_autoCategoryHintPath() case final String categoryHintPath) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              context.l10n.autoCategorySaveTo(categoryHintPath),
+                              key: const ValueKey('create-task-category-hint'),
+                              style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -771,9 +807,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           _connectionsController.text = connections.toString();
         }
         _directDownload = config.extra.defaultDirectDownload;
-        _downloadCategories = config.extra.downloadCategories
-            .where((category) => !category.isDeleted)
-            .toList(growable: false);
+        _autoCategorize = config.autoCategorize;
+        _downloadCategories = config.categories.where((category) => !category.isDeleted).toList(growable: false);
       });
     } catch (_) {
       // Keep local defaults when the backend is not available yet.
