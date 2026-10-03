@@ -11,12 +11,14 @@ import '../../../../shared/widgets/app_path_placeholder_button.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../l10n/l10n.dart';
+import 'extension_tag_editor.dart';
 
 class DownloadCategoryDraft {
-  const DownloadCategoryDraft({required this.name, required this.path});
+  const DownloadCategoryDraft({required this.name, required this.path, required this.extensions});
 
   final String name;
   final String path;
+  final List<String> extensions;
 }
 
 class DownloadCategoriesControl extends StatelessWidget {
@@ -93,6 +95,7 @@ class _CategoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
+    final extensions = category.effectiveExtensions();
     return Row(
       key: ValueKey('download-category-${category.nameKey ?? category.name}-${category.path}'),
       children: [
@@ -111,6 +114,16 @@ class _CategoryRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: palette.textSecondary, fontSize: 12),
               ),
+              if (extensions.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  extensions.join(', '),
+                  key: const ValueKey('download-category-extensions'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: palette.textSecondary, fontSize: 11),
+                ),
+              ],
             ],
           ),
         ),
@@ -140,6 +153,11 @@ Future<DownloadCategoryDraft?> showDownloadCategoryDialog(
 }) async {
   final nameController = TextEditingController(text: initialName);
   final pathController = TextEditingController(text: category?.path ?? initialPath);
+  final editorKey = GlobalKey<ExtensionTagEditorState>();
+  final nameKey = category?.nameKey;
+  final restoreDefaults = nameKey == null
+      ? const <String>[]
+      : normalizeCategoryExtensions(kDefaultCategoryExtensions[nameKey] ?? const []);
   String? validationMessage;
 
   final overlay = const shad.DialogOverlayHandler().show<DownloadCategoryDraft?>(
@@ -157,7 +175,10 @@ Future<DownloadCategoryDraft?> showDownloadCategoryDialog(
             setDialogState(() => validationMessage = dialogContext.l10n.categoryFieldsRequired);
             return;
           }
-          shad.closeOverlay(dialogContext, DownloadCategoryDraft(name: name, path: path));
+          shad.closeOverlay(
+            dialogContext,
+            DownloadCategoryDraft(name: name, path: path, extensions: editorKey.currentState?.flush() ?? const []),
+          );
         }
 
         return shad.AlertDialog(
@@ -165,35 +186,47 @@ Future<DownloadCategoryDraft?> showDownloadCategoryDialog(
           content: SizedBox(
             key: const ValueKey('download-category-dialog'),
             width: (MediaQuery.sizeOf(dialogContext).width - 64).clamp(260.0, 420.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(dialogContext.l10n.categoryName, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
-                const SizedBox(height: 6),
-                AppTextField(key: const ValueKey('download-category-name'), controller: nameController),
-                const SizedBox(height: 14),
-                Text(dialogContext.l10n.categoryPath, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
-                const SizedBox(height: 6),
-                AppPathPickerField.downloadDirectory(
-                  fieldKey: const ValueKey('download-category-path'),
-                  controller: pathController,
-                  desktopWidth: AppDesignTokens.settingsFormControlWidth,
-                  allowAndroidEditing: true,
-                ),
-                const SizedBox(height: AppDesignTokens.space4),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: AppPathPlaceholderButton(
-                    key: const ValueKey('download-category-placeholders'),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(dialogContext.l10n.categoryName, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  AppTextField(key: const ValueKey('download-category-name'), controller: nameController),
+                  const SizedBox(height: 14),
+                  Text(dialogContext.l10n.categoryPath, style: TextStyle(color: palette.textSecondary, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  AppPathPickerField.downloadDirectory(
+                    fieldKey: const ValueKey('download-category-path'),
                     controller: pathController,
+                    desktopWidth: AppDesignTokens.settingsFormControlWidth,
+                    allowAndroidEditing: true,
                   ),
-                ),
-                if (validationMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Text(validationMessage!, style: TextStyle(color: palette.error, fontSize: 12)),
+                  const SizedBox(height: AppDesignTokens.space4),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: AppPathPlaceholderButton(
+                      key: const ValueKey('download-category-placeholders'),
+                      controller: pathController,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ExtensionTagEditor(
+                    key: editorKey,
+                    inputKey: const ValueKey('download-category-extensions-input'),
+                    initialTags: category?.effectiveExtensions() ?? const [],
+                    labelText: dialogContext.l10n.categoryExtensions,
+                    placeholderText: dialogContext.l10n.categoryExtensionsEmptyHint,
+                    usagePlaceholderText: dialogContext.l10n.categoryExtensionsUsageHint,
+                    restoreDefaults: restoreDefaults,
+                  ),
+                  if (validationMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Text(validationMessage!, style: TextStyle(color: palette.error, fontSize: 12)),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           actions: [
