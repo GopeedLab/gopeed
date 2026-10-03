@@ -109,7 +109,6 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     unawaited(ContinuedProcessing.setEnabled(config.extra.backgroundContinuedProcessing));
   }
 
-
   Future<AppRuntimeState> _init() async {
     await AppInitializer.ensureStorageInitialized();
     try {

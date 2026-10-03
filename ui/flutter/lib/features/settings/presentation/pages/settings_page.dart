@@ -387,8 +387,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   if (Util.isIOS())
                     SettingsItem(
                       title: context.l10n.backgroundContinuedProcessing,
-                      subtitle:
-                          context.l10n.backgroundContinuedProcessingDescription,
+                      subtitle: context.l10n.backgroundContinuedProcessingDescription,
                       child: shad.Switch(
                         value: config.extra.backgroundContinuedProcessing,
                         onChanged: (value) => unawaited(_setBackgroundContinuedProcessing(value)),

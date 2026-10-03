@@ -143,10 +143,7 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) =>
         notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
         desktopNotification: json['desktopNotification'] as bool? ?? true,
         backgroundLocationKeepAlive: json['backgroundLocationKeepAlive'] as bool? ?? false,
-        backgroundContinuedProcessing:
-            json['backgroundContinuedProcessing']
-                as bool? ??
-            false,
+        backgroundContinuedProcessing: json['backgroundContinuedProcessing'] as bool? ?? false,
         windowState: json['windowState'] == null
             ? null
             : WindowStateConfig.fromJson(json['windowState'] as Map<String, dynamic>?),
@@ -169,8 +166,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynam
   'notifyWhenNewVersion': instance.notifyWhenNewVersion,
   'desktopNotification': instance.desktopNotification,
   'backgroundLocationKeepAlive': instance.backgroundLocationKeepAlive,
-  'backgroundContinuedProcessing':
-      instance.backgroundContinuedProcessing,
+  'backgroundContinuedProcessing': instance.backgroundContinuedProcessing,
   'windowState': instance.windowState.toJson(),
   'bookmarks': instance.bookmarks,
   'createHistory': instance.createHistory,
