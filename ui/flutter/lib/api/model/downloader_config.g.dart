@@ -12,6 +12,12 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
         maxRunning: (json['maxRunning'] as num?)?.toInt() ?? 0,
         autoStartTasks: json['autoStartTasks'] as bool? ?? false,
         autoDeleteMissingFileTasks: json['autoDeleteMissingFileTasks'] as bool? ?? false,
+        categories:
+            (json['categories'] as List<dynamic>?)
+                ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
+        autoCategorize: json['autoCategorize'] as bool? ?? false,
       )
       ..protocolConfig = ProtocolConfig.fromJson(json['protocolConfig'] as Map<String, dynamic>?)
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
@@ -35,6 +41,8 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) => <Str
   'api': instance.api.toJson(),
   'autoStartTasks': instance.autoStartTasks,
   'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
+  'categories': instance.categories.map((e) => e.toJson()).toList(),
+  'autoCategorize': instance.autoCategorize,
 };
 
 ApiServerConfig _$ApiServerConfigFromJson(Map<String, dynamic> json) => ApiServerConfig(
@@ -197,6 +205,7 @@ DownloadCategory _$DownloadCategoryFromJson(Map<String, dynamic> json) => Downlo
   isBuiltIn: json['isBuiltIn'] as bool? ?? false,
   nameKey: json['nameKey'] as String?,
   isDeleted: json['isDeleted'] as bool? ?? false,
+  extensions: (json['extensions'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
 );
 
 Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) => <String, dynamic>{
@@ -205,6 +214,7 @@ Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) => <Str
   'isBuiltIn': instance.isBuiltIn,
   'nameKey': ?instance.nameKey,
   'isDeleted': instance.isDeleted,
+  'extensions': instance.extensions,
 };
 
 WebhookConfig _$WebhookConfigFromJson(Map<String, dynamic> json) => WebhookConfig(
