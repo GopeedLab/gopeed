@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "Без расширений файлы не будут автоматически сохранены в эту категорию.",
   "categoryExtensionsRestoreDefaults": "Восстановить расширения по умолчанию",
   "categoryExtensionTaken": "{extension} уже используется в {category}",
-  "autoCategorySaveTo": "Подходящие файлы будут сохранены в {path}",
+  "autoCategoryDetectedFile": "Обнаружен файл типа {ext}",
   "builtInCategory": "Встроенную категорию нельзя удалить",
   "selectCategory": "Выбрать категорию",
   "quickDirectories": "Быстрые папки",

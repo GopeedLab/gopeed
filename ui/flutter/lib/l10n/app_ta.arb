@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "நீட்டிப்புகள் இல்லாததால், கோப்புகள் இந்த வகைப்பாட்டில் தானாகச் சேமிக்கப்படாது.",
   "categoryExtensionsRestoreDefaults": "இயல்புநிலை நீட்டிப்புகளை மீட்டமை",
   "categoryExtensionTaken": "{extension} ஏற்கனவே {category} இல் பயன்படுத்தப்படுகிறது",
-  "autoCategorySaveTo": "பொருந்தும் கோப்புகள் {path} இல் சேமிக்கப்படும்",
+  "autoCategoryDetectedFile": "{ext} வகை கோப்பு கண்டறியப்பட்டது",
   "builtInCategory": "உள்ளமைக்கப்பட்ட வகையை நீக்க முடியாது",
   "selectCategory": "வகையைத் தேர்ந்தெடுக்கவும்",
   "quickDirectories": "விரைவு கோப்புறைகள்",

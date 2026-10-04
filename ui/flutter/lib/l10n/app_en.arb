@@ -227,10 +227,10 @@
       }
     }
   },
-  "autoCategorySaveTo": "Matching files will be saved to {path}",
-  "@autoCategorySaveTo": {
+  "autoCategoryDetectedFile": "Detected a file of type {ext}",
+  "@autoCategoryDetectedFile": {
     "placeholders": {
-      "path": {
+      "ext": {
         "type": "String"
       }
     }

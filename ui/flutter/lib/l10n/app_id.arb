@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "Tanpa ekstensi, file tidak akan otomatis disimpan ke kategori ini.",
   "categoryExtensionsRestoreDefaults": "Pulihkan ekstensi default",
   "categoryExtensionTaken": "{extension} sudah digunakan oleh {category}",
-  "autoCategorySaveTo": "File yang cocok akan disimpan ke {path}",
+  "autoCategoryDetectedFile": "File bertipe {ext} terdeteksi",
   "builtInCategory": "Kategori bawaan tidak dapat dihapus",
   "selectCategory": "Pilih Kategori",
   "quickDirectories": "Folder cepat",

@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "Sense extensions, els fitxers no es desaran aquí automàticament.",
   "categoryExtensionsRestoreDefaults": "Restaurar les extensions predeterminades",
   "categoryExtensionTaken": "{extension} ja està utilitzat per {category}",
-  "autoCategorySaveTo": "Els fitxers coincidents es desaran a {path}",
+  "autoCategoryDetectedFile": "S'ha detectat un fitxer de tipus {ext}",
   "builtInCategory": "La categoria integrada no es pot suprimir",
   "selectCategory": "Seleccioneu una categoria",
   "quickDirectories": "Carpetes ràpides",

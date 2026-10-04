@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "Uzantı yoksa dosyalar bu kategoriye otomatik olarak kaydedilmez.",
   "categoryExtensionsRestoreDefaults": "Varsayılan uzantıları geri yükle",
   "categoryExtensionTaken": "{extension} zaten {category} içinde kullanılıyor",
-  "autoCategorySaveTo": "Eşleşen dosyalar {path} konumuna kaydedilir",
+  "autoCategoryDetectedFile": "{ext} türünde dosya algılandı",
   "builtInCategory": "Yerleşik kategori silinemez",
   "selectCategory": "Kategori Seç",
   "quickDirectories": "Hızlı klasörler",

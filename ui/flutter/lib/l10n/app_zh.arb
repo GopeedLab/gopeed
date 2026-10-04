@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "未设置后缀，文件不会自动归入此分类。",
   "categoryExtensionsRestoreDefaults": "恢复默认后缀",
   "categoryExtensionTaken": "{extension}已在{category}中配置",
-  "autoCategorySaveTo": "匹配的文件将保存到 {path}",
+  "autoCategoryDetectedFile": "识别到 {ext} 类型的文件",
   "builtInCategory": "内置分类不能删除",
   "selectCategory": "选择分类",
   "quickDirectories": "快捷目录",

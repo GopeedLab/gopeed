@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "확장자가 없으면 파일이 이 분류로 자동 저장되지 않습니다.",
   "categoryExtensionsRestoreDefaults": "기본 확장자 복원",
   "categoryExtensionTaken": "{extension}은(는) {category}에서 이미 사용 중입니다",
-  "autoCategorySaveTo": "일치하는 파일은 {path}에 저장됩니다",
+  "autoCategoryDetectedFile": "{ext} 유형 파일이 감지되었습니다",
   "builtInCategory": "기본 제공 카테고리는 삭제할 수 없습니다",
   "selectCategory": "카테고리 선택",
   "quickDirectories": "빠른 폴더",

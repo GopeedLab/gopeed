@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "拡張子が未設定の場合、ファイルは自動的にこの分類へ保存されません。",
   "categoryExtensionsRestoreDefaults": "デフォルトの拡張子を復元",
   "categoryExtensionTaken": "{extension} は {category} で既に使用されています",
-  "autoCategorySaveTo": "該当するファイルは {path} に保存されます",
+  "autoCategoryDetectedFile": "{ext} タイプのファイルを検出",
   "builtInCategory": "内蔵カテゴリは削除できません",
   "selectCategory": "カテゴリを選択",
   "quickDirectories": "クイックフォルダー",

@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "Không có phần mở rộng, tệp sẽ không tự động được lưu vào danh mục này.",
   "categoryExtensionsRestoreDefaults": "Khôi phục phần mở rộng mặc định",
   "categoryExtensionTaken": "{extension} đã được sử dụng trong {category}",
-  "autoCategorySaveTo": "Các tệp khớp sẽ được lưu vào {path}",
+  "autoCategoryDetectedFile": "Đã phát hiện tệp loại {ext}",
   "builtInCategory": "Không thể xóa danh mục tích hợp",
   "selectCategory": "Chọn danh mục",
   "quickDirectories": "Thư mục nhanh",

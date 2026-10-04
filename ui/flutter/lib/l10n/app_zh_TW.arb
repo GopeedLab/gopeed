@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "未設定後綴，檔案不會自動歸入此分類。",
   "categoryExtensionsRestoreDefaults": "恢復預設副檔名",
   "categoryExtensionTaken": "{extension}已在{category}中設定",
-  "autoCategorySaveTo": "相符的檔案將儲存到 {path}",
+  "autoCategoryDetectedFile": "識別到 {ext} 類型的檔案",
   "builtInCategory": "內建分類無法刪除",
   "selectCategory": "選擇分類",
   "quickDirectories": "快捷目錄",

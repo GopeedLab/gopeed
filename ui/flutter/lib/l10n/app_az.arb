@@ -210,7 +210,7 @@
   "categoryExtensionsEmptyHint": "Uzantı yoxdursa, fayllar bu kateqoriyaya avtomatik olaraq saxlanmır.",
   "categoryExtensionsRestoreDefaults": "Standart uzantıları bərpa et",
   "categoryExtensionTaken": "{extension} artıq {category} tərəfindən istifadə olunur",
-  "autoCategorySaveTo": "Uyğun fayllar {path} qovluğuna yadda saxlanılacaq",
+  "autoCategoryDetectedFile": "{ext} tipində fayl aşkarlandı",
   "builtInCategory": "Daxili kateqoriya silinə bilməz",
   "selectCategory": "Kateqoriya Seç",
   "quickDirectories": "Sürətli qovluqlar",

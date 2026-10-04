@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "Sem extensões, os ficheiros não serão guardados aqui automaticamente.",
   "categoryExtensionsRestoreDefaults": "Restaurar extensões padrão",
   "categoryExtensionTaken": "{extension} já está em uso em {category}",
-  "autoCategorySaveTo": "Os arquivos correspondentes serão salvos em {path}",
+  "autoCategoryDetectedFile": "Arquivo do tipo {ext} detectado",
   "builtInCategory": "Categoria integrada não pode ser excluída",
   "selectCategory": "Selecionar Categoria",
   "quickDirectories": "Pastas rápidas",

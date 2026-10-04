@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "Ohne Endungen werden Dateien nicht automatisch dieser Kategorie zugeordnet.",
   "categoryExtensionsRestoreDefaults": "Standard-Endungen wiederherstellen",
   "categoryExtensionTaken": "{extension} wird bereits von {category} verwendet",
-  "autoCategorySaveTo": "Passende Dateien werden in {path} gespeichert",
+  "autoCategoryDetectedFile": "Datei vom Typ {ext} erkannt",
   "builtInCategory": "Integrierte Kategorie kann nicht gelöscht werden",
   "selectCategory": "Kategorie auswählen",
   "quickDirectories": "Schnellordner",

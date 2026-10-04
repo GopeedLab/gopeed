@@ -217,7 +217,7 @@
   "categoryExtensionsEmptyHint": "Bez prípon sa súbory automaticky neuložia do tejto kategórie.",
   "categoryExtensionsRestoreDefaults": "Obnoviť predvolené prípony",
   "categoryExtensionTaken": "{extension} je už používané v {category}",
-  "autoCategorySaveTo": "Zhodné súbory sa uložia do {path}",
+  "autoCategoryDetectedFile": "Detegovaný súbor typu {ext}",
   "builtInCategory": "Vstavanú kategóriu nie je možné odstrániť",
   "selectCategory": "Vybrať kategóriu",
   "quickDirectories": "Rýchle priečinky",

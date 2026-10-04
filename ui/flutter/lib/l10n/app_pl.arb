@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "Bez rozszerzeń pliki nie będą automatycznie zapisywane w tej kategorii.",
   "categoryExtensionsRestoreDefaults": "Przywróć domyślne rozszerzenia",
   "categoryExtensionTaken": "{extension} jest już używane przez {category}",
-  "autoCategorySaveTo": "Pasujące pliki zostaną zapisane w {path}",
+  "autoCategoryDetectedFile": "Wykryto plik typu {ext}",
   "builtInCategory": "Wbudowanej kategorii nie można usunąć",
   "selectCategory": "Wybierz kategorię",
   "quickDirectories": "Szybkie foldery",

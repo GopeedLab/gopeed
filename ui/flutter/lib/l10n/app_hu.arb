@@ -203,7 +203,7 @@
   "categoryExtensionsEmptyHint": "Kiterjesztések nélkül a fájlok nem kerülnek automatikusan ebbe a kategóriába.",
   "categoryExtensionsRestoreDefaults": "Alapértelmezett kiterjesztések visszaállítása",
   "categoryExtensionTaken": "A(z) {extension} már használatban van itt: {category}",
-  "autoCategorySaveTo": "A megfelelő fájlok ide kerülnek: {path}",
+  "autoCategoryDetectedFile": "{ext} típusú fájl azonosítva",
   "builtInCategory": "A beépített kategória nem törölhető",
   "selectCategory": "Kategória kiválasztása",
   "quickDirectories": "Gyorsmappák",
