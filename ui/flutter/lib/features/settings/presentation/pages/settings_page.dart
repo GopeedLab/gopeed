@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Divider, Icons, Scrollbar, ScrollbarOrientation;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as path;
 import 'package:go_router/go_router.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'package:url_launcher/url_launcher.dart';
@@ -87,6 +88,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   DownloaderConfig? _config;
   StartConfig? _startConfig;
   String? _loadedSignature;
+  String? _appliedDownloadDir;
   String? _loadedStartSignature;
   Timer? _textSaveTimer;
   bool _syncingControllers = false;
@@ -385,14 +387,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   if (Util.isIOS())
                     SettingsItem(
                       title: context.l10n.backgroundContinuedProcessing,
-                      subtitle:
-                          context.l10n.backgroundContinuedProcessingDescription,
+                      subtitle: context.l10n.backgroundContinuedProcessingDescription,
                       child: shad.Switch(
-                        value:
-                            config.extra.backgroundContinuedProcessing,
-                        onChanged: (value) => unawaited(
-                          _setBackgroundContinuedProcessing(value),
-                        ),
+                        value: config.extra.backgroundContinuedProcessing,
+                        onChanged: (value) => unawaited(_setBackgroundContinuedProcessing(value)),
                       ),
                     ),
                 ],
@@ -473,11 +471,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   SettingsItem(
                     title: context.l10n.downloadCategories,
                     child: DownloadCategoriesControl(
-                      categories: config.extra.downloadCategories,
+                      categories: config.categories,
                       displayName: _categoryName,
                       onAdd: () => unawaited(_editDownloadCategory()),
                       onEdit: (category) => unawaited(_editDownloadCategory(category)),
                       onDelete: (category) => unawaited(_deleteDownloadCategory(category)),
+                    ),
+                  ),
+                  SettingsItem(
+                    title: context.l10n.autoCategorizeByExtension,
+                    subtitle: context.l10n.autoCategorizeByExtensionDescription,
+                    child: shad.Switch(
+                      value: config.autoCategorize,
+                      onChanged: (value) => _mutateConfig((next) => next.autoCategorize = value),
                     ),
                   ),
                   SettingsItem(
@@ -980,6 +986,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _config = DownloaderConfig.fromJson(config.toJson());
     _syncingControllers = true;
     _downloadDirController.text = _config!.downloadDir;
+    _appliedDownloadDir = _config!.downloadDir;
     _maxRunningController.text = _config!.maxRunning.clamp(1, 256).toString();
     _httpUserAgentController.text = _config!.protocolConfig.http.userAgent;
     _httpConnectionsController.text = _config!.protocolConfig.http.connections.clamp(1, 256).toString();
@@ -1071,7 +1078,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _applyTextControllers(DownloaderConfig config) {
-    config.downloadDir = _downloadDirController.text.trim();
+    final downloadDir = _downloadDirController.text.trim();
+    final previousDownloadDir = _appliedDownloadDir;
+    _appliedDownloadDir = downloadDir;
+    if (previousDownloadDir != null && !path.equals(previousDownloadDir, downloadDir)) {
+      rebaseBuiltinCategoryPaths(config, oldDir: previousDownloadDir, newDir: downloadDir);
+    }
+    config.downloadDir = downloadDir;
     config.maxRunning = _boundedInt(_maxRunningController, fallback: config.maxRunning, min: 1, max: 256);
     config.protocolConfig.http.userAgent = _httpUserAgentController.text.trim();
     config.protocolConfig.http.connections = _boundedInt(
@@ -1295,42 +1308,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _mutateConfig((config) => config.extra.backgroundLocationKeepAlive = enabled);
     await LocationKeepAliveCoordinator.instance.reconcile(enabled: enabled);
   }
-  Future<void>
-  _setBackgroundContinuedProcessing(
-    bool enabled,
-  ) async {
-    if (enabled &&
-        !await ContinuedProcessing.isSupported()) {
+
+  Future<void> _setBackgroundContinuedProcessing(bool enabled) async {
+    if (enabled && !await ContinuedProcessing.isSupported()) {
       if (mounted) {
-        _toast(
-          context.l10n
-              .backgroundContinuedProcessingUnsupported,
-        );
+        _toast(context.l10n.backgroundContinuedProcessingUnsupported);
       }
       return;
     }
 
-    final applied =
-        await ContinuedProcessing.setEnabled(
-      enabled,
-    );
+    final applied = await ContinuedProcessing.setEnabled(enabled);
 
     if (enabled && !applied) {
       if (mounted) {
-        _toast(
-          context.l10n
-              .backgroundContinuedProcessingUnsupported,
-        );
+        _toast(context.l10n.backgroundContinuedProcessingUnsupported);
       }
       return;
     }
 
-    _mutateConfig(
-      (config) =>
-          config.extra
-                  .backgroundContinuedProcessing =
-              enabled,
-    );
+    _mutateConfig((config) => config.extra.backgroundContinuedProcessing = enabled);
   }
 
   List<String> _lines(String text) {
@@ -1360,13 +1356,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       category: category,
       initialName: category == null ? '' : _categoryName(category),
       initialPath: _downloadDirController.text.trim(),
+      categories: _config?.categories ?? const [],
+      displayName: _categoryName,
     );
     if (draft == null || !mounted) return;
 
     _mutateConfig((config) {
-      final categories = List<DownloadCategory>.from(config.extra.downloadCategories);
+      final categories = List<DownloadCategory>.from(config.categories);
       if (category == null) {
-        categories.add(DownloadCategory(name: draft.name, path: draft.path));
+        categories.add(DownloadCategory(name: draft.name, path: draft.path, extensions: draft.extensions));
       } else {
         final index = categories.indexOf(category);
         if (index < 0) return;
@@ -1374,10 +1372,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         category
           ..name = draft.name
           ..path = draft.path
+          ..extensions = draft.extensions
           ..isDeleted = false;
         if (nameChanged) category.nameKey = null;
       }
-      config.extra.downloadCategories = categories;
+      config.categories = categories;
     });
   }
 
@@ -1389,7 +1388,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         category.isDeleted = true;
         return;
       }
-      config.extra.downloadCategories = List<DownloadCategory>.from(config.extra.downloadCategories)..remove(category);
+      config.categories = List<DownloadCategory>.from(config.categories)..remove(category);
     });
   }
 

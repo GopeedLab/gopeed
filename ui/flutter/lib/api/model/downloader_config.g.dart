@@ -12,6 +12,12 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
         maxRunning: (json['maxRunning'] as num?)?.toInt() ?? 0,
         autoStartTasks: json['autoStartTasks'] as bool? ?? false,
         autoDeleteMissingFileTasks: json['autoDeleteMissingFileTasks'] as bool? ?? false,
+        categories:
+            (json['categories'] as List<dynamic>?)
+                ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
+        autoCategorize: json['autoCategorize'] as bool? ?? true,
       )
       ..protocolConfig = ProtocolConfig.fromJson(json['protocolConfig'] as Map<String, dynamic>?)
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
@@ -35,6 +41,8 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) => <Str
   'api': instance.api.toJson(),
   'autoStartTasks': instance.autoStartTasks,
   'autoDeleteMissingFileTasks': instance.autoDeleteMissingFileTasks,
+  'categories': instance.categories.map((e) => e.toJson()).toList(),
+  'autoCategorize': instance.autoCategorize,
 };
 
 ApiServerConfig _$ApiServerConfigFromJson(Map<String, dynamic> json) => ApiServerConfig(
@@ -135,10 +143,7 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) =>
         notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
         desktopNotification: json['desktopNotification'] as bool? ?? true,
         backgroundLocationKeepAlive: json['backgroundLocationKeepAlive'] as bool? ?? false,
-        backgroundContinuedProcessing:
-            json['backgroundContinuedProcessing']
-                as bool? ??
-            false,
+        backgroundContinuedProcessing: json['backgroundContinuedProcessing'] as bool? ?? false,
         windowState: json['windowState'] == null
             ? null
             : WindowStateConfig.fromJson(json['windowState'] as Map<String, dynamic>?),
@@ -147,11 +152,6 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) =>
         runAsMenubarApp: json['runAsMenubarApp'] as bool? ?? false,
         analyticsEnabled: json['analyticsEnabled'] as bool? ?? true,
         analyticsClientId: json['analyticsClientId'] as String? ?? '',
-        downloadCategories:
-            (json['downloadCategories'] as List<dynamic>?)
-                ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
       )
       ..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>)
       ..githubMirror = ExtraConfigGithubMirror.fromJson(json['githubMirror'] as Map<String, dynamic>?);
@@ -166,15 +166,13 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynam
   'notifyWhenNewVersion': instance.notifyWhenNewVersion,
   'desktopNotification': instance.desktopNotification,
   'backgroundLocationKeepAlive': instance.backgroundLocationKeepAlive,
-  'backgroundContinuedProcessing':
-      instance.backgroundContinuedProcessing,
+  'backgroundContinuedProcessing': instance.backgroundContinuedProcessing,
   'windowState': instance.windowState.toJson(),
   'bookmarks': instance.bookmarks,
   'createHistory': instance.createHistory,
   'runAsMenubarApp': instance.runAsMenubarApp,
   'analyticsEnabled': instance.analyticsEnabled,
   'analyticsClientId': instance.analyticsClientId,
-  'downloadCategories': instance.downloadCategories.map((e) => e.toJson()).toList(),
   'bt': instance.bt.toJson(),
   'githubMirror': instance.githubMirror.toJson(),
 };
@@ -197,6 +195,7 @@ DownloadCategory _$DownloadCategoryFromJson(Map<String, dynamic> json) => Downlo
   isBuiltIn: json['isBuiltIn'] as bool? ?? false,
   nameKey: json['nameKey'] as String?,
   isDeleted: json['isDeleted'] as bool? ?? false,
+  extensions: (json['extensions'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
 );
 
 Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) => <String, dynamic>{
@@ -205,6 +204,7 @@ Map<String, dynamic> _$DownloadCategoryToJson(DownloadCategory instance) => <Str
   'isBuiltIn': instance.isBuiltIn,
   'nameKey': ?instance.nameKey,
   'isDeleted': instance.isDeleted,
+  'extensions': instance.extensions,
 };
 
 WebhookConfig _$WebhookConfigFromJson(Map<String, dynamic> json) => WebhookConfig(
