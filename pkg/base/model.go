@@ -220,14 +220,6 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 			DeleteAfterExtract: false,
 		}
 	}
-	// Backward compatibility: migrate autoStartTasks from extra map to top-level field
-	if !cfg.AutoStartTasks && cfg.Extra != nil {
-		if v, ok := cfg.Extra["autoStartTasks"]; ok {
-			if b, ok := v.(bool); ok && b {
-				cfg.AutoStartTasks = true
-			}
-		}
-	}
 	return cfg
 }
 
