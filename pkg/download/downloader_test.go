@@ -132,7 +132,7 @@ func (f *generationTestFetcher) Setup(*controller.Controller) {
 		f.done = make(chan error, 2)
 	}
 }
-func (f *generationTestFetcher) Resolve(req *base.Request, opts *base.Options) error {
+func (f *generationTestFetcher) Resolve(req *base.Request) error {
 	if f.manager.resolveStarted != nil {
 		f.manager.resolveOnce.Do(func() { close(f.manager.resolveStarted) })
 	}
@@ -143,7 +143,7 @@ func (f *generationTestFetcher) Resolve(req *base.Request, opts *base.Options) e
 		return f.manager.resolveErr
 	}
 	f.meta.Req = req
-	f.meta.Opts = opts
+
 	f.meta.Res = &base.Resource{Files: []*base.FileInfo{{Name: "generation.bin", Size: 1}}}
 	return nil
 }
@@ -245,7 +245,7 @@ func TestDownloader_Resolve(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, nil)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -772,7 +772,7 @@ func TestDownloader_Create(t *testing.T) {
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
 	opts := newTestDownloadOpt(t)
-	rr, err := downloader.Resolve(req, opts)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -784,7 +784,7 @@ func TestDownloader_Create(t *testing.T) {
 			wg.Done()
 		}
 	})
-	_, err = downloader.Create(rr.ID)
+	_, err = downloader.CreateWithOptions(rr.ID, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -878,15 +878,15 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	// With new fetcher design, white list check happens during Resolve (not Create)
-	// because Resolve now requires Options which includes the download path
-	_, err := downloader.Resolve(req, newTestDownloadOpt(t))
+	rr, err := downloader.Resolve(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = downloader.CreateWithOptions(rr.ID, newTestDownloadOpt(t))
 	if err == nil {
-		t.Error("TestDownloader_CreateNotInWhite() expected error but got nil")
+		t.Fatal("Create should reject a directory outside the allowlist")
 	}
-	if !strings.Contains(err.Error(), "white") {
-		t.Errorf("TestDownloader_CreateNotInWhite() got = %v, want error containing 'white'", err.Error())
-	}
+
 }
 
 func TestDownloader_CreateDirectBatch(t *testing.T) {
@@ -1072,7 +1072,7 @@ func doTestDownloaderCreateWithProxy(t *testing.T, auth bool, buildReqProxy func
 			Pwd:    pwd,
 		})
 	}
-	rr, err := downloader.Resolve(req, nil)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		if errHandler == nil {
 			t.Fatal(err)
@@ -1158,7 +1158,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
 	opts := newTestDownloadOpt(t)
-	rr, err := downloader.Resolve(req, opts)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1172,7 +1172,7 @@ func TestDownloader_StoreAndRestore(t *testing.T) {
 			})
 		}
 	})
-	id, err := downloader.Create(rr.ID)
+	id, err := downloader.CreateWithOptions(rr.ID, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1434,7 +1434,7 @@ func TestDownloader_Stats(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, newTestDownloadOpt(t))
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1447,7 +1447,7 @@ func TestDownloader_Stats(t *testing.T) {
 		}
 	})
 
-	taskId, err := downloader.Create(rr.ID)
+	taskId, err := downloader.CreateWithOptions(rr.ID, newTestDownloadOpt(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1677,7 +1677,7 @@ func TestDownloader_CompletedHTTPStatsSurviveRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	req := &base.Request{URL: "http://" + listener.Addr().String() + "/" + test.BuildName}
-	rr, err := downloader.Resolve(req, newTestDownloadOpt(t))
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1688,7 +1688,7 @@ func TestDownloader_CompletedHTTPStatsSurviveRestore(t *testing.T) {
 			done <- struct{}{}
 		}
 	})
-	taskID, err := downloader.Create(rr.ID)
+	taskID, err := downloader.CreateWithOptions(rr.ID, newTestDownloadOpt(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1861,11 +1861,11 @@ func TestDownloader_PauseAndContinue(t *testing.T) {
 	req := &base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	}
-	rr, err := downloader.Resolve(req, newTestDownloadOpt(t))
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskId, err := downloader.Create(rr.ID)
+	taskId, err := downloader.CreateWithOptions(rr.ID, newTestDownloadOpt(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2045,11 +2045,11 @@ func TestDownloader_PauseAllAndContinueAll(t *testing.T) {
 		req := &base.Request{
 			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		}
-		rr, err := downloader.Resolve(req, newTestDownloadOpt(t))
+		rr, err := downloader.Resolve(req)
 		if err != nil {
 			t.Fatal(err)
 		}
-		taskId, err := downloader.Create(rr.ID)
+		taskId, err := downloader.CreateWithOptions(rr.ID, newTestDownloadOpt(t))
 		if err != nil {
 			t.Fatal(err)
 		}

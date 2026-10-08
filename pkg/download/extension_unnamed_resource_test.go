@@ -24,7 +24,7 @@ func TestExtensionUnnamedResource(t *testing.T) {
 	if _, err = d.InstallExtensionByFolder(dir, true); err != nil {
 		t.Fatal(err)
 	}
-	res, err := d.Resolve(&base.Request{URL: "https://example.com/unnamed"}, nil)
+	res, err := d.Resolve(&base.Request{URL: "https://example.com/unnamed"})
 	if err != nil {
 		t.Fatal(err)
 	}

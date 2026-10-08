@@ -3,30 +3,26 @@ import 'dart:convert';
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/api.dart' as api;
-import 'package:gopeed/api/model/options.dart';
 import 'package:gopeed/api/model/request.dart';
 import 'package:gopeed/api/model/resolve_task.dart';
 import 'package:gopeed/core/network/gopeed/gopeed_transport.dart';
 
 void main() {
-  test('resolve sends the complete resolve task for magnet links', () async {
+  test('resolve sends a magnet request without download options', () async {
     final transport = _RecordingTransport();
     api.setTransportForTesting(transport);
     final result = await api.resolve(
-      ResolveTask(
-        req: Request(url: 'magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567'),
-        opts: Options(path: '/downloads', selectFiles: const []),
-      ),
+      ResolveTask(req: Request(url: 'magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567')),
     );
 
     expect(result.id, 'resolved-id');
     final requestBody = transport.data as Map<String, dynamic>;
-    expect(requestBody.keys, containsAll(<String>['req', 'opts']));
+    expect(requestBody.keys, equals(<String>['req']));
     expect(
       (requestBody['req'] as Map<String, dynamic>)['url'],
       'magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567',
     );
-    expect((requestBody['opts'] as Map<String, dynamic>)['path'], '/downloads');
+    expect(requestBody, isNot(contains('opts')));
   });
 }
 

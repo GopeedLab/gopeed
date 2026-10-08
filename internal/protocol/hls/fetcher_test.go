@@ -80,7 +80,8 @@ func mustResolve(t *testing.T, f *Fetcher, playlistURL, referer string) {
 	if referer != "" {
 		req.Extra = &ReqExtra{Header: map[string]string{"Referer": referer}}
 	}
-	if err := f.Resolve(req, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(req); err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
 }
@@ -207,7 +208,8 @@ func TestFetcherE2E_RefererEnforced(t *testing.T) {
 	// Without Referer the resolve itself must fail (403 on the playlist).
 	blocked := newTestFetcher(t, testConfig())
 	req := &base.Request{URL: server.URL + "/video.m3u8"}
-	if err := blocked.Resolve(req, &base.Options{Path: t.TempDir()}); err == nil {
+	blocked.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := blocked.Resolve(req); err == nil {
 		t.Fatal("resolve without Referer should fail")
 	}
 
@@ -217,7 +219,8 @@ func TestFetcherE2E_RefererEnforced(t *testing.T) {
 		URL:   server.URL + "/video.m3u8",
 		Extra: &ReqExtra{Header: map[string]string{"Referer": page}},
 	}
-	if err := allowed.Resolve(allowedReq, &base.Options{Path: t.TempDir()}); err != nil {
+	allowed.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := allowed.Resolve(allowedReq); err != nil {
 		t.Fatal(err)
 	}
 	mustRun(t, allowed)
@@ -560,7 +563,8 @@ func TestFetcherE2E_StoreRestoreAuthenticated(t *testing.T) {
 		URL:   server.URL + "/video.m3u8",
 		Extra: &ReqExtra{Header: map[string]string{"Referer": page}},
 	}
-	if err := f.Resolve(req, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(req); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.Start(); err != nil {
@@ -630,7 +634,8 @@ func TestFetcherE2E_PatchPartialUpdate(t *testing.T) {
 		Extra: &ReqExtra{Header: map[string]string{"Referer": page}},
 	}
 	opts := &base.Options{Path: t.TempDir()}
-	if err := f.Resolve(req, opts); err != nil {
+	f.Meta().Opts = opts
+	if err := f.Resolve(req); err != nil {
 		t.Fatal(err)
 	}
 
@@ -713,7 +718,8 @@ func TestFetcherE2E_PatchWhileRunningRejected(t *testing.T) {
 	defer server.Close()
 
 	f := newTestFetcher(t, testConfig())
-	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.Start(); err != nil {
@@ -767,7 +773,8 @@ func TestFetcherE2E_RetryAfterFailure(t *testing.T) {
 	cfg.MaxRetries = 0 // fail the run on the first bad segment
 	cfg.PrefetchContentLength = false
 	f := newTestFetcher(t, cfg)
-	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.Start(); err != nil {
@@ -828,7 +835,8 @@ func TestFetcherE2E_StateMissingSelfHeal(t *testing.T) {
 	defer server.Close()
 
 	f := newTestFetcher(t, testConfig())
-	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	// Simulate the crash window where the engine persisted the task with its

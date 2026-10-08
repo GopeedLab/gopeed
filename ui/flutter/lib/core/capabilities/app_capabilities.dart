@@ -8,6 +8,7 @@ import '../../api/model/extension.dart';
 import '../../api/model/install_extension.dart';
 import '../../api/model/resolve_result.dart';
 import '../../api/model/resolve_task.dart';
+import '../../api/model/patch_task.dart';
 import '../../api/model/switch_extension.dart';
 import '../../api/model/task.dart';
 import '../../api/model/update_check_extension_resp.dart';
@@ -85,7 +86,7 @@ void _bindGopeed(CapabilityRegistry registry) {
     ..bind(GopeedMethods.createTask, api.createTask)
     ..bind(GopeedMethods.createTaskBatch, api.createTaskBatch)
     ..bind(GopeedMethods.patchTask, (params) async {
-      await api.patchTask(params['id'] as String, ResolveTask.fromJson(params['request'] as Map<String, dynamic>));
+      await api.patchTask(params['id'] as String, PatchTask.fromJson(params['request'] as Map<String, dynamic>));
       return const RpcUnit();
     })
     ..bind(

@@ -172,11 +172,11 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 	return f.meta
 }
 
-func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) (err error) {
+func (f *Fetcher) Resolve(req *base.Request) (err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.meta.Req = req
-	f.meta.Opts = opts
+
 	f.extra = &ReqExtra{}
 	if err = base.ParseReqExtra[ReqExtra](req); err != nil {
 		return
@@ -194,10 +194,6 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) (err error) {
 	}
 	state.StagingID = randomStagingID()
 	f.state = state
-	// Pin the staging folder now so the very first persisted state already
-	// carries it: a crash right after create still resumes into the same
-	// folder.
-	f.resolveStagingDirLocked()
 	size := planTotalSize(state.Segments)
 	f.meta.Res = &base.Resource{
 		Range: false,

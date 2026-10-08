@@ -189,7 +189,8 @@ func TestHLSRealMedia_TS(t *testing.T) {
 	defer server.Close()
 
 	f := newTestFetcher(t, testConfig())
-	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.Start(); err != nil {
@@ -225,7 +226,8 @@ func TestHLSRealMedia_FMP4(t *testing.T) {
 	defer server.Close()
 
 	f := newTestFetcher(t, testConfig())
-	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.Start(); err != nil {
@@ -274,7 +276,8 @@ func TestHLSRealMedia_AES128(t *testing.T) {
 	defer server.Close()
 
 	f := newTestFetcher(t, testConfig())
-	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	if f.meta.Res.Size != 0 {

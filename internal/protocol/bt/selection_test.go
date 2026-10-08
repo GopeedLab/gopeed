@@ -18,24 +18,33 @@ import (
 )
 
 func TestStartUsesSelectionSubmittedAfterResolve(t *testing.T) {
-	config := torrent.TestingConfig(t)
-	config.DataDir = t.TempDir()
-	config.DisableTCP = true
-	config.DisableUTP = true
-	c, err := torrent.NewClient(config)
+	cfg := torrent.TestingConfig(t)
+	cfg.DataDir = t.TempDir()
+	cfg.DisableTCP = true
+	cfg.DisableUTP = true
+	c, err := torrent.NewClient(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer c.Close()
-	tor, err := c.AddTorrentFromFile("testdata/test.torrent")
+	store := &deferredFileStorage{}
+	mi, err := metainfo.LoadFromFile("testdata/test.torrent")
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := &Fetcher{torrent: tor, meta: &fetcher.FetcherMeta{Opts: &base.Options{}}, data: &fetcherData{}}
+	spec := torrent.TorrentSpecFromMetaInfo(mi)
+	spec.Storage = store
+	tor, _, err := c.AddTorrentSpec(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tor.DisallowDataDownload()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f := &Fetcher{torrent: tor, storage: store, meta: &fetcher.FetcherMeta{}, data: &fetcherData{}, torrentDropCtx: ctx, torrentDropFunc: cancel, config: &config{SeedKeep: true}}
 	f.torrentReady.Store(true)
 	f.updateRes()
-	// Resolve initializes all files; creation replaces the selection before Start.
-	f.meta.Opts = &base.Options{SelectFiles: []int{2}}
+	f.meta.Opts = &base.Options{Path: t.TempDir(), SelectFiles: []int{2}}
 	if err := f.Start(); err != nil {
 		t.Fatal(err)
 	}

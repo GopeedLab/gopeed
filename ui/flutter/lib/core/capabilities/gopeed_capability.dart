@@ -5,6 +5,7 @@ import '../../api/model/extension.dart';
 import '../../api/model/install_extension.dart';
 import '../../api/model/resolve_result.dart';
 import '../../api/model/resolve_task.dart';
+import '../../api/model/patch_task.dart';
 import '../../api/model/switch_extension.dart';
 import '../../api/model/task.dart';
 import '../../api/model/update_check_extension_resp.dart';
@@ -49,7 +50,7 @@ class GopeedService {
   Future<List<String>> createTaskBatch(CreateTaskBatch request) =>
       _invoker.invoke(GopeedMethods.createTaskBatch, request);
 
-  Future<void> patchTask(String id, ResolveTask request) async {
+  Future<void> patchTask(String id, PatchTask request) async {
     await _invoker.invoke(GopeedMethods.patchTask, {'id': id, 'request': request.toJson()});
   }
 

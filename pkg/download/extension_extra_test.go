@@ -65,11 +65,11 @@ func TestExtensionExtraMutationHTTP(t *testing.T) {
 				var id string
 				var err error
 				if resolved {
-					rr, resolveErr := d.Resolve(req, opts)
+					rr, resolveErr := d.Resolve(req)
 					if resolveErr != nil {
 						t.Fatal(resolveErr)
 					}
-					id, err = d.Create(rr.ID)
+					id, err = d.CreateWithOptions(rr.ID, opts)
 				} else {
 					id, err = d.CreateDirect(req, opts)
 				}
