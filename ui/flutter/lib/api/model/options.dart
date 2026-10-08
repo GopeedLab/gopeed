@@ -20,6 +20,7 @@ class Options {
 @JsonSerializable()
 class OptsExtraHttp {
   int connections;
+  bool? adaptive;
   bool? autoTorrent;
   bool? deleteTorrentAfterDownload;
   bool? autoExtract;
@@ -28,6 +29,7 @@ class OptsExtraHttp {
 
   OptsExtraHttp({
     this.connections = 0,
+    this.adaptive,
     this.autoTorrent,
     this.deleteTorrentAfterDownload,
     this.autoExtract,

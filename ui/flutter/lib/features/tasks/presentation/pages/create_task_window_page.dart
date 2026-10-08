@@ -75,6 +75,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   RequestProxyMode _proxyMode = RequestProxyMode.follow;
   String _proxyScheme = 'http';
   bool _skipVerifyCert = false;
+  // null follows the global setting (_globalAdaptive) until the user toggles it
+  bool? _adaptive;
+  bool _globalAdaptive = false;
   bool? _autoTorrent;
   bool? _deleteTorrentAfterDownload;
   bool? _autoExtract;
@@ -238,6 +241,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           if (extra.connections > 0) {
             _connectionsController.text = extra.connections.toString();
           }
+          _adaptive = extra.adaptive;
           _autoTorrent = extra.autoTorrent;
           _deleteTorrentAfterDownload = extra.deleteTorrentAfterDownload;
           _autoExtract = extra.autoExtract;
@@ -616,6 +620,16 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               const SizedBox(height: 14),
                               AppFormRow(
                                 direction: stacked ? Axis.vertical : Axis.horizontal,
+                                label: context.l10n.adaptiveConnections,
+                                child: _OptionSwitch(
+                                  key: const ValueKey('create-task-adaptive'),
+                                  value: _adaptive ?? _globalAdaptive,
+                                  onChanged: (value) => setState(() => _adaptive = value),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              AppFormRow(
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.autoTorrentEnable,
                                 child: _OptionSwitch(
                                   key: const ValueKey('create-task-auto-torrent'),
@@ -766,6 +780,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         if (_asDefaultPath && _sameDirectory(_directoryController.text, _configuredDownloadDirectory)) {
           _asDefaultPath = false;
         }
+        _globalAdaptive = config.protocolConfig.http.adaptive;
         final connections = config.protocolConfig.http.connections;
         if (connections > 0 && (_connectionsController.text.isEmpty || _connectionsController.text == '16')) {
           _connectionsController.text = connections.toString();
@@ -1031,6 +1046,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       selectFiles: selectFiles,
       extra: api_options.OptsExtraHttp(
         connections: connections,
+        adaptive: _adaptive,
         autoTorrent: _autoTorrent,
         deleteTorrentAfterDownload: _deleteTorrentAfterDownload,
         autoExtract: _autoExtract,

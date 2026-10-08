@@ -8,6 +8,10 @@ type ReqExtra struct {
 
 type OptsExtra struct {
 	Connections int `json:"connections"`
+	// Adaptive grows and shrinks the connection count on measured throughput,
+	// with Connections as the ceiling.
+	// nil means use global config, true/false means explicit setting
+	Adaptive *bool `json:"adaptive,omitempty"`
 	// AutoTorrent when task download complete, and it is a .torrent file, it will be auto create a new task for the torrent file
 	// nil means use global config, true/false means explicit setting
 	AutoTorrent *bool `json:"autoTorrent"`
@@ -38,4 +42,8 @@ type StatsConnection struct {
 	Completed  bool  `json:"completed"`
 	Failed     bool  `json:"failed"`
 	RetryTimes int   `json:"retryTimes"`
+	// Parked is true for a connection that adaptive connections stopped
+	// because more connections did not make the task faster. It is not a
+	// failure; its remaining range is finished by the other connections.
+	Parked bool `json:"parked,omitempty"`
 }

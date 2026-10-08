@@ -7,4 +7,8 @@ type config struct {
 	UserAgent      string `json:"userAgent"`
 	Connections    int    `json:"connections"`
 	UseServerCtime bool   `json:"useServerCtime"`
+	// Adaptive is the default for tasks that do not set OptsExtra.Adaptive:
+	// grow and shrink the connection count on measured throughput, with
+	// Connections as the ceiling. Off unless the user turns it on.
+	Adaptive bool `json:"adaptive"`
 }

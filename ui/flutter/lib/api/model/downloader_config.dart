@@ -90,8 +90,9 @@ class HttpConfig {
   String userAgent;
   int connections;
   bool useServerCtime;
+  bool adaptive;
 
-  HttpConfig({this.userAgent = '', this.connections = 0, this.useServerCtime = false});
+  HttpConfig({this.userAgent = '', this.connections = 0, this.useServerCtime = false, this.adaptive = false});
 
   factory HttpConfig.fromJson(Map<String, dynamic> json) => _$HttpConfigFromJson(json);
 
