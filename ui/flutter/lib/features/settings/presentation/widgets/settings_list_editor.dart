@@ -234,7 +234,7 @@ Future<String?> showTextSettingDialog(
                 }
                 shad.closeOverlay(dialogContext, controller.text.trim());
               },
-              child: Text(dialogContext.l10n.confirm),
+              child: Text(dialogContext.l10n.save),
             ),
           ],
         );
@@ -321,7 +321,7 @@ Future<GithubMirrorDraft?> showGithubMirrorDialog(BuildContext context, {GithubM
                 }
                 shad.closeOverlay(dialogContext, GithubMirrorDraft(type: selectedType, url: value));
               },
-              child: Text(dialogContext.l10n.confirm),
+              child: Text(dialogContext.l10n.save),
             ),
           ],
         );
