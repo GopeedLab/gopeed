@@ -275,7 +275,7 @@ func btStore(t *testing.T, f *btDownloadHarness) []byte {
 	return encoded
 }
 
-func btRestore(t *testing.T, encoded []byte, discardMetainfo bool) *btDownloadHarness {
+func btRestore(t *testing.T, encoded []byte) *btDownloadHarness {
 	t.Helper()
 	var checkpoint btFetcherCheckpoint
 	if err := json.Unmarshal(encoded, &checkpoint); err != nil {
@@ -284,10 +284,6 @@ func btRestore(t *testing.T, encoded []byte, discardMetainfo bool) *btDownloadHa
 	data, restore := new(FetcherManager).Restore()
 	if err := json.Unmarshal(checkpoint.Data, data); err != nil {
 		t.Fatal(err)
-	}
-	if discardMetainfo {
-		data.(*fetcherData).MetaInfo = nil
-		data.(*fetcherData).MetaInfoSource = ""
 	}
 	return btDownloadFetcher(t, restore(checkpoint.Meta, data))
 }
@@ -303,7 +299,7 @@ func btCloseForRestart(t *testing.T, f *btDownloadHarness) {
 }
 
 func TestBTColdStartResume(t *testing.T) {
-	for _, kind := range []string{"v1", "v1 without metainfo cache", "hybrid"} {
+	for _, kind := range []string{"v1", "hybrid"} {
 		t.Run(kind, func(t *testing.T) {
 			var fixture *btFixture
 			if kind == "hybrid" {
@@ -320,14 +316,11 @@ func TestBTColdStartResume(t *testing.T) {
 			btAwaitPartial(t, f)
 			btPause(t, f)
 			checkpoint := btStore(t, f)
-			if len(f.data.MetaInfo) == 0 {
-				t.Fatal("metainfo was not persisted")
-			}
 			hash := f.Meta().Res.Hash
 			btCloseForRestart(t, f)
 			seedStats := fixture.Torrent.Stats()
 			sentBeforeRestart := seedStats.BytesWrittenData.Int64()
-			restored := btRestore(t, checkpoint, kind == "v1 without metainfo cache")
+			restored := btRestore(t, checkpoint)
 			if restored.Meta().Opts.Path != dir || restored.Meta().Res.Hash != hash {
 				t.Fatal("download directory or hash was lost")
 			}
@@ -341,25 +334,6 @@ func TestBTColdStartResume(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestBTCompletedFetcherRestoresWithoutSourceFile(t *testing.T) {
-	fixture := newBTFixture(t, map[string][]byte{"": btPayload(64*1024, "offline")}, 0)
-	f := btDownloadFetcher(t, nil)
-	dir := t.TempDir()
-	btResolve(t, f, fixture.TorrentFile)
-	f.Meta().Opts = &base.Options{Path: dir}
-	btStart(t, f)
-	btAwaitDone(t, f)
-	checkpoint := btStore(t, f)
-	btCloseForRestart(t, f)
-	if err := os.Remove(fixture.TorrentFile); err != nil {
-		t.Fatal(err)
-	}
-	restored := btRestore(t, checkpoint, false)
-	btStart(t, restored)
-	btAwaitDone(t, restored)
-	fixture.AssertFiles(t, dir)
 }
 
 func TestBTDownloadHybrid(t *testing.T) {

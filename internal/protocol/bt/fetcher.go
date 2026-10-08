@@ -735,24 +735,7 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	schema := util.ParseSchema(req.URL)
 	privateTorrent := false
 	var spec *torrent.TorrentSpec
-	if len(f.data.MetaInfo) > 0 && f.data.MetaInfoSource == req.URL {
-		mi, er := metainfo.Load(bytes.NewReader(f.data.MetaInfo))
-		if er != nil {
-			return er
-		}
-		spec, err = torrent.TorrentSpecFromMetaInfoErr(mi)
-		if err != nil {
-			return err
-		}
-		if schema == "MAGNET" {
-			magnet, er := torrent.TorrentSpecFromMagnetUri(req.URL)
-			if er != nil {
-				return er
-			}
-			spec.PeerAddrs = magnet.PeerAddrs
-			spec.Sources = magnet.Sources
-		}
-	} else if schema == "MAGNET" {
+	if schema == "MAGNET" {
 		spec, err = torrent.TorrentSpecFromMagnetUri(req.URL)
 		if err != nil {
 			return
@@ -853,13 +836,6 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 		}
 	}
 	f.torrentReady.Store(true)
-	mi := f.torrent.Metainfo()
-	var encoded bytes.Buffer
-	if err := mi.Write(&encoded); err != nil {
-		return err
-	}
-	f.data.MetaInfo = encoded.Bytes()
-	f.data.MetaInfoSource = req.URL
 
 	return
 }
@@ -879,10 +855,8 @@ func (f *Fetcher) seedRadio() float64 {
 }
 
 type fetcherData struct {
-	MetaInfo       []byte `json:"metaInfo,omitempty"`
-	MetaInfoSource string `json:"metaInfoSource,omitempty"`
-	Progress       fetcher.Progress
-	SeedBytes      int64
+	Progress  fetcher.Progress
+	SeedBytes int64
 	// SeedTime is the time in seconds to seed after downloading is complete.
 	SeedTime int64
 }
@@ -972,18 +946,8 @@ func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
 	_f.mu.Lock()
 	defer _f.mu.Unlock()
-	if _f.torrent != nil && _f.torrent.Info() != nil {
-		mi := _f.torrent.Metainfo()
-		var encoded bytes.Buffer
-		if err := mi.Write(&encoded); err != nil {
-			return nil, err
-		}
-		_f.data.MetaInfo = encoded.Bytes()
-		_f.data.MetaInfoSource = _f.meta.Req.URL
-	}
 	snapshot := *_f.data
 	snapshot.Progress = append(fetcher.Progress(nil), snapshot.Progress...)
-	snapshot.MetaInfo = append([]byte(nil), snapshot.MetaInfo...)
 	return &snapshot, nil
 }
 
