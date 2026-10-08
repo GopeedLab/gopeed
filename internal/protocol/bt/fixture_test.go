@@ -1,11 +1,10 @@
-package test
+package bt
 
 import (
 	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -23,10 +22,10 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// BTFixture serves generated, trackerless content over a real loopback TCP peer.
-// Its HTTP tracker exists only to exercise .torrent downloads through Gopeed's
-// public API; magnet links also carry the explicit x.pe address.
-type BTFixture struct {
+// btFixture serves generated, trackerless content over a real loopback TCP peer.
+// Its HTTP tracker exercises .torrent downloads; magnet links also carry the
+// explicit x.pe address.
+type btFixture struct {
 	MetaInfo    *metainfo.MetaInfo
 	Magnet      string
 	TorrentFile string
@@ -37,15 +36,15 @@ type BTFixture struct {
 	Limiter     *rate.Limiter
 }
 
-func NewBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int) *BTFixture {
-	return newBTFixture(t, files, bytesPerSecond, false)
+func newBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int) *btFixture {
+	return makeBTFixture(t, files, bytesPerSecond, false)
 }
 
-func NewBTHybridFixture(t testing.TB, payload []byte) *BTFixture {
-	return newBTFixture(t, map[string][]byte{"": payload}, 0, true)
+func newBTHybridFixture(t testing.TB, payload []byte) *btFixture {
+	return makeBTFixture(t, map[string][]byte{"": payload}, 0, true)
 }
 
-func newBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int, v2 bool) *BTFixture {
+func makeBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int, v2 bool) *btFixture {
 	t.Helper()
 	source := t.TempDir()
 	name := "payload.bin"
@@ -170,10 +169,10 @@ func newBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int, v2 
 	q := u.Query()
 	q.Add("x.pe", addr)
 	u.RawQuery = q.Encode()
-	return &BTFixture{MetaInfo: mi, Magnet: u.String(), TorrentFile: torrentFile, DataURI: "data:application/x-bittorrent;base64," + base64.StdEncoding.EncodeToString(encoded.Bytes()), Files: expected, Seeder: seed, Torrent: seeded, Limiter: limiter}
+	return &btFixture{MetaInfo: mi, Magnet: u.String(), TorrentFile: torrentFile, DataURI: "data:application/x-bittorrent;base64," + base64.StdEncoding.EncodeToString(encoded.Bytes()), Files: expected, Seeder: seed, Torrent: seeded, Limiter: limiter}
 }
 
-func BTPayload(size int, label string) []byte {
+func btPayload(size int, label string) []byte {
 	data := make([]byte, size)
 	for i := range data {
 		data[i] = byte((i*31 + i/251) % 251)
@@ -182,7 +181,7 @@ func BTPayload(size int, label string) []byte {
 	return data
 }
 
-func (f *BTFixture) AssertFiles(t testing.TB, dir string, paths ...string) {
+func (f *btFixture) AssertFiles(t testing.TB, dir string, paths ...string) {
 	t.Helper()
 	if len(paths) == 0 {
 		for path := range f.Files {
@@ -204,14 +203,10 @@ func (f *BTFixture) AssertFiles(t testing.TB, dir string, paths ...string) {
 	}
 }
 
-func (f *BTFixture) FileURI() string {
+func (f *btFixture) FileURI() string {
 	path := filepath.ToSlash(f.TorrentFile)
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
 	return (&url.URL{Scheme: "file", Path: path}).String()
-}
-
-func (f *BTFixture) Description() string {
-	return fmt.Sprintf("peer %s, %d files", f.Seeder.ListenAddrs()[0], len(f.Files))
 }
