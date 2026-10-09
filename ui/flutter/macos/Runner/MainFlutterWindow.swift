@@ -7,6 +7,8 @@ class MainFlutterWindow: NSWindow {
   // Keep this in sync with AppDesignTokens.railWidth in Flutter.
   private static let navigationRailWidth: CGFloat = 68
   private static let trafficLightGap: CGFloat = 6
+  private var trafficLightLayoutScheduled = false
+  private var fullScreenTransitionInProgress = false
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -22,16 +24,22 @@ class MainFlutterWindow: NSWindow {
     super.awakeFromNib()
 
     for name in [NSWindow.didResizeNotification, NSWindow.didBecomeKeyNotification,
-                 NSWindow.didExitFullScreenNotification,
                  NSWindow.didChangeBackingPropertiesNotification] {
       NotificationCenter.default.addObserver(
         self, selector: #selector(refreshTrafficLightLayout(_:)), name: name, object: self)
     }
-    layoutIfNeeded()
+    for name in [NSWindow.willEnterFullScreenNotification, NSWindow.willExitFullScreenNotification] {
+      NotificationCenter.default.addObserver(
+        self, selector: #selector(beginFullScreenTransition(_:)), name: name, object: self)
+    }
+    for name in [NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification] {
+      NotificationCenter.default.addObserver(
+        self, selector: #selector(endFullScreenTransition(_:)), name: name, object: self)
+    }
+    scheduleTrafficLightLayout()
   }
 
-  override func layoutIfNeeded() {
-    super.layoutIfNeeded()
+  private func positionTrafficLights() {
     // Let AppKit position controls in its own full-screen title bar.
     guard !styleMask.contains(.fullScreen) else { return }
 
@@ -56,8 +64,30 @@ class MainFlutterWindow: NSWindow {
   }
 
   @objc private func refreshTrafficLightLayout(_ notification: Notification) {
+    scheduleTrafficLightLayout()
+  }
+
+  @objc private func beginFullScreenTransition(_ notification: Notification) {
+    fullScreenTransitionInProgress = true
+  }
+
+  @objc private func endFullScreenTransition(_ notification: Notification) {
+    fullScreenTransitionInProgress = false
+    scheduleTrafficLightLayout()
+  }
+
+  private func scheduleTrafficLightLayout() {
+    guard !trafficLightLayoutScheduled else { return }
+    trafficLightLayoutScheduled = true
     // AppKit can reset button frames while finishing a resize or style change.
-    DispatchQueue.main.async { [weak self] in self?.layoutIfNeeded() }
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      self.trafficLightLayoutScheduled = false
+      guard !self.fullScreenTransitionInProgress, !self.styleMask.contains(.fullScreen) else { return }
+      // Calling this is supported; overriding AppKit's layout entry point is not.
+      self.layoutIfNeeded()
+      self.positionTrafficLights()
+    }
   }
 
   deinit {
@@ -67,6 +97,8 @@ class MainFlutterWindow: NSWindow {
   override public func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {
     super.order(place, relativeTo: otherWin)
     hiddenWindowAtLaunch()
-    layoutIfNeeded()
+    if place == .above {
+      scheduleTrafficLightLayout()
+    }
   }
 }
