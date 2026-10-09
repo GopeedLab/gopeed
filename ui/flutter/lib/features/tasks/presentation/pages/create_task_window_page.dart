@@ -6,12 +6,7 @@ import 'package:desktop_multi_window/desktop_multi_window.dart' as multi_window;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart'
-    show
-        Clipboard,
-        FilteringTextInputFormatter,
-        TextInputAction,
-        TextInputType,
-        TextInputFormatter;
+    show Clipboard, FilteringTextInputFormatter, TextInputAction, TextInputType, TextInputFormatter;
 import 'package:flutter/widgets.dart' as flutter show Flexible, Row;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -50,18 +45,13 @@ import '../widgets/create_task_action_buttons.dart';
 import '../widgets/resolve_file_tree.dart';
 
 class CreateTaskWindowPage extends ConsumerStatefulWidget {
-  const CreateTaskWindowPage({
-    super.key,
-    this.windowController,
-    this.initialTask,
-  });
+  const CreateTaskWindowPage({super.key, this.windowController, this.initialTask});
 
   final multi_window.WindowController? windowController;
   final CreateTask? initialTask;
 
   @override
-  ConsumerState<CreateTaskWindowPage> createState() =>
-      _CreateTaskWindowPageState();
+  ConsumerState<CreateTaskWindowPage> createState() => _CreateTaskWindowPageState();
 }
 
 class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
@@ -73,9 +63,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   final _proxyPortController = TextEditingController();
   final _proxyUsernameController = TextEditingController();
   final _proxyPasswordController = TextEditingController();
-  final _httpHeadersController = AppHttpHeadersController(
-    defaultNames: const ['User-Agent', 'Cookie', 'Referer'],
-  );
+  final _httpHeadersController = AppHttpHeadersController(defaultNames: const ['User-Agent', 'Cookie', 'Referer']);
   final _trackersController = TextEditingController();
   final _archivePasswordController = TextEditingController();
   final _checksumHashController = TextEditingController();
@@ -169,10 +157,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     await Future<void>.delayed(_advancedScrollDelay);
     for (var attempt = 0; attempt < _advancedScrollExtentChecks; attempt++) {
       await WidgetsBinding.instance.endOfFrame;
-      if (!mounted ||
-          !_showAdvanced ||
-          request != _advancedScrollRequest ||
-          !_formScrollController.hasClients) {
+      if (!mounted || !_showAdvanced || request != _advancedScrollRequest || !_formScrollController.hasClients) {
         return;
       }
       final position = _formScrollController.position;
@@ -182,11 +167,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       );
       if (target - position.pixels >= 1) {
         try {
-          await _formScrollController.animateTo(
-            target,
-            duration: _advancedScrollDuration,
-            curve: Curves.easeOutCubic,
-          );
+          await _formScrollController.animateTo(target, duration: _advancedScrollDuration, curve: Curves.easeOutCubic);
         } catch (_) {
           // The window or scroll position can be disposed while the animation is running.
         }
@@ -226,26 +207,18 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         _renameController.clear();
         _httpMethod = 'GET';
         _httpBody = '';
-        _replaceHttpHeaders(const {
-          'User-Agent': '',
-          'Cookie': '',
-          'Referer': '',
-        });
+        _replaceHttpHeaders(const {'User-Agent': '', 'Cookie': '', 'Referer': ''});
         _trackersController.clear();
         _protocolTab = 0;
         _urlController.text = req!.url;
         _initialRawUrl = req.rawUrl;
-        _initialLabels = req.labels == null
-            ? null
-            : Map<String, String>.of(req.labels!);
+        _initialLabels = req.labels == null ? null : Map<String, String>.of(req.labels!);
         _applyInitialProxy(req.proxy);
         _skipVerifyCert = req.skipVerifyCert;
         switch (_parseProtocol(req.url)) {
           case _TaskProtocol.http:
             if (req.extra is Map) {
-              final extra = ReqExtraHttp.fromJson(
-                Map<String, dynamic>.from(req.extra! as Map),
-              );
+              final extra = ReqExtraHttp.fromJson(Map<String, dynamic>.from(req.extra! as Map));
               _httpMethod = extra.method;
               _httpBody = extra.body;
               if (extra.header.isNotEmpty) {
@@ -256,9 +229,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           case _TaskProtocol.bt:
             _protocolTab = 1;
             if (req.extra is Map) {
-              final extra = ReqExtraBt.fromJson(
-                Map<String, dynamic>.from(req.extra! as Map),
-              );
+              final extra = ReqExtraBt.fromJson(Map<String, dynamic>.from(req.extra! as Map));
               _trackersController.text = extra.trackers.join('\n');
             }
             break;
@@ -272,9 +243,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           _directoryController.text = opts.path;
         }
         if (opts.extra is Map) {
-          final extra = api_options.OptsExtraHttp.fromJson(
-            Map<String, dynamic>.from(opts.extra! as Map),
-          );
+          final extra = api_options.OptsExtraHttp.fromJson(Map<String, dynamic>.from(opts.extra! as Map));
           if (extra.connections > 0) {
             _connectionsController.text = extra.connections.toString();
           }
@@ -297,9 +266,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   void _applyInitialProxy(RequestProxy? proxy) {
     _proxyMode = proxy?.mode ?? RequestProxyMode.follow;
     const supportedSchemes = {'http', 'https', 'socks5'};
-    _proxyScheme = supportedSchemes.contains(proxy?.scheme)
-        ? proxy!.scheme
-        : 'http';
+    _proxyScheme = supportedSchemes.contains(proxy?.scheme) ? proxy!.scheme : 'http';
     _proxyUsernameController.text = proxy?.usr ?? '';
     _proxyPasswordController.text = proxy?.pwd ?? '';
 
@@ -325,10 +292,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => _buildPanel(
-      context,
-      stacked: constraints.maxWidth < Breakpoints.mobile,
-    ),
+    builder: (context, constraints) => _buildPanel(context, stacked: constraints.maxWidth < Breakpoints.mobile),
   );
 
   Widget _buildPanel(BuildContext context, {required bool stacked}) {
@@ -352,11 +316,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 children: [
                   Text(
                     context.l10n.create,
-                    style: TextStyle(
-                      color: palette.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -382,15 +342,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 120),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppDesignTokens.controlRadius,
-                            ),
-                            border: _draggingTorrent
-                                ? Border.all(color: palette.brand, width: 2)
-                                : null,
-                            color: _draggingTorrent
-                                ? palette.filterActiveBg
-                                : null,
+                            borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
+                            border: _draggingTorrent ? Border.all(color: palette.brand, width: 2) : null,
+                            color: _draggingTorrent ? palette.filterActiveBg : null,
                           ),
                           child: Stack(
                             children: [
@@ -408,9 +362,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                   textAlignVertical: TextAlignVertical.top,
                                   filled: true,
                                   border: Border.all(
-                                    color: _draggingTorrent
-                                        ? palette.brand
-                                        : palette.border,
+                                    color: _draggingTorrent ? palette.brand : palette.border,
                                     width: _draggingTorrent ? 0 : 1,
                                   ),
                                   borderRadius: BorderRadius.circular(4),
@@ -422,15 +374,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    _MiniInputAction(
-                                      icon: Icons.folder_open_outlined,
-                                      onPressed: _pickTorrentFile,
-                                    ),
+                                    _MiniInputAction(icon: Icons.folder_open_outlined, onPressed: _pickTorrentFile),
                                     const SizedBox(width: 6),
-                                    _MiniInputAction(
-                                      icon: Icons.history,
-                                      onPressed: _showCreateHistory,
-                                    ),
+                                    _MiniInputAction(icon: Icons.history, onPressed: _showCreateHistory),
                                   ],
                                 ),
                               ),
@@ -454,9 +400,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       direction: stacked ? Axis.vertical : Axis.horizontal,
                       label: context.l10n.connections,
                       child: AppNumberInput(
-                        fieldKey: const ValueKey(
-                          'create-task-connections-input',
-                        ),
+                        fieldKey: const ValueKey('create-task-connections-input'),
                         controller: _connectionsController,
                         min: 1,
                         max: 256,
@@ -471,15 +415,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           AppPathPickerField.downloadDirectory(
-                            key: const ValueKey(
-                              'create-task-directory-component',
-                            ),
-                            fieldKey: const ValueKey(
-                              'create-task-directory-input',
-                            ),
-                            pickerKey: const ValueKey(
-                              'create-task-directory-picker',
-                            ),
+                            key: const ValueKey('create-task-directory-component'),
+                            fieldKey: const ValueKey('create-task-directory-input'),
+                            pickerKey: const ValueKey('create-task-directory-picker'),
                             controller: _directoryController,
                             hintText: context.l10n.chooseDownloadDirectory,
                             onChanged: (_) {
@@ -488,29 +426,20 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               }
                             },
                             onDirectoryPicked: (pickedDirectory) => setState(
-                              () => _asDefaultPath = !_sameDirectory(
-                                pickedDirectory,
-                                _configuredDownloadDirectory,
-                              ),
+                              () => _asDefaultPath = !_sameDirectory(pickedDirectory, _configuredDownloadDirectory),
                             ),
                           ),
                           const SizedBox(height: 8),
                           _DirectoryOptions(
-                            key: const ValueKey(
-                              'create-task-directory-options-row',
-                            ),
+                            key: const ValueKey('create-task-directory-options-row'),
                             stacked: stacked,
                             asDefaultPath: _asDefaultPath,
-                            onAsDefaultPathChanged: (value) =>
-                                setState(() => _asDefaultPath = value),
+                            onAsDefaultPathChanged: (value) => setState(() => _asDefaultPath = value),
                             shortcuts: [
                               for (final entry in _downloadCategories.indexed)
                                 _DirectoryShortcut(
                                   index: entry.$1,
-                                  label: _categoryDisplayName(
-                                    context,
-                                    entry.$2,
-                                  ),
+                                  label: _categoryDisplayName(context, entry.$2),
                                   path: _renderPathPlaceholders(entry.$2.path),
                                 ),
                             ],
@@ -530,8 +459,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       label: context.l10n.directDownload,
                       child: _DirectDownloadToggle(
                         value: _directDownload,
-                        onChanged: (value) =>
-                            setState(() => _directDownload = value),
+                        onChanged: (value) => setState(() => _directDownload = value),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -544,17 +472,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                           children: [
                             Text(
                               context.l10n.advanced,
-                              style: TextStyle(
-                                color: palette.textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(width: 8),
-                            _TripleChevronIcon(
-                              expanded: _showAdvanced,
-                              color: palette.textSecondary,
-                            ),
+                            _TripleChevronIcon(expanded: _showAdvanced, color: palette.textSecondary),
                           ],
                         ),
                       ),
@@ -565,101 +486,72 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       firstCurve: Curves.easeOutCubic,
                       secondCurve: Curves.easeInCubic,
                       sizeCurve: Curves.easeOutCubic,
-                      crossFadeState: _showAdvanced
-                          ? CrossFadeState.showFirst
-                          : CrossFadeState.showSecond,
+                      crossFadeState: _showAdvanced ? CrossFadeState.showFirst : CrossFadeState.showSecond,
                       firstChild: Padding(
                         key: const ValueKey('create-task-advanced-content'),
                         padding: const EdgeInsets.only(top: 18, bottom: 4),
                         child: Column(
                           children: [
                             AppFormRow(
-                              direction: stacked
-                                  ? Axis.vertical
-                                  : Axis.horizontal,
+                              direction: stacked ? Axis.vertical : Axis.horizontal,
                               label: context.l10n.proxy,
-                              child:
-                                  AppChoiceSegmentedControl<RequestProxyMode>(
-                                    key: const ValueKey(
-                                      'create-task-proxy-mode',
-                                    ),
-                                    showIcons: !stacked,
-                                    value: _proxyMode,
-                                    buttonKeyPrefix: 'create-task-proxy-mode',
-                                    alignment: WrapAlignment.start,
-                                    options: [
-                                      AppChoiceOption(
-                                        value: RequestProxyMode.follow,
-                                        key: 'follow',
-                                        label: context.l10n.followSettings,
-                                        icon: Icons.settings_suggest_outlined,
-                                      ),
-                                      AppChoiceOption(
-                                        value: RequestProxyMode.none,
-                                        key: 'none',
-                                        label: context.l10n.noProxy,
-                                        icon: Icons.block_outlined,
-                                      ),
-                                      AppChoiceOption(
-                                        value: RequestProxyMode.custom,
-                                        key: 'custom',
-                                        label: context.l10n.customProxy,
-                                        icon: Icons.tune_outlined,
-                                      ),
-                                    ],
-                                    onChanged: (value) =>
-                                        setState(() => _proxyMode = value),
+                              child: AppChoiceSegmentedControl<RequestProxyMode>(
+                                key: const ValueKey('create-task-proxy-mode'),
+                                showIcons: !stacked,
+                                value: _proxyMode,
+                                buttonKeyPrefix: 'create-task-proxy-mode',
+                                alignment: WrapAlignment.start,
+                                options: [
+                                  AppChoiceOption(
+                                    value: RequestProxyMode.follow,
+                                    key: 'follow',
+                                    label: context.l10n.followSettings,
+                                    icon: Icons.settings_suggest_outlined,
                                   ),
+                                  AppChoiceOption(
+                                    value: RequestProxyMode.none,
+                                    key: 'none',
+                                    label: context.l10n.noProxy,
+                                    icon: Icons.block_outlined,
+                                  ),
+                                  AppChoiceOption(
+                                    value: RequestProxyMode.custom,
+                                    key: 'custom',
+                                    label: context.l10n.customProxy,
+                                    icon: Icons.tune_outlined,
+                                  ),
+                                ],
+                                onChanged: (value) => setState(() => _proxyMode = value),
+                              ),
                             ),
                             if (_proxyMode == RequestProxyMode.custom) ...[
                               const SizedBox(height: 12),
                               AppFormRow(
-                                direction: stacked
-                                    ? Axis.vertical
-                                    : Axis.horizontal,
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.proxyProtocol,
                                 child: AppChoiceSegmentedControl<String>(
-                                  key: const ValueKey(
-                                    'create-task-proxy-scheme',
-                                  ),
+                                  key: const ValueKey('create-task-proxy-scheme'),
                                   showIcons: !stacked,
                                   value: _proxyScheme,
                                   buttonKeyPrefix: 'create-task-proxy-scheme',
                                   alignment: WrapAlignment.start,
                                   options: const [
-                                    AppChoiceOption(
-                                      value: 'http',
-                                      label: 'HTTP',
-                                      icon: Icons.http_outlined,
-                                    ),
-                                    AppChoiceOption(
-                                      value: 'https',
-                                      label: 'HTTPS',
-                                      icon: Icons.https_outlined,
-                                    ),
-                                    AppChoiceOption(
-                                      value: 'socks5',
-                                      label: 'SOCKS5',
-                                      icon: Icons.security_outlined,
-                                    ),
+                                    AppChoiceOption(value: 'http', label: 'HTTP', icon: Icons.http_outlined),
+                                    AppChoiceOption(value: 'https', label: 'HTTPS', icon: Icons.https_outlined),
+                                    AppChoiceOption(value: 'socks5', label: 'SOCKS5', icon: Icons.security_outlined),
                                   ],
-                                  onChanged: (value) =>
-                                      setState(() => _proxyScheme = value),
+                                  onChanged: (value) => setState(() => _proxyScheme = value),
                                 ),
                               ),
                               const SizedBox(height: 12),
                               AppFormPair(
-                                direction: stacked
-                                    ? Axis.vertical
-                                    : Axis.horizontal,
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 firstLabel: context.l10n.server,
                                 secondLabel: context.l10n.port,
                                 firstFlex: 618,
                                 secondFlex: 382,
                                 first: _WindowTextField(
-                                  key: const ValueKey(
-                                    'create-task-proxy-server',
-                                  ),
+                                  key: const ValueKey('create-task-proxy-server'),
                                   controller: _proxyServerController,
                                   hintText: context.l10n.server,
                                 ),
@@ -668,29 +560,21 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                   controller: _proxyPortController,
                                   hintText: context.l10n.port,
                                   keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                  ],
+                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                 ),
                               ),
                               const SizedBox(height: 12),
                               AppFormPair(
-                                direction: stacked
-                                    ? Axis.vertical
-                                    : Axis.horizontal,
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 firstLabel: context.l10n.username,
                                 secondLabel: context.l10n.password,
                                 first: _WindowTextField(
-                                  key: const ValueKey(
-                                    'create-task-proxy-username',
-                                  ),
+                                  key: const ValueKey('create-task-proxy-username'),
                                   controller: _proxyUsernameController,
                                   hintText: context.l10n.username,
                                 ),
                                 second: _WindowTextField(
-                                  key: const ValueKey(
-                                    'create-task-proxy-password',
-                                  ),
+                                  key: const ValueKey('create-task-proxy-password'),
                                   controller: _proxyPasswordController,
                                   hintText: context.l10n.password,
                                   obscureText: true,
@@ -698,8 +582,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               ),
                             ],
                             const SizedBox(height: 18),
-                            if (!stacked)
-                              Container(height: 1, color: palette.border),
+                            if (!stacked) Container(height: 1, color: palette.border),
                             const SizedBox(height: 16),
                             Align(
                               alignment: Alignment.centerLeft,
@@ -716,14 +599,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                     _SegmentButton(
                                       label: 'HTTP',
                                       active: _protocolTab == 0,
-                                      onTap: () =>
-                                          setState(() => _protocolTab = 0),
+                                      onTap: () => setState(() => _protocolTab = 0),
                                     ),
                                     _SegmentButton(
                                       label: 'BitTorrent',
                                       active: _protocolTab == 1,
-                                      onTap: () =>
-                                          setState(() => _protocolTab = 1),
+                                      onTap: () => setState(() => _protocolTab = 1),
                                     ),
                                   ],
                                 ),
@@ -739,80 +620,53 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               ),
                               const SizedBox(height: 14),
                               AppFormRow(
-                                direction: stacked
-                                    ? Axis.vertical
-                                    : Axis.horizontal,
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.skipVerifyCert,
                                 child: _OptionSwitch(
-                                  key: const ValueKey(
-                                    'create-task-skip-verify-cert',
-                                  ),
+                                  key: const ValueKey('create-task-skip-verify-cert'),
                                   value: _skipVerifyCert,
-                                  onChanged: (value) =>
-                                      setState(() => _skipVerifyCert = value),
+                                  onChanged: (value) => setState(() => _skipVerifyCert = value),
                                 ),
                               ),
                               const SizedBox(height: 14),
                               AppFormRow(
-                                direction: stacked
-                                    ? Axis.vertical
-                                    : Axis.horizontal,
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.autoTorrentEnable,
                                 child: _OptionSwitch(
-                                  key: const ValueKey(
-                                    'create-task-auto-torrent',
-                                  ),
+                                  key: const ValueKey('create-task-auto-torrent'),
                                   value: _autoTorrent ?? false,
-                                  onChanged: (value) =>
-                                      setState(() => _autoTorrent = value),
+                                  onChanged: (value) => setState(() => _autoTorrent = value),
                                 ),
                               ),
                               if (_autoTorrent == true) ...[
                                 const SizedBox(height: 12),
                                 AppFormRow(
-                                  direction: stacked
-                                      ? Axis.vertical
-                                      : Axis.horizontal,
-                                  label: context
-                                      .l10n
-                                      .autoTorrentDeleteAfterDownload,
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
+                                  label: context.l10n.autoTorrentDeleteAfterDownload,
                                   child: _OptionSwitch(
-                                    key: const ValueKey(
-                                      'create-task-delete-torrent',
-                                    ),
+                                    key: const ValueKey('create-task-delete-torrent'),
                                     value: _deleteTorrentAfterDownload ?? false,
-                                    onChanged: (value) => setState(
-                                      () => _deleteTorrentAfterDownload = value,
-                                    ),
+                                    onChanged: (value) => setState(() => _deleteTorrentAfterDownload = value),
                                   ),
                                 ),
                               ],
                               const SizedBox(height: 14),
                               AppFormRow(
-                                direction: stacked
-                                    ? Axis.vertical
-                                    : Axis.horizontal,
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.autoExtract,
                                 child: _OptionSwitch(
-                                  key: const ValueKey(
-                                    'create-task-auto-extract',
-                                  ),
+                                  key: const ValueKey('create-task-auto-extract'),
                                   value: _autoExtract ?? false,
-                                  onChanged: (value) =>
-                                      setState(() => _autoExtract = value),
+                                  onChanged: (value) => setState(() => _autoExtract = value),
                                 ),
                               ),
                               if (_autoExtract == true) ...[
                                 const SizedBox(height: 12),
                                 AppFormRow(
-                                  direction: stacked
-                                      ? Axis.vertical
-                                      : Axis.horizontal,
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
                                   label: context.l10n.archivePassword,
                                   child: _WindowTextField(
-                                    key: const ValueKey(
-                                      'create-task-archive-password',
-                                    ),
+                                    key: const ValueKey('create-task-archive-password'),
                                     controller: _archivePasswordController,
                                     hintText: context.l10n.archivePasswordHint,
                                     obscureText: true,
@@ -820,65 +674,38 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 ),
                                 const SizedBox(height: 12),
                                 AppFormRow(
-                                  direction: stacked
-                                      ? Axis.vertical
-                                      : Axis.horizontal,
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
                                   label: context.l10n.deleteAfterExtract,
                                   child: _OptionSwitch(
-                                    key: const ValueKey(
-                                      'create-task-delete-after-extract',
-                                    ),
+                                    key: const ValueKey('create-task-delete-after-extract'),
                                     value: _deleteAfterExtract,
-                                    onChanged: (value) => setState(
-                                      () => _deleteAfterExtract = value,
-                                    ),
+                                    onChanged: (value) => setState(() => _deleteAfterExtract = value),
                                   ),
                                 ),
                               ],
                               if (_inputUrls().length <= 1) ...[
                                 const SizedBox(height: 14),
                                 AppFormPair(
-                                  direction: stacked
-                                      ? Axis.vertical
-                                      : Axis.horizontal,
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
                                   firstLabel: context.l10n.checksumAlgorithm,
                                   secondLabel: context.l10n.checksumHash,
                                   firstFlex: 382,
                                   secondFlex: 618,
                                   first: AppChoiceSegmentedControl<String>(
-                                    key: const ValueKey(
-                                      'create-task-checksum-algorithm',
-                                    ),
+                                    key: const ValueKey('create-task-checksum-algorithm'),
                                     showIcons: false,
                                     value: _checksumAlgorithm,
-                                    buttonKeyPrefix:
-                                        'create-task-checksum-algorithm',
+                                    buttonKeyPrefix: 'create-task-checksum-algorithm',
                                     alignment: WrapAlignment.start,
                                     options: const [
-                                      AppChoiceOption(
-                                        value: 'md5',
-                                        label: 'MD5',
-                                        icon: Icons.tag,
-                                      ),
-                                      AppChoiceOption(
-                                        value: 'sha1',
-                                        label: 'SHA-1',
-                                        icon: Icons.tag,
-                                      ),
-                                      AppChoiceOption(
-                                        value: 'sha256',
-                                        label: 'SHA-256',
-                                        icon: Icons.tag,
-                                      ),
+                                      AppChoiceOption(value: 'md5', label: 'MD5', icon: Icons.tag),
+                                      AppChoiceOption(value: 'sha1', label: 'SHA-1', icon: Icons.tag),
+                                      AppChoiceOption(value: 'sha256', label: 'SHA-256', icon: Icons.tag),
                                     ],
-                                    onChanged: (value) => setState(
-                                      () => _checksumAlgorithm = value,
-                                    ),
+                                    onChanged: (value) => setState(() => _checksumAlgorithm = value),
                                   ),
                                   second: _WindowTextField(
-                                    key: const ValueKey(
-                                      'create-task-checksum-expected',
-                                    ),
+                                    key: const ValueKey('create-task-checksum-expected'),
                                     controller: _checksumHashController,
                                     hintText: context.l10n.checksumExpectedHint,
                                   ),
@@ -886,9 +713,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               ],
                             ] else ...[
                               AppFormRow(
-                                direction: stacked
-                                    ? Axis.vertical
-                                    : Axis.horizontal,
+                                direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.trackers,
                                 child: SizedBox(
                                   height: 96,
@@ -922,9 +747,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
                 decoration: BoxDecoration(
-                  border: stacked
-                      ? null
-                      : Border(top: BorderSide(color: palette.border)),
+                  border: stacked ? null : Border(top: BorderSide(color: palette.border)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -935,12 +758,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                       onSubmit: _confirm,
                       cancelLabel: context.l10n.cancel,
                       submitLabel: context.l10n.confirm,
-                      cancelButtonKey: const ValueKey(
-                        'create-task-cancel-button',
-                      ),
-                      submitButtonKey: const ValueKey(
-                        'create-task-confirm-button',
-                      ),
+                      cancelButtonKey: const ValueKey('create-task-cancel-button'),
+                      submitButtonKey: const ValueKey('create-task-confirm-button'),
                     ),
                   ],
                 ),
@@ -967,10 +786,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       // Navigation is best-effort after a successful submission. A navigation
       // failure must not leave a completed form available for resubmission.
       try {
-        await ref
-            .read(appCapabilitiesProvider)
-            .navigation
-            .showDownloadingTasks();
+        await ref.read(appCapabilitiesProvider).navigation.showDownloadingTasks();
       } catch (error) {
         debugPrint('Unable to select downloading tasks: $error');
       }
@@ -987,21 +803,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       setState(() {
         _configuredDownloadDirectory = config.downloadDir.trim();
         if (config.downloadDir.isNotEmpty &&
-            (_directoryController.text.isEmpty ||
-                _directoryController.text == 'C:/Users/levi/Downloads')) {
+            (_directoryController.text.isEmpty || _directoryController.text == 'C:/Users/levi/Downloads')) {
           _directoryController.text = config.downloadDir;
         }
-        if (_asDefaultPath &&
-            _sameDirectory(
-              _directoryController.text,
-              _configuredDownloadDirectory,
-            )) {
+        if (_asDefaultPath && _sameDirectory(_directoryController.text, _configuredDownloadDirectory)) {
           _asDefaultPath = false;
         }
         final connections = config.protocolConfig.http.connections;
-        if (connections > 0 &&
-            (_connectionsController.text.isEmpty ||
-                _connectionsController.text == '16')) {
+        if (connections > 0 && (_connectionsController.text.isEmpty || _connectionsController.text == '16')) {
           _connectionsController.text = connections.toString();
         }
         _directDownload = config.extra.defaultDirectDownload;
@@ -1031,17 +840,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   Future<void> _pickTorrentFile() async {
-    final file = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: const ['torrent'],
-    );
+    final file = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['torrent']);
     if (file == null) return;
 
-    await _applyTorrentFile(
-      name: file.name,
-      filePath: file.path,
-      readBytes: file.readAsBytes,
-    );
+    await _applyTorrentFile(name: file.name, filePath: file.path, readBytes: file.readAsBytes);
   }
 
   Future<void> _handleDroppedTorrent(DropDoneDetails details) async {
@@ -1050,11 +852,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     }
     final file = details.files.first;
     try {
-      await _applyTorrentFile(
-        name: file.name,
-        filePath: file.path,
-        readBytes: () async => file.readAsBytes(),
-      );
+      await _applyTorrentFile(name: file.name, filePath: file.path, readBytes: () async => file.readAsBytes());
     } catch (error) {
       if (mounted) {
         _showToast(context.l10n.unableReadTorrent(error.toString()));
@@ -1080,11 +878,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         _showToast(context.l10n.torrentDataEmpty);
         return;
       }
-      _setUrlText(
-        name,
-        fileDataUri:
-            'data:application/x-bittorrent;base64,${base64Encode(fileBytes)}',
-      );
+      _setUrlText(name, fileDataUri: 'data:application/x-bittorrent;base64,${base64Encode(fileBytes)}');
       return;
     }
 
@@ -1123,11 +917,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                 .createTask(
                   CreateTask(
                     req: _buildRequest(url, protocolUrl: _protocolUrlFor(url)),
-                    opts: _buildOptions(
-                      name: urls.length > 1
-                          ? ''
-                          : _renameController.text.trim(),
-                    ),
+                    opts: _buildOptions(name: urls.length > 1 ? '' : _renameController.text.trim()),
                   ),
                 );
           }),
@@ -1136,14 +926,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         return;
       }
 
-      final request = _buildRequest(
-        urls.first,
-        protocolUrl: _protocolUrlFor(urls.first),
-      );
+      final request = _buildRequest(urls.first, protocolUrl: _protocolUrlFor(urls.first));
       final options = _buildOptions();
-      final result = await ref
-          .read(gopeedServiceProvider)
-          .resolve(ResolveTask(req: request, opts: options));
+      final result = await ref.read(gopeedServiceProvider).resolve(ResolveTask(req: request, opts: options));
       if (!mounted) return;
       final created = await _showResolveDialog(request, result);
       if (!created) {
@@ -1162,16 +947,13 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   List<String> _inputUrls() {
-    return Util.textToLines(_submitText().trim())
-        .map((line) => _normalizeTaskUrl(line.trim()))
-        .where((line) => line.isNotEmpty)
-        .toList();
+    return Util.textToLines(
+      _submitText().trim(),
+    ).map((line) => _normalizeTaskUrl(line.trim())).where((line) => line.isNotEmpty).toList();
   }
 
   String _submitText() {
-    return kIsWeb && _fileDataUri.isNotEmpty
-        ? _fileDataUri
-        : _urlController.text.trim();
+    return kIsWeb && _fileDataUri.isNotEmpty ? _fileDataUri : _urlController.text.trim();
   }
 
   String _protocolUrlFor(String url) {
@@ -1184,14 +966,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     final headers = _httpHeadersController.toMap(requireValue: true);
     switch (protocol) {
       case _TaskProtocol.http:
-        if (headers.isNotEmpty ||
-            _httpMethod != 'GET' ||
-            _httpBody.isNotEmpty) {
-          extra = ReqExtraHttp(
-            method: _httpMethod,
-            header: headers,
-            body: _httpBody,
-          ).toJson();
+        if (headers.isNotEmpty || _httpMethod != 'GET' || _httpBody.isNotEmpty) {
+          extra = ReqExtraHttp(method: _httpMethod, header: headers, body: _httpBody).toJson();
         }
         break;
       case _TaskProtocol.bt:
@@ -1217,6 +993,25 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   bool _validateAdvancedOptions() {
+    if (_protocolTab == 0 && _inputUrls().length <= 1) {
+      final checksumExpected = _checksumHashController.text.trim();
+      if (checksumExpected.isNotEmpty) {
+        final expectedLen = switch (_checksumAlgorithm.toLowerCase()) {
+          'md5' => 32,
+          'sha1' || 'sha-1' => 40,
+          'sha256' || 'sha-256' => 64,
+          _ => 0,
+        };
+        if (expectedLen > 0 && checksumExpected.length != expectedLen) {
+          _showToast(context.l10n.checksumInvalidLength(_checksumAlgorithm.toUpperCase(), expectedLen.toString()));
+          return false;
+        }
+        if (!RegExp(r'^[0-9a-fA-F]+$').hasMatch(checksumExpected)) {
+          _showToast(context.l10n.checksumInvalidHex);
+          return false;
+        }
+      }
+    }
     if (_proxyMode != RequestProxyMode.custom) {
       return true;
     }
@@ -1258,8 +1053,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     if (uppercaseUrl.startsWith('HTTP:') || uppercaseUrl.startsWith('HTTPS:')) {
       return _TaskProtocol.http;
     }
-    if (uppercaseUrl.startsWith('MAGNET:') ||
-        uppercaseUrl.endsWith('.TORRENT')) {
+    if (uppercaseUrl.startsWith('MAGNET:') || uppercaseUrl.endsWith('.TORRENT')) {
       return _TaskProtocol.bt;
     }
     if (uppercaseUrl.startsWith('ED2K:')) {
@@ -1290,17 +1084,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     return text.length == 40 && RegExp(r'^[0-9a-fA-F]+$').hasMatch(text);
   }
 
-  api_options.Options _buildOptions({
-    String? name,
-    List<int> selectFiles = const [],
-    bool omitChecksum = false,
-  }) {
+  api_options.Options _buildOptions({String? name, List<int> selectFiles = const [], bool omitChecksum = false}) {
     final connections = int.tryParse(_connectionsController.text.trim()) ?? 0;
     final checksumExpected = _checksumHashController.text.trim();
-    final checksum =
-        (!omitChecksum &&
-            _inputUrls().length <= 1 &&
-            checksumExpected.isNotEmpty)
+    final checksum = (!omitChecksum && _inputUrls().length <= 1 && checksumExpected.isNotEmpty)
         ? api_options.ChecksumOption(
             algorithm: _checksumAlgorithm,
             expected: checksumExpected,
@@ -1327,22 +1114,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     final normalizedLeft = left.trim();
     final normalizedRight = right.trim();
     if (normalizedLeft.isEmpty || normalizedRight.isEmpty) return false;
-    return path.equals(
-      path.normalize(normalizedLeft),
-      path.normalize(normalizedRight),
-    );
+    return path.equals(path.normalize(normalizedLeft), path.normalize(normalizedRight));
   }
 
-  Future<void> _submitResolved(
-    Request request,
-    ResolveResult result,
-    List<int> selectedIndexes,
-  ) async {
-    final selected =
-        (selectedIndexes.isEmpty
-              ? result.res.files.asMap().keys.toList()
-              : selectedIndexes.toList())
-          ..sort();
+  Future<void> _submitResolved(Request request, ResolveResult result, List<int> selectedIndexes) async {
+    final selected = (selectedIndexes.isEmpty ? result.res.files.asMap().keys.toList() : selectedIndexes.toList())
+      ..sort();
     final isMultiFile = selected.length > 1;
     if (result.id.isNotEmpty) {
       await ref
@@ -1350,10 +1127,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           .createTask(
             CreateTask(
               rid: result.id,
-              opts: _buildOptions(
-                selectFiles: selected,
-                omitChecksum: isMultiFile,
-              ),
+              opts: _buildOptions(selectFiles: selected, omitChecksum: isMultiFile),
             ),
           );
       return;
@@ -1366,36 +1140,20 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           req: file.req ?? request,
           opts: api_options.Options(
             name: file.name,
-            path: path.join(
-              _directoryController.text.trim(),
-              result.res.name,
-              file.path,
-            ),
+            path: path.join(_directoryController.text.trim(), result.res.name, file.path),
             extra: _buildOptions(omitChecksum: isMultiFile).extra,
           ),
         );
       }).toList();
-      await ref
-          .read(gopeedServiceProvider)
-          .createTaskBatch(
-            CreateTaskBatch(
-              reqs: reqs,
-              opts: _buildOptions(omitChecksum: isMultiFile),
-            ),
-          );
+      await ref.read(gopeedServiceProvider).createTaskBatch(CreateTaskBatch(reqs: reqs, opts: _buildOptions(omitChecksum: isMultiFile)));
       return;
     }
 
-    await ref
-        .read(gopeedServiceProvider)
-        .createTask(CreateTask(req: request, opts: _buildOptions()));
+    await ref.read(gopeedServiceProvider).createTask(CreateTask(req: request, opts: _buildOptions()));
   }
 
   Future<bool> _showResolveDialog(Request request, ResolveResult result) async {
-    final initialSelection = List<int>.generate(
-      result.res.files.length,
-      (index) => index,
-    );
+    final initialSelection = List<int>.generate(result.res.files.length, (index) => index);
     var selectedIndexes = List<int>.of(initialSelection);
     var submitting = false;
     String? errorText;
@@ -1407,20 +1165,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       builder: (dialogContext) {
         final palette = AppPalette.of(dialogContext);
         final screenSize = MediaQuery.sizeOf(dialogContext);
-        final dialogWidth = screenSize.width < 760
-            ? screenSize.width - 32
-            : 720.0;
-        final treeHeight = screenSize.height < 700
-            ? screenSize.height * 0.55
-            : 440.0;
+        final dialogWidth = screenSize.width < 760 ? screenSize.width - 32 : 720.0;
+        final treeHeight = screenSize.height < 700 ? screenSize.height * 0.55 : 440.0;
 
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             Future<void> submit() async {
               if (result.res.files.isNotEmpty && selectedIndexes.isEmpty) {
-                setDialogState(
-                  () => errorText = dialogContext.l10n.selectAtLeastOneFile,
-                );
+                setDialogState(() => errorText = dialogContext.l10n.selectAtLeastOneFile);
                 return;
               }
               setDialogState(() {
@@ -1444,9 +1196,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
             return AlertDialog(
               padding: const EdgeInsets.all(18),
               title: Text(
-                result.res.name.trim().isEmpty
-                    ? dialogContext.l10n.resolvedFiles
-                    : result.res.name,
+                result.res.name.trim().isEmpty ? dialogContext.l10n.resolvedFiles : result.res.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1459,13 +1209,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                     Text(
                       result.res.files.isEmpty
                           ? dialogContext.l10n.resourceHasNoFiles
-                          : dialogContext.l10n.resolvedFileCount(
-                              result.res.files.length,
-                            ),
-                      style: TextStyle(
-                        color: palette.textSecondary,
-                        fontSize: 12,
-                      ),
+                          : dialogContext.l10n.resolvedFileCount(result.res.files.length),
+                      style: TextStyle(color: palette.textSecondary, fontSize: 12),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -1476,31 +1221,22 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               decoration: BoxDecoration(
                                 color: palette.cardBg,
                                 border: Border.all(color: palette.border),
-                                borderRadius: BorderRadius.circular(
-                                  AppDesignTokens.controlRadius,
-                                ),
+                                borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
                               ),
                               child: Text(
                                 dialogContext.l10n.noFiles,
-                                style: TextStyle(
-                                  color: palette.textMuted,
-                                  fontSize: 13,
-                                ),
+                                style: TextStyle(color: palette.textMuted, fontSize: 13),
                               ),
                             )
                           : ResolveFileTree(
                               files: result.res.files,
                               initialSelection: initialSelection,
-                              onSelectionChanged: (values) =>
-                                  selectedIndexes = values,
+                              onSelectionChanged: (values) => selectedIndexes = values,
                             ),
                     ),
                     if (errorText != null) ...[
                       const SizedBox(height: 10),
-                      Text(
-                        errorText!,
-                        style: TextStyle(color: palette.error, fontSize: 12),
-                      ),
+                      Text(errorText!, style: TextStyle(color: palette.error, fontSize: 12)),
                     ],
                   ],
                 ),
@@ -1530,9 +1266,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   Future<void> _showCreateHistory() async {
     List<String> histories;
     try {
-      histories = List<String>.of(
-        await ref.read(appStorageServiceProvider).getCreateHistory(),
-      );
+      histories = List<String>.of(await ref.read(appStorageServiceProvider).getCreateHistory());
     } catch (_) {
       histories = const [];
     }
@@ -1547,18 +1281,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           builder: (dialogContext, setDialogState) {
             final palette = AppPalette.of(dialogContext);
             final screenSize = MediaQuery.sizeOf(dialogContext);
-            final contentWidth = screenSize.width < 620
-                ? screenSize.width - 68
-                : 560.0;
+            final contentWidth = screenSize.width < 620 ? screenSize.width - 68 : 560.0;
             final normalizedQuery = filterQuery.trim().toLowerCase();
             final visibleHistories = normalizedQuery.isEmpty
                 ? histories
-                : histories
-                      .where(
-                        (value) =>
-                            value.toLowerCase().contains(normalizedQuery),
-                      )
-                      .toList(growable: false);
+                : histories.where((value) => value.toLowerCase().contains(normalizedQuery)).toList(growable: false);
             return AlertDialog(
               padding: const EdgeInsets.all(18),
               title: SizedBox(
@@ -1575,9 +1302,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                         onPressed: histories.isEmpty
                             ? null
                             : () async {
-                                await ref
-                                    .read(appStorageServiceProvider)
-                                    .clearCreateHistory();
+                                await ref.read(appStorageServiceProvider).clearCreateHistory();
                                 if (!dialogContext.mounted) return;
                                 filterController.clear();
                                 setDialogState(() {
@@ -1585,10 +1310,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                   filterQuery = '';
                                 });
                               },
-                        child: const Icon(
-                          Icons.history_toggle_off_rounded,
-                          size: 17,
-                        ),
+                        child: const Icon(Icons.history_toggle_off_rounded, size: 17),
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -1607,15 +1329,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
               content: SizedBox(
                 key: const ValueKey('create-history-content'),
                 width: contentWidth,
-                height: screenSize.height < 560
-                    ? screenSize.height * 0.55
-                    : 360,
+                height: screenSize.height < 560 ? screenSize.height * 0.55 : 360,
                 child: Column(
                   children: [
                     HistorySearchField(
                       controller: filterController,
-                      onChanged: (value) =>
-                          setDialogState(() => filterQuery = value),
+                      onChanged: (value) => setDialogState(() => filterQuery = value),
                     ),
                     const SizedBox(height: 10),
                     Expanded(
@@ -1625,42 +1344,30 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 normalizedQuery.isEmpty
                                     ? dialogContext.l10n.noHistory
                                     : dialogContext.l10n.noHistoryFound,
-                                style: TextStyle(
-                                  color: palette.textMuted,
-                                  fontSize: 13,
-                                ),
+                                style: TextStyle(color: palette.textMuted, fontSize: 13),
                               ),
                             )
                           : ListView.separated(
                               itemCount: visibleHistories.length,
-                              separatorBuilder: (_, _) =>
-                                  Container(height: 1, color: palette.border),
+                              separatorBuilder: (_, _) => Container(height: 1, color: palette.border),
                               itemBuilder: (context, index) {
                                 final value = visibleHistories[index];
                                 return Row(
                                   children: [
                                     Expanded(
                                       child: GestureDetector(
-                                        key: ValueKey(
-                                          'create-history-item-$value',
-                                        ),
+                                        key: ValueKey('create-history-item-$value'),
                                         behavior: HitTestBehavior.opaque,
                                         onTap: () {
                                           _setUrlText(value);
                                           closeOverlay(dialogContext);
                                         },
                                         child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 10,
-                                          ),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                                           child: Text(
                                             softWrapAnywhere(value),
                                             semanticsLabel: value,
-                                            style: TextStyle(
-                                              color: palette.textPrimary,
-                                              fontSize: 12,
-                                            ),
+                                            style: TextStyle(color: palette.textPrimary, fontSize: 12),
                                           ),
                                         ),
                                       ),
@@ -1668,24 +1375,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                     AppTooltip(
                                       message: dialogContext.l10n.delete,
                                       child: GhostButton(
-                                        key: ValueKey(
-                                          'create-history-delete-$value',
-                                        ),
+                                        key: ValueKey('create-history-delete-$value'),
                                         density: ButtonDensity.icon,
                                         onPressed: () async {
-                                          await ref
-                                              .read(appStorageServiceProvider)
-                                              .removeCreateHistory(value);
+                                          await ref.read(appStorageServiceProvider).removeCreateHistory(value);
                                           if (!dialogContext.mounted) return;
-                                          setDialogState(
-                                            () => histories.remove(value),
-                                          );
+                                          setDialogState(() => histories.remove(value));
                                         },
-                                        child: Icon(
-                                          Icons.delete_outline_rounded,
-                                          size: 16,
-                                          color: palette.textMuted,
-                                        ),
+                                        child: Icon(Icons.delete_outline_rounded, size: 16, color: palette.textMuted),
                                       ),
                                     ),
                                   ],
@@ -1708,9 +1405,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   void _setUrlText(String value, {String fileDataUri = ''}) {
     _programmaticUrlChange = true;
     _urlController.text = value;
-    _urlController.selection = TextSelection.fromPosition(
-      TextPosition(offset: value.length),
-    );
+    _urlController.selection = TextSelection.fromPosition(TextPosition(offset: value.length));
     _programmaticUrlChange = false;
     if (!mounted) {
       _fileDataUri = fileDataUri;
@@ -1757,34 +1452,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         .replaceAll('%month%', month)
         .replaceAll('%day%', day)
         .replaceAll('%date%', '${now.year}-$month-$day');
-  }
-
-  bool _validateAdvancedOptions() {
-    if (_protocolTab == 0 && _inputUrls().length <= 1) {
-      final checksumExpected = _checksumHashController.text.trim();
-      if (checksumExpected.isNotEmpty) {
-        final expectedLen = switch (_checksumAlgorithm.toLowerCase()) {
-          'md5' => 32,
-          'sha1' || 'sha-1' => 40,
-          'sha256' || 'sha-256' => 64,
-          _ => 0,
-        };
-        if (expectedLen > 0 && checksumExpected.length != expectedLen) {
-          _showToast(
-            context.l10n.checksumInvalidLength(
-              _checksumAlgorithm.toUpperCase(),
-              expectedLen.toString(),
-            ),
-          );
-          return false;
-        }
-        if (!RegExp(r'^[0-9a-fA-F]+$').hasMatch(checksumExpected)) {
-          _showToast(context.l10n.checksumInvalidHex);
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   void _showToast(String message) {
@@ -1852,18 +1519,14 @@ class _AsDefaultPathToggle extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Checkbox(
-              key: const ValueKey(
-                'create-task-remember-download-directory-checkbox',
-              ),
+              key: const ValueKey('create-task-remember-download-directory-checkbox'),
               state: value ? CheckboxState.checked : CheckboxState.unchecked,
               onChanged: (_) => onChanged(!value),
             ),
             const SizedBox(width: AppDesignTokens.checkboxLabelGap),
             Flexible(
               child: Text(
-                key: const ValueKey(
-                  'create-task-remember-download-directory-label',
-                ),
+                key: const ValueKey('create-task-remember-download-directory-label'),
                 context.l10n.rememberLastDownloadDir,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1878,11 +1541,7 @@ class _AsDefaultPathToggle extends StatelessWidget {
 }
 
 class _DirectoryShortcut {
-  const _DirectoryShortcut({
-    required this.index,
-    required this.label,
-    required this.path,
-  });
+  const _DirectoryShortcut({required this.index, required this.label, required this.path});
 
   final int index;
   final String label;
@@ -1907,15 +1566,8 @@ class _DirectoryOptions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final toggle = _AsDefaultPathToggle(
-      value: asDefaultPath,
-      onChanged: onAsDefaultPathChanged,
-    );
-    final shortcutList = _DirectoryShortcuts(
-      shortcuts: shortcuts,
-      alignEnd: !stacked,
-      onSelected: onShortcutSelected,
-    );
+    final toggle = _AsDefaultPathToggle(value: asDefaultPath, onChanged: onAsDefaultPathChanged);
+    final shortcutList = _DirectoryShortcuts(shortcuts: shortcuts, alignEnd: !stacked, onSelected: onShortcutSelected);
 
     if (stacked) {
       return Column(
@@ -1941,10 +1593,7 @@ class _DirectoryOptions extends StatelessWidget {
           toggle,
           if (shortcuts.isNotEmpty)
             flutter.Flexible(
-              child: Padding(
-                padding: const EdgeInsetsDirectional.only(start: 16),
-                child: shortcutList,
-              ),
+              child: Padding(padding: const EdgeInsetsDirectional.only(start: 16), child: shortcutList),
             ),
         ],
       ),
@@ -1953,11 +1602,7 @@ class _DirectoryOptions extends StatelessWidget {
 }
 
 class _DirectoryShortcuts extends StatelessWidget {
-  const _DirectoryShortcuts({
-    required this.shortcuts,
-    required this.alignEnd,
-    required this.onSelected,
-  });
+  const _DirectoryShortcuts({required this.shortcuts, required this.alignEnd, required this.onSelected});
 
   final List<_DirectoryShortcut> shortcuts;
   final bool alignEnd;
@@ -1991,8 +1636,7 @@ class _DirectoryShortcuts extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final shortcut in shortcuts) ...[
-              if (shortcut.index != shortcuts.first.index)
-                const SizedBox(width: 6),
+              if (shortcut.index != shortcuts.first.index) const SizedBox(width: 6),
               _DirectoryShortcutButton(
                 key: ValueKey('create-task-category-${shortcut.index}'),
                 shortcut: shortcut,
@@ -2007,18 +1651,13 @@ class _DirectoryShortcuts extends StatelessWidget {
 }
 
 class _DirectoryShortcutButton extends StatefulWidget {
-  const _DirectoryShortcutButton({
-    super.key,
-    required this.shortcut,
-    required this.onPressed,
-  });
+  const _DirectoryShortcutButton({super.key, required this.shortcut, required this.onPressed});
 
   final _DirectoryShortcut shortcut;
   final VoidCallback onPressed;
 
   @override
-  State<_DirectoryShortcutButton> createState() =>
-      _DirectoryShortcutButtonState();
+  State<_DirectoryShortcutButton> createState() => _DirectoryShortcutButtonState();
 }
 
 class _DirectoryShortcutButtonState extends State<_DirectoryShortcutButton> {
@@ -2047,30 +1686,20 @@ class _DirectoryShortcutButtonState extends State<_DirectoryShortcutButton> {
               padding: const EdgeInsets.symmetric(horizontal: 9),
               decoration: BoxDecoration(
                 color: _hovered ? palette.surfaceSoft : palette.cardBg,
-                borderRadius: BorderRadius.circular(
-                  AppDesignTokens.controlRadius,
-                ),
+                borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
                 border: Border.all(color: palette.border),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.folder_outlined,
-                    size: 14,
-                    color: palette.textMuted,
-                  ),
+                  Icon(Icons.folder_outlined, size: 14, color: palette.textMuted),
                   const SizedBox(width: 5),
                   Flexible(
                     child: Text(
                       widget.shortcut.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: palette.textSecondary,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(color: palette.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -2112,11 +1741,7 @@ class _WindowTextField extends StatelessWidget {
 }
 
 class _OptionSwitch extends StatelessWidget {
-  const _OptionSwitch({
-    super.key,
-    required this.value,
-    required this.onChanged,
-  });
+  const _OptionSwitch({super.key, required this.value, required this.onChanged});
 
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -2165,21 +1790,9 @@ class _TripleChevronIcon extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            child: Icon(icon, size: 14, color: color),
-          ),
-          Positioned(
-            top: 4,
-            left: 0,
-            child: Icon(icon, size: 14, color: color),
-          ),
-          Positioned(
-            top: 8,
-            left: 0,
-            child: Icon(icon, size: 14, color: color),
-          ),
+          Positioned(top: 0, left: 0, child: Icon(icon, size: 14, color: color)),
+          Positioned(top: 4, left: 0, child: Icon(icon, size: 14, color: color)),
+          Positioned(top: 8, left: 0, child: Icon(icon, size: 14, color: color)),
         ],
       ),
     );
@@ -2187,11 +1800,7 @@ class _TripleChevronIcon extends StatelessWidget {
 }
 
 class _SegmentButton extends StatelessWidget {
-  const _SegmentButton({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
+  const _SegmentButton({required this.label, required this.active, required this.onTap});
 
   final String label;
   final bool active;
