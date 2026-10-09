@@ -8,9 +8,9 @@ import (
 	gohttp "net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
-	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
@@ -137,15 +137,9 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}, opts); err != nil {
-			t.Fatalf("Resolve error: %v", err)
-		}
-		if err := f.Start(); err != nil {
-			t.Fatalf("Start error: %v", err)
-		}
-		err := f.Wait()
+		err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}, opts)
 		if err == nil {
-			t.Fatal("Wait expected error for unsupported algorithm, got nil")
+			t.Fatal("Resolve expected error for unsupported algorithm, got nil")
 		}
 		if !strings.Contains(err.Error(), "unsupported checksum algorithm") {
 			t.Fatalf("expected 'unsupported checksum algorithm' in error, got %v", err)
@@ -274,34 +268,37 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			t.Fatalf("Wait error: %v", err)
 		}
 	})
-}
 
-func TestResetConnectionForRestart_ForceOnRangeDownload(t *testing.T) {
-	f := buildFetcher()
-	f.meta = &fetcher.FetcherMeta{
-		Res: &base.Resource{
-			Range: true,
-		},
-	}
-	conn := &connection{
-		Chunk:      newChunk(0, 1024),
-		Downloaded: 512,
-		Completed:  true,
-	}
-	conn.Chunk.Downloaded = 512
+	t.Run("Invalid Checksum In Resolve Makes Zero Requests", func(t *testing.T) {
+		var reqReceived atomic.Int32
+		customServer := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+			reqReceived.Add(1)
+			w.WriteHeader(gohttp.StatusOK)
+			_, _ = w.Write([]byte("some data"))
+		}))
+		defer customServer.Close()
 
-	// Non-forced reset on range-supported download does not reset Chunk.Downloaded
-	f.resetConnectionForRestart(conn, false)
-	if conn.Chunk.Downloaded != 512 {
-		t.Fatalf("expected Chunk.Downloaded to remain 512 when force is false, got %d", conn.Chunk.Downloaded)
-	}
+		f := buildFetcher()
+		defer f.Close()
 
-	// Forced reset on range-supported download resets Chunk.Downloaded to 0
-	f.resetConnectionForRestart(conn, true)
-	if conn.Chunk.Downloaded != 0 {
-		t.Fatalf("expected Chunk.Downloaded to be reset to 0 when force is true, got %d", conn.Chunk.Downloaded)
-	}
-	if conn.Completed {
-		t.Fatal("expected Completed to be false after reset")
-	}
+		opts := &base.Options{
+			Path: t.TempDir(),
+			Name: "test_invalid_checksum.txt",
+			Extra: &http.OptsExtra{
+				Connections: 1,
+				Checksum: &http.ChecksumOption{
+					Algorithm: "sha256",
+					Expected:  "invalid-hex-chars-not-valid-hex-00000000000000000000000000000000",
+				},
+			},
+		}
+
+		err := f.Resolve(&base.Request{URL: customServer.URL + "/test.txt"}, opts)
+		if err == nil {
+			t.Fatal("Resolve expected error for invalid checksum hash, got nil")
+		}
+		if reqReceived.Load() != 0 {
+			t.Fatalf("expected 0 requests to server on invalid checksum in Resolve, got %d", reqReceived.Load())
+		}
+	})
 }
