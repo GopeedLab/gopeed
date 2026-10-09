@@ -195,6 +195,9 @@
 
   function blockedByGuard(headers, name, value) {
     if (headers._guard === "immutable") throw new TypeError("Headers are immutable");
+    // Extensions are privileged HTTP clients and may supply their own cookies,
+    // including in no-cors mode. Keep browser guards for other header names.
+    if (name === "cookie" && (headers._guard === "request" || headers._guard === "request-no-cors")) return false;
     if (headers._guard === "request") return forbiddenRequestHeader(name, value);
     if (headers._guard === "request-no-cors") {
       return forbiddenRequestHeader(name, value) || !noCORSSafelistedRequestHeader(name, value);
@@ -244,7 +247,7 @@
     delete(name) {
 	  name = normalizeHeaderName(name);
 	  if (this._guard === "immutable") throw new TypeError("Headers are immutable");
-	  if (this._guard === "request-no-cors") {
+	  if (this._guard === "request-no-cors" && name !== "cookie") {
 		if (forbiddenRequestHeader(name, "") || !["accept", "accept-language", "content-language", "content-type", "range"].includes(name)) return;
 		this._values.delete(name);
 		return;

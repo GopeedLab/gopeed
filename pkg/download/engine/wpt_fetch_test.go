@@ -110,7 +110,19 @@ func runWPTFile(t *testing.T, files embed.FS, name, setup string) {
 	}
 	runtime := engine.NewEngine(nil)
 	t.Cleanup(runtime.Close)
-	value, err := runtime.RunString(setup + "\n" + wptHarness + "\n" + wptFetchUtils + "\n" + wptRequestError + "\n" + string(source) + "\n__wptFinish();")
+	adaptation := ""
+	if name == "testdata/wpt/fetch/api/request/request-headers.any.js" {
+		// Gopeed extensions intentionally allow explicit Cookie request headers.
+		// Keep the upstream file unchanged and exclude only its browser restriction.
+		adaptation = `
+			const upstreamTest = globalThis.test;
+			globalThis.test = function (callback, name) {
+				if (name === 'Adding invalid request header "Cookie: KO"') return;
+				upstreamTest(callback, name);
+			};
+		`
+	}
+	value, err := runtime.RunString(setup + "\n" + wptHarness + "\n" + wptFetchUtils + "\n" + wptRequestError + "\n" + adaptation + "\n" + string(source) + "\n__wptFinish();")
 	if err != nil {
 		t.Fatal(err)
 	}

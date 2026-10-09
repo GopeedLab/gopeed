@@ -19,9 +19,16 @@ a claim that Gopeed is a browser. Browser-only suites that require a document,
 CORS origin enforcement or preflight, CSP, Mixed Content, Service Workers,
 browser HTTP cache, navigation, browser authentication UI, or WPT's
 multi-origin server infrastructure are intentionally excluded. Gopeed also
-keeps one extension-specific behavior: `redirect: "manual"` exposes the HTTP
+keeps extension-specific behavior: `redirect: "manual"` exposes the HTTP
 redirect response so download extensions can inspect `Location`, instead of
 returning a browser `opaqueredirect` response.
+
+Extensions may also supply an explicit `Cookie` request header, including in
+`no-cors` mode. The runner excludes the single upstream assertion that treats
+`Cookie` as an invalid request header; Gopeed integration tests instead verify
+that fetch and XMLHttpRequest send it to the server. `credentials: "omit"`
+disables automatic CookieJar cookies but preserves an explicit header. Other
+request header guards remain covered by the unchanged upstream tests.
 
 `wpt_harness.js` is a small Goja adapter maintained by Gopeed; it is not copied
 from WPT. Test logic below `fetch/` is unchanged; the checked-in copy may only
