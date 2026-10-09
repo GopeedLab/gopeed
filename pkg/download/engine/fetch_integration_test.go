@@ -119,6 +119,7 @@ func TestExtensionRequestsSendExplicitCookie(t *testing.T) {
 		{"fetch record", `const response = await fetch(url, {headers: {Cookie: cookie}}); return response.text();`},
 		{"fetch Headers", `const response = await fetch(url, {headers: new Headers({cookie})}); return response.text();`},
 		{"fetch pairs", `const response = await fetch(url, {headers: [["cOoKiE", cookie]]}); return response.text();`},
+		{"fetch repeated Cookie", `const headers = new Headers([["Cookie", "sid=manual"], ["cookie", "token=provided"]]); if (headers.get("cookie") !== cookie) throw new Error("Incorrect Cookie separator"); const response = await fetch(url, {headers}); return response.text();`},
 		{"fetch Request clone", `const request = new Request(url, {headers: {Cookie: cookie}}); const response = await fetch(request.clone()); return response.text();`},
 		{"fetch Request set", `const request = new Request(url); request.headers.set("Cookie", cookie); const response = await fetch(request); return response.text();`},
 		{"fetch Request append", `const request = new Request(url); request.headers.append("Cookie", cookie); const response = await fetch(request); return response.text();`},
@@ -146,6 +147,15 @@ func TestExtensionRequestsSendExplicitCookie(t *testing.T) {
 			});`, withCredentials),
 		})
 	}
+	tests = append(tests, requestTest{"XHR repeated Cookie", `return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest();
+		xhr.open("GET", url);
+		xhr.setRequestHeader("Cookie", "sid=manual");
+		xhr.setRequestHeader("cookie", "token=provided");
+		xhr.onload = () => resolve(xhr.responseText);
+		xhr.onerror = () => reject(new Error("XHR failed"));
+		xhr.send();
+	});`})
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			runtime := engine.NewEngine(nil)
