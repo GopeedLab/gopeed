@@ -99,7 +99,7 @@
   "add": "Ajouter",
   "edit": "Modifier",
   "newVersionTitle": "Nouvelle version @version disponible",
-  "newVersionUpdate": "Mettre à jour maintenant",
+  "newVersionUpdate": "Mettre à jour",
   "newVersionLater": "Plus tard",
   "extensions": "Extensions",
   "extensionInstallUrl": "URL d'installation",
