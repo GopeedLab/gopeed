@@ -5,16 +5,17 @@ import '../../../../shared/theme/app_palette.dart';
 /// Green status dot with an optional label, marking an available update.
 /// Pass [onTap] to make it open the update prompt.
 class ExtensionUpdateStatus extends StatelessWidget {
-  const ExtensionUpdateStatus({super.key, this.label, this.onTap});
+  const ExtensionUpdateStatus({super.key, this.label, this.onTap, this.compact = false});
 
   final String? label;
   final VoidCallback? onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final content = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: compact ? 2 : 3),
       decoration: BoxDecoration(
         color: palette.brandSoft,
         borderRadius: BorderRadius.circular(999),
@@ -49,7 +50,7 @@ class ExtensionUpdateStatus extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: 2, vertical: compact ? 2 : 4),
           child: content,
         ),
       ),

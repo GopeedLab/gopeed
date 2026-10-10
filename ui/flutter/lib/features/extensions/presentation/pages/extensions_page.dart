@@ -994,6 +994,7 @@ class _ExtensionCard extends ConsumerWidget {
                               key: ValueKey('extension-card-update-status-${item.id}'),
                               label: context.l10n.extensionCanUpdate,
                               onTap: busy ? null : () => showExtensionUpdateDialog(context, installed),
+                              compact: true,
                             ),
                           ),
                         ],
