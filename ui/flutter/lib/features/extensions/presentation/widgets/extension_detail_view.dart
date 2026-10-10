@@ -184,7 +184,7 @@ class ExtensionDetailView extends ConsumerWidget {
               child: Text(context.l10n.retry),
             ),
           ),
-        if (store != null) ...[SizedBox(height: mobile ? 24 : 28), _ExtensionReadme(item: current, mobile: mobile)],
+        if (store != null) _ExtensionReadme(item: current, mobile: mobile),
       ],
     );
   }
@@ -249,7 +249,7 @@ class _ExtensionReadmeState extends State<_ExtensionReadme> {
         }
         return Padding(
           key: const ValueKey('extension-details-readme'),
-          padding: EdgeInsets.only(top: widget.mobile ? 32 : 36),
+          padding: const EdgeInsets.only(top: AppDesignTokens.space24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
