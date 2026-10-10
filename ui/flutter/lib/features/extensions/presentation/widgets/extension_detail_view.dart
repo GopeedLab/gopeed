@@ -19,6 +19,7 @@ import '../../../../shared/widgets/app_toast.dart';
 import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../util/util.dart';
 import '../../application/extensions_controller.dart';
+import '../../application/store_extension_details_provider.dart';
 import 'extension_icon.dart';
 import 'extension_update_dialog.dart';
 
@@ -50,7 +51,13 @@ class ExtensionDetailView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = AppPalette.of(context);
     final state = ref.watch(extensionsControllerProvider).value;
-    final current = state?.findItem(item.id) ?? item;
+    final summary = state?.findItem(item.id) ?? item;
+    final summaryStore = summary.store;
+    final detailKey = summaryStore == null || summaryStore.hasDetails
+        ? null
+        : (id: summaryStore.id, version: summaryStore.version);
+    final details = detailKey == null ? null : ref.watch(storeExtensionDetailsProvider(detailKey));
+    final current = ExtensionListItem(installed: summary.installed, store: details?.value ?? summaryStore);
     final installed = current.installed;
     final store = current.store;
     final busy = state?.busyExtensionIds.contains(current.id) ?? false;
@@ -103,7 +110,7 @@ class ExtensionDetailView extends ConsumerWidget {
                         'v${current.version}',
                         style: TextStyle(color: palette.textMuted, fontSize: 11.5, fontWeight: FontWeight.w600),
                       ),
-                      if (store != null) _ExtensionStats(store: store),
+                      if (summaryStore != null) _ExtensionStats(store: summaryStore),
                       if (installed != null && canUpdate)
                         _ExtensionStatus(label: context.l10n.extensionCanUpdate, emphasized: true),
                     ],
@@ -162,7 +169,22 @@ class ExtensionDetailView extends ConsumerWidget {
               ),
           ],
         ),
-        if (store != null) ...[SizedBox(height: mobile ? 24 : 28), _ExtensionReadme(item: current, mobile: mobile)],
+        if (details?.isLoading == true)
+          const Padding(
+            key: ValueKey('extension-details-loading'),
+            padding: EdgeInsets.only(top: 24),
+            child: Center(child: shad.CircularProgressIndicator()),
+          ),
+        if (details?.hasError == true && detailKey != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: shad.SecondaryButton(
+              key: const ValueKey('extension-details-retry'),
+              onPressed: () => ref.invalidate(storeExtensionDetailsProvider(detailKey)),
+              child: Text(context.l10n.retry),
+            ),
+          ),
+        if (store != null) _ExtensionReadme(item: current, mobile: mobile),
       ],
     );
   }
@@ -204,6 +226,7 @@ class _ExtensionReadmeState extends State<_ExtensionReadme> {
     final previous = oldWidget.item.installed;
     final current = widget.item.installed;
     if (previous?.identity != current?.identity ||
+        oldWidget.item.id != widget.item.id ||
         previous?.devMode != current?.devMode ||
         previous?.devPath != current?.devPath ||
         oldWidget.item.store?.readme != widget.item.store?.readme) {
@@ -226,7 +249,7 @@ class _ExtensionReadmeState extends State<_ExtensionReadme> {
         }
         return Padding(
           key: const ValueKey('extension-details-readme'),
-          padding: EdgeInsets.only(top: widget.mobile ? 32 : 36),
+          padding: const EdgeInsets.only(top: AppDesignTokens.space24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
