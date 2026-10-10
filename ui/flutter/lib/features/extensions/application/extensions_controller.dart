@@ -3,13 +3,13 @@ import 'dart:collection';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../api/gopeed_site_api.dart';
 import '../../../api/model/extension.dart';
 import '../../../api/model/install_extension.dart';
 import '../../../api/model/store_extension.dart';
 import '../../../api/model/switch_extension.dart';
 import '../../../api/model/update_extension_settings.dart';
 import '../../../core/capabilities/app_capabilities.dart';
+import 'store_extension_details_provider.dart';
 
 final extensionsControllerProvider = AsyncNotifierProvider<ExtensionsController, ExtensionsState>(
   ExtensionsController.new,
@@ -121,63 +121,81 @@ class ExtensionsState {
 class ExtensionsController extends AsyncNotifier<ExtensionsState> {
   static const manualInstallBusyKey = '__manual_install__';
   int _devModeCount = 0;
+  int _installedRevision = 0;
+  int _storeRevision = 0;
+  Future<void>? _updateCheck;
+  bool _checkUpdatesAgain = false;
 
   @override
-  Future<ExtensionsState> build() async {
-    var next = const ExtensionsState(loadingInstalled: true, loadingStore: true);
+  Future<ExtensionsState> build() => _loadInitialData();
+
+  Future<ExtensionsState> _loadInitialData({bool forceRefresh = false}) async {
+    final next = _current.copyWith(loadingInstalled: true, loadingStore: true);
     state = AsyncValue.data(next);
-    final installed = await _loadInstalled(refreshUpdates: true, current: next);
-    next = state.value ?? installed;
-    await _refreshStore(current: next);
-    return state.value ?? next;
+    await Future.wait([
+      _loadInstalled(refreshUpdates: true, current: next),
+      _refreshStore(current: _current, forceRefresh: forceRefresh),
+    ]);
+    return ref.mounted ? _current : next;
   }
 
   Future<void> loadInitialData() async {
-    state = const AsyncValue.loading();
-    state = AsyncValue.data(await build());
+    await _loadInitialData(forceRefresh: true);
   }
 
   Future<void> loadInstalled({bool refreshUpdates = false}) async {
+    if (!ref.mounted) return;
     await _loadInstalled(refreshUpdates: refreshUpdates, current: _current.copyWith(loadingInstalled: true));
   }
 
   Future<void> refreshStore() async {
-    await _refreshStore(current: _current.copyWith(loadingStore: true));
+    await _refreshStore(current: _current.copyWith(loadingStore: true), forceRefresh: true);
   }
 
   Future<void> loadMoreStore() async {
     final current = _current;
     final pagination = current.storePagination;
     if (pagination == null || !pagination.hasNext || current.loadingMoreStore) return;
+    final revision = _storeRevision;
     state = AsyncValue.data(current.copyWith(loadingMoreStore: true));
     try {
-      final page = await GopeedSiteApi.instance.getExtensions(
-        page: pagination.page + 1,
-        limit: pagination.limit,
-        sort: current.storeSort,
-        query: current.storeQuery,
-      );
+      final page = await ref
+          .read(gopeedSiteApiProvider)
+          .getExtensions(
+            page: pagination.page + 1,
+            limit: pagination.limit,
+            sort: current.storeSort,
+            query: current.storeQuery,
+          );
+      if (!ref.mounted || revision != _storeRevision) return;
       state = AsyncValue.data(
         _current.copyWith(
-          storeExtensions: [..._current.storeExtensions, ...page.data],
+          // Cached pages can briefly overlap when stars/install counts change.
+          storeExtensions: {
+            for (final extension in _current.storeExtensions) extension.id: extension,
+            for (final extension in page.data) extension.id: extension,
+          }.values.toList(),
           storePagination: page.pagination,
           loadingMoreStore: false,
         ),
       );
     } catch (_) {
+      if (!ref.mounted || revision != _storeRevision) return;
       state = AsyncValue.data(_current.copyWith(loadingMoreStore: false));
       rethrow;
     }
   }
 
   Future<void> searchStore(String query) async {
+    if (query.trim() == _current.storeQuery) return;
     state = AsyncValue.data(_current.copyWith(storeQuery: query.trim()));
-    await refreshStore();
+    await _refreshStore(current: _current);
   }
 
   Future<void> changeSort(StoreExtensionSort sort) async {
+    if (sort == _current.storeSort) return;
     state = AsyncValue.data(_current.copyWith(storeSort: sort));
-    await refreshStore();
+    await _refreshStore(current: _current);
   }
 
   void changeFilter(ExtensionListFilter filter) {
@@ -255,23 +273,43 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
     });
   }
 
-  Future<void> checkUpdate() async {
-    final flags = <String, String>{};
-    for (final ext in _current.installedExtensions) {
-      try {
-        final resp = await ref.read(gopeedServiceProvider).upgradeCheckExtension(ext.identity);
-        if (resp.newVersion.isNotEmpty) {
-          flags[ext.identity] = resp.newVersion;
+  Future<void> checkUpdate() {
+    if (!ref.mounted) return Future.value();
+    _checkUpdatesAgain = true;
+    // Installation/refresh can request a fresh scan while one is running.
+    // Coalesce those requests instead of launching overlapping Git operations.
+    return _updateCheck ??= _runUpdateChecks().whenComplete(() => _updateCheck = null);
+  }
+
+  Future<void> _runUpdateChecks() async {
+    final service = ref.read(gopeedServiceProvider);
+    while (ref.mounted && _checkUpdatesAgain) {
+      _checkUpdatesAgain = false;
+      final revision = _installedRevision;
+      final installed = List<Extension>.of(_current.installedExtensions);
+      final flags = <String, String>{};
+      for (final ext in installed) {
+        if (!ref.mounted) return;
+        if (revision != _installedRevision) break;
+        try {
+          final resp = await service.upgradeCheckExtension(ext.identity);
+          if (!ref.mounted) return;
+          if (revision != _installedRevision) break;
+          if (resp.newVersion.isNotEmpty) flags[ext.identity] = resp.newVersion;
+        } catch (_) {
+          // A failed update check must never prevent loading the store.
         }
-      } catch (_) {}
+      }
+      if (ref.mounted && revision == _installedRevision) {
+        state = AsyncValue.data(_current.copyWith(updateFlags: flags));
+      }
     }
-    state = AsyncValue.data(_current.copyWith(updateFlags: flags));
   }
 
   void tryOpenDevMode() {
     if (_devModeCount == 0) {
       Future.delayed(const Duration(seconds: 2), () {
-        if (_current.devMode) return;
+        if (!ref.mounted || _current.devMode) return;
         _devModeCount = 0;
       });
     }
@@ -284,26 +322,40 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
   ExtensionsState get _current => state.value ?? const ExtensionsState();
 
   Future<ExtensionsState> _loadInstalled({required bool refreshUpdates, required ExtensionsState current}) async {
+    final revision = ++_installedRevision;
     state = AsyncValue.data(current.copyWith(loadingInstalled: true));
     final installed = await ref.read(gopeedServiceProvider).getExtensions();
+    if (!ref.mounted) return current;
+    if (revision != _installedRevision) return _current;
     state = AsyncValue.data(_current.copyWith(installedExtensions: installed, loadingInstalled: false));
     if (refreshUpdates) {
-      await checkUpdate();
+      unawaited(checkUpdate());
     }
     return _current;
   }
 
-  Future<void> _refreshStore({required ExtensionsState current}) async {
-    state = AsyncValue.data(current.copyWith(loadingStore: true));
-    final page = await GopeedSiteApi.instance.getExtensions(
-      page: 1,
-      limit: 20,
-      sort: _current.storeSort,
-      query: _current.storeQuery,
-    );
-    state = AsyncValue.data(
-      _current.copyWith(storeExtensions: page.data, storePagination: page.pagination, loadingStore: false),
-    );
+  Future<void> _refreshStore({required ExtensionsState current, bool forceRefresh = false}) async {
+    final revision = ++_storeRevision;
+    state = AsyncValue.data(current.copyWith(loadingStore: true, loadingMoreStore: false));
+    try {
+      final page = await ref
+          .read(gopeedSiteApiProvider)
+          .getExtensions(
+            page: 1,
+            limit: 20,
+            sort: current.storeSort,
+            query: current.storeQuery,
+            forceRefresh: forceRefresh,
+          );
+      if (!ref.mounted || revision != _storeRevision) return;
+      state = AsyncValue.data(
+        _current.copyWith(storeExtensions: page.data, storePagination: page.pagination, loadingStore: false),
+      );
+    } catch (_) {
+      if (!ref.mounted || revision != _storeRevision) return;
+      state = AsyncValue.data(_current.copyWith(loadingStore: false));
+      rethrow;
+    }
   }
 
   Future<void> _runBusy(String id, Future<void> Function() action) async {
@@ -312,12 +364,15 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
     try {
       await action();
     } finally {
-      final busy = Set<String>.of(_current.busyExtensionIds)..remove(id);
-      state = AsyncValue.data(_current.copyWith(busyExtensionIds: busy));
+      if (ref.mounted) {
+        final busy = Set<String>.of(_current.busyExtensionIds)..remove(id);
+        state = AsyncValue.data(_current.copyWith(busyExtensionIds: busy));
+      }
     }
   }
 
   void _bumpStoreInstallCount(String id) {
+    if (!ref.mounted) return;
     final current = _current;
     final index = current.storeExtensions.indexWhere((e) => e.id == id);
     if (index < 0) return;
@@ -342,14 +397,17 @@ class ExtensionsController extends AsyncNotifier<ExtensionsState> {
       topics: ext.topics,
       createdAt: ext.createdAt,
       updatedAt: ext.updatedAt,
+      hasDetails: ext.hasDetails,
     );
     state = AsyncValue.data(current.copyWith(storeExtensions: updated));
   }
 
   void _reportInstallSafe(String id) {
+    if (!ref.mounted) return;
+    final siteApi = ref.read(gopeedSiteApiProvider);
     unawaited(() async {
       try {
-        await GopeedSiteApi.instance.reportExtensionInstall(id);
+        await siteApi.reportExtensionInstall(id);
       } catch (_) {}
     }());
   }
