@@ -164,7 +164,13 @@ class ExtensionDetailView extends ConsumerWidget {
               ),
           ],
         ),
-        if (store != null) ...[SizedBox(height: mobile ? 24 : 28), _ExtensionReadme(item: current, mobile: mobile)],
+        SizedBox(height: mobile ? 24 : 28),
+        _ExtensionReadme(
+          // Snapshot the version so upgrades reload the installed README.
+          key: ValueKey((current.id, installed?.version, installed?.devMode, installed?.devPath, store?.readme)),
+          item: current,
+          mobile: mobile,
+        ),
       ],
     );
   }
@@ -182,7 +188,7 @@ class ExtensionDetailView extends ConsumerWidget {
 }
 
 class _ExtensionReadme extends StatefulWidget {
-  const _ExtensionReadme({required this.item, required this.mobile});
+  const _ExtensionReadme({super.key, required this.item, required this.mobile});
 
   final ExtensionListItem item;
   final bool mobile;
@@ -192,7 +198,7 @@ class _ExtensionReadme extends StatefulWidget {
 }
 
 class _ExtensionReadmeState extends State<_ExtensionReadme> {
-  late Future<_ReadmeInfo> _readme;
+  late final _ReadmeInfo _readme;
 
   @override
   void initState() {
@@ -201,79 +207,47 @@ class _ExtensionReadmeState extends State<_ExtensionReadme> {
   }
 
   @override
-  void didUpdateWidget(covariant _ExtensionReadme oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final previous = oldWidget.item.installed;
-    final current = widget.item.installed;
-    if (previous?.identity != current?.identity ||
-        previous?.devMode != current?.devMode ||
-        previous?.devPath != current?.devPath ||
-        oldWidget.item.store?.readme != widget.item.store?.readme) {
-      _readme = _loadReadme(widget.item);
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return FutureBuilder<_ReadmeInfo>(
-      future: _readme,
-      builder: (context, snapshot) {
-        final info = snapshot.data;
-        if (info == null) {
-          return const SizedBox.shrink();
-        }
-        if (info.content.trim().isEmpty) {
-          return const SizedBox.shrink();
-        }
-        return Padding(
-          key: const ValueKey('extension-details-readme'),
-          padding: EdgeInsets.only(top: widget.mobile ? 32 : 36),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'README',
-                style: TextStyle(
-                  color: palette.textMuted,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 16),
-              MarkdownBody(
-                data: info.content,
-                selectable: true,
-                styleSheet: _markdownStyle(palette, mobile: widget.mobile),
-                onTapLink: (_, href, _) {
-                  final resolved = _resolveReadmeUrl(widget.item, href, info: info, forImage: false);
-                  if (resolved != null) unawaited(_openUrl(resolved));
-                },
-                imageBuilder: (uri, title, alt) {
-                  final resolved = _resolveReadmeUrl(widget.item, uri.toString(), info: info, forImage: true);
-                  if (resolved == null) return const SizedBox.shrink();
-                  final image = resolved.startsWith('file:')
-                      ? Image.file(
-                          File(Uri.parse(resolved).toFilePath()),
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                        )
-                      : Image.network(
-                          resolved,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                        );
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: ClipRRect(borderRadius: BorderRadius.circular(6), child: image),
-                  );
-                },
-              ),
-            ],
+    final info = _readme;
+    if (info.content.trim().isEmpty) return const SizedBox.shrink();
+    return Padding(
+      key: const ValueKey('extension-details-readme'),
+      padding: EdgeInsets.only(top: widget.mobile ? 32 : 36),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'README',
+            style: TextStyle(color: palette.textMuted, fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2),
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          MarkdownBody(
+            data: info.content,
+            selectable: true,
+            styleSheet: _markdownStyle(palette, mobile: widget.mobile),
+            onTapLink: (_, href, _) {
+              final resolved = _resolveReadmeUrl(widget.item, href, info: info, forImage: false);
+              if (resolved != null) unawaited(_openUrl(resolved));
+            },
+            imageBuilder: (uri, title, alt) {
+              final resolved = _resolveReadmeUrl(widget.item, uri.toString(), info: info, forImage: true);
+              if (resolved == null) return const SizedBox.shrink();
+              final image = resolved.startsWith('file:')
+                  ? Image.file(
+                      File(Uri.parse(resolved).toFilePath()),
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    )
+                  : Image.network(resolved, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox.shrink());
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: ClipRRect(borderRadius: BorderRadius.circular(6), child: image),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -380,7 +354,7 @@ MarkdownStyleSheet _markdownStyle(AppPalette palette, {required bool mobile}) {
   );
 }
 
-Future<_ReadmeInfo> _loadReadme(ExtensionListItem item) async {
+_ReadmeInfo _loadReadme(ExtensionListItem item) {
   final installed = item.installed;
   final remote = item.store?.readme ?? '';
   if (installed == null || Util.isWeb()) return _ReadmeInfo(content: remote);
