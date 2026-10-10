@@ -26,6 +26,7 @@ import 'package:gopeed/shared/theme/app_design_tokens.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/widgets/app_loading_button.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
+import 'package:gopeed/l10n/app_localizations.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
@@ -610,6 +611,355 @@ void main() {
     expect(find.text('No history'), findsOneWidget);
     expect(find.byKey(const ValueKey('create-history-clear')), findsOneWidget);
     expect(find.byKey(const ValueKey('create-history-close')), findsOneWidget);
+  });
+
+  testWidgets('checksum state is reset for each incoming task and not inherited (T1)', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      tester.view.physicalSize = const Size(700, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      CreateTask? submitted;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+        ..bind(GopeedMethods.createTask, (task) {
+          submitted = task;
+          return 'task-id';
+        })
+        ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+
+      final container = ProviderContainer(
+        overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+      );
+      addTearDown(container.dispose);
+
+      final pending = container.read(pendingCreateTaskProvider.notifier);
+      // Task A: with checksum
+      pending.set(
+        CreateTask(
+          req: Request(url: 'https://example.com/taskA.zip'),
+          opts: Options(
+            extra: OptsExtraHttp(
+              checksum: ChecksumOption(
+                algorithm: 'sha256',
+                expected: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+              ),
+            ).toJson(),
+          ),
+        ),
+      );
+
+      final router = GoRouter(
+        initialLocation: '/create',
+        routes: [
+          GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+          GoRoute(path: '/create', builder: (_, _) => const CreateTaskWindowPage()),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: shad.ShadcnApp.router(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            routerConfig: router,
+            builder: (_, child) => AppComponentThemes(child: child!),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Expand advanced
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester, 'create-task-checksum-expected'), 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+
+      // Task B form 1: null opts
+      pending.set(CreateTask(req: Request(url: 'https://example.com/taskB1.zip')));
+      router.go('/create');
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester, 'create-task-checksum-expected'), '');
+
+      // Task B form 2: empty Options
+      pending.set(CreateTask(req: Request(url: 'https://example.com/taskB2.zip'), opts: Options()));
+      router.go('/create');
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester, 'create-task-checksum-expected'), '');
+
+      // Task B form 3: HTTP extra with no checksum
+      pending.set(
+        CreateTask(
+          req: Request(url: 'https://example.com/taskB3.zip'),
+          opts: Options(extra: OptsExtraHttp(connections: 8).toJson()),
+        ),
+      );
+      router.go('/create');
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester, 'create-task-checksum-expected'), '');
+
+      // Submit task B3 and ensure no checksum is sent
+      await tester.tap(find.byKey(const ValueKey('create-task-direct-download-toggle')));
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
+
+      expect(submitted?.opts?.extra, isNotNull);
+      final extra = OptsExtraHttp.fromJson(Map<String, dynamic>.from(submitted!.opts!.extra! as Map));
+      expect(extra.checksum, isNull);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('checksum input validation blocks submission on invalid input (T3-UI)', (tester) async {
+    tester.view.physicalSize = const Size(1024, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    CreateTask? submitted;
+    final config = DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => config)
+      ..bind(GopeedMethods.createTask, (task) {
+        submitted = task;
+        return 'task-id';
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+
+    final container = ProviderContainer(
+      overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+    );
+    addTearDown(container.dispose);
+
+    final pending = container.read(pendingCreateTaskProvider.notifier);
+    pending.set(CreateTask(req: Request(url: 'https://example.com/file.zip')));
+
+    final router = GoRouter(
+      initialLocation: '/create',
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+        GoRoute(path: '/create', builder: (_, _) => const CreateTaskWindowPage()),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: shad.ShadcnApp.router(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          routerConfig: router,
+          builder: (_, child) => AppComponentThemes(child: child!),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Expand advanced options
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    // Test 1: "abc" for SHA-256
+    await tester.tap(find.text('SHA-256'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), 'abc');
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNull);
+
+    // Test 2: 64 x "g" (non-hex) for SHA-256
+    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), 'g' * 64);
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNull);
+
+    // Test 3: 63 x "a" (invalid length) for SHA-256
+    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), 'a' * 63);
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNull);
+
+    // Test 4: 65 x "a" (invalid length) for SHA-256
+    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), 'a' * 65);
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNull);
+
+    // Test 5: MD5 with sha256-length hash
+    await tester.tap(find.text('MD5'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), 'a' * 64);
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNull);
+
+    // Test 6: Valid MD5 in UPPER case
+    submitted = null;
+    await tester.tap(find.text('MD5'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), '0123456789ABCDEF0123456789ABCDEF');
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNotNull);
+    var extra = OptsExtraHttp.fromJson(Map<String, dynamic>.from(submitted!.opts!.extra! as Map));
+    expect(extra.checksum?.algorithm, 'md5');
+    expect(extra.checksum?.expected, '0123456789ABCDEF0123456789ABCDEF');
+
+    // Test 7: Valid SHA-1 in lower case
+    submitted = null;
+    pending.set(CreateTask(req: Request(url: 'https://example.com/file2.zip')));
+    router.go('/create');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SHA-1'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), 'da39a3ee5e6b4b0d3255bfef95601890afd80709');
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNotNull);
+    extra = OptsExtraHttp.fromJson(Map<String, dynamic>.from(submitted!.opts!.extra! as Map));
+    expect(extra.checksum?.algorithm, 'sha1');
+    expect(extra.checksum?.expected, 'da39a3ee5e6b4b0d3255bfef95601890afd80709');
+
+    // Test 8: Valid SHA-256 in lower case
+    submitted = null;
+    pending.set(CreateTask(req: Request(url: 'https://example.com/file3.zip')));
+    router.go('/create');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('SHA-256'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNotNull);
+    extra = OptsExtraHttp.fromJson(Map<String, dynamic>.from(submitted!.opts!.extra! as Map));
+    expect(extra.checksum?.algorithm, 'sha256');
+    expect(extra.checksum?.expected, 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+
+    // Test 9: Omitted checksum (empty hash)
+    submitted = null;
+    pending.set(CreateTask(req: Request(url: 'https://example.com/file4.zip')));
+    router.go('/create');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), '   ');
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted, isNotNull);
+    extra = OptsExtraHttp.fromJson(Map<String, dynamic>.from(submitted!.opts!.extra! as Map));
+    expect(extra.checksum, isNull);
+  });
+
+  testWidgets('multi-URL and multi-file batch creation omits checksum (T4)', (tester) async {
+    tester.view.physicalSize = const Size(1024, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final createdTasks = <CreateTask>[];
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(GopeedMethods.createTask, (task) {
+        createdTasks.add(task);
+        return 'task-id';
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+
+    final container = ProviderContainer(
+      overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+    );
+    addTearDown(container.dispose);
+
+    final router = GoRouter(
+      initialLocation: '/create',
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+        GoRoute(path: '/create', builder: (_, _) => const CreateTaskWindowPage()),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: shad.ShadcnApp.router(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          routerConfig: router,
+          builder: (_, child) => AppComponentThemes(child: child!),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Enter 2 URLs
+    await tester.enterText(
+      find.byKey(const ValueKey('create-task-url-input')),
+      'https://example.com/file1.zip\nhttps://example.com/file2.zip',
+    );
+    await tester.pumpAndSettle();
+
+    // Advanced options should hide the checksum field
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('create-task-checksum-expected')), findsNothing);
+
+    // Confirm creation
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+
+    expect(createdTasks.length, 2);
+    for (final t in createdTasks) {
+      final extra = OptsExtraHttp.fromJson(Map<String, dynamic>.from(t.opts!.extra! as Map));
+      expect(extra.checksum, isNull);
+    }
+  });
+
+  testWidgets('checksum UI uses localized labels (T5)', (tester) async {
+    tester.view.physicalSize = const Size(700, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+        child: shad.ShadcnApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(
+            child: CreateTaskWindowPage(
+              initialTask: CreateTask(req: Request(url: 'https://example.com/file.zip')),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Checksum Algorithm'), findsOneWidget);
+    expect(find.text('Checksum Hash'), findsOneWidget);
   });
 }
 

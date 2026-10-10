@@ -12,6 +12,7 @@ import (
 
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
+	phttp "github.com/GopeedLab/gopeed/pkg/protocol/http"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -65,12 +66,13 @@ type btRequestExtra struct {
 }
 
 type httpTaskExtra struct {
-	Connections                int    `json:"connections,omitempty" jsonschema:"Number of HTTP download connections"`
-	AutoTorrent                *bool  `json:"autoTorrent,omitempty" jsonschema:"Automatically create a BitTorrent task after downloading a torrent file"`
-	DeleteTorrentAfterDownload *bool  `json:"deleteTorrentAfterDownload,omitempty" jsonschema:"Delete the torrent file after automatically creating its BitTorrent task"`
-	AutoExtract                *bool  `json:"autoExtract,omitempty" jsonschema:"Automatically extract the downloaded archive"`
-	ArchivePassword            string `json:"archivePassword,omitempty" jsonschema:"Password for an encrypted archive"`
-	DeleteAfterExtract         bool   `json:"deleteAfterExtract,omitempty" jsonschema:"Delete archive files after successful extraction"`
+	Connections                int             `json:"connections,omitempty" jsonschema:"Number of HTTP download connections"`
+	AutoTorrent                *bool           `json:"autoTorrent,omitempty" jsonschema:"Automatically create a BitTorrent task after downloading a torrent file"`
+	DeleteTorrentAfterDownload *bool           `json:"deleteTorrentAfterDownload,omitempty" jsonschema:"Delete the torrent file after automatically creating its BitTorrent task"`
+	AutoExtract                *bool           `json:"autoExtract,omitempty" jsonschema:"Automatically extract the downloaded archive"`
+	ArchivePassword            string          `json:"archivePassword,omitempty" jsonschema:"Password for an encrypted archive"`
+	DeleteAfterExtract         bool            `json:"deleteAfterExtract,omitempty" jsonschema:"Delete archive files after successful extraction"`
+	Checksum                   *checksumOption `json:"checksum,omitempty" jsonschema:"Optional checksum verification settings"`
 }
 
 // downloadRequest is the MCP-facing form of base.Request. The REST model uses
@@ -127,6 +129,11 @@ func isBitTorrentRequest(rawURL string) bool {
 	return strings.HasPrefix(upperURL, "MAGNET:") ||
 		strings.HasSuffix(path, ".TORRENT") ||
 		strings.HasPrefix(upperURL, "DATA:APPLICATION/X-BITTORRENT;BASE64,")
+}
+
+type checksumOption struct {
+	Algorithm string `json:"algorithm" jsonschema:"Checksum algorithm: md5, sha1, or sha256"`
+	Expected  string `json:"expected" jsonschema:"Expected hex-encoded checksum hash"`
 }
 
 // downloadOptions is the MCP-facing form of base.Options. Only HTTP currently
@@ -186,12 +193,31 @@ func (o *downloadOptions) baseOptions() *base.Options {
 	if o == nil {
 		return nil
 	}
+	var extra any
+	if o.Extra != nil {
+		var checksum *phttp.ChecksumOption
+		if o.Extra.Checksum != nil {
+			checksum = &phttp.ChecksumOption{
+				Algorithm: o.Extra.Checksum.Algorithm,
+				Expected:  o.Extra.Checksum.Expected,
+			}
+		}
+		extra = &phttp.OptsExtra{
+			Connections:                o.Extra.Connections,
+			AutoTorrent:                o.Extra.AutoTorrent,
+			DeleteTorrentAfterDownload: o.Extra.DeleteTorrentAfterDownload,
+			AutoExtract:                o.Extra.AutoExtract,
+			ArchivePassword:            o.Extra.ArchivePassword,
+			DeleteAfterExtract:         o.Extra.DeleteAfterExtract,
+			Checksum:                   checksum,
+		}
+	}
 	return &base.Options{
 		Name:          o.Name,
 		Path:          o.Path,
 		AsDefaultPath: o.AsDefaultPath,
 		SelectFiles:   o.SelectFiles,
-		Extra:         o.Extra,
+		Extra:         extra,
 	}
 }
 
@@ -268,6 +294,13 @@ type getTaskStatusOutput struct {
 
 type getTaskStatsOutput struct {
 	Stats any `json:"stats"`
+}
+
+type getDownloadSpeedInput struct{}
+
+type getDownloadSpeedOutput struct {
+	TotalSpeed      int64 `json:"totalSpeed"`
+	ActiveTaskCount int   `json:"activeTaskCount"`
 }
 
 type taskActionOutput struct {
@@ -414,6 +447,33 @@ func registerTools(server *mcp.Server, downloader *download.Downloader) {
 			return nil, nil, err
 		}
 		return nil, &getTaskStatsOutput{Stats: stats}, nil
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "get_download_speed",
+		Title:       "Get download speed",
+		Description: "Returns the combined download speed across all currently active tasks and how many tasks are actively downloading. Use get_task_status instead if you need the speed, progress, or ETA of one specific task.",
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &closedWorld},
+	}, func(_ context.Context, _ *mcp.CallToolRequest, _ *getDownloadSpeedInput) (*mcp.CallToolResult, *getDownloadSpeedOutput, error) {
+		allTasks := downloader.GetTasks()
+		var totalSpeed int64
+		activeCount := 0
+
+		for _, task := range allTasks {
+			status, err := downloader.RuntimeStatus(task.ID)
+			if err != nil {
+				continue
+			}
+			if status.Status == base.DownloadStatusRunning {
+				activeCount++
+				totalSpeed += status.Speed
+			}
+		}
+
+		return nil, &getDownloadSpeedOutput{
+			TotalSpeed:      totalSpeed,
+			ActiveTaskCount: activeCount,
+		}, nil
 	})
 
 	registerTaskAction(server, downloader, "pause_task", "Pause task", "Pause one Gopeed task.", &nondestructive, &closedWorld, downloader.Pause)

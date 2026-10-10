@@ -19,6 +19,18 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+	var checksumOpt *http.ChecksumOption
+	if args.checksum != nil && *args.checksum != "" {
+		algo := "md5"
+		if args.checksumAlgo != nil && *args.checksumAlgo != "" {
+			algo = *args.checksumAlgo
+		}
+		checksumOpt = &http.ChecksumOption{
+			Algorithm: algo,
+			Expected:  *args.checksum,
+		}
+	}
+
 	_, err := download.Boot().
 		URL(args.url).
 		Listener(func(event *download.Event) {
@@ -43,8 +55,11 @@ func main() {
 			}
 		}).
 		Create(&base.Options{
-			Path:  *args.dir,
-			Extra: http.OptsExtra{Connections: *args.connections},
+			Path: *args.dir,
+			Extra: http.OptsExtra{
+				Connections: *args.connections,
+				Checksum:    checksumOpt,
+			},
 		})
 	if err != nil {
 		panic(err)

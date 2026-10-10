@@ -2,8 +2,13 @@ package http
 
 import (
 	"context"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"net/http"
 	"net/url"
@@ -279,6 +284,12 @@ type Fetcher struct {
 	// First primary connection success signal
 	primaryReadyOnce sync.Once
 	primaryReadyCh   chan struct{}
+
+	// checksumFailed marks that the last completed download failed
+	// checksum verification, so the next retry must force a full
+	// re-download instead of skipping connections that already
+	// reported Completed.
+	checksumFailed atomic.Bool
 
 	// Start pending mechanism
 	startPending   atomic.Bool
@@ -664,6 +675,22 @@ func (f *Fetcher) cleanupPrefetchFile() {
 	f.resolveFallback.Store(false)
 }
 
+// prepareFullRedownload resets all fetcher connection and prefetch state
+// after a checksum mismatch so the subsequent Start takes the fresh-start path.
+func (f *Fetcher) prepareFullRedownload() {
+	f.connMu.Lock()
+	if f.meta.Res.Range {
+		f.connections = nil
+		f.resolveConn = nil
+		f.rangeReprobeEligible = false
+		f.rangeValidatorPinned = false
+	}
+	f.connMu.Unlock()
+
+	f.cleanupPrefetchFile()
+	f.resolveDataPos.Store(0)
+}
+
 // Options may be replaced between Resolve and Start when creating a resolved task.
 func (f *Fetcher) initOptions() error {
 	opts := f.meta.Opts
@@ -680,6 +707,9 @@ func (f *Fetcher) initOptions() error {
 		if extra.Connections <= 0 {
 			extra.Connections = 1
 		}
+	}
+	if err := extra.Checksum.Validate(); err != nil {
+		return err
 	}
 
 	return nil
@@ -735,11 +765,26 @@ func (f *Fetcher) doStart() error {
 
 	// If retrying after error, reset connection states for retry
 	if state == stateError {
+		fullRedownload := f.checksumFailed.Swap(false)
+		if fullRedownload {
+			// Checksum mismatch: the file content itself is wrong even
+			// though every connection reported Completed. Truncate the
+			// corrupt file so stale bytes cannot linger if the retry is
+			// interrupted before every connection re-writes its chunk.
+			if err := os.Truncate(f.meta.SingleFilepath(), 0); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("failed to reset file after checksum mismatch: %w", err)
+			}
+			f.prepareFullRedownload()
+		}
 		f.connMu.Lock()
 		for _, conn := range f.connections {
-			// Reset connections that can be retried
-			if !conn.Completed && conn.State != connCompleted {
-				if !f.hasSequentialPrefixLocked(conn) {
+			// On a normal error, only reset connections that didn't
+			// finish. On a checksum mismatch, reset EVERY connection —
+			// "Completed" only means the download loop finished, not
+			// that the bytes were verified correct.
+			shouldReset := fullRedownload || (!conn.Completed && conn.State != connCompleted)
+			if shouldReset {
+				if fullRedownload || !f.hasSequentialPrefixLocked(conn) {
 					f.resetConnectionForRestart(conn)
 				}
 				conn.State = connNotStarted
@@ -970,8 +1015,14 @@ func (f *Fetcher) expandConnections() {
 			}
 			f.fileMu.Unlock()
 
-			f.setState(stateDone)
-			f.doneCh <- nil
+			var err error
+			if chkErr := f.verifyChecksum(); chkErr != nil {
+				err = chkErr
+				f.setState(stateError)
+			} else {
+				f.setState(stateDone)
+			}
+			f.doneCh <- err
 			return
 		}
 
@@ -2067,7 +2118,7 @@ func (f *Fetcher) resetConnectionForRestart(conn *connection) {
 	// so pause/retry must restart instead of continuing from the old offset.
 	if conn.Chunk == nil {
 		conn.Chunk = newChunk(0, 0)
-	} else {
+	} else if !f.meta.Res.Range {
 		conn.Chunk.Begin = 0
 		conn.Chunk.setEnd(0)
 		conn.Chunk.Downloaded = 0
@@ -2238,16 +2289,66 @@ func (f *Fetcher) onDownloadComplete() {
 	}
 	f.fileMu.Unlock()
 
-	if finalErr != nil {
-		f.setState(stateError)
+	if finalErr == nil {
+		if chkErr := f.verifyChecksum(); chkErr != nil {
+			finalErr = chkErr
+			f.setState(stateError)
+		} else {
+			f.setState(stateDone)
+		}
 	} else {
-		f.setState(stateDone)
+		f.setState(stateError)
 	}
 
 	select {
 	case f.doneCh <- finalErr:
 	default:
 	}
+}
+
+func (f *Fetcher) verifyChecksum() error {
+	if f.meta == nil || f.meta.Opts == nil || f.meta.Opts.Extra == nil {
+		return nil
+	}
+	extra, ok := f.meta.Opts.Extra.(*fhttp.OptsExtra)
+	if !ok || extra.Checksum == nil {
+		return nil
+	}
+	chk := extra.Checksum
+	if chk.Algorithm == "" && chk.Expected == "" {
+		return nil
+	}
+	var h hash.Hash
+	switch strings.ToLower(strings.TrimSpace(chk.Algorithm)) {
+	case "md5":
+		h = md5.New()
+	case "sha1", "sha-1":
+		h = sha1.New()
+	case "sha256", "sha-256":
+		h = sha256.New()
+	default:
+		return fmt.Errorf("unsupported checksum algorithm: %s", chk.Algorithm)
+	}
+
+	filePath := f.meta.SingleFilepath()
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("open file for checksum verification failed: %w", err)
+	}
+	defer file.Close()
+
+	buf := make([]byte, 64*1024)
+	if _, err := io.CopyBuffer(h, file, buf); err != nil {
+		return fmt.Errorf("calculate checksum failed: %w", err)
+	}
+
+	actual := hex.EncodeToString(h.Sum(nil))
+	expected := strings.ToLower(strings.TrimSpace(chk.Expected))
+	if !strings.EqualFold(actual, expected) {
+		f.checksumFailed.Store(true)
+		return fmt.Errorf("checksum mismatch: expected %s, got %s", expected, actual)
+	}
+	return nil
 }
 
 func (f *Fetcher) checkCompletion() bool {
