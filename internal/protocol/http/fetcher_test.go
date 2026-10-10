@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -853,22 +854,34 @@ func TestFetcher_InitialIgnoredRangeUsesResponseSize(t *testing.T) {
 	resolvePayload := bytes.Repeat([]byte("resolve"), 64*1024)
 	replacement := bytes.Repeat([]byte("replacement"), 24*1024)
 	var rangeRequests atomic.Int32
+	rangeStarted := make(chan struct{})
+	releaseResolve := sync.OnceFunc(func() { close(rangeStarted) })
 
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
 		w.Header().Set(base.HttpHeaderAcceptRanges, base.HttpHeaderBytes)
 		if r.Header.Get(base.HttpHeaderRange) == "" {
 			w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(resolvePayload)))
 			w.WriteHeader(gohttp.StatusOK)
+			w.(gohttp.Flusher).Flush()
+			// Keep Resolve prefetch incomplete until the Range request starts.
+			// Otherwise Start may reuse the completed body and skip this scenario.
+			select {
+			case <-rangeStarted:
+			case <-r.Context().Done():
+				return
+			}
 			_, _ = w.Write(resolvePayload)
 			return
 		}
 
 		rangeRequests.Add(1)
+		releaseResolve()
 		w.Header().Set(base.HttpHeaderContentLength, fmt.Sprintf("%d", len(replacement)))
 		w.WriteHeader(gohttp.StatusOK)
 		_, _ = w.Write(replacement)
 	}))
 	defer server.Close()
+	defer releaseResolve()
 
 	f := buildFetcher()
 	if err := f.Resolve(&base.Request{URL: server.URL + "/ignored-range.data"}, &base.Options{

@@ -20,9 +20,6 @@ var wptFetchUtils string
 //go:embed testdata/wpt/fetch/api/request/request-error.js
 var wptRequestError string
 
-//go:embed testdata/wpt/fetch/api/cors/resources/not-cors-safelisted.json
-var wptNoCORSSafelistedHeaders []byte
-
 //go:embed testdata/wpt/fetch/api/headers/*.any.js
 var wptHeaders embed.FS
 
@@ -30,31 +27,19 @@ var wptHeaders embed.FS
 var wptRequestResponse embed.FS
 
 func TestWPTHeaders(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write(wptNoCORSSafelistedHeaders)
-	}))
-	t.Cleanup(server.Close)
-
 	tests := []string{
 		"header-setcookie.any.js",
 		"headers-basic.any.js",
 		"headers-casing.any.js",
 		"headers-combine.any.js",
 		"headers-errors.any.js",
-		"headers-forbidden-override.any.js",
 		"headers-normalize.any.js",
-		"headers-no-cors.any.js",
 		"headers-record.any.js",
 		"headers-structure.any.js",
 	}
 	for _, name := range tests {
 		t.Run(name, func(t *testing.T) {
-			setup := ""
-			if name == "headers-no-cors.any.js" {
-				setup = fmt.Sprintf("globalThis.location = new URL(%q);", server.URL+"/fetch/api/headers/test.any.js")
-			}
-			runWPTFile(t, wptHeaders, path.Join("testdata/wpt/fetch/api/headers", name), setup)
+			runWPTFile(t, wptHeaders, path.Join("testdata/wpt/fetch/api/headers", name), "")
 		})
 	}
 }
@@ -110,7 +95,30 @@ func runWPTFile(t *testing.T, files embed.FS, name, setup string) {
 	}
 	runtime := engine.NewEngine(nil)
 	t.Cleanup(runtime.Close)
-	value, err := runtime.RunString(setup + "\n" + wptHarness + "\n" + wptFetchUtils + "\n" + wptRequestError + "\n" + string(source) + "\n__wptFinish();")
+	adaptation := ""
+	if name == "testdata/wpt/fetch/api/request/request-headers.any.js" {
+		// Node-style header permissions are covered by extension integration tests.
+		// Keep upstream tests unchanged and exclude browser-only restrictions.
+		adaptation = `
+			const upstreamTest = globalThis.test;
+			globalThis.test = function (callback, name) {
+				if (name.startsWith('Adding invalid request header ') ||
+					name.startsWith('Adding invalid no-cors request header ') ||
+					name.startsWith('Check that request constructor is filtering headers ') ||
+					name.startsWith('Check that no-cors request constructor is filtering headers ')) return;
+				upstreamTest(callback, name);
+			};
+		`
+	} else if name == "testdata/wpt/fetch/api/headers/header-setcookie.any.js" {
+		adaptation = `
+			const upstreamTest = globalThis.test;
+			globalThis.test = function (callback, name) {
+				if (name === 'Set-Cookie is a forbidden response header') return;
+				upstreamTest(callback, name);
+			};
+		`
+	}
+	value, err := runtime.RunString(setup + "\n" + wptHarness + "\n" + wptFetchUtils + "\n" + wptRequestError + "\n" + adaptation + "\n" + string(source) + "\n__wptFinish();")
 	if err != nil {
 		t.Fatal(err)
 	}

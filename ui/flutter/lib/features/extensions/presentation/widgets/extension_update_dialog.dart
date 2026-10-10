@@ -58,7 +58,7 @@ class _ExtensionUpdateDialogState extends ConsumerState<_ExtensionUpdateDialog> 
       canPop: !_updating,
       child: AlertDialog(
         key: const ValueKey('extension-update-dialog'),
-        title: Text(context.l10n.extensionCanUpdate),
+        title: Text(context.l10n.newVersionAvailable),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

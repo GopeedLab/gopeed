@@ -302,6 +302,23 @@ func (r *registry) Open(fingerprint string, proxyHandler func(*http.Request) (*u
 		return nil, err
 	}
 	for _, header := range metadata.Headers {
+		// Ignore transport controls unsupported by Node/Undici rather than
+		// applying a browser forbidden-header list or failing the whole request.
+		switch strings.ToLower(header[0]) {
+		case "expect", "keep-alive", "transfer-encoding", "upgrade", "content-length":
+			// Content-Length is generated from the buffered request body below.
+			continue
+		case "connection":
+			if value := strings.ToLower(header[1]); value != "close" && value != "keep-alive" {
+				continue
+			}
+		case "trailer":
+			// Fetch supplies a declaration, not a Go Request.Trailer payload.
+			// Keep its lower-case wire name so Go's writer does not omit it as
+			// the canonical Trailer field it normally generates itself.
+			httpRequest.Header["trailer"] = append(httpRequest.Header["trailer"], header[1])
+			continue
+		}
 		httpRequest.Header.Add(header[0], header[1])
 	}
 	if host := httpRequest.Header.Get("Host"); host != "" {
