@@ -5,7 +5,8 @@ class AppDesignTokens {
 
   static const double windowHeaderHeight = 30;
   static const double windowRadius = 12;
-  static const double railWidth = 68;
+  // Leave room for native macOS traffic lights while keeping rail widths consistent across platforms.
+  static const double railWidth = 78;
   static const double filterSidebarWidth = 192;
   static const double contentHeaderHeight = 48;
   static const double taskRowHeight = 72;

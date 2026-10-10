@@ -29,7 +29,8 @@ import '../widgets/extension_icon.dart';
 import '../widgets/extension_setting_field.dart';
 import '../widgets/extension_update_dialog.dart';
 
-const _extensionCardMinWidth = 290.0;
+// Keep three columns in the 1024px reference window with the wider primary rail.
+const _extensionCardMinWidth = 280.0;
 const _extensionGridSpacing = 10.0;
 
 int _extensionGridColumnCount(double width) {
