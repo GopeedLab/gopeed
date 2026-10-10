@@ -126,7 +126,7 @@ Guidelines:
 Use the following desktop reference metrics unless a specific screen requires a documented exception:
 
 - Reference window: `1024 x 768`
-- Primary rail width: `64px`
+- Primary rail width: `78px` (reserves space for native macOS traffic lights)
 - Secondary filter sidebar width: `256px`
 - Main content header height: `80px`
 - Window drag header height on Windows: `30px`

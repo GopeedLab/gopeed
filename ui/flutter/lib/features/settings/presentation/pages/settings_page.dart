@@ -2128,7 +2128,7 @@ class _BrowserExtensionLinks extends StatelessWidget {
               children: [
                 const Icon(Icons.open_in_new, size: 15),
                 const SizedBox(width: AppDesignTokens.space8),
-                Text(link.label),
+                Flexible(child: Text(link.label, maxLines: 1, overflow: TextOverflow.ellipsis)),
               ],
             ),
           ),
