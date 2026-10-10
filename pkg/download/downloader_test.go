@@ -24,6 +24,7 @@ import (
 	internalblob "github.com/GopeedLab/gopeed/internal/blob"
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/internal/protocol/bt"
 	"github.com/GopeedLab/gopeed/internal/test"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/protocol/http"
@@ -1263,6 +1264,43 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 
 	if !test.JsonEqual(storeCfg, newStoreCfg) {
 		t.Errorf("GetConfig() got = %v, want %v", test.ToJson(storeCfg), test.ToJson(newStoreCfg))
+	}
+}
+
+type configRecorder struct {
+	fetcher.FetcherManager
+	cfg map[string]any
+}
+
+func (r *configRecorder) ApplyConfig(getConfig func(v any)) {
+	getConfig(&r.cfg)
+}
+
+func TestDownloader_PutConfig_ApplyConfig(t *testing.T) {
+	recorder := &configRecorder{FetcherManager: new(bt.FetcherManager)}
+	downloader := NewDownloader(&DownloaderConfig{
+		FetchManagers: []fetcher.FetcherManager{recorder},
+	})
+	if err := downloader.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer downloader.Clear()
+
+	if recorder.cfg["seedRatio"] != 1.0 {
+		t.Errorf("Setup() applied config = %v, want the default bt config", recorder.cfg)
+	}
+
+	if err := downloader.PutConfig(&base.DownloaderStoreConfig{
+		ProtocolConfig: map[string]any{
+			"bt": map[string]any{
+				"uploadLimit": 1024,
+			},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.cfg["uploadLimit"] != 1024.0 {
+		t.Errorf("PutConfig() applied uploadLimit = %v, want %v", recorder.cfg["uploadLimit"], 1024)
 	}
 }
 

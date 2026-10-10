@@ -22,7 +22,12 @@ import (
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
 	"github.com/anacrolix/torrent/storage"
+	"golang.org/x/time/rate"
 )
+
+// uploadBurst must not be smaller than a peer request, anacrolix panics when a
+// limited upload cannot reserve a whole request.
+const uploadBurst = 1 << 20
 
 var (
 	cfg       *torrent.ClientConfig
@@ -30,6 +35,8 @@ var (
 	lock      sync.Mutex
 	closeCtx  context.Context
 	closeFunc func()
+	// uploadLimiter is shared by every client, so a new limit reaches running torrents.
+	uploadLimiter = rate.NewLimiter(rate.Inf, uploadBurst)
 )
 
 type Fetcher struct {
@@ -61,15 +68,10 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	return
 }
 
+// initClient must be called with lock held.
 func (f *Fetcher) initClient() (err error) {
-	lock.Lock()
-	defer lock.Unlock()
-
 	if client != nil {
 		return
-	}
-	if closeCtx == nil {
-		closeCtx, closeFunc = context.WithCancel(context.Background())
 	}
 
 	cfg = torrent.NewDefaultClientConfig()
@@ -77,6 +79,9 @@ func (f *Fetcher) initClient() (err error) {
 	cfg.Bep20 = fmt.Sprintf("-GP%s-", parseBep20())
 	cfg.ExtendedHandshakeClientVersion = fmt.Sprintf("Gopeed %s", base.Version)
 	cfg.ListenPort = f.config.ListenPort
+	cfg.NoDHT = f.config.DisableDHT
+	cfg.DisablePEX = f.config.DisablePEX
+	cfg.UploadRateLimiter = uploadLimiter
 	cfg.HTTPProxy = f.ctl.GetProxy(f.meta.Req.Proxy)
 	dnsResolver := &DnsCacheResolver{RefreshTimeout: 5 * time.Minute}
 	cfg.TrackerDialContext = dnsResolver.DialContext
@@ -86,9 +91,8 @@ func (f *Fetcher) initClient() (err error) {
 	}
 
 	closeCtx, closeFunc = context.WithCancel(context.Background())
-	go func() {
-		dnsResolver.Run(closeCtx)
-	}()
+	// Pass closeCtx by value, closeClient may reset it before the goroutine runs.
+	go dnsResolver.Run(closeCtx)
 	return
 }
 
@@ -144,8 +148,11 @@ func (f *Fetcher) Close() (err error) {
 	f.safeDrop()
 	f.torrentDropFunc()
 	f.uploadDoneCh <- nil
-	if len(client.Torrents()) == 0 {
-		err = closeClient()
+
+	lock.Lock()
+	defer lock.Unlock()
+	if client != nil && len(client.Torrents()) == 0 {
+		err = doCloseClient()
 	}
 	return nil
 }
@@ -643,9 +650,6 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 	if err = base.ParseReqExtra[bt.ReqExtra](req); err != nil {
 		return
 	}
-	if err = f.initClient(); err != nil {
-		return
-	}
 	schema := util.ParseSchema(req.URL)
 	privateTorrent := false
 	var spec *torrent.TorrentSpec
@@ -695,18 +699,7 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 			return
 		}
 	}
-	spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
-		ClientBaseDir: cfg.DataDir,
-		FilePathMaker: func(opts storage.FilePathMakerOpts) string {
-			_, name := torrentFileLayout(opts.Info, *opts.File)
-			return name
-		},
-		TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
-			return f.meta.Opts.Path
-		},
-	})
-	f.torrent, _, err = client.AddTorrentSpec(spec)
-	if err != nil {
+	if err = f.addTorrentSpec(spec); err != nil {
 		return
 	}
 
@@ -742,6 +735,28 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 	return
 }
 
+// addTorrentSpec holds lock until the torrent is added, so the client cannot be closed as idle in between.
+func (f *Fetcher) addTorrentSpec(spec *torrent.TorrentSpec) (err error) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if err = f.initClient(); err != nil {
+		return
+	}
+	spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
+		ClientBaseDir: cfg.DataDir,
+		FilePathMaker: func(opts storage.FilePathMakerOpts) string {
+			_, name := torrentFileLayout(opts.Info, *opts.File)
+			return name
+		},
+		TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
+			return f.meta.Opts.Path
+		},
+	})
+	f.torrent, _, err = client.AddTorrentSpec(spec)
+	return
+}
+
 func (f *Fetcher) seedRadio() float64 {
 	var bytesRead int64
 	if f.Meta().Res != nil {
@@ -767,6 +782,11 @@ func closeClient() error {
 	lock.Lock()
 	defer lock.Unlock()
 
+	return doCloseClient()
+}
+
+// doCloseClient must be called with lock held.
+func doCloseClient() error {
 	if closeFunc != nil {
 		closeFunc()
 	}
@@ -858,6 +878,30 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 
 func (fm *FetcherManager) Close() error {
 	return closeClient()
+}
+
+// ApplyConfig sets the upload limit on running torrents. Port, DHT and PEX are fixed
+// when the client is built, so an idle client is closed and rebuilt by the next task.
+func (fm *FetcherManager) ApplyConfig(getConfig func(v any)) {
+	// Hold lock while reading the config, so concurrent calls apply in order and the last one wins.
+	lock.Lock()
+	defer lock.Unlock()
+
+	var c config
+	getConfig(&c)
+
+	if c.UploadLimit > 0 {
+		uploadLimiter.SetLimit(rate.Limit(c.UploadLimit))
+	} else {
+		uploadLimiter.SetLimit(rate.Inf)
+	}
+
+	if client == nil || len(client.Torrents()) > 0 {
+		return
+	}
+	if cfg.ListenPort != c.ListenPort || cfg.NoDHT != c.DisableDHT || cfg.DisablePEX != c.DisablePEX {
+		doCloseClient()
+	}
 }
 
 // parse version to bep20 format, fixed length 4, if not enough, fill 0

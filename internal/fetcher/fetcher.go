@@ -148,6 +148,12 @@ type StatefulFetcherManager interface {
 	SetStateStore(store ProtocolStateStore)
 }
 
+// ConfigurableFetcherManager is an optional extension for protocols that apply
+// config changes to shared client state without waiting for a new task.
+type ConfigurableFetcherManager interface {
+	ApplyConfig(getConfig func(v any))
+}
+
 // ProtocolStateStore persists shared protocol state for a fetcher manager.
 // Downloader provides the concrete storage backend, while the protocol decides
 // when state should be loaded or flushed.

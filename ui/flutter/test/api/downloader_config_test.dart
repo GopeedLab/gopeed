@@ -36,6 +36,25 @@ void main() {
     expect(decoded.token, 'secret');
   });
 
+  test('BitTorrent upload limit and peer discovery round-trip with the Go json keys', () {
+    final config = DownloaderConfig();
+    config.protocolConfig.bt
+      ..uploadLimit = 512 * 1024
+      ..disableDht = true
+      ..disablePex = true;
+
+    final json = config.toJson();
+    final bt = (json['protocolConfig'] as Map<String, dynamic>)['bt'] as Map<String, dynamic>;
+    expect(bt['uploadLimit'], 512 * 1024);
+    expect(bt['disableDht'], isTrue);
+    expect(bt['disablePex'], isTrue);
+
+    final decoded = DownloaderConfig.fromJson(json).protocolConfig.bt;
+    expect(decoded.uploadLimit, 512 * 1024);
+    expect(decoded.disableDht, isTrue);
+    expect(decoded.disablePex, isTrue);
+  });
+
   test('Flutter preferences round-trip through the Go-owned extra config', () {
     final config = DownloaderConfig();
     config.extra

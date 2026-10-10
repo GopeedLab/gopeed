@@ -160,7 +160,7 @@ require (
 	golang.org/x/net v0.50.0
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/text v0.34.0
-	golang.org/x/time v0.15.0 // indirect
+	golang.org/x/time v0.15.0
 	golang.org/x/tools v0.42.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
