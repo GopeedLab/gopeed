@@ -84,12 +84,14 @@ HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
   userAgent: json['userAgent'] as String? ?? '',
   connections: (json['connections'] as num?)?.toInt() ?? 0,
   useServerCtime: json['useServerCtime'] as bool? ?? false,
+  adaptive: json['adaptive'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) => <String, dynamic>{
   'userAgent': instance.userAgent,
   'connections': instance.connections,
   'useServerCtime': instance.useServerCtime,
+  'adaptive': instance.adaptive,
 };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(

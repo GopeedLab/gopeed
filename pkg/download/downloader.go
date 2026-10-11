@@ -664,7 +664,7 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 }
 
 // Patch modifies task-specific data based on the protocol.
-// For HTTP protocol, it can modify Request info.
+// For HTTP protocol, it can modify Request info and the connections and adaptive options.
 // For BT protocol, it can modify SelectFiles.
 func (d *Downloader) Patch(id string, req *base.Request, opts *base.Options) error {
 	task := d.GetTask(id)
