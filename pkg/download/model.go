@@ -10,6 +10,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/production"
 	"github.com/GopeedLab/gopeed/internal/protocol/bt"
 	"github.com/GopeedLab/gopeed/internal/protocol/ed2k"
+	"github.com/GopeedLab/gopeed/internal/protocol/ftp"
 	"github.com/GopeedLab/gopeed/internal/protocol/hls"
 	"github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -213,6 +214,10 @@ func (cfg *DownloaderConfig) Init() *DownloaderConfig {
 	}
 	if len(cfg.FetchManagers) == 0 {
 		cfg.FetchManagers = []fetcher.FetcherManager{
+			// FTP matches by URL scheme only. It comes before the managers that
+			// match by file extension, so ftp://host/x.torrent or x.m3u8 is
+			// downloaded as a file over FTP.
+			new(ftp.FetcherManager),
 			new(hls.FetcherManager),
 			new(http.FetcherManager),
 			new(bt.FetcherManager),

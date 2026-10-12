@@ -304,7 +304,7 @@ TaskAssetType _assetType(String name, {required bool isFolder, required api_task
   return switch (protocol) {
     api_task.Protocol.bt => TaskAssetType.torrent,
     api_task.Protocol.ed2k => TaskAssetType.ed2k,
-    api_task.Protocol.hls || api_task.Protocol.http || null => TaskAssetType.file,
+    api_task.Protocol.hls || api_task.Protocol.http || api_task.Protocol.ftp || null => TaskAssetType.file,
   };
 }
 
