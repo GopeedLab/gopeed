@@ -609,7 +609,7 @@ func (f *Fetcher) stopPrefetchAndCopyData() int64 {
 	}
 
 	// Wait for prefetch to finish (with timeout)
-	for i := 0; i < 1000 && !f.prefetchDone.Load(); i++ {
+	for i := 0; f.prefetchStopCh != nil && i < 1000 && !f.prefetchDone.Load(); i++ {
 		time.Sleep(10 * time.Millisecond)
 	}
 
