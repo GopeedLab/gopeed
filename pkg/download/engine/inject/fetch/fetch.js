@@ -122,7 +122,7 @@
       if (name === "set-cookie") {
         for (const value of values) result.push([name, value]);
       } else {
-        result.push([name, values.join(", ")]);
+        result.push([name, values.join(name === "cookie" ? "; " : ", ")]);
       }
     }
     return result;
@@ -158,49 +158,10 @@
     return iterator;
   }
 
-  function forbiddenRequestHeader(name, value) {
-    if (name.startsWith("proxy-") || name.startsWith("sec-")) return true;
-    if ([
-      "accept-charset", "accept-encoding", "access-control-request-headers",
-      "access-control-request-method", "connection", "content-length", "cookie",
-      "cookie2", "date", "dnt", "expect", "host", "keep-alive", "origin",
-      "permissions-policy", "referer", "te", "trailer", "transfer-encoding",
-      "set-cookie", "upgrade", "via",
-    ].includes(name)) return true;
-    if (["x-http-method", "x-http-method-override", "x-method-override"].includes(name)) {
-      return String(value).split(",").some((method) => {
-        method = method.trim().toUpperCase();
-        return method === "CONNECT" || method === "TRACE" || method === "TRACK";
-      });
-    }
-    return false;
-  }
-
-  function noCORSSafelistedRequestHeader(name, value) {
-    if (value.length > 128) return false;
-    const hasUnsafeByte = /[\x00-\x08\x0A-\x1F\x7F"():<>?@\[\\\]{}]/.test(value);
-    if (name === "accept") return !hasUnsafeByte;
-    if (name === "accept-language" || name === "content-language") {
-      return /^[0-9A-Za-z *,\-.;=]*$/.test(value);
-    }
-    if (name === "content-type") {
-      if (hasUnsafeByte) return false;
-      const essence = value.split(";", 1)[0].trim().toLowerCase();
-      return essence === "application/x-www-form-urlencoded" ||
-        essence === "multipart/form-data" || essence === "text/plain";
-    }
-    if (name === "range") return /^bytes=[0-9]+-[0-9]*$/.test(value);
-    return false;
-  }
-
-  function blockedByGuard(headers, name, value) {
+  function assertMutableHeaders(headers) {
+    // Match Node/Undici: HTTP syntax and immutability still apply, but browser
+    // forbidden-header and no-cors safelist rules do not apply to extensions.
     if (headers._guard === "immutable") throw new TypeError("Headers are immutable");
-    if (headers._guard === "request") return forbiddenRequestHeader(name, value);
-    if (headers._guard === "request-no-cors") {
-      return forbiddenRequestHeader(name, value) || !noCORSSafelistedRequestHeader(name, value);
-    }
-    if (headers._guard === "response") return name === "set-cookie" || name === "set-cookie2";
-    return false;
   }
 
   class Headers {
@@ -235,27 +196,21 @@
       name = normalizeHeaderName(name);
       value = normalizeHeaderValue(value);
       const values = this._values.get(name);
-      const combinedValue = values && name !== "set-cookie" ? values.join(", ") + ", " + value : value;
-	  if (blockedByGuard(this, name, combinedValue)) return;
+      assertMutableHeaders(this);
       if (values) values.push(value);
       else this._values.set(name, [value]);
     }
 
     delete(name) {
-	  name = normalizeHeaderName(name);
-	  if (this._guard === "immutable") throw new TypeError("Headers are immutable");
-	  if (this._guard === "request-no-cors") {
-		if (forbiddenRequestHeader(name, "") || !["accept", "accept-language", "content-language", "content-type", "range"].includes(name)) return;
-		this._values.delete(name);
-		return;
-	  }
-	  if (blockedByGuard(this, name, "")) return;
+      name = normalizeHeaderName(name);
+      assertMutableHeaders(this);
       this._values.delete(name);
     }
 
     get(name) {
-      const values = this._values.get(normalizeHeaderName(name));
-      return values ? values.join(", ") : null;
+      name = normalizeHeaderName(name);
+      const values = this._values.get(name);
+      return values ? values.join(name === "cookie" ? "; " : ", ") : null;
     }
 
     getSetCookie() {
@@ -268,10 +223,10 @@
     }
 
     set(name, value) {
-	  name = normalizeHeaderName(name);
-	  value = normalizeHeaderValue(value);
-	  if (blockedByGuard(this, name, value)) return;
-	  this._values.set(name, [value]);
+      name = normalizeHeaderName(name);
+      value = normalizeHeaderValue(value);
+      assertMutableHeaders(this);
+      this._values.set(name, [value]);
     }
 
     keys() { return createHeadersIterator(this, "key"); }
@@ -484,7 +439,7 @@
       }
       this._duplex = "half";
       const headerInit = init.headers !== undefined ? init.headers : (source ? source.headers : undefined);
-      this._headers = new Headers(headerInit, this._mode === "no-cors" ? "request-no-cors" : "request");
+      this._headers = new Headers(headerInit, "request");
       let body = init.body !== undefined ? init.body : (source ? source._bodyInit : null);
       if (source && !bodyWasOverridden && source.body) body = transferReadableStream(source.body);
       const bodyIsStream = typeof ReadableStream !== "undefined" && body instanceof ReadableStream;

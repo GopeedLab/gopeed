@@ -99,7 +99,7 @@
   "add": "Ekle",
   "edit": "Düzenle",
   "newVersionTitle": "Yeni sürüm @version keşfedildi",
-  "newVersionUpdate": "Şimdi Güncelle",
+  "newVersionUpdate": "Güncelle",
   "newVersionLater": "Daha Sonra",
   "extensions": "Eklentiler",
   "extensionInstallUrl": "Kurulum URL'si",
