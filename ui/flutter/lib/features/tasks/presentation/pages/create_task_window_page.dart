@@ -66,6 +66,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   final _httpHeadersController = AppHttpHeadersController(defaultNames: const ['User-Agent', 'Cookie', 'Referer']);
   final _trackersController = TextEditingController();
   final _archivePasswordController = TextEditingController();
+  final _checksumHashController = TextEditingController();
   final _formScrollController = ScrollController();
 
   String _httpMethod = 'GET';
@@ -74,6 +75,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   Map<String, String>? _initialLabels;
   RequestProxyMode _proxyMode = RequestProxyMode.follow;
   String _proxyScheme = 'http';
+  String _checksumAlgorithm = 'md5';
   bool _skipVerifyCert = false;
   bool? _autoTorrent;
   bool? _deleteTorrentAfterDownload;
@@ -134,6 +136,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     _httpHeadersController.dispose();
     _trackersController.dispose();
     _archivePasswordController.dispose();
+    _checksumHashController.dispose();
     _formScrollController.dispose();
     super.dispose();
   }
@@ -184,6 +187,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       if (!_programmaticUrlChange && _fileDataUri.isNotEmpty) {
         _fileDataUri = '';
       }
+      if (_inputUrls().length > 1) {
+        _checksumHashController.clear();
+        _checksumAlgorithm = 'md5';
+      }
     }
     _recognizeMagnetUri(urlText.trim());
   }
@@ -193,6 +200,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     final req = task.req;
     final opts = task.opts;
     setState(() {
+      _checksumAlgorithm = 'md5';
+      _checksumHashController.clear();
       if (req?.url.isNotEmpty == true) {
         _fileDataUri = '';
         _renameController.clear();
@@ -243,6 +252,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           _autoExtract = extra.autoExtract;
           _archivePasswordController.text = extra.archivePassword;
           _deleteAfterExtract = extra.deleteAfterExtract;
+          if (extra.checksum != null) {
+            if (extra.checksum!.algorithm.isNotEmpty) {
+              _checksumAlgorithm = extra.checksum!.algorithm;
+            }
+            _checksumHashController.text = extra.checksum!.expected;
+          }
         }
       }
     });
@@ -668,6 +683,34 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                   ),
                                 ),
                               ],
+                              if (_inputUrls().length <= 1) ...[
+                                const SizedBox(height: 14),
+                                AppFormPair(
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
+                                  firstLabel: context.l10n.checksumAlgorithm,
+                                  secondLabel: context.l10n.checksumHash,
+                                  firstFlex: 382,
+                                  secondFlex: 618,
+                                  first: AppChoiceSegmentedControl<String>(
+                                    key: const ValueKey('create-task-checksum-algorithm'),
+                                    showIcons: false,
+                                    value: _checksumAlgorithm,
+                                    buttonKeyPrefix: 'create-task-checksum-algorithm',
+                                    alignment: WrapAlignment.start,
+                                    options: const [
+                                      AppChoiceOption(value: 'md5', label: 'MD5', icon: Icons.tag),
+                                      AppChoiceOption(value: 'sha1', label: 'SHA-1', icon: Icons.tag),
+                                      AppChoiceOption(value: 'sha256', label: 'SHA-256', icon: Icons.tag),
+                                    ],
+                                    onChanged: (value) => setState(() => _checksumAlgorithm = value),
+                                  ),
+                                  second: _WindowTextField(
+                                    key: const ValueKey('create-task-checksum-expected'),
+                                    controller: _checksumHashController,
+                                    hintText: context.l10n.checksumExpectedHint,
+                                  ),
+                                ),
+                              ],
                             ] else ...[
                               AppFormRow(
                                 direction: stacked ? Axis.vertical : Axis.horizontal,
@@ -950,6 +993,25 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   bool _validateAdvancedOptions() {
+    if (_protocolTab == 0 && _inputUrls().length <= 1) {
+      final checksumExpected = _checksumHashController.text.trim();
+      if (checksumExpected.isNotEmpty) {
+        final expectedLen = switch (_checksumAlgorithm.toLowerCase()) {
+          'md5' => 32,
+          'sha1' || 'sha-1' => 40,
+          'sha256' || 'sha-256' => 64,
+          _ => 0,
+        };
+        if (expectedLen > 0 && checksumExpected.length != expectedLen) {
+          _showToast(context.l10n.checksumInvalidLength(_checksumAlgorithm.toUpperCase(), expectedLen.toString()));
+          return false;
+        }
+        if (!RegExp(r'^[0-9a-fA-F]+$').hasMatch(checksumExpected)) {
+          _showToast(context.l10n.checksumInvalidHex);
+          return false;
+        }
+      }
+    }
     if (_proxyMode != RequestProxyMode.custom) {
       return true;
     }
@@ -1022,8 +1084,15 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     return text.length == 40 && RegExp(r'^[0-9a-fA-F]+$').hasMatch(text);
   }
 
-  api_options.Options _buildOptions({String? name, List<int> selectFiles = const []}) {
+  api_options.Options _buildOptions({String? name, List<int> selectFiles = const [], bool omitChecksum = false}) {
     final connections = int.tryParse(_connectionsController.text.trim()) ?? 0;
+    final checksumExpected = _checksumHashController.text.trim();
+    final checksum = (!omitChecksum && _inputUrls().length <= 1 && checksumExpected.isNotEmpty)
+        ? api_options.ChecksumOption(
+            algorithm: _checksumAlgorithm,
+            expected: checksumExpected,
+          )
+        : null;
     return api_options.Options(
       name: name ?? _renameController.text.trim(),
       path: _directoryController.text.trim(),
@@ -1036,6 +1105,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         autoExtract: _autoExtract,
         archivePassword: _archivePasswordController.text,
         deleteAfterExtract: _deleteAfterExtract,
+        checksum: checksum,
       ).toJson(),
     );
   }
@@ -1050,13 +1120,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   Future<void> _submitResolved(Request request, ResolveResult result, List<int> selectedIndexes) async {
     final selected = (selectedIndexes.isEmpty ? result.res.files.asMap().keys.toList() : selectedIndexes.toList())
       ..sort();
+    final isMultiFile = selected.length > 1;
     if (result.id.isNotEmpty) {
       await ref
           .read(gopeedServiceProvider)
           .createTask(
             CreateTask(
               rid: result.id,
-              opts: _buildOptions(selectFiles: selected),
+              opts: _buildOptions(selectFiles: selected, omitChecksum: isMultiFile),
             ),
           );
       return;
@@ -1070,11 +1141,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           opts: api_options.Options(
             name: file.name,
             path: path.join(_directoryController.text.trim(), result.res.name, file.path),
-            extra: _buildOptions().extra,
+            extra: _buildOptions(omitChecksum: isMultiFile).extra,
           ),
         );
       }).toList();
-      await ref.read(gopeedServiceProvider).createTaskBatch(CreateTaskBatch(reqs: reqs, opts: _buildOptions()));
+      await ref.read(gopeedServiceProvider).createTaskBatch(CreateTaskBatch(reqs: reqs, opts: _buildOptions(omitChecksum: isMultiFile)));
       return;
     }
 
