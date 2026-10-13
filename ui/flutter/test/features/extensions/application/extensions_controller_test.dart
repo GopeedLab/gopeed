@@ -157,10 +157,41 @@ void main() {
     final subscription = container.listen(provider, (_, _) {});
     addTearDown(subscription.close);
     await expectLater(container.read(provider.future), throwsStateError);
+    expect(site.detailCalls, 3);
     site.onDetail = (_, _) async => StoreExtension.fromJson({'id': 'market', 'readme': 'loaded'});
     container.invalidate(provider);
     expect((await container.read(provider.future)).readme, 'loaded');
-    expect(site.detailCalls, 2);
+    expect(site.detailCalls, 4);
+  });
+
+  test('details automatically recover on the third attempt and retain the result', () async {
+    final site = _SiteApi();
+    site.onDetail = (id, _) async {
+      if (site.detailCalls < 3) throw StateError('offline');
+      return StoreExtension.fromJson({'id': id, 'readme': 'recovered'});
+    };
+    final container = ProviderContainer(overrides: [gopeedSiteApiProvider.overrideWithValue(site)]);
+    addTearDown(container.dispose);
+    final provider = storeExtensionDetailsProvider((id: 'market', version: '1.0.0'));
+    final subscription = container.listen(provider, (_, _) {});
+    expect((await container.read(provider.future)).readme, 'recovered');
+    expect(site.detailCalls, 3);
+    subscription.close();
+    await _settle();
+    expect((await container.read(provider.future)).readme, 'recovered');
+    expect(site.detailCalls, 3);
+  });
+
+  test('closing details stops pending automatic retries', () async {
+    final site = _SiteApi()..onDetail = (_, _) => Future.error(StateError('offline'));
+    final container = ProviderContainer(overrides: [gopeedSiteApiProvider.overrideWithValue(site)]);
+    final provider = storeExtensionDetailsProvider((id: 'market', version: '1.0.0'));
+    container.listen(provider, (_, _) {});
+    await _settle();
+    expect(site.detailCalls, 1);
+    container.dispose();
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    expect(site.detailCalls, 1);
   });
 }
 

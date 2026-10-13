@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,8 +21,9 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      final pending = Completer<StoreExtension>();
-      final site = _DetailApi()..request = pending.future;
+      final attempts = List.generate(3, (_) => Completer<StoreExtension>());
+      final site = _DetailApi();
+      site.onRequest = () => attempts[site.detailCalls - 1].future;
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -43,11 +45,33 @@ void main() {
       await tester.pump();
       expect(find.byKey(const ValueKey('extension-details-loading')), findsOneWidget);
       expect(find.byKey(const ValueKey('extension-details-install')), findsOneWidget);
-      pending.completeError(StateError('offline'));
+      final loadingCenter = tester.getCenter(find.byKey(const ValueKey('extension-details-loading')));
+      expect(site.detailCalls, 1);
+      for (var attempt = 0; attempt < 2; attempt++) {
+        attempts[attempt].completeError(StateError('offline'));
+        await tester.pump();
+        expect(find.byKey(const ValueKey('extension-details-loading')), findsOneWidget);
+        expect(find.byKey(const ValueKey('extension-details-retry')), findsNothing);
+        await tester.pump(Duration(milliseconds: 300 * (attempt + 1)));
+        expect(site.detailCalls, attempt + 2);
+      }
+      attempts.last.completeError(StateError('offline'));
       await tester.pump();
       await tester.pump();
       expect(find.byKey(const ValueKey('extension-details-retry')), findsOneWidget);
-      site.request = Future.value(
+      expect(find.byKey(const ValueKey('extension-details-loading')), findsNothing);
+      expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
+      expect(tester.getCenter(find.byKey(const ValueKey('extension-details-retry'))), loadingCenter);
+      await tester.pump(const Duration(seconds: 5));
+      expect(site.detailCalls, 3);
+      final reload = Completer<StoreExtension>();
+      site.onRequest = () => reload.future;
+      await tester.tap(find.byKey(const ValueKey('extension-details-retry')));
+      await tester.pump();
+      expect(site.detailCalls, 4);
+      expect(find.byKey(const ValueKey('extension-details-loading')), findsOneWidget);
+      expect(find.byKey(const ValueKey('extension-details-retry')), findsNothing);
+      reload.complete(
         StoreExtension.fromJson({
           'id': 'market',
           'title': 'Market',
@@ -56,7 +80,6 @@ void main() {
           'homepage': 'https://example.com',
         }),
       );
-      await tester.tap(find.byKey(const ValueKey('extension-details-retry')));
       await tester.pumpAndSettle();
       expect(find.text('Loaded details'), findsOneWidget);
       expect(find.byKey(const ValueKey('extension-details-homepage')), findsOneWidget);
@@ -133,12 +156,13 @@ class _SummaryController extends ExtensionsController {
 
 class _DetailApi implements GopeedSiteApi {
   late Future<StoreExtension> request;
+  Future<StoreExtension> Function()? onRequest;
   int detailCalls = 0;
 
   @override
   Future<StoreExtension> getExtension(String id, {String? version}) {
     detailCalls++;
-    return request;
+    return onRequest?.call() ?? request;
   }
 
   @override

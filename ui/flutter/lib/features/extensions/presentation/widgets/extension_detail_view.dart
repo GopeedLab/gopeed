@@ -16,6 +16,7 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../shared/widgets/app_toast.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../util/util.dart';
 import '../../application/extensions_controller.dart';
@@ -174,19 +175,26 @@ class ExtensionDetailView extends ConsumerWidget {
               ),
           ],
         ),
-        if (details?.isLoading == true)
-          const Padding(
-            key: ValueKey('extension-details-loading'),
-            padding: EdgeInsets.only(top: 24),
-            child: Center(child: shad.CircularProgressIndicator()),
-          ),
-        if (details?.hasError == true && detailKey != null)
+        if (details != null && detailKey != null && (details.isLoading || details.hasError))
           Padding(
             padding: const EdgeInsets.only(top: 24),
-            child: shad.SecondaryButton(
-              key: const ValueKey('extension-details-retry'),
-              onPressed: () => ref.invalidate(storeExtensionDetailsProvider(detailKey)),
-              child: Text(context.l10n.retry),
+            child: Center(
+              child: SizedBox.square(
+                dimension: 44,
+                child: details.isLoading
+                    ? const Center(
+                        key: ValueKey('extension-details-loading'),
+                        child: SizedBox.square(dimension: 24, child: shad.CircularProgressIndicator()),
+                      )
+                    : AppTooltip(
+                        message: context.l10n.retry,
+                        child: shad.IconButton.ghost(
+                          key: const ValueKey('extension-details-retry'),
+                          onPressed: () => ref.invalidate(storeExtensionDetailsProvider(detailKey)),
+                          icon: Icon(Icons.refresh_rounded, size: 24, color: palette.textMuted),
+                        ),
+                      ),
+              ),
             ),
           ),
         _ExtensionReadme(
