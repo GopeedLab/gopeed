@@ -160,6 +160,7 @@ jobs:
 
   build-desktop:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-2022

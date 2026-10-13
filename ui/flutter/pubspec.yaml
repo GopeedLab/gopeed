@@ -87,32 +87,32 @@ dependency_overrides:
   flutter_inappwebview:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      ref: f34db21c63102e05b0bad322989123ccd6403ed0
       path: flutter_inappwebview
   flutter_inappwebview_platform_interface:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      ref: f34db21c63102e05b0bad322989123ccd6403ed0
       path: flutter_inappwebview_platform_interface
   flutter_inappwebview_macos:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      ref: f34db21c63102e05b0bad322989123ccd6403ed0
       path: flutter_inappwebview_macos
   flutter_inappwebview_ios:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      ref: f34db21c63102e05b0bad322989123ccd6403ed0
       path: flutter_inappwebview_ios
   flutter_inappwebview_android:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      ref: f34db21c63102e05b0bad322989123ccd6403ed0
       path: flutter_inappwebview_android
   flutter_inappwebview_windows:
     git:
       url: https://github.com/GopeedLab/flutter_inappwebview.git
-      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      ref: f34db21c63102e05b0bad322989123ccd6403ed0
       path: flutter_inappwebview_windows
   # Prevent a native Windows crash when the push notification service is unavailable.
   # Keep this fork until https://github.com/MaikuB/flutter_local_notifications/pull/2813 is merged and released.
