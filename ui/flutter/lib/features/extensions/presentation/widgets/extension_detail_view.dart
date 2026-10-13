@@ -66,7 +66,10 @@ class ExtensionDetailView extends ConsumerWidget {
     final state = ref.watch(extensionsControllerProvider).value;
     final summary = state?.findItem(item.id) ?? item;
     final summaryStore = summary.store;
-    final detailKey = summaryStore == null || summaryStore.hasDetails
+    // Native installed extensions provide their manifest and local README.
+    // Web cannot read the local files and still needs the store README.
+    final useLocalDetails = summary.isInstalled && !Util.isWeb();
+    final detailKey = useLocalDetails || summaryStore == null || summaryStore.hasDetails
         ? null
         : (id: summaryStore.id, version: summaryStore.version);
     final details = detailKey == null ? null : ref.watch(storeExtensionDetailsProvider(detailKey));

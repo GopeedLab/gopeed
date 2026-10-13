@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/gopeed_site_api.dart';
+import 'package:gopeed/api/model/extension.dart';
 import 'package:gopeed/api/model/store_extension.dart';
 import 'package:gopeed/features/extensions/application/extensions_controller.dart';
 import 'package:gopeed/features/extensions/application/store_extension_details_provider.dart';
@@ -63,6 +65,57 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });
+
+    testWidgets('installed summary uses local details without a remote request at width $width', (tester) async {
+      tester.view.physicalSize = Size(width, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final directory = Directory.systemTemp.createTempSync('gopeed-installed-detail-');
+      addTearDown(() => directory.deleteSync(recursive: true));
+      File('${directory.path}/README.md').writeAsStringSync('# Installed documentation');
+      final installed = Extension(
+        identity: 'market',
+        name: 'market',
+        author: 'Local author',
+        title: 'Local extension',
+        description: 'Installed manifest',
+        icon: '',
+        version: '1.0.0',
+        homepage: 'https://example.com/local',
+        repository: Repository(url: 'https://github.com/test/local', directory: ''),
+        disabled: false,
+        devMode: true,
+        devPath: directory.path,
+      );
+      final site = _DetailApi()..request = Completer<StoreExtension>().future;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            extensionsControllerProvider.overrideWith(() => _InstalledSummaryController(installed)),
+            gopeedSiteApiProvider.overrideWithValue(site),
+          ],
+          child: shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: shad.Scaffold(
+              child: ExtensionDetailView(
+                item: ExtensionListItem(installed: installed, store: _summary()),
+                mobile: width < 600,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(site.detailCalls, 0);
+      expect(find.byKey(const ValueKey('extension-details-loading')), findsNothing);
+      expect(find.byKey(const ValueKey('extension-details-retry')), findsNothing);
+      expect(find.text('Installed documentation'), findsOneWidget);
+      expect(find.byKey(const ValueKey('extension-details-homepage')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
   }
 }
 
@@ -80,10 +133,24 @@ class _SummaryController extends ExtensionsController {
 
 class _DetailApi implements GopeedSiteApi {
   late Future<StoreExtension> request;
+  int detailCalls = 0;
 
   @override
-  Future<StoreExtension> getExtension(String id, {String? version}) => request;
+  Future<StoreExtension> getExtension(String id, {String? version}) {
+    detailCalls++;
+    return request;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _InstalledSummaryController extends ExtensionsController {
+  _InstalledSummaryController(this.installed);
+
+  final Extension installed;
+
+  @override
+  Future<ExtensionsState> build() async =>
+      ExtensionsState(installedExtensions: [installed], storeExtensions: [_summary()]);
 }
