@@ -57,6 +57,17 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# Temporary compatibility for legacy coroutine headers on MSVC 14.51.
+# Remove once both Windows plugins use standard coroutines.
+if(MSVC)
+  foreach(plugin IN ITEMS flutter_inappwebview_windows_plugin permission_handler_windows_plugin)
+    if(TARGET ${plugin})
+      target_compile_definitions(${plugin} PRIVATE
+        _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+    endif()
+  endforeach()
+endif()
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
