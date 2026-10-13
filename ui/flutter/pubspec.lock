@@ -458,8 +458,8 @@ packages:
     dependency: "direct main"
     description:
       path: flutter_inappwebview
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
-      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      resolved-ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "6.1.5"
@@ -467,8 +467,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_android
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
-      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      resolved-ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.1.3"
@@ -484,8 +484,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_ios
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
-      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      resolved-ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.1.2"
@@ -493,8 +493,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_macos
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
-      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      resolved-ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.1.2"
@@ -502,8 +502,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: flutter_inappwebview_platform_interface
-      ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
-      resolved-ref: d579215760e1c1e58a4ff7601a6055b5e6adf8e8
+      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      resolved-ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
       url: "https://github.com/GopeedLab/flutter_inappwebview.git"
     source: git
     version: "1.3.0+1"
@@ -516,12 +516,13 @@ packages:
     source: hosted
     version: "1.1.2"
   flutter_inappwebview_windows:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: flutter_inappwebview_windows
-      sha256: "8b4d3a46078a2cdc636c4a3d10d10f2a16882f6be607962dbfff8874d1642055"
-      url: "https://pub.dev"
-    source: hosted
+      path: flutter_inappwebview_windows
+      ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      resolved-ref: baef36d97d3fd16d4d637fb336f1ac8dcfe8a67d
+      url: "https://github.com/GopeedLab/flutter_inappwebview.git"
+    source: git
     version: "0.6.0"
   flutter_launcher_icons:
     dependency: "direct dev"
@@ -1106,8 +1107,8 @@ packages:
     dependency: "direct overridden"
     description:
       path: permission_handler_windows
-      ref: "35fc72c30262b9b49e1965b48a7524b44ba9daa7"
-      resolved-ref: "35fc72c30262b9b49e1965b48a7524b44ba9daa7"
+      ref: ffcca00fb0ae2543f5bd6c83125ffba5755d3aa3
+      resolved-ref: ffcca00fb0ae2543f5bd6c83125ffba5755d3aa3
       url: "https://github.com/monkeyWie/flutter-permission-handler.git"
     source: git
     version: "0.2.1"
