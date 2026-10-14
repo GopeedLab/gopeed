@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Biztos, hogy el kívánja távolítani a „{name}” programot?",
   "uninstall": "Eltávolítás",
   "unableLoadExtensions": "Nem lehet betölteni a bővítményeket",
+  "unableLoadExtensionDetails": "Nem sikerült betölteni a bővítmény részleteit",
   "filters": "szűrők",
   "allTasks": "Minden feladat",
   "searchDownloads": "Letöltések keresése…",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "Ha API-tokent állítottál be, az ügynök csatlakoztatásakor meg kell adni a hitelesítési adatokat",
   "useMcpApiTokenTemplate": "Váltás hitelesített konfigurációra",
   "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP.",
-  "emptyTaskCreateHint": "Kattints a {action} gombra a letöltés indításához"
+  "emptyTaskCreateHint": "Kattints a {action} gombra a letöltés indításához",
+  "emptyStateRetryHint": "Kattints a {action} gombra az újrapróbálkozáshoz"
 }

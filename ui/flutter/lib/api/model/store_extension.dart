@@ -64,6 +64,7 @@ class StoreExtension {
   final List<String> topics;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final bool hasDetails;
 
   StoreExtension({
     required this.id,
@@ -84,6 +85,7 @@ class StoreExtension {
     required this.topics,
     this.createdAt,
     this.updatedAt,
+    this.hasDetails = true,
   });
 
   factory StoreExtension.fromJson(Map<String, dynamic> json) {
@@ -106,6 +108,7 @@ class StoreExtension {
       topics: _parseTopics(json['topics']),
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt']),
+      hasDetails: json.containsKey('readme'),
     );
   }
 

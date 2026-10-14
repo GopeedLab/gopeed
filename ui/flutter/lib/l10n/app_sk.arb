@@ -343,6 +343,7 @@
   "removeExtensionConfirm": "Naozaj chcete odinštalovať „{name}“?",
   "uninstall": "Odinštalovať",
   "unableLoadExtensions": "Nepodarilo sa načítať rozšírenia",
+  "unableLoadExtensionDetails": "Nepodarilo sa načítať podrobnosti rozšírenia",
   "filters": "Filtre",
   "allTasks": "Všetky úlohy",
   "searchDownloads": "Hľadať sťahovania…",
@@ -653,5 +654,6 @@
         "type": "String"
       }
     }
-  }
+  },
+  "emptyStateRetryHint": "Kliknutím na {action} skúsite znova"
 }

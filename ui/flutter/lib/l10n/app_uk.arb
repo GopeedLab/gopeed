@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Ви впевнені, що ви хочете видалити \"{name}\"?",
   "uninstall": "Видаляє",
   "unableLoadExtensions": "Неможливо до розширення навантаження",
+  "unableLoadExtensionDetails": "Не вдалося завантажити відомості про розширення",
   "filters": "Фільтри",
   "allTasks": "Всі завдання",
   "searchDownloads": "Пошук завантажень...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "Якщо налаштовано API-токен, під час підключення агента потрібно передати дані автентифікації",
   "useMcpApiTokenTemplate": "Перейти до конфігурації з автентифікацією",
   "mcpRequiresTcp": "Інструкції з підключення агентів доступні, коли протокол API — TCP.",
-  "emptyTaskCreateHint": "Натисніть {action}, щоб почати завантаження"
+  "emptyTaskCreateHint": "Натисніть {action}, щоб почати завантаження",
+  "emptyStateRetryHint": "Натисніть {action}, щоб спробувати ще раз"
 }

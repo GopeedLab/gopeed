@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "هل أنت متأكد أنك تريد إلغاء تثبيت \"{name}\"؟",
   "uninstall": "إلغاء التثبيت",
   "unableLoadExtensions": "غير قادر على تمديد الشحنات",
+  "unableLoadExtensionDetails": "تعذّر تحميل تفاصيل الإضافة",
   "filters": "عوامل التصفية",
   "allTasks": "جميع المهام",
   "searchDownloads": "ابحثوا عن التحميلات",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "إذا قمت بتكوين رمز API، فيجب تمرير معلومات المصادقة عند ربط الوكيل",
   "useMcpApiTokenTemplate": "التبديل إلى إعدادات المصادقة",
   "mcpRequiresTcp": "تتوفر إرشادات ربط الوكيل عندما يكون بروتوكول API هو TCP.",
-  "emptyTaskCreateHint": "اضغط على {action} لبدء التنزيل"
+  "emptyTaskCreateHint": "اضغط على {action} لبدء التنزيل",
+  "emptyStateRetryHint": "اضغط على {action} لإعادة المحاولة"
 }

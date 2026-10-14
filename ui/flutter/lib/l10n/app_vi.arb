@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Bạn có chắc muốn gỡ bỏ cài đặt “{name} chiếc xe không?",
   "uninstall": "Hủy cài đặt",
   "unableLoadExtensions": "Không thể nạp phần mở rộng",
+  "unableLoadExtensionDetails": "Không thể tải thông tin chi tiết tiện ích mở rộng",
   "filters": "Lọc",
   "allTasks": "Mọi tác vụ",
   "searchDownloads": "Tải về...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "Nếu đã cấu hình API Token, bạn cần truyền thông tin xác thực khi kết nối tác nhân",
   "useMcpApiTokenTemplate": "Chuyển sang cấu hình có xác thực",
   "mcpRequiresTcp": "Hướng dẫn kết nối tác nhân khả dụng khi giao thức API là TCP.",
-  "emptyTaskCreateHint": "Nhấn {action} để bắt đầu tải xuống"
+  "emptyTaskCreateHint": "Nhấn {action} để bắt đầu tải xuống",
+  "emptyStateRetryHint": "Nhấn {action} để thử lại"
 }

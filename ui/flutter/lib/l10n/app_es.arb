@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "¿Está seguro de que desea desinstalar “{name}”?",
   "uninstall": "Desinstalación",
   "unableLoadExtensions": "No se puede cargar extensiones",
+  "unableLoadExtensionDetails": "No se pudieron cargar los detalles de la extensión",
   "filters": "Filtros",
   "allTasks": "Todas las tareas",
   "searchDownloads": "Búsqueda descargas...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "Si has configurado un token de API, debes proporcionar la información de autenticación al conectar el agente",
   "useMcpApiTokenTemplate": "Cambiar a la configuración autenticada",
   "mcpRequiresTcp": "Las instrucciones de conexión de agentes están disponibles cuando el protocolo de la API es TCP.",
-  "emptyTaskCreateHint": "Haz clic en {action} para empezar a descargar"
+  "emptyTaskCreateHint": "Haz clic en {action} para empezar a descargar",
+  "emptyStateRetryHint": "Haz clic en {action} para reintentar"
 }

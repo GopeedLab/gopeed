@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Apakah Anda yakin ingin menghapus instalasi “{name}”?",
   "uninstall": "Batalkan",
   "unableLoadExtensions": "Tidak dapat memuat ekstensi",
+  "unableLoadExtensionDetails": "Tidak dapat memuat detail ekstensi",
   "filters": "Filter",
   "allTasks": "Semua Tugas",
   "searchDownloads": "Cari pengunduhan...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "Jika Anda telah mengatur token API, informasi autentikasi harus disertakan saat menghubungkan agen",
   "useMcpApiTokenTemplate": "Beralih ke konfigurasi terautentikasi",
   "mcpRequiresTcp": "Petunjuk koneksi agen tersedia saat protokol API menggunakan TCP.",
-  "emptyTaskCreateHint": "Klik {action} untuk mulai mengunduh"
+  "emptyTaskCreateHint": "Klik {action} untuk mulai mengunduh",
+  "emptyStateRetryHint": "Klik {action} untuk mencoba lagi"
 }

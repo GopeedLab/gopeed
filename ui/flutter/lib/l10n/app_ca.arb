@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Esteu segur que voleu desinstal·lar “{name}”?",
   "uninstall": "Desinstal· la",
   "unableLoadExtensions": "No s' han pogut carregar les extensions",
+  "unableLoadExtensionDetails": "No s’han pogut carregar els detalls de l’extensió",
   "filters": "Filtres",
   "allTasks": "Totes les tasques",
   "searchDownloads": "Cerca baixades...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "Si heu configurat un token d’API, cal proporcionar la informació d’autenticació en connectar l’agent",
   "useMcpApiTokenTemplate": "Canvia a la configuració autenticada",
   "mcpRequiresTcp": "Les instruccions de connexió d’agents estan disponibles quan el protocol de l’API és TCP.",
-  "emptyTaskCreateHint": "Fes clic a {action} per començar a baixar"
+  "emptyTaskCreateHint": "Fes clic a {action} per començar a baixar",
+  "emptyStateRetryHint": "Fes clic a {action} per tornar-ho a provar"
 }

@@ -15,10 +15,12 @@ import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
+import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../util/util.dart';
 import '../../application/extensions_controller.dart';
+import '../../application/store_extension_details_provider.dart';
 import 'extension_icon.dart';
 import 'extension_update_dialog.dart';
 import 'extension_update_status.dart';
@@ -63,7 +65,16 @@ class ExtensionDetailView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final palette = AppPalette.of(context);
     final state = ref.watch(extensionsControllerProvider).value;
-    final current = state?.findItem(item.id) ?? item;
+    final summary = state?.findItem(item.id) ?? item;
+    final summaryStore = summary.store;
+    // Native installed extensions provide their manifest and local README.
+    // Web cannot read the local files and still needs the store README.
+    final useLocalDetails = summary.isInstalled && !Util.isWeb();
+    final detailKey = useLocalDetails || summaryStore == null || summaryStore.hasDetails
+        ? null
+        : (id: summaryStore.id, version: summaryStore.version);
+    final details = detailKey == null ? null : ref.watch(storeExtensionDetailsProvider(detailKey));
+    final current = ExtensionListItem(installed: summary.installed, store: details?.value ?? summaryStore);
     final installed = current.installed;
     final store = current.store;
     final busy = state?.busyExtensionIds.contains(current.id) ?? false;
@@ -116,7 +127,7 @@ class ExtensionDetailView extends ConsumerWidget {
                         'v${current.version}',
                         style: TextStyle(color: palette.textMuted, fontSize: 11.5, fontWeight: FontWeight.w600),
                       ),
-                      if (store != null) _ExtensionStats(store: store),
+                      if (summaryStore != null) _ExtensionStats(store: summaryStore),
                     ],
                   ),
                 ],
@@ -164,7 +175,31 @@ class ExtensionDetailView extends ConsumerWidget {
               ),
           ],
         ),
-        SizedBox(height: mobile ? 24 : 28),
+        if (details?.isLoading == true)
+          const Padding(
+            key: ValueKey('extension-details-loading'),
+            padding: EdgeInsets.only(top: 24),
+            child: Center(
+              child: SizedBox.square(dimension: 44, child: Center(child: shad.CircularProgressIndicator())),
+            ),
+          ),
+        if (details?.hasError == true && details?.isLoading != true && detailKey != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: AppEmptyState(
+              key: const ValueKey('extension-details-error-state'),
+              illustration: AppEmptyIllustrationType.documentError,
+              message: context.l10n.unableLoadExtensionDetails,
+              illustrationKey: const ValueKey('extension-details-error-illustration'),
+              action: AppEmptyStateAction(
+                buttonKey: const ValueKey('extension-details-retry'),
+                icon: Icons.refresh_rounded,
+                label: context.l10n.retry,
+                hint: context.l10n.emptyStateRetryHint,
+                onPressed: () => ref.invalidate(storeExtensionDetailsProvider(detailKey)),
+              ),
+            ),
+          ),
         _ExtensionReadme(
           // Snapshot the version so upgrades reload the installed README.
           key: ValueKey((current.id, installed?.version, installed?.devMode, installed?.devPath, store?.readme)),
@@ -213,7 +248,7 @@ class _ExtensionReadmeState extends State<_ExtensionReadme> {
     if (info.content.trim().isEmpty) return const SizedBox.shrink();
     return Padding(
       key: const ValueKey('extension-details-readme'),
-      padding: EdgeInsets.only(top: widget.mobile ? 32 : 36),
+      padding: const EdgeInsets.only(top: AppDesignTokens.space24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "“{name}” yüklememek istediğinizden emin misiniz?",
   "uninstall": "Kaldır",
   "unableLoadExtensions": "uzatmaları yükleyemez",
+  "unableLoadExtensionDetails": "Eklenti ayrıntıları yüklenemedi",
   "filters": "Filtreler",
   "allTasks": "Tüm Görevler",
   "searchDownloads": "Arama indirs...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "Bir API anahtarı yapılandırdıysanız, ajan bağlanırken kimlik doğrulama bilgileri iletilmelidir",
   "useMcpApiTokenTemplate": "Kimlik doğrulamalı yapılandırmaya geç",
   "mcpRequiresTcp": "Ajan bağlantı yönergeleri API protokolü TCP olduğunda kullanılabilir.",
-  "emptyTaskCreateHint": "İndirmeye başlamak için {action} düğmesine tıklayın"
+  "emptyTaskCreateHint": "İndirmeye başlamak için {action} düğmesine tıklayın",
+  "emptyStateRetryHint": "Yeniden denemek için {action} düğmesine tıklayın"
 }

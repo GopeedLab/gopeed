@@ -344,6 +344,7 @@
   "removeExtensionConfirm": "Are you sure you want to uninstall “{name}”?",
   "uninstall": "Uninstall",
   "unableLoadExtensions": "Unable to load extensions",
+  "unableLoadExtensionDetails": "Unable to load extension details",
   "filters": "Filters",
   "allTasks": "All Tasks",
   "searchDownloads": "Search downloads…",
@@ -649,6 +650,15 @@
   "emptyTaskCreateHint": "Click {action} to start downloading",
   "@emptyTaskCreateHint": {
     "description": "Empty-list guidance; action is replaced with an inline create button.",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyStateRetryHint": "Click {action} to retry",
+  "@emptyStateRetryHint": {
+    "description": "Empty-state guidance; action is replaced with an inline icon button.",
     "placeholders": {
       "action": {
         "type": "String"

@@ -5,7 +5,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../tasks/presentation/widgets/task_create_button.dart';
-import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../l10n/l10n.dart';
 
 class TasksTopBar extends StatelessWidget {
@@ -111,14 +111,14 @@ class _SearchField extends StatelessWidget {
       ),
       child: SizedBox(
         height: 40,
-        child: AppTextField(
+        child: AppSearchField(
           controller: controller,
           style: TextStyle(color: palette.textPrimary, fontSize: 14, height: 1),
           placeholder: Text(
             context.l10n.searchDownloads,
             style: TextStyle(color: palette.searchHint, fontSize: 14, height: 1),
           ),
-          features: [shad.InputFeature.leading(Icon(Icons.search_rounded, size: 14, color: palette.textMuted))],
+          iconSize: 14,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
           decoration: BoxDecoration(
             color: palette.inputBg,

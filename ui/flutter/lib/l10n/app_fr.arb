@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Etes-vous sûr de vouloir désinstaller « {name} » ?",
   "uninstall": "Désinstaller",
   "unableLoadExtensions": "Impossible de charger les extensions",
+  "unableLoadExtensionDetails": "Impossible de charger les détails de l’extension",
   "filters": "Filtres",
   "allTasks": "Toutes les tâches",
   "searchDownloads": "Recherche de téléchargements...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "Si vous avez configuré un jeton API, les informations d’authentification doivent être transmises lors de la connexion de l’agent",
   "useMcpApiTokenTemplate": "Passer à la configuration authentifiée",
   "mcpRequiresTcp": "Les instructions de connexion des agents sont disponibles lorsque le protocole de l’API est TCP.",
-  "emptyTaskCreateHint": "Cliquez sur {action} pour commencer le téléchargement"
+  "emptyTaskCreateHint": "Cliquez sur {action} pour commencer le téléchargement",
+  "emptyStateRetryHint": "Cliquez sur {action} pour réessayer"
 }

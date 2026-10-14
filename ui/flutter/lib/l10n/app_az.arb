@@ -334,6 +334,7 @@
   "removeExtensionConfirm": "“{name}” uzantısını sistemdən silmək istədiyinizə əminsiniz?",
   "uninstall": "Sistemdən sil",
   "unableLoadExtensions": "Uzantıları yükləmək mümkün olmadı",
+  "unableLoadExtensionDetails": "Əlavənin təfərrüatlarını yükləmək mümkün olmadı",
   "filters": "Süzgəclər",
   "allTasks": "Bütün Tapşırıqlar",
   "searchDownloads": "Endirmələri axtar…",
@@ -636,5 +637,6 @@
   "useMcpApiTokenTemplate": "Doğrulamalı konfiqurasiyaya keç",
   "webApiConfigReadOnlyHelp": "Veb versiyası API parametrlərinin onlayn dəyişdirilməsini dəstəkləmir. Server başlanğıc seçimlərini və ya konfiqurasiya faylını yeniləyin, sonra dəyişikliklərin qüvvəyə minməsi üçün xidməti yenidən başladın.",
   "mcpRequiresTcp": "Agent əlaqə təlimatları API protokolu TCP olduqda mövcuddur.",
-  "emptyTaskCreateHint": "Endirməyə başlamaq üçün {action} düyməsinə klikləyin"
+  "emptyTaskCreateHint": "Endirməyə başlamaq üçün {action} düyməsinə klikləyin",
+  "emptyStateRetryHint": "Yenidən cəhd etmək üçün {action} düyməsinə klikləyin"
 }

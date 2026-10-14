@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "\"{name}\" ஐ நிச்சயமாக நிறுவல் நீக்க விரும்புகிறீர்களா?",
   "uninstall": "நீக்குக",
   "unableLoadExtensions": "நீட்டிப்புகளை ஏற்ற முடியவில்லை",
+  "unableLoadExtensionDetails": "நீட்டிப்பின் விவரங்களை ஏற்ற முடியவில்லை",
   "filters": "வடிக்கட்டிகள்",
   "allTasks": "அனைத்து பணிகளையும் நகலெடு",
   "searchDownloads": "பதிவிறக்கங்களைத் தேடுங்கள்...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "API டோக்கனை அமைத்திருந்தால், முகவரை இணைக்கும்போது அங்கீகாரத் தகவலை அனுப்ப வேண்டும்",
   "useMcpApiTokenTemplate": "அங்கீகார உள்ளமைவுக்கு மாறு",
   "mcpRequiresTcp": "API நெறிமுறை TCP ஆக இருக்கும்போது முகவர் இணைப்பு வழிமுறைகள் கிடைக்கும்.",
-  "emptyTaskCreateHint": "பதிவிறக்கத்தைத் தொடங்க {action} ஐ அழுத்தவும்"
+  "emptyTaskCreateHint": "பதிவிறக்கத்தைத் தொடங்க {action} ஐ அழுத்தவும்",
+  "emptyStateRetryHint": "மீண்டும் முயற்சிக்க {action} ஐ அழுத்தவும்"
 }

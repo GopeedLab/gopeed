@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "「{name}」をアンインストールしたいですか?",
   "uninstall": "アンインストール",
   "unableLoadExtensions": "拡張機能を読み込むことができない",
+  "unableLoadExtensionDetails": "拡張機能の詳細を読み込めませんでした",
   "filters": "フィルター",
   "allTasks": "すべてのタスク",
   "searchDownloads": "ダウンロード検索...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "API トークンを設定している場合、エージェント接続時に認証情報を渡す必要があります",
   "useMcpApiTokenTemplate": "認証付き設定に切り替える",
   "mcpRequiresTcp": "API プロトコルが TCP の場合にエージェント接続手順を利用できます。",
-  "emptyTaskCreateHint": "{action}をクリックしてダウンロードを開始"
+  "emptyTaskCreateHint": "{action}をクリックしてダウンロードを開始",
+  "emptyStateRetryHint": "{action}をクリックして再試行"
 }

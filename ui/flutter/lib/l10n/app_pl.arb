@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Jesteś pewien, że chcesz odblokować \"{name}\"?",
   "uninstall": "Odinstaluj",
   "unableLoadExtensions": "Nie można wczytać rozszerzeń",
+  "unableLoadExtensionDetails": "Nie można wczytać szczegółów rozszerzenia",
   "filters": "Filtry",
   "allTasks": "Wszystkie zadania",
   "searchDownloads": "Wyszukaj pliki do pobrania...",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "Jeśli skonfigurowano token API, podczas łączenia agenta należy przekazać dane uwierzytelniające",
   "useMcpApiTokenTemplate": "Przełącz na konfigurację z uwierzytelnianiem",
   "mcpRequiresTcp": "Instrukcje łączenia agentów są dostępne, gdy protokół API to TCP.",
-  "emptyTaskCreateHint": "Kliknij {action}, aby rozpocząć pobieranie"
+  "emptyTaskCreateHint": "Kliknij {action}, aby rozpocząć pobieranie",
+  "emptyStateRetryHint": "Kliknij {action}, aby spróbować ponownie"
 }

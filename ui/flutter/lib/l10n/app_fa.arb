@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "آیا مطمئن هستید که می خواهید \"{name}\" را حذف نصب کنید؟",
   "uninstall": "حذف نصب",
   "unableLoadExtensions": "افزونه‌ها بارگیری نشدند",
+  "unableLoadExtensionDetails": "بارگیری جزئیات افزونه ناموفق بود",
   "filters": "فیلترها",
   "allTasks": "همه وظایف",
   "searchDownloads": "جستجوی دانلودها",
@@ -452,5 +453,6 @@
   "webMcpApiTokenHint": "اگر توکن API را پیکربندی کرده‌اید، هنگام اتصال عامل باید اطلاعات احراز هویت را ارسال کنید",
   "useMcpApiTokenTemplate": "تغییر به پیکربندی احراز هویت",
   "mcpRequiresTcp": "راهنمای اتصال عامل زمانی در دسترس است که پروتکل API روی TCP باشد.",
-  "emptyTaskCreateHint": "برای شروع دانلود روی {action} کلیک کنید"
+  "emptyTaskCreateHint": "برای شروع دانلود روی {action} کلیک کنید",
+  "emptyStateRetryHint": "برای تلاش مجدد روی {action} کلیک کنید"
 }
