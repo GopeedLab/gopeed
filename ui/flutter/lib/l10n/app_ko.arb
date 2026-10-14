@@ -454,6 +454,5 @@
   "useMcpApiTokenTemplate": "인증 구성으로 전환",
   "mcpRequiresTcp": "API 프로토콜이 TCP일 때 에이전트 연결 안내를 사용할 수 있습니다.",
   "emptyTaskCreateHint": "{action}을 눌러 다운로드 시작",
-  "emptyStateRetryHint": "{action}을 눌러 다시 시도",
-  "emptyExtensionsBrowseHint": "{action}을 눌러 확장 기능 찾기"
+  "emptyStateRetryHint": "{action}을 눌러 다시 시도"
 }

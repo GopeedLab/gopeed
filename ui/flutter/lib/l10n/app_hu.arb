@@ -454,6 +454,5 @@
   "useMcpApiTokenTemplate": "Váltás hitelesített konfigurációra",
   "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP.",
   "emptyTaskCreateHint": "Kattints a {action} gombra a letöltés indításához",
-  "emptyStateRetryHint": "Kattints a {action} gombra az újrapróbálkozáshoz",
-  "emptyExtensionsBrowseHint": "Kattints a {action} gombra a bővítmények kereséséhez"
+  "emptyStateRetryHint": "Kattints a {action} gombra az újrapróbálkozáshoz"
 }

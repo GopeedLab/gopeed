@@ -454,6 +454,5 @@
   "useMcpApiTokenTemplate": "Beralih ke konfigurasi terautentikasi",
   "mcpRequiresTcp": "Petunjuk koneksi agen tersedia saat protokol API menggunakan TCP.",
   "emptyTaskCreateHint": "Klik {action} untuk mulai mengunduh",
-  "emptyStateRetryHint": "Klik {action} untuk mencoba lagi",
-  "emptyExtensionsBrowseHint": "Klik {action} untuk mencari ekstensi"
+  "emptyStateRetryHint": "Klik {action} untuk mencoba lagi"
 }

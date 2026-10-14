@@ -454,6 +454,5 @@
   "useMcpApiTokenTemplate": "التبديل إلى إعدادات المصادقة",
   "mcpRequiresTcp": "تتوفر إرشادات ربط الوكيل عندما يكون بروتوكول API هو TCP.",
   "emptyTaskCreateHint": "اضغط على {action} لبدء التنزيل",
-  "emptyStateRetryHint": "اضغط على {action} لإعادة المحاولة",
-  "emptyExtensionsBrowseHint": "اضغط على {action} للعثور على الإضافات"
+  "emptyStateRetryHint": "اضغط على {action} لإعادة المحاولة"
 }

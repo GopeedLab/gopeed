@@ -454,6 +454,5 @@
   "useMcpApiTokenTemplate": "Переключиться на конфигурацию с аутентификацией",
   "mcpRequiresTcp": "Инструкции по подключению агентов доступны, когда протокол API — TCP.",
   "emptyTaskCreateHint": "Нажмите {action}, чтобы начать загрузку",
-  "emptyStateRetryHint": "Нажмите {action}, чтобы повторить попытку",
-  "emptyExtensionsBrowseHint": "Нажмите {action}, чтобы найти расширения"
+  "emptyStateRetryHint": "Нажмите {action}, чтобы повторить попытку"
 }

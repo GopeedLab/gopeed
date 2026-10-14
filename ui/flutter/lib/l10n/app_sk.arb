@@ -655,6 +655,5 @@
       }
     }
   },
-  "emptyStateRetryHint": "Kliknutím na {action} skúsite znova",
-  "emptyExtensionsBrowseHint": "Kliknutím na {action} vyhľadáte rozšírenia"
+  "emptyStateRetryHint": "Kliknutím na {action} skúsite znova"
 }

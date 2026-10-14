@@ -63,6 +63,7 @@ class _ContextIllustrationPainter extends CustomPainter {
   }
 
   void _paintPuzzle(Canvas canvas) {
+    canvas.translate(9, 0);
     final piece = Path()
       ..moveTo(42, 29)
       ..lineTo(62, 29)
@@ -84,10 +85,6 @@ class _ContextIllustrationPainter extends CustomPainter {
       ..close();
     canvas.drawPath(piece, _fill);
     canvas.drawPath(piece, _outline);
-    final floatingPiece = RRect.fromRectAndRadius(const Rect.fromLTWH(113, 21, 17, 17), const Radius.circular(4));
-    canvas.drawRRect(floatingPiece, Paint()..color = palette.cardBg);
-    canvas.drawRRect(floatingPiece, _detail);
-    canvas.drawCircle(const Offset(17, 88), 3, Paint()..color = palette.border);
   }
 
   void _paintSearch(Canvas canvas) {

@@ -417,20 +417,9 @@ class _Content extends StatelessWidget {
                                     ? AppEmptyIllustrationType.search
                                     : AppEmptyIllustrationType.puzzle,
                                 illustrationKey: const ValueKey('extensions-empty-illustration'),
-                                message: state.listFilter == ExtensionListFilter.installed
-                                    ? context.l10n.extensionInstalledEmpty
-                                    : state.storeQuery.isNotEmpty
+                                message: state.listFilter == ExtensionListFilter.market && state.storeQuery.isNotEmpty
                                     ? context.l10n.extensionStoreEmpty
                                     : context.l10n.noExtensions,
-                                action: state.listFilter == ExtensionListFilter.installed
-                                    ? AppEmptyStateAction(
-                                        buttonKey: const ValueKey('extensions-empty-browse'),
-                                        icon: Icons.extension_outlined,
-                                        label: context.l10n.extensionFind,
-                                        hint: context.l10n.emptyExtensionsBrowseHint,
-                                        onPressed: () => onFilter(ExtensionListFilter.market),
-                                      )
-                                    : null,
                               ),
                             )
                           else

@@ -638,6 +638,5 @@
   "webApiConfigReadOnlyHelp": "Veb versiyası API parametrlərinin onlayn dəyişdirilməsini dəstəkləmir. Server başlanğıc seçimlərini və ya konfiqurasiya faylını yeniləyin, sonra dəyişikliklərin qüvvəyə minməsi üçün xidməti yenidən başladın.",
   "mcpRequiresTcp": "Agent əlaqə təlimatları API protokolu TCP olduqda mövcuddur.",
   "emptyTaskCreateHint": "Endirməyə başlamaq üçün {action} düyməsinə klikləyin",
-  "emptyStateRetryHint": "Yenidən cəhd etmək üçün {action} düyməsinə klikləyin",
-  "emptyExtensionsBrowseHint": "Genişləndirmələri tapmaq üçün {action} düyməsinə klikləyin"
+  "emptyStateRetryHint": "Yenidən cəhd etmək üçün {action} düyməsinə klikləyin"
 }

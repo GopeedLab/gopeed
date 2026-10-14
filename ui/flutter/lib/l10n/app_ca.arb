@@ -454,6 +454,5 @@
   "useMcpApiTokenTemplate": "Canvia a la configuració autenticada",
   "mcpRequiresTcp": "Les instruccions de connexió d’agents estan disponibles quan el protocol de l’API és TCP.",
   "emptyTaskCreateHint": "Fes clic a {action} per començar a baixar",
-  "emptyStateRetryHint": "Fes clic a {action} per tornar-ho a provar",
-  "emptyExtensionsBrowseHint": "Fes clic a {action} per trobar extensions"
+  "emptyStateRetryHint": "Fes clic a {action} per tornar-ho a provar"
 }

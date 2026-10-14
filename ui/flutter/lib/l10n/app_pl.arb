@@ -454,6 +454,5 @@
   "useMcpApiTokenTemplate": "Przełącz na konfigurację z uwierzytelnianiem",
   "mcpRequiresTcp": "Instrukcje łączenia agentów są dostępne, gdy protokół API to TCP.",
   "emptyTaskCreateHint": "Kliknij {action}, aby rozpocząć pobieranie",
-  "emptyStateRetryHint": "Kliknij {action}, aby spróbować ponownie",
-  "emptyExtensionsBrowseHint": "Kliknij {action}, aby znaleźć rozszerzenia"
+  "emptyStateRetryHint": "Kliknij {action}, aby spróbować ponownie"
 }

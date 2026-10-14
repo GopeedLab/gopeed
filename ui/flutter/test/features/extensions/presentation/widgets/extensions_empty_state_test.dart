@@ -18,12 +18,14 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('empty installed list can open the market at width $width', (tester) async {
+    testWidgets('empty installed list matches the market and can switch tabs at width $width', (tester) async {
       await _pumpPage(tester, width, const ExtensionsState(listFilter: ExtensionListFilter.installed));
-      expect(find.text('No extensions installed yet'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('extensions-empty-browse')));
+      expect(find.text('No extensions'), findsOneWidget);
+      expect(find.byKey(const ValueKey('extensions-empty-browse')), findsNothing);
+      await tester.tap(find.text('Market'));
       await tester.pumpAndSettle();
-      expect(find.text('No extensions installed yet'), findsNothing);
+      final container = ProviderScope.containerOf(tester.element(find.byType(ExtensionsPage)));
+      expect(container.read(extensionsControllerProvider).value!.listFilter, ExtensionListFilter.market);
       expect(find.text('No extensions'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
