@@ -453,5 +453,7 @@
   "webMcpApiTokenHint": "API டோக்கனை அமைத்திருந்தால், முகவரை இணைக்கும்போது அங்கீகாரத் தகவலை அனுப்ப வேண்டும்",
   "useMcpApiTokenTemplate": "அங்கீகார உள்ளமைவுக்கு மாறு",
   "mcpRequiresTcp": "API நெறிமுறை TCP ஆக இருக்கும்போது முகவர் இணைப்பு வழிமுறைகள் கிடைக்கும்.",
-  "emptyTaskCreateHint": "பதிவிறக்கத்தைத் தொடங்க {action} ஐ அழுத்தவும்"
+  "emptyTaskCreateHint": "பதிவிறக்கத்தைத் தொடங்க {action} ஐ அழுத்தவும்",
+  "emptyStateRetryHint": "மீண்டும் முயற்சிக்க {action} ஐ அழுத்தவும்",
+  "emptyExtensionsBrowseHint": "நீட்டிப்புகளைக் கண்டறிய {action} ஐ அழுத்தவும்"
 }

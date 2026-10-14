@@ -453,5 +453,7 @@
   "webMcpApiTokenHint": "Nếu đã cấu hình API Token, bạn cần truyền thông tin xác thực khi kết nối tác nhân",
   "useMcpApiTokenTemplate": "Chuyển sang cấu hình có xác thực",
   "mcpRequiresTcp": "Hướng dẫn kết nối tác nhân khả dụng khi giao thức API là TCP.",
-  "emptyTaskCreateHint": "Nhấn {action} để bắt đầu tải xuống"
+  "emptyTaskCreateHint": "Nhấn {action} để bắt đầu tải xuống",
+  "emptyStateRetryHint": "Nhấn {action} để thử lại",
+  "emptyExtensionsBrowseHint": "Nhấn {action} để tìm tiện ích mở rộng"
 }

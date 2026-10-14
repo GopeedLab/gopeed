@@ -453,5 +453,7 @@
   "webMcpApiTokenHint": "API トークンを設定している場合、エージェント接続時に認証情報を渡す必要があります",
   "useMcpApiTokenTemplate": "認証付き設定に切り替える",
   "mcpRequiresTcp": "API プロトコルが TCP の場合にエージェント接続手順を利用できます。",
-  "emptyTaskCreateHint": "{action}をクリックしてダウンロードを開始"
+  "emptyTaskCreateHint": "{action}をクリックしてダウンロードを開始",
+  "emptyStateRetryHint": "{action}をクリックして再試行",
+  "emptyExtensionsBrowseHint": "{action}をクリックして拡張機能を探す"
 }

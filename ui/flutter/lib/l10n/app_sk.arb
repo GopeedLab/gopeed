@@ -654,5 +654,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "emptyStateRetryHint": "Kliknutím na {action} skúsite znova",
+  "emptyExtensionsBrowseHint": "Kliknutím na {action} vyhľadáte rozšírenia"
 }

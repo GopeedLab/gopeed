@@ -195,6 +195,7 @@ class ExtensionDetailView extends ConsumerWidget {
                 buttonKey: const ValueKey('extension-details-retry'),
                 icon: Icons.refresh_rounded,
                 label: context.l10n.retry,
+                hint: context.l10n.emptyStateRetryHint,
                 onPressed: () => ref.invalidate(storeExtensionDetailsProvider(detailKey)),
               ),
             ),

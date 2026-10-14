@@ -453,5 +453,7 @@
   "webMcpApiTokenHint": "Wenn du ein API-Token konfiguriert hast, müssen beim Verbinden des Agents Authentifizierungsinformationen übermittelt werden",
   "useMcpApiTokenTemplate": "Zur authentifizierten Konfiguration wechseln",
   "mcpRequiresTcp": "Anweisungen zur Agent-Verbindung sind verfügbar, wenn das API-Protokoll TCP ist.",
-  "emptyTaskCreateHint": "Klicke auf {action}, um den Download zu starten"
+  "emptyTaskCreateHint": "Klicke auf {action}, um den Download zu starten",
+  "emptyStateRetryHint": "Klicke auf {action}, um es erneut zu versuchen",
+  "emptyExtensionsBrowseHint": "Klicke auf {action}, um Erweiterungen zu finden"
 }

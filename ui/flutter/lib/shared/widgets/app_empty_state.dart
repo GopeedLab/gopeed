@@ -52,43 +52,57 @@ class AppEmptyState extends StatelessWidget {
   }
 }
 
-/// A small outlined action icon beside a muted label, matching task guidance.
+/// Places the action inside localized guidance, matching every empty state.
 class AppEmptyStateAction extends StatelessWidget {
   const AppEmptyStateAction({
     super.key,
     required this.icon,
     required this.label,
+    required this.hint,
     required this.onPressed,
     this.buttonKey,
   });
 
   final IconData icon;
   final String label;
+  final String Function(String action) hint;
   final VoidCallback onPressed;
   final Key? buttonKey;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AppTooltip(
-          message: label,
-          child: SizedBox.square(
-            dimension: 30,
-            child: shad.IconButton.outline(
-              key: buttonKey,
-              density: shad.ButtonDensity.compact,
-              onPressed: onPressed,
-              icon: Icon(icon, size: 16),
+    const actionMarker = '\uFFFC';
+    final parts = hint(actionMarker).split(actionMarker);
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: parts.first.trimRight()),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: AppTooltip(
+                message: label,
+                child: Semantics(
+                  label: label,
+                  child: SizedBox.square(
+                    dimension: 30,
+                    child: shad.IconButton.outline(
+                      key: buttonKey,
+                      density: shad.ButtonDensity.compact,
+                      onPressed: onPressed,
+                      icon: Icon(icon, size: 16),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(label, style: TextStyle(color: AppPalette.of(context).textMuted, fontSize: 13)),
-        ),
-      ],
+          TextSpan(text: parts.last.trimLeft()),
+        ],
+      ),
+      textAlign: TextAlign.center,
+      style: TextStyle(color: AppPalette.of(context).textMuted, fontSize: 13),
     );
   }
 }

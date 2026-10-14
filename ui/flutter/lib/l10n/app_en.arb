@@ -655,5 +655,23 @@
         "type": "String"
       }
     }
+  },
+  "emptyStateRetryHint": "Click {action} to retry",
+  "emptyExtensionsBrowseHint": "Click {action} to find extensions",
+  "@emptyStateRetryHint": {
+    "description": "Empty-state guidance; action is replaced with an inline icon button.",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "@emptyExtensionsBrowseHint": {
+    "description": "Empty-state guidance; action is replaced with an inline icon button.",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -427,6 +427,7 @@ class _Content extends StatelessWidget {
                                         buttonKey: const ValueKey('extensions-empty-browse'),
                                         icon: Icons.extension_outlined,
                                         label: context.l10n.extensionFind,
+                                        hint: context.l10n.emptyExtensionsBrowseHint,
                                         onPressed: () => onFilter(ExtensionListFilter.market),
                                       )
                                     : null,
@@ -1285,6 +1286,7 @@ class _ErrorState extends StatelessWidget {
         buttonKey: const ValueKey('extensions-error-retry'),
         icon: Icons.refresh_rounded,
         label: context.l10n.retry,
+        hint: context.l10n.emptyStateRetryHint,
         onPressed: onRetry,
       ),
     );
