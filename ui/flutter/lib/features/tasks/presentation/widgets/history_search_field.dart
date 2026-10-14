@@ -3,7 +3,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
-import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/app_search_field.dart';
 
 class HistorySearchField extends StatelessWidget {
   const HistorySearchField({super.key, required this.controller, required this.onChanged});
@@ -18,7 +18,7 @@ class HistorySearchField extends StatelessWidget {
     return ConstrainedBox(
       // Allow large accessibility text to grow instead of clipping the line.
       constraints: const BoxConstraints(minHeight: 38),
-      child: AppTextField(
+      child: AppSearchField(
         key: const ValueKey('create-history-filter'),
         controller: controller,
         style: textStyle,
@@ -30,7 +30,7 @@ class HistorySearchField extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        features: [InputFeature.leading(Icon(Icons.search_rounded, size: 15, color: palette.textMuted))],
+        iconSize: 15,
         onChanged: onChanged,
       ),
     );

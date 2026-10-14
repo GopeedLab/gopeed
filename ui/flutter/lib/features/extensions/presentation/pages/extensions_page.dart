@@ -19,6 +19,7 @@ import '../../../../shared/widgets/app_swipe_tabs.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
@@ -674,12 +675,11 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final search = AppTextField(
+    final search = AppSearchField(
       key: const ValueKey('extension-search-input'),
       controller: searchController,
       padding: MediaQuery.sizeOf(context).width >= Breakpoints.mobile ? AppDesignTokens.compactTextFieldPadding : null,
       placeholder: Text(context.l10n.searchExtensions, style: TextStyle(color: palette.searchHint)),
-      features: [shad.InputFeature.leading(Icon(Icons.search_rounded, size: 16, color: palette.textMuted))],
       onSubmitted: onSearch,
     );
     final sorting = Row(
