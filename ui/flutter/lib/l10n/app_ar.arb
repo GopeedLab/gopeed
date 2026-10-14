@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "هل أنت متأكد أنك تريد إلغاء تثبيت \"{name}\"؟",
   "uninstall": "إلغاء التثبيت",
   "unableLoadExtensions": "غير قادر على تمديد الشحنات",
+  "unableLoadExtensionDetails": "تعذّر تحميل تفاصيل الإضافة",
   "filters": "عوامل التصفية",
   "allTasks": "جميع المهام",
   "searchDownloads": "ابحثوا عن التحميلات",

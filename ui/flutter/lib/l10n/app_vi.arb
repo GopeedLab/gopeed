@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Bạn có chắc muốn gỡ bỏ cài đặt “{name} chiếc xe không?",
   "uninstall": "Hủy cài đặt",
   "unableLoadExtensions": "Không thể nạp phần mở rộng",
+  "unableLoadExtensionDetails": "Không thể tải thông tin chi tiết tiện ích mở rộng",
   "filters": "Lọc",
   "allTasks": "Mọi tác vụ",
   "searchDownloads": "Tải về...",

@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "당신은 \"{name}\"을 제거하고 싶지 않습니까?",
   "uninstall": "Uninstaller를 제거",
   "unableLoadExtensions": "확장을 로드할 수 없습니다",
+  "unableLoadExtensionDetails": "확장 프로그램 세부 정보를 불러올 수 없습니다",
   "filters": "필터링",
   "allTasks": "모든 작업",
   "searchDownloads": "다운로드 수...",

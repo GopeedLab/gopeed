@@ -344,6 +344,7 @@
   "removeExtensionConfirm": "Are you sure you want to uninstall “{name}”?",
   "uninstall": "Uninstall",
   "unableLoadExtensions": "Unable to load extensions",
+  "unableLoadExtensionDetails": "Unable to load extension details",
   "filters": "Filters",
   "allTasks": "All Tasks",
   "searchDownloads": "Search downloads…",

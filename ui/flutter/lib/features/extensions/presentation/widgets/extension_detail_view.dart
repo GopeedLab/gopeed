@@ -15,8 +15,8 @@ import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
+import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_toast.dart';
-import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/detail/app_detail_surface.dart';
 import '../../../../util/util.dart';
 import '../../application/extensions_controller.dart';
@@ -175,25 +175,26 @@ class ExtensionDetailView extends ConsumerWidget {
               ),
           ],
         ),
-        if (details != null && detailKey != null && (details.isLoading || details.hasError))
+        if (details?.isLoading == true)
+          const Padding(
+            key: ValueKey('extension-details-loading'),
+            padding: EdgeInsets.only(top: 24),
+            child: Center(
+              child: SizedBox.square(dimension: 44, child: Center(child: shad.CircularProgressIndicator())),
+            ),
+          ),
+        if (details?.hasError == true && details?.isLoading != true && detailKey != null)
           Padding(
             padding: const EdgeInsets.only(top: 24),
-            child: Center(
-              child: SizedBox.square(
-                dimension: 44,
-                child: details.isLoading
-                    ? const Center(
-                        key: ValueKey('extension-details-loading'),
-                        child: SizedBox.square(dimension: 24, child: shad.CircularProgressIndicator()),
-                      )
-                    : AppTooltip(
-                        message: context.l10n.retry,
-                        child: shad.IconButton.ghost(
-                          key: const ValueKey('extension-details-retry'),
-                          onPressed: () => ref.invalidate(storeExtensionDetailsProvider(detailKey)),
-                          icon: Icon(Icons.refresh_rounded, size: 24, color: palette.textMuted),
-                        ),
-                      ),
+            child: AppEmptyState(
+              key: const ValueKey('extension-details-error-state'),
+              message: context.l10n.unableLoadExtensionDetails,
+              illustrationKey: const ValueKey('extension-details-error-illustration'),
+              action: AppEmptyStateAction(
+                buttonKey: const ValueKey('extension-details-retry'),
+                icon: Icons.refresh_rounded,
+                label: context.l10n.retry,
+                onPressed: () => ref.invalidate(storeExtensionDetailsProvider(detailKey)),
               ),
             ),
           ),

@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Sei sicuro di voler disinstallare “{name}”?",
   "uninstall": "Disinstallare",
   "unableLoadExtensions": "Incapace di caricare le estensioni",
+  "unableLoadExtensionDetails": "Impossibile caricare i dettagli dell’estensione",
   "filters": "Filtri",
   "allTasks": "Tutte le attività",
   "searchDownloads": "Cerca downloads...",

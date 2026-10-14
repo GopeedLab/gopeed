@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "確定要解除安裝「{name}」嗎？",
   "uninstall": "解除安裝",
   "unableLoadExtensions": "無法載入擴充套件",
+  "unableLoadExtensionDetails": "擴充功能詳情載入失敗",
   "filters": "篩選",
   "allTasks": "所有任務",
   "searchDownloads": "搜尋下載任務…",

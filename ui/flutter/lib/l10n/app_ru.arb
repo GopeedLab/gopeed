@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Вы уверены, что хотите удалить «{name}»?",
   "uninstall": "Удалить",
   "unableLoadExtensions": "Невозможно загрузить расширения",
+  "unableLoadExtensionDetails": "Не удалось загрузить сведения о расширении",
   "filters": "Фильтры",
   "allTasks": "Все задачи",
   "searchDownloads": "Поисковые загрузки...",

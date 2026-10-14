@@ -17,6 +17,7 @@ import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_swipe_tabs.dart';
 import '../../../../shared/widgets/app_primary_button.dart';
+import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
@@ -124,10 +125,8 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
                   ),
                   child: stateAsync.when(
                     loading: () => _buildContent(const ExtensionsState(loadingInstalled: true, loadingStore: true)),
-                    error: (error, _) => _ErrorState(
-                      error: error,
-                      onRetry: () => ref.read(extensionsControllerProvider.notifier).loadInitialData(),
-                    ),
+                    error: (error, _) =>
+                        _ErrorState(onRetry: () => ref.read(extensionsControllerProvider.notifier).loadInitialData()),
                     data: (state) {
                       if (state.listFilter == ExtensionListFilter.market &&
                           state.storePagination?.hasNext == true &&
@@ -409,11 +408,23 @@ class _Content extends StatelessWidget {
                             )
                           else if (state.displayItems.isEmpty)
                             SliverFillRemaining(
-                              child: Center(
-                                child: Text(
-                                  context.l10n.noExtensions,
-                                  style: TextStyle(color: palette.textSecondary, fontSize: 14),
-                                ),
+                              hasScrollBody: false,
+                              child: AppEmptyState(
+                                key: const ValueKey('extensions-empty-state'),
+                                illustrationKey: const ValueKey('extensions-empty-illustration'),
+                                message: state.listFilter == ExtensionListFilter.installed
+                                    ? context.l10n.extensionInstalledEmpty
+                                    : state.storeQuery.isNotEmpty
+                                    ? context.l10n.extensionStoreEmpty
+                                    : context.l10n.noExtensions,
+                                action: state.listFilter == ExtensionListFilter.installed
+                                    ? AppEmptyStateAction(
+                                        buttonKey: const ValueKey('extensions-empty-browse'),
+                                        icon: Icons.extension_outlined,
+                                        label: context.l10n.extensionFind,
+                                        onPressed: () => onFilter(ExtensionListFilter.market),
+                                      )
+                                    : null,
                               ),
                             )
                           else
@@ -1255,36 +1266,21 @@ class _ExtensionSettingsPanel extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.error, required this.onRetry});
+  const _ErrorState({required this.onRetry});
 
-  final Object error;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.extension_off_outlined, size: 32, color: palette.error),
-            const SizedBox(height: 12),
-            Text(
-              context.l10n.unableLoadExtensions,
-              style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              error.toString(),
-              textAlign: TextAlign.center,
-              style: TextStyle(color: palette.textSecondary),
-            ),
-            const SizedBox(height: 16),
-            shad.SecondaryButton(onPressed: onRetry, child: Text(context.l10n.retry)),
-          ],
-        ),
+    return AppEmptyState(
+      key: const ValueKey('extensions-error-state'),
+      illustrationKey: const ValueKey('extensions-error-illustration'),
+      message: context.l10n.unableLoadExtensions,
+      action: AppEmptyStateAction(
+        buttonKey: const ValueKey('extensions-error-retry'),
+        icon: Icons.refresh_rounded,
+        label: context.l10n.retry,
+        onPressed: onRetry,
       ),
     );
   }

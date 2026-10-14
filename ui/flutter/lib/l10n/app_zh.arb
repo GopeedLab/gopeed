@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "确定要卸载“{name}”吗？",
   "uninstall": "卸载",
   "unableLoadExtensions": "无法加载扩展",
+  "unableLoadExtensionDetails": "扩展详情加载失败",
   "filters": "筛选",
   "allTasks": "全部任务",
   "searchDownloads": "搜索下载任务…",

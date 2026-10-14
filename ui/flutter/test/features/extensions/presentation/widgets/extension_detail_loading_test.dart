@@ -45,7 +45,6 @@ void main() {
       await tester.pump();
       expect(find.byKey(const ValueKey('extension-details-loading')), findsOneWidget);
       expect(find.byKey(const ValueKey('extension-details-install')), findsOneWidget);
-      final loadingCenter = tester.getCenter(find.byKey(const ValueKey('extension-details-loading')));
       expect(site.detailCalls, 1);
       for (var attempt = 0; attempt < 2; attempt++) {
         attempts[attempt].completeError(StateError('offline'));
@@ -61,7 +60,9 @@ void main() {
       expect(find.byKey(const ValueKey('extension-details-retry')), findsOneWidget);
       expect(find.byKey(const ValueKey('extension-details-loading')), findsNothing);
       expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
-      expect(tester.getCenter(find.byKey(const ValueKey('extension-details-retry'))), loadingCenter);
+      expect(find.byKey(const ValueKey('extension-details-error-illustration')), findsOneWidget);
+      expect(find.text('Unable to load extension details'), findsOneWidget);
+      expect(find.byKey(const ValueKey('extension-details-install')), findsOneWidget);
       await tester.pump(const Duration(seconds: 5));
       expect(site.detailCalls, 3);
       final reload = Completer<StoreExtension>();

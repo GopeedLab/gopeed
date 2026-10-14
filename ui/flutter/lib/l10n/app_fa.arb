@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "آیا مطمئن هستید که می خواهید \"{name}\" را حذف نصب کنید؟",
   "uninstall": "حذف نصب",
   "unableLoadExtensions": "افزونه‌ها بارگیری نشدند",
+  "unableLoadExtensionDetails": "بارگیری جزئیات افزونه ناموفق بود",
   "filters": "فیلترها",
   "allTasks": "همه وظایف",
   "searchDownloads": "جستجوی دانلودها",

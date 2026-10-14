@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Sind Sie sicher, dass Sie „{name}“ deinstallieren möchten?",
   "uninstall": "Deinstallation",
   "unableLoadExtensions": "Erweiterungen können nicht geladen werden",
+  "unableLoadExtensionDetails": "Erweiterungsdetails konnten nicht geladen werden",
   "filters": "Filter",
   "allTasks": "Alle Aufgaben",
   "searchDownloads": "Downloads suchen…",

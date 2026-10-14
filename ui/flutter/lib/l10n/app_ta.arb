@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "\"{name}\" ஐ நிச்சயமாக நிறுவல் நீக்க விரும்புகிறீர்களா?",
   "uninstall": "நீக்குக",
   "unableLoadExtensions": "நீட்டிப்புகளை ஏற்ற முடியவில்லை",
+  "unableLoadExtensionDetails": "நீட்டிப்பின் விவரங்களை ஏற்ற முடியவில்லை",
   "filters": "வடிக்கட்டிகள்",
   "allTasks": "அனைத்து பணிகளையும் நகலெடு",
   "searchDownloads": "பதிவிறக்கங்களைத் தேடுங்கள்...",

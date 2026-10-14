@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Esteu segur que voleu desinstal·lar “{name}”?",
   "uninstall": "Desinstal· la",
   "unableLoadExtensions": "No s' han pogut carregar les extensions",
+  "unableLoadExtensionDetails": "No s’han pogut carregar els detalls de l’extensió",
   "filters": "Filtres",
   "allTasks": "Totes les tasques",
   "searchDownloads": "Cerca baixades...",

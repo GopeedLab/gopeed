@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Apakah Anda yakin ingin menghapus instalasi “{name}”?",
   "uninstall": "Batalkan",
   "unableLoadExtensions": "Tidak dapat memuat ekstensi",
+  "unableLoadExtensionDetails": "Tidak dapat memuat detail ekstensi",
   "filters": "Filter",
   "allTasks": "Semua Tugas",
   "searchDownloads": "Cari pengunduhan...",

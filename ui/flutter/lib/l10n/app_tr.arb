@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "“{name}” yüklememek istediğinizden emin misiniz?",
   "uninstall": "Kaldır",
   "unableLoadExtensions": "uzatmaları yükleyemez",
+  "unableLoadExtensionDetails": "Eklenti ayrıntıları yüklenemedi",
   "filters": "Filtreler",
   "allTasks": "Tüm Görevler",
   "searchDownloads": "Arama indirs...",

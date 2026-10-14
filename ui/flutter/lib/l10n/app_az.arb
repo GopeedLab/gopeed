@@ -334,6 +334,7 @@
   "removeExtensionConfirm": "“{name}” uzantısını sistemdən silmək istədiyinizə əminsiniz?",
   "uninstall": "Sistemdən sil",
   "unableLoadExtensions": "Uzantıları yükləmək mümkün olmadı",
+  "unableLoadExtensionDetails": "Əlavənin təfərrüatlarını yükləmək mümkün olmadı",
   "filters": "Süzgəclər",
   "allTasks": "Bütün Tapşırıqlar",
   "searchDownloads": "Endirmələri axtar…",

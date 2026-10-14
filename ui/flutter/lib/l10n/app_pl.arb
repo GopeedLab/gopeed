@@ -320,6 +320,7 @@
   "removeExtensionConfirm": "Jesteś pewien, że chcesz odblokować \"{name}\"?",
   "uninstall": "Odinstaluj",
   "unableLoadExtensions": "Nie można wczytać rozszerzeń",
+  "unableLoadExtensionDetails": "Nie można wczytać szczegółów rozszerzenia",
   "filters": "Filtry",
   "allTasks": "Wszystkie zadania",
   "searchDownloads": "Wyszukaj pliki do pobrania...",
