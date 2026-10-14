@@ -412,6 +412,10 @@ class _Content extends StatelessWidget {
                               hasScrollBody: false,
                               child: AppEmptyState(
                                 key: const ValueKey('extensions-empty-state'),
+                                illustration:
+                                    state.listFilter == ExtensionListFilter.market && state.storeQuery.isNotEmpty
+                                    ? AppEmptyIllustrationType.search
+                                    : AppEmptyIllustrationType.puzzle,
                                 illustrationKey: const ValueKey('extensions-empty-illustration'),
                                 message: state.listFilter == ExtensionListFilter.installed
                                     ? context.l10n.extensionInstalledEmpty
@@ -1274,6 +1278,7 @@ class _ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppEmptyState(
       key: const ValueKey('extensions-error-state'),
+      illustration: AppEmptyIllustrationType.connectionError,
       illustrationKey: const ValueKey('extensions-error-illustration'),
       message: context.l10n.unableLoadExtensions,
       action: AppEmptyStateAction(

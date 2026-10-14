@@ -188,6 +188,7 @@ class ExtensionDetailView extends ConsumerWidget {
             padding: const EdgeInsets.only(top: 24),
             child: AppEmptyState(
               key: const ValueKey('extension-details-error-state'),
+              illustration: AppEmptyIllustrationType.documentError,
               message: context.l10n.unableLoadExtensionDetails,
               illustrationKey: const ValueKey('extension-details-error-illustration'),
               action: AppEmptyStateAction(

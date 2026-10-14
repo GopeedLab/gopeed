@@ -14,6 +14,7 @@ class TaskEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppEmptyState(
       message: message ?? context.l10n.emptyTaskList,
+      illustration: AppEmptyIllustrationType.inbox,
       illustrationKey: const ValueKey('task-empty-illustration'),
       action: onCreateTask == null ? null : TaskEmptyCreateHint(onCreateTask: onCreateTask!),
     );
