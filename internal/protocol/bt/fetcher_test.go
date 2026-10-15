@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/GopeedLab/gopeed/internal/controller"
@@ -69,6 +70,80 @@ func TestFetcher_ResolveWithProxy(t *testing.T) {
 		Usr:    usr,
 		Pwd:    pwd,
 	}))
+}
+
+func TestFetcher_CloseAfterInit(t *testing.T) {
+	if err := closeClient(); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 100; i++ {
+		f := buildFetcher().(*Fetcher)
+		f.meta.Req = &base.Request{}
+		lock.Lock()
+		err := f.initClient()
+		lock.Unlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := closeClient(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestFetcher_CloseWithoutClient(t *testing.T) {
+	if err := closeClient(); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("restored task", func(t *testing.T) {
+		_, build := new(FetcherManager).Restore()
+		f := build(&fetcher.FetcherMeta{
+			Req:  &base.Request{URL: "./testdata/test.torrent"},
+			Opts: &base.Options{},
+		}, &fetcherData{})
+		f.Setup(controller.NewController())
+		if err := f.Close(); err != nil {
+			t.Errorf("Close() got = %v, want nil", err)
+		}
+	})
+
+	t.Run("failed resolve", func(t *testing.T) {
+		f := buildFetcher()
+		if err := f.Resolve(&base.Request{URL: "./testdata/not-exist.torrent"}, nil); err == nil {
+			t.Fatal("Resolve() got = nil, want error")
+		}
+		if err := f.Close(); err != nil {
+			t.Errorf("Close() got = %v, want nil", err)
+		}
+	})
+}
+
+func TestFetcher_ConcurrentResolveAndClose(t *testing.T) {
+	if err := closeClient(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { closeClient() })
+
+	var wg sync.WaitGroup
+	for _, u := range []string{"./testdata/test.torrent", "./testdata/ubuntu-22.04-live-server-amd64.iso.torrent"} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 10; i++ {
+				f := buildFetcher()
+				if err := f.Resolve(&base.Request{URL: u}, nil); err != nil {
+					t.Errorf("Resolve(%s) got = %v", u, err)
+					return
+				}
+				if err := f.Close(); err != nil {
+					t.Errorf("Close() got = %v", err)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func doResolve(t *testing.T, fetcher fetcher.Fetcher) {

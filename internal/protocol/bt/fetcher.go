@@ -61,15 +61,10 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	return
 }
 
+// initClient must be called with lock held.
 func (f *Fetcher) initClient() (err error) {
-	lock.Lock()
-	defer lock.Unlock()
-
 	if client != nil {
 		return
-	}
-	if closeCtx == nil {
-		closeCtx, closeFunc = context.WithCancel(context.Background())
 	}
 
 	cfg = torrent.NewDefaultClientConfig()
@@ -86,9 +81,8 @@ func (f *Fetcher) initClient() (err error) {
 	}
 
 	closeCtx, closeFunc = context.WithCancel(context.Background())
-	go func() {
-		dnsResolver.Run(closeCtx)
-	}()
+	// closeClient may reset closeCtx before the goroutine runs, so pass it as an argument.
+	go dnsResolver.Run(closeCtx)
 	return
 }
 
@@ -144,8 +138,11 @@ func (f *Fetcher) Close() (err error) {
 	f.safeDrop()
 	f.torrentDropFunc()
 	f.uploadDoneCh <- nil
-	if len(client.Torrents()) == 0 {
-		err = closeClient()
+
+	lock.Lock()
+	defer lock.Unlock()
+	if client != nil && len(client.Torrents()) == 0 {
+		err = doCloseClient()
 	}
 	return nil
 }
@@ -643,9 +640,6 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 	if err = base.ParseReqExtra[bt.ReqExtra](req); err != nil {
 		return
 	}
-	if err = f.initClient(); err != nil {
-		return
-	}
 	schema := util.ParseSchema(req.URL)
 	privateTorrent := false
 	var spec *torrent.TorrentSpec
@@ -695,18 +689,7 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 			return
 		}
 	}
-	spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
-		ClientBaseDir: cfg.DataDir,
-		FilePathMaker: func(opts storage.FilePathMakerOpts) string {
-			_, name := torrentFileLayout(opts.Info, *opts.File)
-			return name
-		},
-		TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
-			return f.meta.Opts.Path
-		},
-	})
-	f.torrent, _, err = client.AddTorrentSpec(spec)
-	if err != nil {
+	if err = f.addTorrentSpec(spec); err != nil {
 		return
 	}
 
@@ -742,6 +725,28 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 	return
 }
 
+// addTorrentSpec holds lock until the torrent is added, so the client cannot be closed as idle in between.
+func (f *Fetcher) addTorrentSpec(spec *torrent.TorrentSpec) (err error) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if err = f.initClient(); err != nil {
+		return
+	}
+	spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
+		ClientBaseDir: cfg.DataDir,
+		FilePathMaker: func(opts storage.FilePathMakerOpts) string {
+			_, name := torrentFileLayout(opts.Info, *opts.File)
+			return name
+		},
+		TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
+			return f.meta.Opts.Path
+		},
+	})
+	f.torrent, _, err = client.AddTorrentSpec(spec)
+	return
+}
+
 func (f *Fetcher) seedRadio() float64 {
 	var bytesRead int64
 	if f.Meta().Res != nil {
@@ -767,6 +772,11 @@ func closeClient() error {
 	lock.Lock()
 	defer lock.Unlock()
 
+	return doCloseClient()
+}
+
+// doCloseClient must be called with lock held.
+func doCloseClient() error {
 	if closeFunc != nil {
 		closeFunc()
 	}
