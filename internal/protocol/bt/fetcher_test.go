@@ -366,3 +366,52 @@ func TestFetcher_Patch(t *testing.T) {
 		}
 	})
 }
+
+func TestFetcher_PeerDiscoveryConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		stored         any
+		wantDisableDHT bool
+		wantDisablePEX bool
+	}{
+		{"default config", new(FetcherManager).DefaultConfig(), false, false},
+		{"stored config without the fields", map[string]any{"listenPort": 0, "seedRatio": 1.0}, false, false},
+		{"both disabled", map[string]any{"disableDht": true, "disablePex": true}, true, true},
+		{"only DHT disabled", map[string]any{"disableDht": true}, true, false},
+		{"only PEX disabled", map[string]any{"disablePex": true}, false, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := buildFetcherWithConfig(tt.stored).(*Fetcher)
+			if f.config.DisableDHT != tt.wantDisableDHT || f.config.DisablePEX != tt.wantDisablePEX {
+				t.Errorf("config got DisableDHT = %v, DisablePEX = %v, want %v, %v", f.config.DisableDHT, f.config.DisablePEX, tt.wantDisableDHT, tt.wantDisablePEX)
+			}
+		})
+	}
+}
+
+func TestFetcher_PeerDiscoveryDisabledOnClient(t *testing.T) {
+	if err := closeClient(); err != nil {
+		t.Fatal(err)
+	}
+	f := buildFetcherWithConfig(map[string]any{"disableDht": true, "disablePex": true})
+	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.NoDHT || !cfg.DisablePEX {
+		t.Errorf("client config got NoDHT = %v, DisablePEX = %v, want true", cfg.NoDHT, cfg.DisablePEX)
+	}
+	if n := len(client.DhtServers()); n != 0 {
+		t.Errorf("client got %d DHT servers, want 0", n)
+	}
+}
+
+func buildFetcherWithConfig(stored any) fetcher.Fetcher {
+	fetcher := new(FetcherManager).Build()
+	newController := controller.NewController()
+	newController.GetConfig = func(v any) {
+		json.Unmarshal([]byte(test.ToJson(stored)), v)
+	}
+	fetcher.Setup(newController)
+	return fetcher
+}

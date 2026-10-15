@@ -9,4 +9,8 @@ type config struct {
 	SeedRatio float64 `json:"seedRatio"`
 	// SeedTime is the time in seconds to seed after downloading is complete.
 	SeedTime int64 `json:"seedTime"`
+	// DisableDHT and DisablePEX turn off DHT and PEX peer discovery. Like ListenPort,
+	// they are read when the shared client is built.
+	DisableDHT bool `json:"disableDht"`
+	DisablePEX bool `json:"disablePex"`
 }

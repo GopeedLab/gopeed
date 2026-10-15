@@ -77,6 +77,8 @@ func (f *Fetcher) initClient() (err error) {
 	cfg.Bep20 = fmt.Sprintf("-GP%s-", parseBep20())
 	cfg.ExtendedHandshakeClientVersion = fmt.Sprintf("Gopeed %s", base.Version)
 	cfg.ListenPort = f.config.ListenPort
+	cfg.NoDHT = f.config.DisableDHT
+	cfg.DisablePEX = f.config.DisablePEX
 	cfg.HTTPProxy = f.ctl.GetProxy(f.meta.Req.Proxy)
 	dnsResolver := &DnsCacheResolver{RefreshTimeout: 5 * time.Minute}
 	cfg.TrackerDialContext = dnsResolver.DialContext
@@ -839,6 +841,8 @@ func (fm *FetcherManager) DefaultConfig() any {
 		SeedKeep:   false,
 		SeedRatio:  1.0,
 		SeedTime:   120 * 60,
+		DisableDHT: false,
+		DisablePEX: false,
 	}
 }
 
