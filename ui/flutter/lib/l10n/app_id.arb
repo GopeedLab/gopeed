@@ -154,6 +154,8 @@
   "seedKeep": "Terus seeding hingga dihentikan secara manual",
   "seedRatio": "Rasio Seed",
   "seedTime": "Waktu Seed (menit)",
+  "enableDht": "Aktifkan DHT",
+  "enablePex": "Aktifkan PEX",
   "setAsDefaultBtClient": "Atur sebagai klien baku BT",
   "taskDetail": "Detail Tugas",
   "taskName": "Nama Tugas",

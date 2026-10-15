@@ -154,6 +154,8 @@
   "seedKeep": "Mantener sembrado",
   "seedRatio": "Ratio de semilla",
   "seedTime": "Tiempo de semilla (minutos)",
+  "enableDht": "Activar DHT",
+  "enablePex": "Activar PEX",
   "setAsDefaultBtClient": "Establecer como el cliente BT predeterminado",
   "taskDetail": "Detalles de la Tarea",
   "taskName": "Nombre de la Tarea",

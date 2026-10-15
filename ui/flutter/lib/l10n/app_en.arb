@@ -168,6 +168,8 @@
   "seedKeep": "Keep seeding until manually stopped",
   "seedRatio": "Seed ratio",
   "seedTime": "Seed time (minutes)",
+  "enableDht": "Enable DHT",
+  "enablePex": "Enable PEX",
   "setAsDefaultBtClient": "Set as the default BT client",
   "taskDetail": "Task Detail",
   "taskName": "Task Name",

@@ -154,6 +154,8 @@
   "seedKeep": "الاستمرار في المشاركة حتى الإيقاف اليدوي",
   "seedRatio": "نسبة المشاركة",
   "seedTime": "مدة المشاركة (دقائق)",
+  "enableDht": "تفعيل DHT",
+  "enablePex": "تفعيل PEX",
   "setAsDefaultBtClient": "تعيين كعميل تورنت افتراضي",
   "taskDetail": "تفاصيل المهمة",
   "taskName": "اسم المهمة",

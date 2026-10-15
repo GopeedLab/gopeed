@@ -154,6 +154,8 @@
   "seedKeep": "Giữ hạt giống cho đến khi tay dừng lại",
   "seedRatio": "Tốc độ Hạt giống",
   "seedTime": "Thời gian hạt giống ( Phút)",
+  "enableDht": "Bật DHT",
+  "enablePex": "Bật PEX",
   "setAsDefaultBtClient": "Đặt là trình khách BT mặc định",
   "taskDetail": "Chi tiết tác vụ",
   "taskName": "Tên tác vụ",

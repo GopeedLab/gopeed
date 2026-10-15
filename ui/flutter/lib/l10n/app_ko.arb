@@ -154,6 +154,8 @@
   "seedKeep": "수동으로 중지할 때까지 계속 시드",
   "seedRatio": "시드 비율",
   "seedTime": "시드 시간(분)",
+  "enableDht": "DHT 사용",
+  "enablePex": "PEX 사용",
   "setAsDefaultBtClient": "기본 BT 클라이언트로 설정",
   "taskDetail": "작업 상세 정보",
   "taskName": "작업 이름",

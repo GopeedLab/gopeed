@@ -154,6 +154,8 @@
   "seedKeep": "Weiter-seeden bis manuell gestoppt",
   "seedRatio": "Seed Verhältniss",
   "seedTime": "Seed-Zeit (Minuten)",
+  "enableDht": "DHT aktivieren",
+  "enablePex": "PEX aktivieren",
   "setAsDefaultBtClient": "Als Standard-BT-Client festlegen",
   "taskDetail": "Aufgabendetails",
   "taskName": "Aufgabenname",

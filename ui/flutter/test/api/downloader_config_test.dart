@@ -36,6 +36,28 @@ void main() {
     expect(decoded.token, 'secret');
   });
 
+  test('BitTorrent peer discovery settings round-trip with the Go json keys', () {
+    final config = DownloaderConfig();
+    config.protocolConfig.bt
+      ..disableDht = true
+      ..disablePex = true;
+
+    final json = config.toJson();
+    final bt = (json['protocolConfig'] as Map<String, dynamic>)['bt'] as Map<String, dynamic>;
+    expect(bt['disableDht'], isTrue);
+    expect(bt['disablePex'], isTrue);
+
+    final decoded = DownloaderConfig.fromJson(json).protocolConfig.bt;
+    expect(decoded.disableDht, isTrue);
+    expect(decoded.disablePex, isTrue);
+  });
+
+  test('BitTorrent peer discovery stays on when a stored config lacks the keys', () {
+    final bt = BtConfig.fromJson({'listenPort': 6881, 'seedRatio': 1.0});
+    expect(bt.disableDht, isFalse);
+    expect(bt.disablePex, isFalse);
+  });
+
   test('Flutter preferences round-trip through the Go-owned extra config', () {
     final config = DownloaderConfig();
     config.extra

@@ -98,6 +98,8 @@ BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
   seedKeep: json['seedKeep'] as bool? ?? false,
   seedRatio: (json['seedRatio'] as num?)?.toDouble() ?? 0,
   seedTime: (json['seedTime'] as num?)?.toInt() ?? 0,
+  disableDht: json['disableDht'] as bool? ?? false,
+  disablePex: json['disablePex'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
@@ -106,6 +108,8 @@ Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
   'seedKeep': instance.seedKeep,
   'seedRatio': instance.seedRatio,
   'seedTime': instance.seedTime,
+  'disableDht': instance.disableDht,
+  'disablePex': instance.disablePex,
 };
 
 Ed2kConfig _$Ed2kConfigFromJson(Map<String, dynamic> json) => Ed2kConfig(

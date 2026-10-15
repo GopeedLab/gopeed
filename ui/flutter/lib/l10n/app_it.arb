@@ -154,6 +154,8 @@
   "seedKeep": "Continuare a vedere fino a quando non è stato interrotto manualmente",
   "seedRatio": "Rapporto di taglio",
   "seedTime": "Tempo di seme (minuti)",
+  "enableDht": "Abilita DHT",
+  "enablePex": "Abilita PEX",
   "setAsDefaultBtClient": "Impostare come client BT predefinito",
   "taskDetail": "Dettaglio delle attività",
   "taskName": "Nome della missione",
