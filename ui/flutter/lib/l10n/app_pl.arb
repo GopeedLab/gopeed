@@ -154,6 +154,8 @@
   "seedKeep": "Siew siewny do momentu ręcznego zatrzymania",
   "seedRatio": "Stosunek materiału siewnego",
   "seedTime": "Czas nasadzenia (minuty)",
+  "enableDht": "Włącz DHT",
+  "enablePex": "Włącz PEX",
   "setAsDefaultBtClient": "Ustaw jako domyślny klient BT",
   "taskDetail": "Szczegóły zadania",
   "taskName": "Nazwa zadania",

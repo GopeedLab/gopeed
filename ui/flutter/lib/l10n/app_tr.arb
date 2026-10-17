@@ -154,6 +154,8 @@
   "seedKeep": "Manuel olarak durdurulana kadar seed'e devam et",
   "seedRatio": "Seed oranı",
   "seedTime": "Seed süresi (dakika)",
+  "enableDht": "DHT'yi etkinleştir",
+  "enablePex": "PEX'i etkinleştir",
   "setAsDefaultBtClient": "Varsayılan BitTorrent istemcisi olarak ayarla",
   "taskDetail": "İşlem Detayı",
   "taskName": "İşlem Adı",

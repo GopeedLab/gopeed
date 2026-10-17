@@ -154,6 +154,8 @@
   "seedKeep": "بذر را نگه دارید تا زمانی که به صورت دستی متوقف شود",
   "seedRatio": "نسبت دید",
   "seedTime": "زمان ( دقیقه)",
+  "enableDht": "فعال‌سازی DHT",
+  "enablePex": "فعال‌سازی PEX",
   "setAsDefaultBtClient": "تنظیم به‌عنوان کلاینت پیش‌فرض BT",
   "taskDetail": "جزئیات وظیفه",
   "taskName": "نام وظیفه",

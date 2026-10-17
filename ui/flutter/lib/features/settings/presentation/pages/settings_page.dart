@@ -624,6 +624,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   SettingsItem(
+                    title: context.l10n.enableDht,
+                    subtitle: context.l10n.restartRequired,
+                    child: shad.Switch(
+                      value: !config.protocolConfig.bt.disableDht,
+                      onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disableDht = !value),
+                    ),
+                  ),
+                  SettingsItem(
+                    title: context.l10n.enablePex,
+                    subtitle: context.l10n.restartRequired,
+                    child: shad.Switch(
+                      value: !config.protocolConfig.bt.disablePex,
+                      onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disablePex = !value),
+                    ),
+                  ),
+                  SettingsItem(
                     title: context.l10n.seedKeep,
                     child: shad.Switch(
                       value: config.protocolConfig.bt.seedKeep,

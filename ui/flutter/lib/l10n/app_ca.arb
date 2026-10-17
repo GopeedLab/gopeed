@@ -154,6 +154,8 @@
   "seedKeep": "Continua sembrant fins que s'aturi manualment",
   "seedRatio": "Proporció de les llavors",
   "seedTime": "Temps de la llavor (minuts)",
+  "enableDht": "Activa DHT",
+  "enablePex": "Activa PEX",
   "setAsDefaultBtClient": "Estableix com a client BT per defecte",
   "taskDetail": "Detall de la tasca",
   "taskName": "Nom de la tasca",

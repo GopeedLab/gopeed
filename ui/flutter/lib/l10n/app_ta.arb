@@ -154,6 +154,8 @@
   "seedKeep": "கைமுறையாக நிறுத்தப்படும் வரை விதைப்பதைத் தொடரவும்",
   "seedRatio": "விதை விகிதம்",
   "seedTime": "விதை நேரம் (நிமிடங்கள்)",
+  "enableDht": "DHT ஐ இயக்கு",
+  "enablePex": "PEX ஐ இயக்கு",
   "setAsDefaultBtClient": "இயல்புநிலை BT கிளையண்டாக அமைக்கவும்",
   "taskDetail": "பணி விவரம்",
   "taskName": "செயல் பெயர்",
