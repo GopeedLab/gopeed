@@ -1596,6 +1596,7 @@ func (d *Downloader) handleOnError(task *Task, err error, resetFetcher bool) {
 		d.emit(EventKeyFinally, task, err)
 		d.notifyRunning()
 		d.triggerWebhooks(WebhookEventDownloadError, task, err)
+		d.triggerScripts(ScriptEventDownloadError, task, err)
 	}
 }
 
