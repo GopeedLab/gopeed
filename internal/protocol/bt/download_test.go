@@ -2,6 +2,7 @@ package bt
 
 import (
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/GopeedLab/gopeed/internal/controller"
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	"github.com/GopeedLab/gopeed/pkg/base"
+	btprotocol "github.com/GopeedLab/gopeed/pkg/protocol/bt"
 	"github.com/anacrolix/torrent"
 	pp "github.com/anacrolix/torrent/peer_protocol"
 	"golang.org/x/time/rate"
@@ -189,6 +191,54 @@ func TestBTDownloadSources(t *testing.T) {
 			if f.torrent != resolvedTorrent {
 				t.Fatal("Start replaced the resolved torrent")
 			}
+			btAwaitDone(t, f)
+			fixture.AssertFiles(t, dir)
+		})
+	}
+}
+
+func TestBTDirectDownloadWithExtraTrackers(t *testing.T) {
+	for _, source := range []string{"request", "config"} {
+		t.Run(source, func(t *testing.T) {
+			fixture := makeBTFixture(t, map[string][]byte{
+				"a.bin":        btPayload(20*1024, "direct-a"),
+				"nested/b.bin": btPayload(48*1024, "direct-b"),
+			}, 0, false, false)
+			magnet, err := url.Parse(fixture.Magnet)
+			if err != nil {
+				t.Fatal(err)
+			}
+			query := magnet.Query()
+			query.Del("tr")
+			query.Del("x.pe")
+			magnet.RawQuery = query.Encode()
+			req := &base.Request{URL: magnet.String()}
+			f := btDownloadFetcher(t, nil)
+			if source == "request" {
+				req.Extra = &btprotocol.ReqExtra{Trackers: []string{fixture.TrackerURL}}
+			} else {
+				f.config.Trackers = []string{fixture.TrackerURL}
+			}
+			// CreateDirect supplies options before Downloader resolves the task.
+			dir := filepath.Join(t.TempDir(), "direct-download")
+			opts := &base.Options{Path: dir, SelectFiles: []int{}}
+			f.Meta().Opts = opts
+			resolved := make(chan error, 1)
+			go func() { resolved <- f.Resolve(req) }()
+			select {
+			case err := <-resolved:
+				if err != nil {
+					t.Fatal(err)
+				}
+			case <-time.After(5 * time.Second):
+				f.torrentDropFunc()
+				<-resolved
+				t.Fatal("direct magnet download did not obtain metadata from its extra tracker")
+			}
+			if f.Meta().Opts != opts || len(opts.SelectFiles) != len(fixture.Files) {
+				t.Fatal("resolution lost direct download options or did not select all files")
+			}
+			btStart(t, f)
 			btAwaitDone(t, f)
 			fixture.AssertFiles(t, dir)
 		})

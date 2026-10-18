@@ -786,30 +786,6 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 			return
 		}
 	}
-	s := &deferredFileStorage{}
-	spec.Storage = s
-	var added bool
-	f.torrent, added, err = client.AddTorrentSpec(spec)
-	if err != nil {
-		return err
-	}
-	if !added {
-		f.torrent = nil
-		return errors.New("torrent is already active")
-	}
-	f.storage = s
-	f.torrent.DisallowDataDownload()
-	select {
-	case <-f.torrent.GotInfo():
-	case <-f.torrentDropCtx.Done():
-		f.safeDrop()
-		return f.torrentDropCtx.Err()
-	case <-f.torrent.Closed():
-		return errors.New("torrent closed during resolution")
-	}
-	if info := f.torrent.Info(); info.Private != nil && *info.Private {
-		privateTorrent = true
-	}
 	// Do not add external tracker to a private torrent.
 	if !privateTorrent {
 		// use map to deduplicate
@@ -828,12 +804,33 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 			}
 		}
 		if len(trackers) > 0 {
-			announceList := make([][]string, 0)
 			for tracker := range trackers {
-				announceList = append(announceList, []string{tracker})
+				spec.Trackers = append(spec.Trackers, []string{tracker})
 			}
-			f.torrent.AddTrackers(announceList)
 		}
+	}
+	s := &deferredFileStorage{}
+	spec.Storage = s
+	var added bool
+	f.torrent, added, err = client.AddTorrentSpec(spec)
+	if err != nil {
+		return err
+	}
+	if !added {
+		f.torrent = nil
+		return errors.New("torrent is already active")
+	}
+	f.storage = s
+	f.torrent.DisallowDataDownload()
+	// Extra trackers must be available while magnet metadata is still missing;
+	// they may be the only way to discover a peer that can provide it.
+	select {
+	case <-f.torrent.GotInfo():
+	case <-f.torrentDropCtx.Done():
+		f.safeDrop()
+		return f.torrentDropCtx.Err()
+	case <-f.torrent.Closed():
+		return errors.New("torrent closed during resolution")
 	}
 	f.torrentReady.Store(true)
 

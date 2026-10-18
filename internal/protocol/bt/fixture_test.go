@@ -30,6 +30,7 @@ type btFixture struct {
 	Magnet      string
 	TorrentFile string
 	DataURI     string
+	TrackerURL  string
 	Files       map[string][]byte // Paths relative to the selected download directory.
 	Seeder      *torrent.Client
 	Torrent     *torrent.Torrent
@@ -37,14 +38,14 @@ type btFixture struct {
 }
 
 func newBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int) *btFixture {
-	return makeBTFixture(t, files, bytesPerSecond, false)
+	return makeBTFixture(t, files, bytesPerSecond, false, true)
 }
 
 func newBTHybridFixture(t testing.TB, payload []byte) *btFixture {
-	return makeBTFixture(t, map[string][]byte{"": payload}, 0, true)
+	return makeBTFixture(t, map[string][]byte{"": payload}, 0, true, true)
 }
 
-func makeBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int, v2 bool) *btFixture {
+func makeBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int, v2, private bool) *btFixture {
 	t.Helper()
 	source := t.TempDir()
 	name := "payload.bin"
@@ -84,7 +85,6 @@ func makeBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int, v2
 		layers = map[string]string{string(root): string(pieceHashes)}
 	}
 	// Private torrents avoid public DHT discovery once metadata is available.
-	private := true
 	info.Private = &private
 	raw, err := bencode.Marshal(&info)
 	if err != nil {
@@ -169,7 +169,7 @@ func makeBTFixture(t testing.TB, files map[string][]byte, bytesPerSecond int, v2
 	q := u.Query()
 	q.Add("x.pe", addr)
 	u.RawQuery = q.Encode()
-	return &btFixture{MetaInfo: mi, Magnet: u.String(), TorrentFile: torrentFile, DataURI: "data:application/x-bittorrent;base64," + base64.StdEncoding.EncodeToString(encoded.Bytes()), Files: expected, Seeder: seed, Torrent: seeded, Limiter: limiter}
+	return &btFixture{MetaInfo: mi, Magnet: u.String(), TorrentFile: torrentFile, DataURI: "data:application/x-bittorrent;base64," + base64.StdEncoding.EncodeToString(encoded.Bytes()), TrackerURL: tracker.URL, Files: expected, Seeder: seed, Torrent: seeded, Limiter: limiter}
 }
 
 func btPayload(size int, label string) []byte {
