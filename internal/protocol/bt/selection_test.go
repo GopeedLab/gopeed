@@ -17,6 +17,57 @@ import (
 	"github.com/anacrolix/torrent/storage"
 )
 
+func TestStartDoesNotPublishUnverifiedCompletion(t *testing.T) {
+	cfg := torrent.TestingConfig(t)
+	cfg.DisableTCP = true
+	cfg.DisableUTP = true
+	c, err := torrent.NewClient(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	payload := btPayload(32*1024, "unverified")
+	info := metainfo.Info{Name: "payload.bin", Length: int64(len(payload)), PieceLength: 16 * 1024}
+	for offset := 0; offset < len(payload); offset += int(info.PieceLength) {
+		hash := sha1.Sum(payload[offset : offset+int(info.PieceLength)])
+		info.Pieces = append(info.Pieces, hash[:]...)
+	}
+	raw, err := bencode.Marshal(info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &deferredFileStorage{}
+	spec := torrent.TorrentSpecFromMetaInfo(&metainfo.MetaInfo{InfoBytes: raw})
+	spec.Storage = store
+	tor, _, err := c.AddTorrentSpec(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tor.DisallowDataDownload()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f := &Fetcher{torrent: tor, storage: store, meta: &fetcher.FetcherMeta{}, data: &fetcherData{}, torrentDropCtx: ctx, torrentDropFunc: cancel, config: &config{SeedKeep: true}}
+	f.torrentReady.Store(true)
+	f.updateRes()
+	dir := t.TempDir()
+	payload[20000] ^= 0xff
+	if err := os.WriteFile(filepath.Join(dir, info.Name), payload, 0600); err != nil {
+		t.Fatal(err)
+	}
+	f.meta.Opts = &base.Options{Path: dir}
+	// Retain the original event channel to detect even a transient completion.
+	// With no network transports, the damaged piece cannot have been repaired.
+	completed := tor.Complete().On()
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-completed:
+		t.Fatal("Start published completion before verifying the existing file")
+	default:
+	}
+}
+
 func TestStartUsesSelectionSubmittedAfterResolve(t *testing.T) {
 	cfg := torrent.TestingConfig(t)
 	cfg.DataDir = t.TempDir()

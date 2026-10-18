@@ -147,12 +147,12 @@ func (f *Fetcher) Start() (err error) {
 		return err
 	}
 	if hashes != nil {
-		// Refresh the completion cached during resolution against the chosen
-		// directory. Known hashes can be checked now; late v2 hashes schedule
-		// their own initial checks through the library.
-		for i := range hashes {
-			f.torrent.Piece(i).UpdateCompletion()
-		}
+		// File storage infers completion from final file names and sizes. Verify
+		// before publishing that state, or peers can see an unverified file as
+		// complete and disconnect before a damaged piece is discovered.
+		// Late v2 hashes schedule their own initial checks through the library.
+		changes := f.torrent.SubscribePieceStateChanges()
+		defer changes.Close()
 		for i, known := range hashes {
 			if !known {
 				continue
@@ -163,6 +163,24 @@ func (f *Fetcher) Start() (err error) {
 			if err := f.torrent.Piece(i).VerifyDataContext(f.torrentDropCtx); err != nil {
 				return err
 			}
+			// VerifyDataContext can return while the result is still being
+			// written to storage. Wait for it before refreshing completion.
+			for {
+				state := f.torrent.Piece(i).State()
+				if !state.Hashing && !state.QueuedForHash && !state.Marking {
+					break
+				}
+				select {
+				case <-changes.Values:
+				case <-f.torrentDropCtx.Done():
+					return f.torrentDropCtx.Err()
+				case <-f.torrent.Closed():
+					return errors.New("torrent closed during verification")
+				}
+			}
+		}
+		for i := range hashes {
+			f.torrent.Piece(i).UpdateCompletion()
 		}
 	}
 
