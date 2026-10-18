@@ -397,7 +397,7 @@ func TestFetcher_PeerDiscoveryDisabledOnClient(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := buildFetcherWithConfig(map[string]any{"disableDht": true, "disablePex": true})
-	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}, nil); err != nil {
+	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}); err != nil {
 		t.Fatal(err)
 	}
 	if !cfg.NoDHT || !cfg.DisablePEX {
