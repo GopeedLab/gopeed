@@ -217,9 +217,6 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 			WriteStatusJson(w, response.StatusCode, response.Body)
 		})
 	}
-	// Retired endpoint must not fall through to the web app.
-	r.Path("/api/web/proxy").Handler(http.NotFoundHandler())
-	r.PathPrefix("/api/web/proxy/").Handler(http.NotFoundHandler())
 	if startCfg.MCPEnable {
 		r.Path("/mcp").Handler(mcpserver.NewHandler(Downloader))
 	} else {
@@ -234,35 +231,39 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 	if enableWebAuth {
 		webSessions = newWebSessionStore()
 	}
-	if startCfg.WebEnable {
-		if enableWebAuth {
-			r.Methods(http.MethodPost).Path("/api/web/login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				var loginReq model.WebAuth
-				if ReadJson(r, w, &loginReq) {
-					if loginReq.Username == startCfg.WebAuth.Username && loginReq.Password == startCfg.WebAuth.Password {
-						sessionID, expiresAt, err := webSessions.create()
-						if err != nil {
-							WriteJson(w, model.NewErrorResult(err.Error()))
-							return
-						}
-						http.SetCookie(w, &http.Cookie{
-							Name:     webAuthCookieName,
-							Value:    sessionID,
-							Path:     "/",
-							MaxAge:   int(webAuthSessionTTL.Seconds()),
-							Expires:  expiresAt,
-							HttpOnly: true,
-							Secure:   requestUsesHTTPS(r),
-							SameSite: http.SameSiteLaxMode,
-						})
-
-						WriteJson(w, model.NewNilResult())
+	if enableWebAuth {
+		r.Methods(http.MethodPost).Path("/api/web/login").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var loginReq model.WebAuth
+			if ReadJson(r, w, &loginReq) {
+				if loginReq.Username == startCfg.WebAuth.Username && loginReq.Password == startCfg.WebAuth.Password {
+					sessionID, expiresAt, err := webSessions.create()
+					if err != nil {
+						WriteJson(w, model.NewErrorResult(err.Error()))
 						return
 					}
+					http.SetCookie(w, &http.Cookie{
+						Name:     webAuthCookieName,
+						Value:    sessionID,
+						Path:     "/",
+						MaxAge:   int(webAuthSessionTTL.Seconds()),
+						Expires:  expiresAt,
+						HttpOnly: true,
+						Secure:   requestUsesHTTPS(r),
+						SameSite: http.SameSiteLaxMode,
+					})
+
+					WriteJson(w, model.NewNilResult())
+					return
 				}
-				WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
-			})
-		}
+			}
+			WriteStatusJson(w, http.StatusUnauthorized, model.NewErrorResult("unauthorized", model.CodeUnauthorized))
+		})
+	}
+	// Reserve the API namespace before the web file handler, including unknown
+	// endpoints and unsupported methods on otherwise known API paths.
+	r.Path("/api").Handler(http.NotFoundHandler())
+	r.PathPrefix("/api/").Handler(http.NotFoundHandler())
+	if startCfg.WebEnable {
 		r.PathPrefix("/fs/tasks").Handler(http.FileServer(new(taskFileSystem)))
 		r.PathPrefix("/fs/extensions").Handler(http.FileServer(new(extensionFileSystem)))
 		r.PathPrefix("/").Handler(gzipMiddleware(http.FileServer(newEmbedCacheFileSystem(http.FS(startCfg.WebFS)))))

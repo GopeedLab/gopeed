@@ -669,19 +669,49 @@ func TestWebFsEnhance(t *testing.T) {
 	})
 }
 
-func TestProxyEndpointRemoved(t *testing.T) {
-	doTest0(func(cfg *model.StartConfig) {
-		cfg.WebFS = fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("<html>app</html>")}}
-	}, func() {
-		for _, path := range []string{"/api/web/proxy", "/api/web/proxy/", "/api/web/proxy/https://example.com"} {
-			for _, method := range []string{http.MethodGet, http.MethodPost} {
-				code, _ := doHttpRequest0(method, path, map[string]string{"X-Target-Uri": "https://example.com"}, nil)
-				if code != http.StatusNotFound {
-					t.Fatalf("retired proxy %s %s status %d", method, path, code)
+func TestUnknownAPIPathsReturn404(t *testing.T) {
+	for _, webEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("web=%t", webEnabled), func(t *testing.T) {
+			doTest0(func(cfg *model.StartConfig) {
+				cfg.WebEnable = webEnabled
+				cfg.WebFS = fstest.MapFS{
+					"index.html":     &fstest.MapFile{Data: []byte("<html>app</html>")},
+					"api/static.txt": &fstest.MapFile{Data: []byte("must not serve API paths as files")},
+					"apiary":         &fstest.MapFile{Data: []byte("namespace boundary")},
 				}
-			}
-		}
-	})
+			}, func() {
+				paths := []string{"/api", "/api/", "/api/missing", "/api/v1/missing", "/api/web/missing", "/api/web/login", "/api/static.txt", "/api/web/proxy", "/api/web/proxy/", "/api/web/proxy/https://example.com", "/api/v1/protocols/bt/config"}
+				for _, path := range paths {
+					for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead} {
+						code, body := doHttpRequest0(method, path, nil, nil)
+						if code != http.StatusNotFound {
+							t.Fatalf("%s %s status %d, want 404: %s", method, path, code, body)
+						}
+						if strings.Contains(string(body), "<html>app</html>") {
+							t.Fatalf("%s %s fell through to web files", method, path)
+						}
+					}
+				}
+				// Known API routes still run, while unsupported methods use the API fallback.
+				code, _ := doHttpRequest0(http.MethodGet, "/api/v1/info", nil, nil)
+				if code != http.StatusOK {
+					t.Fatalf("known API status %d, want 200", code)
+				}
+				code, _ = doHttpRequest0(http.MethodPost, "/api/v1/info", nil, nil)
+				if code != http.StatusNotFound {
+					t.Fatalf("unsupported API method status %d, want 404", code)
+				}
+				if webEnabled {
+					for path, want := range map[string]string{"/": "<html>app</html>", "/apiary": "namespace boundary"} {
+						code, body := doHttpRequest0(http.MethodGet, path, map[string]string{"Accept-Encoding": "identity"}, nil)
+						if code != http.StatusOK || !strings.Contains(string(body), want) {
+							t.Fatalf("web file %s status %d body %s", path, code, body)
+						}
+					}
+				}
+			})
+		})
+	}
 }
 
 func TestTestWebhook(t *testing.T) {

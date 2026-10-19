@@ -72,7 +72,7 @@ The following endpoints are web HTTP infrastructure and are not part of the FFI/
 
 `/fs/tasks` returns files from the Go host machine to a browser over HTTP. Native clients can access local file paths directly and do not need an equivalent API.
 
-External business requests are implemented in Go through dedicated `/api/v1/**` APIs shared by Web and native clients. The retired `/api/web/proxy` endpoint returns 404.
+External business requests are implemented in Go through dedicated `/api/v1/**` APIs shared by Web and native clients. All unmatched `/api` and `/api/**` requests use the common 404 handler before the web file handler.
 
 ## 4. Backend Maintenance Model
 

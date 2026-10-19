@@ -3,8 +3,9 @@
 External metadata and protocol requests run in Go for Web, desktop FFI, and gomobile.
 Native update packages are downloaded by the client to preserve byte progress. The
 current release builds use `ui/flutter`; `ui/flutter_old` is an archived client
-and is not part of the shipping workflow. The retired `/api/web/proxy` always
-returns 404, including when static Web hosting is enabled.
+and is not part of the shipping workflow. All unmatched `/api` and `/api/**`
+requests use the common 404 handler before the web file handler, including the
+removed `/api/web/proxy` endpoint. There are no proxy-specific compatibility routes; configured API authentication still applies.
 
 ## Protocol configuration and backend state
 
