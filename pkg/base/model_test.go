@@ -15,6 +15,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 			"Init",
 			&DownloaderStoreConfig{},
 			&DownloaderStoreConfig{
+				GithubMirror:   DefaultGithubMirrorConfig(),
 				MaxRunning:     5,
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
@@ -36,6 +37,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				MaxRunning: 10,
 			},
 			&DownloaderStoreConfig{
+				GithubMirror:   DefaultGithubMirrorConfig(),
 				MaxRunning:     10,
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
@@ -59,7 +61,8 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				},
 			},
 			&DownloaderStoreConfig{
-				MaxRunning: 5,
+				GithubMirror: DefaultGithubMirrorConfig(),
+				MaxRunning:   5,
 				ProtocolConfig: map[string]any{
 					"key": "value",
 				},
@@ -84,6 +87,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				},
 			},
 			&DownloaderStoreConfig{
+				GithubMirror:   DefaultGithubMirrorConfig(),
 				MaxRunning:     5,
 				ProtocolConfig: map[string]any{},
 				Proxy: &DownloaderProxyConfig{
@@ -110,6 +114,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				},
 			},
 			&DownloaderStoreConfig{
+				GithubMirror:   DefaultGithubMirrorConfig(),
 				MaxRunning:     5,
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
@@ -134,6 +139,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				},
 			},
 			&DownloaderStoreConfig{
+				GithubMirror:   DefaultGithubMirrorConfig(),
 				MaxRunning:     5,
 				ProtocolConfig: map[string]any{},
 				Proxy:          &DownloaderProxyConfig{},
@@ -149,6 +155,20 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:   "Init explicitly disabled mirrors with empty list",
+			fields: &DownloaderStoreConfig{GithubMirror: &GithubMirrorConfig{Enabled: false, Mirrors: []GithubMirror{}}},
+			want: &DownloaderStoreConfig{
+				MaxRunning:     5,
+				ProtocolConfig: map[string]any{},
+				GithubMirror:   &GithubMirrorConfig{Enabled: false, Mirrors: []GithubMirror{}},
+				Proxy:          &DownloaderProxyConfig{},
+				Webhook:        &WebhookConfig{},
+				Script:         &ScriptConfig{},
+				AutoTorrent:    &AutoTorrentConfig{},
+				Archive:        &ArchiveConfig{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -157,6 +177,7 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 				DownloadDir:    tt.fields.DownloadDir,
 				MaxRunning:     tt.fields.MaxRunning,
 				ProtocolConfig: tt.fields.ProtocolConfig,
+				GithubMirror:   tt.fields.GithubMirror,
 				Extra:          tt.fields.Extra,
 				Proxy:          tt.fields.Proxy,
 				Webhook:        tt.fields.Webhook,
