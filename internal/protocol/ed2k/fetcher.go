@@ -67,17 +67,14 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	f.ctl.GetConfig(&f.config)
 }
 
-func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
+func (f *Fetcher) Resolve(req *base.Request) error {
 	link, err := parseLink(req.URL)
 	if err != nil {
 		return err
 	}
 
 	f.meta.Req = req
-	f.meta.Opts = opts
-	if f.meta.Opts == nil {
-		f.meta.Opts = &base.Options{}
-	}
+
 	f.meta.Res = buildResource(link)
 	return nil
 }

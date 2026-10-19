@@ -89,7 +89,7 @@ func TestDownloader_HlsProtocolEndToEnd(t *testing.T) {
 
 	req := hlsResolveReferer()
 	req.URL = server.URL + "/master.m3u8"
-	rr, err := downloader.Resolve(req, nil)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}

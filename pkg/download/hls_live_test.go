@@ -40,7 +40,7 @@ func TestDownloader_HlsLiveSite(t *testing.T) {
 	if referer != "" {
 		req.Extra = map[string]any{"header": map[string]string{"Referer": referer}}
 	}
-	rr, err := downloader.Resolve(req, nil)
+	rr, err := downloader.Resolve(req)
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}

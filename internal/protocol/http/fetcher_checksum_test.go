@@ -52,9 +52,11 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}, opts); err != nil {
+		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}); err != nil {
 			t.Fatalf("Resolve error: %v", err)
 		}
+
+		f.Meta().Opts = opts
 		if err := f.Start(); err != nil {
 			t.Fatalf("Start error: %v", err)
 		}
@@ -79,9 +81,11 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}, opts); err != nil {
+		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}); err != nil {
 			t.Fatalf("Resolve error: %v", err)
 		}
+
+		f.Meta().Opts = opts
 		if err := f.Start(); err != nil {
 			t.Fatalf("Start error: %v", err)
 		}
@@ -106,9 +110,11 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}, opts); err != nil {
+		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}); err != nil {
 			t.Fatalf("Resolve error: %v", err)
 		}
+
+		f.Meta().Opts = opts
 		if err := f.Start(); err != nil {
 			t.Fatalf("Start error: %v", err)
 		}
@@ -137,9 +143,13 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}, opts)
+		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}); err != nil {
+			t.Fatalf("Resolve error: %v", err)
+		}
+		f.Meta().Opts = opts
+		err := f.Start()
 		if err == nil {
-			t.Fatal("Resolve expected error for unsupported algorithm, got nil")
+			t.Fatal("Start expected error for unsupported algorithm, got nil")
 		}
 		if !strings.Contains(err.Error(), "unsupported checksum algorithm") {
 			t.Fatalf("expected 'unsupported checksum algorithm' in error, got %v", err)
@@ -165,9 +175,11 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}, opts); err != nil {
+		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}); err != nil {
 			t.Fatalf("Resolve error: %v", err)
 		}
+
+		f.Meta().Opts = opts
 		if err := f.Start(); err != nil {
 			t.Fatalf("Start error: %v", err)
 		}
@@ -192,9 +204,11 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}, opts); err != nil {
+		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}); err != nil {
 			t.Fatalf("Resolve error: %v", err)
 		}
+
+		f.Meta().Opts = opts
 		if err := f.Start(); err != nil {
 			t.Fatalf("Start error: %v", err)
 		}
@@ -235,9 +249,11 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		if err := f.Resolve(&base.Request{URL: largeServer.URL + "/large.bin"}, opts); err != nil {
+		if err := f.Resolve(&base.Request{URL: largeServer.URL + "/large.bin"}); err != nil {
 			t.Fatalf("Resolve error: %v", err)
 		}
+
+		f.Meta().Opts = opts
 		if err := f.Start(); err != nil {
 			t.Fatalf("Start error: %v", err)
 		}
@@ -258,9 +274,11 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}, opts); err != nil {
+		if err := f.Resolve(&base.Request{URL: server.URL + "/test.txt"}); err != nil {
 			t.Fatalf("Resolve error: %v", err)
 		}
+
+		f.Meta().Opts = opts
 		if err := f.Start(); err != nil {
 			t.Fatalf("Start error: %v", err)
 		}
@@ -269,7 +287,7 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 		}
 	})
 
-	t.Run("Invalid Checksum In Resolve Makes Zero Requests", func(t *testing.T) {
+	t.Run("Invalid Checksum In Start Makes No Additional Requests", func(t *testing.T) {
 		var reqReceived atomic.Int32
 		customServer := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
 			reqReceived.Add(1)
@@ -293,12 +311,17 @@ func TestFetcher_ChecksumVerification(t *testing.T) {
 			},
 		}
 
-		err := f.Resolve(&base.Request{URL: customServer.URL + "/test.txt"}, opts)
-		if err == nil {
-			t.Fatal("Resolve expected error for invalid checksum hash, got nil")
+		if err := f.Resolve(&base.Request{URL: customServer.URL + "/test.txt"}); err != nil {
+			t.Fatalf("Resolve error: %v", err)
 		}
-		if reqReceived.Load() != 0 {
-			t.Fatalf("expected 0 requests to server on invalid checksum in Resolve, got %d", reqReceived.Load())
+		requestsAfterResolve := reqReceived.Load()
+		f.Meta().Opts = opts
+		err := f.Start()
+		if err == nil {
+			t.Fatal("Start expected error for invalid checksum hash, got nil")
+		}
+		if got := reqReceived.Load(); got != requestsAfterResolve {
+			t.Fatalf("invalid checksum in Start issued additional requests: got %d, had %d after Resolve", got, requestsAfterResolve)
 		}
 	})
 }

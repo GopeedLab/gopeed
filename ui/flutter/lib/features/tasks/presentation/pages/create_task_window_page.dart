@@ -927,8 +927,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       }
 
       final request = _buildRequest(urls.first, protocolUrl: _protocolUrlFor(urls.first));
-      final options = _buildOptions();
-      final result = await ref.read(gopeedServiceProvider).resolve(ResolveTask(req: request, opts: options));
+      final result = await ref.read(gopeedServiceProvider).resolve(ResolveTask(req: request));
       if (!mounted) return;
       final created = await _showResolveDialog(request, result);
       if (!created) {

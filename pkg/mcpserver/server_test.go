@@ -101,6 +101,13 @@ func TestStreamableHTTPTools(t *testing.T) {
 		if reqExtra["type"] != "object" || !ok || len(branches) != 2 {
 			t.Fatalf("%s req.extra schema = %#v, want an object with two oneOf branches", tool.Name, reqExtra)
 		}
+		if tool.Name == "resolve_task" {
+			properties := schema["properties"].(map[string]any)
+			if _, exists := properties["opts"]; exists || len(properties) != 1 {
+				t.Fatalf("resolve_task must expose only req: %s", inputSchema)
+			}
+			continue
+		}
 		optsExtra := nestedSchemaProperty(t, schema, "opts", "extra")
 		if !schemaIncludesType(optsExtra, "object") || optsExtra["additionalProperties"] != false {
 			t.Fatalf("%s opts.extra schema = %#v, want concrete HTTP task settings", tool.Name, optsExtra)

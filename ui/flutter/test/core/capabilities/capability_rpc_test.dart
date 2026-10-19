@@ -1,5 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gopeed/api/model/options.dart';
+import 'package:gopeed/api/model/patch_task.dart';
+import 'package:gopeed/api/model/request.dart';
+import 'package:gopeed/api/model/resolve_result.dart';
+import 'package:gopeed/api/model/resolve_task.dart';
+import 'package:gopeed/api/model/resource.dart';
+import 'package:gopeed/core/capabilities/app_capabilities.dart';
 import 'package:gopeed/core/capabilities/capability_rpc.dart';
+import 'package:gopeed/core/capabilities/gopeed_capability.dart';
 import 'package:gopeed/core/window/app_window_appearance.dart';
 
 class _Payload {
@@ -13,6 +21,33 @@ class _Payload {
 }
 
 void main() {
+  test('serialized resolve and patch capabilities keep separate request contracts', () async {
+    final codecs = createAppCapabilityCodecs();
+    String? resolvedUrl;
+    Map<String, dynamic>? patch;
+    final registry = CapabilityRegistry(codecs)
+      ..bind(GopeedMethods.resolve, (request) {
+        resolvedUrl = request.req?.url;
+        return ResolveResult(id: 'resolved-id', res: Resource(files: []));
+      })
+      ..bind(GopeedMethods.patchTask, (request) {
+        patch = request;
+        return const RpcUnit();
+      });
+    final request = ResolveTask(req: Request(url: 'magnet:?xt=urn:btih:hash'));
+    final wireRequest = codecs.encode(request) as Map<String, dynamic>;
+    expect(wireRequest.keys, ['req']);
+    final result = codecs.decode<ResolveResult>(await registry.invoke(GopeedMethods.resolve.name, wireRequest));
+    expect(result.id, 'resolved-id');
+    expect(resolvedUrl, request.req?.url);
+
+    final service = GopeedService(LocalCapabilityInvoker(registry));
+    await service.patchTask('task-id', PatchTask(opts: Options(selectFiles: [1])));
+    expect(patch?['id'], 'task-id');
+    final patchBody = patch?['request'] as Map<String, dynamic>;
+    expect((patchBody['opts'] as Map<String, dynamic>)['selectFiles'], [1]);
+  });
+
   test('one method descriptor supports direct and serialized dispatch', () async {
     const method = RpcMethod<_Payload, _Payload>('test.increment');
     final codecs = RpcCodecRegistry()..register<_Payload>((json) => _Payload.fromJson(json! as Map<String, dynamic>));

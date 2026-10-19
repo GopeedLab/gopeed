@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/model/request.dart';
-import '../../../api/model/resolve_task.dart';
+import '../../../api/model/patch_task.dart';
 import '../../../api/model/task.dart' as api_model;
 import '../../../core/capabilities/app_capabilities.dart';
 import '../domain/task_record.dart';
@@ -99,7 +99,7 @@ class TasksController extends AsyncNotifier<TasksState> {
   }
 
   Future<void> updateRequest(String id, Request request) async {
-    await ref.read(gopeedServiceProvider).patchTask(id, ResolveTask(req: request));
+    await ref.read(gopeedServiceProvider).patchTask(id, PatchTask(req: request));
     await ref.read(gopeedServiceProvider).continueTask(id);
     await refresh(silent: true);
   }

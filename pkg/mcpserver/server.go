@@ -222,8 +222,7 @@ func (o *downloadOptions) baseOptions() *base.Options {
 }
 
 type resolveTaskInput struct {
-	Req  *downloadRequest `json:"req" jsonschema:"Download request to resolve"`
-	Opts *downloadOptions `json:"opts,omitempty" jsonschema:"Optional download settings used while resolving"`
+	Req *downloadRequest `json:"req" jsonschema:"Download request to resolve"`
 }
 
 type resolveTaskOutput struct {
@@ -328,7 +327,7 @@ func registerTools(server *mcp.Server, downloader *download.Downloader) {
 		if err != nil {
 			return nil, nil, err
 		}
-		result, err := downloader.Resolve(req, input.Opts.baseOptions())
+		result, err := downloader.Resolve(req)
 		if err != nil {
 			return nil, nil, err
 		}

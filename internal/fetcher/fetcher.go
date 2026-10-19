@@ -12,7 +12,7 @@ import (
 // Each download task will have a corresponding Fetcher instance for the management of the download task
 type Fetcher interface {
 	Setup(ctl *controller.Controller)
-	Resolve(req *base.Request, opts *base.Options) error
+	Resolve(req *base.Request) error
 	Start() error
 	// Patch modifies task-specific data based on the protocol.
 	// For HTTP: can modify Request info (URL, headers, etc.)

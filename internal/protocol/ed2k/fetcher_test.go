@@ -13,7 +13,8 @@ func TestFetcher_Resolve(t *testing.T) {
 	f := (&FetcherManager{}).Build()
 	f.Setup(controller.NewController())
 
-	err := f.Resolve(&base.Request{URL: testLink}, &base.Options{Path: t.TempDir()})
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	err := f.Resolve(&base.Request{URL: testLink})
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}

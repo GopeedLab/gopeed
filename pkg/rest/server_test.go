@@ -55,8 +55,7 @@ var (
 		},
 	}
 	resolveReq = &model.ResolveTask{
-		Req:  taskReq,
-		Opts: createOpts,
+		Req: taskReq,
 	}
 	createReq = &model.CreateTask{
 		Req:  taskReq,
@@ -105,7 +104,8 @@ func TestCreateTask(t *testing.T) {
 		})
 
 		taskId := httpRequestCheckOk[string](http.MethodPost, "/api/v1/tasks", &model.CreateTask{
-			Rid: resp.ID,
+			Rid:  resp.ID,
+			Opts: createOpts,
 		})
 		if taskId == "" {
 			t.Fatal("create task failed")
@@ -295,7 +295,7 @@ func TestPatchTask(t *testing.T) {
 		time.Sleep(time.Millisecond * 100)
 
 		// Patch the task with new labels
-		patchReq := &model.ResolveTask{
+		patchReq := &model.PatchTask{
 			Req: &base.Request{
 				Labels: map[string]string{
 					"patched": "true",
@@ -322,7 +322,7 @@ func TestPatchTask(t *testing.T) {
 func TestPatchTaskNotFound(t *testing.T) {
 	doTest(func() {
 		// Try to patch a non-existent task
-		patchReq := &model.ResolveTask{
+		patchReq := &model.PatchTask{
 			Req: &base.Request{
 				Labels: map[string]string{
 					"test": "value",

@@ -10,6 +10,7 @@ import 'model/install_extension.dart';
 import 'model/login.dart';
 import 'model/resolve_result.dart';
 import 'model/resolve_task.dart';
+import 'model/patch_task.dart';
 import 'model/result.dart';
 import 'model/switch_extension.dart';
 import 'model/task.dart';
@@ -91,7 +92,7 @@ Future<List<String>> createTaskBatch(CreateTaskBatch createTaskBatch) {
   );
 }
 
-Future<void> patchTask(String id, ResolveTask patchTask) {
+Future<void> patchTask(String id, PatchTask patchTask) {
   return _parse<void>(() => _request('api/v1/tasks/$id', method: 'PATCH', data: patchTask), null);
 }
 

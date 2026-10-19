@@ -166,7 +166,7 @@ func runResolve(args []string) error {
 	result, err := d.Resolve(&base.Request{
 		URL:    url,
 		Labels: map[string]string(labels),
-	}, nil)
+	})
 	if err != nil {
 		return err
 	}
@@ -250,7 +250,7 @@ func runDownload(args []string) error {
 	result, err := d.Resolve(&base.Request{
 		URL:    url,
 		Labels: map[string]string(labels),
-	}, nil)
+	})
 	if err != nil {
 		return err
 	}
