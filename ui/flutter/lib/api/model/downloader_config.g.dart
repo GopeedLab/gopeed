@@ -15,6 +15,7 @@ DownloaderConfig _$DownloaderConfigFromJson(Map<String, dynamic> json) =>
       )
       ..protocolConfig = ProtocolConfig.fromJson(json['protocolConfig'] as Map<String, dynamic>?)
       ..extra = ExtraConfig.fromJson(json['extra'] as Map<String, dynamic>?)
+      ..githubMirror = GithubMirrorConfig.fromJson(json['githubMirror'] as Map<String, dynamic>?)
       ..proxy = ProxyConfig.fromJson(json['proxy'] as Map<String, dynamic>)
       ..webhook = WebhookConfig.fromJson(json['webhook'] as Map<String, dynamic>?)
       ..script = ScriptConfig.fromJson(json['script'] as Map<String, dynamic>?)
@@ -27,6 +28,7 @@ Map<String, dynamic> _$DownloaderConfigToJson(DownloaderConfig instance) => <Str
   'maxRunning': instance.maxRunning,
   'protocolConfig': instance.protocolConfig.toJson(),
   'extra': instance.extra.toJson(),
+  'githubMirror': instance.githubMirror.toJson(),
   'proxy': instance.proxy.toJson(),
   'webhook': instance.webhook.toJson(),
   'script': instance.script.toJson(),
@@ -92,19 +94,56 @@ Map<String, dynamic> _$HttpConfigToJson(HttpConfig instance) => <String, dynamic
   'useServerCtime': instance.useServerCtime,
 };
 
+TrackerSubscriptionStatus _$TrackerSubscriptionStatusFromJson(Map<String, dynamic> json) => TrackerSubscriptionStatus(
+  success: json['success'] as bool,
+  trackerCount: (json['trackerCount'] as num).toInt(),
+  lastFetchTime: DateTime.parse(json['lastFetchTime'] as String),
+);
+
+Map<String, dynamic> _$TrackerSubscriptionStatusToJson(TrackerSubscriptionStatus instance) => <String, dynamic>{
+  'success': instance.success,
+  'trackerCount': instance.trackerCount,
+  'lastFetchTime': instance.lastFetchTime.toIso8601String(),
+};
+
+BtState _$BtStateFromJson(Map<String, dynamic> json) => BtState(
+  trackerSources:
+      (json['trackerSources'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, (e as List<dynamic>).map((e) => e as String).toList()),
+      ) ??
+      const {},
+  trackerSubscriptionStatuses:
+      (json['trackerSubscriptionStatuses'] as Map<String, dynamic>?)?.map(
+        (k, e) => MapEntry(k, TrackerSubscriptionStatus.fromJson(e as Map<String, dynamic>)),
+      ) ??
+      const {},
+  lastTrackerUpdateTime: _trackerUpdateTimeFromJson(json['lastTrackerUpdateTime'] as String?),
+);
+
+Map<String, dynamic> _$BtStateToJson(BtState instance) => <String, dynamic>{
+  'trackerSources': instance.trackerSources,
+  'trackerSubscriptionStatuses': instance.trackerSubscriptionStatuses.map((k, e) => MapEntry(k, e.toJson())),
+  'lastTrackerUpdateTime': ?instance.lastTrackerUpdateTime?.toIso8601String(),
+};
+
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
+  trackerSubscribeUrls: (json['trackerSubscribeUrls'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+  autoUpdateTrackers: json['autoUpdateTrackers'] as bool? ?? true,
+  customTrackers: (json['customTrackers'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
   listenPort: (json['listenPort'] as num?)?.toInt() ?? 0,
-  trackers: (json['trackers'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
   seedKeep: json['seedKeep'] as bool? ?? false,
   seedRatio: (json['seedRatio'] as num?)?.toDouble() ?? 0,
   seedTime: (json['seedTime'] as num?)?.toInt() ?? 0,
   disableDht: json['disableDht'] as bool? ?? false,
   disablePex: json['disablePex'] as bool? ?? false,
-);
+)..state = BtState.fromJson(json['state'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
+  'state': instance.state.toJson(),
+  'trackerSubscribeUrls': instance.trackerSubscribeUrls,
+  'autoUpdateTrackers': instance.autoUpdateTrackers,
+  'customTrackers': instance.customTrackers,
   'listenPort': instance.listenPort,
-  'trackers': instance.trackers,
   'seedKeep': instance.seedKeep,
   'seedRatio': instance.seedRatio,
   'seedTime': instance.seedTime,
@@ -128,37 +167,31 @@ Map<String, dynamic> _$Ed2kConfigToJson(Ed2kConfig instance) => <String, dynamic
   'nodesDat': instance.nodesDat,
 };
 
-ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) =>
-    ExtraConfig(
-        themeMode: json['themeMode'] as String? ?? '',
-        themeColor: json['themeColor'] as String? ?? 'green',
-        locale: json['locale'] as String? ?? '',
-        lastDeleteTaskKeep: json['lastDeleteTaskKeep'] as bool? ?? false,
-        defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
-        defaultBtClient: json['defaultBtClient'] as bool? ?? true,
-        notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
-        desktopNotification: json['desktopNotification'] as bool? ?? true,
-        backgroundLocationKeepAlive: json['backgroundLocationKeepAlive'] as bool? ?? false,
-        backgroundContinuedProcessing:
-            json['backgroundContinuedProcessing']
-                as bool? ??
-            false,
-        windowState: json['windowState'] == null
-            ? null
-            : WindowStateConfig.fromJson(json['windowState'] as Map<String, dynamic>?),
-        bookmarks: (json['bookmarks'] as Map<String, dynamic>?)?.map((k, e) => MapEntry(k, e as String)) ?? const {},
-        createHistory: (json['createHistory'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
-        runAsMenubarApp: json['runAsMenubarApp'] as bool? ?? false,
-        analyticsEnabled: json['analyticsEnabled'] as bool? ?? true,
-        analyticsClientId: json['analyticsClientId'] as String? ?? '',
-        downloadCategories:
-            (json['downloadCategories'] as List<dynamic>?)
-                ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-      )
-      ..bt = ExtraConfigBt.fromJson(json['bt'] as Map<String, dynamic>)
-      ..githubMirror = ExtraConfigGithubMirror.fromJson(json['githubMirror'] as Map<String, dynamic>?);
+ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
+  themeMode: json['themeMode'] as String? ?? '',
+  themeColor: json['themeColor'] as String? ?? 'green',
+  locale: json['locale'] as String? ?? '',
+  lastDeleteTaskKeep: json['lastDeleteTaskKeep'] as bool? ?? false,
+  defaultDirectDownload: json['defaultDirectDownload'] as bool? ?? false,
+  defaultBtClient: json['defaultBtClient'] as bool? ?? true,
+  notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
+  desktopNotification: json['desktopNotification'] as bool? ?? true,
+  backgroundLocationKeepAlive: json['backgroundLocationKeepAlive'] as bool? ?? false,
+  backgroundContinuedProcessing: json['backgroundContinuedProcessing'] as bool? ?? false,
+  windowState: json['windowState'] == null
+      ? null
+      : WindowStateConfig.fromJson(json['windowState'] as Map<String, dynamic>?),
+  bookmarks: (json['bookmarks'] as Map<String, dynamic>?)?.map((k, e) => MapEntry(k, e as String)) ?? const {},
+  createHistory: (json['createHistory'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+  runAsMenubarApp: json['runAsMenubarApp'] as bool? ?? false,
+  analyticsEnabled: json['analyticsEnabled'] as bool? ?? true,
+  analyticsClientId: json['analyticsClientId'] as String? ?? '',
+  downloadCategories:
+      (json['downloadCategories'] as List<dynamic>?)
+          ?.map((e) => DownloadCategory.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const [],
+);
 
 Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynamic>{
   'themeMode': instance.themeMode,
@@ -170,8 +203,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynam
   'notifyWhenNewVersion': instance.notifyWhenNewVersion,
   'desktopNotification': instance.desktopNotification,
   'backgroundLocationKeepAlive': instance.backgroundLocationKeepAlive,
-  'backgroundContinuedProcessing':
-      instance.backgroundContinuedProcessing,
+  'backgroundContinuedProcessing': instance.backgroundContinuedProcessing,
   'windowState': instance.windowState.toJson(),
   'bookmarks': instance.bookmarks,
   'createHistory': instance.createHistory,
@@ -179,8 +211,6 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynam
   'analyticsEnabled': instance.analyticsEnabled,
   'analyticsClientId': instance.analyticsClientId,
   'downloadCategories': instance.downloadCategories.map((e) => e.toJson()).toList(),
-  'bt': instance.bt.toJson(),
-  'githubMirror': instance.githubMirror.toJson(),
 };
 
 WindowStateConfig _$WindowStateConfigFromJson(Map<String, dynamic> json) => WindowStateConfig(
@@ -249,23 +279,6 @@ Map<String, dynamic> _$ProxyConfigToJson(ProxyConfig instance) => <String, dynam
   'pwd': instance.pwd,
 };
 
-ExtraConfigBt _$ExtraConfigBtFromJson(Map<String, dynamic> json) => ExtraConfigBt()
-  ..trackerSubscribeUrls = (json['trackerSubscribeUrls'] as List<dynamic>).map((e) => e as String).toList()
-  ..subscribeTrackers = (json['subscribeTrackers'] as List<dynamic>).map((e) => e as String).toList()
-  ..autoUpdateTrackers = json['autoUpdateTrackers'] as bool
-  ..lastTrackerUpdateTime = json['lastTrackerUpdateTime'] == null
-      ? null
-      : DateTime.parse(json['lastTrackerUpdateTime'] as String)
-  ..customTrackers = (json['customTrackers'] as List<dynamic>).map((e) => e as String).toList();
-
-Map<String, dynamic> _$ExtraConfigBtToJson(ExtraConfigBt instance) => <String, dynamic>{
-  'trackerSubscribeUrls': instance.trackerSubscribeUrls,
-  'subscribeTrackers': instance.subscribeTrackers,
-  'autoUpdateTrackers': instance.autoUpdateTrackers,
-  'lastTrackerUpdateTime': ?instance.lastTrackerUpdateTime?.toIso8601String(),
-  'customTrackers': instance.customTrackers,
-};
-
 GithubMirror _$GithubMirrorFromJson(Map<String, dynamic> json) => GithubMirror(
   type: $enumDecode(_$GithubMirrorTypeEnumMap, json['type']),
   url: json['url'] as String,
@@ -282,14 +295,14 @@ Map<String, dynamic> _$GithubMirrorToJson(GithubMirror instance) => <String, dyn
 
 const _$GithubMirrorTypeEnumMap = {GithubMirrorType.jsdelivr: 'jsdelivr', GithubMirrorType.ghProxy: 'ghProxy'};
 
-ExtraConfigGithubMirror _$ExtraConfigGithubMirrorFromJson(Map<String, dynamic> json) => ExtraConfigGithubMirror(
+GithubMirrorConfig _$GithubMirrorConfigFromJson(Map<String, dynamic> json) => GithubMirrorConfig(
   enabled: json['enabled'] as bool? ?? true,
   mirrors:
       (json['mirrors'] as List<dynamic>?)?.map((e) => GithubMirror.fromJson(e as Map<String, dynamic>)).toList() ??
       const [],
 );
 
-Map<String, dynamic> _$ExtraConfigGithubMirrorToJson(ExtraConfigGithubMirror instance) => <String, dynamic>{
+Map<String, dynamic> _$GithubMirrorConfigToJson(GithubMirrorConfig instance) => <String, dynamic>{
   'enabled': instance.enabled,
   'mirrors': instance.mirrors.map((e) => e.toJson()).toList(),
 };

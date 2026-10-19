@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "Chuyển sang cấu hình có xác thực",
   "mcpRequiresTcp": "Hướng dẫn kết nối tác nhân khả dụng khi giao thức API là TCP.",
   "emptyTaskCreateHint": "Nhấn {action} để bắt đầu tải xuống",
-  "emptyStateRetryHint": "Nhấn {action} để thử lại"
+  "emptyStateRetryHint": "Nhấn {action} để thử lại",
+  "addTrackerSubscription": "Thêm đăng ký tracker",
+  "editTrackerSubscription": "Sửa đăng ký tracker",
+  "trackerSubscriptionUrl": "URL đăng ký",
+  "trackerSubscriptionFetchSuccess": "Lần lấy gần nhất thành công: {count} tracker",
+  "trackerSubscriptionFetchFailed": "Lần lấy gần nhất thất bại: 0 tracker"
 }

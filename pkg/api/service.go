@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,12 +16,13 @@ import (
 )
 
 type Context struct {
-	Method     string
-	Path       string
-	Query      url.Values
-	Body       []byte
-	Headers    http.Header
-	PathParams map[string]string
+	RequestContext context.Context
+	Method         string
+	Path           string
+	Query          url.Values
+	Body           []byte
+	Headers        http.Header
+	PathParams     map[string]string
 }
 
 func (c *Context) PathParam(name string) string {
@@ -62,6 +64,12 @@ func NewService(downloader *download.Downloader) (*Service, error) {
 		newRoute(http.MethodGet, "/api/v1/tasks/{id}/status", service.getTaskStatus),
 		newRoute(http.MethodGet, "/api/v1/tasks", service.getTasks),
 		newRoute(http.MethodGet, "/api/v1/tasks/{id}/stats", service.getStats),
+		newRoute(http.MethodPost, "/api/v1/protocols/{protocol}/jobs/{name}/trigger", service.triggerProtocolJob),
+		newRoute(http.MethodPost, "/api/v1/app/updates/check", service.checkAppUpdate),
+		newRoute(http.MethodPost, "/api/v1/app/updates/candidates", service.appUpdateCandidates),
+		newRoute(http.MethodGet, "/api/v1/store/extensions", service.storeExtensions),
+		newRoute(http.MethodGet, "/api/v1/store/extensions/{id}", service.storeExtension),
+		newRoute(http.MethodPost, "/api/v1/store/extensions/{id}/install-report", service.reportStoreInstall),
 		newRoute(http.MethodGet, "/api/v1/config", service.getConfig),
 		newRoute(http.MethodPut, "/api/v1/config", service.putConfig),
 		newRoute(http.MethodPost, "/api/v1/extensions", service.installExtension),

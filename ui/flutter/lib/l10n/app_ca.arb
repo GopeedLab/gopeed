@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "Canvia a la configuració autenticada",
   "mcpRequiresTcp": "Les instruccions de connexió d’agents estan disponibles quan el protocol de l’API és TCP.",
   "emptyTaskCreateHint": "Fes clic a {action} per començar a baixar",
-  "emptyStateRetryHint": "Fes clic a {action} per tornar-ho a provar"
+  "emptyStateRetryHint": "Fes clic a {action} per tornar-ho a provar",
+  "addTrackerSubscription": "Afegeix una subscripció de trackers",
+  "editTrackerSubscription": "Edita la subscripció de trackers",
+  "trackerSubscriptionUrl": "URL de subscripció",
+  "trackerSubscriptionFetchSuccess": "Última consulta correcta: {count} trackers",
+  "trackerSubscriptionFetchFailed": "Última consulta fallida: 0 trackers"
 }

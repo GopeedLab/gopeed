@@ -1,26 +1,14 @@
-import 'dart:convert';
-
-import 'package:dio/dio.dart';
-
-import 'api.dart';
+import '../core/capabilities/app_capabilities.dart';
+import '../core/capabilities/gopeed_capability.dart';
 import 'model/store_extension.dart';
 
 class GopeedSiteApi {
-  GopeedSiteApi._();
+  GopeedSiteApi(this._service);
 
-  static final instance = GopeedSiteApi._();
-
-  static const _host = 'gopeed.com';
+  static final instance = GopeedSiteApi(LocalAppCapabilities.instance.capabilities.gopeed);
+  final GopeedService _service;
   final _storePages = <String, ({StoreExtensionPage page, DateTime expires})>{};
   final _storeRequests = <String, Future<StoreExtensionPage>>{};
-
-  Future<List<dynamic>> getReleases({int perPage = 10}) async {
-    final json = await _getJson('/api/releases', queryParameters: {'per_page': perPage.clamp(1, 100).toString()});
-    if (json is! List<dynamic>) {
-      throw const FormatException('Invalid releases response');
-    }
-    return json;
-  }
 
   Future<StoreExtensionPage> getExtensions({
     int page = 1,
@@ -35,10 +23,9 @@ class GopeedSiteApi {
       'limit': limit.clamp(1, 100).toString(),
       'sort': sort.name,
       'order': order.name,
-      'view': 'summary',
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
     };
-    final key = Uri.https(_host, '/api/extensions', params).toString();
+    final key = Uri(queryParameters: params).toString();
     final now = DateTime.now();
     _storePages.removeWhere((_, entry) => !now.isBefore(entry.expires));
     final cached = _storePages[key];
@@ -58,40 +45,13 @@ class GopeedSiteApi {
   }
 
   Future<StoreExtensionPage> _fetchStorePage(Map<String, String> params) async {
-    final json = await _getJson('/api/extensions', queryParameters: params);
-    return StoreExtensionPage.fromJson(json as Map<String, dynamic>);
+    final json = await _service.getStoreExtensions(params);
+    return StoreExtensionPage.fromJson(json);
   }
 
   Future<StoreExtension> getExtension(String id, {String? version}) async {
-    final json = await _getJsonUri(
-      Uri(
-        scheme: 'https',
-        host: _host,
-        pathSegments: ['api', 'extensions', id],
-        queryParameters: {if (version != null && version.isNotEmpty) 'version': version},
-      ),
-    );
-    return StoreExtension.fromJson(json as Map<String, dynamic>);
+    return StoreExtension.fromJson(await _service.getStoreExtension(id, version: version));
   }
 
-  Future<void> reportExtensionInstall(String id) async {
-    final uri = Uri.https(_host, '/api/extensions/install');
-    await proxyRequest(
-      uri.toString(),
-      data: {'id': id},
-      options: Options(method: 'POST', contentType: Headers.jsonContentType),
-    );
-  }
-
-  Future<dynamic> _getJson(String path, {Map<String, String>? queryParameters}) {
-    return _getJsonUri(Uri.https(_host, path, queryParameters));
-  }
-
-  Future<dynamic> _getJsonUri(Uri uri) async {
-    final Response<String> response = await proxyRequest(uri.toString());
-    if (response.data == null || response.data!.isEmpty) {
-      throw Exception('Empty response from $uri');
-    }
-    return jsonDecode(response.data!);
-  }
+  Future<void> reportExtensionInstall(String id) => _service.reportStoreInstall(id);
 }

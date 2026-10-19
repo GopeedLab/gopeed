@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "認証付き設定に切り替える",
   "mcpRequiresTcp": "API プロトコルが TCP の場合にエージェント接続手順を利用できます。",
   "emptyTaskCreateHint": "{action}をクリックしてダウンロードを開始",
-  "emptyStateRetryHint": "{action}をクリックして再試行"
+  "emptyStateRetryHint": "{action}をクリックして再試行",
+  "addTrackerSubscription": "Tracker 購読を追加",
+  "editTrackerSubscription": "Tracker 購読を編集",
+  "trackerSubscriptionUrl": "購読 URL",
+  "trackerSubscriptionFetchSuccess": "前回の取得に成功：{count} 件の Tracker",
+  "trackerSubscriptionFetchFailed": "前回の取得に失敗：0 件の Tracker"
 }

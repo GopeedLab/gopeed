@@ -2,7 +2,6 @@ package rest
 
 import (
 	"bytes"
-	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/test"
@@ -669,27 +669,17 @@ func TestWebFsEnhance(t *testing.T) {
 	})
 }
 
-func TestDoProxy(t *testing.T) {
-	doTest(func() {
-		code, respBody := doHttpRequest0(http.MethodGet, "/api/web/proxy", map[string]string{
-			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
-		}, nil)
-		if code != http.StatusOK {
-			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusOK)
-		}
-		want := "4ee193b676f1ebb2ad810e016350d52a"
-		got := fmt.Sprintf("%x", md5.Sum(respBody))
-		if got != want {
-			t.Errorf("DoProxy() got = %v, want %v", got, want)
-		}
-	})
-
-	doTest(func() {
-		code, _ := doHttpRequest0(http.MethodGet, "/api/web/proxy", map[string]string{
-			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/NOT_FOUND",
-		}, nil)
-		if code != http.StatusNotFound {
-			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusNotFound)
+func TestProxyEndpointRemoved(t *testing.T) {
+	doTest0(func(cfg *model.StartConfig) {
+		cfg.WebFS = fstest.MapFS{"index.html": &fstest.MapFile{Data: []byte("<html>app</html>")}}
+	}, func() {
+		for _, path := range []string{"/api/web/proxy", "/api/web/proxy/", "/api/web/proxy/https://example.com"} {
+			for _, method := range []string{http.MethodGet, http.MethodPost} {
+				code, _ := doHttpRequest0(method, path, map[string]string{"X-Target-Uri": "https://example.com"}, nil)
+				if code != http.StatusNotFound {
+					t.Fatalf("retired proxy %s %s status %d", method, path, code)
+				}
+			}
 		}
 	})
 }

@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "Beralih ke konfigurasi terautentikasi",
   "mcpRequiresTcp": "Petunjuk koneksi agen tersedia saat protokol API menggunakan TCP.",
   "emptyTaskCreateHint": "Klik {action} untuk mulai mengunduh",
-  "emptyStateRetryHint": "Klik {action} untuk mencoba lagi"
+  "emptyStateRetryHint": "Klik {action} untuk mencoba lagi",
+  "addTrackerSubscription": "Tambah langganan tracker",
+  "editTrackerSubscription": "Edit langganan tracker",
+  "trackerSubscriptionUrl": "URL langganan",
+  "trackerSubscriptionFetchSuccess": "Pengambilan terakhir berhasil: {count} tracker",
+  "trackerSubscriptionFetchFailed": "Pengambilan terakhir gagal: 0 tracker"
 }

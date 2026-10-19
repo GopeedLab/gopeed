@@ -666,5 +666,17 @@
         "type": "String"
       }
     }
+  },
+  "addTrackerSubscription": "Add tracker subscription",
+  "editTrackerSubscription": "Edit tracker subscription",
+  "trackerSubscriptionUrl": "Subscription URL",
+  "trackerSubscriptionFetchSuccess": "Last fetch succeeded: {count} trackers",
+  "trackerSubscriptionFetchFailed": "Last fetch failed: 0 trackers",
+  "@trackerSubscriptionFetchSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

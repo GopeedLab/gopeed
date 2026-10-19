@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "切換為認證設定",
   "mcpRequiresTcp": "API 通訊協定為 TCP 時才能使用 Agent 接入指引。",
   "emptyTaskCreateHint": "點擊{action}開始下載",
-  "emptyStateRetryHint": "點擊{action}重新載入"
+  "emptyStateRetryHint": "點擊{action}重新載入",
+  "addTrackerSubscription": "新增 Tracker 訂閱",
+  "editTrackerSubscription": "編輯 Tracker 訂閱",
+  "trackerSubscriptionUrl": "訂閱網址",
+  "trackerSubscriptionFetchSuccess": "上次取得成功：{count} 條 Tracker",
+  "trackerSubscriptionFetchFailed": "上次取得失敗：0 條 Tracker"
 }

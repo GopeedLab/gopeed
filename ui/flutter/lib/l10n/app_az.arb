@@ -640,5 +640,10 @@
   "webApiConfigReadOnlyHelp": "Veb versiyası API parametrlərinin onlayn dəyişdirilməsini dəstəkləmir. Server başlanğıc seçimlərini və ya konfiqurasiya faylını yeniləyin, sonra dəyişikliklərin qüvvəyə minməsi üçün xidməti yenidən başladın.",
   "mcpRequiresTcp": "Agent əlaqə təlimatları API protokolu TCP olduqda mövcuddur.",
   "emptyTaskCreateHint": "Endirməyə başlamaq üçün {action} düyməsinə klikləyin",
-  "emptyStateRetryHint": "Yenidən cəhd etmək üçün {action} düyməsinə klikləyin"
+  "emptyStateRetryHint": "Yenidən cəhd etmək üçün {action} düyməsinə klikləyin",
+  "addTrackerSubscription": "Tracker abunəliyi əlavə et",
+  "editTrackerSubscription": "Tracker abunəliyini redaktə et",
+  "trackerSubscriptionUrl": "Abunəlik URL-i",
+  "trackerSubscriptionFetchSuccess": "Son yükləmə uğurlu oldu: {count} tracker",
+  "trackerSubscriptionFetchFailed": "Son yükləmə uğursuz oldu: 0 tracker"
 }

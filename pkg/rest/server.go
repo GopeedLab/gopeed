@@ -206,17 +206,20 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 				return
 			}
 			response := route.Handler(&goapi.Context{
-				Method:     r.Method,
-				Path:       r.URL.Path,
-				Query:      r.URL.Query(),
-				Body:       body,
-				Headers:    r.Header,
-				PathParams: mux.Vars(r),
+				RequestContext: r.Context(),
+				Method:         r.Method,
+				Path:           r.URL.Path,
+				Query:          r.URL.Query(),
+				Body:           body,
+				Headers:        r.Header,
+				PathParams:     mux.Vars(r),
 			})
 			WriteStatusJson(w, response.StatusCode, response.Body)
 		})
 	}
-	r.Path("/api/web/proxy").HandlerFunc(DoProxy)
+	// Retired endpoint must not fall through to the web app.
+	r.Path("/api/web/proxy").Handler(http.NotFoundHandler())
+	r.PathPrefix("/api/web/proxy/").Handler(http.NotFoundHandler())
 	if startCfg.MCPEnable {
 		r.Path("/mcp").Handler(mcpserver.NewHandler(Downloader))
 	} else {
@@ -325,7 +328,7 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 	})
 
 	server := &http.Server{Handler: handlers.CORS(
-		handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Authorization", "X-Api-Token", "X-Target-Uri", "Mcp-Method", "Mcp-Name", "Mcp-Protocol-Version", "Mcp-Session-Id", "Last-Event-ID"}),
+		handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Authorization", "X-Api-Token", "Mcp-Method", "Mcp-Name", "Mcp-Protocol-Version", "Mcp-Session-Id", "Last-Event-ID"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.ExposedHeaders([]string{"Mcp-Session-Id"}),

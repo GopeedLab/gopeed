@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "Mudar para a configuração autenticada",
   "mcpRequiresTcp": "As instruções de conexão de agentes estão disponíveis quando o protocolo da API é TCP.",
   "emptyTaskCreateHint": "Clique em {action} para começar a baixar",
-  "emptyStateRetryHint": "Clique em {action} para tentar novamente"
+  "emptyStateRetryHint": "Clique em {action} para tentar novamente",
+  "addTrackerSubscription": "Adicionar subscrição de trackers",
+  "editTrackerSubscription": "Editar subscrição de trackers",
+  "trackerSubscriptionUrl": "URL da subscrição",
+  "trackerSubscriptionFetchSuccess": "Última obtenção bem-sucedida: {count} trackers",
+  "trackerSubscriptionFetchFailed": "Última obtenção falhou: 0 trackers"
 }

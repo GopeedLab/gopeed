@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "التبديل إلى إعدادات المصادقة",
   "mcpRequiresTcp": "تتوفر إرشادات ربط الوكيل عندما يكون بروتوكول API هو TCP.",
   "emptyTaskCreateHint": "اضغط على {action} لبدء التنزيل",
-  "emptyStateRetryHint": "اضغط على {action} لإعادة المحاولة"
+  "emptyStateRetryHint": "اضغط على {action} لإعادة المحاولة",
+  "addTrackerSubscription": "إضافة اشتراك متتبعات",
+  "editTrackerSubscription": "تعديل اشتراك المتتبعات",
+  "trackerSubscriptionUrl": "رابط الاشتراك",
+  "trackerSubscriptionFetchSuccess": "نجح آخر جلب: {count} متتبعات",
+  "trackerSubscriptionFetchFailed": "فشل آخر جلب: 0 متتبعات"
 }

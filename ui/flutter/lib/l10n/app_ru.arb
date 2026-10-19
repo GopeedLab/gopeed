@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "Переключиться на конфигурацию с аутентификацией",
   "mcpRequiresTcp": "Инструкции по подключению агентов доступны, когда протокол API — TCP.",
   "emptyTaskCreateHint": "Нажмите {action}, чтобы начать загрузку",
-  "emptyStateRetryHint": "Нажмите {action}, чтобы повторить попытку"
+  "emptyStateRetryHint": "Нажмите {action}, чтобы повторить попытку",
+  "addTrackerSubscription": "Добавить подписку на трекеры",
+  "editTrackerSubscription": "Изменить подписку на трекеры",
+  "trackerSubscriptionUrl": "URL подписки",
+  "trackerSubscriptionFetchSuccess": "Последняя загрузка успешна: {count} трекеров",
+  "trackerSubscriptionFetchFailed": "Последняя загрузка не удалась: 0 трекеров"
 }

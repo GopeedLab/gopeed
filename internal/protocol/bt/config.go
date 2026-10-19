@@ -1,8 +1,29 @@
 package bt
 
+import (
+	"time"
+
+	"github.com/GopeedLab/gopeed/internal/fetcher"
+)
+
+type trackerSubscriptionStatus struct {
+	Success       bool      `json:"success"`
+	TrackerCount  int       `json:"trackerCount"`
+	LastFetchTime time.Time `json:"lastFetchTime"`
+}
+
+type state struct {
+	TrackerSubscriptionStatuses map[string]trackerSubscriptionStatus `json:"trackerSubscriptionStatuses"`
+	TrackerSources              map[string][]string                  `json:"trackerSources"`
+	LastTrackerUpdateTime       time.Time                            `json:"lastTrackerUpdateTime"`
+}
+
 type config struct {
-	ListenPort int      `json:"listenPort"`
-	Trackers   []string `json:"trackers"`
+	fetcher.ConfigState[state]
+	TrackerSubscribeURLs []string `json:"trackerSubscribeUrls"`
+	AutoUpdateTrackers   bool     `json:"autoUpdateTrackers"`
+	CustomTrackers       []string `json:"customTrackers"`
+	ListenPort           int      `json:"listenPort"`
 	// SeedKeep is always keep seeding after downloading is complete, unless manually stopped.
 	SeedKeep bool `json:"seedKeep"`
 	// SeedRatio is the ratio of uploaded data to downloaded data to seed.

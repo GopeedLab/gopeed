@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -858,13 +857,16 @@ func TestWebhook_TriggerOnPause(t *testing.T) {
 }
 
 func setupWebhookTest(t *testing.T, fn func(downloader *Downloader)) {
-	defaultDownloader.Setup()
-	defaultDownloader.cfg.StorageDir = ".test_storage"
-	defaultDownloader.cfg.DownloadDir = ".test_download"
-	defer func() {
-		defaultDownloader.Clear()
-		os.RemoveAll(defaultDownloader.cfg.StorageDir)
-		os.RemoveAll(defaultDownloader.cfg.DownloadDir)
-	}()
-	fn(defaultDownloader)
+	t.Helper()
+	// Each test owns its runtime; a closed Downloader cannot be reused.
+	d := NewDownloader(&DownloaderConfig{StorageDir: t.TempDir(), TempDir: t.TempDir()})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := d.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	fn(d)
 }

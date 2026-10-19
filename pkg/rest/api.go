@@ -1,9 +1,7 @@
 package rest
 
 import (
-	"io"
 	"net/http"
-	"net/url"
 	"runtime"
 
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -335,43 +333,6 @@ func UpdateExtension(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJson(w, model.NewNilResult())
-}
-
-func DoProxy(w http.ResponseWriter, r *http.Request) {
-	target := r.Header.Get("X-Target-Uri")
-	if target == "" {
-		writeError(w, "param invalid: X-Target-Uri")
-		return
-	}
-	targetUrl, err := url.Parse(target)
-	if err != nil {
-		writeError(w, err.Error())
-		return
-	}
-	r.RequestURI = ""
-	r.URL = targetUrl
-	r.Host = targetUrl.Host
-	r.Header.Del("Cookie")
-	r.Header.Del("X-Api-Token")
-	r.Header.Del("X-Target-Uri")
-	resp, err := http.DefaultClient.Do(r)
-	if err != nil {
-		writeError(w, err.Error())
-		return
-	}
-	defer resp.Body.Close()
-	for k, vv := range resp.Header {
-		for _, v := range vv {
-			w.Header().Set(k, v)
-		}
-	}
-	w.WriteHeader(resp.StatusCode)
-	buf, err := io.ReadAll(resp.Body)
-	if err != nil {
-		writeError(w, err.Error())
-		return
-	}
-	w.Write(buf)
 }
 
 func GetStats(w http.ResponseWriter, r *http.Request) {

@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "인증 구성으로 전환",
   "mcpRequiresTcp": "API 프로토콜이 TCP일 때 에이전트 연결 안내를 사용할 수 있습니다.",
   "emptyTaskCreateHint": "{action}을 눌러 다운로드 시작",
-  "emptyStateRetryHint": "{action}을 눌러 다시 시도"
+  "emptyStateRetryHint": "{action}을 눌러 다시 시도",
+  "addTrackerSubscription": "트래커 구독 추가",
+  "editTrackerSubscription": "트래커 구독 편집",
+  "trackerSubscriptionUrl": "구독 URL",
+  "trackerSubscriptionFetchSuccess": "마지막 가져오기 성공: 트래커 {count}개",
+  "trackerSubscriptionFetchFailed": "마지막 가져오기 실패: 트래커 0개"
 }

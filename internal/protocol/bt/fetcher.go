@@ -642,6 +642,7 @@ func (f *Fetcher) WaitUpload() (err error) {
 }
 
 func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
+	f.ctl.GetConfig(&f.config)
 	if err = base.ParseReqExtra[bt.ReqExtra](req); err != nil {
 		return
 	}
@@ -724,10 +725,8 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 				}
 			}
 		}
-		if len(f.config.Trackers) > 0 {
-			for _, tracker := range f.config.Trackers {
-				trackers[tracker] = true
-			}
+		for _, tracker := range f.config.effectiveTrackers() {
+			trackers[tracker] = true
 		}
 		if len(trackers) > 0 {
 			announceList := make([][]string, 0)
@@ -836,8 +835,14 @@ func (fm *FetcherManager) AutoRename() bool {
 
 func (fm *FetcherManager) DefaultConfig() any {
 	return &config{
+		TrackerSubscribeURLs: append([]string{}, defaultTrackerSubscribeURLs...),
+		AutoUpdateTrackers:   true,
+		CustomTrackers:       []string{},
+		ConfigState: fetcher.ConfigState[state]{State: state{
+			TrackerSources:              map[string][]string{},
+			TrackerSubscriptionStatuses: map[string]trackerSubscriptionStatus{},
+		}},
 		ListenPort: 0,
-		Trackers:   []string{},
 		SeedKeep:   false,
 		SeedRatio:  1.0,
 		SeedTime:   120 * 60,

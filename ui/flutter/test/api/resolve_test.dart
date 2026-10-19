@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:dio/dio.dart' as dio;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/api.dart' as api;
 import 'package:gopeed/api/model/options.dart';
@@ -52,9 +51,4 @@ class _RecordingTransport implements GopeedTransport {
 
   @override
   String join(String path) => path;
-
-  @override
-  Future<dio.Response<String>> proxyRequest(String uri, {dynamic data, dio.Options? options}) {
-    throw UnimplementedError();
-  }
 }

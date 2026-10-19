@@ -207,11 +207,6 @@ Future<void> login(LoginReq loginReq) {
   return _parse<void>(() => _request('api/web/login', method: 'POST', data: loginReq.toJson()), null);
 }
 
-Future<Response<String>> proxyRequest<T>(String uri, {dynamic data, Options? options}) async {
-  initDefault();
-  return _transport!.proxyRequest(uri, data: data, options: options);
-}
-
 String join(String path) {
   initDefault();
   return _transport!.join(path);
@@ -225,3 +220,36 @@ Future<dynamic> forward(
 }) async {
   return _request(path, method: method, data: data, queryParameters: queryParameters);
 }
+
+Future<void> triggerProtocolJob(String protocol, String name) => _parse<void>(
+  () => _request(
+    'api/v1/protocols/${Uri.encodeComponent(protocol)}/jobs/${Uri.encodeComponent(name)}/trigger',
+    method: 'POST',
+  ),
+  null,
+);
+
+Future<Map<String, dynamic>?> checkAppUpdate(String currentVersion) => _parse(
+  () => _request('api/v1/app/updates/check', method: 'POST', data: {'currentVersion': currentVersion}),
+  (json) => json == null ? null : Map<String, dynamic>.from(json as Map),
+);
+
+Future<List<String>> getAppUpdateCandidates(String version, String asset) => _parse(
+  () => _request('api/v1/app/updates/candidates', method: 'POST', data: {'version': version, 'asset': asset}),
+  (json) => List<String>.from((json as Map)['urls'] as List),
+);
+
+Future<Map<String, dynamic>> getStoreExtensions(Map<String, dynamic> query) => _parse(
+  () => _request('api/v1/store/extensions', queryParameters: query),
+  (json) => Map<String, dynamic>.from(json as Map),
+);
+
+Future<Map<String, dynamic>> getStoreExtension(String id, {String? version}) => _parse(
+  () => _request('api/v1/store/extensions/${Uri.encodeComponent(id)}', queryParameters: {'version': ?version}),
+  (json) => Map<String, dynamic>.from(json as Map),
+);
+
+Future<void> reportStoreInstall(String id) => _parse<void>(
+  () => _request('api/v1/store/extensions/${Uri.encodeComponent(id)}/install-report', method: 'POST'),
+  null,
+);

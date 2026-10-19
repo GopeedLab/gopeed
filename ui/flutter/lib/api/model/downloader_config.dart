@@ -8,6 +8,7 @@ class DownloaderConfig {
   int maxRunning;
   ProtocolConfig protocolConfig = ProtocolConfig();
   ExtraConfig extra = ExtraConfig();
+  GithubMirrorConfig githubMirror = GithubMirrorConfig();
   ProxyConfig proxy = ProxyConfig();
   WebhookConfig webhook = WebhookConfig();
   ScriptConfig script = ScriptConfig();
@@ -98,10 +99,43 @@ class HttpConfig {
   Map<String, dynamic> toJson() => _$HttpConfigToJson(this);
 }
 
+DateTime? _trackerUpdateTimeFromJson(String? value) =>
+    value == null || value.startsWith('0001-') ? null : DateTime.parse(value);
+
 @JsonSerializable()
+class TrackerSubscriptionStatus {
+  final bool success;
+  final int trackerCount;
+  final DateTime lastFetchTime;
+
+  TrackerSubscriptionStatus({required this.success, required this.trackerCount, required this.lastFetchTime});
+
+  factory TrackerSubscriptionStatus.fromJson(Map<String, dynamic> json) => _$TrackerSubscriptionStatusFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TrackerSubscriptionStatusToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true)
+class BtState {
+  Map<String, List<String>> trackerSources;
+  Map<String, TrackerSubscriptionStatus> trackerSubscriptionStatuses;
+  @JsonKey(fromJson: _trackerUpdateTimeFromJson)
+  DateTime? lastTrackerUpdateTime;
+
+  BtState({this.trackerSources = const {}, this.trackerSubscriptionStatuses = const {}, this.lastTrackerUpdateTime});
+
+  factory BtState.fromJson(Map<String, dynamic>? json) => json == null ? BtState() : _$BtStateFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BtStateToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true)
 class BtConfig {
+  BtState state = BtState();
+  List<String> trackerSubscribeUrls;
+  bool autoUpdateTrackers;
+  List<String> customTrackers;
   int listenPort;
-  List<String> trackers;
   bool seedKeep;
   double seedRatio;
   int seedTime;
@@ -109,8 +143,10 @@ class BtConfig {
   bool disablePex;
 
   BtConfig({
+    this.trackerSubscribeUrls = const [],
+    this.autoUpdateTrackers = true,
+    this.customTrackers = const [],
     this.listenPort = 0,
-    this.trackers = const [],
     this.seedKeep = false,
     this.seedRatio = 0,
     this.seedTime = 0,
@@ -157,9 +193,6 @@ class ExtraConfig {
   bool analyticsEnabled;
   String analyticsClientId;
   List<DownloadCategory> downloadCategories;
-
-  ExtraConfigBt bt = ExtraConfigBt();
-  ExtraConfigGithubMirror githubMirror = ExtraConfigGithubMirror();
 
   ExtraConfig({
     this.themeMode = '',
@@ -271,22 +304,6 @@ class ProxyConfig {
   Map<String, dynamic> toJson() => _$ProxyConfigToJson(this);
 }
 
-@JsonSerializable()
-class ExtraConfigBt {
-  List<String> trackerSubscribeUrls = [];
-  List<String> subscribeTrackers = [];
-  bool autoUpdateTrackers = true;
-  DateTime? lastTrackerUpdateTime;
-
-  List<String> customTrackers = [];
-
-  ExtraConfigBt();
-
-  factory ExtraConfigBt.fromJson(Map<String, dynamic> json) => _$ExtraConfigBtFromJson(json);
-
-  Map<String, dynamic> toJson() => _$ExtraConfigBtToJson(this);
-}
-
 enum GithubMirrorType { jsdelivr, ghProxy }
 
 @JsonSerializable()
@@ -304,16 +321,16 @@ class GithubMirror {
 }
 
 @JsonSerializable(explicitToJson: true)
-class ExtraConfigGithubMirror {
+class GithubMirrorConfig {
   bool enabled;
   List<GithubMirror> mirrors;
 
-  ExtraConfigGithubMirror({this.enabled = true, this.mirrors = const []});
+  GithubMirrorConfig({this.enabled = true, this.mirrors = const []});
 
-  factory ExtraConfigGithubMirror.fromJson(Map<String, dynamic>? json) =>
-      json == null ? ExtraConfigGithubMirror() : _$ExtraConfigGithubMirrorFromJson(json);
+  factory GithubMirrorConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? GithubMirrorConfig() : _$GithubMirrorConfigFromJson(json);
 
-  Map<String, dynamic> toJson() => _$ExtraConfigGithubMirrorToJson(this);
+  Map<String, dynamic> toJson() => _$GithubMirrorConfigToJson(this);
 }
 
 @JsonSerializable()

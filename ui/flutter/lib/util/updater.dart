@@ -1,18 +1,13 @@
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:install_plugin/install_plugin.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
-import 'package:pub_semver/pub_semver.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../api/api.dart' as api;
-import '../api/gopeed_site_api.dart';
-import '../api/model/downloader_config.dart';
+import '../core/capabilities/gopeed_capability.dart';
+import '../core/network/candidate_download.dart';
 import 'arch/arch.dart';
-import 'github_mirror.dart';
 import 'log_util.dart';
 import 'package_info.dart';
 import 'util.dart';
@@ -46,11 +41,14 @@ UpdateChannel? get updateChannel {
 
 String get _updaterBinaryName => 'updater${Util.isWindows() ? '.exe' : ''}';
 
-const _releasePageSize = 10;
-const _githubReleasesUrl = 'https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=$_releasePageSize';
-
 class VersionInfo {
   const VersionInfo({required this.version, required this.changeLog, required this.releaseUrl});
+
+  factory VersionInfo.fromJson(Map<String, dynamic> json) => VersionInfo(
+    version: json['version'] as String,
+    changeLog: json['changeLog'] as String,
+    releaseUrl: json['releaseUrl'] as String,
+  );
 
   final String version;
   final String changeLog;
@@ -71,90 +69,10 @@ Future<void> installUpdater() async {
   );
 }
 
-Future<VersionInfo?> checkUpdate() async {
-  List<dynamic> releases;
-  try {
-    final releaseDataStr = (await api.proxyRequest(_githubReleasesUrl)).data;
-    if (releaseDataStr == null || releaseDataStr.isEmpty) {
-      throw const FormatException('Empty GitHub releases response');
-    }
-    final releaseData = jsonDecode(releaseDataStr);
-    if (releaseData is! List<dynamic>) {
-      throw const FormatException('Invalid GitHub releases response');
-    }
-    releases = releaseData;
-  } catch (_) {
-    releases = await GopeedSiteApi.instance.getReleases(perPage: _releasePageSize);
-  }
-  return selectUpdateRelease(releases, appVersion);
+Future<VersionInfo?> checkUpdate({required GopeedService service}) async {
+  final result = await service.checkAppUpdate(appVersion);
+  return result == null ? null : VersionInfo.fromJson(result);
 }
-
-bool isNewerVersion(String latest, String current) {
-  try {
-    return _parseVersion(latest).compareTo(_parseVersion(current)) > 0;
-  } on FormatException {
-    return false;
-  }
-}
-
-VersionInfo? selectUpdateRelease(List<dynamic> releases, String currentVersionText) {
-  late final Version currentVersion;
-  try {
-    currentVersion = _parseVersion(currentVersionText);
-  } on FormatException {
-    return null;
-  }
-
-  Map<String, dynamic>? selectedRelease;
-  Version? selectedVersion;
-
-  for (final item in releases) {
-    if (item is! Map) continue;
-    final release = Map<String, dynamic>.from(item);
-    if (release['draft'] == true) continue;
-
-    final tagName = release['tag_name'];
-    if (tagName is! String || tagName.isEmpty) continue;
-
-    late final Version candidateVersion;
-    try {
-      candidateVersion = _parseVersion(tagName);
-    } on FormatException {
-      continue;
-    }
-
-    if (candidateVersion.compareTo(currentVersion) <= 0) continue;
-
-    final candidateIsPrerelease = release['prerelease'] == true || candidateVersion.isPreRelease;
-    if (!currentVersion.isPreRelease) {
-      if (candidateIsPrerelease) continue;
-    } else if (candidateIsPrerelease && !_hasSameReleaseCore(candidateVersion, currentVersion)) {
-      // Preview builds graduate through their own beta/rc line before returning
-      // to stable; they do not jump into the next version's preview line.
-      continue;
-    }
-
-    if (selectedVersion == null || candidateVersion.compareTo(selectedVersion) > 0) {
-      selectedRelease = release;
-      selectedVersion = candidateVersion;
-    }
-  }
-
-  if (selectedRelease == null || selectedVersion == null) return null;
-  final tagName = selectedRelease['tag_name'] as String;
-  return VersionInfo(
-    version: _versionText(tagName),
-    changeLog: (selectedRelease['body'] ?? '').toString(),
-    releaseUrl: (selectedRelease['html_url'] ?? 'https://github.com/GopeedLab/gopeed/releases/tag/$tagName').toString(),
-  );
-}
-
-Version _parseVersion(String version) => Version.parse(_versionText(version));
-
-String _versionText(String version) => version.startsWith('v') ? version.substring(1) : version;
-
-bool _hasSameReleaseCore(Version first, Version second) =>
-    first.major == second.major && first.minor == second.minor && first.patch == second.patch;
 
 /// Extracts the matching section from Gopeed's bilingual GitHub release notes.
 String localizedReleaseNotes(String fullChangeLog, String languageCode) {
@@ -175,7 +93,7 @@ typedef UpdateProgressCallback = void Function(int received, int total);
 /// Store-distributed and unsupported channels safely open the release page.
 Future<void> updateApp(
   VersionInfo versionInfo, {
-  required ExtraConfigGithubMirror githubMirror,
+  required GopeedService service,
   required UpdateProgressCallback onProgress,
 }) async {
   final channel = updateChannel;
@@ -183,15 +101,10 @@ Future<void> updateApp(
   var assetPath = '';
 
   if (assetName.isNotEmpty) {
-    final rawUrl = 'https://github.com/GopeedLab/gopeed/releases/download/v${versionInfo.version}/$assetName';
+    onProgress(0, 0);
+    final candidates = await service.getAppUpdateCandidates(versionInfo.version, assetName);
     assetPath = path.join((await getTemporaryDirectory()).path, assetName);
-    final downloadUrl = await githubAutoMirror(rawUrl, MirrorType.githubRelease, config: githubMirror);
-    final client = Dio();
-    try {
-      await client.download(downloadUrl, assetPath, onReceiveProgress: onProgress);
-    } finally {
-      client.close();
-    }
+    await downloadFromCandidates(candidates, assetPath, onReceiveProgress: onProgress);
   }
 
   switch (channel) {

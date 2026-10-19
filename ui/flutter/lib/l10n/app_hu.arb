@@ -456,5 +456,10 @@
   "useMcpApiTokenTemplate": "Váltás hitelesített konfigurációra",
   "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP.",
   "emptyTaskCreateHint": "Kattints a {action} gombra a letöltés indításához",
-  "emptyStateRetryHint": "Kattints a {action} gombra az újrapróbálkozáshoz"
+  "emptyStateRetryHint": "Kattints a {action} gombra az újrapróbálkozáshoz",
+  "addTrackerSubscription": "Tracker-feliratkozás hozzáadása",
+  "editTrackerSubscription": "Tracker-feliratkozás szerkesztése",
+  "trackerSubscriptionUrl": "Feliratkozási URL",
+  "trackerSubscriptionFetchSuccess": "Legutóbbi lekérés sikeres: {count} tracker",
+  "trackerSubscriptionFetchFailed": "Legutóbbi lekérés sikertelen: 0 tracker"
 }
