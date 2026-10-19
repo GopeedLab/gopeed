@@ -50,15 +50,20 @@ func TestFetcherE2E_SameURLTwoTasks(t *testing.T) {
 	// user duplicating a task. The engine would rename the second output
 	// (AutoRename); mirror that here.
 	f1 := newTestFetcher(t, cfg)
-	if err := f1.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: dir}); err != nil {
+	f1.Meta().Opts = &base.Options{Path: dir}
+	if err := f1.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	f2 := newTestFetcher(t, cfg)
-	if err := f2.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: dir, Name: "video-2.ts"}); err != nil {
+	f2.Meta().Opts = &base.Options{Path: dir, Name: "video-2.ts"}
+	if err := f2.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
-	if f1.state.StagingDir == "" || f1.state.StagingDir == f2.state.StagingDir {
-		t.Fatalf("staging dirs must be distinct per task: %q vs %q", f1.state.StagingDir, f2.state.StagingDir)
+	if f1.state.StagingID == "" || f1.state.StagingID == f2.state.StagingID {
+		t.Fatal("staging identities must be distinct per task")
+	}
+	if f1.state.StagingDir != "" || f2.state.StagingDir != "" {
+		t.Fatal("Resolve pinned an output directory")
 	}
 
 	// Start task 1, let it stage some segments, then pause it.
@@ -135,7 +140,8 @@ func TestFetcherE2E_ForeignJournalDiscarded(t *testing.T) {
 	cfg := testConfig()
 	cfg.PrefetchContentLength = false
 	f := newTestFetcher(t, cfg)
-	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	// Plant a journal that does not belong to this plan (wrong fingerprint).
@@ -176,7 +182,8 @@ func TestFetcherE2E_MergeFailurePreservesStaging(t *testing.T) {
 	defer server.Close()
 
 	f := newTestFetcher(t, testConfig())
-	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	run := &hlsRun{
@@ -250,7 +257,8 @@ func TestFetcherE2E_ReMergeOverExistingOutput(t *testing.T) {
 	defer server.Close()
 
 	f := newTestFetcher(t, testConfig())
-	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}, &base.Options{Path: t.TempDir()}); err != nil {
+	f.Meta().Opts = &base.Options{Path: t.TempDir()}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/video.m3u8"}); err != nil {
 		t.Fatal(err)
 	}
 	tempDir := f.resolveStagingDirLocked()

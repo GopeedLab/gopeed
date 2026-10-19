@@ -49,7 +49,8 @@ func TestResolveResponseSize(t *testing.T) {
 			defer server.Close()
 			f := buildFetcher()
 			defer f.Close()
-			err := f.Resolve(&base.Request{URL: server.URL + "/file"}, &base.Options{Path: t.TempDir()})
+			f.Meta().Opts = &base.Options{Path: t.TempDir()}
+			err := f.Resolve(&base.Request{URL: server.URL + "/file"})
 			if tc.invalid {
 				if !errors.Is(err, errInvalidRangeResponse) {
 					t.Fatalf("Resolve error = %v, want invalid range", err)
@@ -97,7 +98,8 @@ func TestDownloadPartialResolve(t *testing.T) {
 				defer server.Close()
 				f := buildFetcher()
 				defer f.Close()
-				if err := f.Resolve(&base.Request{URL: server.URL + "/file"}, &base.Options{Path: t.TempDir(), Name: "file", Extra: &fhttp.OptsExtra{Connections: connections}}); err != nil {
+				f.Meta().Opts = &base.Options{Path: t.TempDir(), Name: "file", Extra: &fhttp.OptsExtra{Connections: connections}}
+				if err := f.Resolve(&base.Request{URL: server.URL + "/file"}); err != nil {
 					t.Fatal(err)
 				}
 				if err := f.Start(); err != nil {

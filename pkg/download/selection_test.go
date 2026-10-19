@@ -18,7 +18,7 @@ func TestCreateResolvedFileSelection(t *testing.T) {
 	}{
 		{"partial", []int{2, 0}, true, []int{2, 0}, 40},
 		{"default all", nil, true, []int{0, 1, 2}, 60},
-		{"legacy retains resolve options", nil, false, []int{1}, 20},
+		{"default creation options", nil, false, []int{0, 1, 2}, 60},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			manager := &generationTestManager{}
@@ -28,8 +28,8 @@ func TestCreateResolvedFileSelection(t *testing.T) {
 			}
 			defer d.Clear()
 			d.cfg.MaxRunning = 0
-			original := &base.Options{Path: t.TempDir(), SelectFiles: []int{1}}
-			rr, err := d.Resolve(&base.Request{URL: "generation://selection"}, original)
+			original := &base.Options{Path: t.TempDir()}
+			rr, err := d.Resolve(&base.Request{URL: "generation://selection"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -40,7 +40,7 @@ func TestCreateResolvedFileSelection(t *testing.T) {
 			if tc.submit {
 				id, err = d.CreateWithOptions(rr.ID, &base.Options{Path: original.Path, SelectFiles: tc.selection})
 			} else {
-				id, err = d.Create(rr.ID)
+				id, err = d.CreateWithOptions(rr.ID, original)
 			}
 			if err != nil {
 				t.Fatal(err)

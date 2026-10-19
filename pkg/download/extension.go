@@ -753,6 +753,10 @@ type OnErrorExtensionTask struct {
 }
 
 func cloneExtensionTask(task *Task) *Task {
+	if task.statusLock != nil {
+		task.statusLock.Lock()
+		defer task.statusLock.Unlock()
+	}
 	newTask := task.clone()
 	newTask.Meta.Req = task.Meta.Req
 	return newTask

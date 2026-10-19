@@ -3,6 +3,10 @@ package model
 import "github.com/GopeedLab/gopeed/pkg/base"
 
 type ResolveTask struct {
+	Req *base.Request `json:"req"`
+}
+
+type PatchTask struct {
 	Req  *base.Request `json:"req"`
 	Opts *base.Options `json:"opts"`
 }

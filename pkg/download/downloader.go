@@ -244,16 +244,25 @@ func (d *Downloader) Setup() error {
 		tasks := append([]*Task(nil), d.tasks...)
 		d.lock.Unlock()
 		for _, task := range tasks {
-			if task.Status == base.DownloadStatusDone && task.Uploading {
+			func() {
+				task.lock.Lock()
+				defer task.lock.Unlock()
+				if d.closed.Load() {
+					return
+				}
+				if d.taskStatus(task) != base.DownloadStatusDone || !task.Uploading {
+					return
+				}
 				if err := d.restoreTask(task); err != nil {
-					d.Logger.Error().Stack().Err(err).Msgf("task upload restore fetcher failed, task id: %s", task.ID)
+					d.Logger.Error().Err(err).Msgf("task upload restore fetcher failed, task id: %s", task.ID)
+					return
 				}
 				if uploader, ok := task.fetcher.(fetcher.Uploader); ok {
 					if err := uploader.Upload(); err != nil {
-						d.Logger.Error().Stack().Err(err).Msgf("task upload failed, task id: %s", task.ID)
+						d.Logger.Error().Err(err).Msgf("task upload failed, task id: %s", task.ID)
 					}
 				}
-			}
+			}()
 		}
 	}()
 
@@ -467,7 +476,10 @@ func (d *Downloader) saveTask(task *Task) error {
 			return err
 		}
 	}
-	if err := d.storage.Put(bucketTask, task.ID, task); err != nil {
+	task.statusLock.Lock()
+	snapshot := task.clone()
+	task.statusLock.Unlock()
+	if err := d.storage.Put(bucketTask, task.ID, snapshot); err != nil {
 		d.Logger.Error().Stack().Err(err).Msgf("persist task failed: %s", task.ID)
 		return err
 	}
@@ -498,7 +510,7 @@ func ensureResourceRequestRawURLs(parentReq *base.Request, res *base.Resource) {
 	}
 }
 
-func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *ResolveResult, err error) {
+func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	rrId, err := gonanoid.New()
 	if err != nil {
 		return
@@ -520,11 +532,7 @@ func (d *Downloader) Resolve(req *base.Request, opts *base.Options) (rr *Resolve
 	if err != nil {
 		return
 	}
-	initOpt, err := d.initOptions(opts)
-	if err != nil {
-		return
-	}
-	err = fetcher.Resolve(req, initOpt)
+	err = fetcher.Resolve(req)
 	if err != nil {
 		return
 	}
@@ -558,7 +566,7 @@ func (d *Downloader) notifyRunning() {
 func (d *Downloader) remainRunningCount() int {
 	runningCount := 0
 	for _, t := range d.tasks {
-		if t.Status == base.DownloadStatusRunning {
+		if d.taskStatus(t) == base.DownloadStatusRunning {
 			runningCount++
 		}
 	}
@@ -621,7 +629,7 @@ func (d *Downloader) Create(rrId string) (taskId string, err error) {
 }
 
 // CreateWithOptions creates a resolved task using the submitted options, or the
-// resolve-time options when opts is nil.
+// default download options when opts is nil.
 func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId string, err error) {
 	d.fetcherMapLock.RLock()
 	fetcher, ok := d.fetcherCache[rrId]
@@ -629,21 +637,22 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 	if !ok {
 		return "", errors.New("invalid resource id")
 	}
-	if opts != nil {
-		opts, err = d.initOptions(opts.Clone())
-		if err != nil {
-			return "", err
-		}
-		if res := fetcher.Meta().Res; res != nil {
-			for _, index := range opts.SelectFiles {
-				if index < 0 || index >= len(res.Files) {
-					return "", fmt.Errorf("invalid selected file index: %d", index)
-				}
-			}
-			opts.InitSelectFiles(len(res.Files))
-		}
-		fetcher.Meta().Opts = opts
+	if opts == nil {
+		opts = &base.Options{}
 	}
+	opts, err = d.initOptions(opts.Clone())
+	if err != nil {
+		return "", err
+	}
+	if res := fetcher.Meta().Res; res != nil {
+		for _, index := range opts.SelectFiles {
+			if index < 0 || index >= len(res.Files) {
+				return "", fmt.Errorf("invalid selected file index: %d", index)
+			}
+		}
+		opts.InitSelectFiles(len(res.Files))
+	}
+	fetcher.Meta().Opts = opts
 	if res := fetcher.Meta().Res; res != nil {
 		res.CalcSize(fetcher.Meta().Opts.SelectFiles)
 	}
@@ -1469,7 +1478,10 @@ func (d *Downloader) watch(task *Task) {
 		if err := d.captureTaskStats(task, false, true); err != nil {
 			d.Logger.Error().Stack().Err(err).Msgf("persist completed task stats failed, task id: %s", task.ID)
 		}
-		d.storage.Put(bucketTask, task.ID, task.clone())
+		task.statusLock.Lock()
+		snapshot := task.clone()
+		task.statusLock.Unlock()
+		d.storage.Put(bucketTask, task.ID, snapshot)
 		d.emit(EventKeyDone, task)
 		d.emit(EventKeyFinally, task, err)
 		d.notifyRunning()
@@ -1826,7 +1838,7 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			return err
 		}
 		if task.Meta.Res == nil {
-			err := task.fetcher.Resolve(task.Meta.Req, task.Meta.Opts)
+			err := task.fetcher.Resolve(task.Meta.Req)
 			if err != nil {
 				return err
 			}

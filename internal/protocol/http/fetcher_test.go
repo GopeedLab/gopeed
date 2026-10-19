@@ -233,10 +233,11 @@ func TestFetcher_ResolveFilenameFromContentType(t *testing.T) {
 	defer fetcher.Pause()
 
 	const opaqueName = "OIP-C.u5nEXTXND3PJF0gNTgw5YgHaFP"
-	err := fetcher.Resolve(&base.Request{URL: server.URL + "/" + opaqueName}, &base.Options{
+	fetcher.Meta().Opts = &base.Options{
 		Name: test.DownloadName,
 		Path: test.Dir,
-	})
+	}
+	err := fetcher.Resolve(&base.Request{URL: server.URL + "/" + opaqueName})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,6 +252,10 @@ func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 	defer listener.Close()
 
 	fetcher := buildFetcher()
+	fetcher.Meta().Opts = &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+	}
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/",
 		Extra: &http.ReqExtra{
@@ -258,9 +263,6 @@ func TestFetcher_ResolveWithHostHeader(t *testing.T) {
 				"Host": "test",
 			},
 		},
-	}, &base.Options{
-		Name: test.DownloadName,
-		Path: test.Dir,
 	})
 	// The server should return 400 for invalid Host header
 	if err == nil || !strings.Contains(err.Error(), "400") {
@@ -274,6 +276,10 @@ func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 
 	fetcher := buildFetcher()
 	defer fetcher.Pause() // Close the resolve response to allow server shutdown
+	fetcher.Meta().Opts = &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+	}
 	err := fetcher.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/",
 		Extra: &http.ReqExtra{
@@ -281,9 +287,6 @@ func TestFetcher_ResolveWithInvalidHeader(t *testing.T) {
 				"Referer": "\rtest",
 			},
 		},
-	}, &base.Options{
-		Name: test.DownloadName,
-		Path: test.Dir,
 	})
 	// Invalid header with \r should be sanitized by Go's http client, allowing the request to succeed
 	if err != nil {
@@ -303,12 +306,13 @@ func TestFetcher_ResolveAutomaticallyFallsBackToBrowserFingerprint(t *testing.T)
 
 	fetcher := buildFetcher()
 	defer fetcher.Pause()
+	fetcher.Meta().Opts = &base.Options{
+		Name: test.DownloadName,
+		Path: test.Dir,
+	}
 	err := fetcher.Resolve(&base.Request{
 		URL:            server.URL + "/file.bin",
 		SkipVerifyCert: true,
-	}, &base.Options{
-		Name: test.DownloadName,
-		Path: test.Dir,
 	})
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
@@ -369,11 +373,12 @@ func testResolve(startTestServer func() net.Listener, path string, t *testing.T,
 	defer listener.Close()
 	fetcher := buildFetcher()
 	defer fetcher.Pause() // Close the resolve response to allow server shutdown
-	err := fetcher.Resolve(&base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + path,
-	}, &base.Options{
+	fetcher.Meta().Opts = &base.Options{
 		Name: test.DownloadName,
 		Path: test.Dir,
+	}
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + path,
 	})
 	want, err := wantFn(err)
 	if err != nil {
@@ -425,13 +430,14 @@ func TestFetcher_PauseBeforeStartDiscardsPrefetchProgress(t *testing.T) {
 	defer server.Close()
 
 	fetcher := buildFetcher()
-	if err := fetcher.Resolve(&base.Request{URL: server.URL + "/" + test.BuildName}, &base.Options{
+	fetcher.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: test.DownloadName,
 		Extra: &http.OptsExtra{
 			Connections: 2,
 		},
-	}); err != nil {
+	}
+	if err := fetcher.Resolve(&base.Request{URL: server.URL + "/" + test.BuildName}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -772,13 +778,14 @@ func TestFetcher_SequentialRetryReprobesRange(t *testing.T) {
 			defer server.Close()
 
 			f := buildFetcher()
-			if err := f.Resolve(&base.Request{URL: server.URL + "/dynamic-range.data"}, &base.Options{
+			f.Meta().Opts = &base.Options{
 				Path: t.TempDir(),
 				Name: "dynamic-range.data",
 				Extra: &http.OptsExtra{
 					Connections: 4,
 				},
-			}); err != nil {
+			}
+			if err := f.Resolve(&base.Request{URL: server.URL + "/dynamic-range.data"}); err != nil {
 				t.Fatal(err)
 			}
 			if err := f.Start(); err != nil {
@@ -884,13 +891,14 @@ func TestFetcher_InitialIgnoredRangeUsesResponseSize(t *testing.T) {
 	defer releaseResolve()
 
 	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/ignored-range.data"}, &base.Options{
+	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "ignored-range.data",
 		Extra: &http.OptsExtra{
 			Connections: 4,
 		},
-	}); err != nil {
+	}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/ignored-range.data"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.Start(); err != nil {
@@ -981,13 +989,14 @@ func TestFetcher_InterruptedChunkedReplacementRestartsFromZero(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/chunked-replacement.data"}, &base.Options{
+	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "chunked-replacement.data",
 		Extra: &http.OptsExtra{
 			Connections: 4,
 		},
-	}); err != nil {
+	}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/chunked-replacement.data"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.Start(); err != nil {
@@ -1167,13 +1176,14 @@ func TestFetcher_UsesResolveResponseWhenRangeTakeoverFails(t *testing.T) {
 			defer server.Close()
 
 			f := buildFetcher()
-			if err := f.Resolve(&base.Request{URL: server.URL + "/resolve-fallback.data"}, &base.Options{
+			f.Meta().Opts = &base.Options{
 				Path: t.TempDir(),
 				Name: "resolve-fallback.data",
 				Extra: &http.OptsExtra{
 					Connections: 1,
 				},
-			}); err != nil {
+			}
+			if err := f.Resolve(&base.Request{URL: server.URL + "/resolve-fallback.data"}); err != nil {
 				t.Fatal(err)
 			}
 			defer f.Close()
@@ -1246,13 +1256,14 @@ func TestFetcher_ValidRangeTakesOverResolveResponse(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/resolve-takeover.data"}, &base.Options{
+	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "resolve-takeover.data",
 		Extra: &http.OptsExtra{
 			Connections: 4,
 		},
-	}); err != nil {
+	}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/resolve-takeover.data"}); err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
@@ -1340,13 +1351,14 @@ func TestFetcher_UnknownSizeRangeUsesOpenEndedWorker(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/unknown-size-range.data"}, &base.Options{
+	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "unknown-size-range.data",
 		Extra: &http.OptsExtra{
 			Connections: 4,
 		},
-	}); err != nil {
+	}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/unknown-size-range.data"}); err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
@@ -1434,13 +1446,14 @@ func TestFetcher_UnknownSizeRangeRetriesShortPartialBody(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/short-range.data"}, &base.Options{
+	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "short-range.data",
 		Extra: &http.OptsExtra{
 			Connections: 1,
 		},
-	}); err != nil {
+	}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/short-range.data"}); err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
@@ -1493,13 +1506,14 @@ func TestFetcher_UnknownSizeRangeFallsBackToResolve(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/unknown-size-fallback.data"}, &base.Options{
+	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "unknown-size-fallback.data",
 		Extra: &http.OptsExtra{
 			Connections: 1,
 		},
-	}); err != nil {
+	}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/unknown-size-fallback.data"}); err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
@@ -1580,13 +1594,14 @@ func TestFetcher_UnknownSizeRangeRemainsOpenEndedAfterPause(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/pause-open-range.data"}, &base.Options{
+	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "pause-open-range.data",
 		Extra: &http.OptsExtra{
 			Connections: 1,
 		},
-	}); err != nil {
+	}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/pause-open-range.data"}); err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
@@ -1635,13 +1650,14 @@ func TestFetcher_UnknownSizeResolveReadErrorFailsTask(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/broken-chunked.data"}, &base.Options{
+	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "broken-chunked.data",
 		Extra: &http.OptsExtra{
 			Connections: 1,
 		},
-	}); err != nil {
+	}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/broken-chunked.data"}); err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
@@ -1667,13 +1683,14 @@ func TestFetcher_UnknownSizeResolveCleanEOFUpdatesSize(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
-	if err := f.Resolve(&base.Request{URL: server.URL + "/unknown-size.data"}, &base.Options{
+	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "unknown-size.data",
 		Extra: &http.OptsExtra{
 			Connections: 1,
 		},
-	}); err != nil {
+	}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/unknown-size.data"}); err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
@@ -2269,14 +2286,15 @@ func TestFetcher_DownloadOneTimeURL(t *testing.T) {
 	defer listener.Close()
 
 	fetcher := buildFetcher()
-	err := fetcher.Resolve(&base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-	}, &base.Options{
+	fetcher.Meta().Opts = &base.Options{
 		Name: test.DownloadName,
 		Path: test.Dir,
 		Extra: &http.OptsExtra{
 			Connections: 4, // Try to use multiple connections, but only first should work
 		},
+	}
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -2335,14 +2353,15 @@ func TestFetcher_SlowStartExpansion(t *testing.T) {
 				Connections: tc.maxConns,
 			})
 
-			err := fetcher.Resolve(&base.Request{
-				URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-			}, &base.Options{
+			fetcher.Meta().Opts = &base.Options{
 				Name: test.DownloadName,
 				Path: test.Dir,
 				Extra: &http.OptsExtra{
 					Connections: tc.maxConns,
 				},
+			}
+			err := fetcher.Resolve(&base.Request{
+				URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 			})
 			if err != nil {
 				cleanup()
@@ -2398,14 +2417,15 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 		defer listener.Close()
 
 		fetcher := buildFetcher()
-		err := fetcher.Resolve(&base.Request{
-			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-		}, &base.Options{
+		fetcher.Meta().Opts = &base.Options{
 			Name: test.DownloadName,
 			Path: test.Dir,
 			Extra: &http.OptsExtra{
 				Connections: 4,
 			},
+		}
+		err := fetcher.Resolve(&base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -2469,14 +2489,15 @@ func TestFetcher_AsyncPrefetch(t *testing.T) {
 		defer listener.Close()
 
 		fetcher := buildFetcher()
-		err := fetcher.Resolve(&base.Request{
-			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-		}, &base.Options{
+		fetcher.Meta().Opts = &base.Options{
 			Name: test.DownloadName,
 			Path: test.Dir,
 			Extra: &http.OptsExtra{
 				Connections: 4,
 			},
+		}
+		err := fetcher.Resolve(&base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -2551,14 +2572,15 @@ func TestFetcher_DownloadExpiringRedirectURL(t *testing.T) {
 		defer listener.Close()
 
 		fetcher := buildFetcher()
-		err := fetcher.Resolve(&base.Request{
-			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-		}, &base.Options{
+		fetcher.Meta().Opts = &base.Options{
 			Name: test.DownloadName,
 			Path: test.Dir,
 			Extra: &http.OptsExtra{
 				Connections: 4, // Use multiple connections to trigger redirect expiration
 			},
+		}
+		err := fetcher.Resolve(&base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -2592,14 +2614,15 @@ func TestFetcher_DownloadExpiringRedirectURL(t *testing.T) {
 		defer listener.Close()
 
 		fetcher := buildFetcher()
-		err := fetcher.Resolve(&base.Request{
-			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-		}, &base.Options{
+		fetcher.Meta().Opts = &base.Options{
 			Name: test.DownloadName,
 			Path: test.Dir,
 			Extra: &http.OptsExtra{
 				Connections: 8,
 			},
+		}
+		err := fetcher.Resolve(&base.Request{
+			URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -2639,14 +2662,15 @@ func TestFetcher_RetryAfterError(t *testing.T) {
 	defer listener.Close()
 
 	fetcher := buildFetcher()
-	err := fetcher.Resolve(&base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-	}, &base.Options{
+	fetcher.Meta().Opts = &base.Options{
 		Name: test.DownloadName,
 		Path: test.Dir,
 		Extra: &http.OptsExtra{
 			Connections: 1, // Use single connection to simplify test
 		},
+	}
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -3067,9 +3091,10 @@ func doDownloadReady(f fetcher.Fetcher, listener net.Listener, connections int, 
 		Path:  test.Dir,
 		Extra: extra,
 	}
+	f.Meta().Opts = opts
 	err := f.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-	}, opts)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3118,7 +3143,8 @@ func downloadPost(listener net.Listener, connections int, t *testing.T) {
 			Body: fmt.Sprintf(`{"name":"%s"}`, test.BuildName),
 		},
 	}
-	err := f.Resolve(req, opts)
+	f.Meta().Opts = opts
+	err := f.Resolve(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3164,11 +3190,12 @@ func downloadContinue(listener net.Listener, connections int, t *testing.T) {
 
 func downloadError(listener net.Listener, connections int, t *testing.T) {
 	fetcher := buildFetcher()
-	err := fetcher.Resolve(&base.Request{
-		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-	}, &base.Options{
+	fetcher.Meta().Opts = &base.Options{
 		Name: test.DownloadName,
 		Path: test.Dir,
+	}
+	err := fetcher.Resolve(&base.Request{
+		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 	})
 	// With the new async design, Resolve may succeed (HTTP response received)
 	// but errors occur during async download or Start/Wait
@@ -3292,7 +3319,8 @@ func TestFetcher_Patch_URLChange(t *testing.T) {
 	}
 
 	// Step 1: Try to resolve with bad URL - should fail with error
-	err := f.Resolve(&base.Request{URL: badURL}, opts)
+	f.Meta().Opts = opts
+	err := f.Resolve(&base.Request{URL: badURL})
 	if err == nil {
 		t.Fatal("Expected error for bad URL, got nil")
 	}
@@ -3302,7 +3330,8 @@ func TestFetcher_Patch_URLChange(t *testing.T) {
 	f2 := buildFetcher()
 
 	// First resolve with good URL to create a valid fetcher state
-	err = f2.Resolve(&base.Request{URL: goodURL}, opts)
+	f2.Meta().Opts = opts
+	err = f2.Resolve(&base.Request{URL: goodURL})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3354,13 +3383,14 @@ func TestFetcher_Patch_Labels(t *testing.T) {
 		Extra: &http.OptsExtra{Connections: 1},
 	}
 
+	f.Meta().Opts = opts
 	err := f.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		Labels: map[string]string{
 			"key1": "value1",
 			"key3": "value3",
 		},
-	}, opts)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3411,6 +3441,7 @@ func TestFetcher_Patch_Extra(t *testing.T) {
 	}
 
 	// Resolve with initial Extra
+	f.Meta().Opts = opts
 	err := f.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
 		Extra: &http.ReqExtra{
@@ -3421,7 +3452,7 @@ func TestFetcher_Patch_Extra(t *testing.T) {
 				"X-Custom":      "original",
 			},
 		},
-	}, opts)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3499,9 +3530,10 @@ func TestFetcher_Patch_NilData(t *testing.T) {
 		Extra: &http.OptsExtra{Connections: 1},
 	}
 
+	f.Meta().Opts = opts
 	err := f.Resolve(&base.Request{
 		URL: "http://" + listener.Addr().String() + "/" + test.BuildName,
-	}, opts)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3551,6 +3583,7 @@ func TestFetcher_Patch_CookieExpired(t *testing.T) {
 
 	// Step 1: Resolve with old_token - should succeed (first request accepts old_token)
 	f := buildFetcher()
+	f.Meta().Opts = opts
 	err := f.Resolve(&base.Request{
 		URL: downloadURL,
 		Extra: &http.ReqExtra{
@@ -3558,7 +3591,7 @@ func TestFetcher_Patch_CookieExpired(t *testing.T) {
 				"Cookie": "session=old_token",
 			},
 		},
-	}, opts)
+	})
 	if err != nil {
 		t.Fatalf("Resolve should succeed with old_token: %v", err)
 	}

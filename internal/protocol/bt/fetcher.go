@@ -3,11 +3,13 @@ package bt
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -33,6 +35,10 @@ var (
 )
 
 type Fetcher struct {
+	mu        sync.Mutex
+	closeOnce sync.Once
+	storage   *deferredFileStorage
+
 	ctl    *controller.Controller
 	config *config
 
@@ -94,13 +100,17 @@ func (f *Fetcher) initClient() (err error) {
 	return
 }
 
-func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
-	f.meta.Req = req
-	f.meta.Opts = opts
-	if f.meta.Opts == nil {
-		f.meta.Opts = &base.Options{}
+func (f *Fetcher) Resolve(req *base.Request) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.torrent != nil {
+		f.safeDrop()
+		f.torrent = nil
+		f.storage = nil
+		f.torrentReady.Store(false)
 	}
-	if err := f.addTorrent(req, false); err != nil {
+	f.meta.Req = req
+	if err := f.addTorrent(req); err != nil {
 		return err
 	}
 	f.updateRes()
@@ -108,9 +118,69 @@ func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
 }
 
 func (f *Fetcher) Start() (err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.meta.Opts == nil || f.meta.Opts.Path == "" {
+		return errors.New("download directory is required when starting a torrent")
+	}
+	if err := f.torrentDropCtx.Err(); err != nil {
+		return err
+	}
 	if !f.torrentReady.Load() {
-		if err = f.addTorrent(f.meta.Req, false); err != nil {
+		if err = f.addTorrent(f.meta.Req); err != nil {
 			return
+		}
+	}
+
+	path := f.meta.Opts.Path
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return err
+	}
+	hashes, err := f.storage.bind(storage.NewFileClientOpts{
+		ClientBaseDir: path,
+		FilePathMaker: func(opts storage.FilePathMakerOpts) string {
+			_, name := torrentFileLayout(opts.Info, *opts.File)
+			return name
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if hashes != nil {
+		// File storage infers completion from final file names and sizes. Verify
+		// before publishing that state, or peers can see an unverified file as
+		// complete and disconnect before a damaged piece is discovered.
+		// Late v2 hashes schedule their own initial checks through the library.
+		changes := f.torrent.SubscribePieceStateChanges()
+		defer changes.Close()
+		for i, known := range hashes {
+			if !known {
+				continue
+			}
+			if err := f.torrentDropCtx.Err(); err != nil {
+				return err
+			}
+			if err := f.torrent.Piece(i).VerifyDataContext(f.torrentDropCtx); err != nil {
+				return err
+			}
+			// VerifyDataContext can return while the result is still being
+			// written to storage. Wait for it before refreshing completion.
+			for {
+				state := f.torrent.Piece(i).State()
+				if !state.Hashing && !state.QueuedForHash && !state.Marking {
+					break
+				}
+				select {
+				case <-changes.Values:
+				case <-f.torrentDropCtx.Done():
+					return f.torrentDropCtx.Err()
+				case <-f.torrent.Closed():
+					return errors.New("torrent closed during verification")
+				}
+			}
+		}
+		for i := range hashes {
+			f.torrent.Piece(i).UpdateCompletion()
 		}
 	}
 
@@ -134,21 +204,29 @@ func (f *Fetcher) Start() (err error) {
 		}
 	}
 	f.torrent.AllowDataDownload()
+	go f.doUpload(false)
 	return
 }
 
 func (f *Fetcher) Pause() (err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.torrent == nil {
+		return nil
+	}
 	f.torrent.DisallowDataDownload()
 	return
 }
 
 func (f *Fetcher) Close() (err error) {
-	f.safeDrop()
-	f.torrentDropFunc()
-	f.uploadDoneCh <- nil
-	if len(client.Torrents()) == 0 {
-		err = closeClient()
-	}
+	f.closeOnce.Do(func() {
+		f.torrentDropFunc()
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		f.safeDrop()
+		f.torrentReady.Store(false)
+		close(f.uploadDoneCh)
+	})
 	return nil
 }
 
@@ -166,6 +244,8 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 }
 
 func (f *Fetcher) Stats() *fetcher.Stats {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	var stats torrent.TorrentStats
 	var pieceMap *base.PieceMap
 	pieceMapReady := false
@@ -372,46 +452,63 @@ func normalizeBTTransport(network string) string {
 }
 
 func (f *Fetcher) Progress() fetcher.Progress {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if !f.torrentReady.Load() {
-		return f.data.Progress
+		return append(fetcher.Progress(nil), f.data.Progress...)
 	}
 	for i := range f.data.Progress {
 		selectIndex := f.meta.Opts.SelectFiles[i]
 		file := f.torrent.Files()[selectIndex]
 		f.data.Progress[i] = file.BytesCompleted()
 	}
-	return f.data.Progress
+	return append(fetcher.Progress(nil), f.data.Progress...)
 }
 
-func (f *Fetcher) Wait() (err error) {
+func (f *Fetcher) Wait() error {
+	f.mu.Lock()
+	var closed <-chan struct{}
+	if f.torrent != nil {
+		closed = f.torrent.Closed()
+	}
+	f.mu.Unlock()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-f.torrentDropCtx.Done():
-			return
-		case <-time.After(time.Second):
-			if f.torrentReady.Load() && len(f.meta.Opts.SelectFiles) > 0 {
-				if f.isDone() {
-					// remove unselected files
-					for i, file := range f.torrent.Files() {
-						selected := false
-						for _, selectIndex := range f.meta.Opts.SelectFiles {
-							if i == selectIndex {
-								selected = true
-								break
-							}
-						}
-						if !selected {
-							root, name := torrentFileLayout(f.torrent.Info(), file.FileInfo())
-							if err := removeUnselectedFile(f.meta.Opts.Path, root, name); err != nil {
-								return err
-							}
-						}
-					}
-					return
-				}
+			return nil
+		case <-closed:
+			return nil
+		case <-ticker.C:
+			done, err := f.finishDownload()
+			if done || err != nil {
+				return err
 			}
 		}
 	}
+}
+
+func (f *Fetcher) finishDownload() (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.torrentReady.Load() || f.meta.Opts == nil || len(f.meta.Opts.SelectFiles) == 0 || !f.isDoneLocked() {
+		return false, nil
+	}
+	selected := make(map[int]bool, len(f.meta.Opts.SelectFiles))
+	for _, i := range f.meta.Opts.SelectFiles {
+		selected[i] = true
+	}
+	for i, file := range f.torrent.Files() {
+		if selected[i] {
+			continue
+		}
+		root, name := torrentFileLayout(f.torrent.Info(), file.FileInfo())
+		if err := removeUnselectedFile(f.meta.Opts.Path, root, name); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 // Match the file storage layout, including its NoName convention for rootless
@@ -471,13 +568,22 @@ func removeUnselectedFile(downloadDir, torrentRoot, torrentPath string) error {
 }
 
 func (f *Fetcher) isDone() bool {
-	if f.meta.Opts == nil {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.isDoneLocked()
+}
+
+func (f *Fetcher) isDoneLocked() bool {
+	if f.meta.Opts == nil || f.torrent == nil {
 		return false
 	}
-	for _, selectIndex := range f.meta.Opts.SelectFiles {
-		file := f.torrent.Files()[selectIndex]
-		if file.BytesCompleted() < file.Length() {
-			return false
+	for _, index := range f.meta.Opts.SelectFiles {
+		file := f.torrent.Files()[index]
+		for i := file.BeginPieceIndex(); i < file.EndPieceIndex(); i++ {
+			state := f.torrent.Piece(i).State()
+			if !state.Ok || !state.Complete || state.Hashing || state.QueuedForHash {
+				return false
+			}
 		}
 	}
 	return true
@@ -486,6 +592,11 @@ func (f *Fetcher) isDone() bool {
 // Patch modifies the BT task settings.
 // Invalid file indices are silently ignored.
 func (f *Fetcher) Patch(req *base.Request, opts *base.Options) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.meta.Opts == nil {
+		f.meta.Opts = &base.Options{}
+	}
 	if opts == nil {
 		return nil
 	}
@@ -542,9 +653,9 @@ func (f *Fetcher) updateRes() {
 		Files: make([]*base.FileInfo, len(f.torrent.Files())),
 		Hash:  f.torrent.InfoHash().String(),
 	}
-	// Directory torrent
-	if f.torrent.Info().Length == 0 {
-		res.Name = f.torrent.Name()
+	// Use the same root classification as storage (v2 single files have Length == 0).
+	if files := f.torrent.Files(); len(files) > 0 {
+		res.Name, _ = torrentFileLayout(f.torrent.Info(), files[0].FileInfo())
 	}
 	for i, file := range f.torrent.Files() {
 		res.Files[i] = &base.FileInfo{
@@ -561,61 +672,50 @@ func (f *Fetcher) updateRes() {
 }
 
 func (f *Fetcher) Upload() (err error) {
-	return f.addTorrent(f.meta.Req, true)
+	if err = f.Start(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (f *Fetcher) doUpload(fromUpload bool) {
 	if !f.torrentUpload.CompareAndSwap(false, true) {
 		return
 	}
-
-	// Check and update seed data
-	lastData := &fetcherData{
-		SeedBytes: f.data.SeedBytes,
-		SeedTime:  f.data.SeedTime,
-	}
-	var doneTime int64 = 0
+	f.mu.Lock()
+	initialBytes, initialTime := f.data.SeedBytes, f.data.SeedTime
+	torrentClosed := f.torrent.Closed()
+	f.mu.Unlock()
+	var doneTime int64
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-f.torrentDropCtx.Done():
 			return
-		case <-time.After(time.Second):
+		case <-torrentClosed:
+			return
+		case <-ticker.C:
+			f.mu.Lock()
 			if !f.torrentReady.Load() {
+				f.mu.Unlock()
 				continue
 			}
-
 			stats := f.torrentStats()
-			f.data.SeedBytes = lastData.SeedBytes + stats.BytesWrittenData.Int64()
-
-			// Check is download complete, if not don't check and stop seeding
-			if !fromUpload && !f.isDone() {
+			f.data.SeedBytes = initialBytes + stats.BytesWrittenData.Int64()
+			if !fromUpload && !f.isDoneLocked() {
+				f.mu.Unlock()
 				continue
 			}
 			if doneTime == 0 {
 				doneTime = time.Now().Unix()
 			}
-			f.data.SeedTime = lastData.SeedTime + time.Now().Unix() - doneTime
-
-			// If the seed forever is true, keep seeding
-			if f.config.SeedKeep {
-				continue
-			}
-
-			// If the seed ratio is reached, stop seeding
-			if f.config.SeedRatio > 0 {
-				seedRadio := f.seedRadio()
-				if seedRadio >= f.config.SeedRatio {
-					f.Close()
-					break
-				}
-			}
-
-			// If the seed time is reached, stop seeding
-			if f.config.SeedTime > 0 {
-				if f.data.SeedTime >= f.config.SeedTime {
-					f.Close()
-					break
-				}
+			f.data.SeedTime = initialTime + time.Now().Unix() - doneTime
+			stop := !f.config.SeedKeep && ((f.config.SeedRatio > 0 && f.seedRadio() >= f.config.SeedRatio) || (f.config.SeedTime > 0 && f.data.SeedTime >= f.config.SeedTime))
+			f.mu.Unlock()
+			if stop {
+				f.Close()
+				return
 			}
 		}
 	}
@@ -633,6 +733,8 @@ func (f *Fetcher) torrentStats() torrent.TorrentStats {
 }
 
 func (f *Fetcher) UploadedBytes() int64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.data.SeedBytes
 }
 
@@ -641,7 +743,7 @@ func (f *Fetcher) WaitUpload() (err error) {
 	return nil
 }
 
-func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
+func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	if err = base.ParseReqExtra[bt.ReqExtra](req); err != nil {
 		return
 	}
@@ -660,11 +762,16 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 		var reader io.Reader
 		if schema == "FILE" {
 			fileUrl, _ := url.Parse(req.URL)
-			filePath := fileUrl.Path[1:]
+			filePath := fileUrl.Path
+			if runtime.GOOS == "windows" && len(filePath) > 2 && filePath[0] == '/' && filePath[2] == ':' {
+				filePath = filePath[1:]
+			}
+			filePath = filepath.FromSlash(filePath)
 			reader, err = os.Open(filePath)
 			if err != nil {
 				return
 			}
+			defer reader.(io.Closer).Close()
 		} else if schema == "DATA" {
 			_, data := util.ParseDataUri(req.URL)
 			reader = bytes.NewBuffer(data)
@@ -697,21 +804,6 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 			return
 		}
 	}
-	spec.Storage = storage.NewFileOpts(storage.NewFileClientOpts{
-		ClientBaseDir: cfg.DataDir,
-		FilePathMaker: func(opts storage.FilePathMakerOpts) string {
-			_, name := torrentFileLayout(opts.Info, *opts.File)
-			return name
-		},
-		TorrentDirMaker: func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
-			return f.meta.Opts.Path
-		},
-	})
-	f.torrent, _, err = client.AddTorrentSpec(spec)
-	if err != nil {
-		return
-	}
-
 	// Do not add external tracker to a private torrent.
 	if !privateTorrent {
 		// use map to deduplicate
@@ -730,17 +822,36 @@ func (f *Fetcher) addTorrent(req *base.Request, fromUpload bool) (err error) {
 			}
 		}
 		if len(trackers) > 0 {
-			announceList := make([][]string, 0)
 			for tracker := range trackers {
-				announceList = append(announceList, []string{tracker})
+				spec.Trackers = append(spec.Trackers, []string{tracker})
 			}
-			f.torrent.AddTrackers(announceList)
 		}
 	}
-	<-f.torrent.GotInfo()
+	s := &deferredFileStorage{}
+	spec.Storage = s
+	var added bool
+	f.torrent, added, err = client.AddTorrentSpec(spec)
+	if err != nil {
+		return err
+	}
+	if !added {
+		f.torrent = nil
+		return errors.New("torrent is already active")
+	}
+	f.storage = s
+	f.torrent.DisallowDataDownload()
+	// Extra trackers must be available while magnet metadata is still missing;
+	// they may be the only way to discover a peer that can provide it.
+	select {
+	case <-f.torrent.GotInfo():
+	case <-f.torrentDropCtx.Done():
+		f.safeDrop()
+		return f.torrentDropCtx.Err()
+	case <-f.torrent.Closed():
+		return errors.New("torrent closed during resolution")
+	}
 	f.torrentReady.Store(true)
 
-	go f.doUpload(fromUpload)
 	return
 }
 
@@ -848,7 +959,11 @@ func (fm *FetcherManager) DefaultConfig() any {
 
 func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	_f := f.(*Fetcher)
-	return _f.data, nil
+	_f.mu.Lock()
+	defer _f.mu.Unlock()
+	snapshot := *_f.data
+	snapshot.Progress = append(fetcher.Progress(nil), snapshot.Progress...)
+	return &snapshot, nil
 }
 
 func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v any) fetcher.Fetcher) {

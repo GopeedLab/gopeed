@@ -139,7 +139,7 @@ func (s *Service) resolve(ctx *Context) *Response {
 	if response := decodeRequest(ctx.Body, &request); response != nil {
 		return response
 	}
-	result, err := s.Downloader.Resolve(request.Req, request.Opts)
+	result, err := s.Downloader.Resolve(request.Req)
 	if err != nil {
 		return newErrorResponse(err.Error())
 	}
@@ -188,7 +188,7 @@ func (s *Service) patchTask(ctx *Context) *Response {
 	if taskID == "" {
 		return invalidIDResponse()
 	}
-	var request restmodel.ResolveTask
+	var request restmodel.PatchTask
 	if response := decodeRequest(ctx.Body, &request); response != nil {
 		return response
 	}

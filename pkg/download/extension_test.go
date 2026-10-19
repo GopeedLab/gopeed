@@ -32,7 +32,7 @@ func TestDownloader_InstallExtensionByFolder(t *testing.T) {
 			URL:    "https://github.com/test",
 			Labels: map[string]string{"original": "true"},
 		}
-		rr, err := downloader.Resolve(req, nil)
+		rr, err := downloader.Resolve(req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -58,7 +58,7 @@ func TestDownloader_InstallExtensionByFolderDevMode(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,7 +76,7 @@ func TestDownloader_Extension_BlobBlob(t *testing.T) {
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://example.com/blob",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -130,7 +130,7 @@ func TestDownloader_Extension_BlobFunctionOpener(t *testing.T) {
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://example.com/opener",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -166,7 +166,7 @@ func TestDownloader_Extension_BlobFunctionOpenerUnknownSize(t *testing.T) {
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://example.com/opener-unknown",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -222,7 +222,7 @@ func TestDownloader_Extension_BlobSourceSizePropagatesToCreatedTask(t *testing.T
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://example.com/opener",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -303,7 +303,7 @@ func TestDownloader_Extension_BlobFetchDrainedStreamReportsEarlyProgress(t *test
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: fmt.Sprintf("%s/single-fetch-stream?size=%d", server.URL, len(payload)),
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -419,7 +419,7 @@ func TestDownloader_Extension_BlobRangeFetchDrainedStreamReportsEarlyProgress(t 
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: fmt.Sprintf("%s/range-fetch-stream?size=%d", server.URL, len(payload)),
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -494,7 +494,7 @@ func TestDownloader_Extension_BlobMultiplexFetchStreamsReportEarlyProgress(t *te
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: server.URL + "/multiplex-fetch-stream",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -550,7 +550,7 @@ func TestDownloader_Extension_BlobFunctionOpenerRangeResume(t *testing.T) {
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://example.com/opener-range",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -683,7 +683,7 @@ func TestDownloader_Extension_BlobResumeAfterRestartViaOnError(t *testing.T) {
 
 	rr, err := downloader.Resolve(&base.Request{
 		URL: server.URL + "/restart-range",
-	}, nil)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -855,7 +855,7 @@ func TestDownloader_Extension_BlobPauseContinueKeepsSource(t *testing.T) {
 
 			rr, err := downloader.Resolve(&base.Request{
 				URL: tc.url,
-			}, nil)
+			})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -932,7 +932,7 @@ func TestDownloader_Extension_BlobUnknownSizePauseContinueKeepsSource(t *testing
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://example.com/opener-unknown",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1009,7 +1009,7 @@ func TestDownloader_Extension_BlobRecoverOnError(t *testing.T) {
 			path := path
 			t.Run(path, func(t *testing.T) {
 				rawURL := "https://example.com/" + path
-				rr, err := downloader.Resolve(&base.Request{URL: rawURL}, nil)
+				rr, err := downloader.Resolve(&base.Request{URL: rawURL})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -1076,7 +1076,7 @@ func TestDownloader_InstallExtensionByGit(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/GopeedLab/gopeed/releases",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1093,7 +1093,7 @@ func TestDownloader_InstallExtensionByGitSimple(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/GopeedLab/gopeed/releases",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1110,7 +1110,7 @@ func TestDownloader_InstallExtensionByGitFull(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/GopeedLab/gopeed/releases",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1180,7 +1180,7 @@ func TestDownloader_UpgradeExtension(t *testing.T) {
 
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://test.com",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1355,7 +1355,7 @@ func TestDownloader_Extension_Errors(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1370,7 +1370,7 @@ func TestDownloader_Extension_Errors(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1385,7 +1385,7 @@ func TestDownloader_Extension_Errors(t *testing.T) {
 		}
 		_, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		}, nil)
+		})
 		if err == nil {
 			t.Fatalf("except error, but got nil")
 		}
@@ -1407,7 +1407,7 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1428,7 +1428,7 @@ func TestDownloader_Extension_Settings(t *testing.T) {
 		})
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1445,7 +1445,7 @@ func TestDownloader_ExtensionStorage(t *testing.T) {
 		}
 		rr, err := downloader.Resolve(&base.Request{
 			URL: "https://github.com/test",
-		}, nil)
+		})
 		if err != nil {
 			t.Fatal(err)
 		}

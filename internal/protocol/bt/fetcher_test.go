@@ -18,11 +18,11 @@ import (
 )
 
 func TestFetcher_Resolve_Torrent(t *testing.T) {
-	doResolve(t, buildFetcher())
+	doResolve(t, buildFetcher(t))
 }
 
 func TestFetcher_Resolve_DataUri_Torrent(t *testing.T) {
-	fetcher := buildFetcher()
+	fetcher := buildFetcher(t)
 	buf, err := os.ReadFile("./testdata/ubuntu-22.04-live-server-amd64.iso.torrent")
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +31,7 @@ func TestFetcher_Resolve_DataUri_Torrent(t *testing.T) {
 	dataUri := "data:application/x-bittorrent;base64," + base64.StdEncoding.EncodeToString(buf)
 	err = fetcher.Resolve(&base.Request{
 		URL: dataUri,
-	}, nil)
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +53,7 @@ func TestFetcher_Resolve_DataUri_Torrent(t *testing.T) {
 }
 
 func TestFetcher_Config(t *testing.T) {
-	doResolve(t, buildConfigFetcher(nil))
+	doResolve(t, buildConfigFetcher(t, nil))
 }
 
 func TestFetcher_ResolveWithProxy(t *testing.T) {
@@ -61,7 +61,7 @@ func TestFetcher_ResolveWithProxy(t *testing.T) {
 	proxyListener := test.StartSocks5Server(usr, pwd)
 	defer proxyListener.Close()
 
-	doResolve(t, buildConfigFetcher(&base.DownloaderProxyConfig{
+	doResolve(t, buildConfigFetcher(t, &base.DownloaderProxyConfig{
 		Enable: true,
 		System: false,
 		Scheme: "socks5",
@@ -81,7 +81,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 					"udp://tracker.bitsearch.to:1337/announce",
 				},
 			},
-		}, nil)
+		})
 		if err != nil {
 			panic(err)
 		}
@@ -111,7 +111,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 					"udp://tracker.bitsearch.to:1337/announce",
 				},
 			},
-		}, nil)
+		})
 		if err != nil {
 			panic(err)
 		}
@@ -145,7 +145,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 	t.Run("Resolve Unclean Torrent", func(t *testing.T) {
 		err := fetcher.Resolve(&base.Request{
 			URL: "./testdata/test.unclean.torrent",
-		}, nil)
+		})
 		if err != nil {
 			t.Errorf("Resolve Unclean Torrent Resolve() got = %v, want nil", err)
 		}
@@ -156,7 +156,7 @@ func doResolve(t *testing.T, fetcher fetcher.Fetcher) {
 		uri := "file:///" + file
 		err := fetcher.Resolve(&base.Request{
 			URL: uri,
-		}, nil)
+		})
 		if err != nil {
 			t.Errorf("Resolve file scheme Torrent Resolve() got = %v, want nil", err)
 		}
@@ -211,7 +211,7 @@ func TestFetcherManager_ParseName(t *testing.T) {
 	}
 }
 
-func buildFetcher() fetcher.Fetcher {
+func buildFetcher(t testing.TB) fetcher.Fetcher {
 	fb := new(FetcherManager)
 	fetcher := fb.Build()
 	newController := controller.NewController()
@@ -219,10 +219,11 @@ func buildFetcher() fetcher.Fetcher {
 		json.Unmarshal([]byte(test.ToJson(fb.DefaultConfig())), v)
 	}
 	fetcher.Setup(newController)
+	t.Cleanup(func() { fetcher.Close(); closeClient() })
 	return fetcher
 }
 
-func buildConfigFetcher(proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher {
+func buildConfigFetcher(t testing.TB, proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher {
 	fetcher := new(FetcherManager).Build()
 	newController := controller.NewController()
 	mockCfg := config{
@@ -237,29 +238,30 @@ func buildConfigFetcher(proxyConfig *base.DownloaderProxyConfig) fetcher.Fetcher
 		return proxyConfig.ToHandler()
 	}
 	fetcher.Setup(newController)
+	t.Cleanup(func() { fetcher.Close(); closeClient() })
 	return fetcher
 }
 
 // TestFetcher_Patch tests the Patch functionality for BT fetcher.
 // It tests modifying selected files after Resolve (without downloading).
 func TestFetcher_Patch(t *testing.T) {
-	f := buildFetcher()
+	f := buildFetcher(t)
 
 	// Resolve a multi-file torrent
 	err := f.Resolve(&base.Request{
 		URL: "./testdata/test.torrent",
-	}, nil)
+	})
 	if err != nil {
 		t.Fatalf("Resolve failed: %v", err)
 	}
 
-	// Verify initial state: 3 files, all selected by default
+	// Resolution describes files without choosing download options.
 	meta := f.Meta()
 	if len(meta.Res.Files) != 3 {
 		t.Fatalf("Expected 3 files, got %d", len(meta.Res.Files))
 	}
-	if len(meta.Opts.SelectFiles) != 3 {
-		t.Fatalf("Expected 3 selected files, got %d", len(meta.Opts.SelectFiles))
+	if meta.Opts != nil {
+		t.Fatal("Resolve should not assign download options")
 	}
 
 	// Total size of all files: 107484864
@@ -395,7 +397,7 @@ func TestFetcher_PeerDiscoveryDisabledOnClient(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := buildFetcherWithConfig(map[string]any{"disableDht": true, "disablePex": true})
-	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}, nil); err != nil {
+	if err := f.Resolve(&base.Request{URL: "./testdata/test.torrent"}); err != nil {
 		t.Fatal(err)
 	}
 	if !cfg.NoDHT || !cfg.DisablePEX {

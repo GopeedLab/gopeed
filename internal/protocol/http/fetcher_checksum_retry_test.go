@@ -95,9 +95,10 @@ func TestFetcher_ChecksumMismatch_Retry(t *testing.T) {
 	}
 
 	// 1. Initial attempt -> will download corruptContent, failing checksum verification
-	if err := f.Resolve(&base.Request{URL: server.URL + "/retry_test.txt"}, opts); err != nil {
+	if err := f.Resolve(&base.Request{URL: server.URL + "/retry_test.txt"}); err != nil {
 		t.Fatalf("Resolve error: %v", err)
 	}
+	f.Meta().Opts = opts
 	if err := f.Start(); err != nil {
 		t.Fatalf("Start error: %v", err)
 	}
@@ -215,9 +216,10 @@ func TestFetcher_ChecksumMismatch_Retry_PartialPrefetch(t *testing.T) {
 	}
 
 	// 1. Resolve phase
-	if err := f.Resolve(&base.Request{URL: server.URL + "/prefetch_retry.txt"}, opts); err != nil {
+	if err := f.Resolve(&base.Request{URL: server.URL + "/prefetch_retry.txt"}); err != nil {
 		t.Fatalf("Resolve error: %v", err)
 	}
+	f.Meta().Opts = opts
 
 	// Wait until prefetch has received exactly 7 bytes
 	for i := 0; i < 200; i++ {
@@ -338,9 +340,10 @@ func TestFetcher_ChecksumMismatch_Retry_NonRange(t *testing.T) {
 	}
 
 	// 1. Resolve and start initial attempt
-	if err := f.Resolve(&base.Request{URL: server.URL + "/nonrange_retry.txt"}, opts); err != nil {
+	if err := f.Resolve(&base.Request{URL: server.URL + "/nonrange_retry.txt"}); err != nil {
 		t.Fatalf("Resolve error: %v", err)
 	}
+	f.Meta().Opts = opts
 	if err := f.Start(); err != nil {
 		t.Fatalf("Start error: %v", err)
 	}
