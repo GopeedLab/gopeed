@@ -18,9 +18,10 @@ A manager can embed `fetcher.ConfigState[T]` to expose a typed, persisted `state
 section. This reserved section belongs to Go. Before decoding a config PUT,
 Downloader replaces all supplied protocol state with the latest stored state
 under the config lock. Omitted, null, forged, stale, or wrongly typed state is
-ignored. Unregistered protocols, unknown config fields, and wrong writable-field
-types are rejected. Optional protocol normalizers own business validation and
-state cleanup (for example, pruning removed subscriptions).
+ignored. Unknown config fields are ignored during both startup and config PUT,
+so removed fields do not prevent upgrades from starting. Unregistered protocols
+and wrong writable-field types are rejected. Optional protocol normalizers own
+business validation and state cleanup (for example, pruning removed subscriptions).
 
 `fetcher.ReadConfig[C]` returns a detached config snapshot, including state.
 `fetcher.UpdateState[C, S]` receives the latest config and mutable state within

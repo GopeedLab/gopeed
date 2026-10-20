@@ -1,7 +1,6 @@
 package download
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,9 +55,7 @@ func normalizeProtocol(fm fetcher.FetcherManager, v any) (any, error) {
 		}
 		target = pointer.Interface()
 	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err = decoder.Decode(target); err != nil {
+	if err = json.Unmarshal(raw, target); err != nil {
 		return nil, err
 	}
 	if normalizer, ok := fm.(fetcher.ConfigNormalizer); ok {

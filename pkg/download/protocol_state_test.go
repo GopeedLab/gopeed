@@ -80,7 +80,7 @@ func TestFullConfigValidatesProtocolsAndPreservesExplicitValues(t *testing.T) {
 	if got["connections"] != float64(0) || got["useServerCtime"] != false {
 		t.Fatal(got)
 	}
-	for _, invalid := range []any{map[string]any{"connections": "bad"}, map[string]any{"unknown": 1}} {
+	for _, invalid := range []any{map[string]any{"connections": "bad"}, map[string]any{"useServerCtime": "bad"}} {
 		cfg, _ := d.GetConfig()
 		cfg.ProtocolConfig["http"] = invalid
 		if err := d.PutConfig(cfg); err == nil {
@@ -107,6 +107,49 @@ func TestFullConfigValidatesProtocolsAndPreservesExplicitValues(t *testing.T) {
 	snapshot.ProtocolConfig["http"] = map[string]any{"connections": 999}
 	if !reflect.DeepEqual(protocolObject(t, d, "http"), got) {
 		t.Fatal("snapshot changed live config")
+	}
+}
+
+func TestProtocolConfigIgnoresUnknownFields(t *testing.T) {
+	for _, mode := range []string{"stored", "put"} {
+		t.Run(mode, func(t *testing.T) {
+			d := protocolConfigDownloader(t, nil, &btProtocol.FetcherManager{})
+			cfg, _ := d.GetConfig()
+			cfg.ProtocolConfig["bt"] = map[string]any{
+				"listenPort":         6881,
+				"autoUpdateTrackers": false,
+				"trackers":           []string{"udp://obsolete.example:80/announce"},
+				"state":              map[string]any{"obsolete": true},
+			}
+			if mode == "stored" {
+				if err := d.storage.Put(bucketConfig, "config", cfg); err != nil {
+					t.Fatal(err)
+				}
+				var restored base.DownloaderStoreConfig
+				if exists, err := d.storage.Get(bucketConfig, "config", &restored); err != nil || !exists {
+					t.Fatalf("load stored config: %v %v", exists, err)
+				}
+				d.cfg.DownloaderStoreConfig = &restored
+				if err := d.initProtocolConfigs(); err != nil {
+					t.Fatalf("load config containing removed fields: %v", err)
+				}
+			} else if err := d.PutConfig(cfg); err != nil {
+				t.Fatalf("save config containing unknown fields: %v", err)
+			}
+			actual := protocolObject(t, d, "bt")
+			if actual["listenPort"] != float64(6881) || actual["autoUpdateTrackers"] != false {
+				t.Fatalf("known fields changed: %v", actual)
+			}
+			if _, exists := actual["trackers"]; exists {
+				t.Fatal("removed field retained")
+			}
+			if len(actual["customTrackers"].([]any)) != 0 {
+				t.Fatal("removed trackers migrated into custom trackers")
+			}
+			if _, exists := actual["state"].(map[string]any)["obsolete"]; exists {
+				t.Fatal("unknown state field retained")
+			}
+		})
 	}
 }
 
@@ -214,7 +257,7 @@ func TestProtocolUpdateStateCommitsOnlyStateAndUsesLatestConfig(t *testing.T) {
 	if err == nil || !reflect.DeepEqual(protocolObject(t, d, "counter"), actual) {
 		t.Fatal("failed callback published state")
 	}
-	if err := d.updateProtocolState("counter", func(_, _ json.RawMessage) (any, error) { return map[string]any{"unknown": true}, nil }); err == nil {
+	if err := d.updateProtocolState("counter", func(_, _ json.RawMessage) (any, error) { return map[string]any{"count": "bad"}, nil }); err == nil {
 		t.Fatal("invalid state accepted")
 	}
 }
