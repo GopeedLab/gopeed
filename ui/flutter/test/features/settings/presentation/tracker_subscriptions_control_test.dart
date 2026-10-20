@@ -77,8 +77,8 @@ void main() {
       final tableRect = tester.getRect(table);
       final autoUpdateRect = tester.getRect(find.byKey(const ValueKey('tracker-auto-update-control')));
       final timeRect = tester.getRect(find.byKey(const ValueKey('tracker-last-updated')));
-      expect(updateRect.right, closeTo(tableRect.right, 1));
-      expect(addRect.right, lessThan(updateRect.left));
+      expect(addRect.right, closeTo(tableRect.right, 1));
+      expect(updateRect.right, lessThan(addRect.left));
       expect(addRect.center.dy, closeTo(updateRect.center.dy, 1));
       expect(updateRect.top, greaterThan(tableRect.bottom));
       expect(autoUpdateRect.bottom, lessThan(tableRect.top));

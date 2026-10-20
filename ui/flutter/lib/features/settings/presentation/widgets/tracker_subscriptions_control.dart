@@ -57,18 +57,18 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
             spacing: AppDesignTokens.space8,
             runSpacing: AppDesignTokens.space8,
             children: [
-              SecondaryButton(
-                key: const ValueKey('add-tracker-subscription'),
-                onPressed: _add,
-                leading: const Icon(Icons.add, size: 17),
-                child: Text(context.l10n.add),
-              ),
               AppLoadingButton(
                 key: const ValueKey('tracker-update-button'),
                 onPressed: _update,
                 loading: _updating,
                 icon: const Icon(Icons.refresh, size: 17),
                 child: Text(context.l10n.newVersionUpdate),
+              ),
+              SecondaryButton(
+                key: const ValueKey('add-tracker-subscription'),
+                onPressed: _add,
+                leading: const Icon(Icons.add, size: 17),
+                child: Text(context.l10n.add),
               ),
             ],
           ),
