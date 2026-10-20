@@ -4,8 +4,8 @@ import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 
-class TrackerSubscriptionsFooter extends StatelessWidget {
-  const TrackerSubscriptionsFooter({
+class TrackerSubscriptionsSchedule extends StatelessWidget {
+  const TrackerSubscriptionsSchedule({
     super.key,
     required this.lastUpdated,
     required this.autoUpdate,
@@ -20,7 +20,7 @@ class TrackerSubscriptionsFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return Column(
-      key: const ValueKey('tracker-subscriptions-footer'),
+      key: const ValueKey('tracker-subscriptions-schedule'),
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [

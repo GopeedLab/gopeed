@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/features/settings/presentation/widgets/tracker_subscriptions_control.dart';
-import 'package:gopeed/features/settings/presentation/widgets/tracker_subscriptions_footer.dart';
+import 'package:gopeed/features/settings/presentation/widgets/tracker_subscriptions_schedule.dart';
 import 'package:gopeed/features/settings/presentation/widgets/tracker_subscriptions_table.dart';
 import 'package:gopeed/l10n/l10n.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
@@ -80,10 +80,11 @@ void main() {
       expect(updateRect.right, closeTo(tableRect.right, 1));
       expect(addRect.right, lessThan(updateRect.left));
       expect(addRect.center.dy, closeTo(updateRect.center.dy, 1));
-      expect(updateRect.bottom, lessThan(tableRect.top));
-      expect(autoUpdateRect.top, greaterThan(tableRect.bottom));
+      expect(updateRect.top, greaterThan(tableRect.bottom));
+      expect(autoUpdateRect.bottom, lessThan(tableRect.top));
       expect(autoUpdateRect.right, closeTo(tableRect.right, 1));
       expect(timeRect.top, greaterThan(autoUpdateRect.bottom));
+      expect(timeRect.bottom, lessThan(tableRect.top));
       expect(timeRect.right, closeTo(tableRect.right, 1));
       expect(find.byKey(const ValueKey('add-tracker-subscription')), findsOneWidget);
       if (width < 672) {
@@ -97,7 +98,7 @@ void main() {
   }
   for (final locale in const [Locale('en'), Locale('zh')]) {
     for (final width in [320.0, 768.0, 1024.0]) {
-      testWidgets('footer hides missing update time at width $width in $locale', (tester) async {
+      testWidgets('schedule hides missing update time at width $width in $locale', (tester) async {
         tester.view.physicalSize = Size(width, 600);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
@@ -121,7 +122,7 @@ void main() {
                       padding: const EdgeInsets.all(16),
                       child: SizedBox(
                         width: double.infinity,
-                        child: TrackerSubscriptionsFooter(
+                        child: TrackerSubscriptionsSchedule(
                           lastUpdated: null,
                           autoUpdate: false,
                           onAutoUpdateChanged: (value) => autoUpdate = value,
@@ -138,10 +139,10 @@ void main() {
         expect(find.byKey(const ValueKey('tracker-last-updated')), findsNothing);
         expect(find.text('Never updated'), findsNothing);
         expect(find.text('尚未更新'), findsNothing);
-        final footerRect = tester.getRect(find.byKey(const ValueKey('tracker-subscriptions-footer')));
+        final scheduleRect = tester.getRect(find.byKey(const ValueKey('tracker-subscriptions-schedule')));
         final autoRect = tester.getRect(find.byKey(const ValueKey('tracker-auto-update-control')));
         expect(find.byKey(const ValueKey('tracker-update-button')), findsNothing);
-        expect(autoRect.right, closeTo(footerRect.right, 1));
+        expect(autoRect.right, closeTo(scheduleRect.right, 1));
         await tester.tap(find.byType(Switch));
         expect(autoUpdate, true);
         expect(tester.takeException(), isNull);
