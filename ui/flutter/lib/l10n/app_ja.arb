@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Tracker 購読を追加",
   "editTrackerSubscription": "Tracker 購読を編集",
   "trackerSubscriptionUrl": "購読 URL",
-  "trackerSubscriptionFetchSuccess": "前回の取得に成功：{count} 件の Tracker",
-  "trackerSubscriptionFetchFailed": "前回の取得に失敗：0 件の Tracker"
+  "trackerSubscriptionFetchSuccess": "成功",
+  "trackerSubscriptionFetchFailed": "失敗",
+  "trackerSubscriptionUpdateStatus": "更新状況",
+  "trackerSubscriptionTrackerCount": "Tracker 数",
+  "trackerSubscriptionNotFetched": "未取得"
 }

@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Tracker-feliratkozás hozzáadása",
   "editTrackerSubscription": "Tracker-feliratkozás szerkesztése",
   "trackerSubscriptionUrl": "Feliratkozási URL",
-  "trackerSubscriptionFetchSuccess": "Legutóbbi lekérés sikeres: {count} tracker",
-  "trackerSubscriptionFetchFailed": "Legutóbbi lekérés sikertelen: 0 tracker"
+  "trackerSubscriptionFetchSuccess": "Sikeres",
+  "trackerSubscriptionFetchFailed": "Sikertelen",
+  "trackerSubscriptionUpdateStatus": "Frissítés állapota",
+  "trackerSubscriptionTrackerCount": "Trackerek száma",
+  "trackerSubscriptionNotFetched": "Még nem kérte le"
 }

@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Додати підписку на трекери",
   "editTrackerSubscription": "Редагувати підписку на трекери",
   "trackerSubscriptionUrl": "URL підписки",
-  "trackerSubscriptionFetchSuccess": "Останнє отримання успішне: {count} трекерів",
-  "trackerSubscriptionFetchFailed": "Останнє отримання невдале: 0 трекерів"
+  "trackerSubscriptionFetchSuccess": "Успішно",
+  "trackerSubscriptionFetchFailed": "Помилка",
+  "trackerSubscriptionUpdateStatus": "Стан оновлення",
+  "trackerSubscriptionTrackerCount": "Кількість трекерів",
+  "trackerSubscriptionNotFetched": "Ще не отримано"
 }

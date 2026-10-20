@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Aggiungi abbonamento tracker",
   "editTrackerSubscription": "Modifica abbonamento tracker",
   "trackerSubscriptionUrl": "URL abbonamento",
-  "trackerSubscriptionFetchSuccess": "Ultimo recupero riuscito: {count} tracker",
-  "trackerSubscriptionFetchFailed": "Ultimo recupero non riuscito: 0 tracker"
+  "trackerSubscriptionFetchSuccess": "Riuscito",
+  "trackerSubscriptionFetchFailed": "Non riuscito",
+  "trackerSubscriptionUpdateStatus": "Stato aggiornamento",
+  "trackerSubscriptionTrackerCount": "Numero di tracker",
+  "trackerSubscriptionNotFetched": "Non ancora recuperato"
 }

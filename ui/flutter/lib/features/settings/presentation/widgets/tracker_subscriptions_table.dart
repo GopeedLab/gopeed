@@ -29,7 +29,8 @@ class TrackerSubscriptionsTable extends StatefulWidget {
 class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
   static const _headerHeight = 40.0;
   static const _rowHeight = 48.0;
-  static const _statusWidth = 230.0;
+  static const _statusWidth = 110.0;
+  static const _countWidth = 120.0;
   static const _actionsWidth = 96.0;
   final _horizontalController = ScrollController();
   final _verticalController = ScrollController();
@@ -76,7 +77,8 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
                       child: Row(
                         children: [
                           Expanded(child: _header(context.l10n.trackerSubscriptionUrl)),
-                          SizedBox(width: _statusWidth, child: _header(context.l10n.status)),
+                          SizedBox(width: _statusWidth, child: _header(context.l10n.trackerSubscriptionUpdateStatus)),
+                          SizedBox(width: _countWidth, child: _header(context.l10n.trackerSubscriptionTrackerCount)),
                           const SizedBox(width: _actionsWidth),
                         ],
                       ),
@@ -127,9 +129,9 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
     final url = widget.urls[index];
     final status = widget.statuses[url];
     final result = status == null
-        ? context.l10n.neverUpdated
+        ? context.l10n.trackerSubscriptionNotFetched
         : status.success
-        ? context.l10n.trackerSubscriptionFetchSuccess(status.trackerCount)
+        ? context.l10n.trackerSubscriptionFetchSuccess
         : context.l10n.trackerSubscriptionFetchFailed;
     return DecoratedBox(
       key: ValueKey('tracker-subscription-$url'),
@@ -156,32 +158,31 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
             width: _statusWidth,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppTooltip(
-                    message: result,
-                    child: Text(
-                      result,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: status == null
-                            ? palette.textMuted
-                            : status.success
-                            ? palette.success
-                            : palette.error,
-                        fontSize: 11,
-                      ),
-                    ),
+              child: AppTooltip(
+                message: result,
+                child: Text(
+                  result,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: status == null
+                        ? palette.textMuted
+                        : status.success
+                        ? palette.success
+                        : palette.error,
+                    fontSize: 11,
                   ),
-                  if (status != null)
-                    Text(
-                      _formatDateTime(status.lastFetchTime),
-                      style: TextStyle(color: palette.textMuted, fontSize: 10),
-                    ),
-                ],
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: _countWidth,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                status?.trackerCount.toString() ?? '—',
+                style: TextStyle(color: palette.textSecondary, fontSize: 11),
               ),
             ),
           ),
@@ -213,11 +214,5 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
         ],
       ),
     );
-  }
-
-  String _formatDateTime(DateTime time) {
-    final value = time.toLocal();
-    String two(int number) => number.toString().padLeft(2, '0');
-    return '${value.year}-${two(value.month)}-${two(value.day)} ${two(value.hour)}:${two(value.minute)}:${two(value.second)}';
   }
 }

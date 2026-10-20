@@ -460,6 +460,9 @@
   "addTrackerSubscription": "트래커 구독 추가",
   "editTrackerSubscription": "트래커 구독 편집",
   "trackerSubscriptionUrl": "구독 URL",
-  "trackerSubscriptionFetchSuccess": "마지막 가져오기 성공: 트래커 {count}개",
-  "trackerSubscriptionFetchFailed": "마지막 가져오기 실패: 트래커 0개"
+  "trackerSubscriptionFetchSuccess": "성공",
+  "trackerSubscriptionFetchFailed": "실패",
+  "trackerSubscriptionUpdateStatus": "업데이트 상태",
+  "trackerSubscriptionTrackerCount": "트래커 수",
+  "trackerSubscriptionNotFetched": "아직 가져오지 않음"
 }

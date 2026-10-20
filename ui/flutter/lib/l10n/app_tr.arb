@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Tracker aboneliği ekle",
   "editTrackerSubscription": "Tracker aboneliğini düzenle",
   "trackerSubscriptionUrl": "Abonelik URL’si",
-  "trackerSubscriptionFetchSuccess": "Son getirme başarılı: {count} tracker",
-  "trackerSubscriptionFetchFailed": "Son getirme başarısız: 0 tracker"
+  "trackerSubscriptionFetchSuccess": "Başarılı",
+  "trackerSubscriptionFetchFailed": "Başarısız",
+  "trackerSubscriptionUpdateStatus": "Güncelleme durumu",
+  "trackerSubscriptionTrackerCount": "Tracker sayısı",
+  "trackerSubscriptionNotFetched": "Henüz alınmadı"
 }

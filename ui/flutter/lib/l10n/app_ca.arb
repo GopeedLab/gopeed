@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Afegeix una subscripció de trackers",
   "editTrackerSubscription": "Edita la subscripció de trackers",
   "trackerSubscriptionUrl": "URL de subscripció",
-  "trackerSubscriptionFetchSuccess": "Última consulta correcta: {count} trackers",
-  "trackerSubscriptionFetchFailed": "Última consulta fallida: 0 trackers"
+  "trackerSubscriptionFetchSuccess": "Correcte",
+  "trackerSubscriptionFetchFailed": "Fallida",
+  "trackerSubscriptionUpdateStatus": "Estat de l’actualització",
+  "trackerSubscriptionTrackerCount": "Nombre de trackers",
+  "trackerSubscriptionNotFetched": "Sense consultar"
 }

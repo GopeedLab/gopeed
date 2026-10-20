@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Tracker-Abonnement hinzufügen",
   "editTrackerSubscription": "Tracker-Abonnement bearbeiten",
   "trackerSubscriptionUrl": "Abonnement-URL",
-  "trackerSubscriptionFetchSuccess": "Letzter Abruf erfolgreich: {count} Tracker",
-  "trackerSubscriptionFetchFailed": "Letzter Abruf fehlgeschlagen: 0 Tracker"
+  "trackerSubscriptionFetchSuccess": "Erfolgreich",
+  "trackerSubscriptionFetchFailed": "Fehlgeschlagen",
+  "trackerSubscriptionUpdateStatus": "Aktualisierungsstatus",
+  "trackerSubscriptionTrackerCount": "Tracker-Anzahl",
+  "trackerSubscriptionNotFetched": "Noch nicht abgerufen"
 }

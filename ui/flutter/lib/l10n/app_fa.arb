@@ -460,6 +460,9 @@
   "addTrackerSubscription": "افزودن اشتراک ردیاب",
   "editTrackerSubscription": "ویرایش اشتراک ردیاب",
   "trackerSubscriptionUrl": "نشانی اشتراک",
-  "trackerSubscriptionFetchSuccess": "آخرین دریافت موفق بود: {count} ردیاب",
-  "trackerSubscriptionFetchFailed": "آخرین دریافت ناموفق بود: 0 ردیاب"
+  "trackerSubscriptionFetchSuccess": "موفق",
+  "trackerSubscriptionFetchFailed": "ناموفق",
+  "trackerSubscriptionUpdateStatus": "وضعیت به‌روزرسانی",
+  "trackerSubscriptionTrackerCount": "تعداد ردیاب‌ها",
+  "trackerSubscriptionNotFetched": "هنوز دریافت نشده"
 }

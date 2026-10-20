@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Tambah langganan tracker",
   "editTrackerSubscription": "Edit langganan tracker",
   "trackerSubscriptionUrl": "URL langganan",
-  "trackerSubscriptionFetchSuccess": "Pengambilan terakhir berhasil: {count} tracker",
-  "trackerSubscriptionFetchFailed": "Pengambilan terakhir gagal: 0 tracker"
+  "trackerSubscriptionFetchSuccess": "Berhasil",
+  "trackerSubscriptionFetchFailed": "Gagal",
+  "trackerSubscriptionUpdateStatus": "Status pembaruan",
+  "trackerSubscriptionTrackerCount": "Jumlah tracker",
+  "trackerSubscriptionNotFetched": "Belum diambil"
 }

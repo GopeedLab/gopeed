@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Dodaj subskrypcję trackerów",
   "editTrackerSubscription": "Edytuj subskrypcję trackerów",
   "trackerSubscriptionUrl": "URL subskrypcji",
-  "trackerSubscriptionFetchSuccess": "Ostatnie pobranie udane: {count} trackerów",
-  "trackerSubscriptionFetchFailed": "Ostatnie pobranie nieudane: 0 trackerów"
+  "trackerSubscriptionFetchSuccess": "Sukces",
+  "trackerSubscriptionFetchFailed": "Niepowodzenie",
+  "trackerSubscriptionUpdateStatus": "Stan aktualizacji",
+  "trackerSubscriptionTrackerCount": "Liczba trackerów",
+  "trackerSubscriptionNotFetched": "Jeszcze nie pobrano"
 }

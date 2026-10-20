@@ -56,9 +56,20 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('Last fetch succeeded: 7 trackers'), findsOneWidget);
-      expect(find.textContaining('Last fetch failed: 0 trackers'), findsOneWidget);
-      expect(find.text('Never updated'), findsOneWidget);
+      expect(find.text('Update status'), findsOneWidget);
+      expect(find.text('Tracker count'), findsOneWidget);
+      for (final entry in const [
+        ('https://success.example/very/long/path/to/my/custom/list.txt', 'Succeeded', '7'),
+        ('https://failed.example/list', 'Failed', '0'),
+        ('https://new.example/list', 'Not fetched', '—'),
+      ]) {
+        final row = find.byKey(ValueKey('tracker-subscription-${entry.$1}'));
+        expect(find.descendant(of: row, matching: find.text(entry.$2)), findsOneWidget);
+        expect(find.descendant(of: row, matching: find.text(entry.$3)), findsOneWidget);
+      }
+      final table = find.byKey(const ValueKey('tracker-subscriptions-table'));
+      expect(find.descendant(of: table, matching: find.textContaining('2026-')), findsNothing);
+      expect(find.textContaining('Last updated: '), findsOneWidget);
       expect(find.byKey(const ValueKey('add-tracker-subscription')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

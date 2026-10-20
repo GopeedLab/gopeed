@@ -460,6 +460,9 @@
   "addTrackerSubscription": "Добавить подписку на трекеры",
   "editTrackerSubscription": "Изменить подписку на трекеры",
   "trackerSubscriptionUrl": "URL подписки",
-  "trackerSubscriptionFetchSuccess": "Последняя загрузка успешна: {count} трекеров",
-  "trackerSubscriptionFetchFailed": "Последняя загрузка не удалась: 0 трекеров"
+  "trackerSubscriptionFetchSuccess": "Успешно",
+  "trackerSubscriptionFetchFailed": "Ошибка",
+  "trackerSubscriptionUpdateStatus": "Статус обновления",
+  "trackerSubscriptionTrackerCount": "Число трекеров",
+  "trackerSubscriptionNotFetched": "Ещё не загружено"
 }

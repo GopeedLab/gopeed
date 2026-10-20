@@ -644,6 +644,9 @@
   "addTrackerSubscription": "Tracker abunəliyi əlavə et",
   "editTrackerSubscription": "Tracker abunəliyini redaktə et",
   "trackerSubscriptionUrl": "Abunəlik URL-i",
-  "trackerSubscriptionFetchSuccess": "Son yükləmə uğurlu oldu: {count} tracker",
-  "trackerSubscriptionFetchFailed": "Son yükləmə uğursuz oldu: 0 tracker"
+  "trackerSubscriptionFetchSuccess": "Uğurlu",
+  "trackerSubscriptionFetchFailed": "Uğursuz",
+  "trackerSubscriptionUpdateStatus": "Yeniləmə statusu",
+  "trackerSubscriptionTrackerCount": "Tracker sayı",
+  "trackerSubscriptionNotFetched": "Hələ alınmayıb"
 }

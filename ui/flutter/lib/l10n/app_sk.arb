@@ -661,6 +661,9 @@
   "addTrackerSubscription": "Pridať odber trackerov",
   "editTrackerSubscription": "Upraviť odber trackerov",
   "trackerSubscriptionUrl": "URL odberu",
-  "trackerSubscriptionFetchSuccess": "Posledné načítanie úspešné: {count} trackerov",
-  "trackerSubscriptionFetchFailed": "Posledné načítanie zlyhalo: 0 trackerov"
+  "trackerSubscriptionFetchSuccess": "Úspešné",
+  "trackerSubscriptionFetchFailed": "Neúspešné",
+  "trackerSubscriptionUpdateStatus": "Stav aktualizácie",
+  "trackerSubscriptionTrackerCount": "Počet trackerov",
+  "trackerSubscriptionNotFetched": "Zatiaľ nenačítané"
 }

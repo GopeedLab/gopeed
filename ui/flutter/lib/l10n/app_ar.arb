@@ -460,6 +460,9 @@
   "addTrackerSubscription": "إضافة اشتراك متتبعات",
   "editTrackerSubscription": "تعديل اشتراك المتتبعات",
   "trackerSubscriptionUrl": "رابط الاشتراك",
-  "trackerSubscriptionFetchSuccess": "نجح آخر جلب: {count} متتبعات",
-  "trackerSubscriptionFetchFailed": "فشل آخر جلب: 0 متتبعات"
+  "trackerSubscriptionFetchSuccess": "نجح",
+  "trackerSubscriptionFetchFailed": "فشل",
+  "trackerSubscriptionUpdateStatus": "حالة التحديث",
+  "trackerSubscriptionTrackerCount": "عدد المتتبعات",
+  "trackerSubscriptionNotFetched": "لم يُجلب بعد"
 }

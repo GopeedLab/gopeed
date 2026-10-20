@@ -460,6 +460,9 @@
   "addTrackerSubscription": "டிராக்கர் சந்தாவைச் சேர்",
   "editTrackerSubscription": "டிராக்கர் சந்தாவைத் திருத்து",
   "trackerSubscriptionUrl": "சந்தா URL",
-  "trackerSubscriptionFetchSuccess": "கடைசிப் பெறுதல் வெற்றி: {count} டிராக்கர்கள்",
-  "trackerSubscriptionFetchFailed": "கடைசிப் பெறுதல் தோல்வி: 0 டிராக்கர்கள்"
+  "trackerSubscriptionFetchSuccess": "வெற்றி",
+  "trackerSubscriptionFetchFailed": "தோல்வி",
+  "trackerSubscriptionUpdateStatus": "புதுப்பிப்பு நிலை",
+  "trackerSubscriptionTrackerCount": "டிராக்கர் எண்ணிக்கை",
+  "trackerSubscriptionNotFetched": "இன்னும் பெறப்படவில்லை"
 }
