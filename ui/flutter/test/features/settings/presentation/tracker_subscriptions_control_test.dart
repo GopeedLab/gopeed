@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
@@ -71,6 +72,12 @@ void main() {
       expect(find.descendant(of: table, matching: find.textContaining('2026-')), findsNothing);
       expect(find.textContaining('Last updated: '), findsOneWidget);
       expect(find.byKey(const ValueKey('add-tracker-subscription')), findsOneWidget);
+      if (width < 672) {
+        final headerPosition = tester.getTopLeft(find.text('Subscription URL'));
+        await tester.dragFrom(tester.getTopLeft(table) + const Offset(100, 20), const Offset(-600, 0));
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(find.text('Subscription URL')).dx, lessThan(headerPosition.dx));
+      }
       expect(tester.takeException(), isNull);
     });
   }
@@ -116,10 +123,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(ValueKey('tracker-subscription-${urls.last}')), findsOneWidget);
       expect(tester.getTopLeft(find.text('Subscription URL')), headerPosition);
-      // Small screens can scroll across to the same actions as the desktop table.
+      // Desktop mouse users can drag the bottom scrollbar to reach the actions.
       if (width < 672) {
-        await tester.dragFrom(tester.getTopLeft(table) + const Offset(100, 20), const Offset(-600, 0));
+        final headerPosition = tester.getTopLeft(find.text('Subscription URL'));
+        await tester.dragFrom(
+          tester.getBottomLeft(table) + const Offset(40, -5),
+          const Offset(600, 0),
+          kind: PointerDeviceKind.mouse,
+        );
         await tester.pumpAndSettle();
+        expect(tester.getTopLeft(find.text('Subscription URL')).dx, lessThan(headerPosition.dx));
       }
       await tester.tap(find.byKey(ValueKey('edit-settings-list-${urls.last}')));
       await tester.tap(find.byKey(ValueKey('delete-settings-list-${urls.last}')));

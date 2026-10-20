@@ -57,52 +57,59 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           return Scrollbar(
+            key: const ValueKey('tracker-subscriptions-horizontal-scrollbar'),
             controller: _horizontalController,
             thumbVisibility: true,
+            trackVisibility: true,
+            interactive: true,
+            thickness: 7,
             scrollbarOrientation: ScrollbarOrientation.bottom,
             notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
-            child: SingleChildScrollView(
-              controller: _horizontalController,
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: math.max(640, constraints.maxWidth),
-                child: Column(
-                  children: [
-                    Container(
-                      height: _headerHeight,
-                      decoration: BoxDecoration(
-                        color: palette.sideBg,
-                        border: Border(bottom: BorderSide(color: palette.border)),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SingleChildScrollView(
+                controller: _horizontalController,
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: math.max(640, constraints.maxWidth),
+                  child: Column(
+                    children: [
+                      Container(
+                        height: _headerHeight,
+                        decoration: BoxDecoration(
+                          color: palette.sideBg,
+                          border: Border(bottom: BorderSide(color: palette.border)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(child: _header(context.l10n.trackerSubscriptionUrl)),
+                            SizedBox(width: _statusWidth, child: _header(context.l10n.trackerSubscriptionUpdateStatus)),
+                            SizedBox(width: _countWidth, child: _header(context.l10n.trackerSubscriptionTrackerCount)),
+                            const SizedBox(width: _actionsWidth),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          Expanded(child: _header(context.l10n.trackerSubscriptionUrl)),
-                          SizedBox(width: _statusWidth, child: _header(context.l10n.trackerSubscriptionUpdateStatus)),
-                          SizedBox(width: _countWidth, child: _header(context.l10n.trackerSubscriptionTrackerCount)),
-                          const SizedBox(width: _actionsWidth),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: widget.urls.isEmpty
-                          ? Center(
-                              child: Text('—', style: TextStyle(color: palette.textMuted)),
-                            )
-                          : Scrollbar(
-                              controller: _verticalController,
-                              thumbVisibility: true,
-                              notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
-                              child: ListView.builder(
-                                key: const ValueKey('tracker-subscriptions-rows'),
+                      Expanded(
+                        child: widget.urls.isEmpty
+                            ? Center(
+                                child: Text('—', style: TextStyle(color: palette.textMuted)),
+                              )
+                            : Scrollbar(
                                 controller: _verticalController,
-                                padding: const EdgeInsets.only(bottom: 12),
-                                itemExtent: _rowHeight,
-                                itemCount: widget.urls.length,
-                                itemBuilder: (context, index) => _row(index),
+                                thumbVisibility: true,
+                                notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
+                                child: ListView.builder(
+                                  key: const ValueKey('tracker-subscriptions-rows'),
+                                  controller: _verticalController,
+                                  padding: EdgeInsets.zero,
+                                  itemExtent: _rowHeight,
+                                  itemCount: widget.urls.length,
+                                  itemBuilder: (context, index) => _row(index),
+                                ),
                               ),
-                            ),
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
