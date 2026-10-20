@@ -463,5 +463,6 @@
   "trackerSubscriptionFetchFailed": "실패",
   "trackerSubscriptionUpdateStatus": "업데이트 상태",
   "trackerSubscriptionTrackerCount": "트래커 수",
-  "trackerSubscriptionNotUpdated": "아직 업데이트되지 않음"
+  "trackerSubscriptionNotUpdated": "아직 업데이트되지 않음",
+  "actions": "작업"
 }

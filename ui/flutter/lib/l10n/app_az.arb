@@ -647,5 +647,6 @@
   "trackerSubscriptionFetchFailed": "Uğursuz",
   "trackerSubscriptionUpdateStatus": "Yeniləmə statusu",
   "trackerSubscriptionTrackerCount": "Tracker sayı",
-  "trackerSubscriptionNotUpdated": "Hələ yenilənməyib"
+  "trackerSubscriptionNotUpdated": "Hələ yenilənməyib",
+  "actions": "Əməliyyatlar"
 }

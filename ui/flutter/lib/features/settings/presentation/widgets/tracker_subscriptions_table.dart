@@ -24,7 +24,7 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
   static const _rowHeight = 48.0;
   static const _statusWidth = 110.0;
   static const _countWidth = 120.0;
-  static const _actionsWidth = 56.0;
+  static const _actionsWidth = 80.0;
   final _horizontalController = ScrollController();
   final _verticalController = ScrollController();
 
@@ -95,7 +95,10 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
                             _pinnedActions(
                               hiddenWidth,
                               color: palette.sideBg,
-                              child: const SizedBox(key: ValueKey('tracker-subscriptions-actions-header')),
+                              child: SizedBox(
+                                key: const ValueKey('tracker-subscriptions-actions-header'),
+                                child: _header(context.l10n.actions),
+                              ),
                             ),
                           ],
                         ),

@@ -463,5 +463,6 @@
   "trackerSubscriptionFetchFailed": "فشل",
   "trackerSubscriptionUpdateStatus": "حالة التحديث",
   "trackerSubscriptionTrackerCount": "عدد المتتبعات",
-  "trackerSubscriptionNotUpdated": "لم يُحدّث بعد"
+  "trackerSubscriptionNotUpdated": "لم يُحدّث بعد",
+  "actions": "الإجراءات"
 }

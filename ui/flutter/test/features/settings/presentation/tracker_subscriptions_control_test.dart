@@ -60,6 +60,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Update status'), findsOneWidget);
       expect(find.text('Tracker count'), findsOneWidget);
+      expect(find.text('Actions'), findsOneWidget);
       for (final entry in const [
         ('https://success.example/very/long/path/to/my/custom/list.txt', 'Succeeded', '7'),
         ('https://failed.example/list', 'Failed', '0'),

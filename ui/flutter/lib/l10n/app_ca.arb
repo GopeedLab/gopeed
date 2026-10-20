@@ -463,5 +463,6 @@
   "trackerSubscriptionFetchFailed": "Fallida",
   "trackerSubscriptionUpdateStatus": "Estat de l’actualització",
   "trackerSubscriptionTrackerCount": "Nombre de trackers",
-  "trackerSubscriptionNotUpdated": "Sense actualitzar"
+  "trackerSubscriptionNotUpdated": "Sense actualitzar",
+  "actions": "Accions"
 }

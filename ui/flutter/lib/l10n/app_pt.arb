@@ -463,5 +463,6 @@
   "trackerSubscriptionFetchFailed": "Falha",
   "trackerSubscriptionUpdateStatus": "Estado da atualização",
   "trackerSubscriptionTrackerCount": "Número de trackers",
-  "trackerSubscriptionNotUpdated": "Ainda não atualizado"
+  "trackerSubscriptionNotUpdated": "Ainda não atualizado",
+  "actions": "Ações"
 }

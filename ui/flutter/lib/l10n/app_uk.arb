@@ -463,5 +463,6 @@
   "trackerSubscriptionFetchFailed": "Помилка",
   "trackerSubscriptionUpdateStatus": "Стан оновлення",
   "trackerSubscriptionTrackerCount": "Кількість трекерів",
-  "trackerSubscriptionNotUpdated": "Ще не оновлено"
+  "trackerSubscriptionNotUpdated": "Ще не оновлено",
+  "actions": "Дії"
 }

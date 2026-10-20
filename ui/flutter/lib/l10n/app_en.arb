@@ -673,5 +673,6 @@
   "trackerSubscriptionFetchFailed": "Failed",
   "trackerSubscriptionUpdateStatus": "Update status",
   "trackerSubscriptionTrackerCount": "Tracker count",
-  "trackerSubscriptionNotUpdated": "Not updated"
+  "trackerSubscriptionNotUpdated": "Not updated",
+  "actions": "Actions"
 }

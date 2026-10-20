@@ -463,5 +463,6 @@
   "trackerSubscriptionFetchFailed": "Thất bại",
   "trackerSubscriptionUpdateStatus": "Trạng thái cập nhật",
   "trackerSubscriptionTrackerCount": "Số tracker",
-  "trackerSubscriptionNotUpdated": "Chưa cập nhật"
+  "trackerSubscriptionNotUpdated": "Chưa cập nhật",
+  "actions": "Thao tác"
 }

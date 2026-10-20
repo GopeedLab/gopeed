@@ -463,5 +463,6 @@
   "trackerSubscriptionFetchFailed": "Gagal",
   "trackerSubscriptionUpdateStatus": "Status pembaruan",
   "trackerSubscriptionTrackerCount": "Jumlah tracker",
-  "trackerSubscriptionNotUpdated": "Belum diperbarui"
+  "trackerSubscriptionNotUpdated": "Belum diperbarui",
+  "actions": "Tindakan"
 }

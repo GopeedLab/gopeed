@@ -463,5 +463,6 @@
   "trackerSubscriptionFetchFailed": "ناموفق",
   "trackerSubscriptionUpdateStatus": "وضعیت به‌روزرسانی",
   "trackerSubscriptionTrackerCount": "تعداد ردیاب‌ها",
-  "trackerSubscriptionNotUpdated": "هنوز به‌روزرسانی نشده"
+  "trackerSubscriptionNotUpdated": "هنوز به‌روزرسانی نشده",
+  "actions": "عملیات"
 }

@@ -664,5 +664,6 @@
   "trackerSubscriptionFetchFailed": "Neúspešné",
   "trackerSubscriptionUpdateStatus": "Stav aktualizácie",
   "trackerSubscriptionTrackerCount": "Počet trackerov",
-  "trackerSubscriptionNotUpdated": "Zatiaľ neaktualizované"
+  "trackerSubscriptionNotUpdated": "Zatiaľ neaktualizované",
+  "actions": "Akcie"
 }
