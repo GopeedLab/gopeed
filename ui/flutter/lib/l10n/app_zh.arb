@@ -426,7 +426,7 @@
   "logDirectoryUnavailable": "日志目录尚未初始化",
   "unableOpenExternalLink": "无法打开外部链接",
   "neverUpdated": "尚未更新",
-  "lastUpdated": "上次更新：{time}",
+  "lastUpdated": "上次更新时间：{time}",
   "unableLoadSettings": "无法加载设置",
   "fieldRequired": "{field}不能为空",
   "addGithubMirror": "添加 GitHub 镜像",

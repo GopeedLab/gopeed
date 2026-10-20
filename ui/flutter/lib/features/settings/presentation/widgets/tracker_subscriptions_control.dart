@@ -2,9 +2,8 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../../../api/model/downloader_config.dart';
 import '../../../../l10n/l10n.dart';
-import '../../../../shared/theme/app_palette.dart';
-import '../../../../shared/widgets/app_loading_button.dart';
 import 'settings_list_editor.dart';
+import 'tracker_subscriptions_footer.dart';
 import 'tracker_subscriptions_table.dart';
 
 class TrackerSubscriptionsControl extends StatefulWidget {
@@ -36,7 +35,6 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
 
   @override
   Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
     return SizedBox(
       width: double.infinity,
       child: Column(
@@ -54,35 +52,12 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
           const SizedBox(height: 8),
           TrackerSubscriptionsTable(urls: widget.urls, statuses: widget.statuses, onEdit: _edit, onDelete: _delete),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              AppLoadingButton(
-                key: const ValueKey('tracker-update-button'),
-                onPressed: _update,
-                loading: _updating,
-                icon: const Icon(Icons.refresh, size: 17),
-                child: Text(context.l10n.newVersionUpdate),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  context.l10n.updateEveryDay,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: TextStyle(color: palette.textSecondary, fontSize: 12),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Switch(value: widget.autoUpdate, onChanged: widget.onAutoUpdateChanged),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            widget.lastUpdated == null
-                ? context.l10n.neverUpdated
-                : context.l10n.lastUpdated(_formatDateTime(widget.lastUpdated!)),
-            style: TextStyle(color: palette.textMuted, fontSize: 11),
+          TrackerSubscriptionsFooter(
+            lastUpdated: widget.lastUpdated,
+            autoUpdate: widget.autoUpdate,
+            updating: _updating,
+            onAutoUpdateChanged: widget.onAutoUpdateChanged,
+            onUpdate: _update,
           ),
         ],
       ),
@@ -123,11 +98,5 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
     } finally {
       if (mounted) setState(() => _updating = false);
     }
-  }
-
-  String _formatDateTime(DateTime time) {
-    final value = time.toLocal();
-    String two(int number) => number.toString().padLeft(2, '0');
-    return '${value.year}-${two(value.month)}-${two(value.day)} ${two(value.hour)}:${two(value.minute)}:${two(value.second)}';
   }
 }

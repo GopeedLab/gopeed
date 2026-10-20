@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/features/settings/presentation/widgets/tracker_subscriptions_control.dart';
+import 'package:gopeed/features/settings/presentation/widgets/tracker_subscriptions_footer.dart';
 import 'package:gopeed/features/settings/presentation/widgets/tracker_subscriptions_table.dart';
 import 'package:gopeed/l10n/l10n.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
@@ -71,6 +72,18 @@ void main() {
       final table = find.byKey(const ValueKey('tracker-subscriptions-table'));
       expect(find.descendant(of: table, matching: find.textContaining('2026-')), findsNothing);
       expect(find.textContaining('Last updated: '), findsOneWidget);
+      final updateRect = tester.getRect(find.byKey(const ValueKey('tracker-update-button')));
+      final autoUpdateRect = tester.getRect(find.byKey(const ValueKey('tracker-auto-update-control')));
+      final timeRect = tester.getRect(find.byKey(const ValueKey('tracker-last-updated')));
+      expect(updateRect.right, closeTo(tester.getRect(table).right, 1));
+      expect(autoUpdateRect.right, lessThan(updateRect.left));
+      expect(autoUpdateRect.center.dy, closeTo(updateRect.center.dy, 1));
+      if (width >= 1024) {
+        expect(timeRect.right, lessThan(autoUpdateRect.left));
+        expect(timeRect.center.dy, closeTo(updateRect.center.dy, 1));
+      } else {
+        expect(timeRect.bottom, lessThan(autoUpdateRect.top));
+      }
       expect(find.byKey(const ValueKey('add-tracker-subscription')), findsOneWidget);
       if (width < 672) {
         final headerPosition = tester.getTopLeft(find.text('Subscription URL'));
@@ -80,6 +93,66 @@ void main() {
       }
       expect(tester.takeException(), isNull);
     });
+  }
+  for (final locale in const [Locale('en'), Locale('zh')]) {
+    for (final width in [320.0, 768.0, 1024.0]) {
+      testWidgets('footer hides missing update time at width $width in $locale', (tester) async {
+        tester.view.physicalSize = Size(width, 600);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        var updates = 0;
+        bool? autoUpdate;
+        await tester.pumpWidget(
+          ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Builder(
+              builder: (context) => Localizations.override(
+                context: context,
+                locale: locale,
+                delegates: const [AppLocalizations.delegate],
+                child: AppComponentThemes(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: TrackerSubscriptionsFooter(
+                          lastUpdated: null,
+                          autoUpdate: false,
+                          updating: false,
+                          onAutoUpdateChanged: (value) => autoUpdate = value,
+                          onUpdate: () => updates++,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('tracker-last-updated')), findsNothing);
+        expect(find.text('Never updated'), findsNothing);
+        expect(find.text('尚未更新'), findsNothing);
+        final footerRect = tester.getRect(find.byKey(const ValueKey('tracker-subscriptions-footer')));
+        final buttonRect = tester.getRect(find.byKey(const ValueKey('tracker-update-button')));
+        final autoRect = tester.getRect(find.byKey(const ValueKey('tracker-auto-update-control')));
+        expect(buttonRect.right, closeTo(footerRect.right, 1));
+        expect(autoRect.right, lessThan(buttonRect.left));
+        expect(autoRect.center.dy, closeTo(buttonRect.center.dy, 1));
+        await tester.tap(find.byType(Switch));
+        await tester.tap(find.byKey(const ValueKey('tracker-update-button')));
+        expect(autoUpdate, true);
+        expect(updates, 1);
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
   for (final width in [360.0, 768.0, 1024.0]) {
     testWidgets('long subscription table scrolls within its viewport at width $width', (tester) async {
