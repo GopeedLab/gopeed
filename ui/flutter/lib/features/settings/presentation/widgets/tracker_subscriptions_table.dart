@@ -163,20 +163,17 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
             width: _statusWidth,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: AppTooltip(
-                message: result,
-                child: Text(
-                  result,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: status == null
-                        ? palette.textMuted
-                        : status.success
-                        ? palette.success
-                        : palette.error,
-                    fontSize: 11,
-                  ),
+              child: Text(
+                result,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: status == null
+                      ? palette.textMuted
+                      : status.success
+                      ? palette.success
+                      : palette.error,
+                  fontSize: 11,
                 ),
               ),
             ),
