@@ -11,7 +11,9 @@ import (
 // from failed attempts and successful race losers, including partial results
 // returned together with an error. The caller owns the winning result.
 type Options[T any] struct {
-	Kind    Kind
+	Kind Kind
+	// Timeout limits each attempt. Zero uses 30 seconds for resources and no
+	// overall deadline for repositories, whose transport owns idle timeouts.
 	Timeout time.Duration
 	Discard func(T)
 }
@@ -46,13 +48,18 @@ func prepare[T any](ctx context.Context, config *Config, raw string, options Opt
 		}
 	}
 	timeout := options.Timeout
-	if timeout == 0 {
+	if timeout == 0 && options.Kind == Resource {
 		timeout = defaultTimeout
 	}
 	return Candidates(config, raw, options.Kind), timeout, nil
 }
 func invoke[T any](ctx context.Context, timeout time.Duration, candidate string, attempt Attempt[T]) (value T, err error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		ctx, cancel = context.WithCancel(ctx)
+	}
 	defer cancel()
 	defer func() {
 		if recovered := recover(); recovered != nil {

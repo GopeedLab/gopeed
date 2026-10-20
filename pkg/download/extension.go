@@ -241,7 +241,7 @@ func (d *Downloader) fetchExtensionByGit(rawURL string, handler func(string, boo
 	defer d.tempFiles.Remove(tempDir)
 	repoDir := filepath.Join(tempDir, "repo")
 	repo, err := githubmirror.Fallback(ctx, cfg.GithubMirror, officialURL,
-		githubmirror.Options[*git.Repository]{Kind: githubmirror.Repository, Timeout: 30 * time.Second},
+		githubmirror.Options[*git.Repository]{Kind: githubmirror.Repository},
 		func(ctx context.Context, candidate string) (*git.Repository, error) {
 			if err := os.RemoveAll(repoDir); err != nil {
 				return nil, err

@@ -129,8 +129,10 @@ and let the client probe and download locally. See the [package usage guide](../
   while preserving the branch/commit; ghProxy prefixes the original URL.
 - Extension Git installation, update checks, and updates try the official clone
   first and then ghProxy mirrors in order. jsDelivr is not a Git remote. Every
-  attempt has a fresh checkout and timeout. The canonical repository URL and
-  subdirectory are preserved.
+  attempt has a fresh checkout. Git uses a 10-second connection/TLS handshake
+  timeout and a 60-second network read idle timeout, with no fixed clone duration.
+  Continuous reads reset the idle allowance; stalled sources fall back in order.
+  The canonical repository URL and subdirectory are preserved.
 
 ## Dedicated business APIs
 

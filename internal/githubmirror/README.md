@@ -28,8 +28,7 @@ no HEAD-probe assumption or client-specific HTTP behavior inside the executor.
 ```go
 repo, err := githubmirror.Fallback(ctx, cfg.GithubMirror, officialURL,
     githubmirror.Options[*git.Repository]{
-        Kind:    githubmirror.Repository,
-        Timeout: 30 * time.Second,
+        Kind: githubmirror.Repository,
     },
     func(ctx context.Context, candidate string) (*git.Repository, error) {
         // Use a clean temporary checkout for each attempt.
@@ -50,7 +49,11 @@ the partial `*Download` alongside errors, so cleanup also covers failed reads or
 validation. The executor discards every failure and every race loser exactly
 once. The caller owns and must track/release the winning result.
 
-- `Timeout == 0` uses 30 seconds per attempt; a negative timeout is invalid.
+- `Timeout == 0` uses 30 seconds per resource attempt and no overall deadline
+  for repository attempts; a negative timeout is invalid. Extension Git HTTP
+  transport limits connections/TLS handshakes to 10 seconds and resets a 60-second
+  read deadline as data arrives. Slow continuous transfers can finish, while
+  stalled sources fail and allow ordered fallback. Parent cancellation still applies.
 - Attempts must honor the supplied context; draining waits for them to return.
 - Attempt contexts are canceled after return, so callbacks must finish reading
   HTTP bodies before returning. Returning a still-streaming response is unsupported.

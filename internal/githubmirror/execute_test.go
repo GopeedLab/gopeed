@@ -147,7 +147,7 @@ func TestFallbackCancellationStopsBeforeNextMirror(t *testing.T) {
 	defer cancel()
 	calls := 0
 	cleaned := 0
-	_, err := Fallback(ctx, testConfig(), testSource, Options[string]{Discard: func(string) { cleaned++ }}, func(ctx context.Context, address string) (string, error) {
+	_, err := Fallback(ctx, testConfig(), testSource, Options[string]{Kind: Repository, Discard: func(string) { cleaned++ }}, func(ctx context.Context, address string) (string, error) {
 		calls++
 		cancel()
 		return address, ctx.Err()
@@ -198,5 +198,17 @@ func TestNonGithubResourcesAndDisabledMirrorsUseOnlyOriginal(t *testing.T) {
 		if err != nil || got != test.raw || calls != 1 {
 			t.Fatalf("got=%s calls=%d err=%v", got, calls, err)
 		}
+	}
+}
+
+func TestRepositoryAttemptsHaveNoDefaultDeadline(t *testing.T) {
+	value, err := Fallback(context.Background(), nil, testSource, Options[string]{Kind: Repository}, func(ctx context.Context, raw string) (string, error) {
+		if _, ok := ctx.Deadline(); ok {
+			t.Fatal("repository attempt has a total deadline")
+		}
+		return raw, nil
+	})
+	if err != nil || value != testSource {
+		t.Fatalf("value=%s error=%v", value, err)
 	}
 }
