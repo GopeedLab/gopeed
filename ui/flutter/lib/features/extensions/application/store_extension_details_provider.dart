@@ -3,10 +3,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/gopeed_site_api.dart';
-import '../../../core/capabilities/app_capabilities.dart';
 import '../../../api/model/store_extension.dart';
 
-final gopeedSiteApiProvider = Provider<GopeedSiteApi>((ref) => GopeedSiteApi(ref.watch(gopeedServiceProvider)));
+final gopeedSiteApiProvider = Provider<GopeedSiteApi>((ref) => GopeedSiteApi.instance);
 
 typedef StoreExtensionDetailsKey = ({String id, String version});
 

@@ -39,17 +39,3 @@ func (s *Service) checkAppUpdate(c *Context) *Response {
 	}
 	return newOKResponse(result)
 }
-func (s *Service) storeExtensions(c *Context) *Response {
-	result, err := s.Downloader.StoreExtensions(c.requestContext(), c.Query)
-	if err != nil {
-		return backendError(err)
-	}
-	return newOKResponse(result)
-}
-func (s *Service) storeExtension(c *Context) *Response {
-	result, err := s.Downloader.StoreExtension(c.requestContext(), c.PathParam("id"), c.Query.Get("version"))
-	if err != nil {
-		return backendError(err)
-	}
-	return newOKResponse(result)
-}

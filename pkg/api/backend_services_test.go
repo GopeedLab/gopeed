@@ -54,10 +54,10 @@ func TestFullConfigDispatchAndRetiredProtocolConfigRoutes(t *testing.T) {
 }
 
 func TestNativePathParametersAreDecodedOnce(t *testing.T) {
-	route := newRoute(http.MethodGet, "/api/v1/store/extensions/{id}", func(c *Context) *Response { return newOKResponse(c.PathParam("id")) })
+	route := newRoute(http.MethodGet, "/api/v1/tasks/{id}/status", func(c *Context) *Response { return newOKResponse(c.PathParam("id")) })
 	for _, test := range []struct{ path, want string }{
-		{"/api/v1/store/extensions/%E5%BC%80%E5%8F%91%E8%80%85%40name", "开发者@name"},
-		{"/api/v1/store/extensions/literal%252Fname", "literal%2Fname"},
+		{"/api/v1/tasks/%E5%BC%80%E5%8F%91%E8%80%85%40name/status", "开发者@name"},
+		{"/api/v1/tasks/literal%252Fname/status", "literal%2Fname"},
 	} {
 		response := (&Service{routes: []RouteSpec{route}}).Dispatch(http.MethodGet, test.path, nil, nil, nil)
 		raw, _ := json.Marshal(response.Body)
@@ -195,5 +195,17 @@ func TestFullConfigAndJobTriggerShareProtectedProtocolState(t *testing.T) {
 	}
 	if response.Data.ProtocolConfig["state-api"].State.Runs != 1 {
 		t.Fatalf("job state overwritten: %s", raw)
+	}
+}
+
+func TestStoreProxyRoutesAreRemoved(t *testing.T) {
+	service, err := NewService(download.NewDownloader(&download.DownloaderConfig{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/api/v1/store/extensions", "/api/v1/store/extensions/test"} {
+		if response := service.Dispatch(http.MethodGet, path, nil, nil, nil); response.StatusCode != http.StatusNotFound {
+			t.Fatalf("removed route accessible: %s %+v", path, response)
+		}
 	}
 }

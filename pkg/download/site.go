@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/GopeedLab/gopeed/internal/githubmirror"
@@ -152,80 +150,6 @@ func fetchAppReleaseData(ctx context.Context, fetch func(context.Context, string
 		return nil, errors.Join(fmt.Errorf("GitHub releases: %w", githubErr), fmt.Errorf("Gopeed releases: %w", siteErr))
 	}
 	return body, nil
-}
-
-// Store methods accept business parameters only, never arbitrary hosts/paths.
-func (d *Downloader) StoreExtensions(ctx context.Context, query url.Values) (any, error) {
-	ctx, finish, opErr := d.beginOperation(ctx)
-	if opErr != nil {
-		return nil, opErr
-	}
-	defer finish()
-	values := url.Values{"view": {"summary"}}
-	allowed := map[string]bool{"page": true, "limit": true, "sort": true, "order": true, "q": true}
-	for key, list := range query {
-		if !allowed[key] {
-			return nil, fmt.Errorf("unsupported store parameter: %s", key)
-		}
-		if len(list) != 1 {
-			return nil, errors.New("duplicate store parameter")
-		}
-		values.Set(key, list[0])
-	}
-	if value := values.Get("sort"); value != "" && value != "stars" && value != "installs" && value != "updated" {
-		return nil, errors.New("invalid store sort")
-	}
-	if value := values.Get("order"); value != "" && value != "asc" && value != "desc" {
-		return nil, errors.New("invalid store order")
-	}
-	for _, key := range []string{"page", "limit"} {
-		if value := values.Get(key); value != "" {
-			n, err := strconv.Atoi(value)
-			if err != nil || n < 1 || (key == "limit" && n > 100) {
-				return nil, fmt.Errorf("invalid store %s", key)
-			}
-		}
-	}
-	if len(values.Get("q")) > 512 {
-		return nil, errors.New("store query too long")
-	}
-	return d.siteJSON(ctx, "/api/extensions", values)
-}
-func (d *Downloader) StoreExtension(ctx context.Context, id, version string) (any, error) {
-	ctx, finish, opErr := d.beginOperation(ctx)
-	if opErr != nil {
-		return nil, opErr
-	}
-	defer finish()
-	if id == "" || len(id) > 256 || strings.ContainsAny(id, "/\\\\") || id == "." || id == ".." {
-		return nil, errors.New("invalid store extension ID")
-	}
-	if len(version) > 128 {
-		return nil, errors.New("invalid store extension version")
-	}
-	query := url.Values{}
-	if version != "" {
-		query.Set("version", version)
-	}
-	return d.siteJSON(ctx, "/api/extensions/"+url.PathEscape(id), query)
-}
-func (d *Downloader) siteJSON(ctx context.Context, path string, query url.Values) (any, error) {
-	raw := gopeedSiteURL + path
-	if len(query) > 0 {
-		raw += "?" + query.Encode()
-	}
-	body, err := d.fetchResource(ctx, raw, 8<<20, false, func(body []byte) error {
-		if !json.Valid(body) {
-			return errors.New("invalid site JSON")
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	var result any
-	err = json.Unmarshal(body, &result)
-	return result, err
 }
 
 // Package selection uses the client's channel and architecture, including when

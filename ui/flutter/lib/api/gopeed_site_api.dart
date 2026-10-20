@@ -1,17 +1,14 @@
 import 'package:dio/dio.dart';
 
-import '../core/capabilities/app_capabilities.dart';
-import '../core/capabilities/gopeed_capability.dart';
 import 'model/store_extension.dart';
 
 class GopeedSiteApi {
-  GopeedSiteApi(this._service, {Dio? client})
+  GopeedSiteApi({Dio? client})
     : _client =
           client ??
           Dio(BaseOptions(connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 10)));
 
-  static final instance = GopeedSiteApi(LocalAppCapabilities.instance.capabilities.gopeed);
-  final GopeedService _service;
+  static final instance = GopeedSiteApi();
   final Dio _client;
   final _storePages = <String, ({StoreExtensionPage page, DateTime expires})>{};
   final _storeRequests = <String, Future<StoreExtensionPage>>{};
@@ -25,6 +22,7 @@ class GopeedSiteApi {
     bool forceRefresh = false,
   }) async {
     final params = {
+      'view': 'summary',
       'page': page.toString(),
       'limit': limit.clamp(1, 100).toString(),
       'sort': sort.name,
@@ -51,12 +49,22 @@ class GopeedSiteApi {
   }
 
   Future<StoreExtensionPage> _fetchStorePage(Map<String, String> params) async {
-    final json = await _service.getStoreExtensions(params);
-    return StoreExtensionPage.fromJson(json);
+    final response = await _client.get<Map<String, dynamic>>(
+      'https://gopeed.com/api/extensions',
+      queryParameters: params,
+    );
+    return StoreExtensionPage.fromJson(response.data!);
   }
 
   Future<StoreExtension> getExtension(String id, {String? version}) async {
-    return StoreExtension.fromJson(await _service.getStoreExtension(id, version: version));
+    final uri = Uri(
+      scheme: 'https',
+      host: 'gopeed.com',
+      pathSegments: ['api', 'extensions', id],
+      queryParameters: {'version': ?version},
+    );
+    final response = await _client.get<Map<String, dynamic>>(uri.toString());
+    return StoreExtension.fromJson(response.data!);
   }
 
   Future<void> reportExtensionInstall(String id) async {

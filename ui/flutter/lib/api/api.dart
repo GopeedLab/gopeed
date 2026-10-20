@@ -234,13 +234,3 @@ Future<Map<String, dynamic>?> checkAppUpdate(Map<String, dynamic> request) => _p
   () => _request('api/v1/app/updates/check', method: 'POST', data: request),
   (json) => json == null ? null : Map<String, dynamic>.from(json as Map),
 );
-
-Future<Map<String, dynamic>> getStoreExtensions(Map<String, dynamic> query) => _parse(
-  () => _request('api/v1/store/extensions', queryParameters: query),
-  (json) => Map<String, dynamic>.from(json as Map),
-);
-
-Future<Map<String, dynamic>> getStoreExtension(String id, {String? version}) => _parse(
-  () => _request('api/v1/store/extensions/${Uri.encodeComponent(id)}', queryParameters: {'version': ?version}),
-  (json) => Map<String, dynamic>.from(json as Map),
-);

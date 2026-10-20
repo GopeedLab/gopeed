@@ -1,7 +1,8 @@
 # Backend services and protocol jobs
 
-External metadata and protocol requests run in Go for Web, desktop FFI, and gomobile.
-The frontend reports extension install counts directly to gopeed.com as best-effort telemetry.
+Application update metadata and protocol requests run in Go for Web, desktop FFI,
+and gomobile. Extension store lists, details, and install counts go directly from
+the frontend to gopeed.com; they do not use the Downloader transport.
 Native update packages are downloaded by the client to preserve byte progress. The
 current release builds use `ui/flutter`; `ui/flutter_old` is an archived client
 and is not part of the shipping workflow. All unmatched `/api` and `/api/**`
@@ -152,16 +153,27 @@ and let the client probe and download locally. See the [package usage guide](../
   files. Dio reports actual download byte progress; installation continues through
   the existing native updater/APK installer. Probe latency is a heuristic, not a
   measurement of sustained download speed.
-- `GET /api/v1/store/extensions`: validated page/limit/sort/order/q parameters.
-- `GET /api/v1/store/extensions/{id}`: optional version parameter.
 
-Install counts are reported by the frontend directly to
-`POST https://gopeed.com/api/extensions/install` with `{id}`. This best-effort
-request does not block installation or carry the Downloader API token, and has
-no backend route or capability RPC.
+## Direct extension store requests
 
-All routes live in `pkg/api.Service`. Frontend operations use the shared
-GopeedService capability descriptors and central codec registry. No frontend
+`GopeedSiteApi` uses its own Dio client for these fixed website endpoints:
+
+- `GET https://gopeed.com/api/extensions`: page/limit/sort/order/q, with
+  `view=summary`. Successful pages retain the existing bounded two-minute cache
+  and concurrent request coalescing; failures remain retryable.
+- `GET https://gopeed.com/api/extensions/{id}`: encoded ID and optional version
+  query parameter. Detail providers retain their existing retries and cache.
+- `POST https://gopeed.com/api/extensions/install`: `{id}` as JSON. This
+  best-effort report does not block installation.
+
+These requests never carry a Downloader API token. There are no store routes in
+Downloader or store capability RPCs. The website's Cloudflare Worker supplies
+CORS for these public endpoints, including cached responses, errors, and JSON
+POST preflight. Deploy the website CORS change before releasing the direct Web
+client. Extension Git installation and updates still execute in Go.
+
+Downloader routes live in `pkg/api.Service`. Their frontend operations use the
+shared GopeedService capability descriptors and central codec registry. No frontend
 GitHub URL rewriting, subscription fetching, or generic backend HTTP forwarding
 remains in the active client. Package probing/downloading is a generic native
 Dio helper in `core/network/candidate_download.dart` and uses backend-provided
