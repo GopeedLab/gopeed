@@ -2,7 +2,7 @@
 
 Protocol requests run in Go for Web, desktop FFI, and gomobile. Application
 update checks and extension store requests run in the client. The Downloader
-only supplies GitHub candidate URLs for client requests; it does not fetch or
+only supplies mirror candidate URLs for client requests; it does not fetch or
 interpret application releases. Website requests go directly to gopeed.com.
 Native update packages are downloaded by the client to preserve byte progress. The
 current release builds use `ui/flutter`; `ui/flutter_old` is an archived client
@@ -135,19 +135,26 @@ and let the client probe and download locally. See the [package usage guide](../
   Continuous reads reset the idle allowance; stalled sources fall back in order.
   The canonical repository URL and subdirectory are preserved.
 
-## GitHub candidates and client updates
+## Mirror candidates and client updates
 
-`POST /api/v1/github/candidates` accepts `{url}` and returns `{urls: [...]}`.
-It accepts only HTTPS URLs on `github.com`, `api.github.com`, and
+`POST /api/v1/mirrors/{provider}/candidates` accepts `{url}` and returns
+`{urls: [...]}`. Unknown providers return 404. Downloader dispatches through its
+provider table; each implementation validates its own resources and reads its
+own configuration. Adding a provider does not change this route or the shared
+capability RPC. Currently `github` is the only provider and uses the existing
+Downloader `githubMirror` config.
+
+The GitHub provider accepts only HTTPS URLs on `github.com`, `api.github.com`, and
 `raw.githubusercontent.com`, without userinfo, ports, or fragments. Invalid input
 returns 400; configuration read failures return 500. The official URL is first,
 followed by eligible mirrors in configured order, without duplicates. Disabled
 mirrors return only the official URL. This API never fetches, probes, or forwards
 requests. It replaces the removed `/api/v1/app/updates/check` endpoint.
 
-`GithubClient.getJson<T>(url, decode: ...)` is the reusable client-side racer.
-It gets candidates through `GopeedService`, then uses a separate Dio client with
-no Downloader authentication headers. Each metadata request has a 30-second
+`MirrorClient(provider: ..., service: ...).getJson<T>(url, decode: ...)` is the
+reusable client-side racer. It gets candidates for the selected provider through
+`GopeedService`, then uses a separate Dio client with no Downloader authentication
+headers. Each metadata request has a 30-second
 budget. The first complete response accepted by the caller's decoder wins;
 losing requests are canceled. HTML, invalid JSON, and non-release responses
 cannot win an update check.
@@ -161,8 +168,8 @@ stable releases. Drafts and invalid versions are ignored. Version selection is
 client-side, including with a remote Downloader.
 
 When the user starts an update, the client selects the package name from its own
-channel and architecture, and asks the same GitHub candidates API for the asset
-URL. Native clients probe candidates using bounded concurrent HEAD requests and
+channel and architecture, and asks the same mirror candidates API with
+`provider=github` for the asset URL. Native clients probe candidates using bounded concurrent HEAD requests and
 prefer the fastest usable response. Failed probes remain fallbacks because some
 servers do not support HEAD. Failed GETs and HTML/JSON landing pages fall back
 to the next candidate, removing partial files. Dio reports actual download byte

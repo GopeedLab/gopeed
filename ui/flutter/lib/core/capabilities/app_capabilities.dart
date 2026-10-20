@@ -86,7 +86,10 @@ void _bindGopeed(CapabilityRegistry registry) {
       await api.triggerProtocolJob(p['protocol'] as String, p['name'] as String);
       return const RpcUnit();
     })
-    ..bind(GopeedMethods.getGithubCandidates, api.getGithubCandidates)
+    ..bind(
+      GopeedMethods.getMirrorCandidates,
+      (p) => api.getMirrorCandidates(p['provider'] as String, p['url'] as String),
+    )
     ..bind(GopeedMethods.resolve, api.resolve)
     ..bind(GopeedMethods.createTask, api.createTask)
     ..bind(GopeedMethods.createTaskBatch, api.createTaskBatch)

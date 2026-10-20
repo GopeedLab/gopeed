@@ -63,7 +63,7 @@ once. The caller owns and must track/release the winning result.
 - Errors preserve their causes through wrapping/joining for `errors.Is`.
 - `github.com`, `raw.githubusercontent.com`, and `api.github.com` expand into
   eligible mirrors. jsDelivr is only eligible for raw source resources.
-- Client application update checks obtain URLs from `POST /api/v1/github/candidates`
+- Client application update checks obtain URLs from `POST /api/v1/mirrors/github/candidates`
   and race them with a separate client-side Dio helper. Only if all candidates
   fail does the independent Gopeed website API run. Candidate generation never
   performs HTTP requests.

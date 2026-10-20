@@ -28,17 +28,20 @@ func (s *Service) triggerProtocolJob(c *Context) *Response {
 	}
 	return newNilResponse()
 }
-func (s *Service) githubCandidates(c *Context) *Response {
+func (s *Service) mirrorCandidates(c *Context) *Response {
 	var request struct {
 		URL string `json:"url"`
 	}
 	if response := decodeRequest(c.Body, &request); response != nil {
 		return response
 	}
-	urls, err := s.Downloader.GetGithubCandidates(request.URL)
+	urls, err := s.Downloader.GetMirrorCandidates(c.PathParam("provider"), request.URL)
 	if err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, download.ErrInvalidGithubURL) {
+		switch {
+		case errors.Is(err, download.ErrMirrorProviderNotFound):
+			status = http.StatusNotFound
+		case errors.Is(err, download.ErrInvalidMirrorURL):
 			status = http.StatusBadRequest
 		}
 		return newStatusResponse(status, restmodel.NewErrorResult(err.Error()))

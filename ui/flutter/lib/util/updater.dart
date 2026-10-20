@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/capabilities/gopeed_capability.dart';
 import '../core/network/candidate_download.dart';
 import '../core/network/app_update_client.dart';
-import '../core/network/github_client.dart';
+import '../core/network/mirror_client.dart';
 import 'arch/arch.dart';
 import 'log_util.dart';
 import 'package_info.dart';
@@ -59,8 +59,9 @@ Future<void> installUpdater() async {
   );
 }
 
-Future<VersionInfo?> checkUpdate({required GopeedService service}) =>
-    AppUpdateClient(github: GithubClient(service: service)).check(appVersion);
+Future<VersionInfo?> checkUpdate({required GopeedService service}) => AppUpdateClient(
+  github: MirrorClient(service: service, provider: 'github'),
+).check(appVersion);
 
 /// Package selection belongs to the client, including when the Downloader is remote.
 String appUpdateAssetName(String version, UpdateChannel? channel, String architecture) {
@@ -110,7 +111,8 @@ Future<void> updateApp(
   if (assetName.isNotEmpty) {
     onProgress(0, 0);
     assetPath = path.join((await getTemporaryDirectory()).path, assetName);
-    final urls = await service.getGithubCandidates(
+    final urls = await service.getMirrorCandidates(
+      'github',
       'https://github.com/GopeedLab/gopeed/releases/download/v${versionInfo.version}/$assetName',
     );
     await downloadFromCandidates(urls, assetPath, onReceiveProgress: onProgress);

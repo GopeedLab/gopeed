@@ -135,24 +135,17 @@ func (d *Downloader) fetchResource(ctx context.Context, raw string, limit int64,
 	)
 }
 
-// ErrInvalidGithubURL indicates that a candidates request is not an official
-// GitHub HTTPS URL. Candidate generation never performs a network request.
-var ErrInvalidGithubURL = errors.New("invalid GitHub URL")
-
-func (d *Downloader) GetGithubCandidates(raw string) ([]string, error) {
+// githubResourceCandidates accepts official GitHub HTTPS resource URLs only.
+func githubResourceCandidates(config *githubmirror.Config, raw string) ([]string, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u == nil || u.Scheme != "https" || u.User != nil || u.Port() != "" || u.Fragment != "" || strings.Contains(raw, "#") {
-		return nil, ErrInvalidGithubURL
+		return nil, ErrInvalidMirrorURL
 	}
 	u.Host = strings.ToLower(u.Host)
 	switch u.Host {
 	case "github.com", "api.github.com", "raw.githubusercontent.com":
 	default:
-		return nil, ErrInvalidGithubURL
+		return nil, ErrInvalidMirrorURL
 	}
-	cfg, err := d.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-	return githubmirror.Candidates(cfg.GithubMirror, u.String(), githubmirror.Resource), nil
+	return githubmirror.Candidates(config, u.String(), githubmirror.Resource), nil
 }

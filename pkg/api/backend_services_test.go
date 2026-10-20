@@ -69,7 +69,7 @@ func TestNativePathParametersAreDecodedOnce(t *testing.T) {
 	}
 }
 
-func TestGithubCandidates(t *testing.T) {
+func TestMirrorCandidates(t *testing.T) {
 	d := download.NewDownloader(&download.DownloaderConfig{StorageDir: t.TempDir(), TempDir: t.TempDir(), FetchManagers: []fetcher.FetcherManager{&httpProtocol.FetcherManager{}}})
 	if err := d.Setup(); err != nil {
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func TestGithubCandidates(t *testing.T) {
 		"https://raw.githubusercontent.com/owner/repo/main/trackers.txt",
 	} {
 		request, _ := json.Marshal(map[string]string{"url": official})
-		status, raw := service.JSON(http.MethodPost, "/api/v1/github/candidates", nil, request, nil)
+		status, raw := service.JSON(http.MethodPost, "/api/v1/mirrors/github/candidates", nil, request, nil)
 		var body struct {
 			Data struct {
 				URLs []string `json:"urls"`
@@ -114,7 +114,7 @@ func TestGithubCandidates(t *testing.T) {
 	}
 	for _, invalid := range []string{"", "https://example.com/x", "http://github.com/x", "https://github.com.evil.test/x", "https://user@github.com/x", "https://github.com:443/x", "https://github.com:/x", "https://github.com/x#fragment", "https://github.com/x#", "/relative", "https://github.com%2fevil.test/x"} {
 		request, _ := json.Marshal(map[string]string{"url": invalid})
-		if response := service.Dispatch(http.MethodPost, "/api/v1/github/candidates", nil, request, nil); response.StatusCode != http.StatusBadRequest {
+		if response := service.Dispatch(http.MethodPost, "/api/v1/mirrors/github/candidates", nil, request, nil); response.StatusCode != http.StatusBadRequest {
 			t.Fatalf("accepted %s: %+v", invalid, response)
 		}
 	}
@@ -122,7 +122,7 @@ func TestGithubCandidates(t *testing.T) {
 	if err := d.PutConfig(cfg); err != nil {
 		t.Fatal(err)
 	}
-	status, raw := service.JSON(http.MethodPost, "/api/v1/github/candidates", nil, []byte(`{"url":"https://github.com/owner/repo"}`), nil)
+	status, raw := service.JSON(http.MethodPost, "/api/v1/mirrors/github/candidates", nil, []byte(`{"url":"https://github.com/owner/repo"}`), nil)
 	var body struct {
 		Data struct {
 			URLs []string `json:"urls"`
@@ -132,7 +132,13 @@ func TestGithubCandidates(t *testing.T) {
 		t.Fatalf("%d %s", status, raw)
 	}
 
-	for _, path := range []string{"/api/v1/app/updates/check", "/api/v1/app/updates/candidates", "/api/v1/app/updates/prepare", "/api/v1/store/extensions/test/install-report"} {
+	for _, provider := range []string{"unknown", "GitHub"} {
+		if response := service.Dispatch(http.MethodPost, "/api/v1/mirrors/"+provider+"/candidates", nil, []byte(`{"url":"https://github.com/owner/repo"}`), nil); response.StatusCode != http.StatusNotFound {
+			t.Fatalf("unknown provider accepted: %+v", response)
+		}
+	}
+
+	for _, path := range []string{"/api/v1/github/candidates", "/api/v1/app/updates/check", "/api/v1/app/updates/candidates", "/api/v1/app/updates/prepare", "/api/v1/store/extensions/test/install-report"} {
 		if response := service.Dispatch(http.MethodPost, path, nil, nil, nil); response.StatusCode != http.StatusNotFound {
 			t.Fatalf("removed route accessible: %s %+v", path, response)
 		}

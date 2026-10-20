@@ -230,7 +230,7 @@ Future<void> triggerProtocolJob(String protocol, String name) => _parse<void>(
   null,
 );
 
-Future<List<String>> getGithubCandidates(String url) => _parse(
-  () => _request('api/v1/github/candidates', method: 'POST', data: {'url': url}),
+Future<List<String>> getMirrorCandidates(String provider, String url) => _parse(
+  () => _request('api/v1/mirrors/${Uri.encodeComponent(provider)}/candidates', method: 'POST', data: {'url': url}),
   (json) => List<String>.from(json['urls'] as List),
 );

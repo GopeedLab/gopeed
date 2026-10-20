@@ -1,7 +1,7 @@
 import 'package:pub_semver/pub_semver.dart';
 
 import '../../api/gopeed_site_api.dart';
-import 'github_client.dart';
+import 'mirror_client.dart';
 
 class VersionInfo {
   const VersionInfo({required this.version, required this.changeLog, required this.releaseUrl});
@@ -14,12 +14,12 @@ class VersionInfo {
 /// Release providers are independent sources: try the GitHub candidate race
 /// first, then the website only if every GitHub response fails validation.
 class AppUpdateClient {
-  AppUpdateClient({required GithubClient github, GopeedSiteApi? site})
+  AppUpdateClient({required MirrorClient github, GopeedSiteApi? site})
     : _github = github,
       _site = site ?? GopeedSiteApi.instance;
 
   static const releasesUrl = 'https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=10';
-  final GithubClient _github;
+  final MirrorClient _github;
   final GopeedSiteApi _site;
 
   Future<VersionInfo?> check(String currentVersion) async {

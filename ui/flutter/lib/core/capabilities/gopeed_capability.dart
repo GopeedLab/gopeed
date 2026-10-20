@@ -14,7 +14,7 @@ import 'capability_rpc.dart';
 
 abstract final class GopeedMethods {
   static const triggerProtocolJob = RpcMethod<Map<String, dynamic>, RpcUnit>('gopeed.protocol.job.trigger');
-  static const getGithubCandidates = RpcMethod<String, List<String>>('gopeed.github.candidates');
+  static const getMirrorCandidates = RpcMethod<Map<String, dynamic>, List<String>>('gopeed.mirrors.candidates');
   static const resolve = RpcMethod<ResolveTask, ResolveResult>('gopeed.resolve');
   static const createTask = RpcMethod<CreateTask, String>('gopeed.task.create');
   static const createTaskBatch = RpcMethod<CreateTaskBatch, List<String>>('gopeed.task.createBatch');
@@ -47,7 +47,8 @@ class GopeedService {
 
   Future<void> triggerProtocolJob(String protocol, String name) async =>
       _invoker.invoke(GopeedMethods.triggerProtocolJob, {'protocol': protocol, 'name': name});
-  Future<List<String>> getGithubCandidates(String url) => _invoker.invoke(GopeedMethods.getGithubCandidates, url);
+  Future<List<String>> getMirrorCandidates(String provider, String url) =>
+      _invoker.invoke(GopeedMethods.getMirrorCandidates, {'provider': provider, 'url': url});
   Future<ResolveResult> resolve(ResolveTask request) => _invoker.invoke(GopeedMethods.resolve, request);
 
   Future<String> createTask(CreateTask request) => _invoker.invoke(GopeedMethods.createTask, request);

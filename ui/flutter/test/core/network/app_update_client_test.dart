@@ -7,7 +7,7 @@ import 'package:gopeed/api/api.dart' as api;
 import 'package:gopeed/api/gopeed_site_api.dart';
 import 'package:gopeed/core/capabilities/app_capabilities.dart';
 import 'package:gopeed/core/network/app_update_client.dart';
-import 'package:gopeed/core/network/github_client.dart';
+import 'package:gopeed/core/network/mirror_client.dart';
 import 'package:gopeed/core/network/gopeed/gopeed_transport.dart';
 
 void main() {
@@ -24,7 +24,7 @@ void main() {
     adapter = _Adapter();
     dio.httpClientAdapter = adapter;
     updates = AppUpdateClient(
-      github: GithubClient(service: LocalAppCapabilities.instance.capabilities.gopeed, client: dio),
+      github: MirrorClient(service: LocalAppCapabilities.instance.capabilities.gopeed, provider: 'github', client: dio),
       site: GopeedSiteApi(client: dio),
     );
   });
@@ -165,6 +165,23 @@ void main() {
     await expectLater(updates.check('invalid'), throwsFormatException);
   });
 
+  test('the mirror client supports other providers and non-GitHub resources', () async {
+    const resource = 'https://resources.example/manifest.json';
+    transport.provider = 'resources';
+    transport.urls = [resource, 'https://cdn.example/manifest.json'];
+    adapter.reply = (request, _) async =>
+        request.uri.host == 'resources.example' ? _json({}, status: 503) : _json({'revision': 42});
+    final client = MirrorClient(
+      service: LocalAppCapabilities.instance.capabilities.gopeed,
+      provider: 'resources',
+      client: dio,
+    );
+    final revision = await client.getJson<int>(resource, decode: (data) => (data as Map)['revision'] as int);
+    expect(revision, 42);
+    expect(transport.requested, [resource]);
+    expect(adapter.requests.map((request) => request.uri.host).toSet(), {'resources.example', 'cdn.example'});
+  });
+
   test('metadata attempts have a total timeout even if the transport stalls', () async {
     final canceled = Completer<void>();
     adapter.reply = (_, cancellation) async {
@@ -173,8 +190,9 @@ void main() {
       throw StateError('canceled');
     };
     transport.urls = [AppUpdateClient.releasesUrl];
-    final github = GithubClient(
+    final github = MirrorClient(
       service: LocalAppCapabilities.instance.capabilities.gopeed,
+      provider: 'github',
       client: dio,
       timeout: const Duration(milliseconds: 30),
     );
@@ -210,6 +228,7 @@ class _Adapter implements HttpClientAdapter {
 class _CandidatesTransport implements GopeedTransport {
   _CandidatesTransport(this.urls);
   List<String> urls;
+  String provider = 'github';
   bool fail = false;
   final requested = <String>[];
   @override
@@ -219,7 +238,7 @@ class _CandidatesTransport implements GopeedTransport {
     dynamic data,
     Map<String, dynamic>? queryParameters,
   }) async {
-    expect(path, 'api/v1/github/candidates');
+    expect(path, 'api/v1/mirrors/$provider/candidates');
     expect(method, 'POST');
     requested.add((data as Map)['url'] as String);
     if (fail) throw StateError('Downloader unavailable');

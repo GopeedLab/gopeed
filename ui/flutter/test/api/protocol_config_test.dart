@@ -49,17 +49,23 @@ void main() {
     expect(const RpcUnit(), isA<RpcUnit>());
   });
 
-  test('GitHub candidates use the common API and shared list codec', () async {
+  test('mirror candidates use provider dispatch and the shared capability codec', () async {
     final transport = _Transport();
     api.setTransportForTesting(transport);
     const url = 'https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=10';
-    final result = await LocalAppCapabilities.instance.capabilities.gopeed.getGithubCandidates(url);
-    expect(transport.path, 'api/v1/github/candidates');
+    final result = await LocalAppCapabilities.instance.capabilities.gopeed.getMirrorCandidates('github', url);
+    expect(transport.path, 'api/v1/mirrors/github/candidates');
     expect(transport.method, 'POST');
     expect(transport.data, {'url': url});
     expect(result, ['https://example.com/package.dmg']);
     final codecs = createAppCapabilityCodecs();
     expect(codecs.decode<List<String>>(codecs.encode(result)), result);
+    expect(GopeedMethods.getMirrorCandidates.name, 'gopeed.mirrors.candidates');
+    final request = {'provider': 'another-resource', 'url': 'https://example.com/resource'};
+    expect(codecs.decode<Map<String, dynamic>>(codecs.encode(request)), request);
+    await LocalAppCapabilities.instance.capabilities.gopeed.getMirrorCandidates('another-resource', request['url']!);
+    expect(transport.path, 'api/v1/mirrors/another-resource/candidates');
+    expect(transport.data, {'url': request['url']});
   });
 }
 
