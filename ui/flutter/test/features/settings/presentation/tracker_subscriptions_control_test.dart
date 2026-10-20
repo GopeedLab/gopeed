@@ -73,17 +73,18 @@ void main() {
       expect(find.descendant(of: table, matching: find.textContaining('2026-')), findsNothing);
       expect(find.textContaining('Last updated: '), findsOneWidget);
       final updateRect = tester.getRect(find.byKey(const ValueKey('tracker-update-button')));
+      final addRect = tester.getRect(find.byKey(const ValueKey('add-tracker-subscription')));
+      final tableRect = tester.getRect(table);
       final autoUpdateRect = tester.getRect(find.byKey(const ValueKey('tracker-auto-update-control')));
       final timeRect = tester.getRect(find.byKey(const ValueKey('tracker-last-updated')));
-      expect(updateRect.right, closeTo(tester.getRect(table).right, 1));
-      expect(autoUpdateRect.right, lessThan(updateRect.left));
-      expect(autoUpdateRect.center.dy, closeTo(updateRect.center.dy, 1));
-      if (width >= 1024) {
-        expect(timeRect.right, lessThan(autoUpdateRect.left));
-        expect(timeRect.center.dy, closeTo(updateRect.center.dy, 1));
-      } else {
-        expect(timeRect.bottom, lessThan(autoUpdateRect.top));
-      }
+      expect(updateRect.right, closeTo(tableRect.right, 1));
+      expect(addRect.right, lessThan(updateRect.left));
+      expect(addRect.center.dy, closeTo(updateRect.center.dy, 1));
+      expect(updateRect.bottom, lessThan(tableRect.top));
+      expect(autoUpdateRect.top, greaterThan(tableRect.bottom));
+      expect(autoUpdateRect.right, closeTo(tableRect.right, 1));
+      expect(timeRect.top, greaterThan(autoUpdateRect.bottom));
+      expect(timeRect.right, closeTo(tableRect.right, 1));
       expect(find.byKey(const ValueKey('add-tracker-subscription')), findsOneWidget);
       if (width < 672) {
         final headerPosition = tester.getTopLeft(find.text('Subscription URL'));
@@ -101,7 +102,6 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        var updates = 0;
         bool? autoUpdate;
         await tester.pumpWidget(
           ShadcnApp(
@@ -124,9 +124,7 @@ void main() {
                         child: TrackerSubscriptionsFooter(
                           lastUpdated: null,
                           autoUpdate: false,
-                          updating: false,
                           onAutoUpdateChanged: (value) => autoUpdate = value,
-                          onUpdate: () => updates++,
                         ),
                       ),
                     ),
@@ -141,15 +139,11 @@ void main() {
         expect(find.text('Never updated'), findsNothing);
         expect(find.text('尚未更新'), findsNothing);
         final footerRect = tester.getRect(find.byKey(const ValueKey('tracker-subscriptions-footer')));
-        final buttonRect = tester.getRect(find.byKey(const ValueKey('tracker-update-button')));
         final autoRect = tester.getRect(find.byKey(const ValueKey('tracker-auto-update-control')));
-        expect(buttonRect.right, closeTo(footerRect.right, 1));
-        expect(autoRect.right, lessThan(buttonRect.left));
-        expect(autoRect.center.dy, closeTo(buttonRect.center.dy, 1));
+        expect(find.byKey(const ValueKey('tracker-update-button')), findsNothing);
+        expect(autoRect.right, closeTo(footerRect.right, 1));
         await tester.tap(find.byType(Switch));
-        await tester.tap(find.byKey(const ValueKey('tracker-update-button')));
         expect(autoUpdate, true);
-        expect(updates, 1);
         expect(tester.takeException(), isNull);
       });
     }

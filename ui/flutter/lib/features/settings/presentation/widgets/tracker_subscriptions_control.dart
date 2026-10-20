@@ -2,6 +2,8 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../../../api/model/downloader_config.dart';
 import '../../../../l10n/l10n.dart';
+import '../../../../shared/theme/app_design_tokens.dart';
+import '../../../../shared/widgets/app_loading_button.dart';
 import 'settings_list_editor.dart';
 import 'tracker_subscriptions_footer.dart';
 import 'tracker_subscriptions_table.dart';
@@ -40,24 +42,35 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: SecondaryButton(
-              key: const ValueKey('add-tracker-subscription'),
-              onPressed: () => _edit(),
-              leading: const Icon(Icons.add, size: 17),
-              child: Text(context.l10n.add),
-            ),
+          Wrap(
+            key: const ValueKey('tracker-subscriptions-actions'),
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppDesignTokens.space8,
+            runSpacing: AppDesignTokens.space8,
+            children: [
+              SecondaryButton(
+                key: const ValueKey('add-tracker-subscription'),
+                onPressed: () => _edit(),
+                leading: const Icon(Icons.add, size: 17),
+                child: Text(context.l10n.add),
+              ),
+              AppLoadingButton(
+                key: const ValueKey('tracker-update-button'),
+                onPressed: _update,
+                loading: _updating,
+                icon: const Icon(Icons.refresh, size: 17),
+                child: Text(context.l10n.newVersionUpdate),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           TrackerSubscriptionsTable(urls: widget.urls, statuses: widget.statuses, onEdit: _edit, onDelete: _delete),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppDesignTokens.space12),
           TrackerSubscriptionsFooter(
             lastUpdated: widget.lastUpdated,
             autoUpdate: widget.autoUpdate,
-            updating: _updating,
             onAutoUpdateChanged: widget.onAutoUpdateChanged,
-            onUpdate: _update,
           ),
         ],
       ),
