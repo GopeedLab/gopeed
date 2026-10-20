@@ -151,10 +151,7 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: color,
-          border: BorderDirectional(
-            start: BorderSide(color: palette.border),
-            bottom: BorderSide(color: palette.border),
-          ),
+          border: Border(bottom: BorderSide(color: palette.border)),
         ),
         child: Center(child: child),
       ),
