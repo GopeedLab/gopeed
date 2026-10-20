@@ -14,11 +14,9 @@ import 'capability_rpc.dart';
 
 abstract final class GopeedMethods {
   static const triggerProtocolJob = RpcMethod<Map<String, dynamic>, RpcUnit>('gopeed.protocol.job.trigger');
-  static const checkAppUpdate = RpcMethod<String, Map<String, dynamic>?>('gopeed.app.update.check');
-  static const getAppUpdateCandidates = RpcMethod<Map<String, dynamic>, List<String>>('gopeed.app.update.candidates');
+  static const checkAppUpdate = RpcMethod<Map<String, dynamic>, Map<String, dynamic>?>('gopeed.app.update.check');
   static const getStoreExtensions = RpcMethod<Map<String, dynamic>, Map<String, dynamic>>('gopeed.store.list');
   static const getStoreExtension = RpcMethod<Map<String, dynamic>, Map<String, dynamic>>('gopeed.store.get');
-  static const reportStoreInstall = RpcMethod<String, RpcUnit>('gopeed.store.installReport');
   static const resolve = RpcMethod<ResolveTask, ResolveResult>('gopeed.resolve');
   static const createTask = RpcMethod<CreateTask, String>('gopeed.task.create');
   static const createTaskBatch = RpcMethod<CreateTaskBatch, List<String>>('gopeed.task.createBatch');
@@ -51,15 +49,16 @@ class GopeedService {
 
   Future<void> triggerProtocolJob(String protocol, String name) async =>
       _invoker.invoke(GopeedMethods.triggerProtocolJob, {'protocol': protocol, 'name': name});
-  Future<Map<String, dynamic>?> checkAppUpdate(String current) =>
-      _invoker.invoke(GopeedMethods.checkAppUpdate, current);
-  Future<List<String>> getAppUpdateCandidates(String version, String asset) =>
-      _invoker.invoke(GopeedMethods.getAppUpdateCandidates, {'version': version, 'asset': asset});
+  Future<Map<String, dynamic>?> checkAppUpdate(String current, {String? channel, required String architecture}) =>
+      _invoker.invoke(GopeedMethods.checkAppUpdate, {
+        'currentVersion': current,
+        'channel': channel ?? '',
+        'architecture': architecture,
+      });
   Future<Map<String, dynamic>> getStoreExtensions(Map<String, dynamic> query) =>
       _invoker.invoke(GopeedMethods.getStoreExtensions, query);
   Future<Map<String, dynamic>> getStoreExtension(String id, {String? version}) =>
       _invoker.invoke(GopeedMethods.getStoreExtension, {'id': id, 'version': version});
-  Future<void> reportStoreInstall(String id) async => _invoker.invoke(GopeedMethods.reportStoreInstall, id);
 
   Future<ResolveResult> resolve(ResolveTask request) => _invoker.invoke(GopeedMethods.resolve, request);
 

@@ -15,40 +15,33 @@ import (
 	"github.com/GopeedLab/gopeed/pkg/base"
 )
 
-func TestAppUpdateCandidates(t *testing.T) {
-	d := testBackendDownloader(t, &httpProtocol.FetcherManager{})
-	cfg, _ := d.GetConfig()
-	cfg.GithubMirror = &base.GithubMirrorConfig{Enabled: true, Mirrors: []base.GithubMirror{
-		{Type: "jsdelivr", URL: "https://cdn.example/gh"},
-		{Type: "ghProxy", URL: "https://mirror.example"},
-		{Type: "ghProxy", URL: "https://deleted.example", IsDeleted: true},
-	}}
-	if err := d.PutConfig(cfg); err != nil {
-		t.Fatal(err)
-	}
-	asset := "Gopeed-v2.0.0-beta.2-windows-amd64.zip"
-	official := "https://github.com/GopeedLab/gopeed/releases/download/v2.0.0-beta.2/" + asset
-	result, err := d.GetAppUpdateCandidates("2.0.0-beta.2", asset)
-	if err != nil || !reflect.DeepEqual(result.URLs, []string{official, "https://mirror.example/" + official}) {
-		t.Fatalf("result=%+v error=%v", result, err)
-	}
-	for _, test := range []struct{ version, asset string }{
-		{"../../other", asset},
-		{"2.0.0-beta.2", "https://other.example/package.zip"},
-		{"2.0.0-beta.2", "../" + asset},
-		{"2.0.0-beta.2", "Gopeed-v3.0.0-windows-amd64.zip"},
+func TestAppUpdateAssetName(t *testing.T) {
+	for _, test := range []struct{ channel, arch, want string }{
+		{"windowsInstaller", "x64", "Gopeed-v2.0.0-beta.2-windows-amd64.zip"},
+		{"windowsPortable", "ia32", "Gopeed-v2.0.0-beta.2-windows-386-portable.zip"},
+		{"macosDmg", "arm64", "Gopeed-v2.0.0-beta.2-macos-arm64.dmg"},
+		{"linuxDeb", "riscv64", "Gopeed-v2.0.0-beta.2-linux-riscv64.deb"},
+		{"androidApk", "arm", "Gopeed-v2.0.0-beta.2-android-armeabi-v7a.apk"},
+		{"androidApk", "arm64", "Gopeed-v2.0.0-beta.2-android-arm64-v8a.apk"},
+		{"androidApk", "x64", "Gopeed-v2.0.0-beta.2-android-x86_64.apk"},
+		{"androidApk", "ia32", "Gopeed-v2.0.0-beta.2-android.apk"},
+		{"linuxFlathub", "x64", ""}, {"linuxSnap", "x64", ""},
+		{"linuxAppImage", "x64", ""}, {"linuxRpm", "x64", ""},
+		{"iosIpa", "arm64", ""}, {"docker", "x64", ""}, {"", "", ""},
 	} {
-		if _, err := d.GetAppUpdateCandidates(test.version, test.asset); err == nil {
-			t.Fatalf("accepted invalid asset %+v", test)
+		t.Run(test.channel+"/"+test.arch, func(t *testing.T) {
+			got, err := appUpdateAssetName("v2.0.0-beta.2", test.channel, test.arch)
+			if err != nil || got != test.want {
+				t.Fatalf("asset=%q error=%v", got, err)
+			}
+		})
+	}
+	for _, test := range []struct{ channel, arch string }{
+		{"https://example.com/package.zip", "arm64"}, {"macosDmg", "../arm64"}, {"macosDmg", ""},
+	} {
+		if _, err := appUpdateAssetName("2.0.0", test.channel, test.arch); err == nil {
+			t.Fatalf("invalid target accepted: %+v", test)
 		}
-	}
-	cfg.GithubMirror.Enabled = false
-	if err := d.PutConfig(cfg); err != nil {
-		t.Fatal(err)
-	}
-	result, err = d.GetAppUpdateCandidates("v2.0.0-beta.2", asset)
-	if err != nil || !reflect.DeepEqual(result.URLs, []string{official}) {
-		t.Fatalf("disabled mirrors: %+v %v", result, err)
 	}
 }
 
@@ -154,13 +147,20 @@ func TestCheckAppUpdateUsesMirrorsBeforeWebsiteFallback(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			result, err := d.CheckAppUpdate(ctx, "1.2.3")
+			result, err := d.CheckAppUpdate(ctx, AppUpdateRequest{CurrentVersion: "1.2.3", Channel: "windowsPortable", Architecture: "x64"})
 			if test.wantFallback {
 				if err == nil || result != nil {
 					t.Fatalf("failed providers returned update: %+v %v", result, err)
 				}
 			} else if err != nil || result == nil || result.Version != "9.0.0" {
 				t.Fatalf("usable API mirror was not selected: %+v %v", result, err)
+			}
+			if !test.wantFallback {
+				asset := "Gopeed-v9.0.0-windows-amd64-portable.zip"
+				official := "https://github.com/GopeedLab/gopeed/releases/download/v9.0.0/" + asset
+				if result.AssetName != asset || !reflect.DeepEqual(result.DownloadURLs, []string{official, server.URL + "/proxy/" + official}) {
+					t.Fatalf("client package/candidates missing from check: %+v", result)
+				}
 			}
 			wantTargets := []string{"api.github.com:443"}
 			if test.wantFallback {

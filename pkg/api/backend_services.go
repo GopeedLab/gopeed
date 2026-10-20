@@ -29,27 +29,11 @@ func (s *Service) triggerProtocolJob(c *Context) *Response {
 	return newNilResponse()
 }
 func (s *Service) checkAppUpdate(c *Context) *Response {
-	var request struct {
-		CurrentVersion string `json:"currentVersion"`
-	}
+	var request download.AppUpdateRequest
 	if response := decodeRequest(c.Body, &request); response != nil {
 		return response
 	}
-	result, err := s.Downloader.CheckAppUpdate(c.requestContext(), request.CurrentVersion)
-	if err != nil {
-		return backendError(err)
-	}
-	return newOKResponse(result)
-}
-func (s *Service) appUpdateCandidates(c *Context) *Response {
-	var request struct {
-		Version string `json:"version"`
-		Asset   string `json:"asset"`
-	}
-	if response := decodeRequest(c.Body, &request); response != nil {
-		return response
-	}
-	result, err := s.Downloader.GetAppUpdateCandidates(request.Version, request.Asset)
+	result, err := s.Downloader.CheckAppUpdate(c.requestContext(), request)
 	if err != nil {
 		return backendError(err)
 	}
@@ -68,10 +52,4 @@ func (s *Service) storeExtension(c *Context) *Response {
 		return backendError(err)
 	}
 	return newOKResponse(result)
-}
-func (s *Service) reportStoreInstall(c *Context) *Response {
-	if err := s.Downloader.ReportStoreInstall(c.requestContext(), c.PathParam("id")); err != nil {
-		return backendError(err)
-	}
-	return newNilResponse()
 }

@@ -1,12 +1,18 @@
+import 'package:dio/dio.dart';
+
 import '../core/capabilities/app_capabilities.dart';
 import '../core/capabilities/gopeed_capability.dart';
 import 'model/store_extension.dart';
 
 class GopeedSiteApi {
-  GopeedSiteApi(this._service);
+  GopeedSiteApi(this._service, {Dio? client})
+    : _client =
+          client ??
+          Dio(BaseOptions(connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 10)));
 
   static final instance = GopeedSiteApi(LocalAppCapabilities.instance.capabilities.gopeed);
   final GopeedService _service;
+  final Dio _client;
   final _storePages = <String, ({StoreExtensionPage page, DateTime expires})>{};
   final _storeRequests = <String, Future<StoreExtensionPage>>{};
 
@@ -53,5 +59,7 @@ class GopeedSiteApi {
     return StoreExtension.fromJson(await _service.getStoreExtension(id, version: version));
   }
 
-  Future<void> reportExtensionInstall(String id) => _service.reportStoreInstall(id);
+  Future<void> reportExtensionInstall(String id) async {
+    await _client.post<void>('https://gopeed.com/api/extensions/install', data: {'id': id});
+  }
 }

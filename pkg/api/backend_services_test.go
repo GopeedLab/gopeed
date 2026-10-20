@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/fetcher"
 	httpProtocol "github.com/GopeedLab/gopeed/internal/protocol/http"
+	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download"
 )
 
@@ -68,32 +71,67 @@ func TestNativePathParametersAreDecodedOnce(t *testing.T) {
 	}
 }
 
-func TestAppUpdateCandidatesDispatch(t *testing.T) {
+func TestAppUpdateCheckIncludesDownloadCandidates(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodConnect {
+			http.Error(w, "official unavailable", http.StatusBadGateway)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"tag_name":"v2.0.0","body":"Release notes"}]`))
+	}))
+	defer server.Close()
 	d := download.NewDownloader(&download.DownloaderConfig{StorageDir: t.TempDir(), TempDir: t.TempDir(), FetchManagers: []fetcher.FetcherManager{&httpProtocol.FetcherManager{}}})
 	if err := d.Setup(); err != nil {
 		t.Fatal(err)
 	}
 	defer d.Close()
+	cfg, _ := d.GetConfig()
+	cfg.Proxy = &base.DownloaderProxyConfig{Enable: true, Scheme: "http", Host: strings.TrimPrefix(server.URL, "http://")}
+	cfg.GithubMirror = &base.GithubMirrorConfig{Enabled: true, Mirrors: []base.GithubMirror{{Type: "ghProxy", URL: server.URL + "/mirror"}}}
+	if err := d.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
 	service, err := NewService(d)
 	if err != nil {
 		t.Fatal(err)
 	}
-	status, raw := service.JSON(http.MethodPost, "/api/v1/app/updates/candidates", nil, []byte(`{"version":"1.2.3","asset":"Gopeed-v1.2.3-macos-arm64.dmg"}`), nil)
+	status, raw := service.JSON(http.MethodPost, "/api/v1/app/updates/check", nil, []byte(`{"currentVersion":"1.2.3","channel":"macosDmg","architecture":"arm64"}`), nil)
 	var body struct {
-		Data download.AppUpdateCandidates `json:"data"`
+		Data download.AppVersionInfo `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &body); err != nil {
 		t.Fatal(err)
 	}
-	if status != http.StatusOK || len(body.Data.URLs) == 0 || body.Data.URLs[0] != "https://github.com/GopeedLab/gopeed/releases/download/v1.2.3/Gopeed-v1.2.3-macos-arm64.dmg" {
+	official := "https://github.com/GopeedLab/gopeed/releases/download/v2.0.0/Gopeed-v2.0.0-macos-arm64.dmg"
+	if status != http.StatusOK || body.Data.Version != "2.0.0" || body.Data.ChangeLog != "Release notes" || body.Data.AssetName != "Gopeed-v2.0.0-macos-arm64.dmg" || len(body.Data.DownloadURLs) != 2 || body.Data.DownloadURLs[0] != official || body.Data.DownloadURLs[1] != server.URL+"/mirror/"+official {
 		t.Fatalf("%d %s", status, raw)
 	}
-	response := service.Dispatch(http.MethodPost, "/api/v1/app/updates/candidates", nil, []byte(`{"version":"1.2.3","asset":"https://example.com/anything"}`), nil)
-	if response.StatusCode != http.StatusBadRequest {
-		t.Fatalf("arbitrary resource accepted: %+v", response)
+	status, raw = service.JSON(http.MethodPost, "/api/v1/app/updates/check", nil, []byte(`{"currentVersion":"2.0.0","channel":"macosDmg","architecture":"arm64"}`), nil)
+	var noUpdate struct {
+		Data *download.AppVersionInfo `json:"data"`
 	}
-	if response := service.Dispatch(http.MethodPost, "/api/v1/app/updates/prepare", nil, nil, nil); response.StatusCode != http.StatusNotFound {
-		t.Fatalf("retired preparation route: %+v", response)
+	if err := json.Unmarshal(raw, &noUpdate); err != nil || status != http.StatusOK || noUpdate.Data != nil {
+		t.Fatalf("%d %s %v", status, raw, err)
+	}
+	status, raw = service.JSON(http.MethodPost, "/api/v1/app/updates/check", nil, []byte(`{"currentVersion":"1.2.3","channel":"iosIpa","architecture":"arm64"}`), nil)
+	if err := json.Unmarshal(raw, &body); err != nil || status != http.StatusOK || body.Data.AssetName != "" || len(body.Data.DownloadURLs) != 0 || body.Data.ReleaseURL == "" {
+		t.Fatalf("%d %s %v", status, raw, err)
+	}
+	for _, request := range []string{
+		`{"currentVersion":"invalid"}`,
+		`{"currentVersion":"1.2.3","channel":"https://example.com/package.zip","architecture":"arm64"}`,
+		`{"currentVersion":"1.2.3","channel":"macosDmg","architecture":"../arm64"}`,
+		`{"currentVersion":"1.2.3","channel":"macosDmg"}`,
+	} {
+		if response := service.Dispatch(http.MethodPost, "/api/v1/app/updates/check", nil, []byte(request), nil); response.StatusCode != http.StatusBadRequest {
+			t.Fatalf("invalid target accepted: %+v", response)
+		}
+	}
+	for _, path := range []string{"/api/v1/app/updates/candidates", "/api/v1/app/updates/prepare", "/api/v1/store/extensions/test/install-report"} {
+		if response := service.Dispatch(http.MethodPost, path, nil, nil, nil); response.StatusCode != http.StatusNotFound {
+			t.Fatalf("removed route accessible: %s %+v", path, response)
+		}
 	}
 }
 

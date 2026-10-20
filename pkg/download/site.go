@@ -1,15 +1,11 @@
 package download
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
-	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -21,9 +17,16 @@ const githubReleasesURL = "https://api.github.com/repos/GopeedLab/gopeed/release
 const gopeedSiteURL = "https://gopeed.com"
 
 type AppVersionInfo struct {
-	Version    string `json:"version"`
-	ChangeLog  string `json:"changeLog"`
-	ReleaseURL string `json:"releaseUrl"`
+	Version      string   `json:"version"`
+	ChangeLog    string   `json:"changeLog"`
+	ReleaseURL   string   `json:"releaseUrl"`
+	AssetName    string   `json:"assetName"`
+	DownloadURLs []string `json:"downloadUrls"`
+}
+type AppUpdateRequest struct {
+	CurrentVersion string `json:"currentVersion"`
+	Channel        string `json:"channel"`
+	Architecture   string `json:"architecture"`
 }
 type appRelease struct {
 	Tag        string `json:"tag_name"`
@@ -74,14 +77,17 @@ func selectAppRelease(releases []appRelease, current string) (*AppVersionInfo, e
 	}
 	return &AppVersionInfo{Version: strings.TrimPrefix(best, "v"), ChangeLog: selected.Body, ReleaseURL: releaseURL}, nil
 }
-func (d *Downloader) CheckAppUpdate(ctx context.Context, current string) (*AppVersionInfo, error) {
+func (d *Downloader) CheckAppUpdate(ctx context.Context, request AppUpdateRequest) (*AppVersionInfo, error) {
 	ctx, finish, opErr := d.beginOperation(ctx)
 	if opErr != nil {
 		return nil, opErr
 	}
 	defer finish()
-	if canonicalVersion(current) == "" {
+	if canonicalVersion(request.CurrentVersion) == "" {
 		return nil, errors.New("invalid current application version")
+	}
+	if _, err := appUpdateAssetName(request.CurrentVersion, request.Channel, request.Architecture); err != nil {
+		return nil, err
 	}
 	var releases []appRelease
 	validate := func(body []byte) error {
@@ -111,7 +117,24 @@ func (d *Downloader) CheckAppUpdate(ctx context.Context, current string) (*AppVe
 	if err = json.Unmarshal(body, &releases); err != nil {
 		return nil, err
 	}
-	return selectAppRelease(releases, current)
+	result, err := selectAppRelease(releases, request.CurrentVersion)
+	if err != nil || result == nil {
+		return result, err
+	}
+	result.AssetName, err = appUpdateAssetName(result.Version, request.Channel, request.Architecture)
+	if err != nil {
+		return nil, err
+	}
+	result.DownloadURLs = []string{}
+	if result.AssetName != "" {
+		cfg, err := d.GetConfig()
+		if err != nil {
+			return nil, err
+		}
+		raw := "https://github.com/GopeedLab/gopeed/releases/download/v" + result.Version + "/" + result.AssetName
+		result.DownloadURLs = githubmirror.Candidates(cfg.GithubMirror, raw, githubmirror.Resource)
+	}
+	return result, nil
 }
 
 // Release providers are independent data sources. The GitHub provider races
@@ -204,57 +227,41 @@ func (d *Downloader) siteJSON(ctx context.Context, path string, query url.Values
 	err = json.Unmarshal(body, &result)
 	return result, err
 }
-func (d *Downloader) ReportStoreInstall(ctx context.Context, id string) error {
-	ctx, finish, opErr := d.beginOperation(ctx)
-	if opErr != nil {
-		return opErr
-	}
-	defer finish()
-	if id == "" || len(id) > 256 {
-		return errors.New("invalid store extension ID")
-	}
-	body, _ := json.Marshal(map[string]string{"id": id})
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, gopeedSiteURL+"/api/extensions/install", bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	request.Header.Set("Content-Type", "application/json")
-	client, err := d.resourceClient(false)
-	if err != nil {
-		return err
-	}
-	defer client.CloseIdleConnections()
-	response, err := client.Do(request)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("install report HTTP %d", response.StatusCode)
-	}
-	return nil
-}
 
-type AppUpdateCandidates struct {
-	URLs []string `json:"urls"`
-}
-
-var updateAssetPattern = regexp.MustCompile(`^Gopeed-v[0-9A-Za-z.+-]+-(windows|macos|linux|android)(-[0-9A-Za-z._-]+)?\.(zip|dmg|deb|apk)$`)
-
-// GetAppUpdateCandidates generates fixed Gopeed release URLs. The client probes
-// and downloads the package locally, preserving download progress and supporting
-// clients connected to a remote Downloader.
-func (d *Downloader) GetAppUpdateCandidates(version, asset string) (*AppUpdateCandidates, error) {
-	version = canonicalVersion(version)
-	if version == "" || !updateAssetPattern.MatchString(asset) || !strings.HasPrefix(asset, "Gopeed-"+version+"-") || filepath.Base(asset) != asset {
-		return nil, errors.New("invalid application update asset")
+// Package selection uses the client's channel and architecture, including when
+// the Downloader runs remotely. Channels without a package use the existing installer or release page.
+func appUpdateAssetName(version, channel, architecture string) (string, error) {
+	arch := map[string]string{"ia32": "386", "x64": "amd64", "arm": "arm", "arm64": "arm64", "riscv32": "riscv32", "riscv64": "riscv64"}[architecture]
+	if architecture != "" && arch == "" {
+		return "", errors.New("invalid application update architecture")
 	}
-	raw := "https://github.com/GopeedLab/gopeed/releases/download/" + version + "/" + asset
-	cfg, err := d.GetConfig()
-	if err != nil {
-		return nil, err
+	switch channel {
+	case "", "linuxFlathub", "linuxSnap", "linuxAppImage", "linuxRpm", "iosIpa", "docker":
+		return "", nil
+	case "windowsInstaller", "windowsPortable", "macosDmg", "linuxDeb", "androidApk":
+		if arch == "" {
+			return "", errors.New("application update architecture is required")
+		}
+	default:
+		return "", errors.New("invalid application update channel")
 	}
-	return &AppUpdateCandidates{URLs: githubmirror.Candidates(cfg.GithubMirror, raw, githubmirror.Resource)}, nil
+	prefix := "Gopeed-" + canonicalVersion(version)
+	switch channel {
+	case "windowsInstaller":
+		return prefix + "-windows-" + arch + ".zip", nil
+	case "windowsPortable":
+		return prefix + "-windows-" + arch + "-portable.zip", nil
+	case "macosDmg":
+		return prefix + "-macos-" + arch + ".dmg", nil
+	case "linuxDeb":
+		return prefix + "-linux-" + arch + ".deb", nil
+	default: // androidApk
+		abi := map[string]string{"arm": "armeabi-v7a", "arm64": "arm64-v8a", "x64": "x86_64"}[architecture]
+		if abi == "" {
+			return prefix + "-android.apk", nil
+		}
+		return prefix + "-android-" + abi + ".apk", nil
+	}
 }
 
 // beginOperation binds API network work to runtime shutdown, including FFI

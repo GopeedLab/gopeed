@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/features/settings/presentation/widgets/app_update_dialog.dart';
 import 'package:gopeed/features/settings/presentation/widgets/app_update_notes_viewport.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
+import 'package:gopeed/api/api.dart' as api;
+import 'package:gopeed/core/capabilities/app_capabilities.dart';
+import 'package:gopeed/core/network/gopeed/gopeed_transport.dart';
 import 'package:gopeed/util/arch/arch.dart';
 import 'package:gopeed/util/package_info.dart' as app_package;
 import 'package:gopeed/util/updater.dart';
@@ -22,32 +25,22 @@ void main() {
     );
   });
 
-  group('release assets', () {
-    test('uses the release naming convention for desktop packages', () {
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.windowsPortable, architecture: Architecture.x64),
-        'Gopeed-v1.8.0-windows-amd64-portable.zip',
-      );
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.macosDmg, architecture: Architecture.arm64),
-        'Gopeed-v1.8.0-macos-arm64.dmg',
-      );
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.linuxDeb, architecture: Architecture.ia32),
-        'Gopeed-v1.8.0-linux-386.deb',
-      );
+  test('update checks pass the client target and retain backend download candidates', () async {
+    final transport = _UpdateTransport();
+    api.setTransportForTesting(transport);
+    final info = await checkUpdate(service: LocalAppCapabilities.instance.capabilities.gopeed);
+    expect(transport.requests, 1);
+    expect(transport.path, 'api/v1/app/updates/check');
+    expect(transport.data, {
+      'currentVersion': app_package.appVersion,
+      'channel': updateChannel?.name ?? '',
+      'architecture': getArch().name,
     });
-
-    test('maps Android ABI names', () {
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.androidApk, architecture: Architecture.arm),
-        'Gopeed-v1.8.0-android-armeabi-v7a.apk',
-      );
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.androidApk, architecture: Architecture.arm64),
-        'Gopeed-v1.8.0-android-arm64-v8a.apk',
-      );
-    });
+    expect(info!.version, '2.0.0');
+    expect(info.assetName, 'Gopeed-v2.0.0-macos-arm64.dmg');
+    expect(info.downloadUrls, ['https://example.com/package.dmg', 'https://mirror.example/package.dmg']);
+    transport.result = null;
+    expect(await checkUpdate(service: LocalAppCapabilities.instance.capabilities.gopeed), isNull);
   });
 
   test('selects the matching bilingual release notes', () {
@@ -83,6 +76,8 @@ void main() {
       version: '2.0.0-beta.2',
       changeLog: '# Release notes\n\n- Faster downloads\n\n# 更新日志\n\n- 下载更快',
       releaseUrl: 'https://example.com/release',
+      assetName: '',
+      downloadUrls: [],
     );
     await tester.pumpWidget(
       shad.ShadcnApp(
@@ -150,4 +145,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+}
+
+class _UpdateTransport implements GopeedTransport {
+  int requests = 0;
+  String? path;
+  dynamic data;
+  Map<String, dynamic>? result = {
+    'version': '2.0.0',
+    'changeLog': 'Release notes',
+    'releaseUrl': 'https://example.com/release',
+    'assetName': 'Gopeed-v2.0.0-macos-arm64.dmg',
+    'downloadUrls': ['https://example.com/package.dmg', 'https://mirror.example/package.dmg'],
+  };
+  @override
+  Future<dynamic> request(
+    String path, {
+    String method = 'GET',
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    requests++;
+    this.path = path;
+    this.data = data;
+    return {'code': 0, 'data': result};
+  }
+
+  @override
+  String join(String path) => path;
 }

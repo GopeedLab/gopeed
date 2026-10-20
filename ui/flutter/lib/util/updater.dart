@@ -42,17 +42,27 @@ UpdateChannel? get updateChannel {
 String get _updaterBinaryName => 'updater${Util.isWindows() ? '.exe' : ''}';
 
 class VersionInfo {
-  const VersionInfo({required this.version, required this.changeLog, required this.releaseUrl});
+  const VersionInfo({
+    required this.version,
+    required this.changeLog,
+    required this.releaseUrl,
+    required this.assetName,
+    required this.downloadUrls,
+  });
 
   factory VersionInfo.fromJson(Map<String, dynamic> json) => VersionInfo(
     version: json['version'] as String,
     changeLog: json['changeLog'] as String,
     releaseUrl: json['releaseUrl'] as String,
+    assetName: json['assetName'] as String,
+    downloadUrls: List<String>.from(json['downloadUrls'] as List),
   );
 
   final String version;
   final String changeLog;
   final String releaseUrl;
+  final String assetName;
+  final List<String> downloadUrls;
 }
 
 /// Installs the small native updater bundled with desktop releases.
@@ -70,7 +80,7 @@ Future<void> installUpdater() async {
 }
 
 Future<VersionInfo?> checkUpdate({required GopeedService service}) async {
-  final result = await service.checkAppUpdate(appVersion);
+  final result = await service.checkAppUpdate(appVersion, channel: updateChannel?.name, architecture: getArch().name);
   return result == null ? null : VersionInfo.fromJson(result);
 }
 
@@ -91,20 +101,15 @@ typedef UpdateProgressCallback = void Function(int received, int total);
 
 /// Downloads and applies [versionInfo] using the build-time release channel.
 /// Store-distributed and unsupported channels safely open the release page.
-Future<void> updateApp(
-  VersionInfo versionInfo, {
-  required GopeedService service,
-  required UpdateProgressCallback onProgress,
-}) async {
+Future<void> updateApp(VersionInfo versionInfo, {required UpdateProgressCallback onProgress}) async {
   final channel = updateChannel;
-  final assetName = updateAssetName(versionInfo.version, channel: channel);
+  final assetName = versionInfo.assetName;
   var assetPath = '';
 
   if (assetName.isNotEmpty) {
     onProgress(0, 0);
-    final candidates = await service.getAppUpdateCandidates(versionInfo.version, assetName);
     assetPath = path.join((await getTemporaryDirectory()).path, assetName);
-    await downloadFromCandidates(candidates, assetPath, onReceiveProgress: onProgress);
+    await downloadFromCandidates(versionInfo.downloadUrls, assetPath, onReceiveProgress: onProgress);
   }
 
   switch (channel) {
@@ -145,34 +150,4 @@ Future<void> updateApp(
 Future<void> _openRelease(String releaseUrl) async {
   final opened = await launchUrl(Uri.parse(releaseUrl), mode: LaunchMode.externalApplication);
   if (!opened) throw StateError('Unable to open the release page.');
-}
-
-String updateAssetName(String version, {UpdateChannel? channel, Architecture? architecture}) {
-  final targetChannel = channel ?? updateChannel;
-  final arch = architecture ?? getArch();
-
-  String commonArchName() => switch (arch) {
-    Architecture.ia32 => '386',
-    Architecture.x64 => 'amd64',
-    _ => arch.name,
-  };
-
-  return switch (targetChannel) {
-    UpdateChannel.windowsInstaller => 'Gopeed-v$version-windows-${commonArchName()}.zip',
-    UpdateChannel.windowsPortable => 'Gopeed-v$version-windows-${commonArchName()}-portable.zip',
-    UpdateChannel.macosDmg => 'Gopeed-v$version-macos-${commonArchName()}.dmg',
-    UpdateChannel.linuxDeb => 'Gopeed-v$version-linux-${commonArchName()}.deb',
-    UpdateChannel.androidApk => _androidAssetName(version, arch),
-    _ => '',
-  };
-}
-
-String _androidAssetName(String version, Architecture arch) {
-  final archName = switch (arch) {
-    Architecture.arm => 'armeabi-v7a',
-    Architecture.arm64 => 'arm64-v8a',
-    Architecture.x64 => 'x86_64',
-    _ => null,
-  };
-  return 'Gopeed-v$version-android${archName == null ? '' : '-$archName'}.apk';
 }

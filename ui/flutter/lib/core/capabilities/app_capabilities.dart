@@ -87,19 +87,11 @@ void _bindGopeed(CapabilityRegistry registry) {
       return const RpcUnit();
     })
     ..bind(GopeedMethods.checkAppUpdate, api.checkAppUpdate)
-    ..bind(
-      GopeedMethods.getAppUpdateCandidates,
-      (p) => api.getAppUpdateCandidates(p['version'] as String, p['asset'] as String),
-    )
     ..bind(GopeedMethods.getStoreExtensions, api.getStoreExtensions)
     ..bind(
       GopeedMethods.getStoreExtension,
       (p) => api.getStoreExtension(p['id'] as String, version: p['version'] as String?),
     )
-    ..bind(GopeedMethods.reportStoreInstall, (id) async {
-      await api.reportStoreInstall(id);
-      return const RpcUnit();
-    })
     ..bind(GopeedMethods.resolve, api.resolve)
     ..bind(GopeedMethods.createTask, api.createTask)
     ..bind(GopeedMethods.createTaskBatch, api.createTaskBatch)

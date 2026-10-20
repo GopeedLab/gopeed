@@ -1,11 +1,32 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gopeed/core/capabilities/app_capabilities.dart';
 import 'package:gopeed/api/api.dart' as api;
 import 'package:gopeed/api/gopeed_site_api.dart';
 import 'package:gopeed/core/network/gopeed/gopeed_transport.dart';
 
 void main() {
+  test('install counts are reported directly by the frontend without the Downloader API', () async {
+    final transport = _Transport();
+    api.setTransportForTesting(transport);
+    final client = Dio();
+    final adapter = _ReportAdapter();
+    client.httpClientAdapter = adapter;
+    addTearDown(() => client.close(force: true));
+    final site = GopeedSiteApi(LocalAppCapabilities.instance.capabilities.gopeed, client: client);
+    await site.reportExtensionInstall('开发者@name');
+    expect(transport.urls, isEmpty);
+    expect(adapter.request!.uri.toString(), 'https://gopeed.com/api/extensions/install');
+    expect(adapter.request!.method, 'POST');
+    expect(adapter.request!.contentType, Headers.jsonContentType);
+    expect(adapter.request!.data, {'id': '开发者@name'});
+    expect(adapter.request!.headers.keys.map((key) => key.toLowerCase()), isNot(contains('x-api-token')));
+    adapter.statusCode = 503;
+    await expectLater(site.reportExtensionInstall('test'), throwsA(isA<DioException>()));
+  });
+
   test('summary requests use the business API and remain shared and cached', () async {
     final pending = Completer<Map<String, dynamic>>();
     final transport = _Transport()..onRequest = (_) => pending.future;
@@ -69,4 +90,21 @@ class _Transport implements GopeedTransport {
 
   @override
   String join(String path) => path;
+}
+
+class _ReportAdapter implements HttpClientAdapter {
+  RequestOptions? request;
+  int statusCode = 200;
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    request = options;
+    return ResponseBody.fromString('', statusCode);
+  }
+
+  @override
+  void close({bool force = false}) {}
 }

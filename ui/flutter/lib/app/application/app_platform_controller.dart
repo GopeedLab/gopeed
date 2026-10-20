@@ -317,7 +317,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
   }
 
   Future<void> startUpdate(VersionInfo versionInfo, UpdateProgressCallback onProgress) async {
-    await updateApp(versionInfo, service: ref.read(gopeedServiceProvider), onProgress: onProgress);
+    await updateApp(versionInfo, onProgress: onProgress);
   }
 
   AppPlatformState _snapshot() => AppPlatformState(

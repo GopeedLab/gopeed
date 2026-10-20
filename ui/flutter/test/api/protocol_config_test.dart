@@ -49,27 +49,20 @@ void main() {
     expect(const RpcUnit(), isA<RpcUnit>());
   });
 
-  test('application update checks use a dedicated API and preserve the client version', () async {
+  test('update checks include the client target and return candidates through the shared codec', () async {
     final transport = _Transport();
     api.setTransportForTesting(transport);
-    await LocalAppCapabilities.instance.capabilities.gopeed.checkAppUpdate('2.0.0-beta.2');
-    expect(transport.path, 'api/v1/app/updates/check');
-    expect(transport.data, {'currentVersion': '2.0.0-beta.2'});
-  });
-
-  test('update candidates use business parameters and survive capability serialization', () async {
-    final transport = _Transport();
-    api.setTransportForTesting(transport);
-    final urls = await LocalAppCapabilities.instance.capabilities.gopeed.getAppUpdateCandidates(
-      '2.0.0',
-      'Gopeed-v2.0.0-windows-amd64.zip',
+    final result = await LocalAppCapabilities.instance.capabilities.gopeed.checkAppUpdate(
+      '2.0.0-beta.2',
+      channel: 'macosDmg',
+      architecture: 'arm64',
     );
-    expect(transport.path, 'api/v1/app/updates/candidates');
+    expect(transport.path, 'api/v1/app/updates/check');
     expect(transport.method, 'POST');
-    expect(transport.data, {'version': '2.0.0', 'asset': 'Gopeed-v2.0.0-windows-amd64.zip'});
-    expect(urls, ['https://example.com/package.zip']);
+    expect(transport.data, {'currentVersion': '2.0.0-beta.2', 'channel': 'macosDmg', 'architecture': 'arm64'});
+    expect(result!['downloadUrls'], ['https://example.com/package.dmg']);
     final codecs = createAppCapabilityCodecs();
-    expect(codecs.decode<List<String>>(codecs.encode(urls)), urls);
+    expect(codecs.decode<Map<String, dynamic>?>(codecs.encode(result)), result);
   });
 }
 
@@ -91,11 +84,13 @@ class _Transport implements GopeedTransport {
       'code': 0,
       'data': path.endsWith('/trigger')
           ? null
-          : path.endsWith('/candidates')
-          ? {
-              'urls': ['https://example.com/package.zip'],
-            }
-          : <String, dynamic>{},
+          : {
+              'version': '2.0.0',
+              'changeLog': 'Release notes',
+              'releaseUrl': 'https://example.com/release',
+              'assetName': 'Gopeed-v2.0.0-macos-arm64.dmg',
+              'downloadUrls': ['https://example.com/package.dmg'],
+            },
     };
   }
 

@@ -6150,6 +6150,8 @@ class AvailableUpdatePlatformController extends AppPlatformController {
       version: '9.9.9',
       changeLog: '# 更新日志\n\n- 测试更新',
       releaseUrl: 'https://example.com/release',
+      assetName: '',
+      downloadUrls: [],
     ),
   );
 }

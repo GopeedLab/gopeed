@@ -1,6 +1,7 @@
 # Backend services and protocol jobs
 
 External metadata and protocol requests run in Go for Web, desktop FFI, and gomobile.
+The frontend reports extension install counts directly to gopeed.com as best-effort telemetry.
 Native update packages are downloaded by the client to preserve byte progress. The
 current release builds use `ui/flutter`; `ui/flutter_old` is an archived client
 and is not part of the shipping workflow. All unmatched `/api` and `/api/**`
@@ -72,7 +73,7 @@ shutdown cancellation/draining. Config changes wake jobs after unlocking.
 ## BT Tracker subscriptions
 
 The BT config contains writable `trackerSubscribeUrls`, `autoUpdateTrackers`, and
-`customTrackers`. Users can add, edit, and remove arbitrary HTTP(S) subscription
+`customTrackers`. Users can add and remove arbitrary HTTP(S) subscription
 URLs. `state.trackerSources`, `state.trackerSubscriptionStatuses`, and
 `state.lastTrackerUpdateTime` are backend-owned results. Effective Trackers are
 computed in Go from custom Trackers and the cached sources; duplicate derived
@@ -132,23 +133,32 @@ and let the client probe and download locally. See the [package usage guide](../
 
 ## Dedicated business APIs
 
-- `POST /api/v1/app/updates/check`: `{currentVersion}`; preserves stable/preview
-  version selection. The original GitHub Releases API and eligible ghProxy mirrors
-  race as the first data provider. Only if all candidates fail does the independent
-  gopeed.com provider run. Invalid JSON and non-release responses count as failures;
-  a successful empty/no-update result does not trigger provider fallback.
-- `POST /api/v1/app/updates/candidates`: `{version, asset}`; validates a fixed
-  Gopeed release asset and returns `{urls: [...]}` containing official and eligible
-  mirror URLs from the backend config. It accepts no arbitrary URL. Native clients
-  probe candidates concurrently with bounded HEAD requests, prefer the fastest
-  usable response, and download using Dio's real byte-progress callback. A failed
+- `POST /api/v1/app/updates/check`: `{currentVersion, channel, architecture}`;
+  preserves stable/preview version selection. Channel and architecture describe the
+  client, never the remote Downloader host. The original GitHub Releases API and
+  eligible ghProxy mirrors race as the first data provider. Only if all candidates
+  fail does the independent gopeed.com provider run. Invalid JSON and non-release
+  responses count as failures; a successful empty/no-update result does not trigger
+  provider fallback. No update returns null. A new version returns
+  `{version, changeLog, releaseUrl, assetName, downloadUrls}`. Go generates the
+  fixed Gopeed package name and official/mirror candidate URLs in the same check;
+  there is no separate candidates endpoint. Channels without an application
+  download receive an empty asset name/list and retain their existing installer
+  or release-page flow. No backend package probe or download occurs.
+  Native clients probe candidates when the user starts the update, using bounded
+  concurrent HEAD requests and preferring the fastest usable response. A failed
   probe remains a fallback because some servers do not support HEAD. Failed GETs
   and HTML/JSON landing pages fall back to the next candidate, removing partial
-  files. Installation continues through the existing native updater/APK installer.
-  Probe latency is a heuristic, not a measurement of sustained download speed.
+  files. Dio reports actual download byte progress; installation continues through
+  the existing native updater/APK installer. Probe latency is a heuristic, not a
+  measurement of sustained download speed.
 - `GET /api/v1/store/extensions`: validated page/limit/sort/order/q parameters.
 - `GET /api/v1/store/extensions/{id}`: optional version parameter.
-- `POST /api/v1/store/extensions/{id}/install-report`: non-blocking from the UI.
+
+Install counts are reported by the frontend directly to
+`POST https://gopeed.com/api/extensions/install` with `{id}`. This best-effort
+request does not block installation or carry the Downloader API token, and has
+no backend route or capability RPC.
 
 All routes live in `pkg/api.Service`. Frontend operations use the shared
 GopeedService capability descriptors and central codec registry. No frontend
