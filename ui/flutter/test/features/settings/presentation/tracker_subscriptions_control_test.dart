@@ -156,7 +156,6 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final urls = List.generate(50, (index) => 'https://tracker-$index.example/list.txt');
-      final edits = <int>[];
       final deletions = <int>[];
       await tester.pumpWidget(
         ShadcnApp(
@@ -169,12 +168,7 @@ void main() {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: TrackerSubscriptionsTable(
-                  urls: urls,
-                  statuses: const {},
-                  onEdit: edits.add,
-                  onDelete: deletions.add,
-                ),
+                child: TrackerSubscriptionsTable(urls: urls, statuses: const {}, onDelete: deletions.add),
               ),
             ),
           ),
@@ -191,7 +185,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(ValueKey('tracker-subscription-${urls.last}')), findsOneWidget);
       expect(tester.getTopLeft(find.text('Subscription URL')), headerPosition);
-      // Desktop mouse users can drag the bottom scrollbar to reach the actions.
+      final delete = find.byKey(ValueKey('delete-settings-list-${urls.last}'));
+      final deleteRect = tester.getRect(delete);
+      final actionsHeader = tester.getTopLeft(find.byKey(const ValueKey('tracker-subscriptions-actions-header')));
+      expect(deleteRect.right, lessThanOrEqualTo(tester.getRect(table).right));
+      expect(deleteRect.left, greaterThan(tester.getRect(table).left));
+      expect(delete.hitTestable(), findsOneWidget);
+      // Data columns scroll, while the delete column remains visible and fixed.
       if (width < 672) {
         final headerPosition = tester.getTopLeft(find.text('Subscription URL'));
         await tester.dragFrom(tester.getTopLeft(table) + const Offset(100, 20), const Offset(-30, 0));
@@ -204,9 +204,17 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.getTopLeft(find.text('Subscription URL')).dx, lessThan(headerPosition.dx));
       }
-      await tester.tap(find.byKey(ValueKey('edit-settings-list-${urls.last}')));
-      await tester.tap(find.byKey(ValueKey('delete-settings-list-${urls.last}')));
-      expect(edits, [49]);
+      expect(tester.getRect(delete), deleteRect);
+      expect(tester.getTopLeft(find.byKey(const ValueKey('tracker-subscriptions-actions-header'))), actionsHeader);
+      expect(find.byIcon(Icons.edit_outlined), findsNothing);
+      if (width < 672) {
+        final rightInset = tester.getRect(table).right - deleteRect.right;
+        tester.view.physicalSize = const Size(768, 900);
+        await tester.pumpAndSettle();
+        expect(delete.hitTestable(), findsOneWidget);
+        expect(tester.getRect(table).right - tester.getRect(delete).right, closeTo(rightInset, 1));
+      }
+      await tester.tap(delete);
       expect(deletions, [49]);
       expect(tester.takeException(), isNull);
     });

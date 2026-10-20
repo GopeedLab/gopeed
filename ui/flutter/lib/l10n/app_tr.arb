@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "İndirmeye başlamak için {action} düğmesine tıklayın",
   "emptyStateRetryHint": "Yeniden denemek için {action} düğmesine tıklayın",
   "addTrackerSubscription": "Tracker aboneliği ekle",
-  "editTrackerSubscription": "Tracker aboneliğini düzenle",
   "trackerSubscriptionUrl": "Abonelik URL’si",
   "trackerSubscriptionFetchSuccess": "Başarılı",
   "trackerSubscriptionFetchFailed": "Başarısız",

@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "Kattints a {action} gombra a letöltés indításához",
   "emptyStateRetryHint": "Kattints a {action} gombra az újrapróbálkozáshoz",
   "addTrackerSubscription": "Tracker-feliratkozás hozzáadása",
-  "editTrackerSubscription": "Tracker-feliratkozás szerkesztése",
   "trackerSubscriptionUrl": "Feliratkozási URL",
   "trackerSubscriptionFetchSuccess": "Sikeres",
   "trackerSubscriptionFetchFailed": "Sikertelen",

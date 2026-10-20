@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "اضغط على {action} لبدء التنزيل",
   "emptyStateRetryHint": "اضغط على {action} لإعادة المحاولة",
   "addTrackerSubscription": "إضافة اشتراك متتبعات",
-  "editTrackerSubscription": "تعديل اشتراك المتتبعات",
   "trackerSubscriptionUrl": "رابط الاشتراك",
   "trackerSubscriptionFetchSuccess": "نجح",
   "trackerSubscriptionFetchFailed": "فشل",

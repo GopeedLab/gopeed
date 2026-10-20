@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "点击{action}开始下载",
   "emptyStateRetryHint": "点击{action}重新加载",
   "addTrackerSubscription": "添加 Tracker 订阅",
-  "editTrackerSubscription": "编辑 Tracker 订阅",
   "trackerSubscriptionUrl": "订阅地址",
   "trackerSubscriptionFetchSuccess": "成功",
   "trackerSubscriptionFetchFailed": "失败",

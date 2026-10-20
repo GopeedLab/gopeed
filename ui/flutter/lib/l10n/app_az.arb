@@ -642,7 +642,6 @@
   "emptyTaskCreateHint": "Endirməyə başlamaq üçün {action} düyməsinə klikləyin",
   "emptyStateRetryHint": "Yenidən cəhd etmək üçün {action} düyməsinə klikləyin",
   "addTrackerSubscription": "Tracker abunəliyi əlavə et",
-  "editTrackerSubscription": "Tracker abunəliyini redaktə et",
   "trackerSubscriptionUrl": "Abunəlik URL-i",
   "trackerSubscriptionFetchSuccess": "Uğurlu",
   "trackerSubscriptionFetchFailed": "Uğursuz",

@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "Fes clic a {action} per començar a baixar",
   "emptyStateRetryHint": "Fes clic a {action} per tornar-ho a provar",
   "addTrackerSubscription": "Afegeix una subscripció de trackers",
-  "editTrackerSubscription": "Edita la subscripció de trackers",
   "trackerSubscriptionUrl": "URL de subscripció",
   "trackerSubscriptionFetchSuccess": "Correcte",
   "trackerSubscriptionFetchFailed": "Fallida",

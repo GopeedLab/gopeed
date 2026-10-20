@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "Натисніть {action}, щоб почати завантаження",
   "emptyStateRetryHint": "Натисніть {action}, щоб спробувати ще раз",
   "addTrackerSubscription": "Додати підписку на трекери",
-  "editTrackerSubscription": "Редагувати підписку на трекери",
   "trackerSubscriptionUrl": "URL підписки",
   "trackerSubscriptionFetchSuccess": "Успішно",
   "trackerSubscriptionFetchFailed": "Помилка",

@@ -668,7 +668,6 @@
     }
   },
   "addTrackerSubscription": "Add tracker subscription",
-  "editTrackerSubscription": "Edit tracker subscription",
   "trackerSubscriptionUrl": "Subscription URL",
   "trackerSubscriptionFetchSuccess": "Succeeded",
   "trackerSubscriptionFetchFailed": "Failed",

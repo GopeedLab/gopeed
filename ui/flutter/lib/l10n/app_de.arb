@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "Klicke auf {action}, um den Download zu starten",
   "emptyStateRetryHint": "Klicke auf {action}, um es erneut zu versuchen",
   "addTrackerSubscription": "Tracker-Abonnement hinzufügen",
-  "editTrackerSubscription": "Tracker-Abonnement bearbeiten",
   "trackerSubscriptionUrl": "Abonnement-URL",
   "trackerSubscriptionFetchSuccess": "Erfolgreich",
   "trackerSubscriptionFetchFailed": "Fehlgeschlagen",

@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "பதிவிறக்கத்தைத் தொடங்க {action} ஐ அழுத்தவும்",
   "emptyStateRetryHint": "மீண்டும் முயற்சிக்க {action} ஐ அழுத்தவும்",
   "addTrackerSubscription": "டிராக்கர் சந்தாவைச் சேர்",
-  "editTrackerSubscription": "டிராக்கர் சந்தாவைத் திருத்து",
   "trackerSubscriptionUrl": "சந்தா URL",
   "trackerSubscriptionFetchSuccess": "வெற்றி",
   "trackerSubscriptionFetchFailed": "தோல்வி",

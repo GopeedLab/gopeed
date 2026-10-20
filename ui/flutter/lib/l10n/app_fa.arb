@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "برای شروع دانلود روی {action} کلیک کنید",
   "emptyStateRetryHint": "برای تلاش مجدد روی {action} کلیک کنید",
   "addTrackerSubscription": "افزودن اشتراک ردیاب",
-  "editTrackerSubscription": "ویرایش اشتراک ردیاب",
   "trackerSubscriptionUrl": "نشانی اشتراک",
   "trackerSubscriptionFetchSuccess": "موفق",
   "trackerSubscriptionFetchFailed": "ناموفق",

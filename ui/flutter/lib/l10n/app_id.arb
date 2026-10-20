@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "Klik {action} untuk mulai mengunduh",
   "emptyStateRetryHint": "Klik {action} untuk mencoba lagi",
   "addTrackerSubscription": "Tambah langganan tracker",
-  "editTrackerSubscription": "Edit langganan tracker",
   "trackerSubscriptionUrl": "URL langganan",
   "trackerSubscriptionFetchSuccess": "Berhasil",
   "trackerSubscriptionFetchFailed": "Gagal",

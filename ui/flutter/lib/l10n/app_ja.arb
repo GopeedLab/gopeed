@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "{action}をクリックしてダウンロードを開始",
   "emptyStateRetryHint": "{action}をクリックして再試行",
   "addTrackerSubscription": "Tracker 購読を追加",
-  "editTrackerSubscription": "Tracker 購読を編集",
   "trackerSubscriptionUrl": "購読 URL",
   "trackerSubscriptionFetchSuccess": "成功",
   "trackerSubscriptionFetchFailed": "失敗",

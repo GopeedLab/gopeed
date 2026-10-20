@@ -48,7 +48,7 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
             onAutoUpdateChanged: widget.onAutoUpdateChanged,
           ),
           const SizedBox(height: AppDesignTokens.space12),
-          TrackerSubscriptionsTable(urls: widget.urls, statuses: widget.statuses, onEdit: _edit, onDelete: _delete),
+          TrackerSubscriptionsTable(urls: widget.urls, statuses: widget.statuses, onDelete: _delete),
           const SizedBox(height: AppDesignTokens.space12),
           Wrap(
             key: const ValueKey('tracker-subscriptions-actions'),
@@ -59,7 +59,7 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
             children: [
               SecondaryButton(
                 key: const ValueKey('add-tracker-subscription'),
-                onPressed: () => _edit(),
+                onPressed: _add,
                 leading: const Icon(Icons.add, size: 17),
                 child: Text(context.l10n.add),
               ),
@@ -77,24 +77,15 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
     );
   }
 
-  Future<void> _edit([int? index]) async {
-    final original = index == null ? null : widget.urls[index];
+  Future<void> _add() async {
     final value = await showTextSettingDialog(
       context,
-      title: original == null ? context.l10n.addTrackerSubscription : context.l10n.editTrackerSubscription,
+      title: context.l10n.addTrackerSubscription,
       fieldLabel: context.l10n.trackerSubscriptionUrl,
-      initialValue: original ?? '',
       requireHttpUrl: true,
     );
     if (!mounted || value == null) return;
-    final next = List<String>.from(widget.urls);
-    if (original == null) {
-      next.add(value);
-    } else {
-      final currentIndex = next.indexOf(original);
-      if (currentIndex == -1) return;
-      next[currentIndex] = value;
-    }
+    final next = [...widget.urls, value];
     widget.onChanged(next.toSet().toList());
   }
 

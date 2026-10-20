@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "點擊{action}開始下載",
   "emptyStateRetryHint": "點擊{action}重新載入",
   "addTrackerSubscription": "新增 Tracker 訂閱",
-  "editTrackerSubscription": "編輯 Tracker 訂閱",
   "trackerSubscriptionUrl": "訂閱網址",
   "trackerSubscriptionFetchSuccess": "成功",
   "trackerSubscriptionFetchFailed": "失敗",

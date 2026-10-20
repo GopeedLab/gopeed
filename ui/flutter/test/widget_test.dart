@@ -2274,7 +2274,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('tracker subscriptions allow adding, editing, and deleting a custom URL', (WidgetTester tester) async {
+  testWidgets('tracker subscriptions allow adding and deleting a custom URL', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     final settingsController = FakeSettingsController();
     await tester.pumpWidget(
@@ -2306,21 +2306,8 @@ void main() {
       'https://my.example/trackers.txt',
     ]);
     expect(find.text('https://my.example/trackers.txt'), findsOneWidget);
-    final edit = find.byKey(const ValueKey('edit-settings-list-https://my.example/trackers.txt'));
-    await tester.ensureVisible(edit);
-    await tester.pumpAndSettle();
-    await tester.tap(edit);
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.descendant(of: find.byType(shad.AlertDialog), matching: find.byType(AppTextField)),
-      'https://my.example/updated.txt',
-    );
-    await tester.tap(find.descendant(of: find.byType(shad.AlertDialog), matching: find.text('Save')));
-    await tester.pumpAndSettle();
-    expect(settingsController.state.requireValue.config.protocolConfig.bt.trackerSubscribeUrls, [
-      'https://my.example/updated.txt',
-    ]);
-    final delete = find.byKey(const ValueKey('delete-settings-list-https://my.example/updated.txt'));
+    expect(find.byKey(const ValueKey('edit-settings-list-https://my.example/trackers.txt')), findsNothing);
+    final delete = find.byKey(const ValueKey('delete-settings-list-https://my.example/trackers.txt'));
     await tester.ensureVisible(delete);
     await tester.pumpAndSettle();
     await tester.tap(delete);

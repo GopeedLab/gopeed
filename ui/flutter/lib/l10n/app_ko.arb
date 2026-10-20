@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "{action}을 눌러 다운로드 시작",
   "emptyStateRetryHint": "{action}을 눌러 다시 시도",
   "addTrackerSubscription": "트래커 구독 추가",
-  "editTrackerSubscription": "트래커 구독 편집",
   "trackerSubscriptionUrl": "구독 URL",
   "trackerSubscriptionFetchSuccess": "성공",
   "trackerSubscriptionFetchFailed": "실패",

@@ -659,7 +659,6 @@
   },
   "emptyStateRetryHint": "Kliknutím na {action} skúsite znova",
   "addTrackerSubscription": "Pridať odber trackerov",
-  "editTrackerSubscription": "Upraviť odber trackerov",
   "trackerSubscriptionUrl": "URL odberu",
   "trackerSubscriptionFetchSuccess": "Úspešné",
   "trackerSubscriptionFetchFailed": "Neúspešné",

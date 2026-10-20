@@ -458,7 +458,6 @@
   "emptyTaskCreateHint": "Nhấn {action} để bắt đầu tải xuống",
   "emptyStateRetryHint": "Nhấn {action} để thử lại",
   "addTrackerSubscription": "Thêm đăng ký tracker",
-  "editTrackerSubscription": "Sửa đăng ký tracker",
   "trackerSubscriptionUrl": "URL đăng ký",
   "trackerSubscriptionFetchSuccess": "Thành công",
   "trackerSubscriptionFetchFailed": "Thất bại",
