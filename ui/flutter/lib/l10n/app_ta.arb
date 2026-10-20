@@ -464,5 +464,5 @@
   "trackerSubscriptionFetchFailed": "தோல்வி",
   "trackerSubscriptionUpdateStatus": "புதுப்பிப்பு நிலை",
   "trackerSubscriptionTrackerCount": "டிராக்கர் எண்ணிக்கை",
-  "trackerSubscriptionNotFetched": "இன்னும் பெறப்படவில்லை"
+  "trackerSubscriptionNotUpdated": "இன்னும் புதுப்பிக்கப்படவில்லை"
 }

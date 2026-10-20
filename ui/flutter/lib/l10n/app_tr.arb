@@ -464,5 +464,5 @@
   "trackerSubscriptionFetchFailed": "Başarısız",
   "trackerSubscriptionUpdateStatus": "Güncelleme durumu",
   "trackerSubscriptionTrackerCount": "Tracker sayısı",
-  "trackerSubscriptionNotFetched": "Henüz alınmadı"
+  "trackerSubscriptionNotUpdated": "Henüz güncellenmedi"
 }

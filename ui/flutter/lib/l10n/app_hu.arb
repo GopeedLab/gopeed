@@ -464,5 +464,5 @@
   "trackerSubscriptionFetchFailed": "Sikertelen",
   "trackerSubscriptionUpdateStatus": "Frissítés állapota",
   "trackerSubscriptionTrackerCount": "Trackerek száma",
-  "trackerSubscriptionNotFetched": "Még nem kérte le"
+  "trackerSubscriptionNotUpdated": "Még nem frissült"
 }

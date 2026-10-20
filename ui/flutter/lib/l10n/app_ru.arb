@@ -464,5 +464,5 @@
   "trackerSubscriptionFetchFailed": "Ошибка",
   "trackerSubscriptionUpdateStatus": "Статус обновления",
   "trackerSubscriptionTrackerCount": "Число трекеров",
-  "trackerSubscriptionNotFetched": "Ещё не загружено"
+  "trackerSubscriptionNotUpdated": "Ещё не обновлено"
 }

@@ -464,5 +464,5 @@
   "trackerSubscriptionFetchFailed": "失敗",
   "trackerSubscriptionUpdateStatus": "更新狀態",
   "trackerSubscriptionTrackerCount": "Tracker 數量",
-  "trackerSubscriptionNotFetched": "暫無"
+  "trackerSubscriptionNotUpdated": "未更新"
 }

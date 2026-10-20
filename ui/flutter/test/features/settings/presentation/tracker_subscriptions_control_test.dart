@@ -62,7 +62,7 @@ void main() {
       for (final entry in const [
         ('https://success.example/very/long/path/to/my/custom/list.txt', 'Succeeded', '7'),
         ('https://failed.example/list', 'Failed', '0'),
-        ('https://new.example/list', 'Not fetched', '—'),
+        ('https://new.example/list', 'Not updated', '—'),
       ]) {
         final row = find.byKey(ValueKey('tracker-subscription-${entry.$1}'));
         expect(find.descendant(of: row, matching: find.text(entry.$2)), findsOneWidget);
@@ -126,6 +126,8 @@ void main() {
       // Desktop mouse users can drag the bottom scrollbar to reach the actions.
       if (width < 672) {
         final headerPosition = tester.getTopLeft(find.text('Subscription URL'));
+        await tester.dragFrom(tester.getTopLeft(table) + const Offset(100, 20), const Offset(-30, 0));
+        await tester.pumpAndSettle();
         await tester.dragFrom(
           tester.getBottomLeft(table) + const Offset(40, -5),
           const Offset(600, 0),

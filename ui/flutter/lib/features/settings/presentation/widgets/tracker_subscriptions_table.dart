@@ -59,8 +59,6 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
           return Scrollbar(
             key: const ValueKey('tracker-subscriptions-horizontal-scrollbar'),
             controller: _horizontalController,
-            thumbVisibility: true,
-            trackVisibility: true,
             interactive: true,
             thickness: 7,
             scrollbarOrientation: ScrollbarOrientation.bottom,
@@ -136,7 +134,7 @@ class _TrackerSubscriptionsTableState extends State<TrackerSubscriptionsTable> {
     final url = widget.urls[index];
     final status = widget.statuses[url];
     final result = status == null
-        ? context.l10n.trackerSubscriptionNotFetched
+        ? context.l10n.trackerSubscriptionNotUpdated
         : status.success
         ? context.l10n.trackerSubscriptionFetchSuccess
         : context.l10n.trackerSubscriptionFetchFailed;
