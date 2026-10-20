@@ -28,14 +28,22 @@ func (s *Service) triggerProtocolJob(c *Context) *Response {
 	}
 	return newNilResponse()
 }
-func (s *Service) checkAppUpdate(c *Context) *Response {
-	var request download.AppUpdateRequest
+func (s *Service) githubCandidates(c *Context) *Response {
+	var request struct {
+		URL string `json:"url"`
+	}
 	if response := decodeRequest(c.Body, &request); response != nil {
 		return response
 	}
-	result, err := s.Downloader.CheckAppUpdate(c.requestContext(), request)
+	urls, err := s.Downloader.GetGithubCandidates(request.URL)
 	if err != nil {
-		return backendError(err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, download.ErrInvalidGithubURL) {
+			status = http.StatusBadRequest
+		}
+		return newStatusResponse(status, restmodel.NewErrorResult(err.Error()))
 	}
-	return newOKResponse(result)
+	return newOKResponse(struct {
+		URLs []string `json:"urls"`
+	}{URLs: urls})
 }

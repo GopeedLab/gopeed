@@ -133,20 +133,6 @@ func TestRaceResourceValidatesResponsesAndCancelsLosers(t *testing.T) {
 	}
 }
 
-func TestAppReleaseSelection(t *testing.T) {
-	releases := []appRelease{{Tag: "v2.1.0-beta.1", Prerelease: true}, {Tag: "v2.0.0-beta.2", Prerelease: true}, {Tag: "v2.0.0-rc.1", Prerelease: true}, {Tag: "v1.9.9"}, {Tag: "v2.0.0", Draft: true}}
-	preview, err := selectAppRelease(releases, "2.0.0-beta.1")
-	if err != nil || preview.Version != "2.0.0-rc.1" {
-		t.Fatalf("%+v %v", preview, err)
-	}
-	stable, err := selectAppRelease(releases, "1.9.8")
-	if err != nil || stable.Version != "1.9.9" {
-		t.Fatalf("%+v %v", stable, err)
-	}
-	if _, err := selectAppRelease(releases, "invalid"); err == nil {
-		t.Fatal("invalid current version accepted")
-	}
-}
 func TestProtocolConfigInitializesCurrentSchema(t *testing.T) {
 	d := NewDownloader(&DownloaderConfig{StorageDir: t.TempDir(), TempDir: t.TempDir(), FetchManagers: []fetcher.FetcherManager{&httpProtocol.FetcherManager{}}})
 	d.cfg.DownloaderStoreConfig = &base.DownloaderStoreConfig{

@@ -1,8 +1,9 @@
 # Backend services and protocol jobs
 
-Application update metadata and protocol requests run in Go for Web, desktop FFI,
-and gomobile. Extension store lists, details, and install counts go directly from
-the frontend to gopeed.com; they do not use the Downloader transport.
+Protocol requests run in Go for Web, desktop FFI, and gomobile. Application
+update checks and extension store requests run in the client. The Downloader
+only supplies GitHub candidate URLs for client requests; it does not fetch or
+interpret application releases. Website requests go directly to gopeed.com.
 Native update packages are downloaded by the client to preserve byte progress. The
 current release builds use `ui/flutter`; `ui/flutter_old` is an archived client
 and is not part of the shipping workflow. All unmatched `/api` and `/api/**`
@@ -134,27 +135,44 @@ and let the client probe and download locally. See the [package usage guide](../
   Continuous reads reset the idle allowance; stalled sources fall back in order.
   The canonical repository URL and subdirectory are preserved.
 
-## Dedicated business APIs
+## GitHub candidates and client updates
 
-- `POST /api/v1/app/updates/check`: `{currentVersion, channel, architecture}`;
-  preserves stable/preview version selection. Channel and architecture describe the
-  client, never the remote Downloader host. The original GitHub Releases API and
-  eligible ghProxy mirrors race as the first data provider. Only if all candidates
-  fail does the independent gopeed.com provider run. Invalid JSON and non-release
-  responses count as failures; a successful empty/no-update result does not trigger
-  provider fallback. No update returns null. A new version returns
-  `{version, changeLog, releaseUrl, assetName, downloadUrls}`. Go generates the
-  fixed Gopeed package name and official/mirror candidate URLs in the same check;
-  there is no separate candidates endpoint. Channels without an application
-  download receive an empty asset name/list and retain their existing installer
-  or release-page flow. No backend package probe or download occurs.
-  Native clients probe candidates when the user starts the update, using bounded
-  concurrent HEAD requests and preferring the fastest usable response. A failed
-  probe remains a fallback because some servers do not support HEAD. Failed GETs
-  and HTML/JSON landing pages fall back to the next candidate, removing partial
-  files. Dio reports actual download byte progress; installation continues through
-  the existing native updater/APK installer. Probe latency is a heuristic, not a
-  measurement of sustained download speed.
+`POST /api/v1/github/candidates` accepts `{url}` and returns `{urls: [...]}`.
+It accepts only HTTPS URLs on `github.com`, `api.github.com`, and
+`raw.githubusercontent.com`, without userinfo, ports, or fragments. Invalid input
+returns 400; configuration read failures return 500. The official URL is first,
+followed by eligible mirrors in configured order, without duplicates. Disabled
+mirrors return only the official URL. This API never fetches, probes, or forwards
+requests. It replaces the removed `/api/v1/app/updates/check` endpoint.
+
+`GithubClient.getJson<T>(url, decode: ...)` is the reusable client-side racer.
+It gets candidates through `GopeedService`, then uses a separate Dio client with
+no Downloader authentication headers. Each metadata request has a 30-second
+budget. The first complete response accepted by the caller's decoder wins;
+losing requests are canceled. HTML, invalid JSON, and non-release responses
+cannot win an update check.
+
+`AppUpdateClient` races candidates for the fixed GitHub Releases URL first.
+Only if all attempts fail (including candidate lookup failures) does it request
+`https://gopeed.com/api/releases?per_page=10` directly. A valid empty list or
+no-update result does not trigger provider fallback. Stable versions ignore
+previews; previews allow newer previews in the same version series and newer
+stable releases. Drafts and invalid versions are ignored. Version selection is
+client-side, including with a remote Downloader.
+
+When the user starts an update, the client selects the package name from its own
+channel and architecture, and asks the same GitHub candidates API for the asset
+URL. Native clients probe candidates using bounded concurrent HEAD requests and
+prefer the fastest usable response. Failed probes remain fallbacks because some
+servers do not support HEAD. Failed GETs and HTML/JSON landing pages fall back
+to the next candidate, removing partial files. Dio reports actual download byte
+progress; installation continues through the native updater/APK installer.
+Unsupported/store channels retain their installer or release-page flow. Probe
+latency is a heuristic, not a sustained download speed measurement.
+
+The website Worker adds CORS to `/api/releases` for credential-free Web requests,
+including error responses and OPTIONS preflight. Deploy that website change
+before releasing the new client fallback.
 
 ## Direct extension store requests
 

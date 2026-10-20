@@ -230,7 +230,7 @@ Future<void> triggerProtocolJob(String protocol, String name) => _parse<void>(
   null,
 );
 
-Future<Map<String, dynamic>?> checkAppUpdate(Map<String, dynamic> request) => _parse(
-  () => _request('api/v1/app/updates/check', method: 'POST', data: request),
-  (json) => json == null ? null : Map<String, dynamic>.from(json as Map),
+Future<List<String>> getGithubCandidates(String url) => _parse(
+  () => _request('api/v1/github/candidates', method: 'POST', data: {'url': url}),
+  (json) => List<String>.from(json['urls'] as List),
 );

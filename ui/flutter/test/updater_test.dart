@@ -4,10 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/features/settings/presentation/widgets/app_update_dialog.dart';
 import 'package:gopeed/features/settings/presentation/widgets/app_update_notes_viewport.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
-import 'package:gopeed/api/api.dart' as api;
-import 'package:gopeed/core/capabilities/app_capabilities.dart';
-import 'package:gopeed/core/network/gopeed/gopeed_transport.dart';
-import 'package:gopeed/util/arch/arch.dart';
 import 'package:gopeed/util/package_info.dart' as app_package;
 import 'package:gopeed/util/updater.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -25,22 +21,29 @@ void main() {
     );
   });
 
-  test('update checks pass the client target and retain backend download candidates', () async {
-    final transport = _UpdateTransport();
-    api.setTransportForTesting(transport);
-    final info = await checkUpdate(service: LocalAppCapabilities.instance.capabilities.gopeed);
-    expect(transport.requests, 1);
-    expect(transport.path, 'api/v1/app/updates/check');
-    expect(transport.data, {
-      'currentVersion': app_package.appVersion,
-      'channel': updateChannel?.name ?? '',
-      'architecture': getArch().name,
-    });
-    expect(info!.version, '2.0.0');
-    expect(info.assetName, 'Gopeed-v2.0.0-macos-arm64.dmg');
-    expect(info.downloadUrls, ['https://example.com/package.dmg', 'https://mirror.example/package.dmg']);
-    transport.result = null;
-    expect(await checkUpdate(service: LocalAppCapabilities.instance.capabilities.gopeed), isNull);
+  test('package names use the client channel and architecture', () {
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.windowsInstaller, 'ia32'), 'Gopeed-v2.0.0-windows-386.zip');
+    expect(
+      appUpdateAssetName('2.0.0-beta.3', UpdateChannel.windowsPortable, 'x64'),
+      'Gopeed-v2.0.0-beta.3-windows-amd64-portable.zip',
+    );
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.macosDmg, 'arm64'), 'Gopeed-v2.0.0-macos-arm64.dmg');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.linuxDeb, 'x64'), 'Gopeed-v2.0.0-linux-amd64.deb');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.androidApk, 'arm'), 'Gopeed-v2.0.0-android-armeabi-v7a.apk');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.androidApk, 'arm64'), 'Gopeed-v2.0.0-android-arm64-v8a.apk');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.androidApk, 'x64'), 'Gopeed-v2.0.0-android-x86_64.apk');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.androidApk, 'riscv64'), 'Gopeed-v2.0.0-android.apk');
+    for (final channel in [
+      null,
+      UpdateChannel.linuxFlathub,
+      UpdateChannel.linuxSnap,
+      UpdateChannel.linuxAppImage,
+      UpdateChannel.linuxRpm,
+      UpdateChannel.iosIpa,
+      UpdateChannel.docker,
+    ]) {
+      expect(appUpdateAssetName('2.0.0', channel, 'arm64'), isEmpty);
+    }
   });
 
   test('selects the matching bilingual release notes', () {
@@ -76,8 +79,6 @@ void main() {
       version: '2.0.0-beta.2',
       changeLog: '# Release notes\n\n- Faster downloads\n\n# 更新日志\n\n- 下载更快',
       releaseUrl: 'https://example.com/release',
-      assetName: '',
-      downloadUrls: [],
     );
     await tester.pumpWidget(
       shad.ShadcnApp(
@@ -145,32 +146,4 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
-}
-
-class _UpdateTransport implements GopeedTransport {
-  int requests = 0;
-  String? path;
-  dynamic data;
-  Map<String, dynamic>? result = {
-    'version': '2.0.0',
-    'changeLog': 'Release notes',
-    'releaseUrl': 'https://example.com/release',
-    'assetName': 'Gopeed-v2.0.0-macos-arm64.dmg',
-    'downloadUrls': ['https://example.com/package.dmg', 'https://mirror.example/package.dmg'],
-  };
-  @override
-  Future<dynamic> request(
-    String path, {
-    String method = 'GET',
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-  }) async {
-    requests++;
-    this.path = path;
-    this.data = data;
-    return {'code': 0, 'data': result};
-  }
-
-  @override
-  String join(String path) => path;
 }

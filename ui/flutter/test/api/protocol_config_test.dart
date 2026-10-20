@@ -40,7 +40,7 @@ void main() {
     expect(BtState.fromJson({'lastTrackerUpdateTime': '0001-01-01T00:00:00Z'}).lastTrackerUpdateTime, isNull);
   });
 
-  test('protocol and update operations survive the shared capability codec', () {
+  test('protocol operations survive the shared capability codec', () {
     final codecs = createAppCapabilityCodecs();
     final payload = {'protocol': 'bt', 'name': 'update-trackers'};
     expect(codecs.decode<Map<String, dynamic>>(codecs.encode(payload)), payload);
@@ -49,20 +49,17 @@ void main() {
     expect(const RpcUnit(), isA<RpcUnit>());
   });
 
-  test('update checks include the client target and return candidates through the shared codec', () async {
+  test('GitHub candidates use the common API and shared list codec', () async {
     final transport = _Transport();
     api.setTransportForTesting(transport);
-    final result = await LocalAppCapabilities.instance.capabilities.gopeed.checkAppUpdate(
-      '2.0.0-beta.2',
-      channel: 'macosDmg',
-      architecture: 'arm64',
-    );
-    expect(transport.path, 'api/v1/app/updates/check');
+    const url = 'https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=10';
+    final result = await LocalAppCapabilities.instance.capabilities.gopeed.getGithubCandidates(url);
+    expect(transport.path, 'api/v1/github/candidates');
     expect(transport.method, 'POST');
-    expect(transport.data, {'currentVersion': '2.0.0-beta.2', 'channel': 'macosDmg', 'architecture': 'arm64'});
-    expect(result!['downloadUrls'], ['https://example.com/package.dmg']);
+    expect(transport.data, {'url': url});
+    expect(result, ['https://example.com/package.dmg']);
     final codecs = createAppCapabilityCodecs();
-    expect(codecs.decode<Map<String, dynamic>?>(codecs.encode(result)), result);
+    expect(codecs.decode<List<String>>(codecs.encode(result)), result);
   });
 }
 
@@ -85,11 +82,7 @@ class _Transport implements GopeedTransport {
       'data': path.endsWith('/trigger')
           ? null
           : {
-              'version': '2.0.0',
-              'changeLog': 'Release notes',
-              'releaseUrl': 'https://example.com/release',
-              'assetName': 'Gopeed-v2.0.0-macos-arm64.dmg',
-              'downloadUrls': ['https://example.com/package.dmg'],
+              'urls': ['https://example.com/package.dmg'],
             },
     };
   }

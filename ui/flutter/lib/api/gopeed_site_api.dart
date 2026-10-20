@@ -67,6 +67,11 @@ class GopeedSiteApi {
     return StoreExtension.fromJson(response.data!);
   }
 
+  Future<dynamic> getReleases() async {
+    final response = await _client.get<dynamic>('https://gopeed.com/api/releases', queryParameters: {'per_page': 10});
+    return response.data;
+  }
+
   Future<void> reportExtensionInstall(String id) async {
     await _client.post<void>('https://gopeed.com/api/extensions/install', data: {'id': id});
   }

@@ -7,10 +7,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/capabilities/gopeed_capability.dart';
 import '../core/network/candidate_download.dart';
+import '../core/network/app_update_client.dart';
+import '../core/network/github_client.dart';
 import 'arch/arch.dart';
 import 'log_util.dart';
 import 'package_info.dart';
 import 'util.dart';
+
+export '../core/network/app_update_client.dart' show VersionInfo;
 
 enum UpdateChannel {
   windowsInstaller,
@@ -41,30 +45,6 @@ UpdateChannel? get updateChannel {
 
 String get _updaterBinaryName => 'updater${Util.isWindows() ? '.exe' : ''}';
 
-class VersionInfo {
-  const VersionInfo({
-    required this.version,
-    required this.changeLog,
-    required this.releaseUrl,
-    required this.assetName,
-    required this.downloadUrls,
-  });
-
-  factory VersionInfo.fromJson(Map<String, dynamic> json) => VersionInfo(
-    version: json['version'] as String,
-    changeLog: json['changeLog'] as String,
-    releaseUrl: json['releaseUrl'] as String,
-    assetName: json['assetName'] as String,
-    downloadUrls: List<String>.from(json['downloadUrls'] as List),
-  );
-
-  final String version;
-  final String changeLog;
-  final String releaseUrl;
-  final String assetName;
-  final List<String> downloadUrls;
-}
-
 /// Installs the small native updater bundled with desktop releases.
 ///
 /// Development builds do not necessarily contain this asset. Callers should
@@ -79,9 +59,26 @@ Future<void> installUpdater() async {
   );
 }
 
-Future<VersionInfo?> checkUpdate({required GopeedService service}) async {
-  final result = await service.checkAppUpdate(appVersion, channel: updateChannel?.name, architecture: getArch().name);
-  return result == null ? null : VersionInfo.fromJson(result);
+Future<VersionInfo?> checkUpdate({required GopeedService service}) =>
+    AppUpdateClient(github: GithubClient(service: service)).check(appVersion);
+
+/// Package selection belongs to the client, including when the Downloader is remote.
+String appUpdateAssetName(String version, UpdateChannel? channel, String architecture) {
+  final arch = {'ia32': '386', 'x64': 'amd64'}[architecture] ?? architecture;
+  final prefix = 'Gopeed-v$version';
+  return switch (channel) {
+    UpdateChannel.windowsInstaller => '$prefix-windows-$arch.zip',
+    UpdateChannel.windowsPortable => '$prefix-windows-$arch-portable.zip',
+    UpdateChannel.macosDmg => '$prefix-macos-$arch.dmg',
+    UpdateChannel.linuxDeb => '$prefix-linux-$arch.deb',
+    UpdateChannel.androidApk => switch (architecture) {
+      'arm' => '$prefix-android-armeabi-v7a.apk',
+      'arm64' => '$prefix-android-arm64-v8a.apk',
+      'x64' => '$prefix-android-x86_64.apk',
+      _ => '$prefix-android.apk',
+    },
+    _ => '',
+  };
 }
 
 /// Extracts the matching section from Gopeed's bilingual GitHub release notes.
@@ -101,15 +98,22 @@ typedef UpdateProgressCallback = void Function(int received, int total);
 
 /// Downloads and applies [versionInfo] using the build-time release channel.
 /// Store-distributed and unsupported channels safely open the release page.
-Future<void> updateApp(VersionInfo versionInfo, {required UpdateProgressCallback onProgress}) async {
+Future<void> updateApp(
+  VersionInfo versionInfo, {
+  required GopeedService service,
+  required UpdateProgressCallback onProgress,
+}) async {
   final channel = updateChannel;
-  final assetName = versionInfo.assetName;
+  final assetName = appUpdateAssetName(versionInfo.version, channel, getArch().name);
   var assetPath = '';
 
   if (assetName.isNotEmpty) {
     onProgress(0, 0);
     assetPath = path.join((await getTemporaryDirectory()).path, assetName);
-    await downloadFromCandidates(versionInfo.downloadUrls, assetPath, onReceiveProgress: onProgress);
+    final urls = await service.getGithubCandidates(
+      'https://github.com/GopeedLab/gopeed/releases/download/v${versionInfo.version}/$assetName',
+    );
+    await downloadFromCandidates(urls, assetPath, onReceiveProgress: onProgress);
   }
 
   switch (channel) {
