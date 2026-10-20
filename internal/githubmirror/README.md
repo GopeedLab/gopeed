@@ -61,11 +61,13 @@ once. The caller owns and must track/release the winning result.
 - Parent cancellation wins over a result selected while the parent is canceled;
   the selected result is then discarded as well.
 - Errors preserve their causes through wrapping/joining for `errors.Is`.
-- `github.com`, `raw.githubusercontent.com`, and `api.github.com` expand into
-  eligible mirrors. jsDelivr is only eligible for raw source resources.
-- Client application update checks obtain URLs from `POST /api/v1/mirrors/github/candidates`
-  and race them with a separate client-side Dio helper. Only if all candidates
-  fail does the independent Gopeed website API run. Candidate generation never
-  performs HTTP requests.
+- `github.com` and `raw.githubusercontent.com` expand into eligible mirrors.
+  jsDelivr is only eligible for raw source resources. `api.github.com` is never
+  mirrored and is rejected by the public mirror candidates API.
+- Client application update checks request the official GitHub API directly,
+  falling back to the independent Gopeed website API on request or validation
+  failure. Only package downloads obtain URLs from
+  `POST /api/v1/mirrors/github/candidates`. Candidate generation never performs
+  HTTP requests.
 - Disabled mirrors and other URLs execute only the original URL.
 - Config is a caller-owned immutable snapshot for the duration of a call.

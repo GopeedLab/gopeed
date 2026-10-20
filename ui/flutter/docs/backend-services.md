@@ -109,10 +109,11 @@ explicit false/empty values in the current schema are preserved.
 ## GitHub mirrors
 
 Top-level `githubMirror` retains `enabled`, mirror type/URL, built-in, and deleted
-flags. The official URL is always included. `github.com`,
-`raw.githubusercontent.com`, and `api.github.com` expand into eligible mirror
-candidates; non-GitHub URLs use their original endpoints. jsDelivr only applies
-to Raw files; GitHub API requests can use ghProxy mirrors.
+flags. The official URL is always included. `github.com` and
+`raw.githubusercontent.com` expand into eligible mirror candidates; other URLs,
+including `api.github.com`, use their original endpoints. jsDelivr only applies
+to Raw files. Defaults include `fastly.jsdelivr.net/gh`, `fastgit.cc`,
+`gh-proxy.com`, and `ghfast.top`; all are marked as built-in.
 
 `internal/githubmirror` owns configuration types/defaults, URL candidate generation,
 and the shared generic `Race[T]` and `Fallback[T]` executors. Callers supply a
@@ -144,8 +145,9 @@ own configuration. Adding a provider does not change this route or the shared
 capability RPC. Currently `github` is the only provider and uses the existing
 Downloader `githubMirror` config.
 
-The GitHub provider accepts only HTTPS URLs on `github.com`, `api.github.com`, and
-`raw.githubusercontent.com`, without userinfo, ports, or fragments. Invalid input
+The GitHub provider accepts only HTTPS URLs on `github.com` and
+`raw.githubusercontent.com`, without userinfo, ports, or fragments. API URLs
+(`api.github.com`) are not supported. Invalid input
 returns 400; configuration read failures return 500. The official URL is first,
 followed by eligible mirrors in configured order, without duplicates. Disabled
 mirrors return only the official URL. This API never fetches, probes, or forwards
@@ -159,13 +161,15 @@ budget. The first complete response accepted by the caller's decoder wins;
 losing requests are canceled. HTML, invalid JSON, and non-release responses
 cannot win an update check.
 
-`AppUpdateClient` races candidates for the fixed GitHub Releases URL first.
-Only if all attempts fail (including candidate lookup failures) does it request
+`AppUpdateClient` requests the fixed official GitHub Releases URL directly,
+without calling Downloader or the mirror candidates API. Only if this request
+or its response validation fails does it request
 `https://gopeed.com/api/releases?per_page=10` directly. A valid empty list or
-no-update result does not trigger provider fallback. Stable versions ignore
-previews; previews allow newer previews in the same version series and newer
-stable releases. Drafts and invalid versions are ignored. Version selection is
-client-side, including with a remote Downloader.
+no-update result does not trigger provider fallback. The GitHub request has a
+30-second total budget and is canceled before fallback on timeout. Stable
+versions ignore previews; previews allow newer previews in the same version
+series and newer stable releases. Drafts and invalid versions are ignored.
+Version selection is client-side, including with a remote Downloader.
 
 When the user starts an update, the client selects the package name from its own
 channel and architecture, and asks the same mirror candidates API with

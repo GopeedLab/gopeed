@@ -1,7 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:pub_semver/pub_semver.dart';
 
 import '../../api/gopeed_site_api.dart';
-import 'mirror_client.dart';
 
 class VersionInfo {
   const VersionInfo({required this.version, required this.changeLog, required this.releaseUrl});
@@ -11,23 +11,37 @@ class VersionInfo {
   final String releaseUrl;
 }
 
-/// Release providers are independent sources: try the GitHub candidate race
-/// first, then the website only if every GitHub response fails validation.
+/// Query the official GitHub API directly, then the independent website API
+/// only if the GitHub request or its response validation fails.
 class AppUpdateClient {
-  AppUpdateClient({required MirrorClient github, GopeedSiteApi? site})
-    : _github = github,
+  AppUpdateClient({Dio? client, GopeedSiteApi? site})
+    : _client =
+          client ??
+          Dio(BaseOptions(connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 30))),
       _site = site ?? GopeedSiteApi.instance;
 
   static const releasesUrl = 'https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=10';
-  final MirrorClient _github;
+  final Dio _client;
   final GopeedSiteApi _site;
+
+  Future<List<_Release>> _fetchGithubReleases() async {
+    final cancel = CancelToken();
+    try {
+      final response = await _client
+          .get<dynamic>(releasesUrl, cancelToken: cancel)
+          .timeout(const Duration(seconds: 30));
+      return _decodeReleases(response.data);
+    } finally {
+      cancel.cancel('GitHub release request completed');
+    }
+  }
 
   Future<VersionInfo?> check(String currentVersion) async {
     final current = _parseVersion(currentVersion);
     if (current == null) throw FormatException('Invalid current application version', currentVersion);
     List<_Release> releases;
     try {
-      releases = await _github.getJson(releasesUrl, decode: _decodeReleases);
+      releases = await _fetchGithubReleases();
     } catch (_) {
       releases = _decodeReleases(await _site.getReleases());
     }

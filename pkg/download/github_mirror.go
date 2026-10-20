@@ -143,7 +143,7 @@ func githubResourceCandidates(config *githubmirror.Config, raw string) ([]string
 	}
 	u.Host = strings.ToLower(u.Host)
 	switch u.Host {
-	case "github.com", "api.github.com", "raw.githubusercontent.com":
+	case "github.com", "raw.githubusercontent.com":
 	default:
 		return nil, ErrInvalidMirrorURL
 	}

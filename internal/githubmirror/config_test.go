@@ -27,8 +27,8 @@ func TestMirrorCandidates(t *testing.T) {
 	}
 	apiURL := "https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=10"
 	for _, kind := range []Kind{Resource, Repository} {
-		if got := Candidates(cfg, apiURL, kind); !reflect.DeepEqual(got, []string{apiURL, "https://mirror.example/" + apiURL}) {
-			t.Fatalf("GitHub API must use only official and ghProxy candidates: %v", got)
+		if got := Candidates(cfg, apiURL, kind); !reflect.DeepEqual(got, []string{apiURL}) {
+			t.Fatalf("GitHub API must never use mirrors: %v", got)
 		}
 	}
 	cfg.Enabled = false

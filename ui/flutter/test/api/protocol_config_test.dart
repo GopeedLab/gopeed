@@ -52,7 +52,7 @@ void main() {
   test('mirror candidates use provider dispatch and the shared capability codec', () async {
     final transport = _Transport();
     api.setTransportForTesting(transport);
-    const url = 'https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=10';
+    const url = 'https://github.com/GopeedLab/gopeed/releases/download/v2.0.0/package.zip';
     final result = await LocalAppCapabilities.instance.capabilities.gopeed.getMirrorCandidates('github', url);
     expect(transport.path, 'api/v1/mirrors/github/candidates');
     expect(transport.method, 'POST');

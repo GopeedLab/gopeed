@@ -89,7 +89,6 @@ func TestMirrorCandidates(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, official := range []string{
-		"https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=10",
 		"https://github.com/GopeedLab/gopeed/releases/download/v2.0.0/package.zip",
 		"https://raw.githubusercontent.com/owner/repo/main/trackers.txt",
 	} {
@@ -112,7 +111,7 @@ func TestMirrorCandidates(t *testing.T) {
 			t.Fatalf("%d %s", status, raw)
 		}
 	}
-	for _, invalid := range []string{"", "https://example.com/x", "http://github.com/x", "https://github.com.evil.test/x", "https://user@github.com/x", "https://github.com:443/x", "https://github.com:/x", "https://github.com/x#fragment", "https://github.com/x#", "/relative", "https://github.com%2fevil.test/x"} {
+	for _, invalid := range []string{"https://api.github.com/repos/GopeedLab/gopeed/releases?per_page=10", "", "https://example.com/x", "http://github.com/x", "https://github.com.evil.test/x", "https://user@github.com/x", "https://github.com:443/x", "https://github.com:/x", "https://github.com/x#fragment", "https://github.com/x#", "/relative", "https://github.com%2fevil.test/x"} {
 		request, _ := json.Marshal(map[string]string{"url": invalid})
 		if response := service.Dispatch(http.MethodPost, "/api/v1/mirrors/github/candidates", nil, request, nil); response.StatusCode != http.StatusBadRequest {
 			t.Fatalf("accepted %s: %+v", invalid, response)

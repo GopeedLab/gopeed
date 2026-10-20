@@ -22,6 +22,8 @@ func DefaultConfig() *Config {
 	return &Config{Enabled: true, Mirrors: []Mirror{
 		{Type: "jsdelivr", URL: "https://fastly.jsdelivr.net/gh", IsBuiltIn: true},
 		{Type: "ghProxy", URL: "https://fastgit.cc", IsBuiltIn: true},
+		{Type: "ghProxy", URL: "https://gh-proxy.com", IsBuiltIn: true},
+		{Type: "ghProxy", URL: "https://ghfast.top", IsBuiltIn: true},
 	}}
 }
 func (c *Config) Validate() error {
@@ -50,14 +52,14 @@ const (
 
 // Candidates preserves the official URL first. jsDelivr is only eligible for
 // raw source resources; Git operations use mirrors supporting Git Smart HTTP.
-// GitHub API URLs are eligible for ghProxy mirrors, but not jsDelivr.
+// GitHub API URLs are never mirrored.
 func Candidates(c *Config, raw string, kind Kind) []string {
 	result := []string{raw}
 	u, err := url.Parse(raw)
 	if err != nil || c == nil || !c.Enabled || u.User != nil || (u.Scheme != "https" && u.Scheme != "http") {
 		return result
 	}
-	if u.Host != "github.com" && u.Host != "raw.githubusercontent.com" && u.Host != "api.github.com" {
+	if u.Host != "github.com" && u.Host != "raw.githubusercontent.com" {
 		return result
 	}
 	seen := map[string]bool{raw: true}

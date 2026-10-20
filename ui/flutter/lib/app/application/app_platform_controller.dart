@@ -302,7 +302,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
     _updateError = null;
     _emit();
     try {
-      _latestVersion = await checkUpdate(service: ref.read(gopeedServiceProvider));
+      _latestVersion = await checkUpdate();
       _updateStatus = _latestVersion == null ? AppUpdateStatus.upToDate : AppUpdateStatus.available;
       _emit();
       return _latestVersion;

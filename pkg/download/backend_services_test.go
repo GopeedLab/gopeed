@@ -181,7 +181,7 @@ func TestProtocolConfigDoesNotImportOldExtraSettings(t *testing.T) {
 	if err := d.initProtocolConfigs(); err != nil {
 		t.Fatal(err)
 	}
-	if !d.cfg.GithubMirror.Enabled || len(d.cfg.GithubMirror.Mirrors) != 2 {
+	if !d.cfg.GithubMirror.Enabled || len(d.cfg.GithubMirror.Mirrors) != 4 {
 		t.Fatal("missing root mirror config must use new defaults")
 	}
 	value, err := d.readProtocolConfig("bt")
