@@ -46,7 +46,7 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
               key: const ValueKey('add-tracker-subscription'),
               onPressed: () => _edit(),
               leading: const Icon(Icons.add, size: 17),
-              child: Text(context.l10n.addTrackerSubscription),
+              child: Text(context.l10n.add),
             ),
           ),
           const SizedBox(height: 8),

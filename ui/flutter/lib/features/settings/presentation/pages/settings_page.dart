@@ -574,32 +574,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
             _SettingsBlock(
-              key: const ValueKey('settings-hls-block'),
-              title: 'HLS',
-              child: _SettingsGroup(
-                children: [
-                  SettingsItem(
-                    title: context.l10n.connections,
-                    child: _NumberSettingControl(
-                      fieldKey: const ValueKey('hls-connections-input'),
-                      controller: _hlsConnectionsController,
-                      min: 1,
-                      max: 256,
-                    ),
-                  ),
-                  SettingsItem(
-                    title: context.l10n.maxRetries,
-                    child: _NumberSettingControl(
-                      fieldKey: const ValueKey('hls-max-retries-input'),
-                      controller: _hlsMaxRetriesController,
-                      min: 0,
-                      max: 30,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _SettingsBlock(
               title: 'BitTorrent',
               child: _SettingsGroup(
                 children: [
@@ -682,6 +656,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     title: context.l10n.addTracker,
                     subtitle: context.l10n.onePerLine,
                     child: _TextSettingControl(controller: _customTrackersController, minLines: 7),
+                  ),
+                ],
+              ),
+            ),
+            _SettingsBlock(
+              key: const ValueKey('settings-hls-block'),
+              title: 'HLS',
+              child: _SettingsGroup(
+                children: [
+                  SettingsItem(
+                    title: context.l10n.connections,
+                    child: _NumberSettingControl(
+                      fieldKey: const ValueKey('hls-connections-input'),
+                      controller: _hlsConnectionsController,
+                      min: 1,
+                      max: 256,
+                    ),
+                  ),
+                  SettingsItem(
+                    title: context.l10n.maxRetries,
+                    child: _NumberSettingControl(
+                      fieldKey: const ValueKey('hls-max-retries-input'),
+                      controller: _hlsMaxRetriesController,
+                      min: 0,
+                      max: 30,
+                    ),
                   ),
                 ],
               ),
