@@ -666,6 +666,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ],
                   SettingsItem(
                     title: context.l10n.subscribeTracker,
+                    stacked: true,
                     child: TrackerSubscriptionsControl(
                       urls: config.protocolConfig.bt.trackerSubscribeUrls,
                       statuses: config.protocolConfig.bt.state.trackerSubscriptionStatuses,

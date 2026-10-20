@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/features/settings/presentation/widgets/tracker_subscriptions_control.dart';
+import 'package:gopeed/features/settings/presentation/widgets/tracker_subscriptions_table.dart';
 import 'package:gopeed/l10n/l10n.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
@@ -59,6 +60,60 @@ void main() {
       expect(find.textContaining('Last fetch failed: 0 trackers'), findsOneWidget);
       expect(find.text('Never updated'), findsOneWidget);
       expect(find.byKey(const ValueKey('add-tracker-subscription')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+  for (final width in [360.0, 768.0, 1024.0]) {
+    testWidgets('long subscription table scrolls within its viewport at width $width', (tester) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final urls = List.generate(50, (index) => 'https://tracker-$index.example/list.txt');
+      final edits = <int>[];
+      final deletions = <int>[];
+      await tester.pumpWidget(
+        ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: AppComponentThemes(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: TrackerSubscriptionsTable(
+                  urls: urls,
+                  statuses: const {},
+                  onEdit: edits.add,
+                  onDelete: deletions.add,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final table = find.byKey(const ValueKey('tracker-subscriptions-table'));
+      final rows = find.byKey(const ValueKey('tracker-subscriptions-rows'));
+      expect(tester.getSize(table).height, lessThan(300));
+      expect(tester.getSize(table).width, width - 32);
+      final headerPosition = tester.getTopLeft(find.text('Subscription URL'));
+      expect(find.byKey(ValueKey('tracker-subscription-${urls.last}')), findsNothing);
+      await tester.dragFrom(tester.getTopLeft(rows) + const Offset(40, 80), const Offset(0, -3000));
+      await tester.pumpAndSettle();
+      expect(find.byKey(ValueKey('tracker-subscription-${urls.last}')), findsOneWidget);
+      expect(tester.getTopLeft(find.text('Subscription URL')), headerPosition);
+      // Small screens can scroll across to the same actions as the desktop table.
+      if (width < 672) {
+        await tester.dragFrom(tester.getTopLeft(table) + const Offset(100, 20), const Offset(-600, 0));
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.byKey(ValueKey('edit-settings-list-${urls.last}')));
+      await tester.tap(find.byKey(ValueKey('delete-settings-list-${urls.last}')));
+      expect(edits, [49]);
+      expect(deletions, [49]);
       expect(tester.takeException(), isNull);
     });
   }

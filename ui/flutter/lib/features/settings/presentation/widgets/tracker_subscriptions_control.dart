@@ -1,12 +1,11 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../../../api/model/downloader_config.dart';
-import '../../../../core/utils/breakpoints.dart';
 import '../../../../l10n/l10n.dart';
-import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
 import 'settings_list_editor.dart';
+import 'tracker_subscriptions_table.dart';
 
 class TrackerSubscriptionsControl extends StatefulWidget {
   const TrackerSubscriptionsControl({
@@ -37,24 +36,23 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
 
   @override
   Widget build(BuildContext context) {
-    final desktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
     final palette = AppPalette.of(context);
     return SizedBox(
-      width: desktop ? AppDesignTokens.settingsFormControlWidth : double.infinity,
+      width: double.infinity,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SettingsListEditor(
-            entries: [
-              for (final url in widget.urls)
-                SettingsListEntry(id: url, title: url, subtitle: _statusText(context, widget.statuses[url])),
-            ],
-            addLabel: context.l10n.addTrackerSubscription,
-            addButtonKey: const ValueKey('add-tracker-subscription'),
-            onAdd: () => _edit(),
-            onEdit: _edit,
-            onDelete: _delete,
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: SecondaryButton(
+              key: const ValueKey('add-tracker-subscription'),
+              onPressed: () => _edit(),
+              leading: const Icon(Icons.add, size: 17),
+              child: Text(context.l10n.addTrackerSubscription),
+            ),
           ),
+          const SizedBox(height: 8),
+          TrackerSubscriptionsTable(urls: widget.urls, statuses: widget.statuses, onEdit: _edit, onDelete: _delete),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -89,14 +87,6 @@ class _TrackerSubscriptionsControlState extends State<TrackerSubscriptionsContro
         ],
       ),
     );
-  }
-
-  String _statusText(BuildContext context, TrackerSubscriptionStatus? status) {
-    if (status == null) return context.l10n.neverUpdated;
-    final result = status.success
-        ? context.l10n.trackerSubscriptionFetchSuccess(status.trackerCount)
-        : context.l10n.trackerSubscriptionFetchFailed;
-    return '$result · ${_formatDateTime(status.lastFetchTime)}';
   }
 
   Future<void> _edit([int? index]) async {
