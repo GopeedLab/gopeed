@@ -17,13 +17,12 @@ import (
 )
 
 type Context struct {
-	RequestContext context.Context
-	Method         string
-	Path           string
-	Query          url.Values
-	Body           []byte
-	Headers        http.Header
-	PathParams     map[string]string
+	Method     string
+	Path       string
+	Query      url.Values
+	Body       []byte
+	Headers    http.Header
+	PathParams map[string]string
 }
 
 func (c *Context) PathParam(name string) string {
@@ -300,11 +299,7 @@ func (s *Service) getStats(ctx *Context) *Response {
 }
 
 func (s *Service) triggerProtocolJob(ctx *Context) *Response {
-	requestContext := ctx.RequestContext
-	if requestContext == nil {
-		requestContext = context.Background()
-	}
-	if err := s.Downloader.TriggerProtocolJob(requestContext, ctx.PathParam("protocol"), ctx.PathParam("name")); err != nil {
+	if err := s.Downloader.TriggerProtocolJob(context.Background(), ctx.PathParam("protocol"), ctx.PathParam("name")); err != nil {
 		status := http.StatusBadRequest
 		if errors.Is(err, download.ErrUnSupportedProtocol) || errors.Is(err, download.ErrProtocolJobNotFound) {
 			status = http.StatusNotFound

@@ -206,13 +206,12 @@ func buildServer(startCfg *model.StartConfig, continueOnStartup bool) (*http.Ser
 				return
 			}
 			response := route.Handler(&goapi.Context{
-				RequestContext: r.Context(),
-				Method:         r.Method,
-				Path:           r.URL.Path,
-				Query:          r.URL.Query(),
-				Body:           body,
-				Headers:        r.Header,
-				PathParams:     mux.Vars(r),
+				Method:     r.Method,
+				Path:       r.URL.Path,
+				Query:      r.URL.Query(),
+				Body:       body,
+				Headers:    r.Header,
+				PathParams: mux.Vars(r),
 			})
 			WriteStatusJson(w, response.StatusCode, response.Body)
 		})
