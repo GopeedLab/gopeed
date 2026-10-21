@@ -28,7 +28,6 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  pub_semver: ^2.2.0
   flutter:
     sdk: flutter
   flutter_localizations:
@@ -46,6 +45,7 @@ dependencies:
   crypto: ^3.0.6
   logger: ^1.4.0
   package_info_plus: ^10.2.1
+  pub_semver: ^2.2.0
   device_info_plus: ^13.2.0
   win32_registry: ^3.0.3
   launch_at_startup:
