@@ -21,8 +21,9 @@ Future<void> downloadFromCandidates(
   Duration probeTimeout = const Duration(seconds: 3),
 }) async {
   // Reject missing or malformed trusted metadata before any network request.
-  if (expectedSha256.length != 64 || !RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(expectedSha256))
+  if (expectedSha256.length != 64 || !RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(expectedSha256)) {
     throw const DownloadChecksumException();
+  }
   final urls = candidates.toSet().toList(growable: false);
   if (urls.isEmpty) throw ArgumentError.value(candidates, 'candidates', 'No download candidates');
   final dio = client ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 10)));
