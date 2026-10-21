@@ -317,12 +317,7 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
   }
 
   Future<void> startUpdate(VersionInfo versionInfo, UpdateProgressCallback onProgress) async {
-    final runtime = ref.read(appRuntimeControllerProvider).value;
-    await updateApp(
-      versionInfo,
-      githubMirror: runtime?.downloaderConfig.extra.githubMirror ?? ExtraConfigGithubMirror(enabled: false),
-      onProgress: onProgress,
-    );
+    await updateApp(versionInfo, service: ref.read(gopeedServiceProvider), onProgress: onProgress);
   }
 
   AppPlatformState _snapshot() => AppPlatformState(

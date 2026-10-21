@@ -438,6 +438,7 @@
   "editCategory": "வகையைத் திருத்துக",
   "deleteCategoryTitle": "வகையை நீக்கவா?",
   "updateFailed": "புதுப்பித்தல் தோல்வியுற்றது. பின்னர் மீண்டும் முயற்சிக்கவும்",
+  "updateVerificationFailed": "புதுப்பிப்பைச் சரிபார்க்க முடியவில்லை. நிறுவல் நிறுத்தப்பட்டது.",
   "newVersionAvailable": "ஒரு புதிய பதிப்பு கிடைக்கிறது",
   "releaseNotes": "புதியது என்ன:",
   "noReleaseNotes": "வெளியீட்டு குறிப்புகள் எதுவும் கிடைக்கவில்லை",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "அங்கீகார உள்ளமைவுக்கு மாறு",
   "mcpRequiresTcp": "API நெறிமுறை TCP ஆக இருக்கும்போது முகவர் இணைப்பு வழிமுறைகள் கிடைக்கும்.",
   "emptyTaskCreateHint": "பதிவிறக்கத்தைத் தொடங்க {action} ஐ அழுத்தவும்",
-  "emptyStateRetryHint": "மீண்டும் முயற்சிக்க {action} ஐ அழுத்தவும்"
+  "emptyStateRetryHint": "மீண்டும் முயற்சிக்க {action} ஐ அழுத்தவும்",
+  "addTrackerSubscription": "டிராக்கர் சந்தாவைச் சேர்",
+  "trackerSubscriptionUrl": "சந்தா URL",
+  "trackerSubscriptionFetchSuccess": "வெற்றி",
+  "trackerSubscriptionFetchFailed": "தோல்வி",
+  "trackerSubscriptionUpdateStatus": "புதுப்பிப்பு நிலை",
+  "trackerSubscriptionTrackerCount": "டிராக்கர் எண்ணிக்கை",
+  "trackerSubscriptionNotUpdated": "இன்னும் புதுப்பிக்கப்படவில்லை",
+  "actions": "செயல்கள்"
 }

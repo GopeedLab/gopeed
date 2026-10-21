@@ -438,6 +438,7 @@
   "editCategory": "Категория редактирования",
   "deleteCategoryTitle": "Удалить категорию?",
   "updateFailed": "Обновление не удалось. Пожалуйста, попробуйте еще раз позже",
+  "updateVerificationFailed": "Проверка обновления не удалась. Установка остановлена.",
   "newVersionAvailable": "Доступна новая версия",
   "releaseNotes": "Что нового",
   "noReleaseNotes": "Нет доступных записей о выпуске",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "Переключиться на конфигурацию с аутентификацией",
   "mcpRequiresTcp": "Инструкции по подключению агентов доступны, когда протокол API — TCP.",
   "emptyTaskCreateHint": "Нажмите {action}, чтобы начать загрузку",
-  "emptyStateRetryHint": "Нажмите {action}, чтобы повторить попытку"
+  "emptyStateRetryHint": "Нажмите {action}, чтобы повторить попытку",
+  "addTrackerSubscription": "Добавить подписку на трекеры",
+  "trackerSubscriptionUrl": "URL подписки",
+  "trackerSubscriptionFetchSuccess": "Успешно",
+  "trackerSubscriptionFetchFailed": "Ошибка",
+  "trackerSubscriptionUpdateStatus": "Статус обновления",
+  "trackerSubscriptionTrackerCount": "Число трекеров",
+  "trackerSubscriptionNotUpdated": "Ещё не обновлено",
+  "actions": "Действия"
 }

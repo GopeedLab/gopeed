@@ -181,6 +181,7 @@ type DownloaderStoreConfig struct {
 	DownloadDir                string                 `json:"downloadDir"`    // DownloadDir is the default directory to save the downloaded files
 	MaxRunning                 int                    `json:"maxRunning"`     // MaxRunning is the max running download count
 	ProtocolConfig             map[string]any         `json:"protocolConfig"` // ProtocolConfig is special config for each protocol
+	GithubMirror               *GithubMirrorConfig    `json:"githubMirror"`
 	Extra                      map[string]any         `json:"extra"`
 	Proxy                      *DownloaderProxyConfig `json:"proxy"`
 	Webhook                    *WebhookConfig         `json:"webhook"`                    // Webhook is the webhook configuration
@@ -198,6 +199,9 @@ func (cfg *DownloaderStoreConfig) Init() *DownloaderStoreConfig {
 	}
 	if cfg.ProtocolConfig == nil {
 		cfg.ProtocolConfig = make(map[string]any)
+	}
+	if cfg.GithubMirror == nil {
+		cfg.GithubMirror = DefaultGithubMirrorConfig()
 	}
 	if cfg.Proxy == nil {
 		cfg.Proxy = &DownloaderProxyConfig{}
@@ -238,6 +242,9 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	}
 	if cfg.Extra == nil {
 		cfg.Extra = beforeCfg.Extra
+	}
+	if cfg.GithubMirror == nil {
+		cfg.GithubMirror = beforeCfg.GithubMirror
 	}
 	if cfg.Proxy == nil {
 		cfg.Proxy = beforeCfg.Proxy

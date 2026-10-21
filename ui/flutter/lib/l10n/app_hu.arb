@@ -438,6 +438,7 @@
   "editCategory": "Kategória szerkesztése",
   "deleteCategoryTitle": "Kategória törlése?",
   "updateFailed": "A frissítés nem sikerült. Kérjük, próbálja újra később",
+  "updateVerificationFailed": "A frissítés ellenőrzése sikertelen. A telepítés leállt.",
   "newVersionAvailable": "Új verzió érhető el",
   "releaseNotes": "Újdonságok",
   "noReleaseNotes": "Nem állnak rendelkezésre kiadási megjegyzések",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "Váltás hitelesített konfigurációra",
   "mcpRequiresTcp": "Az ügynökcsatlakoztatási útmutató akkor érhető el, ha az API protokollja TCP.",
   "emptyTaskCreateHint": "Kattints a {action} gombra a letöltés indításához",
-  "emptyStateRetryHint": "Kattints a {action} gombra az újrapróbálkozáshoz"
+  "emptyStateRetryHint": "Kattints a {action} gombra az újrapróbálkozáshoz",
+  "addTrackerSubscription": "Tracker-feliratkozás hozzáadása",
+  "trackerSubscriptionUrl": "Feliratkozási URL",
+  "trackerSubscriptionFetchSuccess": "Sikeres",
+  "trackerSubscriptionFetchFailed": "Sikertelen",
+  "trackerSubscriptionUpdateStatus": "Frissítés állapota",
+  "trackerSubscriptionTrackerCount": "Trackerek száma",
+  "trackerSubscriptionNotUpdated": "Még nem frissült",
+  "actions": "Műveletek"
 }

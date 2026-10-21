@@ -438,6 +438,7 @@
   "editCategory": "ویرایش دسته‌بندی",
   "deleteCategoryTitle": "دسته بندی حذفی؟",
   "updateFailed": "به روز رسانی شکست خورد لطفا دوباره امتحان کنید",
+  "updateVerificationFailed": "تأیید به‌روزرسانی ناموفق بود. نصب متوقف شد.",
   "newVersionAvailable": "نسخه جدید در دسترس است",
   "releaseNotes": "چه چیز جدیدی است",
   "noReleaseNotes": "هیچ یادداشت آزادی در دسترس نیست",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "تغییر به پیکربندی احراز هویت",
   "mcpRequiresTcp": "راهنمای اتصال عامل زمانی در دسترس است که پروتکل API روی TCP باشد.",
   "emptyTaskCreateHint": "برای شروع دانلود روی {action} کلیک کنید",
-  "emptyStateRetryHint": "برای تلاش مجدد روی {action} کلیک کنید"
+  "emptyStateRetryHint": "برای تلاش مجدد روی {action} کلیک کنید",
+  "addTrackerSubscription": "افزودن اشتراک ردیاب",
+  "trackerSubscriptionUrl": "نشانی اشتراک",
+  "trackerSubscriptionFetchSuccess": "موفق",
+  "trackerSubscriptionFetchFailed": "ناموفق",
+  "trackerSubscriptionUpdateStatus": "وضعیت به‌روزرسانی",
+  "trackerSubscriptionTrackerCount": "تعداد ردیاب‌ها",
+  "trackerSubscriptionNotUpdated": "هنوز به‌روزرسانی نشده",
+  "actions": "عملیات"
 }

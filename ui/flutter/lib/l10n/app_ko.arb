@@ -438,6 +438,7 @@
   "editCategory": "관련 기사",
   "deleteCategoryTitle": "범주 삭제?",
   "updateFailed": "업데이트 실패. 나중에 다시 시도하십시오",
+  "updateVerificationFailed": "업데이트 검증에 실패했습니다. 설치를 중단했습니다.",
   "newVersionAvailable": "새 버전은 사용할 수 있습니다",
   "releaseNotes": "새로운 소식",
   "noReleaseNotes": "출시 노트",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "인증 구성으로 전환",
   "mcpRequiresTcp": "API 프로토콜이 TCP일 때 에이전트 연결 안내를 사용할 수 있습니다.",
   "emptyTaskCreateHint": "{action}을 눌러 다운로드 시작",
-  "emptyStateRetryHint": "{action}을 눌러 다시 시도"
+  "emptyStateRetryHint": "{action}을 눌러 다시 시도",
+  "addTrackerSubscription": "트래커 구독 추가",
+  "trackerSubscriptionUrl": "구독 URL",
+  "trackerSubscriptionFetchSuccess": "성공",
+  "trackerSubscriptionFetchFailed": "실패",
+  "trackerSubscriptionUpdateStatus": "업데이트 상태",
+  "trackerSubscriptionTrackerCount": "트래커 수",
+  "trackerSubscriptionNotUpdated": "아직 업데이트되지 않음",
+  "actions": "작업"
 }

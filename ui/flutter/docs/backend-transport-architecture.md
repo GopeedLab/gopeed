@@ -68,12 +68,11 @@ The following endpoints are web HTTP infrastructure and are not part of the FFI/
 
 - `/fs/tasks/*`
 - `/fs/extensions/*`
-- `/api/web/proxy`
 - Web static file hosting at `/`
 
 `/fs/tasks` returns files from the Go host machine to a browser over HTTP. Native clients can access local file paths directly and do not need an equivalent API.
 
-`/api/web/proxy` is infrastructure used by the web transport to work around browser CORS restrictions. It is not part of the published core `/api/v1/**` API. Native clients can request the target URL directly with Dio and do not need the Go proxy.
+All unmatched `/api` and `/api/**` requests use the common 404 handler before the web file handler.
 
 ## 4. Backend Maintenance Model
 
@@ -182,7 +181,7 @@ The REST adapter is limited to transport responsibilities:
 - Convert `http.Request` into a Dispatcher request.
 - Write a Dispatcher response back to HTTP.
 - Handle API tokens, web login, CORS, compression, and panic recovery.
-- Register web-only file, proxy, and static resource routes.
+- Register web-only file and static resource routes.
 
 The REST adapter no longer calls the global `rest.Downloader` directly.
 
@@ -198,7 +197,6 @@ Core API routes
 
 Web-only routes
 ├── /api/web/login
-├── /api/web/proxy
 ├── /fs/tasks/*
 ├── /fs/extensions/*
 └── /* static Web UI
@@ -416,12 +414,7 @@ The following patterns are prohibited:
 
 ### 7.4 Non-business HTTP capabilities
 
-`proxyRequest` is not a Gopeed Core API and belongs in a separate `ExternalHttpClient`:
-
-```text
-Native → request the target directly with Dio
-Web    → /api/web/proxy
-```
+Tracker subscriptions run in Go. Application update checks and extension store requests run directly in the client. Go supplies mirror candidate URLs through `/api/v1/mirrors/{provider}/candidates`; clients probe and download update packages locally with Dio to retain real download progress. There is no arbitrary external HTTP forwarding API.
 
 Task file access does not belong in `GopeedClient`:
 
@@ -594,7 +587,7 @@ Flutter converts all of them into `GopeedException`. Components do not handle Di
 
 - Windows, macOS, Linux: startup, InvokeAsync, events, shutdown, and repeated startup.
 - Android, iOS: gomobile InvokeAsync callbacks, reverse MethodChannel events, and background/foreground transitions.
-- Web: REST, login, proxy, and task-file downloads.
+- Web: REST, login, and task-file downloads.
 - Native: enabling and disabling REST does not interrupt download tasks.
 
 ## 12. Implementation Phases

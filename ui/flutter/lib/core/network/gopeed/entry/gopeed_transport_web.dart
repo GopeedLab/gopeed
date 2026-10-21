@@ -8,8 +8,7 @@ class RestGopeedTransport implements GopeedTransport {
   RestGopeedTransport(GopeedTransportConfig config)
     : _dio = Dio(
         BaseOptions(
-          // Keep release requests relative so deployments under a reverse
-          // proxy path continue to work, matching the legacy Web client.
+          // Keep requests relative for deployments under a reverse proxy path.
           baseUrl: webTransportBaseUrl(config.address, Uri.base),
           contentType: Headers.jsonContentType,
           sendTimeout: const Duration(seconds: 5),
@@ -51,18 +50,6 @@ class RestGopeedTransport implements GopeedTransport {
       options: Options(method: method),
     );
     return response.data;
-  }
-
-  @override
-  Future<Response<String>> proxyRequest(String uri, {dynamic data, Options? options}) {
-    options ??= Options();
-    options.headers ??= {};
-    options.headers!['X-Target-Uri'] = uri;
-    return _dio.request<String>(
-      '/api/web/proxy?t=${DateTime.now().millisecondsSinceEpoch}',
-      data: data,
-      options: options.copyWith(responseType: ResponseType.plain),
-    );
   }
 
   @override

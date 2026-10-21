@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
@@ -67,6 +69,106 @@ void main() {
     expect(saved?.extra.createHistory, ['https://example.com/existing.zip']);
     expect(saved?.extra.analyticsClientId, 'existing-client');
   });
+
+  test('protocol edits use a single full PUT and reload backend-owned tracker results', () async {
+    final backend = DownloaderConfig();
+    final puts = <DownloaderConfig>[];
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig.fromJson(backend.toJson()))
+      ..bind(GopeedMethods.putConfig, (config) {
+        puts.add(config);
+        // Simulate the backend retaining its read-only results on a full PUT.
+        backend.protocolConfig.bt.listenPort = config.protocolConfig.bt.listenPort;
+        return const RpcUnit();
+      });
+    final container = _settingsContainer(registry);
+    addTearDown(container.dispose);
+    final initial = await container.read(settingsControllerProvider.future);
+    final draft = DownloaderConfig.fromJson(initial.config.toJson())..protocolConfig.bt.listenPort = 6881;
+    backend.protocolConfig.bt.state.trackerSources = {
+      'https://example.com/list': ['udp://fresh.example:80/announce'],
+    };
+    backend.protocolConfig.bt.state.lastTrackerUpdateTime = DateTime.utc(2026, 10, 19);
+    await container.read(settingsControllerProvider.notifier).save(draft);
+    expect(puts, hasLength(1));
+    expect(puts.single.protocolConfig.bt.listenPort, 6881);
+    final saved = container.read(settingsControllerProvider).requireValue;
+    expect(saved.config.protocolConfig.bt.state.trackerSources['https://example.com/list'], [
+      'udp://fresh.example:80/announce',
+    ]);
+    expect(saved.saving, isFalse);
+  });
+
+  test('rapid full config saves run in order and keep the latest user edits', () async {
+    final backend = DownloaderConfig();
+    final entered = Completer<void>();
+    final release = Completer<void>();
+    final puts = <DownloaderConfig>[];
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig.fromJson(backend.toJson()))
+      ..bind(GopeedMethods.putConfig, (config) async {
+        puts.add(DownloaderConfig.fromJson(config.toJson()));
+        if (puts.length == 1) {
+          entered.complete();
+          await release.future;
+        }
+        backend.protocolConfig = config.protocolConfig;
+        return const RpcUnit();
+      });
+    final container = _settingsContainer(registry);
+    addTearDown(container.dispose);
+    final initial = await container.read(settingsControllerProvider.future);
+    final controller = container.read(settingsControllerProvider.notifier);
+    final first = DownloaderConfig.fromJson(initial.config.toJson())..protocolConfig.bt.listenPort = 6881;
+    final savingFirst = controller.save(first);
+    await entered.future;
+    final second = DownloaderConfig.fromJson(first.toJson())
+      ..protocolConfig.bt.customTrackers = ['udp://custom.example:80/announce'];
+    final savingSecond = controller.save(second);
+    expect(puts.length, 1);
+    release.complete();
+    await Future.wait([savingFirst, savingSecond]);
+    expect(puts, hasLength(2));
+    expect(puts[0].protocolConfig.bt.listenPort, 6881);
+    expect(puts[1].protocolConfig.bt.listenPort, 6881);
+    expect(puts[1].protocolConfig.bt.customTrackers, ['udp://custom.example:80/announce']);
+    expect(container.read(settingsControllerProvider).requireValue.config.protocolConfig.bt.customTrackers, [
+      'udp://custom.example:80/announce',
+    ]);
+  });
+
+  test('a failed save clears saving state and the same change can be retried', () async {
+    final backend = DownloaderConfig();
+    var attempts = 0;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig.fromJson(backend.toJson()))
+      ..bind(GopeedMethods.putConfig, (config) {
+        if (++attempts == 1) throw StateError('offline');
+        backend.protocolConfig = config.protocolConfig;
+        return const RpcUnit();
+      });
+    final container = _settingsContainer(registry);
+    addTearDown(container.dispose);
+    final initial = await container.read(settingsControllerProvider.future);
+    final controller = container.read(settingsControllerProvider.notifier);
+    final draft = DownloaderConfig.fromJson(initial.config.toJson())..protocolConfig.bt.listenPort = 6881;
+    await expectLater(controller.save(draft), throwsStateError);
+    expect(container.read(settingsControllerProvider).requireValue.saving, isFalse);
+    await controller.save(draft);
+    expect(attempts, 2);
+    expect(backend.protocolConfig.bt.listenPort, 6881);
+  });
+}
+
+ProviderContainer _settingsContainer(CapabilityRegistry registry) {
+  final container = ProviderContainer(
+    overrides: [
+      appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry))),
+      appRuntimeControllerProvider.overrideWith(_TestRuntimeController.new),
+    ],
+  );
+  container.listen(settingsControllerProvider, (_, _) {});
+  return container;
 }
 
 class _TestRuntimeController extends AppRuntimeController {

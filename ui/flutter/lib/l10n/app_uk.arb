@@ -438,6 +438,7 @@
   "editCategory": "Редагувати Категорія",
   "deleteCategoryTitle": "Категорія Видалити?",
   "updateFailed": "Поверніть ще раз",
+  "updateVerificationFailed": "Не вдалося перевірити оновлення. Встановлення зупинено.",
   "newVersionAvailable": "Нова версія доступна",
   "releaseNotes": "Що нового",
   "noReleaseNotes": "Немає вихідних нот",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "Перейти до конфігурації з автентифікацією",
   "mcpRequiresTcp": "Інструкції з підключення агентів доступні, коли протокол API — TCP.",
   "emptyTaskCreateHint": "Натисніть {action}, щоб почати завантаження",
-  "emptyStateRetryHint": "Натисніть {action}, щоб спробувати ще раз"
+  "emptyStateRetryHint": "Натисніть {action}, щоб спробувати ще раз",
+  "addTrackerSubscription": "Додати підписку на трекери",
+  "trackerSubscriptionUrl": "URL підписки",
+  "trackerSubscriptionFetchSuccess": "Успішно",
+  "trackerSubscriptionFetchFailed": "Помилка",
+  "trackerSubscriptionUpdateStatus": "Стан оновлення",
+  "trackerSubscriptionTrackerCount": "Кількість трекерів",
+  "trackerSubscriptionNotUpdated": "Ще не оновлено",
+  "actions": "Дії"
 }

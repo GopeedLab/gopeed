@@ -426,7 +426,7 @@
   "logDirectoryUnavailable": "日志目录尚未初始化",
   "unableOpenExternalLink": "无法打开外部链接",
   "neverUpdated": "尚未更新",
-  "lastUpdated": "上次更新：{time}",
+  "lastUpdated": "上次更新时间：{time}",
   "unableLoadSettings": "无法加载设置",
   "fieldRequired": "{field}不能为空",
   "addGithubMirror": "添加 GitHub 镜像",
@@ -438,6 +438,7 @@
   "editCategory": "编辑分类",
   "deleteCategoryTitle": "删除分类？",
   "updateFailed": "更新失败，请稍后重试",
+  "updateVerificationFailed": "更新包校验失败，已停止安装",
   "newVersionAvailable": "发现新版本",
   "releaseNotes": "更新内容",
   "noReleaseNotes": "暂无更新说明",
@@ -456,5 +457,13 @@
   "webApiConfigReadOnlyHelp": "Web 版本不支持在线修改 API 配置。请修改服务端启动参数或配置文件，并重启服务后使配置生效。",
   "mcpRequiresTcp": "API 通讯协议为 TCP 时才能使用 Agent 接入指引。",
   "emptyTaskCreateHint": "点击{action}开始下载",
-  "emptyStateRetryHint": "点击{action}重新加载"
+  "emptyStateRetryHint": "点击{action}重新加载",
+  "addTrackerSubscription": "添加 Tracker 订阅",
+  "trackerSubscriptionUrl": "订阅地址",
+  "trackerSubscriptionFetchSuccess": "成功",
+  "trackerSubscriptionFetchFailed": "失败",
+  "trackerSubscriptionUpdateStatus": "更新状态",
+  "trackerSubscriptionTrackerCount": "Tracker 数量",
+  "trackerSubscriptionNotUpdated": "未更新",
+  "actions": "操作"
 }

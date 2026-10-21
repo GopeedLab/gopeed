@@ -1241,7 +1241,7 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 				"trackerSubscribeUrls": []string{
 					"https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt",
 				},
-				"trackers": []string{
+				"customTrackers": []string{
 					"udp://tracker.coppersurfer.tk:6969/announce",
 					"udp://tracker.leechers-paradise.org:6969/announce",
 				},
@@ -1261,8 +1261,20 @@ func TestDownloader_Protocol_Config(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !test.JsonEqual(storeCfg, newStoreCfg) {
-		t.Errorf("GetConfig() got = %v, want %v", test.ToJson(storeCfg), test.ToJson(newStoreCfg))
+	if newStoreCfg.DownloadDir != storeCfg.DownloadDir || newStoreCfg.Extra["theme"] != "dark" {
+		t.Fatalf("downloader config was not saved: %+v", newStoreCfg)
+	}
+	var savedHTTP struct {
+		Connections int `json:"connections"`
+	}
+	if err := util.MapToStruct(newStoreCfg.ProtocolConfig["http"], &savedHTTP); err != nil || savedHTTP.Connections != 4 {
+		t.Fatalf("HTTP config: %+v %v", savedHTTP, err)
+	}
+	var savedBT struct {
+		CustomTrackers []string `json:"customTrackers"`
+	}
+	if err := util.MapToStruct(newStoreCfg.ProtocolConfig["bt"], &savedBT); err != nil || len(savedBT.CustomTrackers) != 2 {
+		t.Fatalf("BT derived trackers: %+v %v", savedBT, err)
 	}
 }
 
@@ -2002,6 +2014,9 @@ func TestDownloader_ContinueOnStartupUsesContinueAllSemantics(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg.Extra = map[string]any{"autoStartTasks": true}
+	if err := downloader.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
 	if err := downloader.ContinueOnStartup(); err != nil {
 		t.Fatal(err)
 	}
@@ -2010,6 +2025,9 @@ func TestDownloader_ContinueOnStartupUsesContinueAllSemantics(t *testing.T) {
 	}
 
 	cfg.AutoStartTasks = true
+	if err := downloader.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
 	if err := downloader.ContinueOnStartup(); err != nil {
 		t.Fatal(err)
 	}

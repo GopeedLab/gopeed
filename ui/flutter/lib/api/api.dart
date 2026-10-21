@@ -208,11 +208,6 @@ Future<void> login(LoginReq loginReq) {
   return _parse<void>(() => _request('api/web/login', method: 'POST', data: loginReq.toJson()), null);
 }
 
-Future<Response<String>> proxyRequest<T>(String uri, {dynamic data, Options? options}) async {
-  initDefault();
-  return _transport!.proxyRequest(uri, data: data, options: options);
-}
-
 String join(String path) {
   initDefault();
   return _transport!.join(path);
@@ -226,3 +221,16 @@ Future<dynamic> forward(
 }) async {
   return _request(path, method: method, data: data, queryParameters: queryParameters);
 }
+
+Future<void> triggerProtocolJob(String protocol, String name) => _parse<void>(
+  () => _request(
+    'api/v1/protocols/${Uri.encodeComponent(protocol)}/jobs/${Uri.encodeComponent(name)}/trigger',
+    method: 'POST',
+  ),
+  null,
+);
+
+Future<List<String>> getMirrorCandidates(String provider, String url) => _parse(
+  () => _request('api/v1/mirrors/${Uri.encodeComponent(provider)}/candidates', method: 'POST', data: {'url': url}),
+  (json) => List<String>.from(json['urls'] as List),
+);

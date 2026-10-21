@@ -438,6 +438,7 @@
   "editCategory": "編集カテゴリ",
   "deleteCategoryTitle": "カテゴリを削除?",
   "updateFailed": "更新が失敗しました。 後でもう一度お試しください",
+  "updateVerificationFailed": "更新パッケージの検証に失敗しました。インストールを中止しました。",
   "newVersionAvailable": "新規バージョンが利用可能",
   "releaseNotes": "新着情報",
   "noReleaseNotes": "リリースノートは使用できません",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "認証付き設定に切り替える",
   "mcpRequiresTcp": "API プロトコルが TCP の場合にエージェント接続手順を利用できます。",
   "emptyTaskCreateHint": "{action}をクリックしてダウンロードを開始",
-  "emptyStateRetryHint": "{action}をクリックして再試行"
+  "emptyStateRetryHint": "{action}をクリックして再試行",
+  "addTrackerSubscription": "Tracker 購読を追加",
+  "trackerSubscriptionUrl": "購読 URL",
+  "trackerSubscriptionFetchSuccess": "成功",
+  "trackerSubscriptionFetchFailed": "失敗",
+  "trackerSubscriptionUpdateStatus": "更新状況",
+  "trackerSubscriptionTrackerCount": "Tracker 数",
+  "trackerSubscriptionNotUpdated": "未更新",
+  "actions": "操作"
 }

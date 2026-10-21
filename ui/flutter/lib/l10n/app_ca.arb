@@ -438,6 +438,7 @@
   "editCategory": "Edita categoria",
   "deleteCategoryTitle": "Esborro la categoria?",
   "updateFailed": "Ha fallat l' actualització. Torneu- ho a provar més tard",
+  "updateVerificationFailed": "La verificació de l’actualització ha fallat. S’ha aturat la instal·lació.",
   "newVersionAvailable": "Hi ha disponible una nova versió",
   "releaseNotes": "Quèts nous",
   "noReleaseNotes": "No hi ha notes disponibles",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "Canvia a la configuració autenticada",
   "mcpRequiresTcp": "Les instruccions de connexió d’agents estan disponibles quan el protocol de l’API és TCP.",
   "emptyTaskCreateHint": "Fes clic a {action} per començar a baixar",
-  "emptyStateRetryHint": "Fes clic a {action} per tornar-ho a provar"
+  "emptyStateRetryHint": "Fes clic a {action} per tornar-ho a provar",
+  "addTrackerSubscription": "Afegeix una subscripció de trackers",
+  "trackerSubscriptionUrl": "URL de subscripció",
+  "trackerSubscriptionFetchSuccess": "Correcte",
+  "trackerSubscriptionFetchFailed": "Fallida",
+  "trackerSubscriptionUpdateStatus": "Estat de l’actualització",
+  "trackerSubscriptionTrackerCount": "Nombre de trackers",
+  "trackerSubscriptionNotUpdated": "Sense actualitzar",
+  "actions": "Accions"
 }

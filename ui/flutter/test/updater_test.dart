@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/features/settings/presentation/widgets/app_update_dialog.dart';
 import 'package:gopeed/features/settings/presentation/widgets/app_update_notes_viewport.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
-import 'package:gopeed/util/arch/arch.dart';
-import 'package:gopeed/util/github_mirror.dart';
 import 'package:gopeed/util/package_info.dart' as app_package;
 import 'package:gopeed/util/updater.dart';
+import 'package:gopeed/core/network/candidate_download.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
@@ -24,124 +22,35 @@ void main() {
     );
   });
 
-  group('version comparison', () {
-    test('uses semantic version precedence', () {
-      expect(isNewerVersion('1.10.0', '1.9.9'), isTrue);
-      expect(isNewerVersion('2.0.0-beta.2', '2.0.0-beta.1'), isTrue);
-      expect(isNewerVersion('2.0.0-rc.1', '2.0.0-beta.2'), isTrue);
-      expect(isNewerVersion('2.0.0', '2.0.0-rc.1'), isTrue);
-      expect(isNewerVersion('1.2.3', '1.2.3'), isFalse);
-      expect(isNewerVersion('1.2.2', '1.2.3'), isFalse);
-      expect(isNewerVersion('invalid', '1.2.3'), isFalse);
-    });
-  });
-
-  group('release selection', () {
-    Map<String, dynamic> release(String version, {bool prerelease = false, bool draft = false}) => {
-      'tag_name': 'v$version',
-      'prerelease': prerelease,
-      'draft': draft,
-      'body': '$version notes',
-      'html_url': 'https://example.com/$version',
-    };
-
-    test('stable builds ignore preview releases', () {
-      final selected = selectUpdateRelease([release('2.1.0-beta.1', prerelease: true), release('2.0.1')], '2.0.0');
-
-      expect(selected?.version, '2.0.1');
-    });
-
-    test('preview builds advance within the same preview line', () {
-      final selected = selectUpdateRelease([
-        release('2.0.0-beta.2', prerelease: true),
-        release('1.9.9'),
-        release('2.1.0-beta.1', prerelease: true),
-      ], '2.0.0-beta.1');
-
-      expect(selected?.version, '2.0.0-beta.2');
-    });
-
-    test('four-part platform beta selects the next GitHub prerelease and matching asset', () {
-      final currentVersion = app_package.normalizeAppVersion('2.0.0.1');
-      final selected = selectUpdateRelease([release('2.0.0-beta.2', prerelease: true)], currentVersion);
-
-      expect(selected?.version, '2.0.0-beta.2');
-      expect(
-        updateAssetName(selected!.version, channel: UpdateChannel.macosDmg, architecture: Architecture.arm64),
-        'Gopeed-v2.0.0-beta.2-macos-arm64.dmg',
-      );
-    });
-
-    test('preview builds graduate to the final stable release', () {
-      final selected = selectUpdateRelease([
-        release('2.0.0-beta.2', prerelease: true),
-        release('2.0.0'),
-      ], '2.0.0-beta.1');
-
-      expect(selected?.version, '2.0.0');
-    });
-
-    test('selects the greatest eligible version and ignores invalid releases', () {
-      final selected = selectUpdateRelease([
-        release('2.0.0-beta.3', prerelease: true),
-        release('2.0.0-beta.4', prerelease: true, draft: true),
-        {'tag_name': 'not-a-version'},
-        release('2.0.0-beta.2', prerelease: true),
-      ], '2.0.0-beta.1');
-
-      expect(selected?.version, '2.0.0-beta.3');
-    });
-  });
-
-  group('release assets', () {
-    test('uses the release naming convention for desktop packages', () {
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.windowsPortable, architecture: Architecture.x64),
-        'Gopeed-v1.8.0-windows-amd64-portable.zip',
-      );
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.macosDmg, architecture: Architecture.arm64),
-        'Gopeed-v1.8.0-macos-arm64.dmg',
-      );
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.linuxDeb, architecture: Architecture.ia32),
-        'Gopeed-v1.8.0-linux-386.deb',
-      );
-    });
-
-    test('maps Android ABI names', () {
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.androidApk, architecture: Architecture.arm),
-        'Gopeed-v1.8.0-android-armeabi-v7a.apk',
-      );
-      expect(
-        updateAssetName('1.8.0', channel: UpdateChannel.androidApk, architecture: Architecture.arm64),
-        'Gopeed-v1.8.0-android-arm64-v8a.apk',
-      );
-    });
+  test('package names use the client channel and architecture', () {
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.windowsInstaller, 'ia32'), 'Gopeed-v2.0.0-windows-386.zip');
+    expect(
+      appUpdateAssetName('2.0.0-beta.3', UpdateChannel.windowsPortable, 'x64'),
+      'Gopeed-v2.0.0-beta.3-windows-amd64-portable.zip',
+    );
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.macosDmg, 'arm64'), 'Gopeed-v2.0.0-macos-arm64.dmg');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.linuxDeb, 'x64'), 'Gopeed-v2.0.0-linux-amd64.deb');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.androidApk, 'arm'), 'Gopeed-v2.0.0-android-armeabi-v7a.apk');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.androidApk, 'arm64'), 'Gopeed-v2.0.0-android-arm64-v8a.apk');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.androidApk, 'x64'), 'Gopeed-v2.0.0-android-x86_64.apk');
+    expect(appUpdateAssetName('2.0.0', UpdateChannel.androidApk, 'riscv64'), 'Gopeed-v2.0.0-android.apk');
+    for (final channel in [
+      null,
+      UpdateChannel.linuxFlathub,
+      UpdateChannel.linuxSnap,
+      UpdateChannel.linuxAppImage,
+      UpdateChannel.linuxRpm,
+      UpdateChannel.iosIpa,
+      UpdateChannel.docker,
+    ]) {
+      expect(appUpdateAssetName('2.0.0', channel, 'arm64'), isEmpty);
+    }
   });
 
   test('selects the matching bilingual release notes', () {
     const notes = '# Release notes\n\n- English change\n\n# 更新日志\n\n- 中文更新';
     expect(localizedReleaseNotes(notes, 'en'), '# Release notes\n\n- English change');
     expect(localizedReleaseNotes(notes, 'zh-CN'), '# 更新日志\n\n- 中文更新');
-  });
-
-  test('builds enabled GitHub proxy URLs and ignores deleted mirrors', () {
-    final config = ExtraConfigGithubMirror(
-      mirrors: [
-        GithubMirror(type: GithubMirrorType.ghProxy, url: 'https://mirror.example'),
-        GithubMirror(type: GithubMirrorType.ghProxy, url: 'https://deleted.example', isDeleted: true),
-      ],
-    );
-    expect(
-      githubMirrorUrls(
-        'https://github.com/GopeedLab/gopeed/releases/download/v1.8.0/app.zip',
-        MirrorType.githubRelease,
-        config: config,
-      ),
-      ['https://mirror.example/https://github.com/GopeedLab/gopeed/releases/download/v1.8.0/app.zip'],
-    );
   });
 
   testWidgets('update dialog shows beta versions without tag prefixes', (tester) async {
@@ -194,7 +103,7 @@ void main() {
     expect(find.text('Faster downloads'), findsOneWidget);
     expect(find.text('下载更快'), findsNothing);
     expect(find.text('Later'), findsOneWidget);
-    expect(find.text('Update Now'), findsOneWidget);
+    expect(find.text('Update'), findsOneWidget);
     expect(find.text("What's New"), findsNothing);
     final versionText = tester.widget<Text>(find.text('2.0.0-beta.1  →  2.0.0-beta.2'));
     expect(versionText.style?.decoration, TextDecoration.none);
@@ -206,6 +115,50 @@ void main() {
     expect(tester.getCenter(find.byKey(const ValueKey('app-update-actions'))).dx, closeTo(dialog.center.dx, 0.01));
     expect(tester.takeException(), isNull);
   });
+
+  for (final width in [390.0, 1024.0]) {
+    testWidgets('checksum failures prevent success and show a localized error at $width', (tester) async {
+      tester.view.physicalSize = Size(width, 760);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      var attempts = 0;
+      await tester.pumpWidget(
+        shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: Builder(
+            builder: (context) => shad.SecondaryButton(
+              onPressed: () => showAppUpdateDialog(
+                context,
+                versionInfo: const VersionInfo(
+                  version: '2.0.0',
+                  changeLog: '',
+                  releaseUrl: 'https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0',
+                ),
+                onUpdate: (_, progress) async {
+                  attempts++;
+                  progress(100, 100);
+                  throw const DownloadChecksumException();
+                },
+              ),
+              child: const Text('Open update'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open update'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Update'));
+      await tester.pumpAndSettle();
+      expect(attempts, 1);
+      expect(find.text('Update verification failed. Installation stopped.'), findsOneWidget);
+      expect(find.text('Update failed. Please try again later'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('release notes keep the last line above the fade when scrolled to the end', (tester) async {
     await tester.pumpWidget(

@@ -461,6 +461,7 @@
   "editCategory": "Upraviť kategóriu",
   "deleteCategoryTitle": "Odstrániť kategóriu?",
   "updateFailed": "Aktualizácia zlyhala. Skúste to znova neskôr",
+  "updateVerificationFailed": "Overenie aktualizácie zlyhalo. Inštalácia bola zastavená.",
   "newVersionAvailable": "Je dostupná nová verzia",
   "releaseNotes": "Čo je nové",
   "noReleaseNotes": "Nie sú dostupné žiadne poznámky k vydaniu",
@@ -657,5 +658,13 @@
       }
     }
   },
-  "emptyStateRetryHint": "Kliknutím na {action} skúsite znova"
+  "emptyStateRetryHint": "Kliknutím na {action} skúsite znova",
+  "addTrackerSubscription": "Pridať odber trackerov",
+  "trackerSubscriptionUrl": "URL odberu",
+  "trackerSubscriptionFetchSuccess": "Úspešné",
+  "trackerSubscriptionFetchFailed": "Neúspešné",
+  "trackerSubscriptionUpdateStatus": "Stav aktualizácie",
+  "trackerSubscriptionTrackerCount": "Počet trackerov",
+  "trackerSubscriptionNotUpdated": "Zatiaľ neaktualizované",
+  "actions": "Akcie"
 }

@@ -2274,10 +2274,8 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('tracker subscriptions support selecting and clearing all entries', (WidgetTester tester) async {
+  testWidgets('tracker subscriptions allow adding and deleting a custom URL', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
-    tester.platformDispatcher.textScaleFactorTestValue = 1.2;
-    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final settingsController = FakeSettingsController();
     await tester.pumpWidget(
       ProviderScope(
@@ -2292,35 +2290,31 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Downloads'));
     await tester.pumpAndSettle();
-
-    final selectAll = find.byKey(const ValueKey('tracker-select-all'));
-    expect(selectAll, findsOneWidget);
-    expect(find.descendant(of: selectAll, matching: find.text('Select All')), findsOneWidget);
-
-    await tester.ensureVisible(selectAll);
+    final add = find.byKey(const ValueKey('add-tracker-subscription'));
+    await tester.ensureVisible(add);
     await tester.pumpAndSettle();
-    final horizontalScrollbar = tester.widget<Scrollbar>(find.byKey(const ValueKey('tracker-horizontal-scrollbar')));
-    expect(horizontalScrollbar.thumbVisibility, isTrue);
-    expect(horizontalScrollbar.controller?.hasClients, isTrue);
-    expect(horizontalScrollbar.controller!.position.maxScrollExtent, greaterThan(0));
-    final verticalScrollbar = tester.widget<Scrollbar>(find.byKey(const ValueKey('tracker-vertical-scrollbar')));
-    expect(verticalScrollbar.controller?.hasClients, isTrue);
-    expect(verticalScrollbar.controller!.position.maxScrollExtent, greaterThan(0));
-    final scrollbarRect = tester.getRect(find.byKey(const ValueKey('tracker-horizontal-scrollbar')));
-    final scrollViewRect = tester.getRect(find.byKey(const ValueKey('tracker-horizontal-scroll-view')));
-    expect(scrollbarRect.bottom - scrollViewRect.bottom, AppDesignTokens.space12);
-    expect(find.text(allTrackerSubscribeUrls.first), findsOneWidget);
-    horizontalScrollbar.controller!.jumpTo(horizontalScrollbar.controller!.position.maxScrollExtent);
-    await tester.pump();
-    expect(horizontalScrollbar.controller!.offset, greaterThan(0));
-
-    await tester.tap(selectAll);
+    await tester.tap(add);
     await tester.pumpAndSettle();
-    expect(settingsController.state.requireValue.config.extra.bt.trackerSubscribeUrls, allTrackerSubscribeUrls);
-
-    await tester.tap(selectAll);
+    final dialog = find.byType(shad.AlertDialog);
+    await tester.enterText(
+      find.descendant(of: dialog, matching: find.byType(AppTextField)),
+      'https://my.example/trackers.txt',
+    );
+    await tester.tap(find.descendant(of: dialog, matching: find.text('Save')));
     await tester.pumpAndSettle();
-    expect(settingsController.state.requireValue.config.extra.bt.trackerSubscribeUrls, isEmpty);
+    expect(settingsController.state.requireValue.config.protocolConfig.bt.trackerSubscribeUrls, [
+      'https://my.example/trackers.txt',
+    ]);
+    expect(find.text('https://my.example/trackers.txt'), findsOneWidget);
+    expect(find.byKey(const ValueKey('edit-settings-list-https://my.example/trackers.txt')), findsNothing);
+    final delete = find.byKey(const ValueKey('delete-settings-list-https://my.example/trackers.txt'));
+    await tester.ensureVisible(delete);
+    await tester.pumpAndSettle();
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(shad.AlertDialog), matching: find.text('Delete')));
+    await tester.pumpAndSettle();
+    expect(settingsController.state.requireValue.config.protocolConfig.bt.trackerSubscribeUrls, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -2399,7 +2393,9 @@ void main() {
     expect(find.descendant(of: button, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
   });
 
-  testWidgets('failed tracker update does not reload or reset the settings page', (WidgetTester tester) async {
+  testWidgets('failed tracker update reloads subscription statuses without resetting the settings page', (
+    WidgetTester tester,
+  ) async {
     await _setTestSize(tester, const Size(1024, 900));
     final runtimeController = FailingTrackerRuntimeController();
     final settingsController = StaticSettingsController();
@@ -2428,7 +2424,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(settingsController.reloadCalls, 0);
+    expect(settingsController.reloadCalls, 1);
     expect(tester.state<ScrollableState>(sectionScrollable).position.pixels, closeTo(offsetBeforeUpdate, 0.01));
     expect(find.descendant(of: updateButton, matching: find.byType(shad.CircularProgressIndicator)), findsNothing);
     expect(find.byKey(const ValueKey('app-toast-content')), findsOneWidget);
@@ -5967,14 +5963,14 @@ class PendingTrackerRuntimeController extends FakeRuntimeController {
   final _trackerUpdateCompleter = Completer<void>();
 
   @override
-  Future<void> updateTrackers(DownloaderConfig config) => _trackerUpdateCompleter.future;
+  Future<void> updateTrackers() => _trackerUpdateCompleter.future;
 
   void completeTrackerUpdate() => _trackerUpdateCompleter.complete();
 }
 
 class FailingTrackerRuntimeController extends FakeRuntimeController {
   @override
-  Future<void> updateTrackers(DownloaderConfig config) async {
+  Future<void> updateTrackers() async {
     throw StateError('tracker update failed');
   }
 }

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show Divider, Icons, Scrollbar, ScrollbarOrientation;
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -43,6 +43,7 @@ import '../widgets/settings_content_frame.dart';
 import '../widgets/settings_item.dart';
 import '../widgets/settings_list_editor.dart';
 import '../widgets/theme_settings_control.dart';
+import '../widgets/tracker_subscriptions_control.dart';
 
 enum _SettingsSection { basic, downloads, advanced }
 
@@ -385,14 +386,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   if (Util.isIOS())
                     SettingsItem(
                       title: context.l10n.backgroundContinuedProcessing,
-                      subtitle:
-                          context.l10n.backgroundContinuedProcessingDescription,
+                      subtitle: context.l10n.backgroundContinuedProcessingDescription,
                       child: shad.Switch(
-                        value:
-                            config.extra.backgroundContinuedProcessing,
-                        onChanged: (value) => unawaited(
-                          _setBackgroundContinuedProcessing(value),
-                        ),
+                        value: config.extra.backgroundContinuedProcessing,
+                        onChanged: (value) => unawaited(_setBackgroundContinuedProcessing(value)),
                       ),
                     ),
                 ],
@@ -577,32 +574,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
             _SettingsBlock(
-              key: const ValueKey('settings-hls-block'),
-              title: 'HLS',
-              child: _SettingsGroup(
-                children: [
-                  SettingsItem(
-                    title: context.l10n.connections,
-                    child: _NumberSettingControl(
-                      fieldKey: const ValueKey('hls-connections-input'),
-                      controller: _hlsConnectionsController,
-                      min: 1,
-                      max: 256,
-                    ),
-                  ),
-                  SettingsItem(
-                    title: context.l10n.maxRetries,
-                    child: _NumberSettingControl(
-                      fieldKey: const ValueKey('hls-max-retries-input'),
-                      controller: _hlsMaxRetriesController,
-                      min: 0,
-                      max: 30,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _SettingsBlock(
               title: 'BitTorrent',
               child: _SettingsGroup(
                 children: [
@@ -669,12 +640,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ],
                   SettingsItem(
                     title: context.l10n.subscribeTracker,
-                    child: _TrackerSubscriptionsControl(
-                      selected: config.extra.bt.trackerSubscribeUrls,
-                      autoUpdate: config.extra.bt.autoUpdateTrackers,
-                      lastUpdated: config.extra.bt.lastTrackerUpdateTime,
-                      onChanged: (urls) => _mutateConfig((next) => next.extra.bt.trackerSubscribeUrls = urls),
-                      onAutoUpdateChanged: (value) => _mutateConfig((next) => next.extra.bt.autoUpdateTrackers = value),
+                    stacked: true,
+                    child: TrackerSubscriptionsControl(
+                      urls: config.protocolConfig.bt.trackerSubscribeUrls,
+                      statuses: config.protocolConfig.bt.state.trackerSubscriptionStatuses,
+                      autoUpdate: config.protocolConfig.bt.autoUpdateTrackers,
+                      lastUpdated: config.protocolConfig.bt.state.lastTrackerUpdateTime,
+                      onChanged: (urls) => _mutateConfig((next) => next.protocolConfig.bt.trackerSubscribeUrls = urls),
+                      onAutoUpdateChanged: (value) =>
+                          _mutateConfig((next) => next.protocolConfig.bt.autoUpdateTrackers = value),
                       onUpdate: _updateTrackers,
                     ),
                   ),
@@ -682,6 +656,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     title: context.l10n.addTracker,
                     subtitle: context.l10n.onePerLine,
                     child: _TextSettingControl(controller: _customTrackersController, minLines: 7),
+                  ),
+                ],
+              ),
+            ),
+            _SettingsBlock(
+              key: const ValueKey('settings-hls-block'),
+              title: 'HLS',
+              child: _SettingsGroup(
+                children: [
+                  SettingsItem(
+                    title: context.l10n.connections,
+                    child: _NumberSettingControl(
+                      fieldKey: const ValueKey('hls-connections-input'),
+                      controller: _hlsConnectionsController,
+                      min: 1,
+                      max: 256,
+                    ),
+                  ),
+                  SettingsItem(
+                    title: context.l10n.maxRetries,
+                    child: _NumberSettingControl(
+                      fieldKey: const ValueKey('hls-max-retries-input'),
+                      controller: _hlsMaxRetriesController,
+                      min: 0,
+                      max: 30,
+                    ),
                   ),
                 ],
               ),
@@ -890,15 +890,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     title: context.l10n.githubMirrorEnable,
                     subtitle: context.l10n.githubMirrorDesc,
                     child: shad.Switch(
-                      value: config.extra.githubMirror.enabled,
-                      onChanged: (value) => _mutateConfig((next) => next.extra.githubMirror.enabled = value),
+                      value: config.githubMirror.enabled,
+                      onChanged: (value) => _mutateConfig((next) => next.githubMirror.enabled = value),
                     ),
                   ),
                   SettingsItem(
                     title: context.l10n.githubMirror,
                     child: SettingsListEditor(
                       entries: [
-                        for (final entry in config.extra.githubMirror.mirrors.indexed)
+                        for (final entry in config.githubMirror.mirrors.indexed)
                           if (!entry.$2.isDeleted)
                             SettingsListEntry(
                               id: 'github-mirror-${entry.$1}',
@@ -1014,7 +1014,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _proxyPortController.text = proxyAddress.port;
     _proxyUserController.text = _config!.proxy.usr;
     _proxyPasswordController.text = _config!.proxy.pwd;
-    _customTrackersController.text = _config!.extra.bt.customTrackers.join('\n');
+    _customTrackersController.text = _config!.protocolConfig.bt.customTrackers.join('\n');
     _syncingControllers = false;
   }
 
@@ -1143,11 +1143,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     config.proxy.host = _joinHostPort(_proxyHostController.text, _proxyPortController.text);
     config.proxy.usr = _proxyUserController.text.trim();
     config.proxy.pwd = _proxyPasswordController.text;
-    config.extra.bt.customTrackers = _lines(_customTrackersController.text);
-    config.protocolConfig.bt.trackers = {
-      ...config.extra.bt.subscribeTrackers,
-      ...config.extra.bt.customTrackers,
-    }.toList();
+    config.protocolConfig.bt.customTrackers = _lines(_customTrackersController.text);
   }
 
   void _applyStartControllers(StartConfig config) {
@@ -1156,18 +1152,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     config.apiToken = _apiTokenController.text.trim();
   }
 
-  Future<void> _saveConfig() async {
+  Future<bool> _saveConfig() async {
     final config = _config;
     if (config == null) {
-      return;
+      return false;
     }
     _applyTextControllers(config);
     final snapshot = DownloaderConfig.fromJson(config.toJson());
     _loadedSignature = _signature(snapshot);
     try {
       await ref.read(settingsControllerProvider.notifier).save(snapshot);
+      return true;
     } catch (error) {
       if (mounted) _toast(error.toString());
+      return false;
     }
   }
 
@@ -1311,42 +1309,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _mutateConfig((config) => config.extra.backgroundLocationKeepAlive = enabled);
     await LocationKeepAliveCoordinator.instance.reconcile(enabled: enabled);
   }
-  Future<void>
-  _setBackgroundContinuedProcessing(
-    bool enabled,
-  ) async {
-    if (enabled &&
-        !await ContinuedProcessing.isSupported()) {
+
+  Future<void> _setBackgroundContinuedProcessing(bool enabled) async {
+    if (enabled && !await ContinuedProcessing.isSupported()) {
       if (mounted) {
-        _toast(
-          context.l10n
-              .backgroundContinuedProcessingUnsupported,
-        );
+        _toast(context.l10n.backgroundContinuedProcessingUnsupported);
       }
       return;
     }
 
-    final applied =
-        await ContinuedProcessing.setEnabled(
-      enabled,
-    );
+    final applied = await ContinuedProcessing.setEnabled(enabled);
 
     if (enabled && !applied) {
       if (mounted) {
-        _toast(
-          context.l10n
-              .backgroundContinuedProcessingUnsupported,
-        );
+        _toast(context.l10n.backgroundContinuedProcessingUnsupported);
       }
       return;
     }
 
-    _mutateConfig(
-      (config) =>
-          config.extra
-                  .backgroundContinuedProcessing =
-              enabled,
-    );
+    _mutateConfig((config) => config.extra.backgroundContinuedProcessing = enabled);
   }
 
   List<String> _lines(String text) {
@@ -1410,13 +1391,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   List<GithubMirror> get _visibleGithubMirrors =>
-      _config?.extra.githubMirror.mirrors.where((mirror) => !mirror.isDeleted).toList(growable: false) ?? const [];
+      _config?.githubMirror.mirrors.where((mirror) => !mirror.isDeleted).toList(growable: false) ?? const [];
 
   Future<void> _editGithubMirror([GithubMirror? mirror]) async {
     final draft = await showGithubMirrorDialog(context, mirror: mirror);
     if (draft == null || !mounted) return;
     _mutateConfig((config) {
-      final mirrors = List<GithubMirror>.from(config.extra.githubMirror.mirrors);
+      final mirrors = List<GithubMirror>.from(config.githubMirror.mirrors);
       if (mirror == null) {
         mirrors.add(GithubMirror(type: draft.type, url: draft.url));
       } else {
@@ -1424,7 +1405,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         if (index < 0) return;
         mirrors[index] = GithubMirror(type: draft.type, url: draft.url, isBuiltIn: mirror.isBuiltIn, isDeleted: false);
       }
-      config.extra.githubMirror.mirrors = mirrors;
+      config.githubMirror.mirrors = mirrors;
     });
   }
 
@@ -1443,7 +1424,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (mirror.isBuiltIn) {
         mirror.isDeleted = true;
       } else {
-        config.extra.githubMirror.mirrors = List<GithubMirror>.from(config.extra.githubMirror.mirrors)..remove(mirror);
+        config.githubMirror.mirrors = List<GithubMirror>.from(config.githubMirror.mirrors)..remove(mirror);
       }
     });
   }
@@ -1511,8 +1492,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final config = _config;
     if (config == null) return;
     await _runAction(() async {
-      await ref.read(appRuntimeControllerProvider.notifier).updateTrackers(DownloaderConfig.fromJson(config.toJson()));
-      if (mounted) await ref.read(settingsControllerProvider.notifier).reload(showLoading: false);
+      if (!await _saveConfig()) return;
+      try {
+        await ref.read(appRuntimeControllerProvider.notifier).updateTrackers();
+      } finally {
+        if (mounted) await ref.read(settingsControllerProvider.notifier).reload(showLoading: false);
+      }
     });
   }
 
@@ -2150,233 +2135,6 @@ class _BrowserExtensionLinks extends StatelessWidget {
           ),
       ],
     );
-  }
-}
-
-class _TrackerSubscriptionsControl extends StatefulWidget {
-  const _TrackerSubscriptionsControl({
-    required this.selected,
-    required this.autoUpdate,
-    required this.lastUpdated,
-    required this.onChanged,
-    required this.onAutoUpdateChanged,
-    required this.onUpdate,
-  });
-
-  final List<String> selected;
-  final bool autoUpdate;
-  final DateTime? lastUpdated;
-  final ValueChanged<List<String>> onChanged;
-  final ValueChanged<bool> onAutoUpdateChanged;
-  final Future<void> Function() onUpdate;
-
-  @override
-  State<_TrackerSubscriptionsControl> createState() => _TrackerSubscriptionsControlState();
-}
-
-class _TrackerSubscriptionsControlState extends State<_TrackerSubscriptionsControl> {
-  final _verticalScrollController = ScrollController();
-  final _horizontalScrollController = ScrollController();
-  bool _updating = false;
-
-  @override
-  void dispose() {
-    _verticalScrollController.dispose();
-    _horizontalScrollController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final desktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
-    final palette = AppPalette.of(context);
-    final selectedCount = allTrackerSubscribeUrls.where(widget.selected.contains).length;
-    final allSelected = selectedCount == allTrackerSubscribeUrls.length;
-    final selectAllState = allSelected
-        ? shad.CheckboxState.checked
-        : selectedCount == 0
-        ? shad.CheckboxState.unchecked
-        : shad.CheckboxState.indeterminate;
-    return SizedBox(
-      width: desktop ? AppDesignTokens.settingsFormControlWidth : double.infinity,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            height: 210,
-            decoration: BoxDecoration(
-              border: Border.all(color: palette.border),
-              borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-            ),
-            child: Column(
-              children: [
-                GestureDetector(
-                  key: const ValueKey('tracker-select-all'),
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => _toggleAll(allSelected),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    child: Row(
-                      children: [
-                        shad.Checkbox(state: selectAllState, onChanged: (_) => _toggleAll(allSelected)),
-                        const SizedBox(width: AppDesignTokens.checkboxLabelGap),
-                        Expanded(
-                          child: Text(
-                            context.l10n.selectAll,
-                            style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        Text(
-                          '$selectedCount/${allTrackerSubscribeUrls.length}',
-                          style: TextStyle(color: palette.textMuted, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Divider(height: 1, color: palette.border),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final labelStyle = TextStyle(color: palette.textSecondary, fontSize: 11);
-                      final contentHeight = (constraints.maxHeight - AppDesignTokens.space12).clamp(
-                        0.0,
-                        double.infinity,
-                      );
-                      return Scrollbar(
-                        key: const ValueKey('tracker-horizontal-scrollbar'),
-                        controller: _horizontalScrollController,
-                        thumbVisibility: true,
-                        scrollbarOrientation: ScrollbarOrientation.bottom,
-                        notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: AppDesignTokens.space12),
-                          child: SingleChildScrollView(
-                            key: const ValueKey('tracker-horizontal-scroll-view'),
-                            controller: _horizontalScrollController,
-                            scrollDirection: Axis.horizontal,
-                            child: SizedBox(
-                              height: contentHeight,
-                              child: Scrollbar(
-                                key: const ValueKey('tracker-vertical-scrollbar'),
-                                controller: _verticalScrollController,
-                                thumbVisibility: true,
-                                scrollbarOrientation: ScrollbarOrientation.right,
-                                notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
-                                child: SingleChildScrollView(
-                                  key: const ValueKey('tracker-vertical-scroll-view'),
-                                  controller: _verticalScrollController,
-                                  child: IntrinsicWidth(
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 4),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                                          children: [
-                                            for (final (index, url) in allTrackerSubscribeUrls.indexed) ...[
-                                              Builder(
-                                                builder: (context) {
-                                                  final checked = widget.selected.contains(url);
-                                                  return GestureDetector(
-                                                    behavior: HitTestBehavior.opaque,
-                                                    onTap: () => _toggle(url, checked),
-                                                    child: Padding(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                                      child: Row(
-                                                        children: [
-                                                          shad.Checkbox(
-                                                            state: checked
-                                                                ? shad.CheckboxState.checked
-                                                                : shad.CheckboxState.unchecked,
-                                                            onChanged: (_) => _toggle(url, checked),
-                                                          ),
-                                                          const SizedBox(width: AppDesignTokens.checkboxLabelGap),
-                                                          Text(url, maxLines: 1, style: labelStyle),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                              if (index != allTrackerSubscribeUrls.length - 1)
-                                                Divider(height: 1, color: palette.border),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              AppLoadingButton(
-                key: const ValueKey('tracker-update-button'),
-                onPressed: _update,
-                loading: _updating,
-                icon: const Icon(Icons.refresh, size: 17),
-                child: Text(context.l10n.newVersionUpdate),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  context.l10n.updateEveryDay,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: TextStyle(color: palette.textSecondary, fontSize: 12),
-                ),
-              ),
-              const SizedBox(width: 8),
-              shad.Switch(value: widget.autoUpdate, onChanged: widget.onAutoUpdateChanged),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            widget.lastUpdated == null
-                ? context.l10n.neverUpdated
-                : context.l10n.lastUpdated(_formatDateTime(widget.lastUpdated!)),
-            style: TextStyle(color: palette.textMuted, fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _toggle(String url, bool checked) {
-    final next = List<String>.from(widget.selected);
-    checked ? next.remove(url) : next.add(url);
-    widget.onChanged(next);
-  }
-
-  void _toggleAll(bool allSelected) {
-    widget.onChanged(allSelected ? const [] : List<String>.from(allTrackerSubscribeUrls));
-  }
-
-  Future<void> _update() async {
-    setState(() => _updating = true);
-    try {
-      await widget.onUpdate();
-    } finally {
-      if (mounted) setState(() => _updating = false);
-    }
-  }
-
-  String _formatDateTime(DateTime value) {
-    String two(int number) => number.toString().padLeft(2, '0');
-    return '${value.year}-${two(value.month)}-${two(value.day)} ${two(value.hour)}:${two(value.minute)}:${two(value.second)}';
   }
 }
 

@@ -438,6 +438,7 @@
   "editCategory": "Sửa phân loại",
   "deleteCategoryTitle": "Xoá phân loại",
   "updateFailed": "Lỗi cập nhật. Xin hãy thử lại sau",
+  "updateVerificationFailed": "Xác minh bản cập nhật thất bại. Đã dừng cài đặt.",
   "newVersionAvailable": "Name",
   "releaseNotes": "Có gì mới không?",
   "noReleaseNotes": "Không có ghi chú giải thoát",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "Chuyển sang cấu hình có xác thực",
   "mcpRequiresTcp": "Hướng dẫn kết nối tác nhân khả dụng khi giao thức API là TCP.",
   "emptyTaskCreateHint": "Nhấn {action} để bắt đầu tải xuống",
-  "emptyStateRetryHint": "Nhấn {action} để thử lại"
+  "emptyStateRetryHint": "Nhấn {action} để thử lại",
+  "addTrackerSubscription": "Thêm đăng ký tracker",
+  "trackerSubscriptionUrl": "URL đăng ký",
+  "trackerSubscriptionFetchSuccess": "Thành công",
+  "trackerSubscriptionFetchFailed": "Thất bại",
+  "trackerSubscriptionUpdateStatus": "Trạng thái cập nhật",
+  "trackerSubscriptionTrackerCount": "Số tracker",
+  "trackerSubscriptionNotUpdated": "Chưa cập nhật",
+  "actions": "Thao tác"
 }

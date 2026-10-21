@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
-
 import '../../../../util/util.dart';
 import '../../../ffi/libgopeed_worker.dart';
 import '../../../libgopeed_boot.dart';
@@ -10,17 +8,6 @@ import '../gopeed_transport.dart';
 GopeedTransport createTransport(GopeedTransportConfig config) => NativeGopeedTransport();
 
 class NativeGopeedTransport implements GopeedTransport {
-  NativeGopeedTransport()
-    : _externalDio = Dio(
-        BaseOptions(
-          contentType: Headers.jsonContentType,
-          sendTimeout: const Duration(seconds: 5),
-          connectTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 120),
-        ),
-      );
-
-  final Dio _externalDio;
   final LibgopeedWorker? _ffiWorker = Util.isDesktop() ? LibgopeedWorker() : null;
 
   @override
@@ -43,15 +30,6 @@ class NativeGopeedTransport implements GopeedTransport {
       body: requestBody,
     );
     return jsonDecode(payload);
-  }
-
-  @override
-  Future<Response<String>> proxyRequest(String uri, {dynamic data, Options? options}) {
-    return _externalDio.request<String>(
-      uri,
-      data: data,
-      options: (options ?? Options()).copyWith(responseType: ResponseType.plain),
-    );
   }
 
   @override

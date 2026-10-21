@@ -2,6 +2,7 @@ package download
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,6 +43,7 @@ const (
 	bucketTaskStats = "task_stats"
 	// protocol-level shared client state bucket
 	bucketProtocolState = "protocol_state"
+	bucketProtocolJobs  = "protocol_jobs"
 	// downloader config bucket
 	bucketConfig = "config"
 	// downloader extension bucket
@@ -99,6 +101,9 @@ type Progress struct {
 }
 
 type Downloader struct {
+	backgroundCtx       context.Context
+	cancelBackground    context.CancelFunc
+	protocolJobs        *protocolScheduler
 	tempFiles           *tempfiles.Scope
 	webviewProfilesLock sync.Mutex
 	webviewProfiles     map[string]*extensionWebViewProfile
@@ -125,8 +130,10 @@ type Downloader struct {
 	// Key: fullBaseName (e.g., "/path/archive.7z"), Value: taskID that claimed it
 	claimedExtractions sync.Map
 
-	extensions []*Extension
-	blob       *internalblob.Registry
+	extensions       []*Extension
+	extensionGitLock sync.Mutex
+	extensionGitWG   sync.WaitGroup
+	blob             *internalblob.Registry
 }
 
 func NewDownloader(cfg *DownloaderConfig) *Downloader {
@@ -135,11 +142,14 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 	}
 	cfg.Init()
 
+	backgroundCtx, cancelBackground := context.WithCancel(context.Background())
 	d := &Downloader{
-		cfg:          cfg,
-		fetcherCache: make(map[string]fetcher.Fetcher),
-		waitTasks:    make([]*Task, 0),
-		storage:      cfg.Storage,
+		backgroundCtx:    backgroundCtx,
+		cancelBackground: cancelBackground,
+		cfg:              cfg,
+		fetcherCache:     make(map[string]fetcher.Fetcher),
+		waitTasks:        make([]*Task, 0),
+		storage:          cfg.Storage,
 
 		lock:               &sync.Mutex{},
 		configLock:         &sync.RWMutex{},
@@ -165,7 +175,7 @@ func (d *Downloader) Setup() error {
 	d.blob = internalblob.NewRegistry("")
 
 	// setup storage
-	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketTaskStats, bucketProtocolState, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
+	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketTaskStats, bucketProtocolState, bucketProtocolJobs, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
 		return err
 	}
 	// load config from storage
@@ -181,20 +191,23 @@ func (d *Downloader) Setup() error {
 			FirstLoad: true,
 		}
 	}
-	// init default config
-	d.cfg.DownloaderStoreConfig.Init()
-	// init protocol config, if not exist, use default config
+	// Initialize the current backend configuration schema and defaults.
+	if err := d.initProtocolConfigs(); err != nil {
+		return err
+	}
+	// Attach optional protocol state stores after configuration initialization.
 	for _, fm := range d.cfg.FetchManagers {
 		protocol := fm.Name()
-		if _, ok := d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol]; !ok {
-			d.cfg.DownloaderStoreConfig.ProtocolConfig[protocol] = fm.DefaultConfig()
-		}
 		if sfm, ok := fm.(fetcher.StatefulFetcherManager); ok {
 			sfm.SetStateStore(&protocolStateStore{
 				storage:  d.storage,
 				protocol: protocol,
 			})
 		}
+	}
+
+	if err := d.setupProtocolJobs(); err != nil {
+		return err
 	}
 
 	// load tasks from storage
@@ -365,6 +378,7 @@ func (d *Downloader) Setup() error {
 			time.Sleep(time.Millisecond * time.Duration(d.cfg.RefreshInterval))
 		}
 	}()
+	d.protocolJobs.start()
 	return nil
 }
 
@@ -1181,7 +1195,14 @@ func (d *Downloader) doDelete(task *Task, force bool) (err error) {
 }
 
 func (d *Downloader) Close() error {
-	d.closed.Store(true)
+	if d.closed.Swap(true) {
+		return nil
+	}
+	d.cancelBackground()
+	d.waitForExtensionGit()
+	if d.protocolJobs != nil {
+		d.protocolJobs.close()
+	}
 	d.webviewProxyLock.Lock()
 	if d.webviewProxy != nil {
 		_ = d.webviewProxy.Close()
@@ -1336,7 +1357,7 @@ func (d *Downloader) GetTasksByFilter(filter *TaskFilter) []*Task {
 func (d *Downloader) GetConfig() (*base.DownloaderStoreConfig, error) {
 	d.configLock.RLock()
 	defer d.configLock.RUnlock()
-	return d.cfg.DownloaderStoreConfig, nil
+	return util.DeepClone(d.cfg.DownloaderStoreConfig), nil
 }
 
 func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
@@ -1344,12 +1365,60 @@ func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
 		return errors.New("config is nil")
 	}
 	next := util.DeepClone(v)
+	changedProtocols := []string{}
 	d.configLock.Lock()
-	defer d.configLock.Unlock()
+	if d.closed.Load() {
+		d.configLock.Unlock()
+		return errors.New("downloader is closed")
+	}
+	if next.GithubMirror == nil {
+		next.GithubMirror = util.DeepClone(d.cfg.GithubMirror)
+	}
+	if err := next.GithubMirror.Validate(); err != nil {
+		d.configLock.Unlock()
+		return err
+	}
+	if next.ProtocolConfig == nil {
+		next.ProtocolConfig = map[string]any{}
+	}
+	for name := range next.ProtocolConfig {
+		if _, err := d.protocolManager(name); err != nil {
+			d.configLock.Unlock()
+			return err
+		}
+	}
+	for _, fm := range d.cfg.FetchManagers {
+		name := fm.Name()
+		value, exists := next.ProtocolConfig[name]
+		if !exists {
+			value = d.cfg.ProtocolConfig[name]
+		}
+		value, err := preserveProtocolState(value, d.cfg.ProtocolConfig[name])
+		if err == nil {
+			value, err = normalizeProtocol(fm, value)
+		}
+		if err != nil {
+			d.configLock.Unlock()
+			return err
+		}
+		next.ProtocolConfig[name] = value
+		oldJSON, _ := json.Marshal(d.cfg.ProtocolConfig[name])
+		newJSON, _ := json.Marshal(value)
+		if !bytes.Equal(oldJSON, newJSON) {
+			changedProtocols = append(changedProtocols, name)
+		}
+	}
 	if err := d.storage.Put(bucketConfig, "config", next); err != nil {
+		d.configLock.Unlock()
 		return err
 	}
 	d.cfg.DownloaderStoreConfig = next
+	d.configLock.Unlock()
+	if d.protocolJobs != nil {
+		for _, name := range changedProtocols {
+			d.protocolJobs.changed(name)
+		}
+	}
 	return nil
 }
 

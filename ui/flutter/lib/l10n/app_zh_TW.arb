@@ -426,7 +426,7 @@
   "logDirectoryUnavailable": "日誌目錄尚未初始化",
   "unableOpenExternalLink": "無法開啟外部連結",
   "neverUpdated": "尚未更新",
-  "lastUpdated": "上次更新：{time}",
+  "lastUpdated": "上次更新時間：{time}",
   "unableLoadSettings": "無法載入設定",
   "fieldRequired": "{field}不能為空",
   "addGithubMirror": "新增 GitHub 映象",
@@ -438,6 +438,7 @@
   "editCategory": "編輯分類",
   "deleteCategoryTitle": "刪除分類？",
   "updateFailed": "更新失敗，請稍後重試",
+  "updateVerificationFailed": "更新套件驗證失敗，已停止安裝",
   "newVersionAvailable": "發現新版本",
   "releaseNotes": "更新內容",
   "noReleaseNotes": "暫無更新說明",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "切換為認證設定",
   "mcpRequiresTcp": "API 通訊協定為 TCP 時才能使用 Agent 接入指引。",
   "emptyTaskCreateHint": "點擊{action}開始下載",
-  "emptyStateRetryHint": "點擊{action}重新載入"
+  "emptyStateRetryHint": "點擊{action}重新載入",
+  "addTrackerSubscription": "新增 Tracker 訂閱",
+  "trackerSubscriptionUrl": "訂閱網址",
+  "trackerSubscriptionFetchSuccess": "成功",
+  "trackerSubscriptionFetchFailed": "失敗",
+  "trackerSubscriptionUpdateStatus": "更新狀態",
+  "trackerSubscriptionTrackerCount": "Tracker 數量",
+  "trackerSubscriptionNotUpdated": "未更新",
+  "actions": "操作"
 }

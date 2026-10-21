@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/api.dart' as api;
 import 'package:gopeed/core/network/gopeed/gopeed_transport.dart';
@@ -29,11 +28,6 @@ class _LoginTransport implements GopeedTransport {
     expect(path, 'api/web/login');
     expect(method, 'POST');
     return {'code': 0};
-  }
-
-  @override
-  Future<Response<String>> proxyRequest(String uri, {dynamic data, Options? options}) {
-    throw UnimplementedError();
   }
 
   @override

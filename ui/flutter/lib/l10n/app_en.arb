@@ -462,6 +462,7 @@
   "editCategory": "Edit Category",
   "deleteCategoryTitle": "Delete category?",
   "updateFailed": "Update failed. Please try again later",
+  "updateVerificationFailed": "Update verification failed. Installation stopped.",
   "newVersionAvailable": "A new version is available",
   "releaseNotes": "What’s new",
   "noReleaseNotes": "No release notes available",
@@ -666,5 +667,13 @@
         "type": "String"
       }
     }
-  }
+  },
+  "addTrackerSubscription": "Add tracker subscription",
+  "trackerSubscriptionUrl": "Subscription URL",
+  "trackerSubscriptionFetchSuccess": "Succeeded",
+  "trackerSubscriptionFetchFailed": "Failed",
+  "trackerSubscriptionUpdateStatus": "Update status",
+  "trackerSubscriptionTrackerCount": "Tracker count",
+  "trackerSubscriptionNotUpdated": "Not updated",
+  "actions": "Actions"
 }

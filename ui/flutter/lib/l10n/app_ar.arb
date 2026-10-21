@@ -438,6 +438,7 @@
   "editCategory": "الفئة",
   "deleteCategoryTitle": "تحذف الفئة؟",
   "updateFailed": "لقد فشل التحديث، حاول مرة أخرى لاحقاً",
+  "updateVerificationFailed": "فشل التحقق من التحديث. تم إيقاف التثبيت.",
   "newVersionAvailable": "ويمكن الحصول على نسخة جديدة",
   "releaseNotes": "ما الجديد",
   "noReleaseNotes": "لا توجد مذكرات إطلاق",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "التبديل إلى إعدادات المصادقة",
   "mcpRequiresTcp": "تتوفر إرشادات ربط الوكيل عندما يكون بروتوكول API هو TCP.",
   "emptyTaskCreateHint": "اضغط على {action} لبدء التنزيل",
-  "emptyStateRetryHint": "اضغط على {action} لإعادة المحاولة"
+  "emptyStateRetryHint": "اضغط على {action} لإعادة المحاولة",
+  "addTrackerSubscription": "إضافة اشتراك متتبعات",
+  "trackerSubscriptionUrl": "رابط الاشتراك",
+  "trackerSubscriptionFetchSuccess": "نجح",
+  "trackerSubscriptionFetchFailed": "فشل",
+  "trackerSubscriptionUpdateStatus": "حالة التحديث",
+  "trackerSubscriptionTrackerCount": "عدد المتتبعات",
+  "trackerSubscriptionNotUpdated": "لم يُحدّث بعد",
+  "actions": "الإجراءات"
 }

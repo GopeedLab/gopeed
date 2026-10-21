@@ -438,6 +438,7 @@
   "editCategory": "Edytuj kategorię",
   "deleteCategoryTitle": "Skasować kategorię?",
   "updateFailed": "Uaktualnienie nie powiodło się. Proszę spróbować ponownie później",
+  "updateVerificationFailed": "Weryfikacja aktualizacji nie powiodła się. Instalacja została zatrzymana.",
   "newVersionAvailable": "Nowa wersja jest dostępna",
   "releaseNotes": "Co nowego?",
   "noReleaseNotes": "Brak informacji o wydaniu",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "Przełącz na konfigurację z uwierzytelnianiem",
   "mcpRequiresTcp": "Instrukcje łączenia agentów są dostępne, gdy protokół API to TCP.",
   "emptyTaskCreateHint": "Kliknij {action}, aby rozpocząć pobieranie",
-  "emptyStateRetryHint": "Kliknij {action}, aby spróbować ponownie"
+  "emptyStateRetryHint": "Kliknij {action}, aby spróbować ponownie",
+  "addTrackerSubscription": "Dodaj subskrypcję trackerów",
+  "trackerSubscriptionUrl": "URL subskrypcji",
+  "trackerSubscriptionFetchSuccess": "Sukces",
+  "trackerSubscriptionFetchFailed": "Niepowodzenie",
+  "trackerSubscriptionUpdateStatus": "Stan aktualizacji",
+  "trackerSubscriptionTrackerCount": "Liczba trackerów",
+  "trackerSubscriptionNotUpdated": "Jeszcze nie zaktualizowano",
+  "actions": "Działania"
 }

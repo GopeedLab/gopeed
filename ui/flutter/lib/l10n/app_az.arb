@@ -452,6 +452,7 @@
   "editCategory": "Kateqoriyanı Redaktə Et",
   "deleteCategoryTitle": "Kateqoriya silinsin?",
   "updateFailed": "Yeniləmə uğursuz oldu. Zəhmət olmasa sonra yenidən cəhd edin",
+  "updateVerificationFailed": "Yeniləmənin yoxlanması uğursuz oldu. Quraşdırma dayandırıldı.",
   "newVersionAvailable": "Yeni versiya mövcuddur",
   "releaseNotes": "Yeniliklər",
   "noReleaseNotes": "Buraxılış qeydləri mövcud deyil",
@@ -640,5 +641,13 @@
   "webApiConfigReadOnlyHelp": "Veb versiyası API parametrlərinin onlayn dəyişdirilməsini dəstəkləmir. Server başlanğıc seçimlərini və ya konfiqurasiya faylını yeniləyin, sonra dəyişikliklərin qüvvəyə minməsi üçün xidməti yenidən başladın.",
   "mcpRequiresTcp": "Agent əlaqə təlimatları API protokolu TCP olduqda mövcuddur.",
   "emptyTaskCreateHint": "Endirməyə başlamaq üçün {action} düyməsinə klikləyin",
-  "emptyStateRetryHint": "Yenidən cəhd etmək üçün {action} düyməsinə klikləyin"
+  "emptyStateRetryHint": "Yenidən cəhd etmək üçün {action} düyməsinə klikləyin",
+  "addTrackerSubscription": "Tracker abunəliyi əlavə et",
+  "trackerSubscriptionUrl": "Abunəlik URL-i",
+  "trackerSubscriptionFetchSuccess": "Uğurlu",
+  "trackerSubscriptionFetchFailed": "Uğursuz",
+  "trackerSubscriptionUpdateStatus": "Yeniləmə statusu",
+  "trackerSubscriptionTrackerCount": "Tracker sayı",
+  "trackerSubscriptionNotUpdated": "Hələ yenilənməyib",
+  "actions": "Əməliyyatlar"
 }

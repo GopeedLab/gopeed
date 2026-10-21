@@ -438,6 +438,7 @@
   "editCategory": "Sunting Kategori",
   "deleteCategoryTitle": "Hapus kategori?",
   "updateFailed": "Pemutakhiran gagal. Silakan coba lagi nanti",
+  "updateVerificationFailed": "Verifikasi pembaruan gagal. Instalasi dihentikan.",
   "newVersionAvailable": "Versi baru tersedia",
   "releaseNotes": "Apa yang baru",
   "noReleaseNotes": "Tidak ada catatan rilis yang tersedia",
@@ -456,5 +457,13 @@
   "useMcpApiTokenTemplate": "Beralih ke konfigurasi terautentikasi",
   "mcpRequiresTcp": "Petunjuk koneksi agen tersedia saat protokol API menggunakan TCP.",
   "emptyTaskCreateHint": "Klik {action} untuk mulai mengunduh",
-  "emptyStateRetryHint": "Klik {action} untuk mencoba lagi"
+  "emptyStateRetryHint": "Klik {action} untuk mencoba lagi",
+  "addTrackerSubscription": "Tambah langganan tracker",
+  "trackerSubscriptionUrl": "URL langganan",
+  "trackerSubscriptionFetchSuccess": "Berhasil",
+  "trackerSubscriptionFetchFailed": "Gagal",
+  "trackerSubscriptionUpdateStatus": "Status pembaruan",
+  "trackerSubscriptionTrackerCount": "Jumlah tracker",
+  "trackerSubscriptionNotUpdated": "Belum diperbarui",
+  "actions": "Tindakan"
 }

@@ -12,18 +12,20 @@ class SettingsItem extends StatelessWidget {
     this.subtitle,
     this.subtitleAction,
     this.titleTrailing,
+    this.stacked = false,
   });
 
   final String title;
   final String? subtitle;
   final Widget? subtitleAction;
   final Widget? titleTrailing;
+  final bool stacked;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final desktop = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
-    if (desktop) {
+    if (desktop && !stacked) {
       return LayoutBuilder(
         builder: (context, constraints) {
           const leadingSpace = 2.0;

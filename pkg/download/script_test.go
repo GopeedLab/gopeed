@@ -191,13 +191,16 @@ func ensureScriptExecutable(t *testing.T, scriptPath string) {
 }
 
 func setupScriptTest(t *testing.T, fn func(downloader *Downloader)) {
-	defaultDownloader.Setup()
-	defaultDownloader.cfg.StorageDir = ".test_storage"
-	defaultDownloader.cfg.DownloadDir = ".test_download"
-	defer func() {
-		defaultDownloader.Clear()
-		os.RemoveAll(defaultDownloader.cfg.StorageDir)
-		os.RemoveAll(defaultDownloader.cfg.DownloadDir)
-	}()
-	fn(defaultDownloader)
+	t.Helper()
+	// Each test owns its runtime; a closed Downloader cannot be reused.
+	d := NewDownloader(&DownloaderConfig{StorageDir: t.TempDir(), TempDir: t.TempDir()})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := d.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	fn(d)
 }

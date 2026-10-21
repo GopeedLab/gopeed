@@ -2,7 +2,6 @@ package rest
 
 import (
 	"bytes"
-	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/test"
@@ -669,29 +669,49 @@ func TestWebFsEnhance(t *testing.T) {
 	})
 }
 
-func TestDoProxy(t *testing.T) {
-	doTest(func() {
-		code, respBody := doHttpRequest0(http.MethodGet, "/api/web/proxy", map[string]string{
-			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/README.md",
-		}, nil)
-		if code != http.StatusOK {
-			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusOK)
-		}
-		want := "4ee193b676f1ebb2ad810e016350d52a"
-		got := fmt.Sprintf("%x", md5.Sum(respBody))
-		if got != want {
-			t.Errorf("DoProxy() got = %v, want %v", got, want)
-		}
-	})
-
-	doTest(func() {
-		code, _ := doHttpRequest0(http.MethodGet, "/api/web/proxy", map[string]string{
-			"X-Target-Uri": "https://github.com/GopeedLab/gopeed/raw/695da7ea87d2b455552b709d3cb4d7879484d4d1/NOT_FOUND",
-		}, nil)
-		if code != http.StatusNotFound {
-			t.Errorf("DoProxy() got = %v, want %v", code, http.StatusNotFound)
-		}
-	})
+func TestUnknownAPIPathsReturn404(t *testing.T) {
+	for _, webEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("web=%t", webEnabled), func(t *testing.T) {
+			doTest0(func(cfg *model.StartConfig) {
+				cfg.WebEnable = webEnabled
+				cfg.WebFS = fstest.MapFS{
+					"index.html":     &fstest.MapFile{Data: []byte("<html>app</html>")},
+					"api/static.txt": &fstest.MapFile{Data: []byte("must not serve API paths as files")},
+					"apiary":         &fstest.MapFile{Data: []byte("namespace boundary")},
+				}
+			}, func() {
+				paths := []string{"/api", "/api/", "/api/missing", "/api/v1/missing", "/api/web/missing", "/api/web/login", "/api/static.txt"}
+				for _, path := range paths {
+					for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead} {
+						code, body := doHttpRequest0(method, path, nil, nil)
+						if code != http.StatusNotFound {
+							t.Fatalf("%s %s status %d, want 404: %s", method, path, code, body)
+						}
+						if strings.Contains(string(body), "<html>app</html>") {
+							t.Fatalf("%s %s fell through to web files", method, path)
+						}
+					}
+				}
+				// Known API routes still run, while unsupported methods use the API fallback.
+				code, _ := doHttpRequest0(http.MethodGet, "/api/v1/info", nil, nil)
+				if code != http.StatusOK {
+					t.Fatalf("known API status %d, want 200", code)
+				}
+				code, _ = doHttpRequest0(http.MethodPost, "/api/v1/info", nil, nil)
+				if code != http.StatusNotFound {
+					t.Fatalf("unsupported API method status %d, want 404", code)
+				}
+				if webEnabled {
+					for path, want := range map[string]string{"/": "<html>app</html>", "/apiary": "namespace boundary"} {
+						code, body := doHttpRequest0(http.MethodGet, path, map[string]string{"Accept-Encoding": "identity"}, nil)
+						if code != http.StatusOK || !strings.Contains(string(body), want) {
+							t.Fatalf("web file %s status %d body %s", path, code, body)
+						}
+					}
+				}
+			})
+		})
+	}
 }
 
 func TestTestWebhook(t *testing.T) {
