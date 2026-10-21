@@ -1209,7 +1209,7 @@ func (f *Fetcher) runConnection(conn *connection) {
 		}
 		f.connMu.Unlock()
 
-		if shouldCountHTTPFailure(err) {
+		if shouldCountHTTPFailure(err) && !f.isConnectionLimitError(conn, err) {
 			if re := extractRequestError(err); re != nil && re.Code == 403 {
 				f.connMu.Lock()
 				conn.State = connFailed
@@ -1246,6 +1246,24 @@ func (f *Fetcher) runConnection(conn *connection) {
 		retries++
 		time.Sleep(retryDelay)
 	}
+}
+
+// isConnectionLimitError reports whether err is a 403 received while another
+// connection is still downloading. That usually means the server limits
+// concurrent connections, so the chunk is retried later like a 503 instead of
+// being dropped. Without another active connection the 403 is a real error.
+func (f *Fetcher) isConnectionLimitError(conn *connection, err error) bool {
+	if re := extractRequestError(err); re == nil || re.Code != 403 {
+		return false
+	}
+	f.connMu.Lock()
+	defer f.connMu.Unlock()
+	for _, other := range f.connections {
+		if other != conn && other.State == connDownloading {
+			return true
+		}
+	}
+	return false
 }
 
 // downloadChunkOnce performs a single HTTP request for the current chunk without retrying.
@@ -2234,13 +2252,6 @@ func (f *Fetcher) onDownloadComplete() {
 
 		if needsMoreData && !conn.Completed && conn.State != connCompleted {
 			// This connection has remaining work and isn't done
-			// Check if it failed with 403 (server limit) - these can be ignored if other connections completed the work
-			if conn.State == connFailed && conn.failed {
-				if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
-					// 403 is server connection limit, check if other connections will complete this chunk
-					continue
-				}
-			}
 			allChunksComplete = false
 			break
 		}
@@ -2259,14 +2270,12 @@ func (f *Fetcher) onDownloadComplete() {
 		}
 	}
 
-	// Check for other errors, but ignore 403 (server connection limit) errors if download completed.
+	// Check for other errors if download did not complete.
+	// A 403 caused by a server connection limit is retried in runConnection,
+	// so a connection that still failed with 403 has left its chunk unfinished.
 	if finalErr == nil && !downloadComplete && !allChunksComplete {
 		for _, conn := range f.connections {
 			if conn.State == connFailed && conn.failed {
-				// Skip 403 errors (server connection limit) - these are expected when exceeding server's limit
-				if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
-					continue
-				}
 				if re := extractRequestError(conn.lastErr); re != nil {
 					finalErr = fmt.Errorf("connection %d failed: retries=%d, status=%d", conn.ID, conn.retryTimes, re.Code)
 				} else if conn.lastErr != nil {
