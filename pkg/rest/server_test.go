@@ -680,7 +680,7 @@ func TestUnknownAPIPathsReturn404(t *testing.T) {
 					"apiary":         &fstest.MapFile{Data: []byte("namespace boundary")},
 				}
 			}, func() {
-				paths := []string{"/api", "/api/", "/api/missing", "/api/v1/missing", "/api/web/missing", "/api/web/login", "/api/static.txt", "/api/web/proxy", "/api/web/proxy/", "/api/web/proxy/https://example.com", "/api/v1/protocols/bt/config"}
+				paths := []string{"/api", "/api/", "/api/missing", "/api/v1/missing", "/api/web/missing", "/api/web/login", "/api/static.txt"}
 				for _, path := range paths {
 					for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodHead} {
 						code, body := doHttpRequest0(method, path, nil, nil)

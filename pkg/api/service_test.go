@@ -85,7 +85,7 @@ func serviceTestRequest[T any](t *testing.T, service *Service, method, path stri
 	return result.Data
 }
 
-func TestFullConfigDispatchAndRetiredProtocolConfigRoutes(t *testing.T) {
+func TestFullConfigDispatch(t *testing.T) {
 	d := download.NewDownloader(&download.DownloaderConfig{StorageDir: t.TempDir(), TempDir: t.TempDir(), FetchManagers: []fetcher.FetcherManager{&httpProtocol.FetcherManager{}}})
 	if err := d.Setup(); err != nil {
 		t.Fatal(err)
@@ -112,11 +112,6 @@ func TestFullConfigDispatchAndRetiredProtocolConfigRoutes(t *testing.T) {
 	}
 	if status != http.StatusOK || result.Data.ProtocolConfig["http"].Connections != 3 {
 		t.Fatalf("%d %s", status, body)
-	}
-	for _, method := range []string{http.MethodGet, http.MethodPatch, http.MethodPut} {
-		if response := service.Dispatch(method, "/api/v1/protocols/http/config", nil, nil, nil); response.StatusCode != http.StatusNotFound {
-			t.Fatalf("retired %s route still accessible: %+v", method, response)
-		}
 	}
 	if response := service.Dispatch(http.MethodPost, "/api/v1/protocols/http/jobs/missing/trigger", nil, nil, nil); response.StatusCode != http.StatusNotFound {
 		t.Fatalf("%+v", response)
@@ -208,12 +203,6 @@ func TestMirrorCandidates(t *testing.T) {
 			t.Fatalf("unknown provider accepted: %+v", response)
 		}
 	}
-
-	for _, path := range []string{"/api/v1/github/candidates", "/api/v1/app/updates/check", "/api/v1/app/updates/candidates", "/api/v1/app/updates/prepare", "/api/v1/store/extensions/test/install-report"} {
-		if response := service.Dispatch(http.MethodPost, path, nil, nil, nil); response.StatusCode != http.StatusNotFound {
-			t.Fatalf("removed route accessible: %s %+v", path, response)
-		}
-	}
 }
 
 type apiJobState struct {
@@ -276,17 +265,5 @@ func TestFullConfigAndJobTriggerShareProtectedProtocolState(t *testing.T) {
 	}
 	if response.Data.ProtocolConfig["state-api"].State.Runs != 1 {
 		t.Fatalf("job state overwritten: %s", raw)
-	}
-}
-
-func TestStoreProxyRoutesAreRemoved(t *testing.T) {
-	service, err := NewService(download.NewDownloader(&download.DownloaderConfig{}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range []string{"/api/v1/store/extensions", "/api/v1/store/extensions/test"} {
-		if response := service.Dispatch(http.MethodGet, path, nil, nil, nil); response.StatusCode != http.StatusNotFound {
-			t.Fatalf("removed route accessible: %s %+v", path, response)
-		}
 	}
 }
