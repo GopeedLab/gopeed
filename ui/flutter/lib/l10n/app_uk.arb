@@ -438,6 +438,7 @@
   "editCategory": "Редагувати Категорія",
   "deleteCategoryTitle": "Категорія Видалити?",
   "updateFailed": "Поверніть ще раз",
+  "updateVerificationFailed": "Не вдалося перевірити оновлення. Встановлення зупинено.",
   "newVersionAvailable": "Нова версія доступна",
   "releaseNotes": "Що нового",
   "noReleaseNotes": "Немає вихідних нот",

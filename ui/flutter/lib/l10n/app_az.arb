@@ -452,6 +452,7 @@
   "editCategory": "Kateqoriyanı Redaktə Et",
   "deleteCategoryTitle": "Kateqoriya silinsin?",
   "updateFailed": "Yeniləmə uğursuz oldu. Zəhmət olmasa sonra yenidən cəhd edin",
+  "updateVerificationFailed": "Yeniləmənin yoxlanması uğursuz oldu. Quraşdırma dayandırıldı.",
   "newVersionAvailable": "Yeni versiya mövcuddur",
   "releaseNotes": "Yeniliklər",
   "noReleaseNotes": "Buraxılış qeydləri mövcud deyil",

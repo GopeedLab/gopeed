@@ -438,6 +438,7 @@
   "editCategory": "Editar a Categoria",
   "deleteCategoryTitle": "Apagar a categoria?",
   "updateFailed": "A actualização falhou. Por favor tente novamente mais tarde",
+  "updateVerificationFailed": "A verificação da atualização falhou. A instalação foi interrompida.",
   "newVersionAvailable": "Uma nova versão está disponível",
   "releaseNotes": "O que há de novo",
   "noReleaseNotes": "Nenhuma nota de lançamento disponível",

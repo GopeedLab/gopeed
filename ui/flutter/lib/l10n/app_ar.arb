@@ -438,6 +438,7 @@
   "editCategory": "الفئة",
   "deleteCategoryTitle": "تحذف الفئة؟",
   "updateFailed": "لقد فشل التحديث، حاول مرة أخرى لاحقاً",
+  "updateVerificationFailed": "فشل التحقق من التحديث. تم إيقاف التثبيت.",
   "newVersionAvailable": "ويمكن الحصول على نسخة جديدة",
   "releaseNotes": "ما الجديد",
   "noReleaseNotes": "لا توجد مذكرات إطلاق",

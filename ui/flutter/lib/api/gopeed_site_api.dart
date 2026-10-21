@@ -68,7 +68,11 @@ class GopeedSiteApi {
   }
 
   Future<dynamic> getReleases() async {
-    final response = await _client.get<dynamic>('https://gopeed.com/api/releases', queryParameters: {'per_page': 10});
+    final response = await _client.get<dynamic>(
+      'https://gopeed.com/api/releases',
+      queryParameters: {'per_page': 10},
+      options: Options(followRedirects: false),
+    );
     return response.data;
   }
 

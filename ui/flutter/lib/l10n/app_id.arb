@@ -438,6 +438,7 @@
   "editCategory": "Sunting Kategori",
   "deleteCategoryTitle": "Hapus kategori?",
   "updateFailed": "Pemutakhiran gagal. Silakan coba lagi nanti",
+  "updateVerificationFailed": "Verifikasi pembaruan gagal. Instalasi dihentikan.",
   "newVersionAvailable": "Versi baru tersedia",
   "releaseNotes": "Apa yang baru",
   "noReleaseNotes": "Tidak ada catatan rilis yang tersedia",

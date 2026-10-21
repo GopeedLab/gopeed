@@ -1,6 +1,13 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+
+class DownloadChecksumException implements Exception {
+  const DownloadChecksumException();
+  @override
+  String toString() => 'Update package checksum verification failed';
+}
 
 /// Probes backend-provided URLs concurrently, then downloads the fastest usable
 /// candidate. Other candidates remain available if HEAD is unsupported or the
@@ -9,9 +16,13 @@ Future<void> downloadFromCandidates(
   List<String> candidates,
   String savePath, {
   required ProgressCallback onReceiveProgress,
+  required String expectedSha256,
   Dio? client,
   Duration probeTimeout = const Duration(seconds: 3),
 }) async {
+  // Reject missing or malformed trusted metadata before any network request.
+  if (expectedSha256.length != 64 || !RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(expectedSha256))
+    throw const DownloadChecksumException();
   final urls = candidates.toSet().toList(growable: false);
   if (urls.isEmpty) throw ArgumentError.value(candidates, 'candidates', 'No download candidates');
   final dio = client ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 10)));
@@ -58,6 +69,8 @@ Future<void> downloadFromCandidates(
         if (!_isPackageResponse(response.headers) || await File(savePath).length() == 0) {
           throw StateError('Invalid download response from $url');
         }
+        final actual = await sha256.bind(File(savePath).openRead()).first;
+        if (actual.toString() != expectedSha256.toLowerCase()) throw const DownloadChecksumException();
         return;
       } catch (error, stack) {
         lastError = error;

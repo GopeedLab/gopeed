@@ -438,6 +438,7 @@
   "editCategory": "Kategorie bearbeiten",
   "deleteCategoryTitle": "Kategorie löschen?",
   "updateFailed": "Aktualisierung fehlgeschlagen. Bitte versuchen Sie es später noch einmal",
+  "updateVerificationFailed": "Die Überprüfung des Updates ist fehlgeschlagen. Die Installation wurde gestoppt.",
   "newVersionAvailable": "Eine neue Version ist verfügbar",
   "releaseNotes": "Was ist neu?",
   "noReleaseNotes": "Keine Versionshinweise verfügbar",

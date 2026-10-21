@@ -438,6 +438,7 @@
   "editCategory": "ویرایش دسته‌بندی",
   "deleteCategoryTitle": "دسته بندی حذفی؟",
   "updateFailed": "به روز رسانی شکست خورد لطفا دوباره امتحان کنید",
+  "updateVerificationFailed": "تأیید به‌روزرسانی ناموفق بود. نصب متوقف شد.",
   "newVersionAvailable": "نسخه جدید در دسترس است",
   "releaseNotes": "چه چیز جدیدی است",
   "noReleaseNotes": "هیچ یادداشت آزادی در دسترس نیست",

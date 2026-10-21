@@ -438,6 +438,7 @@
   "editCategory": "Sửa phân loại",
   "deleteCategoryTitle": "Xoá phân loại",
   "updateFailed": "Lỗi cập nhật. Xin hãy thử lại sau",
+  "updateVerificationFailed": "Xác minh bản cập nhật thất bại. Đã dừng cài đặt.",
   "newVersionAvailable": "Name",
   "releaseNotes": "Có gì mới không?",
   "noReleaseNotes": "Không có ghi chú giải thoát",

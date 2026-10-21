@@ -42,6 +42,63 @@ void main() {
     expect(adapter.requests.single.uri.toString(), AppUpdateClient.releasesUrl);
   });
 
+  test('release asset hashes are bound to the selected release and exact file name', () async {
+    final good = 'aB' * 32;
+    adapter.reply = (_, _) async => _json([
+      {
+        'tag_name': 'v1.9.9',
+        'assets': [
+          {'name': 'old.zip', 'digest': 'sha256:${'c' * 64}'},
+        ],
+      },
+      {
+        'tag_name': 'v2.0.0',
+        'assets': [
+          {'name': 'package.zip', 'digest': 'sha256:$good'},
+          {'name': 'wrong-algorithm.zip', 'digest': 'md5:${'a' * 32}'},
+          {'name': 'missing.zip', 'digest': null},
+          {'name': 'bad-hex.zip', 'digest': 'sha256:${'g' * 64}'},
+          {'name': 'short.zip', 'digest': 'sha256:1234'},
+        ],
+      },
+    ]);
+    final info = (await updates.check('1.0.0'))!;
+    expect(info.assetSha256, {'package.zip': good.toLowerCase()});
+    expect(() => info.assetSha256['package.zip'] = 'd' * 64, throwsUnsupportedError);
+    expect(adapter.requests.single.followRedirects, isFalse);
+  });
+
+  test('the official website fallback preserves asset digests', () async {
+    final checksum = 'e' * 64;
+    adapter.reply = (request, _) async => request.uri.host == 'api.github.com'
+        ? _json({'message': 'rate limited'}, status: 403)
+        : _json([
+            {
+              'tag_name': 'v2.0.0',
+              'assets': [
+                {'name': 'package.dmg', 'digest': 'sha256:$checksum'},
+              ],
+            },
+          ]);
+    final info = (await updates.check('1.0.0'))!;
+    expect(info.assetSha256, {'package.dmg': checksum});
+    expect(adapter.requests.map((request) => request.uri.host), ['api.github.com', 'gopeed.com']);
+    expect(adapter.requests.every((request) => !request.followRedirects), isTrue);
+  });
+
+  test('API redirects fail instead of obtaining metadata from another host', () async {
+    adapter.reply = (_, _) async => ResponseBody.fromString(
+      '',
+      302,
+      headers: {
+        'location': ['https://mirror.example/releases'],
+      },
+    );
+    await expectLater(updates.check('1.0.0'), throwsA(isA<DioException>()));
+    expect(adapter.requests.map((request) => request.uri.host), ['api.github.com', 'gopeed.com']);
+    expect(adapter.requests.every((request) => !request.followRedirects), isTrue);
+  });
+
   test('website fallback runs once after the official GitHub request fails', () async {
     adapter.reply = (request, _) async => switch (request.uri.host) {
       'api.github.com' => _json({'message': 'rate limited'}, status: 403),

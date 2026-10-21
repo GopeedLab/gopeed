@@ -438,6 +438,7 @@
   "editCategory": "Edita categoria",
   "deleteCategoryTitle": "Esborro la categoria?",
   "updateFailed": "Ha fallat l' actualització. Torneu- ho a provar més tard",
+  "updateVerificationFailed": "La verificació de l’actualització ha fallat. S’ha aturat la instal·lació.",
   "newVersionAvailable": "Hi ha disponible una nova versió",
   "releaseNotes": "Quèts nous",
   "noReleaseNotes": "No hi ha notes disponibles",

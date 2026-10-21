@@ -4,11 +4,18 @@ import 'package:pub_semver/pub_semver.dart';
 import '../../api/gopeed_site_api.dart';
 
 class VersionInfo {
-  const VersionInfo({required this.version, required this.changeLog, required this.releaseUrl});
+  const VersionInfo({
+    required this.version,
+    required this.changeLog,
+    required this.releaseUrl,
+    this.assetSha256 = const {},
+  });
 
   final String version;
   final String changeLog;
   final String releaseUrl;
+  // Populated only from official release metadata, never from a download mirror.
+  final Map<String, String> assetSha256;
 }
 
 /// Query the official GitHub API directly, then the independent website API
@@ -28,7 +35,7 @@ class AppUpdateClient {
     final cancel = CancelToken();
     try {
       final response = await _client
-          .get<dynamic>(releasesUrl, cancelToken: cancel)
+          .get<dynamic>(releasesUrl, cancelToken: cancel, options: Options(followRedirects: false))
           .timeout(const Duration(seconds: 30));
       return _decodeReleases(response.data);
     } finally {
@@ -62,6 +69,7 @@ class AppUpdateClient {
     return VersionInfo(
       version: selected.tag.replaceFirst(RegExp(r'^v'), ''),
       changeLog: selected.body,
+      assetSha256: Map.unmodifiable(selected.assetSha256),
       releaseUrl: selected.url.isEmpty
           ? 'https://github.com/GopeedLab/gopeed/releases/tag/${selected.tag}'
           : selected.url,
@@ -95,11 +103,28 @@ List<_Release> _decodeReleases(dynamic data) {
         prerelease: entry['prerelease'] == true,
         body: entry['body'] as String? ?? '',
         url: entry['html_url'] as String? ?? '',
+        assetSha256: _decodeAssetSha256(entry['assets']),
       ),
     );
   }
   if (data.isNotEmpty && releases.isEmpty) throw const FormatException('Response contains no valid releases');
   return releases;
+}
+
+Map<String, String> _decodeAssetSha256(dynamic assets) {
+  if (assets == null) return {};
+  if (assets is! List) throw const FormatException('Invalid release assets');
+  final result = <String, String>{};
+  for (final asset in assets) {
+    if (asset is! Map || asset['name'] is! String || asset['digest'] is! String) continue;
+    final digest = asset['digest'] as String;
+    final match = RegExp(r'^sha256:([a-fA-F0-9]{64})$').firstMatch(digest);
+    if (match == null || match.end != digest.length) continue;
+    final name = asset['name'] as String;
+    if (result.containsKey(name)) throw const FormatException('Duplicate release asset');
+    result[name] = match.group(1)!.toLowerCase();
+  }
+  return result;
 }
 
 class _Release {
@@ -110,6 +135,7 @@ class _Release {
     required this.prerelease,
     required this.body,
     required this.url,
+    required this.assetSha256,
   });
   final String tag;
   final Version version;
@@ -117,4 +143,5 @@ class _Release {
   final bool prerelease;
   final String body;
   final String url;
+  final Map<String, String> assetSha256;
 }

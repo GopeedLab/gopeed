@@ -169,7 +169,10 @@ no-update result does not trigger provider fallback. The GitHub request has a
 30-second total budget and is canceled before fallback on timeout. Stable
 versions ignore previews; previews allow newer previews in the same version
 series and newer stable releases. Drafts and invalid versions are ignored.
-Version selection is client-side, including with a remote Downloader.
+Version selection is client-side, including with a remote Downloader. Release
+assets retain `digest: sha256:<64 hex characters>` from these trusted APIs in an
+immutable map keyed by exact package filename. Mirrors never supply expected
+hashes. Native metadata requests also disable HTTP redirects.
 
 When the user starts an update, the client selects the package name from its own
 channel and architecture, and asks the same mirror candidates API with
@@ -178,6 +181,15 @@ prefer the fastest usable response. Failed probes remain fallbacks because some
 servers do not support HEAD. Failed GETs and HTML/JSON landing pages fall back
 to the next candidate, removing partial files. Dio reports actual download byte
 progress; installation continues through the native updater/APK installer.
+The selected package must have a valid official SHA-256 before any package
+request starts. After each complete download, `candidate_download.dart` streams
+the local file through SHA-256 and compares it with that trusted digest. A hash
+mismatch deletes the file and tries the next candidate; if all fail, installation
+is blocked. Missing or malformed official digests also stop automatic updates.
+Download response headers cannot replace the trusted expected hash. Installation
+is reached only after this verification returns successfully. The UI displays a
+localized verification error when integrity checks fail.
+
 Unsupported/store channels retain their installer or release-page flow. Probe
 latency is a heuristic, not a sustained download speed measurement.
 

@@ -438,6 +438,7 @@
   "editCategory": "編輯分類",
   "deleteCategoryTitle": "刪除分類？",
   "updateFailed": "更新失敗，請稍後重試",
+  "updateVerificationFailed": "更新套件驗證失敗，已停止安裝",
   "newVersionAvailable": "發現新版本",
   "releaseNotes": "更新內容",
   "noReleaseNotes": "暫無更新說明",

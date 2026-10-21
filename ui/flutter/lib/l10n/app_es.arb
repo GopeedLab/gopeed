@@ -438,6 +438,7 @@
   "editCategory": "Editar la categoría",
   "deleteCategoryTitle": "¿Supir la categoría?",
   "updateFailed": "Actualizar falló. Por favor, intente de nuevo más tarde",
+  "updateVerificationFailed": "Falló la verificación de la actualización. Se detuvo la instalación.",
   "newVersionAvailable": "Una nueva versión está disponible",
   "releaseNotes": "Qué es nuevo",
   "noReleaseNotes": "No hay notas de liberación disponibles",

@@ -438,6 +438,7 @@
   "editCategory": "Edit Kategori",
   "deleteCategoryTitle": "Delete kategorisi?",
   "updateFailed": "Güncelleme başarısız oldu. Lütfen daha sonra tekrar deneyin",
+  "updateVerificationFailed": "Güncelleme doğrulanamadı. Kurulum durduruldu.",
   "newVersionAvailable": "Yeni bir sürüm mevcut",
   "releaseNotes": "Yeni Nedir",
   "noReleaseNotes": "Mevcut sürüm notları mevcut değildir",

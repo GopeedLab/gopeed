@@ -438,6 +438,7 @@
   "editCategory": "Modifica della categoria",
   "deleteCategoryTitle": "Elimina categoria?",
   "updateFailed": "Aggiornamento fallito. Si prega di riprovare più tardi",
+  "updateVerificationFailed": "Verifica dell’aggiornamento non riuscita. Installazione interrotta.",
   "newVersionAvailable": "Una nuova versione è disponibile",
   "releaseNotes": "Cosa c’è di nuovo",
   "noReleaseNotes": "Nessun note di rilascio disponibili",

@@ -6,6 +6,7 @@ import 'package:gopeed/features/settings/presentation/widgets/app_update_notes_v
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/util/package_info.dart' as app_package;
 import 'package:gopeed/util/updater.dart';
+import 'package:gopeed/core/network/candidate_download.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
@@ -114,6 +115,50 @@ void main() {
     expect(tester.getCenter(find.byKey(const ValueKey('app-update-actions'))).dx, closeTo(dialog.center.dx, 0.01));
     expect(tester.takeException(), isNull);
   });
+
+  for (final width in [390.0, 1024.0]) {
+    testWidgets('checksum failures prevent success and show a localized error at $width', (tester) async {
+      tester.view.physicalSize = Size(width, 760);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      var attempts = 0;
+      await tester.pumpWidget(
+        shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: Builder(
+            builder: (context) => shad.SecondaryButton(
+              onPressed: () => showAppUpdateDialog(
+                context,
+                versionInfo: const VersionInfo(
+                  version: '2.0.0',
+                  changeLog: '',
+                  releaseUrl: 'https://github.com/GopeedLab/gopeed/releases/tag/v2.0.0',
+                ),
+                onUpdate: (_, progress) async {
+                  attempts++;
+                  progress(100, 100);
+                  throw const DownloadChecksumException();
+                },
+              ),
+              child: const Text('Open update'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open update'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Update'));
+      await tester.pumpAndSettle();
+      expect(attempts, 1);
+      expect(find.text('Update verification failed. Installation stopped.'), findsOneWidget);
+      expect(find.text('Update failed. Please try again later'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('release notes keep the last line above the fade when scrolled to the end', (tester) async {
     await tester.pumpWidget(

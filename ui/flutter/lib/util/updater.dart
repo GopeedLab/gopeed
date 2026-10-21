@@ -106,13 +106,15 @@ Future<void> updateApp(
   var assetPath = '';
 
   if (assetName.isNotEmpty) {
+    final expectedSha256 = versionInfo.assetSha256[assetName];
+    if (expectedSha256 == null) throw const DownloadChecksumException();
     onProgress(0, 0);
     assetPath = path.join((await getTemporaryDirectory()).path, assetName);
     final urls = await service.getMirrorCandidates(
       'github',
       'https://github.com/GopeedLab/gopeed/releases/download/v${versionInfo.version}/$assetName',
     );
-    await downloadFromCandidates(urls, assetPath, onReceiveProgress: onProgress);
+    await downloadFromCandidates(urls, assetPath, expectedSha256: expectedSha256, onReceiveProgress: onProgress);
   }
 
   switch (channel) {

@@ -438,6 +438,7 @@
   "editCategory": "Edytuj kategorię",
   "deleteCategoryTitle": "Skasować kategorię?",
   "updateFailed": "Uaktualnienie nie powiodło się. Proszę spróbować ponownie później",
+  "updateVerificationFailed": "Weryfikacja aktualizacji nie powiodła się. Instalacja została zatrzymana.",
   "newVersionAvailable": "Nowa wersja jest dostępna",
   "releaseNotes": "Co nowego?",
   "noReleaseNotes": "Brak informacji o wydaniu",

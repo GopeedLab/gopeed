@@ -438,6 +438,7 @@
   "editCategory": "Категория редактирования",
   "deleteCategoryTitle": "Удалить категорию?",
   "updateFailed": "Обновление не удалось. Пожалуйста, попробуйте еще раз позже",
+  "updateVerificationFailed": "Проверка обновления не удалась. Установка остановлена.",
   "newVersionAvailable": "Доступна новая версия",
   "releaseNotes": "Что нового",
   "noReleaseNotes": "Нет доступных записей о выпуске",

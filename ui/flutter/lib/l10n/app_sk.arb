@@ -461,6 +461,7 @@
   "editCategory": "Upraviť kategóriu",
   "deleteCategoryTitle": "Odstrániť kategóriu?",
   "updateFailed": "Aktualizácia zlyhala. Skúste to znova neskôr",
+  "updateVerificationFailed": "Overenie aktualizácie zlyhalo. Inštalácia bola zastavená.",
   "newVersionAvailable": "Je dostupná nová verzia",
   "releaseNotes": "Čo je nové",
   "noReleaseNotes": "Nie sú dostupné žiadne poznámky k vydaniu",

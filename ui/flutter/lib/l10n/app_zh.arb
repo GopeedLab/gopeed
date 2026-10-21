@@ -438,6 +438,7 @@
   "editCategory": "编辑分类",
   "deleteCategoryTitle": "删除分类？",
   "updateFailed": "更新失败，请稍后重试",
+  "updateVerificationFailed": "更新包校验失败，已停止安装",
   "newVersionAvailable": "发现新版本",
   "releaseNotes": "更新内容",
   "noReleaseNotes": "暂无更新说明",
