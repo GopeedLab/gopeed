@@ -72,7 +72,7 @@ The following endpoints are web HTTP infrastructure and are not part of the FFI/
 
 `/fs/tasks` returns files from the Go host machine to a browser over HTTP. Native clients can access local file paths directly and do not need an equivalent API.
 
-External business requests are implemented in Go through dedicated `/api/v1/**` APIs shared by Web and native clients. All unmatched `/api` and `/api/**` requests use the common 404 handler before the web file handler.
+All unmatched `/api` and `/api/**` requests use the common 404 handler before the web file handler.
 
 ## 4. Backend Maintenance Model
 
@@ -414,7 +414,7 @@ The following patterns are prohibited:
 
 ### 7.4 Non-business HTTP capabilities
 
-Tracker subscriptions, application update checks, extension store requests, and GitHub mirror URL generation are backend-owned. Native clients receive application package candidates through a dedicated API, probe the URLs, and download locally with Dio to retain real download progress. They use dedicated business APIs; there is no arbitrary external HTTP forwarding API. Protocol configuration and maintenance jobs use common routes documented in [Backend services and protocol jobs](backend-services.md).
+Tracker subscriptions run in Go. Application update checks and extension store requests run directly in the client. Go supplies mirror candidate URLs through `/api/v1/mirrors/{provider}/candidates`; clients probe and download update packages locally with Dio to retain real download progress. There is no arbitrary external HTTP forwarding API.
 
 Task file access does not belong in `GopeedClient`:
 

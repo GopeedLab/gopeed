@@ -19,6 +19,8 @@ import (
 
 // Exercise real Git clone/install/check/update without depending on GitHub or
 // public mirror availability. The proxy deliberately rejects the official URL.
+// github.com/gopeed-test/repo is a placeholder: the successful mirror serves
+// the temporary local repository through git http-backend instead.
 func newExtensionGitFixture(t *testing.T) (*Downloader, func(string), *atomic.Int32, *atomic.Int32) {
 	t.Helper()
 	git, err := exec.LookPath("git")
