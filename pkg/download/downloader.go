@@ -104,8 +104,6 @@ type Downloader struct {
 	backgroundCtx       context.Context
 	cancelBackground    context.CancelFunc
 	protocolJobs        *protocolScheduler
-	operationGate       sync.Mutex
-	operations          sync.WaitGroup
 	tempFiles           *tempfiles.Scope
 	webviewProfilesLock sync.Mutex
 	webviewProfiles     map[string]*extensionWebViewProfile
@@ -132,8 +130,10 @@ type Downloader struct {
 	// Key: fullBaseName (e.g., "/path/archive.7z"), Value: taskID that claimed it
 	claimedExtractions sync.Map
 
-	extensions []*Extension
-	blob       *internalblob.Registry
+	extensions       []*Extension
+	extensionGitLock sync.Mutex
+	extensionGitWG   sync.WaitGroup
+	blob             *internalblob.Registry
 }
 
 func NewDownloader(cfg *DownloaderConfig) *Downloader {
@@ -1199,9 +1199,7 @@ func (d *Downloader) Close() error {
 		return nil
 	}
 	d.cancelBackground()
-	d.operationGate.Lock()
-	d.operationGate.Unlock()
-	d.operations.Wait()
+	d.waitForExtensionGit()
 	if d.protocolJobs != nil {
 		d.protocolJobs.close()
 	}

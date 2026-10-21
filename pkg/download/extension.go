@@ -198,12 +198,25 @@ func (d *Downloader) getExtension(identity string) *Extension {
 	return nil
 }
 
+// waitForExtensionGit waits for clones and their install/check handlers before
+// shutdown releases storage and temporary files. Close cancels backgroundCtx first.
+func (d *Downloader) waitForExtensionGit() {
+	d.extensionGitLock.Lock()
+	d.extensionGitLock.Unlock()
+	d.extensionGitWG.Wait()
+}
+
 func (d *Downloader) fetchExtensionByGit(rawURL string, handler func(string, bool) (*Extension, error)) (*Extension, error) {
-	ctx, finish, opErr := d.beginOperation(d.backgroundCtx)
-	if opErr != nil {
-		return nil, opErr
+	// Pair admission with shutdown so no operation is added after its wait starts.
+	d.extensionGitLock.Lock()
+	if d.closed.Load() {
+		d.extensionGitLock.Unlock()
+		return nil, fmt.Errorf("downloader is closed")
 	}
-	defer finish()
+	d.extensionGitWG.Add(1)
+	d.extensionGitLock.Unlock()
+	defer d.extensionGitWG.Done()
+	ctx := d.backgroundCtx
 	if !strings.HasPrefix(rawURL, "https://") && !strings.HasPrefix(rawURL, "http://") {
 		rawURL = "https://" + rawURL
 	}

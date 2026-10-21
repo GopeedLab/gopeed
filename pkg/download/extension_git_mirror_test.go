@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	httpProtocol "github.com/GopeedLab/gopeed/internal/protocol/http"
 	"github.com/GopeedLab/gopeed/pkg/base"
@@ -140,5 +141,70 @@ func TestExtensionGitMirrorInstallAndUpdate(t *testing.T) {
 	}
 	if official.Load() != 3 || badMirror.Load() != 3 {
 		t.Fatalf("attempts official=%d mirror=%d", official.Load(), badMirror.Load())
+	}
+}
+
+func TestExtensionGitShutdownWaitsForHandler(t *testing.T) {
+	d, _, _, _ := newExtensionGitFixture(t)
+	started := make(chan string, 1)
+	release := make(chan struct{})
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+	finished := make(chan error, 1)
+	go func() {
+		_, err := d.fetchExtensionByGit("https://github.com/gopeed-test/repo#nested/extension", func(path string, _ bool) (*Extension, error) {
+			started <- path
+			<-release
+			return d.parseExtensionByPath(path)
+		})
+		finished <- err
+	}()
+	var path string
+	select {
+	case path = <-started:
+	case err := <-finished:
+		t.Fatalf("Git operation finished before handler: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Git handler did not start")
+	}
+	closed := make(chan error, 1)
+	go func() { closed <- d.Close() }()
+	select {
+	case <-d.backgroundCtx.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("shutdown did not cancel Git context")
+	}
+	select {
+	case err := <-closed:
+		t.Fatalf("shutdown returned before handler finished: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if _, err := os.Stat(filepath.Join(path, "manifest.json")); err != nil {
+		t.Fatalf("shutdown removed files still used by handler: %v", err)
+	}
+	if _, err := d.InstallExtensionByGit("https://github.com/gopeed-test/repo"); err == nil || !strings.Contains(err.Error(), "downloader is closed") {
+		t.Fatalf("expected new Git operations to be rejected during shutdown: %v", err)
+	}
+	close(release)
+	select {
+	case err := <-finished:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Git handler did not finish")
+	}
+	select {
+	case err := <-closed:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("shutdown did not finish after Git handler")
 	}
 }
