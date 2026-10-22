@@ -30,6 +30,21 @@ support must remain disabled. Do not declare the sum of the input sizes as the
 output size. The downloader reads the merged output as one file; FFmpeg errors
 propagate through the stream instead of completing a partial download.
 
+Extension resolve results can set `files[].size` to an estimated output size,
+for example the sum of the selected video and audio input lengths. Clients forward
+this value as the optional task creation `opts.size` for HTTP downloads only
+(including Blob URLs served over HTTP). Other protocols, including HLS, ignore
+this option. The estimate is persisted
+and displayed while queued and downloading. A valid HTTP total length (including
+zero) always overrides it; otherwise a clean EOF records the actual output length.
+Estimates never determine byte ranges, file allocation, integrity checks, or task
+completion. Size authority is persisted alongside HTTP connection state for
+pause/retry and process restart.
+
+Blob options are unchanged: `createObjectURL`'s `size` is an exact source length,
+not an estimate. Leave it unset for generated merge output and pass any estimate
+through the extension resolve file instead.
+
 ## JS inputs, including SABR
 
 Stream inputs **must** be created by an `inputs({ signal })` callback. It returns
@@ -130,7 +145,8 @@ associates its input progress with that Blob. No public progress callback or
 extra `createObjectURL` argument is required. Return the merge stream itself;
 wrapping it in another stream loses this association. Downloaded bytes count
 unique input offsets; speed counts received input bytes, including re-fetches.
-The task stays downloading with unknown total size while queued or merging;
+The task stays downloading while queued or merging, displaying the optional
+`files[].size` estimate (or an unknown total when omitted);
 once input traffic stops the displayed speed settles to zero. Completion uses
 the actual merged output size. Generated output waits are governed by producer
 cancellation/errors rather than the HTTP body idle timeout; HTTP media inputs

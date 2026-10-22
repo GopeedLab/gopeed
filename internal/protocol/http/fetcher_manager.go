@@ -19,10 +19,11 @@ type fetcherData struct {
 	IfRange               string // Strong ETag or Last-Modified validator for safe resume
 	RangeReprobeEligible  bool   // Origin advertised Range before falling back to sequential mode
 	RangeValidatorPinned  bool   // Recovered Range mode must keep the same If-Range validator
-	SequentialSizeUnknown bool   // Interrupted chunked restart must retry from byte zero
+	SequentialSizeUnknown bool   // Interrupted chunked sequential streams restart from byte zero
+	SizeKnown             *bool  // Nil for legacy snapshots; false means Size is only a display estimate
 	Range                 *bool  // Authoritative Range mode; nil for records saved by older versions
-	ResourceSize          *int64 // Authoritative resource size from the same snapshot as Connections
-	FileSize              *int64 // Authoritative single-file size; nil for older records
+	ResourceSize          *int64 // Display size from the same snapshot; authority is recorded by SizeKnown
+	FileSize              *int64 // Single-file size from the same snapshot; nil for older records
 }
 
 // ============================================================================
@@ -93,6 +94,7 @@ func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	rangeReprobeEligible := _f.rangeReprobeEligible
 	rangeValidatorPinned := _f.rangeValidatorPinned
 	sequentialSizeUnknown := _f.sequentialSizeUnknown
+	sizeKnown := _f.hasKnownSize()
 	var rangeMode *bool
 	var resourceSize *int64
 	var fileSize *int64
@@ -115,6 +117,7 @@ func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 		RangeReprobeEligible:  rangeReprobeEligible,
 		RangeValidatorPinned:  rangeValidatorPinned,
 		SequentialSizeUnknown: sequentialSizeUnknown,
+		SizeKnown:             &sizeKnown,
 		Range:                 rangeMode,
 		ResourceSize:          resourceSize,
 		FileSize:              fileSize,
@@ -168,6 +171,10 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		fetcher.rangeReprobeEligible = fd.RangeReprobeEligible
 		fetcher.rangeValidatorPinned = fd.RangeValidatorPinned
 		fetcher.sequentialSizeUnknown = fd.SequentialSizeUnknown
+		if fd.SizeKnown != nil {
+			known := *fd.SizeKnown
+			fetcher.sizeKnown = &known
+		}
 		if fd.Range != nil && fetcher.meta.Res != nil {
 			// Recovery-critical resource fields live in the same persisted snapshot
 			// as Connections, making them authoritative over task metadata that may

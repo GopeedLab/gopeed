@@ -126,7 +126,7 @@ class TaskRecord {
   IconData get icon => taskFileTypeIcon(name, isFolder: isFolder, protocol: protocol);
 
   factory TaskRecord.fromApi(api_task.Task task) {
-    final totalBytes = task.meta.res?.size ?? 0;
+    final totalBytes = task.meta.res?.size ?? task.meta.opts.size;
     final downloadedBytes = task.progress.downloaded;
     final progress = totalBytes > 0 ? (downloadedBytes / totalBytes).clamp(0.0, 1.0) : null;
     final status = _statusFromApi(task.status);

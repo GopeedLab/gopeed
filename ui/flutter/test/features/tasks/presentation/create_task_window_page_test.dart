@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
@@ -8,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gopeed/api/model/create_task.dart';
+import 'package:gopeed/api/model/create_task_batch.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/options.dart';
 import 'package:gopeed/api/model/request.dart';
@@ -30,6 +33,73 @@ import 'package:gopeed/l10n/app_localizations.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
+  testWidgets('extension file estimates survive batch submission and window serialization', (tester) async {
+    tester.view.physicalSize = const Size(900, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    CreateTaskBatch? submitted;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          id: '',
+          res: Resource(
+            files: [
+              FileInfo(
+                name: 'under.mp4',
+                size: 3,
+                req: Request(url: 'https://example.com/video'),
+              ),
+              FileInfo(
+                name: 'over.mp4',
+                size: 1048576,
+                req: Request(url: 'https://example.com/audio'),
+              ),
+            ],
+          ),
+        ),
+      )
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        submitted = CreateTaskBatch.fromJson(jsonDecode(jsonEncode(batch)) as Map<String, dynamic>);
+        return ['first', 'second'];
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    final router = GoRouter(
+      initialLocation: '/create',
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+        GoRoute(path: '/create', builder: (_, _) => const CreateTaskWindowPage()),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+        child: shad.ShadcnApp.router(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          routerConfig: router,
+          builder: (_, child) => AppComponentThemes(child: child!),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/watch');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
+    expect(submitted?.reqs?.map((item) => item.opts?.size), [3, 1048576]);
+    expect(submitted?.reqs?.map((item) => item.req?.url), [
+      'https://example.com/video',
+      'https://example.com/audio',
+    ]);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final navigationFails in [false, true]) {
     testWidgets('child creation selects downloads before closing (navigation fails: $navigationFails)', (tester) async {
       tester.view.physicalSize = const Size(1024, 720);
@@ -264,6 +334,7 @@ void main() {
         skipVerifyCert: true,
       ),
       opts: Options(
+        size: 1234,
         name: 'archive.zip',
         path: 'D:/Downloads',
         extra: OptsExtraHttp(
@@ -457,6 +528,7 @@ void main() {
     expect(request?.skipVerifyCert, isTrue);
     expect(ReqExtraHttp.fromJson(request?.extra! as Map<String, dynamic>).toJson(), initialTask.req?.extra);
     expect(submitted?.opts?.path, 'G:/Manually selected');
+    expect(submitted?.opts?.size, 1234);
     final options = OptsExtraHttp.fromJson(submitted?.opts?.extra! as Map<String, dynamic>);
     expect(options.connections, 12);
     expect(options.autoTorrent, isTrue);
@@ -676,7 +748,10 @@ void main() {
       // Expand advanced
       await tester.tap(find.text('Advanced'));
       await tester.pumpAndSettle();
-      expect(_fieldText(tester, 'create-task-checksum-expected'), 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+      expect(
+        _fieldText(tester, 'create-task-checksum-expected'),
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      );
 
       // Task B form 1: null opts
       pending.set(CreateTask(req: Request(url: 'https://example.com/taskB1.zip')));
@@ -685,7 +760,12 @@ void main() {
       expect(_fieldText(tester, 'create-task-checksum-expected'), '');
 
       // Task B form 2: empty Options
-      pending.set(CreateTask(req: Request(url: 'https://example.com/taskB2.zip'), opts: Options()));
+      pending.set(
+        CreateTask(
+          req: Request(url: 'https://example.com/taskB2.zip'),
+          opts: Options(),
+        ),
+      );
       router.go('/create');
       await tester.pumpAndSettle();
       expect(_fieldText(tester, 'create-task-checksum-expected'), '');
@@ -804,7 +884,10 @@ void main() {
     submitted = null;
     await tester.tap(find.text('MD5'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), '0123456789ABCDEF0123456789ABCDEF');
+    await tester.enterText(
+      find.byKey(const ValueKey('create-task-checksum-expected')),
+      '0123456789ABCDEF0123456789ABCDEF',
+    );
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
     expect(submitted, isNotNull);
@@ -821,7 +904,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('SHA-1'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), 'da39a3ee5e6b4b0d3255bfef95601890afd80709');
+    await tester.enterText(
+      find.byKey(const ValueKey('create-task-checksum-expected')),
+      'da39a3ee5e6b4b0d3255bfef95601890afd80709',
+    );
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
     expect(submitted, isNotNull);
@@ -838,7 +924,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('SHA-256'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('create-task-checksum-expected')), 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+    await tester.enterText(
+      find.byKey(const ValueKey('create-task-checksum-expected')),
+      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    );
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
     expect(submitted, isNotNull);
