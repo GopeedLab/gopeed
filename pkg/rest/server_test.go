@@ -1195,6 +1195,14 @@ func doTest0(onStart func(cfg *model.StartConfig), handler func()) {
 			onStart(cfg)
 		}
 		fileListener := doStart(cfg)
+		// The server process configures the default download directory on first
+		// load; a task without a base directory is rejected without it.
+		if current, err := Downloader.GetConfig(); err == nil {
+			current.DownloadDir = downloadDir
+			if err := Downloader.PutConfig(current); err != nil {
+				panic(err)
+			}
+		}
 		defer func() {
 			if err := fileListener.Close(); err != nil {
 				panic(err)

@@ -191,6 +191,15 @@ func (d *Downloader) Setup() error {
 			FirstLoad: true,
 		}
 	}
+	// Move the legacy extra.downloadCategories list written by v2.0.0-beta
+	// builds into the top level categories field and persist the cleared key,
+	// before Init seeds the built-in categories. The config is written
+	// directly, PutConfig would validate a config that is not initialized yet.
+	if d.cfg.DownloaderStoreConfig.MigrateLegacyExtraCategories() {
+		if err := d.storage.Put(bucketConfig, "config", d.cfg.DownloaderStoreConfig); err != nil {
+			return err
+		}
+	}
 	// Initialize the current backend configuration schema and defaults.
 	if err := d.initProtocolConfigs(); err != nil {
 		return err
@@ -537,7 +546,8 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	}
 	if res != nil && len(res.Files) > 0 {
 		rr = &ResolveResult{
-			Res: res,
+			Res:                  res,
+			SuggestedDownloadDir: d.suggestedDownloadDir(res),
 		}
 		return
 	}
@@ -554,8 +564,9 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	d.fetcherCache[rrId] = fetcher
 	d.fetcherMapLock.Unlock()
 	rr = &ResolveResult{
-		ID:  rrId,
-		Res: fetcher.Meta().Res,
+		ID:                   rrId,
+		Res:                  fetcher.Meta().Res,
+		SuggestedDownloadDir: d.suggestedDownloadDir(fetcher.Meta().Res),
 	}
 	return
 }
@@ -658,6 +669,13 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 	if err != nil {
 		return "", err
 	}
+	// The resource is already resolved, so the final directory is decided here
+	// and a rejected base directory reaches the caller as an error.
+	dir, err := d.decideDownloadDir(opts, fetcher.Meta().Res)
+	if err != nil {
+		return "", err
+	}
+	opts.Path = dir
 	if res := fetcher.Meta().Res; res != nil {
 		for _, index := range opts.SelectFiles {
 			if index < 0 || index >= len(res.Files) {
@@ -682,7 +700,7 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 		delete(d.fetcherCache, rrId)
 		d.fetcherMapLock.Unlock()
 	}()
-	defaultPath, err := d.prepareDefaultPath(fetcher.Meta().Opts)
+	defaultPath, err := d.prepareDefaultPath(opts)
 	if err != nil {
 		return "", err
 	}
@@ -1823,6 +1841,10 @@ func httpSizeOptions(opts *base.Options, protocol string) *base.Options {
 	return opts
 }
 
+// initOptions makes sure the option set is usable: a nil option set becomes
+// an empty one, the selection is never nil and the base download directory
+// falls back to the configured one. The directory is decided and checked
+// against the white list when the task starts.
 func (d *Downloader) initOptions(opts *base.Options, requestURL string) (*base.Options, error) {
 	if opts == nil {
 		opts = &base.Options{}
@@ -1838,17 +1860,12 @@ func (d *Downloader) initOptions(opts *base.Options, requestURL string) (*base.O
 		opts.SelectFiles = make([]int, 0)
 	}
 	if opts.Path == "" {
-		storeConfig, err := d.GetConfig()
+		cfg, err := d.GetConfig()
 		if err != nil {
 			return nil, err
 		}
-		opts.Path = storeConfig.DownloadDir
+		opts.Path = cfg.DownloadDir
 	}
-	path, err := d.initDownloadPath(opts.Path)
-	if err != nil {
-		return nil, err
-	}
-	opts.Path = path
 	return opts, nil
 }
 
@@ -1933,7 +1950,8 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		if err := d.syncBlobTaskLease(task); err != nil {
 			return err
 		}
-		if task.Meta.Res == nil {
+		resolvedHere := task.Meta.Res == nil
+		if resolvedHere {
 			err := task.fetcher.Resolve(task.Meta.Req)
 			if err != nil {
 				return err
@@ -1942,6 +1960,22 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		}
 
 		if isCreate {
+			if resolvedHere {
+				// A direct download resolves lazily, so the category is matched
+				// on the file name known only now. The decided directory is
+				// persisted, so a resume or retry never re-classifies the task.
+				dir, err := d.decideDownloadDir(task.Meta.Opts, task.Meta.Res)
+				if err != nil {
+					return err
+				}
+				if dir != task.Meta.Opts.Path {
+					task.Meta.Opts.Path = dir
+					if err := d.saveTask(task); err != nil {
+						return err
+					}
+				}
+			}
+
 			if task.fetcherManager.AutoRename() {
 				d.checkDuplicateLock.Lock()
 				defer d.checkDuplicateLock.Unlock()

@@ -112,6 +112,21 @@ func TestStreamableHTTPTools(t *testing.T) {
 		if !schemaIncludesType(optsExtra, "object") || optsExtra["additionalProperties"] != false {
 			t.Fatalf("%s opts.extra schema = %#v, want concrete HTTP task settings", tool.Name, optsExtra)
 		}
+		opts := nestedSchemaProperty(t, schema, "opts")
+		optsProperties, ok := opts["properties"].(map[string]any)
+		if !ok {
+			t.Fatalf("%s opts schema has no properties: %s", tool.Name, inputSchema)
+		}
+		if _, exists := optsProperties["skipAutoCategorize"]; !exists {
+			t.Fatalf("%s opts schema is missing skipAutoCategorize: %s", tool.Name, inputSchema)
+		}
+	}
+	resolveOutput, err := json.Marshal(resolveTaskTool.OutputSchema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(resolveOutput, []byte(`"suggestedDownloadDir"`)) {
+		t.Fatalf("resolve_task output schema is missing suggestedDownloadDir: %s", resolveOutput)
 	}
 	outputSchema, err := json.Marshal(getTaskTool.OutputSchema)
 	if err != nil {

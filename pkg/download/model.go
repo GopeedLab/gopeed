@@ -21,6 +21,11 @@ import (
 type ResolveResult struct {
 	ID  string         `json:"id"`
 	Res *base.Resource `json:"res"`
+	// SuggestedDownloadDir is the category directory the created task would be
+	// routed to. It is only set when auto categorize is enabled, the resource is
+	// a single file, a category matches and its directory passes the white list
+	// check. It is a hint for the ui, the create call decides the final path.
+	SuggestedDownloadDir string `json:"suggestedDownloadDir,omitempty"`
 }
 
 // Task represents a download unit.
