@@ -26,6 +26,7 @@ import 'package:gopeed/features/tasks/application/pending_create_task.dart';
 import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
 import 'package:gopeed/shared/theme/app_design_tokens.dart';
+import 'package:gopeed/shared/theme/app_palette.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/widgets/app_loading_button.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
@@ -293,7 +294,7 @@ void main() {
     CreateTask? submitted;
     final config = DownloaderConfig(downloadDir: 'C:/Downloads')
       ..extra.defaultDirectDownload = true
-      ..extra.downloadCategories = [
+      ..categories = [
         DownloadCategory(name: 'Archives', path: 'E:/Archives/%year%'),
         DownloadCategory(name: 'Archives', path: 'F:/Archives'),
         DownloadCategory(name: 'Long video category', path: 'G:/Videos'),
@@ -685,6 +686,77 @@ void main() {
     expect(find.byKey(const ValueKey('create-history-close')), findsOneWidget);
   });
 
+  testWidgets('the untouched default directory leaves the decision to the backend', (tester) async {
+    CreateTask? submitted;
+    await _pumpCreateTaskWithCategories(
+      tester,
+      downloadDir: 'C:/Downloads',
+      url: 'https://example.com/setup.exe',
+      categories: [
+        DownloadCategory(name: 'Program', path: 'C:/Downloads/Program', extensions: const ['exe']),
+      ],
+      onCreate: (task) => submitted = task,
+    );
+
+    expect(_fieldText(tester, 'create-task-directory-input'), 'C:/Downloads');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(submitted?.opts?.path, 'C:/Downloads');
+    expect(submitted?.opts?.skipAutoCategorize, isFalse);
+    await _settleToastTimers(tester);
+  });
+
+  testWidgets('a manual directory choice skips auto categorize', (tester) async {
+    CreateTask? submitted;
+    await _pumpCreateTaskWithCategories(
+      tester,
+      downloadDir: 'C:/Downloads',
+      url: 'https://example.com/setup.exe',
+      categories: [
+        DownloadCategory(name: 'Program', path: 'C:/Downloads/Program', extensions: const ['exe']),
+      ],
+      onCreate: (task) => submitted = task,
+    );
+
+    await tester.enterText(find.byKey(const ValueKey('create-task-directory-input')), 'D:/Other');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(submitted?.opts?.path, 'D:/Other');
+    expect(submitted?.opts?.skipAutoCategorize, isTrue);
+    await _settleToastTimers(tester);
+  });
+
+  testWidgets('typing the default directory back still skips auto categorize', (tester) async {
+    CreateTask? submitted;
+    await _pumpCreateTaskWithCategories(
+      tester,
+      downloadDir: 'C:/Downloads',
+      url: 'https://example.com/setup.exe',
+      categories: [
+        DownloadCategory(name: 'Program', path: 'C:/Downloads/Program', extensions: const ['exe']),
+      ],
+      onCreate: (task) => submitted = task,
+    );
+
+    final field = find.byKey(const ValueKey('create-task-directory-input'));
+    await tester.enterText(field, 'D:/Other');
+    await tester.pumpAndSettle();
+    await tester.enterText(field, 'C:/Downloads');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pumpAndSettle();
+
+    // The value matches the default directory, but the user still named it.
+    expect(submitted?.opts?.path, 'C:/Downloads');
+    expect(submitted?.opts?.skipAutoCategorize, isTrue);
+    await _settleToastTimers(tester);
+  });
+
   testWidgets('checksum state is reset for each incoming task and not inherited (T1)', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
@@ -1050,6 +1122,279 @@ void main() {
     expect(find.text('Checksum Algorithm'), findsOneWidget);
     expect(find.text('Checksum Hash'), findsOneWidget);
   });
+
+  testWidgets('category shortcut highlights the current directory and toggles off when tapped again', (tester) async {
+    final palette = await _pumpCreateTaskWithCategories(
+      tester,
+      downloadDir: 'C:/Downloads',
+      categories: [
+        DownloadCategory(name: 'Archives', path: 'E:/Archives'),
+        DownloadCategory(name: 'Videos', path: 'F:/Videos'),
+      ],
+    );
+
+    expect(_fieldText(tester, 'create-task-directory-input'), 'C:/Downloads');
+    expect(_shortcutFill(tester, 0), palette.cardBg);
+    expect(_shortcutFill(tester, 1), palette.cardBg);
+
+    await tester.tap(find.byKey(const ValueKey('create-task-category-0')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, 'create-task-directory-input'), 'E:/Archives');
+    expect(_shortcutFill(tester, 0), palette.brandSoft);
+    expect(_shortcutFill(tester, 1), palette.cardBg);
+
+    await tester.tap(find.byKey(const ValueKey('create-task-category-1')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, 'create-task-directory-input'), 'F:/Videos');
+    expect(_shortcutFill(tester, 0), palette.cardBg);
+    expect(_shortcutFill(tester, 1), palette.brandSoft);
+
+    await tester.tap(find.byKey(const ValueKey('create-task-category-1')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, 'create-task-directory-input'), 'C:/Downloads');
+    expect(_shortcutFill(tester, 0), palette.cardBg);
+    expect(_shortcutFill(tester, 1), palette.cardBg);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('directory edits highlight a matching category once the debounce settles', (tester) async {
+    final palette = await _pumpCreateTaskWithCategories(
+      tester,
+      downloadDir: 'C:/Downloads',
+      categories: [
+        DownloadCategory(name: 'Archives', path: 'E:/Archives'),
+        DownloadCategory(name: 'Videos', path: 'F:/Videos'),
+      ],
+    );
+
+    await tester.enterText(find.byKey(const ValueKey('create-task-directory-input')), 'F:/Videos');
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(_shortcutFill(tester, 1), palette.cardBg);
+
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(_shortcutFill(tester, 0), palette.cardBg);
+    expect(_shortcutFill(tester, 1), palette.brandSoft);
+
+    await tester.enterText(find.byKey(const ValueKey('create-task-directory-input')), 'D:/Somewhere');
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+    expect(_shortcutFill(tester, 0), palette.cardBg);
+    expect(_shortcutFill(tester, 1), palette.cardBg);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('clicking a shortcut selects its directory and skips auto categorize', (tester) async {
+    CreateTask? submitted;
+    final palette = await _pumpCreateTaskForSubmit(
+      tester,
+      categories: [
+        DownloadCategory(name: 'Program', path: 'C:/Downloads/Program'),
+        DownloadCategory(name: 'Archives', path: 'E:/Archives'),
+      ],
+      onCreate: (task) => submitted = task,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('create-task-category-0')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, 'create-task-directory-input'), 'C:/Downloads/Program');
+    expect(_shortcutFill(tester, 0), palette.brandSoft);
+    expect(_shortcutFill(tester, 1), palette.cardBg);
+
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pumpAndSettle();
+    expect(submitted?.opts?.path, 'C:/Downloads/Program');
+    expect(submitted?.opts?.skipAutoCategorize, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tapping the selected shortcut restores the default directory and still skips', (tester) async {
+    CreateTask? submitted;
+    final palette = await _pumpCreateTaskForSubmit(
+      tester,
+      categories: [
+        DownloadCategory(name: 'Program', path: 'C:/Downloads/Program'),
+        DownloadCategory(name: 'Archives', path: 'E:/Archives'),
+      ],
+      onCreate: (task) => submitted = task,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('create-task-category-0')));
+    await tester.pumpAndSettle();
+    expect(_shortcutFill(tester, 0), palette.brandSoft);
+
+    await tester.tap(find.byKey(const ValueKey('create-task-category-0')));
+    await tester.pumpAndSettle();
+    expect(_fieldText(tester, 'create-task-directory-input'), 'C:/Downloads');
+    expect(_shortcutFill(tester, 0), palette.cardBg);
+    expect(_shortcutFill(tester, 1), palette.cardBg);
+
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pumpAndSettle();
+    expect(submitted?.opts?.path, 'C:/Downloads');
+    expect(submitted?.opts?.skipAutoCategorize, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the resolve dialog shows the suggested category directory', (tester) async {
+    tester.view.physicalSize = const Size(700, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          id: 'resolved-id',
+          res: Resource(files: [FileInfo(name: 'setup.exe', size: 1024)]),
+          suggestedDownloadDir: '/downloads/Program',
+        ),
+      )
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/setup.exe');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final suggestion = find.byKey(const ValueKey('resolve-category-directory'));
+    expect(suggestion, findsOneWidget);
+    expect(tester.widget<Text>(suggestion).data, contains('/downloads/Program'));
+    expect(tester.takeException(), isNull);
+  });
+}
+
+/// Unmounts the tree and lets the shadcn toast close timers fire, so a test
+/// ends without pending timers.
+Future<void> _settleToastTimers(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox());
+  await tester.pump(const Duration(seconds: 6));
+}
+
+/// Pumps the create dialog behind a router, so a finished submission can
+/// navigate away, and captures the CreateTask that reaches the backend.
+Future<AppPalette> _pumpCreateTaskForSubmit(
+  WidgetTester tester, {
+  required void Function(CreateTask task) onCreate,
+  String downloadDir = 'C:/Downloads',
+  List<DownloadCategory> categories = const [],
+}) async {
+  tester.view.physicalSize = const Size(1024, 720);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  DownloadDirectoryPicker.debugPlatformOverride = TargetPlatform.windows;
+  addTearDown(() => DownloadDirectoryPicker.debugPlatformOverride = null);
+
+  final config = DownloaderConfig(downloadDir: downloadDir)
+    ..extra.defaultDirectDownload = true
+    ..categories = categories;
+  final registry = CapabilityRegistry(createAppCapabilityCodecs())
+    ..bind(GopeedMethods.getConfig, (_) => config)
+    ..bind(GopeedMethods.createTask, (task) {
+      onCreate(task);
+      return 'created-task';
+    })
+    ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+  final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+  final router = GoRouter(
+    initialLocation: '/create',
+    routes: [
+      GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+      GoRoute(path: '/create', builder: (_, _) => const CreateTaskWindowPage()),
+    ],
+  );
+  addTearDown(router.dispose);
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+      child: shad.ShadcnApp.router(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        builder: (context, child) => AppComponentThemes(child: child ?? const SizedBox.shrink()),
+        routerConfig: router,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/setup.exe');
+  await tester.pumpAndSettle();
+  return AppPalette.of(tester.element(find.byType(CreateTaskWindowPage)));
+}
+
+Future<AppPalette> _pumpCreateTaskWithCategories(
+  WidgetTester tester, {
+  required String downloadDir,
+  required List<DownloadCategory> categories,
+  String? url,
+  String? rename,
+  void Function(CreateTask task)? onCreate,
+}) async {
+  tester.view.physicalSize = const Size(1024, 720);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  DownloadDirectoryPicker.debugPlatformOverride = TargetPlatform.windows;
+  addTearDown(() => DownloadDirectoryPicker.debugPlatformOverride = null);
+
+  final config = DownloaderConfig(downloadDir: downloadDir)
+    ..extra.defaultDirectDownload = onCreate != null
+    ..categories = categories;
+  final registry = CapabilityRegistry(createAppCapabilityCodecs())
+    ..bind(GopeedMethods.getConfig, (_) => config)
+    ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+  if (onCreate != null) {
+    registry.bind(GopeedMethods.createTask, (task) {
+      onCreate(task);
+      return 'created-task';
+    });
+  }
+  final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+      child: shad.ShadcnApp(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        home: AppComponentThemes(child: const CreateTaskWindowPage()),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  if (url != null) {
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), url);
+    await tester.pumpAndSettle();
+  }
+  if (rename != null) {
+    await tester.enterText(find.byKey(const ValueKey('create-task-rename-input')), rename);
+    await tester.pumpAndSettle();
+  }
+  return AppPalette.of(tester.element(find.byType(CreateTaskWindowPage)));
+}
+
+// Asserts through the button's AnimatedContainer decoration, so a restructure of the button fails loudly.
+Color? _shortcutFill(WidgetTester tester, int index) {
+  final container = tester.widget<AnimatedContainer>(
+    find.descendant(of: find.byKey(ValueKey('create-task-category-$index')), matching: find.byType(AnimatedContainer)),
+  );
+  return (container.decoration! as BoxDecoration).color;
 }
 
 String _fieldText(WidgetTester tester, String key) {

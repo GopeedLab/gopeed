@@ -9,6 +9,10 @@ class Options {
   String name;
   String path;
   bool asDefaultPath;
+
+  /// Keep the base download directory instead of routing the task to the
+  /// directory of the category its resolved file belongs to.
+  bool skipAutoCategorize;
   List<int> selectFiles;
   Object? extra;
 
@@ -17,6 +21,7 @@ class Options {
     this.name = '',
     this.path = '',
     this.asDefaultPath = false,
+    this.skipAutoCategorize = false,
     this.selectFiles = const [],
     this.extra,
   });

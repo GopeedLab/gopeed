@@ -92,6 +92,21 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   bool _draggingTorrent = false;
   bool _asDefaultPath = false;
   String _configuredDownloadDirectory = '';
+
+  /// Index into `_downloadCategories` as filtered by `_loadDefaults`
+  /// (`!isDeleted`), not into the raw config list; null when the directory
+  /// falls outside every category. Cached, so it can lag the field while the
+  /// debounce is pending — `onShortcutSelected` reads exactly this value.
+  int? _activeCategoryIndex;
+  Timer? _categoryHighlightTimer;
+
+  /// Whether the user picked a directory in this dialog. The backend routes a
+  /// task to its category directory only when this stays false, so the flag is
+  /// tracked on its own instead of comparing the field with the default dir.
+  bool _directoryManuallySet = false;
+
+  /// Guards the controller listener while the page fills the field itself.
+  bool _programmaticDirectoryWrite = false;
   String _fileDataUri = '';
   bool _programmaticUrlChange = false;
   String _lastUrlText = '';
@@ -100,6 +115,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   void initState() {
     super.initState();
     _urlController.addListener(_handleUrlChanged);
+    _directoryController.addListener(_handleDirectoryChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final task = widget.initialTask ?? ref.read(pendingCreateTaskProvider);
@@ -127,9 +143,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   void dispose() {
     _urlController.removeListener(_handleUrlChanged);
     _urlController.dispose();
+    _directoryController.removeListener(_handleDirectoryChanged);
+    _categoryHighlightTimer?.cancel();
+    _categoryHighlightTimer = null;
     _renameController.dispose();
-    _connectionsController.dispose();
     _directoryController.dispose();
+    _connectionsController.dispose();
     _proxyServerController.dispose();
     _proxyPortController.dispose();
     _proxyUsernameController.dispose();
@@ -244,7 +263,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       if (opts != null) {
         _initialSize = opts.size;
         if (opts.path.isNotEmpty) {
+          _programmaticDirectoryWrite = true;
           _directoryController.text = opts.path;
+          _programmaticDirectoryWrite = false;
+          // The caller named a directory, so it is not the default one.
+          _directoryManuallySet = true;
         }
         if (opts.extra is Map) {
           final extra = api_options.OptsExtraHttp.fromJson(Map<String, dynamic>.from(opts.extra! as Map));
@@ -265,6 +288,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         }
       }
     });
+    _applyCategoryHighlightNow();
   }
 
   void _applyInitialProxy(RequestProxy? proxy) {
@@ -429,15 +453,20 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 setState(() => _asDefaultPath = false);
                               }
                             },
-                            onDirectoryPicked: (pickedDirectory) => setState(
-                              () => _asDefaultPath = !_sameDirectory(pickedDirectory, _configuredDownloadDirectory),
-                            ),
+                            onDirectoryPicked: (pickedDirectory) {
+                              setState(() {
+                                _directoryManuallySet = true;
+                                _asDefaultPath = !_sameDirectory(pickedDirectory, _configuredDownloadDirectory);
+                              });
+                              _applyCategoryHighlightNow();
+                            },
                           ),
                           const SizedBox(height: 8),
                           _DirectoryOptions(
                             key: const ValueKey('create-task-directory-options-row'),
                             stacked: stacked,
                             asDefaultPath: _asDefaultPath,
+                            activeIndex: _activeCategoryIndex,
                             onAsDefaultPathChanged: (value) => setState(() => _asDefaultPath = value),
                             shortcuts: [
                               for (final entry in _downloadCategories.indexed)
@@ -448,16 +477,22 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 ),
                             ],
                             onShortcutSelected: (shortcut) {
-                              _directoryController.text = shortcut.path;
-                              if (_asDefaultPath) {
-                                setState(() => _asDefaultPath = false);
-                              }
+                              // Tapping the active shortcut again clears the selection and
+                              // restores the saved default directory. Either tap is an
+                              // explicit directory choice, so the task skips auto classify.
+                              final turnOn = _activeCategoryIndex != shortcut.index;
+                              setState(() {
+                                _directoryManuallySet = true;
+                                _asDefaultPath = false;
+                              });
+                              _directoryController.text = turnOn ? shortcut.path : _configuredDownloadDirectory;
+                              _applyCategoryHighlightNow();
                             },
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     AppFormRow(
                       direction: stacked ? Axis.vertical : Axis.horizontal,
                       label: context.l10n.directDownload,
@@ -808,7 +843,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         _configuredDownloadDirectory = config.downloadDir.trim();
         if (config.downloadDir.isNotEmpty &&
             (_directoryController.text.isEmpty || _directoryController.text == 'C:/Users/levi/Downloads')) {
+          _programmaticDirectoryWrite = true;
           _directoryController.text = config.downloadDir;
+          _programmaticDirectoryWrite = false;
         }
         if (_asDefaultPath && _sameDirectory(_directoryController.text, _configuredDownloadDirectory)) {
           _asDefaultPath = false;
@@ -818,10 +855,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           _connectionsController.text = connections.toString();
         }
         _directDownload = config.extra.defaultDirectDownload;
-        _downloadCategories = config.extra.downloadCategories
-            .where((category) => !category.isDeleted)
-            .toList(growable: false);
+        _downloadCategories = config.categories.where((category) => !category.isDeleted).toList(growable: false);
       });
+      _applyCategoryHighlightNow();
     } catch (_) {
       // Keep local defaults when the backend is not available yet.
     }
@@ -1099,6 +1135,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       name: name ?? _renameController.text.trim(),
       path: _directoryController.text.trim(),
       asDefaultPath: _asDefaultPath,
+      skipAutoCategorize: _directoryManuallySet,
       selectFiles: selectFiles,
       extra: api_options.OptsExtraHttp(
         connections: connections,
@@ -1117,6 +1154,53 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     final normalizedRight = right.trim();
     if (normalizedLeft.isEmpty || normalizedRight.isEmpty) return false;
     return path.equals(path.normalize(normalizedLeft), path.normalize(normalizedRight));
+  }
+
+  /// Index of the category whose path matches [value], or null. Category paths
+  /// are resolved through `_renderPathPlaceholders` before comparing, while
+  /// [value] is taken verbatim, so a `%year%` pattern only matches once the
+  /// directory field already holds the rendered path.
+  int? _categoryIndexFor(String value) {
+    final target = value.trim();
+    if (target.isEmpty) return null;
+    for (final entry in _downloadCategories.indexed) {
+      if (_sameDirectory(_renderPathPlaceholders(entry.$2.path), target)) return entry.$1;
+    }
+    return null;
+  }
+
+  void _applyCategoryHighlight() {
+    final next = _categoryIndexFor(_directoryController.text);
+    if (next == _activeCategoryIndex) return;
+    setState(() => _activeCategoryIndex = next);
+  }
+
+  /// Debounced variant for paths typed into the directory field, so the
+  /// highlight does not flicker while the path is still incomplete.
+  /// A text change the user typed is an explicit directory choice; one the
+  /// page writes itself (initial fill, incoming task) is not.
+  void _handleDirectoryChanged() {
+    if (!_programmaticDirectoryWrite && !_directoryManuallySet) {
+      setState(() => _directoryManuallySet = true);
+    }
+    _scheduleCategoryHighlight();
+  }
+
+  void _scheduleCategoryHighlight() {
+    _categoryHighlightTimer?.cancel();
+    _categoryHighlightTimer = Timer(_categoryHighlightDebounce, () {
+      if (!mounted) return;
+      _applyCategoryHighlight();
+    });
+  }
+
+  /// Immediate variant for shortcut clicks and programmatic writes, which
+  /// cancels a pending debounce instead of waiting for it.
+  void _applyCategoryHighlightNow() {
+    _categoryHighlightTimer?.cancel();
+    _categoryHighlightTimer = null;
+    if (!mounted) return;
+    _applyCategoryHighlight();
   }
 
   Future<void> _submitResolved(Request request, ResolveResult result, List<int> selectedIndexes) async {
@@ -1223,6 +1307,16 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                           : dialogContext.l10n.resolvedFileCount(result.res.files.length),
                       style: TextStyle(color: palette.textSecondary, fontSize: 12),
                     ),
+                    if (result.suggestedDownloadDir.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        dialogContext.l10n.resolvedCategoryDirectory(result.suggestedDownloadDir),
+                        key: const ValueKey('resolve-category-directory'),
+                        style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     SizedBox(
                       height: treeHeight.clamp(260.0, 460.0),
@@ -1564,6 +1658,7 @@ class _DirectoryOptions extends StatelessWidget {
     super.key,
     required this.stacked,
     required this.asDefaultPath,
+    required this.activeIndex,
     required this.onAsDefaultPathChanged,
     required this.shortcuts,
     required this.onShortcutSelected,
@@ -1571,6 +1666,7 @@ class _DirectoryOptions extends StatelessWidget {
 
   final bool stacked;
   final bool asDefaultPath;
+  final int? activeIndex;
   final ValueChanged<bool> onAsDefaultPathChanged;
   final List<_DirectoryShortcut> shortcuts;
   final ValueChanged<_DirectoryShortcut> onShortcutSelected;
@@ -1578,7 +1674,12 @@ class _DirectoryOptions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final toggle = _AsDefaultPathToggle(value: asDefaultPath, onChanged: onAsDefaultPathChanged);
-    final shortcutList = _DirectoryShortcuts(shortcuts: shortcuts, alignEnd: !stacked, onSelected: onShortcutSelected);
+    final shortcutList = _DirectoryShortcuts(
+      shortcuts: shortcuts,
+      activeIndex: activeIndex,
+      alignEnd: !stacked,
+      onSelected: onShortcutSelected,
+    );
 
     if (stacked) {
       return Column(
@@ -1613,9 +1714,15 @@ class _DirectoryOptions extends StatelessWidget {
 }
 
 class _DirectoryShortcuts extends StatelessWidget {
-  const _DirectoryShortcuts({required this.shortcuts, required this.alignEnd, required this.onSelected});
+  const _DirectoryShortcuts({
+    required this.shortcuts,
+    required this.activeIndex,
+    required this.alignEnd,
+    required this.onSelected,
+  });
 
   final List<_DirectoryShortcut> shortcuts;
+  final int? activeIndex;
   final bool alignEnd;
   final ValueChanged<_DirectoryShortcut> onSelected;
 
@@ -1631,6 +1738,7 @@ class _DirectoryShortcuts extends StatelessWidget {
             _DirectoryShortcutButton(
               key: ValueKey('create-task-category-${shortcut.index}'),
               shortcut: shortcut,
+              active: shortcut.index == activeIndex,
               onPressed: () => onSelected(shortcut),
             ),
         ],
@@ -1651,6 +1759,7 @@ class _DirectoryShortcuts extends StatelessWidget {
               _DirectoryShortcutButton(
                 key: ValueKey('create-task-category-${shortcut.index}'),
                 shortcut: shortcut,
+                active: shortcut.index == activeIndex,
                 onPressed: () => onSelected(shortcut),
               ),
             ],
@@ -1662,9 +1771,10 @@ class _DirectoryShortcuts extends StatelessWidget {
 }
 
 class _DirectoryShortcutButton extends StatefulWidget {
-  const _DirectoryShortcutButton({super.key, required this.shortcut, required this.onPressed});
+  const _DirectoryShortcutButton({super.key, required this.shortcut, required this.active, required this.onPressed});
 
   final _DirectoryShortcut shortcut;
+  final bool active;
   final VoidCallback onPressed;
 
   @override
@@ -1677,10 +1787,12 @@ class _DirectoryShortcutButtonState extends State<_DirectoryShortcutButton> {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
+    final active = widget.active;
     return AppTooltip(
       message: widget.shortcut.path,
       child: Semantics(
         button: true,
+        selected: active,
         label: widget.shortcut.label,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -1696,21 +1808,25 @@ class _DirectoryShortcutButtonState extends State<_DirectoryShortcutButton> {
               constraints: const BoxConstraints(maxWidth: 168),
               padding: const EdgeInsets.symmetric(horizontal: 9),
               decoration: BoxDecoration(
-                color: _hovered ? palette.surfaceSoft : palette.cardBg,
+                color: active ? palette.brandSoft : (_hovered ? palette.surfaceSoft : palette.cardBg),
                 borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-                border: Border.all(color: palette.border),
+                border: Border.all(color: active ? palette.brand.withValues(alpha: 0.45) : palette.border),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.folder_outlined, size: 14, color: palette.textMuted),
+                  Icon(Icons.folder_outlined, size: 14, color: active ? palette.brand : palette.textMuted),
                   const SizedBox(width: 5),
                   Flexible(
                     child: Text(
                       widget.shortcut.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: palette.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: active ? palette.textPrimary : palette.textSecondary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -1841,6 +1957,8 @@ class _SegmentButton extends StatelessWidget {
     );
   }
 }
+
+const _categoryHighlightDebounce = Duration(milliseconds: 300);
 
 const _advancedExpandDuration = Duration(milliseconds: 220);
 const _advancedScrollDelay = Duration(milliseconds: 90);

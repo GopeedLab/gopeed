@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:path/path.dart' as path;
 
 part 'downloader_config.g.dart';
 
@@ -17,12 +18,16 @@ class DownloaderConfig {
   ApiServerConfig api = ApiServerConfig();
   bool autoStartTasks;
   bool autoDeleteMissingFileTasks;
+  List<DownloadCategory> categories;
+  bool autoCategorize;
 
   DownloaderConfig({
     this.downloadDir = '',
     this.maxRunning = 0,
     this.autoStartTasks = false,
     this.autoDeleteMissingFileTasks = false,
+    this.categories = const [],
+    this.autoCategorize = false,
   });
 
   factory DownloaderConfig.fromJson(Map<String, dynamic> json) => _$DownloaderConfigFromJson(json);
@@ -192,7 +197,6 @@ class ExtraConfig {
   bool runAsMenubarApp;
   bool analyticsEnabled;
   String analyticsClientId;
-  List<DownloadCategory> downloadCategories;
 
   ExtraConfig({
     this.themeMode = '',
@@ -211,7 +215,6 @@ class ExtraConfig {
     this.runAsMenubarApp = false,
     this.analyticsEnabled = true,
     this.analyticsClientId = '',
-    this.downloadCategories = const [],
   }) : windowState = windowState ?? WindowStateConfig();
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>
@@ -241,6 +244,9 @@ class DownloadCategory {
   bool isBuiltIn;
   String? nameKey; // i18n key for built-in categories (e.g., 'categoryMusic')
   bool isDeleted; // Mark built-in categories as deleted instead of removing them
+  // File extensions routed to this category, without leading dots, e.g. ['exe', 'msi'].
+  // An empty list means the category never matches automatically.
+  List<String> extensions;
 
   DownloadCategory({
     required this.name,
@@ -248,11 +254,78 @@ class DownloadCategory {
     this.isBuiltIn = false,
     this.nameKey,
     this.isDeleted = false,
+    this.extensions = const [],
   });
 
   factory DownloadCategory.fromJson(Map<String, dynamic> json) => _$DownloadCategoryFromJson(json);
 
   Map<String, dynamic> toJson() => _$DownloadCategoryToJson(this);
+
+  /// The effective extension list. The result is always normalized: split on
+  /// commas/whitespace, trimmed, lowercased, without leading dots and without
+  /// duplicates; the original order is preserved. An empty list means the
+  /// category never matches automatically.
+  List<String> effectiveExtensions() => normalizeCategoryExtensions(extensions);
+}
+
+/// Lowercases the ascii letters of [value] and leaves the rest alone. The
+/// backend lowercases the same way, because the unicode case tables of the two
+/// languages disagree for some code points and would let the two sides pick a
+/// different category for the same file.
+String asciiLower(String value) {
+  final lowered = StringBuffer();
+  for (final unit in value.codeUnits) {
+    lowered.writeCharCode(unit >= 0x41 && unit <= 0x5A ? unit + 0x20 : unit);
+  }
+  return lowered.toString();
+}
+
+/// Normalizes free form extension input into tokens: splits on commas and
+/// whitespace, trims, lowercases, strips leading dots, drops empties and
+/// deduplicates while keeping the original input order.
+List<String> normalizeCategoryExtensions(Iterable<String> raw) {
+  final result = <String>{};
+  for (final item in raw) {
+    for (final part in item.split(RegExp(r'[,\s]+'))) {
+      var extension = asciiLower(part.trim());
+      while (extension.startsWith('.')) {
+        extension = extension.substring(1);
+      }
+      if (extension.isNotEmpty) {
+        result.add(extension);
+      }
+    }
+  }
+  return result.toList();
+}
+
+/// Default extension lists of the built-in categories, keyed by the i18n
+/// nameKey. Used to seed the built-in categories on first launch and to offer
+/// the restore-defaults action in the category dialog.
+const kDefaultCategoryExtensions = <String, List<String>>{
+  'categoryProgram': ['exe', 'msi', 'msix', 'apk', 'dmg', 'deb', 'rpm', 'pkg', 'appimage'],
+  'categoryVideo': ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'mpg', 'mpeg', '3gp'],
+  'categoryMusic': ['mp3', 'flac', 'wav', 'aac', 'ogg', 'm4a', 'wma', 'ape'],
+  'categoryDocument': ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'epub', 'rtf'],
+};
+
+/// Rebases built-in category paths that still live under [oldDir] onto
+/// [newDir] after the default download directory changed. Categories the
+/// user moved elsewhere, and user created categories, are left alone.
+void rebaseBuiltinCategoryPaths(DownloaderConfig config, {required String oldDir, required String newDir}) {
+  if (oldDir.trim().isEmpty || newDir.trim().isEmpty || path.equals(oldDir, newDir)) {
+    return;
+  }
+  for (final category in config.categories) {
+    if (!category.isBuiltIn || category.isDeleted || category.path.trim().isEmpty) {
+      continue;
+    }
+    if (path.equals(category.path, oldDir)) {
+      category.path = newDir;
+    } else if (path.isWithin(oldDir, category.path)) {
+      category.path = path.join(newDir, path.relative(category.path, from: oldDir));
+    }
+  }
 }
 
 @JsonSerializable()
