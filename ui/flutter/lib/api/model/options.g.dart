@@ -7,14 +7,20 @@ part of 'options.dart';
 // **************************************************************************
 
 Options _$OptionsFromJson(Map<String, dynamic> json) => Options(
+  size: (json['size'] as num?)?.toInt() ?? 0,
   name: json['name'] as String? ?? '',
   path: json['path'] as String? ?? '',
   asDefaultPath: json['asDefaultPath'] as bool? ?? false,
-  selectFiles: (json['selectFiles'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList() ?? const [],
+  selectFiles:
+      (json['selectFiles'] as List<dynamic>?)
+          ?.map((e) => (e as num).toInt())
+          .toList() ??
+      const [],
   extra: json['extra'],
 );
 
 Map<String, dynamic> _$OptionsToJson(Options instance) => <String, dynamic>{
+  'size': instance.size,
   'name': instance.name,
   'path': instance.path,
   'asDefaultPath': instance.asDefaultPath,
@@ -22,34 +28,38 @@ Map<String, dynamic> _$OptionsToJson(Options instance) => <String, dynamic>{
   'extra': ?instance.extra,
 };
 
-ChecksumOption _$ChecksumOptionFromJson(Map<String, dynamic> json) => ChecksumOption(
-  algorithm: json['algorithm'] as String? ?? '',
-  expected: json['expected'] as String? ?? '',
-);
+ChecksumOption _$ChecksumOptionFromJson(Map<String, dynamic> json) =>
+    ChecksumOption(
+      algorithm: json['algorithm'] as String? ?? '',
+      expected: json['expected'] as String? ?? '',
+    );
 
-Map<String, dynamic> _$ChecksumOptionToJson(ChecksumOption instance) => <String, dynamic>{
-  'algorithm': instance.algorithm,
-  'expected': instance.expected,
-};
+Map<String, dynamic> _$ChecksumOptionToJson(ChecksumOption instance) =>
+    <String, dynamic>{
+      'algorithm': instance.algorithm,
+      'expected': instance.expected,
+    };
 
-OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) => OptsExtraHttp(
-  connections: (json['connections'] as num?)?.toInt() ?? 0,
-  autoTorrent: json['autoTorrent'] as bool?,
-  deleteTorrentAfterDownload: json['deleteTorrentAfterDownload'] as bool?,
-  autoExtract: json['autoExtract'] as bool?,
-  archivePassword: json['archivePassword'] as String? ?? '',
-  deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? false,
-  checksum: json['checksum'] == null
-      ? null
-      : ChecksumOption.fromJson(json['checksum'] as Map<String, dynamic>),
-);
+OptsExtraHttp _$OptsExtraHttpFromJson(Map<String, dynamic> json) =>
+    OptsExtraHttp(
+      connections: (json['connections'] as num?)?.toInt() ?? 0,
+      autoTorrent: json['autoTorrent'] as bool?,
+      deleteTorrentAfterDownload: json['deleteTorrentAfterDownload'] as bool?,
+      autoExtract: json['autoExtract'] as bool?,
+      archivePassword: json['archivePassword'] as String? ?? '',
+      deleteAfterExtract: json['deleteAfterExtract'] as bool? ?? false,
+      checksum: json['checksum'] == null
+          ? null
+          : ChecksumOption.fromJson(json['checksum'] as Map<String, dynamic>),
+    );
 
-Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) => <String, dynamic>{
-  'connections': instance.connections,
-  'autoTorrent': ?instance.autoTorrent,
-  'deleteTorrentAfterDownload': ?instance.deleteTorrentAfterDownload,
-  'autoExtract': ?instance.autoExtract,
-  'archivePassword': instance.archivePassword,
-  'deleteAfterExtract': instance.deleteAfterExtract,
-  'checksum': ?instance.checksum?.toJson(),
-};
+Map<String, dynamic> _$OptsExtraHttpToJson(OptsExtraHttp instance) =>
+    <String, dynamic>{
+      'connections': instance.connections,
+      'autoTorrent': ?instance.autoTorrent,
+      'deleteTorrentAfterDownload': ?instance.deleteTorrentAfterDownload,
+      'autoExtract': ?instance.autoExtract,
+      'archivePassword': instance.archivePassword,
+      'deleteAfterExtract': instance.deleteAfterExtract,
+      'checksum': ?instance.checksum?.toJson(),
+    };

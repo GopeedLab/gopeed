@@ -236,7 +236,6 @@ class _FileDownloadProgress extends StatelessWidget {
     final sizeKnown = selectedFiles.every((file) => file.size > 0);
     final size = sizeKnown ? selectedFiles.fold<int>(0, (total, file) => total + file.size) : 0;
     final progress = size > 0 ? (downloaded / size).clamp(0.0, 1.0) : null;
-    final completed = progress != null && progress >= 1;
     final progressLabel = progress == null ? Util.fmtByte(downloaded) : '${(progress * 100).toStringAsFixed(0)}%';
 
     return SizedBox(
@@ -244,16 +243,14 @@ class _FileDownloadProgress extends StatelessWidget {
       width: 116,
       child: _TaskFileColumns(
         progress: Semantics(
-          label: completed ? context.l10n.completed : progressLabel,
-          child: completed
-              ? Icon(shad.BootstrapIcons.checkCircleFill, size: 16, color: palette.brandProgress)
-              : shad.CircularProgressIndicator(
-                  value: progress ?? (downloaded > 0 ? null : 0),
-                  size: 16,
-                  strokeWidth: 2,
-                  color: palette.brandProgress,
-                  backgroundColor: palette.progressTrack,
-                ),
+          label: progressLabel,
+          child: shad.CircularProgressIndicator(
+            value: progress ?? (downloaded > 0 ? null : 0),
+            size: 16,
+            strokeWidth: 2,
+            color: palette.brandProgress,
+            backgroundColor: palette.progressTrack,
+          ),
         ),
         size: _formatFileSize(node.size),
       ),

@@ -108,6 +108,9 @@ type FileInfo struct {
 
 // Options for download
 type Options struct {
+	// Size is an optional HTTP download size estimate. HTTP metadata and clean EOF take precedence.
+	// Other protocols ignore it.
+	Size int64 `json:"size,omitempty"`
 	// Download file name
 	Name string `json:"name"`
 	// Download file path

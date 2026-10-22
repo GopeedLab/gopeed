@@ -72,6 +72,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   String _httpMethod = 'GET';
   String _httpBody = '';
   String? _initialRawUrl;
+  int _initialSize = 0;
   Map<String, String>? _initialLabels;
   RequestProxyMode _proxyMode = RequestProxyMode.follow;
   String _proxyScheme = 'http';
@@ -182,6 +183,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   void _handleUrlChanged() {
     final urlText = _urlController.text;
     if (urlText != _lastUrlText) {
+      _initialSize = 0;
       _lastUrlText = urlText;
       _renameController.clear();
       if (!_programmaticUrlChange && _fileDataUri.isNotEmpty) {
@@ -200,6 +202,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     final req = task.req;
     final opts = task.opts;
     setState(() {
+      _initialSize = 0;
       _checksumAlgorithm = 'md5';
       _checksumHashController.clear();
       if (req?.url.isNotEmpty == true) {
@@ -239,6 +242,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         }
       }
       if (opts != null) {
+        _initialSize = opts.size;
         if (opts.path.isNotEmpty) {
           _directoryController.text = opts.path;
         }
@@ -1084,15 +1088,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   api_options.Options _buildOptions({String? name, List<int> selectFiles = const [], bool omitChecksum = false}) {
+    final urls = _inputUrls();
     final connections = int.tryParse(_connectionsController.text.trim()) ?? 0;
     final checksumExpected = _checksumHashController.text.trim();
     final checksum = (!omitChecksum && _inputUrls().length <= 1 && checksumExpected.isNotEmpty)
-        ? api_options.ChecksumOption(
-            algorithm: _checksumAlgorithm,
-            expected: checksumExpected,
-          )
+        ? api_options.ChecksumOption(algorithm: _checksumAlgorithm, expected: checksumExpected)
         : null;
     return api_options.Options(
+      size: urls.length == 1 && _parseProtocol(_protocolUrlFor(urls.first)) == _TaskProtocol.http ? _initialSize : 0,
       name: name ?? _renameController.text.trim(),
       path: _directoryController.text.trim(),
       asDefaultPath: _asDefaultPath,
@@ -1135,16 +1138,25 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     if (result.res.files.isNotEmpty) {
       final reqs = selected.map((index) {
         final file = result.res.files[index];
+        final fileRequest = file.req ?? request;
         return CreateTaskBatchItem(
-          req: file.req ?? request,
+          req: fileRequest,
           opts: api_options.Options(
+            size: _parseProtocol(fileRequest.url) == _TaskProtocol.http ? file.size : 0,
             name: file.name,
             path: path.join(_directoryController.text.trim(), result.res.name, file.path),
             extra: _buildOptions(omitChecksum: isMultiFile).extra,
           ),
         );
       }).toList();
-      await ref.read(gopeedServiceProvider).createTaskBatch(CreateTaskBatch(reqs: reqs, opts: _buildOptions(omitChecksum: isMultiFile)));
+      await ref
+          .read(gopeedServiceProvider)
+          .createTaskBatch(
+            CreateTaskBatch(
+              reqs: reqs,
+              opts: _buildOptions(omitChecksum: isMultiFile),
+            ),
+          );
       return;
     }
 

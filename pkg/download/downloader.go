@@ -607,7 +607,7 @@ func (d *Downloader) createDirect(req *base.Request, opts *base.Options) (taskId
 		return
 	}
 	fetcher.Meta().Req = req
-	initOpt, err := d.initOptions(opts)
+	initOpt, err := d.initOptions(opts, req.URL)
 	if err != nil {
 		return
 	}
@@ -654,7 +654,7 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 	if opts == nil {
 		opts = &base.Options{}
 	}
-	opts, err = d.initOptions(opts.Clone())
+	opts, err = d.initOptions(opts.Clone(), fetcher.Meta().Req.URL)
 	if err != nil {
 		return "", err
 	}
@@ -669,6 +669,13 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 	fetcher.Meta().Opts = opts
 	if res := fetcher.Meta().Res; res != nil {
 		res.CalcSize(fetcher.Meta().Opts.SelectFiles)
+	}
+	// Resolve has no creation options. Publish a submitted HTTP estimate now
+	// while preserving any size already confirmed by the response.
+	if opts.Size > 0 {
+		if err := fetcher.Patch(nil, &base.Options{Size: opts.Size}); err != nil {
+			return "", err
+		}
 	}
 	defer func() {
 		d.fetcherMapLock.Lock()
@@ -712,7 +719,7 @@ func (d *Downloader) Patch(id string, req *base.Request, opts *base.Options) err
 		}
 
 		// Call the fetcher's Patch method
-		if err := task.fetcher.Patch(req, opts); err != nil {
+		if err := task.fetcher.Patch(req, httpSizeOptions(opts, task.Protocol)); err != nil {
 			return err
 		}
 
@@ -1123,6 +1130,9 @@ func (d *Downloader) RuntimeStatus(id string) (*TaskRuntimeStatus, error) {
 		result.ExtractProgress = task.Progress.ExtractProgress
 	}
 	if task.Meta == nil || task.Meta.Res == nil {
+		if task.Meta != nil && task.Meta.Opts != nil && task.Protocol == "http" {
+			result.Total = max(0, task.Meta.Opts.Size)
+		}
 		return result, nil
 	}
 
@@ -1803,9 +1813,26 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	return
 }
 
-func (d *Downloader) initOptions(opts *base.Options) (*base.Options, error) {
+// httpSizeOptions keeps estimates out of other protocols, including HLS URLs
+// served over HTTP. Clone before filtering because batch tasks may share options.
+func httpSizeOptions(opts *base.Options, protocol string) *base.Options {
+	if opts != nil && opts.Size != 0 && (protocol != "http" || opts.Size < 0) {
+		opts = opts.Clone()
+		opts.Size = 0
+	}
+	return opts
+}
+
+func (d *Downloader) initOptions(opts *base.Options, requestURL string) (*base.Options, error) {
 	if opts == nil {
 		opts = &base.Options{}
+	}
+	if opts.Size != 0 {
+		fm, err := d.parseFm(requestURL)
+		if err != nil {
+			return nil, err
+		}
+		opts = httpSizeOptions(opts, fm.Name())
 	}
 	if opts.SelectFiles == nil {
 		opts.SelectFiles = make([]int, 0)
