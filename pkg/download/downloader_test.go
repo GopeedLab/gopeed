@@ -841,6 +841,9 @@ func TestDownloader_CreateDirectUsesPathAsDefault(t *testing.T) {
 	selectedRoot := t.TempDir()
 	defaultPathOpts := newTestDownloadOptAt(selectedRoot)
 	defaultPathOpts.AsDefaultPath = true
+	// The global default download directory is only saved for a directory the
+	// user named explicitly, so the task skips the auto categorize decision.
+	defaultPathOpts.SkipAutoCategorize = true
 	createAndWait(defaultPathOpts)
 	cfg, err = downloader.GetConfig()
 	if err != nil {

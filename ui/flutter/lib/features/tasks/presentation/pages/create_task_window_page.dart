@@ -107,6 +107,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
 
   /// Guards the controller listener while the page fills the field itself.
   bool _programmaticDirectoryWrite = false;
+
+  /// The text of the directory field the page knows about. The controller also
+  /// reports selection changes, e.g. when the caret moves, so the listener
+  /// compares the text to tell a user edit from a caret move.
+  String _lastDirectoryText = '';
+
   String _fileDataUri = '';
   bool _programmaticUrlChange = false;
   String _lastUrlText = '';
@@ -219,7 +225,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   void _applyInitialTask(CreateTask? task) {
     if (task == null || !mounted) return;
     final req = task.req;
-    final opts = task.opts;
+    final opts = task.opts ?? api_options.Options();
     setState(() {
       _initialSize = 0;
       _checksumAlgorithm = 'md5';
@@ -260,31 +266,31 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
             break;
         }
       }
-      if (opts != null) {
-        _initialSize = opts.size;
-        if (opts.path.isNotEmpty) {
-          _programmaticDirectoryWrite = true;
-          _directoryController.text = opts.path;
-          _programmaticDirectoryWrite = false;
-          // The caller named a directory, so it is not the default one.
-          _directoryManuallySet = true;
+      // Filling the field is not a manual choice, the caller decides whether
+      // the task keeps its directory.
+      _directoryManuallySet = opts.skipAutoCategorize;
+      _asDefaultPath = opts.skipAutoCategorize && opts.asDefaultPath;
+      _programmaticDirectoryWrite = true;
+      // A task without a directory uses the configured one, the field must
+      // not keep the directory of the previous task.
+      _directoryController.text = opts.path.isNotEmpty ? opts.path : _configuredDownloadDirectory;
+      _programmaticDirectoryWrite = false;
+      _initialSize = opts.size;
+      if (opts.extra is Map) {
+        final extra = api_options.OptsExtraHttp.fromJson(Map<String, dynamic>.from(opts.extra! as Map));
+        if (extra.connections > 0) {
+          _connectionsController.text = extra.connections.toString();
         }
-        if (opts.extra is Map) {
-          final extra = api_options.OptsExtraHttp.fromJson(Map<String, dynamic>.from(opts.extra! as Map));
-          if (extra.connections > 0) {
-            _connectionsController.text = extra.connections.toString();
+        _autoTorrent = extra.autoTorrent;
+        _deleteTorrentAfterDownload = extra.deleteTorrentAfterDownload;
+        _autoExtract = extra.autoExtract;
+        _archivePasswordController.text = extra.archivePassword;
+        _deleteAfterExtract = extra.deleteAfterExtract;
+        if (extra.checksum != null) {
+          if (extra.checksum!.algorithm.isNotEmpty) {
+            _checksumAlgorithm = extra.checksum!.algorithm;
           }
-          _autoTorrent = extra.autoTorrent;
-          _deleteTorrentAfterDownload = extra.deleteTorrentAfterDownload;
-          _autoExtract = extra.autoExtract;
-          _archivePasswordController.text = extra.archivePassword;
-          _deleteAfterExtract = extra.deleteAfterExtract;
-          if (extra.checksum != null) {
-            if (extra.checksum!.algorithm.isNotEmpty) {
-              _checksumAlgorithm = extra.checksum!.algorithm;
-            }
-            _checksumHashController.text = extra.checksum!.expected;
-          }
+          _checksumHashController.text = extra.checksum!.expected;
         }
       }
     });
@@ -466,6 +472,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                             key: const ValueKey('create-task-directory-options-row'),
                             stacked: stacked,
                             asDefaultPath: _asDefaultPath,
+                            canSetAsDefaultPath: _directoryManuallySet,
                             activeIndex: _activeCategoryIndex,
                             onAsDefaultPathChanged: (value) => setState(() => _asDefaultPath = value),
                             shortcuts: [
@@ -1178,8 +1185,15 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   /// Debounced variant for paths typed into the directory field, so the
   /// highlight does not flicker while the path is still incomplete.
   /// A text change the user typed is an explicit directory choice; one the
-  /// page writes itself (initial fill, incoming task) is not.
+  /// page writes itself (initial fill, incoming task) is not. The controller
+  /// also notifies on selection changes, e.g. when the caret moves, so only a
+  /// changed text counts as a manual choice.
   void _handleDirectoryChanged() {
+    final text = _directoryController.text;
+    if (text == _lastDirectoryText) {
+      return;
+    }
+    _lastDirectoryText = text;
     if (!_programmaticDirectoryWrite && !_directoryManuallySet) {
       setState(() => _directoryManuallySet = true);
     }
@@ -1606,9 +1620,10 @@ class _DirectDownloadToggle extends StatelessWidget {
 }
 
 class _AsDefaultPathToggle extends StatelessWidget {
-  const _AsDefaultPathToggle({required this.value, required this.onChanged});
+  const _AsDefaultPathToggle({required this.value, required this.enabled, required this.onChanged});
 
   final bool value;
+  final bool enabled;
   final ValueChanged<bool> onChanged;
 
   @override
@@ -1617,7 +1632,7 @@ class _AsDefaultPathToggle extends StatelessWidget {
     return GestureDetector(
       key: const ValueKey('create-task-remember-download-directory'),
       behavior: HitTestBehavior.opaque,
-      onTap: () => onChanged(!value),
+      onTap: enabled ? () => onChanged(!value) : null,
       child: SizedBox(
         height: 24,
         child: Row(
@@ -1626,7 +1641,7 @@ class _AsDefaultPathToggle extends StatelessWidget {
             Checkbox(
               key: const ValueKey('create-task-remember-download-directory-checkbox'),
               state: value ? CheckboxState.checked : CheckboxState.unchecked,
-              onChanged: (_) => onChanged(!value),
+              onChanged: enabled ? (_) => onChanged(!value) : null,
             ),
             const SizedBox(width: AppDesignTokens.checkboxLabelGap),
             Flexible(
@@ -1658,6 +1673,7 @@ class _DirectoryOptions extends StatelessWidget {
     super.key,
     required this.stacked,
     required this.asDefaultPath,
+    required this.canSetAsDefaultPath,
     required this.activeIndex,
     required this.onAsDefaultPathChanged,
     required this.shortcuts,
@@ -1666,6 +1682,10 @@ class _DirectoryOptions extends StatelessWidget {
 
   final bool stacked;
   final bool asDefaultPath;
+
+  /// The global default download directory is only saved for a directory the
+  /// user named explicitly, so the toggle stays disabled until then.
+  final bool canSetAsDefaultPath;
   final int? activeIndex;
   final ValueChanged<bool> onAsDefaultPathChanged;
   final List<_DirectoryShortcut> shortcuts;
@@ -1673,7 +1693,11 @@ class _DirectoryOptions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final toggle = _AsDefaultPathToggle(value: asDefaultPath, onChanged: onAsDefaultPathChanged);
+    final toggle = _AsDefaultPathToggle(
+      value: asDefaultPath,
+      enabled: canSetAsDefaultPath,
+      onChanged: onAsDefaultPathChanged,
+    );
     final shortcutList = _DirectoryShortcuts(
       shortcuts: shortcuts,
       activeIndex: activeIndex,

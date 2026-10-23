@@ -496,6 +496,44 @@ func TestDownloader_CreateWithOptionsAutoCategorize(t *testing.T) {
 	}
 }
 
+func TestDownloader_CreateWithOptionsKeepsTheDefaultDirectory(t *testing.T) {
+	url := startCategoryFileServer(t, "setup.data", []byte("0123456789"))
+	downloadDir := t.TempDir()
+	downloader := newSetupCategoryDownloader(t)
+	putCategoryConfig(t, downloader, downloadDir, true, []string{"data"})
+	done := watchTaskDone(t, downloader)
+
+	rr, err := downloader.Resolve(&base.Request{URL: url})
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskID, err := downloader.CreateWithOptions(rr.ID, &base.Options{
+		Path:          downloadDir,
+		AsDefaultPath: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTaskDone(t, done)
+
+	// The task lands in the category directory, but that must not become the
+	// global default download directory.
+	task := downloader.GetTask(taskID)
+	if task == nil {
+		t.Fatal("task not found")
+	}
+	if task.Meta.Opts.Path == downloadDir {
+		t.Fatalf("task path = %q, want the category dir", task.Meta.Opts.Path)
+	}
+	cfg, err := downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DownloadDir != downloadDir {
+		t.Fatalf("default download dir = %q, want the base dir %q", cfg.DownloadDir, downloadDir)
+	}
+}
+
 func TestDownloader_ResolveSuggestsWithoutSideEffects(t *testing.T) {
 	url := startCategoryFileServer(t, "setup.data", []byte("0123456789"))
 	downloadDir := t.TempDir()

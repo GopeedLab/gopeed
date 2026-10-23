@@ -1446,7 +1446,10 @@ func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
 }
 
 func (d *Downloader) prepareDefaultPath(opts *base.Options) (string, error) {
-	if opts == nil || !opts.AsDefaultPath || strings.TrimSpace(opts.Path) == "" {
+	// Only a directory the user named explicitly becomes the global default
+	// download directory. A task that keeps the auto categorize decision owns
+	// its directory, the backend must not turn it into the global default.
+	if opts == nil || !opts.SkipAutoCategorize || !opts.AsDefaultPath || strings.TrimSpace(opts.Path) == "" {
 		return "", nil
 	}
 	selectedPath := strings.TrimSpace(opts.Path)

@@ -472,6 +472,51 @@ func TestDownloader_PreparedTaskKeepsItsDirectory(t *testing.T) {
 	}
 }
 
+// The global default download directory is only saved when the user named the
+// directory explicitly, an auto categorized task never becomes the default.
+func TestDownloader_DefaultPathNeedsTheSkipFlag(t *testing.T) {
+	url := startCategoryFileServer(t, "setup.data", []byte("0123456789"))
+	downloadDir := t.TempDir()
+	chosenDir := t.TempDir()
+	downloader := newSetupCategoryDownloader(t)
+	putCategoryConfig(t, downloader, downloadDir, true, []string{"data"})
+	done := watchTaskDone(t, downloader)
+
+	// The skip flag is missing, the task keeps the auto categorize decision
+	// and the global default stays untouched.
+	if _, err := downloader.CreateDirect(&base.Request{URL: url}, &base.Options{
+		Path:          chosenDir,
+		AsDefaultPath: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	waitTaskDone(t, done)
+	cfg, err := downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DownloadDir == chosenDir {
+		t.Fatalf("default download dir = %q, want it unchanged", cfg.DownloadDir)
+	}
+
+	// The user named the directory, so it becomes the global default.
+	if _, err := downloader.CreateDirect(&base.Request{URL: url}, &base.Options{
+		Path:               chosenDir,
+		AsDefaultPath:      true,
+		SkipAutoCategorize: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	waitTaskDone(t, done)
+	cfg, err = downloader.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DownloadDir != chosenDir {
+		t.Fatalf("default download dir = %q, want %q", cfg.DownloadDir, chosenDir)
+	}
+}
+
 // Every task of a batch decides its own directory, the shared options of the
 // batch do not leak into the single tasks.
 func TestDownloader_BatchTasksDecideTheirOwnDirectory(t *testing.T) {

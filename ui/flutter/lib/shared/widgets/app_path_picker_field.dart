@@ -134,9 +134,13 @@ class _AppPathPickerFieldState extends State<AppPathPickerField> {
 
   Future<void> _pickPlatformDirectory() async {
     final path = await DownloadDirectoryPicker.pick(context, currentPath: widget.controller.text.trim());
-    if (!mounted || path == null || path.isEmpty || path == widget.controller.text) return;
-    widget.controller.text = path;
-    _syncTooltipPath(path);
+    if (!mounted || path == null || path.isEmpty) return;
+    if (path != widget.controller.text) {
+      widget.controller.text = path;
+      _syncTooltipPath(path);
+    }
+    // Picking a directory is an explicit choice even when the picked directory
+    // is the one already shown, so the callback always runs.
     widget.onDirectoryPicked?.call(path);
   }
 

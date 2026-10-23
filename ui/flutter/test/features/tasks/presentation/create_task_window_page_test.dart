@@ -237,6 +237,78 @@ void main() {
     }
   });
 
+  for (final omitOptions in [false, true]) {
+    testWidgets('an incoming task without a directory shows the configured directory (omit options: $omitOptions)', (
+      tester,
+    ) async {
+      CreateTask? submitted;
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(
+          GopeedMethods.getConfig,
+          (_) => DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true,
+        )
+        ..bind(GopeedMethods.createTask, (task) {
+          submitted = task;
+          return 'created-id';
+        })
+        ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+      final container = ProviderContainer(
+        overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+      );
+      addTearDown(container.dispose);
+      final pending = container.read(pendingCreateTaskProvider.notifier);
+      final router = GoRouter(
+        initialLocation: '/create',
+        routes: [
+          GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+          GoRoute(path: '/create', builder: (_, _) => const CreateTaskWindowPage()),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: shad.ShadcnApp.router(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            routerConfig: router,
+            builder: (_, child) => AppComponentThemes(child: child!),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      pending.set(
+        CreateTask(
+          req: Request(url: 'https://example.com/first.zip'),
+          opts: Options(path: 'D:/Other', skipAutoCategorize: true),
+        ),
+      );
+      router.go('/create');
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester, 'create-task-directory-input'), 'D:/Other');
+
+      // The second task names no directory, so the field may not keep the one the
+      // user chose for the first task.
+      pending.set(
+        CreateTask(
+          req: Request(url: 'https://example.com/second.zip'),
+          opts: omitOptions ? null : Options(),
+        ),
+      );
+      router.go('/create');
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester, 'create-task-directory-input'), '/downloads');
+
+      await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(submitted?.opts?.path, '/downloads');
+      expect(submitted?.opts?.skipAutoCategorize, isFalse);
+      await _settleToastTimers(tester);
+    });
+  }
+
   testWidgets('mobile create task page stays within the system safe areas', (WidgetTester tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     tester.view.physicalSize = const Size(700, 760);
@@ -480,7 +552,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('android-app-directory-option')));
     await tester.pumpAndSettle();
-    expect(tester.widget<shad.Checkbox>(rememberDirectory).state, shad.CheckboxState.unchecked);
+    // Picking the directory already shown is still an explicit choice, so the
+    // default toggle is offered and pre-checked for a non-default directory.
+    expect(tester.widget<shad.Checkbox>(rememberDirectory).state, shad.CheckboxState.checked);
 
     await tester.tap(directoryPicker);
     await tester.pumpAndSettle();
@@ -752,6 +826,42 @@ void main() {
     await tester.pumpAndSettle();
 
     // The value matches the default directory, but the user still named it.
+    expect(submitted?.opts?.path, 'C:/Downloads');
+    expect(submitted?.opts?.skipAutoCategorize, isTrue);
+    await _settleToastTimers(tester);
+  });
+
+  testWidgets('picking the directory that is already shown still skips auto categorize', (tester) async {
+    CreateTask? submitted;
+    await _pumpCreateTaskWithCategories(
+      tester,
+      downloadDir: 'C:/Downloads',
+      url: 'https://example.com/setup.exe',
+      categories: [
+        DownloadCategory(name: 'Program', path: 'C:/Downloads/Program', extensions: const ['exe']),
+      ],
+      onCreate: (task) => submitted = task,
+    );
+    DownloadDirectoryPicker.debugPlatformOverride = TargetPlatform.android;
+    DownloadDirectoryPicker.debugAndroidLocationsLoader = () async => {
+      'application': 'C:/Downloads',
+      'downloads': 'C:/Public',
+    };
+    addTearDown(() => DownloadDirectoryPicker.debugAndroidLocationsLoader = null);
+
+    await tester.tap(find.byKey(const ValueKey('create-task-directory-picker')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('android-app-directory-option')));
+    await tester.pumpAndSettle();
+
+    // The picked directory equals the one already shown, but picking is an
+    // explicit choice, so the task skips the classification.
+    final checkbox = find.byKey(const ValueKey('create-task-remember-download-directory-checkbox'));
+    expect(tester.widget<shad.Checkbox>(checkbox).onChanged, isNotNull);
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
     expect(submitted?.opts?.path, 'C:/Downloads');
     expect(submitted?.opts?.skipAutoCategorize, isTrue);
     await _settleToastTimers(tester);
@@ -1276,6 +1386,58 @@ void main() {
     expect(tester.widget<Text>(suggestion).data, contains('/downloads/Program'));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('the default download directory toggle needs a manual directory choice', (tester) async {
+    await _pumpCreateTaskWithCategories(
+      tester,
+      downloadDir: 'C:/Downloads',
+      url: 'https://example.com/setup.exe',
+      categories: [
+        DownloadCategory(name: 'Program', path: 'C:/Downloads/Program', extensions: const ['exe']),
+      ],
+      onCreate: (task) {},
+    );
+
+    final checkbox = find.byKey(const ValueKey('create-task-remember-download-directory-checkbox'));
+    // The global default directory is only saved for a directory the user
+    // named, so the toggle stays disabled until then.
+    expect(tester.widget<shad.Checkbox>(checkbox).onChanged, isNull);
+
+    await tester.enterText(find.byKey(const ValueKey('create-task-directory-input')), 'D:/Other');
+    await tester.pumpAndSettle();
+    expect(tester.widget<shad.Checkbox>(checkbox).onChanged, isNotNull);
+    await _settleToastTimers(tester);
+  });
+
+  testWidgets('moving the caret in the directory field does not skip auto categorize', (tester) async {
+    CreateTask? submitted;
+    await _pumpCreateTaskWithCategories(
+      tester,
+      downloadDir: 'C:/Downloads',
+      url: 'https://example.com/setup.exe',
+      categories: [
+        DownloadCategory(name: 'Program', path: 'C:/Downloads/Program', extensions: const ['exe']),
+      ],
+      onCreate: (task) => submitted = task,
+    );
+
+    // Only focus the field and move the caret, the text stays untouched.
+    final field = find.byKey(const ValueKey('create-task-directory-input'));
+    await tester.tap(field, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.tapAt(tester.getTopLeft(field) + const Offset(30, 10));
+    await tester.pumpAndSettle();
+
+    expect(_fieldText(tester, 'create-task-directory-input'), 'C:/Downloads');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(submitted?.opts?.path, 'C:/Downloads');
+    expect(submitted?.opts?.skipAutoCategorize, isFalse);
+    await _settleToastTimers(tester);
+  });
+
 }
 
 /// Unmounts the tree and lets the shadcn toast close timers fire, so a test
