@@ -211,6 +211,17 @@ func TestDecideDownloadDirWhiteList(t *testing.T) {
 		}
 	})
 
+	t.Run("equivalent category paths still fall back to the allowed spelling", func(t *testing.T) {
+		cfg := newConfig()
+		cfg.Categories[0].Path = defaultDir + "/."
+		d := newUnitCategoryDownloader(cfg)
+		d.cfg.WhiteDownloadDirs = []string{defaultDir}
+		got, err := d.decideDownloadDir(&base.Options{Path: defaultDir}, singleFileResource("setup.exe"))
+		if err != nil || got != defaultDir {
+			t.Fatalf("decideDownloadDir() = %q, %v; want %q, nil", got, err, defaultDir)
+		}
+	})
+
 	t.Run("an empty base directory is an error", func(t *testing.T) {
 		cfg := newConfig()
 		cfg.DownloadDir = ""
@@ -233,6 +244,12 @@ func TestSuggestedDownloadDir(t *testing.T) {
 		want string
 	}{
 		{name: "a matching single file is suggested", res: singleFileResource("setup.exe"), want: programDir},
+		{
+			name: "a padded category path matches the creation decision",
+			cfg:  func(cfg *base.DownloaderStoreConfig) { cfg.Categories[2].Path = "  " + programDir + "  " },
+			res:  singleFileResource("setup.exe"),
+			want: programDir,
+		},
 		{
 			name: "the switch off suggests nothing",
 			cfg:  func(cfg *base.DownloaderStoreConfig) { cfg.AutoCategorize = util.BoolPtr(false) },
@@ -295,17 +312,6 @@ func TestNormalizeCategoryExtensions(t *testing.T) {
 				t.Fatalf("normalizeCategoryExtensions(%q) = %q, want %q", tt.raw, got, tt.want)
 			}
 		}
-	}
-}
-
-func TestNormalizeComparablePath(t *testing.T) {
-	// Windows compares paths case insensitively, everywhere else the case is
-	// part of the path.
-	if got := normalizeComparablePath("/Downloads/Music", true); got != "/downloads/music" {
-		t.Fatalf("normalizeComparablePath(case insensitive) = %q, want %q", got, "/downloads/music")
-	}
-	if got := normalizeComparablePath("/Downloads/Music", false); got != "/Downloads/Music" {
-		t.Fatalf("normalizeComparablePath(case sensitive) = %q, want %q", got, "/Downloads/Music")
 	}
 }
 

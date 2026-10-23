@@ -882,11 +882,26 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = downloader.CreateWithOptions(rr.ID, newTestDownloadOpt(t))
-	if err == nil {
-		t.Fatal("Create should reject a directory outside the allowlist")
+	// The directory is decided when the task starts, so a directory outside
+	// the allowlist fails the task instead of the create call.
+	taskId, err := downloader.CreateWithOptions(rr.ID, newTestDownloadOpt(t))
+	if err != nil {
+		t.Fatal(err)
 	}
-
+	task := downloader.GetTask(taskId)
+	if task == nil {
+		t.Fatal("task not found")
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if task.Status == base.DownloadStatusError {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if task.Status != base.DownloadStatusError {
+		t.Fatalf("task status = %q, want the task to be rejected by the allowlist", task.Status)
+	}
 }
 
 func TestDownloader_CreateDirectBatch(t *testing.T) {

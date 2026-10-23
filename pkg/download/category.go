@@ -3,13 +3,10 @@ package download
 import (
 	"errors"
 	"path"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"unicode"
 
 	"github.com/GopeedLab/gopeed/pkg/base"
-	"github.com/GopeedLab/gopeed/pkg/util"
 )
 
 // categoryForResource returns the category that receives the resolved
@@ -54,11 +51,11 @@ func (d *Downloader) decideDownloadDir(opts *base.Options, res *base.Resource) (
 	target := base
 	if !opts.SkipAutoCategorize {
 		if category := categoryForResource(cfg, res); category != nil {
-			target = category.Path
+			target = dartTrimSpace(category.Path)
 		}
 	}
 	dir, err := d.initDownloadPath(target)
-	if err != nil && comparablePath(target) != comparablePath(base) {
+	if err != nil && target != base {
 		d.Logger.Warn().Err(err).Msgf("category directory %q rejected by white list, falling back to %q", target, base)
 		dir, err = d.initDownloadPath(base)
 	}
@@ -81,7 +78,7 @@ func (d *Downloader) suggestedDownloadDir(res *base.Resource) string {
 	if category == nil {
 		return ""
 	}
-	dir, err := d.initDownloadPath(category.Path)
+	dir, err := d.initDownloadPath(dartTrimSpace(category.Path))
 	if err != nil {
 		return ""
 	}
@@ -165,24 +162,6 @@ func normalizeCategoryExtensions(raw []string) []string {
 func fileExtension(name string) string {
 	name = strings.ReplaceAll(name, `\`, "/")
 	return strings.TrimPrefix(asciiLower(path.Ext(name)), ".")
-}
-
-// comparablePath normalizes a path for equality comparison: placeholders are
-// expanded and separators unified so the same directory written in different
-// but equivalent ways compares equal.
-func comparablePath(p string) string {
-	return normalizeComparablePath(p, runtime.GOOS == "windows")
-}
-
-// normalizeComparablePath normalizes a path for equality comparison. The
-// comparison is case insensitive on windows, where the file system is, and
-// case sensitive everywhere else.
-func normalizeComparablePath(p string, caseInsensitive bool) string {
-	p = path.Clean(filepath.ToSlash(dartTrimSpace(util.ReplacePathPlaceholders(p))))
-	if caseInsensitive {
-		p = strings.ToLower(p)
-	}
-	return p
 }
 
 // dartTrimSpace trims the whitespace the dart String.trim() removes, which is
