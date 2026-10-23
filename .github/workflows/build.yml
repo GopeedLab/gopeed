@@ -106,17 +106,32 @@ jobs:
           if ("${{ matrix.arch }}" -eq "amd64") {
               # for amd64
               $release = "build\windows\x64\runner\Release\"
-              $mingw = "C:\Program Files\Git\mingw64\bin"
-              cp $mingw\libstdc++-6.dll $release
-              cp $mingw\libgcc_s_seh-1.dll $release
+              # Use the same toolchain as cgo instead of Git's bundled DLLs.
+              $cc = (Get-Command -Name (go env CC) -CommandType Application -ErrorAction Stop).Source
+              foreach ($dll in @("libstdc++-6.dll", "libgcc_s_seh-1.dll", "libwinpthread-1.dll")) {
+                  $runtimePath = [string](& $cc "-print-file-name=$dll")
+                  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($runtimePath)) {
+                      throw "Failed to locate $dll using $cc"
+                  }
+                  $runtimePath = $runtimePath.Trim()
+                  # Some MinGW distributions keep runtime DLLs beside gcc.exe.
+                  if ($runtimePath -eq $dll) {
+                      $runtimePath = Join-Path (Split-Path -Parent $cc) $dll
+                  }
+                  if (!(Test-Path -LiteralPath $runtimePath -PathType Leaf)) {
+                      throw "MinGW runtime $dll was not found by $cc (reported path: $runtimePath)"
+                  }
+                  Write-Host "Copying MinGW runtime: $runtimePath"
+                  Copy-Item -LiteralPath $runtimePath -Destination $release
+              }
           } else {
               # for ARM64
               $release = "build\windows\arm64\runner\Release\"
               $mingw = "$env:CLANGARM64_ROOT\aarch64-w64-mingw32\bin"
               cp $mingw\libc++.dll $release
               cp $mingw\libunwind.dll $release
+              cp $mingw\libwinpthread-1.dll $release
           }
-          cp $mingw\libwinpthread-1.dll $release
           cp $system\msvcp140.dll $release
           cp $system\vcruntime140.dll $release
           cp $system\vcruntime140_1.dll $release
