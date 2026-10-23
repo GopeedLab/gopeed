@@ -1682,6 +1682,44 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('changing the download directory rebases built-in category paths', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final settingsController = RebaseSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    final directoryInput = find.byKey(const ValueKey('download-directory-input'));
+    expect(directoryInput, findsOneWidget);
+    await tester.enterText(directoryInput, '/dl/new');
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+
+    final saved = settingsController.state.requireValue.config;
+    expect(saved.downloadDir, '/dl/new');
+    expect(
+      {for (final category in saved.categories) category.name: category.path.replaceAll(r'\', '/')},
+      {
+        'Music': '/dl/new/Music',
+        'Video': '/dl/new/Video',
+        'Document': '/dl/new/Document',
+        'Program': '/dl/new/Program',
+        'Mine': '/dl/old/Mine',
+      },
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('android download directory picker only switches to verified raw paths', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(390, 760));
     DownloadDirectoryPicker.debugPlatformOverride = TargetPlatform.android;
@@ -2523,6 +2561,50 @@ void main() {
     await tester.tap(find.text('Downloads'));
     await tester.pumpAndSettle();
     expect(tester.getRect(addCategoryButton).left, closeTo(tester.getRect(categoryEditor).left, 0.01));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('extensions owned by another category block the add dialog', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(CategorySettingsController.new),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('add-download-category')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('download-category-name')), '影集');
+    await tester.enterText(find.byKey(const ValueKey('download-category-path')), '/tmp/shows');
+    await tester.enterText(find.byKey(const ValueKey('download-category-extensions-input')), 'dat');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.text('dat is already used by 资料'), findsOneWidget);
+    AppPrimaryButton saveButton() => tester.widget<AppPrimaryButton>(
+      find.ancestor(of: find.text('Save'), matching: find.byType(AppPrimaryButton)),
+    );
+    expect(saveButton().onPressed, isNull);
+
+    await tester.enterText(find.byKey(const ValueKey('download-category-extensions-input')), 'mkv');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('dat is already used by 资料'), findsNothing);
+    expect(saveButton().onPressed, isNotNull);
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('影集'), findsOneWidget);
+    expect(find.text('/tmp/shows'), findsOneWidget);
+    expect(find.text('dat is already used by 资料'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -6082,7 +6164,24 @@ class CategorySettingsController extends FakeSettingsController {
   @override
   Future<SettingsState> build() async {
     final config = DownloaderConfig();
-    config.extra.downloadCategories = [DownloadCategory(name: '资料', path: '/tmp/data')];
+    config.categories = [
+      DownloadCategory(name: '资料', path: '/tmp/data', extensions: ['dat']),
+    ];
+    return SettingsState(config: config);
+  }
+}
+
+class RebaseSettingsController extends FakeSettingsController {
+  @override
+  Future<SettingsState> build() async {
+    final config = DownloaderConfig()..downloadDir = '/dl/old';
+    config.categories = [
+      DownloadCategory(name: 'Music', path: '/dl/old/Music', isBuiltIn: true, nameKey: 'categoryMusic'),
+      DownloadCategory(name: 'Video', path: '/dl/old/Video', isBuiltIn: true, nameKey: 'categoryVideo'),
+      DownloadCategory(name: 'Document', path: '/dl/old/Document', isBuiltIn: true, nameKey: 'categoryDocument'),
+      DownloadCategory(name: 'Program', path: '/dl/old/Program', isBuiltIn: true, nameKey: 'categoryProgram'),
+      DownloadCategory(name: 'Mine', path: '/dl/old/Mine'),
+    ];
     return SettingsState(config: config);
   }
 }

@@ -191,6 +191,15 @@ func (d *Downloader) Setup() error {
 			FirstLoad: true,
 		}
 	}
+	// Move the legacy extra.downloadCategories list written by v2.0.0-beta
+	// builds into the top level categories field and persist the cleared key,
+	// before Init seeds the built-in categories. The config is written
+	// directly, PutConfig would validate a config that is not initialized yet.
+	if d.cfg.DownloaderStoreConfig.MigrateLegacyExtraCategories() {
+		if err := d.storage.Put(bucketConfig, "config", d.cfg.DownloaderStoreConfig); err != nil {
+			return err
+		}
+	}
 	// Initialize the current backend configuration schema and defaults.
 	if err := d.initProtocolConfigs(); err != nil {
 		return err
@@ -537,7 +546,8 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	}
 	if res != nil && len(res.Files) > 0 {
 		rr = &ResolveResult{
-			Res: res,
+			Res:                  res,
+			SuggestedDownloadDir: d.suggestedDownloadDir(res),
 		}
 		return
 	}
@@ -554,8 +564,9 @@ func (d *Downloader) Resolve(req *base.Request) (rr *ResolveResult, err error) {
 	d.fetcherCache[rrId] = fetcher
 	d.fetcherMapLock.Unlock()
 	rr = &ResolveResult{
-		ID:  rrId,
-		Res: fetcher.Meta().Res,
+		ID:                   rrId,
+		Res:                  fetcher.Meta().Res,
+		SuggestedDownloadDir: d.suggestedDownloadDir(fetcher.Meta().Res),
 	}
 	return
 }
@@ -654,26 +665,32 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 	if opts == nil {
 		opts = &base.Options{}
 	}
-	opts, err = d.initOptions(opts.Clone(), fetcher.Meta().Req.URL)
+	// The options of the caller decide the global default download directory,
+	// the task options are prepared later, when the task starts.
+	defaultPath, err := d.prepareDefaultPath(opts)
+	if err != nil {
+		return "", err
+	}
+	taskOpts, err := d.initOptions(opts.Clone(), fetcher.Meta().Req.URL)
 	if err != nil {
 		return "", err
 	}
 	if res := fetcher.Meta().Res; res != nil {
-		for _, index := range opts.SelectFiles {
+		for _, index := range taskOpts.SelectFiles {
 			if index < 0 || index >= len(res.Files) {
 				return "", fmt.Errorf("invalid selected file index: %d", index)
 			}
 		}
-		opts.InitSelectFiles(len(res.Files))
+		taskOpts.InitSelectFiles(len(res.Files))
 	}
-	fetcher.Meta().Opts = opts
+	fetcher.Meta().Opts = taskOpts
 	if res := fetcher.Meta().Res; res != nil {
 		res.CalcSize(fetcher.Meta().Opts.SelectFiles)
 	}
 	// Resolve has no creation options. Publish a submitted HTTP estimate now
 	// while preserving any size already confirmed by the response.
-	if opts.Size > 0 {
-		if err := fetcher.Patch(nil, &base.Options{Size: opts.Size}); err != nil {
+	if taskOpts.Size > 0 {
+		if err := fetcher.Patch(nil, &base.Options{Size: taskOpts.Size}); err != nil {
 			return "", err
 		}
 	}
@@ -682,10 +699,6 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 		delete(d.fetcherCache, rrId)
 		d.fetcherMapLock.Unlock()
 	}()
-	defaultPath, err := d.prepareDefaultPath(fetcher.Meta().Opts)
-	if err != nil {
-		return "", err
-	}
 	taskId, err = d.doCreate(fetcher, nil)
 	if err == nil {
 		d.persistDefaultPathBestEffort(defaultPath)
@@ -1370,6 +1383,15 @@ func (d *Downloader) GetConfig() (*base.DownloaderStoreConfig, error) {
 	return util.DeepClone(d.cfg.DownloaderStoreConfig), nil
 }
 
+// IsFirstLoad reports whether Setup created the config instead of loading it
+// from storage. FirstLoad is not serialized, so the clone GetConfig returns
+// always reports false.
+func (d *Downloader) IsFirstLoad() bool {
+	d.configLock.RLock()
+	defer d.configLock.RUnlock()
+	return d.cfg.FirstLoad
+}
+
 func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
 	if v == nil {
 		return errors.New("config is nil")
@@ -1433,7 +1455,10 @@ func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
 }
 
 func (d *Downloader) prepareDefaultPath(opts *base.Options) (string, error) {
-	if opts == nil || !opts.AsDefaultPath || strings.TrimSpace(opts.Path) == "" {
+	// Only a directory the user named explicitly becomes the global default
+	// download directory. A task that keeps the auto categorize decision owns
+	// its directory, the backend must not turn it into the global default.
+	if opts == nil || !opts.SkipAutoCategorize || !opts.AsDefaultPath || strings.TrimSpace(opts.Path) == "" {
 		return "", nil
 	}
 	selectedPath := strings.TrimSpace(opts.Path)
@@ -1780,6 +1805,9 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 	task.Meta = f.Meta()
 	task.Progress = &Progress{}
 	_, task.Uploading = f.(fetcher.Uploader)
+	// A new task still needs its first preparation, it decides the download
+	// directory and the final name of the task.
+	task.NeedsPreparation = true
 	initTask(task)
 	if err = d.syncBlobTaskLease(task); err != nil {
 		return "", err
@@ -1823,6 +1851,10 @@ func httpSizeOptions(opts *base.Options, protocol string) *base.Options {
 	return opts
 }
 
+// initOptions makes sure the option set is usable: a nil option set becomes
+// an empty one, the selection is never nil and the base download directory
+// falls back to the configured one. The directory is decided and checked
+// against the white list when the task starts.
 func (d *Downloader) initOptions(opts *base.Options, requestURL string) (*base.Options, error) {
 	if opts == nil {
 		opts = &base.Options{}
@@ -1838,17 +1870,12 @@ func (d *Downloader) initOptions(opts *base.Options, requestURL string) (*base.O
 		opts.SelectFiles = make([]int, 0)
 	}
 	if opts.Path == "" {
-		storeConfig, err := d.GetConfig()
+		cfg, err := d.GetConfig()
 		if err != nil {
 			return nil, err
 		}
-		opts.Path = storeConfig.DownloadDir
+		opts.Path = cfg.DownloadDir
 	}
-	path, err := d.initDownloadPath(opts.Path)
-	if err != nil {
-		return nil, err
-	}
-	opts.Path = path
 	return opts, nil
 }
 
@@ -1879,8 +1906,68 @@ func (d *Downloader) statusMut(task *Task, fn func() (bool, error)) (bool, error
 	return fn()
 }
 
+// prepareTask runs the first preparation of a task: it decides the download
+// directory, resolves a duplicate name in it and persists both. The task keeps
+// its NeedsPreparation flag when the preparation fails, so a retry prepares it
+// again. The caller holds checkDuplicateLock when the fetcher manager renames
+// duplicates, the lock has to stay held until the fetcher created the file.
+func (d *Downloader) prepareTask(task *Task) error {
+	if task.Meta.Res == nil {
+		return errors.New("task resource is not resolved")
+	}
+	preparedMeta := *task.Meta
+	preparedOpts := *task.Meta.Opts
+	preparedMeta.Opts = &preparedOpts
+	preparedMeta.Res = util.DeepClone(task.Meta.Res)
+	dir, err := d.decideDownloadDir(preparedMeta.Opts, preparedMeta.Res)
+	if err != nil {
+		return err
+	}
+	preparedMeta.Opts.Path = dir
+
+	if task.fetcherManager.AutoRename() {
+		preparedMeta.Opts.Name = util.SafeFilename(preparedMeta.Opts.Name)
+		// check if the download file is duplicated and rename it automatically.
+		if preparedMeta.Res.Name != "" {
+			preparedMeta.Res.Name = util.SafeFilename(preparedMeta.Res.Name)
+			fullDirPath := preparedMeta.FolderPath()
+			newName, err := util.CheckDuplicateAndRename(fullDirPath)
+			if err != nil {
+				return err
+			}
+			preparedMeta.Opts.Name = newName
+		} else {
+			preparedMeta.Res.Files[0].Name = util.SafeFilename(preparedMeta.Res.Files[0].Name)
+			fullFilePath := preparedMeta.SingleFilepath()
+			newName, err := util.CheckDuplicateAndRename(fullFilePath)
+			if err != nil {
+				return err
+			}
+			preparedMeta.Opts.Name = newName
+		}
+	}
+
+	preparedMeta.Res.CalcSize(preparedMeta.Opts.SelectFiles)
+
+	// Save a candidate task before publishing its metadata. The fetcher keeps
+	// its resolved protocol state, so a failed save cannot change the live
+	// directory, name or preparation flag.
+	task.statusLock.Lock()
+	preparedTask := *task
+	task.statusLock.Unlock()
+	preparedTask.Meta = &preparedMeta
+	preparedTask.NeedsPreparation = false
+	if err := d.saveTask(&preparedTask); err != nil {
+		return err
+	}
+	task.statusLock.Lock()
+	*task.Meta = preparedMeta
+	task.NeedsPreparation = false
+	task.statusLock.Unlock()
+	return nil
+}
+
 func (d *Downloader) doStart(task *Task) (err error) {
-	var isCreate bool
 	var generation uint64
 	isReturn, err := d.statusMut(task, func() (isReturn bool, err error) {
 		if task.Status == base.DownloadStatusRunning || task.Status == base.DownloadStatusDone {
@@ -1893,7 +1980,6 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			d.Logger.Error().Stack().Err(err).Msgf("restore fetcher failed, task id: %s", task.ID)
 			return
 		}
-		isCreate = task.Status == base.DownloadStatusReady
 		task.updateStatus(base.DownloadStatusRunning)
 		task.runGeneration++
 		generation = task.runGeneration
@@ -1933,7 +2019,8 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		if err := d.syncBlobTaskLease(task); err != nil {
 			return err
 		}
-		if task.Meta.Res == nil {
+		resolvedHere := task.Meta.Res == nil
+		if resolvedHere {
 			err := task.fetcher.Resolve(task.Meta.Req)
 			if err != nil {
 				return err
@@ -1941,32 +2028,25 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			task.Meta.Res = task.fetcher.Meta().Res
 		}
 
-		if isCreate {
+		if task.NeedsPreparation {
 			if task.fetcherManager.AutoRename() {
+				// The duplicate name is resolved from the files on disk, but
+				// the file only appears when the fetcher starts, so the lock
+				// has to cover the start as well.
 				d.checkDuplicateLock.Lock()
 				defer d.checkDuplicateLock.Unlock()
-				task.Meta.Opts.Name = util.SafeFilename(task.Meta.Opts.Name)
-				// check if the download file is duplicated and rename it automatically.
-				if task.Meta.Res.Name != "" {
-					task.Meta.Res.Name = util.SafeFilename(task.Meta.Res.Name)
-					fullDirPath := task.Meta.FolderPath()
-					newName, err := util.CheckDuplicateAndRename(fullDirPath)
-					if err != nil {
-						return err
-					}
-					task.Meta.Opts.Name = newName
-				} else {
-					task.Meta.Res.Files[0].Name = util.SafeFilename(task.Meta.Res.Files[0].Name)
-					fullFilePath := task.Meta.SingleFilepath()
-					newName, err := util.CheckDuplicateAndRename(fullFilePath)
-					if err != nil {
-						return err
-					}
-					task.Meta.Opts.Name = newName
-				}
 			}
-
-			task.Meta.Res.CalcSize(task.Meta.Opts.SelectFiles)
+			// The first preparation decides the download directory and the
+			// final name of the task. It runs for every task that has not
+			// been prepared yet, no matter whether the task waited in the
+			// queue, was paused or failed before.
+			if err := d.prepareTask(task); err != nil {
+				return err
+			}
+		} else if _, err := d.initDownloadPath(task.Meta.Opts.Path); err != nil {
+			// A prepared task keeps its directory, but the directory still has
+			// to pass the white list on every start.
+			return err
 		}
 
 		task.statusLock.Lock()

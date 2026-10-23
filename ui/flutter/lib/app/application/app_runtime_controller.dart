@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../api/api.dart' as api;
 import '../../api/model/downloader_config.dart';
+import 'downloader_config_init.dart';
 import '../../core/capabilities/app_capabilities.dart';
 import '../../core/common/api_server_state.dart';
 import '../../core/common/start_config.dart';
@@ -242,60 +242,14 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     return cfg;
   }
 
-  Future<DownloaderConfig> _loadDownloaderConfig() async {
-    DownloaderConfig config;
-    try {
-      config = await ref.read(gopeedServiceProvider).getConfig();
-    } catch (error, stackTrace) {
-      logger.w('load downloader config failed', error, stackTrace);
-      config = DownloaderConfig();
-    }
-    await _initDownloaderConfig(config);
-    return config;
-  }
-
-  Future<void> _initDownloaderConfig(DownloaderConfig config) async {
-    final extra = config.extra;
-    if (extra.themeMode.isEmpty) {
-      extra.themeMode = 'system';
-    }
-    if (extra.themeColor.isEmpty) {
-      extra.themeColor = 'green';
-    }
-    if (config.proxy.scheme.isEmpty) {
-      config.proxy.scheme = 'http';
-    }
-    if (config.downloadDir.isEmpty) {
-      config.downloadDir = await _defaultDownloadDir();
-    }
-    if (extra.downloadCategories.isEmpty) {
-      extra.downloadCategories = [
-        DownloadCategory(
-          name: '',
-          path: path.join(config.downloadDir, 'Music'),
-          isBuiltIn: true,
-          nameKey: 'categoryMusic',
-        ),
-        DownloadCategory(
-          name: '',
-          path: path.join(config.downloadDir, 'Video'),
-          isBuiltIn: true,
-          nameKey: 'categoryVideo',
-        ),
-        DownloadCategory(
-          name: '',
-          path: path.join(config.downloadDir, 'Document'),
-          isBuiltIn: true,
-          nameKey: 'categoryDocument',
-        ),
-        DownloadCategory(
-          name: '',
-          path: path.join(config.downloadDir, 'Program'),
-          isBuiltIn: true,
-          nameKey: 'categoryProgram',
-        ),
-      ];
-    }
+  Future<DownloaderConfig> _loadDownloaderConfig() {
+    return loadDownloaderConfig(
+      load: () => ref.read(gopeedServiceProvider).getConfig(),
+      save: (config) => ref.read(gopeedServiceProvider).putConfig(config),
+      defaultDownloadDir: _defaultDownloadDir,
+      onLoadError: (error, stackTrace) => logger.w('load downloader config failed', error, stackTrace),
+      onSaveError: (error, stackTrace) => logger.w('persist downloader config failed', error, stackTrace),
+    );
   }
 
   Future<void> _initAnalytics(DownloaderConfig config) async {
@@ -322,11 +276,13 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
   }
 
   Future<String> _defaultDownloadDir() async {
+    // An unknown directory stays empty: the config is sent to the backend, and
+    // a relative path would point at the backend working directory.
     if (kIsWeb) {
-      return './';
+      return '';
     }
     if (Util.isDesktop()) {
-      return (await getDownloadsDirectory())?.path ?? './';
+      return (await getDownloadsDirectory())?.path ?? '';
     }
     if (Util.isAndroid()) {
       return (await getExternalStorageDirectory())?.path ?? (await getApplicationDocumentsDirectory()).path;
@@ -334,7 +290,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     if (Util.isIOS()) {
       return (await getApplicationDocumentsDirectory()).path;
     }
-    return './';
+    return '';
   }
 
   String _runningAddress(StartConfig config, int runningPort) {

@@ -841,6 +841,9 @@ func TestDownloader_CreateDirectUsesPathAsDefault(t *testing.T) {
 	selectedRoot := t.TempDir()
 	defaultPathOpts := newTestDownloadOptAt(selectedRoot)
 	defaultPathOpts.AsDefaultPath = true
+	// The global default download directory is only saved for a directory the
+	// user named explicitly, so the task skips the auto categorize decision.
+	defaultPathOpts.SkipAutoCategorize = true
 	createAndWait(defaultPathOpts)
 	cfg, err = downloader.GetConfig()
 	if err != nil {
@@ -882,11 +885,26 @@ func TestDownloader_CreateNotInWhite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = downloader.CreateWithOptions(rr.ID, newTestDownloadOpt(t))
-	if err == nil {
-		t.Fatal("Create should reject a directory outside the allowlist")
+	// The directory is decided when the task starts, so a directory outside
+	// the allowlist fails the task instead of the create call.
+	taskId, err := downloader.CreateWithOptions(rr.ID, newTestDownloadOpt(t))
+	if err != nil {
+		t.Fatal(err)
 	}
-
+	task := downloader.GetTask(taskId)
+	if task == nil {
+		t.Fatal("task not found")
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if task.Status == base.DownloadStatusError {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if task.Status != base.DownloadStatusError {
+		t.Fatalf("task status = %q, want the task to be rejected by the allowlist", task.Status)
+	}
 }
 
 func TestDownloader_CreateDirectBatch(t *testing.T) {
@@ -1139,6 +1157,33 @@ func TestDownloader_CreateRename(t *testing.T) {
 	got = test.FileMd5(filepath.Join(downloadDir, test.DownloadRename))
 	if want != got {
 		t.Errorf("Downloader_CreateRename() got = %v, want %v", got, want)
+	}
+}
+
+func TestDownloader_IsFirstLoadSurvivesTheConfigClone(t *testing.T) {
+	d := NewDownloader(&DownloaderConfig{StorageDir: t.TempDir(), TempDir: t.TempDir()})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+
+	if !d.IsFirstLoad() {
+		t.Fatal("a downloader that created its config reports IsFirstLoad() = false")
+	}
+	// GetConfig clones through json and FirstLoad is not serialized, so the cmd
+	// layer cannot read the flag from the returned config.
+	cfg, err := d.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.FirstLoad {
+		t.Fatal("the cloned config must not report the first load")
+	}
+	if err := d.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if d.IsFirstLoad() {
+		t.Fatal("a downloader that stored its config reports IsFirstLoad() = true")
 	}
 }
 

@@ -69,6 +69,23 @@ jobs:
         with:
           files: ./coverage.txt
           token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
+  test-flutter-category:
+    # The settings editor and the backend have to read an extension list the
+    # same way, so both sides run the shared rule table. The Go side is covered
+    # by the test job above, this runs the ui side of it.
+    name: Test shared category rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Run the shared category rule table on the ui side
+        working-directory: ui/flutter
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          flutter test test/api/downloader_config_test.dart
   test-webview-integration:
     name: Test webview integration (${{ matrix.name }})
     strategy:

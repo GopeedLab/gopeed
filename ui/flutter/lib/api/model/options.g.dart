@@ -11,6 +11,7 @@ Options _$OptionsFromJson(Map<String, dynamic> json) => Options(
   name: json['name'] as String? ?? '',
   path: json['path'] as String? ?? '',
   asDefaultPath: json['asDefaultPath'] as bool? ?? false,
+  skipAutoCategorize: json['skipAutoCategorize'] as bool? ?? false,
   selectFiles:
       (json['selectFiles'] as List<dynamic>?)
           ?.map((e) => (e as num).toInt())
@@ -24,6 +25,7 @@ Map<String, dynamic> _$OptionsToJson(Options instance) => <String, dynamic>{
   'name': instance.name,
   'path': instance.path,
   'asDefaultPath': instance.asDefaultPath,
+  'skipAutoCategorize': instance.skipAutoCategorize,
   'selectFiles': instance.selectFiles,
   'extra': ?instance.extra,
 };

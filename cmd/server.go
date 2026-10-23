@@ -26,7 +26,7 @@ func Start(cfg *model.StartConfig) {
 	if err != nil {
 		panic(err)
 	}
-	if downloadCfg.FirstLoad {
+	if rest.Downloader.IsFirstLoad() {
 		// Set default download config
 		if cfg.DownloadConfig != nil {
 			cfg.DownloadConfig.Merge(downloadCfg)
@@ -51,6 +51,12 @@ func Start(cfg *model.StartConfig) {
 				rest.Downloader.PutConfig(downloadCfg)
 			}
 		}
+
+		// The default download dir is resolved only after the core starts, so
+		// seed the built-in categories now that the dir is known. Init is
+		// idempotent and leaves an existing category list untouched.
+		downloadCfg.Init()
+		rest.Downloader.PutConfig(downloadCfg)
 	}
 	watchExit()
 

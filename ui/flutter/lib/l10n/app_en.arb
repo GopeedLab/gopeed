@@ -217,6 +217,23 @@
   "categoryProgram": "Program",
   "categoryName": "Category Name",
   "categoryPath": "Category Path",
+  "autoCategorizeByExtension": "Auto-categorize by file type",
+  "autoCategorizeByExtensionDescription": "Automatically route downloads into a category folder based on the file name when saving to the default download folder.",
+  "categoryExtensions": "Associated Extensions",
+  "categoryExtensionsUsageHint": "Separate suffixes with commas or spaces, then press Enter.",
+  "categoryExtensionsEmptyHint": "Without extensions, files won't be saved into this category automatically.",
+  "categoryExtensionsRestoreDefaults": "Restore default extensions",
+  "categoryExtensionTaken": "{extension} is already used by {category}",
+  "@categoryExtensionTaken": {
+    "placeholders": {
+      "extension": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
   "builtInCategory": "Built-in category cannot be deleted",
   "selectCategory": "Select Category",
   "quickDirectories": "Quick folders",
@@ -387,6 +404,14 @@
   "selectAtLeastOneFile": "Select at least one file",
   "resolvedFiles": "Resolved Files",
   "resolvedFileCount": "{count, plural, =1{1 file resolved} other{{count} files resolved}}",
+  "resolvedCategoryDirectory": "Will be saved to {path}",
+  "@resolvedCategoryDirectory": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "resourceHasNoFiles": "The resource has no selectable file list",
   "noFiles": "No files",
   "historyLinks": "History Links",

@@ -1,8 +1,13 @@
 package base
 
 import (
+	"encoding/json"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/GopeedLab/gopeed/pkg/util"
 )
 
 func TestDownloaderStoreConfig_Init(t *testing.T) {
@@ -192,6 +197,202 @@ func TestDownloaderStoreConfig_Init(t *testing.T) {
 	}
 }
 
+func TestDownloaderStoreConfig_InitSeedsBuiltInCategories(t *testing.T) {
+	t.Run("fresh config with a download dir gets the built-in categories", func(t *testing.T) {
+		dir := t.TempDir()
+		cfg := &DownloaderStoreConfig{DownloadDir: dir}
+		cfg.Init()
+
+		wantKeys := []string{"categoryMusic", "categoryVideo", "categoryDocument", "categoryProgram"}
+		wantNames := []string{"Music", "Video", "Document", "Program"}
+		if len(cfg.Categories) != len(wantKeys) {
+			t.Fatalf("categories = %d, want %d", len(cfg.Categories), len(wantKeys))
+		}
+		for i, category := range cfg.Categories {
+			if category.NameKey != wantKeys[i] {
+				t.Errorf("category[%d].NameKey = %q, want %q", i, category.NameKey, wantKeys[i])
+			}
+			if !category.IsBuiltIn {
+				t.Errorf("category[%d] %q is not built-in", i, category.NameKey)
+			}
+			if category.Path != filepath.Join(dir, wantNames[i]) {
+				t.Errorf("category[%d].Path = %q, want %q", i, category.Path, filepath.Join(dir, wantNames[i]))
+			}
+			if len(category.Extensions) == 0 {
+				t.Errorf("category[%d] %q has no default extensions", i, category.NameKey)
+			}
+		}
+	})
+
+	// Init itself never reads the legacy key: Setup calls
+	// MigrateLegacyExtraCategories first, and only a config that skipped the
+	// migration ends up with the built-in seed.
+	t.Run("legacy extra downloadCategories is not read by Init alone", func(t *testing.T) {
+		cfg := &DownloaderStoreConfig{
+			DownloadDir: t.TempDir(),
+			Extra: map[string]any{
+				"downloadCategories": []any{map[string]any{"name": "Music", "path": "/old/Music"}},
+			},
+		}
+		cfg.Init()
+		if len(cfg.Categories) != 4 {
+			t.Fatalf("categories = %d, want the 4 built-ins seeded anyway", len(cfg.Categories))
+		}
+	})
+
+	t.Run("existing categories and missing download dirs are untouched", func(t *testing.T) {
+		existing := []*DownloadCategory{{Name: "Mine", Path: "/downloads/Mine"}}
+		cfg := &DownloaderStoreConfig{DownloadDir: t.TempDir(), Categories: existing}
+		cfg.Init()
+		if len(cfg.Categories) != 1 || cfg.Categories[0].Name != "Mine" {
+			t.Fatalf("categories = %v, want the existing one", cfg.Categories)
+		}
+
+		empty := &DownloaderStoreConfig{}
+		empty.Init()
+		if len(empty.Categories) != 0 {
+			t.Fatalf("categories = %d, want 0 without a download dir", len(empty.Categories))
+		}
+	})
+}
+
+func TestDownloaderStoreConfig_AutoCategorizeEnabled(t *testing.T) {
+	// A config written before the switch existed has no value, and stays off.
+	if (&DownloaderStoreConfig{}).AutoCategorizeEnabled() {
+		t.Fatal("unset auto categorize = enabled, want disabled by default")
+	}
+	if !(&DownloaderStoreConfig{AutoCategorize: util.BoolPtr(true)}).AutoCategorizeEnabled() {
+		t.Fatal("explicit on = disabled, want the opt-in preserved")
+	}
+	if (&DownloaderStoreConfig{AutoCategorize: util.BoolPtr(false)}).AutoCategorizeEnabled() {
+		t.Fatal("explicit off = enabled, want the opt-out preserved")
+	}
+}
+
+func TestDownloaderStoreConfig_MigrateLegacyExtraCategories(t *testing.T) {
+	t.Run("legacy built-ins move to the top level with their default extensions", func(t *testing.T) {
+		cfg := &DownloaderStoreConfig{
+			DownloadDir: "/downloads",
+			Extra: map[string]any{
+				"downloadCategories": []any{
+					map[string]any{"name": "", "path": "/old/Music", "isBuiltIn": true, "nameKey": "categoryMusic"},
+					map[string]any{"name": "Games", "path": "/old/Games"},
+				},
+				"themeMode": "dark",
+			},
+		}
+		if !cfg.MigrateLegacyExtraCategories() {
+			t.Fatal("migration reported no change")
+		}
+		if len(cfg.Categories) != 2 {
+			t.Fatalf("categories = %d, want the 2 legacy entries", len(cfg.Categories))
+		}
+		builtIn := cfg.Categories[0]
+		if builtIn.NameKey != "categoryMusic" || !builtIn.IsBuiltIn || builtIn.Path != "/old/Music" {
+			t.Fatalf("built-in category = %+v, want the legacy entry", builtIn)
+		}
+		if len(builtIn.Extensions) == 0 {
+			t.Fatal("migrated built-in must regain its default extensions")
+		}
+		custom := cfg.Categories[1]
+		if custom.Name != "Games" || custom.Path != "/old/Games" || len(custom.Extensions) != 0 {
+			t.Fatalf("custom category = %+v, want the legacy folder untouched", custom)
+		}
+		if _, ok := cfg.Extra["downloadCategories"]; ok {
+			t.Fatal("legacy key must be cleared")
+		}
+		if cfg.Extra["themeMode"] != "dark" {
+			t.Fatalf("unrelated extra entries must survive, got %v", cfg.Extra)
+		}
+
+		// Setup runs Init after the migration, which must not seed over it.
+		cfg.Init()
+		if len(cfg.Categories) != 2 {
+			t.Fatalf("categories after Init = %d, want the migrated list kept", len(cfg.Categories))
+		}
+	})
+
+	t.Run("existing top level categories are left alone", func(t *testing.T) {
+		cfg := &DownloaderStoreConfig{
+			Extra: map[string]any{
+				"downloadCategories": []any{map[string]any{"name": "Old", "path": "/old/Default"}},
+			},
+			Categories: []*DownloadCategory{{Name: "Mine", Path: "/downloads/Mine"}},
+		}
+		if cfg.MigrateLegacyExtraCategories() {
+			t.Fatal("migration must not overwrite existing categories")
+		}
+		if len(cfg.Categories) != 1 || cfg.Categories[0].Name != "Mine" {
+			t.Fatalf("categories = %v, want the existing one", cfg.Categories)
+		}
+		if _, ok := cfg.Extra["downloadCategories"]; !ok {
+			t.Fatal("legacy key must stay for a manual move")
+		}
+	})
+
+	t.Run("missing, empty and malformed legacy lists are a no-op", func(t *testing.T) {
+		if (&DownloaderStoreConfig{}).MigrateLegacyExtraCategories() {
+			t.Fatal("empty config reported a change")
+		}
+		unrelated := &DownloaderStoreConfig{
+			Extra: map[string]any{"themeMode": "dark"},
+		}
+		if unrelated.MigrateLegacyExtraCategories() {
+			t.Fatal("config without the legacy key reported a change")
+		}
+		empty := &DownloaderStoreConfig{
+			Extra: map[string]any{"downloadCategories": []any{}},
+		}
+		if empty.MigrateLegacyExtraCategories() {
+			t.Fatal("empty legacy list reported a change")
+		}
+		malformed := &DownloaderStoreConfig{
+			Extra: map[string]any{"downloadCategories": "not-a-list"},
+		}
+		if malformed.MigrateLegacyExtraCategories() {
+			t.Fatal("malformed legacy list reported a change")
+		}
+		if _, ok := malformed.Extra["downloadCategories"]; !ok {
+			t.Fatal("malformed legacy key must stay untouched")
+		}
+	})
+
+	t.Run("a nil entry in the legacy list is skipped", func(t *testing.T) {
+		cfg := &DownloaderStoreConfig{
+			DownloadDir: "/downloads",
+			Extra: map[string]any{
+				"downloadCategories": []any{
+					nil,
+					map[string]any{"name": "Games", "path": "/old/Games"},
+				},
+			},
+		}
+		if !cfg.MigrateLegacyExtraCategories() {
+			t.Fatal("migration reported no change")
+		}
+		if len(cfg.Categories) != 1 || cfg.Categories[0].Name != "Games" {
+			t.Fatalf("categories = %+v, want the single valid legacy entry", cfg.Categories)
+		}
+	})
+}
+
+func TestDownloaderStoreConfig_AutoCategorizeJSON(t *testing.T) {
+	unset, err := json.Marshal(&DownloaderStoreConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(unset), `"autoCategorize"`) {
+		t.Fatalf("unset autoCategorize must be omitted from the api json, got %s", unset)
+	}
+	off, err := json.Marshal(&DownloaderStoreConfig{AutoCategorize: util.BoolPtr(false)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(off), `"autoCategorize":false`) {
+		t.Fatalf("explicit autoCategorize=false must be emitted, got %s", off)
+	}
+}
+
 func TestDownloaderStoreConfig_Merge(t *testing.T) {
 	type args struct {
 		beforeCfg *DownloaderStoreConfig
@@ -234,6 +435,24 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 			},
 			&DownloaderStoreConfig{
 				DownloadDir: "after",
+			},
+		},
+		{
+			"Merge Categories and AutoCategorize Override",
+			&DownloaderStoreConfig{},
+			args{
+				beforeCfg: &DownloaderStoreConfig{
+					Categories: []*DownloadCategory{
+						{Name: "Music", Path: "/downloads/Music"},
+					},
+					AutoCategorize: util.BoolPtr(true),
+				},
+			},
+			&DownloaderStoreConfig{
+				Categories: []*DownloadCategory{
+					{Name: "Music", Path: "/downloads/Music"},
+				},
+				AutoCategorize: util.BoolPtr(true),
 			},
 		},
 		{
@@ -449,6 +668,8 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 				Webhook:        tt.fields.Webhook,
 				AutoTorrent:    tt.fields.AutoTorrent,
 				Archive:        tt.fields.Archive,
+				Categories:     tt.fields.Categories,
+				AutoCategorize: tt.fields.AutoCategorize,
 			}
 			if got := cfg.Merge(tt.args.beforeCfg); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Merge() = %v, want %v", got, tt.want)
