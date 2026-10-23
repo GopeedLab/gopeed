@@ -345,17 +345,53 @@ func TestTimeoutReader_CallerCancellationIsNotTimeout(t *testing.T) {
 			if tc.http2 {
 				wantProto = 2
 			}
+			// Cancel once the client has read the first bytes, so the next
+			// Read is the one blocked when the caller cancels.
 			ctx, cancel := context.WithCancel(context.Background())
-			time.AfterFunc(200*time.Millisecond, cancel)
+			defer cancel()
+			client := tc.client(t, server)
+			next := client.Transport
+			client.Transport = roundTripFunc(func(r *gohttp.Request) (*gohttp.Response, error) {
+				resp, err := next.RoundTrip(r)
+				if err == nil {
+					resp.Body = &cancelAfterFirstRead{ReadCloser: resp.Body, cancel: cancel}
+				}
+				return resp, err
+			})
+
 			const timeout = 5 * time.Second
 			start := time.Now()
-			_, err := readBodyWithTimeout(t, ctx, tc.client(t, server), server.URL, timeout, wantProto)
+			data, err := readBodyWithTimeout(t, ctx, client, server.URL, timeout, wantProto)
 			if !errors.Is(err, context.Canceled) {
 				t.Fatalf("expected %v, got %v", context.Canceled, err)
+			}
+			if len(data) == 0 {
+				t.Fatal("cancelled before any data was read")
 			}
 			if elapsed := time.Since(start); elapsed >= timeout {
 				t.Fatalf("read returned after %v, not on cancellation", elapsed)
 			}
 		})
 	}
+}
+
+type roundTripFunc func(*gohttp.Request) (*gohttp.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *gohttp.Request) (*gohttp.Response, error) {
+	return f(r)
+}
+
+// cancelAfterFirstRead calls cancel once a Read has returned data.
+type cancelAfterFirstRead struct {
+	io.ReadCloser
+	once   sync.Once
+	cancel context.CancelFunc
+}
+
+func (b *cancelAfterFirstRead) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if n > 0 {
+		b.once.Do(b.cancel)
+	}
+	return n, err
 }
