@@ -1160,6 +1160,33 @@ func TestDownloader_CreateRename(t *testing.T) {
 	}
 }
 
+func TestDownloader_IsFirstLoadSurvivesTheConfigClone(t *testing.T) {
+	d := NewDownloader(&DownloaderConfig{StorageDir: t.TempDir(), TempDir: t.TempDir()})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+
+	if !d.IsFirstLoad() {
+		t.Fatal("a downloader that created its config reports IsFirstLoad() = false")
+	}
+	// GetConfig clones through json and FirstLoad is not serialized, so the cmd
+	// layer cannot read the flag from the returned config.
+	cfg, err := d.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.FirstLoad {
+		t.Fatal("the cloned config must not report the first load")
+	}
+	if err := d.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if d.IsFirstLoad() {
+		t.Fatal("a downloader that stored its config reports IsFirstLoad() = true")
+	}
+}
+
 func TestDownloader_StoreAndRestore(t *testing.T) {
 	listener := test.StartTestSlowFileServer(time.Millisecond * 2000)
 	defer listener.Close()

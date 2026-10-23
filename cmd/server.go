@@ -26,7 +26,7 @@ func Start(cfg *model.StartConfig) {
 	if err != nil {
 		panic(err)
 	}
-	if downloadCfg.FirstLoad {
+	if rest.Downloader.IsFirstLoad() {
 		// Set default download config
 		if cfg.DownloadConfig != nil {
 			cfg.DownloadConfig.Merge(downloadCfg)

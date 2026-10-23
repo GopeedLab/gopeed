@@ -197,7 +197,7 @@ type DownloaderStoreConfig struct {
 	AutoTorrent                *AutoTorrentConfig     `json:"autoTorrent"`                // AutoTorrent is the auto torrent task creation configuration
 	Archive                    *ArchiveConfig         `json:"archive"`                    // Archive is the archive extraction configuration
 	Categories                 []*DownloadCategory    `json:"categories"`                 // Categories is the download directory category configuration
-	AutoCategorize             *bool                  `json:"autoCategorize,omitempty"`   // AutoCategorize routes downloads to category directories by file extension; unset defaults to enabled
+	AutoCategorize             *bool                  `json:"autoCategorize,omitempty"`   // AutoCategorize routes downloads to category directories by file extension; unset defaults to disabled
 	API                        *APIServerConfig       `json:"api"`                        // API is the optional REST server configuration
 	AutoStartTasks             bool                   `json:"autoStartTasks"`             // AutoStartTasks continues all unfinished tasks when the backend starts
 	AutoDeleteMissingFileTasks bool                   `json:"autoDeleteMissingFileTasks"` // AutoDeleteMissingFileTasks enables automatic deletion of tasks with missing files
@@ -346,6 +346,12 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	}
 	if cfg.Archive == nil {
 		cfg.Archive = beforeCfg.Archive
+	}
+	if cfg.Categories == nil {
+		cfg.Categories = beforeCfg.Categories
+	}
+	if cfg.AutoCategorize == nil {
+		cfg.AutoCategorize = beforeCfg.AutoCategorize
 	}
 	if cfg.API == nil {
 		cfg.API = beforeCfg.API

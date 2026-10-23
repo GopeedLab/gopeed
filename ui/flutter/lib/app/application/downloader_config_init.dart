@@ -56,9 +56,14 @@ Future<bool> initDownloaderConfig(
     config.proxy.scheme = 'http';
   }
   if (config.downloadDir.isEmpty) {
-    config.downloadDir = await defaultDownloadDir();
+    final downloadDir = await defaultDownloadDir();
+    // An unknown directory stays empty, the backend resolves its own.
+    if (downloadDir.isNotEmpty) {
+      config.downloadDir = downloadDir;
+      changed = true;
+    }
   }
-  if (config.categories.isEmpty) {
+  if (config.categories.isEmpty && config.downloadDir.isNotEmpty) {
     config.categories = [
       _builtinCategory('categoryMusic', path.join(config.downloadDir, 'Music')),
       _builtinCategory('categoryVideo', path.join(config.downloadDir, 'Video')),

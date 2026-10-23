@@ -195,6 +195,22 @@ void main() {
       rebaseBuiltinCategoryPaths(config, oldDir: '/dl', newDir: '');
       expect(config.categories.single.path, path.join('/dl', 'Music'));
     });
+
+    test('rebases a windows path that the backend seeded with a backslash', () {
+      // The backend seeds the categories with the separator of its platform.
+      final config = DownloaderConfig()
+        ..categories = [
+          builtin(r'C:\Users\me\Downloads\Music'),
+          DownloadCategory(name: 'Mine', path: r'C:\Users\me\Downloads\Mine'),
+        ];
+
+      rebaseBuiltinCategoryPaths(config, oldDir: r'C:\Users\me\Downloads', newDir: r'C:\Users\me\New');
+
+      // The joined separator depends on the platform the test runs on, so the
+      // assertion compares the forward slash form.
+      expect(config.categories[0].path.replaceAll(r'\', '/'), 'C:/Users/me/New/Music');
+      expect(config.categories[1].path, r'C:\Users\me\Downloads\Mine');
+    });
   });
 
   test('go builtinCategoryExtensions stays in sync with kDefaultCategoryExtensions', () {

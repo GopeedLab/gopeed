@@ -313,20 +313,33 @@ const kDefaultCategoryExtensions = <String, List<String>>{
 /// [newDir] after the default download directory changed. Categories the
 /// user moved elsewhere, and user created categories, are left alone.
 void rebaseBuiltinCategoryPaths(DownloaderConfig config, {required String oldDir, required String newDir}) {
-  if (oldDir.trim().isEmpty || newDir.trim().isEmpty || path.equals(oldDir, newDir)) {
+  if (oldDir.trim().isEmpty || newDir.trim().isEmpty) {
+    return;
+  }
+  // The backend seeds the categories with the separator of its platform, which
+  // the path package of the client does not always understand, so both sides
+  // are compared in the forward slash form.
+  final from = _forwardSlash(oldDir);
+  final to = _forwardSlash(newDir);
+  if (path.equals(from, to)) {
     return;
   }
   for (final category in config.categories) {
     if (!category.isBuiltIn || category.isDeleted || category.path.trim().isEmpty) {
       continue;
     }
-    if (path.equals(category.path, oldDir)) {
-      category.path = newDir;
-    } else if (path.isWithin(oldDir, category.path)) {
-      category.path = path.join(newDir, path.relative(category.path, from: oldDir));
+    final current = _forwardSlash(category.path);
+    if (path.equals(current, from)) {
+      category.path = to;
+    } else if (path.isWithin(from, current)) {
+      category.path = path.join(to, path.relative(current, from: from));
     }
   }
 }
+
+/// Rewrites the windows separator of [value] to the forward slash the path
+/// package uses.
+String _forwardSlash(String value) => value.replaceAll('\\', '/');
 
 @JsonSerializable()
 class WebhookConfig {

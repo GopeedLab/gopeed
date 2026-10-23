@@ -438,6 +438,24 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 			},
 		},
 		{
+			"Merge Categories and AutoCategorize Override",
+			&DownloaderStoreConfig{},
+			args{
+				beforeCfg: &DownloaderStoreConfig{
+					Categories: []*DownloadCategory{
+						{Name: "Music", Path: "/downloads/Music"},
+					},
+					AutoCategorize: util.BoolPtr(true),
+				},
+			},
+			&DownloaderStoreConfig{
+				Categories: []*DownloadCategory{
+					{Name: "Music", Path: "/downloads/Music"},
+				},
+				AutoCategorize: util.BoolPtr(true),
+			},
+		},
+		{
 			"Merge MaxRunning No Override",
 			&DownloaderStoreConfig{
 				MaxRunning: 1,
@@ -650,6 +668,8 @@ func TestDownloaderStoreConfig_Merge(t *testing.T) {
 				Webhook:        tt.fields.Webhook,
 				AutoTorrent:    tt.fields.AutoTorrent,
 				Archive:        tt.fields.Archive,
+				Categories:     tt.fields.Categories,
+				AutoCategorize: tt.fields.AutoCategorize,
 			}
 			if got := cfg.Merge(tt.args.beforeCfg); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Merge() = %v, want %v", got, tt.want)

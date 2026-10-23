@@ -1383,6 +1383,15 @@ func (d *Downloader) GetConfig() (*base.DownloaderStoreConfig, error) {
 	return util.DeepClone(d.cfg.DownloaderStoreConfig), nil
 }
 
+// IsFirstLoad reports whether Setup created the config instead of loading it
+// from storage. FirstLoad is not serialized, so the clone GetConfig returns
+// always reports false.
+func (d *Downloader) IsFirstLoad() bool {
+	d.configLock.RLock()
+	defer d.configLock.RUnlock()
+	return d.cfg.FirstLoad
+}
+
 func (d *Downloader) PutConfig(v *base.DownloaderStoreConfig) error {
 	if v == nil {
 		return errors.New("config is nil")

@@ -48,6 +48,21 @@ void main() {
       );
       expect(saved, 0);
     });
+
+    test('persists the default download dir when it is missing', () async {
+      var saved = 0;
+      final config = await loadDownloaderConfig(
+        load: () async => configWith(
+          categories: [
+            DownloadCategory(name: 'Mine', path: '/downloads/Mine', extensions: const ['zip']),
+          ],
+        ),
+        save: (_) async => saved++,
+        defaultDownloadDir: () async => '/downloads',
+      );
+      expect(saved, 1);
+      expect(config.downloadDir, '/downloads');
+    });
   });
 
   group('initDownloaderConfig', () {
@@ -77,6 +92,29 @@ void main() {
       expect(changed, isFalse);
       expect(config.categories, hasLength(1));
       expect(config.categories.single, same(existing));
+    });
+
+    test('reports a change when only the default download dir was filled', () async {
+      final config = configWith(
+        categories: [
+          DownloadCategory(name: 'Mine', path: '/downloads/Mine', extensions: const ['zip']),
+        ],
+      );
+      final changed = await initDownloaderConfig(config, defaultDownloadDir: () async => '/downloads');
+
+      expect(changed, isTrue);
+      expect(config.downloadDir, '/downloads');
+    });
+
+    test('leaves the config untouched when the default download dir is unknown', () async {
+      final config = configWith();
+      final changed = await initDownloaderConfig(config, defaultDownloadDir: () async => '');
+
+      // A relative or unknown directory would make the backend write into its
+      // own working directory, so it is left for the backend to resolve.
+      expect(changed, isFalse);
+      expect(config.downloadDir, isEmpty);
+      expect(config.categories, isEmpty);
     });
   });
 }

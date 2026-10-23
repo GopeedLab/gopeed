@@ -276,11 +276,13 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
   }
 
   Future<String> _defaultDownloadDir() async {
+    // An unknown directory stays empty: the config is sent to the backend, and
+    // a relative path would point at the backend working directory.
     if (kIsWeb) {
-      return './';
+      return '';
     }
     if (Util.isDesktop()) {
-      return (await getDownloadsDirectory())?.path ?? './';
+      return (await getDownloadsDirectory())?.path ?? '';
     }
     if (Util.isAndroid()) {
       return (await getExternalStorageDirectory())?.path ?? (await getApplicationDocumentsDirectory()).path;
@@ -288,7 +290,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     if (Util.isIOS()) {
       return (await getApplicationDocumentsDirectory()).path;
     }
-    return './';
+    return '';
   }
 
   String _runningAddress(StartConfig config, int runningPort) {
