@@ -22,6 +22,7 @@ import 'package:gopeed/core/capabilities/capability_rpc.dart';
 import 'package:gopeed/core/capabilities/gopeed_capability.dart';
 import 'package:gopeed/core/capabilities/storage_capability.dart';
 import 'package:gopeed/features/tasks/presentation/pages/create_task_window_page.dart';
+import 'package:gopeed/features/tasks/presentation/widgets/resolve_file_tree.dart';
 import 'package:gopeed/features/tasks/application/pending_create_task.dart';
 import 'package:gopeed/shared/services/download_directory_picker.dart';
 import 'package:gopeed/shared/theme/app_component_themes.dart';
@@ -1438,6 +1439,170 @@ void main() {
     await _settleToastTimers(tester);
   });
 
+  testWidgets('the resolve dialog shows the directory the user named, not the suggestion', (tester) async {
+    tester.view.physicalSize = const Size(700, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          id: 'resolved-id',
+          res: Resource(files: [FileInfo(name: 'setup.exe', size: 1024)]),
+          suggestedDownloadDir: '/downloads/Program',
+        ),
+      )
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-directory-input')), '/work');
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/setup.exe');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final shown = find.byKey(const ValueKey('resolve-category-directory'));
+    expect(shown, findsOneWidget);
+    expect(tester.widget<Text>(shown).data, contains('/work'));
+    expect(tester.widget<Text>(shown).data, isNot(contains('/downloads/Program')));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a resolved file list is split into tasks that keep the directory structure', (tester) async {
+    tester.view.physicalSize = const Size(700, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    CreateTaskBatch? batch;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          res: Resource(
+            name: 'bundle',
+            files: [
+              FileInfo(name: 'first.zip', path: 'first.zip', size: 1),
+              FileInfo(name: 'second.zip', path: 'second.zip', size: 1),
+            ],
+          ),
+        ),
+      )
+      ..bind(GopeedMethods.createTaskBatch, (request) {
+        batch = request;
+        return ['task-1', 'task-2'];
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/bundle');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(batch, isNotNull);
+    expect(batch!.reqs, hasLength(2));
+    for (final item in batch!.reqs!) {
+      // The split tasks keep the structure of the resolved resource, so they
+      // are never classified into a category.
+      expect(item.opts?.skipAutoCategorize, isTrue);
+    }
+    expect(batch!.opts?.skipAutoCategorize, isTrue);
+    expect(tester.takeException(), isNull);
+    await _settleToastTimers(tester);
+  });
+
+  testWidgets('a single selected file of a multi file resource is still not classified', (tester) async {
+    tester.view.physicalSize = const Size(700, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    CreateTaskBatch? batch;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          res: Resource(
+            files: [
+              FileInfo(name: 'first.zip', path: 'first.zip', size: 1),
+              FileInfo(name: 'second.zip', path: 'second.zip', size: 1),
+            ],
+          ),
+        ),
+      )
+      ..bind(GopeedMethods.createTaskBatch, (request) {
+        batch = request;
+        return ['task-1'];
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/bundle');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Only the first file stays selected, the resource itself is a multi file
+    // resource and keeps its structure.
+    // Deselect the second file, the resource itself stays a multi file
+    // resource.
+    final treeCheckboxes = find.descendant(of: find.byType(ResolveFileTree), matching: find.byType(shad.Checkbox));
+    await tester.tap(treeCheckboxes.last);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(batch, isNotNull);
+    expect(batch!.reqs, hasLength(1));
+    for (final item in batch!.reqs!) {
+      expect(item.opts?.skipAutoCategorize, isTrue);
+    }
+    expect(batch!.opts?.skipAutoCategorize, isTrue);
+    expect(tester.takeException(), isNull);
+    await _settleToastTimers(tester);
+  });
 }
 
 /// Unmounts the tree and lets the shadcn toast close timers fire, so a test

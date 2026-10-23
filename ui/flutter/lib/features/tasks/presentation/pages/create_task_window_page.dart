@@ -1130,7 +1130,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     return text.length == 40 && RegExp(r'^[0-9a-fA-F]+$').hasMatch(text);
   }
 
-  api_options.Options _buildOptions({String? name, List<int> selectFiles = const [], bool omitChecksum = false}) {
+  api_options.Options _buildOptions({
+    String? name,
+    List<int> selectFiles = const [],
+    bool omitChecksum = false,
+    bool? skipAutoCategorize,
+  }) {
     final urls = _inputUrls();
     final connections = int.tryParse(_connectionsController.text.trim()) ?? 0;
     final checksumExpected = _checksumHashController.text.trim();
@@ -1142,7 +1147,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       name: name ?? _renameController.text.trim(),
       path: _directoryController.text.trim(),
       asDefaultPath: _asDefaultPath,
-      skipAutoCategorize: _directoryManuallySet,
+      skipAutoCategorize: skipAutoCategorize ?? _directoryManuallySet,
       selectFiles: selectFiles,
       extra: api_options.OptsExtraHttp(
         connections: connections,
@@ -1234,6 +1239,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     }
 
     if (result.res.files.isNotEmpty) {
+      // The extension returned a file list, so the resource keeps a directory
+      // structure. The split tasks must not be classified into a category, the
+      // structure of the resolved resource is kept. The decision is based on
+      // the resolved resource, not on the number of selected files.
+      final keepStructure = _directoryManuallySet || result.res.name.isNotEmpty || result.res.files.length > 1;
       final reqs = selected.map((index) {
         final file = result.res.files[index];
         final fileRequest = file.req ?? request;
@@ -1243,6 +1253,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
             size: _parseProtocol(fileRequest.url) == _TaskProtocol.http ? file.size : 0,
             name: file.name,
             path: path.join(_directoryController.text.trim(), result.res.name, file.path),
+            skipAutoCategorize: keepStructure,
             extra: _buildOptions(omitChecksum: isMultiFile).extra,
           ),
         );
@@ -1252,7 +1263,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           .createTaskBatch(
             CreateTaskBatch(
               reqs: reqs,
-              opts: _buildOptions(omitChecksum: isMultiFile),
+              opts: _buildOptions(omitChecksum: isMultiFile, skipAutoCategorize: keepStructure),
             ),
           );
       return;
@@ -1266,6 +1277,12 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     var selectedIndexes = List<int>.of(initialSelection);
     var submitting = false;
     String? errorText;
+    // The directory the task will be saved to. A directory the user named
+    // wins over the category suggestion of the resolve response, the backend
+    // keeps it and does not classify the task.
+    final effectiveDownloadDir = _directoryManuallySet
+        ? _directoryController.text.trim()
+        : (result.suggestedDownloadDir.isNotEmpty ? result.suggestedDownloadDir : _directoryController.text.trim());
 
     final dialog = const DialogOverlayHandler().show<bool>(
       context: context,
@@ -1321,10 +1338,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                           : dialogContext.l10n.resolvedFileCount(result.res.files.length),
                       style: TextStyle(color: palette.textSecondary, fontSize: 12),
                     ),
-                    if (result.suggestedDownloadDir.isNotEmpty) ...[
+                    if (effectiveDownloadDir.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        dialogContext.l10n.resolvedCategoryDirectory(result.suggestedDownloadDir),
+                        dialogContext.l10n.resolvedCategoryDirectory(effectiveDownloadDir),
                         key: const ValueKey('resolve-category-directory'),
                         style: TextStyle(color: palette.textSecondary, fontSize: 12),
                         maxLines: 1,
