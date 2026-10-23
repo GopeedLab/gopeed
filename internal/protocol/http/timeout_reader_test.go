@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -20,7 +21,7 @@ import (
 func TestTimeoutReader_Read(t *testing.T) {
 	data := []byte("Hello, World!")
 	reader := bytes.NewReader(data)
-	timeoutReader := NewTimeoutReader(reader, 1*time.Second)
+	timeoutReader := NewTimeoutReader(reader, 1*time.Second, nil)
 
 	buf := make([]byte, len(data))
 	n, err := timeoutReader.Read(buf)
@@ -37,7 +38,7 @@ func TestTimeoutReader_Read(t *testing.T) {
 
 func TestTimeoutReader_ReadTimeout(t *testing.T) {
 	reader := &slowReader{delay: 2 * time.Second}
-	timeoutReader := NewTimeoutReader(reader, 1*time.Second)
+	timeoutReader := NewTimeoutReader(reader, 1*time.Second, nil)
 
 	buf := make([]byte, 8192)
 	_, err := timeoutReader.Read(buf)
@@ -60,8 +61,10 @@ func (sr *slowReader) Read(p []byte) (n int, err error) {
 
 // The timer must only cover time spent inside Read, not caller work between reads.
 func TestTimeoutReader_IdleBetweenReads(t *testing.T) {
-	reader := &closeRecorder{Reader: bytes.NewReader([]byte("abcdef"))}
-	timeoutReader := NewTimeoutReader(reader, 50*time.Millisecond)
+	var cancelled atomic.Bool
+	timeoutReader := NewTimeoutReader(bytes.NewReader([]byte("abcdef")), 50*time.Millisecond, func() {
+		cancelled.Store(true)
+	})
 
 	buf := make([]byte, 3)
 	if _, err := timeoutReader.Read(buf); err != nil {
@@ -71,26 +74,16 @@ func TestTimeoutReader_IdleBetweenReads(t *testing.T) {
 	if _, err := timeoutReader.Read(buf); err != nil {
 		t.Fatalf("second read after idle: %v", err)
 	}
-	if reader.closed.Load() {
-		t.Fatal("reader was closed while idle between reads")
+	if cancelled.Load() {
+		t.Fatal("request was cancelled while idle between reads")
 	}
 }
 
-type closeRecorder struct {
-	io.Reader
-	closed atomic.Bool
-}
-
-func (c *closeRecorder) Close() error {
-	c.closed.Store(true)
-	return nil
-}
-
 // A timed-out Read must not return while the underlying Read can still write
-// into the caller's buffer.
+// into the caller's buffer, and must leave closing the reader to the caller.
 func TestTimeoutReader_TimedOutReadDoesNotOutliveCaller(t *testing.T) {
-	reader := &lateWriteReader{closed: make(chan struct{})}
-	timeoutReader := NewTimeoutReader(reader, 50*time.Millisecond)
+	reader := &lateWriteReader{cancelled: make(chan struct{})}
+	timeoutReader := NewTimeoutReader(reader, 50*time.Millisecond, reader.cancel)
 
 	buf := make([]byte, 8)
 	_, err := timeoutReader.Read(buf)
@@ -103,25 +96,33 @@ func TestTimeoutReader_TimedOutReadDoesNotOutliveCaller(t *testing.T) {
 	if _, err := timeoutReader.Read(buf); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("read after timeout: expected %v, got %v", context.DeadlineExceeded, err)
 	}
+	if reader.closed.Load() {
+		t.Fatal("reader was closed by the timeout")
+	}
 }
 
-// lateWriteReader blocks until closed, then writes into p before returning.
+// lateWriteReader blocks until cancelled, then writes into p before returning.
 type lateWriteReader struct {
-	closeOnce sync.Once
-	closed    chan struct{}
-	returned  atomic.Bool
+	cancelOnce sync.Once
+	cancelled  chan struct{}
+	returned   atomic.Bool
+	closed     atomic.Bool
 }
 
 func (r *lateWriteReader) Read(p []byte) (int, error) {
-	<-r.closed
+	<-r.cancelled
 	time.Sleep(20 * time.Millisecond)
 	p[0] = 'x'
 	r.returned.Store(true)
-	return 0, errors.New("read on closed reader")
+	return 0, context.Canceled
+}
+
+func (r *lateWriteReader) cancel() {
+	r.cancelOnce.Do(func() { close(r.cancelled) })
 }
 
 func (r *lateWriteReader) Close() error {
-	r.closeOnce.Do(func() { close(r.closed) })
+	r.closed.Store(true)
 	return nil
 }
 
@@ -177,9 +178,17 @@ func startTimeoutReaderServer(t *testing.T, useHTTP2 bool, handler gohttp.Handle
 	return server
 }
 
-func readBodyWithTimeout(t *testing.T, client *gohttp.Client, url string, timeout time.Duration, wantProto int) ([]byte, error) {
+// readBodyWithTimeout sends the request under its own context derived from
+// ctx, as the fetcher does, and reads the body through a TimeoutReader.
+func readBodyWithTimeout(t *testing.T, ctx context.Context, client *gohttp.Client, url string, timeout time.Duration, wantProto int) ([]byte, error) {
 	t.Helper()
-	resp, err := client.Get(url)
+	reqCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	req, err := gohttp.NewRequestWithContext(reqCtx, gohttp.MethodGet, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +203,7 @@ func readBodyWithTimeout(t *testing.T, client *gohttp.Client, url string, timeou
 	}
 	done := make(chan result, 1)
 	go func() {
-		data, err := io.ReadAll(NewTimeoutReader(resp.Body, timeout))
+		data, err := io.ReadAll(NewTimeoutReader(resp.Body, timeout, cancel))
 		done <- result{data, err}
 	}()
 	select {
@@ -222,7 +231,7 @@ func TestTimeoutReader_StalledHTTPBodyTimesOut(t *testing.T) {
 			}
 			const timeout = 200 * time.Millisecond
 			start := time.Now()
-			data, err := readBodyWithTimeout(t, tc.client(t, server), server.URL, timeout, wantProto)
+			data, err := readBodyWithTimeout(t, context.Background(), tc.client(t, server), server.URL, timeout, wantProto)
 			if !errors.Is(err, context.DeadlineExceeded) {
 				t.Fatalf("expected %v, got %v", context.DeadlineExceeded, err)
 			}
@@ -256,12 +265,96 @@ func TestTimeoutReader_SlowSteadyHTTPBodyDoesNotTimeOut(t *testing.T) {
 			if tc.http2 {
 				wantProto = 2
 			}
-			data, err := readBodyWithTimeout(t, tc.client(t, server), server.URL, timeout, wantProto)
+			data, err := readBodyWithTimeout(t, context.Background(), tc.client(t, server), server.URL, timeout, wantProto)
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
 			if len(data) != chunks*10 {
 				t.Fatalf("expected %d bytes, got %d", chunks*10, len(data))
+			}
+		})
+	}
+}
+
+// A gzip-encoded body that stalls must time out without racing the caller's
+// Body.Close against the decompressing reader.
+func TestTimeoutReader_StalledGzipHTTPBodyTimesOut(t *testing.T) {
+	payload := bytes.Repeat([]byte("gopeed"), 1024)
+	stages := []struct {
+		name  string
+		write func(w io.Writer)
+		want  int
+	}{
+		{
+			// The first bytes of a gzip header, so the client blocks inside
+			// gzip.NewReader.
+			name:  "incomplete-header",
+			write: func(w io.Writer) { w.Write([]byte{0x1f, 0x8b, 0x08, 0x00}) },
+			want:  0,
+		},
+		{
+			// A complete header and some compressed data, flushed without
+			// finishing the gzip stream.
+			name: "stalled-body",
+			write: func(w io.Writer) {
+				gz := gzip.NewWriter(w)
+				gz.Write(payload)
+				gz.Flush()
+			},
+			want: len(payload),
+		},
+	}
+	for _, stage := range stages {
+		for _, tc := range timeoutReaderClientCases() {
+			t.Run(stage.name+"/"+tc.name, func(t *testing.T) {
+				server := startTimeoutReaderServer(t, tc.http2, func(w gohttp.ResponseWriter, r *gohttp.Request) {
+					w.Header().Set("Content-Encoding", "gzip")
+					stage.write(w)
+					w.(gohttp.Flusher).Flush()
+					<-r.Context().Done()
+				})
+
+				wantProto := 1
+				if tc.http2 {
+					wantProto = 2
+				}
+				data, err := readBodyWithTimeout(t, context.Background(), tc.client(t, server), server.URL, 200*time.Millisecond, wantProto)
+				if !errors.Is(err, context.DeadlineExceeded) {
+					t.Fatalf("expected %v, got %v", context.DeadlineExceeded, err)
+				}
+				if len(data) != stage.want {
+					t.Fatalf("expected the %d bytes sent before the stall, got %d", stage.want, len(data))
+				}
+			})
+		}
+	}
+}
+
+// Cancelling the caller's context must not be reported as a read timeout.
+func TestTimeoutReader_CallerCancellationIsNotTimeout(t *testing.T) {
+	for _, tc := range timeoutReaderClientCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			server := startTimeoutReaderServer(t, tc.http2, func(w gohttp.ResponseWriter, r *gohttp.Request) {
+				w.Header().Set("Content-Length", "1048576")
+				w.Write(bytes.Repeat([]byte("a"), 1024))
+				w.(gohttp.Flusher).Flush()
+				<-r.Context().Done()
+			})
+
+			wantProto := 1
+			if tc.http2 {
+				wantProto = 2
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			time.AfterFunc(200*time.Millisecond, cancel)
+			const timeout = 5 * time.Second
+			start := time.Now()
+			_, err := readBodyWithTimeout(t, ctx, tc.client(t, server), server.URL, timeout, wantProto)
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("expected %v, got %v", context.Canceled, err)
+			}
+			if elapsed := time.Since(start); elapsed >= timeout {
+				t.Fatalf("read returned after %v, not on cancellation", elapsed)
 			}
 		})
 	}
