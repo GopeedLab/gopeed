@@ -930,10 +930,11 @@ func (f *Fetcher) doStart() error {
 	maxConns := f.meta.Opts.Extra.(*fhttp.OptsExtra).Connections
 	f.slowStart = newSlowStartController(maxConns)
 
-	// Adaptive connections need byte ranges and a known size; anything else
-	// keeps the slow-start path below unchanged.
+	// Adaptive connections need byte ranges and a size the server confirmed (an
+	// advisory size from the options is not enough); anything else keeps the
+	// slow-start path below unchanged.
 	var adaptive *adaptiveController
-	if f.adaptiveEnabled() && f.meta.Res.Range && f.meta.Res.Size > 0 {
+	if f.adaptiveEnabled() && f.meta.Res.Range && f.hasKnownSize() {
 		adaptive = newAdaptiveController(maxConns, time.Now())
 		f.adaptiveWake = make(chan struct{}, 1)
 	} else {
@@ -2868,7 +2869,7 @@ func (f *Fetcher) adaptiveLoop(ctx context.Context, isResume bool) bool {
 // when the resolve prefetch already completed the task.
 func (f *Fetcher) adaptiveStartFirst() bool {
 	f.connMu.Lock()
-	conn := f.newFirstConnectionLocked(f.meta.Res.Size)
+	conn := f.newFirstConnectionLocked(f.knownSize())
 	if conn == nil {
 		f.connMu.Unlock()
 		f.finishFromPrefetch()
