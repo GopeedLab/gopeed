@@ -51,6 +51,9 @@ type Fetcher struct {
 	torrentDropCtx  context.Context
 	torrentDropFunc func()
 	uploadDoneCh    chan any
+
+	// ext is set while the task is handed to rtorrent (data.External).
+	ext *externalState
 }
 
 func (f *Fetcher) Setup(ctl *controller.Controller) {
@@ -115,6 +118,12 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		f.storage = nil
 		f.torrentReady.Store(false)
 	}
+	f.ctl.GetConfig(&f.config)
+	if f.config != nil && f.config.External.Enable {
+		return f.externalResolveLocked(req)
+	}
+	f.data.External = nil
+	f.ext = nil
 	f.meta.Req = req
 	if err := f.addTorrent(req); err != nil {
 		return err
@@ -124,6 +133,9 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 }
 
 func (f *Fetcher) Start() (err error) {
+	if f.isExternal() {
+		return f.externalStart()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.meta.Opts == nil || f.meta.Opts.Path == "" {
@@ -215,6 +227,9 @@ func (f *Fetcher) Start() (err error) {
 }
 
 func (f *Fetcher) Pause() (err error) {
+	if f.isExternal() {
+		return f.externalPause()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.torrent == nil {
@@ -227,9 +242,14 @@ func (f *Fetcher) Pause() (err error) {
 func (f *Fetcher) Close() (err error) {
 	f.closeOnce.Do(func() {
 		f.torrentDropFunc()
+		if f.isExternal() {
+			f.externalClose()
+		}
 		f.mu.Lock()
 		defer f.mu.Unlock()
-		f.safeDrop()
+		if f.data.External == nil {
+			f.safeDrop()
+		}
 		f.torrentReady.Store(false)
 		close(f.uploadDoneCh)
 	})
@@ -252,6 +272,9 @@ func (f *Fetcher) Meta() *fetcher.FetcherMeta {
 func (f *Fetcher) Stats() *fetcher.Stats {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.data.External != nil {
+		return f.externalStatsLocked()
+	}
 	var stats torrent.TorrentStats
 	var pieceMap *base.PieceMap
 	pieceMapReady := false
@@ -460,7 +483,7 @@ func normalizeBTTransport(network string) string {
 func (f *Fetcher) Progress() fetcher.Progress {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if !f.torrentReady.Load() {
+	if f.data.External != nil || !f.torrentReady.Load() {
 		return append(fetcher.Progress(nil), f.data.Progress...)
 	}
 	for i := range f.data.Progress {
@@ -472,6 +495,9 @@ func (f *Fetcher) Progress() fetcher.Progress {
 }
 
 func (f *Fetcher) Wait() error {
+	if f.isExternal() {
+		return f.externalWait()
+	}
 	f.mu.Lock()
 	var closed <-chan struct{}
 	if f.torrent != nil {
@@ -598,6 +624,9 @@ func (f *Fetcher) isDoneLocked() bool {
 // Patch modifies the BT task settings.
 // Invalid file indices are silently ignored.
 func (f *Fetcher) Patch(req *base.Request, opts *base.Options) error {
+	if f.isExternal() {
+		return f.externalPatch(opts)
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.meta.Opts == nil {
@@ -678,6 +707,10 @@ func (f *Fetcher) updateRes() {
 }
 
 func (f *Fetcher) Upload() (err error) {
+	// rtorrent seeds a handed-over download itself.
+	if f.isExternal() {
+		return nil
+	}
 	if err = f.Start(); err != nil {
 		return err
 	}
@@ -745,6 +778,9 @@ func (f *Fetcher) UploadedBytes() int64 {
 }
 
 func (f *Fetcher) WaitUpload() (err error) {
+	if f.isExternal() {
+		return nil
+	}
 	<-f.uploadDoneCh
 	return nil
 }
@@ -876,6 +912,9 @@ type fetcherData struct {
 	SeedBytes int64
 	// SeedTime is the time in seconds to seed after downloading is complete.
 	SeedTime int64
+	// External is set when the task was handed to rtorrent. A task saved
+	// before this field existed, or by the built-in engine, has none.
+	External *externalData `json:",omitempty"`
 }
 
 func closeClient() error {
@@ -962,6 +1001,7 @@ func (fm *FetcherManager) DefaultConfig() any {
 		SeedTime:   120 * 60,
 		DisableDHT: false,
 		DisablePEX: false,
+		External:   externalConfig{},
 	}
 }
 
@@ -971,6 +1011,10 @@ func (fm *FetcherManager) Store(f fetcher.Fetcher) (data any, err error) {
 	defer _f.mu.Unlock()
 	snapshot := *_f.data
 	snapshot.Progress = append(fetcher.Progress(nil), snapshot.Progress...)
+	if snapshot.External != nil {
+		external := *snapshot.External
+		snapshot.External = &external
+	}
 	return &snapshot, nil
 }
 
