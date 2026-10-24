@@ -1640,11 +1640,10 @@ func (f *Fetcher) completeFromResolveFallback(conn *connection) bool {
 		return false
 	}
 
-	for !f.prefetchDone.Load() {
-		if conn.ctx.Err() != nil {
-			return false
-		}
-		time.Sleep(10 * time.Millisecond)
+	select {
+	case <-f.prefetchExitCh:
+	case <-conn.ctx.Done():
+		return false
 	}
 	knownSize := f.hasKnownSize()
 	if f.prefetchErr != nil || (knownSize && f.prefetchSize.Load() != f.meta.Res.Size) {
