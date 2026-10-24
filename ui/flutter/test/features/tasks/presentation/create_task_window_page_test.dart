@@ -1690,15 +1690,13 @@ void _ftpTests() {
     await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
     await tester.pumpAndSettle();
 
+    // The TLS mode travels on the request, so the resolve already uses it.
     expect(resolved?.req?.url, 'FTP://files.example/pub/big.iso');
-    expect(resolved?.req?.extra, isNull);
-    final resolveOptions = OptsExtraFtp.fromJson(resolved?.opts?.extra! as Map<String, dynamic>);
-    expect(resolveOptions.connections, 32);
-    expect(resolveOptions.tls, 'explicit');
+    expect(resolved?.req?.extra, {'tls': 'explicit'});
     expect(submitted?.rid, 'ftp-resolved');
     final createOptions = submitted?.opts?.extra! as Map<String, dynamic>;
     expect(createOptions['connections'], 32);
-    expect(createOptions['tls'], 'explicit');
+    expect(createOptions.containsKey('tls'), isFalse);
   });
 
   testWidgets('an ftp .torrent link restores its TLS mode and is not treated as BitTorrent', (tester) async {
@@ -1715,8 +1713,11 @@ void _ftpTests() {
       tester,
       registry,
       initialTask: CreateTask(
-        req: Request(url: 'ftp://files.example/pub/linux.torrent'),
-        opts: Options(extra: OptsExtraFtp(connections: 6, tls: 'implicit').toJson()),
+        req: Request(
+          url: 'ftp://files.example/pub/linux.torrent',
+          extra: ReqExtraFtp(tls: 'implicit').toJson(),
+        ),
+        opts: Options(extra: OptsExtraFtp(connections: 6).toJson()),
       ),
     );
 
@@ -1727,14 +1728,15 @@ void _ftpTests() {
     // The HTTP tab holds the certificate and post-download switches FTP uses; trackers stay hidden.
     expect(find.byKey(const ValueKey('create-task-skip-verify-cert')), findsOneWidget);
     expect(find.text('Trackers'), findsNothing);
+    // Checksum verification is HTTP only, so an FTP link does not offer it.
+    expect(find.byKey(const ValueKey('create-task-checksum-expected')), findsNothing);
 
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
     expect(submitted?.req?.url, 'ftp://files.example/pub/linux.torrent');
-    expect(submitted?.req?.extra, isNull);
+    expect(submitted?.req?.extra, {'tls': 'implicit'});
     final options = OptsExtraFtp.fromJson(submitted?.opts?.extra! as Map<String, dynamic>);
     expect(options.connections, 6);
-    expect(options.tls, 'implicit');
   });
 
   testWidgets('mixed links cap only the FTP task at 32 connections', (tester) async {
@@ -1762,6 +1764,7 @@ void _ftpTests() {
     expect(byUrl['https://example.com/a.zip']!.containsKey('tls'), isFalse);
     expect(byUrl['ftpes://files.example/b.iso']!['connections'], 32);
     expect(byUrl['ftpes://files.example/b.iso']!.containsKey('tls'), isFalse);
+    expect(submitted.map((task) => task.req!.extra), everyElement(isNull));
   });
 }
 

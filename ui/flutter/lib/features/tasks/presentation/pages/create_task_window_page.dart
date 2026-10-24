@@ -285,6 +285,13 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
             }
             break;
           case _TaskProtocol.ftp:
+            if (req.extra is Map) {
+              final tls = ReqExtraFtp.fromJson(Map<String, dynamic>.from(req.extra! as Map)).tls;
+              if (_ftpTlsModes.contains(tls)) {
+                _ftpTls = tls;
+              }
+            }
+            break;
           case _TaskProtocol.ed2k:
           case null:
             break;
@@ -765,7 +772,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                   ),
                                 ),
                               ],
-                              if (_inputUrls().length <= 1) ...[
+                              // Checksum verification is HTTP only.
+                              if (_inputUrls().length <= 1 && !_allLinksFtp) ...[
                                 const SizedBox(height: 14),
                                 AppFormPair(
                                   direction: stacked ? Axis.vertical : Axis.horizontal,
@@ -1064,6 +1072,11 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         }
         break;
       case _TaskProtocol.ftp:
+        // ftps:// and ftpes:// fix the TLS mode; only a plain ftp:// link carries one.
+        if (_isPlainFtpUrl(protocolUrl ?? url) && _ftpTls != _ftpTlsNone) {
+          extra = ReqExtraFtp(tls: _ftpTls).toJson();
+        }
+        break;
       case _TaskProtocol.ed2k:
       case null:
         break;
@@ -1079,7 +1092,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   bool _validateAdvancedOptions() {
-    if (_protocolTab == 0 && _inputUrls().length <= 1) {
+    if (_protocolTab == 0 && _inputUrls().length <= 1 && !_allLinksFtp) {
       final checksumExpected = _checksumHashController.text.trim();
       if (checksumExpected.isNotEmpty) {
         final expectedLen = switch (_checksumAlgorithm.toLowerCase()) {
