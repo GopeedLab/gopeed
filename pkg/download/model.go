@@ -28,18 +28,36 @@ type ResolveResult struct {
 	SuggestedDownloadDir string `json:"suggestedDownloadDir,omitempty"`
 }
 
+// TaskType distinguishes a standalone download task from a task group that
+// only aggregates child tasks. The zero value is a normal task, so records
+// written before groups existed stay valid.
+type TaskType string
+
+const (
+	// TaskTypeGroup marks a task as a group record. A group owns no fetcher: it
+	// carries the folder name and its child tasks reference it through
+	// Task.ParentID. It is never scheduled and its progress and status are
+	// derived from the children.
+	TaskTypeGroup TaskType = "group"
+)
+
 // Task represents a download unit.
 // Options flow path:
 // REST Request (model.CreateTask/ResolveTask) -> pkg/download Downloader -> Task.Meta.Opts (base.Options) -> Fetcher.Resolve/Start (e.g. internal/protocol/http/fetcher.go)
 type Task struct {
-	ID        string               `json:"id"`
-	Protocol  string               `json:"protocol"`
-	Meta      *fetcher.FetcherMeta `json:"meta"`
-	Status    base.Status          `json:"status"`
-	Uploading bool                 `json:"uploading"`
-	Progress  *Progress            `json:"progress"`
-	CreatedAt time.Time            `json:"createdAt"`
-	UpdatedAt time.Time            `json:"updatedAt"`
+	ID       string               `json:"id"`
+	Protocol string               `json:"protocol"`
+	Meta     *fetcher.FetcherMeta `json:"meta"`
+	// Type is empty for a normal download task and TaskTypeGroup for a group
+	// record that aggregates child tasks.
+	Type TaskType `json:"type,omitempty"`
+	// ParentID is the owning group task ID; empty for standalone tasks.
+	ParentID  string      `json:"parentId,omitempty"`
+	Status    base.Status `json:"status"`
+	Uploading bool        `json:"uploading"`
+	Progress  *Progress   `json:"progress"`
+	CreatedAt time.Time   `json:"createdAt"`
+	UpdatedAt time.Time   `json:"updatedAt"`
 	// DoneAt is the time when the task completed; nil if it has never
 	// finished. A done task never leaves the done state, so the value is
 	// written once and kept.
@@ -108,6 +126,13 @@ func NewTask() *Task {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
+}
+
+// IsGroup reports whether the task is a group record rather than a download
+// task. Group records own no fetcher and must never be started, paused or
+// continued on their own; operations resolve to their child tasks instead.
+func (t *Task) IsGroup() bool {
+	return t.Type == TaskTypeGroup
 }
 
 // Name returns the display name of the task.

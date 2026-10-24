@@ -469,6 +469,12 @@ func (e *taskFileSystem) Open(name string) (http.File, error) {
 	if task == nil {
 		return nil, os.ErrNotExist
 	}
+	if task.IsGroup() {
+		if task.Meta.Opts.Path == "" {
+			return nil, os.ErrNotExist
+		}
+		return os.Open(filepath.Join(task.Meta.Opts.Path, path))
+	}
 	return os.Open(filepath.Join(task.Meta.RootDirPath(), path))
 }
 

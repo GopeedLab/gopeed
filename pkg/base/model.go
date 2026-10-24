@@ -175,11 +175,26 @@ func ParseOptExtra[E any](opts *Options) error {
 type CreateTaskBatch struct {
 	Reqs []*CreateTaskBatchItem `json:"reqs"`
 	Opts *Options               `json:"opts"`
+	// Group optionally assembles every task created by this batch into one task
+	// group. When nil the batch keeps creating standalone tasks.
+	Group *CreateTaskGroup `json:"group"`
 }
 
 type CreateTaskBatchItem struct {
 	Req  *Request `json:"req"`
 	Opts *Options `json:"opts"`
+}
+
+// CreateTaskGroup describes the task group a batch creation belongs to. The
+// caller generates ID so it can correlate the group before the download starts.
+// Repeated batches reuse the group record and append new child tasks. Name is
+// the display name shown on the group card.
+type CreateTaskGroup struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Path is the requested folder. Creation reserves an unused directory and
+	// rebases member paths into it. Empty keeps label-only groups compatible.
+	Path string `json:"path,omitempty"`
 }
 
 // DownloaderStoreConfig is the config that can restore the downloader.
