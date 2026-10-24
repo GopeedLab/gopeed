@@ -7,7 +7,7 @@ part of 'meta.dart';
 // **************************************************************************
 
 Meta _$MetaFromJson(Map<String, dynamic> json) => Meta(
-  req: Request.fromJson(json['req'] as Map<String, dynamic>),
+  req: _requestFromJson(json['req'] as Map<String, dynamic>?),
   opts: Options.fromJson(json['opts'] as Map<String, dynamic>),
 )..res = json['res'] == null ? null : Resource.fromJson(json['res'] as Map<String, dynamic>);
 

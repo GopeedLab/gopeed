@@ -28,7 +28,10 @@ enum ExtractStatus {
 class Task {
   String id;
   String name;
+  @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue)
   Protocol? protocol;
+  String type;
+  String parentId;
   Meta meta;
   Status status;
   bool uploading;
@@ -47,11 +50,15 @@ class Task {
     required this.createdAt,
     required this.updatedAt,
     this.doneAt,
+    this.type = '',
+    this.parentId = '',
   });
 
   factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
 
   Map<String, dynamic> toJson() => _$TaskToJson(this);
+
+  bool get isGroup => type == 'group';
 }
 
 @JsonSerializable()
