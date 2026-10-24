@@ -126,12 +126,14 @@ BtState _$BtStateFromJson(Map<String, dynamic> json) => BtState(
       ) ??
       const {},
   lastTrackerUpdateTime: _trackerUpdateTimeFromJson(json['lastTrackerUpdateTime'] as String?),
+  localRtorrent: json['localRtorrent'] as String? ?? '',
 );
 
 Map<String, dynamic> _$BtStateToJson(BtState instance) => <String, dynamic>{
   'trackerSources': instance.trackerSources,
   'trackerSubscriptionStatuses': instance.trackerSubscriptionStatuses.map((k, e) => MapEntry(k, e.toJson())),
   'lastTrackerUpdateTime': ?instance.lastTrackerUpdateTime?.toIso8601String(),
+  'localRtorrent': instance.localRtorrent,
 };
 
 BtConfig _$BtConfigFromJson(Map<String, dynamic> json) =>
@@ -165,7 +167,7 @@ Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
 };
 
 BtExternalConfig _$BtExternalConfigFromJson(Map<String, dynamic> json) => BtExternalConfig(
-  enable: json['enable'] as bool? ?? false,
+  enable: json['enable'] as bool?,
   url: json['url'] as String? ?? '',
   username: json['username'] as String? ?? '',
   password: json['password'] as String? ?? '',
@@ -173,7 +175,7 @@ BtExternalConfig _$BtExternalConfigFromJson(Map<String, dynamic> json) => BtExte
 );
 
 Map<String, dynamic> _$BtExternalConfigToJson(BtExternalConfig instance) => <String, dynamic>{
-  'enable': instance.enable,
+  'enable': ?instance.enable,
   'url': instance.url,
   'username': instance.username,
   'password': instance.password,

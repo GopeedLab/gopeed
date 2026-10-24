@@ -45,6 +45,7 @@ import '../widgets/settings_item.dart';
 import '../widgets/settings_list_editor.dart';
 import '../widgets/theme_settings_control.dart';
 import '../widgets/tracker_subscriptions_control.dart';
+import '../../../../shared/widgets/rtorrent_handoff_notice.dart';
 
 enum _SettingsSection { basic, downloads, advanced }
 
@@ -74,6 +75,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _btExternalUserController = TextEditingController();
   final _btExternalPasswordController = TextEditingController();
   final _btExternalDirectoryController = TextEditingController();
+  final _btExternalSwitchKey = GlobalKey();
   final _btSeedRatioController = TextEditingController();
   final _btSeedTimeController = TextEditingController();
   final _ed2kListenPortController = TextEditingController();
@@ -302,6 +304,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   ) {
     final apiConfigDirty = _startConfig != null && _startDraftSignature() != _loadedStartSignature;
     final apiServerVisualState = _apiServerVisualState(runtimeState);
+    // Gopeed's own BitTorrent engine settings do not apply while new torrents go to rtorrent.
+    final btLocked = config.protocolConfig.bt.externalActive;
     final palette = AppPalette.of(context);
     switch (section) {
       case _SettingsSection.basic:
@@ -596,21 +600,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: _SettingsGroup(
                 children: [
                   SettingsItem(
+                    key: _btExternalSwitchKey,
                     title: context.l10n.btExternal,
-                    subtitle: context.l10n.btExternalDescription,
+                    subtitle: _btExternalSubtitle(config.protocolConfig.bt),
                     child: shad.Switch(
                       key: const ValueKey('bt-external-switch'),
-                      value: config.protocolConfig.bt.external.enable,
+                      value: config.protocolConfig.bt.externalActive,
                       onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.external.enable = value),
                     ),
                   ),
-                  if (config.protocolConfig.bt.external.enable) ...[
+                  if (config.protocolConfig.bt.externalActive) ...[
                     SettingsItem(
                       title: context.l10n.btExternalUrl,
                       subtitle: context.l10n.btExternalUrlDescription,
                       child: _TextSettingControl(
                         fieldKey: const ValueKey('bt-external-url-input'),
                         controller: _btExternalUrlController,
+                        hintText: config.protocolConfig.bt.state.localRtorrent.isEmpty
+                            ? null
+                            : config.protocolConfig.bt.state.localRtorrent,
                       ),
                     ),
                     SettingsItem(
@@ -645,77 +653,109 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         onChanged: (value) => unawaited(_setDefaultBtClient(value)),
                       ),
                     ),
-                  SettingsItem(
-                    title: context.l10n.listenPort,
-                    child: _NumberSettingControl(
-                      fieldKey: const ValueKey('bt-listen-port-input'),
-                      controller: _btListenPortController,
-                      min: 0,
-                      max: 65535,
+                  if (config.protocolConfig.bt.externalActive)
+                    RtorrentHandoffNotice(
+                      key: const ValueKey('settings-bt-handoff-notice'),
+                      message: _btHandoffMessage(config.protocolConfig.bt),
+                      actionLabel: context.l10n.btExternalChange,
+                      onAction: _showBtExternalSetting,
+                    ),
+                  DisabledWhen(
+                    disabled: btLocked,
+                    child: SettingsItem(
+                      title: context.l10n.listenPort,
+                      child: _NumberSettingControl(
+                        fieldKey: const ValueKey('bt-listen-port-input'),
+                        controller: _btListenPortController,
+                        min: 0,
+                        max: 65535,
+                      ),
                     ),
                   ),
-                  SettingsItem(
-                    title: context.l10n.enableDht,
-                    subtitle: context.l10n.restartRequired,
-                    child: shad.Switch(
-                      value: !config.protocolConfig.bt.disableDht,
-                      onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disableDht = !value),
+                  DisabledWhen(
+                    disabled: btLocked,
+                    child: SettingsItem(
+                      title: context.l10n.enableDht,
+                      subtitle: context.l10n.restartRequired,
+                      child: shad.Switch(
+                        value: !config.protocolConfig.bt.disableDht,
+                        onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disableDht = !value),
+                      ),
                     ),
                   ),
-                  SettingsItem(
-                    title: context.l10n.enablePex,
-                    subtitle: context.l10n.restartRequired,
-                    child: shad.Switch(
-                      value: !config.protocolConfig.bt.disablePex,
-                      onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disablePex = !value),
+                  DisabledWhen(
+                    disabled: btLocked,
+                    child: SettingsItem(
+                      title: context.l10n.enablePex,
+                      subtitle: context.l10n.restartRequired,
+                      child: shad.Switch(
+                        value: !config.protocolConfig.bt.disablePex,
+                        onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.disablePex = !value),
+                      ),
                     ),
                   ),
-                  SettingsItem(
-                    title: context.l10n.seedKeep,
-                    child: shad.Switch(
-                      value: config.protocolConfig.bt.seedKeep,
-                      onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.seedKeep = value),
+                  DisabledWhen(
+                    disabled: btLocked,
+                    child: SettingsItem(
+                      title: context.l10n.seedKeep,
+                      child: shad.Switch(
+                        value: config.protocolConfig.bt.seedKeep,
+                        onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.seedKeep = value),
+                      ),
                     ),
                   ),
                   if (!config.protocolConfig.bt.seedKeep) ...[
-                    SettingsItem(
-                      title: context.l10n.seedRatio,
-                      child: _NumberSettingControl(
-                        fieldKey: const ValueKey('bt-seed-ratio-input'),
-                        controller: _btSeedRatioController,
-                        min: 0,
-                        step: 0.1,
-                        decimalPlaces: 2,
+                    DisabledWhen(
+                      disabled: btLocked,
+                      child: SettingsItem(
+                        title: context.l10n.seedRatio,
+                        child: _NumberSettingControl(
+                          fieldKey: const ValueKey('bt-seed-ratio-input'),
+                          controller: _btSeedRatioController,
+                          min: 0,
+                          step: 0.1,
+                          decimalPlaces: 2,
+                        ),
                       ),
                     ),
-                    SettingsItem(
-                      title: context.l10n.seedTime,
-                      child: _NumberSettingControl(
-                        fieldKey: const ValueKey('bt-seed-time-input'),
-                        controller: _btSeedTimeController,
-                        min: 0,
-                        max: 100000000,
+                    DisabledWhen(
+                      disabled: btLocked,
+                      child: SettingsItem(
+                        title: context.l10n.seedTime,
+                        child: _NumberSettingControl(
+                          fieldKey: const ValueKey('bt-seed-time-input'),
+                          controller: _btSeedTimeController,
+                          min: 0,
+                          max: 100000000,
+                        ),
                       ),
                     ),
                   ],
-                  SettingsItem(
-                    title: context.l10n.subscribeTracker,
-                    stacked: true,
-                    child: TrackerSubscriptionsControl(
-                      urls: config.protocolConfig.bt.trackerSubscribeUrls,
-                      statuses: config.protocolConfig.bt.state.trackerSubscriptionStatuses,
-                      autoUpdate: config.protocolConfig.bt.autoUpdateTrackers,
-                      lastUpdated: config.protocolConfig.bt.state.lastTrackerUpdateTime,
-                      onChanged: (urls) => _mutateConfig((next) => next.protocolConfig.bt.trackerSubscribeUrls = urls),
-                      onAutoUpdateChanged: (value) =>
-                          _mutateConfig((next) => next.protocolConfig.bt.autoUpdateTrackers = value),
-                      onUpdate: _updateTrackers,
+                  DisabledWhen(
+                    disabled: btLocked,
+                    child: SettingsItem(
+                      title: context.l10n.subscribeTracker,
+                      stacked: true,
+                      child: TrackerSubscriptionsControl(
+                        urls: config.protocolConfig.bt.trackerSubscribeUrls,
+                        statuses: config.protocolConfig.bt.state.trackerSubscriptionStatuses,
+                        autoUpdate: config.protocolConfig.bt.autoUpdateTrackers,
+                        lastUpdated: config.protocolConfig.bt.state.lastTrackerUpdateTime,
+                        onChanged: (urls) =>
+                            _mutateConfig((next) => next.protocolConfig.bt.trackerSubscribeUrls = urls),
+                        onAutoUpdateChanged: (value) =>
+                            _mutateConfig((next) => next.protocolConfig.bt.autoUpdateTrackers = value),
+                        onUpdate: _updateTrackers,
+                      ),
                     ),
                   ),
-                  SettingsItem(
-                    title: context.l10n.addTracker,
-                    subtitle: context.l10n.onePerLine,
-                    child: _TextSettingControl(controller: _customTrackersController, minLines: 7),
+                  DisabledWhen(
+                    disabled: btLocked,
+                    child: SettingsItem(
+                      title: context.l10n.addTracker,
+                      subtitle: context.l10n.onePerLine,
+                      child: _TextSettingControl(controller: _customTrackersController, minLines: 7),
+                    ),
                   ),
                 ],
               ),
@@ -1044,6 +1084,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
         );
+    }
+  }
+
+  String _btExternalSubtitle(BtConfig bt) {
+    if (bt.state.localRtorrent.isEmpty) {
+      return context.l10n.btExternalDescription;
+    }
+    return bt.externalActive ? context.l10n.btExternalDetectedOn : context.l10n.btExternalDetectedOff;
+  }
+
+  String _btHandoffMessage(BtConfig bt) {
+    final endpoint = bt.externalEndpoint;
+    return endpoint.isEmpty ? context.l10n.btHandledByRtorrentNoAddress : context.l10n.btHandledByRtorrent(endpoint);
+  }
+
+  void _showBtExternalSetting() {
+    final target = _btExternalSwitchKey.currentContext;
+    if (target != null) {
+      unawaited(Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 200), alignment: 0.1));
     }
   }
 

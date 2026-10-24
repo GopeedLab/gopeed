@@ -91,9 +91,30 @@ void main() {
     expect(decoded.directory, '/srv/torrents');
   });
 
+  test('an unset rtorrent switch follows the detected local rtorrent', () {
+    final bt = BtConfig.fromJson({
+      'state': {'localRtorrent': 'scgi:///share/CACHEDEV1_DATA/.qpkg/rtorrent16/var/run/rpc.sock'},
+    });
+    expect(bt.external.enable, isNull);
+    expect(bt.externalActive, isTrue);
+    expect(bt.externalEndpoint, 'scgi:///share/CACHEDEV1_DATA/.qpkg/rtorrent16/var/run/rpc.sock');
+    // An unset switch is not sent, so the server keeps following the detection.
+    expect((bt.toJson()['external'] as Map<String, dynamic>).containsKey('enable'), isFalse);
+
+    bt.external.enable = false;
+    expect(bt.externalActive, isFalse);
+    expect((bt.toJson()['external'] as Map<String, dynamic>)['enable'], isFalse);
+
+    bt.external
+      ..enable = true
+      ..url = 'http://other/RPC2';
+    expect(bt.externalEndpoint, 'http://other/RPC2');
+  });
+
   test('a stored BitTorrent config without the rtorrent hand-off keeps it off', () {
     final bt = BtConfig.fromJson({'listenPort': 6881});
-    expect(bt.external.enable, isFalse);
+    expect(bt.external.enable, isNull);
+    expect(bt.externalActive, isFalse);
     expect(bt.external.url, isEmpty);
   });
 
