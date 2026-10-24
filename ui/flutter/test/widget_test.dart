@@ -1631,6 +1631,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('settings send torrents to rtorrent', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final settingsController = FakeSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Send torrents to rtorrent'), findsOneWidget);
+    const urlInput = ValueKey('bt-external-url-input');
+    expect(find.byKey(urlInput), findsNothing);
+
+    final toggle = find.byKey(const ValueKey('bt-external-switch'));
+    await tester.ensureVisible(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(settingsController.state.requireValue.config.protocolConfig.bt.external.enable, isTrue);
+    expect(find.byKey(urlInput), findsOneWidget);
+    expect(find.byKey(const ValueKey('bt-external-username-input')), findsOneWidget);
+    expect(tester.widget<shad.TextField>(find.byKey(const ValueKey('bt-external-password-input'))).obscureText, isTrue);
+
+    await tester.enterText(find.byKey(urlInput), ' scgi://127.0.0.1:5000 ');
+    await tester.enterText(find.byKey(const ValueKey('bt-external-directory-input')), '/srv/torrents');
+    await tester.pump(const Duration(milliseconds: 700));
+    final external = settingsController.state.requireValue.config.protocolConfig.bt.external;
+    expect(external.url, 'scgi://127.0.0.1:5000');
+    expect(external.directory, '/srv/torrents');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('download directory keeps long text clear of its aligned picker action', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     await tester.pumpWidget(
