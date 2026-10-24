@@ -460,10 +460,14 @@ func (f *Fetcher) externalAdoptMetadata(ctx context.Context, client *rtorrentCli
 	}
 	res.CalcSize(nil)
 
+	// The resource and the options are swapped as whole values, never emptied
+	// and refilled, because the downloader reads them while the task runs.
 	f.mu.Lock()
+	opts := *f.meta.Opts
+	opts.SelectFiles = nil
+	opts.InitSelectFiles(len(res.Files))
 	f.meta.Res = res
-	f.meta.Opts.SelectFiles = nil
-	f.meta.Opts.InitSelectFiles(len(res.Files))
+	f.meta.Opts = &opts
 	f.data.Progress = make(fetcher.Progress, len(res.Files))
 	if f.ext == nil {
 		f.ext = &externalState{}
