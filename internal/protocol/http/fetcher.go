@@ -313,6 +313,7 @@ type Fetcher struct {
 	prefetchDone     atomic.Bool   // Prefetch completed or stopped
 	prefetchErr      error         // Error during prefetch (if any)
 	prefetchStopCh   chan struct{} // Signal to stop prefetch
+	prefetchExitCh   chan struct{} // Closed when the prefetch goroutine exits
 	resolveFallback  atomic.Bool   // Resolve prefetch is still available until the first Range request takes over
 
 	// Target file
@@ -553,6 +554,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	// For non-range resources, the response will be used directly in Start
 	if res.Range && reuseResolveBody {
 		f.prefetchStopCh = make(chan struct{})
+		f.prefetchExitCh = make(chan struct{})
 		f.resolveFallback.Store(true)
 		go f.asyncPrefetch()
 	}
@@ -570,6 +572,9 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 func (f *Fetcher) asyncPrefetch() {
 	defer func() {
 		f.prefetchDone.Store(true)
+		if f.prefetchExitCh != nil {
+			close(f.prefetchExitCh)
+		}
 	}()
 
 	// Get the resolve response
@@ -648,23 +653,38 @@ func (f *Fetcher) asyncPrefetch() {
 	}
 }
 
+// stopPrefetch signals the async prefetch to stop and waits until it exits.
+// Closing the resolve body unblocks a pending Read, so a stalled server cannot
+// keep the prefetch goroutine writing to the temporary file after we reuse it.
+func (f *Fetcher) stopPrefetch() {
+	if f.prefetchStopCh == nil {
+		return
+	}
+
+	// Pause and the first connection's takeover can stop concurrently, so the
+	// check-and-close must be under the lock to avoid closing the channel twice.
+	f.resolveRespLock.Lock()
+	select {
+	case <-f.prefetchStopCh:
+		// Already closed
+	default:
+		close(f.prefetchStopCh)
+	}
+	if f.resolveResp != nil {
+		f.resolveResp.Body.Close()
+		f.resolveResp = nil
+	}
+	f.resolveRespLock.Unlock()
+
+	if f.prefetchExitCh != nil {
+		<-f.prefetchExitCh
+	}
+}
+
 // stopPrefetchAndGetData stops the async prefetch and returns prefetched bytes
 // It also copies prefetched data to the target file
 func (f *Fetcher) stopPrefetchAndCopyData() int64 {
-	// Signal prefetch to stop (safely)
-	if f.prefetchStopCh != nil {
-		select {
-		case <-f.prefetchStopCh:
-			// Already closed
-		default:
-			close(f.prefetchStopCh)
-		}
-	}
-
-	// Wait for prefetch to finish (with timeout)
-	for i := 0; f.prefetchStopCh != nil && i < 1000 && !f.prefetchDone.Load(); i++ {
-		time.Sleep(10 * time.Millisecond)
-	}
+	f.stopPrefetch()
 
 	prefetched := f.prefetchSize.Load()
 	if prefetched == 0 {
@@ -1620,11 +1640,10 @@ func (f *Fetcher) completeFromResolveFallback(conn *connection) bool {
 		return false
 	}
 
-	for !f.prefetchDone.Load() {
-		if conn.ctx.Err() != nil {
-			return false
-		}
-		time.Sleep(10 * time.Millisecond)
+	select {
+	case <-f.prefetchExitCh:
+	case <-conn.ctx.Done():
+		return false
 	}
 	knownSize := f.hasKnownSize()
 	if f.prefetchErr != nil || (knownSize && f.prefetchSize.Load() != f.meta.Res.Size) {
@@ -2428,14 +2447,7 @@ func (f *Fetcher) Pause() error {
 	}
 
 	// Stop prefetch if running
-	if f.prefetchStopCh != nil {
-		select {
-		case <-f.prefetchStopCh:
-			// Already closed
-		default:
-			close(f.prefetchStopCh)
-		}
-	}
+	f.stopPrefetch()
 
 	// Wait for downloadLoop to exit first (it will call wg.Wait internally)
 	if f.downloadLoopDone != nil {
@@ -2444,11 +2456,6 @@ func (f *Fetcher) Pause() error {
 
 	// Wait for all connection goroutines to stop
 	f.wg.Wait()
-
-	// Wait for prefetch to finish
-	for f.prefetchStopCh != nil && !f.prefetchDone.Load() {
-		time.Sleep(10 * time.Millisecond)
-	}
 
 	// If Pause wins before the first Range response is validated, materialize
 	// the Resolve prefix before discarding its temporary file. The first
