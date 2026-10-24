@@ -50,8 +50,8 @@ _BatchActionAvailability _batchActionAvailability(Iterable<TaskRecord> tasks, Ta
   var canResume = false;
   for (final task in tasks) {
     if (!selection.contains(task.id)) continue;
-    canPause = canPause || task.status == TaskStatus.downloading;
-    canResume = canResume || task.status == TaskStatus.paused || task.status == TaskStatus.failed;
+    canPause = canPause || task.canPause;
+    canResume = canResume || task.canResume;
     if (canPause && canResume) break;
   }
   return _BatchActionAvailability(canPause: canPause, canResume: canResume);
@@ -331,8 +331,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             _TaskFilter.completed => task.status == TaskStatus.completed,
             _TaskFilter.failed => task.status == TaskStatus.failed,
           };
-          final passesSearch =
-              query.isEmpty || task.name.toLowerCase().contains(query) || task.url.toLowerCase().contains(query);
+          final passesSearch = task.matchesSearch(query);
           return passesFilter && passesSearch;
         })
         .toList(growable: false);
@@ -376,7 +375,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (_batchMode) {
       _toggleBatchTask(task.id);
     } else {
-      _showTaskDetails(task);
+      if (task.isGroup && task.storagePath.isNotEmpty) {
+        unawaited(_openTask(task));
+      } else {
+        _showTaskDetails(task);
+      }
     }
   }
 
@@ -430,16 +433,14 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _pauseSelectedTasks() {
     if (_batchMode && _batchSelection.isEmpty) return;
-    final ids = _batchMode ? _selectedTaskIdsFor((task) => task.status == TaskStatus.downloading) : null;
+    final ids = _batchMode ? _selectedTaskIdsFor((task) => task.canPause) : null;
     if (_batchMode && ids!.isEmpty) return;
     unawaited(_runTaskAction(() => ref.read(tasksControllerProvider.notifier).pauseAll(ids)));
   }
 
   void _resumeSelectedTasks() {
     if (_batchMode && _batchSelection.isEmpty) return;
-    final ids = _batchMode
-        ? _selectedTaskIdsFor((task) => task.status == TaskStatus.paused || task.status == TaskStatus.failed)
-        : null;
+    final ids = _batchMode ? _selectedTaskIdsFor((task) => task.canResume) : null;
     if (_batchMode && ids!.isEmpty) return;
     unawaited(_runTaskAction(() => ref.read(tasksControllerProvider.notifier).resumeAll(ids)));
   }
@@ -502,9 +503,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (ids.isEmpty) return;
     final runtime = ref.read(appRuntimeControllerProvider).value;
     final config = runtime?.downloaderConfig;
+    final selected =
+        ref.read(tasksControllerProvider).value?.tasks.where((task) => ids.contains(task.id)).toList() ??
+        const <TaskRecord>[];
+    final hasGroups = selected.any((task) => task.isGroup);
     final keepFiles = await showTaskDeleteDialog(
       context,
       taskCount: ids.length,
+      memberCount: !hasGroups
+          ? null
+          : selected.fold<int>(0, (total, task) => total + (task.isGroup ? task.members.length : 1)),
+      fileCount: !hasGroups ? null : selected.fold<int>(0, (total, task) => total + task.files.length),
       keepFiles: config?.extra.lastDeleteTaskKeep ?? false,
     );
     if (keepFiles == null || !mounted) return;
@@ -586,6 +595,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _openTask(TaskRecord task) async {
+    if (task.isGroup && (Util.isWeb() || MediaQuery.sizeOf(context).width < Breakpoints.mobile)) {
+      await browseTaskFiles(context, task, mobile: MediaQuery.sizeOf(context).width < Breakpoints.mobile);
+      return;
+    }
     final opened = task.isFolder
         ? await FileExplorer.reveal(task.storagePath)
         : await FileExplorer.open(task.storagePath);

@@ -64,7 +64,7 @@ class _TaskCardDesktopState extends State<TaskCardDesktop> {
     _lastTapTime = isDoubleTap ? null : now;
     _lastTapPosition = isDoubleTap ? null : details.globalPosition;
     widget.onPressed();
-    if (isDoubleTap) {
+    if (isDoubleTap && !widget.task.isGroup) {
       widget.onOpen?.call();
     }
   }

@@ -473,5 +473,6 @@
   "trackerSubscriptionUpdateStatus": "புதுப்பிப்பு நிலை",
   "trackerSubscriptionTrackerCount": "டிராக்கர் எண்ணிக்கை",
   "trackerSubscriptionNotUpdated": "இன்னும் புதுப்பிக்கப்படவில்லை",
-  "actions": "செயல்கள்"
+  "actions": "செயல்கள்",
+  "taskGroupDeleteImpact": "{taskCount} பதிவிறக்கங்களையும் {fileCount} கோப்புகளையும் பாதிக்கும்."
 }

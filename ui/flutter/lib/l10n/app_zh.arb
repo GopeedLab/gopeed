@@ -473,5 +473,6 @@
   "trackerSubscriptionUpdateStatus": "更新状态",
   "trackerSubscriptionTrackerCount": "Tracker 数量",
   "trackerSubscriptionNotUpdated": "未更新",
-  "actions": "操作"
+  "actions": "操作",
+  "taskGroupDeleteImpact": "将影响 {taskCount} 个下载任务和 {fileCount} 个文件。"
 }

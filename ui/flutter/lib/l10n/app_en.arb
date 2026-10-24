@@ -700,5 +700,16 @@
   "trackerSubscriptionUpdateStatus": "Update status",
   "trackerSubscriptionTrackerCount": "Tracker count",
   "trackerSubscriptionNotUpdated": "Not updated",
-  "actions": "Actions"
+  "actions": "Actions",
+  "taskGroupDeleteImpact": "Affects {taskCount} downloads and {fileCount} files.",
+  "@taskGroupDeleteImpact": {
+    "placeholders": {
+      "taskCount": {
+        "type": "int"
+      },
+      "fileCount": {
+        "type": "int"
+      }
+    }
+  }
 }

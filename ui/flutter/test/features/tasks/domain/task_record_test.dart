@@ -29,6 +29,87 @@ void main() {
     'progress': {'used': 0, 'speed': 0, 'downloaded': 10, 'uploadSpeed': 0, 'uploaded': 0},
   });
 
+  test('groups decode fetcher-less records and hide only their own members', () {
+    final group = groupTestTask('group', group: true);
+    final records = taskRecordsFromApi([
+      group,
+      groupTestTask('first', parentId: 'group'),
+      groupTestTask(
+        'second',
+        parentId: 'group',
+        directory: '/downloads/folder/nested',
+        name: 'movie.mp4',
+        size: 300,
+        downloaded: 75,
+      ),
+      groupTestTask('standalone'),
+      groupTestTask('orphan', parentId: 'missing-group'),
+    ]);
+    expect(group.protocol, isNull);
+    expect(group.meta.req.url, isEmpty);
+    expect(records.map((record) => record.id), ['group', 'standalone', 'orphan']);
+    final record = records.first;
+    expect(record.isGroup, isTrue);
+    expect(record.isFolder, isTrue);
+    expect(record.members.length, 2);
+    expect(record.totalBytes, 400);
+    expect(record.downloadedBytes, 100);
+    expect(record.speedBytes, 20);
+    expect(record.progress, 0.25);
+    expect(record.storagePath, '/downloads/folder');
+    expect(record.files.map((file) => file.path), ['', 'nested']);
+    expect(record.files.map((file) => file.name), ['file.txt', 'movie.mp4']);
+    expect(record.files.last.downloadedBytes, 75);
+    expect(record.matchesSearch('movie'), isTrue);
+    expect(record.matchesSearch('second'), isTrue);
+    expect(record.matchesSearch('absent'), isFalse);
+    expect(record.canUpdateUrl, isFalse);
+  });
+
+  for (final scenario in <(List<String>, TaskStatus, bool)>[
+    (['running', 'error', 'pause'], TaskStatus.downloading, false),
+    (['error', 'pause', 'wait'], TaskStatus.failed, false),
+    (['pause', 'wait', 'done'], TaskStatus.paused, false),
+    (['done', 'done'], TaskStatus.completed, false),
+    (['wait', 'done'], TaskStatus.downloading, true),
+    ([], TaskStatus.paused, false),
+  ]) {
+    test('group status priority for ${scenario.$1}', () {
+      final record = taskRecordsFromApi([
+        groupTestTask('group', group: true),
+        for (var i = 0; i < scenario.$1.length; i++)
+          groupTestTask('child-$i', parentId: 'group', status: scenario.$1[i]),
+      ]).single;
+      expect(record.status, scenario.$2);
+      expect(record.waiting, scenario.$3);
+      if (scenario.$2 == TaskStatus.completed) {
+        expect(record.progress, 1);
+        expect(record.doneAt, DateTime.utc(2026, 1, 3));
+      }
+    });
+  }
+
+  test('unknown member sizes stay indeterminate and empty files can finish', () {
+    final group = groupTestTask('group', group: true);
+    final unknown = groupTestTask('unknown', parentId: 'group', size: 0);
+    final record = taskRecordsFromApi([group, unknown, groupTestTask('known', parentId: 'group')]).single;
+    expect(record.totalBytes, isNull);
+    expect(record.progress, isNull);
+    unknown.status = api.Status.done;
+    final empty = taskRecordsFromApi([group, unknown]).single;
+    expect(empty.totalBytes, 0);
+    expect(empty.progress, 1);
+  });
+
+  test('Windows group directories retain their relative file tree', () {
+    final records = taskRecordsFromApi([
+      groupTestTask('group', group: true, directory: r'C:\Downloads\folder'),
+      groupTestTask('child', parentId: 'group', directory: r'C:\Downloads\folder\nested'),
+    ]);
+    expect(records.single.files.single.path, 'nested');
+    expect(records.single.files.single.name, 'file.txt');
+  });
+
   test('selected files retain original indexes for runtime progress', () {
     final record = TaskRecord.fromApi(buildTask([2, 0], 40));
     expect(record.files.map((file) => file.name), ['a.txt', 'c.txt']);
@@ -90,3 +171,37 @@ void main() {
     expect(taskFileTypeIcon('Playlist #2.mp4', isFolder: true), GopeedIcons.folder);
   });
 }
+
+api.Task groupTestTask(
+  String id, {
+  String parentId = '',
+  bool group = false,
+  String status = 'running',
+  int size = 100,
+  int downloaded = 25,
+  String directory = '/downloads/folder',
+  String name = 'file.txt',
+}) => api.Task.fromJson({
+  'id': id,
+  'name': group ? 'folder' : name,
+  'type': group ? 'group' : '',
+  'parentId': parentId,
+  'protocol': group ? '' : 'http',
+  'status': status,
+  'uploading': false,
+  'createdAt': '2026-01-01T00:00:00Z',
+  'updatedAt': '2026-01-02T00:00:00Z',
+  'doneAt': status == 'done' ? '2026-01-03T00:00:00Z' : null,
+  'meta': {
+    'req': group ? null : {'url': 'https://example.com/$id'},
+    'opts': {'path': directory, 'name': group ? 'folder' : name, 'size': size},
+    if (!group && size > 0)
+      'res': {
+        'size': size,
+        'files': [
+          {'name': name, 'size': size},
+        ],
+      },
+  },
+  'progress': {'used': 0, 'speed': 10, 'downloaded': downloaded, 'uploadSpeed': 0, 'uploaded': 0},
+});
