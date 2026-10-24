@@ -473,5 +473,6 @@
   "trackerSubscriptionUpdateStatus": "Frissítés állapota",
   "trackerSubscriptionTrackerCount": "Trackerek száma",
   "trackerSubscriptionNotUpdated": "Még nem frissült",
-  "actions": "Műveletek"
+  "actions": "Műveletek",
+  "taskGroupDeleteImpact": "{taskCount} letöltést és {fileCount} fájlt érint."
 }

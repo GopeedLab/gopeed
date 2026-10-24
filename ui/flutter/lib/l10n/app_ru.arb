@@ -473,5 +473,6 @@
   "trackerSubscriptionUpdateStatus": "Статус обновления",
   "trackerSubscriptionTrackerCount": "Число трекеров",
   "trackerSubscriptionNotUpdated": "Ещё не обновлено",
-  "actions": "Действия"
+  "actions": "Действия",
+  "taskGroupDeleteImpact": "Затронет {taskCount} загрузок и {fileCount} файлов."
 }

@@ -95,10 +95,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
     await tester.pumpAndSettle();
     expect(submitted?.reqs?.map((item) => item.opts?.size), [3, 1048576]);
-    expect(submitted?.reqs?.map((item) => item.req?.url), [
-      'https://example.com/video',
-      'https://example.com/audio',
-    ]);
+    expect(submitted?.reqs?.map((item) => item.req?.url), ['https://example.com/video', 'https://example.com/audio']);
+    expect(submitted?.group?.id, isNotEmpty);
+    expect(submitted?.group?.name, 'Download');
+    expect(submitted?.group?.path, '/downloads/Download');
+    expect(submitted?.reqs?.map((item) => item.opts?.path), ['/downloads/Download', '/downloads/Download']);
     expect(tester.takeException(), isNull);
   });
 
@@ -1531,6 +1532,8 @@ void main() {
 
     expect(batch, isNotNull);
     expect(batch!.reqs, hasLength(2));
+    expect(batch!.group?.name, 'bundle');
+    expect(batch!.group?.path, '/downloads/bundle');
     for (final item in batch!.reqs!) {
       // The split tasks keep the structure of the resolved resource, so they
       // are never classified into a category.
@@ -1596,6 +1599,7 @@ void main() {
 
     expect(batch, isNotNull);
     expect(batch!.reqs, hasLength(1));
+    expect(batch!.group, isNotNull);
     for (final item in batch!.reqs!) {
       expect(item.opts?.skipAutoCategorize, isTrue);
     }

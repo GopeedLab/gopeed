@@ -16,12 +16,16 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
   createdAt: DateTime.parse(json['createdAt'] as String),
   updatedAt: DateTime.parse(json['updatedAt'] as String),
   doneAt: json['doneAt'] == null ? null : DateTime.parse(json['doneAt'] as String),
-)..protocol = $enumDecodeNullable(_$ProtocolEnumMap, json['protocol']);
+  type: json['type'] as String? ?? '',
+  parentId: json['parentId'] as String? ?? '',
+)..protocol = $enumDecodeNullable(_$ProtocolEnumMap, json['protocol'], unknownValue: JsonKey.nullForUndefinedEnumValue);
 
 Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
   'id': instance.id,
   'name': instance.name,
   'protocol': ?_$ProtocolEnumMap[instance.protocol],
+  'type': instance.type,
+  'parentId': instance.parentId,
   'meta': instance.meta.toJson(),
   'status': _$StatusEnumMap[instance.status]!,
   'uploading': instance.uploading,

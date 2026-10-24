@@ -245,6 +245,83 @@ func TestCreateDirectTaskBatchWithOpt(t *testing.T) {
 	})
 }
 
+func TestCreateDirectTaskBatchWithGroup(t *testing.T) {
+	doTest(func() {
+		reqs := make([]*base.CreateTaskBatchItem, 0)
+		for i := 0; i < 3; i++ {
+			reqs = append(reqs, &base.CreateTaskBatchItem{
+				Req: createReq.Req,
+			})
+		}
+
+		group := &base.CreateTaskGroup{ID: "batch-group", Name: "folder"}
+		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
+			Reqs:  reqs,
+			Group: group,
+		})
+		if len(taskIds) != len(reqs) {
+			t.Errorf("CreateDirectTaskBatchWithGroup() task ids = %v, want %v", taskIds, len(reqs))
+		}
+
+		// The group record is addressable on its own and reports the folder name.
+		groupTask := httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+group.ID, nil)
+		if !groupTask.IsGroup() {
+			t.Fatalf("group task type = %q, want %q", groupTask.Type, download.TaskTypeGroup)
+		}
+		if groupTask.Name() != group.Name {
+			t.Fatalf("group task name = %q, want %q", groupTask.Name(), group.Name)
+		}
+		if groupTask.Meta.Res != nil {
+			t.Fatal("group must not keep a resource or file list")
+		}
+		all := httpRequestCheckOk[[]*download.Task](http.MethodGet, "/api/v1/tasks", nil)
+		if len(all) != len(reqs)+1 {
+			t.Fatalf("task list must include the group and all members: got %d", len(all))
+		}
+
+		for _, taskId := range taskIds {
+			task := httpRequestCheckOk[*download.Task](http.MethodGet, "/api/v1/tasks/"+taskId, nil)
+			if task.ParentID != group.ID {
+				t.Fatalf("child %s parentId = %q, want %q", taskId, task.ParentID, group.ID)
+			}
+		}
+	})
+}
+
+func TestTaskGroupFiles(t *testing.T) {
+	doTest(func() {
+		cfg, err := Downloader.GetConfig()
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg.MaxRunning = 0
+		if err := Downloader.PutConfig(cfg); err != nil {
+			t.Fatal(err)
+		}
+		root := filepath.Join(t.TempDir(), "folder")
+		httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
+			Group: &base.CreateTaskGroup{ID: "group-files", Name: "folder", Path: root},
+			Opts:  &base.Options{Path: filepath.Join(root, "nested")},
+			Reqs:  []*base.CreateTaskBatchItem{{Req: createReq.Req}},
+		})
+		if err := os.MkdirAll(filepath.Join(root, "nested"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, "nested", "file.txt"), []byte("group file"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/fs/tasks/group-files/nested/file.txt", restPort))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil || resp.StatusCode != http.StatusOK || string(body) != "group file" {
+			t.Fatalf("group file response: status=%d, body=%q, error=%v", resp.StatusCode, body, err)
+		}
+	})
+}
+
 func TestPauseAndContinueTask(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup

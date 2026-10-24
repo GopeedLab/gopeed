@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart' as multi_window;
@@ -1244,6 +1245,24 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       // structure of the resolved resource is kept. The decision is based on
       // the resolved resource, not on the number of selected files.
       final keepStructure = _directoryManuallySet || result.res.name.isNotEmpty || result.res.files.length > 1;
+      final grouped = result.res.name.isNotEmpty || result.res.files.length > 1;
+      final rename = _renameController.text.trim();
+      final folderName = rename.isNotEmpty
+          ? rename
+          : result.res.name.isNotEmpty
+          ? result.res.name
+          : context.l10n.download;
+      final folderPath = grouped
+          ? path.join(_directoryController.text.trim(), folderName)
+          : _directoryController.text.trim();
+      final random = Random.secure();
+      final group = grouped
+          ? CreateTaskGroup(
+              id: base64Url.encode(List<int>.generate(16, (_) => random.nextInt(256))).replaceAll('=', ''),
+              name: folderName,
+              path: folderPath,
+            )
+          : null;
       final reqs = selected.map((index) {
         final file = result.res.files[index];
         final fileRequest = file.req ?? request;
@@ -1252,7 +1271,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           opts: api_options.Options(
             size: _parseProtocol(fileRequest.url) == _TaskProtocol.http ? file.size : 0,
             name: file.name,
-            path: path.join(_directoryController.text.trim(), result.res.name, file.path),
+            path: path.join(folderPath, file.path),
             skipAutoCategorize: keepStructure,
             extra: _buildOptions(omitChecksum: isMultiFile).extra,
           ),
@@ -1263,6 +1282,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
           .createTaskBatch(
             CreateTaskBatch(
               reqs: reqs,
+              group: group,
               opts: _buildOptions(omitChecksum: isMultiFile, skipAutoCategorize: keepStructure),
             ),
           );

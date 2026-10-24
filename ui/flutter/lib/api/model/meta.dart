@@ -7,6 +7,7 @@ part 'meta.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class Meta {
+  @JsonKey(fromJson: _requestFromJson)
   Request req;
   Resource? res;
   Options opts;
@@ -16,3 +17,5 @@ class Meta {
   factory Meta.fromJson(Map<String, dynamic> json) => _$MetaFromJson(json);
   Map<String, dynamic> toJson() => _$MetaToJson(this);
 }
+
+Request _requestFromJson(Map<String, dynamic>? json) => json == null ? Request(url: '') : Request.fromJson(json);

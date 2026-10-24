@@ -473,5 +473,6 @@
   "trackerSubscriptionUpdateStatus": "Status pembaruan",
   "trackerSubscriptionTrackerCount": "Jumlah tracker",
   "trackerSubscriptionNotUpdated": "Belum diperbarui",
-  "actions": "Tindakan"
+  "actions": "Tindakan",
+  "taskGroupDeleteImpact": "Memengaruhi {taskCount} unduhan dan {fileCount} berkas."
 }

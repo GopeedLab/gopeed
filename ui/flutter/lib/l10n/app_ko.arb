@@ -473,5 +473,6 @@
   "trackerSubscriptionUpdateStatus": "업데이트 상태",
   "trackerSubscriptionTrackerCount": "트래커 수",
   "trackerSubscriptionNotUpdated": "아직 업데이트되지 않음",
-  "actions": "작업"
+  "actions": "작업",
+  "taskGroupDeleteImpact": "다운로드 {taskCount}개와 파일 {fileCount}개에 영향을 줍니다."
 }

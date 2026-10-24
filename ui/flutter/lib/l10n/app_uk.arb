@@ -473,5 +473,6 @@
   "trackerSubscriptionUpdateStatus": "Стан оновлення",
   "trackerSubscriptionTrackerCount": "Кількість трекерів",
   "trackerSubscriptionNotUpdated": "Ще не оновлено",
-  "actions": "Дії"
+  "actions": "Дії",
+  "taskGroupDeleteImpact": "Вплине на {taskCount} завантажень і {fileCount} файлів."
 }

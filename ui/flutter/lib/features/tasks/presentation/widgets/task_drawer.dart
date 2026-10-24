@@ -121,7 +121,9 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
     final contentPadding = widget.mobile
         ? AppDesignTokens.taskDetailsMobilePadding
         : AppDesignTokens.taskDetailsDesktopPadding;
-    final runtimeStatus = _tabIndex == 1 ? ref.watch(taskRuntimeStatusProvider(widget.task.id)).value : null;
+    final runtimeStatus = _tabIndex == 1 && !widget.task.isGroup
+        ? ref.watch(taskRuntimeStatusProvider(widget.task.id)).value
+        : null;
     final content = Column(
       children: [
         Container(
@@ -148,12 +150,14 @@ class _TaskDetailsViewState extends ConsumerState<TaskDetailsView> {
                         active: _tabIndex == 1,
                         onTap: () => setState(() => _tabIndex = 1),
                       ),
-                      const SizedBox(width: 24),
-                      _DrawerTabButton(
-                        label: context.l10n.taskDetailsStatsTab,
-                        active: _tabIndex == 2,
-                        onTap: () => setState(() => _tabIndex = 2),
-                      ),
+                      if (!widget.task.isGroup) ...[
+                        const SizedBox(width: 24),
+                        _DrawerTabButton(
+                          label: context.l10n.taskDetailsStatsTab,
+                          active: _tabIndex == 2,
+                          onTap: () => setState(() => _tabIndex = 2),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -340,7 +344,7 @@ class _TaskInfoTab extends StatelessWidget {
             onCancel: onCancelEditUrl,
             onSave: onSaveUrl,
           )
-        else
+        else if (!task.isGroup)
           _CopyableInfoBlock(
             label: context.l10n.downloadLink,
             value: task.url,

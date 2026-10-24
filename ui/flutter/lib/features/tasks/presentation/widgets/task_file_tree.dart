@@ -42,6 +42,13 @@ class _TaskFileTreeState extends State<TaskFileTree> {
   Widget build(BuildContext context) {
     final progressByIndex = {
       for (final file in widget.runtimeStatus?.files ?? const <FileRuntimeStatus>[]) file.index: file,
+      if (widget.task.isGroup)
+        for (final (index, file) in widget.task.files.indexed)
+          file.resourceIndex ?? index: FileRuntimeStatus(
+            index: file.resourceIndex ?? index,
+            size: file.sizeBytes,
+            downloaded: file.downloadedBytes ?? 0,
+          ),
     };
 
     return Column(
@@ -179,7 +186,17 @@ class _FileDownloadProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final taskStateIcon = switch (taskStatus) {
+    final statuses = node.leafItems.map((item) => item.data.status).whereType<TaskStatus>().toSet();
+    final status = statuses.isEmpty
+        ? taskStatus
+        : statuses.contains(TaskStatus.downloading)
+        ? TaskStatus.downloading
+        : statuses.contains(TaskStatus.failed)
+        ? TaskStatus.failed
+        : statuses.contains(TaskStatus.paused)
+        ? TaskStatus.paused
+        : TaskStatus.completed;
+    final taskStateIcon = switch (status) {
       TaskStatus.paused => Semantics(
         label: context.l10n.pause,
         child: Icon(Icons.pause_circle_filled, size: 16, color: palette.textMuted),

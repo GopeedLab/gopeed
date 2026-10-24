@@ -10,11 +10,25 @@ class CreateTaskBatch {
   List<CreateTaskBatchItem>? reqs;
   Options? opts;
 
-  CreateTaskBatch({this.reqs, this.opts});
+  CreateTaskGroup? group;
+
+  CreateTaskBatch({this.reqs, this.opts, this.group});
 
   factory CreateTaskBatch.fromJson(Map<String, dynamic> json) => _$CreateTaskBatchFromJson(json);
 
   Map<String, dynamic> toJson() => _$CreateTaskBatchToJson(this);
+}
+
+@JsonSerializable()
+class CreateTaskGroup {
+  String id;
+  String name;
+  String path;
+
+  CreateTaskGroup({required this.id, required this.name, required this.path});
+
+  factory CreateTaskGroup.fromJson(Map<String, dynamic> json) => _$CreateTaskGroupFromJson(json);
+  Map<String, dynamic> toJson() => _$CreateTaskGroupToJson(this);
 }
 
 @JsonSerializable()

@@ -68,14 +68,14 @@ class TaskContextMenu extends StatelessWidget {
         shad.MenuButton(
           key: const ValueKey('task-context-resume'),
           leading: const Icon(Icons.play_arrow, size: 16),
-          enabled: task.status == TaskStatus.paused || task.status == TaskStatus.failed,
+          enabled: task.canResume,
           onPressed: (_) => actions.onResume(),
           child: Text(context.l10n.continueAction),
         ),
         shad.MenuButton(
           key: const ValueKey('task-context-pause'),
           leading: const Icon(Icons.pause, size: 16),
-          enabled: task.status == TaskStatus.downloading,
+          enabled: task.canPause,
           onPressed: (_) => actions.onPause(),
           child: Text(context.l10n.pause),
         ),

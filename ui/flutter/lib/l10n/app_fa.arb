@@ -473,5 +473,6 @@
   "trackerSubscriptionUpdateStatus": "وضعیت به‌روزرسانی",
   "trackerSubscriptionTrackerCount": "تعداد ردیاب‌ها",
   "trackerSubscriptionNotUpdated": "هنوز به‌روزرسانی نشده",
-  "actions": "عملیات"
+  "actions": "عملیات",
+  "taskGroupDeleteImpact": "بر {taskCount} بارگیری و {fileCount} پرونده تأثیر می‌گذارد."
 }
