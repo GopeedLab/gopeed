@@ -1,6 +1,6 @@
 package ftp
 
-// TLS modes for the "tls" option of an ftp:// task. ftps:// URLs always use
+// TLS modes for the "tls" field of an ftp:// request. ftps:// URLs always use
 // implicit TLS and ftpes:// URLs always use explicit TLS.
 const (
 	TLSNone     = "none"
@@ -8,13 +8,18 @@ const (
 	TLSImplicit = "implicit"
 )
 
+// ReqExtra is the extra of an FTP request. The TLS mode is part of the request,
+// because resolving the link already needs a connection.
+type ReqExtra struct {
+	// TLS upgrades a plain ftp:// URL: "none" (default), "explicit" (AUTH TLS)
+	// or "implicit". It is ignored for ftps:// and ftpes:// URLs.
+	TLS string `json:"tls"`
+}
+
 type OptsExtra struct {
 	// Connections is the maximum number of parallel logins. Servers often cap
 	// logins per user, so the fetcher lowers it when the server refuses one.
 	Connections int `json:"connections"`
-	// TLS upgrades a plain ftp:// URL: "none" (default), "explicit" (AUTH TLS)
-	// or "implicit". It is ignored for ftps:// and ftpes:// URLs.
-	TLS string `json:"tls"`
 	// AutoTorrent when task download complete, and it is a .torrent file, it will be auto create a new task for the torrent file
 	// nil means use global config, true/false means explicit setting
 	AutoTorrent *bool `json:"autoTorrent"`

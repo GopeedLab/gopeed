@@ -91,6 +91,9 @@ func (fm *FetcherManager) Restore() (v any, f func(meta *fetcher.FetcherMeta, v 
 		fd := v.(*fetcherData)
 		ff := fm.Build().(*Fetcher)
 		ff.meta = meta
+		if meta != nil && meta.Req != nil {
+			_ = base.ParseReqExtra[pftp.ReqExtra](meta.Req)
+		}
 		if meta != nil && meta.Opts != nil {
 			_ = base.ParseOptExtra[pftp.OptsExtra](meta.Opts)
 		}

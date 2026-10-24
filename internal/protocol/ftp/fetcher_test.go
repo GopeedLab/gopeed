@@ -59,14 +59,29 @@ func ftpURL(srv *FTPServer, scheme, userinfo, p string) string {
 	return scheme + "://" + userinfo + srv.Addr + "/" + strings.TrimPrefix(p, "/")
 }
 
+// resolveOpts resolves req and then gives the fetcher its options, in the
+// order the downloader uses.
+func resolveOpts(f *Fetcher, req *base.Request, opts *base.Options) error {
+	if err := f.Resolve(req); err != nil {
+		return err
+	}
+	f.Meta().Opts = opts
+	return nil
+}
+
 func resolveTask(t *testing.T, f *Fetcher, rawURL string, extra *pftp.OptsExtra) {
+	t.Helper()
+	resolveRequest(t, f, &base.Request{URL: rawURL}, extra)
+}
+
+func resolveRequest(t *testing.T, f *Fetcher, req *base.Request, extra *pftp.OptsExtra) {
 	t.Helper()
 	opts := &base.Options{Path: t.TempDir()}
 	if extra != nil {
 		opts.Extra = extra
 	}
-	if err := f.Resolve(&base.Request{URL: rawURL}, opts); err != nil {
-		t.Fatalf("resolve %s: %v", rawURL, err)
+	if err := resolveOpts(f, req, opts); err != nil {
+		t.Fatalf("resolve %s: %v", req.URL, err)
 	}
 }
 
@@ -235,7 +250,7 @@ func TestResolveDirLimits(t *testing.T) {
 	}
 
 	f = buildFetcher(testManager(srv))
-	err := f.Resolve(&base.Request{URL: ftpURL(srv, "ftp", "", "deep9")}, &base.Options{Path: t.TempDir()})
+	err := resolveOpts(f, &base.Request{URL: ftpURL(srv, "ftp", "", "deep9")}, &base.Options{Path: t.TempDir()})
 	if err == nil || !strings.Contains(err.Error(), "8 levels") {
 		t.Fatalf("a tree deeper than 8 levels must fail and name the limit, got %v", err)
 	}
@@ -244,7 +259,7 @@ func TestResolveDirLimits(t *testing.T) {
 	maxWalkFiles = 3
 	defer func() { maxWalkFiles = saved }()
 	f = buildFetcher(testManager(srv))
-	err = f.Resolve(&base.Request{URL: ftpURL(srv, "ftp", "", "many")}, &base.Options{Path: t.TempDir()})
+	err = resolveOpts(f, &base.Request{URL: ftpURL(srv, "ftp", "", "many")}, &base.Options{Path: t.TempDir()})
 	if err == nil || !strings.Contains(err.Error(), "3 files") {
 		t.Fatalf("a tree over the file cap must fail and name the limit, got %v", err)
 	}
@@ -298,10 +313,11 @@ func testDownloadTLS(t *testing.T, mode string, schemes map[string]string) {
 	srv := StartFTPServer(t, ServerOptions{TLS: mode})
 	data := RandomBytes(2*mib+999, 5)
 	want := srv.WriteFile(t, "secure.bin", data)
-	for scheme, optTLS := range schemes {
-		t.Run(scheme+"+"+optTLS, func(t *testing.T) {
+	for scheme, reqTLS := range schemes {
+		t.Run(scheme+"+"+reqTLS, func(t *testing.T) {
 			f := buildFetcher(testManager(srv))
-			resolveTask(t, f, ftpURL(srv, scheme, "", "secure.bin"), &pftp.OptsExtra{Connections: 2, TLS: optTLS})
+			req := &base.Request{URL: ftpURL(srv, scheme, "", "secure.bin"), Extra: &pftp.ReqExtra{TLS: reqTLS}}
+			resolveRequest(t, f, req, &pftp.OptsExtra{Connections: 2})
 			startAndWait(t, f)
 			checkFile(t, f.Meta().SingleFilepath(), want)
 		})
@@ -322,6 +338,25 @@ func TestDownloadImplicitTLS(t *testing.T) {
 	})
 }
 
+// The TLS mode of a plain ftp:// link lives on the request, so a task that is
+// saved and restored from JSON still logs in over TLS.
+func TestRestoredRequestKeepsTLSMode(t *testing.T) {
+	srv := StartFTPServer(t, ServerOptions{TLS: pftp.TLSExplicit})
+	want := srv.WriteFile(t, "keep.bin", RandomBytes(2*mib+5, 12))
+	fm := testManager(srv)
+	f := buildFetcher(fm)
+	req := &base.Request{URL: ftpURL(srv, "ftp", "", "keep.bin"), Extra: &pftp.ReqExtra{TLS: pftp.TLSExplicit}}
+	resolveRequest(t, f, req, &pftp.OptsExtra{Connections: 2})
+
+	restored := restoreFetcher(t, fm, f.Meta(), storeData(t, fm, f))
+	if _, ok := restored.Meta().Req.Extra.(*pftp.ReqExtra); !ok {
+		t.Fatalf("restored request extra is %T, want *ftp.ReqExtra", restored.Meta().Req.Extra)
+	}
+	// Explicit mode refuses plain logins, so the download only finishes over TLS.
+	startAndWait(t, restored)
+	checkFile(t, restored.Meta().SingleFilepath(), want)
+}
+
 func TestBadCertRejectedByDefault(t *testing.T) {
 	for mode, scheme := range map[string]string{pftp.TLSExplicit: "ftpes", pftp.TLSImplicit: "ftps"} {
 		t.Run(mode, func(t *testing.T) {
@@ -331,7 +366,7 @@ func TestBadCertRejectedByDefault(t *testing.T) {
 
 			// No injected roots: the self-signed certificate is unknown.
 			f := buildFetcher(testManager(nil))
-			err := f.Resolve(&base.Request{URL: rawURL}, &base.Options{Path: t.TempDir()})
+			err := resolveOpts(f, &base.Request{URL: rawURL}, &base.Options{Path: t.TempDir()})
 			var verifyErr *tls.CertificateVerificationError
 			if !errors.As(err, &verifyErr) {
 				t.Fatalf("want a certificate verification error, got %v", err)
@@ -339,7 +374,7 @@ func TestBadCertRejectedByDefault(t *testing.T) {
 
 			// The request's existing skipVerifyCert switch accepts it.
 			f = buildFetcher(testManager(nil))
-			if err := f.Resolve(&base.Request{URL: rawURL, SkipVerifyCert: true}, &base.Options{Path: t.TempDir()}); err != nil {
+			if err := resolveOpts(f, &base.Request{URL: rawURL, SkipVerifyCert: true}, &base.Options{Path: t.TempDir()}); err != nil {
 				t.Fatalf("skipVerifyCert resolve: %v", err)
 			}
 			startAndWait(t, f)
@@ -615,7 +650,7 @@ func TestPercentEncodedPassword(t *testing.T) {
 	checkFile(t, f.Meta().SingleFilepath(), want)
 
 	f = buildFetcher(testManager(srv))
-	err := f.Resolve(&base.Request{URL: ftpURL(srv, "ftp", "u:wrong", "secret.bin")}, &base.Options{Path: t.TempDir()})
+	err := resolveOpts(f, &base.Request{URL: ftpURL(srv, "ftp", "u:wrong", "secret.bin")}, &base.Options{Path: t.TempDir()})
 	if err == nil || !strings.Contains(err.Error(), "530") {
 		t.Fatalf("a wrong password must fail with 530, got %v", err)
 	}
@@ -680,7 +715,7 @@ func TestDownloadThroughSOCKS5(t *testing.T) {
 			Host:   ln.Addr().String(),
 		},
 	}
-	if err := f.Resolve(req, &base.Options{Path: t.TempDir(), Extra: &pftp.OptsExtra{Connections: 2}}); err != nil {
+	if err := resolveOpts(f, req, &base.Options{Path: t.TempDir(), Extra: &pftp.OptsExtra{Connections: 2}}); err != nil {
 		t.Fatal(err)
 	}
 	startAndWait(t, f)
@@ -713,7 +748,7 @@ func TestHTTPProxyFallsBackToDirect(t *testing.T) {
 			Pwd:    "proxysecret",
 		},
 	}
-	if err := f.Resolve(req, &base.Options{Path: t.TempDir(), Extra: &pftp.OptsExtra{Connections: 2}}); err != nil {
+	if err := resolveOpts(f, req, &base.Options{Path: t.TempDir(), Extra: &pftp.OptsExtra{Connections: 2}}); err != nil {
 		t.Fatal(err)
 	}
 	startAndWait(t, f)

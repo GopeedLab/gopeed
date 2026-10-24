@@ -133,6 +133,9 @@ func (f *Fetcher) warn(format string, args ...any) {
 }
 
 func (f *Fetcher) initOptions() error {
+	if f.meta.Opts == nil {
+		f.meta.Opts = &base.Options{}
+	}
 	opts := f.meta.Opts
 	if err := base.ParseOptExtra[pftp.OptsExtra](opts); err != nil {
 		return err
@@ -144,10 +147,22 @@ func (f *Fetcher) initOptions() error {
 }
 
 func (f *Fetcher) extra() *pftp.OptsExtra {
-	if e, ok := f.meta.Opts.Extra.(*pftp.OptsExtra); ok && e != nil {
-		return e
+	if f.meta.Opts != nil {
+		if e, ok := f.meta.Opts.Extra.(*pftp.OptsExtra); ok && e != nil {
+			return e
+		}
 	}
 	return &pftp.OptsExtra{}
+}
+
+// tlsMode is the request's "tls" field, empty when the request has none.
+func (f *Fetcher) tlsMode() string {
+	if f.meta.Req != nil {
+		if e, ok := f.meta.Req.Extra.(*pftp.ReqExtra); ok && e != nil {
+			return e.TLS
+		}
+	}
+	return ""
 }
 
 // connections is the number of parallel logins to use. The caller holds mu.
@@ -169,16 +184,12 @@ func (f *Fetcher) connections() int {
 	return n
 }
 
-func (f *Fetcher) Resolve(req *base.Request, opts *base.Options) error {
-	if opts == nil {
-		opts = &base.Options{}
-	}
-	f.meta.Req = req
-	f.meta.Opts = opts
-	if err := f.initOptions(); err != nil {
+func (f *Fetcher) Resolve(req *base.Request) error {
+	if err := base.ParseReqExtra[pftp.ReqExtra](req); err != nil {
 		return err
 	}
-	t, err := parseTarget(req.URL, f.extra().TLS)
+	f.meta.Req = req
+	t, err := parseTarget(req.URL, f.tlsMode())
 	if err != nil {
 		return err
 	}
@@ -342,7 +353,10 @@ func (f *Fetcher) Start() error {
 	if err := f.initOptions(); err != nil {
 		return err
 	}
-	t, err := parseTarget(f.meta.Req.URL, f.extra().TLS)
+	if err := base.ParseReqExtra[pftp.ReqExtra](f.meta.Req); err != nil {
+		return err
+	}
+	t, err := parseTarget(f.meta.Req.URL, f.tlsMode())
 	if err != nil {
 		return err
 	}
