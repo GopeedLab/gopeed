@@ -39,6 +39,7 @@ func startRealRtorrent(t *testing.T) string {
 	conf := fmt.Sprintf(`directory.default.set = %[1]s/default
 session.path.set = %[1]s/session
 network.scgi.open_local = %[2]s
+network.scgi.use_gzip.set = yes
 network.listen.port.range.set = 46900-46950
 network.listen.port.random.set = yes
 dht.mode.set = auto

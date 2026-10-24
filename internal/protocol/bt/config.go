@@ -16,6 +16,9 @@ type state struct {
 	TrackerSubscriptionStatuses map[string]trackerSubscriptionStatus `json:"trackerSubscriptionStatuses"`
 	TrackerSources              map[string][]string                  `json:"trackerSources"`
 	LastTrackerUpdateTime       time.Time                            `json:"lastTrackerUpdateTime"`
+	// LocalRtorrent is the endpoint of a local rtorrent found without any
+	// setting (Rtorrent 16 on a QNAP NAS), or empty. See qnap.go.
+	LocalRtorrent string `json:"localRtorrent"`
 }
 
 type config struct {
@@ -42,7 +45,9 @@ type config struct {
 // externalConfig is the rtorrent hand-off. Each task remembers the engine it
 // started with, so changing this switch never moves an existing task.
 type externalConfig struct {
-	Enable bool `json:"enable"`
+	// Enable is the user's switch. Unset (null) means automatic: on when a
+	// local rtorrent is detected (qnap.go), off otherwise.
+	Enable *bool `json:"enable"`
 	// URL is rtorrent's XML-RPC endpoint: http://host/RPC2, https://host/RPC2,
 	// scgi://host:port, or scgi:///path/to/rpc.socket for a Unix socket.
 	URL string `json:"url"`
@@ -52,4 +57,22 @@ type externalConfig struct {
 	// Directory is the download folder as rtorrent sees it. Empty uses the
 	// task's own folder, which fits when both run on the same machine.
 	Directory string `json:"directory"`
+}
+
+// target says whether new torrents go to rtorrent and at which address. An
+// address the user set wins over a detected one.
+func (e *externalConfig) target() (bool, string) {
+	detected := ""
+	if e.Enable == nil || e.URL == "" {
+		detected = detectLocalRtorrent()
+	}
+	on := detected != ""
+	if e.Enable != nil {
+		on = *e.Enable
+	}
+	endpoint := e.URL
+	if endpoint == "" {
+		endpoint = detected
+	}
+	return on, endpoint
 }
