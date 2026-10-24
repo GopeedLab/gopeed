@@ -147,7 +147,7 @@ func TestParseTrackerList(t *testing.T) {
 }
 func TestTrackerDefaultsRegisterDailyJob(t *testing.T) {
 	jobs := (&FetcherManager{}).CronJobs(fetcher.ProtocolHost{})
-	if len(jobs) != 1 || jobs[0].Name != "update-trackers" || jobs[0].Every != 24*time.Hour {
+	if len(jobs) != 2 || jobs[0].Name != "update-trackers" || jobs[0].Every != 24*time.Hour || jobs[1].Name != "detect-local-rtorrent" {
 		t.Fatal(jobs)
 	}
 }

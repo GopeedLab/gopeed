@@ -30,7 +30,8 @@ type externalTestConfig struct {
 
 func newExternalTestConfig(url, directory string) *externalTestConfig {
 	c := new(FetcherManager).DefaultConfig().(*config)
-	c.External = externalConfig{Enable: true, URL: url, Directory: directory}
+	on := true
+	c.External = externalConfig{Enable: &on, URL: url, Directory: directory}
 	tc := &externalTestConfig{}
 	tc.cfg.Store(c)
 	return tc
@@ -47,12 +48,17 @@ func (tc *externalTestConfig) controller() *controller.Controller {
 
 func (tc *externalTestConfig) setEnable(on bool) {
 	c := *tc.cfg.Load()
-	c.External.Enable = on
+	c.External.Enable = &on
 	tc.cfg.Store(&c)
 }
 
 func buildExternalFetcher(t *testing.T, tc *externalTestConfig) *Fetcher {
 	t.Helper()
+	// The built-in engine's client is shared by the package. Close what an
+	// earlier test left, so assertNoBuiltInClient sees only this test.
+	if err := closeClient(); err != nil {
+		t.Fatal(err)
+	}
 	f := new(FetcherManager).Build().(*Fetcher)
 	f.Setup(tc.controller())
 	t.Cleanup(func() { f.Close() })

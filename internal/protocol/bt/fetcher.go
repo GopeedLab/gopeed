@@ -112,8 +112,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		f.storage = nil
 		f.torrentReady.Store(false)
 	}
-	f.ctl.GetConfig(&f.config)
-	if f.config != nil && f.config.External.Enable {
+	if on, _ := f.externalTarget(); on {
 		return f.externalResolveLocked(req)
 	}
 	f.data.External = nil

@@ -41,7 +41,7 @@ type externalState struct {
 	running bool // started in Gopeed and not paused since
 }
 
-var errExternalOff = errors.New("this task was handed to rtorrent, but sending torrents to rtorrent is turned off in the BitTorrent settings")
+var errExternalOff = errors.New("this task was handed to rtorrent, but sending torrents to rtorrent is off now")
 
 // externalPollInterval is how often a running task asks rtorrent for its state.
 var externalPollInterval = time.Second
@@ -153,18 +153,30 @@ func readTorrentSource(raw string) ([]byte, error) {
 	}
 }
 
-// externalClient builds the rtorrent client from the current settings.
-func (f *Fetcher) externalClient() (*rtorrentClient, *externalConfig, error) {
+// externalTarget reads the current settings: is the hand-off on, and where.
+func (f *Fetcher) externalTarget() (bool, *externalConfig) {
 	var current *config
 	f.ctl.GetConfig(&current)
-	if current == nil || !current.External.Enable {
+	if current == nil {
+		return false, nil
+	}
+	on, endpoint := current.External.target()
+	cfg := current.External
+	cfg.URL = endpoint
+	return on, &cfg
+}
+
+// externalClient builds the rtorrent client from the current settings.
+func (f *Fetcher) externalClient() (*rtorrentClient, *externalConfig, error) {
+	on, cfg := f.externalTarget()
+	if !on {
 		return nil, nil, errExternalOff
 	}
-	c, err := newRtorrentClient(&current.External)
+	c, err := newRtorrentClient(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
-	return c, &current.External, nil
+	return c, cfg, nil
 }
 
 // externalStart hands the download to rtorrent on the first start, or starts
