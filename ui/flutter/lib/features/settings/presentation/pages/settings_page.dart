@@ -70,6 +70,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _hlsConnectionsController = TextEditingController();
   final _hlsMaxRetriesController = TextEditingController();
   final _btListenPortController = TextEditingController();
+  final _btExternalUrlController = TextEditingController();
+  final _btExternalUserController = TextEditingController();
+  final _btExternalPasswordController = TextEditingController();
+  final _btExternalDirectoryController = TextEditingController();
   final _btSeedRatioController = TextEditingController();
   final _btSeedTimeController = TextEditingController();
   final _ed2kListenPortController = TextEditingController();
@@ -104,6 +108,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _hlsConnectionsController,
     _hlsMaxRetriesController,
     _btListenPortController,
+    _btExternalUrlController,
+    _btExternalUserController,
+    _btExternalPasswordController,
+    _btExternalDirectoryController,
     _btSeedRatioController,
     _btSeedTimeController,
     _ed2kListenPortController,
@@ -587,6 +595,48 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               title: 'BitTorrent',
               child: _SettingsGroup(
                 children: [
+                  SettingsItem(
+                    title: context.l10n.btExternal,
+                    subtitle: context.l10n.btExternalDescription,
+                    child: shad.Switch(
+                      key: const ValueKey('bt-external-switch'),
+                      value: config.protocolConfig.bt.external.enable,
+                      onChanged: (value) => _mutateConfig((next) => next.protocolConfig.bt.external.enable = value),
+                    ),
+                  ),
+                  if (config.protocolConfig.bt.external.enable) ...[
+                    SettingsItem(
+                      title: context.l10n.btExternalUrl,
+                      subtitle: context.l10n.btExternalUrlDescription,
+                      child: _TextSettingControl(
+                        fieldKey: const ValueKey('bt-external-url-input'),
+                        controller: _btExternalUrlController,
+                      ),
+                    ),
+                    SettingsItem(
+                      title: context.l10n.username,
+                      child: _TextSettingControl(
+                        fieldKey: const ValueKey('bt-external-username-input'),
+                        controller: _btExternalUserController,
+                      ),
+                    ),
+                    SettingsItem(
+                      title: context.l10n.password,
+                      child: _TextSettingControl(
+                        fieldKey: const ValueKey('bt-external-password-input'),
+                        controller: _btExternalPasswordController,
+                        obscureText: true,
+                      ),
+                    ),
+                    SettingsItem(
+                      title: context.l10n.btExternalDirectory,
+                      subtitle: context.l10n.btExternalDirectoryDescription,
+                      child: _TextSettingControl(
+                        fieldKey: const ValueKey('bt-external-directory-input'),
+                        controller: _btExternalDirectoryController,
+                      ),
+                    ),
+                  ],
                   if (Util.isWindows())
                     SettingsItem(
                       title: context.l10n.setAsDefaultBtClient,
@@ -1013,6 +1063,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _hlsConnectionsController.text = _config!.protocolConfig.hls.segmentConnections.clamp(1, 256).toString();
     _hlsMaxRetriesController.text = _config!.protocolConfig.hls.maxRetries.clamp(0, 30).toString();
     _btListenPortController.text = _config!.protocolConfig.bt.listenPort.clamp(0, 65535).toString();
+    _btExternalUrlController.text = _config!.protocolConfig.bt.external.url;
+    _btExternalUserController.text = _config!.protocolConfig.bt.external.username;
+    _btExternalPasswordController.text = _config!.protocolConfig.bt.external.password;
+    _btExternalDirectoryController.text = _config!.protocolConfig.bt.external.directory;
     _btSeedRatioController.text = _config!.protocolConfig.bt.seedRatio.toString();
     _btSeedTimeController.text = (_config!.protocolConfig.bt.seedTime ~/ 60).clamp(0, 100000000).toString();
     _ed2kListenPortController.text = _config!.protocolConfig.ed2k.listenPort.clamp(0, 65535).toString();
@@ -1125,6 +1179,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       min: 0,
       max: 30,
     );
+    config.protocolConfig.bt.external
+      ..url = _btExternalUrlController.text.trim()
+      ..username = _btExternalUserController.text.trim()
+      ..password = _btExternalPasswordController.text
+      ..directory = _btExternalDirectoryController.text.trim();
     config.protocolConfig.bt.listenPort = _boundedInt(
       _btListenPortController,
       fallback: config.protocolConfig.bt.listenPort,

@@ -134,17 +134,21 @@ Map<String, dynamic> _$BtStateToJson(BtState instance) => <String, dynamic>{
   'lastTrackerUpdateTime': ?instance.lastTrackerUpdateTime?.toIso8601String(),
 };
 
-BtConfig _$BtConfigFromJson(Map<String, dynamic> json) => BtConfig(
-  trackerSubscribeUrls: (json['trackerSubscribeUrls'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
-  autoUpdateTrackers: json['autoUpdateTrackers'] as bool? ?? true,
-  customTrackers: (json['customTrackers'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
-  listenPort: (json['listenPort'] as num?)?.toInt() ?? 0,
-  seedKeep: json['seedKeep'] as bool? ?? false,
-  seedRatio: (json['seedRatio'] as num?)?.toDouble() ?? 0,
-  seedTime: (json['seedTime'] as num?)?.toInt() ?? 0,
-  disableDht: json['disableDht'] as bool? ?? false,
-  disablePex: json['disablePex'] as bool? ?? false,
-)..state = BtState.fromJson(json['state'] as Map<String, dynamic>?);
+BtConfig _$BtConfigFromJson(Map<String, dynamic> json) =>
+    BtConfig(
+        trackerSubscribeUrls:
+            (json['trackerSubscribeUrls'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+        autoUpdateTrackers: json['autoUpdateTrackers'] as bool? ?? true,
+        customTrackers: (json['customTrackers'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+        listenPort: (json['listenPort'] as num?)?.toInt() ?? 0,
+        seedKeep: json['seedKeep'] as bool? ?? false,
+        seedRatio: (json['seedRatio'] as num?)?.toDouble() ?? 0,
+        seedTime: (json['seedTime'] as num?)?.toInt() ?? 0,
+        disableDht: json['disableDht'] as bool? ?? false,
+        disablePex: json['disablePex'] as bool? ?? false,
+      )
+      ..state = BtState.fromJson(json['state'] as Map<String, dynamic>?)
+      ..external = BtExternalConfig.fromJson(json['external'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
   'state': instance.state.toJson(),
@@ -157,6 +161,23 @@ Map<String, dynamic> _$BtConfigToJson(BtConfig instance) => <String, dynamic>{
   'seedTime': instance.seedTime,
   'disableDht': instance.disableDht,
   'disablePex': instance.disablePex,
+  'external': instance.external.toJson(),
+};
+
+BtExternalConfig _$BtExternalConfigFromJson(Map<String, dynamic> json) => BtExternalConfig(
+  enable: json['enable'] as bool? ?? false,
+  url: json['url'] as String? ?? '',
+  username: json['username'] as String? ?? '',
+  password: json['password'] as String? ?? '',
+  directory: json['directory'] as String? ?? '',
+);
+
+Map<String, dynamic> _$BtExternalConfigToJson(BtExternalConfig instance) => <String, dynamic>{
+  'enable': instance.enable,
+  'url': instance.url,
+  'username': instance.username,
+  'password': instance.password,
+  'directory': instance.directory,
 };
 
 Ed2kConfig _$Ed2kConfigFromJson(Map<String, dynamic> json) => Ed2kConfig(

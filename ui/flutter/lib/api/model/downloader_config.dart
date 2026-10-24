@@ -147,6 +147,9 @@ class BtConfig {
   bool disableDht;
   bool disablePex;
 
+  /// Hands new torrent and magnet downloads to rtorrent instead of the built-in engine.
+  BtExternalConfig external = BtExternalConfig();
+
   BtConfig({
     this.trackerSubscribeUrls = const [],
     this.autoUpdateTrackers = true,
@@ -162,6 +165,29 @@ class BtConfig {
   factory BtConfig.fromJson(Map<String, dynamic> json) => _$BtConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$BtConfigToJson(this);
+}
+
+/// The rtorrent hand-off. It mirrors the server's `protocolConfig.bt.external`.
+@JsonSerializable()
+class BtExternalConfig {
+  bool enable;
+
+  /// rtorrent's XML-RPC endpoint: `http://host/RPC2`, `https://...`, `scgi://host:port` or `scgi:///path/to/socket`.
+  String url;
+
+  /// HTTP basic auth, for http and https endpoints.
+  String username;
+  String password;
+
+  /// The download folder as rtorrent sees it; empty uses the task's folder.
+  String directory;
+
+  BtExternalConfig({this.enable = false, this.url = '', this.username = '', this.password = '', this.directory = ''});
+
+  factory BtExternalConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? BtExternalConfig() : _$BtExternalConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BtExternalConfigToJson(this);
 }
 
 @JsonSerializable()

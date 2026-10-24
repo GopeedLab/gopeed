@@ -67,6 +67,36 @@ void main() {
     expect(decoded.disablePex, isTrue);
   });
 
+  test('the rtorrent hand-off round-trips with the Go json keys', () {
+    final config = DownloaderConfig();
+    config.protocolConfig.bt.external
+      ..enable = true
+      ..url = 'scgi:///run/rtorrent/rpc.socket'
+      ..username = 'rt'
+      ..password = 'secret'
+      ..directory = '/srv/torrents';
+
+    final json = config.toJson();
+    final bt = (json['protocolConfig'] as Map<String, dynamic>)['bt'] as Map<String, dynamic>;
+    expect(bt['external'], {
+      'enable': true,
+      'url': 'scgi:///run/rtorrent/rpc.socket',
+      'username': 'rt',
+      'password': 'secret',
+      'directory': '/srv/torrents',
+    });
+    final decoded = DownloaderConfig.fromJson(json).protocolConfig.bt.external;
+    expect(decoded.enable, isTrue);
+    expect(decoded.url, 'scgi:///run/rtorrent/rpc.socket');
+    expect(decoded.directory, '/srv/torrents');
+  });
+
+  test('a stored BitTorrent config without the rtorrent hand-off keeps it off', () {
+    final bt = BtConfig.fromJson({'listenPort': 6881});
+    expect(bt.external.enable, isFalse);
+    expect(bt.external.url, isEmpty);
+  });
+
   test('BitTorrent peer discovery stays on when a stored config lacks the keys', () {
     final bt = BtConfig.fromJson({'listenPort': 6881, 'seedRatio': 1.0});
     expect(bt.disableDht, isFalse);
