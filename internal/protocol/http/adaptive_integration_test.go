@@ -170,13 +170,6 @@ func engineActive(f *Fetcher) int {
 	return active
 }
 
-// skipRestoredPrefetchWait works around an upstream delay: a restored fetcher
-// waits up to 10 s in stopPrefetchAndCopyData for a prefetch that never ran
-// (prefetchDone is never set). It has its own fix outside this change.
-func skipRestoredPrefetchWait(f *Fetcher) {
-	f.prefetchDone.Store(true)
-}
-
 func newAdaptiveFetcher(t *testing.T, cfg config, s *adaptiveTestServer, extra *http.OptsExtra) (*Fetcher, string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -187,13 +180,13 @@ func newAdaptiveFetcher(t *testing.T, cfg config, s *adaptiveTestServer, extra *
 	if extra != nil {
 		optsExtra = extra
 	}
-	err := f.Resolve(&base.Request{URL: s.url()}, &base.Options{
+	if err := f.Resolve(&base.Request{URL: s.url()}); err != nil {
+		t.Fatal(err)
+	}
+	f.Meta().Opts = &base.Options{
 		Name:  "adaptive.bin",
 		Path:  dir,
 		Extra: optsExtra,
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
 	return f, filepath.Join(dir, "adaptive.bin")
 }
@@ -456,7 +449,6 @@ func TestAdaptiveIntegrationPauseAndResumeGrowsAgain(t *testing.T) {
 		json.Unmarshal(raw, v)
 	}
 	resumed.Setup(ctl)
-	skipRestoredPrefetchWait(resumed)
 	t.Cleanup(func() { resumed.Pause() })
 
 	tl := sampleConnections(s)
@@ -609,7 +601,6 @@ func TestAdaptiveResumesPreChangeStoreBlob(t *testing.T) {
 				json.Unmarshal(raw, v)
 			}
 			f.Setup(ctl)
-			skipRestoredPrefetchWait(f)
 			t.Cleanup(func() { f.Pause() })
 			if err := f.Start(); err != nil {
 				t.Fatal(err)
