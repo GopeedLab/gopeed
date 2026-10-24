@@ -43,6 +43,8 @@ class TaskFileNode {
     this.downloadedBytes,
     this.resourceIndex,
     this.status,
+    this.taskId,
+    this.accessPath,
   });
 
   final int? resourceIndex;
@@ -51,6 +53,8 @@ class TaskFileNode {
   final int sizeBytes;
   final int? downloadedBytes;
   final TaskStatus? status;
+  final String? taskId;
+  final String? accessPath;
 
   double? get progress {
     final downloaded = downloadedBytes;
@@ -271,6 +275,10 @@ TaskRecord _groupRecord(api_task.Task group, List<TaskRecord> members) {
           sizeBytes: file.sizeBytes,
           downloadedBytes: member.isFolder ? file.downloadedBytes : member.downloadedBytes,
           status: member.status,
+          taskId: member.id,
+          accessPath: member.isFolder
+              ? path.posix.join(file.path.replaceAll('\\', '/'), file.name)
+              : pathContext.relative(fullPath, from: pathContext.dirname(member.storagePath)).replaceAll('\\', '/'),
         ),
       );
     }

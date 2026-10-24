@@ -234,15 +234,21 @@ class _ProgressContent extends StatelessWidget {
   }
 
   List<Widget> _buildActionButtons(TaskRecord task, AppPalette palette, bool isDark) {
-    final actions = switch (task.status) {
-      TaskStatus.downloading => [(Icons.pause, onPause), (Icons.close, onDelete)],
-      TaskStatus.paused => [(Icons.play_arrow, onResume), (Icons.close, onDelete)],
-      TaskStatus.failed => [(Icons.refresh, onResume), (Icons.delete_outline, onDelete)],
-      TaskStatus.completed => [
-        if (AppWindowChrome.isDesktopWindow) (Icons.folder_open_outlined, null),
-        (Icons.delete_outline, onDelete),
-      ],
-    };
+    final actions = task.isGroup && task.status != TaskStatus.completed
+        ? [
+            if (task.canPause) (Icons.pause, onPause),
+            if (task.canResume) (Icons.play_arrow, onResume),
+            (Icons.close, onDelete),
+          ]
+        : switch (task.status) {
+            TaskStatus.downloading => [(Icons.pause, onPause), (Icons.close, onDelete)],
+            TaskStatus.paused => [(Icons.play_arrow, onResume), (Icons.close, onDelete)],
+            TaskStatus.failed => [(Icons.refresh, onResume), (Icons.delete_outline, onDelete)],
+            TaskStatus.completed => [
+              if (AppWindowChrome.isDesktopWindow) (Icons.folder_open_outlined, null),
+              (Icons.delete_outline, onDelete),
+            ],
+          };
 
     return actions
         .map(

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -595,7 +596,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _openTask(TaskRecord task) async {
-    if (task.isGroup && (Util.isWeb() || MediaQuery.sizeOf(context).width < Breakpoints.mobile)) {
+    final nativeDirectory =
+        !Util.isWeb() &&
+        switch (defaultTargetPlatform) {
+          TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.linux => true,
+          _ => false,
+        };
+    if (task.isGroup && !nativeDirectory) {
       await browseTaskFiles(context, task, mobile: MediaQuery.sizeOf(context).width < Breakpoints.mobile);
       return;
     }

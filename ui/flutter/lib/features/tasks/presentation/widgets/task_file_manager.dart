@@ -126,8 +126,12 @@ class _TaskFileManagerViewState extends State<TaskFileManagerView> {
   }
 
   String _accessUrl(_TaskFileEntry entry) {
-    final encodedPath = entry.fullPath.split('/').where((part) => part.isNotEmpty).map(Uri.encodeComponent).join('/');
-    return api.join('/fs/tasks/${Uri.encodeComponent(widget.task.id)}/$encodedPath');
+    final encodedPath = (entry.source?.accessPath ?? entry.fullPath)
+        .split('/')
+        .where((part) => part.isNotEmpty)
+        .map(Uri.encodeComponent)
+        .join('/');
+    return api.join('/fs/tasks/${Uri.encodeComponent(entry.source?.taskId ?? widget.task.id)}/$encodedPath');
   }
 }
 
@@ -304,7 +308,7 @@ class _FileActionButton extends StatelessWidget {
 
 class _TaskFileDirectoryIndex {
   _TaskFileDirectoryIndex(TaskRecord task) {
-    final sourceFiles = task.files.isEmpty
+    final sourceFiles = task.files.isEmpty && !task.isGroup
         ? [TaskFileNode(path: '/', name: task.name, sizeBytes: task.totalBytes ?? 0)]
         : task.files;
     fileCount = sourceFiles.length;
@@ -313,7 +317,10 @@ class _TaskFileDirectoryIndex {
       final directory = _normalizeDirectory(file.path);
       final name = singleFile ? path.basename(task.storagePath) : file.name;
       final fullPath = directory == '/' ? '/$name' : '$directory/$name';
-      _add(directory, _TaskFileEntry(directory: false, fullPath: fullPath, name: name, size: file.sizeBytes));
+      _add(
+        directory,
+        _TaskFileEntry(directory: false, fullPath: fullPath, name: name, size: file.sizeBytes, source: file),
+      );
       _addParentDirectories(directory);
     }
     for (final entries in _entries.values) {
@@ -350,12 +357,19 @@ class _TaskFileDirectoryIndex {
 }
 
 class _TaskFileEntry {
-  const _TaskFileEntry({required this.directory, required this.fullPath, required this.name, required this.size});
+  const _TaskFileEntry({
+    required this.directory,
+    required this.fullPath,
+    required this.name,
+    required this.size,
+    this.source,
+  });
 
   final bool directory;
   final String fullPath;
   final String name;
   final int size;
+  final TaskFileNode? source;
 }
 
 String _normalizeDirectory(String value) {
