@@ -866,12 +866,16 @@ func (f *Fetcher) doStart() error {
 	// For non-range resources, the response will be used directly
 	var prefetchedBytes int64
 	if f.meta.Res.Range {
-		resolveComplete := f.knownSize() > 0 && f.prefetchDone.Load() && f.prefetchErr == nil && f.prefetchSize.Load() >= f.knownSize()
+		// Read the size once and judge completeness by it alone: Resolve may have
+		// written every byte before it sets prefetchDone, and a snapshot that
+		// covers the whole file would otherwise finish without copying it.
+		prefetched := f.prefetchSize.Load()
+		resolveComplete := f.knownSize() > 0 && prefetched >= f.knownSize()
 		if f.resolveFallback.Load() && !resolveComplete {
 			// Keep Resolve downloading until the first Range response has been
 			// validated. The Range request starts at a stable snapshot; a valid
 			// takeover discards any overlap downloaded by Resolve in the meantime.
-			prefetchedBytes = f.prefetchSize.Load()
+			prefetchedBytes = prefetched
 		} else {
 			// Resolve already completed, or no live Resolve fallback remains.
 			prefetchedBytes = f.stopPrefetchAndCopyData()
