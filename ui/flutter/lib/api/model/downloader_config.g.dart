@@ -67,13 +67,15 @@ ProtocolConfig _$ProtocolConfigFromJson(Map<String, dynamic> json) => ProtocolCo
   ..http = HttpConfig.fromJson(json['http'] as Map<String, dynamic>)
   ..bt = BtConfig.fromJson(json['bt'] as Map<String, dynamic>)
   ..ed2k = Ed2kConfig.fromJson(json['ed2k'] as Map<String, dynamic>)
-  ..hls = HlsConfig.fromJson(json['hls'] as Map<String, dynamic>);
+  ..hls = HlsConfig.fromJson(json['hls'] as Map<String, dynamic>)
+  ..ftp = _ftpConfigFromJson(json['ftp'] as Map<String, dynamic>?);
 
 Map<String, dynamic> _$ProtocolConfigToJson(ProtocolConfig instance) => <String, dynamic>{
   'http': instance.http.toJson(),
   'bt': instance.bt.toJson(),
   'ed2k': instance.ed2k.toJson(),
   'hls': instance.hls.toJson(),
+  'ftp': instance.ftp.toJson(),
 };
 
 HlsConfig _$HlsConfigFromJson(Map<String, dynamic> json) => HlsConfig(
@@ -89,6 +91,11 @@ Map<String, dynamic> _$HlsConfigToJson(HlsConfig instance) => <String, dynamic>{
   'timeoutSeconds': instance.timeoutSeconds,
   'prefetchContentLength': instance.prefetchContentLength,
 };
+
+FtpConfig _$FtpConfigFromJson(Map<String, dynamic> json) =>
+    FtpConfig(connections: (json['connections'] as num?)?.toInt() ?? 0);
+
+Map<String, dynamic> _$FtpConfigToJson(FtpConfig instance) => <String, dynamic>{'connections': instance.connections};
 
 HttpConfig _$HttpConfigFromJson(Map<String, dynamic> json) => HttpConfig(
   userAgent: json['userAgent'] as String? ?? '',

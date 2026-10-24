@@ -15,6 +15,7 @@ import 'package:gopeed/api/model/downloader_config.dart';
 import 'package:gopeed/api/model/options.dart';
 import 'package:gopeed/api/model/request.dart';
 import 'package:gopeed/api/model/resolve_result.dart';
+import 'package:gopeed/api/model/resolve_task.dart';
 import 'package:gopeed/api/model/resource.dart';
 import 'package:gopeed/core/capabilities/app_capabilities.dart';
 import 'package:gopeed/core/capabilities/app_navigation_capability.dart';
@@ -95,10 +96,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
     await tester.pumpAndSettle();
     expect(submitted?.reqs?.map((item) => item.opts?.size), [3, 1048576]);
-    expect(submitted?.reqs?.map((item) => item.req?.url), [
-      'https://example.com/video',
-      'https://example.com/audio',
-    ]);
+    expect(submitted?.reqs?.map((item) => item.req?.url), ['https://example.com/video', 'https://example.com/audio']);
     expect(tester.takeException(), isNull);
   });
 
@@ -1602,6 +1600,171 @@ void main() {
     expect(batch!.opts?.skipAutoCategorize, isTrue);
     expect(tester.takeException(), isNull);
     await _settleToastTimers(tester);
+  });
+
+  group('FTP links', _ftpTests);
+}
+
+Future<void> _pumpCreateRoute(WidgetTester tester, CapabilityRegistry registry, {CreateTask? initialTask}) async {
+  tester.view.physicalSize = const Size(1024, 900);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  final router = GoRouter(
+    initialLocation: '/create',
+    routes: [
+      GoRoute(path: '/', builder: (_, _) => const SizedBox()),
+      GoRoute(
+        path: '/create',
+        builder: (_, _) => CreateTaskWindowPage(initialTask: initialTask),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+      child: shad.ShadcnApp.router(
+        theme: AppTheme.light(),
+        materialTheme: AppTheme.materialLight(),
+        builder: (context, child) => AppComponentThemes(child: child ?? const SizedBox.shrink()),
+        routerConfig: router,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+void _ftpTests() {
+  const urlInput = ValueKey('create-task-url-input');
+  const connectionsInput = ValueKey('create-task-connections-input');
+  const tlsSelect = ValueKey('create-task-ftp-tls');
+
+  testWidgets('ftp links offer the TLS mode and carry FTP options through resolve', (tester) async {
+    ResolveTask? resolved;
+    CreateTask? submitted;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(GopeedMethods.resolve, (task) {
+        resolved = task;
+        return ResolveResult(
+          id: 'ftp-resolved',
+          res: Resource(
+            name: 'big.iso',
+            files: [FileInfo(name: 'big.iso', size: 1024)],
+          ),
+        );
+      })
+      ..bind(GopeedMethods.createTask, (task) {
+        submitted = task;
+        return 'ftp-task';
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    await _pumpCreateRoute(tester, registry);
+    expect(find.byKey(tlsSelect), findsNothing);
+
+    // ftps:// and ftpes:// fix the TLS mode, so only ftp:// offers the select.
+    for (final url in ['ftps://files.example/pub/big.iso', 'ftpes://files.example/pub/big.iso']) {
+      await tester.enterText(find.byKey(urlInput), url);
+      await tester.pump();
+      expect(find.byKey(tlsSelect), findsNothing, reason: url);
+    }
+    await tester.enterText(find.byKey(urlInput), 'FTP://files.example/pub/big.iso');
+    await tester.pump();
+    expect(find.byKey(tlsSelect), findsOneWidget);
+    expect(find.descendant(of: find.byKey(tlsSelect), matching: find.text('None')), findsOneWidget);
+
+    await tester.tap(find.byKey(tlsSelect));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('create-task-ftp-tls-implicit')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('create-task-ftp-tls-explicit')));
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: find.byKey(tlsSelect), matching: find.text('Explicit TLS (FTPES)')), findsOneWidget);
+
+    await tester.enterText(find.byKey(connectionsInput), '64');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    // The confirm button spins while the resolve dialog is open, so the frames never settle.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
+
+    // The TLS mode travels on the request, so the resolve already uses it.
+    expect(resolved?.req?.url, 'FTP://files.example/pub/big.iso');
+    expect(resolved?.req?.extra, {'tls': 'explicit'});
+    expect(submitted?.rid, 'ftp-resolved');
+    final createOptions = submitted?.opts?.extra! as Map<String, dynamic>;
+    expect(createOptions['connections'], 32);
+    expect(createOptions.containsKey('tls'), isFalse);
+  });
+
+  testWidgets('an ftp .torrent link restores its TLS mode and is not treated as BitTorrent', (tester) async {
+    CreateTask? submitted;
+    final config = DownloaderConfig(downloadDir: '/downloads')..extra.defaultDirectDownload = true;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => config)
+      ..bind(GopeedMethods.createTask, (task) {
+        submitted = task;
+        return 'ftp-task';
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    await _pumpCreateRoute(
+      tester,
+      registry,
+      initialTask: CreateTask(
+        req: Request(
+          url: 'ftp://files.example/pub/linux.torrent',
+          extra: ReqExtraFtp(tls: 'implicit').toJson(),
+        ),
+        opts: Options(extra: OptsExtraFtp(connections: 6).toJson()),
+      ),
+    );
+
+    expect(_fieldText(tester, 'create-task-connections-input'), '6');
+    expect(find.descendant(of: find.byKey(tlsSelect), matching: find.text('Implicit TLS (FTPS)')), findsOneWidget);
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    // The HTTP tab holds the certificate and post-download switches FTP uses; trackers stay hidden.
+    expect(find.byKey(const ValueKey('create-task-skip-verify-cert')), findsOneWidget);
+    expect(find.text('Trackers'), findsNothing);
+    // Checksum verification is HTTP only, so an FTP link does not offer it.
+    expect(find.byKey(const ValueKey('create-task-checksum-expected')), findsNothing);
+
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+    expect(submitted?.req?.url, 'ftp://files.example/pub/linux.torrent');
+    expect(submitted?.req?.extra, {'tls': 'implicit'});
+    final options = OptsExtraFtp.fromJson(submitted?.opts?.extra! as Map<String, dynamic>);
+    expect(options.connections, 6);
+  });
+
+  testWidgets('mixed links cap only the FTP task at 32 connections', (tester) async {
+    final submitted = <CreateTask>[];
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(GopeedMethods.createTask, (task) {
+        submitted.add(task);
+        return 'task-${submitted.length}';
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    await _pumpCreateRoute(tester, registry);
+
+    await tester.enterText(find.byKey(urlInput), 'https://example.com/a.zip\nftpes://files.example/b.iso');
+    await tester.pump();
+    expect(find.byKey(tlsSelect), findsNothing);
+    await tester.enterText(find.byKey(connectionsInput), '64');
+    await tester.pump();
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+
+    final byUrl = {for (final task in submitted) task.req!.url: task.opts!.extra! as Map<String, dynamic>};
+    expect(byUrl.keys, unorderedEquals(['https://example.com/a.zip', 'ftpes://files.example/b.iso']));
+    expect(byUrl['https://example.com/a.zip']!['connections'], 64);
+    expect(byUrl['https://example.com/a.zip']!.containsKey('tls'), isFalse);
+    expect(byUrl['ftpes://files.example/b.iso']!['connections'], 32);
+    expect(byUrl['ftpes://files.example/b.iso']!.containsKey('tls'), isFalse);
+    expect(submitted.map((task) => task.req!.extra), everyElement(isNull));
   });
 }
 
