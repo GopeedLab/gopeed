@@ -810,3 +810,43 @@ func TestAdaptiveRefusedResumeParksWithoutStrike(t *testing.T) {
 		t.Fatal("a 503 outside a resume was treated as a refused resume")
 	}
 }
+
+// An advisory size from the options is not a size the server confirmed, so
+// adaptive mode must not split ranges on it. The download still ends with the
+// server's bytes, known size or not.
+func TestAdaptiveIgnoresAdvisorySize(t *testing.T) {
+	payload := "0123456789"
+	for _, known := range []bool{false, true} {
+		t.Run(fmt.Sprintf("known=%v", known), func(t *testing.T) {
+			server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+				if known {
+					w.Header().Set("Content-Length", fmt.Sprint(len(payload)))
+				}
+				w.(gohttp.Flusher).Flush()
+				fmt.Fprint(w, payload)
+			}))
+			defer server.Close()
+			on := true
+			f := buildFetcher()
+			defer f.Close()
+			dir := t.TempDir()
+			f.Meta().Opts = &base.Options{Size: 7, Path: dir, Name: "output.bin", Extra: &http.OptsExtra{Connections: 4, Adaptive: &on}}
+			if err := f.Resolve(&base.Request{URL: server.URL}); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.Start(); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.Wait(); err != nil {
+				t.Fatal(err)
+			}
+			got, err := os.ReadFile(filepath.Join(dir, "output.bin"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != payload {
+				t.Fatalf("file %q, want %q", got, payload)
+			}
+		})
+	}
+}
