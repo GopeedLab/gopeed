@@ -112,13 +112,14 @@ type Downloader struct {
 	Logger              *logger.Logger
 	ExtensionLogger     *logger.Logger
 
-	cfg          *DownloaderConfig
-	fetcherCache map[string]fetcher.Fetcher
-	storage      Storage
-	tasks        []*Task
-	waitTasks    []*Task
-	watchedTasks sync.Map
-	listener     Listener
+	cfg            *DownloaderConfig
+	fetcherCache   map[string]fetcher.Fetcher
+	storage        Storage
+	tasks          []*Task
+	waitTasks      []*Task
+	deletingGroups map[string]struct{}
+	watchedTasks   sync.Map
+	listener       Listener
 
 	lock               *sync.Mutex
 	configLock         *sync.RWMutex
@@ -149,6 +150,7 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		cfg:              cfg,
 		fetcherCache:     make(map[string]fetcher.Fetcher),
 		waitTasks:        make([]*Task, 0),
+		deletingGroups:   make(map[string]struct{}),
 		storage:          cfg.Storage,
 
 		lock:               &sync.Mutex{},
@@ -612,14 +614,14 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	if err != nil {
 		return "", err
 	}
-	taskId, err = d.createDirect(req, opts, "")
+	taskId, err = d.createDirect(req, opts, nil)
 	if err == nil {
 		d.persistDefaultPathBestEffort(defaultPath)
 	}
 	return
 }
 
-func (d *Downloader) createDirect(req *base.Request, opts *base.Options, parentID string) (taskId string, err error) {
+func (d *Downloader) createDirect(req *base.Request, opts *base.Options, parent *Task) (taskId string, err error) {
 	ensureRequestRawURL(req)
 	var fetcher fetcher.Fetcher
 	fetcher, err = d.buildFetcher(req.URL)
@@ -631,7 +633,7 @@ func (d *Downloader) createDirect(req *base.Request, opts *base.Options, parentI
 	if err != nil {
 		return
 	}
-	return d.doCreate(fetcher, initOpt, parentID)
+	return d.doCreate(fetcher, initOpt, parent)
 }
 
 func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []string, err error) {
@@ -639,18 +641,17 @@ func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []stri
 	if err != nil {
 		return nil, err
 	}
-	var parentID string
+	var parent *Task
 	var groupPath string
 	if req.Group != nil {
 		if err := d.createTaskGroup(req.Group); err != nil {
 			return nil, err
 		}
-		parentID = req.Group.ID
-		group := d.GetTask(parentID)
-		if group == nil {
+		parent = d.GetTask(req.Group.ID)
+		if parent == nil {
 			return nil, ErrTaskNotFound
 		}
-		groupPath = group.Meta.Opts.Path
+		groupPath = parent.Meta.Opts.Path
 	}
 	taskIds := make([]string, 0)
 	for _, ir := range req.Reqs {
@@ -667,8 +668,12 @@ func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []stri
 			}
 			rel := "."
 			if opts.Path != "" {
+				requestedRoot := req.Group.Path
+				if requestedRoot == "" {
+					requestedRoot = groupPath
+				}
 				var err error
-				rel, err = filepath.Rel(filepath.Clean(req.Group.Path), filepath.Clean(opts.Path))
+				rel, err = filepath.Rel(filepath.Clean(requestedRoot), filepath.Clean(opts.Path))
 				if err != nil || !filepath.IsLocal(rel) {
 					return nil, errors.New("task path is outside the group directory")
 				}
@@ -676,7 +681,7 @@ func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []stri
 			opts.Path = filepath.Join(groupPath, rel)
 			opts.SkipAutoCategorize = true
 		}
-		taskId, err := d.createDirect(ir.Req, opts, parentID)
+		taskId, err := d.createDirect(ir.Req, opts, parent)
 		if err != nil {
 			return nil, err
 		}
@@ -698,6 +703,9 @@ func (d *Downloader) createTaskGroup(group *base.CreateTaskGroup) error {
 	}
 	d.lock.Lock()
 	defer d.lock.Unlock()
+	if _, deleting := d.deletingGroups[group.ID]; deleting {
+		return errors.New("task group is being deleted")
+	}
 	for _, task := range d.tasks {
 		if task.ID == group.ID {
 			if !task.IsGroup() {
@@ -914,7 +922,7 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 		delete(d.fetcherCache, rrId)
 		d.fetcherMapLock.Unlock()
 	}()
-	taskId, err = d.doCreate(fetcher, nil, "")
+	taskId, err = d.doCreate(fetcher, nil, nil)
 	if err == nil {
 		d.persistDefaultPathBestEffort(defaultPath)
 	}
@@ -988,6 +996,19 @@ func (d *Downloader) Pause(filter *TaskFilter) (err error) {
 	if len(pauseTasks) == 0 {
 		return ErrTaskNotFound
 	}
+	d.lock.Lock()
+	pausedIDs := make(map[string]struct{}, len(pauseTasks))
+	for _, task := range pauseTasks {
+		pausedIDs[task.ID] = struct{}{}
+	}
+	queued := d.waitTasks[:0]
+	for _, task := range d.waitTasks {
+		if _, paused := pausedIDs[task.ID]; !paused {
+			queued = append(queued, task)
+		}
+	}
+	d.waitTasks = queued
+	d.lock.Unlock()
 
 	for _, task := range pauseTasks {
 		if err = d.doPause(task); err != nil {
@@ -1171,6 +1192,9 @@ func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
 
 		deleteTasks = d.withGroupChildren(d.getTasksByFilter(filter))
 		for _, task := range deleteTasks {
+			if task.IsGroup() {
+				d.deletingGroups[task.ID] = struct{}{}
+			}
 			id := task.ID
 			for i, t := range d.tasks {
 				if t.ID == id {
@@ -1203,6 +1227,9 @@ func (d *Downloader) deleteAll(force bool) (err error) {
 
 		for _, task := range d.tasks {
 			deleteTasksTemp = append(deleteTasksTemp, task)
+			if task.IsGroup() {
+				d.deletingGroups[task.ID] = struct{}{}
+			}
 		}
 		d.tasks = make([]*Task, 0)
 		d.waitTasks = make([]*Task, 0)
@@ -1212,6 +1239,15 @@ func (d *Downloader) deleteAll(force bool) (err error) {
 }
 
 func (d *Downloader) doDeleteTasks(tasks []*Task, force bool) error {
+	defer func() {
+		d.lock.Lock()
+		defer d.lock.Unlock()
+		for _, task := range tasks {
+			if task.IsGroup() {
+				delete(d.deletingGroups, task.ID)
+			}
+		}
+	}()
 	// Close and remove members before removing their group's directory.
 	for _, groups := range []bool{false, true} {
 		for _, task := range tasks {
@@ -2038,7 +2074,7 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 	return nil
 }
 
-func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options, parentID string) (taskId string, err error) {
+func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options, parent *Task) (taskId string, err error) {
 	if f.Meta().Opts == nil {
 		f.Meta().Opts = opts
 	}
@@ -2049,7 +2085,9 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options, parentID st
 		return
 	}
 	task := NewTask()
-	task.ParentID = parentID
+	if parent != nil {
+		task.ParentID = parent.ID
+	}
 	task.fetcherManager = fm
 	task.fetcher = f
 	task.Protocol = fm.Name()
@@ -2072,10 +2110,10 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options, parentID st
 		d.lock.Lock()
 		defer d.lock.Unlock()
 
-		if parentID != "" {
+		if parent != nil {
 			found := false
-			for _, parent := range d.tasks {
-				if parent.ID == parentID && parent.IsGroup() {
+			for _, existing := range d.tasks {
+				if existing == parent && existing.IsGroup() {
 					found = true
 					break
 				}
@@ -2318,12 +2356,13 @@ func (d *Downloader) doStart(task *Task) (err error) {
 		}
 
 		task.statusLock.Lock()
-		task.Progress.Speed = 0
-		task.statusLock.Unlock()
-		if !d.taskIsRunningGeneration(task, generation) {
+		if task.Status != base.DownloadStatusRunning || task.runGeneration != generation {
+			task.statusLock.Unlock()
 			return nil
 		}
+		task.Progress.Speed = 0
 		task.timer.Start()
+		task.statusLock.Unlock()
 		if err := task.fetcher.Start(); err != nil {
 			return err
 		}
