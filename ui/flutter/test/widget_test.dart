@@ -1631,6 +1631,43 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('settings FTP connections save into the FTP protocol config', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final settingsController = FakeSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    final ftpBlock = find.byKey(const ValueKey('settings-ftp-block'));
+    expect(ftpBlock, findsOneWidget);
+    expect(find.descendant(of: ftpBlock, matching: find.text('FTP')), findsOneWidget);
+    final connections = find.byKey(const ValueKey('ftp-connections-input'));
+    await tester.ensureVisible(connections);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(connections, '6');
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(settingsController.state.requireValue.config.protocolConfig.ftp.connections, 6);
+    expect(settingsController.state.requireValue.config.protocolConfig.http.connections, isNot(6));
+
+    // FTP servers usually allow only a few logins, so the field stops at 32.
+    await tester.enterText(connections, '64');
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(tester.widget<shad.TextField>(connections).controller!.text, '32');
+    expect(settingsController.state.requireValue.config.protocolConfig.ftp.connections, 32);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('download directory keeps long text clear of its aligned picker action', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     await tester.pumpWidget(
@@ -2589,9 +2626,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('dat is already used by 资料'), findsOneWidget);
-    AppPrimaryButton saveButton() => tester.widget<AppPrimaryButton>(
-      find.ancestor(of: find.text('Save'), matching: find.byType(AppPrimaryButton)),
-    );
+    AppPrimaryButton saveButton() =>
+        tester.widget<AppPrimaryButton>(find.ancestor(of: find.text('Save'), matching: find.byType(AppPrimaryButton)));
     expect(saveButton().onPressed, isNull);
 
     await tester.enterText(find.byKey(const ValueKey('download-category-extensions-input')), 'mkv');
