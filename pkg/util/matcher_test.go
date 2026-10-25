@@ -34,3 +34,35 @@ func TestMatch(t *testing.T) {
 		})
 	}
 }
+
+func TestMatchMagnet(t *testing.T) {
+	const magnetURL = "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=example.zip"
+	tests := []struct {
+		name    string
+		pattern string
+		url     string
+		want    bool
+	}{
+		{"scheme wildcard", "magnet:*", magnetURL, true},
+		{"query wildcard", "magnet:?*", magnetURL, true},
+		{"info hash wildcard", "magnet:?xt=urn:btih:*", magnetURL, true},
+		{"exact URI", magnetURL, magnetURL, true},
+		{"encoded name", "magnet:?*&dn=example%20file.zip", "magnet:?xt=urn:btih:abc&dn=example%20file.zip", true},
+		{"literal query punctuation", "magnet:?*&dn=a+b[1].zip", "magnet:?xt=urn:btih:abc&dn=a+b[1].zip", true},
+		{"literal question mark", "magnet:?*", "magnet:xt=urn:btih:abc", false},
+		{"literal dot", "magnet:?*&dn=example.zip", "magnet:?xt=urn:btih:abc&dn=exampleXzip", false},
+		{"different hash type", "magnet:?xt=urn:btmh:*", magnetURL, false},
+		{"different hash", "magnet:?xt=urn:btih:other*", magnetURL, false},
+		{"different scheme", "magnet:*", "https://example.org/file.zip", false},
+		{"invalid URI", "magnet:*", "magnet:\x00", false},
+		{"existing catch-all", "*://*/*", magnetURL, true},
+		{"existing magnet pattern", "magnet://*", magnetURL, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Match(tt.pattern, tt.url); got != tt.want {
+				t.Errorf("Match(%q, %q) = %v, want %v", tt.pattern, tt.url, got, tt.want)
+			}
+		})
+	}
+}
