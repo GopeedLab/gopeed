@@ -6,14 +6,27 @@ import (
 	"strings"
 )
 
-// Match url with pattern by chrome extension match pattern style
+// Match url with pattern by chrome extension match pattern style.
+// Magnet URI patterns such as magnet:?* are also supported, with * as a wildcard.
 // https://developer.chrome.com/docs/extensions/mv3/match_patterns/
 func Match(pattern string, u string) bool {
-	scheme, host, path := parsePattern(pattern)
 	url, err := url.Parse(u)
 	if err != nil {
 		return false
 	}
+	// Magnet URIs have no authority or path; match the raw scheme-specific
+	// part instead, preserving query punctuation and percent-encoding.
+	if strings.HasPrefix(pattern, "magnet:") && !strings.HasPrefix(pattern, "magnet://") {
+		if url.Scheme != "magnet" {
+			return false
+		}
+		_, target, _ := strings.Cut(u, ":")
+		expression := regexp.QuoteMeta(strings.TrimPrefix(pattern, "magnet:"))
+		expression = strings.ReplaceAll(expression, `\*`, ".*")
+		matched, _ := regexp.MatchString("^"+expression+"$", target)
+		return matched
+	}
+	scheme, host, path := parsePattern(pattern)
 	if scheme != "*" && scheme != url.Scheme {
 		return false
 	}
