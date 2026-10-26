@@ -198,7 +198,7 @@ func TestBTDownloadSources(t *testing.T) {
 }
 
 func TestBTDirectDownloadWithExtraTrackers(t *testing.T) {
-	for _, source := range []string{"request", "config"} {
+	for _, source := range []string{"request", "config", "subscription"} {
 		t.Run(source, func(t *testing.T) {
 			fixture := makeBTFixture(t, map[string][]byte{
 				"a.bin":        btPayload(20*1024, "direct-a"),
@@ -217,7 +217,23 @@ func TestBTDirectDownloadWithExtraTrackers(t *testing.T) {
 			if source == "request" {
 				req.Extra = &btprotocol.ReqExtra{Trackers: []string{fixture.TrackerURL}}
 			} else {
-				f.config.Trackers = []string{fixture.TrackerURL}
+				backendConfig := new(FetcherManager).DefaultConfig().(*config)
+				if source == "config" {
+					backendConfig.CustomTrackers = []string{fixture.TrackerURL}
+				} else {
+					backendConfig.TrackerSubscribeURLs = []string{"https://subscription.example/list"}
+					backendConfig.State.TrackerSources[backendConfig.TrackerSubscribeURLs[0]] = []string{fixture.TrackerURL}
+				}
+				f.ctl.GetConfig = func(dst any) {
+					raw, err := json.Marshal(backendConfig)
+					if err != nil {
+						t.Error(err)
+						return
+					}
+					if err := json.Unmarshal(raw, dst); err != nil {
+						t.Error(err)
+					}
+				}
 			}
 			// CreateDirect supplies options before Downloader resolves the task.
 			dir := filepath.Join(t.TempDir(), "direct-download")

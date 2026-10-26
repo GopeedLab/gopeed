@@ -227,7 +227,7 @@ func buildConfigFetcher(t testing.TB, proxyConfig *base.DownloaderProxyConfig) f
 	fetcher := new(FetcherManager).Build()
 	newController := controller.NewController()
 	mockCfg := config{
-		Trackers: []string{
+		CustomTrackers: []string{
 			"udp://tracker.birkenwald.de:6969/announce",
 			"udp://tracker.bitsearch.to:1337/announce",
 		}}

@@ -105,7 +105,7 @@ class SettingsListEditor extends StatelessWidget {
                 children: [
                   const Icon(Icons.add, size: 17),
                   const SizedBox(width: AppDesignTokens.space8),
-                  Text(addLabel ?? context.l10n.add),
+                  Flexible(child: Text(addLabel ?? context.l10n.add)),
                 ],
               ),
             ),

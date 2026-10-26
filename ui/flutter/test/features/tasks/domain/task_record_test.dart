@@ -44,6 +44,30 @@ void main() {
     expect(record.totalBytes, 60);
   });
 
+  test('underestimated HTTP size caps progress without completing the task', () {
+    final task = buildTask([], 3)..protocol = api.Protocol.http;
+    task.progress.speed = 2;
+    final record = TaskRecord.fromApi(task);
+    expect(record.progress, 1);
+    expect(record.status, TaskStatus.downloading);
+    expect(record.downloadedBytes, 10);
+    expect(record.totalBytes, 3);
+    expect(record.remainingSeconds, isNull);
+    expect(const TaskFileNode(path: '', name: 'video.mp4', sizeBytes: 3, downloadedBytes: 10).progress, 1);
+  });
+
+  test('queued task uses the creation estimate until a resolved size is available', () {
+    final task = buildTask([], 0)..protocol = api.Protocol.http;
+    task.meta.opts.size = 1024;
+    task.meta.res = null;
+    task.status = api.Status.wait;
+    expect(TaskRecord.fromApi(task).totalBytes, 1024);
+    task.meta.res = buildTask([], 0).meta.res;
+    expect(TaskRecord.fromApi(task).totalBytes, isNull); // A confirmed zero must not fall back to 1024.
+    task.meta.res!.size = 512;
+    expect(TaskRecord.fromApi(task).totalBytes, 512);
+  });
+
   test('completion time maps from api and stays null for legacy tasks', () {
     final completed = TaskRecord.fromApi(buildTask([], 60, doneAt: '2026-01-02T03:04:05Z'));
     expect(completed.doneAt, DateTime.parse('2026-01-02T03:04:05Z'));

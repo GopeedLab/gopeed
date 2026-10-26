@@ -1,17 +1,19 @@
 package download
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/GopeedLab/gopeed/internal/fetcher"
+	"github.com/GopeedLab/gopeed/internal/githubmirror"
 	"github.com/GopeedLab/gopeed/internal/logger"
 	"github.com/GopeedLab/gopeed/pkg/base"
 	"github.com/GopeedLab/gopeed/pkg/download/engine"
@@ -196,50 +198,85 @@ func (d *Downloader) getExtension(identity string) *Extension {
 	return nil
 }
 
-func (d *Downloader) fetchExtensionByGit(url string, handler func(tempExtPath string, devMode bool) (*Extension, error)) (*Extension, error) {
-	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
-		url = "https://" + url
-	}
+// waitForExtensionGit waits for clones and their install/check handlers before
+// shutdown releases storage and temporary files. Close cancels backgroundCtx first.
+func (d *Downloader) waitForExtensionGit() {
+	d.extensionGitLock.Lock()
+	d.extensionGitLock.Unlock()
+	d.extensionGitWG.Wait()
+}
 
-	// resolve project path
-	parentPath, projectPath := path.Split(url)
-	// resolve project name and sub path
-	pathArr := strings.SplitN(projectPath, "#", 2)
-	projectPath = strings.TrimSuffix(pathArr[0], gitSuffix)
-	subPath := ""
-	if len(pathArr) > 1 {
-		subPath = pathArr[1]
+func (d *Downloader) fetchExtensionByGit(rawURL string, handler func(string, bool) (*Extension, error)) (*Extension, error) {
+	// Pair admission with shutdown so no operation is added after its wait starts.
+	d.extensionGitLock.Lock()
+	if d.closed.Load() {
+		d.extensionGitLock.Unlock()
+		return nil, fmt.Errorf("downloader is closed")
 	}
-
-	// Use unique suffix to avoid concurrent conflicts when multiple git operations
-	// target the same extension (e.g., install and update check happening simultaneously)
-	tempExtDir, err := os.MkdirTemp(d.cfg.TempDir, "gopeed-extension-")
+	d.extensionGitWG.Add(1)
+	d.extensionGitLock.Unlock()
+	defer d.extensionGitWG.Done()
+	ctx := d.backgroundCtx
+	if !strings.HasPrefix(rawURL, "https://") && !strings.HasPrefix(rawURL, "http://") {
+		rawURL = "https://" + rawURL
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Host == "" {
+		return nil, fmt.Errorf("invalid extension repository URL")
+	}
+	subPath := filepath.FromSlash(parsed.Fragment)
+	if filepath.IsAbs(subPath) || subPath == ".." || strings.HasPrefix(filepath.Clean(subPath), ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("invalid extension directory")
+	}
+	parsed.Fragment = ""
+	parsed.Path = strings.TrimSuffix(strings.TrimRight(parsed.Path, "/"), gitSuffix) + gitSuffix
+	officialURL := parsed.String()
+	cfg, err := d.GetConfig()
 	if err != nil {
 		return nil, err
 	}
-	if err := d.tempFiles.Track(tempExtDir); err != nil {
-		return nil, err
-	}
-	defer d.tempFiles.Remove(tempExtDir)
-
 	proxyOptions := transport.ProxyOptions{}
-	proxyUrl := d.cfg.DownloaderStoreConfig.Proxy.ToUrl()
-	if proxyUrl != nil {
-		proxyOptions.URL = proxyUrl.Scheme + "://" + proxyUrl.Host
-		proxyOptions.Username = proxyUrl.User.Username()
-		proxyOptions.Password, _ = proxyUrl.User.Password()
+	if proxyURL := cfg.Proxy.ToUrl(); proxyURL != nil {
+		proxyOptions.URL = proxyURL.Scheme + "://" + proxyURL.Host
+		if proxyURL.User != nil {
+			proxyOptions.Username = proxyURL.User.Username()
+			proxyOptions.Password, _ = proxyURL.User.Password()
+		}
 	}
-	// clone project to extension temp dir
-	gitUrl := parentPath + projectPath + gitSuffix
-	if _, err := git.PlainClone(tempExtDir, false, &git.CloneOptions{
-		URL:          gitUrl,
-		Depth:        1,
-		ProxyOptions: proxyOptions,
-	}); err != nil {
+	tempDir, err := os.MkdirTemp(d.cfg.TempDir, "gopeed-extension-")
+	if err != nil {
 		return nil, err
 	}
-
-	return handler(filepath.Join(tempExtDir, subPath), false)
+	if err = d.tempFiles.Track(tempDir); err != nil {
+		_ = os.RemoveAll(tempDir)
+		return nil, err
+	}
+	defer d.tempFiles.Remove(tempDir)
+	repoDir := filepath.Join(tempDir, "repo")
+	repo, err := githubmirror.Fallback(ctx, cfg.GithubMirror, officialURL,
+		githubmirror.Options[*git.Repository]{Kind: githubmirror.Repository},
+		func(ctx context.Context, candidate string) (*git.Repository, error) {
+			if err := os.RemoveAll(repoDir); err != nil {
+				return nil, err
+			}
+			return git.PlainCloneContext(ctx, repoDir, false, &git.CloneOptions{URL: candidate, Depth: 1, ProxyOptions: proxyOptions})
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	// Preserve the canonical source instead of persisting a selected mirror.
+	repoConfig, err := repo.Config()
+	if err != nil {
+		return nil, err
+	}
+	if remote := repoConfig.Remotes["origin"]; remote != nil {
+		remote.URLs = []string{officialURL}
+	}
+	if err = repo.SetConfig(repoConfig); err != nil {
+		return nil, err
+	}
+	return handler(filepath.Join(repoDir, subPath), false)
 }
 
 func (d *Downloader) parseExtensionByPath(path string) (*Extension, error) {

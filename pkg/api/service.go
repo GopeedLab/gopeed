@@ -2,7 +2,9 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -62,6 +64,8 @@ func NewService(downloader *download.Downloader) (*Service, error) {
 		newRoute(http.MethodGet, "/api/v1/tasks/{id}/status", service.getTaskStatus),
 		newRoute(http.MethodGet, "/api/v1/tasks", service.getTasks),
 		newRoute(http.MethodGet, "/api/v1/tasks/{id}/stats", service.getStats),
+		newRoute(http.MethodPost, "/api/v1/protocols/{protocol}/jobs/{name}/trigger", service.triggerProtocolJob),
+		newRoute(http.MethodPost, "/api/v1/mirrors/{provider}/candidates", service.mirrorCandidates),
 		newRoute(http.MethodGet, "/api/v1/config", service.getConfig),
 		newRoute(http.MethodPut, "/api/v1/config", service.putConfig),
 		newRoute(http.MethodPost, "/api/v1/extensions", service.installExtension),
@@ -292,6 +296,36 @@ func (s *Service) getStats(ctx *Context) *Response {
 		return newErrorResponse(err.Error())
 	}
 	return newOKResponse(stats)
+}
+
+func (s *Service) triggerProtocolJob(ctx *Context) *Response {
+	if err := s.Downloader.TriggerProtocolJob(context.Background(), ctx.PathParam("protocol"), ctx.PathParam("name")); err != nil {
+		status := http.StatusBadRequest
+		if errors.Is(err, download.ErrUnSupportedProtocol) || errors.Is(err, download.ErrProtocolJobNotFound) {
+			status = http.StatusNotFound
+		}
+		return newStatusResponse(status, restmodel.NewErrorResult(err.Error()))
+	}
+	return newNilResponse()
+}
+
+func (s *Service) mirrorCandidates(ctx *Context) *Response {
+	var request restmodel.MirrorCandidatesReq
+	if response := decodeRequest(ctx.Body, &request); response != nil {
+		return response
+	}
+	urls, err := s.Downloader.GetMirrorCandidates(ctx.PathParam("provider"), request.URL)
+	if err != nil {
+		status := http.StatusInternalServerError
+		switch {
+		case errors.Is(err, download.ErrMirrorProviderNotFound):
+			status = http.StatusNotFound
+		case errors.Is(err, download.ErrInvalidMirrorURL):
+			status = http.StatusBadRequest
+		}
+		return newStatusResponse(status, restmodel.NewErrorResult(err.Error()))
+	}
+	return newOKResponse(&restmodel.MirrorCandidatesResp{URLs: urls})
 }
 
 func (s *Service) getConfig(_ *Context) *Response {

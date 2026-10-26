@@ -21,6 +21,11 @@ import (
 type ResolveResult struct {
 	ID  string         `json:"id"`
 	Res *base.Resource `json:"res"`
+	// SuggestedDownloadDir is the category directory the created task would be
+	// routed to. It is only set when auto categorize is enabled, the resource is
+	// a single file, a category matches and its directory passes the white list
+	// check. It is a hint for the ui, the create call decides the final path.
+	SuggestedDownloadDir string `json:"suggestedDownloadDir,omitempty"`
 }
 
 // Task represents a download unit.
@@ -39,6 +44,14 @@ type Task struct {
 	// finished. A done task never leaves the done state, so the value is
 	// written once and kept.
 	DoneAt *time.Time `json:"doneAt"`
+	// NeedsPreparation marks a task that has not run its first preparation
+	// yet. The preparation decides the download directory of the task and
+	// resolves the duplicate name in it. It runs once, after the resource is
+	// resolved, and the flag is cleared afterwards, so a queued, paused or
+	// retried task is still prepared while a prepared task is never
+	// classified or renamed again. A task stored before this flag existed
+	// does not have it and keeps its directory and name.
+	NeedsPreparation bool `json:"needsPreparation,omitempty"`
 
 	producer         production.Source
 	producerReceived int64

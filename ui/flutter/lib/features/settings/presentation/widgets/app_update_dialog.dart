@@ -8,6 +8,7 @@ import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/app_loading_button.dart';
 import '../../../../util/package_info.dart';
 import '../../../../util/updater.dart';
+import '../../../../core/network/candidate_download.dart';
 import '../../../../util/util.dart';
 import '../../../../l10n/l10n.dart';
 import 'app_update_notes_viewport.dart';
@@ -57,7 +58,9 @@ Future<void> showAppUpdateDialog(
               if (!dialogContext.mounted) return;
               setDialogState(() {
                 updating = false;
-                errorMessage = dialogContext.l10n.updateFailed;
+                errorMessage = error is DownloadChecksumException
+                    ? dialogContext.l10n.updateVerificationFailed
+                    : dialogContext.l10n.updateFailed;
               });
             }
           }
@@ -137,7 +140,13 @@ Future<void> showAppUpdateDialog(
                       children: [
                         Icon(Icons.error_outline, size: 15, color: palette.error),
                         const SizedBox(width: 6),
-                        Text(errorMessage!, style: TextStyle(color: palette.error, fontSize: 12)),
+                        Flexible(
+                          child: Text(
+                            errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: palette.error, fontSize: 12),
+                          ),
+                        ),
                       ],
                     ),
                   ],

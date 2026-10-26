@@ -139,11 +139,12 @@ type checksumOption struct {
 // downloadOptions is the MCP-facing form of base.Options. Only HTTP currently
 // defines protocol-specific task options, so Extra has one concrete schema.
 type downloadOptions struct {
-	Name          string         `json:"name,omitempty" jsonschema:"Optional output file or directory name"`
-	Path          string         `json:"path,omitempty" jsonschema:"Optional download directory"`
-	AsDefaultPath bool           `json:"asDefaultPath,omitempty" jsonschema:"Save path as the default download directory after task creation"`
-	SelectFiles   []int          `json:"selectFiles,omitempty" jsonschema:"Optional zero-based file indexes to download from a multi-file resource"`
-	Extra         *httpTaskExtra `json:"extra,omitempty" jsonschema:"Optional HTTP task settings"`
+	Name               string         `json:"name,omitempty" jsonschema:"Optional output file or directory name"`
+	Path               string         `json:"path,omitempty" jsonschema:"Optional base download directory"`
+	AsDefaultPath      bool           `json:"asDefaultPath,omitempty" jsonschema:"Save path as the default download directory after task creation"`
+	SkipAutoCategorize bool           `json:"skipAutoCategorize,omitempty" jsonschema:"Keep the base download directory instead of routing the task to its category directory"`
+	SelectFiles        []int          `json:"selectFiles,omitempty" jsonschema:"Optional zero-based file indexes to download from a multi-file resource"`
+	Extra              *httpTaskExtra `json:"extra,omitempty" jsonschema:"Optional HTTP task settings"`
 }
 
 func requestExtraSchema() *jsonschema.Schema {
@@ -213,11 +214,12 @@ func (o *downloadOptions) baseOptions() *base.Options {
 		}
 	}
 	return &base.Options{
-		Name:          o.Name,
-		Path:          o.Path,
-		AsDefaultPath: o.AsDefaultPath,
-		SelectFiles:   o.SelectFiles,
-		Extra:         extra,
+		Name:               o.Name,
+		Path:               o.Path,
+		AsDefaultPath:      o.AsDefaultPath,
+		SkipAutoCategorize: o.SkipAutoCategorize,
+		SelectFiles:        o.SelectFiles,
+		Extra:              extra,
 	}
 }
 
@@ -228,6 +230,9 @@ type resolveTaskInput struct {
 type resolveTaskOutput struct {
 	ID  string         `json:"id,omitempty"`
 	Res *base.Resource `json:"res"`
+	// SuggestedDownloadDir is the category directory the created task would be
+	// routed to, empty when auto categorize does not apply.
+	SuggestedDownloadDir string `json:"suggestedDownloadDir,omitempty"`
 }
 
 type createTaskInput struct {
@@ -331,7 +336,11 @@ func registerTools(server *mcp.Server, downloader *download.Downloader) {
 		if err != nil {
 			return nil, nil, err
 		}
-		return nil, &resolveTaskOutput{ID: result.ID, Res: result.Res}, nil
+		return nil, &resolveTaskOutput{
+			ID:                   result.ID,
+			Res:                  result.Res,
+			SuggestedDownloadDir: result.SuggestedDownloadDir,
+		}, nil
 	})
 
 	mcp.AddTool(server, &mcp.Tool{

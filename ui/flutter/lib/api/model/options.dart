@@ -4,13 +4,27 @@ part 'options.g.dart';
 
 @JsonSerializable(explicitToJson: true)
 class Options {
+  /// HTTP-only size estimate, superseded by HTTP metadata or completion.
+  int size;
   String name;
   String path;
   bool asDefaultPath;
+
+  /// Keep the base download directory instead of routing the task to the
+  /// directory of the category its resolved file belongs to.
+  bool skipAutoCategorize;
   List<int> selectFiles;
   Object? extra;
 
-  Options({this.name = '', this.path = '', this.asDefaultPath = false, this.selectFiles = const [], this.extra});
+  Options({
+    this.size = 0,
+    this.name = '',
+    this.path = '',
+    this.asDefaultPath = false,
+    this.skipAutoCategorize = false,
+    this.selectFiles = const [],
+    this.extra,
+  });
 
   factory Options.fromJson(Map<String, dynamic> json) => _$OptionsFromJson(json);
 
@@ -22,17 +36,14 @@ class ChecksumOption {
   String algorithm;
   String expected;
 
-  ChecksumOption({
-    this.algorithm = '',
-    this.expected = '',
-  });
+  ChecksumOption({this.algorithm = '', this.expected = ''});
 
   factory ChecksumOption.fromJson(Map<String, dynamic> json) => _$ChecksumOptionFromJson(json);
 
   Map<String, dynamic> toJson() => _$ChecksumOptionToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class OptsExtraHttp {
   int connections;
   bool? autoTorrent;

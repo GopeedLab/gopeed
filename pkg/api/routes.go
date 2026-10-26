@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/url"
 	pathpkg "path"
 	"strings"
 )
@@ -75,7 +76,11 @@ func (r RouteSpec) Match(rawPath string) (map[string]string, bool) {
 	params := make(map[string]string)
 	for index, part := range r.parts {
 		if part.param != "" {
-			params[part.param] = segments[index]
+			value, err := url.PathUnescape(segments[index])
+			if err != nil {
+				return nil, false
+			}
+			params[part.param] = value
 			continue
 		}
 		if part.literal != segments[index] {

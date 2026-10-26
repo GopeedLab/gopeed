@@ -1,0 +1,59 @@
+{
+  "normalizeExtensions": [
+    {
+      "input": [
+        "exe, msi",
+        " ZIP ",
+        ".tar.gz",
+        "",
+        "exe"
+      ],
+      "expected": [
+        "exe",
+        "msi",
+        "zip",
+        "tar.gz"
+      ]
+    },
+    {
+      "input": [],
+      "expected": []
+    },
+    {
+      "input": [
+        "  "
+      ],
+      "expected": []
+    },
+    {
+      "input": [
+        "video/mp4"
+      ],
+      "expected": [
+        "video/mp4"
+      ]
+    },
+    {
+      "input": [
+        ".exe",
+        "..msi"
+      ],
+      "expected": [
+        "exe",
+        "msi"
+      ]
+    },
+    {
+      "input": [
+        "EXE",
+        "ſ",
+        "Ä"
+      ],
+      "expected": [
+        "exe",
+        "ſ",
+        "Ä"
+      ]
+    }
+  ]
+}

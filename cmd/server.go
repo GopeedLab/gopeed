@@ -16,17 +16,18 @@ import (
 //go:embed banner.txt
 var banner string
 
-func Start(cfg *model.StartConfig) {
-	fmt.Println(banner)
+func Start(cfg *model.StartConfig) error {
 	srv, listener, err := rest.BuildServer(cfg)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	fmt.Println(banner)
 	downloadCfg, err := rest.Downloader.GetConfig()
 	if err != nil {
-		panic(err)
+		listener.Close()
+		return err
 	}
-	if downloadCfg.FirstLoad {
+	if rest.Downloader.IsFirstLoad() {
 		// Set default download config
 		if cfg.DownloadConfig != nil {
 			cfg.DownloadConfig.Merge(downloadCfg)
@@ -51,13 +52,20 @@ func Start(cfg *model.StartConfig) {
 				rest.Downloader.PutConfig(downloadCfg)
 			}
 		}
+
+		// The default download dir is resolved only after the core starts, so
+		// seed the built-in categories now that the dir is known. Init is
+		// idempotent and leaves an existing category list untouched.
+		downloadCfg.Init()
+		rest.Downloader.PutConfig(downloadCfg)
 	}
 	watchExit()
 
 	fmt.Printf("Server start success on http://%s\n", listener.Addr().String())
 	if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 func watchExit() {

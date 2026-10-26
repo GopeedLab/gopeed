@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../api/api.dart' as api;
 import '../../api/model/downloader_config.dart';
+import 'downloader_config_init.dart';
 import '../../core/capabilities/app_capabilities.dart';
 import '../../core/common/api_server_state.dart';
 import '../../core/common/start_config.dart';
@@ -106,13 +105,8 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       ),
     );
     unawaited(LocationKeepAliveCoordinator.instance.reconcile(enabled: config.extra.backgroundLocationKeepAlive));
-    unawaited(
-      ContinuedProcessing.setEnabled(
-        config.extra.backgroundContinuedProcessing,
-      ),
-    );
+    unawaited(ContinuedProcessing.setEnabled(config.extra.backgroundContinuedProcessing));
   }
-
 
   Future<AppRuntimeState> _init() async {
     await AppInitializer.ensureStorageInitialized();
@@ -175,7 +169,6 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
         ..address = config.api.address
         ..apiToken = config.api.token;
     }
-    unawaited(_initTrackerUpdate(config));
     unawaited(_initAndroidForegroundService(appLocalizationsFor(config.extra.locale)));
     await _initAnalytics(config);
 
@@ -190,9 +183,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
       // Make sure the native Continued Processing manager has the
       // persisted setting before app initialization completes. This
       // avoids the first download racing ahead of setEnabled(true).
-      await ContinuedProcessing.setEnabled(
-        config.extra.backgroundContinuedProcessing,
-      );
+      await ContinuedProcessing.setEnabled(config.extra.backgroundContinuedProcessing);
 
       LocationKeepAliveCoordinator.instance.start(
         () =>
@@ -251,83 +242,14 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     return cfg;
   }
 
-  Future<DownloaderConfig> _loadDownloaderConfig() async {
-    DownloaderConfig config;
-    try {
-      config = await ref.read(gopeedServiceProvider).getConfig();
-    } catch (error, stackTrace) {
-      logger.w('load downloader config failed', error, stackTrace);
-      config = DownloaderConfig();
-    }
-    await _initDownloaderConfig(config);
-    return config;
-  }
-
-  Future<void> _initDownloaderConfig(DownloaderConfig config) async {
-    final extra = config.extra;
-    if (extra.themeMode.isEmpty) {
-      extra.themeMode = 'system';
-    }
-    if (extra.themeColor.isEmpty) {
-      extra.themeColor = 'green';
-    }
-    if (extra.bt.trackerSubscribeUrls.isEmpty) {
-      extra.bt.trackerSubscribeUrls.addAll(allTrackerSubscribeUrls);
-    }
-    if (config.proxy.scheme.isEmpty) {
-      config.proxy.scheme = 'http';
-    }
-    if (config.downloadDir.isEmpty) {
-      config.downloadDir = await _defaultDownloadDir();
-    }
-    if (extra.downloadCategories.isEmpty) {
-      extra.downloadCategories = [
-        DownloadCategory(
-          name: '',
-          path: path.join(config.downloadDir, 'Music'),
-          isBuiltIn: true,
-          nameKey: 'categoryMusic',
-        ),
-        DownloadCategory(
-          name: '',
-          path: path.join(config.downloadDir, 'Video'),
-          isBuiltIn: true,
-          nameKey: 'categoryVideo',
-        ),
-        DownloadCategory(
-          name: '',
-          path: path.join(config.downloadDir, 'Document'),
-          isBuiltIn: true,
-          nameKey: 'categoryDocument',
-        ),
-        DownloadCategory(
-          name: '',
-          path: path.join(config.downloadDir, 'Program'),
-          isBuiltIn: true,
-          nameKey: 'categoryProgram',
-        ),
-      ];
-    }
-    if (extra.githubMirror.mirrors.isEmpty) {
-      extra.githubMirror.mirrors = [
-        GithubMirror(type: GithubMirrorType.jsdelivr, url: 'https://fastly.jsdelivr.net/gh', isBuiltIn: true),
-        GithubMirror(type: GithubMirrorType.ghProxy, url: 'https://fastgit.cc', isBuiltIn: true),
-      ];
-    }
-  }
-
-  Future<void> _initTrackerUpdate(DownloaderConfig config) async {
-    final btExtra = config.extra.bt;
-    final lastUpdateTime = btExtra.lastTrackerUpdateTime;
-    if (!btExtra.autoUpdateTrackers ||
-        (lastUpdateTime != null && !lastUpdateTime.isBefore(DateTime.now().subtract(const Duration(days: 1))))) {
-      return;
-    }
-    try {
-      await updateTrackers(config);
-    } catch (error, stackTrace) {
-      logger.w('tracker update failed', error, stackTrace);
-    }
+  Future<DownloaderConfig> _loadDownloaderConfig() {
+    return loadDownloaderConfig(
+      load: () => ref.read(gopeedServiceProvider).getConfig(),
+      save: (config) => ref.read(gopeedServiceProvider).putConfig(config),
+      defaultDownloadDir: _defaultDownloadDir,
+      onLoadError: (error, stackTrace) => logger.w('load downloader config failed', error, stackTrace),
+      onSaveError: (error, stackTrace) => logger.w('persist downloader config failed', error, stackTrace),
+    );
   }
 
   Future<void> _initAnalytics(DownloaderConfig config) async {
@@ -344,41 +266,23 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     }
   }
 
-  Future<void> updateTrackers(DownloaderConfig config) async {
-    final btExtra = config.extra.bt;
-    final trackers = <String>[];
-    for (final url in btExtra.trackerSubscribeUrls) {
-      final resp = await api.proxyRequest(url);
-      final data = resp.data;
-      if (resp.statusCode == 200 && data != null && data.isNotEmpty) {
-        trackers.addAll(const LineSplitter().convert(data).where((line) => line.trim().isNotEmpty));
-      }
-    }
-    btExtra.subscribeTrackers = trackers;
-    btExtra.lastTrackerUpdateTime = DateTime.now();
-    config.protocolConfig.bt.trackers = {...btExtra.subscribeTrackers, ...btExtra.customTrackers}.toList();
-    await ref.read(gopeedServiceProvider).putConfig(config);
-
-    final current = state.value;
-    if (current != null) {
-      state = AsyncValue.data(
-        AppRuntimeState(
-          startConfig: current.startConfig,
-          apiServerState: current.apiServerState,
-          downloaderConfig: config,
-          localBackendStarted: current.localBackendStarted,
-          startupError: current.startupError,
-        ),
-      );
+  Future<void> updateTrackers() async {
+    final service = ref.read(gopeedServiceProvider);
+    try {
+      await service.triggerProtocolJob('bt', 'update-trackers');
+    } finally {
+      replaceDownloaderConfig(await service.getConfig());
     }
   }
 
   Future<String> _defaultDownloadDir() async {
+    // An unknown directory stays empty: the config is sent to the backend, and
+    // a relative path would point at the backend working directory.
     if (kIsWeb) {
-      return './';
+      return '';
     }
     if (Util.isDesktop()) {
-      return (await getDownloadsDirectory())?.path ?? './';
+      return (await getDownloadsDirectory())?.path ?? '';
     }
     if (Util.isAndroid()) {
       return (await getExternalStorageDirectory())?.path ?? (await getApplicationDocumentsDirectory()).path;
@@ -386,7 +290,7 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     if (Util.isIOS()) {
       return (await getApplicationDocumentsDirectory()).path;
     }
-    return './';
+    return '';
   }
 
   String _runningAddress(StartConfig config, int runningPort) {
@@ -509,17 +413,3 @@ class AppRuntimeController extends AsyncNotifier<AppRuntimeState> {
     return operation;
   }
 }
-
-const allTrackerSubscribeUrls = [
-  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt',
-  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_http.txt',
-  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_https.txt',
-  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_ip.txt',
-  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_udp.txt',
-  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_ws.txt',
-  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt',
-  'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt',
-  'https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all.txt',
-  'https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt',
-  'https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/http.txt',
-];

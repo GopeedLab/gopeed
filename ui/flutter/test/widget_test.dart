@@ -1682,6 +1682,44 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('changing the download directory rebases built-in category paths', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final settingsController = RebaseSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    final directoryInput = find.byKey(const ValueKey('download-directory-input'));
+    expect(directoryInput, findsOneWidget);
+    await tester.enterText(directoryInput, '/dl/new');
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+
+    final saved = settingsController.state.requireValue.config;
+    expect(saved.downloadDir, '/dl/new');
+    expect(
+      {for (final category in saved.categories) category.name: category.path.replaceAll(r'\', '/')},
+      {
+        'Music': '/dl/new/Music',
+        'Video': '/dl/new/Video',
+        'Document': '/dl/new/Document',
+        'Program': '/dl/new/Program',
+        'Mine': '/dl/old/Mine',
+      },
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('android download directory picker only switches to verified raw paths', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(390, 760));
     DownloadDirectoryPicker.debugPlatformOverride = TargetPlatform.android;
@@ -2274,10 +2312,8 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('tracker subscriptions support selecting and clearing all entries', (WidgetTester tester) async {
+  testWidgets('tracker subscriptions allow adding and deleting a custom URL', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
-    tester.platformDispatcher.textScaleFactorTestValue = 1.2;
-    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final settingsController = FakeSettingsController();
     await tester.pumpWidget(
       ProviderScope(
@@ -2292,35 +2328,31 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Downloads'));
     await tester.pumpAndSettle();
-
-    final selectAll = find.byKey(const ValueKey('tracker-select-all'));
-    expect(selectAll, findsOneWidget);
-    expect(find.descendant(of: selectAll, matching: find.text('Select All')), findsOneWidget);
-
-    await tester.ensureVisible(selectAll);
+    final add = find.byKey(const ValueKey('add-tracker-subscription'));
+    await tester.ensureVisible(add);
     await tester.pumpAndSettle();
-    final horizontalScrollbar = tester.widget<Scrollbar>(find.byKey(const ValueKey('tracker-horizontal-scrollbar')));
-    expect(horizontalScrollbar.thumbVisibility, isTrue);
-    expect(horizontalScrollbar.controller?.hasClients, isTrue);
-    expect(horizontalScrollbar.controller!.position.maxScrollExtent, greaterThan(0));
-    final verticalScrollbar = tester.widget<Scrollbar>(find.byKey(const ValueKey('tracker-vertical-scrollbar')));
-    expect(verticalScrollbar.controller?.hasClients, isTrue);
-    expect(verticalScrollbar.controller!.position.maxScrollExtent, greaterThan(0));
-    final scrollbarRect = tester.getRect(find.byKey(const ValueKey('tracker-horizontal-scrollbar')));
-    final scrollViewRect = tester.getRect(find.byKey(const ValueKey('tracker-horizontal-scroll-view')));
-    expect(scrollbarRect.bottom - scrollViewRect.bottom, AppDesignTokens.space12);
-    expect(find.text(allTrackerSubscribeUrls.first), findsOneWidget);
-    horizontalScrollbar.controller!.jumpTo(horizontalScrollbar.controller!.position.maxScrollExtent);
-    await tester.pump();
-    expect(horizontalScrollbar.controller!.offset, greaterThan(0));
-
-    await tester.tap(selectAll);
+    await tester.tap(add);
     await tester.pumpAndSettle();
-    expect(settingsController.state.requireValue.config.extra.bt.trackerSubscribeUrls, allTrackerSubscribeUrls);
-
-    await tester.tap(selectAll);
+    final dialog = find.byType(shad.AlertDialog);
+    await tester.enterText(
+      find.descendant(of: dialog, matching: find.byType(AppTextField)),
+      'https://my.example/trackers.txt',
+    );
+    await tester.tap(find.descendant(of: dialog, matching: find.text('Save')));
     await tester.pumpAndSettle();
-    expect(settingsController.state.requireValue.config.extra.bt.trackerSubscribeUrls, isEmpty);
+    expect(settingsController.state.requireValue.config.protocolConfig.bt.trackerSubscribeUrls, [
+      'https://my.example/trackers.txt',
+    ]);
+    expect(find.text('https://my.example/trackers.txt'), findsOneWidget);
+    expect(find.byKey(const ValueKey('edit-settings-list-https://my.example/trackers.txt')), findsNothing);
+    final delete = find.byKey(const ValueKey('delete-settings-list-https://my.example/trackers.txt'));
+    await tester.ensureVisible(delete);
+    await tester.pumpAndSettle();
+    await tester.tap(delete);
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byType(shad.AlertDialog), matching: find.text('Delete')));
+    await tester.pumpAndSettle();
+    expect(settingsController.state.requireValue.config.protocolConfig.bt.trackerSubscribeUrls, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -2399,7 +2431,9 @@ void main() {
     expect(find.descendant(of: button, matching: find.byType(shad.CircularProgressIndicator)), findsOneWidget);
   });
 
-  testWidgets('failed tracker update does not reload or reset the settings page', (WidgetTester tester) async {
+  testWidgets('failed tracker update reloads subscription statuses without resetting the settings page', (
+    WidgetTester tester,
+  ) async {
     await _setTestSize(tester, const Size(1024, 900));
     final runtimeController = FailingTrackerRuntimeController();
     final settingsController = StaticSettingsController();
@@ -2428,7 +2462,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(settingsController.reloadCalls, 0);
+    expect(settingsController.reloadCalls, 1);
     expect(tester.state<ScrollableState>(sectionScrollable).position.pixels, closeTo(offsetBeforeUpdate, 0.01));
     expect(find.descendant(of: updateButton, matching: find.byType(shad.CircularProgressIndicator)), findsNothing);
     expect(find.byKey(const ValueKey('app-toast-content')), findsOneWidget);
@@ -2527,6 +2561,50 @@ void main() {
     await tester.tap(find.text('Downloads'));
     await tester.pumpAndSettle();
     expect(tester.getRect(addCategoryButton).left, closeTo(tester.getRect(categoryEditor).left, 0.01));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('extensions owned by another category block the add dialog', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(CategorySettingsController.new),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('add-download-category')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('download-category-name')), '影集');
+    await tester.enterText(find.byKey(const ValueKey('download-category-path')), '/tmp/shows');
+    await tester.enterText(find.byKey(const ValueKey('download-category-extensions-input')), 'dat');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.text('dat is already used by 资料'), findsOneWidget);
+    AppPrimaryButton saveButton() => tester.widget<AppPrimaryButton>(
+      find.ancestor(of: find.text('Save'), matching: find.byType(AppPrimaryButton)),
+    );
+    expect(saveButton().onPressed, isNull);
+
+    await tester.enterText(find.byKey(const ValueKey('download-category-extensions-input')), 'mkv');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('dat is already used by 资料'), findsNothing);
+    expect(saveButton().onPressed, isNotNull);
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('影集'), findsOneWidget);
+    expect(find.text('/tmp/shows'), findsOneWidget);
+    expect(find.text('dat is already used by 资料'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -5967,14 +6045,14 @@ class PendingTrackerRuntimeController extends FakeRuntimeController {
   final _trackerUpdateCompleter = Completer<void>();
 
   @override
-  Future<void> updateTrackers(DownloaderConfig config) => _trackerUpdateCompleter.future;
+  Future<void> updateTrackers() => _trackerUpdateCompleter.future;
 
   void completeTrackerUpdate() => _trackerUpdateCompleter.complete();
 }
 
 class FailingTrackerRuntimeController extends FakeRuntimeController {
   @override
-  Future<void> updateTrackers(DownloaderConfig config) async {
+  Future<void> updateTrackers() async {
     throw StateError('tracker update failed');
   }
 }
@@ -6086,7 +6164,24 @@ class CategorySettingsController extends FakeSettingsController {
   @override
   Future<SettingsState> build() async {
     final config = DownloaderConfig();
-    config.extra.downloadCategories = [DownloadCategory(name: '资料', path: '/tmp/data')];
+    config.categories = [
+      DownloadCategory(name: '资料', path: '/tmp/data', extensions: ['dat']),
+    ];
+    return SettingsState(config: config);
+  }
+}
+
+class RebaseSettingsController extends FakeSettingsController {
+  @override
+  Future<SettingsState> build() async {
+    final config = DownloaderConfig()..downloadDir = '/dl/old';
+    config.categories = [
+      DownloadCategory(name: 'Music', path: '/dl/old/Music', isBuiltIn: true, nameKey: 'categoryMusic'),
+      DownloadCategory(name: 'Video', path: '/dl/old/Video', isBuiltIn: true, nameKey: 'categoryVideo'),
+      DownloadCategory(name: 'Document', path: '/dl/old/Document', isBuiltIn: true, nameKey: 'categoryDocument'),
+      DownloadCategory(name: 'Program', path: '/dl/old/Program', isBuiltIn: true, nameKey: 'categoryProgram'),
+      DownloadCategory(name: 'Mine', path: '/dl/old/Mine'),
+    ];
     return SettingsState(config: config);
   }
 }

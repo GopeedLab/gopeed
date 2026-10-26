@@ -1287,6 +1287,12 @@ func TestFetcher_ValidRangeTakesOverResolveResponse(t *testing.T) {
 }
 
 func TestFetcher_UnknownSizeRangeUsesOpenEndedWorker(t *testing.T) {
+	for _, hint := range []int64{0, 3, 8 * 1024 * 1024} {
+		t.Run(fmt.Sprint(hint), func(t *testing.T) { testFetcherUnknownSizeRange(t, hint) })
+	}
+}
+
+func testFetcherUnknownSizeRange(t *testing.T, hint int64) {
 	const resolveETag = `"unknown-size-v1"`
 	payload := make([]byte, 4*1024*1024)
 	for i := range payload {
@@ -1352,6 +1358,7 @@ func TestFetcher_UnknownSizeRangeUsesOpenEndedWorker(t *testing.T) {
 
 	f := buildFetcher()
 	f.Meta().Opts = &base.Options{
+		Size: hint,
 		Path: t.TempDir(),
 		Name: "unknown-size-range.data",
 		Extra: &http.OptsExtra{
@@ -1363,7 +1370,7 @@ func TestFetcher_UnknownSizeRangeUsesOpenEndedWorker(t *testing.T) {
 	}
 	defer f.Close()
 
-	if f.meta.Res.Size != 0 || !f.meta.Res.Range {
+	if f.meta.Res.Size != hint || f.hasKnownSize() || !f.meta.Res.Range {
 		t.Fatalf("resolved resource = %+v, want unknown size with Range support", f.meta.Res)
 	}
 	if err := f.Start(); err != nil {
@@ -1595,6 +1602,7 @@ func TestFetcher_UnknownSizeRangeRemainsOpenEndedAfterPause(t *testing.T) {
 
 	f := buildFetcher()
 	f.Meta().Opts = &base.Options{
+		Size: 3,
 		Path: t.TempDir(),
 		Name: "pause-open-range.data",
 		Extra: &http.OptsExtra{

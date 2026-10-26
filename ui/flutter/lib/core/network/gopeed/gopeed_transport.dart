@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'entry/gopeed_transport_stub.dart'
@@ -59,8 +58,6 @@ String normalizeWebApiBaseUrl(String address, Uri pageUri) {
 
 abstract interface class GopeedTransport {
   Future<dynamic> request(String path, {String method = 'GET', dynamic data, Map<String, dynamic>? queryParameters});
-
-  Future<Response<String>> proxyRequest(String uri, {dynamic data, Options? options});
 
   String join(String path);
 }

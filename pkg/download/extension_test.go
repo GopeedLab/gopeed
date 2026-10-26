@@ -1070,54 +1070,15 @@ func TestDownloader_Extension_BlobRecoverOnError(t *testing.T) {
 }
 
 func TestDownloader_InstallExtensionByGit(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByGit("https://github.com/GopeedLab/gopeed-extension-samples#github-release-sample"); err != nil {
-			t.Fatal(err)
-		}
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://github.com/GopeedLab/gopeed/releases",
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rr.Res.Files) == 1 {
-			t.Fatal("resolve error")
-		}
-	})
+	testInstallExtensionGitURL(t, "https://github.com/gopeed-test/repo#nested/extension")
 }
 
 func TestDownloader_InstallExtensionByGitSimple(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByGit("github.com/GopeedLab/gopeed-extension-samples#github-release-sample"); err != nil {
-			t.Fatal(err)
-		}
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://github.com/GopeedLab/gopeed/releases",
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rr.Res.Files) == 1 {
-			t.Fatal("resolve error")
-		}
-	})
+	testInstallExtensionGitURL(t, "github.com/gopeed-test/repo#nested/extension")
 }
 
 func TestDownloader_InstallExtensionByGitFull(t *testing.T) {
-	setupDownloader(func(downloader *Downloader) {
-		if _, err := downloader.InstallExtensionByGit("https://github.com/GopeedLab/gopeed-extension-samples.git#github-release-sample"); err != nil {
-			t.Fatal(err)
-		}
-		rr, err := downloader.Resolve(&base.Request{
-			URL: "https://github.com/GopeedLab/gopeed/releases",
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(rr.Res.Files) == 1 {
-			t.Fatal("resolve error")
-		}
-	})
+	testInstallExtensionGitURL(t, "https://github.com/gopeed-test/repo.git#nested/extension")
 }
 
 func TestDownloader_UpgradeExtension(t *testing.T) {
