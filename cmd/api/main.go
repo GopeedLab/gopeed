@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/GopeedLab/gopeed/cmd"
 	"github.com/GopeedLab/gopeed/pkg/rest/model"
 )
@@ -13,5 +16,8 @@ func main() {
 		Storage:   model.StorageBolt,
 		WebEnable: true,
 	}
-	cmd.Start(cfg)
+	if err := cmd.Start(cfg); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
