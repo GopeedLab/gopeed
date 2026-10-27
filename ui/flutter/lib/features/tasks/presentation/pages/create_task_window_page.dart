@@ -39,6 +39,7 @@ import '../../../../shared/widgets/app_toast.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
+import '../../application/pending_download.dart';
 import '../../application/task_list_navigation.dart';
 import '../widgets/history_search_field.dart';
 import '../widgets/create_task_action_buttons.dart';
@@ -1448,9 +1449,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                               ),
                             )
                           : ResolveFileTree(
-                              files: result.res.files,
-                              initialSelection: initialSelection,
-                              onSelectionChanged: (values) => selectedIndexes = values,
+                              sources: [PendingDownload(id: 'source', request: request, options: _buildOptions())
+                                ..result = result
+                                ..selected.addAll(selectedIndexes)],
+                              onSelectionChanged: (values) => selectedIndexes = values.map((key) => key.$2).toList()..sort(),
                             ),
                     ),
                     if (errorText != null) ...[

@@ -71,9 +71,11 @@ class FileTreeView<T> extends StatefulWidget {
     this.contentTextStyle,
     this.iconSize = 18,
     this.initialExpandedDepth,
+    this.directoryLabels = const {},
   });
 
   final List<FileTreeItem<T>> items;
+  final Map<String, String> directoryLabels;
   final Widget? headerLeading;
   final FileTreeNodeWidgetBuilder<T>? leadingBuilder;
   final FileTreeNodeIconBuilder<T>? iconBuilder;
@@ -115,7 +117,11 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _nodes = _buildTree(widget.items, expandedDepth: widget.initialExpandedDepth);
+    _nodes = _buildTree(
+      widget.items,
+      expandedDepth: widget.initialExpandedDepth,
+      directoryLabels: widget.directoryLabels,
+    );
     _allFoldersExpanded = _foldersAreExpanded(_nodes);
     _transitionController = AnimationController(vsync: this, duration: _treeTransitionDuration, value: 1)
       ..addStatusListener(_onTransitionStatus);
@@ -128,7 +134,10 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
     if (identical(widget.items, oldWidget.items)) return;
 
     final expandedKeys = _expandedFolderKeys(_nodes);
-    var nodes = _restoreExpandedFolders(_buildTree(widget.items), expandedKeys);
+    var nodes = _restoreExpandedFolders(
+      _buildTree(widget.items, directoryLabels: widget.directoryLabels),
+      expandedKeys,
+    );
     nodes = _sortNodes(nodes, _sortColumn, _sortDirection);
     _nodes = nodes;
     _allFoldersExpanded = _foldersAreExpanded(nodes);
@@ -873,7 +882,11 @@ class _BuildNode<T> {
   }
 }
 
-List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items, {int? expandedDepth}) {
+List<TreeNode<FileTreeNode<T>>> _buildTree<T>(
+  List<FileTreeItem<T>> items, {
+  int? expandedDepth,
+  Map<String, String> directoryLabels = const {},
+}) {
   final root = <_BuildNode<T>>[];
   final folders = <String, _BuildNode<T>>{};
   var originalIndex = 0;
@@ -886,7 +899,11 @@ List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items, {int?
     for (final part in parts) {
       currentPath = currentPath.isEmpty ? part : '$currentPath/$part';
       final folder = folders.putIfAbsent(currentPath, () {
-        final node = _BuildNode<T>(key: 'folder:$currentPath', label: part, originalIndex: originalIndex++);
+        final node = _BuildNode<T>(
+          key: 'folder:$currentPath',
+          label: directoryLabels[currentPath] ?? part,
+          originalIndex: originalIndex++,
+        );
         if (parent == null) {
           root.add(node);
         } else {
