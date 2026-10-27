@@ -4,6 +4,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/utils/analytics_client_id.dart';
 import 'log_util.dart';
 import 'package_info.dart';
 
@@ -71,13 +72,15 @@ class Analytics {
   }
 
   Future<String> _getDeviceId(String fallbackClientId) async {
+    if (!kIsWeb && Platform.isAndroid) {
+      return resolveAndroidAnalyticsClientId(fallbackClientId);
+    }
+
     String? deviceId;
     try {
       final info = DeviceInfoPlugin();
       if (kIsWeb) {
         deviceId = null;
-      } else if (Platform.isAndroid) {
-        deviceId = (await info.androidInfo).id;
       } else if (Platform.isIOS) {
         deviceId = (await info.iosInfo).identifierForVendor;
       } else if (Platform.isMacOS) {
