@@ -56,7 +56,7 @@ class SettingsController extends AsyncNotifier<SettingsState> {
         ..bookmarks = latest.extra.bookmarks
         ..createHistory = latest.extra.createHistory
         ..runAsMenubarApp = latest.extra.runAsMenubarApp
-        ..analyticsFallbackClientId = latest.extra.analyticsFallbackClientId;
+        ..deviceId = latest.extra.deviceId;
       // The backend preserves protocol-owned results and validates the whole PUT.
       await service.putConfig(config);
       final saved = await service.getConfig();
