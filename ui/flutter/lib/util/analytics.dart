@@ -4,7 +4,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import '../core/utils/analytics_client_id.dart';
 import 'log_util.dart';
 import 'package_info.dart';
 
@@ -29,8 +28,10 @@ class Analytics {
   late final int _sessionId;
   late final Dio _dio;
   bool _initialized = false;
+  String _fallbackClientId = '';
 
   String get clientId => _initialized ? _clientId : '';
+  String get fallbackClientId => _initialized ? _fallbackClientId : '';
 
   Future<void> init({String fallbackClientId = ''}) async {
     if (_initialized || !AnalyticsConfig.isConfigured) return;
@@ -72,13 +73,10 @@ class Analytics {
   }
 
   Future<String> _getDeviceId(String fallbackClientId) async {
-    if (!kIsWeb && Platform.isAndroid) {
-      return resolveAndroidAnalyticsClientId(fallbackClientId);
-    }
-
     String? deviceId;
     try {
       final info = DeviceInfoPlugin();
+      // Android Build.ID is shared across devices, so use the persisted fallback.
       if (kIsWeb) {
         deviceId = null;
       } else if (Platform.isIOS) {
@@ -94,15 +92,15 @@ class Analytics {
       logger.w('GA4Analytics: failed to read device id: $error');
     }
 
-    if (deviceId == null || deviceId.isEmpty) {
-      deviceId = fallbackClientId;
-      if (deviceId.isEmpty) {
-        final random = DateTime.now().microsecondsSinceEpoch % 2147483647;
-        final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-        deviceId = '$random.$timestamp';
-      }
+    if (deviceId != null && deviceId.isNotEmpty) return deviceId;
+
+    _fallbackClientId = fallbackClientId;
+    if (_fallbackClientId.isEmpty) {
+      final random = DateTime.now().microsecondsSinceEpoch % 2147483647;
+      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      _fallbackClientId = '$random.$timestamp';
     }
-    return deviceId;
+    return _fallbackClientId;
   }
 
   String _platformName() {
