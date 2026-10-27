@@ -16,12 +16,16 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
   createdAt: DateTime.parse(json['createdAt'] as String),
   updatedAt: DateTime.parse(json['updatedAt'] as String),
   doneAt: json['doneAt'] == null ? null : DateTime.parse(json['doneAt'] as String),
-)..protocol = $enumDecodeNullable(_$ProtocolEnumMap, json['protocol']);
+  group: json['group'] == null ? null : TaskGroup.fromJson(json['group'] as Map<String, dynamic>),
+  parentId: json['parentId'] as String? ?? '',
+)..protocol = $enumDecodeNullable(_$ProtocolEnumMap, json['protocol'], unknownValue: JsonKey.nullForUndefinedEnumValue);
 
 Map<String, dynamic> _$TaskToJson(Task instance) => <String, dynamic>{
   'id': instance.id,
   'name': instance.name,
   'protocol': ?_$ProtocolEnumMap[instance.protocol],
+  'group': ?instance.group?.toJson(),
+  'parentId': instance.parentId,
   'meta': instance.meta.toJson(),
   'status': _$StatusEnumMap[instance.status]!,
   'uploading': instance.uploading,
@@ -46,6 +50,20 @@ const _$ProtocolEnumMap = {
   Protocol.ed2k: 'ed2k',
   Protocol.hls: 'hls',
   Protocol.ftp: 'ftp',
+};
+
+TaskGroup _$TaskGroupFromJson(Map<String, dynamic> json) => TaskGroup(
+  id: json['id'] as String,
+  name: json['name'] as String,
+  path: json['path'] as String,
+  createdAt: DateTime.parse(json['createdAt'] as String),
+);
+
+Map<String, dynamic> _$TaskGroupToJson(TaskGroup instance) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'path': instance.path,
+  'createdAt': instance.createdAt.toIso8601String(),
 };
 
 Progress _$ProgressFromJson(Map<String, dynamic> json) => Progress(

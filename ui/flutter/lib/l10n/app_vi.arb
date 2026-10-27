@@ -477,5 +477,6 @@
   "trackerSubscriptionUpdateStatus": "Trạng thái cập nhật",
   "trackerSubscriptionTrackerCount": "Số tracker",
   "trackerSubscriptionNotUpdated": "Chưa cập nhật",
-  "actions": "Thao tác"
+  "actions": "Thao tác",
+  "taskGroupDeleteImpact": "Ảnh hưởng đến {taskCount} tác vụ tải và {fileCount} tệp."
 }

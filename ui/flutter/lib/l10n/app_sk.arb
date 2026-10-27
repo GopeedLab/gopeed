@@ -678,5 +678,6 @@
   "trackerSubscriptionUpdateStatus": "Stav aktualizácie",
   "trackerSubscriptionTrackerCount": "Počet trackerov",
   "trackerSubscriptionNotUpdated": "Zatiaľ neaktualizované",
-  "actions": "Akcie"
+  "actions": "Akcie",
+  "taskGroupDeleteImpact": "Ovplyvní {taskCount} sťahovaní a {fileCount} súborov."
 }

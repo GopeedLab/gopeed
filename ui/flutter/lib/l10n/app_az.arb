@@ -661,5 +661,6 @@
   "trackerSubscriptionUpdateStatus": "Yeniləmə statusu",
   "trackerSubscriptionTrackerCount": "Tracker sayı",
   "trackerSubscriptionNotUpdated": "Hələ yenilənməyib",
-  "actions": "Əməliyyatlar"
+  "actions": "Əməliyyatlar",
+  "taskGroupDeleteImpact": "{taskCount} endirməyə və {fileCount} fayla təsir edir."
 }

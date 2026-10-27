@@ -122,13 +122,14 @@ class TasksController extends AsyncNotifier<TasksState> {
   Future<TasksState> _fetch() async {
     final tasks = await ref.read(gopeedServiceProvider).getTasks(api_model.Status.values);
     final transferSpeeds = aggregateTaskTransferSpeeds(tasks);
-    tasks.sort((a, b) {
-      if (a.status == api_model.Status.running && b.status != api_model.Status.running) return -1;
-      if (a.status != api_model.Status.running && b.status == api_model.Status.running) return 1;
-      return b.updatedAt.compareTo(a.updatedAt);
-    });
     return TasksState(
-      tasks: tasks.map(TaskRecord.fromApi).toList(growable: false),
+      tasks: taskRecordsFromApi(tasks)
+        ..sort((a, b) {
+          final aRunning = a.status == TaskStatus.downloading && !a.waiting;
+          final bRunning = b.status == TaskStatus.downloading && !b.waiting;
+          if (aRunning != bRunning) return aRunning ? -1 : 1;
+          return (b.updatedAt ?? b.createdAt!).compareTo(a.updatedAt ?? a.createdAt!);
+        }),
       downloadSpeedBytesPerSecond: transferSpeeds.downloadBytesPerSecond,
       uploadSpeedBytesPerSecond: transferSpeeds.uploadBytesPerSecond,
     );

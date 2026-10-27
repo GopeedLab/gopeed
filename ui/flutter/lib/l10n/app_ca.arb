@@ -477,5 +477,6 @@
   "trackerSubscriptionUpdateStatus": "Estat de l’actualització",
   "trackerSubscriptionTrackerCount": "Nombre de trackers",
   "trackerSubscriptionNotUpdated": "Sense actualitzar",
-  "actions": "Accions"
+  "actions": "Accions",
+  "taskGroupDeleteImpact": "Afecta {taskCount} baixades i {fileCount} fitxers."
 }

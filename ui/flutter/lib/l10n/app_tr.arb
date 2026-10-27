@@ -477,5 +477,6 @@
   "trackerSubscriptionUpdateStatus": "Güncelleme durumu",
   "trackerSubscriptionTrackerCount": "Tracker sayısı",
   "trackerSubscriptionNotUpdated": "Henüz güncellenmedi",
-  "actions": "İşlemler"
+  "actions": "İşlemler",
+  "taskGroupDeleteImpact": "{taskCount} indirmeyi ve {fileCount} dosyayı etkiler."
 }

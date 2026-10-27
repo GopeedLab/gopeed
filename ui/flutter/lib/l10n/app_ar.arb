@@ -477,5 +477,6 @@
   "trackerSubscriptionUpdateStatus": "حالة التحديث",
   "trackerSubscriptionTrackerCount": "عدد المتتبعات",
   "trackerSubscriptionNotUpdated": "لم يُحدّث بعد",
-  "actions": "الإجراءات"
+  "actions": "الإجراءات",
+  "taskGroupDeleteImpact": "سيؤثر على {taskCount} من مهام التنزيل و{fileCount} من الملفات."
 }

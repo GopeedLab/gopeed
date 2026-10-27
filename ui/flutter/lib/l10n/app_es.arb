@@ -477,5 +477,6 @@
   "trackerSubscriptionUpdateStatus": "Estado de actualización",
   "trackerSubscriptionTrackerCount": "Número de trackers",
   "trackerSubscriptionNotUpdated": "Sin actualizar",
-  "actions": "Acciones"
+  "actions": "Acciones",
+  "taskGroupDeleteImpact": "Afecta a {taskCount} descargas y {fileCount} archivos."
 }
