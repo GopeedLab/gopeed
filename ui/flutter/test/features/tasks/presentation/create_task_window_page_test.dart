@@ -49,6 +49,7 @@ void main() {
         (_) => ResolveResult(
           id: '',
           res: Resource(
+            name: 'videos',
             files: [
               FileInfo(
                 name: 'under.mp4',
@@ -66,7 +67,14 @@ void main() {
       )
       ..bind(GopeedMethods.createTaskBatch, (batch) {
         submitted = CreateTaskBatch.fromJson(jsonDecode(jsonEncode(batch)) as Map<String, dynamic>);
-        return ['first', 'second'];
+        return CreateTaskBatchResult(
+          taskIds: ['first', 'second'],
+          groupId: 'generated',
+          items: [
+            CreateTaskBatchItemResult(index: 0, taskId: 'first'),
+            CreateTaskBatchItemResult(index: 1, taskId: 'second'),
+          ],
+        );
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
     final router = GoRouter(
@@ -97,6 +105,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(submitted?.reqs?.map((item) => item.opts?.size), [3, 1048576]);
     expect(submitted?.reqs?.map((item) => item.req?.url), ['https://example.com/video', 'https://example.com/audio']);
+    expect(submitted?.group, isTrue);
+    expect(submitted?.groupName, 'videos');
+    expect(submitted?.opts?.path, '/downloads');
+    expect(submitted?.reqs?.map((item) => item.opts?.path), ['/downloads', '/downloads']);
     expect(tester.takeException(), isNull);
   });
 
@@ -374,6 +386,7 @@ void main() {
       ..protocolConfig.http.connections = 8;
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
       ..bind(GopeedMethods.getConfig, (_) => config)
+      ..bind(GopeedMethods.putConfig, (_) => const RpcUnit())
       ..bind(GopeedMethods.createTask, (task) {
         submitted = task;
         return 'created-task';
@@ -1140,6 +1153,13 @@ void main() {
     final createdTasks = <CreateTask>[];
     final registry = CapabilityRegistry(createAppCapabilityCodecs())
       ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          id: 'resolved',
+          res: Resource(files: [FileInfo(name: 'file.zip')]),
+        ),
+      )
       ..bind(GopeedMethods.createTask, (task) {
         createdTasks.add(task);
         return 'task-id';
@@ -1189,8 +1209,12 @@ void main() {
 
     // Confirm creation
     await tester.tap(find.text('Confirm'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
+    expect(createdTasks, isEmpty);
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
     expect(createdTasks.length, 2);
     for (final t in createdTasks) {
       final extra = OptsExtraHttp.fromJson(Map<String, dynamic>.from(t.opts!.extra! as Map));
@@ -1481,7 +1505,89 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a resolved file list is split into tasks that keep the directory structure', (tester) async {
+  testWidgets('a resolved file list keeps structure and saves the selected parent directory', (tester) async {
+    tester.view.physicalSize = const Size(700, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    CreateTaskBatch? batch;
+    final config = DownloaderConfig(downloadDir: '/downloads');
+    DownloaderConfig? savedConfig;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => config)
+      ..bind(GopeedMethods.putConfig, (next) {
+        savedConfig = next;
+        return const RpcUnit();
+      })
+      ..bind(
+        GopeedMethods.resolve,
+        (_) => ResolveResult(
+          res: Resource(
+            name: 'bundle',
+            files: [
+              FileInfo(name: 'first.zip', path: 'first.zip', size: 1),
+              FileInfo(name: 'second.zip', path: 'second.zip', size: 1),
+            ],
+          ),
+        ),
+      )
+      ..bind(GopeedMethods.createTaskBatch, (request) {
+        batch = request;
+        return CreateTaskBatchResult(
+          taskIds: ['task-1', 'task-2'],
+          groupId: 'generated',
+          items: [
+            CreateTaskBatchItemResult(index: 0, taskId: 'task-1'),
+            CreateTaskBatchItemResult(index: 1, taskId: 'task-2'),
+          ],
+        );
+      })
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-directory-input')), '/chosen');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('create-task-remember-download-directory-checkbox')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/bundle');
+    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+    await tester.pumpAndSettle();
+
+    expect(batch, isNotNull);
+    expect(batch!.reqs, hasLength(2));
+    expect(batch!.group, isTrue);
+    expect(batch!.groupName, 'bundle');
+    expect(batch!.toJson().containsKey('groupId'), isFalse);
+    expect(batch!.opts?.path, '/chosen');
+    expect(batch!.opts?.asDefaultPath, isTrue);
+    for (final item in batch!.reqs!) {
+      // The split tasks keep the structure of the resolved resource, so they
+      // are never classified into a category or replace the selected parent.
+      expect(item.opts?.skipAutoCategorize, isTrue);
+      expect(item.opts?.asDefaultPath, isFalse);
+    }
+    expect(savedConfig?.downloadDir, '/chosen');
+    expect(batch!.group, isTrue);
+    expect(tester.takeException(), isNull);
+    await _settleToastTimers(tester);
+  });
+
+  testWidgets('a single selected file of a multi file resource is still not classified', (tester) async {
     tester.view.physicalSize = const Size(700, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1504,64 +1610,11 @@ void main() {
       )
       ..bind(GopeedMethods.createTaskBatch, (request) {
         batch = request;
-        return ['task-1', 'task-2'];
-      })
-      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
-    final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [appCapabilitiesProvider.overrideWithValue(capabilities)],
-        child: shad.ShadcnApp(
-          theme: AppTheme.light(),
-          materialTheme: AppTheme.materialLight(),
-          home: AppComponentThemes(child: const CreateTaskWindowPage()),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('create-task-url-input')), 'https://example.com/bundle');
-    await tester.tap(find.byKey(const ValueKey('create-task-confirm-button')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
-    await tester.pumpAndSettle();
-
-    expect(batch, isNotNull);
-    expect(batch!.reqs, hasLength(2));
-    for (final item in batch!.reqs!) {
-      // The split tasks keep the structure of the resolved resource, so they
-      // are never classified into a category.
-      expect(item.opts?.skipAutoCategorize, isTrue);
-    }
-    expect(batch!.opts?.skipAutoCategorize, isTrue);
-    expect(tester.takeException(), isNull);
-    await _settleToastTimers(tester);
-  });
-
-  testWidgets('a single selected file of a multi file resource is still not classified', (tester) async {
-    tester.view.physicalSize = const Size(700, 900);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    CreateTaskBatch? batch;
-    final registry = CapabilityRegistry(createAppCapabilityCodecs())
-      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
-      ..bind(
-        GopeedMethods.resolve,
-        (_) => ResolveResult(
-          res: Resource(
-            files: [
-              FileInfo(name: 'first.zip', path: 'first.zip', size: 1),
-              FileInfo(name: 'second.zip', path: 'second.zip', size: 1),
-            ],
-          ),
-        ),
-      )
-      ..bind(GopeedMethods.createTaskBatch, (request) {
-        batch = request;
-        return ['task-1'];
+        return CreateTaskBatchResult(
+          taskIds: ['task-1'],
+          groupId: 'generated',
+          items: [CreateTaskBatchItemResult(index: 0, taskId: 'task-1')],
+        );
       })
       ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
     final capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
@@ -1594,10 +1647,11 @@ void main() {
 
     expect(batch, isNotNull);
     expect(batch!.reqs, hasLength(1));
+    expect(batch!.group, isTrue);
     for (final item in batch!.reqs!) {
       expect(item.opts?.skipAutoCategorize, isTrue);
     }
-    expect(batch!.opts?.skipAutoCategorize, isTrue);
+    expect(batch!.group, isTrue);
     expect(tester.takeException(), isNull);
     await _settleToastTimers(tester);
   });

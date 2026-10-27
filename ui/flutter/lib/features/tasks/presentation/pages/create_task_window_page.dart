@@ -15,12 +15,9 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/model/create_task.dart';
-import '../../../../api/model/create_task_batch.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/options.dart' as api_options;
 import '../../../../api/model/request.dart';
-import '../../../../api/model/resolve_result.dart';
-import '../../../../api/model/resolve_task.dart';
 import '../../../../core/capabilities/app_capabilities.dart';
 import '../../../../core/utils/breakpoints.dart';
 import '../../../../core/utils/text_wrap.dart';
@@ -43,7 +40,7 @@ import '../../application/pending_download.dart';
 import '../../application/task_list_navigation.dart';
 import '../widgets/history_search_field.dart';
 import '../widgets/create_task_action_buttons.dart';
-import '../widgets/resolve_file_tree.dart';
+import '../widgets/resolve_download_dialog.dart';
 
 class CreateTaskWindowPage extends ConsumerStatefulWidget {
   const CreateTaskWindowPage({super.key, this.windowController, this.initialTask});
@@ -93,6 +90,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   bool _directDownload = false;
   int _protocolTab = 0;
   bool _creating = false;
+  List<PendingDownload> _pendingDownloads = [];
+  int _pendingSourceID = 0;
   bool _draggingTorrent = false;
   bool _asDefaultPath = false;
   String _configuredDownloadDirectory = '';
@@ -873,6 +872,16 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   Future<void> _finishCreation() async {
+    if (_asDefaultPath && _directoryManuallySet && _directoryController.text.trim().isNotEmpty) {
+      try {
+        final service = ref.read(gopeedServiceProvider);
+        final config = await service.getConfig();
+        config.downloadDir = _directoryController.text.trim();
+        await service.putConfig(config);
+      } catch (error) {
+        _showToast(error.toString());
+      }
+    }
     if (widget.windowController != null) {
       // Navigation is best-effort after a successful submission. A navigation
       // failure must not leave a completed form available for resubmission.
@@ -1000,35 +1009,39 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     });
     try {
       await _saveCreateHistory(urls);
-      final isDirect = _directDownload || urls.length > 1;
-      if (isDirect) {
-        await Future.wait(
-          urls.map((url) {
-            return ref
-                .read(gopeedServiceProvider)
-                .createTask(
-                  CreateTask(
-                    req: _buildRequest(url, protocolUrl: _protocolUrlFor(url)),
-                    opts: _buildOptions(
-                      url: _protocolUrlFor(url),
-                      name: urls.length > 1 ? '' : _renameController.text.trim(),
-                    ),
-                  ),
-                );
-          }),
-        );
+      final previous = <String, List<PendingDownload>>{};
+      final occurrence = <String, int>{};
+      for (final source in _pendingDownloads) {
+        final key = source.request.url;
+        previous.putIfAbsent(key, () => []).add(source);
+      }
+      _pendingDownloads = [
+        for (final url in urls)
+          _pendingSource(url, urls.length, previous, occurrence.update(url, (value) => value + 1, ifAbsent: () => 0)),
+      ];
+      final service = ref.read(gopeedServiceProvider);
+      if (_directDownload) {
+        for (final source in _pendingDownloads) {
+          source.selected.add(0);
+          await source.submit(service, direct: true);
+        }
+        final errors = _pendingDownloads.map((source) => source.createError).whereType<String>().toList();
+        if (errors.isNotEmpty) throw StateError(errors.join('\n'));
         await _finishCreation();
         return;
       }
-
-      final request = _buildRequest(urls.first, protocolUrl: _protocolUrlFor(urls.first));
-      final result = await ref.read(gopeedServiceProvider).resolve(ResolveTask(req: request));
+      for (final source in _pendingDownloads) {
+        await source.resolve(service);
+      }
       if (!mounted) return;
-      final created = await _showResolveDialog(request, result);
+      final created = await showResolveDownloadsDialog(
+        context,
+        sources: _pendingDownloads,
+        service: service,
+        directoryManuallySet: _directoryManuallySet,
+      );
       if (!created) {
-        if (mounted) {
-          setState(() => _creating = false);
-        }
+        if (mounted) setState(() => _creating = false);
         return;
       }
       await _finishCreation();
@@ -1038,6 +1051,27 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
         setState(() => _creating = false);
       }
     }
+  }
+
+  PendingDownload _pendingSource(
+    String url,
+    int urlCount,
+    Map<String, List<PendingDownload>> previous,
+    int occurrence,
+  ) {
+    final request = _buildRequest(url, protocolUrl: _protocolUrlFor(url));
+    final key = url;
+    final candidates = previous[key];
+    final options = _buildOptions(name: urlCount == 1 ? _renameController.text.trim() : '', omitChecksum: urlCount > 1);
+    if (candidates != null && candidates.isNotEmpty) {
+      final source = candidates.removeAt(0);
+      if (!source.created && source.createdFiles.isEmpty) {
+        source.request = request;
+        source.options = options;
+      }
+      return source;
+    }
+    return PendingDownload(id: 'source-${_pendingSourceID++}-$occurrence', request: request, options: options);
   }
 
   List<String> _inputUrls() {
@@ -1297,191 +1331,6 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     _categoryHighlightTimer = null;
     if (!mounted) return;
     _applyCategoryHighlight();
-  }
-
-  Future<void> _submitResolved(Request request, ResolveResult result, List<int> selectedIndexes) async {
-    final selected = (selectedIndexes.isEmpty ? result.res.files.asMap().keys.toList() : selectedIndexes.toList())
-      ..sort();
-    final isMultiFile = selected.length > 1;
-    if (result.id.isNotEmpty) {
-      await ref
-          .read(gopeedServiceProvider)
-          .createTask(
-            CreateTask(
-              rid: result.id,
-              opts: _buildOptions(url: request.url, selectFiles: selected, omitChecksum: isMultiFile),
-            ),
-          );
-      return;
-    }
-
-    if (result.res.files.isNotEmpty) {
-      // The extension returned a file list, so the resource keeps a directory
-      // structure. The split tasks must not be classified into a category, the
-      // structure of the resolved resource is kept. The decision is based on
-      // the resolved resource, not on the number of selected files.
-      final keepStructure = _directoryManuallySet || result.res.name.isNotEmpty || result.res.files.length > 1;
-      final reqs = selected.map((index) {
-        final file = result.res.files[index];
-        final fileRequest = file.req ?? request;
-        return CreateTaskBatchItem(
-          req: fileRequest,
-          opts: api_options.Options(
-            size: _parseProtocol(fileRequest.url) == _TaskProtocol.http ? file.size : 0,
-            name: file.name,
-            path: path.join(_directoryController.text.trim(), result.res.name, file.path),
-            skipAutoCategorize: keepStructure,
-            extra: _buildOptions(url: fileRequest.url, omitChecksum: isMultiFile).extra,
-          ),
-        );
-      }).toList();
-      await ref
-          .read(gopeedServiceProvider)
-          .createTaskBatch(
-            CreateTaskBatch(
-              reqs: reqs,
-              opts: _buildOptions(url: request.url, omitChecksum: isMultiFile, skipAutoCategorize: keepStructure),
-            ),
-          );
-      return;
-    }
-
-    await ref
-        .read(gopeedServiceProvider)
-        .createTask(
-          CreateTask(
-            req: request,
-            opts: _buildOptions(url: request.url),
-          ),
-        );
-  }
-
-  Future<bool> _showResolveDialog(Request request, ResolveResult result) async {
-    final initialSelection = List<int>.generate(result.res.files.length, (index) => index);
-    var selectedIndexes = List<int>.of(initialSelection);
-    var submitting = false;
-    String? errorText;
-    // The directory the task will be saved to. A directory the user named
-    // wins over the category suggestion of the resolve response, the backend
-    // keeps it and does not classify the task.
-    final effectiveDownloadDir = _directoryManuallySet
-        ? _directoryController.text.trim()
-        : (result.suggestedDownloadDir.isNotEmpty ? result.suggestedDownloadDir : _directoryController.text.trim());
-
-    final dialog = const DialogOverlayHandler().show<bool>(
-      context: context,
-      alignment: Alignment.center,
-      barrierDismissable: !submitting,
-      builder: (dialogContext) {
-        final palette = AppPalette.of(dialogContext);
-        final screenSize = MediaQuery.sizeOf(dialogContext);
-        final dialogWidth = screenSize.width < 760 ? screenSize.width - 32 : 720.0;
-        final treeHeight = screenSize.height < 700 ? screenSize.height * 0.55 : 440.0;
-
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            Future<void> submit() async {
-              if (result.res.files.isNotEmpty && selectedIndexes.isEmpty) {
-                setDialogState(() => errorText = dialogContext.l10n.selectAtLeastOneFile);
-                return;
-              }
-              setDialogState(() {
-                submitting = true;
-                errorText = null;
-              });
-              try {
-                await _submitResolved(request, result, selectedIndexes);
-                if (dialogContext.mounted) {
-                  await closeOverlay(dialogContext, true);
-                }
-              } catch (error) {
-                if (!dialogContext.mounted) return;
-                setDialogState(() {
-                  submitting = false;
-                  errorText = error.toString();
-                });
-              }
-            }
-
-            return AlertDialog(
-              padding: const EdgeInsets.all(18),
-              title: Text(
-                result.res.name.trim().isEmpty ? dialogContext.l10n.resolvedFiles : result.res.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              content: SizedBox(
-                width: dialogWidth,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      result.res.files.isEmpty
-                          ? dialogContext.l10n.resourceHasNoFiles
-                          : dialogContext.l10n.resolvedFileCount(result.res.files.length),
-                      style: TextStyle(color: palette.textSecondary, fontSize: 12),
-                    ),
-                    if (effectiveDownloadDir.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        dialogContext.l10n.resolvedCategoryDirectory(effectiveDownloadDir),
-                        key: const ValueKey('resolve-category-directory'),
-                        style: TextStyle(color: palette.textSecondary, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: treeHeight.clamp(260.0, 460.0),
-                      child: result.res.files.isEmpty
-                          ? Container(
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: palette.cardBg,
-                                border: Border.all(color: palette.border),
-                                borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-                              ),
-                              child: Text(
-                                dialogContext.l10n.noFiles,
-                                style: TextStyle(color: palette.textMuted, fontSize: 13),
-                              ),
-                            )
-                          : ResolveFileTree(
-                              sources: [PendingDownload(id: 'source', request: request, options: _buildOptions())
-                                ..result = result
-                                ..selected.addAll(selectedIndexes)],
-                              onSelectionChanged: (values) => selectedIndexes = values.map((key) => key.$2).toList()..sort(),
-                            ),
-                    ),
-                    if (errorText != null) ...[
-                      const SizedBox(height: 10),
-                      Text(errorText!, style: TextStyle(color: palette.error, fontSize: 12)),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                flutter.Flexible(
-                  child: CreateTaskActionButtons(
-                    submitting: submitting,
-                    onCancel: () => closeOverlay(dialogContext, false),
-                    onSubmit: submit,
-                    cancelLabel: dialogContext.l10n.cancel,
-                    submitLabel: dialogContext.l10n.createAction,
-                    cancelButtonKey: const ValueKey('resolve-cancel-button'),
-                    submitButtonKey: const ValueKey('resolve-create-button'),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    final created = await dialog.future;
-    return created == true;
   }
 
   Future<void> _showCreateHistory() async {

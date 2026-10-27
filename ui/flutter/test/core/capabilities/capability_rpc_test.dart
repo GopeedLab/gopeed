@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gopeed/api/model/create_task_batch.dart';
 import 'package:gopeed/api/model/options.dart';
 import 'package:gopeed/api/model/patch_task.dart';
 import 'package:gopeed/api/model/request.dart';
@@ -21,6 +22,45 @@ class _Payload {
 }
 
 void main() {
+  test('group creation crosses the window boundary without losing directory or child options', () async {
+    final codecs = createAppCapabilityCodecs();
+    CreateTaskBatch? submitted;
+    final registry = CapabilityRegistry(codecs)
+      ..bind(GopeedMethods.createTaskBatch, (batch) {
+        submitted = batch;
+        return CreateTaskBatchResult(
+          taskIds: ['child'],
+          groupId: 'generated',
+          name: 'folder',
+          path: '/downloads/folder',
+          items: [CreateTaskBatchItemResult(index: 0, taskId: 'child')],
+        );
+      });
+    final batch = CreateTaskBatch(
+      group: true,
+      groupName: 'folder',
+      opts: Options(path: '/downloads'),
+      reqs: [
+        CreateTaskBatchItem(
+          req: Request(url: 'https://example.com/file'),
+          opts: Options(path: '/downloads/folder/nested', name: 'file.txt'),
+        ),
+      ],
+    );
+    final result = codecs.decode<CreateTaskBatchResult>(
+      await registry.invoke(GopeedMethods.createTaskBatch.name, codecs.encode(batch)),
+    );
+    expect(result.taskIds, ['child']);
+    expect(result.groupId, 'generated');
+    expect(result.items.single.taskId, 'child');
+    expect(submitted?.group, isTrue);
+    expect(submitted?.toJson().containsKey('groupId'), isFalse);
+    expect(submitted?.opts?.path, '/downloads');
+    expect(submitted?.reqs?.single.opts?.path, '/downloads/folder/nested');
+    expect(CreateTaskBatch.fromJson({'reqs': []}).group, isFalse);
+    expect(CreateTaskBatchResult.fromResponse(['legacy']).taskIds, ['legacy']);
+  });
+
   test('serialized resolve and patch capabilities keep separate request contracts', () async {
     final codecs = createAppCapabilityCodecs();
     String? resolvedUrl;
@@ -28,7 +68,10 @@ void main() {
     final registry = CapabilityRegistry(codecs)
       ..bind(GopeedMethods.resolve, (request) {
         resolvedUrl = request.req?.url;
-        return ResolveResult(id: 'resolved-id', res: Resource(files: []));
+        return ResolveResult(
+          id: 'resolved-id',
+          res: Resource(files: []),
+        );
       })
       ..bind(GopeedMethods.patchTask, (request) {
         patch = request;
