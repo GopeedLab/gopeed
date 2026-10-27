@@ -32,25 +32,23 @@ class Analytics {
 
   String get clientId => _initialized ? _clientId : '';
 
-  /// Returns an updated fallback ID to persist, or null when unchanged.
-  /// An empty string clears a stored fallback when a device ID is available.
+  /// Returns a newly generated fallback ID for the caller to persist, if any.
   Future<String?> init({String fallbackClientId = ''}) async {
     if (_initialized || !AnalyticsConfig.isConfigured) return null;
     final deviceId = await _getDeviceId();
-    String? fallbackClientIdToSave;
+    String? generatedClientId;
     if (deviceId != null && deviceId.isNotEmpty) {
       _clientId = deviceId;
-      if (fallbackClientId.isNotEmpty) fallbackClientIdToSave = '';
     } else if (fallbackClientId.isNotEmpty) {
       _clientId = fallbackClientId;
     } else {
       _clientId = const Uuid().v4();
-      fallbackClientIdToSave = _clientId;
+      generatedClientId = _clientId;
     }
     _sessionId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     _dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 10)));
     _initialized = true;
-    return fallbackClientIdToSave;
+    return generatedClientId;
   }
 
   Future<void> logAppOpen() => logEvent('app_open');
