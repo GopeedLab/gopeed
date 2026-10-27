@@ -32,23 +32,25 @@ class Analytics {
 
   String get clientId => _initialized ? _clientId : '';
 
-  /// Returns a newly generated fallback ID for the caller to persist, if any.
+  /// Returns an updated fallback ID to persist, or null when unchanged.
+  /// An empty string clears a stored fallback when a device ID is available.
   Future<String?> init({String fallbackClientId = ''}) async {
     if (_initialized || !AnalyticsConfig.isConfigured) return null;
     final deviceId = await _getDeviceId();
-    String? generatedClientId;
+    String? fallbackClientIdToSave;
     if (deviceId != null && deviceId.isNotEmpty) {
       _clientId = deviceId;
+      if (fallbackClientId.isNotEmpty) fallbackClientIdToSave = '';
     } else if (fallbackClientId.isNotEmpty) {
       _clientId = fallbackClientId;
     } else {
       _clientId = const Uuid().v4();
-      generatedClientId = _clientId;
+      fallbackClientIdToSave = _clientId;
     }
     _sessionId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     _dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 10)));
     _initialized = true;
-    return generatedClientId;
+    return fallbackClientIdToSave;
   }
 
   Future<void> logAppOpen() => logEvent('app_open');
@@ -83,13 +85,13 @@ class Analytics {
   }
 
   Future<String?> _getDeviceId() async {
+    // Web has no device ID; Android Build.ID is shared across devices.
+    if (kIsWeb || Platform.isAndroid) return null;
+
     String? deviceId;
     try {
       final info = DeviceInfoPlugin();
-      // Android Build.ID is shared across devices, so use the persisted fallback.
-      if (kIsWeb) {
-        deviceId = null;
-      } else if (Platform.isIOS) {
+      if (Platform.isIOS) {
         deviceId = (await info.iosInfo).identifierForVendor;
       } else if (Platform.isMacOS) {
         deviceId = (await info.macOsInfo).systemGUID;
