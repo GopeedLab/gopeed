@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 import 'log_util.dart';
 import 'package_info.dart';
@@ -41,9 +42,7 @@ class Analytics {
     } else if (fallbackClientId.isNotEmpty) {
       _clientId = fallbackClientId;
     } else {
-      final random = DateTime.now().microsecondsSinceEpoch % 2147483647;
-      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      _clientId = '$random.$timestamp';
+      _clientId = const Uuid().v4();
       generatedClientId = _clientId;
     }
     _sessionId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
