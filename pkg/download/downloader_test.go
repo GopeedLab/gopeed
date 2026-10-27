@@ -1362,13 +1362,14 @@ func TestDownloader_GetTasksByFilter(t *testing.T) {
 	})
 
 	batchOpts := newTestDownloadOpt(t)
-	taskIds, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
+	batchResult, err := downloader.CreateDirectBatch(&base.CreateTaskBatch{
 		Reqs: reqs,
 		Opts: batchOpts,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	taskIds := batchResult
 
 	wg.Wait()
 
@@ -4036,5 +4037,693 @@ func TestDownloader_PatchTask_NotFound(t *testing.T) {
 	err := downloader.Patch("non-existent-id", patchReq, nil)
 	if err != ErrTaskNotFound {
 		t.Errorf("Patch() error = %v, want %v", err, ErrTaskNotFound)
+	}
+}
+
+func newTaskGroupDownloader(t *testing.T, storage Storage, maxRunning int) *Downloader {
+	t.Helper()
+	if storage == nil {
+		storage = NewMemStorage()
+	}
+	d := NewDownloader(&DownloaderConfig{Storage: storage, StorageDir: t.TempDir(), TempDir: t.TempDir(), FetchManagers: []fetcher.FetcherManager{&generationTestManager{holdOpen: true}}})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	d.cfg.MaxRunning = maxRunning
+	t.Cleanup(func() { d.Close() })
+	return d
+}
+
+func taskGroupBatch(root string, count int) *base.CreateTaskBatch {
+	batch := &base.CreateTaskBatch{Group: true, GroupName: "folder", Opts: &base.Options{Path: root}}
+	for i := 0; i < count; i++ {
+		batch.Reqs = append(batch.Reqs, &base.CreateTaskBatchItem{Req: &base.Request{URL: fmt.Sprintf("generation://file/%d", i)}})
+	}
+	return batch
+}
+
+func TestDownloader_TaskGroupMetadataAndRestore(t *testing.T) {
+	storageDir := t.TempDir()
+	d := newTaskGroupDownloader(t, NewBoltStorage(storageDir), 0)
+	root := t.TempDir()
+	result, err := d.CreateDirectBatchWithResult(taskGroupBatch(root, 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.GroupID == "" || len(result.TaskIDs) != 2 || result.Path != filepath.Join(root, "folder") {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+	if len(d.GetTasks()) != 2 || d.GetTask(result.GroupID) != nil {
+		t.Fatal("a group must not be a download task")
+	}
+	for _, id := range result.TaskIDs {
+		task := d.GetTask(id)
+		if task.ParentID != result.GroupID || task.group == nil || task.Meta.Opts.Path != result.Path || !task.Meta.Opts.SkipAutoCategorize {
+			t.Fatalf("incorrect member: %+v", task)
+		}
+		wire, err := json.Marshal(task)
+		if err != nil || !bytes.Contains(wire, []byte(`"group":`)) || bytes.Contains(wire, []byte(`"type":`)) {
+			t.Fatalf("invalid task query: %s, %v", wire, err)
+		}
+	}
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
+	restored := newTaskGroupDownloader(t, NewBoltStorage(storageDir), 0)
+	for _, id := range result.TaskIDs {
+		task := restored.GetTask(id)
+		if task == nil || task.group == nil || task.group.Path != result.Path || task.group.Name != result.Name || task.ParentID != result.GroupID {
+			t.Fatalf("lost metadata on restore: %+v", task)
+		}
+	}
+	if err := restored.Delete(&TaskFilter{IDs: []string{result.GroupID, result.TaskIDs[0]}}, false); err != nil {
+		t.Fatal(err)
+	}
+	if len(restored.GetTasks()) != 0 || len(restored.groups) != 0 {
+		t.Fatal("group deletion left records")
+	}
+}
+
+func TestDownloader_TaskGroupQueue(t *testing.T) {
+	for _, existing := range []int{0, 2} {
+		t.Run(fmt.Sprint(existing), func(t *testing.T) {
+			d := newTaskGroupDownloader(t, nil, 5)
+			for i := 0; i < existing; i++ {
+				if _, err := d.CreateDirect(&base.Request{URL: "generation://independent"}, &base.Options{Path: t.TempDir()}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			result, err := d.CreateDirectBatchWithResult(taskGroupBatch(t.TempDir(), 6))
+			if err != nil {
+				t.Fatal(err)
+			}
+			running, waiting := 0, 0
+			for _, id := range result.TaskIDs {
+				switch d.taskStatus(d.GetTask(id)) {
+				case base.DownloadStatusRunning:
+					running++
+				case base.DownloadStatusWait:
+					waiting++
+				}
+			}
+			if running != 5-existing || waiting != 1+existing {
+				t.Fatalf("group running=%d waiting=%d, existing=%d", running, waiting, existing)
+			}
+			if err := d.Pause(&TaskFilter{IDs: []string{result.GroupID, result.TaskIDs[0]}}); err != nil {
+				t.Fatal(err)
+			}
+			for _, id := range result.TaskIDs {
+				if d.taskStatus(d.GetTask(id)) != base.DownloadStatusPause {
+					t.Fatal("group pause did not pause all members")
+				}
+			}
+			d.lock.Lock()
+			queued := len(d.waitTasks)
+			d.lock.Unlock()
+			if queued != 0 {
+				t.Fatal("paused group still has queued members")
+			}
+			if err := d.Continue(&TaskFilter{IDs: []string{result.GroupID, result.TaskIDs[0]}}); err != nil {
+				t.Fatal(err)
+			}
+			if len(d.expandGroupTaskIDs([]string{result.GroupID, result.TaskIDs[0]})) != 6 {
+				t.Fatal("mixed operation duplicates members")
+			}
+		})
+	}
+}
+
+type taskGroupTestStorage struct {
+	Storage
+	beforePut       func(*Task) error
+	failGroupPut    bool
+	failGroupDelete bool
+}
+
+func (s *taskGroupTestStorage) Put(bucket, key string, value any) error {
+	if bucket == bucketTaskGroup && s.failGroupPut {
+		return errors.New("group write failed")
+	}
+	if bucket == bucketTask && s.beforePut != nil {
+		if err := s.beforePut(value.(*Task)); err != nil {
+			return err
+		}
+	}
+	return s.Storage.Put(bucket, key, value)
+}
+func (s *taskGroupTestStorage) Delete(bucket, key string) error {
+	if bucket == bucketTaskGroup && s.failGroupDelete {
+		return errors.New("group delete failed")
+	}
+	return s.Storage.Delete(bucket, key)
+}
+
+func TestDownloader_TaskGroupPartialFailureAndFirstSave(t *testing.T) {
+	var saved []*Task
+	storage := &taskGroupTestStorage{Storage: NewMemStorage(), beforePut: func(task *Task) error {
+		saved = append(saved, task)
+		if task.Meta.Req.URL == "generation://bad" {
+			return errors.New("child write failed")
+		}
+		return nil
+	}}
+	d := newTaskGroupDownloader(t, storage, 0)
+	batch := taskGroupBatch(t.TempDir(), 3)
+	batch.Reqs[1].Req.URL = "generation://bad"
+	result, err := d.CreateDirectBatchWithResult(batch)
+	if err != nil || len(result.TaskIDs) != 2 || len(result.Items) != 3 || result.Items[1].Error == "" || result.Items[1].TaskID != "" {
+		t.Fatalf("unexpected partial result: %+v, %v", result, err)
+	}
+	for _, task := range saved {
+		if task.ParentID != result.GroupID {
+			t.Fatal("first save omitted parent ID")
+		}
+	}
+	if len(d.groups) != 1 || len(d.GetTasks()) != 2 {
+		t.Fatal("partial result lost successful members")
+	}
+	parent := t.TempDir()
+	batch = taskGroupBatch(parent, 1)
+	batch.Reqs[0].Req.URL = "generation://bad"
+	failed, err := d.CreateDirectBatchWithResult(batch)
+	if err != nil || len(failed.TaskIDs) != 0 || len(failed.Items) != 1 || failed.Items[0].Error == "" {
+		t.Fatalf("all failure result: %+v, %v", failed, err)
+	}
+	if failed.GroupID != "" || failed.Name != "" || failed.Path != "" {
+		t.Fatalf("empty failed group returned unusable metadata: %+v", failed)
+	}
+	wire, err := json.Marshal(failed)
+	if err != nil || !bytes.Contains(wire, []byte(`"items":[{"index":0,"error":`)) {
+		t.Fatalf("all-failed group must return item errors in object response: %s, %v", wire, err)
+	}
+	if _, err := os.Stat(filepath.Join(parent, "folder")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("failed group directory retained")
+	}
+}
+
+func TestDownloader_TaskGroupDirectoryValidation(t *testing.T) {
+	d := newTaskGroupDownloader(t, nil, 0)
+	root := t.TempDir()
+	for _, name := range []string{"", " ", ".", "..", "../outside", "nested/folder", `nested\folder`, "/absolute", "a\x00b"} {
+		batch := taskGroupBatch(root, 1)
+		batch.GroupName = name
+		if _, err := d.CreateDirectBatchWithResult(batch); err == nil {
+			t.Fatalf("accepted invalid name %q", name)
+		}
+	}
+	first, err := d.CreateDirectBatchWithResult(taskGroupBatch(root, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := d.CreateDirectBatchWithResult(taskGroupBatch(root, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.GroupID == second.GroupID || second.Name != "folder (1)" || second.Path != filepath.Join(root, "folder (1)") {
+		t.Fatalf("group identity/dedup failed: %+v", second)
+	}
+	batch := taskGroupBatch(root, 2)
+	batch.Reqs[0].Opts = &base.Options{Path: filepath.Join(root, "nested")}
+	batch.Reqs[1].Opts = &base.Options{Path: filepath.Dir(root)}
+	result, err := d.CreateDirectBatchWithResult(batch)
+	if err != nil || len(result.TaskIDs) != 1 || result.Items[1].Error == "" {
+		t.Fatalf("path containment failed: %+v, %v", result, err)
+	}
+	if d.GetTask(result.TaskIDs[0]).Meta.Opts.Path != filepath.Join(result.Path, "nested") {
+		t.Fatal("nested member path was not rebased")
+	}
+	d.cfg.WhiteDownloadDirs = []string{root}
+	if _, err := d.CreateDirectBatchWithResult(taskGroupBatch(root, 1)); err == nil {
+		t.Fatal("group directory bypassed whitelist")
+	}
+}
+
+func TestDownloader_TaskGroupConcurrentNames(t *testing.T) {
+	d := newTaskGroupDownloader(t, nil, 0)
+	root := t.TempDir()
+	results := make(chan *CreateTaskBatchResult, 4)
+	errs := make(chan error, 4)
+	for range 4 {
+		go func() {
+			result, err := d.CreateDirectBatchWithResult(taskGroupBatch(root, 1))
+			results <- result
+			errs <- err
+		}()
+	}
+	ids, paths := map[string]bool{}, map[string]bool{}
+	for range 4 {
+		result := <-results
+		if err := <-errs; err != nil {
+			t.Fatal(err)
+		}
+		if ids[result.GroupID] || paths[result.Path] {
+			t.Fatal("concurrent groups share identity/directory")
+		}
+		ids[result.GroupID] = true
+		paths[result.Path] = true
+	}
+}
+
+func TestDownloader_TaskGroupStorageFailures(t *testing.T) {
+	storage := &taskGroupTestStorage{Storage: NewMemStorage(), failGroupPut: true}
+	d := newTaskGroupDownloader(t, storage, 0)
+	root := t.TempDir()
+	if _, err := d.CreateDirectBatchWithResult(taskGroupBatch(root, 1)); err == nil {
+		t.Fatal("group write failure ignored")
+	}
+	entries, _ := os.ReadDir(root)
+	if len(entries) != 0 {
+		t.Fatal("failed metadata write left reserved directory")
+	}
+	storage.failGroupPut = false
+	result, err := d.CreateDirectBatchWithResult(taskGroupBatch(root, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage.failGroupDelete = true
+	if err := d.Delete(&TaskFilter{IDs: result.TaskIDs}, false); err == nil {
+		t.Fatal("expected metadata delete failure")
+	}
+	if d.groups[result.GroupID] == nil {
+		t.Fatal("failed metadata deletion discarded retry state")
+	}
+	storage.failGroupDelete = false
+	if err := d.Delete(&TaskFilter{IDs: []string{result.GroupID}}, false); err != nil {
+		t.Fatal(err)
+	}
+	if len(d.groups) != 0 {
+		t.Fatal("metadata deletion retry failed")
+	}
+}
+
+func TestDownloader_TaskGroupResponseCompatibility(t *testing.T) {
+	d := newTaskGroupDownloader(t, nil, 0)
+	batch := taskGroupBatch(t.TempDir(), 1)
+	batch.Group = false
+	ordinary, err := d.CreateDirectBatchWithResult(batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire, err := json.Marshal(ordinary)
+	if err != nil || len(wire) == 0 || wire[0] != '[' {
+		t.Fatalf("ordinary batch must return array: %s, %v", wire, err)
+	}
+	group, err := d.CreateDirectBatchWithResult(taskGroupBatch(t.TempDir(), 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire, err = json.Marshal(group)
+	if err != nil || !bytes.Contains(wire, []byte(`"groupId":`)) || !bytes.Contains(wire, []byte(`"taskIds":`)) {
+		t.Fatalf("group batch response: %s, %v", wire, err)
+	}
+	failedGroup, err := json.Marshal(&CreateTaskBatchResult{TaskIDs: []string{}, Items: []CreateTaskBatchItemResult{{Index: 0, Error: "failed"}}})
+	if err != nil || len(failedGroup) == 0 || failedGroup[0] != '{' {
+		t.Fatalf("all-failed group response must remain an object: %s, %v", failedGroup, err)
+	}
+	// Membership and operations do not depend on a synthetic parent task or metadata.
+	d.lock.Lock()
+	delete(d.groups, group.GroupID)
+	d.lock.Unlock()
+	if got := d.expandGroupTaskIDs([]string{group.GroupID}); !reflect.DeepEqual(got, group.TaskIDs) {
+		t.Fatalf("parentId expansion lost: %v", got)
+	}
+}
+
+type groupFailureDeleteStorage struct{ Storage }
+
+func (s *groupFailureDeleteStorage) Delete(bucket, key string) error {
+	if bucket == bucketSave {
+		return errors.New("save delete failed")
+	}
+	return s.Storage.Delete(bucket, key)
+}
+func TestDownloader_TaskGroupDeletePersistence(t *testing.T) {
+	storage := &groupFailureDeleteStorage{Storage: NewMemStorage()}
+	d := newTaskGroupDownloader(t, storage, 0)
+	result, err := d.CreateDirectBatchWithResult(taskGroupBatch(t.TempDir(), 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Delete(&TaskFilter{IDs: result.TaskIDs}, false); err == nil {
+		t.Fatal("expected failure")
+	}
+	if d.GetTask(result.TaskIDs[0]) == nil {
+		t.Fatal("missing live task")
+	}
+	var saved Task
+	exists, err := storage.Get(bucketTask, result.TaskIDs[0], &saved)
+	if err != nil || !exists {
+		t.Fatalf("retained member is absent from durable storage: exists=%v err=%v", exists, err)
+	}
+}
+
+type groupFailureConcurrentDeleteStorage struct {
+	Storage
+	blockedID string
+	entered   chan struct{}
+	release   chan struct{}
+}
+
+func (s *groupFailureConcurrentDeleteStorage) Delete(bucket, key string) error {
+	if bucket == bucketTask && key == s.blockedID {
+		close(s.entered)
+		<-s.release
+		return errors.New("member delete failed")
+	}
+	return s.Storage.Delete(bucket, key)
+}
+func TestDownloader_TaskGroupConcurrentDelete(t *testing.T) {
+	storage := &groupFailureConcurrentDeleteStorage{Storage: NewMemStorage(), entered: make(chan struct{}), release: make(chan struct{})}
+	d := newTaskGroupDownloader(t, storage, 0)
+	result, err := d.CreateDirectBatchWithResult(taskGroupBatch(t.TempDir(), 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage.blockedID = result.TaskIDs[0]
+	firstDone := make(chan error, 1)
+	go func() { firstDone <- d.Delete(&TaskFilter{IDs: []string{result.TaskIDs[0]}}, false) }()
+	<-storage.entered
+	if err := d.Delete(&TaskFilter{IDs: []string{result.TaskIDs[1]}}, false); err != nil {
+		t.Fatal(err)
+	}
+	close(storage.release)
+	if err := <-firstDone; err == nil {
+		t.Fatal("expected member deletion failure")
+	}
+	if d.GetTask(result.TaskIDs[0]) == nil {
+		t.Fatal("missing retained member")
+	}
+	if d.groups[result.GroupID] == nil {
+		t.Fatal("concurrent cleanup removed group metadata of a failed member")
+	}
+}
+
+func TestDownloader_TaskGroupForceRetryPathReuse(t *testing.T) {
+	storage := &taskGroupTestStorage{Storage: NewMemStorage()}
+	d := newTaskGroupDownloader(t, storage, 0)
+	root := t.TempDir()
+	first, err := d.CreateDirectBatchWithResult(taskGroupBatch(root, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage.failGroupDelete = true
+	_ = d.Delete(&TaskFilter{IDs: []string{first.GroupID}}, true)
+	storage.failGroupDelete = false
+	second, err := d.CreateDirectBatchWithResult(taskGroupBatch(root, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Path == second.Path {
+		t.Fatal("reserved metadata path was reused")
+	}
+	marker := filepath.Join(second.Path, "second-group.txt")
+	if err := os.WriteFile(marker, []byte("retain"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Delete(&TaskFilter{IDs: []string{first.GroupID}}, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatal("old group cleanup deleted new group file", err)
+	}
+}
+
+func TestDownloader_TaskGroupPlaceholderPath(t *testing.T) {
+	d := newTaskGroupDownloader(t, nil, 0)
+	result, err := d.CreateDirectBatchWithResult(taskGroupBatch(filepath.Join(t.TempDir(), "%year%"), 1))
+	if err != nil || len(result.TaskIDs) != 1 {
+		t.Fatalf("placeholder path rejected: %+v, %v", result, err)
+	}
+}
+func TestDownloader_TaskGroupDefaultNestedPath(t *testing.T) {
+	d := newTaskGroupDownloader(t, nil, 0)
+	d.cfg.DownloadDir = t.TempDir()
+	batch := taskGroupBatch("", 1)
+	batch.Reqs[0].Opts = &base.Options{Path: "nested"}
+	result, err := d.CreateDirectBatchWithResult(batch)
+	if err != nil || len(result.TaskIDs) != 1 {
+		t.Fatalf("default nested path rejected: %+v, %v", result, err)
+	}
+	if d.GetTask(result.TaskIDs[0]).Meta.Opts.Path != filepath.Join(result.Path, "nested") {
+		t.Fatal("default nested path lost")
+	}
+}
+
+func TestDownloader_TaskGroupDeleteFailureRestoresQueue(t *testing.T) {
+	storage := &groupFailureConcurrentDeleteStorage{Storage: NewMemStorage(), entered: make(chan struct{}), release: make(chan struct{})}
+	d := newTaskGroupDownloader(t, storage, 1)
+	result, err := d.CreateDirectBatchWithResult(taskGroupBatch(t.TempDir(), 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage.blockedID = result.TaskIDs[1]
+	close(storage.release)
+	if err := d.Delete(&TaskFilter{IDs: []string{storage.blockedID}}, false); err == nil {
+		t.Fatal("expected deletion failure")
+	}
+	d.lock.Lock()
+	queued := len(d.waitTasks)
+	d.lock.Unlock()
+	if queued != 1 {
+		t.Fatal("failed deletion lost queued member")
+	}
+	if err := d.Delete(&TaskFilter{IDs: []string{result.TaskIDs[0]}}, false); err != nil {
+		t.Fatal(err)
+	}
+	waitForTaskStatus(t, d, storage.blockedID, base.DownloadStatusRunning, time.Second)
+}
+
+func TestDownloader_ResolvedCreateFailureRetainsResourceID(t *testing.T) {
+	fail := true
+	storage := &taskGroupTestStorage{Storage: NewMemStorage(), beforePut: func(*Task) error {
+		if fail {
+			return errors.New("task write failed")
+		}
+		return nil
+	}}
+	d := newTaskGroupDownloader(t, storage, 0)
+	resolved, err := d.Resolve(&base.Request{URL: "generation://resolved"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id, err := d.CreateWithOptions(resolved.ID, &base.Options{Path: t.TempDir()}); id != "" || err == nil {
+		t.Fatalf("expected save failure: %s %v", id, err)
+	}
+	fail = false
+	if id, err := d.CreateWithOptions(resolved.ID, &base.Options{Path: t.TempDir()}); id == "" || err != nil {
+		t.Fatalf("resolved retry failed: %s %v", id, err)
+	}
+}
+
+func TestDownloader_TaskGroupExtensionBatchRestore(t *testing.T) {
+	payload := []byte("folder download")
+	url := startCategoryFileServer(t, "original.bin", payload)
+	storageDir := t.TempDir()
+	parentDir := t.TempDir()
+	output := filepath.Join(parentDir, "folder")
+	d := NewDownloader(&DownloaderConfig{Storage: NewBoltStorage(storageDir), StorageDir: t.TempDir(), TempDir: t.TempDir()})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { d.Close() }()
+	defaultDir := t.TempDir()
+	categoryDir := putCategoryConfig(t, d, defaultDir, true, []string{"txt", "mp4"})
+	cfg, err := d.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.MaxRunning = 0
+	if err := d.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	extDir := t.TempDir()
+	manifest := `{"name":"task-group","author":"test","title":"Task group","version":"1.0.0","scripts":[{"event":"onResolve","match":{"urls":["https://example.com/folder"]},"entry":"index.js"}]}`
+	script := fmt.Sprintf(`gopeed.events.onResolve(ctx => {
+  ctx.res = {name: 'folder', files: [
+    {name: 'report.txt', path: '', size: %d, req: {url: %q}},
+    {name: 'movie.mp4', path: 'nested', size: %d, req: {url: %q}}
+  ]};
+});`, len(payload), url, len(payload), url)
+	for name, content := range map[string]string{"manifest.json": manifest, "index.js": script} {
+		if err := os.WriteFile(filepath.Join(extDir, name), []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := d.InstallExtensionByFolder(extDir, true); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := d.Resolve(&base.Request{URL: "https://example.com/folder"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.ID != "" || len(resolved.Res.Files) != 2 {
+		t.Fatalf("expected extension files for batch creation, got %+v", resolved)
+	}
+	batch := &base.CreateTaskBatch{Group: true, GroupName: resolved.Res.Name, Opts: &base.Options{Path: parentDir}}
+	for _, file := range resolved.Res.Files {
+		batch.Reqs = append(batch.Reqs, &base.CreateTaskBatchItem{
+			Req: file.Req,
+			Opts: &base.Options{
+				Name: file.Name, Path: filepath.Join(parentDir, file.Path), Size: file.Size,
+				SkipAutoCategorize: true,
+			},
+		})
+	}
+	result, err := d.CreateDirectBatchWithResult(batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := result.TaskIDs
+	if len(ids) != len(batch.Reqs) {
+		t.Fatalf("child count = %d, want %d", len(ids), len(batch.Reqs))
+	}
+	for _, id := range ids {
+		status, err := d.RuntimeStatus(id)
+		if err != nil || status.Status != base.DownloadStatusWait || status.Total != int64(len(payload)) {
+			t.Fatalf("queued child status = %+v, error = %v", status, err)
+		}
+	}
+	if err := d.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	d = NewDownloader(&DownloaderConfig{Storage: NewBoltStorage(storageDir), StorageDir: t.TempDir(), TempDir: t.TempDir()})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	group := d.groups[result.GroupID]
+	if group == nil || group.Name != "folder" || group.Path != output {
+		t.Fatalf("group did not survive restart: %+v", group)
+	}
+	for i, id := range ids {
+		child := d.GetTask(id)
+		opts := batch.Reqs[i].Opts
+		if child == nil || child.ParentID != group.ID || child.Meta.Opts.Path != filepath.Join(output, resolved.Res.Files[i].Path) || child.Meta.Opts.Name != opts.Name || child.Meta.Opts.Size != opts.Size {
+			t.Fatalf("child options or membership lost after restart: %+v", child)
+		}
+	}
+	cfg, err = d.GetConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.MaxRunning = 1
+	if err := d.PutConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan *Event, len(ids))
+	d.Listener(func(event *Event) {
+		if event.Key == EventKeyDone || event.Key == EventKeyError {
+			done <- event
+		}
+	})
+	if err := d.Continue(&TaskFilter{IDs: []string{group.ID}}); err != nil {
+		t.Fatal(err)
+	}
+	for range ids {
+		select {
+		case event := <-done:
+			if event.Key != EventKeyDone {
+				t.Fatalf("child download failed: %v", event.Err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("group members did not finish with one download slot")
+		}
+	}
+	for i, item := range batch.Reqs {
+		path := filepath.Join(output, resolved.Res.Files[i].Path, item.Opts.Name)
+		content, err := os.ReadFile(path)
+		if err != nil || string(content) != string(payload) {
+			t.Fatalf("downloaded file %s = %q, error = %v", path, content, err)
+		}
+	}
+	if _, err := os.Stat(categoryDir); !os.IsNotExist(err) {
+		t.Fatalf("explicit folder download was categorized: %v", err)
+	}
+	cfg, err = d.GetConfig()
+	if err != nil || cfg.DownloadDir != defaultDir {
+		t.Fatalf("folder download changed the default directory: %+v, error = %v", cfg, err)
+	}
+}
+
+func TestDownloader_TaskGroupSeparateBatchCreatesSeparateGroups(t *testing.T) {
+	d := newTaskGroupDownloader(t, nil, 0)
+	parent := t.TempDir()
+	first, err := d.CreateDirectBatchWithResult(taskGroupBatch(parent, 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondBatch := taskGroupBatch(parent, 1)
+	secondBatch.Reqs[0].Req.URL = "generation://retry"
+	second, err := d.CreateDirectBatchWithResult(secondBatch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.GroupID == second.GroupID || first.Path == second.Path {
+		t.Fatalf("separate batch calls shared a group: first=%+v second=%+v", first, second)
+	}
+	if d.GetTask(second.TaskIDs[0]).ParentID != second.GroupID {
+		t.Fatal("second batch member has wrong group")
+	}
+}
+
+func TestDownloader_TaskGroupRejectsEmptyParentAndWindowsNames(t *testing.T) {
+	d := newTaskGroupDownloader(t, nil, 0)
+	d.cfg.DownloadDir = ""
+	if _, err := d.CreateDirectBatchWithResult(taskGroupBatch("", 1)); err == nil {
+		t.Fatal("empty parent accepted")
+	}
+	for _, name := range []string{"bad:name", "bad*name", "bad?name", "bad.", "bad<name>"} {
+		batch := taskGroupBatch(t.TempDir(), 1)
+		batch.GroupName = name
+		if _, err := d.CreateDirectBatchWithResult(batch); err == nil {
+			t.Fatalf("invalid group name accepted: %q", name)
+		}
+	}
+}
+
+func TestDownloader_TaskGroupNestedWhitelist(t *testing.T) {
+	d := newTaskGroupDownloader(t, nil, 0)
+	root := t.TempDir()
+	d.cfg.WhiteDownloadDirs = []string{filepath.Join(root, "*")}
+	batch := taskGroupBatch(root, 1)
+	batch.Reqs[0].Opts = &base.Options{Path: filepath.Join(root, "nested")}
+	result, err := d.CreateDirectBatchWithResult(batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := d.doStart(d.GetTask(result.TaskIDs[0])); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDownloader_CreateDirectBatchSignatureCompatibility(t *testing.T) {
+	var createBatch func(*Downloader, *base.CreateTaskBatch) ([]string, error) = (*Downloader).CreateDirectBatch
+	d := newTaskGroupDownloader(t, nil, 0)
+	if createBatch == nil {
+		t.Fatal("CreateDirectBatch compatibility method is nil")
+	}
+	ids, err := createBatch(d, &base.CreateTaskBatch{})
+	if err == nil || ids != nil {
+		t.Fatalf("empty batch result = %v, %v; want nil IDs and an error", ids, err)
+	}
+}
+
+func TestDownloader_TaskGroupNamePlaceholderIsStable(t *testing.T) {
+	d := newTaskGroupDownloader(t, nil, 0)
+	parent := t.TempDir()
+	batch := taskGroupBatch(parent, 1)
+	batch.GroupName = "album-%year%"
+	result, err := d.CreateDirectBatchWithResult(batch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(parent, "album-%year%")
+	task := d.GetTask(result.TaskIDs[0])
+	if err := d.doStart(task); err != nil {
+		t.Fatal(err)
+	}
+	if result.Path != want || task.Meta.Opts.Path != want {
+		t.Fatalf("reserved=%q task=%q want=%q", result.Path, task.Meta.Opts.Path, want)
 	}
 }

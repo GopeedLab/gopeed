@@ -29,18 +29,53 @@ type ResolveResult struct {
 	SuggestedDownloadDir string `json:"suggestedDownloadDir,omitempty"`
 }
 
+// TaskGroup stores the directory shared by independently scheduled tasks.
+type TaskGroup struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Path      string    `json:"path"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// CreateTaskBatchResult preserves the array response for ordinary batches.
+// Group batches report item failures so clients can retry without resubmitting
+// successful items.
+type CreateTaskBatchResult struct {
+	TaskIDs []string                    `json:"taskIds"`
+	GroupID string                      `json:"groupId"`
+	Name    string                      `json:"name"`
+	Path    string                      `json:"path"`
+	Items   []CreateTaskBatchItemResult `json:"items"`
+}
+
+type CreateTaskBatchItemResult struct {
+	Index  int    `json:"index"`
+	TaskID string `json:"taskId,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+func (r *CreateTaskBatchResult) MarshalJSON() ([]byte, error) {
+	if r.GroupID == "" && r.Name == "" && r.Path == "" && len(r.Items) == 0 {
+		return json.Marshal(r.TaskIDs)
+	}
+	type result CreateTaskBatchResult
+	return json.Marshal((*result)(r))
+}
+
 // Task represents a download unit.
 // Options flow path:
 // REST Request (model.CreateTask/ResolveTask) -> pkg/download Downloader -> Task.Meta.Opts (base.Options) -> Fetcher.Resolve/Start (e.g. internal/protocol/http/fetcher.go)
 type Task struct {
-	ID        string               `json:"id"`
-	Protocol  string               `json:"protocol"`
-	Meta      *fetcher.FetcherMeta `json:"meta"`
-	Status    base.Status          `json:"status"`
-	Uploading bool                 `json:"uploading"`
-	Progress  *Progress            `json:"progress"`
-	CreatedAt time.Time            `json:"createdAt"`
-	UpdatedAt time.Time            `json:"updatedAt"`
+	ID       string               `json:"id"`
+	Protocol string               `json:"protocol"`
+	Meta     *fetcher.FetcherMeta `json:"meta"`
+	// ParentID identifies the independently stored group.
+	ParentID  string      `json:"parentId,omitempty"`
+	Status    base.Status `json:"status"`
+	Uploading bool        `json:"uploading"`
+	Progress  *Progress   `json:"progress"`
+	CreatedAt time.Time   `json:"createdAt"`
+	UpdatedAt time.Time   `json:"updatedAt"`
 	// DoneAt is the time when the task completed; nil if it has never
 	// finished. A done task never leaves the done state, so the value is
 	// written once and kept.
@@ -53,6 +88,8 @@ type Task struct {
 	// classified or renamed again. A task stored before this flag existed
 	// does not have it and keeps its directory and name.
 	NeedsPreparation bool `json:"needsPreparation,omitempty"`
+
+	group *TaskGroup
 
 	producer         production.Source
 	producerReceived int64
@@ -144,10 +181,12 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 	type rawTaskType Task
 	jsonTask := struct {
 		*rawTaskType
-		Name string `json:"name"`
+		Name  string     `json:"name"`
+		Group *TaskGroup `json:"group,omitempty"`
 	}{
 		(*rawTaskType)(t),
 		t.Name(),
+		t.group,
 	}
 	return json.Marshal(jsonTask)
 }

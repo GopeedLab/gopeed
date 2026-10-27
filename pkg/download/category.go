@@ -3,6 +3,7 @@ package download
 import (
 	"errors"
 	"path"
+	"path/filepath"
 	"strings"
 	"unicode"
 
@@ -32,6 +33,10 @@ func categoryForResource(cfg *base.DownloaderStoreConfig, res *base.Resource) *b
 // runs on the result, so a category directory the white list rejects falls
 // back to the base directory of this task instead of failing it.
 func (d *Downloader) decideDownloadDir(opts *base.Options, res *base.Resource) (string, error) {
+	return d.decideDownloadDirForTask(opts, res, nil)
+}
+
+func (d *Downloader) decideDownloadDirForTask(opts *base.Options, res *base.Resource, group *TaskGroup) (string, error) {
 	if opts == nil {
 		opts = &base.Options{}
 	}
@@ -47,6 +52,17 @@ func (d *Downloader) decideDownloadDir(opts *base.Options, res *base.Resource) (
 	// task nor the config names a directory.
 	if base == "" {
 		return "", errors.New("download directory is empty")
+	}
+	if group != nil && opts.SkipAutoCategorize {
+		target := base
+		root := group.Path
+		relative, pathErr := filepath.Rel(filepath.Clean(root), filepath.Clean(target))
+		if pathErr == nil && filepath.IsLocal(relative) {
+			if !d.isDownloadPathAllowed(root) {
+				return "", errors.New("task group directory is outside the white list")
+			}
+			return target, nil
+		}
 	}
 	target := base
 	if !opts.SkipAutoCategorize {

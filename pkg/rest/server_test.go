@@ -245,6 +245,44 @@ func TestCreateDirectTaskBatchWithOpt(t *testing.T) {
 	})
 }
 
+func TestCreateDirectTaskBatchWithGroup(t *testing.T) {
+	doTest(func() {
+		cfg, err := Downloader.GetConfig()
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg.MaxRunning = 0
+		if err := Downloader.PutConfig(cfg); err != nil {
+			t.Fatal(err)
+		}
+		result := httpRequestCheckOk[struct {
+			GroupID string   `json:"groupId"`
+			Name    string   `json:"name"`
+			Path    string   `json:"path"`
+			TaskIDs []string `json:"taskIds"`
+		}](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
+			Reqs: []*base.CreateTaskBatchItem{{Req: createReq.Req}, {Req: createReq.Req}},
+			Opts: &base.Options{Path: t.TempDir()}, Group: true, GroupName: "folder",
+		})
+		if result.GroupID == "" || result.Name != "folder" || len(result.TaskIDs) != 2 {
+			t.Fatalf("unexpected group result: %+v", result)
+		}
+		all := httpRequestCheckOk[[]map[string]any](http.MethodGet, "/api/v1/tasks", nil)
+		if len(all) != 2 {
+			t.Fatalf("expected real tasks only, got %d", len(all))
+		}
+		for _, task := range all {
+			if task["parentId"] != result.GroupID || task["type"] != nil {
+				t.Fatalf("invalid member: %+v", task)
+			}
+			metadata, ok := task["group"].(map[string]any)
+			if !ok || metadata["path"] != result.Path || metadata["name"] != result.Name {
+				t.Fatalf("missing group metadata: %+v", task)
+			}
+		}
+	})
+}
+
 func TestPauseAndContinueTask(t *testing.T) {
 	doTest(func() {
 		var wg sync.WaitGroup
