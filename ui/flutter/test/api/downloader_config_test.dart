@@ -81,7 +81,7 @@ void main() {
       ..createHistory = ['https://example.com/file.zip']
       ..runAsMenubarApp = true
       ..analyticsEnabled = false
-      ..analyticsClientId = 'client-id';
+      ..analyticsFallbackClientId = 'client-id';
 
     final decoded = DownloaderConfig.fromJson(config.toJson()).extra;
     expect(decoded.windowState.isMaximized, isTrue);
@@ -91,7 +91,25 @@ void main() {
     expect(decoded.createHistory, ['https://example.com/file.zip']);
     expect(decoded.runAsMenubarApp, isTrue);
     expect(decoded.analyticsEnabled, isFalse);
-    expect(decoded.analyticsClientId, 'client-id');
+    expect(decoded.analyticsFallbackClientId, 'client-id');
+  });
+
+  test('legacy analytics client IDs are ignored without migration', () {
+    final config = ExtraConfig.fromJson({'analyticsClientId': 'AP3A.241105.008'});
+
+    expect(config.analyticsFallbackClientId, isEmpty);
+    expect(config.toJson(), isNot(contains('analyticsClientId')));
+  });
+
+  test('analytics fallback ID uses only its dedicated config field', () {
+    final config = ExtraConfig.fromJson({
+      'analyticsClientId': 'AP3A.241105.008',
+      'analyticsFallbackClientId': 'stored-fallback',
+    });
+
+    expect(config.analyticsFallbackClientId, 'stored-fallback');
+    expect(config.toJson()['analyticsFallbackClientId'], 'stored-fallback');
+    expect(config.toJson(), isNot(contains('analyticsClientId')));
   });
 
   test('categories and the auto-categorize switch round-trip through the config', () {

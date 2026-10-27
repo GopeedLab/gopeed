@@ -196,7 +196,7 @@ class ExtraConfig {
   List<String> createHistory;
   bool runAsMenubarApp;
   bool analyticsEnabled;
-  String analyticsClientId;
+  String analyticsFallbackClientId;
 
   ExtraConfig({
     this.themeMode = '',
@@ -214,7 +214,7 @@ class ExtraConfig {
     this.createHistory = const [],
     this.runAsMenubarApp = false,
     this.analyticsEnabled = true,
-    this.analyticsClientId = '',
+    this.analyticsFallbackClientId = '',
   }) : windowState = windowState ?? WindowStateConfig();
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>
