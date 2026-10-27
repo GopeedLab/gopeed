@@ -28,17 +28,28 @@ class Analytics {
   late final int _sessionId;
   late final Dio _dio;
   bool _initialized = false;
-  String _fallbackClientId = '';
 
   String get clientId => _initialized ? _clientId : '';
-  String get fallbackClientId => _initialized ? _fallbackClientId : '';
 
-  Future<void> init({String fallbackClientId = ''}) async {
-    if (_initialized || !AnalyticsConfig.isConfigured) return;
-    _clientId = await _getDeviceId(fallbackClientId);
+  /// Returns a newly generated fallback ID for the caller to persist, if any.
+  Future<String?> init({String fallbackClientId = ''}) async {
+    if (_initialized || !AnalyticsConfig.isConfigured) return null;
+    final deviceId = await _getDeviceId();
+    String? generatedClientId;
+    if (deviceId != null && deviceId.isNotEmpty) {
+      _clientId = deviceId;
+    } else if (fallbackClientId.isNotEmpty) {
+      _clientId = fallbackClientId;
+    } else {
+      final random = DateTime.now().microsecondsSinceEpoch % 2147483647;
+      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      _clientId = '$random.$timestamp';
+      generatedClientId = _clientId;
+    }
     _sessionId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     _dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 10)));
     _initialized = true;
+    return generatedClientId;
   }
 
   Future<void> logAppOpen() => logEvent('app_open');
@@ -72,7 +83,7 @@ class Analytics {
     }
   }
 
-  Future<String> _getDeviceId(String fallbackClientId) async {
+  Future<String?> _getDeviceId() async {
     String? deviceId;
     try {
       final info = DeviceInfoPlugin();
@@ -92,15 +103,7 @@ class Analytics {
       logger.w('GA4Analytics: failed to read device id: $error');
     }
 
-    if (deviceId != null && deviceId.isNotEmpty) return deviceId;
-
-    _fallbackClientId = fallbackClientId;
-    if (_fallbackClientId.isEmpty) {
-      final random = DateTime.now().microsecondsSinceEpoch % 2147483647;
-      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      _fallbackClientId = '$random.$timestamp';
-    }
-    return _fallbackClientId;
+    return deviceId;
   }
 
   String _platformName() {
