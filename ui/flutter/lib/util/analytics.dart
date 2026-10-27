@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:android_id/android_id.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -83,13 +84,14 @@ class Analytics {
   }
 
   Future<String?> _getDeviceId() async {
-    // Web has no device ID; Android Build.ID is shared across devices.
-    if (kIsWeb || Platform.isAndroid) return null;
+    if (kIsWeb) return null;
 
     String? deviceId;
     try {
       final info = DeviceInfoPlugin();
-      if (Platform.isIOS) {
+      if (Platform.isAndroid) {
+        deviceId = await const AndroidId().getId();
+      } else if (Platform.isIOS) {
         deviceId = (await info.iosInfo).identifierForVendor;
       } else if (Platform.isMacOS) {
         deviceId = (await info.macOsInfo).systemGUID;
