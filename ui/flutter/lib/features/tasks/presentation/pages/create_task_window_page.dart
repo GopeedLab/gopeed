@@ -36,6 +36,7 @@ import '../../../../shared/widgets/app_path_picker_field.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/app_tooltip.dart';
 import '../../../../shared/widgets/app_toast.dart';
+import '../../../../shared/widgets/rtorrent_handoff_notice.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../util/util.dart';
 import '../../application/pending_create_task.dart';
@@ -65,6 +66,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   final _proxyPasswordController = TextEditingController();
   final _httpHeadersController = AppHttpHeadersController(defaultNames: const ['User-Agent', 'Cookie', 'Referer']);
   final _trackersController = TextEditingController();
+
+  /// New torrents go to rtorrent, which uses the torrent's own trackers.
+  bool _btHandoff = false;
   final _archivePasswordController = TextEditingController();
   final _checksumHashController = TextEditingController();
   final _formScrollController = ScrollController();
@@ -758,23 +762,35 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 ),
                               ],
                             ] else ...[
-                              AppFormRow(
-                                direction: stacked ? Axis.vertical : Axis.horizontal,
-                                label: context.l10n.trackers,
-                                child: SizedBox(
-                                  height: 96,
-                                  child: AppTextField(
-                                    controller: _trackersController,
-                                    hintText: context.l10n.oneTrackerPerLine,
-                                    keyboardType: TextInputType.multiline,
-                                    textInputAction: TextInputAction.newline,
-                                    maxLines: null,
-                                    minLines: null,
-                                    expands: true,
-                                    textAlignVertical: TextAlignVertical.top,
-                                    filled: true,
-                                    border: Border.all(color: palette.border),
-                                    borderRadius: BorderRadius.circular(4),
+                              if (_btHandoff) ...[
+                                RtorrentHandoffNotice(
+                                  key: const ValueKey('create-task-bt-handoff-notice'),
+                                  message: context.l10n.btTrackersHandledByRtorrent,
+                                  actionLabel: context.l10n.btExternalChange,
+                                  onAction: _showBtSettings,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              DisabledWhen(
+                                disabled: _btHandoff,
+                                child: AppFormRow(
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
+                                  label: context.l10n.trackers,
+                                  child: SizedBox(
+                                    height: 96,
+                                    child: AppTextField(
+                                      controller: _trackersController,
+                                      hintText: context.l10n.oneTrackerPerLine,
+                                      keyboardType: TextInputType.multiline,
+                                      textInputAction: TextInputAction.newline,
+                                      maxLines: null,
+                                      minLines: null,
+                                      expands: true,
+                                      textAlignVertical: TextAlignVertical.top,
+                                      filled: true,
+                                      border: Border.all(color: palette.border),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -827,6 +843,14 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     await windowManager.close();
   }
 
+  Future<void> _showBtSettings() async {
+    try {
+      await ref.read(appCapabilitiesProvider).navigation.showBtSettings();
+    } catch (error) {
+      debugPrint('Unable to open the BitTorrent settings: $error');
+    }
+  }
+
   Future<void> _finishCreation() async {
     if (widget.windowController != null) {
       // Navigation is best-effort after a successful submission. A navigation
@@ -847,6 +871,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       final config = await ref.read(gopeedServiceProvider).getConfig();
       if (!mounted) return;
       setState(() {
+        _btHandoff = config.protocolConfig.bt.externalActive;
         _configuredDownloadDirectory = config.downloadDir.trim();
         if (config.downloadDir.isNotEmpty &&
             (_directoryController.text.isEmpty || _directoryController.text == 'C:/Users/levi/Downloads')) {

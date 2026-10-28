@@ -40,6 +40,10 @@ class LocalAppCapabilities {
       AppRouter.showDownloadingTasks();
       return const RpcUnit();
     });
+    registry.bind(NavigationMethods.showBtSettings, (_) {
+      AppRouter.showBtSettings();
+      return const RpcUnit();
+    });
     capabilities = AppCapabilities(LocalCapabilityInvoker(registry));
   }
 

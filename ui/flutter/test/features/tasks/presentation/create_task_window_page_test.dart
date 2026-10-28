@@ -31,6 +31,7 @@ import 'package:gopeed/shared/theme/app_palette.dart';
 import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:gopeed/shared/widgets/app_loading_button.dart';
 import 'package:gopeed/shared/widgets/app_tooltip.dart';
+import 'package:gopeed/shared/widgets/rtorrent_handoff_notice.dart';
 import 'package:gopeed/l10n/app_localizations.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
@@ -1601,6 +1602,77 @@ void main() {
     }
     expect(batch!.opts?.skipAutoCategorize, isTrue);
     expect(tester.takeException(), isNull);
+    await _settleToastTimers(tester);
+  });
+  testWidgets('trackers are disabled while torrents go to rtorrent, with a way to the setting', (tester) async {
+    tester.view.physicalSize = const Size(1024, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var opened = 0;
+    final config = DownloaderConfig(downloadDir: '/downloads');
+    config.protocolConfig.bt.external.enable = true;
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => config)
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit())
+      ..bind(NavigationMethods.showBtSettings, (_) {
+        opened++;
+        return const RpcUnit();
+      });
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('BitTorrent'));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Torrents are handled by rtorrent, which uses the torrent's own trackers."), findsOneWidget);
+    final trackers = find.ancestor(of: find.text('Trackers'), matching: find.byType(DisabledWhen));
+    expect(tester.widget<DisabledWhen>(trackers).disabled, isTrue);
+    final change = find.byKey(const ValueKey('rtorrent-handoff-notice-action'));
+    await tester.ensureVisible(change);
+    await tester.pumpAndSettle();
+    await tester.tap(change);
+    await tester.pumpAndSettle();
+    expect(opened, 1);
+    await _settleToastTimers(tester);
+  });
+
+  testWidgets('trackers stay editable without the rtorrent hand-off', (tester) async {
+    tester.view.physicalSize = const Size(1024, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.getConfig, (_) => DownloaderConfig(downloadDir: '/downloads'))
+      ..bind(StorageMethods.saveCreateHistory, (_) => const RpcUnit());
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCapabilitiesProvider.overrideWithValue(AppCapabilities(LocalCapabilityInvoker(registry)))],
+        child: shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: AppComponentThemes(child: const CreateTaskWindowPage()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('BitTorrent'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('create-task-bt-handoff-notice')), findsNothing);
+    final trackers = find.ancestor(of: find.text('Trackers'), matching: find.byType(DisabledWhen));
+    expect(tester.widget<DisabledWhen>(trackers).disabled, isFalse);
     await _settleToastTimers(tester);
   });
 }

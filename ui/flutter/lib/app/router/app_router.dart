@@ -29,6 +29,13 @@ class AppRouter {
     GoRouter.of(context).go('/');
   }
 
+  /// Opens Settings > Downloads, where the BitTorrent settings are.
+  static void showBtSettings() {
+    final context = rootNavigatorKey.currentContext;
+    if (context == null || !context.mounted) return;
+    GoRouter.of(context).go('/settings/downloads');
+  }
+
   static GoRouter build(WebAuthController webAuthController) {
     // Keep desktop and web sections as peers; native mobile retains home below them.
     final isMobile =

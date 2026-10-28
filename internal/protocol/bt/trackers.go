@@ -114,7 +114,7 @@ func (fm *FetcherManager) CronJobs(host fetcher.ProtocolHost) []fetcher.CronJob 
 		Run: func(ctx context.Context, source fetcher.TriggerSource) error {
 			return fm.updateTrackers(ctx, host, source)
 		},
-	}}
+	}, localRtorrentJob(host)}
 }
 func parseTrackers(data []byte) ([]string, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(data))

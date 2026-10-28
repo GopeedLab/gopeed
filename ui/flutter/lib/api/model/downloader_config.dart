@@ -127,7 +127,15 @@ class BtState {
   @JsonKey(fromJson: _trackerUpdateTimeFromJson)
   DateTime? lastTrackerUpdateTime;
 
-  BtState({this.trackerSources = const {}, this.trackerSubscriptionStatuses = const {}, this.lastTrackerUpdateTime});
+  /// The endpoint of a local rtorrent the server found by itself (Rtorrent 16 on a QNAP NAS), or empty.
+  String localRtorrent;
+
+  BtState({
+    this.trackerSources = const {},
+    this.trackerSubscriptionStatuses = const {},
+    this.lastTrackerUpdateTime,
+    this.localRtorrent = '',
+  });
 
   factory BtState.fromJson(Map<String, dynamic>? json) => json == null ? BtState() : _$BtStateFromJson(json);
 
@@ -147,6 +155,15 @@ class BtConfig {
   bool disableDht;
   bool disablePex;
 
+  /// Hands new torrent and magnet downloads to rtorrent instead of the built-in engine.
+  BtExternalConfig external = BtExternalConfig();
+
+  /// Whether new torrents go to rtorrent: the user's switch, or the detection while the switch was never set.
+  bool get externalActive => external.enable ?? state.localRtorrent.isNotEmpty;
+
+  /// The rtorrent address in use: the one the user set, else the detected one.
+  String get externalEndpoint => external.url.isNotEmpty ? external.url : state.localRtorrent;
+
   BtConfig({
     this.trackerSubscribeUrls = const [],
     this.autoUpdateTrackers = true,
@@ -162,6 +179,30 @@ class BtConfig {
   factory BtConfig.fromJson(Map<String, dynamic> json) => _$BtConfigFromJson(json);
 
   Map<String, dynamic> toJson() => _$BtConfigToJson(this);
+}
+
+/// The rtorrent hand-off. It mirrors the server's `protocolConfig.bt.external`.
+@JsonSerializable()
+class BtExternalConfig {
+  /// The user's switch. Null means automatic: on while the server detects a local rtorrent.
+  bool? enable;
+
+  /// rtorrent's XML-RPC endpoint: `http://host/RPC2`, `https://...`, `scgi://host:port` or `scgi:///path/to/socket`.
+  String url;
+
+  /// HTTP basic auth, for http and https endpoints.
+  String username;
+  String password;
+
+  /// The download folder as rtorrent sees it; empty uses the task's folder.
+  String directory;
+
+  BtExternalConfig({this.enable, this.url = '', this.username = '', this.password = '', this.directory = ''});
+
+  factory BtExternalConfig.fromJson(Map<String, dynamic>? json) =>
+      json == null ? BtExternalConfig() : _$BtExternalConfigFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BtExternalConfigToJson(this);
 }
 
 @JsonSerializable()

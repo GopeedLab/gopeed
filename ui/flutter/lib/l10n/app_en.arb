@@ -165,6 +165,25 @@
   "runAsMenubarApp": "Run as menubar app",
   "runAsMenubarAppDesc": "Hide dock icon and run in menubar only",
   "seedConfig": "Seed Config",
+  "btExternal": "Send torrents to rtorrent",
+  "btExternalDescription": "New torrent and magnet downloads go to rtorrent, and Gopeed shows their progress. Tasks you already have stay where they are.",
+  "btExternalUrl": "rtorrent address",
+  "btExternalUrlDescription": "http://host/RPC2, scgi://host:port, scgi:///path/to/socket. The username and password are for http and https only.",
+  "btExternalDirectory": "rtorrent download folder",
+  "btExternalDirectoryDescription": "The folder as rtorrent sees it. Leave it empty to use the task's folder.",
+  "btExternalDetectedOn": "Detected Rtorrent 16 on this QNAP NAS; torrents are handed to it.",
+  "btExternalDetectedOff": "Detected Rtorrent 16 on this QNAP NAS. Turn this on to hand torrents to it.",
+  "btHandledByRtorrent": "Torrents are handled by rtorrent ({endpoint}). Gopeed's own BitTorrent settings below do not apply to them.",
+  "@btHandledByRtorrent": {
+    "placeholders": {
+      "endpoint": {
+        "type": "String"
+      }
+    }
+  },
+  "btHandledByRtorrentNoAddress": "Torrents are handled by rtorrent. Gopeed's own BitTorrent settings below do not apply to them.",
+  "btTrackersHandledByRtorrent": "Torrents are handled by rtorrent, which uses the torrent's own trackers.",
+  "btExternalChange": "Change",
   "seedKeep": "Keep seeding until manually stopped",
   "seedRatio": "Seed ratio",
   "seedTime": "Seed time (minutes)",

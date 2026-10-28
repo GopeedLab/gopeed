@@ -103,6 +103,7 @@ import 'package:gopeed/shared/widgets/gopeed_app_mark.dart';
 import 'package:gopeed/shared/widgets/responsive_menu_layout.dart';
 import 'package:gopeed/shared/widgets/virtual_tree_view.dart';
 import 'package:gopeed/shared/widgets/window/desktop_window_header.dart';
+import 'package:gopeed/shared/widgets/rtorrent_handoff_notice.dart';
 import 'package:gopeed/util/updater.dart';
 
 void main() {
@@ -1628,6 +1629,106 @@ void main() {
     await tester.tap(seedRatioStepperButtons.first);
     await tester.pump();
     expect(tester.widget<shad.TextField>(seedRatio).controller!.text, '1.2');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings send torrents to rtorrent', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final settingsController = FakeSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Send torrents to rtorrent'), findsOneWidget);
+    const urlInput = ValueKey('bt-external-url-input');
+    expect(find.byKey(urlInput), findsNothing);
+
+    final toggle = find.byKey(const ValueKey('bt-external-switch'));
+    await tester.ensureVisible(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(settingsController.state.requireValue.config.protocolConfig.bt.external.enable, isTrue);
+    expect(find.byKey(urlInput), findsOneWidget);
+    expect(find.byKey(const ValueKey('bt-external-username-input')), findsOneWidget);
+    expect(tester.widget<shad.TextField>(find.byKey(const ValueKey('bt-external-password-input'))).obscureText, isTrue);
+
+    await tester.enterText(find.byKey(urlInput), ' scgi://127.0.0.1:5000 ');
+    await tester.enterText(find.byKey(const ValueKey('bt-external-directory-input')), '/srv/torrents');
+    await tester.pump(const Duration(milliseconds: 700));
+    final external = settingsController.state.requireValue.config.protocolConfig.bt.external;
+    expect(external.url, 'scgi://127.0.0.1:5000');
+    expect(external.directory, '/srv/torrents');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings follow a detected Rtorrent 16 and disable the built-in BitTorrent settings', (
+    WidgetTester tester,
+  ) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final settingsController = DetectedRtorrentSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    final toggle = find.byKey(const ValueKey('bt-external-switch'));
+    expect(tester.widget<shad.Switch>(toggle).value, isTrue);
+    expect(find.text('Detected Rtorrent 16 on this QNAP NAS; torrents are handed to it.'), findsOneWidget);
+    expect(
+      find.text(
+        "Torrents are handled by rtorrent (scgi:///share/CACHEDEV1_DATA/.qpkg/rtorrent16/var/run/rpc.sock). "
+        "Gopeed's own BitTorrent settings below do not apply to them.",
+      ),
+      findsOneWidget,
+    );
+    final listenPort = find.byKey(const ValueKey('bt-listen-port-input'));
+    expect(find.ancestor(of: listenPort, matching: find.byType(DisabledWhen)), findsOneWidget);
+    expect(
+      tester.widget<DisabledWhen>(find.ancestor(of: listenPort, matching: find.byType(DisabledWhen))).disabled,
+      isTrue,
+    );
+    // The hand-off switch itself is never disabled.
+    expect(find.ancestor(of: toggle, matching: find.byType(DisabledWhen)), findsNothing);
+
+    final change = find.byKey(const ValueKey('rtorrent-handoff-notice-action'));
+    await tester.ensureVisible(change);
+    await tester.pumpAndSettle();
+    await tester.tap(change);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    final bt = settingsController.state.requireValue.config.protocolConfig.bt;
+    expect(bt.external.enable, isFalse);
+    expect(bt.externalActive, isFalse);
+    expect(find.text('Detected Rtorrent 16 on this QNAP NAS. Turn this on to hand torrents to it.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('settings-bt-handoff-notice')), findsNothing);
+    expect(
+      tester.widget<DisabledWhen>(find.ancestor(of: listenPort, matching: find.byType(DisabledWhen))).disabled,
+      isFalse,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -6143,6 +6244,15 @@ class FakeSettingsController extends SettingsController {
   @override
   Future<void> save(DownloaderConfig config) async {
     state = AsyncValue.data(SettingsState(config: config));
+  }
+}
+
+class DetectedRtorrentSettingsController extends FakeSettingsController {
+  @override
+  Future<SettingsState> build() async {
+    final config = DownloaderConfig();
+    config.protocolConfig.bt.state.localRtorrent = 'scgi:///share/CACHEDEV1_DATA/.qpkg/rtorrent16/var/run/rpc.sock';
+    return SettingsState(config: config);
   }
 }
 
