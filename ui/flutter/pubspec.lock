@@ -25,6 +25,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
+  android_id:
+    dependency: "direct main"
+    description:
+      name: android_id
+      sha256: "543bbfcf316de69d3ac36601d74eeaacd0248178a2671b00ad30d09f35bd3581"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.2+1"
   animation_kit:
     dependency: transitive
     description:
@@ -1621,7 +1629,7 @@ packages:
     source: hosted
     version: "3.1.5"
   uuid:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: uuid
       sha256: "9b129329f58692f6e6578329498a8fe9fbe98f090beb764ffbb8ee2eadd01dcd"

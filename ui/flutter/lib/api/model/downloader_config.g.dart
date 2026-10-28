@@ -193,7 +193,7 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
   createHistory: (json['createHistory'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
   runAsMenubarApp: json['runAsMenubarApp'] as bool? ?? false,
   analyticsEnabled: json['analyticsEnabled'] as bool? ?? true,
-  analyticsClientId: json['analyticsClientId'] as String? ?? '',
+  deviceId: json['deviceId'] as String? ?? '',
 );
 
 Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynamic>{
@@ -212,7 +212,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynam
   'createHistory': instance.createHistory,
   'runAsMenubarApp': instance.runAsMenubarApp,
   'analyticsEnabled': instance.analyticsEnabled,
-  'analyticsClientId': instance.analyticsClientId,
+  'deviceId': instance.deviceId,
 };
 
 WindowStateConfig _$WindowStateConfigFromJson(Map<String, dynamic> json) => WindowStateConfig(
