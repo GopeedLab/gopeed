@@ -190,6 +190,37 @@ func downloadInputSchema[T any]() *jsonschema.Schema {
 	return schema
 }
 
+// toolOutputSchema preserves arbitrary JSON values in protocol statistics and
+// task metadata. Unlike the boolean schema inferred for any, these object-form
+// schemas can also be parsed by clients that do not support boolean schemas in
+// properties. Output metadata may come from REST, extensions, or persisted tasks,
+// so it must not inherit the narrower download input restrictions.
+func toolOutputSchema[T any]() *jsonschema.Schema {
+	schema, err := jsonschema.For[T](&jsonschema.ForOptions{
+		TypeSchemas: map[reflect.Type]*jsonschema.Schema{
+			// Request.Labels is serialized as null when the map is nil.
+			reflect.TypeFor[map[string]string](): {
+				Types:                []string{"object", "null"},
+				AdditionalProperties: &jsonschema.Schema{Type: "string"},
+			},
+			reflect.TypeFor[any](): {
+				AnyOf: []*jsonschema.Schema{
+					{Type: "object"},
+					{Type: "array"},
+					{Type: "string"},
+					{Type: "number"},
+					{Type: "boolean"},
+					{Type: "null"},
+				},
+			},
+		},
+	})
+	if err != nil {
+		panic(fmt.Sprintf("mcpserver: build tool output schema: %v", err))
+	}
+	return schema
+}
+
 func (o *downloadOptions) baseOptions() *base.Options {
 	if o == nil {
 		return nil
@@ -319,11 +350,12 @@ func registerTools(server *mcp.Server, downloader *download.Downloader) {
 	destructive := true
 
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "resolve_task",
-		Title:       "Resolve task",
-		Description: "Resolve an HTTP, HTTPS, BitTorrent, magnet, or ED2K download request and return its resource metadata and files. Use this before create_task when the user wants to inspect the resource or select files.",
-		InputSchema: downloadInputSchema[resolveTaskInput](),
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &openWorld},
+		Name:         "resolve_task",
+		Title:        "Resolve task",
+		Description:  "Resolve an HTTP, HTTPS, BitTorrent, magnet, or ED2K download request and return its resource metadata and files. Use this before create_task when the user wants to inspect the resource or select files.",
+		InputSchema:  downloadInputSchema[resolveTaskInput](),
+		OutputSchema: toolOutputSchema[resolveTaskOutput](),
+		Annotations:  &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &openWorld},
 	}, func(_ context.Context, _ *mcp.CallToolRequest, input *resolveTaskInput) (*mcp.CallToolResult, *resolveTaskOutput, error) {
 		if input.Req == nil {
 			return nil, nil, fmt.Errorf("req is required")
@@ -403,10 +435,11 @@ func registerTools(server *mcp.Server, downloader *download.Downloader) {
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "get_task",
-		Title:       "Get task",
-		Description: "Get one Gopeed task including its request, resource, options, and current progress.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &closedWorld},
+		Name:         "get_task",
+		Title:        "Get task",
+		Description:  "Get one Gopeed task including its request, resource, options, and current progress.",
+		OutputSchema: toolOutputSchema[getTaskOutput](),
+		Annotations:  &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &closedWorld},
 	}, func(_ context.Context, _ *mcp.CallToolRequest, input *taskIDInput) (*mcp.CallToolResult, *getTaskOutput, error) {
 		task, err := requireTask(downloader, input.ID)
 		if err != nil {
@@ -442,10 +475,11 @@ func registerTools(server *mcp.Server, downloader *download.Downloader) {
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "get_task_stats",
-		Title:       "Get task statistics",
-		Description: "Get protocol-specific statistics for one Gopeed task, such as HTTP connections or BitTorrent peers and seeding data.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &closedWorld},
+		Name:         "get_task_stats",
+		Title:        "Get task statistics",
+		Description:  "Get protocol-specific statistics for one Gopeed task, such as HTTP connections or BitTorrent peers and seeding data.",
+		OutputSchema: toolOutputSchema[getTaskStatsOutput](),
+		Annotations:  &mcp.ToolAnnotations{ReadOnlyHint: true, OpenWorldHint: &closedWorld},
 	}, func(_ context.Context, _ *mcp.CallToolRequest, input *taskIDInput) (*mcp.CallToolResult, *getTaskStatsOutput, error) {
 		if err := validateTaskID(input.ID); err != nil {
 			return nil, nil, err
