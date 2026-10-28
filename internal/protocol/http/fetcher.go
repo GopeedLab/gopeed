@@ -303,8 +303,9 @@ type Fetcher struct {
 	resolveDataPos atomic.Int64 // How many bytes downloaded during resolve
 
 	// Resolve response - kept open for one-time URLs
-	resolveResp     *http.Response
-	resolveRespLock sync.Mutex
+	resolveResp       *http.Response
+	resolveRespCancel context.CancelFunc // Cancels the Resolve request
+	resolveRespLock   sync.Mutex
 
 	// Async prefetch during resolve phase
 	prefetchFile     *os.File      // Temporary file for prefetch data
@@ -425,8 +426,11 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 
 	// Build HTTP request WITHOUT Range header (normal request)
 	// This allows the response to be reused for downloading (important for one-time URLs)
-	httpReq, err := f.buildRequest(context.TODO(), req)
+	// The body outlives Resolve, so the read timeout gets its own cancel func.
+	reqCtx, reqCancel := context.WithCancel(context.Background())
+	httpReq, err := f.buildRequest(reqCtx, req)
 	if err != nil {
+		reqCancel()
 		f.setState(stateError)
 		return err
 	}
@@ -438,6 +442,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	connStartTime := time.Now()
 	resp, err := client.Do(httpReq)
 	if err != nil {
+		reqCancel()
 		f.setState(stateError)
 		return err
 	}
@@ -452,6 +457,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 
 	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
 		resp.Body.Close()
+		reqCancel()
 		f.setState(stateError)
 		return NewRequestError(resp.StatusCode)
 	}
@@ -469,6 +475,7 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 		start, _, total, err := parseRangeResponse(resp)
 		if err != nil {
 			resp.Body.Close()
+			reqCancel()
 			f.setState(stateError)
 			return err
 		}
@@ -536,8 +543,10 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	f.resolveRespLock.Lock()
 	if reuseResolveBody {
 		f.resolveResp = resp
+		f.resolveRespCancel = reqCancel
 	} else {
 		resp.Body.Close()
+		reqCancel()
 		f.prefetchDone.Store(true)
 	}
 	f.resolveRespLock.Unlock()
@@ -574,7 +583,7 @@ func (f *Fetcher) asyncPrefetch() {
 
 	// Get the resolve response
 	f.resolveRespLock.Lock()
-	resp := f.resolveResp
+	resp, cancel := f.resolveResp, f.resolveRespCancel
 	f.resolveRespLock.Unlock()
 
 	if resp == nil {
@@ -585,10 +594,7 @@ func (f *Fetcher) asyncPrefetch() {
 		// Close the response even if temporary-file setup fails or shutdown
 		// rejects a late prefetch. Otherwise the server can remain blocked writing.
 		f.resolveRespLock.Lock()
-		if f.resolveResp != nil {
-			f.resolveResp.Body.Close()
-			f.resolveResp = nil
-		}
+		f.closeResolveRespLocked()
 		f.resolveRespLock.Unlock()
 	}()
 
@@ -618,7 +624,7 @@ func (f *Fetcher) asyncPrefetch() {
 	f.prefetchFilePath = tmpFile.Name()
 
 	buf := make([]byte, 32*1024) // 32KB buffer
-	reader := f.responseReader(resp)
+	reader := f.responseReader(resp, cancel)
 
 	for {
 		select {
@@ -881,10 +887,7 @@ func (f *Fetcher) doStart() error {
 		if !f.resolveFallback.Load() {
 			// Also close resolve response if still open.
 			f.resolveRespLock.Lock()
-			if f.resolveResp != nil {
-				f.resolveResp.Body.Close()
-				f.resolveResp = nil
-			}
+			f.closeResolveRespLocked()
 			f.resolveRespLock.Unlock()
 		}
 	}
@@ -1337,7 +1340,11 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	}
 	f.connMu.Unlock()
 
-	httpReq, err := f.buildRequest(conn.ctx, f.meta.Req)
+	// The read timeout cancels this request through its own context.
+	reqCtx, reqCancel := context.WithCancel(conn.ctx)
+	defer reqCancel()
+
+	httpReq, err := f.buildRequest(reqCtx, f.meta.Req)
 	if err != nil {
 		return err
 	}
@@ -1365,7 +1372,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		// Check if this might be a redirect URL expiration error
 		// If so, try falling back to the original URL
 		if f.hasRedirectURL() && isRedirectExpiredError(originalErr) {
-			fallbackResp, fallbackErr := f.tryFallbackToOriginalURL(conn.ctx, client, rangeStart, rangeEnd, rangeRequested, ifRange)
+			fallbackResp, fallbackErr := f.tryFallbackToOriginalURL(reqCtx, client, rangeStart, rangeEnd, rangeRequested, ifRange)
 			if fallbackErr == nil && fallbackResp != nil {
 				// Fallback succeeded, use this response instead
 				resp = fallbackResp
@@ -1486,7 +1493,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		f.slowStart.onConnectSuccess()
 	}
 
-	reader := f.responseReader(resp)
+	reader := f.responseReader(resp, reqCancel)
 	var responseBytesRead int64
 	for {
 		if conn.ctx.Err() != nil {
@@ -1840,8 +1847,8 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 	// Get the resolve response
 	f.resolveRespLock.Lock()
-	resp := f.resolveResp
-	f.resolveResp = nil // Take ownership
+	resp, cancel := f.resolveResp, f.resolveRespCancel
+	f.resolveResp, f.resolveRespCancel = nil, nil // Take ownership
 	f.resolveRespLock.Unlock()
 
 	if resp == nil {
@@ -1850,6 +1857,9 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 		return
 	}
 
+	if cancel != nil {
+		defer cancel()
+	}
 	defer resp.Body.Close()
 
 	f.connMu.Lock()
@@ -1866,7 +1876,7 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 	}
 
 	// Download data from resolve response
-	reader := f.responseReader(resp)
+	reader := f.responseReader(resp, cancel)
 	for {
 		if conn.ctx.Err() != nil {
 			return
@@ -2481,10 +2491,7 @@ func (f *Fetcher) Pause() error {
 
 	// Clean up resolve response if still held
 	f.resolveRespLock.Lock()
-	if f.resolveResp != nil {
-		f.resolveResp.Body.Close()
-		f.resolveResp = nil
-	}
+	f.closeResolveRespLocked()
 	f.resolveRespLock.Unlock()
 
 	f.fileMu.Lock()
@@ -2602,9 +2609,25 @@ func (f *Fetcher) Wait() error {
 
 // Generated output can pause while its producer waits for processing capacity.
 // Its producer owns upstream deadlines; cancellation still closes the response.
-func (f *Fetcher) responseReader(resp *http.Response) io.Reader {
+// Otherwise a stalled read cancels the request via cancel, which must belong
+// to the request that produced resp.
+func (f *Fetcher) responseReader(resp *http.Response, cancel context.CancelFunc) io.Reader {
 	if f.ctl != nil && f.ctl.ManagedProduction != nil && resp.Request != nil && f.ctl.ManagedProduction(resp.Request.URL.String()) {
 		return resp.Body
 	}
-	return NewTimeoutReader(resp.Body, readTimeout)
+	return NewTimeoutReader(resp.Body, readTimeout, cancel)
+}
+
+// closeResolveRespLocked closes the kept Resolve response, if any, and
+// releases its request context. The caller must hold resolveRespLock.
+func (f *Fetcher) closeResolveRespLocked() {
+	if f.resolveResp == nil {
+		return
+	}
+	f.resolveResp.Body.Close()
+	f.resolveResp = nil
+	if f.resolveRespCancel != nil {
+		f.resolveRespCancel()
+		f.resolveRespCancel = nil
+	}
 }
