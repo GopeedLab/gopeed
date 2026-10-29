@@ -37,29 +37,10 @@ type TaskGroup struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-// CreateTaskBatchResult preserves the array response for ordinary batches.
-// Group batches report item failures so clients can retry without resubmitting
-// successful items.
+// CreateTaskBatchResult is shared by ordinary and grouped batches.
 type CreateTaskBatchResult struct {
-	TaskIDs []string                    `json:"taskIds"`
-	GroupID string                      `json:"groupId"`
-	Name    string                      `json:"name"`
-	Path    string                      `json:"path"`
-	Items   []CreateTaskBatchItemResult `json:"items"`
-}
-
-type CreateTaskBatchItemResult struct {
-	Index  int    `json:"index"`
-	TaskID string `json:"taskId,omitempty"`
-	Error  string `json:"error,omitempty"`
-}
-
-func (r *CreateTaskBatchResult) MarshalJSON() ([]byte, error) {
-	if r.GroupID == "" && r.Name == "" && r.Path == "" && len(r.Items) == 0 {
-		return json.Marshal(r.TaskIDs)
-	}
-	type result CreateTaskBatchResult
-	return json.Marshal((*result)(r))
+	TaskIDs  []string `json:"taskIds"`
+	ParentID string   `json:"parentId,omitempty"`
 }
 
 // Task represents a download unit.

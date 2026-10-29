@@ -197,9 +197,10 @@ func TestCreateDirectTaskBatch(t *testing.T) {
 				Req: createReq.Req,
 			})
 		}
-		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
+		result := httpRequestCheckOk[download.CreateTaskBatchResult](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
 			Reqs: reqs,
 		})
+		taskIds := result.TaskIDs
 		if len(taskIds) != len(reqs) {
 			t.Errorf("CreateDirectTaskBatch() got = %v, want %v", len(taskIds), len(reqs))
 		}
@@ -220,12 +221,13 @@ func TestCreateDirectTaskBatchWithOpt(t *testing.T) {
 			}
 			reqs = append(reqs, item)
 		}
-		taskIds := httpRequestCheckOk[[]string](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
+		result := httpRequestCheckOk[download.CreateTaskBatchResult](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
 			Reqs: reqs,
 			Opts: &base.Options{
 				Name: "default_opt.data",
 			},
 		})
+		taskIds := result.TaskIDs
 		if len(taskIds) != len(reqs) {
 			t.Errorf("CreateDirectTaskBatch() got = %v, want %v", len(taskIds), len(reqs))
 		}
@@ -255,16 +257,12 @@ func TestCreateDirectTaskBatchWithGroup(t *testing.T) {
 		if err := Downloader.PutConfig(cfg); err != nil {
 			t.Fatal(err)
 		}
-		result := httpRequestCheckOk[struct {
-			GroupID string   `json:"groupId"`
-			Name    string   `json:"name"`
-			Path    string   `json:"path"`
-			TaskIDs []string `json:"taskIds"`
-		}](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
+		parent := t.TempDir()
+		result := httpRequestCheckOk[download.CreateTaskBatchResult](http.MethodPost, "/api/v1/tasks/batch", &base.CreateTaskBatch{
 			Reqs: []*base.CreateTaskBatchItem{{Req: createReq.Req}, {Req: createReq.Req}},
-			Opts: &base.Options{Path: t.TempDir()}, Group: true, GroupName: "folder",
+			Opts: &base.Options{Path: parent}, Group: true, GroupName: "folder",
 		})
-		if result.GroupID == "" || result.Name != "folder" || len(result.TaskIDs) != 2 {
+		if result.ParentID == "" || len(result.TaskIDs) != 2 {
 			t.Fatalf("unexpected group result: %+v", result)
 		}
 		all := httpRequestCheckOk[[]map[string]any](http.MethodGet, "/api/v1/tasks", nil)
@@ -272,11 +270,11 @@ func TestCreateDirectTaskBatchWithGroup(t *testing.T) {
 			t.Fatalf("expected real tasks only, got %d", len(all))
 		}
 		for _, task := range all {
-			if task["parentId"] != result.GroupID || task["type"] != nil {
+			if task["parentId"] != result.ParentID || task["type"] != nil {
 				t.Fatalf("invalid member: %+v", task)
 			}
 			metadata, ok := task["group"].(map[string]any)
-			if !ok || metadata["path"] != result.Path || metadata["name"] != result.Name {
+			if !ok || metadata["path"] != filepath.Join(parent, "folder") || metadata["name"] != "folder" {
 				t.Fatalf("missing group metadata: %+v", task)
 			}
 		}

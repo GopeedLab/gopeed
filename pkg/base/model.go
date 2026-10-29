@@ -180,6 +180,7 @@ type CreateTaskBatch struct {
 }
 
 type CreateTaskBatchItem struct {
+	Rid  string   `json:"rid,omitempty"`
 	Req  *Request `json:"req"`
 	Opts *Options `json:"opts"`
 }
