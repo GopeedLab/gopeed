@@ -46,7 +46,7 @@ type generationTestManager struct {
 func TestExtensionTaskMethodsMatchEventCapabilities(t *testing.T) {
 	taskType := reflect.TypeOf((*Task)(nil))
 	for _, typ := range []reflect.Type{taskType, reflect.TypeOf((*ExtensionTask)(nil)), reflect.TypeOf((*OnErrorExtensionTask)(nil))} {
-		for _, name := range []string{"SetUrl", "SetExtra", "PatchExtra", "PatchHeaders", "SetMethod", "SetBody", "SetHeaders", "PutHeader", "DelHeader", "SetTrackers"} {
+		for _, name := range []string{"SetExtra", "PatchExtra", "PatchHeaders", "SetMethod", "SetBody", "SetHeaders", "PutHeader", "DelHeader", "SetTrackers"} {
 			if _, ok := typ.MethodByName(name); ok {
 				t.Fatalf("%v unexpectedly exposes %s", typ, name)
 			}
@@ -79,6 +79,11 @@ func TestExtensionTaskMethodsMatchEventCapabilities(t *testing.T) {
 	}
 
 	extensionTaskType := reflect.TypeOf((*ExtensionTask)(nil))
+	for _, typ := range []reflect.Type{extensionTaskType, reflect.TypeOf((*OnErrorExtensionTask)(nil))} {
+		if _, ok := typ.MethodByName("SetUrl"); !ok {
+			t.Fatalf("%v does not expose the deprecated SetUrl alias", typ)
+		}
+	}
 	if _, ok := extensionTaskType.MethodByName("Continue"); ok {
 		t.Fatal("non-error extension task unexpectedly exposes Continue")
 	}
