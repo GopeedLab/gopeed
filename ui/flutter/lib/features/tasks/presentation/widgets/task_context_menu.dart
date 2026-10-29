@@ -5,6 +5,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import '../../domain/task_record.dart';
 import '../../../../l10n/l10n.dart';
+import '../../../../shared/widgets/browser_context_menu_region.dart';
 import '../../../../util/util.dart';
 
 class TaskContextActions {
@@ -50,7 +51,7 @@ class TaskContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return shad.ContextMenu(
+    final menu = shad.ContextMenu(
       items: [
         shad.MenuButton(
           key: const ValueKey('task-context-select-all'),
@@ -134,6 +135,7 @@ class TaskContextMenu extends StatelessWidget {
       ],
       child: child,
     );
+    return BrowserContextMenuRegion(child: menu);
   }
 }
 
