@@ -22,45 +22,23 @@ class CreateTaskBatch {
 
 @JsonSerializable()
 class CreateTaskBatchItem {
+  String? rid;
   Request? req;
   Options? opts;
 
-  CreateTaskBatchItem({this.req, this.opts});
+  CreateTaskBatchItem({this.rid, this.req, this.opts});
 
   factory CreateTaskBatchItem.fromJson(Map<String, dynamic> json) => _$CreateTaskBatchItemFromJson(json);
   Map<String, dynamic> toJson() => _$CreateTaskBatchItemToJson(this);
 }
 
-@JsonSerializable(explicitToJson: true)
+@JsonSerializable()
 class CreateTaskBatchResult {
   final List<String> taskIds;
-  final String groupId;
-  final String name;
-  final String path;
-  final List<CreateTaskBatchItemResult> items;
+  final String? parentId;
 
-  CreateTaskBatchResult({
-    required this.taskIds,
-    this.groupId = '',
-    this.name = '',
-    this.path = '',
-    this.items = const [],
-  });
+  CreateTaskBatchResult({required this.taskIds, this.parentId});
 
-  factory CreateTaskBatchResult.fromResponse(Object? value) => value is List
-      ? CreateTaskBatchResult(taskIds: value.cast<String>())
-      : CreateTaskBatchResult.fromJson(value! as Map<String, dynamic>);
   factory CreateTaskBatchResult.fromJson(Map<String, dynamic> json) => _$CreateTaskBatchResultFromJson(json);
   Map<String, dynamic> toJson() => _$CreateTaskBatchResultToJson(this);
-}
-
-@JsonSerializable()
-class CreateTaskBatchItemResult {
-  final int index;
-  final String taskId;
-  final String error;
-
-  CreateTaskBatchItemResult({required this.index, this.taskId = '', this.error = ''});
-  factory CreateTaskBatchItemResult.fromJson(Map<String, dynamic> json) => _$CreateTaskBatchItemResultFromJson(json);
-  Map<String, dynamic> toJson() => _$CreateTaskBatchItemResultToJson(this);
 }

@@ -62,7 +62,7 @@ RpcCodecRegistry createAppCapabilityCodecs() {
     ..register<ResolveResult>((json) => ResolveResult.fromJson(json! as Map<String, dynamic>))
     ..register<CreateTask>((json) => CreateTask.fromJson(json! as Map<String, dynamic>))
     ..register<CreateTaskBatch>((json) => CreateTaskBatch.fromJson(json! as Map<String, dynamic>))
-    ..register<CreateTaskBatchResult>((json) => CreateTaskBatchResult.fromResponse(json))
+    ..register<CreateTaskBatchResult>((json) => CreateTaskBatchResult.fromJson(json! as Map<String, dynamic>))
     ..register<DownloaderConfig>((json) => DownloaderConfig.fromJson(json! as Map<String, dynamic>))
     ..register<TaskRuntimeStatus>((json) => TaskRuntimeStatus.fromJson(json! as Map<String, dynamic>))
     ..register<List<Task>>(

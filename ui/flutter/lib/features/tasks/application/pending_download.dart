@@ -1,6 +1,5 @@
 import 'package:path/path.dart' as path;
 
-import '../../../api/model/create_task.dart';
 import '../../../api/model/create_task_batch.dart';
 import '../../../api/model/options.dart';
 import '../../../api/model/request.dart';
@@ -9,125 +8,159 @@ import '../../../api/model/resolve_result.dart';
 import '../../../api/model/resolve_task.dart';
 import '../../../core/capabilities/gopeed_capability.dart';
 
-/// IDs only distinguish sources in the preview; the backend owns group IDs.
+/// IDs identify sources within one preview and are never sent as group IDs.
 class PendingDownload {
   PendingDownload({required this.id, required this.request, required this.options});
 
   final String id;
-  Request request;
-  Options options;
+  final Request request;
+  final Options options;
   ResolveResult? result;
   String? resolveError;
   String? createError;
   final Set<int> selected = {};
-  final Map<int, String> createdFiles = {};
   bool created = false;
-  bool included = true;
-  bool _submitting = false;
-  bool _omitChecksum = false;
+  bool resolving = false;
 
-  bool get isGroup =>
-      result != null && result!.id.isEmpty && result!.res.name.trim().isNotEmpty && result!.res.files.length > 1;
-  String get name => result?.res.name.trim().isNotEmpty == true
-      ? result!.res.name
-      : result?.res.files.length == 1
-      ? result!.res.files.single.name
-      : request.url;
+  bool get loading => result == null && resolveError == null;
+  bool get isGroup => result != null && result!.id.isEmpty && result!.res.name.trim().isNotEmpty && files.length > 1;
+  bool get isFtp => RegExp(r'^(ftps?|ftpes):', caseSensitive: false).hasMatch(request.url.trim());
+  bool get isBt {
+    if (result?.id.isEmpty == true) return false;
+    final url = request.url.trim().toLowerCase();
+    if (url.startsWith('http:') || url.startsWith('https:') || isFtp) return false;
+    return url.startsWith('magnet:') ||
+        url.startsWith('data:application/x-bittorrent;base64,') ||
+        url.split(RegExp(r'[?#]')).first.endsWith('.torrent');
+  }
+
+  String get name {
+    if (!isBt &&
+        (!isFtp || result?.res.name.trim().isEmpty == true) &&
+        result?.id.isNotEmpty == true &&
+        files.length == 1 &&
+        files.single.name.isNotEmpty) {
+      return files.single.name;
+    }
+    if (result?.res.name.trim().isNotEmpty == true) return result!.res.name;
+    return request.url;
+  }
+
   List<FileInfo> get files => result?.res.files ?? const [];
-  bool get hasSelection => included && !created && selected.any((index) => !createdFiles.containsKey(index));
+  bool get hasSelection => !created && result != null && selected.isNotEmpty;
 
   Future<void> resolve(GopeedService service) async {
-    if (result != null || created) return;
+    if (result != null || resolving) return;
+    resolving = true;
     resolveError = null;
     try {
       result = await service.resolve(ResolveTask(req: request));
       selected.addAll(List.generate(files.isEmpty ? 1 : files.length, (index) => index));
     } catch (error) {
       resolveError = error.toString();
+    } finally {
+      resolving = false;
     }
   }
 
-  Future<void> submit(GopeedService service, {bool direct = false}) async {
-    if (_submitting) return;
-    createError = null;
-    if (!hasSelection || (!direct && result == null)) return;
-    _submitting = true;
-    if (!direct && selected.length > 1) _omitChecksum = true;
-    try {
-      if (direct || result!.id.isNotEmpty || files.isEmpty) {
-        final opts = Options.fromJson(options.toJson());
-        if (!direct && files.isNotEmpty) opts.selectFiles = selected.toList()..sort();
-        if (!direct) _omitMultipleChecksums(opts);
-        await service.createTask(
-          CreateTask(req: direct || result!.id.isEmpty ? request : null, rid: result?.id, opts: opts),
-        );
-        created = true;
-        return;
+  List<CreateTaskBatchItem> creationItems() {
+    final indexes = selected.toList()..sort();
+    if (result!.id.isNotEmpty || files.isEmpty) {
+      final opts = Options.fromJson(options.toJson());
+      if (files.isNotEmpty) opts.selectFiles = indexes;
+      if (indexes.length > 1) _omitChecksum(opts);
+      return [
+        CreateTaskBatchItem(
+          rid: result!.id.isEmpty ? null : result!.id,
+          req: result!.id.isEmpty ? request : null,
+          opts: opts,
+        ),
+      ];
+    }
+    final group = isGroup;
+    final resourceName = result!.res.name;
+    final parentSegments = [
+      if (!group && options.path.isNotEmpty) options.path,
+      if (!group && resourceName.trim().isNotEmpty) resourceName,
+    ];
+    final skipAutoCategorize = options.skipAutoCategorize || resourceName.isNotEmpty || files.length > 1;
+    final httpUrl = RegExp(r'^https?:', caseSensitive: false);
+    return indexes.map((index) {
+      final file = files[index];
+      final member = Options.fromJson(options.toJson());
+      member.name = files.length == 1 && options.name.isNotEmpty ? options.name : file.name;
+      final segments = [...parentSegments, if (file.path.isNotEmpty) file.path];
+      member.path = segments.isEmpty ? '' : path.joinAll(segments);
+      // The selected parent directory is persisted separately from members.
+      member.asDefaultPath = false;
+      member.skipAutoCategorize = skipAutoCategorize;
+      final req = file.req ?? request;
+      member.size = httpUrl.hasMatch(req.url) ? file.size : 0;
+      if (RegExp(r'^(ftps?|ftpes):', caseSensitive: false).hasMatch(req.url)) {
+        final extra = OptsExtraFtp.fromJson(Map<String, dynamic>.from(member.extra as Map? ?? const {}));
+        extra.connections = extra.connections.clamp(0, 32);
+        member.extra = extra.toJson();
       }
-      final indexes = selected.where((index) => !createdFiles.containsKey(index)).toList()..sort();
-      final keepStructure = options.skipAutoCategorize || result!.res.name.isNotEmpty || files.length > 1;
-      CreateTaskBatchItem item(int index) {
-        final file = files[index];
-        final req = file.req ?? request;
-        final opts = Options.fromJson(options.toJson());
-        opts.name = files.length == 1 && options.name.isNotEmpty ? options.name : file.name;
-        final resourcePath = !isGroup && result!.res.name.trim().isNotEmpty ? result!.res.name : '';
-        final pathParts = [
-          if (options.path.isNotEmpty) options.path,
-          if (resourcePath.isNotEmpty) resourcePath,
-          file.path,
-        ];
-        opts.path = pathParts.isEmpty ? '' : path.joinAll(pathParts);
-        opts.size = RegExp(r'^https?:', caseSensitive: false).hasMatch(req.url) ? file.size : 0;
-        opts.skipAutoCategorize = keepStructure;
-        // The page persists the user's selected parent directory after any
-        // member succeeds. Never let a member subdirectory replace it.
-        opts.asDefaultPath = false;
-        _omitMultipleChecksums(opts);
-        return CreateTaskBatchItem(req: req, opts: opts);
-      }
+      if (indexes.length > 1) _omitChecksum(member);
+      return CreateTaskBatchItem(req: req, opts: member);
+    }).toList();
+  }
 
-      if (isGroup) {
-        final response = await service.createTaskBatch(
-          CreateTaskBatch(
-            reqs: indexes.map(item).toList(),
-            opts: options,
-            group: true,
-            groupName: options.name.isNotEmpty ? options.name : result!.res.name.trim(),
-          ),
-        );
-        final errors = <String>[];
-        for (final entry in response.items) {
-          if (entry.index < 0 || entry.index >= indexes.length) continue;
-          if (entry.taskId.isNotEmpty) createdFiles[indexes[entry.index]] = entry.taskId;
-          if (entry.error.isNotEmpty && entry.taskId.isEmpty) {
-            errors.add('${files[indexes[entry.index]].name}: ${entry.error}');
-          }
-        }
-        if (errors.isNotEmpty) createError = errors.join('\n');
-      } else {
-        // Independent creations preserve successes when a later file fails.
-        final errors = <String>[];
-        for (final index in indexes) {
-          final entry = item(index);
-          try {
-            createdFiles[index] = await service.createTask(CreateTask(req: entry.req, opts: entry.opts));
-          } catch (error) {
-            errors.add('${files[index].name}: $error');
-          }
-        }
-        if (errors.isNotEmpty) createError = errors.join('\n');
+  void _omitChecksum(Options opts) {
+    if (opts.extra is Map) opts.extra = Map<String, dynamic>.from(opts.extra! as Map)..remove('checksum');
+  }
+}
+
+/// A successful response completes the entire batch, including partial success.
+class DownloadSubmission {
+  DownloadSubmission({required this.sources, required this.request});
+
+  final List<PendingDownload> sources;
+  final CreateTaskBatch request;
+
+  Future<void> submit(GopeedService service) async {
+    for (final source in sources) {
+      source.createError = null;
+    }
+    try {
+      await service.createTaskBatch(request);
+      for (final source in sources) {
+        source.created = true;
       }
     } catch (error) {
-      createError = error.toString();
-    } finally {
-      _submitting = false;
+      for (final source in sources) {
+        source.createError = error.toString();
+      }
     }
   }
+}
 
-  void _omitMultipleChecksums(Options opts) {
-    if (_omitChecksum && opts.extra is Map) {
-      opts.extra = Map<String, dynamic>.from(opts.extra! as Map)..remove('checksum');
+List<DownloadSubmission> planDownloads(List<PendingDownload> sources) {
+  final groups = <DownloadSubmission>[];
+  final independent = <PendingDownload>[];
+  for (final source in sources.where((source) => source.hasSelection)) {
+    if (source.isGroup) {
+      groups.add(
+        DownloadSubmission(
+          sources: [source],
+          request: CreateTaskBatch(
+            group: true,
+            groupName: source.options.name.isNotEmpty ? source.options.name : source.result!.res.name.trim(),
+            opts: source.options,
+            reqs: source.creationItems(),
+          ),
+        ),
+      );
+    } else {
+      independent.add(source);
     }
   }
+  return [
+    ...groups,
+    if (independent.isNotEmpty)
+      DownloadSubmission(
+        sources: independent,
+        request: CreateTaskBatch(reqs: [for (final source in independent) ...source.creationItems()]),
+      ),
+  ];
 }

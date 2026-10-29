@@ -15,6 +15,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../../../api/model/create_task.dart';
+import '../../../../api/model/create_task_batch.dart';
 import '../../../../api/model/downloader_config.dart';
 import '../../../../api/model/options.dart' as api_options;
 import '../../../../api/model/request.dart';
@@ -90,8 +91,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   bool _directDownload = false;
   int _protocolTab = 0;
   bool _creating = false;
-  List<PendingDownload> _pendingDownloads = [];
-  int _pendingSourceID = 0;
+  final Map<String, int> _completedSubmissionCounts = {};
+  int _createSession = 0;
   bool _draggingTorrent = false;
   bool _asDefaultPath = false;
   String _configuredDownloadDirectory = '';
@@ -248,6 +249,8 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     if (task == null || !mounted) return;
     final req = task.req;
     final opts = task.opts ?? api_options.Options();
+    _createSession++;
+    _completedSubmissionCounts.clear();
     setState(() {
       _initialSize = 0;
       _checksumAlgorithm = 'md5';
@@ -871,17 +874,20 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     await windowManager.close();
   }
 
-  Future<void> _finishCreation() async {
+  Future<void> _finishCreation(int session) async {
+    if (!mounted || session != _createSession) return;
     if (_asDefaultPath && _directoryManuallySet && _directoryController.text.trim().isNotEmpty) {
       try {
         final service = ref.read(gopeedServiceProvider);
         final config = await service.getConfig();
+        if (!mounted || session != _createSession) return;
         config.downloadDir = _directoryController.text.trim();
         await service.putConfig(config);
       } catch (error) {
-        _showToast(error.toString());
+        if (mounted && session == _createSession) _showToast(error.toString());
       }
     }
+    if (!mounted || session != _createSession) return;
     if (widget.windowController != null) {
       // Navigation is best-effort after a successful submission. A navigation
       // failure must not leave a completed form available for resubmission.
@@ -893,6 +899,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
     } else {
       ref.read(taskListNavigationProvider.notifier).showDownloading();
     }
+    if (!mounted || session != _createSession) return;
     await _closeWindow();
   }
 
@@ -999,79 +1006,75 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       _showToast(context.l10n.downloadLinkValid);
       return;
     }
-    if (!_validateAdvancedOptions()) {
+    final occurrences = <String, int>{};
+    final pendingUrls = <String>[];
+    for (final url in urls) {
+      final occurrence = (occurrences[url] ?? 0) + 1;
+      occurrences[url] = occurrence;
+      if (occurrence > (_completedSubmissionCounts[url] ?? 0)) {
+        pendingUrls.add(url);
+      }
+    }
+    if (pendingUrls.isNotEmpty && !_validateAdvancedOptions()) {
       return;
     }
+    final session = _createSession;
 
     setState(() {
       _creating = true;
       _draggingTorrent = false;
     });
     try {
-      await _saveCreateHistory(urls);
-      final previous = <String, List<PendingDownload>>{};
-      final occurrence = <String, int>{};
-      for (final source in _pendingDownloads) {
-        final key = source.request.url;
-        previous.putIfAbsent(key, () => []).add(source);
+      unawaited(
+        _saveCreateHistory(urls).catchError((Object error) {
+          if (mounted && session == _createSession) _showToast(error.toString());
+        }),
+      );
+      if (pendingUrls.isEmpty) {
+        await _finishCreation(session);
+        return;
       }
-      _pendingDownloads = [
-        for (final url in urls)
-          _pendingSource(url, urls.length, previous, occurrence.update(url, (value) => value + 1, ifAbsent: () => 0)),
+      final sources = [
+        for (final entry in pendingUrls.indexed)
+          PendingDownload(
+            id: 'source-${entry.$1}',
+            request: _buildRequest(entry.$2, protocolUrl: _protocolUrlFor(entry.$2)),
+            options: _buildOptions(
+              url: _protocolUrlFor(entry.$2),
+              name: urls.length == 1 ? _renameController.text.trim() : '',
+              omitChecksum: urls.length > 1,
+            ),
+          ),
       ];
       final service = ref.read(gopeedServiceProvider);
       if (_directDownload) {
-        for (final source in _pendingDownloads) {
-          source.selected.add(0);
-          await source.submit(service, direct: true);
-        }
-        final errors = _pendingDownloads.map((source) => source.createError).whereType<String>().toList();
-        if (errors.isNotEmpty) throw StateError(errors.join('\n'));
-        await _finishCreation();
+        await service.createTaskBatch(
+          CreateTaskBatch(
+            reqs: [for (final source in sources) CreateTaskBatchItem(req: source.request, opts: source.options)],
+          ),
+        );
+        await _finishCreation(session);
         return;
-      }
-      for (final source in _pendingDownloads) {
-        await source.resolve(service);
       }
       if (!mounted) return;
       final created = await showResolveDownloadsDialog(
         context,
-        sources: _pendingDownloads,
+        sources: sources,
         service: service,
-        directoryManuallySet: _directoryManuallySet,
+        onBatchCreated: (sources) {
+          if (!mounted || session != _createSession) return;
+          for (final source in sources) {
+            _completedSubmissionCounts.update(source.request.url, (count) => count + 1, ifAbsent: () => 1);
+          }
+        },
       );
-      if (!created) {
-        if (mounted) setState(() => _creating = false);
-        return;
-      }
-      await _finishCreation();
+      if (!mounted || session != _createSession || !created) return;
+      await _finishCreation(session);
     } catch (error) {
-      if (mounted) {
-        _showToast(error.toString());
-        setState(() => _creating = false);
-      }
+      if (mounted && session == _createSession) _showToast(error.toString());
+    } finally {
+      if (mounted) setState(() => _creating = false);
     }
-  }
-
-  PendingDownload _pendingSource(
-    String url,
-    int urlCount,
-    Map<String, List<PendingDownload>> previous,
-    int occurrence,
-  ) {
-    final request = _buildRequest(url, protocolUrl: _protocolUrlFor(url));
-    final key = url;
-    final candidates = previous[key];
-    final options = _buildOptions(name: urlCount == 1 ? _renameController.text.trim() : '', omitChecksum: urlCount > 1);
-    if (candidates != null && candidates.isNotEmpty) {
-      final source = candidates.removeAt(0);
-      if (!source.created && source.createdFiles.isEmpty) {
-        source.request = request;
-        source.options = options;
-      }
-      return source;
-    }
-    return PendingDownload(id: 'source-${_pendingSourceID++}-$occurrence', request: request, options: options);
   }
 
   List<String> _inputUrls() {

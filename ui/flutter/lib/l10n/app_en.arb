@@ -406,7 +406,9 @@
   "torrentDataEmpty": "Torrent file data is empty",
   "torrentPathUnavailable": "Unable to access the torrent file path",
   "selectAtLeastOneFile": "Select at least one file",
-  "resolvedFiles": "Resolved Files",
+  "resolvedFiles": "File List",
+  "waitingToResolve": "Waiting to resolve",
+  "resolvingResource": "Resolving resource",
   "resolvedFileCount": "{count, plural, =1{1 file resolved} other{{count} files resolved}}",
   "resolvedCategoryDirectory": "Will be saved to {path}",
   "@resolvedCategoryDirectory": {

@@ -28,13 +28,7 @@ void main() {
     final registry = CapabilityRegistry(codecs)
       ..bind(GopeedMethods.createTaskBatch, (batch) {
         submitted = batch;
-        return CreateTaskBatchResult(
-          taskIds: ['child'],
-          groupId: 'generated',
-          name: 'folder',
-          path: '/downloads/folder',
-          items: [CreateTaskBatchItemResult(index: 0, taskId: 'child')],
-        );
+        return CreateTaskBatchResult(taskIds: ['child'], parentId: 'generated');
       });
     final batch = CreateTaskBatch(
       group: true,
@@ -42,6 +36,7 @@ void main() {
       opts: Options(path: '/downloads'),
       reqs: [
         CreateTaskBatchItem(
+          rid: 'resolved-rid',
           req: Request(url: 'https://example.com/file'),
           opts: Options(path: '/downloads/folder/nested', name: 'file.txt'),
         ),
@@ -51,14 +46,21 @@ void main() {
       await registry.invoke(GopeedMethods.createTaskBatch.name, codecs.encode(batch)),
     );
     expect(result.taskIds, ['child']);
-    expect(result.groupId, 'generated');
-    expect(result.items.single.taskId, 'child');
+    expect(result.parentId, 'generated');
     expect(submitted?.group, isTrue);
+    expect(submitted?.reqs?.single.rid, 'resolved-rid');
     expect(submitted?.toJson().containsKey('groupId'), isFalse);
     expect(submitted?.opts?.path, '/downloads');
     expect(submitted?.reqs?.single.opts?.path, '/downloads/folder/nested');
     expect(CreateTaskBatch.fromJson({'reqs': []}).group, isFalse);
-    expect(CreateTaskBatchResult.fromResponse(['legacy']).taskIds, ['legacy']);
+    expect(
+      CreateTaskBatchResult.fromJson({
+        'taskIds': ['ordinary'],
+      }).toJson(),
+      {
+        'taskIds': ['ordinary'],
+      },
+    );
   });
 
   test('serialized resolve and patch capabilities keep separate request contracts', () async {

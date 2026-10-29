@@ -34,6 +34,7 @@ import 'package:gopeed/app/application/app_notification_controller.dart';
 import 'package:gopeed/app/application/app_platform_controller.dart';
 import 'package:gopeed/app/application/app_runtime_controller.dart';
 import 'package:gopeed/api/model/create_task.dart';
+import 'package:gopeed/api/model/create_task_batch.dart';
 import 'package:gopeed/api/model/install_extension.dart';
 import 'package:gopeed/features/extensions/application/pending_extension_install.dart';
 import 'package:gopeed/api/model/downloader_config.dart';
@@ -132,9 +133,9 @@ void main() {
               ),
             ),
           )
-          ..bind(GopeedMethods.createTask, (_) {
+          ..bind(GopeedMethods.createTaskBatch, (_) {
             created++;
-            return 'new-task';
+            return CreateTaskBatchResult(taskIds: ['new-task']);
           });
         final container = ProviderContainer(
           overrides: [

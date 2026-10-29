@@ -88,7 +88,7 @@ Future<String> createTask(CreateTask createTask) {
 Future<CreateTaskBatchResult> createTaskBatch(CreateTaskBatch createTaskBatch) {
   return _parse<CreateTaskBatchResult>(
     () => _request('api/v1/tasks/batch', method: 'POST', data: createTaskBatch),
-    CreateTaskBatchResult.fromResponse,
+    (json) => CreateTaskBatchResult.fromJson(json as Map<String, dynamic>),
   );
 }
 

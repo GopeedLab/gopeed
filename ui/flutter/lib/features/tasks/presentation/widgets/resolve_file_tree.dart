@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Column, Expanded, Row;
 
 import '../../../../api/model/resource.dart';
+import '../../../../core/icons/gopeed_icons.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
 import '../../application/pending_download.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
@@ -46,15 +48,28 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
     _treeItems = [];
     _selected.clear();
     for (final source in widget.sources) {
-      if (!source.included || source.result == null || source.created) continue;
       _labels[source.id] = source.name;
+      if (source.result == null) {
+        _treeItems.add(
+          FileTreeItem(
+            key: source.id,
+            path: source.id,
+            name: source.name,
+            size: 0,
+            data: (source.id, -1),
+            directoryOnly: true,
+          ),
+        );
+        continue;
+      }
       final files = source.files.isEmpty ? [FileInfo(name: source.name)] : source.files;
       for (final entry in files.indexed) {
-        if (source.createdFiles.containsKey(entry.$1)) continue;
         final key = (source.id, entry.$1);
         final file = entry.$2;
-        _files[key] = file;
-        if (source.selected.contains(entry.$1)) _selected.add(key);
+        if (!source.created) {
+          _files[key] = file;
+          if (source.selected.contains(entry.$1)) _selected.add(key);
+        }
         _treeItems.add(
           FileTreeItem<PendingFileKey>(
             key: '${source.id}:${entry.$1}',
@@ -80,6 +95,7 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
             directoryLabels: _labels,
             initialExpandedDepth: 2,
             keyPrefix: 'resolve-tree',
+            iconWidgetBuilder: _sourceIcon,
             rowHeight: _resolveTreeRowHeight,
             contentTextStyle: _resolveFileNameStyle,
             headerLeading: ExcludeFocus(
@@ -93,22 +109,22 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
               ),
             ),
             leadingBuilder: (context, node) {
-              final keys = node.leafItems.map((item) => item.data).toList();
+              final keys = node.leafItems.map((item) => item.data).where(_files.containsKey).toList();
               final count = keys.where(_selected.contains).length;
               return ExcludeFocus(
                 child: Checkbox(
-                  state: count == keys.length
+                  state: keys.isNotEmpty && count == keys.length
                       ? CheckboxState.checked
                       : count > 0
                       ? CheckboxState.indeterminate
                       : CheckboxState.unchecked,
-                  onChanged: (_) => _setSelection(keys, count != keys.length),
+                  onChanged: keys.isEmpty ? null : (_) => _setSelection(keys, count != keys.length),
                 ),
               );
             },
             onNodePressed: (node) {
-              final keys = node.leafItems.map((item) => item.data).toList();
-              _setSelection(keys, !keys.every(_selected.contains));
+              final keys = node.leafItems.map((item) => item.data).where(_files.containsKey).toList();
+              if (keys.isNotEmpty) _setSelection(keys, !keys.every(_selected.contains));
             },
           ),
         ),
@@ -124,6 +140,42 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
           onSelectImage: () => _toggleTypeFilter(_FileTypeFilter.image),
         ),
       ],
+    );
+  }
+
+  Widget _sourceIcon(BuildContext context, FileTreeNode<PendingFileKey> node) {
+    PendingDownload? source;
+    for (final candidate in widget.sources) {
+      if (node.key == 'folder:${candidate.id}') {
+        source = candidate;
+        break;
+      }
+    }
+    final palette = AppPalette.of(context);
+    if (source == null) {
+      return Icon(node.isFolder ? BootstrapIcons.folder2 : GopeedIcons.file, size: 18, color: palette.textSecondary);
+    }
+    final pending = source;
+    final message = pending.loading
+        ? (pending.resolving ? context.l10n.resolvingResource : context.l10n.waitingToResolve)
+        : pending.resolveError ?? pending.request.url;
+    return AppTooltip(
+      focusable: true,
+      message: message,
+      child: Semantics(
+        label: message,
+        child: pending.loading
+            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator())
+            : Icon(
+                pending.resolveError != null
+                    ? Icons.error_outline
+                    : pending.isBt
+                    ? GopeedIcons.folderBt
+                    : GopeedIcons.file,
+                size: 18,
+                color: pending.resolveError != null ? palette.error : palette.textSecondary,
+              ),
+      ),
     );
   }
 
