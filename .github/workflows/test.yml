@@ -86,6 +86,32 @@ jobs:
           flutter pub get
           flutter gen-l10n
           flutter test test/api/downloader_config_test.dart
+  test-flutter-task-context-menu:
+    name: Test task context menus and text inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CHROME_EXECUTABLE: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+      - name: Prepare Flutter tests
+        working-directory: ui/flutter
+        run: |
+          flutter pub get
+          flutter gen-l10n
+      - name: Test task menu actions and native input policy
+        working-directory: ui/flutter
+        run: |
+          flutter test --no-pub test/features/tasks/presentation/widgets/task_context_menu_test.dart test/shared/widgets/app_text_field_test.dart
+          flutter test --no-pub test/widget_test.dart --plain-name 'task context menu exposes'
+      - name: Test browser menu cancellation and input policy
+        working-directory: ui/flutter
+        run: |
+          "$CHROME_EXECUTABLE" --version
+          flutter test --no-pub --platform chrome test/features/tasks/presentation/widgets/task_context_menu_test.dart test/shared/widgets/app_text_field_test.dart
   test-webview-integration:
     name: Test webview integration (${{ matrix.name }})
     strategy:
