@@ -53,9 +53,8 @@ Future<void> showTaskFileBrowserDialog(BuildContext context, TaskRecord task) as
           height: dialogHeight,
           child: Consumer(
             builder: (context, ref, _) {
-              if (!task.isGroup) return TaskFileManagerView(task: task);
               final state = ref.watch(tasksControllerProvider).value;
-              final current = state?.tasks.where((item) => item.id == task.id).firstOrNull;
+              final current = state?.findTask(task.id);
               if (state != null && current == null) {
                 return Center(child: Text(context.l10n.taskNotFound));
               }

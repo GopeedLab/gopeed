@@ -56,6 +56,10 @@ void main() {
     final state = await container.read(tasksControllerProvider.future);
     expect(state.tasks.length, 1);
     expect(state.tasks.single.members.length, 2);
+    expect(state.allTasks.map((task) => task.id), ['group', 'first', 'second']);
+    expect(state.findTask('group'), same(state.tasks.single));
+    expect(state.findTask('first'), same(state.tasks.single.members.first));
+    expect(state.findTask('missing'), isNull);
     expect(state.tasks.single.matchesSearch('second.txt'), isTrue);
     expect(state.tasks.single.progress, 0.25);
     final controller = container.read(tasksControllerProvider.notifier);

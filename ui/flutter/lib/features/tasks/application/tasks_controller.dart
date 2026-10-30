@@ -23,6 +23,10 @@ class TasksState {
   final int uploadSpeedBytesPerSecond;
   final Object? lastError;
 
+  Iterable<TaskRecord> get allTasks => tasks.expand((task) => [task, ...task.members]);
+
+  TaskRecord? findTask(String id) => allTasks.where((task) => task.id == id).firstOrNull;
+
   TasksState copyWith({
     List<TaskRecord>? tasks,
     int? downloadSpeedBytesPerSecond,

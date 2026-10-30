@@ -58,7 +58,7 @@ class UpdatingTasks extends TasksController {
 
 void main() {
   for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
-    testWidgets('tablet group opens the in-app browser on $platform', (tester) async {
+    testWidgets('tablet group expands its member tasks on $platform', (tester) async {
       debugDefaultTargetPlatformOverride = platform;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
       tester.view.physicalSize = const Size(1024, 800);
@@ -80,7 +80,8 @@ void main() {
       await tester.tap(find.text('folder').first);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      expect(find.byType(TaskFileManagerView), findsOneWidget);
+      expect(find.byType(TaskFileManagerView), findsNothing);
+      expect(find.byType(TaskCard), findsNWidgets(2));
       expect(find.text('first.txt'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

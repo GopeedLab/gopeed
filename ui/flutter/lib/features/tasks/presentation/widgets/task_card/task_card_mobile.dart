@@ -13,6 +13,7 @@ class TaskCardMobile extends StatefulWidget {
   const TaskCardMobile({
     super.key,
     required this.task,
+    this.expanded = false,
     required this.selected,
     required this.batchMode,
     required this.selectedInBatch,
@@ -27,6 +28,7 @@ class TaskCardMobile extends StatefulWidget {
   });
 
   final TaskRecord task;
+  final bool expanded;
   final bool selected;
   final bool batchMode;
   final bool selectedInBatch;
@@ -117,7 +119,7 @@ class _TaskCardMobileState extends State<TaskCardMobile> {
                                   )
                                 : const SizedBox.shrink(),
                           ),
-                          TaskCardIcon(task: task),
+                          TaskCardIcon(task: task, expanded: widget.expanded),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(

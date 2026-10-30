@@ -14,6 +14,7 @@ class TaskCardDesktop extends StatefulWidget {
   const TaskCardDesktop({
     super.key,
     required this.task,
+    this.expanded = false,
     required this.selected,
     required this.batchMode,
     required this.selectedInBatch,
@@ -28,6 +29,7 @@ class TaskCardDesktop extends StatefulWidget {
   });
 
   final TaskRecord task;
+  final bool expanded;
   final bool selected;
   final bool batchMode;
   final bool selectedInBatch;
@@ -134,7 +136,7 @@ class _TaskCardDesktopState extends State<TaskCardDesktop> {
                               )
                             : const SizedBox.shrink(),
                       ),
-                      TaskCardIcon(task: task),
+                      TaskCardIcon(task: task, expanded: widget.expanded),
                       const SizedBox(width: 16),
                       Expanded(
                         child: SizedBox(

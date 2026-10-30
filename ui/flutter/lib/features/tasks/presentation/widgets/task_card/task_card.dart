@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../../../core/utils/breakpoints.dart';
+import '../../../../../shared/theme/app_design_tokens.dart';
 import '../../../domain/task_record.dart';
 import '../task_context_menu.dart';
 import 'task_card_desktop.dart';
@@ -10,6 +11,8 @@ class TaskCard extends StatelessWidget {
   const TaskCard({
     super.key,
     required this.task,
+    this.expanded = false,
+    this.nested = false,
     required this.selected,
     required this.batchMode,
     required this.selectedInBatch,
@@ -25,6 +28,8 @@ class TaskCard extends StatelessWidget {
   });
 
   final TaskRecord task;
+  final bool expanded;
+  final bool nested;
   final bool selected;
   final bool batchMode;
   final bool selectedInBatch;
@@ -42,40 +47,44 @@ class TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < Breakpoints.mobile;
 
-    if (isMobile) {
-      final card = TaskCardMobile(
-        task: task,
-        selected: selected,
-        batchMode: batchMode,
-        selectedInBatch: selectedInBatch,
-        onPressed: onPressed,
-        onToggleBatch: onToggleBatch,
-        onPause: task.canPause ? onPause : null,
-        onResume: task.canResume ? onResume : null,
-        onDelete: onDelete,
-        onOpen: onOpen,
-        onReveal: onReveal,
-        listeningForUpdate: listeningForUpdate,
-      );
-      final actions = contextActions;
-      return actions == null ? card : TaskContextMenu(task: task, actions: actions, child: card);
-    }
-
-    final card = TaskCardDesktop(
-      task: task,
-      selected: selected,
-      batchMode: batchMode,
-      selectedInBatch: selectedInBatch,
-      onPressed: onPressed,
-      onToggleBatch: onToggleBatch,
-      onPause: task.canPause ? onPause : null,
-      onResume: task.canResume ? onResume : null,
-      onDelete: onDelete,
-      onOpen: onOpen,
-      onReveal: onReveal,
-      listeningForUpdate: listeningForUpdate,
-    );
+    final card = isMobile
+        ? TaskCardMobile(
+            task: task,
+            expanded: expanded,
+            selected: selected,
+            batchMode: batchMode,
+            selectedInBatch: selectedInBatch,
+            onPressed: onPressed,
+            onToggleBatch: onToggleBatch,
+            onPause: task.canPause ? onPause : null,
+            onResume: task.canResume ? onResume : null,
+            onDelete: onDelete,
+            onOpen: onOpen,
+            onReveal: onReveal,
+            listeningForUpdate: listeningForUpdate,
+          )
+        : TaskCardDesktop(
+            task: task,
+            expanded: expanded,
+            selected: selected,
+            batchMode: batchMode,
+            selectedInBatch: selectedInBatch,
+            onPressed: onPressed,
+            onToggleBatch: onToggleBatch,
+            onPause: task.canPause ? onPause : null,
+            onResume: task.canResume ? onResume : null,
+            onDelete: onDelete,
+            onOpen: onOpen,
+            onReveal: onReveal,
+            listeningForUpdate: listeningForUpdate,
+          );
     final actions = contextActions;
-    return actions == null ? card : TaskContextMenu(task: task, actions: actions, child: card);
+    return Padding(
+      padding: EdgeInsetsDirectional.only(start: nested ? AppDesignTokens.space24 : 0),
+      child: Semantics(
+        expanded: task.isGroup ? expanded : null,
+        child: actions == null ? card : TaskContextMenu(task: task, actions: actions, child: card),
+      ),
+    );
   }
 }
