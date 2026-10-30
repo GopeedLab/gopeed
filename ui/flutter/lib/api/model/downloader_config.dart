@@ -214,7 +214,9 @@ class ExtraConfig {
   List<String> createHistory;
   bool runAsMenubarApp;
   bool analyticsEnabled;
-  String analyticsClientId;
+
+  /// Persisted UUID fallback; IDs returned by platform APIs are not stored here.
+  String deviceId;
 
   ExtraConfig({
     this.themeMode = '',
@@ -232,7 +234,7 @@ class ExtraConfig {
     this.createHistory = const [],
     this.runAsMenubarApp = false,
     this.analyticsEnabled = true,
-    this.analyticsClientId = '',
+    this.deviceId = '',
   }) : windowState = windowState ?? WindowStateConfig();
 
   factory ExtraConfig.fromJson(Map<String, dynamic>? json) =>
