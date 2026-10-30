@@ -67,6 +67,25 @@ void main() {
     expect(decoded.disablePex, isTrue);
   });
 
+  test('FTP settings round-trip with the Go json keys', () {
+    final config = DownloaderConfig();
+    config.protocolConfig.ftp.connections = 6;
+
+    final json = config.toJson();
+    final ftp = (json['protocolConfig'] as Map<String, dynamic>)['ftp'] as Map<String, dynamic>;
+    expect(ftp, {'connections': 6});
+    expect(DownloaderConfig.fromJson(json).protocolConfig.ftp.connections, 6);
+  });
+
+  test('a stored config without FTP settings still parses', () {
+    final json = DownloaderConfig().toJson();
+    (json['protocolConfig'] as Map<String, dynamic>).remove('ftp');
+
+    final decoded = DownloaderConfig.fromJson(json);
+    expect(decoded.protocolConfig.ftp.connections, 0);
+    expect(decoded.protocolConfig.http.connections, DownloaderConfig().protocolConfig.http.connections);
+  });
+
   test('BitTorrent peer discovery stays on when a stored config lacks the keys', () {
     final bt = BtConfig.fromJson({'listenPort': 6881, 'seedRatio': 1.0});
     expect(bt.disableDht, isFalse);

@@ -67,3 +67,28 @@ class OptsExtraHttp {
 
   Map<String, dynamic> toJson() => _$OptsExtraHttpToJson(this);
 }
+
+/// Options for an FTP task. It mirrors `pkg/protocol/ftp.OptsExtra`. The TLS
+/// mode of an `ftp://` link is on the request, see `ReqExtraFtp`.
+@JsonSerializable()
+class OptsExtraFtp {
+  int connections;
+  bool? autoTorrent;
+  bool? deleteTorrentAfterDownload;
+  bool? autoExtract;
+  String archivePassword;
+  bool deleteAfterExtract;
+
+  OptsExtraFtp({
+    this.connections = 0,
+    this.autoTorrent,
+    this.deleteTorrentAfterDownload,
+    this.autoExtract,
+    this.archivePassword = '',
+    this.deleteAfterExtract = false,
+  });
+
+  factory OptsExtraFtp.fromJson(Map<String, dynamic> json) => _$OptsExtraFtpFromJson(json);
+
+  Map<String, dynamic> toJson() => _$OptsExtraFtpToJson(this);
+}

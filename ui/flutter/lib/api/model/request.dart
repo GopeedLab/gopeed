@@ -42,6 +42,20 @@ class ReqExtraBt {
   Map<String, dynamic> toJson() => _$ReqExtraBtToJson(this);
 }
 
+/// The request extra of an FTP task. It mirrors `pkg/protocol/ftp.ReqExtra`;
+/// [tls] only applies to `ftp://` URLs, because `ftps://` always uses
+/// implicit TLS and `ftpes://` always uses explicit TLS.
+@JsonSerializable()
+class ReqExtraFtp {
+  String tls;
+
+  ReqExtraFtp({this.tls = 'none'});
+
+  factory ReqExtraFtp.fromJson(Map<String, dynamic> json) => _$ReqExtraFtpFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ReqExtraFtpToJson(this);
+}
+
 enum RequestProxyMode { follow, none, custom }
 
 @JsonSerializable()
