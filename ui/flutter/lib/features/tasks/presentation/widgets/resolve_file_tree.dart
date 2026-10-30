@@ -39,7 +39,11 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
   @override
   void didUpdateWidget(covariant ResolveFileTree oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final previousFiles = _files;
     _rebuildTreeItems();
+    if (previousFiles.length != _files.length || !previousFiles.keys.every(_files.containsKey)) {
+      _activeTypeFilters.clear();
+    }
   }
 
   void _rebuildTreeItems() {
@@ -48,8 +52,8 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
     _treeItems = [];
     _selected.clear();
     for (final source in widget.sources) {
-      _labels[source.id] = source.name;
       if (source.result == null) {
+        _labels[source.id] = source.name;
         _treeItems.add(
           FileTreeItem(
             key: source.id,
@@ -63,6 +67,10 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
         continue;
       }
       final files = source.files.isEmpty ? [FileInfo(name: source.name)] : source.files;
+      final hasRoot =
+          source.result!.res.name.trim().isNotEmpty &&
+          (source.isGroup || source.isBt || source.isFtp || files.length > 1);
+      if (hasRoot) _labels[source.id] = source.name;
       for (final entry in files.indexed) {
         final key = (source.id, entry.$1);
         final file = entry.$2;
@@ -73,7 +81,8 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
         _treeItems.add(
           FileTreeItem<PendingFileKey>(
             key: '${source.id}:${entry.$1}',
-            path: '${source.id}/${file.path}',
+            path: hasRoot ? '${source.id}/${file.path}' : file.path,
+            namespace: hasRoot ? '' : source.id,
             name: file.name,
             size: file.size,
             data: key,
@@ -146,7 +155,7 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
   Widget _sourceIcon(BuildContext context, FileTreeNode<PendingFileKey> node) {
     PendingDownload? source;
     for (final candidate in widget.sources) {
-      if (node.key == 'folder:${candidate.id}') {
+      if (node.key == 'folder:${candidate.id}' || node.item?.data.$1 == candidate.id) {
         source = candidate;
         break;
       }
@@ -169,8 +178,10 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
             : Icon(
                 pending.resolveError != null
                     ? Icons.error_outline
-                    : pending.isBt
+                    : node.isFolder && pending.isBt
                     ? GopeedIcons.folderBt
+                    : node.isFolder
+                    ? BootstrapIcons.folder2
                     : GopeedIcons.file,
                 size: 18,
                 color: pending.resolveError != null ? palette.error : palette.textSecondary,

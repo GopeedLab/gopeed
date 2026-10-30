@@ -96,8 +96,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(calls, ['https://example.com/a', 'https://example.com/b']);
-    expect(find.text('first.txt'), findsNWidgets(2));
-    await tester.tap(find.byKey(const ValueKey('resolve-tree-name-scroll-folder:a')));
+    expect(find.text('first.txt'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('resolve-tree-name-scroll-file:a:0')));
     await tester.pump();
     expect(sources.first.selected, isEmpty);
     responses.last.complete(resolved('second.txt'));
@@ -108,12 +108,109 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final filters in [
+    <String>['video'],
+    <String>['video', 'audio'],
+  ]) {
+    testWidgets('new files clear type highlights without changing previous selections ($filters)', (tester) async {
+      final response = Completer<ResolveResult>();
+      final first = pending('first')
+        ..result = ResolveResult(
+          res: Resource(
+            name: 'bundle',
+            files: [
+              FileInfo(name: 'video.mp4', size: 10),
+              FileInfo(name: 'song.mp3', size: 20),
+              FileInfo(name: 'picture.png', size: 30),
+            ],
+          ),
+        )
+        ..selected.addAll([0, 1, 2]);
+      final second = pending('second');
+      final batches = <CreateTaskBatch>[];
+      final registry = CapabilityRegistry(createAppCapabilityCodecs())
+        ..bind(GopeedMethods.resolve, (_) => response.future)
+        ..bind(GopeedMethods.createTaskBatch, (batch) {
+          batches.add(batch);
+          return CreateTaskBatchResult(taskIds: ['created']);
+        });
+      await open(tester, [first, second], registry);
+      for (final filter in filters) {
+        await tester.tap(find.byKey(ValueKey('resolve-tree-filter-$filter')));
+        await tester.pump();
+        // Each selection is written back by the parent and rebuilds the tree.
+        expect(typeFilterActive(tester, filter), isTrue);
+      }
+      final expectedFirst = filters.length == 1 ? {0} : {0, 1};
+      expect(first.selected, expectedFirst);
+      expect(tester.widget<AppLoadingButton>(find.byKey(const ValueKey('resolve-create-button'))).onPressed, isNull);
+      final incoming = filters.length == 1 ? 'new-audio.mp3' : 'new-image.png';
+      response.complete(
+        ResolveResult(
+          id: 'incoming-rid',
+          res: Resource(files: [FileInfo(name: incoming, size: 40)]),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(first.selected, expectedFirst);
+      expect(second.selected, {0});
+      for (final filter in filters) {
+        expect(typeFilterActive(tester, filter), isFalse);
+      }
+      expect(find.text('${expectedFirst.length + 1} / 4 selected'), findsOneWidget);
+      final size = tester.widget<Text>(find.byKey(const ValueKey('resolve-tree-selected-size'))).data;
+      expect(size, '${filters.length == 1 ? 50 : 70} B');
+      await tester.tap(find.byKey(const ValueKey('resolve-create-button')));
+      await tester.pumpAndSettle();
+      expect(batches, hasLength(2));
+      expect(batches.first.group, isTrue);
+      expect(
+        batches.first.reqs!.map((item) => item.opts!.name),
+        filters.length == 1 ? ['video.mp4'] : ['video.mp4', 'song.mp3'],
+      );
+      expect(batches.last.group, isFalse);
+      expect(batches.last.reqs!.single.rid, 'incoming-rid');
+      expect(batches.last.reqs!.single.opts!.selectFiles, [0]);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('a failed source preserves type highlights and the successful source selection', (tester) async {
+    final response = Completer<ResolveResult>();
+    final first = pending('first')
+      ..result = ResolveResult(
+        res: Resource(
+          files: [
+            FileInfo(name: 'video.mp4'),
+            FileInfo(name: 'song.mp3'),
+          ],
+        ),
+      )
+      ..selected.addAll([0, 1]);
+    final second = pending('failed');
+    final registry = CapabilityRegistry(createAppCapabilityCodecs())
+      ..bind(GopeedMethods.resolve, (_) => response.future);
+    await open(tester, [first, second], registry);
+    await tester.tap(find.byKey(const ValueKey('resolve-tree-filter-video')));
+    await tester.pump();
+    expect(typeFilterActive(tester, 'video'), isTrue);
+    response.completeError(StateError('unavailable'));
+    await tester.pumpAndSettle();
+    expect(first.selected, {0});
+    expect(second.selected, isEmpty);
+    expect(typeFilterActive(tester, 'video'), isTrue);
+    expect(find.text('1 / 2 selected'), findsOneWidget);
+    expect(tester.widget<AppLoadingButton>(find.byKey(const ValueKey('resolve-create-button'))).onPressed, isNotNull);
+    await tester.tap(find.byKey(const ValueKey('resolve-cancel-button')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('same-name sources synchronize individual, root and all-file selections', (tester) async {
     final sources = [
       for (final id in ['first', 'second'])
         pending(id)
           ..result = ResolveResult(
-            id: '$id-rid',
             res: Resource(
               name: 'bundle',
               files: [
@@ -194,4 +291,20 @@ void main() {
     expect(closed, isTrue);
     expect(tester.takeException(), isNull);
   });
+}
+
+bool typeFilterActive(WidgetTester tester, String filter) {
+  final decoration =
+      tester
+              .widget<DecoratedBox>(
+                find
+                    .descendant(
+                      of: find.byKey(ValueKey('resolve-tree-filter-$filter')),
+                      matching: find.byType(DecoratedBox),
+                    )
+                    .first,
+              )
+              .decoration
+          as BoxDecoration;
+  return decoration.color != null;
 }

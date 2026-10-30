@@ -17,6 +17,7 @@ class FileTreeItem<T> {
     required this.size,
     required this.data,
     this.directoryOnly = false,
+    this.namespace = '',
   });
 
   final String key;
@@ -25,6 +26,9 @@ class FileTreeItem<T> {
   final int size;
   final T data;
   final bool directoryOnly;
+
+  /// Keeps directories from independent resources distinct without adding a visible root.
+  final String namespace;
 }
 
 class FileTreeNode<T> {
@@ -903,10 +907,11 @@ List<TreeNode<FileTreeNode<T>>> _buildTree<T>(
 
     for (final part in parts) {
       currentPath = currentPath.isEmpty ? part : '$currentPath/$part';
-      final folder = folders.putIfAbsent(currentPath, () {
+      final directoryKey = item.namespace.isEmpty ? currentPath : '${item.namespace}:$currentPath';
+      final folder = folders.putIfAbsent(directoryKey, () {
         final node = _BuildNode<T>(
-          key: 'folder:$currentPath',
-          label: directoryLabels[currentPath] ?? part,
+          key: 'folder:$directoryKey',
+          label: directoryLabels[directoryKey] ?? part,
           originalIndex: originalIndex++,
         );
         if (parent == null) {
