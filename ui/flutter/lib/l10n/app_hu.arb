@@ -372,7 +372,9 @@
   "torrentDataEmpty": "A torrent fájl adatai üresek",
   "torrentPathUnavailable": "Nem érhető el a torrent fájl elérési útja",
   "selectAtLeastOneFile": "Válasszon ki legalább egy fájlt",
-  "resolvedFiles": "Feloldott fájlok",
+  "resolvedFiles": "Fájllista",
+  "waitingToResolve": "Feldolgozásra vár",
+  "resolvingResource": "Erőforrás feldolgozása",
   "resolvedFileCount": "{count} fájlok megoldva",
   "resolvedCategoryDirectory": "Ide lesz mentve: {path}",
   "resourceHasNoFiles": "Az erőforrásnak nincs kiválasztható fájllistája",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Frissítés állapota",
   "trackerSubscriptionTrackerCount": "Trackerek száma",
   "trackerSubscriptionNotUpdated": "Még nem frissült",
-  "actions": "Műveletek"
+  "actions": "Műveletek",
+  "taskGroupDeleteImpact": "{taskCount} letöltést és {fileCount} fájlt érint."
 }

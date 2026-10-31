@@ -2,99 +2,147 @@ import 'package:flutter/widgets.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Column, Expanded, Row;
 
 import '../../../../api/model/resource.dart';
+import '../../../../core/icons/gopeed_icons.dart';
+import '../../../../shared/widgets/app_tooltip.dart';
+import '../../application/pending_download.dart';
 import '../../../../l10n/l10n.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
 import '../../../../shared/widgets/file_tree_view.dart';
 import '../../../../util/util.dart';
 
-class ResolveFileTree extends StatefulWidget {
-  const ResolveFileTree({
-    super.key,
-    required this.files,
-    required this.initialSelection,
-    required this.onSelectionChanged,
-  });
+typedef PendingFileKey = (String, int);
 
-  final List<FileInfo> files;
-  final List<int> initialSelection;
-  final ValueChanged<List<int>> onSelectionChanged;
+class ResolveFileTree extends StatefulWidget {
+  const ResolveFileTree({super.key, required this.sources, required this.onSelectionChanged});
+
+  final List<PendingDownload> sources;
+  final ValueChanged<Set<PendingFileKey>> onSelectionChanged;
 
   @override
   State<ResolveFileTree> createState() => _ResolveFileTreeState();
 }
 
 class _ResolveFileTreeState extends State<ResolveFileTree> {
-  late List<FileTreeItem<int>> _treeItems;
-  late List<int> _allFileIndexes;
-  late final Set<int> _selectedIndexes;
+  late List<FileTreeItem<PendingFileKey>> _treeItems;
+  late Map<PendingFileKey, FileInfo> _files;
+  late Map<String, String> _labels;
+  final Set<PendingFileKey> _selected = {};
   final Set<_FileTypeFilter> _activeTypeFilters = {};
 
   @override
   void initState() {
     super.initState();
-    _selectedIndexes = widget.initialSelection.where(_isValidIndex).toSet();
     _rebuildTreeItems();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _notifySelection());
   }
 
   @override
   void didUpdateWidget(covariant ResolveFileTree oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (identical(widget.files, oldWidget.files)) return;
-    _selectedIndexes.removeWhere((index) => !_isValidIndex(index));
-    _activeTypeFilters.clear();
+    final previousFiles = _files;
     _rebuildTreeItems();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _notifySelection());
+    if (previousFiles.length != _files.length || !previousFiles.keys.every(_files.containsKey)) {
+      _activeTypeFilters.clear();
+    }
+  }
+
+  void _rebuildTreeItems() {
+    _files = {};
+    _labels = {};
+    _treeItems = [];
+    _selected.clear();
+    for (final source in widget.sources) {
+      if (source.result == null) {
+        _labels[source.id] = source.name;
+        _treeItems.add(
+          FileTreeItem(
+            key: source.id,
+            path: source.id,
+            name: source.name,
+            size: 0,
+            data: (source.id, -1),
+            directoryOnly: true,
+          ),
+        );
+        continue;
+      }
+      final files = source.files.isEmpty ? [FileInfo(name: source.name)] : source.files;
+      final hasRoot =
+          source.result!.res.name.trim().isNotEmpty &&
+          (source.isGroup || source.isBt || source.isFtp || files.length > 1);
+      if (hasRoot) _labels[source.id] = source.name;
+      for (final entry in files.indexed) {
+        final key = (source.id, entry.$1);
+        final file = entry.$2;
+        if (!source.created) {
+          _files[key] = file;
+          if (source.selected.contains(entry.$1)) _selected.add(key);
+        }
+        _treeItems.add(
+          FileTreeItem<PendingFileKey>(
+            key: '${source.id}:${entry.$1}',
+            path: hasRoot ? '${source.id}/${file.path}' : file.path,
+            namespace: hasRoot ? '' : source.id,
+            name: file.name,
+            size: file.size,
+            data: key,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedCount = _selectedIndexes.length;
-    final allSelected = _allFileIndexes.isNotEmpty && selectedCount == _allFileIndexes.length;
-    final partiallySelected = selectedCount > 0 && !allSelected;
-    final selectedSize = _selectedIndexes.fold<int>(0, (sum, index) => sum + widget.files[index].size);
-
+    final allSelected = _files.isNotEmpty && _selected.length == _files.length;
+    final partial = _selected.isNotEmpty && !allSelected;
     return Column(
       children: [
         Expanded(
-          child: FileTreeView<int>(
+          child: FileTreeView<PendingFileKey>(
             items: _treeItems,
-            initialExpandedDepth: 1,
+            directoryLabels: _labels,
+            initialExpandedDepth: 2,
             keyPrefix: 'resolve-tree',
+            iconWidgetBuilder: _sourceIcon,
             rowHeight: _resolveTreeRowHeight,
             contentTextStyle: _resolveFileNameStyle,
             headerLeading: ExcludeFocus(
               child: Checkbox(
                 state: allSelected
                     ? CheckboxState.checked
-                    : (partiallySelected ? CheckboxState.indeterminate : CheckboxState.unchecked),
-                onChanged: _allFileIndexes.isEmpty ? null : (_) => _setFileSelection(_allFileIndexes, !allSelected),
+                    : partial
+                    ? CheckboxState.indeterminate
+                    : CheckboxState.unchecked,
+                onChanged: _files.isEmpty ? null : (_) => _setSelection(_files.keys, !allSelected),
               ),
             ),
             leadingBuilder: (context, node) {
-              final indexes = node.leafItems.map((item) => item.data).toList(growable: false);
-              final nodeSelectedCount = indexes.where(_selectedIndexes.contains).length;
-              final selected = indexes.isNotEmpty && nodeSelectedCount == indexes.length;
-              final partial = nodeSelectedCount > 0 && !selected;
+              final keys = node.leafItems.map((item) => item.data).where(_files.containsKey).toList();
+              final count = keys.where(_selected.contains).length;
               return ExcludeFocus(
                 child: Checkbox(
-                  state: selected
+                  state: keys.isNotEmpty && count == keys.length
                       ? CheckboxState.checked
-                      : (partial ? CheckboxState.indeterminate : CheckboxState.unchecked),
-                  onChanged: (_) => _setFileSelection(indexes, !selected),
+                      : count > 0
+                      ? CheckboxState.indeterminate
+                      : CheckboxState.unchecked,
+                  onChanged: keys.isEmpty ? null : (_) => _setSelection(keys, count != keys.length),
                 ),
               );
             },
-            onNodePressed: _toggleNodeSelection,
+            onNodePressed: (node) {
+              final keys = node.leafItems.map((item) => item.data).where(_files.containsKey).toList();
+              if (keys.isNotEmpty) _setSelection(keys, !keys.every(_selected.contains));
+            },
           ),
         ),
         const SizedBox(height: 12),
         _TreeFooter(
-          selectedCount: selectedCount,
-          totalCount: _allFileIndexes.length,
-          selectedSize: selectedSize,
-          unknownSize: selectedCount > 0 && selectedSize == 0,
+          selectedCount: _selected.length,
+          totalCount: _files.length,
+          selectedSize: _selected.fold(0, (sum, key) => sum + _files[key]!.size),
+          unknownSize: _selected.any((key) => _files[key]!.size <= 0),
           activeTypeFilters: _activeTypeFilters,
           onSelectVideo: () => _toggleTypeFilter(_FileTypeFilter.video),
           onSelectAudio: () => _toggleTypeFilter(_FileTypeFilter.audio),
@@ -104,65 +152,69 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
     );
   }
 
-  bool _isValidIndex(int index) => index >= 0 && index < widget.files.length;
-
-  void _rebuildTreeItems() {
-    _allFileIndexes = List<int>.generate(widget.files.length, (index) => index, growable: false);
-    _treeItems = widget.files
-        .asMap()
-        .entries
-        .map(
-          (entry) => FileTreeItem<int>(
-            key: entry.key.toString(),
-            path: entry.value.path,
-            name: entry.value.name,
-            size: entry.value.size,
-            data: entry.key,
-          ),
-        )
-        .toList(growable: false);
+  Widget _sourceIcon(BuildContext context, FileTreeNode<PendingFileKey> node) {
+    PendingDownload? source;
+    for (final candidate in widget.sources) {
+      if (node.key == 'folder:${candidate.id}' || node.item?.data.$1 == candidate.id) {
+        source = candidate;
+        break;
+      }
+    }
+    final palette = AppPalette.of(context);
+    if (source == null) {
+      return Icon(node.isFolder ? BootstrapIcons.folder2 : GopeedIcons.file, size: 18, color: palette.textSecondary);
+    }
+    final pending = source;
+    final message = pending.loading
+        ? (pending.resolving ? context.l10n.resolvingResource : context.l10n.waitingToResolve)
+        : pending.resolveError ?? pending.request.url;
+    return AppTooltip(
+      focusable: true,
+      message: message,
+      child: Semantics(
+        label: message,
+        child: pending.loading
+            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator())
+            : Icon(
+                pending.resolveError != null
+                    ? Icons.error_outline
+                    : node.isFolder && pending.isBt
+                    ? GopeedIcons.folderBt
+                    : node.isFolder
+                    ? BootstrapIcons.folder2
+                    : GopeedIcons.file,
+                size: 18,
+                color: pending.resolveError != null ? palette.error : palette.textSecondary,
+              ),
+      ),
+    );
   }
 
-  void _setFileSelection(Iterable<int> indexes, bool selected) {
+  void _setSelection(Iterable<PendingFileKey> keys, bool selected) {
     setState(() {
       _activeTypeFilters.clear();
       if (selected) {
-        _selectedIndexes.addAll(indexes);
+        _selected.addAll(keys);
       } else {
-        _selectedIndexes.removeAll(indexes);
+        _selected.removeAll(keys);
       }
     });
-    _notifySelection();
-  }
-
-  void _toggleNodeSelection(FileTreeNode<int> node) {
-    final indexes = node.leafItems.map((item) => item.data).toList(growable: false);
-    final selected = indexes.isNotEmpty && indexes.every(_selectedIndexes.contains);
-    _setFileSelection(indexes, !selected);
+    widget.onSelectionChanged(Set.of(_selected));
   }
 
   void _toggleTypeFilter(_FileTypeFilter filter) {
     setState(() {
-      if (!_activeTypeFilters.remove(filter)) {
-        _activeTypeFilters.add(filter);
-      }
-      final extensions = <String>{for (final activeFilter in _activeTypeFilters) ...activeFilter.extensions};
-      _selectedIndexes
+      if (!_activeTypeFilters.remove(filter)) _activeTypeFilters.add(filter);
+      final extensions = {for (final active in _activeTypeFilters) ...active.extensions};
+      _selected
         ..clear()
         ..addAll(
-          widget.files
-              .asMap()
-              .entries
+          _files.entries
               .where((entry) => extensions.contains(_extensionOf(entry.value.name)))
               .map((entry) => entry.key),
         );
     });
-    _notifySelection();
-  }
-
-  void _notifySelection() {
-    final values = _selectedIndexes.toList()..sort();
-    widget.onSelectionChanged(values);
+    widget.onSelectionChanged(Set.of(_selected));
   }
 }
 

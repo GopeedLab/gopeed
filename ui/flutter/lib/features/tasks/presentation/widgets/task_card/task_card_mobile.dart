@@ -13,6 +13,7 @@ class TaskCardMobile extends StatefulWidget {
   const TaskCardMobile({
     super.key,
     required this.task,
+    this.expanded = false,
     required this.selected,
     required this.batchMode,
     required this.selectedInBatch,
@@ -27,6 +28,7 @@ class TaskCardMobile extends StatefulWidget {
   });
 
   final TaskRecord task;
+  final bool expanded;
   final bool selected;
   final bool batchMode;
   final bool selectedInBatch;
@@ -62,7 +64,7 @@ class _TaskCardMobileState extends State<TaskCardMobile> {
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
         onTap: widget.onPressed,
-        onDoubleTap: !widget.batchMode && task.status == TaskStatus.completed ? widget.onOpen : null,
+        onDoubleTap: !widget.batchMode && !task.isGroup && task.status == TaskStatus.completed ? widget.onOpen : null,
         child: Container(
           key: const ValueKey('task-card-mobile-surface'),
           decoration: BoxDecoration(
@@ -117,7 +119,7 @@ class _TaskCardMobileState extends State<TaskCardMobile> {
                                   )
                                 : const SizedBox.shrink(),
                           ),
-                          TaskCardIcon(task: task),
+                          TaskCardIcon(task: task, expanded: widget.expanded),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -168,15 +170,21 @@ class _TaskCardMobileState extends State<TaskCardMobile> {
   }
 
   List<Widget> _buildActionButtons(TaskRecord task, AppPalette palette, bool isDark) {
-    final actions = switch (task.status) {
-      TaskStatus.downloading => [(Icons.pause, widget.onPause), (Icons.close, widget.onDelete)],
-      TaskStatus.paused => [(Icons.play_arrow, widget.onResume), (Icons.close, widget.onDelete)],
-      TaskStatus.failed => [(Icons.refresh, widget.onResume), (Icons.delete_outline, widget.onDelete)],
-      TaskStatus.completed => [
-        if (AppWindowChrome.isDesktopWindow) (Icons.folder_open_outlined, widget.onReveal),
-        (Icons.delete_outline, widget.onDelete),
-      ],
-    };
+    final actions = task.isGroup && task.status != TaskStatus.completed
+        ? [
+            if (task.canPause) (Icons.pause, widget.onPause),
+            if (task.canResume) (Icons.play_arrow, widget.onResume),
+            (Icons.close, widget.onDelete),
+          ]
+        : switch (task.status) {
+            TaskStatus.downloading => [(Icons.pause, widget.onPause), (Icons.close, widget.onDelete)],
+            TaskStatus.paused => [(Icons.play_arrow, widget.onResume), (Icons.close, widget.onDelete)],
+            TaskStatus.failed => [(Icons.refresh, widget.onResume), (Icons.delete_outline, widget.onDelete)],
+            TaskStatus.completed => [
+              if (AppWindowChrome.isDesktopWindow) (Icons.folder_open_outlined, widget.onReveal),
+              (Icons.delete_outline, widget.onDelete),
+            ],
+          };
 
     return actions
         .map(

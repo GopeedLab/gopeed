@@ -372,7 +372,9 @@
   "torrentDataEmpty": "種子檔案內容為空",
   "torrentPathUnavailable": "無法訪問種子檔案路徑",
   "selectAtLeastOneFile": "請至少選擇一個檔案",
-  "resolvedFiles": "已解析檔案",
+  "resolvedFiles": "檔案清單",
+  "waitingToResolve": "等待解析",
+  "resolvingResource": "正在解析資源",
   "resolvedFileCount": "已解析 {count} 個檔案",
   "resolvedCategoryDirectory": "將儲存到 {path}",
   "resourceHasNoFiles": "該資源沒有可選擇的檔案列表",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "更新狀態",
   "trackerSubscriptionTrackerCount": "Tracker 數量",
   "trackerSubscriptionNotUpdated": "未更新",
-  "actions": "操作"
+  "actions": "操作",
+  "taskGroupDeleteImpact": "將影響 {taskCount} 個下載任務和 {fileCount} 個檔案。"
 }

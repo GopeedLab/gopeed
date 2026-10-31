@@ -46,25 +46,35 @@ class TaskUpdateListeningIndicator extends StatelessWidget {
 }
 
 class TaskCardIcon extends StatelessWidget {
-  const TaskCardIcon({super.key, required this.task});
+  const TaskCardIcon({super.key, required this.task, this.expanded = false});
 
   final TaskRecord task;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
 
-    return SizedBox(
-      width: 32,
-      height: 32,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
-        clipBehavior: Clip.hardEdge,
-        child: ColoredBox(
-          color: palette.taskCardIconBg,
-          child: Center(child: Icon(task.icon, size: 20, color: palette.textSecondary)),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (task.isGroup) ...[
+          Icon(expanded ? Icons.expand_more : Icons.chevron_right, size: 18, color: palette.textSecondary),
+          const SizedBox(width: AppDesignTokens.space4),
+        ],
+        SizedBox(
+          width: 32,
+          height: 32,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppDesignTokens.controlRadius),
+            clipBehavior: Clip.hardEdge,
+            child: ColoredBox(
+              color: palette.taskCardIconBg,
+              child: Center(child: Icon(task.icon, size: 20, color: palette.textSecondary)),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }

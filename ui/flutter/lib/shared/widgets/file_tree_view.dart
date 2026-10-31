@@ -16,6 +16,8 @@ class FileTreeItem<T> {
     required this.name,
     required this.size,
     required this.data,
+    this.directoryOnly = false,
+    this.namespace = '',
   });
 
   final String key;
@@ -23,6 +25,10 @@ class FileTreeItem<T> {
   final String name;
   final int size;
   final T data;
+  final bool directoryOnly;
+
+  /// Keeps directories from independent resources distinct without adding a visible root.
+  final String namespace;
 }
 
 class FileTreeNode<T> {
@@ -61,6 +67,7 @@ class FileTreeView<T> extends StatefulWidget {
     this.headerLeading,
     this.leadingBuilder,
     this.iconBuilder,
+    this.iconWidgetBuilder,
     this.trailingBuilder,
     this.onNodePressed,
     this.keyPrefix = 'file-tree',
@@ -71,12 +78,15 @@ class FileTreeView<T> extends StatefulWidget {
     this.contentTextStyle,
     this.iconSize = 18,
     this.initialExpandedDepth,
+    this.directoryLabels = const {},
   });
 
   final List<FileTreeItem<T>> items;
+  final Map<String, String> directoryLabels;
   final Widget? headerLeading;
   final FileTreeNodeWidgetBuilder<T>? leadingBuilder;
   final FileTreeNodeIconBuilder<T>? iconBuilder;
+  final FileTreeNodeWidgetBuilder<T>? iconWidgetBuilder;
   final FileTreeNodeWidgetBuilder<T>? trailingBuilder;
   final ValueChanged<FileTreeNode<T>>? onNodePressed;
   final String keyPrefix;
@@ -115,7 +125,11 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _nodes = _buildTree(widget.items, expandedDepth: widget.initialExpandedDepth);
+    _nodes = _buildTree(
+      widget.items,
+      expandedDepth: widget.initialExpandedDepth,
+      directoryLabels: widget.directoryLabels,
+    );
     _allFoldersExpanded = _foldersAreExpanded(_nodes);
     _transitionController = AnimationController(vsync: this, duration: _treeTransitionDuration, value: 1)
       ..addStatusListener(_onTransitionStatus);
@@ -128,7 +142,10 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
     if (identical(widget.items, oldWidget.items)) return;
 
     final expandedKeys = _expandedFolderKeys(_nodes);
-    var nodes = _restoreExpandedFolders(_buildTree(widget.items), expandedKeys);
+    var nodes = _restoreExpandedFolders(
+      _buildTree(widget.items, directoryLabels: widget.directoryLabels),
+      expandedKeys,
+    );
     nodes = _sortNodes(nodes, _sortColumn, _sortDirection);
     _nodes = nodes;
     _allFoldersExpanded = _foldersAreExpanded(nodes);
@@ -171,7 +188,7 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
       label,
       () => _measureLabelWidth(label, style: labelStyle, textDirection: textDirection, textScaler: textScaler),
     );
-    final nameContentWidth = _widestLabelWidth(widget.items, measureLabel);
+    final nameContentWidth = _widestLabelWidth(_nodes, measureLabel);
     final fixedNameChrome =
         _treeNodeExpandChrome + widget.iconSize + 4 + (widget.leadingBuilder == null ? 0 : _treeLeadingChrome);
 
@@ -179,7 +196,7 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
       builder: (context, constraints) {
         final treeWidth = constraints.hasBoundedWidth ? constraints.maxWidth : _treeFallbackWidth;
         final horizontalOverflow = _horizontalOverflow(
-          widget.items,
+          _nodes,
           baseNameViewport:
               treeWidth - _treeHorizontalPadding - trailingColumnWidth - _treeTrailingGap - fixedNameChrome,
           depthIndent: treeItemInset * 3,
@@ -283,14 +300,15 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (leading != null) ...[leading, const SizedBox(width: 8)],
-                Icon(
-                  widget.iconBuilder?.call(data) ??
-                      (data.isFolder
-                          ? (visuallyExpanded ? BootstrapIcons.folder2Open : BootstrapIcons.folder2)
-                          : _fileIcon(data.label)),
-                  size: widget.iconSize,
-                  color: palette.textSecondary,
-                ),
+                widget.iconWidgetBuilder?.call(context, data) ??
+                    Icon(
+                      widget.iconBuilder?.call(data) ??
+                          (data.isFolder
+                              ? (visuallyExpanded ? BootstrapIcons.folder2Open : BootstrapIcons.folder2)
+                              : _fileIcon(data.label)),
+                      size: widget.iconSize,
+                      color: palette.textSecondary,
+                    ),
                 const SizedBox(width: 4),
                 Expanded(
                   child: GestureDetector(
@@ -873,7 +891,11 @@ class _BuildNode<T> {
   }
 }
 
-List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items, {int? expandedDepth}) {
+List<TreeNode<FileTreeNode<T>>> _buildTree<T>(
+  List<FileTreeItem<T>> items, {
+  int? expandedDepth,
+  Map<String, String> directoryLabels = const {},
+}) {
   final root = <_BuildNode<T>>[];
   final folders = <String, _BuildNode<T>>{};
   var originalIndex = 0;
@@ -885,8 +907,13 @@ List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items, {int?
 
     for (final part in parts) {
       currentPath = currentPath.isEmpty ? part : '$currentPath/$part';
-      final folder = folders.putIfAbsent(currentPath, () {
-        final node = _BuildNode<T>(key: 'folder:$currentPath', label: part, originalIndex: originalIndex++);
+      final directoryKey = item.namespace.isEmpty ? currentPath : '${item.namespace}:$currentPath';
+      final folder = folders.putIfAbsent(directoryKey, () {
+        final node = _BuildNode<T>(
+          key: 'folder:$directoryKey',
+          label: directoryLabels[directoryKey] ?? part,
+          originalIndex: originalIndex++,
+        );
         if (parent == null) {
           root.add(node);
         } else {
@@ -896,6 +923,8 @@ List<TreeNode<FileTreeNode<T>>> _buildTree<T>(List<FileTreeItem<T>> items, {int?
       });
       parent = folder;
     }
+
+    if (item.directoryOnly) continue;
 
     final fileNode = _BuildNode<T>(
       key: 'file:${item.key}',
@@ -994,7 +1023,7 @@ Set<String> _expandedFolderKeys<T>(Iterable<TreeNode<FileTreeNode<T>>> nodes) {
   final keys = <String>{};
   void collect(TreeNode<FileTreeNode<T>> node) {
     final item = node as TreeItemNode<FileTreeNode<T>>;
-    if (item.children.isNotEmpty && item.expanded) keys.add(item.data.key);
+    if (item.data.isFolder && item.expanded) keys.add(item.data.key);
     for (final child in item.children) {
       collect(child);
     }
@@ -1016,7 +1045,7 @@ List<TreeNode<FileTreeNode<T>>> _restoreExpandedFolders<T>(
         final children = _restoreExpandedFolders(item.children, expandedKeys);
         return item
             .updateChildren(children)
-            .updateState(expanded: item.children.isNotEmpty && expandedKeys.contains(item.data.key));
+            .updateState(expanded: item.data.isFolder && expandedKeys.contains(item.data.key));
       })
       .toList(growable: false);
 }
@@ -1036,13 +1065,12 @@ String _extensionOf(String name) {
   return name.substring(index + 1).toLowerCase();
 }
 
-double _widestLabelWidth<T>(List<FileTreeItem<T>> items, double Function(String label) measureLabel) {
+double _widestLabelWidth<T>(List<TreeNode<FileTreeNode<T>>> nodes, double Function(String label) measureLabel) {
   var widest = _treeMinimumNameContentWidth;
-  for (final item in items) {
-    widest = math.max(widest, measureLabel(item.name));
-    for (final segment in item.path.split(RegExp(r'[/\\]+'))) {
-      if (segment.isNotEmpty) widest = math.max(widest, measureLabel(segment));
-    }
+  for (final node in nodes) {
+    final item = node as TreeItemNode<FileTreeNode<T>>;
+    widest = math.max(widest, measureLabel(item.data.label));
+    widest = math.max(widest, _widestLabelWidth(item.children, measureLabel));
   }
   return widest;
 }
@@ -1063,20 +1091,27 @@ double _measureLabelWidth(
 }
 
 double _horizontalOverflow<T>(
-  List<FileTreeItem<T>> items, {
+  List<TreeNode<FileTreeNode<T>>> nodes, {
   required double baseNameViewport,
   required double depthIndent,
   required double Function(String label) measureLabel,
+  int depth = 0,
 }) {
   var overflow = 0.0;
-  for (final item in items) {
-    final segments = item.path.split(RegExp(r'[/\\]+')).where((segment) => segment.isNotEmpty).toList();
-    for (var depth = 0; depth < segments.length; depth++) {
-      final viewport = math.max(_treeMinimumNameViewport, baseNameViewport - (depth * depthIndent));
-      overflow = math.max(overflow, measureLabel(segments[depth]) - viewport);
-    }
-    final fileViewport = math.max(_treeMinimumNameViewport, baseNameViewport - (segments.length * depthIndent));
-    overflow = math.max(overflow, measureLabel(item.name) - fileViewport);
+  final viewport = math.max(_treeMinimumNameViewport, baseNameViewport - depth * depthIndent);
+  for (final node in nodes) {
+    final item = node as TreeItemNode<FileTreeNode<T>>;
+    overflow = math.max(overflow, measureLabel(item.data.label) - viewport);
+    overflow = math.max(
+      overflow,
+      _horizontalOverflow(
+        item.children,
+        baseNameViewport: baseNameViewport,
+        depthIndent: depthIndent,
+        measureLabel: measureLabel,
+        depth: depth + 1,
+      ),
+    );
   }
   return math.max(0, overflow);
 }

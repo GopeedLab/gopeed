@@ -372,7 +372,9 @@
   "torrentDataEmpty": "El fitxer torrent de dades és buit",
   "torrentPathUnavailable": "No s' ha pogut accedir al camí del fitxer torrent",
   "selectAtLeastOneFile": "Seleccioneu com a mínim un fitxer",
-  "resolvedFiles": "Fitxers resolts",
+  "resolvedFiles": "Llista de fitxers",
+  "waitingToResolve": "Esperant l’anàlisi",
+  "resolvingResource": "S’està analitzant el recurs",
   "resolvedFileCount": "{count}",
   "resolvedCategoryDirectory": "Es desarà a {path}",
   "resourceHasNoFiles": "El recurs no té cap llista de fitxers per seleccionar",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Estat de l’actualització",
   "trackerSubscriptionTrackerCount": "Nombre de trackers",
   "trackerSubscriptionNotUpdated": "Sense actualitzar",
-  "actions": "Accions"
+  "actions": "Accions",
+  "taskGroupDeleteImpact": "Afecta {taskCount} baixades i {fileCount} fitxers."
 }

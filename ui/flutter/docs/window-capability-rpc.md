@@ -128,3 +128,16 @@ Child-window code must not:
 - Parse RPC JSON directly inside a page or widget.
 
 These constraints keep all backend and persistence ownership in the main window and allow multiple child windows to operate concurrently without database locks or duplicated Gopeed runtimes.
+
+## 10. Batch Task Creation
+
+`GopeedMethods.createTaskBatch` carries `CreateTaskBatch` through the existing
+codec registry. Each member accepts either `rid` from resolve or `req`, plus
+creation `opts`. A nonempty `rid` takes priority. BT selections retain their
+original file indexes in `opts.selectFiles`.
+
+Both ordinary and grouped creation return `CreateTaskBatchResult`, an object
+with `taskIds` and an optional `parentId`. A successful response completes the
+batch, including partial success. The preview tracks completed batches so a
+failed batch can be retried without repeating successful batches. Creation does
+not accept a group ID to append members to an existing group.

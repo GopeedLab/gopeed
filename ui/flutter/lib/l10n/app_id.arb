@@ -372,7 +372,9 @@
   "torrentDataEmpty": "Data berkas Torrent kosong",
   "torrentPathUnavailable": "Tak bisa mengakses path berkas torrent",
   "selectAtLeastOneFile": "Pilih paling tidak satu berkas",
-  "resolvedFiles": "Berkas Terpecahkan",
+  "resolvedFiles": "Daftar berkas",
+  "waitingToResolve": "Menunggu pemrosesan",
+  "resolvingResource": "Memproses sumber daya",
   "resolvedFileCount": "{count} terselesaikan",
   "resolvedCategoryDirectory": "Akan disimpan ke {path}",
   "resourceHasNoFiles": "Sumber daya tidak memiliki daftar berkas yang dapat dipilih",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Status pembaruan",
   "trackerSubscriptionTrackerCount": "Jumlah tracker",
   "trackerSubscriptionNotUpdated": "Belum diperbarui",
-  "actions": "Tindakan"
+  "actions": "Tindakan",
+  "taskGroupDeleteImpact": "Memengaruhi {taskCount} unduhan dan {fileCount} berkas."
 }
