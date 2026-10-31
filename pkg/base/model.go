@@ -27,6 +27,33 @@ type Request struct {
 	SkipVerifyCert bool `json:"skipVerifyCert"`
 }
 
+// SetLabels replaces all labels on the request.
+//
+// Deprecated: In onResolve and onDone, assign request labels directly.
+// In onStart and onError, use task.meta.req.setLabels instead.
+func (r *Request) SetLabels(labels map[string]string) {
+	r.Labels = labels
+}
+
+// PutLabel sets a label on the request.
+//
+// Deprecated: In onResolve and onDone, assign request labels directly.
+// In onStart and onError, use task.meta.req.putLabel instead.
+func (r *Request) PutLabel(key, value string) {
+	if r.Labels == nil {
+		r.Labels = make(map[string]string)
+	}
+	r.Labels[key] = value
+}
+
+// DelLabel deletes a label from the request.
+//
+// Deprecated: In onResolve and onDone, delete request labels directly.
+// In onStart and onError, use task.meta.req.delLabel instead.
+func (r *Request) DelLabel(key string) {
+	delete(r.Labels, key)
+}
+
 func (r *Request) Validate() error {
 	if r.URL == "" {
 		return fmt.Errorf("invalid request url")
