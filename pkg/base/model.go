@@ -383,6 +383,12 @@ func (cfg *DownloaderStoreConfig) Merge(beforeCfg *DownloaderStoreConfig) *Downl
 	if cfg.API == nil {
 		cfg.API = beforeCfg.API
 	}
+	if !cfg.AutoStartTasks {
+		cfg.AutoStartTasks = beforeCfg.AutoStartTasks
+	}
+	if !cfg.AutoDeleteMissingFileTasks {
+		cfg.AutoDeleteMissingFileTasks = beforeCfg.AutoDeleteMissingFileTasks
+	}
 	return cfg
 }
 
