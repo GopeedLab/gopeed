@@ -94,12 +94,14 @@ func TestFetcher_ForbiddenWithoutActiveConnectionFails(t *testing.T) {
 	}
 
 	var requests atomic.Int32
+	var lastServed atomic.Int64
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
 		if requests.Add(1) > 2 {
 			w.WriteHeader(gohttp.StatusForbidden)
 			return
 		}
 		serveRangeContent(&slowResponseWriter{ResponseWriter: w}, r, payload)
+		lastServed.Store(time.Now().UnixNano())
 	}))
 	defer server.Close()
 
@@ -128,6 +130,12 @@ func TestFetcher_ForbiddenWithoutActiveConnectionFails(t *testing.T) {
 	case err := <-errCh:
 		if err == nil || !strings.Contains(err.Error(), "403") {
 			t.Fatalf("Wait() error = %v, want an error with status 403", err)
+		}
+		// Once no data arrives, the remaining 403s get only a few quick retries.
+		after := time.Since(time.Unix(0, lastServed.Load()))
+		t.Logf("failed %s after the last response ended", after.Round(time.Millisecond))
+		if after > 6*time.Second {
+			t.Fatalf("failed %s after the link stopped working, want within 6s", after)
 		}
 	case <-time.After(30 * time.Second):
 		t.Fatal("download did not fail after every connection was refused with 403")
