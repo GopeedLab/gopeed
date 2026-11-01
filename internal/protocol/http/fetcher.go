@@ -37,6 +37,12 @@ const (
 	// When a connection finishes its chunk, it can "steal" work from slow connections.
 	stealThresholdSeconds = 3          // Only steal if victim needs > 3 seconds to finish
 	stealMinChunkSize     = 512 * 1024 // Min steal size: 512KB (avoid tiny chunks)
+
+	// A 403 while nothing else is downloading is retried this many times
+	// before it is taken as final (see retryForbidden).
+	forbiddenMaxRetries = 3
+	// Data received this recently counts as the download making progress.
+	forbiddenProgressWindow = 3 * time.Second
 )
 
 // connReadBufferSize is the read buffer each connection allocates once and
@@ -140,6 +146,11 @@ type connection struct {
 	exited     bool
 	retryTimes int
 	lastErr    error
+	// 403 answers retried since the last successful response while no other
+	// connection was making progress (see retryForbidden), and whether the
+	// last retry was one of those.
+	forbiddenRetries int
+	forbiddenGrace   bool
 
 	// Speed tracking for work stealing decisions
 	speed             int64 // bytes per second
@@ -285,6 +296,9 @@ type Fetcher struct {
 
 	// Max connection time for adaptive timeout (stored as int64 nanoseconds for atomic ops)
 	maxConnTime atomic.Int64
+
+	// When any connection last received data, in Unix nanoseconds.
+	lastDataAt atomic.Int64
 
 	// First primary connection success signal
 	primaryReadyOnce sync.Once
@@ -1261,7 +1275,7 @@ func (f *Fetcher) runConnection(conn *connection) {
 		}
 		f.connMu.Unlock()
 
-		if shouldCountHTTPFailure(err) && !f.isConnectionLimitError(conn, err) {
+		if shouldCountHTTPFailure(err) && !f.retryForbidden(conn) {
 			if re := extractRequestError(err); re != nil && re.Code == 403 {
 				f.connMu.Lock()
 				conn.State = connFailed
@@ -1290,30 +1304,56 @@ func (f *Fetcher) runConnection(conn *connection) {
 
 		f.connMu.Lock()
 		conn.State = connFailed
+		// A 403 retried while nothing else progresses is retried soon: either
+		// the server freed its slot already or the link stopped working.
+		soon := conn.forbiddenGrace
+		conn.forbiddenGrace = false
 		f.connMu.Unlock()
 		retryDelay := time.Second * time.Duration(retries+1)
 		if retryDelay > 5*time.Second {
 			retryDelay = 5 * time.Second
+		}
+		if soon {
+			retryDelay = time.Second
 		}
 		retries++
 		time.Sleep(retryDelay)
 	}
 }
 
-// isConnectionLimitError reports whether err is a 403 received while another
-// connection is still downloading. That usually means the server limits
-// concurrent connections, so the chunk is retried later like a 503 instead of
-// being dropped. Without another active connection the 403 is a real error.
-func (f *Fetcher) isConnectionLimitError(conn *connection, err error) bool {
-	if re := extractRequestError(err); re == nil || re.Code != 403 {
+// retryForbidden reports whether conn, refused with 403, should retry its
+// chunk instead of failing. Some servers limit the connections per client and
+// refuse the extra ones with 403 rather than 503. While another connection of
+// the task is receiving data, or waits for its response headers while data is
+// still arriving, the 403 is taken as such a limit and retried like a 503.
+// Otherwise the server may still be counting a connection that just finished,
+// or one whose request has not been answered yet, so the chunk gets a few more
+// tries; a link that really stopped working (expired, revoked) fails after
+// those, within seconds.
+func (f *Fetcher) retryForbidden(conn *connection) bool {
+	if re := extractRequestError(conn.lastErr); re == nil || re.Code != 403 {
 		return false
 	}
+	recent := time.Since(time.Unix(0, f.lastDataAt.Load())) < forbiddenProgressWindow
 	f.connMu.Lock()
 	defer f.connMu.Unlock()
-	for _, other := range f.connections {
-		if other != conn && other.State == connDownloading {
+	others := f.connections
+	if f.resolveConn != nil {
+		others = append([]*connection{f.resolveConn}, others...)
+	}
+	conn.forbiddenGrace = false
+	for _, other := range others {
+		if other == conn {
+			continue
+		}
+		if other.State == connDownloading || (other.State == connConnecting && recent) {
 			return true
 		}
+	}
+	if conn.forbiddenRetries < forbiddenMaxRetries {
+		conn.forbiddenRetries++
+		conn.forbiddenGrace = true
+		return true
 	}
 	return false
 }
@@ -1504,6 +1544,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	f.connMu.Lock()
 	conn.State = connDownloading
 	conn.failed = false
+	conn.forbiddenRetries = 0
 	f.connMu.Unlock()
 
 	if conn.Role == rolePrimary || conn.ID == 0 {
@@ -1575,6 +1616,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 				conn.Downloaded += int64(len(data))
 				// Update connection speed periodically
 				now := time.Now().UnixNano()
+				f.lastDataAt.Store(now)
 				if conn.lastSpeedCheck == 0 {
 					conn.lastSpeedCheck = now
 					conn.lastSpeedDownload = conn.Downloaded
