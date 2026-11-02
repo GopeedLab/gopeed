@@ -2507,16 +2507,22 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			return err
 		}
 
+		// Coordinate the last generation check and Start with deletion's
+		// storage barrier. A delete cannot close the fetcher before Start exits.
+		task.persistLock.Lock()
 		task.statusLock.Lock()
-		if task.Status != base.DownloadStatusRunning || task.runGeneration != generation {
+		if *task.deleted || task.Status != base.DownloadStatusRunning || task.runGeneration != generation {
 			task.statusLock.Unlock()
+			task.persistLock.Unlock()
 			return nil
 		}
 		task.Progress.Speed = 0
 		task.timer.Start()
 		task.statusLock.Unlock()
-		if err := task.fetcher.Start(); err != nil {
-			return err
+		startErr := task.fetcher.Start()
+		task.persistLock.Unlock()
+		if startErr != nil {
+			return startErr
 		}
 		started = true
 		if err := d.captureTaskStats(task, true, true); err != nil {
