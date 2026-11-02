@@ -3,6 +3,7 @@ package download
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -169,6 +170,22 @@ func waitForFile(t *testing.T, path string, timeout time.Duration) {
 		time.Sleep(50 * time.Millisecond)
 	}
 	t.Fatalf("Timeout waiting for file: %s", path)
+}
+
+// waitForFileContains waits until the file contains want and returns its content.
+// Test scripts write the file line by line, so waiting for the file to exist is not enough.
+func waitForFileContains(t *testing.T, path, want string, timeout time.Duration) string {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if content, err := os.ReadFile(path); err == nil && strings.Contains(string(content), want) {
+			return string(content)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	content, _ := os.ReadFile(path)
+	t.Fatalf("Timeout waiting for %q in file %s, got: %q", want, path, content)
+	return ""
 }
 
 func getTestScriptPath(t *testing.T, name string) string {
