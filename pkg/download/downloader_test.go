@@ -4942,7 +4942,19 @@ func TestDownloader_DeleteDuringResolveDoesNotResurrect(t *testing.T) {
 	if err := d.persistTaskSnapshot(task); err != nil {
 		t.Fatal(err)
 	}
+	// prepareTask persists a shallow task copy, which must share the same tombstone.
+	copied := *task
+	if err := d.saveTask(&copied); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.persistTaskStats(task, json.RawMessage(`{"snapshot":null}`)); err != nil {
+		t.Fatal(err)
+	}
 	checkAbsent()
+	var stats storedTaskStats
+	if exists, err := storage.Get(bucketTaskStats, id, &stats); err != nil || exists {
+		t.Fatalf("deleted task stats were restored: exists=%v err=%v", exists, err)
+	}
 }
 
 func TestDownloader_BatchStartFailureKeepsCreatedTasks(t *testing.T) {
