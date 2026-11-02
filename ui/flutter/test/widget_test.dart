@@ -1575,10 +1575,14 @@ void main() {
       matching: find.byType(shad.Switch),
     );
 
+    await tester.ensureVisible(settingSwitch('Extract Archives Automatically'));
+    await tester.pumpAndSettle();
     await tester.tap(settingSwitch('Extract Archives Automatically'));
     await tester.pumpAndSettle();
     expect(find.text('Delete Archives After Extraction'), findsNothing);
 
+    await tester.ensureVisible(settingSwitch('Auto create BT tasks from .torrent files'));
+    await tester.pumpAndSettle();
     await tester.tap(settingSwitch('Auto create BT tasks from .torrent files'));
     await tester.pumpAndSettle();
     expect(find.text('Delete .torrent file after BT task creation'), findsOneWidget);
