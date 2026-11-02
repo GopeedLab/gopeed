@@ -94,6 +94,8 @@ State broadcasting must observe the owning Riverpod state centrally. Do not broa
 - Storage RPC methods expose business capabilities such as create-history operations, not raw `box.get` or `box.put` access.
 - Prefer batch mutations across the window boundary. For example, save all parsed URLs in one `saveCreateHistory(List<String>)` call.
 - New child-window storage requirements must be added to `StorageMethods` and bound in the main registry.
+- Config reads, full config saves, and create-history mutations share one main-window queue. Each history mutation reads, changes, and writes the config within that queue. History reads wait for earlier saves.
+- `StorageMethods` owns `extra.createHistory`; full config saves preserve its latest value inside the queue so stale settings or child-window snapshots cannot overwrite history.
 
 ## 7. Gopeed Backend Migration
 

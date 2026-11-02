@@ -34,8 +34,9 @@ class AppCapabilities {
 class LocalAppCapabilities {
   LocalAppCapabilities._() : codecs = createAppCapabilityCodecs() {
     registry = CapabilityRegistry(codecs);
-    _bindGopeed(registry);
-    _bindStorage(registry);
+    final config = _ConfigStore();
+    _bindGopeed(registry, config);
+    _bindStorage(registry, config);
     registry.bind(NavigationMethods.showDownloadingTasks, (_) {
       AppRouter.showDownloadingTasks();
       return const RpcUnit();
@@ -81,7 +82,7 @@ RpcCodecRegistry createAppCapabilityCodecs() {
   return codecs;
 }
 
-void _bindGopeed(CapabilityRegistry registry) {
+void _bindGopeed(CapabilityRegistry registry, _ConfigStore configStore) {
   registry
     ..bind(GopeedMethods.triggerProtocolJob, (p) async {
       await api.triggerProtocolJob(p['protocol'] as String, p['name'] as String);
@@ -128,9 +129,9 @@ void _bindGopeed(CapabilityRegistry registry) {
       await api.deleteTasks(_optionalStringList(params['ids']), params['force'] as bool? ?? false);
       return const RpcUnit();
     })
-    ..bind(GopeedMethods.getConfig, (_) => api.getConfig())
+    ..bind(GopeedMethods.getConfig, (_) => configStore.get())
     ..bind(GopeedMethods.putConfig, (config) async {
-      await api.putConfig(config);
+      await configStore.put(config);
       return const RpcUnit();
     })
     ..bind(GopeedMethods.installExtension, api.installExtension)
@@ -164,35 +165,59 @@ void _bindGopeed(CapabilityRegistry registry) {
     });
 }
 
-void _bindStorage(CapabilityRegistry registry) {
+// Shared by local and child-window handlers. History owns its config field;
+// full config snapshots must preserve the latest history inside the same queue.
+class _ConfigStore {
+  Future<void> _tail = Future<void>.value();
+
+  Future<T> _run<T>(Future<T> Function() operation) {
+    final result = _tail.then((_) => operation());
+    _tail = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    return result;
+  }
+
+  Future<DownloaderConfig> get() => _run(api.getConfig);
+
+  Future<void> put(DownloaderConfig config) {
+    final snapshot = DownloaderConfig.fromJson(config.toJson());
+    return _run(() async {
+      final latest = await api.getConfig();
+      snapshot.extra.createHistory = latest.extra.createHistory;
+      await api.putConfig(snapshot);
+    });
+  }
+
+  Future<void> updateHistory(void Function(List<String>) mutation) => _run(() async {
+    final config = await api.getConfig();
+    final history = List<String>.of(config.extra.createHistory);
+    mutation(history);
+    config.extra.createHistory = history;
+    await api.putConfig(config);
+  });
+}
+
+void _bindStorage(CapabilityRegistry registry, _ConfigStore configStore) {
   registry
     ..bind(StorageMethods.getCreateHistory, (_) async {
-      final config = await api.getConfig();
+      final config = await configStore.get();
       return config.extra.createHistory;
     })
     ..bind(StorageMethods.saveCreateHistory, (urls) async {
-      final config = await api.getConfig();
-      final history = List<String>.of(config.extra.createHistory);
-      for (final url in urls) {
-        history.remove(url);
-        history.insert(0, url);
-        if (history.length > 64) history.removeLast();
-      }
-      config.extra.createHistory = history;
-      await api.putConfig(config);
+      await configStore.updateHistory((history) {
+        for (final url in urls) {
+          history.remove(url);
+          history.insert(0, url);
+          if (history.length > 64) history.removeLast();
+        }
+      });
       return const RpcUnit();
     })
     ..bind(StorageMethods.removeCreateHistory, (url) async {
-      final config = await api.getConfig();
-      final history = List<String>.of(config.extra.createHistory)..remove(url);
-      config.extra.createHistory = history;
-      await api.putConfig(config);
+      await configStore.updateHistory((history) => history.remove(url));
       return const RpcUnit();
     })
     ..bind(StorageMethods.clearCreateHistory, (_) async {
-      final config = await api.getConfig();
-      config.extra.createHistory = const [];
-      await api.putConfig(config);
+      await configStore.updateHistory((history) => history.clear());
       return const RpcUnit();
     });
 }
