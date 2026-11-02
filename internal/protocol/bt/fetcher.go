@@ -67,15 +67,10 @@ func (f *Fetcher) Setup(ctl *controller.Controller) {
 	return
 }
 
+// initClient must be called with lock held.
 func (f *Fetcher) initClient() (err error) {
-	lock.Lock()
-	defer lock.Unlock()
-
 	if client != nil {
 		return
-	}
-	if closeCtx == nil {
-		closeCtx, closeFunc = context.WithCancel(context.Background())
 	}
 
 	cfg = torrent.NewDefaultClientConfig()
@@ -94,10 +89,21 @@ func (f *Fetcher) initClient() (err error) {
 	}
 
 	closeCtx, closeFunc = context.WithCancel(context.Background())
-	go func() {
-		dnsResolver.Run(closeCtx)
-	}()
+	// closeClient may reset closeCtx before the goroutine runs, so pass it as an argument.
+	go dnsResolver.Run(closeCtx)
 	return
+}
+
+// addTorrentSpec holds lock from client initialization until the torrent is added,
+// so closeClient cannot close or reset the client in between.
+func (f *Fetcher) addTorrentSpec(spec *torrent.TorrentSpec) (*torrent.Torrent, bool, error) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if err := f.initClient(); err != nil {
+		return nil, false, err
+	}
+	return client.AddTorrentSpec(spec)
 }
 
 func (f *Fetcher) Resolve(req *base.Request) error {
@@ -748,9 +754,6 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	if err = base.ParseReqExtra[bt.ReqExtra](req); err != nil {
 		return
 	}
-	if err = f.initClient(); err != nil {
-		return
-	}
 	schema := util.ParseSchema(req.URL)
 	privateTorrent := false
 	var spec *torrent.TorrentSpec
@@ -829,7 +832,7 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 	s := &deferredFileStorage{}
 	spec.Storage = s
 	var added bool
-	f.torrent, added, err = client.AddTorrentSpec(spec)
+	f.torrent, added, err = f.addTorrentSpec(spec)
 	if err != nil {
 		return err
 	}
