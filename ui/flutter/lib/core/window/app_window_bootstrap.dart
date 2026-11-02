@@ -28,7 +28,10 @@ class AppWindowBootstrap {
       if (AppWindowChrome.usesCustomChrome) {
         await windowManager.setAsFrameless();
       }
-      await windowManager.setHasShadow(true);
+      // window_manager implements window shadows only on Windows and macOS.
+      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+        await windowManager.setHasShadow(true);
+      }
       if (!hidden) {
         await windowManager.show();
         await windowManager.focus();
@@ -68,7 +71,10 @@ class AppWindowBootstrap {
         await windowManager.setAsFrameless();
       }
       await windowManager.setTitle(title);
-      await windowManager.setHasShadow(true);
+      // window_manager implements window shadows only on Windows and macOS.
+      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+        await windowManager.setHasShadow(true);
+      }
       await _showSubWindowInForeground();
     });
   }
