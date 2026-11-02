@@ -29,7 +29,8 @@ class AppWindowBootstrap {
         await windowManager.setAsFrameless();
       }
       // window_manager implements window shadows only on Windows and macOS.
-      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+      if (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.macOS) {
         await windowManager.setHasShadow(true);
       }
       if (!hidden) {
@@ -72,7 +73,8 @@ class AppWindowBootstrap {
       }
       await windowManager.setTitle(title);
       // window_manager implements window shadows only on Windows and macOS.
-      if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.macOS) {
+      if (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.macOS) {
         await windowManager.setHasShadow(true);
       }
       await _showSubWindowInForeground();
