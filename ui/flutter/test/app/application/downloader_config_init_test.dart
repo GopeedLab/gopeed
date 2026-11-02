@@ -32,6 +32,20 @@ void main() {
       // The in-memory fallback still gets usable defaults.
       expect(config.downloadDir, '/downloads');
       expect(config.categories, hasLength(4));
+      // A failed config read must not send analytics before web login.
+      expect(config.extra.analyticsEnabled, isFalse);
+    });
+
+    test('preserves the loaded analytics preference', () async {
+      for (final enabled in [true, false]) {
+        final stored = configWith()..extra.analyticsEnabled = enabled;
+        final config = await loadDownloaderConfig(
+          load: () async => stored,
+          save: (_) async {},
+          defaultDownloadDir: () async => '',
+        );
+        expect(config.extra.analyticsEnabled, enabled);
+      }
     });
 
     test('skips persist when init changed nothing', () async {

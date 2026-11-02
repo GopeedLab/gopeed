@@ -20,6 +20,10 @@ Future<DownloaderConfig> loadDownloaderConfig({
   } catch (error, stackTrace) {
     onLoadError?.call(error, stackTrace);
     config = DownloaderConfig();
+    // If the backend is unavailable (for example, before web login), the
+    // in-memory fallback must not enable tracking by default. Never persist
+    // this fallback over the user's actual settings.
+    config.extra.analyticsEnabled = false;
     loaded = false;
   }
   final changed = await initDownloaderConfig(config, defaultDownloadDir: defaultDownloadDir);
