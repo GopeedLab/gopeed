@@ -81,7 +81,7 @@ type Task struct {
 	statusLock     *sync.Mutex
 	lock           *sync.Mutex
 	persistLock    *sync.Mutex // serializes task storage writes with deletion
-	deleted        bool        // guarded by statusLock; prevents resurrection
+	deleted        *bool       // shared by task copies; guarded by statusLock
 	statsLock      *sync.Mutex
 	statsLoaded    bool
 	stats          *fetcher.Stats
