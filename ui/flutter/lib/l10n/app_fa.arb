@@ -372,7 +372,9 @@
   "torrentDataEmpty": "داده های فایل تورنت خالی است",
   "torrentPathUnavailable": "امکان دسترسی به مسیر فایل تورنت",
   "selectAtLeastOneFile": "حداقل یک فایل را انتخاب کنید",
-  "resolvedFiles": "فایل های حل شده",
+  "resolvedFiles": "فهرست فایل‌ها",
+  "waitingToResolve": "در انتظار پردازش",
+  "resolvingResource": "در حال پردازش منبع",
   "resolvedFileCount": "{count} فایل شناسایی شد",
   "resolvedCategoryDirectory": "در {path} ذخیره می‌شود",
   "resourceHasNoFiles": "منبع هیچ لیست فایل قابل انتخاب ندارد",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "وضعیت به‌روزرسانی",
   "trackerSubscriptionTrackerCount": "تعداد ردیاب‌ها",
   "trackerSubscriptionNotUpdated": "هنوز به‌روزرسانی نشده",
-  "actions": "عملیات"
+  "actions": "عملیات",
+  "taskGroupDeleteImpact": "بر {taskCount} بارگیری و {fileCount} پرونده تأثیر می‌گذارد."
 }

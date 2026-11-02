@@ -372,7 +372,9 @@
   "torrentDataEmpty": "Torrent-Dateidaten sind leer",
   "torrentPathUnavailable": "Auf den Torrent-Dateipfad kann nicht zugegriffen werden",
   "selectAtLeastOneFile": "Wählen Sie mindestens eine Datei aus",
-  "resolvedFiles": "Aufgelöste Dateien",
+  "resolvedFiles": "Dateiliste",
+  "waitingToResolve": "Warten auf Auflösung",
+  "resolvingResource": "Ressource wird aufgelöst",
   "resolvedFileCount": "{count}-Dateien behoben",
   "resolvedCategoryDirectory": "Wird in {path} gespeichert",
   "resourceHasNoFiles": "Die Ressource verfügt über keine auswählbare Dateiliste",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "Aktualisierungsstatus",
   "trackerSubscriptionTrackerCount": "Tracker-Anzahl",
   "trackerSubscriptionNotUpdated": "Noch nicht aktualisiert",
-  "actions": "Aktionen"
+  "actions": "Aktionen",
+  "taskGroupDeleteImpact": "Betrifft {taskCount} Downloads und {fileCount} Dateien."
 }

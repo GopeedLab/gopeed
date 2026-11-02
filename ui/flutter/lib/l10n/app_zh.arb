@@ -372,7 +372,9 @@
   "torrentDataEmpty": "种子文件内容为空",
   "torrentPathUnavailable": "无法访问种子文件路径",
   "selectAtLeastOneFile": "请至少选择一个文件",
-  "resolvedFiles": "已解析文件",
+  "resolvedFiles": "文件列表",
+  "waitingToResolve": "等待解析",
+  "resolvingResource": "正在解析资源",
   "resolvedFileCount": "已解析 {count} 个文件",
   "resolvedCategoryDirectory": "将保存到 {path}",
   "resourceHasNoFiles": "该资源没有可选择的文件列表",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "更新状态",
   "trackerSubscriptionTrackerCount": "Tracker 数量",
   "trackerSubscriptionNotUpdated": "未更新",
-  "actions": "操作"
+  "actions": "操作",
+  "taskGroupDeleteImpact": "将影响 {taskCount} 个下载任务和 {fileCount} 个文件。"
 }

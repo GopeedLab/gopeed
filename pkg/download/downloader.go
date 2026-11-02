@@ -37,7 +37,8 @@ const (
 	uploadCheckpointInterval = 30 * time.Second
 
 	// task info bucket
-	bucketTask = "task"
+	bucketTask      = "task"
+	bucketTaskGroup = "task_group"
 	// task download data bucket
 	bucketSave = "save"
 	// task statistics snapshot bucket
@@ -113,13 +114,16 @@ type Downloader struct {
 	Logger              *logger.Logger
 	ExtensionLogger     *logger.Logger
 
-	cfg          *DownloaderConfig
-	fetcherCache map[string]fetcher.Fetcher
-	storage      Storage
-	tasks        []*Task
-	waitTasks    []*Task
-	watchedTasks sync.Map
-	listener     Listener
+	cfg            *DownloaderConfig
+	fetcherCache   map[string]fetcher.Fetcher
+	storage        Storage
+	tasks          []*Task
+	waitTasks      []*Task
+	groups         map[string]*TaskGroup
+	creatingGroups map[string]struct{}
+	deletingTasks  map[string]*Task
+	watchedTasks   sync.Map
+	listener       Listener
 
 	lock               *sync.Mutex
 	configLock         *sync.RWMutex
@@ -150,6 +154,9 @@ func NewDownloader(cfg *DownloaderConfig) *Downloader {
 		cfg:              cfg,
 		fetcherCache:     make(map[string]fetcher.Fetcher),
 		waitTasks:        make([]*Task, 0),
+		groups:           make(map[string]*TaskGroup),
+		creatingGroups:   make(map[string]struct{}),
+		deletingTasks:    make(map[string]*Task),
 		storage:          cfg.Storage,
 
 		lock:               &sync.Mutex{},
@@ -176,7 +183,7 @@ func (d *Downloader) Setup() error {
 	d.blob = internalblob.NewRegistry("")
 
 	// setup storage
-	if err := d.storage.Setup([]string{bucketTask, bucketSave, bucketTaskStats, bucketProtocolState, bucketProtocolJobs, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
+	if err := d.storage.Setup([]string{bucketTask, bucketTaskGroup, bucketSave, bucketTaskStats, bucketProtocolState, bucketProtocolJobs, bucketConfig, bucketExtension, bucketExtensionStorage}); err != nil {
 		return err
 	}
 	// load config from storage
@@ -220,6 +227,15 @@ func (d *Downloader) Setup() error {
 		return err
 	}
 
+	// Group metadata is independent of task/fetcher recovery records.
+	var groups []*TaskGroup
+	if err := d.storage.List(bucketTaskGroup, &groups); err != nil {
+		return err
+	}
+	for _, group := range groups {
+		d.groups[group.ID] = group
+	}
+
 	// load tasks from storage
 	var tasks []*Task
 	if err = d.storage.List(bucketTask, &tasks); err != nil {
@@ -235,6 +251,7 @@ func (d *Downloader) Setup() error {
 				tasks = append(tasks[:i], tasks[i+1:]...)
 				continue
 			}
+			task.group = d.groups[task.ParentID]
 			d.assignFetcherManager(task)
 			initTask(task)
 			if task.Status != base.DownloadStatusDone && task.Status != base.DownloadStatusError {
@@ -243,6 +260,11 @@ func (d *Downloader) Setup() error {
 		}
 	}
 	d.tasks = tasks
+	groupIDs := make([]string, 0, len(d.groups))
+	for id := range d.groups {
+		groupIDs = append(groupIDs, id)
+	}
+	d.cleanupEmptyGroups(groupIDs)
 	// sort by create time
 	sort.Slice(d.tasks, func(i, j int) bool {
 		return d.tasks[i].CreatedAt.Before(d.tasks[j].CreatedAt)
@@ -607,14 +629,14 @@ func (d *Downloader) CreateDirect(req *base.Request, opts *base.Options) (taskId
 	if err != nil {
 		return "", err
 	}
-	taskId, err = d.createDirect(req, opts)
+	taskId, err = d.createDirect(req, opts, "")
 	if err == nil {
 		d.persistDefaultPathBestEffort(defaultPath)
 	}
 	return
 }
 
-func (d *Downloader) createDirect(req *base.Request, opts *base.Options) (taskId string, err error) {
+func (d *Downloader) createDirect(req *base.Request, opts *base.Options, groupID string) (taskId string, err error) {
 	ensureRequestRawURL(req)
 	var fetcher fetcher.Fetcher
 	fetcher, err = d.buildFetcher(req.URL)
@@ -626,31 +648,203 @@ func (d *Downloader) createDirect(req *base.Request, opts *base.Options) (taskId
 	if err != nil {
 		return
 	}
-	return d.doCreate(fetcher, initOpt)
+	return d.doCreate(fetcher, initOpt, groupID)
 }
 
-func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) (taskId []string, err error) {
+// CreateDirectBatch retains the original Go API for callers that only need
+// the task IDs. APIs that expose group metadata use CreateDirectBatchWithResult.
+func (d *Downloader) CreateDirectBatch(req *base.CreateTaskBatch) ([]string, error) {
+	result, err := d.CreateDirectBatchWithResult(req)
+	if err != nil || result == nil {
+		return nil, err
+	}
+	return result.TaskIDs, nil
+}
+
+func (d *Downloader) CreateDirectBatchWithResult(req *base.CreateTaskBatch) (*CreateTaskBatchResult, error) {
+	if req == nil || len(req.Reqs) == 0 {
+		return nil, errors.New("batch requires at least one task")
+	}
 	defaultPath, err := d.prepareDefaultPath(req.Opts)
 	if err != nil {
 		return nil, err
 	}
-	taskIds := make([]string, 0)
-	for _, ir := range req.Reqs {
-		opts := ir.Opts
-		if opts == nil {
-			opts = req.Opts
+	result := &CreateTaskBatchResult{TaskIDs: make([]string, 0)}
+	var group *TaskGroup
+	if req.Group {
+		parentPath := ""
+		if req.Opts != nil {
+			parentPath = req.Opts.Path
 		}
-		if opts != nil {
-			opts = opts.Clone()
-		}
-		taskId, err := d.createDirect(ir.Req, opts)
+		group, err = d.createTaskGroup(req.GroupName, parentPath)
 		if err != nil {
 			return nil, err
 		}
-		taskIds = append(taskIds, taskId)
+		result.ParentID = group.ID
+		defer func() {
+			d.lock.Lock()
+			delete(d.creatingGroups, group.ID)
+			d.lock.Unlock()
+			d.cleanupEmptyGroups([]string{group.ID})
+		}()
+	}
+	var failures []error
+	for _, item := range req.Reqs {
+		var taskID string
+		var opts *base.Options
+		if item != nil {
+			opts = item.Opts
+		}
+		if opts == nil {
+			opts = req.Opts
+		}
+		if opts == nil {
+			opts = &base.Options{}
+		} else {
+			opts = opts.Clone()
+		}
+		var itemErr error
+		groupID := ""
+		if group != nil {
+			groupID = group.ID
+			parentPath := filepath.Dir(group.Path)
+			relative := "."
+			if item != nil && item.Opts != nil && opts.Path != "" {
+				requestedPath := util.ReplacePathPlaceholders(opts.Path)
+				if !filepath.IsAbs(requestedPath) {
+					requestedPath = filepath.Join(parentPath, requestedPath)
+				}
+				requested, pathErr := filepath.Abs(requestedPath)
+				if pathErr != nil {
+					itemErr = pathErr
+				} else {
+					relative, itemErr = filepath.Rel(parentPath, requested)
+					if itemErr == nil && !filepath.IsLocal(relative) {
+						itemErr = errors.New("task path is outside the group directory")
+					}
+				}
+			}
+			opts.Path = filepath.Join(group.Path, relative)
+			opts.SkipAutoCategorize = true
+		}
+		if itemErr == nil {
+			switch {
+			case item == nil:
+				itemErr = errors.New("task request or rid is required")
+			case item.Rid != "":
+				taskID, itemErr = d.createResolved(item.Rid, opts, groupID)
+			case item.Req != nil:
+				taskID, itemErr = d.createDirect(item.Req, opts, groupID)
+			default:
+				itemErr = errors.New("task request or rid is required")
+			}
+		}
+		if taskID != "" {
+			result.TaskIDs = append(result.TaskIDs, taskID)
+		} else if itemErr != nil {
+			failures = append(failures, itemErr)
+		}
+	}
+	if len(result.TaskIDs) == 0 {
+		return nil, fmt.Errorf("all batch tasks failed: %w", errors.Join(failures...))
 	}
 	d.persistDefaultPathBestEffort(defaultPath)
-	return taskIds, nil
+	return result, nil
+}
+
+const maxTaskGroupDirSuffix = 1000
+
+func (d *Downloader) createTaskGroup(name, parentPath string) (*TaskGroup, error) {
+	parentOpts, err := d.initOptions(&base.Options{Path: parentPath}, "")
+	if err != nil {
+		return nil, err
+	}
+	parentPath = util.ReplacePathPlaceholders(strings.TrimSpace(parentOpts.Path))
+	if parentPath == "" {
+		return nil, errors.New("download directory is empty")
+	}
+	parentPath, err = filepath.Abs(parentPath)
+	if err != nil {
+		return nil, err
+	}
+	name = strings.TrimSpace(name)
+	if strings.ContainsAny(name, "/\\\x00") || filepath.IsAbs(name) {
+		return nil, errors.New("invalid task group name")
+	}
+	if strings.ContainsAny(name, `:*?"<>|`) || strings.HasSuffix(name, ".") {
+		return nil, errors.New("invalid task group name")
+	}
+	name = util.SafeFilename(name)
+	if name == "" || name == "." || name == ".." {
+		return nil, errors.New("invalid task group name")
+	}
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	requested := filepath.Join(parentPath, name)
+	var dir string
+	for suffix := 0; suffix <= maxTaskGroupDirSuffix; suffix++ {
+		candidate := requested
+		if suffix > 0 {
+			candidate = fmt.Sprintf("%s (%d)", requested, suffix)
+		}
+		if !d.isDownloadPathAllowed(candidate) {
+			return nil, errors.New("task group directory is outside the white list")
+		}
+		reserved := false
+		for _, existing := range d.groups {
+			if existing.Path == candidate {
+				reserved = true
+				break
+			}
+		}
+		if reserved {
+			continue
+		}
+		if err := os.MkdirAll(parentPath, 0755); err != nil {
+			return nil, err
+		}
+		if err := os.Mkdir(candidate, 0755); err != nil {
+			if errors.Is(err, os.ErrExist) {
+				continue
+			}
+			return nil, err
+		}
+		dir = candidate
+		break
+	}
+	if dir == "" {
+		return nil, errors.New("too many duplicate task group directories")
+	}
+	group := &TaskGroup{ID: NewTask().ID, Name: filepath.Base(dir), Path: dir, CreatedAt: time.Now()}
+	if err := d.storage.Put(bucketTaskGroup, group.ID, group); err != nil {
+		_ = os.Remove(dir)
+		return nil, err
+	}
+	d.groups[group.ID] = group
+	d.creatingGroups[group.ID] = struct{}{}
+	return group, nil
+}
+
+// Group IDs expand through parentId, even when metadata is unavailable.
+// The caller holds d.lock.
+func (d *Downloader) expandGroupTaskIDsLocked(ids []string) []string {
+	selected := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		selected[id] = true
+	}
+	expanded := make([]string, 0, len(ids))
+	for _, task := range d.tasks {
+		if selected[task.ID] || (task.ParentID != "" && selected[task.ParentID]) {
+			expanded = append(expanded, task.ID)
+		}
+	}
+	return expanded
+}
+
+func (d *Downloader) expandGroupTaskIDs(ids []string) []string {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	return d.expandGroupTaskIDsLocked(ids)
 }
 
 func (d *Downloader) Create(rrId string) (taskId string, err error) {
@@ -659,21 +853,37 @@ func (d *Downloader) Create(rrId string) (taskId string, err error) {
 
 // CreateWithOptions creates a resolved task using the submitted options, or the
 // default download options when opts is nil.
-func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId string, err error) {
-	d.fetcherMapLock.RLock()
-	fetcher, ok := d.fetcherCache[rrId]
-	d.fetcherMapLock.RUnlock()
-	if !ok {
-		return "", errors.New("invalid resource id")
-	}
-	if opts == nil {
-		opts = &base.Options{}
-	}
-	// The options of the caller decide the global default download directory,
-	// the task options are prepared later, when the task starts.
+func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (string, error) {
 	defaultPath, err := d.prepareDefaultPath(opts)
 	if err != nil {
 		return "", err
+	}
+	taskID, err := d.createResolved(rrId, opts, "")
+	if taskID != "" {
+		d.persistDefaultPathBestEffort(defaultPath)
+	}
+	return taskID, err
+}
+
+func (d *Downloader) createResolved(rrId string, opts *base.Options, groupID string) (taskId string, err error) {
+	d.fetcherMapLock.Lock()
+	fetcher, ok := d.fetcherCache[rrId]
+	delete(d.fetcherCache, rrId)
+	d.fetcherMapLock.Unlock()
+	if !ok {
+		return "", errors.New("invalid resource id")
+	}
+	// Only one creator may use a resolved fetcher. Failed creation makes it
+	// available again; a persisted task consumes it even if starting fails.
+	defer func() {
+		if taskId == "" {
+			d.fetcherMapLock.Lock()
+			d.fetcherCache[rrId] = fetcher
+			d.fetcherMapLock.Unlock()
+		}
+	}()
+	if opts == nil {
+		opts = &base.Options{}
 	}
 	taskOpts, err := d.initOptions(opts.Clone(), fetcher.Meta().Req.URL)
 	if err != nil {
@@ -698,15 +908,7 @@ func (d *Downloader) CreateWithOptions(rrId string, opts *base.Options) (taskId 
 			return "", err
 		}
 	}
-	defer func() {
-		d.fetcherMapLock.Lock()
-		delete(d.fetcherCache, rrId)
-		d.fetcherMapLock.Unlock()
-	}()
-	taskId, err = d.doCreate(fetcher, nil)
-	if err == nil {
-		d.persistDefaultPathBestEffort(defaultPath)
-	}
+	taskId, err = d.doCreate(fetcher, nil, groupID)
 	return
 }
 
@@ -762,11 +964,30 @@ func (d *Downloader) Pause(filter *TaskFilter) (err error) {
 		return d.pauseAll()
 	}
 
+	if len(filter.IDs) > 0 {
+		filter.IDs = d.expandGroupTaskIDs(filter.IDs)
+		if len(filter.IDs) == 0 {
+			return ErrTaskNotFound
+		}
+	}
 	filter.NotStatuses = []base.Status{base.DownloadStatusPause, base.DownloadStatusError, base.DownloadStatusDone}
 	pauseTasks := d.GetTasksByFilter(filter)
 	if len(pauseTasks) == 0 {
 		return ErrTaskNotFound
 	}
+	d.lock.Lock()
+	pausedIDs := make(map[string]struct{}, len(pauseTasks))
+	for _, task := range pauseTasks {
+		pausedIDs[task.ID] = struct{}{}
+	}
+	queued := d.waitTasks[:0]
+	for _, task := range d.waitTasks {
+		if _, paused := pausedIDs[task.ID]; !paused {
+			queued = append(queued, task)
+		}
+	}
+	d.waitTasks = queued
+	d.lock.Unlock()
 
 	for _, task := range pauseTasks {
 		if err = d.doPause(task); err != nil {
@@ -802,6 +1023,12 @@ func (d *Downloader) Continue(filter *TaskFilter) (err error) {
 		return d.continueAll()
 	}
 
+	if len(filter.IDs) > 0 {
+		filter.IDs = d.expandGroupTaskIDs(filter.IDs)
+		if len(filter.IDs) == 0 {
+			return ErrTaskNotFound
+		}
+	}
 	filter.NotStatuses = []base.Status{base.DownloadStatusRunning, base.DownloadStatusDone}
 	continueTasks := d.GetTasksByFilter(filter)
 	if len(continueTasks) == 0 {
@@ -901,6 +1128,12 @@ func (d *Downloader) ContinueBatch(filter *TaskFilter) (err error) {
 		return d.continueAll()
 	}
 
+	if len(filter.IDs) > 0 {
+		filter.IDs = d.expandGroupTaskIDs(filter.IDs)
+		if len(filter.IDs) == 0 {
+			return ErrTaskNotFound
+		}
+	}
 	continueTasks := d.GetTasksByFilter(filter)
 	for _, task := range continueTasks {
 		if err = d.doStart(task); err != nil {
@@ -920,72 +1153,175 @@ func (d *Downloader) ContinueOnStartup() error {
 	return d.Continue(nil)
 }
 
-func (d *Downloader) Delete(filter *TaskFilter, force bool) (err error) {
+func (d *Downloader) Delete(filter *TaskFilter, force bool) error {
+	d.lock.Lock()
+	groups := make(map[string]*TaskGroup)
 	if filter == nil || filter.IsEmpty() {
-		return d.deleteAll(force)
-	}
-
-	deleteTasks := d.GetTasksByFilter(filter)
-	if len(deleteTasks) == 0 {
-		return
-	}
-
-	deleteIds := make([]string, 0)
-	deleteTasksPtr := make([]*Task, 0)
-	for _, task := range deleteTasks {
-		deleteIds = append(deleteIds, task.ID)
-		deleteTasksPtr = append(deleteTasksPtr, task)
-	}
-	func() {
-		d.lock.Lock()
-		defer d.lock.Unlock()
-
-		for _, id := range deleteIds {
-			for i, t := range d.tasks {
-				if t.ID == id {
-					d.tasks = append(d.tasks[:i], d.tasks[i+1:]...)
-					break
-				}
-			}
-			for i, t := range d.waitTasks {
-				if t.ID == id {
-					d.waitTasks = append(d.waitTasks[:i], d.waitTasks[i+1:]...)
-					break
-				}
+		for id, group := range d.groups {
+			groups[id] = group
+		}
+	} else if len(filter.IDs) > 0 {
+		copyFilter := *filter
+		copyFilter.IDs = d.expandGroupTaskIDsLocked(filter.IDs)
+		for _, id := range filter.IDs {
+			if group := d.groups[id]; group != nil {
+				groups[id] = group
 			}
 		}
-	}()
-
-	for _, task := range deleteTasksPtr {
-		err = d.doDelete(task, force)
-		if err != nil {
-			return
+		if len(copyFilter.IDs) == 0 {
+			if len(groups) == 0 {
+				d.lock.Unlock()
+				return nil
+			}
+			// An empty ID filter means all tasks; retain a nonmatching sentinel.
+			copyFilter.IDs = []string{""}
+		}
+		filter = &copyFilter
+	}
+	for id := range groups {
+		if _, creating := d.creatingGroups[id]; creating {
+			d.lock.Unlock()
+			return errors.New("task group is being created")
 		}
 	}
-
+	tasks := append([]*Task(nil), d.getTasksByFilter(filter)...)
+	deleted := make(map[string]bool, len(tasks))
+	groupIDs := make([]string, 0, len(groups))
+	for id := range groups {
+		groupIDs = append(groupIDs, id)
+	}
+	for _, task := range tasks {
+		d.deletingTasks[task.ID] = task
+		deleted[task.ID] = true
+		if task.ParentID != "" {
+			groupIDs = append(groupIDs, task.ParentID)
+		}
+	}
+	kept := d.tasks[:0]
+	for _, task := range d.tasks {
+		if !deleted[task.ID] {
+			kept = append(kept, task)
+		}
+	}
+	d.tasks = kept
+	wasQueued := make(map[string]bool)
+	queued := d.waitTasks[:0]
+	for _, task := range d.waitTasks {
+		if deleted[task.ID] {
+			wasQueued[task.ID] = true
+		}
+		if !deleted[task.ID] {
+			queued = append(queued, task)
+		}
+	}
+	d.waitTasks = queued
+	d.lock.Unlock()
+	var firstErr error
+	for _, task := range tasks {
+		if err := d.doDelete(task, force); err != nil {
+			// Deletion can fail after removing bucketTask. Keep recovery durable.
+			if saveErr := d.storage.Put(bucketTask, task.ID, task.clone()); saveErr != nil {
+				d.Logger.Error().Err(saveErr).Msg("restore failed task deletion failed")
+				if firstErr == nil {
+					firstErr = saveErr
+				}
+			}
+			d.lock.Lock()
+			d.tasks = append(d.tasks, task)
+			if wasQueued[task.ID] {
+				d.waitTasks = append(d.waitTasks, task)
+			}
+			d.lock.Unlock()
+			if firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	d.lock.Lock()
+	for _, task := range tasks {
+		delete(d.deletingTasks, task.ID)
+	}
+	d.lock.Unlock()
+	if !force {
+		groups = nil
+	}
+	if err := d.cleanupTaskGroups(groupIDs, groups); err != nil && firstErr == nil {
+		firstErr = err
+	}
 	d.notifyRunning()
-	return
+	return firstErr
 }
 
-func (d *Downloader) deleteAll(force bool) (err error) {
-	var deleteTasksTemp []*Task
-	func() {
-		d.lock.Lock()
-		defer d.lock.Unlock()
+// Active batches keep their metadata until the final creation attempt finishes.
+func (d *Downloader) cleanupEmptyGroups(groupIDs []string) {
+	if err := d.cleanupTaskGroups(groupIDs, nil); err != nil {
+		d.Logger.Error().Err(err).Msg("cleanup empty task group failed")
+	}
+}
 
-		for _, task := range d.tasks {
-			deleteTasksTemp = append(deleteTasksTemp, task)
+func (d *Downloader) cleanupTaskGroups(groupIDs []string, forceGroups map[string]*TaskGroup) error {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	candidates := make(map[string]bool, len(groupIDs))
+	for _, id := range groupIDs {
+		candidates[id] = true
+	}
+	for _, task := range d.tasks {
+		delete(candidates, task.ParentID)
+	}
+	for _, task := range d.deletingTasks {
+		delete(candidates, task.ParentID)
+	}
+	var firstErr error
+	for id := range candidates {
+		group := d.groups[id]
+		if group == nil {
+			continue
 		}
-		d.tasks = make([]*Task, 0)
-		d.waitTasks = make([]*Task, 0)
-	}()
+		if _, creating := d.creatingGroups[id]; creating {
+			continue
+		}
+		// Reserve the path until its final filesystem operation finishes.
+		if forceGroups[id] != nil {
+			if err := os.RemoveAll(group.Path); err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+		} else {
+			removeEmptyGroupDirectories(group.Path)
+		}
+		if err := d.storage.Delete(bucketTaskGroup, id); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		delete(d.groups, id)
+	}
+	return firstErr
+}
 
-	for _, task := range deleteTasksTemp {
-		if err = d.doDelete(task, force); err != nil {
-			return
+// Remove empty directory trees without touching retained files or symlinks.
+func removeEmptyGroupDirectories(root string) {
+	if root == "" {
+		return
+	}
+	info, err := os.Lstat(root)
+	if err != nil || !info.IsDir() {
+		return
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			removeEmptyGroupDirectories(filepath.Join(root, entry.Name()))
 		}
 	}
-	return
+	_ = os.Remove(root)
 }
 
 func (d *Downloader) Stats(id string) (sr any, err error) {
@@ -1334,6 +1670,11 @@ func (d *Downloader) GetTasksByFilter(filter *TaskFilter) []*Task {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
+	return d.getTasksByFilter(filter)
+}
+
+// The caller holds d.lock.
+func (d *Downloader) getTasksByFilter(filter *TaskFilter) []*Task {
 	if filter == nil || filter.IsEmpty() {
 		return d.tasks
 	}
@@ -1819,7 +2160,7 @@ func (d *Downloader) restoreFetcher(task *Task) error {
 	return nil
 }
 
-func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId string, err error) {
+func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options, groupID string) (taskId string, err error) {
 	if f.Meta().Opts == nil {
 		f.Meta().Opts = opts
 	}
@@ -1830,6 +2171,7 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 		return
 	}
 	task := NewTask()
+	task.ParentID = groupID
 	task.fetcherManager = fm
 	task.fetcher = f
 	task.Protocol = fm.Name()
@@ -1848,15 +2190,21 @@ func (d *Downloader) doCreate(f fetcher.Fetcher, opts *base.Options) (taskId str
 			d.releaseBlobTask(task)
 		}
 	}()
-	if err = d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
-		return
-	}
-	taskId = task.ID
-
 	func() {
 		d.lock.Lock()
 		defer d.lock.Unlock()
 
+		if groupID != "" {
+			task.group = d.groups[groupID]
+			if task.group == nil {
+				err = ErrTaskNotFound
+				return
+			}
+		}
+		if err = d.storage.Put(bucketTask, task.ID, task.clone()); err != nil {
+			return
+		}
+		taskId = task.ID
 		d.tasks = append(d.tasks, task)
 
 		remainRunningCount := d.remainRunningCount()
@@ -1913,21 +2261,40 @@ func (d *Downloader) initOptions(opts *base.Options, requestURL string) (*base.O
 func (d *Downloader) initDownloadPath(path string) (string, error) {
 	// Replace placeholders in download path (e.g., %year%, %month%, %day%, %date%)
 	path = util.ReplacePathPlaceholders(path)
-
-	// if enable white download directory, check if the download directory is in the white list
-	if len(d.cfg.WhiteDownloadDirs) > 0 {
-		inWhiteList := false
-		for _, dir := range d.cfg.WhiteDownloadDirs {
-			if match, err := filepath.Match(dir, path); match && err == nil {
-				inWhiteList = true
-				break
-			}
-		}
-		if !inWhiteList {
-			return "", errors.New("download directory is not in white list")
-		}
+	if !d.isDownloadPathAllowed(path) {
+		return "", errors.New("download directory is not in white list")
 	}
 	return path, nil
+}
+
+func (d *Downloader) initDownloadPathForTask(path string, group *TaskGroup) (string, error) {
+	if group == nil {
+		return d.initDownloadPath(path)
+	}
+	// Group paths are finalized at creation; validate the reserved root and
+	// containment without expanding placeholders again.
+	relative, err := filepath.Rel(filepath.Clean(group.Path), filepath.Clean(path))
+	if err != nil || !filepath.IsLocal(relative) {
+		return "", errors.New("task path is outside the group directory")
+	}
+	if !d.isDownloadPathAllowed(group.Path) {
+		return "", errors.New("task group directory is outside the white list")
+	}
+	return path, nil
+}
+
+// isDownloadPathAllowed reports whether the white list accepts this exact
+// path. With no white list configured every path is allowed.
+func (d *Downloader) isDownloadPathAllowed(path string) bool {
+	if len(d.cfg.WhiteDownloadDirs) == 0 {
+		return true
+	}
+	for _, dir := range d.cfg.WhiteDownloadDirs {
+		if match, err := filepath.Match(dir, path); match && err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (d *Downloader) statusMut(task *Task, fn func() (bool, error)) (bool, error) {
@@ -1950,7 +2317,7 @@ func (d *Downloader) prepareTask(task *Task) error {
 	preparedOpts := *task.Meta.Opts
 	preparedMeta.Opts = &preparedOpts
 	preparedMeta.Res = util.DeepClone(task.Meta.Res)
-	dir, err := d.decideDownloadDir(preparedMeta.Opts, preparedMeta.Res)
+	dir, err := d.decideDownloadDirForTask(preparedMeta.Opts, preparedMeta.Res, task.group)
 	if err != nil {
 		return err
 	}
@@ -2074,19 +2441,20 @@ func (d *Downloader) doStart(task *Task) (err error) {
 			if err := d.prepareTask(task); err != nil {
 				return err
 			}
-		} else if _, err := d.initDownloadPath(task.Meta.Opts.Path); err != nil {
+		} else if _, err := d.initDownloadPathForTask(task.Meta.Opts.Path, task.group); err != nil {
 			// A prepared task keeps its directory, but the directory still has
 			// to pass the white list on every start.
 			return err
 		}
 
 		task.statusLock.Lock()
-		task.Progress.Speed = 0
-		task.statusLock.Unlock()
-		if !d.taskIsRunningGeneration(task, generation) {
+		if task.Status != base.DownloadStatusRunning || task.runGeneration != generation {
+			task.statusLock.Unlock()
 			return nil
 		}
+		task.Progress.Speed = 0
 		task.timer.Start()
+		task.statusLock.Unlock()
 		if err := task.fetcher.Start(); err != nil {
 			return err
 		}

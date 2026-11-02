@@ -8,6 +8,72 @@ import 'package:gopeed/shared/theme/app_theme.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 void main() {
+  for (final width in [390.0, 700.0, 1024.0]) {
+    testWidgets('group tree shows member progress and status at width $width', (tester) async {
+      tester.view.physicalSize = Size(width, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final task = TaskRecord(
+        id: 'group',
+        name: 'folder',
+        status: TaskStatus.downloading,
+        downloaded: '150 B',
+        total: '200 B',
+        progress: 0.75,
+        url: '',
+        storagePath: '/downloads/folder',
+        isGroup: true,
+        isFolder: true,
+        uploading: false,
+        files: const [
+          TaskFileNode(
+            path: '',
+            name: 'running.txt',
+            sizeBytes: 100,
+            downloadedBytes: 50,
+            resourceIndex: 0,
+            status: TaskStatus.downloading,
+          ),
+          TaskFileNode(
+            path: '',
+            name: 'completed.txt',
+            sizeBytes: 100,
+            downloadedBytes: 100,
+            resourceIndex: 1,
+            status: TaskStatus.completed,
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: Padding(
+            padding: const EdgeInsets.all(16),
+            child: TaskFileTree(task: task),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(tester.widget<TaskProgressBar>(find.byKey(const ValueKey('task-files-total-progress'))).value, 0.75);
+      final running = find.descendant(
+        of: find.byKey(const ValueKey('task-file-progress-file:0')),
+        matching: find.byType(shad.CircularProgressIndicator),
+      );
+      expect(tester.widget<shad.CircularProgressIndicator>(running).value, 0.5);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('task-file-progress-file:1')),
+          matching: find.byIcon(shad.BootstrapIcons.checkCircleFill),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
   for (final scenario in [
     (protocol: api.Protocol.http, completed: false),
     (protocol: api.Protocol.http, completed: true),

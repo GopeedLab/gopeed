@@ -372,7 +372,9 @@
   "torrentDataEmpty": "トレントファイルデータが空です",
   "torrentPathUnavailable": "トレントファイルパスにアクセスできない",
   "selectAtLeastOneFile": "少なくとも1つのファイルを選択します",
-  "resolvedFiles": "解決されたファイル",
+  "resolvedFiles": "ファイル一覧",
+  "waitingToResolve": "解析待ち",
+  "resolvingResource": "リソースを解析中",
   "resolvedFileCount": "{count} ファイルが解決しました",
   "resolvedCategoryDirectory": "{path} に保存されます",
   "resourceHasNoFiles": "リソースには、選択可能なファイルリストはありません",
@@ -477,5 +479,6 @@
   "trackerSubscriptionUpdateStatus": "更新状況",
   "trackerSubscriptionTrackerCount": "Tracker 数",
   "trackerSubscriptionNotUpdated": "未更新",
-  "actions": "操作"
+  "actions": "操作",
+  "taskGroupDeleteImpact": "{taskCount} 件のダウンロードと {fileCount} 個のファイルが対象です。"
 }

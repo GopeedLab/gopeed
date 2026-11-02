@@ -42,6 +42,10 @@ class TaskFileNode {
     required this.sizeBytes,
     this.downloadedBytes,
     this.resourceIndex,
+    this.status,
+    this.taskId,
+    this.accessPath,
+    this.localPath,
   });
 
   final int? resourceIndex;
@@ -49,6 +53,10 @@ class TaskFileNode {
   final String name;
   final int sizeBytes;
   final int? downloadedBytes;
+  final TaskStatus? status;
+  final String? taskId;
+  final String? accessPath;
+  final String? localPath;
 
   double? get progress {
     final downloaded = downloadedBytes;
@@ -68,6 +76,8 @@ class TaskRecord {
     required this.files,
     required this.uploading,
     this.isFolder = false,
+    this.isGroup = false,
+    this.members = const [],
     this.protocol,
     this.requestHeaders = const {},
     this.total,
@@ -84,6 +94,8 @@ class TaskRecord {
     this.totalBytes,
     this.speedBytes,
     this.uploadedBytes,
+    this.uploadSpeedBytes,
+    this.updatedAt,
     this.remainingSeconds,
     this.waiting = false,
   }) : assert(!uploading || uploadSpeed != null);
@@ -108,16 +120,31 @@ class TaskRecord {
   final int? totalBytes;
   final int? speedBytes;
   final int? uploadedBytes;
+  final int? uploadSpeedBytes;
+  final DateTime? updatedAt;
   final int? remainingSeconds;
   final bool waiting;
   final List<TaskFileNode> files;
   final bool uploading;
   final bool isFolder;
+  final bool isGroup;
+  final List<TaskRecord> members;
   final api_task.Protocol? protocol;
   final Map<String, String> requestHeaders;
 
   bool get canUpdateUrl =>
-      protocol == api_task.Protocol.http && (status == TaskStatus.paused || status == TaskStatus.failed);
+      !isGroup && protocol == api_task.Protocol.http && (status == TaskStatus.paused || status == TaskStatus.failed);
+
+  bool get canPause => isGroup ? members.any((task) => task.canPause) : status == TaskStatus.downloading;
+  bool get canResume =>
+      isGroup ? members.any((task) => task.canResume) : status == TaskStatus.paused || status == TaskStatus.failed;
+
+  bool matchesSearch(String query) =>
+      query.isEmpty ||
+      name.toLowerCase().contains(query) ||
+      url.toLowerCase().contains(query) ||
+      files.any((file) => '${file.path}/${file.name}'.toLowerCase().contains(query)) ||
+      members.any((member) => member.matchesSearch(query));
 
   bool get isIndeterminate => status == TaskStatus.downloading && !waiting && total == null;
 
@@ -147,6 +174,7 @@ class TaskRecord {
       remainingSeconds: _remainingSeconds(task, totalBytes, downloadedBytes),
       downloadDuration: task.progress.used > 0 ? Duration(microseconds: (task.progress.used + 999) ~/ 1000) : null,
       createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
       doneAt: task.doneAt,
       waiting: task.status == api_task.Status.wait,
       progress: progress,
@@ -156,6 +184,7 @@ class TaskRecord {
       totalBytes: totalBytes > 0 ? totalBytes : null,
       speedBytes: task.progress.speed,
       uploadedBytes: task.progress.uploaded,
+      uploadSpeedBytes: task.progress.uploadSpeed,
       files: _fileNodes(task.meta.res?.files, task.meta.opts.selectFiles),
       uploading: task.uploading,
       isFolder: task.meta.res?.name.isNotEmpty ?? false,
@@ -163,6 +192,186 @@ class TaskRecord {
       requestHeaders: _requestHeaders(task.meta.req.extra),
     );
   }
+}
+
+List<TaskRecord> taskRecordsFromApi(List<api_task.Task> tasks) {
+  final members = <String, List<TaskRecord>>{};
+  final metadata = <String, api_task.TaskGroup>{};
+  final records = <String, TaskRecord>{};
+  for (final task in tasks) {
+    final record = TaskRecord.fromApi(task);
+    records[task.id] = record;
+    if (task.parentId.isNotEmpty) {
+      members.putIfAbsent(task.parentId, () => []).add(record);
+      if (task.group != null) metadata[task.parentId] = task.group!;
+    }
+  }
+  final emitted = <String>{};
+  return [
+    for (final task in tasks)
+      if (task.parentId.isEmpty || !metadata.containsKey(task.parentId))
+        records[task.id]!
+      else if (emitted.add(task.parentId))
+        _groupRecord(metadata[task.parentId]!, members[task.parentId]!),
+  ];
+}
+
+TaskRecord _groupRecord(api_task.TaskGroup group, List<TaskRecord> members) {
+  final running = members.any((task) => task.status == TaskStatus.downloading && !task.waiting);
+  final failed = members.any((task) => task.status == TaskStatus.failed);
+  final paused = members.isEmpty || members.any((task) => task.status == TaskStatus.paused);
+  final completed = members.isNotEmpty && members.every((task) => task.status == TaskStatus.completed);
+  final status = running
+      ? TaskStatus.downloading
+      : failed
+      ? TaskStatus.failed
+      : paused
+      ? TaskStatus.paused
+      : completed
+      ? TaskStatus.completed
+      : TaskStatus.downloading;
+  final downloaded = members.fold(0, (total, task) => total + (task.downloadedBytes ?? 0));
+  final total = members.every((task) => task.totalBytes != null || task.status == TaskStatus.completed)
+      ? members.fold(0, (total, task) => total + (task.totalBytes ?? 0))
+      : null;
+  final speed = members.fold(
+    0,
+    (total, task) => total + (task.status == TaskStatus.downloading && !task.waiting ? task.speedBytes ?? 0 : 0),
+  );
+  // The backend freezes a finished single task's speed at bytes over active
+  // time (markTaskDone); a finished group reports the same ratio across its
+  // members instead of collapsing to "0 B/s" when the last member completes.
+  final reportedSpeed = speed > 0 ? speed : (completed ? _averageSpeed(members) ?? 0 : 0);
+  final uploadSpeed = members.fold(0, (total, task) => total + (task.uploading ? task.uploadSpeedBytes ?? 0 : 0));
+  final uploading = members.any((task) => task.uploading);
+  final uploaded = members.fold(0, (total, task) => total + (task.uploadedBytes ?? 0));
+  final pathContext = path.Context(
+    style: group.path.contains('\\') || members.any((task) => task.storagePath.contains('\\'))
+        ? path.Style.windows
+        : path.Style.posix,
+  );
+  final root = group.path;
+  final files = <TaskFileNode>[];
+  for (final member in members) {
+    final sourceFiles = member.isFolder
+        ? member.files
+        : [TaskFileNode(path: '', name: member.name, sizeBytes: member.totalBytes ?? 0)];
+    // Folder members do not carry per-file progress from the backend; spread
+    // the member's overall ratio over its files so the tree keeps moving
+    // instead of showing flat zeros.
+    final folderTotal = member.isFolder ? member.files.fold<int>(0, (total, file) => total + file.sizeBytes) : 0;
+    final folderRatio = folderTotal > 0 && member.downloadedBytes != null
+        ? (member.downloadedBytes! / folderTotal).clamp(0.0, 1.0)
+        : null;
+    for (final file in sourceFiles) {
+      final fullPath = member.isFolder
+          ? pathContext.join(member.storagePath, file.path, file.name)
+          : member.storagePath;
+      final relative = pathContext.relative(fullPath, from: root).replaceAll('\\', '/');
+      final String nodePath;
+      final String nodeName;
+      if (pathContext.isAbsolute(relative) || relative == '..' || relative.startsWith('../')) {
+        // Keep unexpected stored paths within the displayed tree.
+        if (member.isFolder) {
+          nodePath = path.posix.join(pathContext.basename(member.storagePath), file.path.replaceAll('\\', '/'));
+          nodeName = file.name;
+        } else {
+          nodePath = '';
+          nodeName = member.name;
+        }
+      } else {
+        nodePath = path.posix.dirname(relative) == '.' ? '' : path.posix.dirname(relative);
+        nodeName = path.posix.basename(relative);
+      }
+      files.add(
+        TaskFileNode(
+          resourceIndex: files.length,
+          path: nodePath,
+          name: nodeName,
+          sizeBytes: file.sizeBytes,
+          downloadedBytes: member.isFolder
+              ? folderRatio != null && file.sizeBytes > 0
+                    ? (file.sizeBytes * folderRatio).round()
+                    : null
+              : member.downloadedBytes,
+          status: member.status,
+          taskId: member.id,
+          localPath: fullPath,
+          accessPath: member.isFolder
+              ? path.posix.join(file.path.replaceAll('\\', '/'), file.name)
+              : pathContext.relative(fullPath, from: pathContext.dirname(member.storagePath)).replaceAll('\\', '/'),
+        ),
+      );
+    }
+  }
+  var updatedAt = group.createdAt;
+  DateTime? doneAt;
+  for (final member in members) {
+    final update = member.updatedAt;
+    if (update != null && update.isAfter(updatedAt)) updatedAt = update;
+    if (completed) {
+      final done = member.doneAt;
+      if (done != null && (doneAt == null || done.isAfter(doneAt))) doneAt = done;
+    }
+  }
+  // The folder card answers "how long did this download take end to end", so
+  // a completed group reports its wall-clock span; single tasks keep their
+  // active-time semantics.
+  final createdAt = group.createdAt;
+  final downloadDuration = doneAt != null && doneAt.isAfter(createdAt) ? doneAt.difference(createdAt) : null;
+  return TaskRecord(
+    id: group.id,
+    name: group.name,
+    status: status,
+    downloaded: _formatBytes(downloaded),
+    total: total == null ? null : _formatBytes(total),
+    downloadedBytes: downloaded,
+    totalBytes: total,
+    speed: TransferRateFormatter.format(reportedSpeed).text,
+    speedBytes: reportedSpeed,
+    uploadSpeed: uploading ? TransferRateFormatter.format(uploadSpeed).text : null,
+    uploadedBytes: uploaded,
+    uploadSpeedBytes: uploadSpeed,
+    uploading: uploading,
+    progress: completed
+        ? 1
+        : total != null && total > 0
+        ? (downloaded / total).clamp(0.0, 1.0)
+        : null,
+    remainingSeconds: total != null && speed > 0 && total > downloaded ? ((total - downloaded) / speed).ceil() : null,
+    waiting: status == TaskStatus.downloading && !running,
+    downloadDuration: downloadDuration,
+    url: '',
+    storagePath: root,
+    files: files,
+    isFolder: true,
+    isGroup: true,
+    members: members,
+    createdAt: group.createdAt,
+    updatedAt: updatedAt,
+    doneAt: doneAt,
+  );
+}
+
+// The combined average rate of a set of members: downloaded bytes over active
+// download time, the same ratio the backend freezes into a finished single
+// task's progress. Members without a measurable duration are skipped because
+// they would inflate the rate.
+int? _averageSpeed(List<TaskRecord> members) {
+  var downloaded = 0;
+  var microseconds = 0;
+  for (final member in members) {
+    final duration = member.downloadDuration;
+    if (duration == null || duration.inMicroseconds <= 0) {
+      continue;
+    }
+    downloaded += member.downloadedBytes ?? 0;
+    microseconds += duration.inMicroseconds;
+  }
+  if (microseconds <= 0) {
+    return null;
+  }
+  return (downloaded * Duration.microsecondsPerSecond / microseconds).round();
 }
 
 Map<String, String> _requestHeaders(Object? extra) {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,10 +49,10 @@ class _BatchActionAvailability {
 _BatchActionAvailability _batchActionAvailability(Iterable<TaskRecord> tasks, TaskBatchSelectionController selection) {
   var canPause = false;
   var canResume = false;
-  for (final task in tasks) {
+  for (final task in tasks.expand((task) => [task, ...task.members])) {
     if (!selection.contains(task.id)) continue;
-    canPause = canPause || task.status == TaskStatus.downloading;
-    canResume = canResume || task.status == TaskStatus.paused || task.status == TaskStatus.failed;
+    canPause = canPause || task.canPause;
+    canResume = canResume || task.canResume;
     if (canPause && canResume) break;
   }
   return _BatchActionAvailability(canPause: canPause, canResume: canResume);
@@ -69,6 +70,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   _TaskFilter _activeFilter = _TaskFilter.downloading;
   TaskRecord? _selectedTask;
   bool _batchMode = false;
+  final Set<String> _expandedGroupIds = {};
   final TaskBatchSelectionController _batchSelection = TaskBatchSelectionController();
 
   @override
@@ -96,11 +98,16 @@ class _HomePageState extends ConsumerState<HomePage> {
     final tasksState = tasksAsync.value;
     final tasks = tasksState?.tasks ?? const <TaskRecord>[];
     final filteredTasks = _filteredTasks(tasks);
+    final visibleTasks = _visibleTasks(filteredTasks);
+    final memberIds = {
+      for (final task in tasks)
+        for (final member in task.members) member.id,
+    };
     final emptyStateMessage = _searchController.text.trim().isEmpty
         ? context.l10n.emptyTaskList
         : context.l10n.noMatchingTasks;
-    final selectedTask = _latestSelectedTask(tasks);
-    final visibleTaskIds = filteredTasks.map((task) => task.id).toList(growable: false);
+    final selectedTask = _latestSelectedTask();
+    final visibleTaskIds = visibleTasks.map((task) => task.id).toList(growable: false);
     final pendingUpdateTask = ref.watch(pendingUpdateTaskProvider);
     final navigationItems = _taskNavigationItems(tasks);
     final desktopBody = shad.Scaffold(
@@ -158,7 +165,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                           listenable: _batchSelection,
                                           builder: (context, _) => _TaskBatchRow(
                                             selectedCount: _batchSelection.count,
-                                            totalCount: filteredTasks.length,
+                                            totalCount: visibleTasks.length,
                                             allSelected: _batchSelection.areAllSelected(visibleTaskIds),
                                             someSelected:
                                                 _batchSelection.isNotEmpty &&
@@ -179,16 +186,19 @@ class _HomePageState extends ConsumerState<HomePage> {
                                           )
                                         : ListView.separated(
                                             padding: const EdgeInsets.only(bottom: 16),
-                                            itemCount: filteredTasks.length,
+                                            itemCount: visibleTasks.length,
                                             separatorBuilder: (_, _) => const SizedBox(height: 8),
                                             itemBuilder: (context, index) {
-                                              final task = filteredTasks[index];
+                                              final task = visibleTasks[index];
                                               return TaskBatchSelectionBuilder(
+                                                key: ValueKey(task.id),
                                                 controller: _batchSelection,
                                                 taskId: task.id,
                                                 visibleTaskIds: visibleTaskIds,
                                                 builder: (context, selectedInBatch, allSelected) => TaskCard(
                                                   task: task,
+                                                  nested: memberIds.contains(task.id),
+                                                  expanded: _expandedGroupIds.contains(task.id),
                                                   selected: _selectedTask?.id == task.id,
                                                   batchMode: _batchMode,
                                                   selectedInBatch: selectedInBatch,
@@ -242,6 +252,8 @@ class _HomePageState extends ConsumerState<HomePage> {
       final mobileBody = tasksAsync.when(
         loading: () => _MobileTasksView(
           tasks: const [],
+          memberIds: const {},
+          expandedGroupIds: _expandedGroupIds,
           batchMode: _batchMode,
           batchSelection: _batchSelection,
           loading: true,
@@ -262,7 +274,9 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
         error: (error, _) => ColoredBox(color: palette.bg, child: const TaskEmptyState()),
         data: (_) => _MobileTasksView(
-          tasks: filteredTasks,
+          tasks: visibleTasks,
+          memberIds: memberIds,
+          expandedGroupIds: _expandedGroupIds,
           emptyStateMessage: emptyStateMessage,
           onCreateTask: _searchController.text.trim().isEmpty ? _handleAddTask : null,
           batchMode: _batchMode,
@@ -331,20 +345,20 @@ class _HomePageState extends ConsumerState<HomePage> {
             _TaskFilter.completed => task.status == TaskStatus.completed,
             _TaskFilter.failed => task.status == TaskStatus.failed,
           };
-          final passesSearch =
-              query.isEmpty || task.name.toLowerCase().contains(query) || task.url.toLowerCase().contains(query);
+          final passesSearch = task.matchesSearch(query);
           return passesFilter && passesSearch;
         })
         .toList(growable: false);
   }
 
-  TaskRecord? _latestSelectedTask(List<TaskRecord> tasks) {
+  List<TaskRecord> _visibleTasks(List<TaskRecord> tasks) => [
+    for (final task in tasks) ...[task, if (_expandedGroupIds.contains(task.id)) ...task.members],
+  ];
+
+  TaskRecord? _latestSelectedTask() {
     final selectedTask = _selectedTask;
     if (selectedTask == null) return null;
-    for (final task in tasks) {
-      if (task.id == selectedTask.id) return task;
-    }
-    return selectedTask;
+    return ref.read(tasksControllerProvider).value?.findTask(selectedTask.id);
   }
 
   List<ResponsiveNavigationItem<_TaskFilter>> _taskNavigationItems(List<TaskRecord> tasks) {
@@ -376,7 +390,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (_batchMode) {
       _toggleBatchTask(task.id);
     } else {
-      _showTaskDetails(task);
+      if (task.isGroup) {
+        setState(() {
+          if (!_expandedGroupIds.remove(task.id)) _expandedGroupIds.add(task.id);
+        });
+      } else {
+        _showTaskDetails(task);
+      }
     }
   }
 
@@ -406,8 +426,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   void _toggleBatchTask(String taskId) => _batchSelection.toggle(taskId);
 
   void _toggleSelectAll() {
-    final visibleIds = _filteredTasks(
-      ref.read(tasksControllerProvider).value?.tasks ?? const [],
+    final visibleIds = _visibleTasks(
+      _filteredTasks(ref.read(tasksControllerProvider).value?.tasks ?? const []),
     ).map((task) => task.id).toList(growable: false);
     if (_batchSelection.areAllSelected(visibleIds)) {
       _batchSelection.clear();
@@ -430,22 +450,20 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _pauseSelectedTasks() {
     if (_batchMode && _batchSelection.isEmpty) return;
-    final ids = _batchMode ? _selectedTaskIdsFor((task) => task.status == TaskStatus.downloading) : null;
+    final ids = _batchMode ? _selectedTaskIdsFor((task) => task.canPause) : null;
     if (_batchMode && ids!.isEmpty) return;
     unawaited(_runTaskAction(() => ref.read(tasksControllerProvider.notifier).pauseAll(ids)));
   }
 
   void _resumeSelectedTasks() {
     if (_batchMode && _batchSelection.isEmpty) return;
-    final ids = _batchMode
-        ? _selectedTaskIdsFor((task) => task.status == TaskStatus.paused || task.status == TaskStatus.failed)
-        : null;
+    final ids = _batchMode ? _selectedTaskIdsFor((task) => task.canResume) : null;
     if (_batchMode && ids!.isEmpty) return;
     unawaited(_runTaskAction(() => ref.read(tasksControllerProvider.notifier).resumeAll(ids)));
   }
 
   List<String> _selectedTaskIdsFor(bool Function(TaskRecord task) test) {
-    final tasks = ref.read(tasksControllerProvider).value?.tasks ?? const <TaskRecord>[];
+    final tasks = ref.read(tasksControllerProvider).value?.allTasks ?? const <TaskRecord>[];
     return tasks.where((task) => _batchSelection.contains(task.id) && test(task)).map((task) => task.id).toList();
   }
 
@@ -479,8 +497,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   List<String> _contextTaskIds(TaskRecord task) {
-    final visibleIds = _filteredTasks(
-      ref.read(tasksControllerProvider).value?.tasks ?? const [],
+    final visibleIds = _visibleTasks(
+      _filteredTasks(ref.read(tasksControllerProvider).value?.tasks ?? const []),
     ).map((item) => item.id).toSet();
     return <String>{..._batchSelection.where(visibleIds.contains), task.id}.toList(growable: false);
   }
@@ -502,9 +520,27 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (ids.isEmpty) return;
     final runtime = ref.read(appRuntimeControllerProvider).value;
     final config = runtime?.downloaderConfig;
+    final selected =
+        ref.read(tasksControllerProvider).value?.allTasks.where((task) => ids.contains(task.id)).toList() ??
+        <TaskRecord>[];
+    final groupedMemberIds = {
+      for (final task in selected)
+        for (final member in task.members) member.id,
+    };
+    ids = ids.where((id) => !groupedMemberIds.contains(id)).toList();
+    selected.removeWhere((task) => groupedMemberIds.contains(task.id));
+    final hasGroups = selected.any((task) => task.isGroup);
     final keepFiles = await showTaskDeleteDialog(
       context,
       taskCount: ids.length,
+      memberCount: !hasGroups
+          ? null
+          : selected.fold<int>(0, (total, task) => total + (task.isGroup ? task.members.length : 1)),
+      // A task always downloads at least one file; records whose resource
+      // has no file list (plain single-file downloads) still count as one.
+      fileCount: !hasGroups
+          ? null
+          : selected.fold<int>(0, (total, task) => total + (task.files.isEmpty ? 1 : task.files.length)),
       keepFiles: config?.extra.lastDeleteTaskKeep ?? false,
     );
     if (keepFiles == null || !mounted) return;
@@ -518,10 +554,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       await ref.read(appRuntimeControllerProvider.notifier).reloadConfig();
     });
     if (!mounted) return;
-    _batchSelection.removeAll(ids);
+    _batchSelection.removeAll({...ids, ...groupedMemberIds});
     setState(() {
       _batchMode = false;
-      if (_selectedTask != null && ids.contains(_selectedTask!.id)) {
+      _expandedGroupIds.removeAll(ids);
+      if (_selectedTask != null && (ids.contains(_selectedTask!.id) || groupedMemberIds.contains(_selectedTask!.id))) {
         _selectedTask = null;
       }
     });
@@ -569,14 +606,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   Future<void> _updateTaskUrl(String id, String url, {Map<String, String> headers = const {}}) async {
     try {
       await ref.read(tasksControllerProvider.notifier).updateUrl(id, url, headers: headers);
-      final updatedTasks = ref.read(tasksControllerProvider).value?.tasks ?? const <TaskRecord>[];
-      for (final task in updatedTasks) {
-        if (task.id == id) {
-          if (mounted) {
-            setState(() => _selectedTask = task);
-          }
-          break;
-        }
+      if (mounted) {
+        setState(() => _selectedTask = ref.read(tasksControllerProvider).value?.findTask(id));
       }
     } catch (error) {
       if (!mounted) rethrow;
@@ -586,6 +617,16 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _openTask(TaskRecord task) async {
+    final nativeDirectory =
+        !Util.isWeb() &&
+        switch (defaultTargetPlatform) {
+          TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.linux => true,
+          _ => false,
+        };
+    if (task.isGroup && !nativeDirectory) {
+      await browseTaskFiles(context, task, mobile: MediaQuery.sizeOf(context).width < Breakpoints.mobile);
+      return;
+    }
     final opened = task.isFolder
         ? await FileExplorer.reveal(task.storagePath)
         : await FileExplorer.open(task.storagePath);
@@ -674,6 +715,8 @@ class _TaskBatchRow extends StatelessWidget {
 class _MobileTasksView extends StatelessWidget {
   const _MobileTasksView({
     required this.tasks,
+    required this.memberIds,
+    required this.expandedGroupIds,
     required this.batchMode,
     required this.batchSelection,
     required this.onToggleSelectAll,
@@ -695,6 +738,8 @@ class _MobileTasksView extends StatelessWidget {
   });
 
   final List<TaskRecord> tasks;
+  final Set<String> memberIds;
+  final Set<String> expandedGroupIds;
   final bool batchMode;
   final TaskBatchSelectionController batchSelection;
   final VoidCallback onToggleSelectAll;
@@ -760,11 +805,14 @@ class _MobileTasksView extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final task = tasks[index];
                       return TaskBatchSelectionBuilder(
+                        key: ValueKey(task.id),
                         controller: batchSelection,
                         taskId: task.id,
                         visibleTaskIds: visibleTaskIds,
                         builder: (context, selectedInBatch, allSelected) => TaskCard(
                           task: task,
+                          nested: memberIds.contains(task.id),
+                          expanded: expandedGroupIds.contains(task.id),
                           selected: false,
                           batchMode: batchMode,
                           selectedInBatch: selectedInBatch,

@@ -200,11 +200,14 @@ func ParseOptExtra[E any](opts *Options) error {
 }
 
 type CreateTaskBatch struct {
-	Reqs []*CreateTaskBatchItem `json:"reqs"`
-	Opts *Options               `json:"opts"`
+	Reqs      []*CreateTaskBatchItem `json:"reqs"`
+	Opts      *Options               `json:"opts"`
+	Group     bool                   `json:"group"`
+	GroupName string                 `json:"groupName"`
 }
 
 type CreateTaskBatchItem struct {
+	Rid  string   `json:"rid,omitempty"`
 	Req  *Request `json:"req"`
 	Opts *Options `json:"opts"`
 }

@@ -180,11 +180,11 @@ func (s *Service) createTaskBatch(ctx *Context) *Response {
 	if len(request.Reqs) == 0 {
 		return newErrorResponse("param invalid: reqs", restmodel.CodeInvalidParam)
 	}
-	taskIDs, err := s.Downloader.CreateDirectBatch(&request)
+	result, err := s.Downloader.CreateDirectBatchWithResult(&request)
 	if err != nil {
 		return newErrorResponse(err.Error())
 	}
-	return newOKResponse(taskIDs)
+	return newOKResponse(result)
 }
 
 func (s *Service) patchTask(ctx *Context) *Response {
