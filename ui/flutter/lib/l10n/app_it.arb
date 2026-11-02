@@ -98,7 +98,7 @@
   "startAll": "Avvia tutti",
   "pauseAll": "Mtti in pausa tutti",
   "deleteTask": "Elimina @count attività",
-  "deleteTaskTip": "Conserva i file scaricati",
+  "deleteTaskTip": "Elimina i file scaricati",
   "delete": "Elimina",
   "add": "Aggiungi",
   "edit": "Modifica",

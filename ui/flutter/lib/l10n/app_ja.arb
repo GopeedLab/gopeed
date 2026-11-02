@@ -98,7 +98,7 @@
   "startAll": "すべてを開始",
   "pauseAll": "すべてを一時停止",
   "deleteTask": "@count タスクを削除",
-  "deleteTaskTip": "ダウンロードしたファイルを保持",
+  "deleteTaskTip": "ダウンロードしたファイルを削除",
   "delete": "削除",
   "add": "追加",
   "edit": "編集",

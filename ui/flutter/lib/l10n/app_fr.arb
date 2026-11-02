@@ -98,7 +98,7 @@
   "startAll": "Tout démarrer",
   "pauseAll": "Tout suspendre",
   "deleteTask": "Supprimer @count tâches",
-  "deleteTaskTip": "Conserver les fichiers téléchargés",
+  "deleteTaskTip": "Supprimer les fichiers téléchargés",
   "delete": "Supprimer",
   "add": "Ajouter",
   "edit": "Modifier",

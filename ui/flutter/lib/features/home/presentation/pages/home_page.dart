@@ -541,7 +541,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       fileCount: !hasGroups
           ? null
           : selected.fold<int>(0, (total, task) => total + (task.files.isEmpty ? 1 : task.files.length)),
-      keepFiles: config?.extra.lastDeleteTaskKeep ?? false,
+      keepFiles: config?.extra.lastDeleteTaskKeep ?? true,
     );
     if (keepFiles == null || !mounted) return;
 

@@ -98,7 +98,7 @@
   "startAll": "Mulai Semua",
   "pauseAll": "Jeda Semua",
   "deleteTask": "Hapus @count Tugas",
-  "deleteTaskTip": "Simpan file yang terunduh",
+  "deleteTaskTip": "Hapus berkas yang diunduh",
   "delete": "Hapus",
   "add": "Tambah",
   "edit": "Sunting",
