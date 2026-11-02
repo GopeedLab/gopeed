@@ -27,6 +27,8 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
   late List<FileTreeItem<PendingFileKey>> _treeItems;
   late Map<PendingFileKey, FileInfo> _files;
   late Map<String, String> _labels;
+  late Map<String, PendingDownload> _sourcesById;
+  late Map<String, PendingDownload> _sourcesByRootKey;
   final Set<PendingFileKey> _selected = {};
   final Set<_FileTypeFilter> _activeTypeFilters = {};
 
@@ -50,6 +52,8 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
     _files = {};
     _labels = {};
     _treeItems = [];
+    _sourcesById = {for (final source in widget.sources) source.id: source};
+    _sourcesByRootKey = {for (final source in widget.sources) 'folder:${source.id}': source};
     _selected.clear();
     for (final source in widget.sources) {
       if (source.result == null) {
@@ -67,9 +71,8 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
         continue;
       }
       final files = source.files.isEmpty ? [FileInfo(name: source.name)] : source.files;
-      final hasRoot =
-          source.result!.res.name.trim().isNotEmpty &&
-          (source.isGroup || source.isBt || source.isFtp || files.length > 1);
+      // A non-empty resource name is a real directory, even for one file.
+      final hasRoot = source.result!.res.name.trim().isNotEmpty;
       if (hasRoot) _labels[source.id] = source.name;
       for (final entry in files.indexed) {
         final key = (source.id, entry.$1);
@@ -153,13 +156,7 @@ class _ResolveFileTreeState extends State<ResolveFileTree> {
   }
 
   Widget _sourceIcon(BuildContext context, FileTreeNode<PendingFileKey> node) {
-    PendingDownload? source;
-    for (final candidate in widget.sources) {
-      if (node.key == 'folder:${candidate.id}' || node.item?.data.$1 == candidate.id) {
-        source = candidate;
-        break;
-      }
-    }
+    final source = node.item == null ? _sourcesByRootKey[node.key] : _sourcesById[node.item!.data.$1];
     final palette = AppPalette.of(context);
     if (source == null) {
       return Icon(node.isFolder ? BootstrapIcons.folder2 : GopeedIcons.file, size: 18, color: palette.textSecondary);

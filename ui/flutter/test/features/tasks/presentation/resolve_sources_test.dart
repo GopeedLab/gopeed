@@ -30,6 +30,137 @@ PendingDownload source(String id) =>
       ..selected.addAll([0, 1]);
 
 void main() {
+  for (final width in [390.0, 700.0, 1024.0]) {
+    testWidgets('live mixed sources keep input order, selection and expansion at $width', (tester) async {
+      tester.view.physicalSize = Size(width, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final sources = [
+        for (final id in ['http', 'group', 'ungrouped', 'bt', 'failed'])
+          PendingDownload(
+            id: id,
+            request: Request(url: 'https://example.com/$id'),
+            options: Options(),
+          ),
+      ];
+      final http = sources[0];
+      final group = sources[1];
+      final ungrouped = sources[2];
+      final bt = sources[3];
+      bt.request.url = 'magnet:?xt=urn:btih:infohash';
+      Future<void> show() async {
+        await tester.pumpWidget(
+          shad.ShadcnApp(
+            theme: AppTheme.light(),
+            materialTheme: AppTheme.materialLight(),
+            home: ResolveFileTree(
+              sources: sources,
+              onSelectionChanged: (keys) {
+                for (final pending in sources) {
+                  pending.selected
+                    ..clear()
+                    ..addAll(keys.where((key) => key.$1 == pending.id).map((key) => key.$2));
+                }
+              },
+            ),
+          ),
+        );
+        await tester.pump();
+      }
+
+      List<shad.TreeItemNode<FileTreeNode<PendingFileKey>>> roots() => tester
+          .widget<VirtualTreeView<FileTreeNode<PendingFileKey>>>(
+            find.byType(VirtualTreeView<FileTreeNode<PendingFileKey>>),
+          )
+          .nodes
+          .cast<shad.TreeItemNode<FileTreeNode<PendingFileKey>>>();
+      void expectOrder(List<String> labels) => expect(roots().map((node) => node.data.label), labels);
+
+      await show();
+      expectOrder(sources.map((pending) => pending.request.url).toList());
+      http.result = ResolveResult(
+        id: 'http-rid',
+        res: Resource(files: [FileInfo(name: 'z-http.txt')]),
+      );
+      http.selected.add(0);
+      await show();
+      expectOrder(['z-http.txt', ...sources.skip(1).map((pending) => pending.request.url)]);
+      await tester.tap(find.byKey(const ValueKey('resolve-tree-name-scroll-file:http:0')));
+      await tester.pump();
+      expect(http.selected, isEmpty);
+
+      group.result = ResolveResult(
+        res: Resource(
+          name: 'bundle',
+          files: [
+            FileInfo(name: 'one.txt'),
+            FileInfo(name: 'two.txt'),
+          ],
+        ),
+      );
+      group.selected.addAll([0, 1]);
+      await show();
+      expectOrder(['z-http.txt', 'bundle', ...sources.skip(2).map((pending) => pending.request.url)]);
+
+      ungrouped.result = ResolveResult(
+        res: Resource(
+          files: [
+            FileInfo(name: 'z-first.txt'),
+            FileInfo(name: 'nested.txt', path: 'directory'),
+            FileInfo(name: 'a-last.txt'),
+          ],
+        ),
+      );
+      ungrouped.selected.addAll([0, 1, 2]);
+      await tester.tap(find.byKey(const ValueKey('resolve-tree-node-expand-folder:group')));
+      await tester.pump(const Duration(milliseconds: 50));
+      await show();
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(roots()[1].expanded, isFalse);
+      expectOrder([
+        'z-http.txt',
+        'bundle',
+        'z-first.txt',
+        'directory',
+        'a-last.txt',
+        bt.request.url,
+        sources.last.request.url,
+      ]);
+
+      bt.result = ResolveResult(
+        id: 'bt-rid',
+        res: Resource(
+          name: 'torrent',
+          files: [
+            FileInfo(name: 'bt-one'),
+            FileInfo(name: 'bt-two'),
+          ],
+        ),
+      );
+      bt.selected.addAll([0, 1]);
+      await show();
+      sources.last.resolveError = 'cannot resolve';
+      await show();
+      expectOrder([
+        'z-http.txt',
+        'bundle',
+        'z-first.txt',
+        'directory',
+        'a-last.txt',
+        'torrent',
+        sources.last.request.url,
+      ]);
+      expect(roots()[1].expanded, isFalse);
+      expect(http.selected, isEmpty);
+      expect(group.selected, {0, 1});
+      expect(ungrouped.selected, {0, 1, 2});
+      expect(bt.selected, {0, 1});
+      expect(sources.last.selected, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('ED2K uses a file icon and filename while BT uses its resource name and folder icon', (tester) async {
     final ed2k =
         PendingDownload(
@@ -155,7 +286,7 @@ void main() {
     pending.result = ResolveResult(
       id: 'http-rid',
       res: Resource(
-        name: 'file.txt',
+        name: '',
         files: [FileInfo(name: 'file.txt')],
       ),
     );
@@ -171,6 +302,51 @@ void main() {
     expect((tree.nodes.single as shad.TreeItemNode<FileTreeNode<PendingFileKey>>).data.item!.data, ('http', 0));
     expect(tester.takeException(), isNull);
   });
+
+  for (final filePath in ['', 'disc1']) {
+    testWidgets('named single-file extension keeps its resource directory (path=$filePath)', (tester) async {
+      final pending =
+          PendingDownload(
+              id: 'extension',
+              request: Request(url: 'https://example.com/track.mp3'),
+              options: Options(path: '/downloads'),
+            )
+            ..result = ResolveResult(
+              res: Resource(
+                name: 'album',
+                files: [
+                  FileInfo(
+                    name: 'track.mp3',
+                    path: filePath,
+                    req: Request(url: 'https://cdn.example.com/track.mp3'),
+                  ),
+                ],
+              ),
+            )
+            ..selected.add(0);
+      await tester.pumpWidget(
+        shad.ShadcnApp(
+          theme: AppTheme.light(),
+          materialTheme: AppTheme.materialLight(),
+          home: ResolveFileTree(sources: [pending], onSelectionChanged: (_) {}),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final tree = tester.widget<VirtualTreeView<FileTreeNode<PendingFileKey>>>(
+        find.byType(VirtualTreeView<FileTreeNode<PendingFileKey>>),
+      );
+      final roots = tree.nodes.cast<shad.TreeItemNode<FileTreeNode<PendingFileKey>>>();
+      expect(roots.map((node) => node.data.label), ['album']);
+      expect(roots.single.expanded, isTrue);
+      final child = roots.single.children.single as shad.TreeItemNode<FileTreeNode<PendingFileKey>>;
+      expect(child.data.label, filePath.isEmpty ? 'track.mp3' : 'disc1');
+      final plan = planDownloads([pending]).single.request;
+      expect(plan.group, isFalse);
+      expect(plan.reqs!.single.opts!.path, filePath.isEmpty ? '/downloads/album' : '/downloads/album/disc1');
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('a live group replaces its URL placeholder with an expanded group directory', (tester) async {
     final pending = PendingDownload(

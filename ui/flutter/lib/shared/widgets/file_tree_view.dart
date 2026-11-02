@@ -141,7 +141,8 @@ class _FileTreeViewState<T> extends State<FileTreeView<T>> with SingleTickerProv
     super.didUpdateWidget(oldWidget);
     if (identical(widget.items, oldWidget.items)) return;
 
-    final expandedKeys = _expandedFolderKeys(_nodes);
+    // During a collapse animation, the pending tree holds the user's target state.
+    final expandedKeys = _expandedFolderKeys(_pendingCollapsedNodes ?? _nodes);
     var nodes = _restoreExpandedFolders(
       _buildTree(widget.items, directoryLabels: widget.directoryLabels),
       expandedKeys,
@@ -974,10 +975,10 @@ List<TreeNode<FileTreeNode<T>>> _sortNodes<T>(
   sorted.sort((a, b) {
     final left = a.data;
     final right = b.data;
-    if (left.isFolder != right.isFolder) return left.isFolder ? -1 : 1;
     if (column == null || direction == _FileTreeSortDirection.none) {
       return left.originalIndex.compareTo(right.originalIndex);
     }
+    if (left.isFolder != right.isFolder) return left.isFolder ? -1 : 1;
     final comparison = switch (column) {
       _FileTreeSortColumn.name => left.label.toLowerCase().compareTo(right.label.toLowerCase()),
       _FileTreeSortColumn.size => left.size.compareTo(right.size),
