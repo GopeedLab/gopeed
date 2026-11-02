@@ -2796,7 +2796,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('settings-language-select')));
     await tester.pumpAndSettle();
     expect(find.text('English'), findsOneWidget);
-    expect(SettingsLanguageSelect.supportedValues, hasLength(22));
+    expect(SettingsLanguageSelect.supportedValues, hasLength(AppLocalizations.supportedLocales.length));
     expect(SettingsLanguageSelect.supportedValues, containsAll(<String>['zh', 'zh_TW', 'pt']));
     expect(SettingsLanguageSelect.supportedValues, isNot(contains('zh_CN')));
     expect(SettingsLanguageSelect.supportedValues, isNot(contains('pt_BR')));
