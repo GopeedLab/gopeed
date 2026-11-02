@@ -4868,6 +4868,83 @@ func TestDownloader_BatchAllFailedAndResolvedSelection(t *testing.T) {
 	}
 }
 
+// A delete during a slow Resolve must cancel the start handler and keep the
+// deleted task out of persistent storage even after the resolver returns.
+func TestDownloader_DeleteDuringResolveDoesNotResurrect(t *testing.T) {
+	resolveRelease := make(chan struct{})
+	manager := &generationTestManager{
+		resolveStarted: make(chan struct{}),
+		resolveRelease: resolveRelease,
+		holdOpen:       true,
+	}
+	storage := NewMemStorage()
+	d := NewDownloader(&DownloaderConfig{
+		Storage:       storage,
+		StorageDir:    t.TempDir(),
+		TempDir:       t.TempDir(),
+		FetchManagers: []fetcher.FetcherManager{manager},
+	})
+	if err := d.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = d.Close() })
+	d.cfg.MaxRunning = 1
+	id, err := d.CreateDirect(&base.Request{URL: "generation://deleted-during-resolve"}, &base.Options{Path: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-manager.resolveStarted:
+	case <-time.After(3 * time.Second):
+		t.Fatal("start handler did not enter Resolve")
+	}
+	task := d.GetTask(id)
+	if task == nil {
+		t.Fatal("task missing before deletion")
+	}
+	if err := d.Delete(&TaskFilter{IDs: []string{id}}, false); err != nil {
+		t.Fatal(err)
+	}
+	if d.GetTask(id) != nil {
+		t.Fatal("deleted task is still in the task list")
+	}
+	close(resolveRelease)
+	finished := make(chan struct{})
+	go func() {
+		task.lock.Lock()
+		task.lock.Unlock()
+		close(finished)
+	}()
+	select {
+	case <-finished:
+	case <-time.After(3 * time.Second):
+		t.Fatal("start handler did not finish after Resolve was released")
+	}
+	if got := manager.starts.Load(); got != 0 {
+		t.Fatalf("deleted task's fetcher was started %d times", got)
+	}
+	checkAbsent := func() {
+		t.Helper()
+		var saved Task
+		exists, err := storage.Get(bucketTask, id, &saved)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if exists {
+			t.Fatal("deleted task was written back to storage")
+		}
+	}
+	checkAbsent()
+	// Stale persistence callbacks must not be able to resurrect the task.
+	if err := d.saveTask(task); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.persistTaskSnapshot(task); err != nil {
+		t.Fatal(err)
+	}
+	checkAbsent()
+}
+
 func TestDownloader_BatchStartFailureKeepsCreatedTasks(t *testing.T) {
 	for _, grouped := range []bool{false, true} {
 		t.Run(fmt.Sprint(grouped), func(t *testing.T) {
