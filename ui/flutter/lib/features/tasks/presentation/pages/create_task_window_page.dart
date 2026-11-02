@@ -729,16 +729,19 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              AppFormRow(
-                                direction: stacked ? Axis.vertical : Axis.horizontal,
-                                label: context.l10n.adaptiveConnections,
-                                child: _OptionSwitch(
-                                  key: const ValueKey('create-task-adaptive'),
-                                  value: _adaptive ?? _globalAdaptive,
-                                  onChanged: (value) => setState(() => _adaptive = value),
+                              // Adaptive connections are HTTP only.
+                              if (!_allLinksFtp) ...[
+                                AppFormRow(
+                                  direction: stacked ? Axis.vertical : Axis.horizontal,
+                                  label: context.l10n.adaptiveConnections,
+                                  child: _OptionSwitch(
+                                    key: const ValueKey('create-task-adaptive'),
+                                    value: _adaptive ?? _globalAdaptive,
+                                    onChanged: (value) => setState(() => _adaptive = value),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 14),
+                                const SizedBox(height: 14),
+                              ],
                               AppFormRow(
                                 direction: stacked ? Axis.vertical : Axis.horizontal,
                                 label: context.l10n.autoTorrentEnable,
