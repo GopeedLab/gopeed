@@ -298,6 +298,7 @@ class _ExtensionsPageState extends ConsumerState<ExtensionsPage> {
         api_extension.SettingType.number => num.tryParse(text) ?? 0,
         api_extension.SettingType.boolean => text == 'true' || text == '1' || text.toLowerCase() == 'yes',
         api_extension.SettingType.string => text,
+        api_extension.SettingType.password => text,
       };
     }
     await _runAction(() => ref.read(extensionsControllerProvider.notifier).saveExtensionSettings(extension, values));

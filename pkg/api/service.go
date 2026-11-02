@@ -368,7 +368,7 @@ func (s *Service) installExtension(ctx *Context) *Response {
 }
 
 func (s *Service) getExtensions(_ *Context) *Response {
-	return newOKResponse(s.Downloader.GetExtensions())
+	return newOKResponse(download.PublicExtensions(s.Downloader.GetExtensions()))
 }
 
 func (s *Service) getExtension(ctx *Context) *Response {
@@ -380,7 +380,7 @@ func (s *Service) getExtension(ctx *Context) *Response {
 	if err != nil {
 		return newErrorResponse(err.Error())
 	}
-	return newOKResponse(extension)
+	return newOKResponse(extension.PublicView())
 }
 
 func (s *Service) updateExtensionSettings(ctx *Context) *Response {

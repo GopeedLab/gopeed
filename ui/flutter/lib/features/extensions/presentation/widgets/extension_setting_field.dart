@@ -41,7 +41,7 @@ class ExtensionSettingField extends StatelessWidget {
     }
 
     final options = setting.options;
-    if (options != null && options.isNotEmpty) {
+    if (setting.type != SettingType.password && options != null && options.isNotEmpty) {
       return ValueListenableBuilder<TextEditingValue>(
         valueListenable: controller,
         builder: (context, value, _) => LayoutBuilder(
@@ -74,6 +74,9 @@ class ExtensionSettingField extends StatelessWidget {
     final isNumber = setting.type == SettingType.number;
     return AppTextField(
       controller: controller,
+      obscureText: setting.type == SettingType.password,
+      enableSuggestions: setting.type != SettingType.password,
+      autocorrect: setting.type != SettingType.password,
       keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true, signed: true) : TextInputType.text,
       inputFormatters: isNumber
           ? [

@@ -70,6 +70,7 @@ const _$SettingTypeEnumMap = {
   SettingType.string: 'string',
   SettingType.number: 'number',
   SettingType.boolean: 'boolean',
+  SettingType.password: 'password',
 };
 
 Option _$OptionFromJson(Map<String, dynamic> json) =>

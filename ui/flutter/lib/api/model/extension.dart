@@ -81,4 +81,4 @@ class Option {
   Map<String, dynamic> toJson() => _$OptionToJson(this);
 }
 
-enum SettingType { string, number, boolean }
+enum SettingType { string, number, boolean, password }
