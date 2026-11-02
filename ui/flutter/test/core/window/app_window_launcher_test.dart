@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/api/model/create_task.dart';
 import 'package:gopeed/api/model/request.dart';
 import 'package:gopeed/core/window/app_window_launcher.dart';
+import 'package:gopeed/core/window/app_window_payload.dart';
 import 'package:gopeed/core/window/window_capability_transport.dart';
 
 void main() {
@@ -34,8 +35,10 @@ void main() {
       return null;
     });
 
-    final opened = await AppWindowLauncher.openCreateTaskWindow(
-      createTask: CreateTask(req: Request(url: 'https://example.com/file.zip')),
+    final opened = await AppWindowLauncher.open(
+      AppWindowPayload.createTask(
+        createTask: CreateTask(req: Request(url: 'https://example.com/file.zip')).toJson(),
+      ),
     );
 
     expect(opened, isTrue);
@@ -56,6 +59,6 @@ void main() {
       return null;
     });
 
-    expect(await AppWindowLauncher.openCreateTaskWindow(), isFalse);
+    expect(await AppWindowLauncher.open(AppWindowPayload.createTask()), isFalse);
   });
 }

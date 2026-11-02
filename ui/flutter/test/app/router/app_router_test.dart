@@ -15,7 +15,7 @@ void main() {
       final router = AppRouter.build(auth);
       addTearDown(router.dispose);
       addTearDown(auth.dispose);
-      final isMobile = platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+      final isMobile = !kIsWeb && (platform == TargetPlatform.android || platform == TargetPlatform.iOS);
 
       for (final entry in {
         '/': ['/'],
@@ -28,8 +28,15 @@ void main() {
       }.entries) {
         final match = router.configuration.findMatch(Uri.parse(entry.key));
         expect(match.isError, isFalse);
-        final shell = match.matches.single as ShellRouteMatch;
-        expect(shell.matches.map((match) => (match.route as GoRoute).path), entry.value);
+        final shell = match.matches.first as ShellRouteMatch;
+        final routes = [
+          ...shell.matches.map((match) => match.route as GoRoute),
+          ...match.matches.skip(1).map((match) => match.route as GoRoute),
+        ];
+        expect(routes.map((route) => route.path), entry.value);
+        if (entry.key == '/create') {
+          expect(routes.last.parentNavigatorKey, same(AppRouter.rootNavigatorKey));
+        }
       }
     });
   }

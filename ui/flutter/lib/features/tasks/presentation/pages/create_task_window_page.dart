@@ -44,10 +44,12 @@ import '../widgets/create_task_action_buttons.dart';
 import '../widgets/resolve_download_dialog.dart';
 
 class CreateTaskWindowPage extends ConsumerStatefulWidget {
-  const CreateTaskWindowPage({super.key, this.windowController, this.initialTask});
+  const CreateTaskWindowPage({super.key, this.windowController, this.initialTask, this.onClose, this.modal = false});
 
   final multi_window.WindowController? windowController;
   final CreateTask? initialTask;
+  final ValueChanged<bool>? onClose;
+  final bool modal;
 
   @override
   ConsumerState<CreateTaskWindowPage> createState() => _CreateTaskWindowPageState();
@@ -133,7 +135,7 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       if (widget.initialTask == null) {
         ref.read(pendingCreateTaskProvider.notifier).clear();
       }
-      if (widget.windowController == null && widget.initialTask == null) {
+      if (widget.windowController == null) {
         // Navigating to /create again reuses this page, so consume subsequent
         // browser/share requests as well as the initial pending task.
         ref.listenManual(pendingCreateTaskProvider, (_, next) {
@@ -371,7 +373,9 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       child: Padding(
         key: const ValueKey('create-task-safe-content'),
         padding: EdgeInsets.only(
-          top: AppWindowChrome.reservesHeaderInset
+          top: widget.modal
+              ? 0
+              : AppWindowChrome.reservesHeaderInset
               ? AppDesignTokens.windowHeaderHeight
               : MediaQuery.paddingOf(context).top,
         ),
@@ -867,6 +871,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
   }
 
   Future<void> _closeWindow() async {
+    if (widget.onClose != null) {
+      widget.onClose!(false);
+      return;
+    }
     if (widget.windowController == null && mounted) {
       context.go('/');
       return;
@@ -888,6 +896,10 @@ class _CreateTaskWindowPageState extends ConsumerState<CreateTaskWindowPage> {
       }
     }
     if (!mounted || session != _createSession) return;
+    if (widget.onClose != null) {
+      widget.onClose!(true);
+      return;
+    }
     if (widget.windowController != null) {
       // Navigation is best-effort after a successful submission. A navigation
       // failure must not leave a completed form available for resubmission.
