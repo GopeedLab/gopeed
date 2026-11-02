@@ -514,7 +514,7 @@ func (d *Downloader) saveTask(task *Task) error {
 	task.persistLock.Lock()
 	defer task.persistLock.Unlock()
 	task.statusLock.Lock()
-	deleted := task.deleted
+	deleted := *task.deleted
 	task.statusLock.Unlock()
 	if deleted {
 		return nil
@@ -551,7 +551,7 @@ func (d *Downloader) persistTaskSnapshot(task *Task) error {
 	task.persistLock.Lock()
 	defer task.persistLock.Unlock()
 	task.statusLock.Lock()
-	if task.deleted {
+	if *task.deleted {
 		task.statusLock.Unlock()
 		return nil
 	}
@@ -565,7 +565,7 @@ func (d *Downloader) persistTaskStats(task *Task, snapshot json.RawMessage) erro
 	task.persistLock.Lock()
 	defer task.persistLock.Unlock()
 	task.statusLock.Lock()
-	deleted := task.deleted
+	deleted := *task.deleted
 	task.statusLock.Unlock()
 	if deleted {
 		return nil
@@ -1232,7 +1232,7 @@ func (d *Downloader) Delete(filter *TaskFilter, force bool) error {
 		// Invalidate the running start handler before removing the task from
 		// the public list. The handler may be blocked inside Resolve.
 		task.statusLock.Lock()
-		task.deleted = true
+		*task.deleted = true
 		task.runGeneration++
 		task.statusLock.Unlock()
 		d.deletingTasks[task.ID] = task
@@ -1267,7 +1267,7 @@ func (d *Downloader) Delete(filter *TaskFilter, force bool) error {
 			// Keep the recovery write inside the same persistence barrier.
 			task.persistLock.Lock()
 			task.statusLock.Lock()
-			task.deleted = false
+			*task.deleted = false
 			snapshot := task.clone()
 			task.statusLock.Unlock()
 			saveErr := d.storage.Put(bucketTask, task.ID, snapshot)
@@ -2425,7 +2425,7 @@ func (d *Downloader) prepareTask(task *Task) error {
 func (d *Downloader) doStart(task *Task) (err error) {
 	var generation uint64
 	isReturn, err := d.statusMut(task, func() (isReturn bool, err error) {
-		if task.deleted || task.Status == base.DownloadStatusRunning || task.Status == base.DownloadStatusDone {
+		if *task.deleted || task.Status == base.DownloadStatusRunning || task.Status == base.DownloadStatusDone {
 			isReturn = true
 			return
 		}
@@ -2640,7 +2640,7 @@ func (d *Downloader) taskIsRunningGeneration(task *Task, generation uint64) bool
 	}
 	task.statusLock.Lock()
 	defer task.statusLock.Unlock()
-	return !task.deleted && task.Status == base.DownloadStatusRunning && task.runGeneration == generation
+	return !*task.deleted && task.Status == base.DownloadStatusRunning && task.runGeneration == generation
 }
 
 func (d *Downloader) taskIsPausedGeneration(task *Task, generation uint64) bool {
@@ -2649,7 +2649,7 @@ func (d *Downloader) taskIsPausedGeneration(task *Task, generation uint64) bool 
 	}
 	task.statusLock.Lock()
 	defer task.statusLock.Unlock()
-	return !task.deleted && (task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusWait) && task.runGeneration == generation
+	return !*task.deleted && (task.Status == base.DownloadStatusPause || task.Status == base.DownloadStatusWait) && task.runGeneration == generation
 }
 
 func (d *Downloader) taskStatus(task *Task) base.Status {
@@ -2669,7 +2669,7 @@ func (d *Downloader) markTaskDone(task *Task) bool {
 	defer task.lock.Unlock()
 	task.statusLock.Lock()
 	defer task.statusLock.Unlock()
-	if task.deleted || task.Status != base.DownloadStatusRunning {
+	if *task.deleted || task.Status != base.DownloadStatusRunning {
 		return false
 	}
 	task.Progress.Used = task.timer.Used()
@@ -2697,7 +2697,7 @@ func (d *Downloader) markTaskError(task *Task) bool {
 	}
 	task.statusLock.Lock()
 	defer task.statusLock.Unlock()
-	if task.deleted || task.Status != base.DownloadStatusRunning {
+	if *task.deleted || task.Status != base.DownloadStatusRunning {
 		return false
 	}
 	task.updateStatus(base.DownloadStatusError)
@@ -3120,6 +3120,7 @@ func initTask(task *Task) {
 	task.statusLock = &sync.Mutex{}
 	task.lock = &sync.Mutex{}
 	task.persistLock = &sync.Mutex{}
+	task.deleted = new(bool)
 	task.statsLock = &sync.Mutex{}
 	task.blobRefLock = &sync.Mutex{}
 	task.speedArr = make([]int64, 0)
