@@ -13,9 +13,7 @@ import '../../api/model/install_extension.dart';
 import '../../api/model/request.dart';
 import '../../core/entry/app_startup_options.dart';
 import '../../core/utils/content_uri_resolver.dart';
-import '../../core/window/app_window_launcher.dart';
 import '../../features/extensions/application/pending_extension_install.dart';
-import '../../features/tasks/application/pending_create_task.dart';
 import '../../util/util.dart';
 import '../router/app_router.dart';
 import 'app_runtime_controller.dart';
@@ -118,18 +116,7 @@ class AppDeepLinkController extends AsyncNotifier<AppDeepLinkState> {
     await _go('/');
   }
 
-  Future<void> _openCreate(CreateTask? createTask) async {
-    if (Util.isDesktop()) {
-      final opened = await AppWindowLauncher.openCreateTaskWindow(createTask: createTask);
-      if (!opened) {
-        ref.read(pendingCreateTaskProvider.notifier).set(createTask);
-        await _go('/create');
-      }
-      return;
-    }
-    ref.read(pendingCreateTaskProvider.notifier).set(createTask);
-    await _go('/create');
-  }
+  Future<void> _openCreate(CreateTask? createTask) => AppRouter.openCreateTask(createTask: createTask);
 
   Future<void> _go(String route) async {
     if (Util.isDesktop()) {

@@ -11,7 +11,7 @@ import '../../../../app/application/app_runtime_controller.dart';
 import '../../../../core/capabilities/app_capabilities.dart';
 import '../../../../core/utils/breakpoints.dart';
 import '../../../../core/utils/file_explorer.dart';
-import '../../../../core/window/app_window_launcher.dart';
+import '../../../../app/router/app_router.dart';
 import '../../../../core/window/app_window_chrome.dart';
 import '../../../../shared/theme/app_design_tokens.dart';
 import '../../../../shared/theme/app_palette.dart';
@@ -580,19 +580,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  void _handleAddTask() {
-    if (!Util.isDesktop()) {
-      context.go('/create');
-      return;
-    }
-    unawaited(
-      AppWindowLauncher.openCreateTaskWindow().then((opened) {
-        if (!opened && mounted) {
-          context.go('/create');
-        }
-      }),
-    );
-  }
+  void _handleAddTask() => unawaited(AppRouter.openCreateTask());
 
   Future<void> _runTaskAction(Future<void> Function() action) async {
     try {

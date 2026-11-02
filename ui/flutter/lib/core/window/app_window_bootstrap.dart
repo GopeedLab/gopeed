@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/l10n.dart';
+import '../../shared/theme/app_design_tokens.dart';
 import 'app_window_chrome.dart';
 import 'app_window_payload.dart';
 
@@ -46,7 +47,7 @@ class AppWindowBootstrap {
 
     final options = switch (type) {
       AppWindowType.createTask => WindowOptions(
-        size: Size(820, 620),
+        size: AppDesignTokens.childWindowSize,
         center: true,
         skipTaskbar: false,
         backgroundColor: Colors.transparent,

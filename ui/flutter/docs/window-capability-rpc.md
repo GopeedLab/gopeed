@@ -143,3 +143,29 @@ with `taskIds` and an optional `parentId`. A successful response completes the
 batch, including partial success. The preview tracks completed batches so a
 failed batch can be retried without repeating successful batches. Creation does
 not accept a group ID to append members to an existing group.
+
+## 11. Opening Child Surfaces
+
+Use `AppRouter.openWindow(AppWindowPayload)` for child-window destinations.
+`AppRouter.openCreateTask(createTask: ...)` is the create-task convenience API.
+All entry points, including deep links, browser capture and the tray, use this
+API rather than selecting a presentation themselves:
+
+- Desktop launches an independent native child window through
+  `AppWindowLauncher.open(payload)` and the existing capability transport.
+- Web pushes an `AppWindowPage` on the root Navigator. This routed shadcn modal
+  keeps the current section, filters and scroll state mounted underneath it.
+- Native mobile retains the full-page flow, including later share requests.
+- If native child-window creation fails, the main window is brought forward
+  and the same in-app modal is used as a fallback.
+
+`AppWindowContent` owns the destination paths and content builders shared with
+`ChildWindowApp`. For another child surface, add its payload type, register its
+path and content, and use `AppWindowPage` for its in-app route. The modal's
+preferred size can be supplied per destination. Keep backend and storage access
+on the existing capability API in either presentation.
+
+Create-task content reports cancellation or completion through `onClose` when
+hosted in-app. Cancellation pops only the child surface. Completion selects the
+downloading list and returns home. The route payload uses a serializable string
+so browser history can restore a modal and its initial request.
