@@ -98,7 +98,7 @@
   "startAll": "Bắt đầu tất cả",
   "pauseAll": "Tạm dừng tất cả",
   "deleteTask": "Xóa @count nhiệm vụ",
-  "deleteTaskTip": "Giữ các tệp đã tải về",
+  "deleteTaskTip": "Xóa các tệp đã tải xuống",
   "delete": "Xóa",
   "add": "Thêm",
   "edit": "Sửa",

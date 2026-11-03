@@ -222,7 +222,7 @@ class ExtraConfig {
     this.themeMode = '',
     this.themeColor = 'green',
     this.locale = '',
-    this.lastDeleteTaskKeep = false,
+    this.lastDeleteTaskKeep = true,
     this.defaultDirectDownload = false,
     this.defaultBtClient = true,
     this.notifyWhenNewVersion = true,

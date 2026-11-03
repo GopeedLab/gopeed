@@ -12,7 +12,7 @@ Future<bool?> showTaskDeleteDialog(
   int? memberCount,
   int? fileCount,
 }) async {
-  var currentKeepFiles = keepFiles;
+  var deleteFiles = !keepFiles;
   final dialog = const DialogOverlayHandler().show<bool>(
     context: context,
     alignment: Alignment.center,
@@ -47,16 +47,16 @@ Future<bool?> showTaskDeleteDialog(
                     const SizedBox(height: AppDesignTokens.space16),
                   ],
                   AnimatedContainer(
-                    key: const ValueKey('task-delete-keep-files-option'),
+                    key: const ValueKey('task-delete-files-option'),
                     duration: const Duration(milliseconds: 160),
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppDesignTokens.space16,
                       vertical: AppDesignTokens.space12,
                     ),
                     decoration: BoxDecoration(
-                      color: currentKeepFiles ? palette.brandSoft : palette.surfaceSoft,
+                      color: deleteFiles ? palette.error.withValues(alpha: 0.08) : palette.surfaceSoft,
                       border: Border.all(
-                        color: currentKeepFiles ? palette.brand.withValues(alpha: 0.45) : palette.border,
+                        color: deleteFiles ? palette.error.withValues(alpha: 0.35) : palette.border,
                       ),
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -70,9 +70,9 @@ Future<bool?> showTaskDeleteDialog(
                         ),
                         const SizedBox(width: AppDesignTokens.space16),
                         Switch(
-                          key: const ValueKey('task-delete-keep-files-switch'),
-                          value: currentKeepFiles,
-                          onChanged: (value) => setDialogState(() => currentKeepFiles = value),
+                          key: const ValueKey('task-delete-files-switch'),
+                          value: deleteFiles,
+                          onChanged: (value) => setDialogState(() => deleteFiles = value),
                         ),
                       ],
                     ),
@@ -83,7 +83,7 @@ Future<bool?> showTaskDeleteDialog(
             actions: [
               SecondaryButton(onPressed: () => closeOverlay(dialogContext), child: Text(dialogContext.l10n.cancel)),
               DestructiveButton(
-                onPressed: () => closeOverlay(dialogContext, currentKeepFiles),
+                onPressed: () => closeOverlay(dialogContext, !deleteFiles),
                 child: Text(dialogContext.l10n.delete),
               ),
             ],

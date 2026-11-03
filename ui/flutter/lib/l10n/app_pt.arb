@@ -98,7 +98,7 @@
   "startAll": "Iniciar Tudo",
   "pauseAll": "Pausar Tudo",
   "deleteTask": "Excluir @count tarefas",
-  "deleteTaskTip": "Manter arquivos baixados",
+  "deleteTaskTip": "Excluir arquivos baixados",
   "delete": "Excluir",
   "add": "Adicionar",
   "edit": "Editar",

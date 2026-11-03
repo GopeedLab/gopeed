@@ -98,7 +98,7 @@
   "startAll": "بدء الكل",
   "pauseAll": "إيقاف الكل مؤقتاً",
   "deleteTask": "حذف @count مهمة",
-  "deleteTaskTip": "الاحتفاظ بالملفات التي تم تحميلها",
+  "deleteTaskTip": "حذف الملفات التي تم تنزيلها",
   "delete": "حذف",
   "add": "إضافة",
   "edit": "تعديل",

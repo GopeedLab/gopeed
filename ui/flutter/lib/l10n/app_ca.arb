@@ -98,7 +98,7 @@
   "startAll": "Inicia-ho tot",
   "pauseAll": "Pausa-ho tot",
   "deleteTask": "Suprimeix @count tasques",
-  "deleteTaskTip": "Mantén els fitxers baixats",
+  "deleteTaskTip": "Suprimeix els fitxers baixats",
   "delete": "Suprimeix",
   "add": "Afegeix",
   "edit": "Edita",

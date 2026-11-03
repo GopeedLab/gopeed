@@ -35,6 +35,8 @@ void main() {
       await tester.tap(find.text('Open delete dialog'));
       await tester.pumpAndSettle();
       expect(find.text('Affects 65 downloads and 65 files.'), findsOneWidget);
+      final deleteFilesSwitch = find.byKey(const ValueKey('task-delete-files-switch'));
+      expect(tester.widget<shad.Switch>(deleteFilesSwitch).value, isFalse);
       expect(keepFiles, isNull);
       await tester.tap(find.text('Delete'));
       await tester.pumpAndSettle();

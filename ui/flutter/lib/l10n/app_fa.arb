@@ -98,7 +98,7 @@
   "startAll": "شروع همه",
   "pauseAll": "توقف همه",
   "deleteTask": "حذف @count کار",
-  "deleteTaskTip": "فایل های دانلود شده را نگه دارد",
+  "deleteTaskTip": "حذف فایل‌های دانلودشده",
   "delete": "پاک کردن",
   "add": "افزودن",
   "edit": "ویرایش",
