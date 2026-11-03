@@ -1212,6 +1212,9 @@ func (f *Fetcher) runConnection(conn *connection) {
 	retries := 0
 	f.connMu.Lock()
 	conn.retryTimes = 0
+	// A new attempt gets its own 403 retries, also after the last one used them up.
+	conn.forbiddenRetries = 0
+	conn.forbiddenGrace = false
 	f.connMu.Unlock()
 
 	for {
