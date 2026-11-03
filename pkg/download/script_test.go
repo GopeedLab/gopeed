@@ -3,6 +3,8 @@ package download
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -126,6 +128,46 @@ func TestScript_ExecuteScriptAtPath_NonExistentFile(t *testing.T) {
 	})
 }
 
+func TestScript_TaskNameOfUnresolvedTask(t *testing.T) {
+	scriptPath := getTestScriptPath(t, envDumpScriptName())
+	ensureScriptExecutable(t, scriptPath)
+	outputFile := filepath.Join(t.TempDir(), "env_output.txt")
+
+	setupScriptTest(t, func(downloader *Downloader) {
+		cfg, _ := downloader.GetConfig()
+		cfg.Script = &base.ScriptConfig{
+			Enable: true,
+			Paths:  []string{scriptPath},
+		}
+		downloader.PutConfig(cfg)
+
+		// Without Options.Name and a resource, the name comes from the fetcher
+		// manager, which the cloned task in the script data does not have.
+		url := "http://127.0.0.1/error.bin"
+		fm, err := downloader.parseFm(url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		task := NewTask()
+		task.Meta = &fetcher.FetcherMeta{
+			Req:  &base.Request{URL: url},
+			Opts: &base.Options{Path: t.TempDir()},
+		}
+		task.fetcherManager = fm
+		if name := task.Name(); name != "error.bin" {
+			t.Fatalf("Expected task name error.bin, got %q", name)
+		}
+
+		t.Setenv("GOPEED_TEST_OUTPUT_FILE", outputFile)
+		downloader.triggerScripts(ScriptEventDownloadDone, task, nil)
+
+		output := waitForFileContains(t, outputFile, "GOPEED_TASK_PATH=", 3*time.Second)
+		if !strings.Contains(output, "GOPEED_TASK_NAME=error.bin") {
+			t.Errorf("Expected GOPEED_TASK_NAME=error.bin in output, got: %s", output)
+		}
+	})
+}
+
 func createDownloadDoneTask(t *testing.T, downloadDir, fileName string) (*Task, string) {
 	t.Helper()
 	content := []byte("downloaded file")
@@ -169,6 +211,31 @@ func waitForFile(t *testing.T, path string, timeout time.Duration) {
 		time.Sleep(50 * time.Millisecond)
 	}
 	t.Fatalf("Timeout waiting for file: %s", path)
+}
+
+// waitForFileContains waits until the file contains want and returns its content.
+// Test scripts write the file line by line, so waiting for the file to exist is not enough.
+func waitForFileContains(t *testing.T, path, want string, timeout time.Duration) string {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if content, err := os.ReadFile(path); err == nil && strings.Contains(string(content), want) {
+			return string(content)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	content, _ := os.ReadFile(path)
+	t.Fatalf("Timeout waiting for %q in file %s, got: %q", want, path, content)
+	return ""
+}
+
+// envDumpScriptName returns the test script that writes the GOPEED_* variables
+// into the file named by GOPEED_TEST_OUTPUT_FILE.
+func envDumpScriptName() string {
+	if runtime.GOOS == "windows" {
+		return "env_dump.bat"
+	}
+	return "env_dump.sh"
 }
 
 func getTestScriptPath(t *testing.T, name string) string {
