@@ -80,6 +80,8 @@ type Task struct {
 	timer          *util.Timer
 	statusLock     *sync.Mutex
 	lock           *sync.Mutex
+	persistLock    *sync.Mutex // serializes task storage writes with deletion
+	deleted        *bool       // shared by task copies; guarded by statusLock
 	statsLock      *sync.Mutex
 	statsLoaded    bool
 	stats          *fetcher.Stats
