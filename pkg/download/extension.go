@@ -132,6 +132,12 @@ func (d *Downloader) UpdateExtensionSettings(identity string, settings map[strin
 	}
 	for _, setting := range ext.Settings {
 		if value, ok := settings[setting.Name]; ok {
+			// Preserve the secret when the API placeholder is submitted unchanged.
+			if setting.Type == SettingTypePassword {
+				if text, isString := value.(string); isString && text == PasswordMask {
+					continue
+				}
+			}
 			setting.Value = tryParse(value, setting.Type)
 		}
 	}
@@ -179,6 +185,36 @@ func (d *Downloader) DeleteExtension(identity string) error {
 
 func (d *Downloader) GetExtensions() []*Extension {
 	return d.extensions
+}
+
+// PublicView returns a copy safe for API responses. Extension scripts and
+// persistence continue to access the original, unmasked setting values.
+func (e *Extension) PublicView() *Extension {
+	if e == nil {
+		return nil
+	}
+	view := *e
+	view.Settings = make([]*Setting, len(e.Settings))
+	for i, setting := range e.Settings {
+		if setting == nil {
+			continue
+		}
+		copySetting := *setting
+		if setting.Type == SettingTypePassword && setting.Value != nil && fmt.Sprint(setting.Value) != "" {
+			copySetting.Value = PasswordMask
+		}
+		view.Settings[i] = &copySetting
+	}
+	return &view
+}
+
+// PublicExtensions masks passwords without modifying installed extensions.
+func PublicExtensions(extensions []*Extension) []*Extension {
+	views := make([]*Extension, len(extensions))
+	for i, ext := range extensions {
+		views[i] = ext.PublicView()
+	}
+	return views
 }
 
 func (d *Downloader) GetExtension(identity string) (*Extension, error) {
@@ -631,9 +667,13 @@ type Match struct {
 type SettingType string
 
 const (
-	SettingTypeString  SettingType = "string"
-	SettingTypeNumber  SettingType = "number"
-	SettingTypeBoolean SettingType = "boolean"
+	SettingTypeString   SettingType = "string"
+	SettingTypeNumber   SettingType = "number"
+	SettingTypeBoolean  SettingType = "boolean"
+	SettingTypePassword SettingType = "password"
+
+	// PasswordMask is a placeholder exposed by the API, never the stored secret.
+	PasswordMask = "********"
 )
 
 type Setting struct {
@@ -855,7 +895,7 @@ func tryParse(val any, settingType SettingType) any {
 		return nil
 	}
 	switch settingType {
-	case SettingTypeString:
+	case SettingTypeString, SettingTypePassword:
 		return fmt.Sprint(val)
 	case SettingTypeNumber:
 		vv, err := strconv.ParseFloat(fmt.Sprint(val), 64)

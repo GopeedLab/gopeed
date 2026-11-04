@@ -69,6 +69,18 @@ void main() {
     expect(controller.text, '-12.5');
   });
 
+  testWidgets('password setting hides its value but remains editable', (tester) async {
+    final controller = TextEditingController(text: '********');
+    addTearDown(controller.dispose);
+    await pumpField(tester, setting(SettingType.password), controller);
+    final field = tester.widget<AppTextField>(find.byType(AppTextField));
+    expect(field.obscureText, isTrue);
+    expect(field.enableSuggestions, isFalse);
+    expect(field.autocorrect, isFalse);
+    await tester.enterText(find.byType(AppTextField), 'new-token');
+    expect(controller.text, 'new-token');
+  });
+
   testWidgets('string with empty options remains a text field', (tester) async {
     final controller = TextEditingController(text: 'original');
     addTearDown(controller.dispose);

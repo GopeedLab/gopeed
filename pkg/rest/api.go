@@ -261,7 +261,7 @@ func InstallExtension(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetExtensions(w http.ResponseWriter, r *http.Request) {
-	list := Downloader.GetExtensions()
+	list := download.PublicExtensions(Downloader.GetExtensions())
 	WriteJson(w, model.NewOkResult(list))
 }
 
@@ -273,7 +273,7 @@ func GetExtension(w http.ResponseWriter, r *http.Request) {
 		WriteJson(w, model.NewErrorResult(err.Error()))
 		return
 	}
-	WriteJson(w, model.NewOkResult(ext))
+	WriteJson(w, model.NewOkResult(ext.PublicView()))
 }
 
 func UpdateExtensionSettings(w http.ResponseWriter, r *http.Request) {
