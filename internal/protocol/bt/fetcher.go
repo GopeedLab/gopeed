@@ -540,6 +540,22 @@ func torrentFileLayout(info *metainfo.Info, file metainfo.FileInfo) (root, name 
 
 // Preserve the actual torrent root, or the download directory for rootless
 // torrents. Only prune empty directories strictly below that boundary.
+// checkTorrentFilePaths rejects torrents whose file paths would land outside
+// the download directory. The paths come straight from the torrent metadata,
+// so a crafted torrent can use ".." or absolute components to escape.
+func checkTorrentFilePaths(info *metainfo.Info) error {
+	if info == nil {
+		return nil
+	}
+	for _, file := range info.UpvertedFiles() {
+		root, name := torrentFileLayout(info, file)
+		if (name != "" && !filepath.IsLocal(name)) || (root != "" && !filepath.IsLocal(root)) {
+			return fmt.Errorf("invalid torrent file path %q", name)
+		}
+	}
+	return nil
+}
+
 func removeUnselectedFile(downloadDir, torrentRoot, torrentPath string) error {
 	if !filepath.IsLocal(torrentPath) || (torrentRoot != "" && !filepath.IsLocal(torrentRoot)) {
 		return fmt.Errorf("invalid torrent file path %q", torrentPath)
@@ -851,6 +867,10 @@ func (f *Fetcher) addTorrent(req *base.Request) (err error) {
 		return f.torrentDropCtx.Err()
 	case <-f.torrent.Closed():
 		return errors.New("torrent closed during resolution")
+	}
+	if err = checkTorrentFilePaths(f.torrent.Info()); err != nil {
+		f.safeDrop()
+		return err
 	}
 	f.torrentReady.Store(true)
 
