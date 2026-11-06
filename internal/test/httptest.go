@@ -629,8 +629,8 @@ func StartTestTemporary500Server(errorDuration time.Duration) net.Listener {
 // Parameters:
 //   - failedRequestsBeforeRecover: number of requests that will fail before server recovers
 //
-// Note: Uses 416 (Range Not Satisfiable) instead of 500 because 5xx errors are exempt
-// from failure counting and will retry indefinitely. 416 is counted as a failure.
+// Failed requests use 416 (Range Not Satisfiable); every status is retried the
+// same way, within the fetcher's retry rounds.
 func StartTestFailThenRecoverServer(failedRequestsBeforeRecover int32) net.Listener {
 	var requestCount atomic.Int32
 

@@ -37,12 +37,6 @@ const (
 	// When a connection finishes its chunk, it can "steal" work from slow connections.
 	stealThresholdSeconds = 3          // Only steal if victim needs > 3 seconds to finish
 	stealMinChunkSize     = 512 * 1024 // Min steal size: 512KB (avoid tiny chunks)
-
-	// A 403 while nothing else is downloading is retried this many times
-	// before it is taken as final (see retryForbidden).
-	forbiddenMaxRetries = 3
-	// Data received this recently counts as the download making progress.
-	forbiddenProgressWindow = 3 * time.Second
 )
 
 // connReadBufferSize is the read buffer each connection allocates once and
@@ -62,6 +56,31 @@ func isRangeIntegrityError(err error) bool {
 
 func isTerminalRangeError(err error) bool {
 	return isRangeIntegrityError(err)
+}
+
+// terminalError marks a failure that another request cannot fix: a local
+// write error, a request that cannot be built, or a response that cannot be
+// trusted. It ends the connection at once instead of being retried.
+type terminalError struct {
+	err error
+}
+
+func (e *terminalError) Error() string { return e.err.Error() }
+
+func (e *terminalError) Unwrap() error { return e.err }
+
+func asTerminal(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &terminalError{err: err}
+}
+
+// isTerminalError reports whether err must not be retried. Everything else,
+// whatever the HTTP status, is left to the task's retry policy.
+func isTerminalError(err error) bool {
+	var te *terminalError
+	return errors.As(err, &te) || isTerminalRangeError(err)
 }
 
 // ============================================================================
@@ -142,15 +161,11 @@ type connection struct {
 	Downloaded int64
 	Completed  bool
 
-	failed     bool
-	exited     bool
+	failed bool // gave up: the error is final for this attempt
+	exited bool
+	// retryTimes counts the failed requests since the last valid response.
 	retryTimes int
 	lastErr    error
-	// 403 answers retried since the last successful response while no other
-	// connection was making progress (see retryForbidden), and whether the
-	// last retry was one of those.
-	forbiddenRetries int
-	forbiddenGrace   bool
 
 	// Speed tracking for work stealing decisions
 	speed             int64 // bytes per second
@@ -297,12 +312,17 @@ type Fetcher struct {
 	// Max connection time for adaptive timeout (stored as int64 nanoseconds for atomic ops)
 	maxConnTime atomic.Int64
 
-	// When any connection last received data, in Unix nanoseconds.
-	lastDataAt atomic.Int64
-
+	// retry decides when failed requests of the current Start cycle are
+	// retried; a new cycle gets a new policy, so a full budget. Guarded by
+	// connMu; workers keep the policy they were started with.
+	retry *retryPolicy
 	// retryUnit is the first retry delay; zero means one second. Tests
 	// shorten it.
 	retryUnit time.Duration
+	// activeWorkers counts the running range workers of the current cycle;
+	// workersIdle wakes the download loop when the last one exits.
+	activeWorkers atomic.Int32
+	workersIdle   chan struct{}
 
 	// First primary connection success signal
 	primaryReadyOnce sync.Once
@@ -442,42 +462,46 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 
 	f.setState(stateResolving)
 
-	// Build HTTP request WITHOUT Range header (normal request)
-	// This allows the response to be reused for downloading (important for one-time URLs)
-	// The body outlives Resolve, so the read timeout gets its own cancel func.
-	reqCtx, reqCancel := context.WithCancel(context.Background())
-	httpReq, err := f.buildRequest(reqCtx, req)
-	if err != nil {
-		reqCancel()
-		f.setState(stateError)
-		return err
-	}
+	// Pause or Close stops the retries below and a request still waiting for
+	// its response headers.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f.resolveRespLock.Lock()
+	f.resolveCtx, f.resolveCancel = ctx, cancel
+	f.resolveRespLock.Unlock()
 
-	client := f.buildClient()
-
-	// Send normal HTTP request (no Range header)
-	// Track connection time for adaptive timeout in download phase
-	connStartTime := time.Now()
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		reqCancel()
-		f.setState(stateError)
-		return err
+	// The Resolve request follows the same retry policy as the download: with
+	// nothing else running, each failure starts a retry round.
+	retry := f.newRetryPolicy(nil)
+	self := &connection{Role: roleResolve}
+	retry.join(self)
+	var (
+		httpReq   *http.Request
+		resp      *http.Response
+		reqCancel context.CancelFunc
+		err       error
+	)
+	for {
+		httpReq, resp, reqCancel, err = f.resolveOnce(ctx, req)
+		if err == nil {
+			retry.success(self)
+			break
+		}
+		if ctx.Err() != nil || isTerminalError(err) {
+			f.setState(stateError)
+			return err
+		}
+		delay, ok := retry.next(ctx, self)
+		if !ok || !sleepContext(ctx, delay) {
+			f.setState(stateError)
+			return err
+		}
 	}
-	// Record connection time as baseline for fast-fail timeout
-	f.updateMaxConnTime(time.Since(connStartTime))
 
 	// Parse response to get resource info
 	res := &base.Resource{
 		Range: false,
 		Files: []*base.FileInfo{},
-	}
-
-	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
-		resp.Body.Close()
-		reqCancel()
-		f.setState(stateError)
-		return NewRequestError(resp.StatusCode)
 	}
 
 	// Check if server supports range requests
@@ -490,13 +514,8 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	// A partial response describes one segment, not the whole resource.
 	reuseResolveBody := true
 	if resp.StatusCode == base.HttpCodePartialContent {
-		start, _, total, err := parseRangeResponse(resp)
-		if err != nil {
-			resp.Body.Close()
-			reqCancel()
-			f.setState(stateError)
-			return err
-		}
+		// resolveOnce has validated the Content-Range.
+		start, _, total, _ := parseRangeResponse(resp)
 		res.Size = total
 		res.Range = true
 		// Prefetch is a contiguous prefix copied at offset zero. A segment
@@ -590,6 +609,55 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	}
 
 	return nil
+}
+
+// resolveOnce sends the Resolve request once, without a Range header, so that
+// the response can be reused for downloading (important for one-time URLs).
+// It returns a valid 200 or 206 response, whose body outlives Resolve and
+// therefore has its own cancel func. A request that cannot be built and a 206
+// with an invalid Content-Range are terminal; any other failure may be retried.
+func (f *Fetcher) resolveOnce(ctx context.Context, req *base.Request) (*http.Request, *http.Response, context.CancelFunc, error) {
+	reqCtx, reqCancel := context.WithCancel(context.Background())
+	// Until the headers arrive, cancelling Resolve cancels the request too.
+	stop := context.AfterFunc(ctx, reqCancel)
+	fail := func(err error) (*http.Request, *http.Response, context.CancelFunc, error) {
+		stop()
+		reqCancel()
+		return nil, nil, nil, err
+	}
+
+	httpReq, err := f.buildRequest(reqCtx, req)
+	if err != nil {
+		return fail(asTerminal(err))
+	}
+
+	client := f.buildClient()
+
+	// Track connection time for adaptive timeout in download phase
+	connStartTime := time.Now()
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return fail(err)
+	}
+	if !stop() {
+		// Resolve was cancelled while the response arrived.
+		resp.Body.Close()
+		return fail(ctx.Err())
+	}
+	// Record connection time as baseline for fast-fail timeout
+	f.updateMaxConnTime(time.Since(connStartTime))
+
+	if resp.StatusCode != base.HttpCodeOK && resp.StatusCode != base.HttpCodePartialContent {
+		resp.Body.Close()
+		return fail(NewRequestError(resp.StatusCode))
+	}
+	if resp.StatusCode == base.HttpCodePartialContent {
+		if _, _, _, err := parseRangeResponse(resp); err != nil {
+			resp.Body.Close()
+			return fail(asTerminal(err))
+		}
+	}
+	return httpReq, resp, reqCancel, nil
 }
 
 // asyncPrefetch downloads data in background during resolve phase
@@ -926,6 +994,15 @@ func (f *Fetcher) doStart() error {
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
+	// Every Start cycle gets a fresh retry budget. Until the first Range
+	// response takes over, the Resolve response still being read counts as a
+	// healthy download.
+	f.connMu.Lock()
+	f.retry = f.newRetryPolicy(f.resolveStreaming)
+	f.connMu.Unlock()
+	f.activeWorkers.Store(0)
+	f.workersIdle = make(chan struct{}, 1)
+
 	// Create downloadLoop lifecycle channel
 	downloadLoopDone := make(chan struct{})
 	f.downloadLoopDone = downloadLoopDone
@@ -939,6 +1016,7 @@ func (f *Fetcher) doStart() error {
 
 func (f *Fetcher) downloadLoop(done chan struct{}) {
 	ctx := f.ctx
+	workersIdle := f.workersIdle
 
 	defer func() {
 		// Update file last modified time before closing
@@ -989,6 +1067,14 @@ func (f *Fetcher) downloadLoop(done chan struct{}) {
 		case <-ctx.Done():
 			// Paused or cancelled
 			return
+		case <-workersIdle:
+			// Every worker has exited, for example after the retries ran out,
+			// without completing the slow-start batch that would wake this
+			// loop. Nothing is left to expand: report the result.
+			if f.activeWorkers.Load() == 0 {
+				f.waitForCompletion(ctx)
+				return
+			}
 		case <-f.slowStart.expansionCh:
 			f.connMu.Lock()
 			rangeMode := f.meta.Res.Range
@@ -1116,8 +1202,7 @@ func (f *Fetcher) expandConnections() {
 		f.connMu.Unlock()
 
 		f.slowStart.commitBatch(1)
-		f.wg.Add(1)
-		go f.runConnection(conn)
+		f.startWorker(conn)
 		return
 	}
 
@@ -1184,13 +1269,86 @@ func (f *Fetcher) expandConnections() {
 
 	// Launch connections
 	for _, conn := range newConns {
-		f.wg.Add(1)
-		go f.runConnection(conn)
+		f.startWorker(conn)
 	}
 }
 
+// startWorker runs conn as a range worker of the current Start cycle.
+func (f *Fetcher) startWorker(conn *connection) {
+	// Count the request as pending before it runs, so that a request failing
+	// meanwhile waits for it instead of taking the task as failed.
+	f.retryPolicy().join(conn)
+	f.activeWorkers.Add(1)
+	f.wg.Add(1)
+	go f.runConnection(conn)
+}
+
+// retryPolicy returns the retry policy of the current Start cycle.
+func (f *Fetcher) retryPolicy() *retryPolicy {
+	f.connMu.Lock()
+	defer f.connMu.Unlock()
+	if f.retry == nil {
+		f.retry = f.newRetryPolicy(f.resolveStreaming)
+	}
+	return f.retry
+}
+
+// resolveStreaming reports whether the Resolve response is still being read
+// in the background, in place of the first Range request.
+func (f *Fetcher) resolveStreaming() bool {
+	return f.resolveFallback.Load() && !f.prefetchDone.Load()
+}
+
+// resolveFinished reports whether the Resolve response has been read to its
+// end (or failed) and still waits to be used in place of the first Range
+// request.
+func (f *Fetcher) resolveFinished() bool {
+	return f.resolveFallback.Load() && f.prefetchDone.Load()
+}
+
+// awaitRetry records the failed request of conn and waits until the retry
+// policy lets it try again. It returns false when conn has to stop: it was
+// cancelled, the error cannot be fixed by retrying, or the task's retries are
+// used up. In the last two cases conn gives up and the error becomes final.
+func (f *Fetcher) awaitRetry(conn *connection, retry *retryPolicy, err error) bool {
+	terminal := isTerminalError(err)
+	f.connMu.Lock()
+	if re := extractRequestError(err); re != nil {
+		conn.lastErr = re
+	} else {
+		conn.lastErr = err
+	}
+	conn.State = connFailed
+	if !terminal {
+		conn.retryTimes++
+	}
+	f.connMu.Unlock()
+
+	if !terminal {
+		delay, ok := retry.next(conn.ctx, conn)
+		if ok {
+			return sleepContext(conn.ctx, delay)
+		}
+		if conn.ctx.Err() != nil {
+			return false
+		}
+	}
+	f.connMu.Lock()
+	conn.State = connFailed
+	conn.failed = true
+	f.connMu.Unlock()
+	if f.slowStart != nil {
+		f.slowStart.onConnectFailed()
+	}
+	return false
+}
+
 func (f *Fetcher) runConnection(conn *connection) {
+	retry := f.retryPolicy()
+	retry.join(conn)
+	workersIdle := f.workersIdle
 	defer func() {
+		retry.leave(conn)
 		// A range-advertising origin can fall back to one sequential response.
 		// Wake the download loop after that connection exits because its earlier
 		// response-ready signal was intentionally not used to expand.
@@ -1198,15 +1356,24 @@ func (f *Fetcher) runConnection(conn *connection) {
 		conn.exited = true
 		sequentialRecovery := !f.meta.Res.Range && (f.rangeReprobeEligible || conn.Completed) && len(f.connections) == 1
 		f.connMu.Unlock()
+		idle := f.activeWorkers.Add(-1) == 0
 		f.wg.Done()
 		if sequentialRecovery && f.slowStart != nil {
 			f.slowStart.signalExpansion()
+		}
+		if idle && workersIdle != nil {
+			select {
+			case workersIdle <- struct{}{}:
+			default:
+			}
 		}
 	}()
 
 	f.connMu.Lock()
 	conn.exited = false
 	conn.State = connConnecting
+	// A new attempt starts counting failures afresh.
+	conn.retryTimes = 0
 	f.connMu.Unlock()
 
 	// Use fast-fail client for quick retry during download phase
@@ -1214,13 +1381,6 @@ func (f *Fetcher) runConnection(conn *connection) {
 	buf := make([]byte, connReadBufferSize)
 
 	retries := 0
-	f.connMu.Lock()
-	conn.retryTimes = 0
-	// A new attempt gets its own 403 retries, also after the last one used them up.
-	conn.forbiddenRetries = 0
-	conn.forbiddenGrace = false
-	f.connMu.Unlock()
-
 	for {
 		// Rebuild client with updated fast-fail timeout on retries
 		if retries > 0 {
@@ -1234,9 +1394,15 @@ func (f *Fetcher) runConnection(conn *connection) {
 				f.resetConnectionForRestart(conn)
 			}
 			f.connMu.Unlock()
+
+			// The Resolve response may have been read to its end meanwhile.
+			if f.resolveFinished() && f.completeFromResolveFallback(conn) {
+				return
+			}
 		}
 
-		err := f.downloadChunkOnce(conn, client, buf)
+		retry.attempt(conn)
+		err := f.downloadChunkOnce(conn, client, buf, retry)
 		if err == nil {
 			if !f.meta.Res.Range || !f.helpOtherConnection(conn) {
 				f.connMu.Lock()
@@ -1254,121 +1420,26 @@ func (f *Fetcher) runConnection(conn *connection) {
 			continue
 		}
 
-		if errors.Is(err, context.Canceled) {
+		if conn.ctx.Err() != nil || errors.Is(err, context.Canceled) {
 			return
 		}
-		requestErr := extractRequestError(err)
-		shouldUseResolveFallback := requestErr == nil || !isFailureExemptHTTPCode(requestErr.Code)
-		if shouldUseResolveFallback && f.completeFromResolveFallback(conn) {
+		// The first Range request failed while the Resolve response is still
+		// available: an error that retrying cannot fix waits for that response,
+		// any other error uses it once it is complete, and is retried until then.
+		if (isTerminalError(err) || f.resolveFinished()) && f.completeFromResolveFallback(conn) {
 			return
 		}
-		if isTerminalRangeError(err) {
-			f.connMu.Lock()
-			conn.lastErr = err
-			conn.State = connFailed
-			conn.failed = true
-			f.connMu.Unlock()
-			if f.slowStart != nil {
-				f.slowStart.onConnectFailed()
-			}
+		if !f.awaitRetry(conn, retry, err) {
 			return
-		}
-
-		f.connMu.Lock()
-		if re := extractRequestError(err); re != nil {
-			conn.lastErr = re
-		} else {
-			conn.lastErr = err
-		}
-		f.connMu.Unlock()
-
-		if shouldCountHTTPFailure(err) && !f.retryForbidden(conn) {
-			if re := extractRequestError(err); re != nil && re.Code == 403 {
-				f.connMu.Lock()
-				conn.State = connFailed
-				conn.failed = true
-				f.connMu.Unlock()
-				if f.slowStart != nil {
-					f.slowStart.onConnectFailed()
-				}
-				return
-			}
-			f.connMu.Lock()
-			conn.retryTimes++
-			retryTimes := conn.retryTimes
-			conn.failed = true
-			f.connMu.Unlock()
-			if f.slowStart != nil {
-				f.slowStart.onConnectFailed()
-			}
-			if retryTimes >= 3 {
-				f.connMu.Lock()
-				conn.State = connFailed
-				f.connMu.Unlock()
-				return
-			}
-		}
-
-		f.connMu.Lock()
-		conn.State = connFailed
-		// A 403 retried while nothing else progresses is retried soon: either
-		// the server freed its slot already or the link stopped working.
-		soon := conn.forbiddenGrace
-		conn.forbiddenGrace = false
-		f.connMu.Unlock()
-		retryDelay := time.Second * time.Duration(retries+1)
-		if retryDelay > 5*time.Second {
-			retryDelay = 5 * time.Second
-		}
-		if soon {
-			retryDelay = time.Second
 		}
 		retries++
-		time.Sleep(retryDelay)
 	}
-}
-
-// retryForbidden reports whether conn, refused with 403, should retry its
-// chunk instead of failing. Some servers limit the connections per client and
-// refuse the extra ones with 403 rather than 503. While another connection of
-// the task is receiving data, or waits for its response headers while data is
-// still arriving, the 403 is taken as such a limit and retried like a 503.
-// Otherwise the server may still be counting a connection that just finished,
-// or one whose request has not been answered yet, so the chunk gets a few more
-// tries; a link that really stopped working (expired, revoked) fails after
-// those, within seconds.
-func (f *Fetcher) retryForbidden(conn *connection) bool {
-	if re := extractRequestError(conn.lastErr); re == nil || re.Code != 403 {
-		return false
-	}
-	recent := time.Since(time.Unix(0, f.lastDataAt.Load())) < forbiddenProgressWindow
-	f.connMu.Lock()
-	defer f.connMu.Unlock()
-	others := f.connections
-	if f.resolveConn != nil {
-		others = append([]*connection{f.resolveConn}, others...)
-	}
-	conn.forbiddenGrace = false
-	for _, other := range others {
-		if other == conn {
-			continue
-		}
-		if other.State == connDownloading || (other.State == connConnecting && recent) {
-			return true
-		}
-	}
-	if conn.forbiddenRetries < forbiddenMaxRetries {
-		conn.forbiddenRetries++
-		conn.forbiddenGrace = true
-		return true
-	}
-	return false
 }
 
 // downloadChunkOnce performs a single HTTP request for the current chunk without retrying.
 // If the redirect URL fails with an expiration-related error (401, 403, 410),
 // it will automatically retry with the original URL and update the redirect URL on success.
-func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf []byte) error {
+func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf []byte, retry *retryPolicy) error {
 	if conn.ctx.Err() != nil {
 		return conn.ctx.Err()
 	}
@@ -1415,7 +1486,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 
 	httpReq, err := f.buildRequest(reqCtx, f.meta.Req)
 	if err != nil {
-		return err
+		return asTerminal(err)
 	}
 
 	if rangeMode || resumeProbe {
@@ -1493,13 +1564,13 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		if openEndedRange {
 			if err := f.resolveOpenEndedRange(conn, responseTotal); err != nil {
 				resp.Body.Close()
-				return err
+				return asTerminal(err)
 			}
 		}
 		responseBytesToDiscard, err = f.commitResolveTakeover(conn, rangeStart)
 		if err != nil {
 			resp.Body.Close()
-			return err
+			return asTerminal(err)
 		}
 		if resumeProbe {
 			// The origin recovered Range support. Convert the preserved sequential
@@ -1528,12 +1599,12 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			if resp.ContentLength >= 0 {
 				if err := f.resizeSequentialResource(resp.ContentLength); err != nil {
 					resp.Body.Close()
-					return err
+					return asTerminal(err)
 				}
 				expectedResponseLength = resp.ContentLength
 			} else if err := f.beginUnknownSizeSequentialResource(); err != nil {
 				resp.Body.Close()
-				return err
+				return asTerminal(err)
 			}
 		} else if f.hasKnownSize() && f.meta.Res.Size > 0 {
 			expectedResponseLength = f.meta.Res.Size
@@ -1551,8 +1622,11 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	f.connMu.Lock()
 	conn.State = connDownloading
 	conn.failed = false
-	conn.forbiddenRetries = 0
+	conn.retryTimes = 0
 	f.connMu.Unlock()
+	// A valid response, past the Range and length checks above: the task is
+	// downloading again, so its retry budget starts over.
+	retry.success(conn)
 
 	if conn.Role == rolePrimary || conn.ID == 0 {
 		f.primaryReadyOnce.Do(func() {
@@ -1612,7 +1686,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 					_, writeErr := f.file.WriteAt(data, writeOffset)
 					if writeErr != nil {
 						f.fileMu.Unlock()
-						return writeErr
+						return asTerminal(writeErr)
 					}
 				}
 				f.fileMu.Unlock()
@@ -1623,7 +1697,6 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 				conn.Downloaded += int64(len(data))
 				// Update connection speed periodically
 				now := time.Now().UnixNano()
-				f.lastDataAt.Store(now)
 				if conn.lastSpeedCheck == 0 {
 					conn.lastSpeedCheck = now
 					conn.lastSpeedDownload = conn.Downloaded
@@ -1647,7 +1720,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 			if err == io.EOF {
 				if intentionalRestart && resp.ContentLength < 0 {
 					if err := f.resizeSequentialResource(responseBytesRead); err != nil {
-						return err
+						return asTerminal(err)
 					}
 				}
 				if expectedResponseLength >= 0 && responseBytesRead != expectedResponseLength {
@@ -1729,6 +1802,7 @@ func (f *Fetcher) completeFromResolveFallback(conn *connection) bool {
 	conn.Completed = true
 	conn.State = connCompleted
 	conn.failed = false
+	conn.retryTimes = 0
 	conn.lastErr = nil
 	f.connMu.Unlock()
 	return true
@@ -2007,13 +2081,15 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 // runConnectionFallback is used when resolve response is not available
 func (f *Fetcher) runConnectionFallback(conn *connection) {
+	retry := f.retryPolicy()
+	retry.join(conn)
+	defer retry.leave(conn)
+
 	// Use fast-fail client for quick retry during download phase
 	client := f.buildFastFailClient()
 	buf := make([]byte, connReadBufferSize)
 
 	retries := 0
-	countedRetries := 0
-
 	for {
 		if conn.ctx.Err() != nil {
 			return
@@ -2033,7 +2109,8 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 
 		// Restored tasks without a reusable Resolve response need the same
 		// length handling and restart semantics as other sequential requests.
-		err := f.downloadChunkOnce(conn, client, buf)
+		retry.attempt(conn)
+		err := f.downloadChunkOnce(conn, client, buf, retry)
 
 		if err == nil {
 			f.connMu.Lock()
@@ -2043,67 +2120,13 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 			return
 		}
 
-		if errors.Is(err, context.Canceled) {
+		if conn.ctx.Err() != nil || errors.Is(err, context.Canceled) {
 			return
 		}
-
-		f.connMu.Lock()
-		if re := extractRequestError(err); re != nil {
-			conn.lastErr = re
-		} else {
-			conn.lastErr = err
-		}
-		f.connMu.Unlock()
-
-		if shouldCountHTTPFailure(err) {
-			// Immediate fail for server connection limit (403)
-			if re := extractRequestError(err); re != nil && re.Code == 403 {
-				f.connMu.Lock()
-				conn.State = connFailed
-				conn.failed = true
-				f.connMu.Unlock()
-				if f.slowStart != nil {
-					f.slowStart.onConnectFailed()
-				}
-				return
-			}
-			f.connMu.Lock()
-			conn.retryTimes++
-			f.connMu.Unlock()
-			countedRetries++
-			if countedRetries >= 3 {
-				f.connMu.Lock()
-				conn.State = connFailed
-				conn.failed = true
-				f.connMu.Unlock()
-				if f.slowStart != nil {
-					f.slowStart.onConnectFailed()
-				}
-				return
-			}
-			// Retry again for counted failures below the cap
-			f.connMu.Lock()
-			conn.State = connFailed
-			f.connMu.Unlock()
-			retryDelay := time.Second * time.Duration(retries+1)
-			if retryDelay > 5*time.Second {
-				retryDelay = 5 * time.Second
-			}
-			retries++
-			time.Sleep(retryDelay)
-			continue
-		}
-
-		// Retry indefinitely for non-counted errors
-		f.connMu.Lock()
-		conn.State = connFailed
-		f.connMu.Unlock()
-		retryDelay := time.Second * time.Duration(retries+1)
-		if retryDelay > 5*time.Second {
-			retryDelay = 5 * time.Second
+		if !f.awaitRetry(conn, retry, err) {
+			return
 		}
 		retries++
-		time.Sleep(retryDelay)
 	}
 }
 
@@ -2217,19 +2240,8 @@ func (f *Fetcher) resumeConnections() {
 		if conn.Completed || conn.State == connCompleted {
 			continue
 		}
-		// For failed connections, skip if:
-		// 1. They have exhausted retries (retryTimes >= 3), OR
-		// 2. They failed with a permanent error like 403
-		if conn.State == connFailed && conn.failed {
-			// Check if it's a permanent error (like 403)
-			if re := extractRequestError(conn.lastErr); re != nil && re.Code == 403 {
-				continue
-			}
-			// Check if retries exhausted
-			if conn.retryTimes >= 3 {
-				continue
-			}
-		}
+		// Every unfinished chunk is resumed, also one whose connection gave
+		// up in an earlier attempt: a resume gets a fresh retry budget.
 		if !f.hasSequentialPrefixLocked(conn) {
 			f.resetConnectionForRestart(conn)
 		}
@@ -2237,14 +2249,15 @@ func (f *Fetcher) resumeConnections() {
 		conn.ctx, conn.cancel = context.WithCancel(f.ctx)
 		conn.State = connNotStarted
 		conn.failed = false // Clear failed flag for resumed connection
+		conn.retryTimes = 0
+		conn.lastErr = nil
 		toResume = append(toResume, conn)
 	}
 	f.connMu.Unlock()
 
 	// Start connections outside the lock
 	for _, conn := range toResume {
-		f.wg.Add(1)
-		go f.runConnection(conn)
+		f.startWorker(conn)
 	}
 }
 
@@ -2301,9 +2314,9 @@ func (f *Fetcher) onDownloadComplete() {
 		}
 	}
 
-	// Check for other errors if download did not complete.
-	// A 403 caused by a server connection limit is retried in runConnection,
-	// so a connection that still failed with 403 has left its chunk unfinished.
+	// Check for other errors if download did not complete. A connection gives
+	// up only on an error retrying cannot fix or once the task's retries are
+	// used up, and then leaves its chunk unfinished.
 	if finalErr == nil && !downloadComplete && !allChunksComplete {
 		for _, conn := range f.connections {
 			if conn.State == connFailed && conn.failed {
@@ -2495,8 +2508,11 @@ func (f *Fetcher) Pause() error {
 	if f.cancel != nil {
 		f.cancel()
 	}
-	if f.resolveCancel != nil {
-		f.resolveCancel()
+	f.resolveRespLock.Lock()
+	resolveCancel := f.resolveCancel
+	f.resolveRespLock.Unlock()
+	if resolveCancel != nil {
+		resolveCancel()
 	}
 
 	// Stop prefetch if running

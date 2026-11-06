@@ -75,28 +75,6 @@ func (re *RequestError) Error() string {
 	return fmt.Sprintf("http request fail, code:%d", re.Code)
 }
 
-func isFailureExemptHTTPCode(code int) bool {
-	if code >= 500 && code <= 599 {
-		return true
-	}
-
-	switch code {
-	case 429, 408, 440, 499:
-		return true
-	default:
-		return false
-	}
-}
-
-func shouldCountHTTPFailure(err error) bool {
-	var re *RequestError
-	if !errors.As(err, &re) {
-		return false
-	}
-
-	return !isFailureExemptHTTPCode(re.Code)
-}
-
 func extractRequestError(err error) *RequestError {
 	var re *RequestError
 	if errors.As(err, &re) {
