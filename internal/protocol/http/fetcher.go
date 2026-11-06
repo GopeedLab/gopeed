@@ -300,6 +300,10 @@ type Fetcher struct {
 	// When any connection last received data, in Unix nanoseconds.
 	lastDataAt atomic.Int64
 
+	// retryUnit is the first retry delay; zero means one second. Tests
+	// shorten it.
+	retryUnit time.Duration
+
 	// First primary connection success signal
 	primaryReadyOnce sync.Once
 	primaryReadyCh   chan struct{}
