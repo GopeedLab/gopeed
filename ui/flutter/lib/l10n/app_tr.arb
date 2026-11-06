@@ -44,6 +44,8 @@
   "ftpTlsImplicit": "Örtük TLS (FTPS)",
   "maxRetries": "Maksimum yeniden deneme",
   "useServerCtime": "Dosya oluşturma tarihi için sunucu zamanını kullan",
+  "maxRetryDelay": "Denemeler arası en uzun bekleme (saniye)",
+  "unlimitedRetries": "Sınırsız yeniden deneme",
   "maxRunning": "Maksimum Çalışan İşlem",
   "defaultDirectDownload": "Varsayılan olarak direkt indirmeyi işaretle",
   "autoStartTasks": "Başlangıçta tamamlanmamış işlemleri otomatik başlat",

@@ -44,6 +44,8 @@
   "ftpTlsImplicit": "TLS implisit (FTPS)",
   "maxRetries": "Percobaan ulang maks.",
   "useServerCtime": "Gunakan waktu server untuk pembuatan file",
+  "maxRetryDelay": "Jeda maks. antar percobaan ulang (detik)",
+  "unlimitedRetries": "Percobaan ulang tanpa batas",
   "maxRunning": "Tugas Maksimum yang Berjalan",
   "defaultDirectDownload": "Pilih unduhan langsung sebagai opsi standar",
   "autoStartTasks": "Otomatis-mulai tugas yang tidak lengkap pada startup",

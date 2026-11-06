@@ -1673,6 +1673,56 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('settings HTTP retries save into the HTTP protocol config', (WidgetTester tester) async {
+    await _setTestSize(tester, const Size(1024, 900));
+    final settingsController = FakeSettingsController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+          appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+          settingsControllerProvider.overrideWith(() => settingsController),
+        ],
+        child: const _SettingsTestApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Downloads'));
+    await tester.pumpAndSettle();
+
+    http() => settingsController.state.requireValue.config.protocolConfig.http;
+    final httpBlock = find.byKey(const ValueKey('settings-http-block'));
+    final maxRetries = find.byKey(const ValueKey('http-max-retries-input'));
+    final delay = find.byKey(const ValueKey('http-max-retry-delay-input'));
+    final unlimited = find.byKey(const ValueKey('http-unlimited-retries-switch'));
+    expect(find.descendant(of: httpBlock, matching: maxRetries), findsOneWidget);
+    expect(find.descendant(of: httpBlock, matching: delay), findsOneWidget);
+    expect(tester.widget<shad.TextField>(maxRetries).controller!.text, '5');
+    expect(tester.widget<shad.TextField>(delay).controller!.text, '5');
+
+    await tester.ensureVisible(maxRetries);
+    await tester.pumpAndSettle();
+    await tester.enterText(maxRetries, '3');
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(http().maxRetries, 3);
+    expect(settingsController.state.requireValue.config.protocolConfig.hls.maxRetries, isNot(3));
+
+    await tester.enterText(delay, '90');
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(tester.widget<shad.TextField>(delay).controller!.text, '60');
+    expect(http().maxRetryDelaySeconds, 60);
+
+    // With unlimited retries the count no longer applies, so it is hidden.
+    await tester.ensureVisible(unlimited);
+    await tester.pumpAndSettle();
+    await tester.tap(unlimited);
+    await tester.pumpAndSettle();
+    expect(http().unlimitedRetries, isTrue);
+    expect(maxRetries, findsNothing);
+    expect(http().maxRetries, 3);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('download directory keeps long text clear of its aligned picker action', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 900));
     await tester.pumpWidget(
