@@ -44,6 +44,8 @@
   "ftpTlsImplicit": "Niejawne TLS (FTPS)",
   "maxRetries": "Maks. liczba ponownych prób",
   "useServerCtime": "Użyj czasu serwera do utworzenia pliku",
+  "maxRetryDelay": "Maks. odstęp między ponownymi próbami (sekundy)",
+  "unlimitedRetries": "Nieograniczone ponowne próby",
   "maxRunning": "Maksymalna liczba zadań",
   "defaultDirectDownload": "Domyślnie sprawdź bezpośredni pobór",
   "autoStartTasks": "Automatycznie uruchamiaj niekompletne zadania przy starcie",

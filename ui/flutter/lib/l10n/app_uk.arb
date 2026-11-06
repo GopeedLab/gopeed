@@ -44,6 +44,8 @@
   "ftpTlsImplicit": "Неявний TLS (FTPS)",
   "maxRetries": "Макс. кількість повторів",
   "useServerCtime": "Використовувати час сервера для створення файлу",
+  "maxRetryDelay": "Макс. затримка між повторами (секунди)",
+  "unlimitedRetries": "Необмежені повтори",
   "maxRunning": "Макс. завдань у черзі",
   "defaultDirectDownload": "Пряме завантаження за замовчуванням",
   "autoStartTasks": "Авто-старт неповні завдання на старті",

@@ -44,6 +44,8 @@
   "ftpTlsImplicit": "Implicitné TLS (FTPS)",
   "maxRetries": "Maximálny počet pokusov",
   "useServerCtime": "Použiť čas servera na vytvorenie súboru",
+  "maxRetryDelay": "Maximálny odstup medzi pokusmi (sekundy)",
+  "unlimitedRetries": "Neobmedzený počet pokusov",
   "maxRunning": "Súbežné sťahovania",
   "defaultDirectDownload": "Predvolene priame sťahovanie",
   "autoStartTasks": "Automaticky spustiť nedokončené úlohy pri štarte",

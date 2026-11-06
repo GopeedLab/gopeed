@@ -44,6 +44,8 @@
   "ftpTlsImplicit": "TLS implícit (FTPS)",
   "maxRetries": "Reintents màxims",
   "useServerCtime": "Utilitza l'hora del servidor per a la creació de fitxers",
+  "maxRetryDelay": "Espera màxima entre reintents (segons)",
+  "unlimitedRetries": "Reintents il·limitats",
   "maxRunning": "Màxim de tasques en execució",
   "defaultDirectDownload": "Activa la baixada directa per defecte",
   "autoStartTasks": "Inicia automàticament les tasques incompletes a l'inici",

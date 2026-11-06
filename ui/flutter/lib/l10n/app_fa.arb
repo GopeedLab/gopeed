@@ -44,6 +44,8 @@
   "ftpTlsImplicit": "TLS ضمنی (FTPS)",
   "maxRetries": "حداکثر تلاش مجدد",
   "useServerCtime": "استفاده از زمان سرور برای ایجاد فایل",
+  "maxRetryDelay": "حداکثر فاصله بین تلاش‌های مجدد (ثانیه)",
+  "unlimitedRetries": "تلاش مجدد نامحدود",
   "maxRunning": "حداکثر وظایف در حال اجرا",
   "defaultDirectDownload": "دانلود مستقیم را به صورت پیش فرض بررسی کنید",
   "autoStartTasks": "شروع کارهای ناقص در استارت آپ",

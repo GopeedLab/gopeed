@@ -44,6 +44,8 @@
   "ftpTlsImplicit": "Implicit TLS (FTPS)",
   "maxRetries": "Maximális újrapróbálkozások",
   "useServerCtime": "Használja a szerveridőt a fájl létrehozásához",
+  "maxRetryDelay": "Újrapróbálkozások közötti maximális várakozás (másodperc)",
+  "unlimitedRetries": "Korlátlan újrapróbálkozás",
   "maxRunning": "Maximális futó feladatok",
   "defaultDirectDownload": "Alapértelmezettként ellenőrizze a közvetlen letöltést",
   "autoStartTasks": "Befejezetlen feladatok automatikus indítása indításkor",
