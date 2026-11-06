@@ -2015,8 +2015,6 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 	conn.State = connConnecting
 	f.connMu.Unlock()
 
-	buf := make([]byte, connReadBufferSize)
-
 	// Get the resolve response
 	f.resolveRespLock.Lock()
 	resp, cancel := f.resolveResp, f.resolveRespCancel
@@ -2025,10 +2023,29 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 	if resp == nil {
 		// No resolve response available, fall back to normal connection
-		f.runConnectionFallback(conn)
+		f.runConnectionFallback(conn, nil)
 		return
 	}
 
+	// The Resolve response is a valid response of this download attempt.
+	retry := f.retryPolicy()
+	retry.join(conn)
+	retry.success(conn)
+	err := f.readResolveResp(conn, resp, cancel)
+	if err == nil || conn.ctx.Err() != nil {
+		retry.leave(conn)
+		return
+	}
+	// The Resolve response cannot be resumed. The failure goes through the
+	// retry policy like any other, and a retry requests the resource again
+	// from the start. A one-time URL then fails after the retry rounds.
+	f.runConnectionFallback(conn, err)
+}
+
+// readResolveResp writes the kept Resolve response to the file from byte zero.
+// It returns nil once the body is complete, or the error that interrupted it:
+// a write error is terminal, a read error is not.
+func (f *Fetcher) readResolveResp(conn *connection, resp *http.Response, cancel context.CancelFunc) error {
 	if cancel != nil {
 		defer cancel()
 	}
@@ -2047,11 +2064,11 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 		f.slowStart.onConnectSuccess()
 	}
 
-	// Download data from resolve response
+	buf := make([]byte, connReadBufferSize)
 	reader := f.responseReader(resp, cancel)
 	for {
-		if conn.ctx.Err() != nil {
-			return
+		if err := conn.ctx.Err(); err != nil {
+			return err
 		}
 
 		n, err := reader.Read(buf)
@@ -2065,14 +2082,7 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 				_, writeErr := f.file.WriteAt(buf[:n], writeOffset)
 				if writeErr != nil {
 					f.fileMu.Unlock()
-					f.connMu.Lock()
-					conn.State = connFailed
-					conn.failed = true
-					f.connMu.Unlock()
-					if f.slowStart != nil {
-						f.slowStart.onConnectFailed()
-					}
-					return
+					return asTerminal(writeErr)
 				}
 			}
 			f.fileMu.Unlock()
@@ -2092,22 +2102,19 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 				conn.Completed = true
 				conn.State = connCompleted
 				f.connMu.Unlock()
-				return
+				return nil
 			}
-			// The Resolve response cannot be resumed on this path. Preserve the read
-			// error so an unknown-length stream is not mistaken for a clean EOF.
-			f.connMu.Lock()
-			conn.State = connFailed
-			conn.failed = true
-			conn.lastErr = err
-			f.connMu.Unlock()
-			return
+			// Keep the read error so an unknown-length stream is not mistaken
+			// for a clean EOF.
+			return err
 		}
 	}
 }
 
-// runConnectionFallback is used when resolve response is not available
-func (f *Fetcher) runConnectionFallback(conn *connection) {
+// runConnectionFallback downloads the resource sequentially with new
+// requests: when no Resolve response is available, or after reading it
+// failed with failed. Each request starts from byte zero.
+func (f *Fetcher) runConnectionFallback(conn *connection, failed error) {
 	retry := f.retryPolicy()
 	retry.join(conn)
 	defer retry.leave(conn)
@@ -2117,6 +2124,12 @@ func (f *Fetcher) runConnectionFallback(conn *connection) {
 	buf := make([]byte, connReadBufferSize)
 
 	retries := 0
+	if failed != nil {
+		if !f.awaitRetry(conn, retry, failed) {
+			return
+		}
+		retries++
+	}
 	for {
 		if conn.ctx.Err() != nil {
 			return
