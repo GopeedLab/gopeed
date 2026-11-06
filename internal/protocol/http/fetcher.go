@@ -29,9 +29,14 @@ import (
 )
 
 const (
-	connectTimeout     = 15 * time.Second
-	readTimeout        = 15 * time.Second
-	minFastFailTimeout = int64(3 * time.Second) // Minimum timeout for fast-fail retry
+	connectTimeout = 15 * time.Second
+	// responseHeaderTimeout bounds the wait for the response headers of one
+	// request. It is generous because some servers generate the file before
+	// they answer; the body is then guarded by readTimeout. The webview proxy
+	// uses the same value.
+	responseHeaderTimeout = 30 * time.Second
+	readTimeout           = 15 * time.Second
+	minFastFailTimeout    = int64(3 * time.Second) // Minimum timeout for fast-fail retry
 
 	// Work stealing parameters
 	// When a connection finishes its chunk, it can "steal" work from slow connections.
@@ -45,9 +50,10 @@ const (
 const connReadBufferSize = 64 * 1024
 
 var (
-	errRangeRequestIgnored  = errors.New("server ignored HTTP range request")
-	errInvalidRangeResponse = errors.New("invalid HTTP range response")
-	errIncompleteResponse   = errors.New("incomplete HTTP response")
+	errResponseHeaderTimeout = errors.New("timed out waiting for response headers")
+	errRangeRequestIgnored   = errors.New("server ignored HTTP range request")
+	errInvalidRangeResponse  = errors.New("invalid HTTP range response")
+	errIncompleteResponse    = errors.New("incomplete HTTP response")
 )
 
 func isRangeIntegrityError(err error) bool {
@@ -319,6 +325,8 @@ type Fetcher struct {
 	// retryUnit is the first retry delay; zero means one second. Tests
 	// shorten it.
 	retryUnit time.Duration
+	// headerTimeout replaces responseHeaderTimeout when set. Tests shorten it.
+	headerTimeout time.Duration
 	// activeWorkers counts the running range workers of the current cycle;
 	// workersIdle wakes the download loop when the last one exits.
 	activeWorkers atomic.Int32
@@ -635,7 +643,7 @@ func (f *Fetcher) resolveOnce(ctx context.Context, req *base.Request) (*http.Req
 
 	// Track connection time for adaptive timeout in download phase
 	connStartTime := time.Now()
-	resp, err := client.Do(httpReq)
+	resp, err := f.doRequest(client, httpReq, reqCancel)
 	if err != nil {
 		return fail(err)
 	}
@@ -1500,7 +1508,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	// Record connection start time for adaptive timeout tracking
 	connStartTime := time.Now()
 
-	resp, err := client.Do(httpReq)
+	resp, err := f.doRequest(client, httpReq, reqCancel)
 	if err != nil {
 		return err
 	}
@@ -1512,7 +1520,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		// Check if this might be a redirect URL expiration error
 		// If so, try falling back to the original URL
 		if f.hasRedirectURL() && isRedirectExpiredError(originalErr) {
-			fallbackResp, fallbackErr := f.tryFallbackToOriginalURL(reqCtx, client, rangeStart, rangeEnd, rangeRequested, ifRange)
+			fallbackResp, fallbackErr := f.tryFallbackToOriginalURL(reqCtx, reqCancel, client, rangeStart, rangeEnd, rangeRequested, ifRange)
 			if fallbackErr == nil && fallbackResp != nil {
 				// Fallback succeeded, use this response instead
 				resp = fallbackResp

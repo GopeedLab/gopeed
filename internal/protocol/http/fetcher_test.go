@@ -1101,7 +1101,7 @@ func TestFetcher_OriginalURLFallbackPreservesResumeHeaders(t *testing.T) {
 		meta:   &fetcher.FetcherMeta{Req: &base.Request{URL: server.URL}},
 	}
 	rangeEnd := int64(end)
-	resp, err := f.tryFallbackToOriginalURL(context.Background(), server.Client(), start, &rangeEnd, true, ifRange)
+	resp, err := f.tryFallbackToOriginalURL(context.Background(), func() {}, server.Client(), start, &rangeEnd, true, ifRange)
 	if err != nil {
 		t.Fatal(err)
 	}

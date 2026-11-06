@@ -978,3 +978,139 @@ func TestFetcher_TerminalErrorsAreNotRetried(t *testing.T) {
 		}
 	})
 }
+
+// ---------------------------------------------------------------------------
+// Response header timeout
+// ---------------------------------------------------------------------------
+
+// hangUntilCancelled never answers: it waits until the client gives up.
+func hangUntilCancelled(r *gohttp.Request) {
+	<-r.Context().Done()
+}
+
+// A request whose headers never arrive times out and, next to a healthy peer,
+// is retried for free: no retry round is allowed here.
+func TestFetcher_HeaderTimeoutRetriedWhilePeerHealthy(t *testing.T) {
+	payload := testPayload(512 * 1024)
+	half := int64(len(payload) / 2)
+	var bRequests atomic.Int32
+	release := make(chan struct{})
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if rangeStart(r) == half {
+			if bRequests.Add(1) == 1 {
+				hangUntilCancelled(r)
+				return
+			}
+			close(release)
+			serveRangeContent(w, r, payload)
+			return
+		}
+		// The first chunk downloads until the second one has been retried.
+		w.Header().Set(base.HttpHeaderContentRange, fmt.Sprintf("bytes 0-%d/%d", half-1, len(payload)))
+		w.Header().Set(base.HttpHeaderContentLength, fmt.Sprint(half))
+		w.WriteHeader(gohttp.StatusPartialContent)
+		_, _ = w.Write(payload[:1024])
+		w.(gohttp.Flusher).Flush()
+		select {
+		case <-release:
+		case <-r.Context().Done():
+			return
+		}
+		_, _ = w.Write(payload[1024:half])
+	}))
+	defer server.Close()
+
+	f, file := restoredTwoChunks(t, server.URL+"/slot.bin", int64(len(payload)), fastRetryUnit, 0)
+	f.headerTimeout = 100 * time.Millisecond
+	defer f.Close()
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	waitDownload(t, f, file, payload)
+	if got := bRequests.Load(); got != 2 {
+		t.Fatalf("second chunk was requested %d times, want 2", got)
+	}
+}
+
+// When every request hangs, each one times out, the retry rounds run, and the
+// task fails with the timeout.
+func TestFetcher_HeaderTimeoutOutageFails(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		requests.Add(1)
+		hangUntilCancelled(r)
+	}))
+	defer server.Close()
+
+	f, _ := restoredTwoChunks(t, server.URL+"/slot.bin", 512*1024, fastRetryUnit, 2)
+	f.headerTimeout = 50 * time.Millisecond
+	defer f.Close()
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	err := waitResult(t, f, 30*time.Second)
+	if err == nil || !strings.Contains(err.Error(), errResponseHeaderTimeout.Error()) {
+		t.Fatalf("Wait() = %v, want a response header timeout", err)
+	}
+	// Two chunks: the first try and two rounds each.
+	if got := requests.Load(); got != 6 {
+		t.Fatalf("server got %d requests, want 6", got)
+	}
+}
+
+// Pause stops a request waiting for its headers at once, long before the
+// header timeout.
+func TestFetcher_PauseStopsHeaderWait(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		requests.Add(1)
+		hangUntilCancelled(r)
+	}))
+	defer server.Close()
+
+	f, _ := restoredTwoChunks(t, server.URL+"/slot.bin", 512*1024, time.Hour, defaultMaxRetries)
+	f.headerTimeout = time.Hour
+	defer f.Close()
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "both requests", func() bool { return requests.Load() == 2 })
+	start := time.Now()
+	if err := f.Pause(); err != nil {
+		t.Fatal(err)
+	}
+	if took := time.Since(start); took > 5*time.Second {
+		t.Fatalf("Pause took %v while requests waited for headers", took)
+	}
+}
+
+// The header timeout also covers the browser impersonation retry that
+// internal/httpclient makes after a 403: here that retry never gets headers.
+func TestFetcher_HeaderTimeoutCoversImpersonationRetry(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if requests.Add(1) == 1 {
+			w.WriteHeader(gohttp.StatusForbidden)
+			return
+		}
+		hangUntilCancelled(r)
+	}))
+	defer server.Close()
+
+	f := newRetryFetcher(t, fastRetryUnit, 0)
+	f.headerTimeout = 200 * time.Millisecond
+	defer f.Close()
+	errCh := make(chan error, 1)
+	go func() { errCh <- f.Resolve(&base.Request{URL: server.URL + "/file"}) }()
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, errResponseHeaderTimeout) {
+			t.Fatalf("Resolve() = %v, want a response header timeout", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the impersonation retry ignored the header timeout")
+	}
+	if got := requests.Load(); got != 2 {
+		t.Fatalf("server got %d requests, want the 403 and its browser retry", got)
+	}
+}
