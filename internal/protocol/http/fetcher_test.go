@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -2035,13 +2036,88 @@ func TestFetcher_DownloadError(t *testing.T) {
 	downloadError(listener, 1, t)
 }
 
+// TestFetcher_DownloadLimit downloads from a server that serves at most four
+// requests at a time and refuses the others with 403, each time with its own
+// server and download directory. With eight connections the server must have
+// refused some of them, and the download must still complete.
 func TestFetcher_DownloadLimit(t *testing.T) {
-	listener := test.StartTestConLimitServer(4)
-	defer listener.Close()
+	const maxActive = 4
+	payload := testPayload(8 * 1024 * 1024)
+	for _, connections := range []int{1, 2, 8} {
+		t.Run(fmt.Sprintf("%d connections", connections), func(t *testing.T) {
+			overLimit := connections > maxActive
+			var active, refused atomic.Int32
+			refusedOnce := make(chan struct{})
+			var once sync.Once
+			server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+				if active.Add(1) > maxActive {
+					active.Add(-1)
+					refused.Add(1)
+					once.Do(func() { close(refusedOnce) })
+					w.WriteHeader(gohttp.StatusForbidden)
+					return
+				}
+				defer active.Add(-1)
+				writer := gohttp.ResponseWriter(&slowResponseWriter{ResponseWriter: w})
+				if overLimit {
+					// Hold the accepted responses until the server has refused a
+					// request, so that the limit is certainly reached.
+					writer = &holdResponseWriter{slowResponseWriter: writer.(*slowResponseWriter), release: refusedOnce, ctx: r.Context()}
+				}
+				serveRangeContent(writer, r, payload)
+			}))
+			defer server.Close()
 
-	downloadNormal(listener, 1, t)
-	downloadNormal(listener, 2, t)
-	downloadNormal(listener, 8, t)
+			dir := t.TempDir()
+			f := buildFetcher()
+			f.Meta().Opts = &base.Options{
+				Path:  dir,
+				Name:  "limit.data",
+				Extra: &http.OptsExtra{Connections: connections},
+			}
+			if err := f.Resolve(&base.Request{URL: server.URL + "/limit.data"}); err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+			if err := f.Start(); err != nil {
+				t.Fatal(err)
+			}
+			waitDownload(t, f, filepath.Join(dir, "limit.data"), payload)
+			if overLimit && refused.Load() == 0 {
+				t.Fatal("the server refused no request: the connection limit was not exercised")
+			}
+			t.Logf("%d connections: %d requests refused", connections, refused.Load())
+		})
+	}
+}
+
+// holdResponseWriter writes the first block of a response, then waits for
+// release (or for the request to end) before writing the rest.
+type holdResponseWriter struct {
+	*slowResponseWriter
+	release <-chan struct{}
+	ctx     context.Context
+	wrote   bool
+}
+
+func (w *holdResponseWriter) Write(p []byte) (int, error) {
+	if w.wrote {
+		select {
+		case <-w.release:
+		case <-w.ctx.Done():
+			return 0, w.ctx.Err()
+		case <-time.After(10 * time.Second):
+		}
+		return w.slowResponseWriter.Write(p)
+	}
+	w.wrote = true
+	first := min(len(p), 32*1024)
+	n, err := w.slowResponseWriter.Write(p[:first])
+	if err != nil || first == len(p) {
+		return n, err
+	}
+	m, err := w.Write(p[first:])
+	return n + m, err
 }
 
 func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
