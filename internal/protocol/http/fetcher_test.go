@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1100,7 +1101,7 @@ func TestFetcher_OriginalURLFallbackPreservesResumeHeaders(t *testing.T) {
 		meta:   &fetcher.FetcherMeta{Req: &base.Request{URL: server.URL}},
 	}
 	rangeEnd := int64(end)
-	resp, err := f.tryFallbackToOriginalURL(context.Background(), server.Client(), start, &rangeEnd, true, ifRange)
+	resp, err := f.tryFallbackToOriginalURL(context.Background(), func() {}, server.Client(), start, &rangeEnd, true, ifRange)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1643,8 +1644,16 @@ func TestFetcher_UnknownSizeRangeRemainsOpenEndedAfterPause(t *testing.T) {
 	}
 }
 
-func TestFetcher_UnknownSizeResolveReadErrorFailsTask(t *testing.T) {
+// An unknown-size Resolve response that ends unexpectedly is not taken as
+// complete. The download requests the resource again under the retry policy
+// and, as the origin keeps failing, fails after its retry rounds.
+func TestFetcher_UnknownSizeResolveReadErrorFailsAfterRetries(t *testing.T) {
+	var requests atomic.Int32
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+		if requests.Add(1) > 1 {
+			w.WriteHeader(gohttp.StatusServiceUnavailable)
+			return
+		}
 		conn, rw, err := w.(gohttp.Hijacker).Hijack()
 		if err != nil {
 			t.Errorf("hijack response: %v", err)
@@ -1658,6 +1667,7 @@ func TestFetcher_UnknownSizeResolveReadErrorFailsTask(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
+	f.config.MaxRetries = 2
 	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "broken-chunked.data",
@@ -1673,11 +1683,19 @@ func TestFetcher_UnknownSizeResolveReadErrorFailsTask(t *testing.T) {
 	if err := f.Start(); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Wait(); err == nil {
+	err := f.Wait()
+	if err == nil {
 		t.Fatal("Wait() succeeded after the unknown-size response ended unexpectedly")
+	}
+	if !strings.Contains(err.Error(), "503") {
+		t.Fatalf("Wait() = %v, want the 503 of the last retry", err)
 	}
 	if got := f.getState(); got != stateError {
 		t.Fatalf("fetcher state = %v, want %v", got, stateError)
+	}
+	// Resolve, then one request per retry round.
+	if got := requests.Load(); got != 3 {
+		t.Fatalf("server got %d requests, want 3", got)
 	}
 }
 
@@ -2035,13 +2053,88 @@ func TestFetcher_DownloadError(t *testing.T) {
 	downloadError(listener, 1, t)
 }
 
+// TestFetcher_DownloadLimit downloads from a server that serves at most four
+// requests at a time and refuses the others with 403, each time with its own
+// server and download directory. With eight connections the server must have
+// refused some of them, and the download must still complete.
 func TestFetcher_DownloadLimit(t *testing.T) {
-	listener := test.StartTestConLimitServer(4)
-	defer listener.Close()
+	const maxActive = 4
+	payload := testPayload(8 * 1024 * 1024)
+	for _, connections := range []int{1, 2, 8} {
+		t.Run(fmt.Sprintf("%d connections", connections), func(t *testing.T) {
+			overLimit := connections > maxActive
+			var active, refused atomic.Int32
+			refusedOnce := make(chan struct{})
+			var once sync.Once
+			server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+				if active.Add(1) > maxActive {
+					active.Add(-1)
+					refused.Add(1)
+					once.Do(func() { close(refusedOnce) })
+					w.WriteHeader(gohttp.StatusForbidden)
+					return
+				}
+				defer active.Add(-1)
+				writer := gohttp.ResponseWriter(&slowResponseWriter{ResponseWriter: w})
+				if overLimit {
+					// Hold the accepted responses until the server has refused a
+					// request, so that the limit is certainly reached.
+					writer = &holdResponseWriter{slowResponseWriter: writer.(*slowResponseWriter), release: refusedOnce, ctx: r.Context()}
+				}
+				serveRangeContent(writer, r, payload)
+			}))
+			defer server.Close()
 
-	downloadNormal(listener, 1, t)
-	downloadNormal(listener, 2, t)
-	downloadNormal(listener, 8, t)
+			dir := t.TempDir()
+			f := buildFetcher()
+			f.Meta().Opts = &base.Options{
+				Path:  dir,
+				Name:  "limit.data",
+				Extra: &http.OptsExtra{Connections: connections},
+			}
+			if err := f.Resolve(&base.Request{URL: server.URL + "/limit.data"}); err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+			if err := f.Start(); err != nil {
+				t.Fatal(err)
+			}
+			waitDownload(t, f, filepath.Join(dir, "limit.data"), payload)
+			if overLimit && refused.Load() == 0 {
+				t.Fatal("the server refused no request: the connection limit was not exercised")
+			}
+			t.Logf("%d connections: %d requests refused", connections, refused.Load())
+		})
+	}
+}
+
+// holdResponseWriter writes the first block of a response, then waits for
+// release (or for the request to end) before writing the rest.
+type holdResponseWriter struct {
+	*slowResponseWriter
+	release <-chan struct{}
+	ctx     context.Context
+	wrote   bool
+}
+
+func (w *holdResponseWriter) Write(p []byte) (int, error) {
+	if w.wrote {
+		select {
+		case <-w.release:
+		case <-w.ctx.Done():
+			return 0, w.ctx.Err()
+		case <-time.After(10 * time.Second):
+		}
+		return w.slowResponseWriter.Write(p)
+	}
+	w.wrote = true
+	first := min(len(p), 32*1024)
+	n, err := w.slowResponseWriter.Write(p[:first])
+	if err != nil || first == len(p) {
+		return n, err
+	}
+	m, err := w.Write(p[first:])
+	return n + m, err
 }
 
 func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
@@ -2073,13 +2166,14 @@ func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
 			t.Errorf("Download() got = %v, want %v", got, want)
 		}
 
-		// Verify timeouts don't count as failures (retryTimes should be 0)
+		// After the recovery no connection has failed, and the failure count
+		// was reset by the next valid response.
 		for _, conn := range stats.Connections {
 			if conn.Failed {
-				t.Fatalf("expected no counted failures after timeout recovery, got retries=%d", conn.RetryTimes)
+				t.Fatalf("expected no failed connection after timeout recovery, got retries=%d", conn.RetryTimes)
 			}
 			if conn.RetryTimes != 0 {
-				t.Fatalf("expected retryTimes to stay zero for non-counted timeouts, got %d", conn.RetryTimes)
+				t.Fatalf("expected retryTimes to be reset after timeout recovery, got %d", conn.RetryTimes)
 			}
 		}
 	}
@@ -2106,11 +2200,11 @@ func TestFetcher_Download500Recovery(t *testing.T) {
 		t.Errorf("Download() got = %v, want %v", got, want)
 	}
 
-	// Verify 500 errors don't count as failures (retryTimes should be 0)
+	// The 500 errors were retried and the recovery reset the failure count.
 	stats := fetcher.Stats().Snapshot.(*http.Stats)
 	for _, conn := range stats.Connections {
-		if conn.RetryTimes != 0 {
-			t.Errorf("Expected retryTimes to be 0 for 500 errors (exempt), got %d", conn.RetryTimes)
+		if conn.Failed || conn.RetryTimes != 0 {
+			t.Errorf("Expected no failed connection after recovering from 500 errors, got failed=%v retryTimes=%d", conn.Failed, conn.RetryTimes)
 		}
 	}
 }
@@ -2663,13 +2757,14 @@ func TestFetcher_RetryAfterError(t *testing.T) {
 	os.Remove(test.DownloadFile)
 
 	// Server fails first 3 requests (after resolve), then recovers
-	// With 1 connection and 3 retries:
-	// - First Start(): requests 2, 3, 4 → all fail (3 retries exhausted) → returns error
+	// With 1 connection and 2 retry rounds:
+	// - First Start(): requests 2, 3, 4 → all fail (first try and 2 rounds) → returns error
 	// - Second Start(): request 5 → succeeds (server recovered after 3 failures)
 	listener := test.StartTestFailThenRecoverServer(3)
 	defer listener.Close()
 
 	fetcher := buildFetcher()
+	fetcher.config.MaxRetries = 2
 	fetcher.Meta().Opts = &base.Options{
 		Name: test.DownloadName,
 		Path: test.Dir,
@@ -3286,6 +3381,9 @@ func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t 
 	}
 }
 
+// buildFetcher returns a fetcher with the default configuration. Its retry
+// delays are scaled down from seconds to 10 ms, so that tests meeting failing
+// requests do not wait for real retry rounds.
 func buildFetcher() *Fetcher {
 	fm := new(FetcherManager)
 	fetcher := fm.Build()
@@ -3294,7 +3392,9 @@ func buildFetcher() *Fetcher {
 		json.Unmarshal([]byte(test.ToJson(fm.DefaultConfig())), v)
 	}
 	fetcher.Setup(newController)
-	return fetcher.(*Fetcher)
+	f := fetcher.(*Fetcher)
+	f.retryUnit = 10 * time.Millisecond
+	return f
 }
 
 func buildConfigFetcher(cfg config) fetcher.Fetcher {

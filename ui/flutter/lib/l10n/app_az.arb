@@ -44,6 +44,8 @@
   "ftpTlsImplicit": "Gizli TLS (FTPS)",
   "maxRetries": "Maksimum cəhd sayı",
   "useServerCtime": "Fayl yaratma tarixi üçün server vaxtından istifadə et",
+  "maxRetryDelay": "Cəhdlər arası maksimum gözləmə (saniyə)",
+  "unlimitedRetries": "Limitsiz təkrar cəhd",
   "maxRunning": "Paralel Endirmələr",
   "defaultDirectDownload": "Standart olaraq Birbaşa Endirmə",
   "autoStartTasks": "Başlanğıcda tamamlanmamış tapşırıqları avtomatik başlat",
