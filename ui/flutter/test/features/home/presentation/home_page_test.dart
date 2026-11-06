@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
@@ -8,6 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gopeed/api/model/task.dart' as api;
 import 'package:gopeed/features/home/presentation/pages/home_page.dart';
+import 'package:gopeed/features/home/presentation/widgets/primary_rail.dart';
+import 'package:gopeed/features/home/presentation/widgets/tasks_top_bar.dart';
+import 'package:gopeed/core/window/app_window_frame.dart';
 import 'package:gopeed/features/tasks/application/tasks_controller.dart';
 import 'package:gopeed/features/tasks/domain/task_record.dart';
 import 'package:gopeed/features/tasks/presentation/pages/task_details_page.dart';
@@ -162,6 +166,7 @@ Future<({GroupTasks controller, GoRouter router})> showHome(WidgetTester tester,
       child: shad.ShadcnApp.router(
         theme: AppTheme.light(),
         materialTheme: AppTheme.materialLight(),
+        builder: (context, child) => AppWindowFrame(child: child!),
         routerConfig: router,
       ),
     ),
@@ -171,6 +176,50 @@ Future<({GroupTasks controller, GoRouter router})> showHome(WidgetTester tester,
 }
 
 void main() {
+  for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+    testWidgets('$platform keeps headers inside system insets across rotation', (tester) async {
+      debugDefaultTargetPlatformOverride = platform;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      addTearDown(tester.view.resetPadding);
+      addTearDown(tester.view.resetViewPadding);
+      await showHome(tester, 390);
+
+      for (final size in [const Size(390, 844), const Size(700, 1100), const Size(1100, 700), const Size(700, 1100)]) {
+        tester.view.physicalSize = size;
+        tester.view.padding = FakeViewPadding.zero;
+        tester.view.viewPadding = FakeViewPadding.zero;
+        await settle(tester);
+        final header = size.width < 720
+            ? find
+                  .ancestor(
+                    of: find.byKey(const ValueKey('tasks-mobile-create-button')),
+                    matching: find.byType(SafeArea),
+                  )
+                  .first
+            : find.byType(TasksTopBar);
+        final originalHeaderPosition = tester.getTopLeft(header);
+
+        const insets = FakeViewPadding(top: 24, left: 16, right: 12, bottom: 20);
+        tester.view.padding = insets;
+        tester.view.viewPadding = insets;
+        await settle(tester);
+
+        expect(tester.getRect(find.byType(HomePage)), Rect.fromLTRB(16, 24, size.width - 12, size.height - 20));
+        // Nested page SafeAreas must consume the inset only once.
+        expect(tester.getTopLeft(header), originalHeaderPosition + const Offset(16, 24));
+        expect(MediaQuery.paddingOf(tester.element(header)), EdgeInsets.zero);
+        if (size.width >= 720) {
+          expect(tester.getTopLeft(find.byType(PrimaryRail)), const Offset(16, 24));
+        } else {
+          await tester.tap(find.byKey(const ValueKey('tasks-mobile-batch-button')));
+          await settle(tester);
+        }
+        expect(tester.takeException(), isNull);
+      }
+      debugDefaultTargetPlatformOverride = null;
+    });
+  }
+
   for (final width in [390.0, 700.0, 1100.0]) {
     testWidgets('group expands actual member tasks and keeps a multi-file BT as one card at $width', (tester) async {
       final app = await showHome(tester, width);
