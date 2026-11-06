@@ -1304,6 +1304,16 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		return conn.ctx.Err()
 	}
 
+	// The first Range request can be retried long after Start while Resolve
+	// keeps downloading. Once Resolve has the whole body, use it instead of
+	// requesting it again. Without a known size a stopped prefetch looks
+	// complete, so only trust a body that reached the known size.
+	if conn.ID == 0 && f.prefetchDone.Load() && f.prefetchErr == nil &&
+		f.hasKnownSize() && f.prefetchSize.Load() == f.knownSize() &&
+		f.completeFromResolveFallback(conn) {
+		return nil
+	}
+
 	// Read chunk boundaries under lock to get a consistent snapshot. A prefix
 	// without a safe validator cannot be resumed, so restart it before building
 	// the request; the returned full response will overwrite from byte zero.
@@ -1324,6 +1334,11 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 		return nil
 	}
 	rangeStart := conn.Chunk.Begin + conn.Chunk.Downloaded
+	if conn.ID == 0 && !resumeProbe && f.resolveFallback.Load() {
+		// Start where Resolve is now, not where it was at Start, so the takeover
+		// does not download the prefix again only to discard it.
+		rangeStart = max(rangeStart, f.prefetchSize.Load())
+	}
 	var rangeEnd *int64
 	if !openEndedRange {
 		end := *conn.Chunk.End
@@ -1612,7 +1627,9 @@ func (f *Fetcher) commitResolveTakeover(conn *connection, requestedStart int64) 
 	if f.ifRange != "" {
 		f.rangeValidatorPinned = true
 	}
-	conn.Chunk.Downloaded = overlap
+	// requestedStart may be past Chunk.Begin when a retry started at the
+	// prefetch position, so count the chunk progress from Begin.
+	conn.Chunk.Downloaded = prefetched - conn.Chunk.Begin
 	conn.Downloaded = prefetched
 	f.connMu.Unlock()
 	return overlap, nil
