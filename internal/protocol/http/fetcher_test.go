@@ -2073,13 +2073,14 @@ func TestFetcher_DownloadResponseBodyReadTimeout(t *testing.T) {
 			t.Errorf("Download() got = %v, want %v", got, want)
 		}
 
-		// Verify timeouts don't count as failures (retryTimes should be 0)
+		// After the recovery no connection has failed, and the failure count
+		// was reset by the next valid response.
 		for _, conn := range stats.Connections {
 			if conn.Failed {
-				t.Fatalf("expected no counted failures after timeout recovery, got retries=%d", conn.RetryTimes)
+				t.Fatalf("expected no failed connection after timeout recovery, got retries=%d", conn.RetryTimes)
 			}
 			if conn.RetryTimes != 0 {
-				t.Fatalf("expected retryTimes to stay zero for non-counted timeouts, got %d", conn.RetryTimes)
+				t.Fatalf("expected retryTimes to be reset after timeout recovery, got %d", conn.RetryTimes)
 			}
 		}
 	}
@@ -2106,11 +2107,11 @@ func TestFetcher_Download500Recovery(t *testing.T) {
 		t.Errorf("Download() got = %v, want %v", got, want)
 	}
 
-	// Verify 500 errors don't count as failures (retryTimes should be 0)
+	// The 500 errors were retried and the recovery reset the failure count.
 	stats := fetcher.Stats().Snapshot.(*http.Stats)
 	for _, conn := range stats.Connections {
-		if conn.RetryTimes != 0 {
-			t.Errorf("Expected retryTimes to be 0 for 500 errors (exempt), got %d", conn.RetryTimes)
+		if conn.Failed || conn.RetryTimes != 0 {
+			t.Errorf("Expected no failed connection after recovering from 500 errors, got failed=%v retryTimes=%d", conn.Failed, conn.RetryTimes)
 		}
 	}
 }
@@ -2663,13 +2664,14 @@ func TestFetcher_RetryAfterError(t *testing.T) {
 	os.Remove(test.DownloadFile)
 
 	// Server fails first 3 requests (after resolve), then recovers
-	// With 1 connection and 3 retries:
-	// - First Start(): requests 2, 3, 4 → all fail (3 retries exhausted) → returns error
+	// With 1 connection and 2 retry rounds:
+	// - First Start(): requests 2, 3, 4 → all fail (first try and 2 rounds) → returns error
 	// - Second Start(): request 5 → succeeds (server recovered after 3 failures)
 	listener := test.StartTestFailThenRecoverServer(3)
 	defer listener.Close()
 
 	fetcher := buildFetcher()
+	fetcher.config.MaxRetries = 2
 	fetcher.Meta().Opts = &base.Options{
 		Name: test.DownloadName,
 		Path: test.Dir,
@@ -3287,6 +3289,9 @@ func downloadWithProxy(httpListener net.Listener, proxyListener net.Listener, t 
 	}
 }
 
+// buildFetcher returns a fetcher with the default configuration. Its retry
+// delays are scaled down from seconds to 10 ms, so that tests meeting failing
+// requests do not wait for real retry rounds.
 func buildFetcher() *Fetcher {
 	fm := new(FetcherManager)
 	fetcher := fm.Build()
@@ -3295,7 +3300,9 @@ func buildFetcher() *Fetcher {
 		json.Unmarshal([]byte(test.ToJson(fm.DefaultConfig())), v)
 	}
 	fetcher.Setup(newController)
-	return fetcher.(*Fetcher)
+	f := fetcher.(*Fetcher)
+	f.retryUnit = 10 * time.Millisecond
+	return f
 }
 
 func buildConfigFetcher(cfg config) fetcher.Fetcher {
