@@ -1114,3 +1114,60 @@ func TestFetcher_HeaderTimeoutCoversImpersonationRetry(t *testing.T) {
 		t.Fatalf("server got %d requests, want the 403 and its browser retry", got)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Expired link
+// ---------------------------------------------------------------------------
+
+// The link expires during the download: the first requests are served, every
+// later one gets 403. The task must fail after its retry rounds, report the
+// 403, and keep what it has downloaded.
+func TestFetcher_ExpiredLinkFailsAndKeepsData(t *testing.T) {
+	payload := testPayload(4 * 1024 * 1024)
+	var requests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		// The Resolve request and the first Range request are served.
+		if requests.Add(1) > 2 {
+			w.WriteHeader(gohttp.StatusForbidden)
+			return
+		}
+		serveRangeContent(&slowResponseWriter{ResponseWriter: w}, r, payload)
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	f := newRetryFetcher(t, fastRetryUnit, defaultMaxRetries)
+	f.Meta().Opts = &base.Options{Path: dir, Name: "expired.data", Extra: &fhttp.OptsExtra{Connections: 8}}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/expired.data"}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	err := waitResult(t, f, 60*time.Second)
+	if err == nil || !strings.Contains(err.Error(), "403") {
+		t.Fatalf("Wait() = %v, want a 403 failure", err)
+	}
+	if f.getState() != stateError {
+		t.Fatalf("state = %v, want stateError", f.getState())
+	}
+
+	got, readErr := os.ReadFile(filepath.Join(dir, "expired.data"))
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	var kept int64
+	f.connMu.Lock()
+	defer f.connMu.Unlock()
+	for _, conn := range f.connections {
+		begin, n := conn.Chunk.Begin, conn.Chunk.Downloaded
+		if n > 0 && !bytes.Equal(got[begin:begin+n], payload[begin:begin+n]) {
+			t.Fatalf("connection %d: the downloaded bytes %d-%d were not kept", conn.ID, begin, begin+n-1)
+		}
+		kept += n
+	}
+	if kept == 0 || kept >= int64(len(payload)) {
+		t.Fatalf("kept %d of %d bytes, want a partial download", kept, len(payload))
+	}
+}
