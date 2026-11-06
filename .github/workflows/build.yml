@@ -798,5 +798,5 @@ jobs:
             linux/arm64
             linux/arm/v7
           tags: |
-            liwei2633/gopeed:latest
+            ${{ !contains(env.VERSION, 'beta') && 'liwei2633/gopeed:latest' || '' }}
             liwei2633/gopeed:v${{ env.VERSION }}
