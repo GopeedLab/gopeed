@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Endirmə gedişatı pəncərəsi",
+  "downloadProgressWindowDescription": "Yeni endirmələr üçün gedişat pəncərəsini avtomatik açın. Pəncərəni bağlamaq endirməni dayandırmır.",
   "@@locale": "az",
   "label": "Azərbaycan dili",
   "error": "Xəta",
@@ -664,5 +666,10 @@
   "trackerSubscriptionTrackerCount": "Tracker sayı",
   "trackerSubscriptionNotUpdated": "Hələ yenilənməyib",
   "actions": "Əməliyyatlar",
-  "taskGroupDeleteImpact": "{taskCount} endirməyə və {fileCount} fayla təsir edir."
+  "taskGroupDeleteImpact": "{taskCount} endirməyə və {fileCount} fayla təsir edir.",
+  "downloadSpeedHistory": "Endirmə sürəti",
+  "downloadRecentMinute": "Son 60 saniyə",
+  "averageSpeed": "Orta sürət",
+  "runInBackground": "Arxa planda",
+  "downloadBackgroundHint": "Bu pəncərə bağlandıqda endirmə davam edir."
 }

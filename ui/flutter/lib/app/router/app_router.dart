@@ -25,6 +25,7 @@ import '../../features/tasks/presentation/pages/task_details_page.dart';
 import '../../features/tasks/presentation/pages/task_files_page.dart';
 import 'shells/main_shell.dart';
 import 'mobile_exit_guard.dart';
+import '../../shared/theme/app_design_tokens.dart';
 import 'runtime_page.dart';
 
 class AppRouter {
@@ -121,6 +122,24 @@ class AppRouter {
               path: '/',
               builder: _runtimePage((context, state) => const HomePage()),
               routes: [
+                GoRoute(
+                  path: 'download-progress',
+                  parentNavigatorKey: rootNavigatorKey,
+                  pageBuilder: (context, state) {
+                    final payload = AppWindowPayload.fromRaw(state.extra is String ? state.extra! as String : '');
+                    return AppWindowPage<void>(
+                      key: state.pageKey,
+                      preferredSize: AppDesignTokens.downloadProgressWindowSize,
+                      child: RuntimePage(
+                        builder: (context) => AppWindowContent.build(
+                          AppWindowPayload.downloadProgress(payload.taskId),
+                          modal: true,
+                          onClose: (_) => context.canPop() ? context.pop() : context.go('/'),
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 GoRoute(
                   path: 'create',
                   parentNavigatorKey: rootNavigatorKey,

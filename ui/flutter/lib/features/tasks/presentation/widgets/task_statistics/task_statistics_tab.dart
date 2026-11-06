@@ -32,7 +32,7 @@ class TaskStatisticsTab extends ConsumerWidget {
         : AppDesignTokens.taskDetailsDesktopPadding;
 
     if (stats == null && statsAsync.isLoading) {
-      return Padding(padding: EdgeInsets.all(horizontalPadding), child: const _StatisticsSkeleton());
+      return SingleChildScrollView(padding: EdgeInsets.all(horizontalPadding), child: const _StatisticsSkeleton());
     }
     if (stats == null) {
       return const _StatisticsEmptyState();

@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Okno postępu pobierania",
+  "downloadProgressWindowDescription": "Automatycznie otwieraj okno postępu nowych pobrań. Zamknięcie okna nie zatrzymuje pobierania.",
   "@@locale": "pl",
   "label": "Polski",
   "error": "Błąd",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Liczba trackerów",
   "trackerSubscriptionNotUpdated": "Jeszcze nie zaktualizowano",
   "actions": "Działania",
-  "taskGroupDeleteImpact": "Dotyczy {taskCount} pobrań i {fileCount} plików."
+  "taskGroupDeleteImpact": "Dotyczy {taskCount} pobrań i {fileCount} plików.",
+  "downloadSpeedHistory": "Prędkość pobierania",
+  "downloadRecentMinute": "Ostatnie 60 sekund",
+  "averageSpeed": "Średnia prędkość",
+  "runInBackground": "W tle",
+  "downloadBackgroundHint": "Zamknięcie okna nie przerywa pobierania."
 }

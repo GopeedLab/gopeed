@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "نافذة تقدم التنزيل",
+  "downloadProgressWindowDescription": "فتح نافذة تقدم تلقائيًا للتنزيلات الجديدة. يستمر التنزيل عند إغلاقها.",
   "@@locale": "ar",
   "label": "العربية",
   "error": "خطأ",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "عدد المتتبعات",
   "trackerSubscriptionNotUpdated": "لم يُحدّث بعد",
   "actions": "الإجراءات",
-  "taskGroupDeleteImpact": "سيؤثر على {taskCount} من مهام التنزيل و{fileCount} من الملفات."
+  "taskGroupDeleteImpact": "سيؤثر على {taskCount} من مهام التنزيل و{fileCount} من الملفات.",
+  "downloadSpeedHistory": "سرعة التنزيل",
+  "downloadRecentMinute": "آخر 60 ثانية",
+  "averageSpeed": "متوسط السرعة",
+  "runInBackground": "في الخلفية",
+  "downloadBackgroundHint": "يستمر التنزيل عند إغلاق هذه النافذة."
 }

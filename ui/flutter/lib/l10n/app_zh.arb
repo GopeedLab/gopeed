@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "下载进度弹窗",
+  "downloadProgressWindowDescription": "新建下载时自动弹出进度窗口，关闭窗口不会停止下载。",
   "@@locale": "zh",
   "label": "简体中文",
   "error": "错误",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Tracker 数量",
   "trackerSubscriptionNotUpdated": "未更新",
   "actions": "操作",
-  "taskGroupDeleteImpact": "将影响 {taskCount} 个下载任务和 {fileCount} 个文件。"
+  "taskGroupDeleteImpact": "将影响 {taskCount} 个下载任务和 {fileCount} 个文件。",
+  "downloadSpeedHistory": "下载速度趋势",
+  "downloadRecentMinute": "最近 60 秒",
+  "averageSpeed": "平均速度",
+  "runInBackground": "后台运行",
+  "downloadBackgroundHint": "关闭此窗口不会中断下载任务。"
 }

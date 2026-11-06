@@ -46,8 +46,10 @@ class AppWindowBootstrap {
     final title = subWindowTitle(type, appLocalizationsFor(localeConfig));
 
     final options = switch (type) {
-      AppWindowType.createTask => WindowOptions(
-        size: AppDesignTokens.childWindowSize,
+      AppWindowType.createTask || AppWindowType.downloadProgress => WindowOptions(
+        size: type == AppWindowType.downloadProgress
+            ? AppDesignTokens.downloadProgressWindowSize
+            : AppDesignTokens.childWindowSize,
         center: true,
         skipTaskbar: false,
         backgroundColor: Colors.transparent,
@@ -77,6 +79,7 @@ class AppWindowBootstrap {
   static String subWindowTitle(AppWindowType type, AppLocalizations l10n) {
     return switch (type) {
       AppWindowType.createTask => 'Gopeed - ${l10n.create}',
+      AppWindowType.downloadProgress => 'Gopeed - ${l10n.downloadProgressWindow}',
       _ => 'Gopeed',
     };
   }

@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Okno priebehu sťahovania",
+  "downloadProgressWindowDescription": "Automaticky otvárať okno priebehu nových sťahovaní. Jeho zatvorenie sťahovanie nezastaví.",
   "@@locale": "sk",
   "label": "Slovenčina",
   "error": "Chyba",
@@ -681,5 +683,10 @@
   "trackerSubscriptionTrackerCount": "Počet trackerov",
   "trackerSubscriptionNotUpdated": "Zatiaľ neaktualizované",
   "actions": "Akcie",
-  "taskGroupDeleteImpact": "Ovplyvní {taskCount} sťahovaní a {fileCount} súborov."
+  "taskGroupDeleteImpact": "Ovplyvní {taskCount} sťahovaní a {fileCount} súborov.",
+  "downloadSpeedHistory": "Rýchlosť sťahovania",
+  "downloadRecentMinute": "Posledných 60 sekúnd",
+  "averageSpeed": "Priemerná rýchlosť",
+  "runInBackground": "Na pozadí",
+  "downloadBackgroundHint": "Sťahovanie pokračuje aj po zatvorení okna."
 }

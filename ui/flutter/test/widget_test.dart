@@ -1431,6 +1431,34 @@ void main() {
     expect(tester.getSize(mobileHeader).height, 56);
   });
 
+  testWidgets(
+    'download progress window setting defaults off and can be toggled',
+    (tester) async {
+      await _setTestSize(tester, const Size(1024, 768));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appRuntimeControllerProvider.overrideWith(FakeRuntimeController.new),
+            appPlatformControllerProvider.overrideWith(FakePlatformController.new),
+            settingsControllerProvider.overrideWith(FakeSettingsController.new),
+          ],
+          child: const _SettingsTestApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final toggle = find.byKey(const ValueKey('download-progress-window-switch'));
+      expect(tester.widget<shad.Switch>(toggle).value, isFalse);
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<shad.Switch>(toggle).value, isTrue);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<shad.Switch>(toggle).value, isFalse);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.windows}),
+  );
+
   testWidgets('settings use three top-level entries and ordered groups', (WidgetTester tester) async {
     await _setTestSize(tester, const Size(1024, 768));
     await tester.pumpWidget(

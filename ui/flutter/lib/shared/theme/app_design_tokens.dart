@@ -4,6 +4,9 @@ class AppDesignTokens {
   const AppDesignTokens._();
 
   static const Size childWindowSize = Size(820, 620);
+  // The status prototype uses a wide, compact card with a fixed action footer.
+  static const Size downloadProgressWindowSize = Size(784, 460);
+  static const double downloadSpeedChartHeight = 108;
   static const double windowHeaderHeight = 30;
   static const double windowRadius = 12;
   // Leave room for native macOS traffic lights while keeping rail widths consistent across platforms.

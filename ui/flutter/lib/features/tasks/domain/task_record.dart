@@ -132,6 +132,12 @@ class TaskRecord {
   final api_task.Protocol? protocol;
   final Map<String, String> requestHeaders;
 
+  int? get averageSpeedBytes => isGroup
+      ? _averageSpeed(members)
+      : downloadedBytes == null
+      ? null
+      : _averageSpeed([this]);
+
   bool get canUpdateUrl =>
       !isGroup && protocol == api_task.Protocol.http && (status == TaskStatus.paused || status == TaskStatus.failed);
 

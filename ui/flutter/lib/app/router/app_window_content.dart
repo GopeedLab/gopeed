@@ -4,11 +4,13 @@ import 'package:flutter/widgets.dart';
 import '../../api/model/create_task.dart';
 import '../../core/window/app_window_payload.dart';
 import '../../features/tasks/presentation/pages/create_task_window_page.dart';
+import '../../features/tasks/presentation/pages/download_progress_window_page.dart';
 
 /// Shared destination registry for desktop child engines and in-app windows.
 abstract final class AppWindowContent {
   static String location(AppWindowType type) => switch (type) {
     AppWindowType.createTask => '/create',
+    AppWindowType.downloadProgress => '/download-progress',
     AppWindowType.main => throw ArgumentError.value(type, 'type', 'Expected a child window'),
   };
 
@@ -22,6 +24,11 @@ abstract final class AppWindowContent {
       windowController: windowController,
       initialTask: payload.createTask == null ? null : CreateTask.fromJson(payload.createTask!),
       onClose: onClose,
+      modal: modal,
+    ),
+    AppWindowType.downloadProgress => DownloadProgressWindowPage(
+      taskId: payload.taskId,
+      onClose: onClose == null ? null : () => onClose(false),
       modal: modal,
     ),
     AppWindowType.main => throw ArgumentError.value(payload.type, 'payload.type', 'Expected a child window'),

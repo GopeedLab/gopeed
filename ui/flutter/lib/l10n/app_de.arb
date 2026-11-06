@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Download-Fortschrittsfenster",
+  "downloadProgressWindowDescription": "Bei neuen Downloads automatisch ein Fortschrittsfenster öffnen. Der Download läuft nach dem Schließen weiter.",
   "@@locale": "de",
   "label": "Deutsch",
   "error": "Fehler",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Tracker-Anzahl",
   "trackerSubscriptionNotUpdated": "Noch nicht aktualisiert",
   "actions": "Aktionen",
-  "taskGroupDeleteImpact": "Betrifft {taskCount} Downloads und {fileCount} Dateien."
+  "taskGroupDeleteImpact": "Betrifft {taskCount} Downloads und {fileCount} Dateien.",
+  "downloadSpeedHistory": "Downloadgeschwindigkeit",
+  "downloadRecentMinute": "Letzte 60 Sekunden",
+  "averageSpeed": "Durchschnitt",
+  "runInBackground": "Hintergrund",
+  "downloadBackgroundHint": "Der Download läuft nach dem Schließen weiter."
 }

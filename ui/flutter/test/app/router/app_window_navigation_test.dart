@@ -25,6 +25,7 @@ import 'package:gopeed/core/capabilities/storage_capability.dart';
 import 'package:gopeed/core/common/api_server_state.dart';
 import 'package:gopeed/core/common/start_config.dart';
 import 'package:gopeed/core/window/window_capability_transport.dart';
+import 'package:gopeed/core/window/app_window_payload.dart';
 import 'package:gopeed/features/home/presentation/pages/home_page.dart';
 import 'package:gopeed/features/tasks/application/task_list_navigation.dart';
 import 'package:gopeed/features/tasks/application/tasks_controller.dart';
@@ -119,6 +120,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.state(find.byType(HomePage)), same(home));
       expect(tester.widget<AppTextField>(search).controller!.text, 'keep this filter');
+      await unmount(tester);
+    },
+    variant: TargetPlatformVariant({TargetPlatform.macOS}),
+  );
+
+  testWidgets(
+    'progress window falls back to a modal and closing preserves the main page',
+    (tester) async {
+      await mount(tester);
+      final home = tester.state(find.byType(HomePage));
+      await AppRouter.openWindow(AppWindowPayload.downloadProgress('missing'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('app-window-modal')), findsOneWidget);
+      expect(find.text('Task not found'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('download-progress-close')));
+      await tester.pumpAndSettle();
+      expect(tester.state(find.byType(HomePage)), same(home));
       await unmount(tester);
     },
     variant: TargetPlatformVariant({TargetPlatform.macOS}),
