@@ -1644,8 +1644,16 @@ func TestFetcher_UnknownSizeRangeRemainsOpenEndedAfterPause(t *testing.T) {
 	}
 }
 
-func TestFetcher_UnknownSizeResolveReadErrorFailsTask(t *testing.T) {
+// An unknown-size Resolve response that ends unexpectedly is not taken as
+// complete. The download requests the resource again under the retry policy
+// and, as the origin keeps failing, fails after its retry rounds.
+func TestFetcher_UnknownSizeResolveReadErrorFailsAfterRetries(t *testing.T) {
+	var requests atomic.Int32
 	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, _ *gohttp.Request) {
+		if requests.Add(1) > 1 {
+			w.WriteHeader(gohttp.StatusServiceUnavailable)
+			return
+		}
 		conn, rw, err := w.(gohttp.Hijacker).Hijack()
 		if err != nil {
 			t.Errorf("hijack response: %v", err)
@@ -1659,6 +1667,7 @@ func TestFetcher_UnknownSizeResolveReadErrorFailsTask(t *testing.T) {
 	defer server.Close()
 
 	f := buildFetcher()
+	f.config.MaxRetries = 2
 	f.Meta().Opts = &base.Options{
 		Path: t.TempDir(),
 		Name: "broken-chunked.data",
@@ -1674,11 +1683,19 @@ func TestFetcher_UnknownSizeResolveReadErrorFailsTask(t *testing.T) {
 	if err := f.Start(); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Wait(); err == nil {
+	err := f.Wait()
+	if err == nil {
 		t.Fatal("Wait() succeeded after the unknown-size response ended unexpectedly")
+	}
+	if !strings.Contains(err.Error(), "503") {
+		t.Fatalf("Wait() = %v, want the 503 of the last retry", err)
 	}
 	if got := f.getState(); got != stateError {
 		t.Fatalf("fetcher state = %v, want %v", got, stateError)
+	}
+	// Resolve, then one request per retry round.
+	if got := requests.Load(); got != 3 {
+		t.Fatalf("server got %d requests, want 3", got)
 	}
 }
 

@@ -1171,3 +1171,118 @@ func TestFetcher_ExpiredLinkFailsAndKeepsData(t *testing.T) {
 		t.Fatalf("kept %d of %d bytes, want a partial download", kept, len(payload))
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Without Range support: the kept Resolve response
+// ---------------------------------------------------------------------------
+
+// cutResponse sends a 200 with the given headers and body, then drops the
+// connection before the response is complete.
+func cutResponse(t *testing.T, w gohttp.ResponseWriter, header string, body []byte) {
+	conn, rw, err := w.(gohttp.Hijacker).Hijack()
+	if err != nil {
+		t.Errorf("hijack response: %v", err)
+		return
+	}
+	defer conn.Close()
+	_, _ = fmt.Fprint(rw, "HTTP/1.1 200 OK\r\n"+header+"Connection: close\r\n\r\n")
+	_, _ = rw.Write(body)
+	_ = rw.Flush()
+}
+
+// The Resolve response of a resource without Range support breaks part way:
+// the download requests the whole resource again and rewrites the file from
+// the start. With an unknown length the stale bytes of the first response,
+// here longer than the resource, must be truncated.
+func TestFetcher_ResolveBodyCutRetriesFromStart(t *testing.T) {
+	payload := testPayload(256 * 1024)
+	for _, tc := range []struct {
+		name   string
+		header string
+		first  []byte
+	}{
+		{
+			name:   "known size",
+			header: fmt.Sprintf("Content-Length: %d\r\n", len(payload)),
+			first:  payload[:100*1024],
+		},
+		{
+			name:   "unknown size",
+			header: "Transfer-Encoding: chunked\r\n",
+			first:  append([]byte(fmt.Sprintf("%x\r\n", 300*1024)), bytes.Repeat([]byte("x"), 300*1024)...),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests atomic.Int32
+			server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+				if requests.Add(1) == 1 {
+					cutResponse(t, w, tc.header, tc.first)
+					return
+				}
+				if r.Header.Get(base.HttpHeaderRange) != "" {
+					t.Errorf("re-request asked for Range %q, want the whole resource", r.Header.Get(base.HttpHeaderRange))
+				}
+				_, _ = w.Write(payload)
+			}))
+			defer server.Close()
+
+			dir := t.TempDir()
+			f := newRetryFetcher(t, fastRetryUnit, 2)
+			f.Meta().Opts = &base.Options{Path: dir, Name: "cut.data", Extra: &fhttp.OptsExtra{Connections: 4}}
+			if err := f.Resolve(&base.Request{URL: server.URL + "/cut.data"}); err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+			if f.Meta().Res.Range {
+				t.Fatal("the test server must not advertise Range")
+			}
+			if err := f.Start(); err != nil {
+				t.Fatal(err)
+			}
+			waitDownload(t, f, filepath.Join(dir, "cut.data"), payload)
+			if got := requests.Load(); got != 2 {
+				t.Fatalf("server got %d requests, want the Resolve request and one re-request", got)
+			}
+		})
+	}
+}
+
+// A one-time URL: the Resolve response breaks part way and every later
+// request is refused with 403. The download fails after its retry rounds with
+// the 403, without a special case for such URLs.
+func TestFetcher_OneTimeURLFailsAfterRetries(t *testing.T) {
+	payload := testPayload(256 * 1024)
+	var requests atomic.Int32
+	server := httptest.NewServer(gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+		if requests.Add(1) == 1 {
+			cutResponse(t, w, fmt.Sprintf("Content-Length: %d\r\n", len(payload)), payload[:64*1024])
+			return
+		}
+		w.WriteHeader(gohttp.StatusForbidden)
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	f := newRetryFetcher(t, fastRetryUnit, 2)
+	f.Meta().Opts = &base.Options{Path: dir, Name: "once.data"}
+	if err := f.Resolve(&base.Request{URL: server.URL + "/once.data"}); err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if err := f.Start(); err != nil {
+		t.Fatal(err)
+	}
+	err := waitResult(t, f, 30*time.Second)
+	if err == nil || !strings.Contains(err.Error(), "403") {
+		t.Fatalf("Wait() = %v, want a 403 failure", err)
+	}
+	if f.getState() != stateError {
+		t.Fatalf("state = %v, want stateError", f.getState())
+	}
+	// Resolve, then one request per retry round. The first 403 is repeated
+	// once by the browser impersonation of internal/httpclient, which then
+	// stops trying it for this URL.
+	if got := requests.Load(); got != 4 {
+		t.Fatalf("server got %d requests, want 4", got)
+	}
+}
