@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as path;
 
 import '../../../api/model/resource.dart' as api_resource;
+import '../../../api/model/request.dart';
 import '../../../api/model/task.dart' as api_task;
 import '../../../core/icons/gopeed_icons.dart';
 import '../../../core/utils/byte_size_formatter.dart';
@@ -98,6 +99,7 @@ class TaskRecord {
     this.updatedAt,
     this.remainingSeconds,
     this.waiting = false,
+    this.browserCaptured = false,
   }) : assert(!uploading || uploadSpeed != null);
 
   final String id;
@@ -124,6 +126,7 @@ class TaskRecord {
   final DateTime? updatedAt;
   final int? remainingSeconds;
   final bool waiting;
+  final bool browserCaptured;
   final List<TaskFileNode> files;
   final bool uploading;
   final bool isFolder;
@@ -171,6 +174,7 @@ class TaskRecord {
 
     return TaskRecord(
       id: task.id,
+      browserCaptured: task.meta.req.labels?[Request.browserCaptureLabel] == 'true',
       name: fileName,
       status: status,
       downloaded: _formatBytes(downloadedBytes),
@@ -327,6 +331,7 @@ TaskRecord _groupRecord(api_task.TaskGroup group, List<TaskRecord> members) {
   final downloadDuration = doneAt != null && doneAt.isAfter(createdAt) ? doneAt.difference(createdAt) : null;
   return TaskRecord(
     id: group.id,
+    browserCaptured: members.any((task) => task.browserCaptured),
     name: group.name,
     status: status,
     downloaded: _formatBytes(downloaded),

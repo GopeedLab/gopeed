@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -85,6 +86,41 @@ void main() {
     expect(closed, isTrue);
     expect(tasks.actions, hasLength(2));
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('background remains available while pause is pending', (tester) async {
+    var closed = false;
+    final tasks = await mount(tester, onClose: () => closed = true);
+    tasks.pauseRequest = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('download-progress-pause')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('download-progress-close')));
+    await tester.pump();
+    expect(closed, isTrue);
+    tasks.pauseRequest!.complete();
+    await tester.pump();
+    expect(find.byKey(const ValueKey('download-progress-resume')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('failed pause restores controls and closing errors are reported', (tester) async {
+    final tasks = await mount(tester, onClose: () => throw StateError('close failed'));
+    tasks.pauseRequest = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('download-progress-pause')));
+    await tester.pump();
+    tasks.pauseRequest!.completeError(StateError('pause failed'));
+    await tester.pump();
+    expect(find.textContaining('pause failed'), findsOneWidget);
+    tasks.pauseRequest = null;
+    await tester.tap(find.byKey(const ValueKey('download-progress-pause')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('download-progress-resume')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('download-progress-close')));
+    await tester.pump();
+    expect(find.textContaining('close failed'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 6));
   });
 
   testWidgets('unknown size, download error, polling error and deletion are visible', (tester) async {
@@ -234,6 +270,7 @@ void main() {
 
 class _Tasks extends TasksController {
   final actions = <String>[];
+  Completer<void>? pauseRequest;
   @override
   Future<void> deleteSelected(List<String>? ids, {bool force = false}) async {
     actions.add('delete:${ids!.single}:$force');
@@ -258,6 +295,7 @@ class _Tasks extends TasksController {
   @override
   Future<void> pause(String id) async {
     actions.add('pause:$id');
+    await pauseRequest?.future;
     emit(TaskStatus.paused);
   }
 

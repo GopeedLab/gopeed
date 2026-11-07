@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Letöltési folyamatablak",
-  "downloadProgressWindowDescription": "Folyamatablak automatikus megnyitása új letöltéseknél. Bezárása nem állítja le a letöltést.",
+  "downloadProgressWindowDescription": "Folyamatablak automatikus megnyitása csak a böngészőből átvett letöltéseknél. Bezárása nem állítja le a letöltést.",
   "@@locale": "hu",
   "label": "Magyar",
   "error": "Hiba",

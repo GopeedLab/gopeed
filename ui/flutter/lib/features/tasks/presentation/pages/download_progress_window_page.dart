@@ -111,7 +111,7 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
               DownloadProgressActions(
                 task: task,
                 busy: _acting,
-                onClose: () => _runAction(_close),
+                onClose: _close,
                 onCancel: () => _runAction(() => _cancel(task!)),
                 onPause: () => _runAction(() => controller.pause(task!.id)),
                 onResume: () => _runAction(() => controller.resume(task!.id)),
@@ -140,10 +140,14 @@ class _DownloadProgressWindowPageState extends ConsumerState<DownloadProgressWin
   }
 
   Future<void> _close() async {
-    if (widget.onClose != null) {
-      widget.onClose!();
-    } else {
-      await windowManager.close();
+    try {
+      if (widget.onClose != null) {
+        widget.onClose!();
+      } else {
+        await windowManager.close();
+      }
+    } catch (error) {
+      if (mounted) showAppToast(context, error.toString(), type: AppToastType.error);
     }
   }
 

@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Ventana de progreso de descarga",
-  "downloadProgressWindowDescription": "Abrir automáticamente una ventana de progreso para las nuevas descargas. Cerrarla no detiene la descarga.",
+  "downloadProgressWindowDescription": "Abrir automáticamente una ventana de progreso solo para las descargas capturadas del navegador. Cerrarla no detiene la descarga.",
   "@@locale": "es",
   "label": "Español",
   "error": "Error",

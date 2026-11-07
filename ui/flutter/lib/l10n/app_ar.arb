@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "نافذة تقدم التنزيل",
-  "downloadProgressWindowDescription": "فتح نافذة تقدم تلقائيًا للتنزيلات الجديدة. يستمر التنزيل عند إغلاقها.",
+  "downloadProgressWindowDescription": "فتح نافذة تقدم تلقائيًا للتنزيلات الملتقطة من المتصفح فقط. يستمر التنزيل عند إغلاقها.",
   "@@locale": "ar",
   "label": "العربية",
   "error": "خطأ",

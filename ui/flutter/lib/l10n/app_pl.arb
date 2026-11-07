@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Okno postępu pobierania",
-  "downloadProgressWindowDescription": "Automatycznie otwieraj okno postępu nowych pobrań. Zamknięcie okna nie zatrzymuje pobierania.",
+  "downloadProgressWindowDescription": "Automatycznie otwieraj okno postępu tylko dla pobrań przechwyconych z przeglądarki. Zamknięcie okna nie zatrzymuje pobierania.",
   "@@locale": "pl",
   "label": "Polski",
   "error": "Błąd",

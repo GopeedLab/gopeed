@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "İndirme ilerleme penceresi",
-  "downloadProgressWindowDescription": "Yeni indirmeler için otomatik olarak bir ilerleme penceresi aç. Pencereyi kapatmak indirmeyi durdurmaz.",
+  "downloadProgressWindowDescription": "Yalnızca tarayıcıdan yakalanan indirmeler için otomatik olarak bir ilerleme penceresi aç. Pencereyi kapatmak indirmeyi durdurmaz.",
   "@@locale": "tr",
   "label": "Türkçe",
   "error": "Hata",

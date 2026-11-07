@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Endirmə gedişatı pəncərəsi",
-  "downloadProgressWindowDescription": "Yeni endirmələr üçün gedişat pəncərəsini avtomatik açın. Pəncərəni bağlamaq endirməni dayandırmır.",
+  "downloadProgressWindowDescription": "Yalnız brauzerdən tutulan endirmələr üçün gedişat pəncərəsini avtomatik açın. Pəncərəni bağlamaq endirməni dayandırmır.",
   "@@locale": "az",
   "label": "Azərbaycan dili",
   "error": "Xəta",
