@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Jendela progres unduhan",
-  "downloadProgressWindowDescription": "Buka jendela progres secara otomatis untuk unduhan baru. Menutupnya tidak menghentikan unduhan.",
+  "downloadProgressWindowDescription": "Buka jendela progres secara otomatis hanya untuk unduhan yang ditangkap dari browser. Menutupnya tidak menghentikan unduhan.",
   "@@locale": "id",
   "label": "Bahasa Indonesia",
   "error": "Kesalahan",

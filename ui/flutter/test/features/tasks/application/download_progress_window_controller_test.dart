@@ -66,6 +66,11 @@ void main() {
     expect(windows.opened, ['group', 'next']);
   });
 
+  test('main app tasks never open automatically', () {
+    tasks.emit([_task('manual', browserCaptured: false), _task('browser')]);
+    expect(windows.opened, ['browser']);
+  });
+
   test('mobile never opens automatic windows', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     container.invalidate(downloadProgressWindowControllerProvider);
@@ -99,16 +104,21 @@ class _Runtime extends AppRuntimeController {
   void enable(bool enabled) => replaceDownloaderConfig(DownloaderConfig()..extra.showDownloadProgressWindow = enabled);
 }
 
-TaskRecord _task(String id, {TaskStatus status = TaskStatus.downloading, List<TaskRecord> members = const []}) =>
-    TaskRecord(
-      id: id,
-      name: id,
-      status: status,
-      downloaded: '0 B',
-      url: 'https://example.com/$id',
-      storagePath: '/downloads/$id',
-      files: const [],
-      uploading: false,
-      isGroup: members.isNotEmpty,
-      members: members,
-    );
+TaskRecord _task(
+  String id, {
+  TaskStatus status = TaskStatus.downloading,
+  bool browserCaptured = true,
+  List<TaskRecord> members = const [],
+}) => TaskRecord(
+  id: id,
+  browserCaptured: browserCaptured,
+  name: id,
+  status: status,
+  downloaded: '0 B',
+  url: 'https://example.com/$id',
+  storagePath: '/downloads/$id',
+  files: const [],
+  uploading: false,
+  isGroup: members.isNotEmpty,
+  members: members,
+);

@@ -12,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../api/api.dart' as api;
 import '../../api/model/downloader_config.dart';
+import '../../api/model/request.dart';
 import '../../core/libgopeed_boot.dart';
 import '../../core/capabilities/app_capabilities.dart';
 import '../../core/window/window_capability_transport.dart';
@@ -204,6 +205,10 @@ class AppPlatformController extends AsyncNotifier<AppPlatformState> with WindowL
               .set(PendingUpdateRequest(task: pendingUpdate, createTask: createTask));
           await _showMainWindow();
           return;
+        }
+        final request = createTask.req;
+        if (request != null) {
+          request.labels = {...?request.labels, Request.browserCaptureLabel: 'true'};
         }
         if (silent) {
           await ref.read(gopeedServiceProvider).createTask(createTask);

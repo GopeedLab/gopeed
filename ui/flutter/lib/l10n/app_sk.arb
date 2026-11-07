@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Okno priebehu sťahovania",
-  "downloadProgressWindowDescription": "Automaticky otvárať okno priebehu nových sťahovaní. Jeho zatvorenie sťahovanie nezastaví.",
+  "downloadProgressWindowDescription": "Automaticky otvoriť okno priebehu iba pre sťahovania zachytené z prehliadača. Zatvorenie okna nezastaví sťahovanie.",
   "@@locale": "sk",
   "label": "Slovenčina",
   "error": "Chyba",

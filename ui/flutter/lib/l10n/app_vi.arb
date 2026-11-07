@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Cửa sổ tiến trình tải xuống",
-  "downloadProgressWindowDescription": "Tự động mở cửa sổ tiến trình cho các lượt tải mới. Đóng cửa sổ không dừng tải xuống.",
+  "downloadProgressWindowDescription": "Chỉ tự động mở cửa sổ tiến trình cho các lượt tải được bắt từ trình duyệt. Đóng cửa sổ không dừng tải xuống.",
   "@@locale": "vi",
   "label": "Tiếng Việt",
   "error": "Lỗi",

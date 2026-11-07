@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Finestra di avanzamento del download",
-  "downloadProgressWindowDescription": "Apri automaticamente una finestra di avanzamento per i nuovi download. Chiuderla non interrompe il download.",
+  "downloadProgressWindowDescription": "Apri automaticamente una finestra di avanzamento solo per i download acquisiti dal browser. Chiuderla non interrompe il download.",
   "@@locale": "it",
   "label": "Italiano",
   "error": "Errore",

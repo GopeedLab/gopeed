@@ -95,6 +95,9 @@ class PendingDownload {
       member.asDefaultPath = false;
       member.skipAutoCategorize = skipAutoCategorize;
       final req = file.req ?? request;
+      if (request.labels?[Request.browserCaptureLabel] == 'true') {
+        req.labels = {...?req.labels, Request.browserCaptureLabel: 'true'};
+      }
       member.size = httpUrl.hasMatch(req.url) ? file.size : 0;
       if (RegExp(r'^(ftps?|ftpes):', caseSensitive: false).hasMatch(req.url)) {
         final extra = OptsExtraFtp.fromJson(Map<String, dynamic>.from(member.extra as Map? ?? const {}));

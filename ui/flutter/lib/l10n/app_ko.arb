@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "다운로드 진행 창",
-  "downloadProgressWindowDescription": "새 다운로드의 진행 창을 자동으로 엽니다. 창을 닫아도 다운로드는 계속됩니다.",
+  "downloadProgressWindowDescription": "브라우저에서 가져온 다운로드에만 진행 창을 자동으로 엽니다. 창을 닫아도 다운로드는 계속됩니다.",
   "@@locale": "ko",
   "label": "한국어",
   "error": "오류",

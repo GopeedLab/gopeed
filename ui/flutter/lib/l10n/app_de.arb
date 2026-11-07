@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Download-Fortschrittsfenster",
-  "downloadProgressWindowDescription": "Bei neuen Downloads automatisch ein Fortschrittsfenster öffnen. Der Download läuft nach dem Schließen weiter.",
+  "downloadProgressWindowDescription": "Nur für vom Browser erfasste Downloads automatisch ein Fortschrittsfenster öffnen. Der Download läuft nach dem Schließen weiter.",
   "@@locale": "de",
   "label": "Deutsch",
   "error": "Fehler",

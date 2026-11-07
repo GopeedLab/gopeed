@@ -23,7 +23,7 @@ class DownloadProgressWindowController extends Notifier<void> {
     ref.listen(tasksControllerProvider, (_, next) {
       final tasks = next.value;
       if (tasks == null || next.isLoading || next.hasError || tasks.lastError != null) return;
-      final newTasks = tasks.tasks.where((task) => !seen.contains(task.id)).toList();
+      final newTasks = tasks.tasks.where((task) => task.browserCaptured && !seen.contains(task.id)).toList();
       seen.addAll(tasks.allTasks.map((task) => task.id));
       // Establish a baseline so restarting the app never opens windows for old tasks.
       final enabled = ref.read(appRuntimeControllerProvider).value?.downloaderConfig.extra.showDownloadProgressWindow;

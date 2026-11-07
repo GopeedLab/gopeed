@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Finestra de progrés de la baixada",
-  "downloadProgressWindowDescription": "Obre automàticament una finestra de progrés per a les baixades noves. Tancar-la no atura la baixada.",
+  "downloadProgressWindowDescription": "Obre automàticament una finestra de progrés només per a les baixades capturades del navegador. Tancar-la no atura la baixada.",
   "@@locale": "ca",
   "label": "Català",
   "error": "Error",

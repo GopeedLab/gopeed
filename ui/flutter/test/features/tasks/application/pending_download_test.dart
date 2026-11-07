@@ -34,6 +34,13 @@ PendingDownload source(String id, {String name = 'bundle', String rid = '', int 
 GopeedService service(CapabilityRegistry registry) => GopeedService(LocalCapabilityInvoker(registry));
 
 void main() {
+  test('browser capture label reaches resolved member requests', () {
+    final captured = source('browser');
+    captured.request.labels = {Request.browserCaptureLabel: 'true'};
+    expect(captured.creationItems().every((item) => item.req!.labels?[Request.browserCaptureLabel] == 'true'), isTrue);
+    expect(source('manual').creationItems().every((item) => item.req!.labels == null), isTrue);
+  });
+
   test('one named extension group and all independent sources produce exactly two batches', () {
     final group = source('a')..selected.remove(0);
     final unnamed = source('b', name: '');

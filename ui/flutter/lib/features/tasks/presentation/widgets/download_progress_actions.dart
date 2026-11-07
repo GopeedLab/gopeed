@@ -60,7 +60,7 @@ class DownloadProgressActions extends StatelessWidget {
         OutlineButton(
           key: const ValueKey('download-progress-close'),
           size: ButtonSize.small,
-          onPressed: busy ? null : onClose,
+          onPressed: onClose,
           child: Text(task != null && !completed ? context.l10n.runInBackground : context.l10n.close),
         ),
         if (completed && AppWindowChrome.isDesktopWindow) ...[

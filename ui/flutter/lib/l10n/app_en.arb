@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Download progress window",
-  "downloadProgressWindowDescription": "Automatically open a progress window for new downloads. Closing it keeps the download running.",
+  "downloadProgressWindowDescription": "Automatically open a progress window only for downloads captured from the browser. Closing it keeps the download running.",
   "@@locale": "en",
   "label": "English",
   "error": "Error",

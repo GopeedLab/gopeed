@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "ダウンロード進捗ウィンドウ",
-  "downloadProgressWindowDescription": "新しいダウンロードの進捗ウィンドウを自動的に開きます。閉じてもダウンロードは継続します。",
+  "downloadProgressWindowDescription": "ブラウザーから取得したダウンロードのみ、進捗ウィンドウを自動的に開きます。閉じてもダウンロードは継続します。",
   "@@locale": "ja",
   "label": "日本語",
   "error": "エラー",

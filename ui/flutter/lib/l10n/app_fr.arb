@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Fenêtre de progression du téléchargement",
-  "downloadProgressWindowDescription": "Ouvrir automatiquement une fenêtre de progression pour les nouveaux téléchargements. La fermer n’arrête pas le téléchargement.",
+  "downloadProgressWindowDescription": "Ouvrir automatiquement une fenêtre de progression uniquement pour les téléchargements capturés depuis le navigateur. La fermer n’arrête pas le téléchargement.",
   "@@locale": "fr",
   "label": "Français",
   "error": "Erreur",

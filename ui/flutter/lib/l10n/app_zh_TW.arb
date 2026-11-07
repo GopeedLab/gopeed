@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "下載進度視窗",
-  "downloadProgressWindowDescription": "新增下載時自動開啟進度視窗，關閉視窗不會停止下載。",
+  "downloadProgressWindowDescription": "僅對瀏覽器擷取的下載自動開啟進度視窗，關閉視窗不會停止下載。",
   "@@locale": "zh_TW",
   "label": "繁體中文",
   "error": "錯誤",

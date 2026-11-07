@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "Janela de progresso do download",
-  "downloadProgressWindowDescription": "Abrir automaticamente uma janela de progresso para novos downloads. Fechá-la não interrompe o download.",
+  "downloadProgressWindowDescription": "Abrir automaticamente uma janela de progresso apenas para downloads capturados do navegador. Fechá-la não interrompe o download.",
   "@@locale": "pt",
   "label": "Português (Brasil)",
   "error": "Erro",

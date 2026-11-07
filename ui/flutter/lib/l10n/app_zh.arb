@@ -1,6 +1,6 @@
 {
   "downloadProgressWindow": "下载进度弹窗",
-  "downloadProgressWindowDescription": "新建下载时自动弹出进度窗口，关闭窗口不会停止下载。",
+  "downloadProgressWindowDescription": "仅对浏览器捕获的下载自动弹出进度窗口，关闭窗口不会停止下载。",
   "@@locale": "zh",
   "label": "简体中文",
   "error": "错误",

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gopeed/features/tasks/application/tasks_controller.dart';
@@ -85,6 +87,41 @@ void main() {
     expect(closed, isTrue);
     expect(tasks.actions, hasLength(2));
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('background remains available while pause is pending', (tester) async {
+    var closed = false;
+    final tasks = await mount(tester, onClose: () => closed = true);
+    tasks.pauseRequest = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('download-progress-pause')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('download-progress-close')));
+    await tester.pump();
+    expect(closed, isTrue);
+    tasks.pauseRequest!.complete();
+    await tester.pump();
+    expect(find.byKey(const ValueKey('download-progress-resume')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('failed pause restores controls and closing errors are reported', (tester) async {
+    final tasks = await mount(tester, onClose: () => throw StateError('close failed'));
+    tasks.pauseRequest = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('download-progress-pause')));
+    await tester.pump();
+    tasks.pauseRequest!.completeError(StateError('pause failed'));
+    await tester.pump();
+    expect(find.textContaining('pause failed'), findsOneWidget);
+    tasks.pauseRequest = null;
+    await tester.tap(find.byKey(const ValueKey('download-progress-pause')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('download-progress-resume')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('download-progress-close')));
+    await tester.pump();
+    expect(find.textContaining('close failed'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 6));
   });
 
   testWidgets('unknown size, download error, polling error and deletion are visible', (tester) async {
@@ -192,11 +229,41 @@ void main() {
     );
   }
 
+  testWidgets(
+    'completed directory action closes only after opening succeeds',
+    (tester) async {
+      var closed = false;
+      final tasks = await mount(tester, onClose: () => closed = true);
+      tasks.emit(TaskStatus.completed);
+      await tester.pump();
+      final opened = Completer<bool>();
+      const channel = MethodChannel('com.flutter/open-dir');
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        expect(call.method, 'openNativeDir');
+        expect((call.arguments as Map)['highlightedFileName'], 'archive.zip');
+        return opened.future;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
+      await IOOverrides.runZoned(() async {
+        await tester.tap(find.byKey(const ValueKey('download-progress-open-folder')));
+        await tester.pump();
+        expect(closed, isFalse);
+        opened.complete(true);
+        await tester.pump();
+        expect(closed, isTrue);
+        expect(tasks.actions, isEmpty);
+      }, fseGetType: (path, followLinks) async => FileSystemEntityType.file);
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: TargetPlatformVariant({TargetPlatform.windows, TargetPlatform.macOS, TargetPlatform.linux}),
+  );
+
   for (final reveal in [false, true]) {
     testWidgets(
       'completed ${reveal ? 'folder' : 'file'} action uses task path and reports missing files',
       (tester) async {
-        final tasks = await mount(tester);
+        var closed = false;
+        final tasks = await mount(tester, onClose: () => closed = true);
         tasks.emit(TaskStatus.completed);
         await tester.pump();
         final checkedPaths = <String>[];
@@ -218,6 +285,7 @@ void main() {
               findsOneWidget,
             );
             expect(tasks.actions, isEmpty);
+            expect(closed, isFalse);
           },
           fseGetType: (path, followLinks) async {
             checkedPaths.add(path);
@@ -234,6 +302,7 @@ void main() {
 
 class _Tasks extends TasksController {
   final actions = <String>[];
+  Completer<void>? pauseRequest;
   @override
   Future<void> deleteSelected(List<String>? ids, {bool force = false}) async {
     actions.add('delete:${ids!.single}:$force');
@@ -258,6 +327,7 @@ class _Tasks extends TasksController {
   @override
   Future<void> pause(String id) async {
     actions.add('pause:$id');
+    await pauseRequest?.future;
     emit(TaskStatus.paused);
   }
 
