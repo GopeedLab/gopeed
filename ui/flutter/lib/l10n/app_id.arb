@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Jendela progres unduhan",
+  "downloadProgressWindowDescription": "Buka jendela progres secara otomatis hanya untuk unduhan yang ditangkap dari browser. Menutupnya tidak menghentikan unduhan.",
   "@@locale": "id",
   "label": "Bahasa Indonesia",
   "error": "Kesalahan",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Jumlah tracker",
   "trackerSubscriptionNotUpdated": "Belum diperbarui",
   "actions": "Tindakan",
-  "taskGroupDeleteImpact": "Memengaruhi {taskCount} unduhan dan {fileCount} berkas."
+  "taskGroupDeleteImpact": "Memengaruhi {taskCount} unduhan dan {fileCount} berkas.",
+  "downloadSpeedHistory": "Kecepatan unduhan",
+  "downloadRecentMinute": "60 detik terakhir",
+  "averageSpeed": "Kecepatan rata-rata",
+  "runInBackground": "Latar belakang",
+  "downloadBackgroundHint": "Unduhan tetap berjalan setelah jendela ditutup."
 }

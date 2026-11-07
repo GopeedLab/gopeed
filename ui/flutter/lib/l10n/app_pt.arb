@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Janela de progresso do download",
+  "downloadProgressWindowDescription": "Abrir automaticamente uma janela de progresso apenas para downloads capturados do navegador. Fechá-la não interrompe o download.",
   "@@locale": "pt",
   "label": "Português (Brasil)",
   "error": "Erro",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Número de trackers",
   "trackerSubscriptionNotUpdated": "Ainda não atualizado",
   "actions": "Ações",
-  "taskGroupDeleteImpact": "Afeta {taskCount} downloads e {fileCount} arquivos."
+  "taskGroupDeleteImpact": "Afeta {taskCount} downloads e {fileCount} arquivos.",
+  "downloadSpeedHistory": "Velocidade de download",
+  "downloadRecentMinute": "Últimos 60 segundos",
+  "averageSpeed": "Velocidade média",
+  "runInBackground": "Segundo plano",
+  "downloadBackgroundHint": "O download continua após fechar esta janela."
 }

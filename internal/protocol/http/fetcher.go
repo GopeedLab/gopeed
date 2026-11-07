@@ -1863,6 +1863,8 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 
 	if cancel != nil {
 		defer cancel()
+		stop := context.AfterFunc(conn.ctx, cancel)
+		defer stop()
 	}
 	defer resp.Body.Close()
 
@@ -2440,6 +2442,12 @@ func (f *Fetcher) Pause() error {
 	if f.resolveCancel != nil {
 		f.resolveCancel()
 	}
+	// Interrupt a blocked prefetch read before waiting for its worker to exit.
+	f.resolveRespLock.Lock()
+	if f.resolveRespCancel != nil {
+		f.resolveRespCancel()
+	}
+	f.resolveRespLock.Unlock()
 
 	// Stop prefetch if running
 	if f.prefetchStopCh != nil {

@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Download progress window",
+  "downloadProgressWindowDescription": "Automatically open a progress window only for downloads captured from the browser. Closing it keeps the download running.",
   "@@locale": "en",
   "label": "English",
   "error": "Error",
@@ -717,5 +719,10 @@
         "type": "int"
       }
     }
-  }
+  },
+  "downloadSpeedHistory": "Download speed",
+  "downloadRecentMinute": "Last 60 seconds",
+  "averageSpeed": "Average speed",
+  "runInBackground": "Background",
+  "downloadBackgroundHint": "Closing this window keeps the download running."
 }

@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Finestra di avanzamento del download",
+  "downloadProgressWindowDescription": "Apri automaticamente una finestra di avanzamento solo per i download acquisiti dal browser. Chiuderla non interrompe il download.",
   "@@locale": "it",
   "label": "Italiano",
   "error": "Errore",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Numero di tracker",
   "trackerSubscriptionNotUpdated": "Non ancora aggiornato",
   "actions": "Azioni",
-  "taskGroupDeleteImpact": "Riguarda {taskCount} download e {fileCount} file."
+  "taskGroupDeleteImpact": "Riguarda {taskCount} download e {fileCount} file.",
+  "downloadSpeedHistory": "Velocità di download",
+  "downloadRecentMinute": "Ultimi 60 secondi",
+  "averageSpeed": "Velocità media",
+  "runInBackground": "In background",
+  "downloadBackgroundHint": "Il download continua dopo la chiusura della finestra."
 }

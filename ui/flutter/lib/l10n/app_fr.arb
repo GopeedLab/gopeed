@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Fenêtre de progression du téléchargement",
+  "downloadProgressWindowDescription": "Ouvrir automatiquement une fenêtre de progression uniquement pour les téléchargements capturés depuis le navigateur. La fermer n’arrête pas le téléchargement.",
   "@@locale": "fr",
   "label": "Français",
   "error": "Erreur",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Nombre de trackers",
   "trackerSubscriptionNotUpdated": "Pas encore mis à jour",
   "actions": "Actions",
-  "taskGroupDeleteImpact": "Concerne {taskCount} téléchargements et {fileCount} fichiers."
+  "taskGroupDeleteImpact": "Concerne {taskCount} téléchargements et {fileCount} fichiers.",
+  "downloadSpeedHistory": "Vitesse de téléchargement",
+  "downloadRecentMinute": "60 dernières secondes",
+  "averageSpeed": "Vitesse moyenne",
+  "runInBackground": "Arrière-plan",
+  "downloadBackgroundHint": "Le téléchargement continue après la fermeture de cette fenêtre."
 }

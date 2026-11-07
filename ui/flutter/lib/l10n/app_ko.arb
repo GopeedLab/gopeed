@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "다운로드 진행 창",
+  "downloadProgressWindowDescription": "브라우저에서 가져온 다운로드에만 진행 창을 자동으로 엽니다. 창을 닫아도 다운로드는 계속됩니다.",
   "@@locale": "ko",
   "label": "한국어",
   "error": "오류",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "트래커 수",
   "trackerSubscriptionNotUpdated": "아직 업데이트되지 않음",
   "actions": "작업",
-  "taskGroupDeleteImpact": "다운로드 {taskCount}개와 파일 {fileCount}개에 영향을 줍니다."
+  "taskGroupDeleteImpact": "다운로드 {taskCount}개와 파일 {fileCount}개에 영향을 줍니다.",
+  "downloadSpeedHistory": "다운로드 속도",
+  "downloadRecentMinute": "최근 60초",
+  "averageSpeed": "평균 속도",
+  "runInBackground": "백그라운드",
+  "downloadBackgroundHint": "이 창을 닫아도 다운로드는 계속됩니다."
 }

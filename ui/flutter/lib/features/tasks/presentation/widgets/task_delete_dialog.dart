@@ -13,7 +13,7 @@ Future<bool?> showTaskDeleteDialog(
   int? fileCount,
 }) async {
   var deleteFiles = !keepFiles;
-  final dialog = const DialogOverlayHandler().show<bool>(
+  final dialog = const DialogOverlayHandler().show<bool?>(
     context: context,
     alignment: Alignment.center,
     barrierDismissable: false,

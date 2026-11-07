@@ -1,11 +1,14 @@
 import 'dart:convert';
 
-enum AppWindowType { main, createTask }
+enum AppWindowType { main, createTask, downloadProgress }
 
 class AppWindowPayload {
   const AppWindowPayload({required this.type, this.data = const {}});
 
   factory AppWindowPayload.main() => const AppWindowPayload(type: AppWindowType.main);
+
+  factory AppWindowPayload.downloadProgress(String taskId) =>
+      AppWindowPayload(type: AppWindowType.downloadProgress, data: {'taskId': taskId});
 
   factory AppWindowPayload.createTask({Map<String, dynamic>? createTask}) => AppWindowPayload(
     type: AppWindowType.createTask,
@@ -24,6 +27,8 @@ class AppWindowPayload {
       if (decoded is Map<String, dynamic>) {
         final type = switch ((decoded['type'] ?? '').toString()) {
           'create_task' => AppWindowType.createTask,
+          'download_progress' when decoded['taskId'] is String && (decoded['taskId'] as String).isNotEmpty =>
+            AppWindowType.downloadProgress,
           _ => AppWindowType.main,
         };
         return AppWindowPayload(type: type, data: decoded);
@@ -38,6 +43,8 @@ class AppWindowPayload {
   final AppWindowType type;
   final Map<String, dynamic> data;
 
+  String get taskId => data['taskId'] is String ? data['taskId'] as String : '';
+
   Map<String, dynamic>? get createTask {
     final raw = data['createTask'];
     return raw is Map<String, dynamic> ? raw : null;
@@ -48,6 +55,7 @@ class AppWindowPayload {
       'type': switch (type) {
         AppWindowType.main => 'main',
         AppWindowType.createTask => 'create_task',
+        AppWindowType.downloadProgress => 'download_progress',
       },
       ...data,
     });

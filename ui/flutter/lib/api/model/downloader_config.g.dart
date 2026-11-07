@@ -191,6 +191,7 @@ ExtraConfig _$ExtraConfigFromJson(Map<String, dynamic> json) => ExtraConfig(
   defaultBtClient: json['defaultBtClient'] as bool? ?? true,
   notifyWhenNewVersion: json['notifyWhenNewVersion'] as bool? ?? true,
   desktopNotification: json['desktopNotification'] as bool? ?? true,
+  showDownloadProgressWindow: json['showDownloadProgressWindow'] as bool? ?? false,
   backgroundLocationKeepAlive: json['backgroundLocationKeepAlive'] as bool? ?? false,
   backgroundContinuedProcessing: json['backgroundContinuedProcessing'] as bool? ?? false,
   windowState: json['windowState'] == null
@@ -212,6 +213,7 @@ Map<String, dynamic> _$ExtraConfigToJson(ExtraConfig instance) => <String, dynam
   'defaultBtClient': instance.defaultBtClient,
   'notifyWhenNewVersion': instance.notifyWhenNewVersion,
   'desktopNotification': instance.desktopNotification,
+  'showDownloadProgressWindow': instance.showDownloadProgressWindow,
   'backgroundLocationKeepAlive': instance.backgroundLocationKeepAlive,
   'backgroundContinuedProcessing': instance.backgroundContinuedProcessing,
   'windowState': instance.windowState.toJson(),

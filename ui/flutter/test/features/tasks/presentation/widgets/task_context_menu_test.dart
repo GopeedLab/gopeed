@@ -14,6 +14,18 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../../../../support/context_menu_event.dart';
 
 void main() {
+  testWidgets('status window action targets each selected task independently', (tester) async {
+    final calls = <String, int>{};
+    await tester.pumpWidget(_host(calls));
+    await tester.pumpAndSettle();
+    for (final id in ['downloading', 'paused']) {
+      await _open(tester, id);
+      await tester.tap(find.byKey(const ValueKey('task-context-download-progress')));
+      await tester.pumpAndSettle();
+    }
+    expect(calls, {'downloading.progress': 1, 'paused.progress': 1});
+  });
+
   testWidgets('task actions remain enabled by status and run once after reopening', (tester) async {
     final calls = <String, int>{};
     await tester.pumpWidget(_host(calls));
@@ -209,6 +221,7 @@ TaskContextActions _actions(String id, Map<String, int> calls) {
     allSelected: false,
     listeningForUpdate: false,
     onShowDetails: () => record('details'),
+    onShowDownloadProgress: () => record('progress'),
     onOpenFile: () => record('openFile'),
     onOpenDirectory: () => record('openDirectory'),
     onBrowseFiles: () => record('browseFiles'),

@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Letöltési folyamatablak",
+  "downloadProgressWindowDescription": "Folyamatablak automatikus megnyitása csak a böngészőből átvett letöltéseknél. Bezárása nem állítja le a letöltést.",
   "@@locale": "hu",
   "label": "Magyar",
   "error": "Hiba",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Trackerek száma",
   "trackerSubscriptionNotUpdated": "Még nem frissült",
   "actions": "Műveletek",
-  "taskGroupDeleteImpact": "{taskCount} letöltést és {fileCount} fájlt érint."
+  "taskGroupDeleteImpact": "{taskCount} letöltést és {fileCount} fájlt érint.",
+  "downloadSpeedHistory": "Letöltési sebesség",
+  "downloadRecentMinute": "Az utolsó 60 másodperc",
+  "averageSpeed": "Átlagsebesség",
+  "runInBackground": "Háttérben",
+  "downloadBackgroundHint": "Az ablak bezárása nem állítja le a letöltést."
 }

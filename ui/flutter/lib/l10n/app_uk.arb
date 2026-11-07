@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Вікно перебігу завантаження",
+  "downloadProgressWindowDescription": "Автоматично відкривати вікно перебігу лише для завантажень, перехоплених із браузера. Закриття вікна не зупиняє завантаження.",
   "@@locale": "uk",
   "label": "Українська",
   "error": "Помилка",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Кількість трекерів",
   "trackerSubscriptionNotUpdated": "Ще не оновлено",
   "actions": "Дії",
-  "taskGroupDeleteImpact": "Вплине на {taskCount} завантажень і {fileCount} файлів."
+  "taskGroupDeleteImpact": "Вплине на {taskCount} завантажень і {fileCount} файлів.",
+  "downloadSpeedHistory": "Швидкість завантаження",
+  "downloadRecentMinute": "Останні 60 секунд",
+  "averageSpeed": "Середня швидкість",
+  "runInBackground": "У фоні",
+  "downloadBackgroundHint": "Завантаження триватиме після закриття вікна."
 }

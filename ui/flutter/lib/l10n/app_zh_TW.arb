@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "下載進度視窗",
+  "downloadProgressWindowDescription": "僅對瀏覽器擷取的下載自動開啟進度視窗，關閉視窗不會停止下載。",
   "@@locale": "zh_TW",
   "label": "繁體中文",
   "error": "錯誤",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Tracker 數量",
   "trackerSubscriptionNotUpdated": "未更新",
   "actions": "操作",
-  "taskGroupDeleteImpact": "將影響 {taskCount} 個下載任務和 {fileCount} 個檔案。"
+  "taskGroupDeleteImpact": "將影響 {taskCount} 個下載任務和 {fileCount} 個檔案。",
+  "downloadSpeedHistory": "下載速度趨勢",
+  "downloadRecentMinute": "最近 60 秒",
+  "averageSpeed": "平均速度",
+  "runInBackground": "背景執行",
+  "downloadBackgroundHint": "關閉此視窗不會中斷下載任務。"
 }

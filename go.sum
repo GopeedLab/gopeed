@@ -123,6 +123,8 @@ github.com/anacrolix/tagflag v1.0.0/go.mod h1:1m2U/K6ZT+JZG0+bdMK6qauP49QT4wE5pm
 github.com/anacrolix/tagflag v1.1.0/go.mod h1:Scxs9CV10NQatSmbyjqmqmeQNwGzlNe0CMUMIxqHIG8=
 github.com/anacrolix/torrent v1.60.1-0.20251217073903-486bcbe758e0 h1:lzjUG5O/Vzn4vodFZnrmVny08kMnujjmMLQw0X7cetI=
 github.com/anacrolix/torrent v1.60.1-0.20251217073903-486bcbe758e0/go.mod h1:yKUKuZSSDdyOsCbuH+rDOpswl/g546gICapdrU7aUmQ=
+github.com/anacrolix/torrent v1.61.1-0.20260113004628-e8c5742de997 h1:oMtxkyYUyB/H79MywUNq9azQBmv6uARMsedF/2kvPNE=
+github.com/anacrolix/torrent v1.61.1-0.20260113004628-e8c5742de997/go.mod h1:99HuZswKVFJaolion++ekIiF52WDiEtQJqqib4IPdZc=
 github.com/anacrolix/upnp v0.1.4 h1:+2t2KA6QOhm/49zeNyeVwDu1ZYS9dB9wfxyVvh/wk7U=
 github.com/anacrolix/upnp v0.1.4/go.mod h1:Qyhbqo69gwNWvEk1xNTXsS5j7hMHef9hdr984+9fIic=
 github.com/anacrolix/utp v0.2.0 h1:65Cdmr6q9WSw2KsM+rtJFu7rqDzLl2bdysf4KlNPcFI=

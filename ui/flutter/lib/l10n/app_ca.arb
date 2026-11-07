@@ -1,4 +1,6 @@
 {
+  "downloadProgressWindow": "Finestra de progrés de la baixada",
+  "downloadProgressWindowDescription": "Obre automàticament una finestra de progrés només per a les baixades capturades del navegador. Tancar-la no atura la baixada.",
   "@@locale": "ca",
   "label": "Català",
   "error": "Error",
@@ -480,5 +482,10 @@
   "trackerSubscriptionTrackerCount": "Nombre de trackers",
   "trackerSubscriptionNotUpdated": "Sense actualitzar",
   "actions": "Accions",
-  "taskGroupDeleteImpact": "Afecta {taskCount} baixades i {fileCount} fitxers."
+  "taskGroupDeleteImpact": "Afecta {taskCount} baixades i {fileCount} fitxers.",
+  "downloadSpeedHistory": "Velocitat de baixada",
+  "downloadRecentMinute": "Darrers 60 segons",
+  "averageSpeed": "Velocitat mitjana",
+  "runInBackground": "Segon pla",
+  "downloadBackgroundHint": "Tancar aquesta finestra no atura la baixada."
 }
