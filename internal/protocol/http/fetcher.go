@@ -319,7 +319,7 @@ type Fetcher struct {
 	maxConnTime atomic.Int64
 
 	// retry decides when failed requests of the current Start cycle are
-	// retried; a new cycle gets a new policy, so a full budget. Guarded by
+	// retried; a new cycle gets a new policy, so full allowances. Guarded by
 	// connMu; workers keep the policy they were started with.
 	retry *retryPolicy
 	// retryUnit is the first retry delay; zero means one second. Tests
@@ -479,8 +479,8 @@ func (f *Fetcher) Resolve(req *base.Request) error {
 	f.resolveCtx, f.resolveCancel = ctx, cancel
 	f.resolveRespLock.Unlock()
 
-	// The Resolve request follows the same retry policy as the download: with
-	// nothing else running, each failure starts a retry round.
+	// The Resolve request follows the same retry rules as a download
+	// connection, on its own request sequence and allowance.
 	retry := f.newRetryPolicy(nil)
 	self := &connection{Role: roleResolve}
 	retry.join(self)
@@ -1022,7 +1022,7 @@ func (f *Fetcher) doStart() error {
 	// Create main context
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
-	// Every Start cycle gets a fresh retry budget. Until the first Range
+	// Every Start cycle gets fresh retry allowances. Until the first Range
 	// response takes over, the Resolve response still being read counts as a
 	// healthy download.
 	f.connMu.Lock()
@@ -1653,7 +1653,7 @@ func (f *Fetcher) downloadChunkOnce(conn *connection, client *http.Client, buf [
 	conn.retryTimes = 0
 	f.connMu.Unlock()
 	// A valid response, past the Range and length checks above: the task is
-	// downloading again, so its retry budget starts over.
+	// downloading again, so every unfinished connection gets its allowance back.
 	retry.success(conn)
 
 	if conn.Role == rolePrimary || conn.ID == 0 {
@@ -2038,7 +2038,7 @@ func (f *Fetcher) runConnectionWithResolveResp(conn *connection) {
 	}
 	// The Resolve response cannot be resumed. The failure goes through the
 	// retry policy like any other, and a retry requests the resource again
-	// from the start. A one-time URL then fails after the retry rounds.
+	// from the start. A one-time URL then fails after its retries.
 	f.runConnectionFallback(conn, err)
 }
 
@@ -2281,7 +2281,7 @@ func (f *Fetcher) resumeConnections() {
 			continue
 		}
 		// Every unfinished chunk is resumed, also one whose connection gave
-		// up in an earlier attempt: a resume gets a fresh retry budget.
+		// up in an earlier attempt: a resume gets fresh retry allowances.
 		if !f.hasSequentialPrefixLocked(conn) {
 			f.resetConnectionForRestart(conn)
 		}

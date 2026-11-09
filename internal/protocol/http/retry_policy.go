@@ -12,28 +12,33 @@ const (
 )
 
 // retryPolicy decides when the failed requests of one download attempt are
-// tried again. It looks at the whole task instead of the status code of each
-// failure:
+// tried again. Every connection keeps its own pace and its own allowance:
 //
-//   - While at least one request of the task is healthy (it got a valid 200 or
-//     206 and is still downloading), a failed request is retried without using
-//     the task's retry budget, after a delay that grows with its own
-//     consecutive failures.
-//   - Once every unfinished request has failed, the task gets a limited number
-//     of retry rounds. A round gives every failed request one more try after
-//     the round's delay; it counts once for the task, however many requests
-//     fail in it. Requests still waiting for response headers, or waiting to be
-//     sent, are let through first rather than counted as failures.
-//   - Any valid response resets the task: the rounds start again from the
-//     first one, with the shortest delay.
+//   - A connection whose request fails while another connection of the task
+//     is healthy (it got a valid 200 or 206 and is still downloading) retries
+//     without using its allowance.
+//   - Otherwise the retry is charged to that connection's own allowance:
+//     maxRetries additional requests, or unlimited. Other connections are not
+//     charged, and nobody waits for anybody: a request still waiting for its
+//     response headers does not hold back a connection that has already
+//     failed.
+//   - Any valid response resets the allowance of every unfinished connection.
+//   - The delay before a retry grows with the connection's own consecutive
+//     failures: one unit, two units, ... up to maxDelay. A peer's success does
+//     not shorten it.
 //
-// When the rounds are used up the policy is exhausted and every request gives
-// up, so the task fails. A policy serves one download attempt; a new attempt
-// (Start after a failure or a pause) gets a new policy and so a full budget.
+// A connection that has used up its allowance does not give up yet: its chunk
+// stays recoverable while another request of the task is healthy or still in
+// flight. It waits, and if that request succeeds it gets the reset allowance
+// and tries again. Only when every remaining connection has used up its
+// allowance, and no request is healthy or in flight, is the policy exhausted:
+// every connection then gives up and the task fails. A policy serves one
+// download attempt; a new attempt (Start after a failure or a pause) gets a new
+// policy and so full allowances.
 type retryPolicy struct {
-	// maxRounds is the number of retry rounds once every request has failed;
-	// negative means unlimited.
-	maxRounds int
+	// maxRetries is the number of additional requests a connection may make
+	// on its own allowance; negative means unlimited.
+	maxRetries int
 	// unit is the delay of the first retry; the n-th waits n units.
 	unit time.Duration
 	// maxDelay caps every delay.
@@ -44,32 +49,34 @@ type retryPolicy struct {
 
 	mu        sync.Mutex
 	members   map[*connection]*retryMember
-	rounds    int  // retry rounds started since every request last failed
-	exhausted bool // the rounds are used up; the attempt has failed
+	exhausted bool // no connection can recover; the attempt has failed
 	changed   chan struct{}
 }
 
 type retryState int
 
 const (
-	// retryPending: a request is about to be sent, or waits for its response
-	// headers. It has not failed, but it is not healthy yet either.
+	// retryPending: a request is about to be sent, waits for its response
+	// headers, or waits out its retry delay. It has not failed, but it is not
+	// healthy yet either; it may still recover the task.
 	retryPending retryState = iota
 	// retryHealthy: the last request got a valid 200 or 206 and is downloading.
 	retryHealthy
-	// retryFailed: the last request failed; it waits for a decision.
-	retryFailed
+	// retrySpent: the last request failed and the connection's allowance is
+	// used up. It waits for a peer's success to reset it.
+	retrySpent
 )
 
 type retryMember struct {
 	state retryState
-	// failures counts the failed requests since the last valid response.
+	// used counts the retries charged to the allowance since the last reset.
+	used int
+	// failures counts the consecutive failed requests of this connection; it
+	// sets the backoff and is cleared by the connection's own success.
 	failures int
-	// delay is the wait before the next try, set when the member is let go.
-	delay time.Duration
 }
 
-func newRetryPolicy(maxRounds int, unit, maxDelay time.Duration, streaming func() bool) *retryPolicy {
+func newRetryPolicy(maxRetries int, unit, maxDelay time.Duration, streaming func() bool) *retryPolicy {
 	if unit <= 0 {
 		unit = time.Second
 	}
@@ -77,12 +84,12 @@ func newRetryPolicy(maxRounds int, unit, maxDelay time.Duration, streaming func(
 		maxDelay = unit
 	}
 	return &retryPolicy{
-		maxRounds: maxRounds,
-		unit:      unit,
-		maxDelay:  maxDelay,
-		streaming: streaming,
-		members:   make(map[*connection]*retryMember),
-		changed:   make(chan struct{}),
+		maxRetries: maxRetries,
+		unit:       unit,
+		maxDelay:   maxDelay,
+		streaming:  streaming,
+		members:    make(map[*connection]*retryMember),
+		changed:    make(chan struct{}),
 	}
 }
 
@@ -102,15 +109,20 @@ func (p *retryPolicy) notifyLocked() {
 	p.changed = make(chan struct{})
 }
 
+func (p *retryPolicy) memberLocked(c *connection) *retryMember {
+	m, ok := p.members[c]
+	if !ok {
+		m = &retryMember{}
+		p.members[c] = m
+	}
+	return m
+}
+
 // join adds a request of the task; it starts out pending.
 func (p *retryPolicy) join(c *connection) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if m, ok := p.members[c]; ok {
-		m.state = retryPending
-	} else {
-		p.members[c] = &retryMember{state: retryPending}
-	}
+	p.memberLocked(c).state = retryPending
 	p.notifyLocked()
 }
 
@@ -137,89 +149,89 @@ func (p *retryPolicy) attempt(c *connection) {
 	}
 }
 
-// success records a valid 200 or 206 for c. It resets the budget of the whole
-// task: the next time every request fails, the rounds start from the first.
+// success records a valid 200 or 206 for c. It resets the allowance of every
+// unfinished connection, and lets connections that had used theirs up try
+// again.
 func (p *retryPolicy) success(c *connection) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	m, ok := p.members[c]
-	if !ok {
-		m = &retryMember{}
-		p.members[c] = m
-	}
+	m := p.memberLocked(c)
 	m.state = retryHealthy
 	m.failures = 0
-	if p.rounds > 0 && !p.exhausted {
-		// Leave the limited phase: every request gets the full allowance
-		// and the shortest delay again.
-		p.rounds = 0
+	if !p.exhausted {
 		for _, other := range p.members {
-			other.failures = 0
+			other.used = 0
+			if other.state == retrySpent {
+				other.state = retryPending
+			}
 		}
 	}
 	p.notifyLocked()
 }
 
 // next records that the last request of c failed and decides whether and when
-// it is tried again. It blocks while no request is healthy but some are still
-// pending, until those succeed or fail. It returns the delay to wait before
-// the next request, or false when the task's retries are used up or ctx ends.
+// it is tried again. It returns the delay to wait before the next request, or
+// false when the task cannot recover or ctx ends. It blocks only while c has
+// used up its allowance and another request may still recover the task.
 func (p *retryPolicy) next(ctx context.Context, c *connection) (time.Duration, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	m, ok := p.members[c]
-	if !ok {
-		m = &retryMember{}
-		p.members[c] = m
-	}
-	m.state = retryFailed
+	m := p.memberLocked(c)
 	m.failures++
-	p.notifyLocked()
+	if p.exhausted {
+		return 0, false
+	}
 
+	// c is not healthy any more, so it does not count for itself.
+	m.state = retrySpent
+	switch {
+	case p.anyHealthyLocked():
+		// Free retry: the task is making progress.
+		m.state = retryPending
+	case p.maxRetries < 0 || m.used < p.maxRetries:
+		m.used++
+		m.state = retryPending
+	}
+	p.notifyLocked()
+	if m.state == retryPending {
+		return p.delayFor(m.failures), true
+	}
+
+	// c's allowance is used up: wait for a peer's success to reset it, or for
+	// the last request that could do so to go.
 	for {
 		if p.exhausted {
 			return 0, false
 		}
 		if m.state == retryPending {
-			// Let go by a round another request started.
-			return m.delay, true
+			// A peer succeeded and reset the allowances. Like any retry next
+			// to a healthy peer, this one is free.
+			return p.delayFor(m.failures), true
 		}
-		if p.anyHealthyLocked() {
-			m.state = retryPending
-			m.delay = p.delayFor(m.failures)
-			p.notifyLocked()
-			return m.delay, true
-		}
-		if p.anyLocked(retryPending) {
-			changed := p.changed
-			p.mu.Unlock()
-			select {
-			case <-changed:
-			case <-ctx.Done():
-			}
-			p.mu.Lock()
-			if ctx.Err() != nil {
-				return 0, false
-			}
-			continue
-		}
-
-		// Every unfinished request has failed.
-		if p.maxRounds >= 0 && p.rounds >= p.maxRounds {
+		if !p.recoverableLocked() {
 			p.exhausted = true
 			p.notifyLocked()
 			return 0, false
 		}
-		p.rounds++
-		delay := p.delayFor(p.rounds)
-		for _, other := range p.members {
-			if other.state == retryFailed {
-				other.state = retryPending
-				other.delay = delay
-			}
+		changed := p.changed
+		p.mu.Unlock()
+		select {
+		case <-changed:
+		case <-ctx.Done():
 		}
-		p.notifyLocked()
+		p.mu.Lock()
+		if ctx.Err() != nil {
+			// c leaves the task; a spent member no longer holds anyone.
+			return 0, false
+		}
 	}
+}
+
+// recoverableLocked reports whether a request of the task is healthy or still
+// in flight, and so may yet reset the allowances of the connections that used
+// theirs up.
+func (p *retryPolicy) recoverableLocked() bool {
+	return p.anyHealthyLocked() || p.anyLocked(retryPending)
 }
 
 func (p *retryPolicy) anyHealthyLocked() bool {
@@ -257,14 +269,14 @@ func sleepContext(ctx context.Context, d time.Duration) bool {
 // newRetryPolicy builds the policy for one download attempt from the HTTP
 // configuration. streaming is optional, see retryPolicy.streaming.
 func (f *Fetcher) newRetryPolicy(streaming func() bool) *retryPolicy {
-	maxRounds := defaultMaxRetries
+	maxRetries := defaultMaxRetries
 	delaySeconds := defaultMaxRetryDelaySeconds
 	if f.config != nil {
 		switch {
 		case f.config.UnlimitedRetries:
-			maxRounds = -1
+			maxRetries = -1
 		case f.config.MaxRetries >= 0:
-			maxRounds = f.config.MaxRetries
+			maxRetries = f.config.MaxRetries
 		}
 		if f.config.MaxRetryDelaySeconds > 0 {
 			delaySeconds = f.config.MaxRetryDelaySeconds
@@ -274,5 +286,5 @@ func (f *Fetcher) newRetryPolicy(streaming func() bool) *retryPolicy {
 	if unit <= 0 {
 		unit = time.Second
 	}
-	return newRetryPolicy(maxRounds, unit, time.Duration(delaySeconds)*unit, streaming)
+	return newRetryPolicy(maxRetries, unit, time.Duration(delaySeconds)*unit, streaming)
 }
